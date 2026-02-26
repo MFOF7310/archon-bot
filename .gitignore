@@ -1,0 +1,17 @@
+# Ignore the file containing your private Bot Token and API Keys
+.env
+
+# Ignore the heavy folder where the bot's "parts" are installed
+node_modules/
+
+# Ignore any log files that track errors
+*.log
+npm-debug.log*
+
+# Ignore system-specific files (Mac/Windows junk)
+.DS_Store
+Thumbs.db
+
+# Ignore the build or dist folders if you ever use them
+dist/
+build/
