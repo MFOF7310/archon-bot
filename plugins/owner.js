@@ -2,32 +2,29 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 
 module.exports = {
     name: 'owner',
-    description: 'Creator social links and contact info',
+    description: 'Social links for CLOUD GAMING223',
     async execute(message) {
-        // 🔗 Replace these with your actual links from earlier
-        const socials = {
-            tiktok: "https://www.tiktok.com/https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1your_username",
-            instagram: "https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5",
-            facebook: "https://www.facebook.com/share/16q67Ar7FP/",
-            whatsapp: "https://wa.me/15485200518" 
-        };
+        // 🔗 PASTE YOUR LINKS HERE
+        const tiktok = "https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1";
+        const whatsapp = "https://wa.me/15485200518";
+        const instagram = "https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5E;
 
         const ownerEmbed = new EmbedBuilder()
-            .setColor('#f1c40f') // Gold Theme
-            .setTitle('👑 AES Framework Creator')
+            .setColor('#3498db') // Cloud Blue
+            .setTitle('🎮 CLOUD GAMING223 CREATOR')
             .setThumbnail(message.client.user.displayAvatarURL())
-            .setDescription('Connected from **Bamako, Mali**. Reach out for bot support or AES project collaboration.')
+            .setDescription('Connected from **Bamako, Mali**. Join the community on TikTok, WhatsApp, and Instagram for the best cloud gaming updates.')
             .addFields(
-                { name: '📍 Location', value: '`Mali (AES)`', inline: true },
+                { name: '📍 Location', value: '`Bamako, Mali`', inline: true },
                 { name: '🛰️ Network', value: '`Starlink`', inline: true },
-                { name: '🛠️ Role', value: '`Lead Developer`', inline: true }
+                { name: '🎮 Platform', value: '`Boosteroid`', inline: true }
             )
-            .setFooter({ text: 'Digital Sovereignty for the Sahel' });
+            .setFooter({ text: 'Cloud Gaming 223 - Pure Performance' });
 
         const buttons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel('TikTok').setURL(socials.tiktok).setStyle(ButtonStyle.Link),
-            new ButtonBuilder().setLabel('Instagram').setURL(socials.instagram).setStyle(ButtonStyle.Link),
-            new ButtonBuilder().setLabel('WhatsApp').setURL(socials.whatsapp).setStyle(ButtonStyle.Link)
+            new ButtonBuilder().setLabel('TikTok').setURL(tiktok).setStyle(ButtonStyle.Link),
+            new ButtonBuilder().setLabel('WhatsApp').setURL(whatsapp).setStyle(ButtonStyle.Link),
+            new ButtonBuilder().setLabel('Instagram').setURL(instagram).setStyle(ButtonStyle.Link)
         );
 
         return message.reply({ embeds: [ownerEmbed], components: [buttons] });
