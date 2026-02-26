@@ -1,0 +1,36 @@
+{
+
+  "name": "cloudgaming-bot223",
+
+  "version": "1.1.0",
+
+  "description": "Clean Discord bot with Gemini AI",
+
+  "main": "index.js",
+
+  "scripts": {
+
+    "start": "node index.js"
+
+  },
+
+  "dependencies": {
+
+    "discord.js": "^14.16.3",
+
+    "@google/generative-ai": "^0.2.1",
+
+    "dotenv": "^16.4.1"
+
+  },
+
+  "overrides": {
+
+    "undici": "^6.13.0",
+
+    "nth-check": "^2.1.1"
+
+  }
+
+}
+
