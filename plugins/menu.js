@@ -1,42 +1,24 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'menu',
-    description: 'Main dashboard and command list',
+    description: 'Displays the list of available commands',
     async execute(message, args, client) {
-        // 1. Scan the plugins folder (Self-contained, no external lib needed)
-        const pluginsPath = path.join(__dirname);
-        const pluginFiles = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.js'));
-        const commandList = pluginFiles.map(file => `\`,${file.split('.')[0]}\``).join(' ');
+        // 1. Get all loaded commands from the bot's collection
+        const commands = client.commands.map(cmd => `\`${cmd.name}\``).join(', ');
 
-        // 2. Create the Embed
         const menuEmbed = new EmbedBuilder()
-            .setColor('#ff0000')
-            .setTitle('🚀 AES Region Digital Dashboard')
+            .setColor('#2ecc71') // AES Emerald Green
+            .setTitle('📂 AES FRAMEWORK | COMMAND MENU')
             .setThumbnail(client.user.displayAvatarURL())
-            .setDescription(`Hello **${message.author.username}**! All systems are operational.`)
+            .setDescription('Welcome to the **Fof223** command center. Below are the active modules currently loaded in the system.')
             .addFields(
-                { name: '🛠️ Commands Found', value: commandList || 'Scanning...' },
-                { name: '🤖 AI Model', value: '`Gemini 2.0 Flash`', inline: true },
-                { name: '🌍 Location', value: '`Mali (Sahel)`', inline: true }
+                { name: '🛠️ Available Commands', value: commands || 'No commands loaded.' },
+                { name: '💡 Usage', value: `Type \`${process.env.PREFIX || ','}\` followed by a command name (e.g., \`,vision\`).` }
             )
-            .setFooter({ text: 'Prefix is "," | AES Bot v2.0' })
+            .setFooter({ text: 'AES Digital Sovereignty • Bamako, Mali', iconURL: 'https://i.imgur.com/mali-flag.png' })
             .setTimestamp();
 
-        // 3. Simple Menu Row
-        const menuRow = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId('main_menu')
-                .setPlaceholder('Select a feature...')
-                .addOptions([
-                    { label: 'AI Assistant', value: 'ai', emoji: '🤖' },
-                    { label: 'Translation', value: 'trt', emoji: '🌐' },
-                    { label: 'Weather', value: 'wth', emoji: '🌤️' }
-                ])
-        );
-
-        return message.reply({ embeds: [menuEmbed], components: [menuRow] });
+        return message.reply({ embeds: [menuEmbed] });
     }
 };
