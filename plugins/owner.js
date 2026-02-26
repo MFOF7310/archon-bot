@@ -6,8 +6,8 @@ module.exports = {
     async execute(message) {
         const ownerEmbed = new EmbedBuilder()
             .setColor('#3498db') // Matching your blue theme
-            .setTitle('👨‍💻 CLOUD GAMING223 | CREATOR')
-            .setDescription('Connect with the developer behind the AES Digital Framework.')
+            .setTitle('👨‍💻 CLOUD GAMING-223 | CREATOR')
+            .setDescription('Connect with the developer behind the CLOUD GAMING-223 Engine.')
             .addFields(
                 { name: '📍 Location', value: '`Bamako, Mali`', inline: true },
                 { name: '🛰️ Connection', value: '`Starlink Active`', inline: true }
