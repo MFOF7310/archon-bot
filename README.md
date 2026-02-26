@@ -45,7 +45,7 @@ Join the official community for the best cloud gaming updates in Mali!
 | :--- | :--- |
 | **TikTok** | [Follow my tiktok](https://www.tiktok.com/@votre_compte](https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1)) |
 | **Instagram** | [View My Insta](https://www.instagram.com/votre_compte](https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5)) |
-| **WhatsApp** | [Message me](https://wa.me/15485200518)) |
+| **WhatsApp** | [Message me](https://wa.me/15485200518) |
 
 ---
 
