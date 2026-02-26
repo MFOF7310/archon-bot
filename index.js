@@ -3,17 +3,16 @@ const fs = require('fs');
 const path = require('path');
 const { 
     Client, GatewayIntentBits, ActivityType, EmbedBuilder, 
-    ActionRowBuilder, StringSelectMenuBuilder, PermissionFlagsBits, Collection,
-    Partials 
+    ActionRowBuilder, StringSelectMenuBuilder, Collection, Partials 
 } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// 1. CLIENT SETUP
+// 1. CLIENT SETUP WITH INTENTS & PARTIALS
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.MessageContent, // CRITICAL: Must be ON in Dev Portal
         GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.DirectMessages 
     ],
@@ -61,9 +60,9 @@ for (const file of pluginFiles) {
     } catch (e) { console.error(`Failed to load ${file}`); }
 }
 
-// --- 🚀 STARTUP BROADCAST (The Creator Signature) ---
+// --- 🚀 STARTUP BROADCAST ---
 client.once('ready', async (c) => {
-    console.log(`✅ ${c.user.tag} is Live! | Prefix: ${PREFIX} | Bamako: ${getBamakoTime()}`);
+    console.log(`✅ ${c.user.tag} Online | Prefix: ${PREFIX} | Bamako: ${getBamakoTime()}`);
     client.user.setActivity('over the AES Region', { type: ActivityType.Watching });
 
     try {
@@ -71,69 +70,76 @@ client.once('ready', async (c) => {
         const welcomeEmbed = new EmbedBuilder()
             .setColor('#ff0000')
             .setTitle('🛡️ AES Framework: Deployment Successful')
-            .setDescription(`Greetings, Boss! A new instance of your bot is active.\n\n**Quick Access to Your Socials:**\n[TikTok](${MY_SOCIALS.tiktok}) | [Instagram](${MY_SOCIALS.instagram})\n[Facebook](${MY_SOCIALS.facebook}) | [WhatsApp](${MY_SOCIALS.whatsapp})`)
+            .setDescription(`Greetings, Boss! Your bot is active.\n\n**Quick Access:**\n[TikTok](${MY_SOCIALS.tiktok}) | [Instagram](${MY_SOCIALS.instagram})\n[WhatsApp](${MY_SOCIALS.whatsapp})`)
             .addFields({ name: '🇲🇱 Time In Bamako', value: `\`${getBamakoTime()}\`` })
-            .setFooter({ text: 'AES Digital Assistant v2.0' })
             .setTimestamp();
 
         await creator.send({ embeds: [welcomeEmbed] });
         console.log("✉️ Startup DM sent to Creator.");
     } catch (err) {
-        console.log("❌ DM Failed. Check 'Server Members Intent' in Dev Portal.");
+        console.log("❌ DM Failed. Ensure 'Server Members Intent' is ON.");
     }
 });
 
-// 4. MAIN COMMAND HANDLER (DMs & Servers)
+// 4. MAIN COMMAND HANDLER (With Debugger)
 client.on('messageCreate', async (message) => {
+    // 🔍 CONSOLE DEBUGGER: Tells us what the bot "sees"
+    if (!message.author.bot) {
+        console.log(`📩 [LOG] Message: "${message.content}" | Channel: ${message.channel.name || 'DM'}`);
+    }
+
     if (message.author.bot) return;
 
     const isDM = !message.guild;
     const isMentioned = message.content.startsWith(`<@!${client.user.id}>`) || message.content.startsWith(`<@${client.user.id}>`);
 
-    // Handle Prefix logic (Support for Null/None Prefix)
+    // --- PREFIX LOGIC ---
     let commandBody = message.content;
     if (PREFIX !== 'NONE' && message.content.startsWith(PREFIX)) {
         commandBody = message.content.slice(PREFIX.length);
-    } else if (PREFIX !== 'NONE' && !isMentioned && !isDM) {
-        return; // No prefix found in server
+    } else if (isMentioned || isDM) {
+        // Allow mentions or DMs to skip prefix
+        commandBody = isMentioned ? message.content.split(/ +/).slice(1).join(" ") : message.content;
+    } else {
+        return; // Ignore message
     }
 
     const args = commandBody.trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
-    // 📩 GLOBAL DM & SERVER HELP
+    // --- CORE COMMANDS ---
+    
+    // Help / Menu
     if (commandName === 'help' || commandName === 'menu') {
         const helpEmbed = new EmbedBuilder()
             .setColor('#ff0000')
-            .setTitle(isDM ? '📂 AES Global Assistant' : '🚀 AES Region Dashboard')
-            .setDescription(isDM ? 'I am your portable AI assistant.' : `Welcome **${message.author.username}**!`)
-            .addFields(
-                { name: '🤖 AI Chat', value: `\`${PREFIX}gemini [prompt]\``, inline: true },
-                { name: '⚙️ Utilities', value: '`,ping`, `,weather`, `,status`', inline: true },
-                { name: '📱 Socials', value: '`,socials`', inline: true }
-            )
-            .setFooter({ text: `Prefix: ${PREFIX} | Plugins: ${client.commands.size}` });
-
+            .setTitle('🚀 AES Dashboard')
+            .setDescription(`Prefix: \`${PREFIX}\` | Active Plugins: \`${client.commands.size}\``);
         return message.reply({ embeds: [helpEmbed] });
     }
 
-    // 🤖 GEMINI AI COMMAND
+    // Ping
+    if (commandName === 'ping') {
+        return message.reply(`🏓 Pong! Latency: ${client.ws.ping}ms`);
+    }
+
+    // Gemini AI
     if (commandName === 'gemini') {
         const prompt = args.join(" ");
-        if (!prompt) return message.reply("What would you like to ask?");
+        if (!prompt) return message.reply("What is your question?");
         const thinking = await message.reply("🤔 **Thinking...**");
         try {
             const result = await model.generateContent(prompt);
             return thinking.edit(result.response.text().substring(0, 2000));
-        } catch (e) { return thinking.edit("❌ AI Error: Check API Key."); }
+        } catch (e) { return thinking.edit("❌ AI Error. Check API Key."); }
     }
 
-    // EXECUTE PLUGINS (Weather, Translation, etc.)
+    // --- PLUGIN LOADER ---
     const pluginCommand = client.commands.get(commandName);
     if (pluginCommand) {
         try {
             return await pluginCommand.execute(message, args, client);
-        } catch (err) { console.error(err); }
+        } catch (err) { console.error(`Plugin Error: ${err}`); }
     }
 });
 
