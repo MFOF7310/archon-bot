@@ -41,9 +41,8 @@ for (const file of pluginFiles) {
 console.log('✅ External Plugins Installed Successfully');
 
 client.once('ready', () => {
-    console.log(`\n⚡ ${client.user.tag} is Online!`);
-    console.log(`📍 Location: Bamako, Mali`);
-    console.log(`📊 Total Modules Loaded: ${client.commands.size}`);
+    const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false }) + ' ' + new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+console.log(`  INFO [${timestamp}]: Installed ${command.name}`);
     
     client.user.setActivity('over the AES Region', { type: ActivityType.Watching });
 });
