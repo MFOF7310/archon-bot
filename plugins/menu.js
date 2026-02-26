@@ -3,37 +3,37 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = {
-    name: 'menu', // This handles both ,menu and ,help logic
+    name: 'menu',
     description: 'Main dashboard and command list',
     async execute(message, args, client) {
-        // 1. Auto-scan the plugins folder to see what commands exist
+        // 1. Scan the plugins folder (Self-contained, no external lib needed)
         const pluginsPath = path.join(__dirname);
         const pluginFiles = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.js'));
         const commandList = pluginFiles.map(file => `\`,${file.split('.')[0]}\``).join(' ');
 
-        // 2. Build the visual dashboard
+        // 2. Create the Embed
         const menuEmbed = new EmbedBuilder()
             .setColor('#ff0000')
             .setTitle('🚀 AES Region Digital Dashboard')
             .setThumbnail(client.user.displayAvatarURL())
-            .setDescription(`Hello **${message.author.username}**, welcome to the system command center.`)
+            .setDescription(`Hello **${message.author.username}**! All systems are operational.`)
             .addFields(
-                { name: '🛠️ Installed Plugins', value: commandList || 'No plugins detected.' },
-                { name: '🤖 AI Status', value: '`Gemini 2.0 Flash Online`', inline: true },
-                { name: '🌍 Region', value: '`Mali / Sahel (AES)`', inline: true }
+                { name: '🛠️ Commands Found', value: commandList || 'Scanning...' },
+                { name: '🤖 AI Model', value: '`Gemini 2.0 Flash`', inline: true },
+                { name: '🌍 Location', value: '`Mali (Sahel)`', inline: true }
             )
-            .setFooter({ text: 'Use the prefix "," before any command name.' })
+            .setFooter({ text: 'Prefix is "," | AES Bot v2.0' })
             .setTimestamp();
 
-        // 3. Add the interactive menu row
+        // 3. Simple Menu Row
         const menuRow = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId('main_menu')
-                .setPlaceholder('Select a category for more info...')
+                .setPlaceholder('Select a feature...')
                 .addOptions([
-                    { label: 'AI Assistant', description: 'Chat and Image Analysis', value: 'ai_info', emoji: '🤖' },
-                    { label: 'System Status', description: 'Check server connection', value: 'sys_info', emoji: '📊' },
-                    { label: 'AES Updates', description: 'Regional developments', value: 'aes_info', emoji: '🇲🇱' }
+                    { label: 'AI Assistant', value: 'ai', emoji: '🤖' },
+                    { label: 'Translation', value: 'trt', emoji: '🌐' },
+                    { label: 'Weather', value: 'wth', emoji: '🌤️' }
                 ])
         );
 
