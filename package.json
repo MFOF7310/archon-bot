@@ -1,0 +1,19 @@
+{
+  "name": "cloud_gaming_bot223",
+  "version": "1.0.0",
+  "description": "Discord bot for the AES Region with Gemini AI",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "@google/generative-ai": "^0.2.1",
+    "path": "^0.12.7",
+    "fs": "0.0.1-security"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
