@@ -4,22 +4,16 @@ const path = require('path');
 const { Client, GatewayIntentBits, Collection, ActivityType } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Initialize Client with all necessary intents
-const client = new Client({ 
-    intents: [3276799] 
-});
-
+const client = new Client({ intents: [3276799] });
 client.commands = new Collection();
 const PREFIX = process.env.PREFIX || ',';
 
-// Initialize Gemini 2.0 Flash Engine
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 console.log('📡 Connecting to AES Framework...');
 console.log('📦 Installing Plugins...');
 
-// 📂 DYNAMIC PLUGIN LOADER (The "Levanter" Way)
 const pluginsPath = path.join(__dirname, 'plugins');
 if (!fs.existsSync(pluginsPath)) fs.mkdirSync(pluginsPath);
 
@@ -27,41 +21,40 @@ const pluginFiles = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.j
 
 for (const file of pluginFiles) {
     try {
-        const command = require(`./plugins/${file}`);
-        if (command.name) {
-            client.commands.set(command.name, command);
-            // This creates the list style from your screenshot
-            console.log(`  INFO [${new Date().toLocaleTimeString()}] Installed ${command.name}`);
+        const commandFile = require(`./plugins/${file}`); // Changed variable name to avoid conflict
+        if (commandFile.name) {
+            client.commands.set(commandFile.name, commandFile);
+            const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false }) + ' ' + new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+            console.log(`  INFO [${timestamp}]: Installed ${commandFile.name}`);
         }
     } catch (error) {
-        console.log(`  ERROR [${new Date().toLocaleTimeString()}] Failed: ${file}`);
+        console.log(`  ERROR: Failed to load ${file}`);
     }
 }
 
 console.log('✅ External Plugins Installed Successfully');
 
 client.once('ready', () => {
-    const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false }) + ' ' + new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
-console.log(`  INFO [${timestamp}]: Installed ${command.name}`);
-    
+    console.log(`\n🚀 ${client.user.tag} is Online in Bamako!`);
     client.user.setActivity('over the AES Region', { type: ActivityType.Watching });
 });
 
+// ⚡ THIS SECTION WAS CAUSING THE ERROR
 client.on('messageCreate', async (message) => {
-    // Ignore bots and messages without prefix
     if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
+    
+    // We define 'command' here so the bot knows what it is
     const command = client.commands.get(commandName);
 
     if (command) {
         try {
-            // Execute command and pass Gemini model for AI features
             await command.execute(message, args, client, model);
         } catch (error) {
-            console.error(`Execution Error (${commandName}):`, error);
-            message.reply('❌ System encountered an error executing this module.');
+            console.error(error);
+            message.reply('❌ Error executing this module.');
         }
     }
 });
