@@ -1,47 +1,24 @@
 const { EmbedBuilder } = require('discord.js');
-const os = require('os');
 
 module.exports = {
     name: 'alive',
-    description: 'Ultra-advanced system diagnostics',
-    async execute(message, args, client) {
-        // Calculate Uptime
-        const totalSeconds = (client.uptime / 1000);
-        const days = Math.floor(totalSeconds / 86400);
-        const hours = Math.floor(totalSeconds / 3600) % 24;
-        const minutes = Math.floor(totalSeconds / 60) % 60;
-        const uptimeString = `${days}d ${hours}h ${minutes}m`;
+    description: 'Check if the Cloud Gaming-223 engine is online',
+    async execute(message) {
+        // Simple math for a fake "System Load" bar
+        const load = Math.floor(Math.random() * 20) + 70; // Random 70-90%
+        const progressBar = "█".repeat(Math.floor(load / 10)) + "░".repeat(10 - Math.floor(load / 10));
 
-        // Regional Bamako Time
-        const bamakoTime = new Date().toLocaleTimeString('en-GB', { 
-            timeZone: 'Africa/Bamako', 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
-
-        // Memory Usage Calculation
-        const usedMem = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
-        const totalMem = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
-
-        const statusEmbed = new EmbedBuilder()
-            .setColor('#e67e22') // AES Orange Theme
-            .setTitle('📡 AES FRAMEWORK | SYSTEM STATUS')
-            .setThumbnail(client.user.displayAvatarURL())
-            .setDescription(`**Fof223** is currently monitoring the Sahel region with high-precision AI.`)
+        const aliveEmbed = new EmbedBuilder()
+            .setColor('#3498db') // Electric Blue
+            .setTitle('🛰️ CLOUD GAMING-223 | SYSTEM STATUS')
             .addFields(
-                { name: '🟢 Status', value: '`OPERATIONAL`', inline: true },
-                { name: '⏱️ Uptime', value: `\`${uptimeString}\``, inline: true },
-                { name: '🛰️ Network', value: '`Starlink 4G/5G`', inline: true },
-                { name: '🧠 Model', value: '`Gemini 2.0 Flash`', inline: true },
-                { name: '💾 Memory', value: `\`${usedMem}MB / ${totalMem}GB\``, inline: true },
-                { name: '⚡ Latency', value: `\`${client.ws.ping}ms\``, inline: true },
-                { name: '🌍 Region', value: '`Bamako, Mali`', inline: true },
-                { name: '📂 Modules', value: `\`${client.commands.size} Active\``, inline: true }
+                { name: '🌐 Engine Status', value: '`RUNNING (STABLE)`', inline: true },
+                { name: '🛰️ Connection', value: '`Starlink (Bamako)`', inline: true },
+                { name: '⚡ System Load', value: `\`${progressBar} ${load}%\`` }
             )
-            .setImage('https://i.imgur.com/your-aes-banner.png') // Optional: Add a cool banner URL here
-            .setFooter({ text: `System Time: ${bamakoTime} GMT`, iconURL: 'https://i.imgur.com/mali-flag.png' })
+            .setFooter({ text: 'Cloud Gaming-223 | AES Digital sovereignty' })
             .setTimestamp();
 
-        return message.reply({ embeds: [statusEmbed] });
+        message.reply({ embeds: [aliveEmbed] });
     }
 };
