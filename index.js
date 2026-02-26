@@ -7,12 +7,12 @@ const {
 } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// 1. CLIENT SETUP WITH INTENTS & PARTIALS
+// 1. CLIENT SETUP
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent, // CRITICAL: Must be ON in Dev Portal
+        GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.DirectMessages 
     ],
@@ -20,18 +20,18 @@ const client = new Client({
 });
 
 client.commands = new Collection();
+let debugLogs = false; // Toggle for console logging
 
 // --- CONFIGURATION ---
-const PREFIX = process.env.PREFIX || ',';
+const PREFIX = (process.env.PREFIX && process.env.PREFIX !== 'null') ? process.env.PREFIX : ',';
 const CREATOR_ID = '1284944736620253296'; 
 const MY_SOCIALS = {
-    tiktok: 'https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1',
-    instagram: 'https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5',
-    facebook: 'https://www.facebook.com/share/16q67Ar7FP/',
-    whatsapp: 'https://wa.me/15485200518'
+    tiktok:'https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1',
+    instagram:'https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5',
+    facebook:'https://www.facebook.com/share/16q67Ar7FP/',
+    whatsapp:'https://wa.me/15485200518'
 };
 
-// --- SYSTEM UTILS ---
 const getBamakoTime = () => {
     return new Date().toLocaleTimeString('en-GB', { 
         timeZone: 'Africa/Bamako', 
@@ -60,7 +60,7 @@ for (const file of pluginFiles) {
     } catch (e) { console.error(`Failed to load ${file}`); }
 }
 
-// --- 🚀 STARTUP BROADCAST ---
+// --- 🚀 STARTUP ---
 client.once('ready', async (c) => {
     console.log(`✅ ${c.user.tag} Online | Prefix: ${PREFIX} | Bamako: ${getBamakoTime()}`);
     client.user.setActivity('over the AES Region', { type: ActivityType.Watching });
@@ -71,67 +71,70 @@ client.once('ready', async (c) => {
             .setColor('#ff0000')
             .setTitle('🛡️ AES Framework: Deployment Successful')
             .setDescription(`Greetings, Boss! Your bot is active.\n\n**Quick Access:**\n[TikTok](${MY_SOCIALS.tiktok}) | [Instagram](${MY_SOCIALS.instagram})\n[WhatsApp](${MY_SOCIALS.whatsapp})`)
-            .addFields({ name: '🇲🇱 Time In Bamako', value: `\`${getBamakoTime()}\`` })
             .setTimestamp();
 
         await creator.send({ embeds: [welcomeEmbed] });
         console.log("✉️ Startup DM sent to Creator.");
     } catch (err) {
-        console.log("❌ DM Failed. Ensure 'Server Members Intent' is ON.");
+        console.log("❌ DM Failed. Check intents.");
     }
 });
 
-// 4. MAIN COMMAND HANDLER (With Debugger)
+// 4. MAIN COMMAND HANDLER
 client.on('messageCreate', async (message) => {
-    // 🔍 CONSOLE DEBUGGER: Tells us what the bot "sees"
-    if (!message.author.bot) {
+    if (message.author.bot) return;
+
+    // Optional Logger (Only runs if you turn it on)
+    if (debugLogs) {
         console.log(`📩 [LOG] Message: "${message.content}" | Channel: ${message.channel.name || 'DM'}`);
     }
-
-    if (message.author.bot) return;
 
     const isDM = !message.guild;
     const isMentioned = message.content.startsWith(`<@!${client.user.id}>`) || message.content.startsWith(`<@${client.user.id}>`);
 
-    // --- PREFIX LOGIC ---
-    let commandBody = message.content;
-    if (PREFIX !== 'NONE' && message.content.startsWith(PREFIX)) {
+    let commandBody = "";
+    if (message.content.startsWith(PREFIX)) {
         commandBody = message.content.slice(PREFIX.length);
-    } else if (isMentioned || isDM) {
-        // Allow mentions or DMs to skip prefix
-        commandBody = isMentioned ? message.content.split(/ +/).slice(1).join(" ") : message.content;
+    } else if (isMentioned) {
+        commandBody = message.content.split(/ +/).slice(1).join(" ");
+    } else if (isDM) {
+        commandBody = message.content;
     } else {
-        return; // Ignore message
+        return;
     }
 
     const args = commandBody.trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
+    // --- OWNER COMMAND: TOGGLE LOGS ---
+    if (commandName === 'logs' && message.author.id === CREATOR_ID) {
+        const action = args[0] === 'on';
+        debugLogs = action;
+        return message.reply(`✅ Console logging is now **${action ? 'ENABLED' : 'DISABLED'}**.`);
+    }
+
     // --- CORE COMMANDS ---
-    
-    // Help / Menu
+    if (commandName === 'ping' || commandName === 'alive') {
+        return message.reply(`🏓 Pong! System active in Bamako (\`${getBamakoTime()}\`)`);
+    }
+
     if (commandName === 'help' || commandName === 'menu') {
         const helpEmbed = new EmbedBuilder()
             .setColor('#ff0000')
             .setTitle('🚀 AES Dashboard')
-            .setDescription(`Prefix: \`${PREFIX}\` | Active Plugins: \`${client.commands.size}\``);
+            .setDescription(`Prefix: \`${PREFIX}\` | AI: \`,gemini\``)
+            .setFooter({ text: `Owner ID: ${CREATOR_ID}` });
         return message.reply({ embeds: [helpEmbed] });
     }
 
-    // Ping
-    if (commandName === 'ping') {
-        return message.reply(`🏓 Pong! Latency: ${client.ws.ping}ms`);
-    }
-
-    // Gemini AI
     if (commandName === 'gemini') {
         const prompt = args.join(" ");
-        if (!prompt) return message.reply("What is your question?");
+        if (!prompt) return message.reply("Ask a question!");
         const thinking = await message.reply("🤔 **Thinking...**");
         try {
             const result = await model.generateContent(prompt);
             return thinking.edit(result.response.text().substring(0, 2000));
-        } catch (e) { return thinking.edit("❌ AI Error. Check API Key."); }
+        } catch (e) { return thinking.edit("❌ AI Error."); }
     }
 
     // --- PLUGIN LOADER ---
@@ -139,7 +142,7 @@ client.on('messageCreate', async (message) => {
     if (pluginCommand) {
         try {
             return await pluginCommand.execute(message, args, client);
-        } catch (err) { console.error(`Plugin Error: ${err}`); }
+        } catch (err) { console.error(err); }
     }
 });
 
