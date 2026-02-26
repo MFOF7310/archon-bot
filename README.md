@@ -25,6 +25,6 @@ A high-performance Discord bot powered by **Gemini 2.0 Flash**, designed for the
 ## 🤝 Community& Support
 Got questions or want to see the bot in action? Join our official community!
 
-[![Discord](https://img.shields.ion/discord/123456789?color=7289da&label=Join%20Our%20Discord&logo=discord&logoColor=white)](https://discord.gg/CWgy3e3m)
+[![Discord](https://img.shields.ion/discord/1289645978231640094?color=7289da&label=Join%20Our%20Discord&logo=discord&logoColor=white)](https://discord.gg/CWgy3e3m)
 
 b> **Note:** For more info and real-time updates on CLOUD GAMING DISCORD BOT ASSISTANT and also GAMING COMMUNITY, feel free to hop into the server!
