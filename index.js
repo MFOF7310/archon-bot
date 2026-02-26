@@ -1,9 +1,7 @@
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
 const { 
     Client, GatewayIntentBits, ActivityType, EmbedBuilder, 
-    ActionRowBuilder, StringSelectMenuBuilder, Collection, Partials 
+    Collection, Partials 
 } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -19,17 +17,15 @@ const client = new Client({
     partials: [Partials.Channel, Partials.Message] 
 });
 
-client.commands = new Collection();
-let debugLogs = false; // Toggle for console logging
+let debugLogs = false; 
 
 // --- CONFIGURATION ---
 const PREFIX = (process.env.PREFIX && process.env.PREFIX !== 'null') ? process.env.PREFIX : ',';
 const CREATOR_ID = '1284944736620253296'; 
-const MY_SOCIALS = {
-    tiktok:'https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1',
-    instagram:'https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5',
-    facebook:'https://www.facebook.com/share/16q67Ar7FP/',
-    whatsapp:'https://wa.me/15485200518'
+const SOCIALS = {
+    tiktok: 'https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1',
+    instagram: 'https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5',
+    whatsapp: 'https://wa.me/15485200518'
 };
 
 const getBamakoTime = () => {
@@ -44,47 +40,16 @@ const getBamakoTime = () => {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "EMPTY");
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-// 3. PLUGIN LOADER
-const pluginsPath = path.join(__dirname, 'plugins');
-if (!fs.existsSync(pluginsPath)) fs.mkdirSync(pluginsPath);
-const pluginFiles = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.js'));
-
-for (const file of pluginFiles) {
-    try {
-        const imported = require(`./plugins/${file}`);
-        if (Array.isArray(imported)) {
-            imported.forEach(cmd => { if (cmd.name) client.commands.set(cmd.name, cmd); });
-        } else if (imported.name) {
-            client.commands.set(imported.name, imported);
-        }
-    } catch (e) { console.error(`Failed to load ${file}`); }
-}
-
 // --- 🚀 STARTUP ---
 client.once('ready', async (c) => {
     console.log(`✅ ${c.user.tag} Online | Prefix: ${PREFIX} | Bamako: ${getBamakoTime()}`);
     client.user.setActivity('over the AES Region', { type: ActivityType.Watching });
-
-    try {
-        const creator = await client.users.fetch(CREATOR_ID);
-        const welcomeEmbed = new EmbedBuilder()
-            .setColor('#ff0000')
-            .setTitle('🛡️ AES Framework: Deployment Successful')
-            .setDescription(`Greetings, Boss! Your bot is active.\n\n**Quick Access:**\n[TikTok](${MY_SOCIALS.tiktok}) | [Instagram](${MY_SOCIALS.instagram})\n[WhatsApp](${MY_SOCIALS.whatsapp})`)
-            .setTimestamp();
-
-        await creator.send({ embeds: [welcomeEmbed] });
-        console.log("✉️ Startup DM sent to Creator.");
-    } catch (err) {
-        console.log("❌ DM Failed. Check intents.");
-    }
 });
 
-// 4. MAIN COMMAND HANDLER
+// 3. MAIN COMMAND HANDLER
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // Optional Logger (Only runs if you turn it on)
     if (debugLogs) {
         console.log(`📩 [LOG] Message: "${message.content}" | Channel: ${message.channel.name || 'DM'}`);
     }
@@ -95,10 +60,8 @@ client.on('messageCreate', async (message) => {
     let commandBody = "";
     if (message.content.startsWith(PREFIX)) {
         commandBody = message.content.slice(PREFIX.length);
-    } else if (isMentioned) {
-        commandBody = message.content.split(/ +/).slice(1).join(" ");
-    } else if (isDM) {
-        commandBody = message.content;
+    } else if (isMentioned || isDM) {
+        commandBody = isMentioned ? message.content.split(/ +/).slice(1).join(" ") : message.content;
     } else {
         return;
     }
@@ -106,43 +69,64 @@ client.on('messageCreate', async (message) => {
     const args = commandBody.trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
-    // --- OWNER COMMAND: TOGGLE LOGS ---
+    // --- OWNER: LOG TOGGLE ---
     if (commandName === 'logs' && message.author.id === CREATOR_ID) {
-        const action = args[0] === 'on';
-        debugLogs = action;
-        return message.reply(`✅ Console logging is now **${action ? 'ENABLED' : 'DISABLED'}**.`);
+        debugLogs = args[0] === 'on';
+        return message.reply(`✅ Dashboard logs are now **${debugLogs ? 'ENABLED' : 'DISABLED'}**.`);
     }
 
-    // --- CORE COMMANDS ---
+    // --- COMMANDS ---
+
+    // 🏓 PING (Latency)
     if (commandName === 'ping' || commandName === 'alive') {
-        return message.reply(`🏓 Pong! System active in Bamako (\`${getBamakoTime()}\`)`);
+        const msg = await message.reply("🏓 **Pinging...**");
+        const latency = msg.createdTimestamp - message.createdTimestamp;
+        return msg.edit(`🏓 **Pong!**\n📡 API Latency: \`${client.ws.ping}ms\`\n⏱️ Bot Response: \`${latency}ms\``);
     }
 
+    // 🚀 DASHBOARD
     if (commandName === 'help' || commandName === 'menu') {
         const helpEmbed = new EmbedBuilder()
             .setColor('#ff0000')
-            .setTitle('🚀 AES Dashboard')
-            .setDescription(`Prefix: \`${PREFIX}\` | AI: \`,gemini\``)
-            .setFooter({ text: `Owner ID: ${CREATOR_ID}` });
+            .setTitle('🚀 AES Digital Dashboard')
+            .setThumbnail(client.user.displayAvatarURL())
+            .setDescription('System is operational. Access my socials and AI tools below.')
+            .addFields(
+                { name: '🛠️ System', value: `Prefix: \`${PREFIX}\`\nTime: \`${getBamakoTime()}\` \nServer Info: \`${PREFIX}server\``, inline: true },
+                { name: '🤖 AI Engine', value: `Use \`${PREFIX}gemini\`\nStatus: \`Online\``, inline: true },
+                { name: '📱 Social Links', value: `[TikTok](${SOCIALS.tiktok})\n[Instagram](${SOCIALS.instagram})\n[WhatsApp](${SOCIALS.whatsapp})`, inline: false }
+            )
+            .setFooter({ text: `Owner ID: ${CREATOR_ID}` })
+            .setTimestamp();
+        
         return message.reply({ embeds: [helpEmbed] });
     }
 
+    // 📊 SERVER INFO
+    if (commandName === 'server') {
+        if (isDM) return message.reply("This command only works in servers!");
+        const { guild } = message;
+        const serverEmbed = new EmbedBuilder()
+            .setColor('#ff0000')
+            .setTitle(`📊 ${guild.name} Statistics`)
+            .setThumbnail(guild.iconURL())
+            .addFields(
+                { name: 'Members', value: `${guild.memberCount}`, inline: true },
+                { name: 'Boosts', value: `${guild.premiumSubscriptionCount || 0}`, inline: true },
+                { name: 'Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }
+            );
+        return message.reply({ embeds: [serverEmbed] });
+    }
+
+    // 🤖 GEMINI AI
     if (commandName === 'gemini') {
         const prompt = args.join(" ");
-        if (!prompt) return message.reply("Ask a question!");
+        if (!prompt) return message.reply("Ask me anything!");
         const thinking = await message.reply("🤔 **Thinking...**");
         try {
             const result = await model.generateContent(prompt);
             return thinking.edit(result.response.text().substring(0, 2000));
         } catch (e) { return thinking.edit("❌ AI Error."); }
-    }
-
-    // --- PLUGIN LOADER ---
-    const pluginCommand = client.commands.get(commandName);
-    if (pluginCommand) {
-        try {
-            return await pluginCommand.execute(message, args, client);
-        } catch (err) { console.error(err); }
     }
 });
 
