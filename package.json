@@ -1,19 +1,56 @@
-{
-  "name": "cloud-gaming-bot",
-  "version": "1.0.0",
-  "description": "Discord bot for the AES Region with Gemini AI",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5",
-    "@google/generative-ai": "^0.2.1",
-    "axios": "^1.6.0",
-    "path": "^0.12.7"
-  },
-  "engines": {
-    "node": ">=18.x"
-  }
-}
+const axios = require('axios');
+
+module.exports = {
+    name: 'tts',
+    description: 'Convert text or a replied message to a voice note',
+    async execute(message, args) {
+        let lang = 'en'; 
+        let textToSpeak = '';
+
+        const langMap = {
+            'fr': 'fr', 'french': 'fr',
+            'en': 'en', 'english': 'en',
+            'cn': 'zh-CN', 'chinese': 'zh-CN',
+            'ar': 'ar', 'arabic': 'ar',
+            'ru': 'ru', 'russian': 'ru'
+        };
+
+        // 1. Determine the text and language
+        if (message.reference) {
+            // REPLY MODE
+            const repliedMessage = await message.channel.messages.fetch(message.reference.messageId);
+            textToSpeak = repliedMessage.content;
+            // Check if user specified a language (e.g., ,tts fr)
+            lang = langMap[args[0]?.toLowerCase()] || 'en';
+        } else {
+            // DIRECT MODE
+            const firstArg = args[0]?.toLowerCase();
+            if (langMap[firstArg]) {
+                lang = langMap[firstArg];
+                textToSpeak = args.slice(1).join(" ");
+            } else {
+                lang = 'en';
+                textToSpeak = args.join(" ");
+            }
+        }
+
+        // 2. Validation
+        if (!textToSpeak || textToSpeak.trim().length === 0) {
+            return message.reply("❌ Please provide text or reply to a message! Example: `,tts fr Bonjour`.");
+        }
+
+        // 3. Generate URL (Google TTS)
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(textToSpeak.substring(0, 500))}&tl=${lang}&client=tw-ob`;
+
+        try {
+            // We send the URL directly as an attachment; Discord handles the rest
+            return message.reply({
+                content: `🔊 **Text-to-Speech** (${lang})`,
+                files: [{ attachment: url, name: 'voice_note.mp3' }]
+            });
+        } catch (error) {
+            console.error("TTS Error:", error);
+            return message.reply("❌ Sorry, I couldn't generate the audio at this time.");
+        }
+    }
+};
