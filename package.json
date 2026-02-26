@@ -1,6 +1,13 @@
-"dependencies": {
-  "discord.js": "^14.14.1",
-  "dotenv": "^16.4.1",
-  "@google/generative-ai": "^0.2.1",
-  "google-tts-api": "^2.0.2"
+{
+  "name": "cloud-gaming-223",
+  "version": "2.1.0",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.1",
+    "@google/generative-ai": "^0.2.1",
+    "axios": "^1.6.7",
+    "google-tts-api": "^2.0.2",
+    "google-translate-api-x": "^10.6.8"
+  }
 }
