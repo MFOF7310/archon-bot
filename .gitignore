@@ -1,17 +1,31 @@
-# Ignore the file containing your private Bot Token and API Keys
+# --- CRITICAL SECRETS (NEVER REMOVE THESE) ---
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Ignore the heavy folder where the bot's "parts" are installed
+# --- DEPENDENCIES ---
+# We don't upload these because they are huge; 
+# others will run 'npm install' to get them.
 node_modules/
+package-lock.json
 
-# Ignore any log files that track errors
+# --- LOGS & DIAGNOSTICS ---
+logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Ignore system-specific files (Mac/Windows junk)
+# --- SYSTEM & IDE FILES ---
 .DS_Store
+.vscode/
+.idea/
 Thumbs.db
 
-# Ignore the build or dist folders if you ever use them
-dist/
-build/
+# --- RUNTIME DATA ---
+pids
+*.pid
+*.seed
+*.pid.lock
