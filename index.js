@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client, Collection, ActivityType, EmbedBuilder } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { TikTokLiveConnection } = require('tiktok-live-connector');
 
 /**
  * 🎮 CLOUD GAMING-223 | DIGITAL ENGINE
@@ -15,8 +16,10 @@ const reset = "\x1b[0m";
 
 const client = new Client({ intents: [3276799] });
 client.commands = new Collection();
+
 const PREFIX = process.env.PREFIX || ',';
 const OWNER_ID = '1284944736620253296';
+let isLive = false; // Prevents notification spam
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -29,9 +32,11 @@ const time = () => {
 };
 
 console.log(`${blue}INFO [${time()}]: [0] Connecting to CLOUD GAMING-223...${reset}`);
-console.log(`${blue}INFO [${time()}]: [0] Security: 0 Vulnerabilities Found${reset}`);
 
+// --- PLUGIN LOADER ---
 const pluginsPath = path.join(__dirname, 'plugins');
+if (!fs.existsSync(pluginsPath)) fs.mkdirSync(pluginsPath);
+
 const pluginFiles = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.js'));
 
 for (const file of pluginFiles) {
@@ -53,13 +58,54 @@ client.once('ready', async () => {
     
     client.user.setActivity('Cloud Gaming-223', { type: ActivityType.Watching });
 
+    // --- TIKTOK MONITORING SYSTEM (MATCHING YOUR SCREENSHOT) ---
+    setInterval(async () => {
+        const tiktok = new TikTokLiveConnection(process.env.TIKTOK_USERNAME);
+        try {
+            await tiktok.connect();
+            
+            if (!isLive) {
+                const channel = await client.channels.fetch(process.env.CHANNEL_ID);
+                if (channel) {
+                    const liveEmbed = new EmbedBuilder()
+                        .setColor('#fe2c55') // TikTok Brand Red sidebar
+                        .setAuthor({ 
+                            name: `${process.env.TIKTOK_USERNAME}`, 
+                            iconURL: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' 
+                        })
+                        .setTitle('🔴 LIVE ON TIKTOK')
+                        .setDescription(`**${process.env.TIKTOK_USERNAME}** is now live! Come watch the stream.`)
+                        .addFields(
+                            { name: 'Platform', value: 'TikTok Live', inline: true },
+                            { name: 'Status', value: 'Streaming Now ⚡', inline: true }
+                        )
+                        .setURL(`https://www.tiktok.com/@${process.env.TIKTOK_USERNAME}/live`)
+                        .setTimestamp()
+                        .setFooter({ text: 'Cloud Gaming-223 Notifications' });
+
+                    await channel.send({ 
+                        content: `📢 **${process.env.TIKTOK_USERNAME}** has just gone live!`, 
+                        embeds: [liveEmbed] 
+                    });
+
+                    console.log(`${cyan}INFO [${time()}]: [TikTok] Notification sent.${reset}`);
+                    isLive = true;
+                }
+            }
+        } catch (error) {
+            // Reset state if offline
+            isLive = false;
+        }
+    }, 120000); // Checks every 2 minutes
+
+    // --- OWNER BOOT NOTIFICATION ---
     try {
         const owner = await client.users.fetch(OWNER_ID);
         if (owner) {
             const bootEmbed = new EmbedBuilder()
                 .setColor('#3498db')
                 .setTitle('🛰️ CLOUD GAMING-223 | ONLINE')
-                .setDescription(`**System connected.** All ${client.commands.size} modules synchronized.`)
+                .setDescription(`**System connected.** All ${client.commands.size} modules synchronized. TikTok monitor active.`)
                 .setFooter({ text: 'Cloud Gaming-223 System Log' })
                 .setTimestamp();
             await owner.send({ embeds: [bootEmbed] });
@@ -69,6 +115,7 @@ client.once('ready', async () => {
     }
 });
 
+// --- MESSAGE HANDLER ---
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.startsWith(PREFIX)) return;
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
