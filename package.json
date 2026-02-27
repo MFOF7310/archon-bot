@@ -1,14 +1,18 @@
 {
   "name": "cloud-gaming-bot_223",
-  "version": "2.1.0",
+  "version": "2.5.0",
+  "description": "Cloud Gaming-223 Digital Engine - AES Sovereignty Edition",
   "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.1",
-    "@google/generative-ai": "^0.3.0",
+    "@google/generative-ai": "^0.21.0",
     "axios": "^1.6.7",
     "google-tts-api": "^2.0.2",
-    "google-translate-api-x": "^10.6.8"
+    "google-translate-api-x": "^10.7.2"
   },
   "overrides": {
     "cross-spawn": "^7.0.5",
