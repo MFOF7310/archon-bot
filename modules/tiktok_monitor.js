@@ -5,26 +5,29 @@ let isLive = false;
 let liveStartTime = null;
 
 module.exports = (client) => {
+    // Check every 2 minutes
     setInterval(async () => {
-        const tiktok = new TikTokLiveConnection(process.env.TIKTOK_USERNAME);
+        const username = process.env.TIKTOK_USERNAME || 'cloudgaming223';
+        const channelId = process.env.CHANNEL_ID;
+        const tiktok = new TikTokLiveConnection(username);
         
         try {
             await tiktok.connect();
             
-            // 🔴 START STREAM
+            // 🔴 START STREAM LOGIC
             if (!isLive) {
-                const channel = await client.channels.fetch(process.env.CHANNEL_ID);
+                const channel = client.channels.cache.get(channelId) || await client.channels.fetch(channelId);
                 if (channel) {
                     liveStartTime = Date.now();
                     const liveEmbed = new EmbedBuilder()
-                        .setColor('#fe2c55')
+                        .setColor('#fe2c55') // TikTok Red
                         .setAuthor({ 
-                            name: `${process.env.TIKTOK_USERNAME}`, 
+                            name: `${username}`, 
                             iconURL: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' 
                         })
                         .setTitle('🔴 LIVE ON TIKTOK')
-                        .setDescription(`**${process.env.TIKTOK_USERNAME}** is now live! Come watch the stream.`)
-                        .setURL(`https://www.tiktok.com/@${process.env.TIKTOK_USERNAME}/live`)
+                        .setDescription(`**${username}** is now live! Come watch the stream.`)
+                        .setURL(`https://www.tiktok.com/@${username}/live`)
                         .addFields(
                             { name: 'Platform', value: 'TikTok Live', inline: true },
                             { name: 'Status', value: 'Streaming Now ⚡', inline: true }
@@ -32,17 +35,17 @@ module.exports = (client) => {
                         .setTimestamp()
                         .setFooter({ text: 'Cloud Gaming-223 Notifications' });
 
-                    await channel.send({ content: `📢 @everyone **${process.env.TIKTOK_USERNAME}** is LIVE!`, embeds: [liveEmbed] });
+                    await channel.send({ content: `📢 @everyone **${username}** is LIVE!`, embeds: [liveEmbed] });
                     isLive = true;
                 }
             }
-            tiktok.disconnect();
+            await tiktok.disconnect();
 
         } catch (error) {
-            // 🏁 END STREAM
-            if (error.message.includes('not online') || error.message.includes('offline')) {
+            // 🏁 END STREAM LOGIC
+            if (error.message.includes('not online') || error.message.includes('offline') || error.message.includes('not found')) {
                 if (isLive) {
-                    const channel = await client.channels.fetch(process.env.CHANNEL_ID);
+                    const channel = client.channels.cache.get(channelId) || await client.channels.fetch(channelId);
                     if (channel && liveStartTime) {
                         const durationMs = Date.now() - liveStartTime;
                         const hours = Math.floor(durationMs / 3600000);
@@ -65,5 +68,7 @@ module.exports = (client) => {
                 }
             }
         }
-    }, 120000); // 2 minutes
+    }, 120000); 
+
+    console.log("📦 [Module: TikTok] Monitor initialized and watching.");
 };
