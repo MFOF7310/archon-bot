@@ -2,32 +2,36 @@ const googleTTS = require('google-tts-api');
 
 module.exports = {
     name: 'tts',
-    description: 'Convert text to an English female voice note',
+    description: 'Smart Bilingual TTS (Auto-switches between French and English)',
     async execute(message, args) {
-        const text = args.join(' ');
-        if (!text) return message.reply('❌ Please provide text! (Usage: `,tts Hello Bamako`)');
+        let textToConvert = args.join(' ');
+        const repliedMessage = message.reference ? await message.channel.messages.fetch(message.reference.messageId) : null;
 
-        // Keeping it short for fast processing on Starlink
-        if (text.length > 200) return message.reply('❌ Text is too long! Keep it under 200 characters.');
+        if (!textToConvert && repliedMessage) textToConvert = repliedMessage.content;
+        if (!textToConvert) return message.reply('❌ Reply to a message or type text!');
+
+        // 🧠 Simple Bilingual Detection Logic
+        const frenchIndicators = [' le ', ' la ', ' est ', ' vous ', ' les ', ' une ', ' pour '];
+        const isFrench = frenchIndicators.some(word => textToConvert.toLowerCase().includes(word)) || /[éàèôû]/.test(textToConvert);
+        
+        const selectedLang = isFrench ? 'fr-FR' : 'en-US';
 
         try {
-            // Generate the URL for the Female English audio
-            const url = googleTTS.getAudioUrl(text, {
-                lang: 'en-US', // Switched from 'fr' to American English Female
+            const url = googleTTS.getAudioUrl(textToConvert, {
+                lang: selectedLang,
                 slow: false,
                 host: 'https://translate.google.com',
             });
 
-            // Send the audio as a high-quality .mp3 attachment
             return message.reply({
                 files: [{
                     attachment: url,
-                    name: 'CG223_Female_Voice.mp3'
+                    name: `CG223_${isFrench ? 'French' : 'English'}_Voice.mp3`
                 }]
             });
         } catch (error) {
             console.error('TTS Error:', error);
-            message.reply('❌ System error during English voice synthesis.');
+            message.reply('❌ Synthesis error.');
         }
     }
 };
