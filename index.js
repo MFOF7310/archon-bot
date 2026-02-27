@@ -7,7 +7,7 @@ const { TikTokLiveConnection } = require('tiktok-live-connector');
 
 /**
  * 🎮 CLOUD GAMING-223 | DIGITAL ENGINE
- * Powered by Starlink 🛰️ | Optimized for Mali
+ * Fixed TikTok Logic: No more notification spam!
  */
 
 const blue = "\x1b[94m"; 
@@ -19,7 +19,9 @@ client.commands = new Collection();
 
 const PREFIX = process.env.PREFIX || ',';
 const OWNER_ID = '1284944736620253296';
-let isLive = false; // Prevents notification spam
+
+// --- TIKTOK STATUS TRACKER ---
+let isLive = false; 
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -36,7 +38,6 @@ console.log(`${blue}INFO [${time()}]: [0] Connecting to CLOUD GAMING-223...${res
 // --- PLUGIN LOADER ---
 const pluginsPath = path.join(__dirname, 'plugins');
 if (!fs.existsSync(pluginsPath)) fs.mkdirSync(pluginsPath);
-
 const pluginFiles = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.js'));
 
 for (const file of pluginFiles) {
@@ -58,45 +59,57 @@ client.once('ready', async () => {
     
     client.user.setActivity('Cloud Gaming-223', { type: ActivityType.Watching });
 
-    // --- TIKTOK MONITORING SYSTEM (MATCHING YOUR SCREENSHOT) ---
+    // --- IMPROVED TIKTOK MONITORING ---
     setInterval(async () => {
         const tiktok = new TikTokLiveConnection(process.env.TIKTOK_USERNAME);
+        
         try {
             await tiktok.connect();
             
+            // If connection is successful and we WEREN'T live before
             if (!isLive) {
                 const channel = await client.channels.fetch(process.env.CHANNEL_ID);
                 if (channel) {
                     const liveEmbed = new EmbedBuilder()
-                        .setColor('#fe2c55') // TikTok Brand Red sidebar
+                        .setColor('#fe2c55')
                         .setAuthor({ 
                             name: `${process.env.TIKTOK_USERNAME}`, 
                             iconURL: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' 
                         })
                         .setTitle('🔴 LIVE ON TIKTOK')
                         .setDescription(`**${process.env.TIKTOK_USERNAME}** is now live! Come watch the stream.`)
+                        .setURL(`https://www.tiktok.com/@${process.env.TIKTOK_USERNAME}/live`)
                         .addFields(
                             { name: 'Platform', value: 'TikTok Live', inline: true },
                             { name: 'Status', value: 'Streaming Now ⚡', inline: true }
                         )
-                        .setURL(`https://www.tiktok.com/@${process.env.TIKTOK_USERNAME}/live`)
                         .setTimestamp()
                         .setFooter({ text: 'Cloud Gaming-223 Notifications' });
 
                     await channel.send({ 
-                        content: `📢 **${process.env.TIKTOK_USERNAME}** has just gone live!`, 
+                        content: `📢 @everyone **${process.env.TIKTOK_USERNAME}** is LIVE!`, 
                         embeds: [liveEmbed] 
                     });
 
-                    console.log(`${cyan}INFO [${time()}]: [TikTok] Notification sent.${reset}`);
-                    isLive = true;
+                    console.log(`${cyan}INFO [${time()}]: [TikTok] Notification sent. Status locked.${reset}`);
+                    isLive = true; // LOCK STATUS
                 }
             }
+            
+            // Disconnect after checking to prevent session hang
+            tiktok.disconnect();
+
         } catch (error) {
-            // Reset state if offline
-            isLive = false;
+            // ONLY reset isLive if the error explicitly says the user is offline
+            // This prevents "flickering" notifications if the internet lags
+            if (error.message.includes('not online') || error.message.includes('offline')) {
+                if (isLive) {
+                    console.log(`${blue}INFO [${time()}]: [TikTok] Stream ended. Status reset.${reset}`);
+                    isLive = false;
+                }
+            }
         }
-    }, 120000); // Checks every 2 minutes
+    }, 120000); // 2 minutes
 
     // --- OWNER BOOT NOTIFICATION ---
     try {
