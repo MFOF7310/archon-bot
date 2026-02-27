@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client, Collection, ActivityType, Events } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { performance } = require('perf_hooks'); // Timer engine
+const { performance } = require('perf_hooks'); 
 
 /**
  * 🎮 CLOUD GAMING-223 | DIGITAL ENGINE
@@ -18,7 +18,7 @@ const PREFIX = process.env.PREFIX || ',';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-// --- 1. PLUGIN LOADER (With Counter & Timer) ---
+// --- 1. PLUGIN LOADER ---
 const loadPlugins = () => {
     const startTime = performance.now();
     let loadedCount = 0;
@@ -42,18 +42,14 @@ const loadPlugins = () => {
 
     const endTime = performance.now();
     const totalTime = (endTime - startTime).toFixed(2);
-    
-    // This is the line that was missing!
     console.log(`🚀 DIGITAL ENGINE: ${loadedCount} plugins synchronized in ${totalTime}ms`);
 };
 
 loadPlugins();
 
 // --- 2. START THE ENGINE ---
-// Fixed "ready" to "ClientReady" to stop the warning in your screenshot
 client.once(Events.ClientReady, (c) => {
     console.log(`🚀 CLOUD GAMING-223 Connected! | Location: Bamako`);
-    
     client.user.setActivity('Cloud Gaming-223', { type: ActivityType.Competing });
 });
 
@@ -68,9 +64,11 @@ client.on(Events.MessageCreate, async (message) => {
     if (!command) return;
 
     try {
-        await command.execute(message, args);
+        // 🔥 CRITICAL FIX: Added 'client' here so plugins can send 
+        // notifications, check pings, and access the bot's core.
+        await command.execute(message, args, client); 
     } catch (error) {
-        console.error(error);
+        console.error(`❌ Error in ${commandName}:`, error);
         message.reply('❌ System error executing that command.');
     }
 });
