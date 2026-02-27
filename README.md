@@ -1,34 +1,26 @@
-# 🎮 CLOUD GAMING223 | AI-Core V2.5
-> **Advanced Digital Assistant for the CLOUD GAMING-223.**
-> Powered by Starlink 🛰️ & Google Gemini 🧠
+# 🎮 CLOUD GAMING-223 | DIGITAL ENGINE
+> **Powered by Starlink 🛰️ | Optimized for Mali 🇲🇱**
 
-![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Location](https://img.shields.io/badge/Mali-Bamako-green?style=for-the-badge)
+A high-performance, modular Discord bot engine designed for cloud gamers and streamers. Features a custom AI integration, live status tracking, and a full suite of system commands.
 
----
+## 🚀 Features
+* **TikTok Live Monitor:** Real-time stream detection with automatic duration calculations.
+* **Modular Plugin System:** 14+ active modules including AI, Moderation, and System Tools.
+* **Security:** Secured owner-locked commands (Owner: <@1284944736620253296>).
+* **Broadcast System:** Global announcement capabilities across all connected nodes.
 
-## 🚀 The 13-Plugin Engine
-This framework uses a modular dynamic loader. Add any `.js` file to `/plugins` and the system installs it instantly with full console logging.
+## 🛠️ Setup
+1. Create a `.env` file with your `DISCORD_TOKEN`, `GEMINI_API_KEY`, `TIKTOK_USERNAME`, and `OWNER_ID`.
+2. Ensure you have Node.js and `npm` installed.
+3. Run `npm install` followed by `node index.js`.
 
-### 🧠 AI & Media Modules
-* **Vision**: Deep image analysis via Gemini 2.0 Flash.
-* **TikTok Live**: 🔴 **(NEW)** Real-time stream monitoring and automated Discord notifications.
-* **TRT**: Instant translation for French, Arabic, English, and more.
-* **TTS**: High-quality voice note generation.
+## 🔗 Connect with the Creator
+* **TikTok:** [@votre_username](https://www.tiktok.com/@votre_username)
+* **Discord:** [Join the Cloud Gaming-223 Hub](https://discord.gg/votre_link)
+* **Location:** Bamako, Mali 📍
 
-### 🛠️ Utility & Gaming
-* **Weather**: Real-time updates for Bamako and global cities.
-* **Alive**: System heartbeat and Starlink latency tracking.
-* **Menu**: Dynamic command dashboard.
-* **Ping/Clear**: Core performance and chat management tools.
+------
 
-### ⚖️ Moderation & Safety
-* **Ban/Kick**: Full administrative control for community safety.
-* **Contact**: Direct line to the dev team via `.env` OWNER_ID.
-* **Owner**: Social hub (TikTok, IG, WhatsApp).
-
----
 
 ## 🛠️ Deployment
 1. **Fork** the repository.
@@ -61,3 +53,6 @@ This framework uses a modular dynamic loader. Add any `.js` file to `/plugins` a
 * **Liability:** The original creator (<@1284944736620253296>) is not liable for any damages, data leaks, or server costs resulting from the use of this code.
 
 **License:** This project is open-source. You are free to modify and redistribute it, but you must maintain the original creator's credits in the `ready` event logic.
+
+
+*Created by Gemini.*
