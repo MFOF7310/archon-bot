@@ -1,5 +1,6 @@
 # 🎮 CLOUD GAMING223 | AI-Core V2.5
-> **Advanced Digital Assistant for the CLOUD GAMING-223.** > Powered by Starlink 🛰️ & Google Gemini 🧠
+> **Advanced Digital Assistant for the CLOUD GAMING-223.**
+> Powered by Starlink 🛰️ & Google Gemini 🧠
 
 ![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -7,11 +8,12 @@
 
 ---
 
-## 🚀 The 12-Plugin Engine
+## 🚀 The 13-Plugin Engine
 This framework uses a modular dynamic loader. Add any `.js` file to `/plugins` and the system installs it instantly with full console logging.
 
 ### 🧠 AI & Media Modules
 * **Vision**: Deep image analysis via Gemini 2.0 Flash.
+* **TikTok Live**: 🔴 **(NEW)** Real-time stream monitoring and automated Discord notifications.
 * **TRT**: Instant translation for French, Arabic, English, and more.
 * **TTS**: High-quality voice note generation.
 
@@ -23,29 +25,29 @@ This framework uses a modular dynamic loader. Add any `.js` file to `/plugins` a
 
 ### ⚖️ Moderation & Safety
 * **Ban/Kick**: Full administrative control for community safety.
-* **Contact**: Direct line to the dev team.
+* **Contact**: Direct line to the dev team via `.env` OWNER_ID.
 * **Owner**: Social hub (TikTok, IG, WhatsApp).
-
-## -----Deployment
-1. **Fork** the repository.
-2. **Set Environment Variables** (`.env`):
-   ```env
-   DISCORD_TOKEN=your_token
-   GEMINI_API_KEY=your_key
-   WEATHER_API_KEY=your_key
-   WELCOME_CHANNEL_ID=your_id
-   PREFIX=,
 
 ---
 
-## 📱 Connect with CLOUD GAMING-223
-Join the official community for the best cloud gaming updates in Mali!
+## 🛠️ Deployment
+1. **Fork** the repository.
+2. **Setup Environment**: Copy `.env.example` to `.env`.
+3. **Fill in your secrets** in the `.env` file:
+   ```env
+   # --- DISCORD ---
+   DISCORD_TOKEN=your_bot_token_here
+   OWNER_ID=your_discord_user_id
+   CHANNEL_ID=notification_channel_id
+   PREFIX=,
 
-| Platform | Link |
-| :--- | :--- |
-| **TikTok** | [Follow my tiktok](https://www.tiktok.com/@votre_compte](https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1)) |
-| **Instagram** | [View My Insta](https://www.instagram.com/votre_compte](https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5)) |
-| **WhatsApp** | [Message me](https://wa.me/15485200518) |
+   # --- API KEYS ---
+   GEMINI_API_KEY=your_google_ai_key
+   WEATHER_API_KEY=your_weather_api_key
+
+   # --- TIKTOK ---
+   TIKTOK_USERNAME=your_tiktok_username
+   CHECK_INTERVAL_MS=120000
 
 ---
 
