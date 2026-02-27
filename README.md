@@ -32,7 +32,20 @@ Create a `.env` file in the root directory and add the following:
 ```env
 DISCORD_TOKEN=your_token_here
 GEMINI_API_KEY=your_key_here
-TIKTOK_USERNAME=cloudgaming223
-OWNER_ID=1284944736620253296
+TIKTOK_USERNAME=your_tiktok_id
+OWNER_ID=your_discord_owner_id
 CHANNEL_ID=your_notification_channel_id
 PREFIX=,
+
+
+---- 
+
+## ⚖️ License & Disclaimer
+
+### License
+This project is licensed under the **MIT License**. 
+
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, provided that the above copyright notice and this permission notice are included in all copies.
+
+### Disclaimer
+**CLOUD GAMING-223** is provided "as is". The creator is not responsible for any misuse, data loss, or server-side issues resulting from the deployment of this engine. Use at your own risk.
