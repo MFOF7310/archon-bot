@@ -2,34 +2,46 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'contact',
-    description: 'Send a direct message to the bot owner',
+    description: 'Send a message to the bot owner.',
     async execute(message, args, client) {
-        const CREATOR_ID = '1284944736620253296'; 
-        const feedback = args.join(" ");
-
+        const feedback = args.join(' ');
+        
+        // Basic check to make sure they actually wrote something
         if (!feedback) {
-            return message.reply("❌ **Usage:** `,contact [your message]`\nExample: `,contact I found a bug in the AI!`");
+            return message.reply('❌ Please provide a message! Example: `,contact I found a bug.`');
         }
 
-        try {
-            const creator = await client.users.fetch(CREATOR_ID);
-            
-            const reportEmbed = new EmbedBuilder()
-                .setColor('#ff0000')
-                .setTitle('📩 New Contact Message')
-                .addFields(
-                    { name: 'From User', value: `${message.author.tag} (${message.author.id})`, inline: true },
-                    { name: 'Channel', value: `${message.channel.name || 'DM'}`, inline: true },
-                    { name: 'Message', value: feedback }
-                )
-                .setTimestamp();
+        const ownerId = process.env.OWNER_ID;
 
-            await creator.send({ embeds: [reportEmbed] });
-            return message.reply("✅ **Message Sent!** The creator has been notified.");
-            
-        } catch (err) {
-            console.error(err);
-            return message.reply("❌ **Error:** I couldn't reach the creator. They might have DMs closed.");
+        try {
+            // Fetch the owner from Discord
+            const owner = await client.users.fetch(ownerId);
+
+            // Create a nice embed for your DMs
+            const contactEmbed = new EmbedBuilder()
+                .setColor('#00ffcc') // Cyan color to match your theme
+                .setTitle('📥 New Feedback Received')
+                .setAuthor({ 
+                    name: message.author.tag, 
+                    iconURL: message.author.displayAvatarURL() 
+                })
+                .setDescription(feedback)
+                .addFields(
+                    { name: 'User ID', value: `\`${message.author.id}\``, inline: true },
+                    { name: 'Channel', value: message.channel.name || 'DM', inline: true }
+                )
+                .setTimestamp()
+                .setFooter({ text: 'Cloud Gaming-223 Support System' });
+
+            // Send to you
+            await owner.send({ embeds: [contactEmbed] });
+
+            // Confirm to the user
+            await message.reply('✅ Your message has been sent to the host! They will get back to you if needed.');
+
+        } catch (error) {
+            console.error('Contact error:', error);
+            message.reply('❌ I couldn\'t reach the host. Their DMs might be closed!');
         }
     },
 };
