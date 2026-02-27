@@ -3,18 +3,28 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'trt',
-    description: 'Translate text to a specific language',
+    description: 'Levanter-style: Translate a reply or direct text.',
     async execute(message, args) {
-        // Usage: ,trt fr Hello world
         const targetLang = args[0];
-        const textToTranslate = args.slice(1).join(' ');
+        let textToTranslate = args.slice(1).join(' ');
 
-        if (!targetLang || !textToTranslate) {
-            return message.reply('❌ Usage: `,trt [language_code] [text]`\nExample: `,trt fr Hello friend`');
+        // 1. Language check
+        if (!targetLang) {
+            return message.reply('❌ Please specify a language code. Example: `,trt fr`');
+        }
+
+        // 2. The Levanter Logic: Check if you are replying to a message
+        if (!textToTranslate && message.reference) {
+            const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+            textToTranslate = repliedMsg.content;
+        }
+
+        // 3. If no text AND no reply, show a helpful hint
+        if (!textToTranslate) {
+            return message.reply('💡 **How to use:**\n1. Reply to a message and type `,trt fr`\n2. Or type `,trt fr [your text]`');
         }
 
         try {
-            // Translate the text
             const res = await translate(textToTranslate, { to: targetLang });
 
             const trtEmbed = new EmbedBuilder()
@@ -24,15 +34,13 @@ module.exports = {
                     { name: `📥 Original (${res.from.language.iso})`, value: `\`\`\`${textToTranslate}\`\`\`` },
                     { name: `📤 Translated (${targetLang})`, value: `\`\`\`${res.text}\`\`\`` }
                 )
-                .setFooter({ text: 'Powered by AES Digital Sovereignty' })
+                .setFooter({ text: 'AES Digital Sovereignty • Steve' })
                 .setTimestamp();
 
             return message.reply({ embeds: [trtEmbed] });
 
         } catch (error) {
-            console.error('Translation Error:', error);
-            // If the language code is wrong, Google might throw an error
-            return message.reply(`❌ Could not translate. Make sure \`${targetLang}\` is a valid language code (e.g., fr, en, ar, zh).`);
+            return message.reply(`❌ Could not translate. Is \`${targetLang}\` a valid code?`);
         }
     }
 };
