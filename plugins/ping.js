@@ -1,9 +1,11 @@
 module.exports = {
     name: 'ping',
-    description: 'Check bot latency',
-    async execute(message) {
-        const msg = await message.reply("🏓 **Pinging...**");
+    description: 'Check the latency of the Digital Engine.',
+    async execute(message, args, client) {
+        const msg = await message.reply('🛰️ Pinging satellite...');
         const latency = msg.createdTimestamp - message.createdTimestamp;
-        return msg.edit(`🏓 **Pong!**\n📡 API Latency: \`${message.client.ws.ping}ms\`\n⏱️ Bot Response: \`${latency}ms\``);
-    }
+        const apiLatency = Math.round(client.ws.ping);
+
+        msg.edit(`📡 **Starlink Latency:** ${latency}ms | 🧠 **API Ping:** ${apiLatency}ms`);
+    },
 };
