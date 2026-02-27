@@ -5,7 +5,7 @@ module.exports = {
     name: 'weather',
     description: 'Get real-time weather updates',
     async execute(message, args) {
-        // Default to Bamako if no city is provided
+        // 1. Properly handle multi-word cities (like New York)
         const city = args.join(' ') || 'Bamako';
         const apiKey = process.env.WEATHER_API_KEY;
 
@@ -14,14 +14,18 @@ module.exports = {
         }
 
         try {
-            const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+            // Use encodeURIComponent to handle spaces/special characters in city names
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
             const response = await axios.get(url);
             const data = response.data;
+
+            // Use https for the icon to ensure Discord displays it
+            const iconUrl = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
 
             const weatherEmbed = new EmbedBuilder()
                 .setColor('#3498db')
                 .setTitle(`🌤️ Weather in ${data.name}, ${data.sys.country}`)
-                .setThumbnail(`http://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`)
+                .setThumbnail(iconUrl)
                 .addFields(
                     { name: '🌡️ Temperature', value: `\`${data.main.temp}°C\``, inline: true },
                     { name: '☁️ Condition', value: `\`${data.weather[0].description}\``, inline: true },
@@ -34,8 +38,14 @@ module.exports = {
             return message.reply({ embeds: [weatherEmbed] });
 
         } catch (error) {
-            if (error.response && error.response.status === 404) {
-                return message.reply(`❌ City **${city}** not found.`);
+            // DETAILED DEBUGGING:
+            if (error.response) {
+                if (error.response.status === 401) {
+                    return message.reply('❌ **API Key Error:** Your key is invalid or not yet activated (wait 2 hours if new).');
+                }
+                if (error.response.status === 404) {
+                    return message.reply(`❌ City **${city}** not found. Check the spelling!`);
+                }
             }
             console.error('Weather Error:', error);
             return message.reply('❌ System error fetching weather data.');
