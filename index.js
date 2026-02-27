@@ -10,21 +10,20 @@ const { performance } = require('perf_hooks');
  * Modular Version 2.5 - Performance Optimized
  */
 
-// 1. INTENTS FIX: Bitmask 3276799 is broad, but explicit naming is safer for some hosts
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.DirectMessages
+        GatewayIntentBits.DirectMessages // Needed to send/receive DMs
     ] 
 });
 
 client.commands = new Collection();
 const PREFIX = process.env.PREFIX || ',';
 
-// 2. AI Setup - Preparing the model to be passed if needed
+// AI Setup
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
@@ -38,11 +37,10 @@ const loadPlugins = () => {
 
     const pluginFiles = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.js'));
     
-    // Clear cache before loading to ensure clean deployments
     for (const file of pluginFiles) {
         try {
             const filePath = `./plugins/${file}`;
-            delete require.cache[require.resolve(filePath)]; // Refreshes code on restart
+            delete require.cache[require.resolve(filePath)]; 
             const command = require(filePath);
             
             if (command.name) {
@@ -61,41 +59,44 @@ const loadPlugins = () => {
 
 loadPlugins();
 
-// --- 2. START THE ENGINE ---
-client.once(Events.ClientReady, (c) => {
+// --- 2. START THE ENGINE & SEND NOTIFICATION ---
+client.once(Events.ClientReady, async (c) => {
     console.log(`🚀 CLOUD GAMING-223 Connected! | Location: Bamako`);
     client.user.setActivity('Cloud Gaming-223', { type: ActivityType.Competing });
+
+    // 📩 NEW: Notify Owner via DM
+    const OWNER_ID = process.env.OWNER_ID;
+    if (OWNER_ID) {
+        try {
+            const owner = await client.users.fetch(OWNER_ID);
+            await owner.send(`🛰️ **Engine Online:** CLOUD GAMING-223 has successfully connected from Bamako.\nTotal Plugins: \`${client.commands.size}\``);
+        } catch (err) {
+            console.log("⚠️ Could not send login DM to owner (DMs might be closed).");
+        }
+    }
 });
 
 // --- 3. MESSAGE HANDLER ---
 client.on(Events.MessageCreate, async (message) => {
-    // Basic checks
     if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
-    // Find the command by name OR alias (if you add aliases later)
     const command = client.commands.get(commandName);
     if (!command) return;
 
     try {
-        /**
-         * ⚡ THE MULTI-PASS
-         * We pass 'message', 'args', 'client', AND 'model' (for vision)
-         * This ensures all 20 plugins have everything they need.
-         */
+        // Pass everything needed to the plugins
         await command.execute(message, args, client, model); 
     } catch (error) {
         console.error(`❌ Engine Error in [${commandName}]:`, error);
-        // Only reply if it's a real error, not a missing permission
-        if (message.editable) {
-            message.reply('❌ **System Error:** Module execution failed. Check console.');
+        if (!message.author.bot) {
+            message.reply('❌ **System Error:** Module execution failed.');
         }
     }
 });
 
-// 3. TOKEN CHECK: Changed to DISCORD_TOKEN to match your login line
 client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error("❌ Login Failed: Check your DISCORD_TOKEN in the .env file.");
 });
