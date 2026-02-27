@@ -1,10 +1,16 @@
 const axios = require("axios");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 module.exports = {
     name: 'vision',
-    description: 'Analyze images using Gemini 2.0',
-    async execute(message, args, client, model) {
-        // 1. Find the image (either in this message or the one being replied to)
+    description: 'Analyze images using Gemini 2.0 AI',
+    category: 'AI',
+    async execute(message, args, client) {
+        // 1. Initialize Gemini inside the plugin
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+        // 2. Find the image
         let image = message.attachments.first();
         if (!image && message.reference) {
             const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
@@ -19,11 +25,11 @@ module.exports = {
         const thinking = await message.reply("👁️ **Analyzing image...**");
 
         try {
-            // 2. Convert image to the format Gemini needs
+            // 3. Convert image to base64
             const response = await axios.get(image.url, { responseType: 'arraybuffer' });
             const imageData = Buffer.from(response.data).toString('base64');
 
-            // 3. Generate content using the passed-in model (Gemini-2.0-flash)
+            // 4. Generate content
             const result = await model.generateContent([
                 prompt,
                 {
@@ -35,9 +41,11 @@ module.exports = {
             ]);
 
             const text = result.response.text();
+            
+            // Edit the "Thinking" message with the result
             return thinking.edit(text.substring(0, 2000));
         } catch (error) {
-            console.error(error);
+            console.error("Vision Error:", error);
             return thinking.edit(`❌ Vision Error: ${error.message}`);
         }
     }
