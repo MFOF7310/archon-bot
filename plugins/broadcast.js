@@ -3,8 +3,9 @@ const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 module.exports = {
     name: 'broadcast',
     description: 'Sends a global announcement to all servers.',
+    category: 'Owner',
     async execute(message, args, client) {
-        // 1. SECURITY: Only the Owner can use this
+        // 1. SECURITY: Using the ID from your setup
         const OWNER_ID = '1284944736620253296';
         if (message.author.id !== OWNER_ID) {
             return message.reply("❌ Restricted: Only the Engine Owner can broadcast.");
@@ -17,7 +18,7 @@ module.exports = {
         }
 
         const broadcastEmbed = new EmbedBuilder()
-            .setColor('#e74c3c') // Alert Red
+            .setColor('#e74c3c')
             .setTitle('📢 GLOBAL ANNOUNCEMENT')
             .setAuthor({ name: 'Cloud Gaming-223 System', iconURL: client.user.displayAvatarURL() })
             .setDescription(announcement)
@@ -27,10 +28,11 @@ module.exports = {
         let successCount = 0;
         let failCount = 0;
 
-        // 3. THE LOOP: Find the best channel in every server
-        client.guilds.cache.forEach(async (guild) => {
+        const statusMsg = await message.reply("🛰️ **Transmitting broadcast...**");
+
+        // 3. THE LOOP (Fixed for async accuracy)
+        for (const [id, guild] of client.guilds.cache) {
             try {
-                // Find the first text channel where the bot has permission to speak
                 const channel = guild.channels.cache
                     .filter(ch => ch.isTextBased() && ch.permissionsFor(client.user).has(PermissionFlagsBits.SendMessages))
                     .first();
@@ -44,8 +46,8 @@ module.exports = {
             } catch (err) {
                 failCount++;
             }
-        });
+        }
 
-        message.reply(`✅ Broadcast complete!\n🟢 Delivered to: **${successCount}** servers\n🔴 Failed in: **${failCount}** servers`);
+        await statusMsg.edit(`✅ **Broadcast complete!**\n🟢 Delivered: **${successCount}**\n🔴 Failed: **${failCount}**`);
     },
 };
