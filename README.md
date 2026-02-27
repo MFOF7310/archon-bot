@@ -1,5 +1,3 @@
-![Cloud Gaming-223 Banner](IMG-20260227-WA0013.jpg)
-
 # 🎮 CLOUD GAMING-223 | DIGITAL ENGINE
 > **Powered by Starlink 🛰️ | Optimized for Mali 🇲🇱 | AI-Core V2.5**
 
