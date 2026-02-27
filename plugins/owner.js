@@ -1,37 +1,44 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const axios = require("axios");
 
 module.exports = {
-    name: 'owner',
-    description: 'Displays the creator info and social links',
-    async execute(message) {
-        const ownerEmbed = new EmbedBuilder()
-            .setColor('#3498db') // Matching your blue theme
-            .setTitle('👨‍💻 CLOUD GAMING-223 | CREATOR')
-            .setDescription('Connect with the developer behind the CLOUD GAMING-223 Engine.')
-            .addFields(
-                { name: '📍 Location', value: '`Bamako, Mali`', inline: true },
-                { name: '🛰️ Connection', value: '`Starlink Active`', inline: true }
-            )
-            .setThumbnail(message.client.user.displayAvatarURL())
-            .setFooter({ text: 'Cloud Gaming 223 | System Admin' })
-            .setTimestamp();
+    name: 'vision',
+    description: 'Analyze images using Gemini 2.0',
+    async execute(message, args, client, model) {
+        // 1. Find the image (either in this message or the one being replied to)
+        let image = message.attachments.first();
+        if (!image && message.reference) {
+            const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+            image = repliedMsg.attachments.first();
+        }
 
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setLabel('TikTok')
-                    .setURL('https://www.tiktok.com/@cloudgaming223?_r=1&_t=ZS-94ExHk94xB1') // Replace with your link
-                    .setStyle(ButtonStyle.Link),
-                new ButtonBuilder()
-                    .setLabel('Instagram')
-                    .setURL('https://www.instagram.com/mfof7310?igsh=ZHB2MDJkaGJsNHA5') // Replace with your link
-                    .setStyle(ButtonStyle.Link),
-                new ButtonBuilder()
-                    .setLabel('WhatsApp')
-                    .setURL('https://wa.me/15485200518') // Replace with your number
-                    .setStyle(ButtonStyle.Link)
-            );
+        if (!image || !image.contentType?.startsWith('image/')) {
+            return message.reply("❌ Please attach an image or reply to one!");
+        }
 
-        return message.reply({ embeds: [ownerEmbed], components: [row] });
+        const prompt = args.join(" ") || "Describe this image in detail.";
+        const thinking = await message.reply("👁️ **Analyzing image...**");
+
+        try {
+            // 2. Convert image to the format Gemini needs
+            const response = await axios.get(image.url, { responseType: 'arraybuffer' });
+            const imageData = Buffer.from(response.data).toString('base64');
+
+            // 3. Generate content using the passed-in model (Gemini-2.0-flash)
+            const result = await model.generateContent([
+                prompt,
+                {
+                    inlineData: {
+                        data: imageData,
+                        mimeType: image.contentType
+                    }
+                }
+            ]);
+
+            const text = result.response.text();
+            return thinking.edit(text.substring(0, 2000));
+        } catch (error) {
+            console.error(error);
+            return thinking.edit(`❌ Vision Error: ${error.message}`);
+        }
     }
 };
