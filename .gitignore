@@ -8,8 +8,6 @@
 # --- DEPENDENCIES ---
 # We don't upload these because they are huge; 
 # others will run 'npm install' to get them.
-node_modules/
-package-lock.json
 
 # --- LOGS & DIAGNOSTICS ---
 logs
