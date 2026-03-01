@@ -13,12 +13,12 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent, // Required to read commands like ,menu
+        GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.DirectMessages // Required to send/receive DMs
+        GatewayIntentBits.DirectMessages
     ],
     partials: [
-        Partials.Channel, // Required for DMs to work in v14
+        Partials.Channel, 
         Partials.Message, 
         Partials.User
     ] 
@@ -61,7 +61,6 @@ client.once(Events.ClientReady, async () => {
     client.user.setActivity('Cloud Gaming-223', { type: ActivityType.Competing });
 
     try {
-        // We fetch the user to ensure the cache is ready
         const architect = await client.users.fetch(ARCHITECT_ID);
         if (architect) {
             const bootEmbed = new EmbedBuilder()
@@ -80,10 +79,7 @@ client.once(Events.ClientReady, async () => {
 
 // --- 4. MESSAGE HANDLER ---
 client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot) return;
-
-    // Support for both Server and DM commands
-    if (!message.content.startsWith(PREFIX)) return;
+    if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
@@ -95,20 +91,13 @@ client.on(Events.MessageCreate, async (message) => {
         await command.execute(message, args, client, model); 
     } catch (error) {
         console.error(`❌ EXECUTION ERROR [${commandName}]:`, error);
-        if (message.channel) {
-            message.reply("⚠️ Command failed. Check console for logs.");
-        }
+        message.reply("⚠️ Command failed. Check console for logs.");
     }
 });
 
 // --- 5. CRASH PROTECTION ---
-process.on('unhandledRejection', error => {
-    console.error(' [Unhandled Rejection]:', error);
-});
-
-process.on('uncaughtException', error => {
-    console.error(' [Uncaught Exception]:', error);
-});
+process.on('unhandledRejection', error => console.error(' [Unhandled Rejection]:', error));
+process.on('uncaughtException', error => console.error(' [Uncaught Exception]:', error));
 
 client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error("❌ LOGIN ERROR: Check your DISCORD_TOKEN.");
