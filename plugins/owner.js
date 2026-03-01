@@ -1,33 +1,26 @@
-const axios = require("axios");
-
+// REMOVED AXIOS - It was causing the "High Severity" alert
 module.exports = {
     name: 'owner',
-    description: 'Executive commands and community links',
+    description: 'Executive commands for the Architect',
     async execute(message, args, client) {
-        
-        // Pulls the Owner ID from your .env file
-        const ownerId = process.env.OWNER_ID;
-
-        // Security check: Match the message author with the ID in .env
-        if (message.author.id !== ownerId) {
-            return message.reply("⚠️ This command is reserved for the bot owner.");
+        const ARCHITECT_ID = '1284944736620253296';
+        if (message.author.id !== ARCHITECT_ID) {
+            return message.reply("⚠️ **Restricted:** This terminal is for the Architect only.");
         }
 
         const subCommand = args[0]?.toLowerCase();
 
-        // Subcommand: !owner social
         if (subCommand === 'social') {
-            const supportLink = process.env.SUPPORT_LINK || "No link set in .env";
-            return message.reply(`🌐 **Join our community:** ${supportLink}`);
+            return message.reply(`🌐 **Community Hub:** https://www.facebook.com/share/17KysmJrtm/`);
         }
 
-        // Subcommand: !owner restart
         if (subCommand === 'restart') {
-            await message.reply("🔄 Restarting the container...");
-            process.exit(); // Pterodactyl will auto-reboot the bot
+            await message.reply("🔄 **ENGINE SHUTDOWN:** Rebooting container via Pterodactyl...");
+            // Small delay to ensure message sends before exit
+            setTimeout(() => process.exit(), 1000); 
+            return;
         }
 
-        // Default help message for the owner
-        message.reply("🛠️ **Owner Menu:** Use `!owner social` or `!owner restart`.");
+        message.reply("🛠️ **Executive Menu:**\n`,owner social` - Get community links\n`,owner restart` - Force reboot the engine");
     }
 };
