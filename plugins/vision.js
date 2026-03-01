@@ -1,4 +1,4 @@
-const axios = require("axios");
+const axios = require("axios"); // Ensure npm install axios@latest
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 module.exports = {
@@ -6,11 +6,9 @@ module.exports = {
     description: 'Analyze images using Gemini 2.0 AI',
     category: 'AI',
     async execute(message, args, client) {
-        // 1. Initialize Gemini inside the plugin
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        // 2. Find the image
         let image = message.attachments.first();
         if (!image && message.reference) {
             const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
@@ -25,28 +23,20 @@ module.exports = {
         const thinking = await message.reply("👁️ **Analyzing image...**");
 
         try {
-            // 3. Convert image to base64
-            const response = await axios.get(image.url, { responseType: 'arraybuffer' });
+            // Secure way to fetch image data
+            const response = await axios.get(image.url, { responseType: 'arraybuffer', timeout: 10000 });
             const imageData = Buffer.from(response.data).toString('base64');
 
-            // 4. Generate content
             const result = await model.generateContent([
                 prompt,
-                {
-                    inlineData: {
-                        data: imageData,
-                        mimeType: image.contentType
-                    }
-                }
+                { inlineData: { data: imageData, mimeType: image.contentType } }
             ]);
 
-            const text = result.response.text();
-            
-            // Edit the "Thinking" message with the result
-            return thinking.edit(text.substring(0, 2000));
+            const responseText = result.response.text();
+            return thinking.edit(responseText.substring(0, 2000));
         } catch (error) {
             console.error("Vision Error:", error);
-            return thinking.edit(`❌ Vision Error: ${error.message}`);
+            return thinking.edit(`❌ **Vision Failure:** ${error.message.includes('403') ? 'API Key issue' : 'Connection timeout'}`);
         }
     }
 };
