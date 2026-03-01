@@ -5,11 +5,14 @@ module.exports = {
     description: 'Displays system credits and creator information.',
     category: 'Information',
     async execute(message, args, client) {
+        // We use the ID directly to ensure it works even if .env fails
+        const ARCHITECT_ID = '1284944736620253296';
+
         const creditsEmbed = new EmbedBuilder()
             .setColor('#2ecc71') // AES Green
             .setTitle('🛡️ SYSTEM AUTHORIZATION & CREDITS')
             .setThumbnail(client.user.displayAvatarURL())
-            .setDescription('**CLOUD GAMING-223 | DIGITAL ENGINE V2.5**\nPrincipal Architect: <@1284944736620253296>')
+            .setDescription('**CLOUD GAMING-223 | DIGITAL ENGINE V2.6**\nPrincipal Architect: <@' + ARCHITECT_ID + '>')
             .addFields(
                 { name: '🧠 Intelligence', value: 'Gemini 2.0 Flash', inline: true },
                 { name: '⚖️ License', value: 'MIT License', inline: true },
@@ -30,7 +33,10 @@ module.exports = {
                     .setStyle(ButtonStyle.Link)
             );
 
-        // Uses message.reply to keep the "Conversation" clean on your Z Fold 5
-        await message.reply({ embeds: [creditsEmbed], components: [row] });
+        // message.reply is better for mobile (Z Fold 5) as it creates a thread-like view
+        await message.reply({ 
+            embeds: [creditsEmbed], 
+            components: [row] 
+        }).catch(err => console.error("Credits Error:", err));
     },
 };
