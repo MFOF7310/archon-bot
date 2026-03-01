@@ -1,42 +1,41 @@
-const axios = require("axios"); // Ensure npm install axios@latest
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'vision',
-    description: 'Analyze images using Gemini 2.0 AI',
-    category: 'AI',
+    description: 'Analyze an image using Gemini 2.0 Flash',
     async execute(message, args, client) {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // 1. Check if there is an image
+        const image = message.attachments.first() || (message.reference ? (await message.fetchReference()).attachments.first() : null);
+        
+        if (!image) return message.reply("❌ **Please upload or reply to an image!**");
 
-        let image = message.attachments.first();
-        if (!image && message.reference) {
-            const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
-            image = repliedMsg.attachments.first();
-        }
-
-        if (!image || !image.contentType?.startsWith('image/')) {
-            return message.reply("❌ Please attach an image or reply to one!");
-        }
-
-        const prompt = args.join(" ") || "Describe this image in detail.";
-        const thinking = await message.reply("👁️ **Analyzing image...**");
+        // 2. Send a "Thinking" message to prevent Discord timeout
+        const thinking = await message.reply("🛰️ **Architect is analyzing the image... please wait.**");
 
         try {
-            // Secure way to fetch image data
-            const response = await axios.get(image.url, { responseType: 'arraybuffer', timeout: 10000 });
-            const imageData = Buffer.from(response.data).toString('base64');
-
+            // 3. Call Gemini with an EXTENDED timeout (30 seconds)
+            const model = client.genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            
+            // We add [requestOptions] here to tell the API to wait longer
             const result = await model.generateContent([
-                prompt,
-                { inlineData: { data: imageData, mimeType: image.contentType } }
-            ]);
+                args.join(" ") || "What is in this image?",
+                {
+                    inlineData: {
+                        data: Buffer.from(await (await fetch(image.url)).arrayBuffer()).toString("base64"),
+                        mimeType: image.contentType
+                    }
+                }
+            ], { timeout: 30000 }); // 30,000ms = 30 seconds
 
-            const responseText = result.response.text();
-            return thinking.edit(responseText.substring(0, 2000));
+            const response = await result.response;
+            const text = response.text();
+
+            // 4. Edit the thinking message with the result
+            await thinking.edit(`✅ **Analysis Complete:**\n\n${text}`);
+
         } catch (error) {
-            console.error("Vision Error:", error);
-            return thinking.edit(`❌ **Vision Failure:** ${error.message.includes('403') ? 'API Key issue' : 'Connection timeout'}`);
+            console.error(error);
+            await thinking.edit("⚠️ **Vision Failure:** The connection timed out. This can happen on satellite links. Please try a smaller image or try again in a moment.");
         }
     }
 };
