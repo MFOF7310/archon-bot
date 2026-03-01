@@ -25,19 +25,6 @@ The official high-performance Discord engine for the **Cloud Gaming-223** commun
 * **Hosting:** Pterodactyl / Linux VPS (Optimized for Starlink).
 * **Environment:** `.env` file must be present in root.
 
-### 2. Environment Configuration
-```env
-# --- CREDENTIALS ---
-DISCORD_TOKEN=your_token_here
-GEMINI_API_KEY=your_gemini_key_here
-WEATHER_API_KEY=your_weather_key_here
-
-# --- SYSTEM CONFIG ---
-PREFIX=,
-ARCHITECT_ID=1284944736620253296
-SUPPORT_LINK=[https://discord.gg/Ndenbr6kev](https://discord.gg/Ndenbr6kev)
-
-
 ## ⚠️ Disclaimer & Liability
 
 ### Usage Warning
@@ -49,3 +36,17 @@ SUPPORT_LINK=[https://discord.gg/Ndenbr6kev](https://discord.gg/Ndenbr6kev)
 
 ### Digital Sovereignty
 This project is built to support the **AES (Alliance of Sahel States)** gaming community. Use it respectully and in accordance with local digital regulations in Mali 🇲🇱.
+
+
+
+### 2. Environment Configuration
+```env
+# --- CREDENTIALS ---
+DISCORD_TOKEN=your_token_here
+GEMINI_API_KEY=your_gemini_key_here
+WEATHER_API_KEY=your_weather_key_here
+
+# --- SYSTEM CONFIG ---
+PREFIX=,
+ARCHITECT_ID=1284944736620253296
+SUPPORT_LINK=[https://discord.gg/Ndenbr6kev](https://discord.gg/Ndenbr6kev)
