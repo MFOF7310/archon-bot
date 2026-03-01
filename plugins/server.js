@@ -2,25 +2,27 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'server',
-    description: 'Display information about this server.',
+    description: 'Displays detailed information about this gaming community.',
+    category: 'Information',
     async execute(message, args, client) {
         const { guild } = message;
-        
-        // Fallback icon if server has none
-        const icon = guild.iconURL() || 'https://cdn.discordapp.com/embed/avatars/0.png';
+        // Fallback for servers without an icon
+        const icon = guild.iconURL({ dynamic: true }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-        const serverEmbed = new EmbedBuilder()
-            .setColor('#00fbff')
-            .setTitle(`🎮 ${guild.name} | NODE STATS`)
+        const infoEmbed = new EmbedBuilder()
+            .setColor('#ffcc00')
+            .setTitle(`🏛️ ${guild.name} | INTERNAL REGISTRY`)
             .setThumbnail(icon)
             .addFields(
-                { name: '👑 Owner', value: `<@${guild.ownerId}>`, inline: true },
-                { name: '👥 Population', value: `\`${guild.memberCount}\` users`, inline: true },
-                { name: '📅 Synchronized', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }
+                { name: '🆔 Node ID', value: `\`${guild.id}\``, inline: false },
+                { name: '👑 Founder', value: `<@${guild.ownerId}>`, inline: true },
+                { name: '👥 Population', value: `\`${guild.memberCount}\` Members`, inline: true },
+                { name: '🛠️ Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
+                { name: '🌟 Boost Level', value: `Level ${guild.premiumTier}`, inline: true }
             )
-            .setFooter({ text: 'Cloud Gaming-223 | West African Edge' })
+            .setFooter({ text: 'Cloud Gaming-223 Digital Engine' })
             .setTimestamp();
 
-        message.reply({ embeds: [serverEmbed] });
+        message.reply({ embeds: [infoEmbed] });
     },
 };
