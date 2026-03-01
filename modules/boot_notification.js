@@ -1,8 +1,9 @@
+const { EmbedBuilder } = require('discord.js'); // Added this line
+
 module.exports = async (client) => {
     const OWNER_ID = '1284944736620253296';
 
     try {
-        // Force a global fetch from Discord's API
         const owner = await client.users.fetch(OWNER_ID).catch(() => null);
         
         if (!owner) {
@@ -15,7 +16,7 @@ module.exports = async (client) => {
             .setDescription(`**Engine V2.5 is hot.**\n\n📊 **Plugins:** ${client.commands.size}\n🇲🇱 **Region:** Bamako\n🔥 **Status:** Operational`)
             .setTimestamp();
 
-        await owner.send({ embeds: [bootEmbed] });
+        await owner.send({ embeds: [bootEmbed] }).catch(err => console.error("Could not DM Owner. Is their DM off?"));
         console.log(`✅ [System] Boot DM delivered to Architect.`);
         
     } catch (e) {
