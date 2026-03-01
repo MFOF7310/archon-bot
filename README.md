@@ -43,9 +43,21 @@ Permission is hereby granted to anyone cloning this repository to use, modify, a
 ### 2. Environment Configuration
 Create a `.env` file in the root directory and add your own credentials:
 ```env
-DISCORD_TOKEN=your_token_here
-GEMINI_API_KEY=your_key_here
-TIKTOK_USERNAME=YOUR_TIKTOK_USERNAME
-OWNER_ID=YOUR_DISCORD_ID
-CHANNEL_ID=your_notification_channel_id
+# ---  CREDENTIALS ---
+DISCORD_TOKEN=your_discord_token_id
+GEMINI_API_KEY=your_gemini_api_key
+WEATHER_API_KEY=your_weather_api_key
+
+# --- OWNER & SYSTEM ---
+OWNER_ID=your_discord_owner_id
+WELCOME_CHANNEL=your_welcome_channel_id
+LOG_CHANNEL_ID=your_log_channel_id
+MEMBER_ROLE=your_member_role_id
 PREFIX=,
+
+# --- Tiktok Livestream Notification ---
+TIKTOK_USERNAME=your_tiktok_username_without_@
+CHANNEL_ID=your_channel_id 
+
+# --- Support Link --- do not modify this part 
+SUPPORT_LINK=https://discord.gg/Ndenbr6kev 
