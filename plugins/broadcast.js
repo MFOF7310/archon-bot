@@ -1,53 +1,44 @@
-const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 
 module.exports = {
     name: 'broadcast',
     description: 'Sends a global announcement to all servers.',
     category: 'Owner',
     async execute(message, args, client) {
-        // 1. SECURITY: Using the ID from your setup
         const OWNER_ID = '1284944736620253296';
-        if (message.author.id !== OWNER_ID) {
-            return message.reply("❌ Restricted: Only the Engine Owner can broadcast.");
-        }
+        if (message.author.id !== OWNER_ID) return message.reply("❌ Restricted.");
 
-        // 2. CHECK FOR MESSAGE
         const announcement = args.join(' ');
-        if (!announcement) {
-            return message.reply("❌ Usage: `,broadcast [Your message here]`");
-        }
+        if (!announcement) return message.reply("❌ Usage: `,broadcast [message]`");
 
         const broadcastEmbed = new EmbedBuilder()
             .setColor('#e74c3c')
             .setTitle('📢 GLOBAL ANNOUNCEMENT')
-            .setAuthor({ name: 'Cloud Gaming-223 System', iconURL: client.user.displayAvatarURL() })
+            .setThumbnail(client.user.displayAvatarURL())
             .setDescription(announcement)
-            .setFooter({ text: 'Broadcasted to all connected nodes' })
+            .setFooter({ text: 'Cloud Gaming-223 Network' })
             .setTimestamp();
 
-        let successCount = 0;
-        let failCount = 0;
+        const statusMsg = await message.reply("🛰️ **Transmitting across all nodes...**");
 
-        const statusMsg = await message.reply("🛰️ **Transmitting broadcast...**");
+        let success = 0;
+        let fail = 0;
 
-        // 3. THE LOOP (Fixed for async accuracy)
-        for (const [id, guild] of client.guilds.cache) {
+        // Efficient async broadcasting
+        const promises = client.guilds.cache.map(async (guild) => {
             try {
-                const channel = guild.channels.cache
-                    .filter(ch => ch.isTextBased() && ch.permissionsFor(client.user).has(PermissionFlagsBits.SendMessages))
-                    .first();
-
+                const channel = guild.channels.cache.find(c => 
+                    c.type === ChannelType.GuildText && 
+                    c.permissionsFor(client.user).has(PermissionFlagsBits.SendMessages)
+                );
                 if (channel) {
                     await channel.send({ embeds: [broadcastEmbed] });
-                    successCount++;
-                } else {
-                    failCount++;
-                }
-            } catch (err) {
-                failCount++;
-            }
-        }
+                    success++;
+                } else { fail++; }
+            } catch (err) { fail++; }
+        });
 
-        await statusMsg.edit(`✅ **Broadcast complete!**\n🟢 Delivered: **${successCount}**\n🔴 Failed: **${failCount}**`);
+        await Promise.all(promises);
+        await statusMsg.edit(`✅ **Transmission Complete**\n🟢 Nodes: **${success}**\n🔴 Offline: **${fail}**`);
     },
 };
