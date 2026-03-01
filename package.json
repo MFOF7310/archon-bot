@@ -12,14 +12,12 @@
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",
     "google-translate-api-x": "^10.7.2",
-    "google-tts-api": "^2.0.2",
-    "tiktok-live-connector": "^2.1.1"
+    "google-tts-api": "^2.0.2"
   },
   "overrides": {
     "cross-spawn": "^7.0.5",
     "minimatch": "^9.0.5",
     "semver": "^7.5.3",
-    "undici": "^6.13.0",
-    "nanoid": "^3.3.8"
+    "undici": "^6.13.0"
   }
 }
