@@ -1,26 +1,22 @@
-// REMOVED AXIOS - It was causing the "High Severity" alert
 module.exports = {
     name: 'owner',
-    description: 'Executive commands for the Architect',
+    description: 'Executive links and system hub',
+    category: 'Owner',
     async execute(message, args, client) {
         const ARCHITECT_ID = '1284944736620253296';
-        if (message.author.id !== ARCHITECT_ID) {
-            return message.reply("⚠️ **Restricted:** This terminal is for the Architect only.");
-        }
+        if (message.author.id !== ARCHITECT_ID) return;
 
-        const subCommand = args[0]?.toLowerCase();
+        const response = [
+            "🛰️ **CLOUD GAMING-223 | EXECUTIVE HUB**",
+            "",
+            "🔗 **Facebook:** https://www.facebook.com/share/17KysmJrtm/",
+            "📱 **TikTok:** https://www.tiktok.com/@cloudgaming223",
+            "📸 **Instagram:** https://www.instagram.com/mfof7310",
+            "💬 **WhatsApp:** https://wa.me/15485200518",
+            "",
+            "ℹ️ *Use these links for community management and support.*"
+        ].join('\n');
 
-        if (subCommand === 'social') {
-            return message.reply(`🌐 **Community Hub:** https://www.facebook.com/share/17KysmJrtm/`);
-        }
-
-        if (subCommand === 'restart') {
-            await message.reply("🔄 **ENGINE SHUTDOWN:** Rebooting container via Pterodactyl...");
-            // Small delay to ensure message sends before exit
-            setTimeout(() => process.exit(), 1000); 
-            return;
-        }
-
-        message.reply("🛠️ **Executive Menu:**\n`,owner social` - Get community links\n`,owner restart` - Force reboot the engine");
+        await message.reply(response);
     }
 };
