@@ -3,35 +3,35 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'trt',
-    description: 'Translate a reply or direct text.',
+    description: 'Translate text to any language.',
     category: 'Utility',
-    async execute(message, args, client) {
-        const targetLang = args[0];
-        let textToTranslate = args.slice(1).join(' ');
+    async execute(message, args) {
+        const targetLang = args[0]?.toLowerCase();
+        let text = args.slice(1).join(' ');
 
-        if (!targetLang) return message.reply('❌ Specify a language. Example: `,trt fr`');
+        if (!targetLang) return message.reply('❌ **Usage:** `,trt [lang] [text]` (e.g., `,trt fr Hello`)');
 
-        if (!textToTranslate && message.reference) {
+        if (!text && message.reference) {
             const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
-            textToTranslate = repliedMsg.content;
+            text = repliedMsg.content;
         }
 
-        if (!textToTranslate) return message.reply('💡 Reply to a message or type text after the language code.');
+        if (!text) return message.reply('💡 Reply to a message or type text after the language code.');
 
         try {
-            const res = await translate(textToTranslate, { to: targetLang });
+            const res = await translate(text, { to: targetLang });
             const trtEmbed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle('🌐 CLOUD GAMING 223 | TRANSLATOR')
+                .setTitle('🌐 DIGITAL TRANSLATOR')
                 .addFields(
-                    { name: `📥 Original (${res.from.language.iso})`, value: `\`\`\`${textToTranslate}\`\`\`` },
-                    { name: `📤 Translated (${targetLang})`, value: `\`\`\`${res.text}\`\`\`` }
+                    { name: `📥 From: ${res.from.language.iso.toUpperCase()}`, value: `\`\`\`${text.substring(0, 500)}\`\`\`` },
+                    { name: `📤 To: ${targetLang.toUpperCase()}`, value: `\`\`\`${res.text.substring(0, 500)}\`\`\`` }
                 )
-                .setFooter({ text: 'AES Digital Sovereignty' });
+                .setFooter({ text: 'Cloud Gaming-223 | AES Translation Node' });
 
             return message.reply({ embeds: [trtEmbed] });
         } catch (error) {
-            return message.reply(`❌ Translation failed. Check language code: \`${targetLang}\``);
+            return message.reply(`❌ **Translation Failed:** Check if \`${targetLang}\` is a valid language code.`);
         }
     }
 };
