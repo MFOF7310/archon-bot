@@ -45,8 +45,8 @@ const dashboard = `
 \`\`\``;
 
 
-─── 📂 INSTALLED MODULES & PLUGINS ───
-${modules} ${plugins}
+─── 📂 INSTALLED MODULES ───
+${modulesList}
 ────────────────────────────
 \`\`\`
 `;
