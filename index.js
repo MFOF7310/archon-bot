@@ -1,7 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, ActivityType, Events, GatewayIntentBits, Partials, EmbedBuilder } = require('discord.js');
+const { Client, Collection, ActivityType, Events, Partials, EmbedBuilder } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // --- 1. THE CONSOLE HEARTBEAT ---
@@ -9,26 +9,23 @@ console.log("-----------------------------------------");
 console.log("🛰️  DIGITAL ENGINE: STARTING BOOT SEQUENCE");
 console.log("-----------------------------------------");
 
+// Using exact numeric bitfields to bypass "BitFieldInvalid" errors
 const client = new Client({ 
     intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent, 
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.DirectMessages
+        1,      // Guilds
+        512,    // GuildMessages
+        32768,  // MessageContent (CRITICAL: Must be ON in Dev Portal)
+        2,      // GuildMembers
+        4096,   // DirectMessages
+        16384   // DirectMessageTyping/Messages
     ],
-    partials: [
-        Partials.Channel, 
-        Partials.Message, 
-        Partials.User
-    ] 
+    partials: [Partials.Channel, Partials.Message, Partials.User] 
 });
 
 client.commands = new Collection();
 const PREFIX = process.env.PREFIX || ',';
 const ARCHITECT_ID = '1284944736620253296'; 
 
-// AI Setup
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
@@ -43,9 +40,7 @@ const loadPlugins = () => {
             const fullPath = require.resolve(`./plugins/${file}`);
             delete require.cache[fullPath]; 
             const command = require(`./plugins/${file}`);
-            if (command.name) {
-                client.commands.set(command.name, command);
-            }
+            if (command.name) client.commands.set(command.name, command);
         } catch (e) {
             console.error(`⚠️ PLUGIN ERROR [${file}]: ${e.message}`);
         }
@@ -73,7 +68,7 @@ client.once(Events.ClientReady, async () => {
             console.log("📩 Architect DM Sent Successfully.");
         }
     } catch (err) {
-        console.log(`ℹ️ Note: Could not DM Architect. Error: ${err.message}`);
+        console.log(`ℹ️ Note: Could not DM Architect.`);
     }
 });
 
@@ -91,13 +86,9 @@ client.on(Events.MessageCreate, async (message) => {
         await command.execute(message, args, client, model); 
     } catch (error) {
         console.error(`❌ EXECUTION ERROR [${commandName}]:`, error);
-        message.reply("⚠️ Command failed. Check console for logs.");
+        message.reply("⚠️ Command failed. Check console.");
     }
 });
-
-// --- 5. CRASH PROTECTION ---
-process.on('unhandledRejection', error => console.error(' [Unhandled Rejection]:', error));
-process.on('uncaughtException', error => console.error(' [Uncaught Exception]:', error));
 
 client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error("❌ LOGIN ERROR: Check your DISCORD_TOKEN.");
