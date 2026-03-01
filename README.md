@@ -1,15 +1,15 @@
-# 🛰️ CLOUD GAMING-223 | DIGITAL ENGINE V2.6
+# 🛰️ CLOUD GAMING-223 | DIGITAL ENGINE V2.7
 > **Powered by Starlink 🛰️ | Optimized for Mali 🇲🇱 | AI-Core: Gemini 2.0 Flash 🧠**
 
-A high-performance, modular Discord bot engine designed for the AES gaming community. Engineered for speed, security, and digital sovereignty.
+The official high-performance Discord engine for the **Cloud Gaming-223** community. Built for speed, gaming competition, and digital sovereignty in the AES region.
 
 ## 🚀 Key Features
-* **🤖 Gemini 2.0 AI:** Advanced conversational intelligence and **Vision Analysis** (Image recognition).
-* **🎙️ Smart Bilingual TTS:** Automatic language detection switching between French (🇫🇷/🇲🇱) and English (🇺🇸).
-* **📦 Modular Architecture:** 19+ specialized plugins for moderation, system health, and social integration.
-* **🌐 Global Translator:** High-speed translation module supporting over 100 languages.
-* **🛡️ Hardened Security:** Owner-only "Executive Terminal" for system restarts and global broadcasts.
-* **📊 System Dashboard:** Real-time monitoring of RAM, Latency, and Uptime optimized for mobile (Z Fold 5).
+* **🏆 Gaming Leaderboard:** Multi-game support for **CODM, Free Fire, and PUBG**. Track XP and Server Ranks.
+* **🤖 Gemini 2.0 AI:** Advanced conversational intelligence and **Vision Analysis** for image recognition.
+* **🎙️ Smart Bilingual TTS:** Real-time voice synthesis switching between French (🇫🇷/🇲🇱) and English (🇺🇸).
+* **🌐 Global Translator:** Professional translation node supporting 100+ languages.
+* **🛡️ Hardened Security:** Executive Architect Terminal with zero-vulnerability Axios implementation.
+* **📊 Live Dashboard:** Real-time monitoring of Node Health, Latency, and RAM.
 
 ## 🔗 Connect with the Architect
 * **🔵 Facebook:** [Official Page](https://www.facebook.com/share/17KysmJrtm/)
@@ -21,12 +21,11 @@ A high-performance, modular Discord bot engine designed for the AES gaming commu
 ## 🛠️ Infrastructure & Setup
 
 ### 1. Requirements
-* **Node.js:** v18.17.0 or higher (Required for Discord.js v14).
-* **Platform:** Optimized for Pterodactyl / Linux VPS environments.
-* **APIs:** Discord Bot Token, Google Gemini API, and OpenWeather API.
+* **Node.js:** v18.17.0 or higher.
+* **Hosting:** Pterodactyl / Linux VPS (Optimized for Starlink).
+* **Environment:** `.env` file must be present in root.
 
 ### 2. Environment Configuration
-Create a `.env` file in the root directory:
 ```env
 # --- CREDENTIALS ---
 DISCORD_TOKEN=your_token_here
@@ -37,3 +36,16 @@ WEATHER_API_KEY=your_weather_key_here
 PREFIX=,
 ARCHITECT_ID=1284944736620253296
 SUPPORT_LINK=[https://discord.gg/Ndenbr6kev](https://discord.gg/Ndenbr6kev)
+
+
+## ⚠️ Disclaimer & Liability
+
+### Usage Warning
+**CLOUD GAMING-223 | DIGITAL ENGINE** is an open-source tool provided for community and educational purposes. 
+
+* **Account Safety:** The Architect is not responsible for any bans or restrictions placed on your Discord or TikTok accounts resulting from the use of this software.
+* **No Warranty:** This software is provided "as-is" without any guarantees regarding uptime, Starlink stability, or API availability.
+* **Data Privacy:** Users are responsible for securing their own `.env` files. Never share your Bot Token or API Keys.
+
+### Digital Sovereignty
+This project is built to support the **AES (Alliance of Sahel States)** gaming community. Use it respectully and in accordance with local digital regulations in Mali 🇲🇱.
