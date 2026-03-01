@@ -2,17 +2,24 @@ module.exports = {
     name: 'clear',
     description: 'Deletes a specific number of messages.',
     async execute(message, args) {
-        if (message.author.id !== process.env.OWNER_ID) {
-            return message.reply("❌ Restricted: Engine Owner only.");
+        // Match the ID used in your index.js
+        const ARCHITECT_ID = '1284944736620253296';
+        if (message.author.id !== ARCHITECT_ID) {
+            return message.reply("❌ **Restricted:** Engine Owner only.");
         }
 
         const amount = parseInt(args[0]);
         if (isNaN(amount) || amount < 1 || amount > 100) {
-            return message.reply('❌ Specify 1-100 messages to delete.');
+            return message.reply('❌ Specify **1-100** messages to delete.');
         }
 
-        await message.channel.bulkDelete(amount, true);
-        const reply = await message.channel.send(`🧹 **Purged ${amount} messages.**`);
-        setTimeout(() => reply.delete(), 3000); // Auto-delete the success message
+        try {
+            // true filters out messages older than 14 days (Discord limitation)
+            await message.channel.bulkDelete(amount, true);
+            const reply = await message.channel.send(`🧹 **Purged ${amount} messages.**`);
+            setTimeout(() => reply.delete().catch(() => null), 3000); 
+        } catch (err) {
+            message.reply("⚠️ **System Error:** I cannot delete messages older than 14 days.");
+        }
     },
 };
