@@ -1,36 +1,47 @@
 const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+
+const dbPath = path.join(__dirname, '../database.json');
 
 module.exports = {
     name: 'setgame',
-    description: 'Sets your game, rank, and stats on your profile',
+    description: 'Permanently sets your game and stats',
     async execute(message, args) {
-        // Check if they actually typed something
         if (!args.length) {
-            return message.reply('❌ **Format:** `,setgame Game Name | Rank | Extra Stats`');
+            return message.reply('❌ **Format:** `,setgame Game | Rank | Stats`');
         }
 
-        // Join args and split by the pipe symbol "|"
+        // 1. Parse the input
         const details = args.join(' ').split('|').map(item => item.trim());
-        
-        const gameName = details[0] || "Unknown Game";
-        const rank = details[1] || "Unranked";
-        const stats = details[2] || "No stats provided";
+        const gameData = {
+            game: details[0] || "Unknown",
+            rank: details[1] || "Unranked",
+            stats: details[2] || "N/A"
+        };
 
+        // 2. Read the current database
+        let database = {};
+        if (fs.existsSync(dbPath)) {
+            database = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+        }
+
+        // 3. Save user data using their Discord ID
+        database[message.author.id] = gameData;
+        fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
+
+        // 4. Send Success Embed
         const embed = new EmbedBuilder()
             .setColor('#00ffcc')
-            .setTitle('🛰️ DIGITAL ENGINE | DATA UPDATED')
+            .setTitle('💾 DATA ARCHIVED')
             .setThumbnail(message.author.displayAvatarURL())
             .addFields(
-                { name: '🎮 Main Game', value: `**${gameName}**`, inline: true },
-                { name: '🏆 Current Rank', value: `*${rank}*`, inline: true },
-                { name: '📊 Combat Stats', value: `\`${stats}\``, inline: false }
+                { name: '🎮 Game', value: gameData.game, inline: true },
+                { name: '🏆 Rank', value: gameData.rank, inline: true },
+                { name: '📊 Stats', value: `\`${gameData.stats}\``, inline: false }
             )
-            .setFooter({ text: `Updated by ${message.author.username}` })
-            .setTimestamp();
+            .setFooter({ text: 'Data saved to Digital Engine Core' });
 
         await message.reply({ embeds: [embed] });
-        
-        // Console log for the Architect (You)
-        console.log(`[LOG]: ${message.author.tag} updated profile to ${gameName}.`);
     },
 };
