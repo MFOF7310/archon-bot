@@ -3,54 +3,44 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'update',
-    aliases: ['up', 'sync'], // Quick shortcuts
-    description: 'Syncs with the public GitHub repo and hot-reloads plugins.',
+    aliases: ['up', 'sync'],
+    description: 'Syncs the bot with the Master GitHub repo.',
     async execute(message, args, client) {
-        // 🔒 SECURITY: Replace with your actual Discord User ID
-        if (message.author.id !== "YOUR_DISCORD_ID") return;
+        // 🛡️ SMART SECURITY: Only the person who owns the Bot Token can run this
+        const app = await client.application.fetch();
+        if (message.author.id !== app.owner.id) {
+            return message.reply("⛔ **Access Denied:** Only the Bot Owner can trigger a system sync.");
+        }
 
-        // 🔗 CONFIGURATION (Change these to match your GitHub)
-        const user = "YourGitHubUsername";
-        const repo = "YourRepoName";
+        const user = "MFOF7310"; // Your Master GitHub
+        const repo = "cloud-gaming-223-digital-engine";
         const url = `https://raw.githubusercontent.com/${user}/${repo}/main/version.txt`;
 
-        const msg = await message.reply("📡 **Engine: Connecting to Public GitHub Node...**");
+        const msg = await message.reply("📡 **Engine: Connecting to Master Repository...**");
 
         try {
             const res = await axios.get(url);
             const remoteVersion = res.data.toString().trim();
 
-            // Check if already updated
             if (remoteVersion === client.version) {
-                return msg.edit(`✅ **No Update Required.** Current: \`v${client.version}\` is optimal.`);
+                return msg.edit(`✅ **Up-to-Date.** Current: \`v${client.version}\`.`);
             }
 
-            // If a new version exists
-            await msg.edit(`📥 **New Patch Found: v${remoteVersion}**\nApplying hot-reload to all modules...`);
+            await msg.edit(`📥 **Update Detected: v${remoteVersion}**\nHot-reloading modules...`);
 
-            // ⚡ This calls the GLOBAL function from your index.js
             client.loadPlugins(); 
-            
-            // Update the local version tag
-            const oldVersion = client.version;
             client.version = remoteVersion;
 
             const upEmbed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle('🚀 ENGINE UPGRADED')
-                .addFields(
-                    { name: 'Previous State', value: `\`v${oldVersion}\``, inline: true },
-                    { name: 'Current State', value: `\`v${remoteVersion}\``, inline: true },
-                    { name: 'Status', value: 'All plugins reloaded successfully.' }
-                )
-                .setFooter({ text: 'Cloud Gaming-223 | Zero-Downtime Update' })
-                .setTimestamp();
+                .setTitle('🚀 ENGINE SYNCED')
+                .setDescription(`Successfully updated to the latest Master Version: **v${remoteVersion}**`)
+                .setFooter({ text: 'Digital Engine | Global Update System' });
 
             await msg.edit({ content: '', embeds: [upEmbed] });
 
         } catch (error) {
-            console.error(error);
-            msg.edit("❌ **Sync Failed:** Could not reach GitHub. Verify repo/file names.");
+            msg.edit("❌ **Sync Failed:** Could not reach the Master Node.");
         }
     }
 };
