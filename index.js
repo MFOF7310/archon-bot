@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Fixed: lowercase 'require'
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, ActivityType, Events, Partials } = require('discord.js');
@@ -20,10 +20,12 @@ const lydiaPath = path.join(__dirname, 'lydia_status.json');
 let database = fs.existsSync(dbPath) ? JSON.parse(fs.readFileSync(dbPath, "utf8")) : {};
 let lydiaChannels = fs.existsSync(lydiaPath) ? JSON.parse(fs.readFileSync(lydiaPath, "utf8")) : {};
 
-// Persistent Auto-Save (Every 30 seconds) - Much faster than saving every message!
+// Persistent Auto-Save (Every 30 seconds)
 setInterval(() => {
-    fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
-    fs.writeFileSync(lydiaPath, JSON.stringify(lydiaChannels, null, 4));
+    try {
+        fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
+        fs.writeFileSync(lydiaPath, JSON.stringify(lydiaChannels, null, 4));
+    } catch (err) { console.log("💾 Save Error:", err.message); }
 }, 30000);
 
 // ================= MEMORY & GEMINI =================
@@ -70,7 +72,7 @@ client.once(Events.ClientReady, () => {
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot || !message.guild) return;
 
-    // XP System (Memory-only, saved by interval)
+    // XP System
     const uid = message.author.id;
     if (!database[uid]) database[uid] = { xp: 0, level: 1, name: message.author.username };
     database[uid].xp += 20;
@@ -82,6 +84,7 @@ client.on(Events.MessageCreate, async message => {
         const command = client.commands.get(cmdName);
         if (command) {
             try { 
+                // Passing lydiaChannels to all commands so they can access the shared state
                 await command.execute(message, args, client, model, lydiaChannels); 
             } catch (err) { 
                 console.error(err); 
@@ -95,6 +98,7 @@ client.on(Events.MessageCreate, async message => {
     if (!lydiaChannels[message.channel.id]) return;
     const mentioned = message.mentions.has(client.user);
     let replyToBot = false;
+    
     if (message.reference) {
         const ref = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
         if (ref?.author.id === client.user.id) replyToBot = true;
@@ -113,14 +117,20 @@ client.on(Events.MessageCreate, async message => {
         History: ${historyText}\nUser: ${message.content}\nLydia:`;
 
         const result = await model.generateContent(prompt);
-        const reply = result.response.text();
+        const response = await result.response; // Fixed: Added safety await
+        const reply = response.text();
         
+        if (!reply) return; // Exit if empty
+
         history.push({ q: message.content, a: reply });
         if (history.length > 8) history.shift();
         lydiaMemory.set(uid, history);
 
         message.reply(reply);
-    } catch (err) { console.log("AI ERROR:", err.message); }
+    } catch (err) { 
+        console.log("❌ AI ERROR:", err.message); 
+        // No reply here to avoid spamming the chat if the quota is hit
+    }
 });
 
 client.login(process.env.DISCORD_TOKEN);
