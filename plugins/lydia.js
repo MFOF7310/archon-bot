@@ -1,36 +1,37 @@
 const fs = require('fs');
 const path = require('path');
-const statusPath = path.join(__dirname, '../lydia_status.json');
+// Point to the same file the index uses
+const lydiaPath = path.join(__dirname, '../lydia_status.json');
 
 module.exports = {
     name: 'lydia',
     category: 'AI',
-    description: 'Toggle Lydia Auto-AI mode (Reply-based).',
+    description: 'Toggle Lydia Auto-AI mode in this channel.',
 
-    async execute(message, args, client, model) {
-        // 1. Check Permissions (Architect or Admin only)
-        const ARCHITECT_ID = process.env.OWNER_ID;
-        if (message.author.id !== ARCHITECT_ID && !message.member.permissions.has('Administrator')) {
+    async execute(message, args, client) {
+        // Permission Check: Architect (from .env) or Server Admin
+        const isArchitect = message.author.id === process.env.OWNER_ID;
+        const isAdmin = message.member.permissions.has('Administrator');
+
+        if (!isArchitect && !isAdmin) {
             return message.reply("❌ **Restricted:** Only the Architect or Admins can toggle Lydia.");
         }
 
-        // 2. Load Status Database
         let statusDB = {};
-        if (fs.existsSync(statusPath)) {
-            statusDB = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+        if (fs.existsSync(lydiaPath)) {
+            try { statusDB = JSON.parse(fs.readFileSync(lydiaPath, 'utf8')); } catch (e) { statusDB = {}; }
         }
 
         const channelID = message.channel.id;
 
-        // 3. Toggle Logic (ON/OFF)
         if (!statusDB[channelID]) {
             statusDB[channelID] = true;
-            fs.writeFileSync(statusPath, JSON.stringify(statusDB, null, 4));
-            return message.reply("🧬 **Lydia System:** [ONLINE] - *I will now respond to replies in this channel.*");
+            fs.writeFileSync(lydiaPath, JSON.stringify(statusDB, null, 4));
+            return message.reply("🧬 **Lydia System:** [ONLINE]\n*I will now auto-reply to any message you reply to me with.*");
         } else {
             delete statusDB[channelID];
-            fs.writeFileSync(statusPath, JSON.stringify(statusDB, null, 4));
-            return message.reply("💤 **Lydia System:** [OFFLINE] - *Powering down...*");
+            fs.writeFileSync(lydiaPath, JSON.stringify(statusDB, null, 4));
+            return message.reply("💤 **Lydia System:** [OFFLINE]\n*Auto-reply disabled for this channel.*");
         }
     },
 };
