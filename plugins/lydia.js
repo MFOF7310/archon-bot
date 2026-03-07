@@ -5,7 +5,7 @@ const lydiaPath = path.join(__dirname, '../lydia_status.json');
 module.exports = {
     name: 'lydia',
     category: 'AI',
-    description: 'Toggle Lydia Auto-AI mode (on/off).',
+    description: 'Toggle Lydia Auto-AI mode.',
     async execute(message, args, client) {
         const choice = args[0]?.toLowerCase();
 
@@ -17,13 +17,13 @@ module.exports = {
         if (choice === 'on') {
             statusDB[message.channel.id] = true;
             fs.writeFileSync(lydiaPath, JSON.stringify(statusDB, null, 4));
-            return message.reply("🧬 **Lydia Activated**\n*Only works from reply msg.*");
+            return message.reply("🧬 **Lydia Activated**\n*I am now monitoring replies in this channel.*");
         } 
         
         if (choice === 'off') {
             delete statusDB[message.channel.id];
             fs.writeFileSync(lydiaPath, JSON.stringify(statusDB, null, 4));
-            return message.reply("💤 **Lydia Deactivated**\n*Only works from reply msg.*");
+            return message.reply("💤 **Lydia Deactivated**\n*Auto-replies are now off.*");
         }
 
         return message.reply("❓ Usage: `,lydia on` or `,lydia off`").then(m => setTimeout(() => m.delete(), 5000));
