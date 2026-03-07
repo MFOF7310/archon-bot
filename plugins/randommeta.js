@@ -2,46 +2,44 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'randommeta',
-    aliases: ['meta', 'codm'], // Added aliases for easier use
+    aliases: ['meta', 'codm'],
     description: 'Get a random CODM meta weapon loadout',
 
-    // Match these arguments to your index.js: (message, args, client, model, lydiaChannels, database)
     async execute(message, args) {
 
         const metaWeapons = [
             {
                 name: "AK117",
-                description: "🔥 High fire rate AR. Best for mid-range dominance.\n**Attachments:** OWC Marksman, No Stock, OWC Laser, 40 Round Mag, Granulated Grip.",
-                image: "https://zilliongamer.com/uploads/codm/weapons/assault-rifle/ak117-cod-mobile.jpg"
-            },
-            {
-                name: "FFAR 1",
-                description: "⚡ Close-range beast. Shreds through enemies fast.\n**Attachments:** Agency Suppressor, Task Force Barrel, Raider Stock, 38 Rnd Speed Mag.",
-                image: "https://zilliongamer.com/uploads/codm/weapons/assault-rifle/ffar1/ffar1-cod-mobile.jpg"
-            },
-            {
-                name: "KRM-262",
-                description: "💀 The King of Shotguns. Insane hip-fire accuracy.\n**Attachments:** Marauder Suppressor, Extended Barrel (+2), No Stock, OWC Laser, Tube Plus.",
-                image: "https://zilliongamer.com/uploads/codm/weapons/shotgun/krm-262-cod-mobile.jpg"
+                description: "🔥 **Tier: S** | High fire rate AR. Best for mid-range dominance.\n**Build:** OWC Marksman, No Stock, OWC Laser, 40 Round Mag, Granulated Grip.",
+                image: "https://static.wikia.nocookie.net/callofduty/images/5/5e/AK117_Menu_Icon_CODM.png"
             },
             {
                 name: "DL Q33",
-                description: "🎯 The Sniper King. Consistent one-tap potential.\n**Attachments:** MIP Light Barrel, Combat Stock, OWC Laser, Maevwat Omega Mag.",
-                image: "https://zilliongamer.com/uploads/codm/weapons/sniper-rifle/dl-q33-cod-mobile.jpg"
+                description: "🎯 **Tier: S** | The Sniper King. Consistent one-tap potential.\n**Build:** MIP Light Barrel, Combat Stock, OWC Laser, Maevwat Omega Mag.",
+                image: "https://static.wikia.nocookie.net/callofduty/images/d/d3/DL_Q33_Menu_Icon_CODM.png"
+            },
+            {
+                name: "KRM-262",
+                description: "💀 **Tier: A+** | The King of Shotguns. Insane hip-fire accuracy.\n**Build:** Marauder Suppressor, Extended Barrel (+2), No Stock, OWC Laser.",
+                image: "https://static.wikia.nocookie.net/callofduty/images/3/30/KRM-262_Menu_Icon_CODM.png"
             },
             {
                 name: "BP50",
-                description: "🏆 Current S-Tier Meta. Unbeatable TTK.\n**Attachments:** Silencer Co. Suppressor, Rapid Fire Barrel, Folded Stock, 60 Round Mag.",
-                image: "https://zilliongamer.com/uploads/codm/weapons/assault-rifle/bp50/bp50-cod-mobile.jpg"
+                description: "🏆 **Tier: God** | Current Season Meta. Unbeatable TTK.\n**Build:** Silencer Co. Suppressor, Rapid Fire Barrel, Folded Stock, 60 Round Mag.",
+                image: "https://static.wikia.nocookie.net/callofduty/images/f/f7/BP50_Menu_Icon_CODM.png"
+            },
+            {
+                name: "FFAR 1",
+                description: "⚡ **Tier: S** | Close-range beast. Shreds through enemies fast.\n**Build:** Agency Suppressor, Task Force Barrel, Raider Stock, 38 Rnd Speed Mag.",
+                image: "https://static.wikia.nocookie.net/callofduty/images/c/c5/FFAR_1_Menu_Icon_CODM.png"
             }
         ];
 
         const randomWeapon = metaWeapons[Math.floor(Math.random() * metaWeapons.length)];
 
         const embed = new EmbedBuilder()
-            .setColor('#f1c40f') // Gold color for Meta
+            .setColor('#f1c40f') 
             .setTitle(`🔥 CG-223 | Random META Loadout`)
-            .setThumbnail('https://i.imgur.com/B9O08G8.png') // Optional: Small icon
             .addFields(
                 { name: "Weapon Model", value: `**${randomWeapon.name}**`, inline: true },
                 { name: "Build Details", value: randomWeapon.description }
