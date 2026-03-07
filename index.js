@@ -4,13 +4,14 @@ const path = require('path');
 const { Client, Collection, ActivityType, Events, Partials } = require('discord.js');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 
-// ================= CLIENT =================
+// ================= CLIENT & VERSION =================
 const client = new Client({
     intents: [1, 512, 32768, 2, 4096, 16384],
     partials: [Partials.Channel, Partials.Message, Partials.User]
 });
 
 client.commands = new Collection();
+client.version = "1.0.0"; // ✨ Current Engine Version
 const PREFIX = process.env.PREFIX || ",";
 
 // ================= PATHS & DB =================
@@ -41,22 +42,31 @@ const model = genAI.getGenerativeModel({
     ]
 });
 
-// ================= PLUGIN LOADER =================
-function loadPlugins() {
+// ================= PLUGIN LOADER (NOW GLOBAL) =================
+client.loadPlugins = function() {
     client.commands.clear();
     const pluginsFolder = path.join(__dirname, 'plugins');
     if (!fs.existsSync(pluginsFolder)) fs.mkdirSync(pluginsFolder);
     const files = fs.readdirSync(pluginsFolder).filter(f => f.endsWith(".js"));
+    
     for (const file of files) {
         try {
-            delete require.cache[require.resolve(`./plugins/${file}`)];
-            const plugin = require(`./plugins/${file}`);
-            if (plugin.name) client.commands.set(plugin.name, plugin);
+            const filePath = path.resolve(__dirname, 'plugins', file);
+            delete require.cache[require.resolve(filePath)]; // Clear cache for live updates
+            const plugin = require(filePath);
+            if (plugin.name) {
+                client.commands.set(plugin.name, plugin);
+                // ✨ Add Alias Support
+                if (plugin.aliases) {
+                    plugin.aliases.forEach(alias => client.commands.set(alias, plugin));
+                }
+            }
         } catch (err) { console.log(`❌ PLUGIN ERROR (${file}):`, err.message); }
     }
-    console.log(`🚀 ${client.commands.size} plugins loaded`);
-}
-loadPlugins();
+    console.log(`🚀 ${client.commands.size} plugins loaded | Engine v${client.version}`);
+};
+
+client.loadPlugins(); // Initial Load
 
 // ================= EVENTS =================
 client.once(Events.ClientReady, () => {
@@ -79,27 +89,30 @@ client.on(Events.MessageCreate, async message => {
             xp: 0, 
             level: 1, 
             name: message.author.username,
-            gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } // Safety initialization
+            gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } 
         };
     }
 
     database[uid].xp += 20;
 
-    // Level up check (Every 1000 XP)
     let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
     if (nextLevel > database[uid].level) {
         database[uid].level = nextLevel;
-        message.reply(`🎊 **LEVEL UP!** You have reached **Level ${nextLevel}**, Agent ${message.author.username}.`);
+        message.reply(`🎊 **LEVEL UP!** You are now **Level ${nextLevel}**, Agent ${message.author.username}.`);
     }
 
     // ================= COMMAND SYSTEM =================
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
+        
+        // ✨ Find command by name or alias
         const command = client.commands.get(cmdName);
+
         if (command) {
             try { 
-                await command.execute(message, args, client, model, lydiaChannels); 
+                // ✨ Pass database as the 6th argument for XP/Stats plugins
+                await command.execute(message, args, client, model, lydiaChannels, database); 
             } catch (err) { 
                 console.error(err); 
                 message.reply("⚠️ Command error."); 
