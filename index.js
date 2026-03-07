@@ -2,22 +2,32 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, ActivityType, Events, Partials, EmbedBuilder } = require('discord.js');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 
-// --- 1. SYSTEM CONFIG & PATHS ---
+// --- 1. SYSTEM CONFIG ---
 const client = new Client({ 
     intents: [1, 512, 32768, 2, 4096, 16384],
     partials: [Partials.Channel, Partials.Message, Partials.User] 
 });
 
 client.commands = new Collection();
+const lydiaHistory = new Map();
 const PREFIX = process.env.PREFIX || ',';
 const ARCHITECT_ID = process.env.OWNER_ID; 
 const dbPath = path.join(__dirname, 'database.json');
 const lydiaPath = path.join(__dirname, 'lydia_status.json');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+// UPDATED: Added safety settings to prevent the "Silent Block"
+const model = genAI.getGenerativeModel({ 
+    model: "gemini-2.0-flash",
+    safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    ]
+});
 
 // --- 2. PLUGIN LOADER ---
 const loadPlugins = () => {
@@ -46,16 +56,6 @@ client.once(Events.ClientReady, async () => {
         });
         index = (index + 1) % statusMessages.length;
     }, 10000);
-
-    try {
-        if (ARCHITECT_ID) {
-            const architect = await client.users.fetch(ARCHITECT_ID);
-            const bootEmbed = new EmbedBuilder()
-                .setColor('#00ffcc').setTitle('🛰️ SYSTEM ONLINE')
-                .setDescription(`**Digital Engine V2.7.0** operational.\n📊 **Plugins:** ${client.commands.size}`).setTimestamp();
-            await architect.send({ embeds: [bootEmbed] });
-        }
-    } catch (err) { console.log(`ℹ️ Note: Could not DM Architect.`); }
 });
 
 // --- 4. MESSAGE HANDLER ---
@@ -76,35 +76,50 @@ client.on(Events.MessageCreate, async (message) => {
     }
     fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
 
-    // B. LYDIA AUTO-AI LOGIC (The Personalized Heart)
+    // B. LYDIA AUTO-AI LOGIC
     let lydiaChannels = {};
     if (fs.existsSync(lydiaPath)) {
         try { lydiaChannels = JSON.parse(fs.readFileSync(lydiaPath, 'utf8')); } catch(e) {}
     }
 
-    // Trigger only if Channel is Active, it's a Reply, and NOT a command
     if (lydiaChannels[message.channel.id] && message.reference && !message.content.startsWith(PREFIX)) {
         try {
             const refMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
-            
-            // Only reply if user is replying TO the bot
             if (refMsg && refMsg.author.id === client.user.id) {
                 await message.channel.sendTyping();
 
                 const isArchitect = message.author.id === ARCHITECT_ID;
                 const userName = message.member?.displayName || message.author.username;
                 
-                // Construct the Personalized Personality
-                const identityContext = isArchitect 
-                    ? `You are talking to your ARCHITECT. Be extremely loyal and call him Architect ${userName}.` 
-                    : `You are talking to ${userName}. Address them by their name and be helpful.`;
+                let userHistory = lydiaHistory.get(uid) || [];
+                const historySnapshot = userHistory.map(h => `User: ${h.q}\nLydia: ${h.a}`).join("\n");
 
-                const prompt = `${identityContext}\nPrevious Message: "${refMsg.content}"\nUser Reply: "${message.content}"\nLydia:`;
+                const identityPrompt = isArchitect 
+                    ? `You are talking to your ARCHITECT. Be loyal and call him Architect ${userName}.` 
+                    : `You are talking to ${userName}. Address them by name and be helpful.`;
+
+                const prompt = `${identityPrompt}\n\nHistory:\n${historySnapshot}\n\nContext: "${refMsg.content}"\nUser: "${message.content}"\nLydia:`;
                 
-                const result = await model.generateContent(prompt);
-                return message.reply(result.response.text());
+                // Set a timeout so it doesn't hang forever
+                const result = await Promise.race([
+                    model.generateContent(prompt),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
+                ]);
+
+                const aiResponse = result.response.text();
+
+                if (!aiResponse) throw new Error("Empty Response");
+
+                userHistory.push({ q: message.content, a: aiResponse });
+                if (userHistory.length > 3) userHistory.shift();
+                lydiaHistory.set(uid, userHistory);
+
+                return message.reply(aiResponse);
             }
-        } catch (err) { console.error("Lydia Error:", err); }
+        } catch (err) { 
+            console.error("Lydia Error:", err.message);
+            // Don't reply if it's just a timeout to keep console clean
+        }
     }
 
     // C. COMMAND SYSTEM
