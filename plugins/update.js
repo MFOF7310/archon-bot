@@ -1,56 +1,66 @@
-const axios = require('axios');
+const { translate } = require('google-translate-api-x');
 const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
-    name: 'update',
-    aliases: ['up', 'sync'], // Quick shortcuts
-    description: 'Syncs with the public GitHub repo and hot-reloads plugins.',
-    async execute(message, args, client) {
-        // 🔒 SECURITY: Replace with your actual Discord User ID
-        if (message.author.id !== "YOUR_DISCORD_ID") return;
+    name: 'trt',
+    aliases: ['t', 'trans'], // Shortcuts enabled by your new index.js
+    description: 'Universal Translator. Use "cn" for Chinese and "bm" for Bambara.',
+    category: 'Utility',
+    async execute(message, args) {
+        // 1. Setup Language & Shortcuts
+        let targetLang = args[0]?.toLowerCase();
+        let text = args.slice(1).join(' ');
 
-        // 🔗 CONFIGURATION (Change these to match your GitHub)
-        const user = "YourGitHubUsername";
-        const repo = "YourRepoName";
-        const url = `https://raw.githubusercontent.com/${user}/${repo}/main/version.txt`;
+        if (!targetLang) {
+            return message.reply('🛰️ **AES TRANSLATOR**\nUsage: `,trt [lang] [text]`\nExample: `,trt cn Hello`');
+        }
 
-        const msg = await message.reply("📡 **Engine: Connecting to Public GitHub Node...**");
+        // Mapping shortcuts to official ISO codes
+        const shortcuts = {
+            'cn': 'zh-CN',  // Your request
+            'jp': 'ja',     // Japanese
+            'kr': 'ko',     // Korean
+            'bm': 'bm'      // Bambara (Mali 🇲🇱)
+        };
+
+        if (shortcuts[targetLang]) targetLang = shortcuts[targetLang];
+
+        // 2. Handle Replies
+        if (!text && message.reference) {
+            try {
+                const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+                text = repliedMsg.content;
+            } catch (err) {
+                return message.reply("⚠️ **System Error:** Cannot reach the target message.");
+            }
+        }
+
+        if (!text) return message.reply('💡 **Logic Error:** Provide text or reply to a message.');
 
         try {
-            const res = await axios.get(url);
-            const remoteVersion = res.data.toString().trim();
-
-            // Check if already updated
-            if (remoteVersion === client.version) {
-                return msg.edit(`✅ **No Update Required.** Current: \`v${client.version}\` is optimal.`);
-            }
-
-            // If a new version exists
-            await msg.edit(`📥 **New Patch Found: v${remoteVersion}**\nApplying hot-reload to all modules...`);
-
-            // ⚡ This calls the GLOBAL function from your index.js
-            client.loadPlugins(); 
+            await message.channel.sendTyping();
             
-            // Update the local version tag
-            const oldVersion = client.version;
-            client.version = remoteVersion;
+            const res = await translate(text, { to: targetLang });
 
-            const upEmbed = new EmbedBuilder()
+            const trtEmbed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle('🚀 ENGINE UPGRADED')
+                .setAuthor({ name: 'DIGITAL ENGINE TRANSLATION', iconURL: message.client.user.displayAvatarURL() })
                 .addFields(
-                    { name: 'Previous State', value: `\`v${oldVersion}\``, inline: true },
-                    { name: 'Current State', value: `\`v${remoteVersion}\``, inline: true },
-                    { name: 'Status', value: 'All plugins reloaded successfully.' }
+                    { 
+                        name: `📥 Source [${res.from.language.iso.toUpperCase()}]`, 
+                        value: `\`\`\`${text.substring(0, 500)}\`\`\`` 
+                    },
+                    { 
+                        name: `📤 Target [${targetLang.toUpperCase()}]`, 
+                        value: `\`\`\`${res.text.substring(0, 500)}\`\`\`` 
+                    }
                 )
-                .setFooter({ text: 'Cloud Gaming-223 | Zero-Downtime Update' })
-                .setTimestamp();
+                .setFooter({ text: 'Cloud Gaming-223 | AES-Link v2.6' });
 
-            await msg.edit({ content: '', embeds: [upEmbed] });
+            return message.reply({ embeds: [trtEmbed] });
 
         } catch (error) {
-            console.error(error);
-            msg.edit("❌ **Sync Failed:** Could not reach GitHub. Verify repo/file names.");
+            return message.reply(`❌ **Invalid Node:** \`${targetLang}\` is not a valid language code.`);
         }
     }
 };
