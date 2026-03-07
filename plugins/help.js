@@ -2,24 +2,33 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'help',
+    aliases: ['h', 'cmds'],
     description: 'Displays the full list of Digital Engine modules.',
+    category: 'System', // This will put it under the 📡 icon
     async execute(message, args, client) {
         const prefix = process.env.PREFIX || ',';
         
-        // CASE 1: Specific Command Info (e.g. ,help status)
+        // CASE 1: Specific Command Info
         if (args[0]) {
-            const command = client.commands.get(args[0].toLowerCase());
+            const cmdName = args[0].toLowerCase();
+            // Look for command or check if it's an alias
+            const command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
+            
             if (!command) return message.reply("❌ **Module not found in the database.**");
 
             const detailEmbed = new EmbedBuilder()
                 .setColor('#3498db')
                 .setTitle(`🛠️ Module: ${command.name.toUpperCase()}`)
                 .addFields(
-                    { name: '📝 Description', value: command.description || 'No description provided.' },
+                    { name: '📝 Description', value: command.description || 'No description.' },
                     { name: '📂 Category', value: command.category || 'General', inline: true },
                     { name: '⌨️ Usage', value: `\`${prefix}${command.name}\``, inline: true }
                 )
                 .setFooter({ text: 'CLOUD_GAMING System Diagnostics' });
+
+            if (command.aliases) {
+                detailEmbed.addFields({ name: '🔗 Shortcuts', value: command.aliases.map(a => `\`${a}\``).join(', '), inline: true });
+            }
 
             return message.reply({ embeds: [detailEmbed] });
         }
@@ -34,21 +43,21 @@ module.exports = {
             .setTitle('🖥️ SYSTEM MAINBOARD')
             .setThumbnail(client.user.displayAvatarURL())
             .setDescription(
-                `**Engine Status:** 🟢 STABLE (v2.6.0)\n` +
+                `**Engine Status:** 🟢 STABLE (v${client.version})\n` +
                 `**Region:** West Africa | Bamako 🇲🇱\n` +
                 `**Modules Detected:** \`${client.commands.size}\` Active`
             )
             .setFooter({ text: `Type ${prefix}help [command] for details | Built by Architect` })
             .setTimestamp();
 
-        // Organize categories with better icons
         const categories = {};
         const icons = {
             'AI': '🧠',
-            'General': '⚙️',
+            'Utility': '🛠️',
             'Gaming': '🎮',
             'Admin': '🛡️',
-            'System': '📡'
+            'System': '📡',
+            'General': '⚙️'
         };
 
         client.commands.forEach(cmd => {
@@ -61,7 +70,7 @@ module.exports = {
             const icon = icons[category] || '📁';
             helpEmbed.addFields({
                 name: `${icon} ${category.toUpperCase()}`,
-                value: commandList.join(' • '), // Clean bullet separation
+                value: commandList.join(' • '),
                 inline: false
             });
         }
