@@ -16,9 +16,9 @@ const client = new Client({
 
 client.commands = new Collection();
 const PREFIX = process.env.PREFIX || ',';
-// UPDATED: Now pulls from .env for flexibility
 const ARCHITECT_ID = process.env.OWNER_ID; 
 const dbPath = path.join(__dirname, 'database.json');
+const lydiaStatusPath = path.join(__dirname, 'lydia_status.json');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -46,7 +46,6 @@ loadPlugins();
 client.once(Events.ClientReady, async () => {
     console.log(`✅ SUCCESS: ${client.user.tag} is Online.`);
     
-    // UPDATED: Rotating Status Billboard
     const statusMessages = [
         "🛰️ Monitoring CLOUD_GAMING-223",
         "🛠️ Engine Version: 5.3.4",
@@ -75,7 +74,7 @@ client.once(Events.ClientReady, async () => {
     } catch (err) { console.log(`ℹ️ Note: Could not DM Architect.`); }
 });
 
-// --- 4. MESSAGE HANDLER (XP + COMMANDS) ---
+// --- 4. MESSAGE HANDLER (XP + LYDIA + COMMANDS) ---
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild) return;
 
@@ -101,7 +100,28 @@ client.on(Events.MessageCreate, async (message) => {
     }
     fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
 
-    // B. COMMAND SYSTEM
+    // B. LYDIA AUTO-AI LOGIC (Triggered on Reply)
+    let lydiaChannels = {};
+    if (fs.existsSync(lydiaStatusPath)) {
+        try { lydiaChannels = JSON.parse(fs.readFileSync(lydiaStatusPath, 'utf8')); } catch(e) {}
+    }
+
+    if (lydiaChannels[message.channel.id] && !message.content.startsWith(PREFIX)) {
+        // Check if the message is a reply to the BOT
+        if (message.reference) {
+            try {
+                const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+                if (repliedMsg.author.id === client.user.id) {
+                    await message.channel.sendTyping();
+                    const prompt = `Context: "${repliedMsg.content}"\nUser says: "${message.content}"\nResponse:`;
+                    const result = await model.generateContent(prompt);
+                    return message.reply(result.response.text());
+                }
+            } catch (err) { console.error("Lydia Error:", err); }
+        }
+    }
+
+    // C. COMMAND SYSTEM
     if (!message.content.startsWith(PREFIX)) return;
 
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
@@ -111,7 +131,6 @@ client.on(Events.MessageCreate, async (message) => {
     if (!command) return;
 
     try {
-        // Pass model and client to allow AI and Dashboard functionality
         await command.execute(message, args, client, model); 
     } catch (error) {
         console.error(`❌ EXECUTION ERROR [${commandName}]:`, error);
