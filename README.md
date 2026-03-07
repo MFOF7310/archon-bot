@@ -1,5 +1,5 @@
 # 🛰️ DIGITAL ENGINE | CG-223 🇲🇱
-**Architect:** [Your Name/Handle]  
+**Architect:** [Cloudgaming223]  
 **Core Model:** Node.js v16+ | Discord.js v14  
 **Status:** Operational / Optimized
 
