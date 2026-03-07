@@ -1,35 +1,39 @@
-const { EmbedBuilder } = require('discord.js');
+const os = require('os');
 
 module.exports = {
     name: 'alive',
-    description: 'Check if the Cloud Gaming-223 engine is online',
-    category: 'System',
+    category: 'SYSTEM',
+    description: 'Check if the Engine is online.',
     async execute(message, args, client) {
-        const uptimeVal = process.uptime();
-        const h = Math.floor(uptimeVal / 3600);
-        const m = Math.floor((uptimeVal % 3600) / 60);
+        try {
+            // 1. Calculations
+            const uptimeVal = process.uptime();
+            const h = Math.floor(uptimeVal / 3600);
+            const m = Math.floor((uptimeVal % 3600) / 60);
+            const s = Math.floor(uptimeVal % 60);
+            
+            // Calculate Latency
+            const msgLatency = Date.now() - message.createdTimestamp;
+            const apiPing = Math.round(client.ws.ping);
 
-        // Accurate RAM Usage (RSS is the total memory allocated)
-        const usedMemory = process.memoryUsage().rss / 1024 / 1024;
-        const loadPercent = Math.min(Math.floor((usedMemory / 512) * 100), 100); 
-        
-        const filledBlocks = Math.floor(loadPercent / 10);
-        const statusBar = "█".repeat(filledBlocks) + "░".repeat(10 - filledBlocks);
+            // 2. Build the ASCII Status Card
+            let aliveCard = "```\n";
+            aliveCard += "╭───────── SYSTEM STATUS ──────────\n";
+            aliveCard += `│ 🟢 STATE   : ACTIVE / ONLINE\n`;
+            aliveCard += `│ ⚡ ENGINE  : CLOUD_GAMING-223\n`;
+            aliveCard += `│ 👤 OWNER   : ${message.author.username}\n`;
+            aliveCard += `│ 📡 LATENCY : ${msgLatency}ms\n`;
+            aliveCard += `│ 🌐 API     : ${apiPing}ms\n`;
+            aliveCard += `│ ⏳ UPTIME  : ${h}h ${m}m ${s}s\n`;
+            aliveCard += `│ 🛠️ VERSION : 2.7.0 (Stable)\n`;
+            aliveCard += "╰──────────────────────────────────\n";
+            aliveCard += "\n      « DIGITAL ENGINE SYNCED »\n";
+            aliveCard += "```";
 
-        const aliveEmbed = new EmbedBuilder()
-            .setColor('#3498db')
-            .setTitle('🛰️ CLOUD GAMING-223 | SYSTEM ONLINE')
-            .setThumbnail(client.user.displayAvatarURL())
-            .addFields(
-                { name: '🌐 Engine Status', value: '`🟢 OPERATIONAL`', inline: true },
-                { name: '🛰️ Network', value: '`AES Digital Node`', inline: true },
-                { name: '⏳ Uptime', value: `\`${h}h ${m}m\``, inline: true },
-                { name: '⚡ System Load', value: `\`[${statusBar}] ${loadPercent}%\`` },
-                { name: '🧠 Total RAM', value: `\`${usedMemory.toFixed(2)} MB\``, inline: false }
-            )
-            .setFooter({ text: 'Cloud Gaming-223 | AES Sovereignty' })
-            .setTimestamp();
+            await message.reply(aliveCard);
 
-        return message.reply({ embeds: [aliveEmbed] });
+        } catch (error) {
+            console.error('Alive Command Error:', error);
+        }
     }
 };
