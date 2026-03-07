@@ -1,15 +1,27 @@
-# 🛰️ CLOUD GAMING-223 | DIGITAL ENGINE V2.7
-> **Powered by Starlink 🛰️ | Optimized for Mali 🇲🇱 | AI-Core: Gemini 2.0 Flash 🧠**
+# 🎮 CLOUD_GAMING-223 | DIGITAL ENGINE
+> **The ultimate Discord utility for the AES Community - Mali 🇲🇱**
 
-The official high-performance Discord engine for the **Cloud Gaming-223** community. Built for speed, gaming competition, and digital sovereignty in the AES region.
+![Engine Banner](./banner.png)
 
-## 🚀 Key Features
-* **🏆 Gaming Leaderboard:** Multi-game support for **CODM, Free Fire, and PUBG**. Track XP and Server Ranks.
-* **🤖 Gemini 2.0 AI:** Advanced conversational intelligence and **Vision Analysis** for image recognition.
-* **🎙️ Smart Bilingual TTS:** Real-time voice synthesis switching between French (🇫🇷/🇲🇱) and English (🇺🇸).
-* **🌐 Global Translator:** Professional translation node supporting 100+ languages.
-* **🛡️ Hardened Security:** Executive Architect Terminal with zero-vulnerability Axios implementation.
-* **📊 Live Dashboard:** Real-time monitoring of Node Health, Latency, and RAM.
+## 🧠 Core Intelligence
+Powered by **Gemini 2.0 Flash**, this engine isn't just a bot—it's a conversational partner. It features a persistent memory system (Lydia) that remembers users and adapts to the server's gaming culture.
+
+## 🚀 Key Modules
+* **📡 Global Sync:** Real-time updates directly from the Master GitHub Repo.
+* **🏆 XP & Ranking:** Automated leveling system with a 100 XP Welcome Bonus.
+* **🎮 Gaming Profiles:** Detailed player cards for CODM and other titles via `,setgame`.
+* **🌍 Universal Translator:** Supports French, English, Chinese, and **Bambara (BM)**.
+* **📊 Live Leaderboards:** Track the top 10 Agents in the engine's database.
+
+## 🛠️ Installation
+1.  **Clone the repo:** `git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git`
+2.  **Install dependencies:** `npm install`
+3.  **Configure Environment:** Create a `.env` file with your `DISCORD_TOKEN`, `PREFIX`, and `GEMINI_API_KEY`.
+4.  **Launch:** `npm start`
+
+---
+**Built by Architect (CG-223) | Optimized for performance on Pterodactyl Nodes.**
+
 
 ## 🔗 Connect with the Architect
 * **🔵 Facebook:** [Official Page](https://www.facebook.com/share/17KysmJrtm/)
