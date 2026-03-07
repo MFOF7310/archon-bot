@@ -2,49 +2,62 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'loadout',
-    description: 'Displays the best loadout for a specific weapon.',
+    description: 'Shows the best CODM loadout for a weapon',
+
     async execute(message, args) {
-        // Check if an argument was provided
-        if (!args[0]) {
-            return message.reply("❌ Please specify a weapon: `AK117`, `BY15`, or `KRM`.");
+
+        if (!args.length) {
+            return message.reply(
+                "❌ Please specify a weapon.\n\nAvailable weapons:\n`AK117` `FFAR1` `BY15` `KRM` `DLQ`"
+            );
         }
 
-        // Convert input to uppercase to avoid case-sensitivity issues
         const weapon = args[0].toUpperCase();
 
-        // Loadout Database (Replace the links with your actual image URLs)
         const loadouts = {
-            'AK117': {
-                description: "A versatile high-stability loadout optimized for mid-range dominance.",
-                image: "YOUR_IMAGE_LINK_FOR_AK117"
+
+            AK117: {
+                description: "🔥 Meta AR build with strong recoil control and fast ADS.",
+                image: "YOUR_AK117_IMAGE_LINK"
             },
-            'BY15': {
-                description: "High-mobility configuration designed for quick 'One-tap' aggressive playstyles.",
-                image: "YOUR_IMAGE_LINK_FOR_BY15"
+
+            FFAR1: {
+                description: "⚡ Extremely fast fire rate AR dominating close-mid range fights.",
+                image: "YOUR_FFAR1_IMAGE_LINK"
             },
-            'KRM': {
-                description: "The ultimate close-quarters build for maximum damage and hip-fire accuracy.",
-                image: "YOUR_IMAGE_LINK_FOR_KRM"
+
+            BY15: {
+                description: "💀 One-tap shotgun setup built for aggressive rushing.",
+                image: "YOUR_BY15_IMAGE_LINK"
+            },
+
+            KRM: {
+                description: "🎯 Deadly close-range shotgun with insane hipfire accuracy.",
+                image: "YOUR_KRM_IMAGE_LINK"
+            },
+
+            DLQ: {
+                description: "🎯 Legendary sniper loadout perfect for quickscoping.",
+                image: "YOUR_DLQ_IMAGE_LINK"
             }
         };
 
         const data = loadouts[weapon];
 
-        // If the weapon is not in our list
         if (!data) {
-            return message.reply("⚠️ Unknown weapon. Available options: `AK117`, `BY15`, or `KRM`.");
+            return message.reply(
+                "⚠️ Unknown weapon.\n\nAvailable weapons:\n`AK117` `FFAR1` `BY15` `KRM` `DLQ`"
+            );
         }
 
-        // Creating the Digital Engine styled Embed
         const embed = new EmbedBuilder()
-            .setColor('#0099ff')
-            .setTitle(`🛠️ Loadout Profile: ${weapon}`)
+            .setColor('#ff9900')
+            .setTitle(`🔫 ${weapon} Best Loadout`)
             .setDescription(data.description)
-            .setImage(data.image) // The weapon image will be displayed here
-            .setFooter({ text: 'Digital Engine Loadout System' })
+            .setImage(data.image)
+            .setFooter({ text: 'CODM Loadout System' })
             .setTimestamp();
 
-        // Send the embed to the channel
         await message.channel.send({ embeds: [embed] });
-    },
+    }
 };
