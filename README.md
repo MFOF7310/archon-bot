@@ -1,27 +1,35 @@
-# 🎮 CLOUD_GAMING-223 | DIGITAL ENGINE
-> **The ultimate Discord utility for the AES Community - Mali 🇲🇱**
+# 🛰️ DIGITAL ENGINE | CG-223 🇲🇱
+**Architect:** [Your Name/Handle]  
+**Core Model:** Node.js v16+ | Discord.js v14  
+**Status:** Operational / Optimized
 
-![Engine Banner](./banner.png)
-
-## 🧠 Core Intelligence
-Powered by **Gemini 2.0 Flash**, this engine isn't just a bot—it's a conversational partner. It features a persistent memory system (Lydia) that remembers users and adapts to the server's gaming culture.
-
-## 🚀 Key Modules
-* **📡 Global Sync:** Real-time updates directly from the Master GitHub Repo.
-* **🏆 XP & Ranking:** Automated leveling system with a 100 XP Welcome Bonus.
-* **🎮 Gaming Profiles:** Detailed player cards for CODM and other titles via `,setgame`.
-* **🌍 Universal Translator:** Supports French, English, Chinese, and **Bambara (BM)**.
-* **📊 Live Leaderboards:** Track the top 10 Agents in the engine's database.
-
-## 🛠️ Installation
-1.  **Clone the repo:** `git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git`
-2.  **Install dependencies:** `npm install`
-3.  **Configure Environment:** Create a `.env` file with your `DISCORD_TOKEN`, `PREFIX`, and `GEMINI_API_KEY`.
-4.  **Launch:** `npm start`
+The **Digital Engine** is a high-performance, modular Discord utility designed for the CODM community and AI-driven interactions. It features a self-healing database, bilingual speech synthesis, and a specialized gaming loadout module.
 
 ---
-**Built by Architect (CG-223) | Optimized for performance on Pterodactyl Nodes.**
 
+## 🛠️ Integrated Modules
+
+### 🤖 Artificial Intelligence (Lydia)
+- **Engine:** BrainShop AI / Google Gemini Hybrid
+- **Context Aware:** Remembers recent conversations in specific "Lydia Channels."
+- **Self-Healing:** Automatically generates `database.json` if missing.
+
+### 🎙️ Smart TTS (Bilingual)
+- **Auto-Detection:** Intelligent switching between **French (FR/ML)** and **English (US)** tones.
+- **Trigger:** Works via `,tts <text>` or by replying to any message.
+- **Output:** High-quality MP3 synthesis.
+
+### 🔫 CODM Tactical Suite
+- **Loadouts:** Search for Meta builds (`AK117`, `FFAR1`, `HS0405`, `KRM`, `DLQ`).
+- **Randomizer:** `,randommeta` picks an S-Tier build for you.
+- **CDN Optimized:** Images hosted on Discord's internal CDN for instant loading.
+
+### 🛡️ System Utilities
+- **Safe Purge:** `,clear` with pinning protection and user-specific filtering.
+- **Dynamic List:** `,list` auto-scans the `/plugins` folder for active modules.
+- **Health Check:** Integrated Ping & RAM monitoring.
+
+---
 
 ## 🔗 Connect with the Architect
 * **🔵 Facebook:** [Official Page](https://www.facebook.com/share/17KysmJrtm/)
@@ -30,12 +38,14 @@ Powered by **Gemini 2.0 Flash**, this engine isn't just a bot—it's a conversat
 * **💬 WhatsApp:** [+1 548 520 0518](https://wa.me/15485200518)
 * **📍 Node Location:** Bamako, Mali 🇲🇱
 
-## 🛠️ Infrastructure & Setup
+## 🚀 Installation & Deployment
+1. **Clone:** `git clone <your-repo-link>`
+2. **Install:** `npm install` (Note: `fs` and `path` are built-in).
+3. **Configure:** Set your `.env` with `TOKEN`, `OWNER_ID`, and `BRAINSHOP_KEY`.
+4. **Boot:** `node index.js`
 
-### 1. Requirements
-* **Node.js:** v18.17.0 or higher.
-* **Hosting:** Pterodactyl / Linux VPS (Optimized for Starlink).
-* **Environment:** `.env` file must be present in root.
+---
+*Developed for the AES Community & Mali Gamers.*
 
 ## ⚠️ Disclaimer & Liability
 
