@@ -6,35 +6,47 @@ const dbPath = path.join(__dirname, '../database.json');
 
 module.exports = {
     name: 'profile',
-    description: 'Check your Digital Engine status',
+    category: 'General',
+    description: 'Check your Digital Engine status, XP, and Game Stats',
     async execute(message, args) {
         const target = message.mentions.users.first() || message.author;
 
-        // Load database data
+        // 1. Load database data
         let database = {};
         if (fs.existsSync(dbPath)) {
-            database = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+            try {
+                database = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+            } catch (err) {
+                console.error("Database Read Error:", err);
+            }
         }
 
-        // Get saved data or use defaults if they haven't set a game yet
-        const userData = database[target.id] || {
-            game: "NOT SET",
-            rank: "Unranked",
-            stats: "No data"
+        // 2. Get User Data or Set Defaults
+        const user = database[target.id] || {
+            name: target.username,
+            xp: 0,
+            level: 1,
+            gaming: { game: "NOT SET", rank: "Unranked", stats: "No data" }
         };
 
+        // 3. Handle cases where user has XP but hasn't run ,setgame yet
+        const gaming = user.gaming || { game: "NOT SET", rank: "Unranked", stats: "No data" };
+
+        // 4. Create the Dashboard Embed
         const embed = new EmbedBuilder()
-            .setColor('#3498db') // Matching the blue in your screenshot
-            .setTitle(`USER PROFILE | ${target.username.toUpperCase()}`)
+            .setColor('#3498db')
+            .setAuthor({ name: 'DIGITAL ENGINE PROFILE', iconURL: client.user.displayAvatarURL() })
+            .setTitle(`${target.username.toUpperCase()}'S STATUS`)
             .setThumbnail(target.displayAvatarURL({ dynamic: true }))
             .addFields(
-                { name: '🕹️ Main Game', value: `**${userData.game}**`, inline: true },
-                { name: '🏆 Rank', value: `*${userData.rank}*`, inline: true },
-                { name: '📊 Game Stats', value: `\`${userData.stats}\``, inline: false },
-                { name: '✨ Level', value: '5', inline: true },
-                { name: '🔥 XP', value: '1,250', inline: true }
+                { name: '✨ Engine Level', value: `\`Lvl ${user.level}\``, inline: true },
+                { name: '🔥 Total XP', value: `\`${user.xp.toLocaleString()}\``, inline: true },
+                { name: '\u200B', value: '\u200B', inline: true }, // Spacer
+                { name: '🕹️ Primary Game', value: `**${gaming.game}**`, inline: true },
+                { name: '🏆 Current Rank', value: `*${gaming.rank}*`, inline: true },
+                { name: '📊 Combat Stats', value: `\`${gaming.stats}\``, inline: false }
             )
-            .setFooter({ text: 'CLOUD GAMING-223 | DIGITAL ENGINE' })
+            .setFooter({ text: 'CLOUD_GAMING-223 | Optimized for Mali 🇲🇱' })
             .setTimestamp();
 
         await message.reply({ embeds: [embed] });
