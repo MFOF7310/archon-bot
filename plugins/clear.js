@@ -1,62 +1,54 @@
 module.exports = {
     name: 'clear',
-    description: 'Delete messages with admin logging.',
+    description: 'Safe delete with pinning protection and user filtering.',
 
     async execute(message, args) {
         const ARCHITECT_ID = process.env.OWNER_ID;
         const isArchitect = message.author.id === ARCHITECT_ID;
         const isAdmin = message.member.permissions.has('Administrator');
 
-        // Permission Check
-        if (!isArchitect && !isAdmin) {
-            const noPerms = await message.reply("❌ **Restricted:** Engine Owner or Admin only.");
-            return setTimeout(() => noPerms.delete().catch(() => null), 5000);
+        if (!isArchitect && !isAdmin) return;
+
+        // 1. Identify if a user was mentioned (for specific deletion)
+        const targetUser = message.mentions.users.first();
+        const amountArg = targetUser ? args[1] : args[0];
+        let amount = parseInt(amountArg);
+
+        if (args[0] !== 'all' && (isNaN(amount) || amount < 1 || amount > 100)) {
+            return message.reply("Usage: `!clear 20` or `!clear @user 20`").then(m => setTimeout(() => m.delete(), 5000));
         }
 
-        let totalDeleted = 0;
-        const targetChannel = message.channel;
-
-        // --- EXECUTION LOGIC ---
         try {
-            if (args[0] === 'all') {
-                let deleted;
-                do {
-                    deleted = await targetChannel.bulkDelete(100, true);
-                    totalDeleted += deleted.size;
-                } while (deleted.size >= 2);
-            } else {
-                const amount = parseInt(args[0]);
-                if (isNaN(amount) || amount < 1 || amount > 200) {
-                    const usage = await message.reply('❌ Usage: `!clear 1-200` or `!clear all`.');
-                    return setTimeout(() => usage.delete().catch(() => null), 5000);
-                }
-                
-                let remaining = amount;
-                while (remaining > 0) {
-                    const deleteAmount = remaining > 100 ? 100 : remaining;
-                    const deletedBatch = await targetChannel.bulkDelete(deleteAmount, true);
-                    totalDeleted += deletedBatch.size;
-                    remaining -= deleteAmount;
-                }
+            // Fetch messages from the channel
+            let messages = await message.channel.messages.fetch({ limit: 100 });
+
+            // SAFETY: Filter out Pinned Messages so they are NEVER deleted
+            messages = messages.filter(m => !m.pinned);
+
+            // FILTER: If a user was mentioned, only keep their messages
+            if (targetUser) {
+                messages = messages.filter(m => m.author.id === targetUser.id);
             }
 
-            // --- SUCCESS MESSAGE ---
-            const successMsg = await targetChannel.send(`🧹 **Purged ${totalDeleted} messages.**`);
-            setTimeout(() => successMsg.delete().catch(() => null), 3000);
+            // Limit the deletion to the amount requested
+            if (args[0] !== 'all') {
+                messages = Array.from(messages.values()).slice(0, amount);
+            }
 
-            // --- LOGGING FEATURE ---
-            // Finds a channel named 'bot-logs' in the server
-            const logChannel = message.guild.channels.cache.find(ch => ch.name === 'bot-logs');
+            // Execute Delete
+            const deleted = await message.channel.bulkDelete(messages, true);
             
+            const reply = await message.channel.send(`✅ Cleaned **${deleted.size}** messages safely (Pinned messages were saved).`);
+            setTimeout(() => reply.delete().catch(() => null), 3000);
+
+            // Log it
+            const logChannel = message.guild.channels.cache.find(ch => ch.name === 'bot-logs');
             if (logChannel) {
-                logChannel.send({
-                    content: `🛡️ **Audit Log: Message Purge**\n**Action by:** ${message.author.tag}\n**Channel:** ${targetChannel}\n**Amount:** ${totalDeleted} messages\n**Type:** ${args[0] === 'all' ? 'Nuclear (All)' : 'Manual'}`
-                });
+                logChannel.send(`🛡️ **Safe Purge** by ${message.author.tag} in ${message.channel}. Target: ${targetUser ? targetUser.tag : 'Everyone'}.`);
             }
 
         } catch (err) {
-            console.error(err);
-            message.reply("⚠️ **Error:** Check permissions or message age (14-day limit).");
+            message.channel.send("⚠️ Could not complete purge. Messages might be older than 14 days.");
         }
     },
 };
