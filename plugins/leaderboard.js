@@ -1,30 +1,15 @@
 const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
-const dbPath = path.join(__dirname, '../database.json');
 
 module.exports = {
     name: 'leaderboard',
+    aliases: ['lb', 'top'],
     category: 'General',
     description: 'Displays the top 10 players in the Digital Engine.',
-    async execute(message, args) {
-        // 1. Check if database exists
-        if (!fs.existsSync(dbPath)) {
-            return message.reply("❌ **Database Offline:** No player data recorded yet.");
-        }
-
-        let database = {};
-        try {
-            database = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-        } catch (err) {
-            return message.reply("⚠️ **Error:** Could not access the database.");
-        }
-
-        // 2. Sort Players (Highest XP first)
+    async execute(message, args, client, model, lydiaChannels, database) {
+        // 1. Convert Database Object to a Sorted Array
         const sorted = Object.entries(database)
-            .filter(([id, data]) => data.xp !== undefined) // Skip any corrupted entries
             .map(([id, data]) => ({ id, ...data }))
+            .filter(user => user.xp !== undefined) 
             .sort((a, b) => b.xp - a.xp)
             .slice(0, 10); 
 
@@ -32,19 +17,25 @@ module.exports = {
             return message.reply("📊 **SYSTEM LOG:** Leaderboard is currently empty.");
         }
 
-        // 3. Format with Medals & Visual Hierarchy
+        // 2. Format the List
         const leaderboardList = sorted.map((user, index) => {
-            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `\`#${index + 1}\``;
-            return `${medal} **${user.name || 'Unknown Agent'}**\n╰ ⚡ Level: \`${user.level}\` | ✨ XP: \`${user.xp.toLocaleString()}\``;
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `**#${index + 1}**`;
+            // Use the stored name but fallback to 'Unknown Agent'
+            const displayName = user.name || "Unknown Agent";
+            return `${medal} **${displayName}**\n╰ ⚡ Lvl: \`${user.level}\` | ✨ XP: \`${user.xp.toLocaleString()}\``;
         }).join('\n\n');
 
+        // 3. Create the Embed
         const embed = new EmbedBuilder()
             .setColor('#f1c40f') 
-            .setAuthor({ name: 'CLOUD_GAMING-223 RANKINGS', iconURL: message.guild.iconURL() })
+            .setAuthor({ 
+                name: 'CLOUD_GAMING-223 RANKINGS', 
+                iconURL: message.guild.iconURL() || client.user.displayAvatarURL() 
+            })
             .setTitle('🏆 DIGITAL ENGINE | TOP AGENTS')
             .setDescription(leaderboardList)
-            .setThumbnail('https://cdn-icons-png.flaticon.com/512/3112/3112946.png') // Trophy icon
-            .setFooter({ text: 'Daily active users climb faster | Bamako 🇲🇱' })
+            .setThumbnail('https://cdn-icons-png.flaticon.com/512/3112/3112946.png')
+            .setFooter({ text: 'Global Ranks | West Africa Node 🇲🇱' })
             .setTimestamp();
 
         await message.reply({ embeds: [embed] });
