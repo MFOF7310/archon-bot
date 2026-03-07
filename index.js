@@ -1,4 +1,4 @@
-require('dotenv').config(); // Fixed: lowercase 'require'
+require('dotenv').config(); 
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, ActivityType, Events, Partials } = require('discord.js');
@@ -72,19 +72,33 @@ client.once(Events.ClientReady, () => {
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot || !message.guild) return;
 
-    // XP System
+    // ================= XP & LEVELING SYSTEM =================
     const uid = message.author.id;
-    if (!database[uid]) database[uid] = { xp: 0, level: 1, name: message.author.username };
+    if (!database[uid]) {
+        database[uid] = { 
+            xp: 0, 
+            level: 1, 
+            name: message.author.username,
+            gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } // Safety initialization
+        };
+    }
+
     database[uid].xp += 20;
 
-    // Command System
+    // Level up check (Every 1000 XP)
+    let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
+    if (nextLevel > database[uid].level) {
+        database[uid].level = nextLevel;
+        message.reply(`🎊 **LEVEL UP!** You have reached **Level ${nextLevel}**, Agent ${message.author.username}.`);
+    }
+
+    // ================= COMMAND SYSTEM =================
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
         const command = client.commands.get(cmdName);
         if (command) {
             try { 
-                // Passing lydiaChannels to all commands so they can access the shared state
                 await command.execute(message, args, client, model, lydiaChannels); 
             } catch (err) { 
                 console.error(err); 
@@ -94,7 +108,7 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 
-    // AI Response Logic
+    // ================= AI RESPONSE LOGIC =================
     if (!lydiaChannels[message.channel.id]) return;
     const mentioned = message.mentions.has(client.user);
     let replyToBot = false;
@@ -117,10 +131,10 @@ client.on(Events.MessageCreate, async message => {
         History: ${historyText}\nUser: ${message.content}\nLydia:`;
 
         const result = await model.generateContent(prompt);
-        const response = await result.response; // Fixed: Added safety await
+        const response = await result.response; 
         const reply = response.text();
         
-        if (!reply) return; // Exit if empty
+        if (!reply) return;
 
         history.push({ q: message.content, a: reply });
         if (history.length > 8) history.shift();
@@ -129,7 +143,6 @@ client.on(Events.MessageCreate, async message => {
         message.reply(reply);
     } catch (err) { 
         console.log("❌ AI ERROR:", err.message); 
-        // No reply here to avoid spamming the chat if the quota is hit
     }
 });
 
