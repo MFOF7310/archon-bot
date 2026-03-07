@@ -3,58 +3,64 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'trt',
-    description: 'Translate text. Support for "cn" (Chinese), "bm" (Bambara), and replies.',
+    aliases: ['t', 'trans'], // Shortcuts enabled by your new index.js
+    description: 'Universal Translator. Use "cn" for Chinese and "bm" for Bambara.',
     category: 'Utility',
     async execute(message, args) {
-        // 1. Language Handling
+        // 1. Setup Language & Shortcuts
         let targetLang = args[0]?.toLowerCase();
         let text = args.slice(1).join(' ');
 
         if (!targetLang) {
-            return message.reply('❌ **Usage:** `,trt [lang] [text]` (Example: `,trt cn Hello`)');
+            return message.reply('🛰️ **AES TRANSLATOR**\nUsage: `,trt [lang] [text]`\nExample: `,trt cn Hello`');
         }
 
-        // --- THE "CN" & SHORTCUTS FIX ---
-        const map = { 'cn': 'zh-CN', 'jp': 'ja', 'kr': 'ko', 'bm': 'bm' };
-        if (map[targetLang]) targetLang = map[targetLang];
+        // Mapping shortcuts to official ISO codes
+        const shortcuts = {
+            'cn': 'zh-CN',  // Your request
+            'jp': 'ja',     // Japanese
+            'kr': 'ko',     // Korean
+            'bm': 'bm'      // Bambara (Mali 🇲🇱)
+        };
 
-        // 2. Reply Detection
+        if (shortcuts[targetLang]) targetLang = shortcuts[targetLang];
+
+        // 2. Handle Replies
         if (!text && message.reference) {
             try {
                 const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
                 text = repliedMsg.content;
             } catch (err) {
-                return message.reply("⚠️ **Error:** Cannot fetch replied message.");
+                return message.reply("⚠️ **System Error:** Cannot reach the target message.");
             }
         }
 
-        if (!text) return message.reply('💡 **Notice:** Type text or reply to a message to translate.');
+        if (!text) return message.reply('💡 **Logic Error:** Provide text or reply to a message.');
 
         try {
             await message.channel.sendTyping();
-
-            // 3. Translation Engine
+            
             const res = await translate(text, { to: targetLang });
 
             const trtEmbed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle('🌐 DIGITAL TRANSLATOR')
+                .setAuthor({ name: 'DIGITAL ENGINE TRANSLATION', iconURL: message.client.user.displayAvatarURL() })
                 .addFields(
                     { 
-                        name: `📥 Source (${res.from.language.iso.toUpperCase()})`, 
+                        name: `📥 Source [${res.from.language.iso.toUpperCase()}]`, 
                         value: `\`\`\`${text.substring(0, 500)}\`\`\`` 
                     },
                     { 
-                        name: `📤 Target (${targetLang.toUpperCase()})`, 
+                        name: `📤 Target [${targetLang.toUpperCase()}]`, 
                         value: `\`\`\`${res.text.substring(0, 500)}\`\`\`` 
                     }
                 )
-                .setFooter({ text: 'Cloud Gaming-223 | AES Translation Node' });
+                .setFooter({ text: 'Cloud Gaming-223 | AES-Link v2.6' });
 
             return message.reply({ embeds: [trtEmbed] });
 
         } catch (error) {
-            return message.reply(`❌ **Module Error:** \`${targetLang}\` is not a valid language code.`);
+            return message.reply(`❌ **Invalid Node:** \`${targetLang}\` is not a valid language code.`);
         }
     }
 };
