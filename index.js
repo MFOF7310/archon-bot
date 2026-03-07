@@ -1,13 +1,25 @@
 require('dotenv').config(); 
+// ================= BOOT SEQUENCE LOGS =================
+console.log("---------------------------------------");
+console.log("🚀 DIGITAL ENGINE: INITIALIZING...");
+console.log("📍 LOCATION: BAMAKO NODE 🇲🇱");
+console.log("---------------------------------------");
+
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const { Client, Collection, ActivityType, Events, Partials, EmbedBuilder } = require('discord.js');
+const { Client, Collection, ActivityType, Events, Partials, EmbedBuilder, GatewayIntentBits } = require('discord.js');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 
-// ================= CLIENT & VERSION =================
+// ================= CLIENT & INTENTS =================
 const client = new Client({
-    intents: [1, 512, 32768, 2, 4096, 16384, 128], // Added GuildMembers (128)
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers, // Required for Welcome Event
+        GatewayIntentBits.DirectMessages
+    ],
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
 
@@ -20,19 +32,24 @@ const PREFIX = process.env.PREFIX || ",";
 const dbPath = path.join(__dirname, 'database.json');
 const lydiaPath = path.join(__dirname, 'lydia_status.json');
 
-let database = fs.existsSync(dbPath) ? JSON.parse(fs.readFileSync(dbPath, "utf8")) : {};
-let lydiaChannels = fs.existsSync(lydiaPath) ? JSON.parse(fs.readFileSync(lydiaPath, "utf8")) : {};
+// Safety: Ensure files exist before reading
+if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, JSON.stringify({}, null, 4));
+if (!fs.existsSync(lydiaPath)) fs.writeFileSync(lydiaPath, JSON.stringify({}, null, 4));
 
-// Persistent Auto-Save
+let database = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+let lydiaChannels = JSON.parse(fs.readFileSync(lydiaPath, "utf8"));
+
+console.log("📂 DATABASE: Synchronized.");
+
+// Persistent Auto-Save (Every 30s)
 setInterval(() => {
     try {
         fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
         fs.writeFileSync(lydiaPath, JSON.stringify(lydiaChannels, null, 4));
-    } catch (err) { console.log("💾 Save Error:", err.message); }
+    } catch (err) { console.log("⚠️ Save Error:", err.message); }
 }, 30000);
 
-// ================= MEMORY & GEMINI =================
-const lydiaMemory = new Map();
+// ================= GEMINI AI SETUP =================
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
@@ -44,7 +61,7 @@ const model = genAI.getGenerativeModel({
     ]
 });
 
-// ================= CLEAN PLUGIN LOADER =================
+// ================= PLUGIN LOADER =================
 client.loadPlugins = function() {
     client.commands.clear();
     client.aliases.clear();
@@ -66,42 +83,40 @@ client.loadPlugins = function() {
             }
         } catch (err) { console.log(`❌ PLUGIN ERROR (${file}):`, err.message); }
     }
-    console.log(`🚀 ${client.commands.size} unique plugins loaded | Engine v${client.version}`);
+    console.log(`🚀 ${client.commands.size} Plugins Loaded | v${client.version}`);
 };
 
 client.loadPlugins();
 
 // ================= EVENTS =================
 
-// 1. Ready Event
 client.once(Events.ClientReady, async () => {
-    console.log(`✅ ${client.user.tag} Online`);
+    console.log(`✅ ${client.user.tag} IS ONLINE`);
     
+    // Version Check
     try {
         const res = await axios.get("https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/version.txt");
-        const remote = res.data.toString().trim();
-        const local = client.version.toString().trim();
-        if (remote !== local) {
-            console.log(`📢 UPDATE: v${remote} available. (Run ${PREFIX}update)`);
+        if (res.data.toString().trim() !== client.version) {
+            console.log(`🆙 UPDATE: New version available!`);
         }
     } catch (e) {}
 
-    const statuses = ["🎮 CODM Assistant", "🧠 CLOUD_GAMING AI"];
+    const statuses = ["🎮 CODM Assistant", "🤖 CLOUD_GAMING AI"];
     let i = 0;
     setInterval(() => {
-        client.user.setPresence({ activities: [{ name: statuses[i], type: ActivityType.Custom }], status: "online" });
+        client.user.setPresence({ 
+            activities: [{ name: statuses[i], type: ActivityType.Custom }], 
+            status: "online" 
+        });
         i = (i + 1) % statuses.length;
     }, 10000);
 });
 
-// 2. Welcome Event
 client.on(Events.GuildMemberAdd, async member => {
-    // Finds system channel or a channel named 'welcome'
     const channel = member.guild.systemChannel || member.guild.channels.cache.find(ch => ch.name.includes('welcome'));
     if (!channel) return;
 
-    const uid = member.id;
-    database[uid] = { 
+    database[member.id] = { 
         xp: 100, 
         level: 1, 
         name: member.user.username, 
@@ -110,21 +125,14 @@ client.on(Events.GuildMemberAdd, async member => {
 
     const welcomeEmbed = new EmbedBuilder()
         .setColor('#2ecc71')
-        .setTitle('🆕 NEW AGENT ARRIVED')
+        .setTitle('🛰️ NEW AGENT ARRIVED')
         .setThumbnail(member.user.displayAvatarURL())
-        .setDescription(
-            `Bienvenue, ${member}! You've joined the **Digital Engine**.\n\n` +
-            `🎁 **Bonus:** +100 XP added to your profile.\n` +
-            `🇲🇱 **Region:** Bamako Node\n\n` +
-            `Type \`${PREFIX}help\` to begin your mission.`
-        )
-        .setFooter({ text: 'Cloud Gaming-223 | Security Protocol' })
-        .setTimestamp();
+        .setDescription(`Bienvenue, ${member}!\n\n🎁 **Bonus:** +100 XP added to your profile.\n🇲🇱 **Node:** Bamako-223`)
+        .setFooter({ text: 'Cloud Gaming-223 Security' });
 
     channel.send({ content: `Welcome ${member}!`, embeds: [welcomeEmbed] });
 });
 
-// 3. Message Event
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot || !message.guild) return;
 
@@ -137,7 +145,7 @@ client.on(Events.MessageCreate, async message => {
     let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
     if (nextLevel > database[uid].level) {
         database[uid].level = nextLevel;
-        message.reply(`🎊 **LEVEL UP!** You are now **Level ${nextLevel}**.`);
+        message.reply(`🆙 **LEVEL UP!** Level ${nextLevel} reached.`);
     }
 
     if (message.content.startsWith(PREFIX)) {
@@ -153,16 +161,14 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 
-    if (!lydiaChannels[message.channel.id]) return;
-    if (!message.mentions.has(client.user)) return;
-
-    try {
-        await message.channel.sendTyping();
-        const username = message.member?.displayName || message.author.username;
-        const prompt = `You are CLOUD_GAMING for server CG-223. User: ${username}. Msg: ${message.content}`;
-        const result = await model.generateContent(prompt);
-        message.reply(result.response.text());
-    } catch (err) { console.log("❌ AI ERROR:", err.message); }
+    // AI logic
+    if (lydiaChannels[message.channel.id] && message.mentions.has(client.user)) {
+        try {
+            await message.channel.sendTyping();
+            const result = await model.generateContent(`User: ${message.author.username}. Msg: ${message.content}`);
+            message.reply(result.response.text());
+        } catch (err) { console.log("❌ AI Error:", err.message); }
+    }
 });
 
 client.login(process.env.DISCORD_TOKEN);
