@@ -18,8 +18,6 @@ const dbPath = path.join(__dirname, 'database.json');
 const lydiaPath = path.join(__dirname, 'lydia_status.json');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// FIXED: Added Safety Settings to stop the AI from "Silent Blocking"
 const model = genAI.getGenerativeModel({ 
     model: "gemini-2.0-flash",
     safetySettings: [
@@ -30,17 +28,20 @@ const model = genAI.getGenerativeModel({
     ],
 });
 
-// --- 2. PLUGIN LOADER ---
+// --- 2. PLUGIN LOADER (RE-SYNCED) ---
 const loadPlugins = () => {
+    client.commands.clear(); // Clear existing to prevent duplicates
     const pluginsPath = path.join(__dirname, 'plugins');
     if (!fs.existsSync(pluginsPath)) fs.mkdirSync(pluginsPath);
     const files = fs.readdirSync(pluginsPath).filter(f => f.endsWith('.js'));
     files.forEach(file => {
         try {
+            delete require.cache[require.resolve(`./plugins/${file}`)]; // Force refresh file
             const command = require(`./plugins/${file}`);
             if (command.name) client.commands.set(command.name, command);
         } catch (e) { console.error(`⚠️ PLUGIN ERROR [${file}]: ${e.message}`); }
     });
+    console.log(`🚀 ENGINE: ${client.commands.size} Plugins Synchronized.`);
 };
 loadPlugins();
 
@@ -72,61 +73,52 @@ client.on(Events.MessageCreate, async (message) => {
     database[uid].xp += 20;
     fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
 
-    // B. LYDIA AUTO-AI (The Response Fix)
+    // B. COMMAND SYSTEM (Priority #1)
+    if (message.content.startsWith(PREFIX)) {
+        const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+        const commandName = args.shift().toLowerCase();
+        const command = client.commands.get(commandName);
+
+        if (command) {
+            try { 
+                await command.execute(message, args, client, model); 
+                return; // Stop here if a command was executed
+            } catch (e) { 
+                console.error(`❌ CMD FAIL [${commandName}]:`, e);
+                return message.reply("⚠️ System error executing that command.");
+            }
+        }
+    }
+
+    // C. LYDIA AUTO-AI LOGIC (Priority #2 - Only if no command was typed)
     let lydiaChannels = {};
     if (fs.existsSync(lydiaPath)) {
         try { lydiaChannels = JSON.parse(fs.readFileSync(lydiaPath, 'utf8')); } catch(e) {}
     }
 
-    if (lydiaChannels[message.channel.id] && message.reference && !message.content.startsWith(PREFIX)) {
+    if (lydiaChannels[message.channel.id] && message.reference) {
         try {
             const refMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
             if (refMsg && refMsg.author.id === client.user.id) {
                 await message.channel.sendTyping();
 
-                const isArchitect = message.author.id === ARCHITECT_ID;
                 const userName = message.member?.displayName || message.author.username;
-                
                 let userHistory = lydiaHistory.get(uid) || [];
                 const historySnapshot = userHistory.map(h => `User: ${h.q}\nLydia: ${h.a}`).join("\n");
 
-                const prompt = `
-                Identity: You are Lydia, a smart AI for CLOUD_GAMING-223.
-                Recipient: ${isArchitect ? "Your ARCHITECT (Creator)" : userName}.
-                Tone: Helpful, respectful, and concise.
-                
-                History:
-                ${historySnapshot}
-
-                Context: "${refMsg.content}"
-                User Reply: "${message.content}"
-                Lydia:`;
+                const prompt = `Identity: You are Lydia for CLOUD_GAMING-223.\nTalk to: ${userName}\nHistory:\n${historySnapshot}\nContext: "${refMsg.content}"\nUser Reply: "${message.content}"\nLydia:`;
                 
                 const result = await model.generateContent(prompt);
                 const aiResponse = result.response.text();
 
-                if (aiResponse && aiResponse.trim().length > 0) {
+                if (aiResponse) {
                     userHistory.push({ q: message.content, a: aiResponse });
                     if (userHistory.length > 3) userHistory.shift();
                     lydiaHistory.set(uid, userHistory);
                     return message.reply(aiResponse);
-                } else {
-                    console.log("⚠️ Lydia generated an empty response.");
                 }
             }
-        } catch (err) { 
-            console.error("❌ Lydia Logic Error:", err.message); 
-        }
-    }
-
-    // C. COMMAND SYSTEM
-    if (!message.content.startsWith(PREFIX)) return;
-    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
-    const command = client.commands.get(commandName);
-    if (command) {
-        try { await command.execute(message, args, client, model); } 
-        catch (e) { console.error(e); }
+        } catch (err) { console.error("❌ Lydia Logic Error:", err.message); }
     }
 });
 
