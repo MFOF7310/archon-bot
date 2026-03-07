@@ -2,17 +2,17 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const { Client, Collection, ActivityType, Events, Partials } = require('discord.js');
+const { Client, Collection, ActivityType, Events, Partials, EmbedBuilder } = require('discord.js');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 
 // ================= CLIENT & VERSION =================
 const client = new Client({
-    intents: [1, 512, 32768, 2, 4096, 16384],
-    partials: [Partials.Channel, Partials.Message, Partials.User]
+    intents: [1, 512, 32768, 2, 4096, 16384, 128], // Added GuildMembers (128)
+    partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
 
 client.commands = new Collection();
-client.aliases = new Collection(); // ✨ Separate storage for shortcuts
+client.aliases = new Collection();
 client.version = "1.0.0"; 
 const PREFIX = process.env.PREFIX || ",";
 
@@ -47,7 +47,7 @@ const model = genAI.getGenerativeModel({
 // ================= CLEAN PLUGIN LOADER =================
 client.loadPlugins = function() {
     client.commands.clear();
-    client.aliases.clear(); // Clear aliases too
+    client.aliases.clear();
     const pluginsFolder = path.join(__dirname, 'plugins');
     if (!fs.existsSync(pluginsFolder)) fs.mkdirSync(pluginsFolder);
     const files = fs.readdirSync(pluginsFolder).filter(f => f.endsWith(".js"));
@@ -59,10 +59,7 @@ client.loadPlugins = function() {
             const plugin = require(filePath);
             
             if (plugin.name) {
-                // Store main command
                 client.commands.set(plugin.name, plugin);
-                
-                // Store aliases separately so they don't bloat the main list
                 if (plugin.aliases && Array.isArray(plugin.aliases)) {
                     plugin.aliases.forEach(alias => client.aliases.set(alias, plugin.name));
                 }
@@ -75,10 +72,11 @@ client.loadPlugins = function() {
 client.loadPlugins();
 
 // ================= EVENTS =================
+
+// 1. Ready Event
 client.once(Events.ClientReady, async () => {
     console.log(`✅ ${client.user.tag} Online`);
     
-    // Strict Update Check
     try {
         const res = await axios.get("https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/version.txt");
         const remote = res.data.toString().trim();
@@ -96,36 +94,67 @@ client.once(Events.ClientReady, async () => {
     }, 10000);
 });
 
+// 2. Welcome Event
+client.on(Events.GuildMemberAdd, async member => {
+    // Finds system channel or a channel named 'welcome'
+    const channel = member.guild.systemChannel || member.guild.channels.cache.find(ch => ch.name.includes('welcome'));
+    if (!channel) return;
+
+    const uid = member.id;
+    database[uid] = { 
+        xp: 100, 
+        level: 1, 
+        name: member.user.username, 
+        gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } 
+    };
+
+    const welcomeEmbed = new EmbedBuilder()
+        .setColor('#2ecc71')
+        .setTitle('🆕 NEW AGENT ARRIVED')
+        .setThumbnail(member.user.displayAvatarURL())
+        .setDescription(
+            `Bienvenue, ${member}! You've joined the **Digital Engine**.\n\n` +
+            `🎁 **Bonus:** +100 XP added to your profile.\n` +
+            `🇲🇱 **Region:** Bamako Node\n\n` +
+            `Type \`${PREFIX}help\` to begin your mission.`
+        )
+        .setFooter({ text: 'Cloud Gaming-223 | Security Protocol' })
+        .setTimestamp();
+
+    channel.send({ content: `Welcome ${member}!`, embeds: [welcomeEmbed] });
+});
+
+// 3. Message Event
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot || !message.guild) return;
 
-    // XP Logic
     const uid = message.author.id;
     if (!database[uid]) {
         database[uid] = { xp: 0, level: 1, name: message.author.username, gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } };
     }
+    
     database[uid].xp += 20;
+    let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
+    if (nextLevel > database[uid].level) {
+        database[uid].level = nextLevel;
+        message.reply(`🎊 **LEVEL UP!** You are now **Level ${nextLevel}**.`);
+    }
 
-    // Command Execution Logic
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
-        
-        // ✨ Find command by name OR check the aliases collection
         const command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
 
         if (command) {
             try { 
                 await command.execute(message, args, client, model, lydiaChannels, database); 
-            } catch (err) { message.reply("⚠️ Error."); }
+            } catch (err) { console.error(err); }
             return;
         }
     }
 
-    // AI Logic (Lydia)
     if (!lydiaChannels[message.channel.id]) return;
-    const mentioned = message.mentions.has(client.user);
-    if (!mentioned) return;
+    if (!message.mentions.has(client.user)) return;
 
     try {
         await message.channel.sendTyping();
