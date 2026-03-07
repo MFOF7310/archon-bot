@@ -2,62 +2,70 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'loadout',
-    description: 'Shows the best CODM loadout for a weapon',
+    description: 'Displays the best CODM loadout for a specific weapon.',
+    aliases: ['build', 'class'],
 
     async execute(message, args) {
-
         if (!args.length) {
-            return message.reply(
-                "❌ Please specify a weapon.\n\nAvailable weapons:\n`AK117` `FFAR1` `BY15` `KRM` `DLQ`"
-            );
+            return message.reply({
+                content: "❌ **Missing Weapon Name!**\nUsage: `,loadout <name>`\nExample: `,loadout HS0405`\n\n**Available:** `AK117`, `FFAR1`, `HS0405`, `KRM`, `DLQ`"
+            });
         }
 
-        const weapon = args[0].toUpperCase();
+        let weapon = args[0].toUpperCase();
+        // Fuzzy search fixes
+        if (weapon === "DLQ33") weapon = "DLQ";
+        if (weapon === "KRM262") weapon = "KRM";
+        if (weapon === "HS0") weapon = "HS0405";
+        if (weapon === "HS") weapon = "HS0405";
 
         const loadouts = {
-
-            AK117: {
-                description: "🔥 Meta AR build with strong recoil control and fast ADS.",
-                image: "YOUR_AK117_IMAGE_LINK"
+            "AK117": {
+                title: "AK117 - Tactical Precision",
+                description: "🔥 **Meta Build:** OWC Marksman, No Stock, OWC Laser, 40 Round Mag, Granulated Grip.",
+                image: "PASTE_YOUR_DISCORD_LINK_HERE"
             },
-
-            FFAR1: {
-                description: "⚡ Extremely fast fire rate AR dominating close-mid range fights.",
-                image: "YOUR_FFAR1_IMAGE_LINK"
+            "FFAR1": {
+                title: "FFAR 1 - Rapid Shredder",
+                description: "⚡ **Meta Build:** Agency Suppressor, Task Force Barrel, Raider Stock, 38 Rnd Speed Mag, Serpent Wrap.",
+                image: "PASTE_YOUR_DISCORD_LINK_HERE"
             },
-
-            BY15: {
-                description: "💀 One-tap shotgun setup built for aggressive rushing.",
-                image: "YOUR_BY15_IMAGE_LINK"
+            "HS0405": {
+                title: "HS0405 - One-Tap Specialist",
+                description: "💀 **Meta Build:** Choke, RTC Extended Light Barrel, No Stock, OWC Laser - Tactical, Granulated Grip Tape.\n*High damage and mobility for the ultimate rush.*",
+                image: "PASTE_YOUR_DISCORD_LINK_HERE"
             },
-
-            KRM: {
-                description: "🎯 Deadly close-range shotgun with insane hipfire accuracy.",
-                image: "YOUR_KRM_IMAGE_LINK"
+            "KRM": {
+                title: "KRM-262 - Hipfire King",
+                description: "🎯 **Meta Build:** Marauder Suppressor, Extended Barrel (+2), No Stock, OWC Laser, Tube Plus.",
+                image: "PASTE_YOUR_DISCORD_LINK_HERE"
             },
-
-            DLQ: {
-                description: "🎯 Legendary sniper loadout perfect for quickscoping.",
-                image: "YOUR_DLQ_IMAGE_LINK"
+            "DLQ": {
+                title: "DL Q33 - Legendary Sniper",
+                description: "🎯 **Meta Build:** MIP Light Barrel, Combat Stock, OWC Laser, Maevwat Omega Mag, FMJ.",
+                image: "PASTE_YOUR_DISCORD_LINK_HERE"
             }
         };
 
         const data = loadouts[weapon];
 
         if (!data) {
-            return message.reply(
-                "⚠️ Unknown weapon.\n\nAvailable weapons:\n`AK117` `FFAR1` `BY15` `KRM` `DLQ`"
-            );
+            return message.reply(`⚠️ **Engine Alert:** Weapon \`${weapon}\` is not in the database. Use: \`AK117, FFAR1, HS0405, KRM, DLQ\``);
         }
 
         const embed = new EmbedBuilder()
-            .setColor('#ff9900')
-            .setTitle(`🔫 ${weapon} Best Loadout`)
+            .setColor('#2f3136')
+            .setTitle(`🔫 ${data.title}`)
             .setDescription(data.description)
-            .setImage(data.image)
-            .setFooter({ text: 'CODM Loadout System' })
+            .setImage(data.image) 
+            .setFooter({ text: 'Digital Engine Loadout System | Mali 🇲🇱' })
             .setTimestamp();
 
-        await message.channel.send({ embeds: [embed] });
+        try {
+            await message.channel.sendTyping();
+            await message.reply({ embeds: [embed] });
+        } catch (err) {
+            console.error("❌ Loadout Error:", err.message);
+        }
     }
 };
