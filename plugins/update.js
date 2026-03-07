@@ -1,44 +1,56 @@
-const { EmbedBuilder } = require('discord.js');
 const axios = require('axios');
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'update',
-    description: 'Check for and apply Digital Engine updates.',
+    aliases: ['up', 'sync'], // Quick shortcuts
+    description: 'Syncs with the public GitHub repo and hot-reloads plugins.',
     async execute(message, args, client) {
-        // Security check: Only Moussa (you) can run this
-        if (message.author.id !== "YOUR_DISCORD_ID") return message.reply("⛔ Access Denied.");
+        // 🔒 SECURITY: Replace with your actual Discord User ID
+        if (message.author.id !== "YOUR_DISCORD_ID") return;
 
-        const msg = await message.reply("📡 **Checking Remote Update Node...**");
+        // 🔗 CONFIGURATION (Change these to match your GitHub)
+        const user = "YourGitHubUsername";
+        const repo = "YourRepoName";
+        const url = `https://raw.githubusercontent.com/${user}/${repo}/main/version.txt`;
+
+        const msg = await message.reply("📡 **Engine: Connecting to Public GitHub Node...**");
 
         try {
-            // Replace with your RAW GitHub version.txt link
-            const url = "https://raw.githubusercontent.com/YourUser/YourRepo/main/version.txt";
             const res = await axios.get(url);
-            const remoteVersion = res.data.trim();
+            const remoteVersion = res.data.toString().trim();
 
+            // Check if already updated
             if (remoteVersion === client.version) {
-                // SURPRISE: No update found logic
-                return msg.edit({ 
-                    content: `✅ **No Update Required.**\nYour Engine is currently running the latest stable version (**v${client.version}**).` 
-                });
+                return msg.edit(`✅ **No Update Required.** Current: \`v${client.version}\` is optimal.`);
             }
 
-            // If versions are different
-            await msg.edit(`📥 **New Update Found: v${remoteVersion}**\nApplying hot-reload...`);
-            
-            client.loadPlugins(); // Refresh the brain
-            client.version = remoteVersion; // Update local tag
+            // If a new version exists
+            await msg.edit(`📥 **New Patch Found: v${remoteVersion}**\nApplying hot-reload to all modules...`);
 
-            const successEmbed = new EmbedBuilder()
+            // ⚡ This calls the GLOBAL function from your index.js
+            client.loadPlugins(); 
+            
+            // Update the local version tag
+            const oldVersion = client.version;
+            client.version = remoteVersion;
+
+            const upEmbed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle('⚙️ ENGINE SYNC COMPLETE')
-                .setDescription(`Successfully migrated to **v${remoteVersion}**.\nAll systems are operational.`)
+                .setTitle('🚀 ENGINE UPGRADED')
+                .addFields(
+                    { name: 'Previous State', value: `\`v${oldVersion}\``, inline: true },
+                    { name: 'Current State', value: `\`v${remoteVersion}\``, inline: true },
+                    { name: 'Status', value: 'All plugins reloaded successfully.' }
+                )
+                .setFooter({ text: 'Cloud Gaming-223 | Zero-Downtime Update' })
                 .setTimestamp();
 
-            await msg.edit({ content: '', embeds: [successEmbed] });
+            await msg.edit({ content: '', embeds: [upEmbed] });
 
-        } catch (err) {
-            msg.edit("❌ **Update Node Offline:** Check your GitHub link or Pterodactyl internet connection.");
+        } catch (error) {
+            console.error(error);
+            msg.edit("❌ **Sync Failed:** Could not reach GitHub. Verify repo/file names.");
         }
     }
 };
