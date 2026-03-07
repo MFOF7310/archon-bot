@@ -26,7 +26,6 @@ module.exports = {
             return message.reply("💤 **Lydia Deactivated**\n*Only works from reply msg.*");
         }
 
-        // If they just type ,lydia without on/off
         return message.reply("❓ Usage: `,lydia on` or `,lydia off`").then(m => setTimeout(() => m.delete(), 5000));
     },
 };
