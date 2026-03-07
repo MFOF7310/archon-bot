@@ -1,54 +1,56 @@
 module.exports = {
     name: 'clear',
+    aliases: ['purge', 'clean'],
     description: 'Safe delete with pinning protection and user filtering.',
 
     async execute(message, args) {
-        const ARCHITECT_ID = process.env.OWNER_ID;
-        const isArchitect = message.author.id === ARCHITECT_ID;
-        const isAdmin = message.member.permissions.has('Administrator');
+        // Use the OWNER_ID from your .env or check for Admin
+        const isArchitect = message.author.id === process.env.OWNER_ID;
+        const isAdmin = message.member.permissions.has('ManageMessages'); // 'ManageMessages' is safer than full Admin
 
-        if (!isArchitect && !isAdmin) return;
+        if (!isArchitect && !isAdmin) {
+            return message.reply("⛔ **Access Denied:** You lack the permissions to purge data.").then(m => setTimeout(() => m.delete(), 3000));
+        }
 
-        // 1. Identify if a user was mentioned (for specific deletion)
+        // 1. Identify Target and Amount
         const targetUser = message.mentions.users.first();
         const amountArg = targetUser ? args[1] : args[0];
-        let amount = parseInt(amountArg);
+        let amount = (args[0] === 'all') ? 100 : parseInt(amountArg);
 
-        if (args[0] !== 'all' && (isNaN(amount) || amount < 1 || amount > 100)) {
-            return message.reply("Usage: `!clear 20` or `!clear @user 20`").then(m => setTimeout(() => m.delete(), 5000));
+        if (isNaN(amount) || amount < 1 || amount > 100) {
+            return message.reply("💡 **Usage:** `,clear 20` or `,clear @user 20` (Max 100)").then(m => setTimeout(() => m.delete(), 5000));
         }
 
         try {
-            // Fetch messages from the channel
-            let messages = await message.channel.messages.fetch({ limit: 100 });
+            // Fetch messages (Limit 100 is the Discord API Max for bulkDelete)
+            let fetched = await message.channel.messages.fetch({ limit: 100 });
 
-            // SAFETY: Filter out Pinned Messages so they are NEVER deleted
-            messages = messages.filter(m => !m.pinned);
+            // SAFETY: Filter out Pinned Messages & the command message itself
+            let toDelete = fetched.filter(m => !m.pinned && m.id !== message.id);
 
-            // FILTER: If a user was mentioned, only keep their messages
+            // FILTER: If a user was mentioned
             if (targetUser) {
-                messages = messages.filter(m => m.author.id === targetUser.id);
+                toDelete = toDelete.filter(m => m.author.id === targetUser.id);
             }
 
-            // Limit the deletion to the amount requested
-            if (args[0] !== 'all') {
-                messages = Array.from(messages.values()).slice(0, amount);
-            }
+            // LIMIT: Slice the collection to the requested amount
+            const finalDeleteList = toDelete.first(amount);
 
-            // Execute Delete
-            const deleted = await message.channel.bulkDelete(messages, true);
+            // EXECUTE: Bulk Delete (True = Filter out messages older than 14 days)
+            const deleted = await message.channel.bulkDelete(finalDeleteList, true);
             
-            const reply = await message.channel.send(`✅ Cleaned **${deleted.size}** messages safely (Pinned messages were saved).`);
+            const reply = await message.channel.send(`🧹 **Purge Complete:** Cleaned **${deleted.size}** messages. (Pinned items saved)`);
             setTimeout(() => reply.delete().catch(() => null), 3000);
 
-            // Log it
-            const logChannel = message.guild.channels.cache.find(ch => ch.name === 'bot-logs');
+            // LOGGING
+            const logChannel = message.guild.channels.cache.find(ch => ch.name === 'bot-logs' || ch.name === 'logs');
             if (logChannel) {
-                logChannel.send(`🛡️ **Safe Purge** by ${message.author.tag} in ${message.channel}. Target: ${targetUser ? targetUser.tag : 'Everyone'}.`);
+                logChannel.send(`🛡️ **Safe Purge** | Executed by: ${message.author.tag}\n📍 Channel: ${message.channel}\n🎯 Target: ${targetUser ? targetUser.tag : 'Global'}\n🗑️ Count: ${deleted.size}`);
             }
 
         } catch (err) {
-            message.channel.send("⚠️ Could not complete purge. Messages might be older than 14 days.");
+            console.error(err);
+            message.channel.send("⚠️ **Engine Error:** Could not purge. This usually happens if messages are older than 14 days or I lack permissions.");
         }
     },
 };
