@@ -1,36 +1,40 @@
 const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = {
     name: 'list',
-    description: 'Dynamically lists all installed engine modules',
+    description: 'Scans the plugins folder and lists all active modules.',
     async execute(message, args, client) {
-        // Use a Map to filter out duplicates (so aliases don't show up twice)
-        const uniqueCommands = [...new Map(client.commands.map(cmd => [cmd.name, cmd])).values()];
-
-        const embed = new EmbedBuilder()
-            .setColor('#36ced1')
-            .setTitle('🛰️ DIGITAL ENGINE | ACTIVE MODULES')
-            .setDescription(`Currently running **${uniqueCommands.length}** synchronized plugins.`)
-            .setThumbnail(client.user.displayAvatarURL())
-            .setTimestamp()
-            .setFooter({ text: 'System scan complete. All modules operational.' });
-
-        // Build the fields array first
-        const fields = uniqueCommands.map(cmd => ({
-            name: `🔹 ,${cmd.name}`,
-            // Ensure description is NEVER empty (Discord will crash otherwise)
-            value: cmd.description || 'No description provided.',
-            inline: false
-        }));
-
-        // Add all fields at once
-        embed.addFields(fields);
-
+        // 1. Path to your plugins folder
+        const pluginsPath = path.join(__dirname, '../plugins');
+        
         try {
+            // 2. Read the actual files on the disk
+            const commandFiles = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.js'));
+            
+            const embed = new EmbedBuilder()
+                .setColor('#36ced1')
+                .setTitle('🛰️ DIGITAL ENGINE | SYSTEM SCAN')
+                .setThumbnail(client.user.displayAvatarURL())
+                .setTimestamp();
+
+            let descriptionText = `**${commandFiles.length}** Modules detected in the engine core.\n\n`;
+
+            // 3. Loop through files and extract their names
+            commandFiles.forEach(file => {
+                const command = require(`./${file}`);
+                descriptionText += `🔹 **,${command.name}**\n└ *${command.description || 'No description.'}*\n\n`;
+            });
+
+            embed.setDescription(descriptionText);
+            embed.setFooter({ text: 'Hardware scan: All plugins operational.' });
+
             await message.reply({ embeds: [embed] });
+
         } catch (err) {
-            console.error("❌ List Command Error:", err.message);
-            message.reply("⚠️ **Engine Error:** Could not generate the module list.");
+            console.error("List Error:", err);
+            message.reply("⚠️ **Scan Failed:** I couldn't access the plugins folder.");
         }
     },
 };
