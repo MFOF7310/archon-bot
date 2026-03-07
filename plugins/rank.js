@@ -1,30 +1,27 @@
 const { EmbedBuilder } = require('discord.js');
-// Note: In a full build, we would connect this to a database like 'quick.db'
-// For now, this displays the UI for your gamers.
 
 module.exports = {
     name: 'rank',
-    description: 'Check your gaming rank and set your main game.',
+    description: 'Check your current level and XP status.',
     category: 'Gaming',
-    async execute(message, args) {
-        const gameChoice = args[1] ? args.slice(1).join(' ').toUpperCase() : 'NOT SET';
+    async execute(message, args, client, model, lydiaChannels, database) {
+        const target = message.mentions.users.first() || message.author;
+        const userData = database[target.id] || { xp: 0, level: 1 };
         
-        if (args[0] === 'set') {
-            return message.reply(`🎮 **Profile Updated:** Your main game is now set to **${gameChoice}**!`);
-        }
+        // Calculate progress to next level (assuming 1000 XP per level)
+        const nextLevelXP = userData.level * 1000;
+        const progress = Math.floor((userData.xp % 1000) / 10); // Simple % bar
 
         const rankEmbed = new EmbedBuilder()
             .setColor('#f1c40f')
-            .setTitle(`🎮 GAMER PROFILE: ${message.author.username}`)
-            .setThumbnail(message.author.displayAvatarURL())
+            .setAuthor({ name: `RANK: ${target.username}`, iconURL: target.displayAvatarURL() })
+            .setDescription(`Current progress: **${progress}%** to Level ${userData.level + 1}`)
             .addFields(
-                { name: '🔥 Current Level', value: '`Level 5`', inline: true },
-                { name: '✨ Experience', value: '`1,250 XP`', inline: true },
-                { name: '🕹️ Main Game', value: `\`${gameChoice}\``, inline: false },
-                { name: '🏆 Server Rank', value: '#4', inline: true }
+                { name: '🔥 Level', value: `\`${userData.level}\``, inline: true },
+                { name: '✨ Experience', value: `\`${userData.xp.toLocaleString()} XP\``, inline: true },
+                { name: '🕹️ Main Game', value: `\`${userData.gaming?.game || 'Not Set'}\``, inline: false }
             )
-            .setFooter({ text: 'Cloud Gaming-223 | Gaming Registry' })
-            .setTimestamp();
+            .setFooter({ text: 'Cloud Gaming-223 | Gaming Registry' });
 
         message.reply({ embeds: [rankEmbed] });
     }
