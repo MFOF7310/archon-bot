@@ -3,64 +3,35 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'trt',
-    aliases: ['t', 'trans'], // Shortcuts enabled by your new index.js
-    description: 'Universal Translator. Use "cn" for Chinese and "bm" for Bambara.',
-    category: 'Utility',
+    aliases: ['t', 'trans'],
+    description: 'Universal Translator.',
     async execute(message, args) {
-        // 1. Setup Language & Shortcuts
         let targetLang = args[0]?.toLowerCase();
         let text = args.slice(1).join(' ');
 
-        if (!targetLang) {
-            return message.reply('🛰️ **AES TRANSLATOR**\nUsage: `,trt [lang] [text]`\nExample: `,trt cn Hello`');
-        }
+        if (!targetLang) return message.reply('🛰️ Usage: `,trt [lang] [text]`');
 
-        // Mapping shortcuts to official ISO codes
-        const shortcuts = {
-            'cn': 'zh-CN',  // Your request
-            'jp': 'ja',     // Japanese
-            'kr': 'ko',     // Korean
-            'bm': 'bm'      // Bambara (Mali 🇲🇱)
-        };
-
+        const shortcuts = { 'cn': 'zh-CN', 'jp': 'ja', 'kr': 'ko', 'bm': 'bm' };
         if (shortcuts[targetLang]) targetLang = shortcuts[targetLang];
 
-        // 2. Handle Replies
         if (!text && message.reference) {
-            try {
-                const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
-                text = repliedMsg.content;
-            } catch (err) {
-                return message.reply("⚠️ **System Error:** Cannot reach the target message.");
-            }
+            const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+            text = repliedMsg.content;
         }
 
-        if (!text) return message.reply('💡 **Logic Error:** Provide text or reply to a message.');
+        if (!text) return message.reply('💡 Provide text or reply to a message.');
 
         try {
             await message.channel.sendTyping();
-            
             const res = await translate(text, { to: targetLang });
-
-            const trtEmbed = new EmbedBuilder()
+            const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setAuthor({ name: 'DIGITAL ENGINE TRANSLATION', iconURL: message.client.user.displayAvatarURL() })
+                .setTitle('TRANSLATION SUCCESS')
                 .addFields(
-                    { 
-                        name: `📥 Source [${res.from.language.iso.toUpperCase()}]`, 
-                        value: `\`\`\`${text.substring(0, 500)}\`\`\`` 
-                    },
-                    { 
-                        name: `📤 Target [${targetLang.toUpperCase()}]`, 
-                        value: `\`\`\`${res.text.substring(0, 500)}\`\`\`` 
-                    }
-                )
-                .setFooter({ text: 'Cloud Gaming-223 | AES-Link v2.6' });
-
-            return message.reply({ embeds: [trtEmbed] });
-
-        } catch (error) {
-            return message.reply(`❌ **Invalid Node:** \`${targetLang}\` is not a valid language code.`);
-        }
+                    { name: `Source [${res.from.language.iso.toUpperCase()}]`, value: `\`\`\`${text}\`\`\`` },
+                    { name: `Target [${targetLang.toUpperCase()}]`, value: `\`\`\`${res.text}\`\`\`` }
+                );
+            return message.reply({ embeds: [embed] });
+        } catch (e) { return message.reply('❌ Translation failed.'); }
     }
 };
