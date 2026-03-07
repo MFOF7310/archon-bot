@@ -1,6 +1,7 @@
 require('dotenv').config(); 
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios'); // Ensure you run: npm install axios
 const { Client, Collection, ActivityType, Events, Partials } = require('discord.js');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 
@@ -11,7 +12,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-client.version = "1.0.0"; // ✨ Current Engine Version
+client.version = "1.0.0"; 
 const PREFIX = process.env.PREFIX || ",";
 
 // ================= PATHS & DB =================
@@ -21,7 +22,7 @@ const lydiaPath = path.join(__dirname, 'lydia_status.json');
 let database = fs.existsSync(dbPath) ? JSON.parse(fs.readFileSync(dbPath, "utf8")) : {};
 let lydiaChannels = fs.existsSync(lydiaPath) ? JSON.parse(fs.readFileSync(lydiaPath, "utf8")) : {};
 
-// Persistent Auto-Save (Every 30 seconds)
+// Persistent Auto-Save
 setInterval(() => {
     try {
         fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
@@ -42,7 +43,7 @@ const model = genAI.getGenerativeModel({
     ]
 });
 
-// ================= PLUGIN LOADER (NOW GLOBAL) =================
+// ================= PLUGIN LOADER (GLOBAL) =================
 client.loadPlugins = function() {
     client.commands.clear();
     const pluginsFolder = path.join(__dirname, 'plugins');
@@ -52,11 +53,10 @@ client.loadPlugins = function() {
     for (const file of files) {
         try {
             const filePath = path.resolve(__dirname, 'plugins', file);
-            delete require.cache[require.resolve(filePath)]; // Clear cache for live updates
+            delete require.cache[require.resolve(filePath)]; 
             const plugin = require(filePath);
             if (plugin.name) {
                 client.commands.set(plugin.name, plugin);
-                // ✨ Add Alias Support
                 if (plugin.aliases) {
                     plugin.aliases.forEach(alias => client.commands.set(alias, plugin));
                 }
@@ -66,11 +66,21 @@ client.loadPlugins = function() {
     console.log(`🚀 ${client.commands.size} plugins loaded | Engine v${client.version}`);
 };
 
-client.loadPlugins(); // Initial Load
+client.loadPlugins();
 
 // ================= EVENTS =================
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
     console.log(`✅ ${client.user.tag} is poppin' and online`);
+    
+    // Check Master Repo for Updates
+    try {
+        const res = await axios.get("https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/version.txt");
+        const remoteVersion = res.data.toString().trim();
+        if (remoteVersion !== client.version) {
+            console.log(`\n📢 UPDATE AVAILABLE: v${remoteVersion} (Run ${PREFIX}update to sync)\n`);
+        }
+    } catch (e) {}
+
     const statuses = ["🎮 CODM Assistant", "🧠 CLOUD_GAMING AI", "⚙️ Engine Stable"];
     let i = 0;
     setInterval(() => {
@@ -82,50 +92,34 @@ client.once(Events.ClientReady, () => {
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot || !message.guild) return;
 
-    // ================= XP & LEVELING SYSTEM =================
     const uid = message.author.id;
     if (!database[uid]) {
-        database[uid] = { 
-            xp: 0, 
-            level: 1, 
-            name: message.author.username,
-            gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } 
-        };
+        database[uid] = { xp: 0, level: 1, name: message.author.username, gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } };
     }
-
     database[uid].xp += 20;
 
     let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
     if (nextLevel > database[uid].level) {
         database[uid].level = nextLevel;
-        message.reply(`🎊 **LEVEL UP!** You are now **Level ${nextLevel}**, Agent ${message.author.username}.`);
+        message.reply(`🎊 **LEVEL UP!** Level ${nextLevel}, Agent ${message.author.username}.`);
     }
 
-    // ================= COMMAND SYSTEM =================
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
-        
-        // ✨ Find command by name or alias
         const command = client.commands.get(cmdName);
 
         if (command) {
             try { 
-                // ✨ Pass database as the 6th argument for XP/Stats plugins
                 await command.execute(message, args, client, model, lydiaChannels, database); 
-            } catch (err) { 
-                console.error(err); 
-                message.reply("⚠️ Command error."); 
-            }
+            } catch (err) { console.error(err); message.reply("⚠️ Command error."); }
             return;
         }
     }
 
-    // ================= AI RESPONSE LOGIC =================
     if (!lydiaChannels[message.channel.id]) return;
     const mentioned = message.mentions.has(client.user);
     let replyToBot = false;
-    
     if (message.reference) {
         const ref = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
         if (ref?.author.id === client.user.id) replyToBot = true;
@@ -138,25 +132,19 @@ client.on(Events.MessageCreate, async message => {
         const username = message.member?.displayName || message.author.username;
         let history = lydiaMemory.get(uid) || [];
         const historyText = history.map(h => `User: ${h.q}\nLydia: ${h.a}`).join("\n");
-
-        const prompt = `You are CLOUD_GAMING, an AI for the CLOUD_GAMING-223 server created by Moussa Fofana. 
-        Be professional, friendly, and gaming-oriented. Always address ${username}.
-        History: ${historyText}\nUser: ${message.content}\nLydia:`;
+        const prompt = `You are CLOUD_GAMING, an AI for the CLOUD_GAMING-223 server by Moussa Fofana. 
+        Be professional, friendly, and address ${username}.\nHistory: ${historyText}\nUser: ${message.content}\nLydia:`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response; 
         const reply = response.text();
-        
         if (!reply) return;
 
         history.push({ q: message.content, a: reply });
         if (history.length > 8) history.shift();
         lydiaMemory.set(uid, history);
-
         message.reply(reply);
-    } catch (err) { 
-        console.log("❌ AI ERROR:", err.message); 
-    }
+    } catch (err) { console.log("❌ AI ERROR:", err.message); }
 });
 
 client.login(process.env.DISCORD_TOKEN);
