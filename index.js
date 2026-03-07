@@ -16,7 +16,8 @@ const client = new Client({
 
 client.commands = new Collection();
 const PREFIX = process.env.PREFIX || ',';
-const ARCHITECT_ID = '1284944736620253296'; 
+// UPDATED: Now pulls from .env for flexibility
+const ARCHITECT_ID = process.env.OWNER_ID; 
 const dbPath = path.join(__dirname, 'database.json');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -44,11 +45,26 @@ loadPlugins();
 // --- 3. CONNECTION LOGIC ---
 client.once(Events.ClientReady, async () => {
     console.log(`✅ SUCCESS: ${client.user.tag} is Online.`);
-    client.user.setActivity('Cloud Gaming-223', { type: ActivityType.Competing });
+    
+    // UPDATED: Rotating Status Billboard
+    const statusMessages = [
+        "🛰️ Monitoring CLOUD_GAMING-223",
+        "🛠️ Engine Version: 5.3.4",
+        "📂 Type ,menu for Plugins",
+        "🟢 System: Stable"
+    ];
+    let index = 0;
+    setInterval(() => {
+        client.user.setPresence({
+            activities: [{ name: statusMessages[index], type: ActivityType.Custom }],
+            status: 'online', 
+        });
+        index = (index + 1) % statusMessages.length;
+    }, 10000);
 
     try {
-        const architect = await client.users.fetch(ARCHITECT_ID);
-        if (architect) {
+        if (ARCHITECT_ID) {
+            const architect = await client.users.fetch(ARCHITECT_ID);
             const bootEmbed = new EmbedBuilder()
                 .setColor('#00ffcc')
                 .setTitle('🛰️ SYSTEM ONLINE')
@@ -63,7 +79,7 @@ client.once(Events.ClientReady, async () => {
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    // A. XP SYSTEM (Process every message)
+    // A. XP SYSTEM
     let database = {};
     if (fs.existsSync(dbPath)) {
         try { database = JSON.parse(fs.readFileSync(dbPath, 'utf8')); } catch (e) { database = {}; }
@@ -74,12 +90,10 @@ client.on(Events.MessageCreate, async (message) => {
         database[uid] = { game: "NOT SET", rank: "Unranked", stats: "N/A", xp: 0, level: 1, name: message.author.username };
     }
 
-    // Gain 15-25 XP
     const xpGain = Math.floor(Math.random() * 11) + 15;
     database[uid].xp += xpGain;
-    database[uid].name = message.author.username; // Keep name updated
+    database[uid].name = message.author.username;
 
-    // Level up check (Level * 1000)
     const nextLevelXP = database[uid].level * 1000;
     if (database[uid].xp >= nextLevelXP) {
         database[uid].level++;
@@ -97,6 +111,7 @@ client.on(Events.MessageCreate, async (message) => {
     if (!command) return;
 
     try {
+        // Pass model and client to allow AI and Dashboard functionality
         await command.execute(message, args, client, model); 
     } catch (error) {
         console.error(`❌ EXECUTION ERROR [${commandName}]:`, error);
