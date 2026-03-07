@@ -3,23 +3,33 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'trt',
-    description: 'Translate text to any language.',
+    description: 'Translate text. Use "cn" for Chinese, "fr" for French, etc.',
     category: 'Utility',
     async execute(message, args) {
-        const targetLang = args[0]?.toLowerCase();
+        let targetLang = args[0]?.toLowerCase();
         let text = args.slice(1).join(' ');
 
-        if (!targetLang) return message.reply('❌ **Usage:** `,trt [lang] [text]` (e.g., `,trt fr Hello`)');
+        if (!targetLang) return message.reply('❌ **Format:** `,trt [lang] [text]`');
 
+        // --- THE "CN" FIX ---
+        // If the user types 'cn', the engine automatically switches it to 'zh-CN'
+        if (targetLang === 'cn') targetLang = 'zh-CN';
+        if (targetLang === 'jp') targetLang = 'ja'; // Bonus: 'jp' to 'ja' for Japanese
+
+        // Reply Logic
         if (!text && message.reference) {
-            const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
-            text = repliedMsg.content;
+            try {
+                const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+                text = repliedMsg.content;
+            } catch (err) { return message.reply("⚠️ Message not found."); }
         }
 
-        if (!text) return message.reply('💡 Reply to a message or type text after the language code.');
+        if (!text) return message.reply('💡 Type text or reply to a message.');
 
         try {
+            await message.channel.sendTyping();
             const res = await translate(text, { to: targetLang });
+
             const trtEmbed = new EmbedBuilder()
                 .setColor('#2ecc71')
                 .setTitle('🌐 DIGITAL TRANSLATOR')
@@ -27,11 +37,11 @@ module.exports = {
                     { name: `📥 From: ${res.from.language.iso.toUpperCase()}`, value: `\`\`\`${text.substring(0, 500)}\`\`\`` },
                     { name: `📤 To: ${targetLang.toUpperCase()}`, value: `\`\`\`${res.text.substring(0, 500)}\`\`\`` }
                 )
-                .setFooter({ text: 'Cloud Gaming-223 | AES Translation Node' });
+                .setFooter({ text: 'Cloud Gaming-223 | Engine v2.6' });
 
             return message.reply({ embeds: [trtEmbed] });
         } catch (error) {
-            return message.reply(`❌ **Translation Failed:** Check if \`${targetLang}\` is a valid language code.`);
+            return message.reply(`❌ **Invalid Language:** Use \`fr\`, \`en\`, \`cn\`, etc.`);
         }
     }
 };
