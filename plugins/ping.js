@@ -6,14 +6,23 @@ module.exports = {
         // Initial heartbeat message
         const msg = await message.reply('🛰️ **Pinging satellite node...**');
 
-        // 1. Calculate Roundtrip Latency
+        // 1. Calculate Roundtrip Latency (Message delay)
         const latency = msg.createdTimestamp - message.createdTimestamp;
 
-        // 2. Get API Latency (WebSocket)
-        // Fallback to 'Connecting...' if heartbeat hasn't finished
-        const apiLatency = client.ws.ping > 0 ? `${Math.round(client.ws.ping)}ms` : 'Synchronizing...';
+        // 2. Get API Latency (Discord WebSocket)
+        const apiLatency = client.ws.ping;
+        const apiDisplay = apiLatency > 0 ? `${Math.round(apiLatency)}ms` : 'Synchronizing...';
 
-        // 3. Update with final data
-        await msg.edit(`📡 **Node Latency:** \`${latency}ms\` | 🧠 **API Heartbeat:** \`${apiLatency}\``);
+        // 3. Determine Signal Strength Emoji
+        let signal = '🟢 Excellent';
+        if (latency > 200) signal = '🟡 Average';
+        if (latency > 500) signal = '🔴 Critical Lag';
+
+        // 4. Update with final system data
+        await msg.edit(
+            `📡 **NODE LATENCY:** \`${latency}ms\`\n` +
+            `🧠 **API HEARTBEAT:** \`${apiDisplay}\`\n` +
+            `📶 **SIGNAL:** ${signal}`
+        );
     },
 };
