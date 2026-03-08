@@ -2,49 +2,27 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'setgame',
-    category: 'Gaming',
-    description: 'Sync your gaming profile to the Digital Engine.',
+    aliases: ['updategame'],
     async execute(message, args, client, model, lydiaChannels, database) {
-        // 1. Validation
-        if (!args.length || !message.content.includes('|')) {
-            const helpEmbed = new EmbedBuilder()
-                .setColor('#ffcc00')
-                .setTitle('⌨️ INPUT REQUIRED')
-                .setDescription('Use the vertical bar `|` to separate your info.')
-                .addFields(
-                    { name: '📝 Format', value: '`,setgame Game | Rank | Stats`' },
-                    { name: '💡 Example', value: '`,setgame CODM | Legendary | 2.5 KD`' }
-                );
-            return message.reply({ embeds: [helpEmbed] });
+        // Usage: ,setgame GameName | Rank
+        const input = args.join(" ").split("|");
+        const gameName = input[0]?.trim();
+        const rankName = input[1]?.trim() || "Pro";
+
+        if (!gameName) {
+            return message.reply("❌ **Usage:** `,setgame [Game] | [Rank]`\n*Example: ,setgame CODM | Legendary*");
         }
 
-        // 2. Parse Input
-        const details = args.join(' ').split('|').map(item => item.trim());
-        const gameData = {
-            game: details[0] || "Unknown",
-            rank: details[1] || "Unranked",
-            stats: details[2] || "N/A"
-        };
+        // Update the specific gaming object in your DB
+        database[message.author.id].gaming.game = gameName;
+        database[message.author.id].gaming.rank = rankName;
 
-        // 3. Update the Live Database (Core handles saving)
-        const uid = message.author.id;
-        if (!database[uid]) {
-            database[uid] = { xp: 0, level: 1, name: message.author.username };
-        }
-        
-        database[uid].gaming = gameData;
+        const updateEmbed = new EmbedBuilder()
+            .setColor('#f1c40f')
+            .setTitle('🎮 GAME PROFILE SYNCHRONIZED')
+            .setDescription(`**Game:** ${gameName}\n**Rank:** ${rankName}`)
+            .setFooter({ text: 'Data saved to Bamako Node 🇲🇱' });
 
-        // 4. Success Embed
-        const successEmbed = new EmbedBuilder()
-            .setColor('#00ffcc')
-            .setTitle('🎮 PROFILE SYNCED')
-            .addFields(
-                { name: '🕹️ Game', value: `\`${gameData.game}\``, inline: true },
-                { name: '🏅 Rank', value: `\`${gameData.rank}\``, inline: true },
-                { name: '📈 Stats', value: `\`${gameData.stats}\``, inline: false }
-            )
-            .setFooter({ text: 'Data archived in Digital Engine Core' });
-
-        await message.reply({ embeds: [successEmbed] });
-    },
+        message.reply({ embeds: [updateEmbed] });
+    }
 };
