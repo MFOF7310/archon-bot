@@ -2,40 +2,40 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'stats',
-    aliases: ['profile', 'level'],
+    aliases: ['profile', 'engine'],
     async execute(message, args, client, model, lydiaChannels, database) {
         const target = message.mentions.users.first() || message.author;
-        const data = database[target.id];
+        const userData = database[target.id];
 
-        if (!data) {
-            return message.reply("❌ This user hasn't initialized their engine yet.");
+        if (!userData) {
+            return message.reply("⚠️ Engine not initialized for this user.");
         }
 
-        // --- Intelligent Logic ---
-        const xpToNextLevel = 1000 - (data.xp % 1000);
-        const progressPercent = Math.floor(((data.xp % 1000) / 1000) * 100);
+        // Logic: Calculate progress based on your 1000 XP per level system
+        const currentXP = userData.xp || 0;
+        const level = userData.level || 1;
+        const xpInCurrentLevel = currentXP % 1000;
+        const progressPercent = Math.floor((xpInCurrentLevel / 1000) * 100);
         
-        // Dynamic Rank Titles
-        let rankTitle = "Civilian";
-        if (data.level >= 5) rankTitle = "Specialist";
-        if (data.level >= 10) rankTitle = "Elite Operative";
-        if (data.level >= 20) rankTitle = "Legendary Commander";
+        // Intelligent "Status" based on Level
+        let systemStatus = "🟢 STABLE";
+        if (level > 10) systemStatus = "🔥 OVERCLOCKED";
+        if (level > 25) systemStatus = "💎 ELITE CORE";
 
-        // Generate progress bar string
-        const progressBar = "🟩".repeat(Math.floor(progressPercent / 10)) + "⬜".repeat(10 - Math.floor(progressPercent / 10));
+        const progressBar = "🟦".repeat(Math.floor(progressPercent / 10)) + "⬛".repeat(10 - Math.floor(progressPercent / 10));
 
         const statsEmbed = new EmbedBuilder()
-            .setColor('#3498db')
-            .setTitle(`📊 SESSION DATA: ${target.username}`)
+            .setColor('#00ffcc')
+            .setTitle(`🛰️ SYSTEM DIAGNOSTICS: ${userData.name}`) // Using the stored name
             .setThumbnail(target.displayAvatarURL())
             .addFields(
-                { name: '🎖️ Current Rank', value: `**${rankTitle}** (Lvl ${data.level})`, inline: true },
-                { name: '⚡ Total XP', value: `${data.xp.toLocaleString()}`, inline: true },
-                { name: '🛰️ Node Location', value: 'Bamako-223', inline: true },
-                { name: '📈 Level Progress', value: `${progressBar} ${progressPercent}%\n*${xpToNextLevel} XP until next level up*` }
+                { name: '👤 Identity', value: `\`${userData.name}\``, inline: true },
+                { name: '📊 Level', value: `\`${level}\``, inline: true },
+                { name: '🔌 System Status', value: `\`${systemStatus}\``, inline: true },
+                { name: '🎮 Game Profile', value: `**${userData.gaming.game}** (${userData.gaming.rank})`, inline: false },
+                { name: '⚡ Core Progress', value: `${progressBar} ${progressPercent}%\n*${1000 - xpInCurrentLevel} XP to next synchronization*` }
             )
-            .setFooter({ text: 'Digital Engine v' + client.version, iconURL: client.user.displayAvatarURL() })
-            .setTimestamp();
+            .setFooter({ text: `Digital Engine | Node: Bamako-223`, iconURL: client.user.displayAvatarURL() });
 
         message.reply({ embeds: [statsEmbed] });
     }
