@@ -17,7 +17,7 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers, // Required for Welcome Event
+        GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.DirectMessages
     ],
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
@@ -32,7 +32,6 @@ const PREFIX = process.env.PREFIX || ",";
 const dbPath = path.join(__dirname, 'database.json');
 const lydiaPath = path.join(__dirname, 'lydia_status.json');
 
-// Safety: Ensure files exist before reading
 if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, JSON.stringify({}, null, 4));
 if (!fs.existsSync(lydiaPath)) fs.writeFileSync(lydiaPath, JSON.stringify({}, null, 4));
 
@@ -41,7 +40,6 @@ let lydiaChannels = JSON.parse(fs.readFileSync(lydiaPath, "utf8"));
 
 console.log("📂 DATABASE: Synchronized.");
 
-// Persistent Auto-Save (Every 30s)
 setInterval(() => {
     try {
         fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
@@ -91,15 +89,22 @@ client.loadPlugins();
 // ================= EVENTS =================
 
 client.once(Events.ClientReady, async () => {
-    console.log(`✅ ${client.user.tag} IS ONLINE`);
+    // 1. Changed to display name + custom message
+    console.log(`✅ ${client.user.username} is connected successfully`);
     
-    // Version Check
+    // 2. Upgraded Version Check Logic
     try {
         const res = await axios.get("https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/version.txt");
-        if (res.data.toString().trim() !== client.version) {
-            console.log(`🆙 UPDATE: New version available!`);
+        const latestVersion = res.data.toString().trim();
+
+        if (latestVersion !== client.version) {
+            console.log(`✨ UPDATE | A new version (${latestVersion}) is available! You are currently on v${client.version}.`);
+        } else {
+            console.log(`⭐ SYSTEM | Your software is up to date (v${client.version}).`);
         }
-    } catch (e) {}
+    } catch (e) {
+        console.log(`❌ SYSTEM | Could not connect to update server.`);
+    }
 
     const statuses = ["🎮 CODM Assistant", "🤖 CLOUD_GAMING AI"];
     let i = 0;
@@ -161,7 +166,6 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 
-    // AI logic
     if (lydiaChannels[message.channel.id] && message.mentions.has(client.user)) {
         try {
             await message.channel.sendTyping();
