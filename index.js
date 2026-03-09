@@ -3,6 +3,7 @@ require('dotenv').config();
 console.log("---------------------------------------");
 console.log("🚀 DIGITAL ENGINE: INITIALIZING...");
 console.log("📍 LOCATION: BAMAKO NODE 🇲🇱");
+console.log("🦅 THEME: EAGLE COMMUNITY ELITE");
 console.log("---------------------------------------");
 
 const fs = require('fs');
@@ -54,7 +55,8 @@ setInterval(() => {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
-    systemInstruction: "You are Lydia, the CLOUD_GAMING-223 Digital Engine. You are helpful, tech-savvy, and rooted in Mali 🇲🇱. Keep responses concise and avoid mentioning you are an AI.",
+    // ✨ Lydia is now tuned to the elegant Eagle aesthetic
+    systemInstruction: "You are Lydia, the Digital Engine of Eagle Community. You are helpful, tech-savvy, and rooted in Mali 🇲🇱. Use italics (*text*) for a premium feel and eagle (🦅) or tech (🛰️) emojis. Keep responses concise, elegant, and avoid mentioning you are an AI.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -108,7 +110,7 @@ client.once(Events.ClientReady, async () => {
         console.log(`❌ SYSTEM | Could not connect to update server.`);
     }
 
-    const statuses = ["🎮 CODM Assistant", "🤖 CLOUD_GAMING AI"];
+    const statuses = ["🦅 Eagle Community", "✨ Elegance in Flight", "🤖 Node: Bamako-223"];
     let i = 0;
     setInterval(() => {
         client.user.setPresence({ 
@@ -119,6 +121,7 @@ client.once(Events.ClientReady, async () => {
     }, 10000);
 });
 
+// ================= 🦅 ELEGANT WELCOME & GUIDELINES =================
 client.on(Events.GuildMemberAdd, async member => {
     const channel = member.guild.systemChannel || member.guild.channels.cache.find(ch => ch.name.includes('welcome'));
     if (!channel) return;
@@ -131,13 +134,31 @@ client.on(Events.GuildMemberAdd, async member => {
     };
 
     const welcomeEmbed = new EmbedBuilder()
-        .setColor('#2ecc71')
-        .setTitle('🛰️ NEW AGENT ARRIVED')
-        .setThumbnail(member.user.displayAvatarURL())
-        .setDescription(`Bienvenue, ${member}!\n\n🎁 **Bonus:** +100 XP added.\n🇲🇱 **Node:** Bamako-223`)
-        .setFooter({ text: 'Cloud Gaming-223 Security' });
+        .setColor('#fdfdfd') // Premium White
+        .setTitle('✧ 𝘎𝘳𝘦𝘦𝘵𝘪𝘯𝘨𝘴 𝘧𝘳𝘰𝘮 𝘵𝘩𝘦 𝘚𝘬𝘪𝘦𝘴 ✧')
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+        .setDescription(`*Welcome home, ${member}. Your journey with the Eagle Community begins here at Node: Bamako-223. / Bienvenue chez toi, ${member}. Ton voyage commence ici au Nœud : Bamako-223.*`)
+        .addFields(
+            { 
+                name: '📜 𝘌𝘯𝘨𝘭𝘪𝘴𝘩 𝘎𝘶𝘪𝘥𝘦𝘭𝘪𝘯𝘦𝘴', 
+                value: '• *Fly with respect.*\n• *Keep the airwaves clear.*\n• *Trust the Wardens.*', 
+                inline: true 
+            },
+            { 
+                name: '📜 𝘙è𝘨𝘭𝘦𝘮𝘦𝘯𝘵𝘴 𝘍𝘳𝘢𝘯ç𝘢𝘪𝘴', 
+                value: '• *Volez avec respect.*\n• *Gardez les ondes propres.*\n• *Faites confiance aux Wardens.*', 
+                inline: true 
+            },
+            {
+                name: '✨ 𝗔 𝗚𝗶𝗳𝘁 𝗳𝗼𝗿 𝗬𝗼𝘂',
+                value: '*We have credited your account with +100 XP to start your ascent.*',
+                inline: false
+            }
+        )
+        .setFooter({ text: `Eagle Community • Elegance in Flight` })
+        .setTimestamp();
 
-    channel.send({ embeds: [welcomeEmbed] });
+    channel.send({ content: `🦅 *A new flyer has joined the nest:* ${member}`, embeds: [welcomeEmbed] });
 });
 
 client.on(Events.MessageCreate, async message => {
@@ -156,13 +177,12 @@ client.on(Events.MessageCreate, async message => {
         };
     }
 
-    // --- 1. XP LOGIC ---
+    // --- XP LOGIC ---
     const userCooldown = xpCooldowns.get(uid);
     if (!userCooldown || (now - userCooldown) > COOLDOWN_TIME) {
         const randomXP = Math.floor(Math.random() * (45 - 25 + 1)) + 25;
         database[uid].xp += randomXP;
         database[uid].name = message.author.username; 
-
         xpCooldowns.set(uid, now);
 
         let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
@@ -172,62 +192,8 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 
-    // --- 2. COMMAND HANDLING ---
+    // --- COMMAND HANDLING ---
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
-        const command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
-
-        if (command) {
-            try { 
-                await command.execute(message, args, client, model, lydiaChannels, database); 
-            } catch (err) { console.error("Command Error:", err); }
-            return;
-        }
-    }
-
-    // --- 3. LYDIA AI LOGIC ---
-    if (lydiaChannels[message.channel.id]) {
-        const isMentioned = message.mentions.has(client.user);
-        
-        // Safety check for reply (ensure reference exists before fetching)
-        let isReply = false;
-        if (message.reference) {
-            try {
-                const referencedMsg = await message.channel.messages.fetch(message.reference.messageId);
-                if (referencedMsg.author.id === client.user.id) isReply = true;
-            } catch (e) { isReply = false; }
-        }
-
-        if (isMentioned || isReply) {
-            try {
-                await message.channel.sendTyping();
-                
-                // Clean the input text
-                const cleanInput = message.content.replace(/<@!?[0-9]+>/g, "").trim();
-                const finalPrompt = cleanInput || "Hello Lydia, I am checking in.";
-
-                // ✨ FIXED FOR GEMINI 2.0: Using correct object structure
-                const result = await model.generateContent({
-                    contents: [{ role: 'user', parts: [{ text: `${message.author.username}: ${finalPrompt}` }] }]
-                });
-
-                const responseText = result.response.text();
-
-                if (responseText && responseText.length > 0) {
-                    if (responseText.length > 2000) {
-                        const chunks = responseText.match(/[\s\S]{1,2000}/g);
-                        for (const chunk of chunks) await message.reply(chunk);
-                    } else {
-                        await message.reply(responseText);
-                    }
-                }
-            } catch (err) { 
-                console.log("❌ AI Error Details:", err);
-                message.reply("⚠️ **SYSTEM ERROR:** Liaison avec le cerveau IA interrompue.");
-            }
-        }
-    }
-});
-
-client.login(process.env.DISCORD_TOKEN);
+        const command = client.commands.get(cmdName
