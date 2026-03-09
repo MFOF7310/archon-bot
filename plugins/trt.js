@@ -4,21 +4,15 @@ const { EmbedBuilder } = require('discord.js');
 module.exports = {
     name: 'trt',
     aliases: ['t', 'trans'],
-    description: 'Universal Translator.',
-    async execute(message, args) {
+    run: async (client, message, args, database) => {
         let targetLang = args[0]?.toLowerCase();
         let text = args.slice(1).join(' ');
 
         if (!targetLang) return message.reply('🛰️ Usage: `,trt [lang] [text]`');
-
-        const shortcuts = { 'cn': 'zh-CN', 'jp': 'ja', 'kr': 'ko', 'bm': 'bm' };
-        if (shortcuts[targetLang]) targetLang = shortcuts[targetLang];
-
         if (!text && message.reference) {
             const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
             text = repliedMsg.content;
         }
-
         if (!text) return message.reply('💡 Provide text or reply to a message.');
 
         try {
