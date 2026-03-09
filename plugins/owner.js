@@ -2,8 +2,8 @@ module.exports = {
     name: 'owner',
     description: 'Executive links and system hub',
     category: 'Owner',
-    async execute(message, args, client) {
-        const ARCHITECT_ID = '1284944736620253296';
+    run: async (client, message, args, database) => {
+        const ARCHITECT_ID = process.env.OWNER_ID || '1284944736620253296';
         if (message.author.id !== ARCHITECT_ID) return;
 
         const response = [
