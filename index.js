@@ -29,7 +29,7 @@ client.version = "1.0.0";
 const PREFIX = process.env.PREFIX || ",";
 
 // ================= COOLDOWN SYSTEM =================
-const xpCooldowns = new Map(); // Stores timestamps to prevent spam
+const xpCooldowns = new Map(); 
 
 // ================= PATHS & DB =================
 const dbPath = path.join(__dirname, 'database.json');
@@ -54,6 +54,8 @@ setInterval(() => {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
+    // ✨ ADDED SYSTEM INSTRUCTIONS FOR PERSONALITY
+    systemInstruction: "You are Lydia, the CLOUD_GAMING-223 Digital Engine. You are helpful, tech-savvy, and rooted in Mali 🇲🇱. Keep responses concise and avoid mentioning you are an AI.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -144,9 +146,8 @@ client.on(Events.MessageCreate, async message => {
 
     const uid = message.author.id;
     const now = Date.now();
-    const COOLDOWN_TIME = 60000; // 60 seconds
+    const COOLDOWN_TIME = 60000; 
 
-    // 1. Ensure User Exists in Database
     if (!database[uid]) {
         database[uid] = { 
             xp: 0, 
@@ -156,17 +157,15 @@ client.on(Events.MessageCreate, async message => {
         };
     }
 
-    // 2. XP Gain with Cooldown & Randomizer
+    // XP Logic
     const userCooldown = xpCooldowns.get(uid);
     if (!userCooldown || (now - userCooldown) > COOLDOWN_TIME) {
-        // Random XP between 25 and 45
         const randomXP = Math.floor(Math.random() * (45 - 25 + 1)) + 25;
         database[uid].xp += randomXP;
-        database[uid].name = message.author.username; // Keep name updated
+        database[uid].name = message.author.username; 
 
         xpCooldowns.set(uid, now);
 
-        // Level Up Calculation
         let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
         if (nextLevel > database[uid].level) {
             database[uid].level = nextLevel;
@@ -174,7 +173,7 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 
-    // 3. Command Handling
+    // Command Handling
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
@@ -188,13 +187,29 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 
-    // 4. Lydia AI Logic
-    if (lydiaChannels[message.channel.id] && message.mentions.has(client.user)) {
-        try {
-            await message.channel.sendTyping();
-            const result = await model.generateContent(`User: ${message.author.username}. Msg: ${message.content}`);
-            message.reply(result.response.text());
-        } catch (err) { console.log("❌ AI Error:", err.message); }
+    // 4. IMPROVED LYDIA AI LOGIC
+    if (lydiaChannels[message.channel.id]) {
+        const isMentioned = message.mentions.has(client.user);
+        const isReply = message.reference && (await message.channel.messages.fetch(message.reference.messageId)).author.id === client.user.id;
+
+        if (isMentioned || isReply) {
+            try {
+                await message.channel.sendTyping();
+                
+                // Remove mention tag from text
+                const cleanInput = message.content.replace(/<@!?[0-9]+>/g, "").trim();
+                
+                const result = await model.generateContent(`${message.author.username}: ${cleanInput || "Hello"}`);
+                const responseText = result.response.text();
+
+                if (responseText.length > 2000) {
+                    const chunks = responseText.match(/[\s\S]{1,2000}/g);
+                    for (const chunk of chunks) await message.reply(chunk);
+                } else {
+                    await message.reply(responseText);
+                }
+            } catch (err) { console.log("❌ AI Error:", err.message); }
+        }
     }
 });
 
