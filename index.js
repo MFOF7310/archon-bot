@@ -54,7 +54,6 @@ setInterval(() => {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
-    // ✨ ADDED SYSTEM INSTRUCTIONS FOR PERSONALITY
     systemInstruction: "You are Lydia, the CLOUD_GAMING-223 Digital Engine. You are helpful, tech-savvy, and rooted in Mali 🇲🇱. Keep responses concise and avoid mentioning you are an AI.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -157,7 +156,7 @@ client.on(Events.MessageCreate, async message => {
         };
     }
 
-    // XP Logic
+    // --- 1. XP LOGIC ---
     const userCooldown = xpCooldowns.get(uid);
     if (!userCooldown || (now - userCooldown) > COOLDOWN_TIME) {
         const randomXP = Math.floor(Math.random() * (45 - 25 + 1)) + 25;
@@ -173,7 +172,7 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 
-    // Command Handling
+    // --- 2. COMMAND HANDLING ---
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
@@ -187,28 +186,46 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 
-    // 4. IMPROVED LYDIA AI LOGIC
+    // --- 3. LYDIA AI LOGIC ---
     if (lydiaChannels[message.channel.id]) {
         const isMentioned = message.mentions.has(client.user);
-        const isReply = message.reference && (await message.channel.messages.fetch(message.reference.messageId)).author.id === client.user.id;
+        
+        // Safety check for reply (ensure reference exists before fetching)
+        let isReply = false;
+        if (message.reference) {
+            try {
+                const referencedMsg = await message.channel.messages.fetch(message.reference.messageId);
+                if (referencedMsg.author.id === client.user.id) isReply = true;
+            } catch (e) { isReply = false; }
+        }
 
         if (isMentioned || isReply) {
             try {
                 await message.channel.sendTyping();
                 
-                // Remove mention tag from text
+                // Clean the input text
                 const cleanInput = message.content.replace(/<@!?[0-9]+>/g, "").trim();
-                
-                const result = await model.generateContent(`${message.author.username}: ${cleanInput || "Hello"}`);
+                const finalPrompt = cleanInput || "Hello Lydia, I am checking in.";
+
+                // ✨ FIXED FOR GEMINI 2.0: Using correct object structure
+                const result = await model.generateContent({
+                    contents: [{ role: 'user', parts: [{ text: `${message.author.username}: ${finalPrompt}` }] }]
+                });
+
                 const responseText = result.response.text();
 
-                if (responseText.length > 2000) {
-                    const chunks = responseText.match(/[\s\S]{1,2000}/g);
-                    for (const chunk of chunks) await message.reply(chunk);
-                } else {
-                    await message.reply(responseText);
+                if (responseText && responseText.length > 0) {
+                    if (responseText.length > 2000) {
+                        const chunks = responseText.match(/[\s\S]{1,2000}/g);
+                        for (const chunk of chunks) await message.reply(chunk);
+                    } else {
+                        await message.reply(responseText);
+                    }
                 }
-            } catch (err) { console.log("❌ AI Error:", err.message); }
+            } catch (err) { 
+                console.log("❌ AI Error Details:", err);
+                message.reply("⚠️ **SYSTEM ERROR:** Liaison avec le cerveau IA interrompue.");
+            }
         }
     }
 });
