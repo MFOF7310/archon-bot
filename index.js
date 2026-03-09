@@ -53,7 +53,7 @@ setInterval(() => {
 // ================= GEMINI AI SETUP =================
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-1.5-flash",
     systemInstruction: "You are Lydia, the CLOUD_GAMING-223 Digital Engine. You are helpful, tech-savvy, and rooted in Mali 🇲🇱. Keep responses concise and avoid mentioning you are an AI.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
