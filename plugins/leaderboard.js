@@ -4,7 +4,7 @@ module.exports = {
     name: 'leaderboard',
     aliases: ['lb', 'top'],
     async execute(message, args, client, model, lydiaChannels, database) {
-        // 1. Process Database into a sorted array (Top 10)
+        // 1. Convert Database Object to a Sorted Array
         const fullList = Object.entries(database)
             .map(([id, data]) => ({
                 id,
@@ -13,27 +13,32 @@ module.exports = {
                 level: data.level || 1
             }))
             .sort((a, b) => b.xp - a.xp)
-            .slice(0, 10);
+            .slice(0, 10); // Keep only Top 10
 
         if (fullList.length === 0) {
             return message.reply("📊 **SYSTEM LOG:** No agent data found in database.");
         }
 
-        // Split into two pages (5 agents each)
-        const pages = [fullList.slice(0, 5), fullList.slice(5, 10)];
+        // 2. Split into two pages (5 agents per page)
+        const pages = [
+            fullList.slice(0, 5), // Page 1
+            fullList.slice(5, 10) // Page 2
+        ];
+
         let currentPage = 0;
 
-        // Function to create the embed for a specific page
+        // --- Function to build the Embed ---
         const generateEmbed = (pageIdx) => {
             const list = pages[pageIdx].map((user, index) => {
-                const globalIndex = pageIdx * 5 + index;
-                let badge = `**#${globalIndex + 1}**`;
-                if (globalIndex === 0) badge = '🥇';
-                if (globalIndex === 1) badge = '🥈';
-                if (globalIndex === 2) badge = '🥉';
+                const globalRank = (pageIdx * 5) + index + 1;
+                let badge = `**#${globalRank}**`;
+                
+                // Style Top 3
+                if (globalRank === 1) badge = '🥇';
+                if (globalRank === 2) badge = '🥈';
+                if (globalRank === 3) badge = '🥉';
 
-                // Mentioning the user for that "intelligent" look
-                return `${badge} <@${user.id}>\n╰ ⚡ Lvl: \`${user.level}\` | ✨ XP: \`${user.xp.toLocaleString()}\``;
+                return `${badge} <@${user.id}>\n╰ ✨ XP: \`${user.xp.toLocaleString()}\` | ⚡ Lvl: \`${user.level}\``;
             }).join('\n\n');
 
             return new EmbedBuilder()
@@ -42,62 +47,65 @@ module.exports = {
                     name: 'CLOUD_GAMING-223 NETWORK', 
                     iconURL: client.user.displayAvatarURL() 
                 })
-                .setTitle(`🏆 TOP-TIER AGENTS | PAGE ${pageIdx + 1}/2`)
+                .setTitle('🏆 TOP-TIER AGENTS | RANKINGS')
                 .setThumbnail('https://cdn-icons-png.flaticon.com/512/3112/3112946.png')
                 .setDescription(list)
                 .setFooter({ 
-                    text: `Node: Bamako-223 | v${client.version || '1.0.0'}`, 
+                    text: `Node: Bamako-223 | Page ${pageIdx + 1}/2 | Total: ${fullList.length} Agents`, 
                     iconURL: message.guild.iconURL() 
                 })
                 .setTimestamp();
         };
 
-        // Create the Buttons
-        const getButtons = (pageIdx) => {
-            return new ActionRowBuilder().addComponents(
+        // --- Function to build the Buttons ---
+        const generateButtons = (pageIdx) => {
+            const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                    .setCustomId('prev')
-                    .setLabel('⬅️ Previous')
-                    .setStyle(ButtonStyle.Primary)
-                    .setDisabled(pageIdx === 0),
+                    .setCustomId('prev_lb')
+                    .setLabel('⬅️ Page 1/2')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(pageIdx === 0), // Disable if already on Page 1
                 new ButtonBuilder()
-                    .setCustomId('next')
-                    .setLabel('Next ➡️')
+                    .setCustomId('next_lb')
+                    .setLabel('Page 2/2 ➡️')
                     .setStyle(ButtonStyle.Primary)
-                    .setDisabled(pageIdx === 1 || pages[1].length === 0)
+                    .setDisabled(pageIdx === 1 || pages[1].length === 0) // Disable if on Page 2 OR Page 2 is empty
             );
+            return row;
         };
 
-        // Initial Reply
-        const response = await message.reply({
+        // 3. Send the initial Leaderboard
+        const mainMessage = await message.reply({
             embeds: [generateEmbed(currentPage)],
-            components: [getButtons(currentPage)]
+            components: [generateButtons(currentPage)]
         });
 
-        // 2. The Interaction Collector (The "Brain")
-        const collector = response.createMessageComponentCollector({
+        // 4. Create the Button Collector
+        const collector = mainMessage.createMessageComponentCollector({
             componentType: ComponentType.Button,
-            time: 60000 // Buttons active for 60 seconds
+            time: 60000 // Buttons active for 1 minute
         });
 
         collector.on('collect', async (i) => {
-            // Only the person who typed ,leaderboard can click
+            // Security: Only the person who called the command can use buttons
             if (i.user.id !== message.author.id) {
-                return i.reply({ content: "Only the commander can switch pages!", ephemeral: true });
+                return i.reply({ content: "❌ Access Denied. Only the commander can toggle pages.", ephemeral: true });
             }
 
-            if (i.customId === 'next') currentPage = 1;
-            if (i.customId === 'prev') currentPage = 0;
+            // Update page index based on button click
+            if (i.customId === 'next_lb') currentPage = 1;
+            if (i.customId === 'prev_lb') currentPage = 0;
 
+            // Refresh the message with new Page and updated Buttons
             await i.update({
                 embeds: [generateEmbed(currentPage)],
-                components: [getButtons(currentPage)]
+                components: [generateButtons(currentPage)]
             });
         });
 
-        // Disable buttons after timeout
+        // 5. Cleanup: Remove buttons when the collector expires
         collector.on('end', () => {
-            response.edit({ components: [] }).catch(() => null);
+            mainMessage.edit({ components: [] }).catch(() => null);
         });
     }
 };
