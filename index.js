@@ -55,7 +55,6 @@ setInterval(() => {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
-    // ✨ Lydia is now tuned to the elegant Eagle aesthetic
     systemInstruction: "You are Lydia, the Digital Engine of Eagle Community. You are helpful, tech-savvy, and rooted in Mali 🇲🇱. Use italics (*text*) for a premium feel and eagle (🦅) or tech (🛰️) emojis. Keep responses concise, elegant, and avoid mentioning you are an AI.",
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -134,26 +133,14 @@ client.on(Events.GuildMemberAdd, async member => {
     };
 
     const welcomeEmbed = new EmbedBuilder()
-        .setColor('#fdfdfd') // Premium White
+        .setColor('#fdfdfd')
         .setTitle('✧ 𝘎𝘳𝘦𝘦𝘵𝘪𝘯𝘨𝘴 𝘧𝘳𝘰𝘮 𝘵𝘩𝘦 𝘚𝘬𝘪𝘦𝘴 ✧')
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-        .setDescription(`*Welcome home, ${member}. Your journey with the Eagle Community begins here at Node: Bamako-223. / Bienvenue chez toi, ${member}. Ton voyage commence ici au Nœud : Bamako-223.*`)
+        .setDescription(`*Welcome home, ${member}. Your journey with the Eagle Community begins here at Node: Bamako-223.*`)
         .addFields(
-            { 
-                name: '📜 𝘌𝘯𝘨𝘭𝘪𝘴𝘩 𝘎𝘶𝘪𝘥𝘦𝘭𝘪𝘯𝘦𝘴', 
-                value: '• *Fly with respect.*\n• *Keep the airwaves clear.*\n• *Trust the Wardens.*', 
-                inline: true 
-            },
-            { 
-                name: '📜 𝘙è𝘨𝘭𝘦𝘮𝘦𝘯𝘵𝘴 𝘍𝘳𝘢𝘯ç𝘢𝘪𝘴', 
-                value: '• *Volez avec respect.*\n• *Gardez les ondes propres.*\n• *Faites confiance aux Wardens.*', 
-                inline: true 
-            },
-            {
-                name: '✨ 𝗔 𝗚𝗶𝗳𝘁 𝗳𝗼𝗿 𝗬𝗼𝘂',
-                value: '*We have credited your account with +100 XP to start your ascent.*',
-                inline: false
-            }
+            { name: '📜 𝘌𝘯𝘨𝘭𝘪𝘴𝘩 𝘎𝘶𝘪𝘥𝘦𝘭𝘪𝘯𝘦𝘴', value: '• *Fly with respect.*\n• *Keep the airwaves clear.*', inline: true },
+            { name: '📜 𝘙è𝘨𝘭𝘦𝘮𝘦𝘯𝘵𝘴 𝘍𝘳𝘢𝘯ç𝘢𝘪𝘴', value: '• *Volez avec respect.*\n• *Gardez les ondes propres.*', inline: true },
+            { name: '✨ 𝗔 𝗚𝗶𝗳𝘁 𝗳𝗼𝗿 𝗬𝗼𝘂', value: '*We have credited your account with +100 XP.*', inline: false }
         )
         .setFooter({ text: `Eagle Community • Elegance in Flight` })
         .setTimestamp();
@@ -196,4 +183,34 @@ client.on(Events.MessageCreate, async message => {
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
-        const command = client.commands.get(cmdName
+        
+        // Find command by name or alias
+        const command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
+
+        if (command) {
+            try {
+                await command.run(client, message, args, database);
+            } catch (error) {
+                console.error(`❌ Command Error (${cmdName}):`, error);
+                message.reply("⚠️ *An error occurred while executing this command.*");
+            }
+            return;
+        }
+    }
+
+    // --- LYDIA AI (IF ENABLED IN CHANNEL) ---
+    if (lydiaChannels[message.channel.id]) {
+        try {
+            await message.channel.sendTyping();
+            const result = await model.generateContent(message.content);
+            const response = await result.response;
+            const text = response.text();
+            message.reply(text);
+        } catch (err) {
+            console.error("Lydia Error:", err.message);
+        }
+    }
+});
+
+// ================= LOGIN =================
+client.login(process.env.TOKEN);
