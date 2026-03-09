@@ -3,36 +3,30 @@ module.exports = {
     category: 'AI',
     description: 'Toggle the CLOUD_GAMING AI engine in this channel',
     async execute(message, args, client, model, lydiaChannels) {
-        // Permission Check
         if (!message.member.permissions.has("ManageGuild")) {
-            return message.reply("❌ **Access Denied:** Administrator permissions required to toggle the AI Engine.");
+            return message.reply("❌ **Access Denied:** Administrator permissions required.");
         }
 
         const option = args[0]?.toLowerCase();
 
-        // ENABLE ENGINE
         if (option === "on") {
             lydiaChannels[message.channel.id] = true;
-            return message.reply(
-                "🧠 **ENGINE UPDATE:** CLOUD_GAMING AI is now **ACTIVE** in this channel.\n" +
-                "📡 Members can now **mention me** or **reply to my messages** to chat."
-            );
+            return message.reply({
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor('#2ecc71')
+                        .setTitle('🧠 AI ENGINE ONLINE')
+                        .setDescription("Le système **CLOUD_GAMING-223** est opérationnel.\n\n📡 **Mode:** Interactif\n💬 **Trigger:** Mention ou Réponse")
+                        .setFooter({ text: 'Bamako Node 🇲🇱' })
+                ]
+            });
         }
 
-        // DISABLE ENGINE
         if (option === "off") {
             delete lydiaChannels[message.channel.id];
-            return message.reply(
-                "💤 **ENGINE UPDATE:** CLOUD_GAMING AI has been placed in **STANDBY** for this channel."
-            );
+            return message.reply("💤 **ENGINE UPDATE:** AI has been placed in **STANDBY**.");
         }
 
-        // USAGE GUIDE
-        return message.reply(
-            "⚙️ **CLOUD_GAMING Control Panel**\n" +
-            "Usage:\n" +
-            "`,lydia on` — Activate AI Engine\n" +
-            "`,lydia off` — Deactivate AI Engine"
-        );
+        return message.reply("⚙️ **Usage:** `,lydia on` or `,lydia off`.");
     }
 };
