@@ -28,6 +28,9 @@ client.aliases = new Collection();
 client.version = "1.0.0"; 
 const PREFIX = process.env.PREFIX || ",";
 
+// ================= COOLDOWN SYSTEM =================
+const xpCooldowns = new Map(); // Stores timestamps to prevent spam
+
 // ================= PATHS & DB =================
 const dbPath = path.join(__dirname, 'database.json');
 const lydiaPath = path.join(__dirname, 'lydia_status.json');
@@ -89,16 +92,14 @@ client.loadPlugins();
 // ================= EVENTS =================
 
 client.once(Events.ClientReady, async () => {
-    // 1. Changed to display name + custom message
     console.log(`✅ ${client.user.username} is connected successfully`);
     
-    // 2. Upgraded Version Check Logic
     try {
         const res = await axios.get("https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/version.txt");
         const latestVersion = res.data.toString().trim();
 
         if (latestVersion !== client.version) {
-            console.log(`✨ UPDATE | A new version (${latestVersion}) is available! You are currently on v${client.version}.`);
+            console.log(`✨ UPDATE | A new version (${latestVersion}) is available!`);
         } else {
             console.log(`⭐ SYSTEM | Your software is up to date (v${client.version}).`);
         }
@@ -132,27 +133,48 @@ client.on(Events.GuildMemberAdd, async member => {
         .setColor('#2ecc71')
         .setTitle('🛰️ NEW AGENT ARRIVED')
         .setThumbnail(member.user.displayAvatarURL())
-        .setDescription(`Bienvenue, ${member}!\n\n🎁 **Bonus:** +100 XP added to your profile.\n🇲🇱 **Node:** Bamako-223`)
+        .setDescription(`Bienvenue, ${member}!\n\n🎁 **Bonus:** +100 XP added.\n🇲🇱 **Node:** Bamako-223`)
         .setFooter({ text: 'Cloud Gaming-223 Security' });
 
-    channel.send({ content: `Welcome ${member}!`, embeds: [welcomeEmbed] });
+    channel.send({ embeds: [welcomeEmbed] });
 });
 
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot || !message.guild) return;
 
     const uid = message.author.id;
+    const now = Date.now();
+    const COOLDOWN_TIME = 60000; // 60 seconds
+
+    // 1. Ensure User Exists in Database
     if (!database[uid]) {
-        database[uid] = { xp: 0, level: 1, name: message.author.username, gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } };
-    }
-    
-    database[uid].xp += 20;
-    let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
-    if (nextLevel > database[uid].level) {
-        database[uid].level = nextLevel;
-        message.reply(`🆙 **LEVEL UP!** Level ${nextLevel} reached.`);
+        database[uid] = { 
+            xp: 0, 
+            level: 1, 
+            name: message.author.username, 
+            gaming: { game: "N/A", rank: "Unranked", stats: "N/A" } 
+        };
     }
 
+    // 2. XP Gain with Cooldown & Randomizer
+    const userCooldown = xpCooldowns.get(uid);
+    if (!userCooldown || (now - userCooldown) > COOLDOWN_TIME) {
+        // Random XP between 25 and 45
+        const randomXP = Math.floor(Math.random() * (45 - 25 + 1)) + 25;
+        database[uid].xp += randomXP;
+        database[uid].name = message.author.username; // Keep name updated
+
+        xpCooldowns.set(uid, now);
+
+        // Level Up Calculation
+        let nextLevel = Math.floor(database[uid].xp / 1000) + 1;
+        if (nextLevel > database[uid].level) {
+            database[uid].level = nextLevel;
+            message.reply(`🆙 **LEVEL UP!** <@${uid}>, you reached **Level ${nextLevel}**!`);
+        }
+    }
+
+    // 3. Command Handling
     if (message.content.startsWith(PREFIX)) {
         const args = message.content.slice(PREFIX.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
@@ -161,11 +183,12 @@ client.on(Events.MessageCreate, async message => {
         if (command) {
             try { 
                 await command.execute(message, args, client, model, lydiaChannels, database); 
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error("Command Error:", err); }
             return;
         }
     }
 
+    // 4. Lydia AI Logic
     if (lydiaChannels[message.channel.id] && message.mentions.has(client.user)) {
         try {
             await message.channel.sendTyping();
