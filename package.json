@@ -12,7 +12,8 @@
     "@google/generative-ai": "^0.22.0",
     "google-translate-api-x": "^10.7.1",
     "google-tts-api": "^2.0.2",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "groq-sdk": "^0.9.0"
   },
   "engines": {
     "node": ">=18.x"
