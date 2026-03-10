@@ -47,10 +47,12 @@ client.once(Events.ClientReady, async () => {
         
         for (const file of pluginFiles) {
             try {
-                // Dynamically requiring the plugin
+                // Remove from cache to allow clean reloads
+                delete require.cache[require.resolve(`./plugins/${file}`)];
                 const command = require(`./plugins/${file}`);
                 
-                if (command.name && command.execute) {
+                // Support both your "run" and "execute" structures
+                if (command.name && (command.execute || command.run)) {
                     client.commands.set(command.name, command);
                     console.log(`${green}[SUCCESS]${reset} Linked Module: ${cyan}${file.toUpperCase()}${reset}`);
                     loadedCount++;
@@ -89,11 +91,12 @@ client.once(Events.ClientReady, async () => {
 
 // ================= DYNAMIC INTELLIGENT WELCOME =================
 async function sendWelcome(member) {
-    const channel = member.guild.channels.cache.get(process.env.WELCOME_CHANNEL_ID);
+    const channelId = process.env.WELCOME_CHANNEL_ID;
+    const channel = member.guild.channels.cache.get(channelId);
     if (!channel) return;
 
     try {
-        const prompt = `You are Architect CG-223. Write a prestigious welcome for ${member.user.username} joining Eagle Community. Max 2 sentences. Use tech emojis like 🦅, 🛰️, 🛡️.`;
+        const prompt = `You are Architect CG-223. Write a prestigious welcome for ${member.user.username} joining Eagle Community. Max 2 sentences. Use tech emojis like 🦅, 🛰️, 🛡️. Tone: Prestigious and welcoming.`;
         const result = await client.model.generateContent(prompt);
         const aiResponse = result.response.text();
 
@@ -115,7 +118,7 @@ async function sendWelcome(member) {
             embeds: [welcomeEmbed] 
         });
     } catch (err) {
-        console.error(`${blue}[ERROR]${reset} AI Welcome failed.`);
+        console.error(`${blue}[ERROR]${reset} AI Welcome failed:`, err.message);
     }
 }
 
@@ -123,7 +126,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
     await sendWelcome(member);
 });
 
-// ================= MESSAGE HANDLING =================
+// ================= MESSAGE HANDLING (PLUGIN ENGINE) =================
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild || !message.content.startsWith(PREFIX)) return;
 
@@ -140,7 +143,12 @@ client.on(Events.MessageCreate, async (message) => {
     if (!command) return;
 
     try {
-        await command.execute(message, args);
+        // Execute using whichever method the plugin provides (run or execute)
+        if (command.run) {
+            await command.run(client, message, args);
+        } else if (command.execute) {
+            await command.execute(message, args);
+        }
     } catch (error) {
         console.error(error);
         message.reply("⚠️ System error during command execution.");
