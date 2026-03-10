@@ -3,7 +3,12 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentTyp
 module.exports = {
     name: 'leaderboard',
     aliases: ['lb', 'top'],
+    category: 'SYSTEM',
     run: async (client, message, args, database) => {
+        if (!database || Object.keys(database).length === 0) {
+            return message.reply("📊 **Database Offline:** No agent data detected in the node.");
+        }
+
         const fullList = Object.entries(database)
             .map(([id, data]) => ({
                 id,
@@ -13,8 +18,6 @@ module.exports = {
             }))
             .sort((a, b) => b.xp - a.xp)
             .slice(0, 10);
-
-        if (fullList.length === 0) return message.reply("📊 **No data found.**");
 
         const pages = [fullList.slice(0, 5), fullList.slice(5, 10)];
         let currentPage = 0;
@@ -31,8 +34,8 @@ module.exports = {
 
             return new EmbedBuilder()
                 .setColor(pageIdx === 0 ? '#f1c40f' : '#3498db')
-                .setTitle('🏆 TOP-TIER AGENTS')
-                .setDescription(list)
+                .setTitle('🏆 TOP-TIER AGENTS | RANKINGS')
+                .setDescription(list || "*No further data.*")
                 .setFooter({ text: `Page ${pageIdx + 1}/2 | Node: Bamako-223` })
                 .setTimestamp();
         };
