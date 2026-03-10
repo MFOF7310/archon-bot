@@ -16,7 +16,7 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers, // REQUIRED FOR WELCOME
+        GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.DirectMessages
     ],
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
@@ -32,12 +32,11 @@ const dbPath = path.join(__dirname, 'database.json');
 const lydiaPath = path.join(__dirname, 'lydia_status.json');
 
 if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, JSON.stringify({}, null, 4));
-if (!fs.existsSync(lydiaPath)) fs.writeFileSync(lydiaPath, JSON.stringify({}, null, 4));
+if (!fs.existsSync(lydiaPath)) fs.writeFileSync(lydiaPath, JSON.writeFileSync({}, null, 4));
 
 let database = JSON.parse(fs.readFileSync(dbPath, "utf8"));
 let lydiaChannels = JSON.parse(fs.readFileSync(lydiaPath, "utf8"));
 
-// Auto-save every 30s
 setInterval(() => {
     try {
         fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
@@ -86,44 +85,50 @@ client.loadPlugins();
 // ================= EVENTS =================
 client.once(Events.ClientReady, () => {
     console.log(`✅ Uplink Established: ${client.user.username}`);
+    // Diagnostic check for the Welcome ID
+    console.log(`📡 Config Check: Welcome ID is [${process.env.WELCOME_CHANNEL_ID}]`);
+    
     client.user.setPresence({ 
         activities: [{ name: `v${client.version} | ${client.prefix}help`, type: ActivityType.Custom }], 
         status: "online" 
     });
 });
 
-/**
- * INTELLIGENT WELCOME SYSTEM
- * This will trigger when someone joins the server.
- */
+// --- IMPROVED DYNAMIC WELCOME ---
 client.on(Events.GuildMemberAdd, async (member) => {
-    // 1. Replace 'WELCOME_CHANNEL_ID' with your actual channel ID
-    const welcomeChannelId = 'YOUR_CHANNEL_ID_HERE'; 
-    const channel = member.guild.channels.cache.get(welcomeChannelId);
+    // We pull the ID directly here to ensure it's fresh
+    const welcomeId = process.env.WELCOME_CHANNEL_ID;
+    const channel = member.guild.channels.cache.get(welcomeId);
 
-    if (!channel) return console.log("⚠️ Welcome channel not found.");
+    if (!channel) {
+        return console.log(`⚠️ Error: Welcome channel ID (${welcomeId}) not found in this server.`);
+    }
 
     try {
-        // Generate a dynamic AI greeting
-        const prompt = `Génère un message de bienvenue court et ultra-stylé pour ${member.user.username} qui vient de rejoindre Eagle Community. Sois l'Architecte CG-223.`;
-        
+        // More intelligent prompt for Gemini
+        const prompt = `Un nouvel utilisateur, ${member.user.username}, vient d'entrer dans la Eagle Community. 
+        En tant qu'Architecte CG-223, effectue une analyse rapide et souhaite-lui la bienvenue. 
+        Ton message doit être sophistiqué, court (max 3 phrases), et utiliser un ton "High-Tech". 
+        Inclue son nom d'utilisateur et mentionne que la synchronisation du Node Bamako est complète.`;
+
         const result = await client.model.generateContent(prompt);
         const welcomeText = result.response.text();
 
         await channel.send({
-            content: `📡 **Incoming Transmission...**\n${welcomeText}`
+            content: `⚡ **TRANSMISSION ENTRANTE : ID ${member.user.id}**\n${welcomeText}`
         });
+
+        console.log(`✅ Welcome sequence completed for ${member.user.username}`);
+
     } catch (err) {
-        console.error("❌ Welcome Error:", err);
-        // Fallback message if AI fails
-        channel.send(`*Bienvenue au sein de la Eagle Community,* ${member.user} ! *Initialisation de votre profil en cours...* 🦅`);
+        console.error("❌ Welcome AI Error:", err.message);
+        channel.send(`*Bienvenue,* ${member.user}. *Le système Architecte a détecté votre présence. Synchronisation en cours...* 🦅`);
     }
 });
 
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    // --- 1. COMMAND SYSTEM ---
     if (message.content.startsWith(client.prefix)) {
         const args = message.content.slice(client.prefix.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
@@ -137,21 +142,15 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // --- 2. LYDIA AI SECTOR (Auto-Chat) ---
     if (lydiaChannels[message.channel.id] && !message.content.startsWith(client.prefix)) {
         try {
             await message.channel.sendTyping();
-
             const result = await client.model.generateContent({
                 contents: [{ role: 'user', parts: [{ text: message.content }] }]
             });
-
             const response = await result.response;
             const text = response.text();
-
-            if (text) {
-                await message.reply(text);
-            }
+            if (text) await message.reply(text);
         } catch (err) { 
             console.error("❌ Gemini Error:", err.message);
         }
