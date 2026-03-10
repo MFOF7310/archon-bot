@@ -2,29 +2,28 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'contact',
-    description: 'Send a message to the bot owner.',
-    category: 'Social',
+    description: 'Send a direct transmission to the Architect.',
     run: async (client, message, args, database) => {
-        const prefix = process.env.PREFIX || ",";
         const feedback = args.join(' ');
-        if (!feedback) return message.reply(`❌ Usage: \`${prefix}contact [message]\``);
+        if (!feedback) return message.reply(`❌ Usage: \`.contact [message]\``);
 
-        const ARCHITECT_ID = process.env.OWNER_ID || '1284944736620253296';
+        const ARCHITECT_ID = process.env.OWNER_ID;
 
         try {
             const owner = await client.users.fetch(ARCHITECT_ID);
             const contactEmbed = new EmbedBuilder()
                 .setColor('#00ffcc')
-                .setTitle('📥 New Feedback Received')
+                .setTitle('📥 Incoming Transmission')
                 .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
-                .setDescription(`**Message:**\n${feedback}`)
+                .setDescription(`**Message Content:**\n${feedback}`)
+                .setFooter({ text: `Source Node: ${message.guild.name}` })
                 .setTimestamp();
 
             await owner.send({ embeds: [contactEmbed] });
             await message.react('✅');
-            await message.reply('🛰️ **Transmission Sent.**');
+            await message.reply('🛰️ **Transmission delivered to the Architect.**');
         } catch (error) {
-            message.reply('❌ **Link Failure:** Architect DMs are likely closed.');
+            message.reply('❌ **Link Failure:** Architect secure line is currently closed.');
         }
     },
 };
