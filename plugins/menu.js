@@ -2,6 +2,7 @@ const os = require('os');
 
 module.exports = {
     name: 'menu',
+    aliases: ['commands', 'dashboard'],
     category: 'SYSTEM',
     description: 'Dynamic System Dashboard',
     run: async (client, message, args, database) => {
@@ -15,10 +16,8 @@ module.exports = {
             const totalRAM = Math.round(os.totalmem() / 1024 / 1024);
             
             const now = new Date();
-            const date = now.toLocaleDateString('en-GB');
-            const day = now.toLocaleDateString('en-US', { weekday: 'long' });
             const time = now.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' });
-            const prefix = process.env.PREFIX || ",";
+            const prefix = ".";
 
             const organizedCommands = {};
             client.commands.forEach(cmd => {
@@ -28,28 +27,25 @@ module.exports = {
             });
 
             let menuHeader = "```\n";
-            menuHeader += "╭──────── EAGLE COMMUNITY ──────────\n";
-            menuHeader += `│ * │  Prefix : ${prefix}\n`;
-            menuHeader += `│ * │  User   : ${message.author.username}\n`;
-            menuHeader += `│ * │  Time   : ${time}\n`;
-            menuHeader += `│ * │  Date   : ${date} (${day})\n`;
-            menuHeader += `│ * │  Nodes  : Bamako-223 🇲🇱\n`;
-            menuHeader += `│ * │  Ram    : ${usedRAM}/${totalRAM}MB\n`;
-            menuHeader += `│ * │  Uptime : ${h}h ${m}m ${s}s\n`;
+            menuHeader += "╭──────── ARCHITECT CG-223 ──────────\n";
+            menuHeader += `│ 👤 USER   : ${message.author.username}\n`;
+            menuHeader += `│ 🕒 TIME   : ${time}\n`;
+            menuHeader += `│ 📍 NODE   : Bamako-223 🇲🇱\n`;
+            menuHeader += `│ 🧠 RAM    : ${usedRAM}/${totalRAM}MB\n`;
+            menuHeader += `│ ⏳ UPTIME : ${h}h ${m}m ${s}s\n`;
             menuHeader += "╰───────────────────────────────────\n\n";
 
             const sortedCategories = Object.keys(organizedCommands).sort();
             for (const category of sortedCategories) {
-                menuHeader += `╭───❑ ${category} ❑\n`;
-                organizedCommands[category].sort().forEach(cmdName => {
-                    menuHeader += `│ ${cmdName}\n`;
-                });
+                menuHeader += `╭──❑ ${category}\n`;
+                menuHeader += `│ ${organizedCommands[category].sort().join(' • ')}\n`;
                 menuHeader += `╰───────────────────────────────────\n\n`;
             }
             
             menuHeader += "```";
             await message.reply(menuHeader);
         } catch (error) {
+            console.error(error);
             message.reply('⚠️ Menu Engine Failure.');
         }
     }
