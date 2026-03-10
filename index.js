@@ -4,7 +4,7 @@ const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// --- ANSI COLORS FOR TERMINAL ---
+// --- TERMINAL COLORS ---
 const green = "\x1b[32m";
 const blue = "\x1b[34m";
 const cyan = "\x1b[36m";
@@ -22,22 +22,22 @@ const client = new Client({
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
 
-// --- COMMAND & CONFIG STORAGE ---
+// --- COMMAND & ALIAS COLLECTIONS ---
 client.commands = new Collection();
+client.aliases = new Collection();
 const PREFIX = ".";
 
 // --- GEMINI CORE CONFIG ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 client.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// ================= BOOT SEQUENCE (THE DIRECTOR) =================
+// ================= THE DIRECTOR: BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
     console.clear();
     console.log(`${blue}${bold}==============================================${reset}`);
     console.log(`${cyan}🛰️  ARCHITECT CG-223 CORE INITIALIZATION...${reset}`);
     console.log(`${blue}${bold}==============================================${reset}\n`);
 
-    // 1. LINK PLUGINS (COMMANDS)
     const pluginPath = path.join(__dirname, 'plugins');
     let loadedCount = 0;
     let totalFiles = 0;
@@ -48,13 +48,17 @@ client.once(Events.ClientReady, async () => {
         
         for (const file of pluginFiles) {
             try {
-                // Clear cache and link
-                delete require.cache[require.resolve(`./plugins/${file}`)];
+                // Link the plugin file
                 const command = require(`./plugins/${file}`);
                 
-                // Directing to the correct internal collection
-                if (command.name && (command.run || command.execute)) {
+                if (command.name && command.run) {
                     client.commands.set(command.name, command);
+                    
+                    // Link aliases (like 'status' for 'alive')
+                    if (command.aliases && Array.isArray(command.aliases)) {
+                        command.aliases.forEach(alias => client.aliases.set(alias, command.name));
+                    }
+
                     console.log(`${green}[SUCCESS]${reset} Linked Module: ${cyan}${file.toUpperCase()}${reset}`);
                     loadedCount++;
                 } else {
@@ -63,8 +67,7 @@ client.once(Events.ClientReady, async () => {
             } catch (error) {
                 console.log(`${blue}[ERROR]${reset} Failed to link ${file}: ${error.message}`);
             }
-            // Sequential delay for the visual loading effect
-            await new Promise(resolve => setTimeout(resolve, 350)); 
+            await new Promise(resolve => setTimeout(resolve, 300)); 
         }
     }
 
@@ -74,7 +77,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`${green}🛰️  CLIENT   : ${client.user.tag}${reset}`);
     console.log(`${blue}${bold}----------------------------------------------${reset}\n`);
 
-    // 2. OWNER SECURE NOTIFICATION
+    // --- OWNER DM ---
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
         const alertEmbed = new EmbedBuilder()
@@ -82,22 +85,22 @@ client.once(Events.ClientReady, async () => {
             .setAuthor({ name: 'SYSTEM REBOOT SUCCESSFUL', iconURL: client.user.displayAvatarURL() })
             .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
             .setImage('https://cdn.discordapp.com/attachments/1472521219352957092/1480934770648154205/1772389523609.png?ex=69b17b7b&is=69b029fb&hm=c466723a8ab854dd4766e3f36d754bda4c0c96977b3747ff2d584cc0c4c45eec&')
-            .setDescription(`Neural link established. **${loadedCount}** modules synced. All systems are operational.`)
+            .setDescription(`Neural link established. **${loadedCount}** modules synced. Monitoring **Bamako_Node**.`)
             .setFooter({ text: `Eagle Community OS | Status: Secured` });
 
         await owner.send({ embeds: [alertEmbed] });
     } catch (err) {
-        console.log(`${yellow}[NOTICE]${reset} Owner DM could not be delivered.`);
+        console.log(`${yellow}[NOTICE]${reset} DM Failed.`);
     }
 });
 
-// ================= EVENT DIRECTION: WELCOME =================
+// ================= EVENT: AI WELCOME =================
 client.on(Events.GuildMemberAdd, async (member) => {
     const channel = member.guild.channels.cache.get(process.env.WELCOME_CHANNEL_ID);
     if (!channel) return;
 
     try {
-        const prompt = `You are Architect CG-223. Write a prestigious, welcoming, and elite message for ${member.user.username} joining Eagle Community. Max 2 sentences. Use tech emojis like 🦅, 🛰️.`;
+        const prompt = `You are Architect CG-223. Write a prestigious welcome for ${member.user.username} joining Eagle Community. Max 2 sentences. Use tech emojis like 🦅, 🛰️.`;
         const result = await client.model.generateContent(prompt);
         const aiResponse = result.response.text();
 
@@ -119,36 +122,33 @@ client.on(Events.GuildMemberAdd, async (member) => {
             embeds: [welcomeEmbed] 
         });
     } catch (err) {
-        console.error(`${blue}[ERROR]${reset} Welcome generation failed.`);
+        console.error(`${blue}[ERROR]${reset} AI Welcome failed.`);
     }
 });
 
-// ================= EVENT DIRECTION: COMMANDS =================
+// ================= THE ROUTER: MESSAGE HANDLING =================
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild || !message.content.startsWith(PREFIX)) return;
 
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
+    const cmdName = args.shift().toLowerCase();
 
-    // Internal Test (Requires Owner ID in .env)
-    if (commandName === "testwelcome" && message.author.id === process.env.OWNER_ID) {
+    // 1. Manual AI Test
+    if (cmdName === "testwelcome" && message.author.id === process.env.OWNER_ID) {
         return client.emit(Events.GuildMemberAdd, message.member);
     }
 
-    // Directing to Loaded Plugins
-    const command = client.commands.get(commandName);
+    // 2. Execute Plugin
+    const command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
+    
     if (!command) return;
 
     try {
-        // Directing to either 'run' or 'execute' based on plugin structure
-        if (command.run) {
-            await command.run(client, message, args);
-        } else if (command.execute) {
-            await command.execute(message, args);
-        }
+        // This is where we pass data to your plugins (alive.js, ban.js, etc.)
+        await command.run(client, message, args, null);
     } catch (error) {
         console.error(error);
-        message.reply("⚠️ System error during plugin execution.");
+        message.reply("⚠️ **System Error:** Module failed.");
     }
 });
 
