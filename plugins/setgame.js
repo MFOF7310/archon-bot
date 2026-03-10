@@ -2,7 +2,8 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'setgame',
-    aliases: ['updategame'],
+    aliases: ['updategame', 'sg'],
+    category: 'GAMING',
     description: 'Sets your primary game and rank for your profile.',
     run: async (client, message, args, database) => {
         const input = args.join(" ").split("|");
@@ -10,25 +11,32 @@ module.exports = {
         const rankName = input[1]?.trim() || "Pro";
 
         if (!gameName) {
-            const prefix = process.env.PREFIX || ",";
-            return message.reply(`❌ **Usage:** \`${prefix}setgame [Game] | [Rank]\`\n*Example: ${prefix}setgame CODM | Legendary*`);
+            return message.reply(`❌ **Usage:** \`.setgame [Game] | [Rank]\` \n*Example: .setgame CODM | Legendary*`);
         }
 
+        // Initialize user in database if they don't exist
         if (!database[message.author.id]) {
-            database[message.author.id] = { xp: 0, level: 1, name: message.author.username, gaming: {} };
+            database[message.author.id] = { 
+                xp: 0, 
+                level: 1, 
+                name: message.author.username, 
+                gaming: { game: "N/A", rank: "Unranked" } 
+            };
         }
         
+        // Update gaming sub-object
         database[message.author.id].gaming = {
-            game: gameName,
+            game: gameName.toUpperCase(),
             rank: rankName,
-            stats: database[message.author.id].gaming?.stats || "N/A"
+            lastUpdate: new Date().toLocaleDateString()
         };
 
         const updateEmbed = new EmbedBuilder()
             .setColor('#f1c40f')
-            .setTitle('🎮 GAME PROFILE SYNCHRONIZED')
-            .setDescription(`**Game:** ${gameName}\n**Rank:** ${rankName}`)
-            .setFooter({ text: 'Data saved to Bamako Node 🇲🇱' });
+            .setTitle('🎮 DATA SYNCHRONIZED')
+            .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+            .setDescription(`**Primary Sector:** \`${gameName.toUpperCase()}\`\n**Combat Rank:** \`${rankName}\``)
+            .setFooter({ text: 'Eagle Community | Database Updated 🇲🇱' });
 
         message.reply({ embeds: [updateEmbed] });
     }
