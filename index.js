@@ -4,7 +4,7 @@ const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// --- ANSI COLORS ---
+// --- ANSI COLORS FOR TERMINAL ---
 const green = "\x1b[32m";
 const blue = "\x1b[34m";
 const cyan = "\x1b[36m";
@@ -22,7 +22,7 @@ const client = new Client({
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
 
-// --- COMMAND COLLECTION ---
+// --- COMMAND & CONFIG STORAGE ---
 client.commands = new Collection();
 const PREFIX = ".";
 
@@ -30,13 +30,14 @@ const PREFIX = ".";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 client.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// ================= BOOT SEQUENCE & DYNAMIC LOADER =================
+// ================= BOOT SEQUENCE (THE DIRECTOR) =================
 client.once(Events.ClientReady, async () => {
     console.clear();
     console.log(`${blue}${bold}==============================================${reset}`);
     console.log(`${cyan}🛰️  ARCHITECT CG-223 CORE INITIALIZATION...${reset}`);
     console.log(`${blue}${bold}==============================================${reset}\n`);
 
+    // 1. LINK PLUGINS (COMMANDS)
     const pluginPath = path.join(__dirname, 'plugins');
     let loadedCount = 0;
     let totalFiles = 0;
@@ -47,21 +48,22 @@ client.once(Events.ClientReady, async () => {
         
         for (const file of pluginFiles) {
             try {
-                // Remove from cache to allow clean reloads
+                // Clear cache and link
                 delete require.cache[require.resolve(`./plugins/${file}`)];
                 const command = require(`./plugins/${file}`);
                 
-                // Support both your "run" and "execute" structures
-                if (command.name && (command.execute || command.run)) {
+                // Directing to the correct internal collection
+                if (command.name && (command.run || command.execute)) {
                     client.commands.set(command.name, command);
                     console.log(`${green}[SUCCESS]${reset} Linked Module: ${cyan}${file.toUpperCase()}${reset}`);
                     loadedCount++;
                 } else {
-                    console.log(`${yellow}[SKIPPED]${reset} Module ${file} is missing structure.`);
+                    console.log(`${yellow}[SKIPPED]${reset} Module ${file} is missing 'name' or 'run'.`);
                 }
             } catch (error) {
                 console.log(`${blue}[ERROR]${reset} Failed to link ${file}: ${error.message}`);
             }
+            // Sequential delay for the visual loading effect
             await new Promise(resolve => setTimeout(resolve, 350)); 
         }
     }
@@ -72,7 +74,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`${green}🛰️  CLIENT   : ${client.user.tag}${reset}`);
     console.log(`${blue}${bold}----------------------------------------------${reset}\n`);
 
-    // --- OWNER DM NOTIFICATION ---
+    // 2. OWNER SECURE NOTIFICATION
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
         const alertEmbed = new EmbedBuilder()
@@ -80,7 +82,7 @@ client.once(Events.ClientReady, async () => {
             .setAuthor({ name: 'SYSTEM REBOOT SUCCESSFUL', iconURL: client.user.displayAvatarURL() })
             .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
             .setImage('https://cdn.discordapp.com/attachments/1472521219352957092/1480934770648154205/1772389523609.png?ex=69b17b7b&is=69b029fb&hm=c466723a8ab854dd4766e3f36d754bda4c0c96977b3747ff2d584cc0c4c45eec&')
-            .setDescription(`Neural link established. **${loadedCount}** modules have been synced to the core. Monitoring **Bamako_Node**.`)
+            .setDescription(`Neural link established. **${loadedCount}** modules synced. All systems are operational.`)
             .setFooter({ text: `Eagle Community OS | Status: Secured` });
 
         await owner.send({ embeds: [alertEmbed] });
@@ -89,14 +91,13 @@ client.once(Events.ClientReady, async () => {
     }
 });
 
-// ================= DYNAMIC INTELLIGENT WELCOME =================
-async function sendWelcome(member) {
-    const channelId = process.env.WELCOME_CHANNEL_ID;
-    const channel = member.guild.channels.cache.get(channelId);
+// ================= EVENT DIRECTION: WELCOME =================
+client.on(Events.GuildMemberAdd, async (member) => {
+    const channel = member.guild.channels.cache.get(process.env.WELCOME_CHANNEL_ID);
     if (!channel) return;
 
     try {
-        const prompt = `You are Architect CG-223. Write a prestigious welcome for ${member.user.username} joining Eagle Community. Max 2 sentences. Use tech emojis like 🦅, 🛰️, 🛡️. Tone: Prestigious and welcoming.`;
+        const prompt = `You are Architect CG-223. Write a prestigious, welcoming, and elite message for ${member.user.username} joining Eagle Community. Max 2 sentences. Use tech emojis like 🦅, 🛰️.`;
         const result = await client.model.generateContent(prompt);
         const aiResponse = result.response.text();
 
@@ -108,42 +109,38 @@ async function sendWelcome(member) {
             .addFields(
                 { name: '👤 ENTITY', value: `\`${member.user.username}\``, inline: true },
                 { name: '📍 NODE', value: `\`BAMAKO_ML\``, inline: true },
-                { name: '🛡️ SECURITY', value: `\`LEVEL_4_CLEARED\``, inline: true }
+                { name: '🛡️ SECURITY', value: `\`CLEARED\``, inline: true }
             )
             .setFooter({ text: `Eagle Community • Signal: Verified`, iconURL: member.guild.iconURL() })
             .setTimestamp();
 
         await channel.send({ 
-            content: `🦅 **New signature detected: <@${member.user.id}>**`, 
+            content: `🦅 **Neural link established: <@${member.user.id}>**`, 
             embeds: [welcomeEmbed] 
         });
     } catch (err) {
-        console.error(`${blue}[ERROR]${reset} AI Welcome failed:`, err.message);
+        console.error(`${blue}[ERROR]${reset} Welcome generation failed.`);
     }
-}
-
-client.on(Events.GuildMemberAdd, async (member) => {
-    await sendWelcome(member);
 });
 
-// ================= MESSAGE HANDLING (PLUGIN ENGINE) =================
+// ================= EVENT DIRECTION: COMMANDS =================
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild || !message.content.startsWith(PREFIX)) return;
 
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
-    // Internal Test Command
+    // Internal Test (Requires Owner ID in .env)
     if (commandName === "testwelcome" && message.author.id === process.env.OWNER_ID) {
-        return sendWelcome(message.member);
+        return client.emit(Events.GuildMemberAdd, message.member);
     }
 
-    // Plugin Execution
+    // Directing to Loaded Plugins
     const command = client.commands.get(commandName);
     if (!command) return;
 
     try {
-        // Execute using whichever method the plugin provides (run or execute)
+        // Directing to either 'run' or 'execute' based on plugin structure
         if (command.run) {
             await command.run(client, message, args);
         } else if (command.execute) {
@@ -151,7 +148,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
     } catch (error) {
         console.error(error);
-        message.reply("⚠️ System error during command execution.");
+        message.reply("⚠️ System error during plugin execution.");
     }
 });
 
