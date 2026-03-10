@@ -290,5 +290,74 @@ client.on(Events.MessageCreate, async (message) => {
 
 });
 
-client.login(process.env.TOKEN);
+// ================= WELCOME PROTOCOL: NEW MEMBER =================
 
+client.on(Events.GuildMemberAdd, async (member) => {
+
+    const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
+
+    if (!welcomeChannelId) return;
+
+    const channel = member.guild.channels.cache.get(welcomeChannelId);
+
+    if (!channel) return;
+
+    const memberCount = member.guild.memberCount;
+
+    const accountCreated = `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`;
+
+    const avatarURL = member.user.displayAvatarURL({ dynamic: true, size: 256 });
+
+    const welcomeEmbed = new EmbedBuilder()
+
+        .setColor('#2ecc71')
+
+        .setAuthor({ 
+
+            name: `${member.user.username} just landed.`, 
+
+            iconURL: avatarURL 
+
+        })
+
+        .setTitle('🥳 NEW MEMBER JOINED')
+
+        .setDescription(
+
+            `Welcome to **${member.guild.name}**, <@${member.id}>.\n` +
+
+            `You are number **#${memberCount}** member of the server. Merci d'être là ☺️.`
+
+        )
+
+        .setThumbnail(avatarURL)
+
+        .addFields(
+
+            { name: '🪪 Username',      value: `\`${member.user.username}\``,  inline: true  },
+
+            { name: '🆔 User ID',       value: `\`${member.id}\``,             inline: true  },
+
+            { name: '📅 Account Age',   value: accountCreated,                  inline: false },
+
+            { name: '👥 Member Count',  value: `\`${memberCount}\` members`,   inline: true  },
+
+            { name: '🌐 Server',        value: `\`${member.guild.name}\``,     inline: true  }
+
+        )
+
+        .setFooter({ 
+
+            text: `ARCHITECT CLOUD_GAMING-223 • BAMALIBA🇲🇱`, 
+
+            iconURL: member.guild.iconURL({ dynamic: true }) 
+
+        })
+
+        .setTimestamp();
+
+    channel.send({ embeds: [welcomeEmbed] });
+
+});
+
+client.login(process.env.TOKEN);
