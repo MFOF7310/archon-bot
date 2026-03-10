@@ -1,6 +1,6 @@
 module.exports = {
     name: 'alive',
-    aliases: ['status', 'uptime'],
+    aliases: ['status', 'uptime', 'ping'],
     run: async (client, message, args, database) => {
         try {
             const uptimeVal = process.uptime();
@@ -14,8 +14,8 @@ module.exports = {
             let aliveCard = "```\n";
             aliveCard += "╭───────── SYSTEM STATUS ──────────\n";
             aliveCard += `│ 🟢 STATE   : ACTIVE / ONLINE\n`;
-            aliveCard += `│ ⚡ ENGINE  : EAGLE-DIGITAL-v${client.version}\n`;
-            aliveCard += `│ 📍 NODE    : BAMAKO-223 🇲🇱\n`;
+            aliveCard += `│ ⚡ ENGINE  : ARCHITECT-CG-223\n`;
+            aliveCard += `│ 📍 NODE    : BAMAKO-ML 🇲🇱\n`;
             aliveCard += `│ 📡 LATENCY : ${msgLatency}ms\n`;
             aliveCard += `│ 🌐 API     : ${apiPing}ms\n`;
             aliveCard += `│ ⏳ UPTIME  : ${h}h ${m}m ${s}s\n`;
