@@ -1,20 +1,20 @@
 module.exports = {
     name: 'lydia',
-    description: 'Active ou désactive l\'IA dans ce salon.',
+    description: 'Toggle AI autonomous chatter in this channel.',
+    category: 'SYSTEM',
     run: async (client, message, args, database, lydiaChannels) => {
-        // Sécurité : Admin uniquement
         if (!message.member.permissions.has('Administrator')) {
-            return message.reply("⛔ **Accès Refusé :** Seul un Administrateur peut configurer l'IA.");
+            return message.reply("⛔ **Access Denied:** Administrator clearance required.");
         }
 
         const channelId = message.channel.id;
 
-        if (lydiaChannels[channelId]) {
+        if (lydiaChannels && lydiaChannels[channelId]) {
             delete lydiaChannels[channelId];
-            message.reply("🛰️ **Uplink Terminé :** L'Architecte a quitté ce canal.");
+            message.reply("🛰️ **Uplink Terminé:** Autonomous AI chatter deactivated.");
         } else {
-            lydiaChannels[channelId] = true;
-            message.reply("🦅 **Uplink Établi :** L'Architecte est maintenant actif dans ce canal.");
+            if (lydiaChannels) lydiaChannels[channelId] = true;
+            message.reply("🦅 **Uplink Établi:** The Architect is now monitoring this channel.");
         }
     }
 };
