@@ -2,12 +2,12 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'loadout',
-    description: 'Displays the best CODM loadout.',
+    description: 'Displays the best weapon configurations.',
     aliases: ['build', 'class'],
+    category: 'GAMING',
     run: async (client, message, args, database) => {
-        const prefix = process.env.PREFIX || ",";
         if (!args.length) {
-            return message.reply(`❌ **Usage:** \`${prefix}loadout <name>\` (e.g., AK117, DLQ)`);
+            return message.reply(`❌ **Usage:** \`.loadout <weapon_name>\` (e.g., AK117, DLQ)`);
         }
 
         let weapon = args[0].toUpperCase();
@@ -20,13 +20,13 @@ module.exports = {
         };
 
         const data = loadouts[weapon];
-        if (!data) return message.reply(`⚠️ Weapon \`${weapon}\` not found.`);
+        if (!data) return message.reply(`⚠️ Weapon profile for \`${weapon}\` not found in node.`);
 
         const embed = new EmbedBuilder()
-            .setColor('#2f3136')
+            .setColor('#2b2d31')
             .setTitle(`🔫 ${data.title}`)
             .setDescription(data.description)
-            .setFooter({ text: 'Eagle Loadout System' })
+            .setFooter({ text: 'Eagle Community | Loadout Intelligence' })
             .setTimestamp();
 
         await message.reply({ embeds: [embed] });
