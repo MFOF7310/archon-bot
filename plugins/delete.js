@@ -1,7 +1,8 @@
 module.exports = {
     name: 'dlt',
     aliases: ['delete', 'remove', 'erase'],
-    description: 'Surgical delete: Removes a specific replied message or a user\'s latest message.',
+    description: 'Surgical delete: Removes a specific message.',
+    category: 'Utility',
     run: async (client, message, args, database) => {
         const isArchitect = message.author.id === process.env.OWNER_ID;
         const hasPerms = message.member.permissions.has('ManageMessages');
@@ -21,14 +22,14 @@ module.exports = {
         if (targetMsg) {
             try {
                 await targetMsg.delete();
-                const success = await message.channel.send(`🎯 **Target Erased.**`);
+                const success = await message.channel.send(`🎯 **Target Packet Erased.**`);
                 setTimeout(() => success.delete().catch(() => null), 2000);
             } catch (err) {
                 const fail = await message.channel.send("⚠️ **Error:** Permission or age restriction.");
                 setTimeout(() => fail.delete().catch(() => null), 3000);
             }
         } else {
-            const noFound = await message.channel.send("❓ **No target found.**");
+            const noFound = await message.channel.send("❓ **No target signature found.**");
             setTimeout(() => noFound.delete().catch(() => null), 3000);
         }
     },
