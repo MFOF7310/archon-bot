@@ -1,7 +1,6 @@
 require('dotenv').config(); 
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
 const { Client, Collection, ActivityType, Events, Partials, GatewayIntentBits } = require('discord.js');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 
@@ -17,10 +16,10 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMembers, // REQUIRED FOR WELCOME
         GatewayIntentBits.DirectMessages
     ],
-    partials: [Partials.Channel, Partials.Message, Partials.User]
+    partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
 
 client.commands = new Collection();
@@ -93,6 +92,34 @@ client.once(Events.ClientReady, () => {
     });
 });
 
+/**
+ * INTELLIGENT WELCOME SYSTEM
+ * This will trigger when someone joins the server.
+ */
+client.on(Events.GuildMemberAdd, async (member) => {
+    // 1. Replace 'WELCOME_CHANNEL_ID' with your actual channel ID
+    const welcomeChannelId = 'YOUR_CHANNEL_ID_HERE'; 
+    const channel = member.guild.channels.cache.get(welcomeChannelId);
+
+    if (!channel) return console.log("⚠️ Welcome channel not found.");
+
+    try {
+        // Generate a dynamic AI greeting
+        const prompt = `Génère un message de bienvenue court et ultra-stylé pour ${member.user.username} qui vient de rejoindre Eagle Community. Sois l'Architecte CG-223.`;
+        
+        const result = await client.model.generateContent(prompt);
+        const welcomeText = result.response.text();
+
+        await channel.send({
+            content: `📡 **Incoming Transmission...**\n${welcomeText}`
+        });
+    } catch (err) {
+        console.error("❌ Welcome Error:", err);
+        // Fallback message if AI fails
+        channel.send(`*Bienvenue au sein de la Eagle Community,* ${member.user} ! *Initialisation de votre profil en cours...* 🦅`);
+    }
+});
+
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild) return;
 
@@ -104,7 +131,6 @@ client.on(Events.MessageCreate, async (message) => {
 
         if (command) {
             try {
-                // PASSING 5 ARGUMENTS for the new lydia.js plugin
                 await command.run(client, message, args, database, lydiaChannels);
             } catch (err) { console.error(`❌ Cmd Error:`, err); }
             return;
@@ -128,10 +154,6 @@ client.on(Events.MessageCreate, async (message) => {
             }
         } catch (err) { 
             console.error("❌ Gemini Error:", err.message);
-            // Error handling for 404/Safety issues
-            if (err.message.includes("404")) {
-                console.log("🛠️ FIX: If 404 persists, update your API Key or check regional restrictions.");
-            }
         }
     }
 });
