@@ -2,21 +2,21 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 
 module.exports = {
     name: 'credits',
-    description: 'Displays system credits.',
-    category: 'Information',
+    description: 'Displays system authorization and credentials.',
+    category: 'System',
     run: async (client, message, args, database) => {
-        const ARCHITECT_ID = process.env.OWNER_ID || '1284944736620253296';
+        const ARCHITECT_ID = process.env.OWNER_ID;
 
         const creditsEmbed = new EmbedBuilder()
             .setColor('#2ecc71')
             .setTitle('🛡️ SYSTEM AUTHORIZATION & CREDITS')
             .setThumbnail(client.user.displayAvatarURL())
-            .setDescription('**CLOUD GAMING-223 | DIGITAL ENGINE**\nPrincipal Architect: <@' + ARCHITECT_ID + '>')
+            .setDescription('**ARCHITECT CG-223 | DIGITAL ENGINE**\nPrincipal Architect: <@' + ARCHITECT_ID + '>')
             .addFields(
                 { name: '🧠 Intelligence', value: 'Gemini 1.5 Flash', inline: true },
                 { name: '🇲🇱 Region', value: 'Bamako, Mali', inline: true }
             )
-            .setFooter({ text: 'AES Digital Sovereignty' })
+            .setFooter({ text: 'Eagle Community | Digital Sovereignty' })
             .setTimestamp();
 
         const row = new ActionRowBuilder().addComponents(
