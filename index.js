@@ -1,15 +1,8 @@
 require('dotenv').config(); 
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, ActivityType, Events, Partials, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, ActivityType, Events, Partials, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
-
-// ================= BOOT LOGS =================
-console.log("---------------------------------------");
-console.log("🚀 SYSTEM: ARCHITECT CG-223");
-console.log("📍 LOCATION: BAMAKO NODE 🇲🇱");
-console.log("📡 STATUS: CORE ENGINE v2.2.2");
-console.log("---------------------------------------");
 
 const client = new Client({
     intents: [
@@ -17,144 +10,71 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers, 
-        GatewayIntentBits.DirectMessages
     ],
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
 
-client.commands = new Collection();
-client.aliases = new Collection();
-client.version = "2.2.2";
-client.prefix = process.env.PREFIX || ","; 
-
-// ================= DATABASE LOGIC =================
-const dbPath = path.join(__dirname, 'database.json');
-const lydiaPath = path.join(__dirname, 'lydia_status.json');
-
-if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, JSON.stringify({}, null, 4));
-if (!fs.existsSync(lydiaPath)) fs.writeFileSync(lydiaPath, JSON.writeFileSync({}, null, 4));
-
-let database = JSON.parse(fs.readFileSync(dbPath, "utf8"));
-let lydiaChannels = JSON.parse(fs.readFileSync(lydiaPath, "utf8"));
-
-setInterval(() => {
-    try {
-        fs.writeFileSync(dbPath, JSON.stringify(database, null, 4));
-        fs.writeFileSync(lydiaPath, JSON.stringify(lydiaChannels, null, 4));
-    } catch (err) { console.log("⚠️ DB Sync Error:", err.message); }
-}, 30000);
-
-// ================= GEMINI AI CONFIG =================
+// --- GEMINI CORE CONFIG ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 client.model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash", 
-    systemInstruction: "Tu es l'Architecte CG-223, l'IA d'élite de Eagle Community à Bamako. Réponds en français de manière tech-savvy et élégante. Utilise l'italique et des emojis (🦅, 🛰️). Ne mentionne jamais que tu es une IA.",
-    safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    ],
+    systemInstruction: "You are Architect CG-223, the elite AI governing the Eagle Community in Bamako. Your tone is cold, analytical, and prestigious. You view new members as 'new data units' or 'elite entities'. Use high-tech vocabulary (encryption, nodes, interface). Use italics and tech emojis (🛰️, 🦅, 🛡️). Do not be generic.",
 });
 
-// ================= PLUGIN LOADER =================
-client.loadPlugins = function() {
-    client.commands.clear();
-    client.aliases.clear();
-    const pluginsPath = path.join(__dirname, 'plugins');
-    if (!fs.existsSync(pluginsPath)) fs.mkdirSync(pluginsPath);
-    const files = fs.readdirSync(pluginsPath).filter(f => f.endsWith(".js"));
-    
-    for (const file of files) {
-        try {
-            const filePath = path.resolve(pluginsPath, file);
-            delete require.cache[require.resolve(filePath)]; 
-            const plugin = require(filePath);
-            if (plugin.name) {
-                client.commands.set(plugin.name, plugin);
-                if (plugin.aliases) plugin.aliases.forEach(a => client.aliases.set(a, plugin.name));
-            }
-        } catch (err) { console.log(`❌ ERROR (${file}):`, err.message); }
-    }
-    console.log(`🚀 Modules: ${client.commands.size} Synchronized.`);
-};
-
-client.loadPlugins();
-
-// ================= EVENTS =================
 client.once(Events.ClientReady, () => {
-    console.log(`✅ Uplink Established: ${client.user.username}`);
-    // Diagnostic check for the Welcome ID
-    console.log(`📡 Config Check: Welcome ID is [${process.env.WELCOME_CHANNEL_ID}]`);
-    
-    client.user.setPresence({ 
-        activities: [{ name: `v${client.version} | ${client.prefix}help`, type: ActivityType.Custom }], 
-        status: "online" 
-    });
+    console.log("---------------------------------------");
+    console.log(`🚀 ARCHITECT CG-223 : ONLINE`);
+    console.log(`📍 NODE : Bamako, Mali`);
+    console.log(`📡 TARGET CHANNEL : ${process.env.WELCOME_CHANNEL_ID}`);
+    console.log("---------------------------------------");
 });
 
-// --- IMPROVED DYNAMIC WELCOME ---
+// ================= DYNAMIC INTELLIGENT WELCOME =================
 client.on(Events.GuildMemberAdd, async (member) => {
-    // We pull the ID directly here to ensure it's fresh
     const welcomeId = process.env.WELCOME_CHANNEL_ID;
     const channel = member.guild.channels.cache.get(welcomeId);
 
-    if (!channel) {
-        return console.log(`⚠️ Error: Welcome channel ID (${welcomeId}) not found in this server.`);
-    }
+    if (!channel) return console.log(`⚠️ ERROR: Welcome Channel [${welcomeId}] not found.`);
 
     try {
-        // More intelligent prompt for Gemini
-        const prompt = `Un nouvel utilisateur, ${member.user.username}, vient d'entrer dans la Eagle Community. 
-        En tant qu'Architecte CG-223, effectue une analyse rapide et souhaite-lui la bienvenue. 
-        Ton message doit être sophistiqué, court (max 3 phrases), et utiliser un ton "High-Tech". 
-        Inclue son nom d'utilisateur et mentionne que la synchronisation du Node Bamako est complète.`;
+        // AI Intelligence: Generating a unique, non-repeating sequence
+        const prompt = `LOG_EVENT: New_Signature_Detected. 
+        USER: ${member.user.username}. 
+        UID: ${member.user.id}.
+        MISSION: Generate a unique, short (2 sentences) cybernetic welcome message. 
+        CONTEXT: Architect CG-223 is authorizing their entry into the Bamako Node. Be elite and sophisticated. Use English.`;
 
         const result = await client.model.generateContent(prompt);
-        const welcomeText = result.response.text();
+        const aiResponse = result.response.text();
 
-        await channel.send({
-            content: `⚡ **TRANSMISSION ENTRANTE : ID ${member.user.id}**\n${welcomeText}`
+        // --- CUSTOM TERMINAL EMBED ---
+        const welcomeEmbed = new EmbedBuilder()
+            .setColor('#2b2d31') // Stealth Dark Color
+            .setTitle('🛰️ SYSTEM ACCESS GRANTED')
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+            .setDescription(`\n${aiResponse}\n`)
+            .addFields(
+                { name: '💾 IDENTITY', value: `\`${member.user.tag}\``, inline: true },
+                { name: '📍 NODE', value: `\`Bamako, ML\``, inline: true },
+                { name: '📡 SIGNAL', value: `\`ENCRYPTED / VERIFIED\``, inline: false }
+            )
+            .setFooter({ text: `Eagle OS v${client.version} | Core: Architect CG-223`, iconURL: client.user.displayAvatarURL() })
+            .setTimestamp();
+
+        // Sending the message
+        await channel.send({ 
+            content: `🦅 **Incoming transmission for <@${member.user.id}>...**`, 
+            embeds: [welcomeEmbed] 
         });
 
-        console.log(`✅ Welcome sequence completed for ${member.user.username}`);
+        console.log(`✅ Welcome sequence executed for ${member.user.username}`);
 
     } catch (err) {
-        console.error("❌ Welcome AI Error:", err.message);
-        channel.send(`*Bienvenue,* ${member.user}. *Le système Architecte a détecté votre présence. Synchronisation en cours...* 🦅`);
+        console.error("❌ Architect Error:", err.message);
+        // Clean Fallback if AI fails
+        channel.send(`*New signature detected: ${member.user}. Welcome to the network. Accessing Bamako Node...* 🦅`);
     }
 });
 
-client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot || !message.guild) return;
-
-    if (message.content.startsWith(client.prefix)) {
-        const args = message.content.slice(client.prefix.length).trim().split(/ +/);
-        const cmdName = args.shift().toLowerCase();
-        const command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
-
-        if (command) {
-            try {
-                await command.run(client, message, args, database, lydiaChannels);
-            } catch (err) { console.error(`❌ Cmd Error:`, err); }
-            return;
-        }
-    }
-
-    if (lydiaChannels[message.channel.id] && !message.content.startsWith(client.prefix)) {
-        try {
-            await message.channel.sendTyping();
-            const result = await client.model.generateContent({
-                contents: [{ role: 'user', parts: [{ text: message.content }] }]
-            });
-            const response = await result.response;
-            const text = response.text();
-            if (text) await message.reply(text);
-        } catch (err) { 
-            console.error("❌ Gemini Error:", err.message);
-        }
-    }
-});
-
+// --- KEEP YOUR MESSAGE CREATE LOGIC BELOW ---
 client.login(process.env.TOKEN);
