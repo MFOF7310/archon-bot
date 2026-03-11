@@ -24,7 +24,7 @@ Installation
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/yourusername/cloud-gaming-223-bot.git
+   git clone https://github.com/MFOF7310/cloud-gaming-223-bot.git
    cd cloud-gaming-223-bot
    ```
 2. Install dependencies
