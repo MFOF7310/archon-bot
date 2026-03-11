@@ -3,6 +3,7 @@ const { EmbedBuilder } = require('discord.js');
 module.exports = {
     name: 'whois',
     aliases: ['scan'],
+    description: 'Display detailed information about a user.',
     category: 'UTILITY',
     run: async (client, message, args, database) => {
         let member = message.mentions.members.first() || message.member;
@@ -15,9 +16,11 @@ module.exports = {
             .addFields(
                 { name: '🆔 ID', value: `\`${member.id}\``, inline: true },
                 { name: '📈 Level', value: `Lvl ${userData.level}`, inline: true },
-                { name: '📅 Joined', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false }
+                { name: '📅 Joined Server', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false },
+                { name: '📆 Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: false }
             )
-            .setFooter({ text: 'CLOUD GAMING-223 INTERNAL SCAN' });
+            .setFooter({ text: 'CLOUD GAMING-223 INTERNAL SCAN' })
+            .setTimestamp();
 
         message.reply({ embeds: [embed] });
     }
