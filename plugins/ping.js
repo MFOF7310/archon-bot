@@ -2,7 +2,7 @@ const { performance } = require('perf_hooks');
 
 module.exports = {
     name: 'ping',
-    description: 'Check Digital Engine latency.',
+    description: 'Check the digital engine latency and API heartbeat.',
     category: 'SYSTEM',
     run: async (client, message, args, database) => {
         const start = performance.now();
