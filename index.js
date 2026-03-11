@@ -61,12 +61,19 @@ You are an expert in:
 - Real-life general knowledge: science, technology, history, current events, sports
 - Coding and technology: JavaScript, Python, Discord bots, general programming help
 
+IMPORTANT: You have REAL-TIME web search capabilities! When users ask about:
+- Current events, news, weather
+- Latest updates, releases, scores
+- Recent information after your knowledge cutoff
+You will automatically search the web to provide accurate, up-to-date answers.
+
 Rules:
 - Always respond in the same language the user writes in
 - Never pretend to be a human — you are Lydia, an AI
 - If unsure, say so honestly rather than making things up
 - Use gaming slang naturally (e.g. "W gun", "meta", "ranked grind") when talking games
 - Keep responses under 400 words unless a detailed answer is truly needed
+- When you use web search, include brief citations/sources
 `.trim();
 
 // --- THE LOADER: MODULE SYNCHRONIZATION ---
@@ -130,7 +137,7 @@ client.once(Events.ClientReady, async () => {
         const alertEmbed = new EmbedBuilder()
             .setColor('#2ecc71')
             .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
-            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.`)
+            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\nLydia AI now has **REAL-TIME web search**! 🔍`)
             .setTimestamp();
         await owner.send({ embeds: [alertEmbed] });
     } catch (err) {
@@ -165,8 +172,8 @@ client.on(Events.MessageCreate, async (message) => {
 
     saveDatabase();
 
-    // 2. LYDIA AI PROTOCOL
-    if (client.lydiaChannels[message.channel.id]) {
+    // 2. LYDIA AI PROTOCOL - WITH REAL-TIME WEB SEARCH!
+    if (client.lydiaChannels && client.lydiaChannels[message.channel.id]) {
         const isMentioned = message.mentions.has(client.user);
 
         let isReply = false;
@@ -186,8 +193,9 @@ client.on(Events.MessageCreate, async (message) => {
                     .replace(/<@!?[0-9]+>/g, '')
                     .trim() || 'Hello!';
 
+                // USING GROQ COMPOUND MODEL WITH BUILT-IN WEB SEARCH!
                 const completion = await groq.chat.completions.create({
-                    model: 'llama-3.3-70b-versatile',
+                    model: 'groq/compound',  // ← THIS ENABLES REAL-TIME WEB SEARCH!
                     messages: [
                         { role: 'system',  content: LYDIA_SYSTEM_PROMPT },
                         { role: 'user',    content: userInput }
@@ -243,7 +251,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
         .setTitle('😎 NEW MEMBER JOINED 😊')
         .setDescription(
             `Welcome to **${member.guild.name}**, <@${member.id}>.\n` +
-            `You are the number **#${memberCount}** in the server. Bienvenu à toi.`
+            `You are operative **#${memberCount}**. Stand by for synchronization.`
         )
         .setThumbnail(avatarURL)
         .addFields(
@@ -254,7 +262,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
             { name: '🌐 Server',       value: `\`${member.guild.name}\``,    inline: true  }
         )
         .setFooter({
-            text: `CLOUD_GAMING-223 • BA MALIBA🇲🇱`,
+            text: `CLOUD_GAMING-223 • BAMALIBA🇲🇱 | Lydia AI has REAL-TIME web search! 🔍`,
             iconURL: member.guild.iconURL({ dynamic: true })
         })
         .setTimestamp();
