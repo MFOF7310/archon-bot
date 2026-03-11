@@ -1,6 +1,6 @@
 module.exports = {
     name: 'owner',
-    description: 'Executive links and system hub.',
+    description: 'Executive links and system hub (restricted).',
     category: 'OWNER',
     run: async (client, message, args, database) => {
         if (message.author.id !== process.env.OWNER_ID) return;
