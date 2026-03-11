@@ -1,8 +1,8 @@
 ## 🤖 Cloud Gaming-223 Bot
 
-✨ Features
+## ✨ Features
 
-Feature Description
+## Feature Description
 🎮 Lydia AI Gaming expert specializing in CODM, with smart fallback responses
 📸 Gemini Vision Analyze images, screenshots, and pictures
 ⭐ XP System Level up by chatting in the server
@@ -11,7 +11,7 @@ Feature Description
 ⏱️ Rate Limiting Prevents spam (3s cooldown)
 📊 Database Persistent storage for user XP and levels
 
-🚀 Quick Start
+## 🚀 Quick Start
 
 Prerequisites
 
@@ -22,16 +22,16 @@ Prerequisites
 
 Installation
 
-1. Clone the repository
+## 1. Clone the repository
    ```bash
    git clone https://github.com/MFOF7310/cloud-gaming-223-bot.git
    cd cloud-gaming-223-bot
    ```
-2. Install dependencies
+## 2. Install dependencies
    ```bash
    npm install
    ```
-3. Configure environment variables
+## 3. Configure environment variables
    Create a .env file in the root directory:
    ```env
    # Required
@@ -44,7 +44,7 @@ Installation
    OWNER_ID=your_discord_user_id
    WELCOME_CHANNEL_ID=channel_id_for_welcome_messages
    ```
-4. Start the bot
+## 4. Start the bot
    ```bash
    npm start
    ```
@@ -54,7 +54,7 @@ Installation
    nodemon index.js
    ```
 
-📁 Project Structure
+## 📁 Project Structure
 
 ```
 cloud-gaming-223-bot/
@@ -69,23 +69,23 @@ cloud-gaming-223-bot/
 └── README.md              # This file
 ```
 
-🎮 Commands
+## 🎮 Commands
 
 Lydia AI (Gaming Assistant)
 
-Command Description
+## Command Description
 .lydia on Enable Lydia AI in current channel
 .lydia off Disable Lydia AI in current channel
 @Lydia [question] Ask Lydia anything (gaming, CODM, general)
 
-Gemini Vision (Image Analysis)
+## Gemini Vision (Image Analysis)
 
-Command Description
+## Command Description
 .gemini [question] Ask Gemini with or without image
 .gemini + (attached image) Analyze the attached image
 Reply to image with .gemini Analyze the replied image
 
-Examples
+## Examples
 
 ```
 📸 .gemini What's in this screenshot? [attach image]
@@ -94,20 +94,20 @@ Examples
 ❓ @Lydia when is next CODM update?
 ```
 
-🛠️ Configuration
+## 🛠️ Configuration
 
-Discord Developer Portal Setup
+## Discord Developer Portal Setup
 
-1. Go to Discord Developer Portal
-2. Create a new application and bot
-3. Enable these Privileged Gateway Intents:
+## 1. Go to Discord Developer Portal
+## 2. Create a new application and bot
+#@ 3. Enable these Privileged Gateway Intents:
    · ✅ MESSAGE CONTENT INTENT
    · ✅ SERVER MEMBERS INTENT
    · ✅ GUILD MESSAGES INTENT
 
-Bot Invite Link
+## Bot Invite Link
 
-Generate invite link with these permissions:
+## Generate invite link with these permissions:
 
 · Send Messages
 · Read Message History
@@ -115,7 +115,7 @@ Generate invite link with these permissions:
 · Mention Everyone
 · Add Reactions
 
-📊 Database
+## 📊 Database
 
 User XP is stored in database.json:
 
@@ -133,13 +133,13 @@ User XP is stored in database.json:
 }
 ```
 
-🚀 Deployment Options
+## 🚀 Deployment Options
 
-Option 1: Deploy on Bot-Hosting.net (FREE) ✅
+## Option 1: Deploy on Bot-Hosting.net (FREE) ✅
 
 Bot-Hosting.net offers free Discord bot hosting with 24/7 uptime, perfect for this bot!
 
-Step 1: Prepare Your Files
+## Step 1: Prepare Your Files
 
 Create a ZIP archive containing:
 
@@ -149,14 +149,14 @@ Create a ZIP archive containing:
 · plugins/ folder (with all command files)
 · .env file (IMPORTANT: Include this with your API keys)
 
-Step 2: Create Bot-Hosting.net Account
+## Step 2: Create Bot-Hosting.net Account
 
 1. Go to Bot-Hosting.net
 2. Click "Register" and create an account
 3. Verify your email
 4. Log in to the dashboard
 
-Step 3: Create New Bot
+## Step 3: Create New Bot
 
 1. Click "Create a Bot" or "New Bot" on the dashboard
 2. Fill in the details:
@@ -165,13 +165,13 @@ Step 3: Create New Bot
    · Start Command: npm start (or node index.js)
    · Bot Type: Node.js
 
-Step 4: Upload Files
+## Step 4: Upload Files
 
 1. Upload your ZIP file containing all bot files
 2. The system will automatically extract it
 3. Wait for the upload to complete
 
-Step 5: Configure Environment Variables
+## Step 5: Configure Environment Variables
 
 Bot-Hosting.net will automatically read your .env file, but you can also add/edit them in the dashboard:
 
@@ -184,13 +184,13 @@ Bot-Hosting.net will automatically read your .env file, but you can also add/edi
   · OWNER_ID (optional)
   · WELCOME_CHANNEL_ID (optional)
 
-Step 6: Start the Bot
+## Step 6: Start the Bot
 
 1. Click "Start" button
 2. Watch the logs to confirm it's running
 3. You should see: 🛰️ ARCHITECT CG-223 | MODULE SYNCHRONIZATION
 
-Step 7: Keep Bot Online
+## Step 7: Keep Bot Online
 
 · Free tier runs 24/7 automatically
 · Bot restarts if it crashes
@@ -206,7 +206,7 @@ Bot-Hosting.net Free Tier Limits:
 
 ---
 
-Option 2: Deploy on Render
+## Option 2: Deploy on Render
 
 1. Push code to GitHub
 2. Create new Web Service on Render
@@ -215,7 +215,7 @@ Option 2: Deploy on Render
 5. Set start command: node index.js
 6. Add environment variables
 
-Option 3: Deploy on Heroku
+## Option 3: Deploy on Heroku
 
 ```bash
 heroku create your-bot-name
@@ -225,7 +225,7 @@ heroku config:set GEMINI_API_KEY=your_key
 git push heroku main
 ```
 
-Option 4: Deploy on VPS (Ubuntu)
+## Option 4: Deploy on VPS (Ubuntu)
 
 ```bash
 # Connect to your VPS via SSH
@@ -255,7 +255,7 @@ pm2 save
 pm2 startup
 ```
 
-⚙️ Environment Variables
+## ⚙️ Environment Variables
 
 Variable Required Default Description
 DISCORD_TOKEN ✅ - Your Discord bot token
@@ -265,7 +265,7 @@ PREFIX ❌ . Command prefix
 OWNER_ID ❌ - Discord user ID for owner alerts
 WELCOME_CHANNEL_ID ❌ - Channel for welcome messages
 
-🚨 Troubleshooting
+### 🚨 Troubleshooting 
 
 Common Issues
 
@@ -291,17 +291,17 @@ Bot-Hosting.net Specific Issues
 · Out of memory: Free tier has 100MB limit - optimize code if needed
 · Bot stops responding: Check if rate limits are being hit
 
-📝 License
+## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-🙏 Credits
+## 🙏 Credits
 
 · Developer: Architect (CG-223)
 · Community: Cloud Gaming-223 🇲🇱
 · Powered by: Groq AI, Google Gemini, Discord.js
 
-📞 Support
+## 📞 Support
 
 For issues or questions:
 
@@ -318,7 +318,7 @@ For issues or questions:
 </div>
 ```
 
-🎯 Key Bot-Hosting.net Features Added:
+## 🎯 Key Bot-Hosting.net Features Added:
 
 Section What It Covers
 Step-by-step guide Create account → Upload ZIP → Start bot
@@ -327,14 +327,13 @@ Environment variables How to set them in dashboard
 Free tier limits RAM, storage, CPU specs
 Troubleshooting Common Bot-Hosting.net issues
 
-📝 Quick Tips for Bot-Hosting.net:
+## 📝 Quick Tips for Bot-Hosting.net:
 
 1. Always include .env in your ZIP - This saves time setting up variables
 2. Keep ZIP under 50MB - Free tier has storage limits
 3. Monitor logs - Dashboard shows real-time errors
 4. Use npm start - Ensure your package.json has the start script
 
-Your README now covers 4 deployment options:
 
 · ✅ Bot-Hosting.net (FREE, easiest)
 · ✅ Render
