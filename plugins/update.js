@@ -3,7 +3,7 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'update',
-    description: 'Synchronizes local core with the remote GitHub repository.',
+    description: 'Synchronize local core with the remote GitHub repository.',
     category: 'OWNER',
     run: async (client, message, args, database) => {
         // 1. Security Check
@@ -16,7 +16,6 @@ module.exports = {
 
         try {
             // 2. Fetch Remote Version Intelligence
-            // Ensure this URL points to your actual RAW file on GitHub
             const repoUrl = `https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/version.txt`;
             const res = await axios.get(repoUrl);
             const remoteVersion = res.data.toString().trim();
@@ -26,8 +25,9 @@ module.exports = {
                 return msg.edit("✅ **SYSTEM CURRENT:** Your local engine is already synchronized with the Master Node.");
             }
 
+            const oldVersion = client.version;
+
             // 4. Hot-Reload Execution
-            // This assumes you have client.loadPlugins() defined in index.js
             if (typeof client.loadPlugins === 'function') {
                 await client.loadPlugins(); 
             }
@@ -39,8 +39,12 @@ module.exports = {
                 .setColor('#2ecc71')
                 .setTitle('🚀 ENGINE SYNCHRONIZATION SUCCESSFUL')
                 .setAuthor({ name: 'CLOUD GAMING-223 MASTER NODE', iconURL: client.user.displayAvatarURL() })
-                .setDescription(`The Digital Engine has been migrated to version **v${remoteVersion}**. All modules have been re-scanned and verified.`)
-                .addFields({ name: '📍 Source', value: 'GitHub Repository Mainline', inline: true })
+                .setDescription(`The Digital Engine has been migrated from **v${oldVersion}** to **v${remoteVersion}**. All modules have been re-scanned and verified.`)
+                .addFields(
+                    { name: '📍 Source', value: 'GitHub Repository Mainline', inline: true },
+                    { name: '📦 Previous Version', value: `v${oldVersion}`, inline: true },
+                    { name: '🚀 New Version', value: `v${remoteVersion}`, inline: true }
+                )
                 .setFooter({ text: 'Bamako-223 | Operational' })
                 .setTimestamp();
 
