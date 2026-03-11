@@ -371,4 +371,4 @@ client.on(Events.GuildMemberAdd, async (member) => {
     channel.send({ embeds: [welcomeEmbed] });
 });
 
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN); 
