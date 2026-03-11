@@ -44,6 +44,7 @@ if (fs.existsSync(dbPath)) {
 const saveDatabase = () => {
     fs.writeFileSync(dbPath, JSON.stringify(database, null, 2));
 };
+client.saveDatabase = saveDatabase; // 👈 ADD THIS LINE
 
 // --- GEMINI AI CONFIGURATION (ENHANCED FOR IMAGES) ---
 if (!process.env.GEMINI_API_KEY) {
@@ -371,4 +372,4 @@ client.on(Events.GuildMemberAdd, async (member) => {
     channel.send({ embeds: [welcomeEmbed] });
 });
 
-client.login(process.env.TOKEN); 
+client.login(process.env.TOKEN);
