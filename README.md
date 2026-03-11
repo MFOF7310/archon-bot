@@ -13,25 +13,25 @@
 
 ## 🚀 Quick Start
 
-Prerequisites
+### Prerequisites
 
 · Node.js v18 or higher
 · Discord Bot Token
 · Groq API Key
 · Google Gemini API Key
 
-Installation
+## Installation
 
-## 1. Clone the repository
+### 1. Clone the repository
    ```bash
    git clone https://github.com/MFOF7310/cloud-gaming-223-bot.git
    cd cloud-gaming-223-bot
    ```
-## 2. Install dependencies
+### 2. Install dependencies
    ```bash
    npm install
    ```
-## 3. Configure environment variables
+### 3. Configure environment variables
    Create a .env file in the root directory:
    ```env
    # Required
@@ -44,7 +44,7 @@ Installation
    OWNER_ID=your_discord_user_id
    WELCOME_CHANNEL_ID=channel_id_for_welcome_messages
    ```
-## 4. Start the bot
+### 4. Start the bot
    ```bash
    npm start
    ```
@@ -73,19 +73,19 @@ cloud-gaming-223-bot/
 
 ### Lydia AI (Gaming Assistant)###
 
-## Command Description
+### Command Description
 .lydia on Enable Lydia AI in current channel
 .lydia off Disable Lydia AI in current channel
 @Lydia [question] Ask Lydia anything (gaming, CODM, general)
 
-## Gemini Vision (Image Analysis)
+### Gemini Vision (Image Analysis)
 
-## Command Description
+### Command Description
 .gemini [question] Ask Gemini with or without image
 .gemini + (attached image) Analyze the attached image
 Reply to image with .gemini Analyze the replied image
 
-## Examples
+### Examples
 
 ```
 📸 .gemini What's in this screenshot? [attach image]
@@ -96,18 +96,18 @@ Reply to image with .gemini Analyze the replied image
 
 ## 🛠️ Configuration
 
-## Discord Developer Portal Setup
+### Discord Developer Portal Setup
 
-## 1. Go to Discord Developer Portal
-## 2. Create a new application and bot
-#@ 3. Enable these Privileged Gateway Intents:
+### 1. Go to Discord Developer Portal
+### 2. Create a new application and bot
+### 3. Enable these Privileged Gateway Intents:
    · ✅ MESSAGE CONTENT INTENT
    · ✅ SERVER MEMBERS INTENT
    · ✅ GUILD MESSAGES INTENT
 
 ## Bot Invite Link
 
-## Generate invite link with these permissions:
+### Generate invite link with these permissions:
 
 · Send Messages
 · Read Message History
@@ -135,11 +135,11 @@ User XP is stored in database.json:
 
 ## 🚀 Deployment Options
 
-## Option 1: Deploy on Bot-Hosting.net (FREE) ✅
+### Option 1: Deploy on Bot-Hosting.net (FREE) ✅
 
 Bot-Hosting.net offers free Discord bot hosting with 24/7 uptime, perfect for this bot!
 
-## Step 1: Prepare Your Files
+### Step 1: Prepare Your Files
 
 Create a ZIP archive containing:
 
@@ -149,14 +149,14 @@ Create a ZIP archive containing:
 · plugins/ folder (with all command files)
 · .env file (IMPORTANT: Include this with your API keys)
 
-## Step 2: Create Bot-Hosting.net Account
+### Step 2: Create Bot-Hosting.net Account
 
 1. Go to Bot-Hosting.net
 2. Click "Register" and create an account
 3. Verify your email
 4. Log in to the dashboard
 
-## Step 3: Create New Bot
+### Step 3: Create New Bot
 
 1. Click "Create a Bot" or "New Bot" on the dashboard
 2. Fill in the details:
@@ -165,13 +165,13 @@ Create a ZIP archive containing:
    · Start Command: npm start (or node index.js)
    · Bot Type: Node.js
 
-## Step 4: Upload Files
+### Step 4: Upload Files
 
 1. Upload your ZIP file containing all bot files
 2. The system will automatically extract it
 3. Wait for the upload to complete
 
-## Step 5: Configure Environment Variables
+### Step 5: Configure Environment Variables
 
 Bot-Hosting.net will automatically read your .env file, but you can also add/edit them in the dashboard:
 
@@ -184,19 +184,19 @@ Bot-Hosting.net will automatically read your .env file, but you can also add/edi
   · OWNER_ID (optional)
   · WELCOME_CHANNEL_ID (optional)
 
-## Step 6: Start the Bot
+### Step 6: Start the Bot
 
 1. Click "Start" button
 2. Watch the logs to confirm it's running
 3. You should see: 🛰️ ARCHITECT CG-223 | MODULE SYNCHRONIZATION
 
-## Step 7: Keep Bot Online
+### Step 7: Keep Bot Online
 
 · Free tier runs 24/7 automatically
 · Bot restarts if it crashes
 · You can monitor CPU/RAM usage in dashboard
 
-Bot-Hosting.net Free Tier Limits:
+## Bot-Hosting.net Free Tier Limits:
 
 · ✅ 24/7 Uptime
 · ✅ 100MB RAM
@@ -265,26 +265,26 @@ PREFIX ❌ . Command prefix
 OWNER_ID ❌ - Discord user ID for owner alerts
 WELCOME_CHANNEL_ID ❌ - Channel for welcome messages
 
-### 🚨 Troubleshooting 
+## 🚨 Troubleshooting 
 
-Common Issues
+### Common Issues
 
 "Neural link interrupted"
 
 · Check Groq API key in .env
 · Rate limit hit - wait 3 seconds between questions
 
-Gemini not analyzing images
+### Gemini not analyzing images
 
 · Ensure axios is installed: npm install axios
 · Check file is actually an image (JPEG, PNG, GIF)
 
-Commands not working
+### Commands not working
 
 · Verify bot has proper intents enabled
 · Check command prefix (default: .)
 
-Bot-Hosting.net Specific Issues
+### Bot-Hosting.net Specific Issues
 
 · Bot won't start: Check logs in dashboard for errors
 · Environment variables not loading: Verify .env file is in the ZIP root
@@ -295,13 +295,13 @@ Bot-Hosting.net Specific Issues
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Credits
+### 🙏 Credits
 
 · Developer: Architect (CG-223)
 · Community: Cloud Gaming-223 🇲🇱
 · Powered by: Groq AI, Google Gemini, Discord.js
 
-## 📞 Support
+### 📞 Support
 
 For issues or questions:
 
