@@ -45,9 +45,17 @@ const saveDatabase = () => {
     fs.writeFileSync(dbPath, JSON.stringify(database, null, 2));
 };
 
-// --- GEMINI AI CONFIGURATION ---
+// --- GEMINI AI CONFIGURATION (ENHANCED FOR IMAGES) ---
+if (!process.env.GEMINI_API_KEY) {
+    console.log(`${yellow}[WARN]${reset} GEMINI_API_KEY not found in .env file`);
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-client.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+client.model = genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",  // Best for images and fast responses
+});
+
+console.log(`${green}[SUCCESS]${reset} Gemini AI initialized with vision capabilities`);
 
 // --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
