@@ -2,7 +2,8 @@ const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
     name: 'ban',
-    description: 'Permanently bans a member from the node.',
+    description: 'Permanently ban a member from the server.',
+    category: 'MODERATION',
     run: async (client, message, args, database) => {
         if (!message.member.permissions.has(PermissionFlagsBits.BanMembers)) {
             return message.reply("❌ **Access Denied.** Authority level insufficient.");
@@ -17,6 +18,7 @@ module.exports = {
 
         try {
             await target.ban({ reason });
+            
             const banEmbed = new EmbedBuilder()
                 .setColor('#ff4757')
                 .setTitle('⚖️ JUDGMENT RENDERED')
@@ -30,7 +32,13 @@ module.exports = {
                 .setTimestamp();
 
             await message.channel.send({ embeds: [banEmbed] });
+
+            // Optional: Log to a mod-log channel
+            // const logChannel = message.guild.channels.cache.get(process.env.MOD_LOG_CHANNEL);
+            // if (logChannel) logChannel.send({ embeds: [banEmbed] });
+
         } catch (error) {
+            console.error('Ban Error:', error);
             message.reply("❌ **Critical Failure.** Could not execute ban.");
         }
     },
