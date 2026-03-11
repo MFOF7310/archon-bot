@@ -44,7 +44,7 @@ module.exports = {
                 { name: '🔍 Web Search', value: 'Automatically searches for current info', inline: true },
                 { name: '❌ To Disable', value: `\`${process.env.PREFIX || '.'}lydia off\``, inline: false }
             )
-            .setFooter({ text: `Bamako Node 🇲🇱 | Cloud Gaming-223 | Powered by Groq Compound` })
+            .setFooter({ text: `Bamako Node 🇲🇱 | Cloud Gaming-223 | Powered by Groq` })
             .setTimestamp();
 
         message.channel.send({ embeds: [onEmbed] });
