@@ -3,7 +3,8 @@ const { EmbedBuilder } = require('discord.js');
 module.exports = {
     name: 'profile',
     aliases: ['p'],
-    category: 'GENERAL',
+    description: 'View your or another agent\'s profile and progression.',
+    category: 'PROFILE',
     run: async (client, message, args, database) => {
         const target = message.mentions.users.first() || message.author;
         const user = database[target.id] || { name: target.username, xp: 0, level: 1, gaming: { game: "NOT SET", rank: "Unranked" }};
@@ -23,7 +24,8 @@ module.exports = {
                 { name: '🎮 Primary Game', value: `\`${user.gaming?.game || 'N/A'}\``, inline: true },
                 { name: '🏆 Skill Tier', value: `\`${user.gaming?.rank || 'Unranked'}\``, inline: true }
             )
-            .setFooter({ text: `Node: Bamako-223 | Secure ID: ${target.id.slice(0,8)}...` });
+            .setFooter({ text: `Node: Bamako-223 | Secure ID: ${target.id.slice(0,8)}...` })
+            .setTimestamp();
 
         await message.reply({ embeds: [embed] });
     },
