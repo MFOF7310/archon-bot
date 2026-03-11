@@ -1,6 +1,6 @@
 ### 🤖 Cloud Gaming-223 Bot ###
 
-### ✨ Features ###
+## ✨ Features ##
 
 ## Feature Description ##
 🎮 Lydia AI Gaming expert specializing in CODM, with smart fallback responses
@@ -71,7 +71,7 @@ cloud-gaming-223-bot/
 
 ## 🎮 Commands
 
-Lydia AI (Gaming Assistant)
+### Lydia AI (Gaming Assistant)###
 
 ## Command Description
 .lydia on Enable Lydia AI in current channel
