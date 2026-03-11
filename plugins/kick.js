@@ -2,8 +2,8 @@ const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
     name: 'kick',
-    description: 'Removes a member from the current node.',
-    category: 'Moderation',
+    description: 'Remove a member from the current server.',
+    category: 'MODERATION',
     run: async (client, message, args, database) => {
         if (!message.member.permissions.has(PermissionFlagsBits.KickMembers)) {
             return message.reply("❌ **Access Denied.** Minimum clearance not met.");
@@ -32,6 +32,7 @@ module.exports = {
 
             await message.channel.send({ embeds: [kickEmbed] });
         } catch (error) {
+            console.error('Kick Error:', error);
             message.reply("❌ **Failure:** Execution error during disconnect.");
         }
     },
