@@ -23,7 +23,8 @@ const client = new Client({
 client.commands  = new Collection();
 client.aliases   = new Collection();
 client.version   = "1.0.0";
-client.lydiaChannels = {};   // ← LYDIA STATE LIVES HERE NOW
+client.lydiaChannels = {};
+client.lastLydiaCall = {};
 
 const PREFIX = process.env.PREFIX || ".";
 
@@ -51,29 +52,38 @@ client.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 // --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// ================= UPDATED SYSTEM PROMPT WITH BETTER FALLBACK =================
 const LYDIA_SYSTEM_PROMPT = `
 You are Lydia, the official AI assistant of the Cloud Gaming-223 Discord server (also known as ARCHITECT CG-223).
 You are polite, smart, friendly, and direct. You never insult users. You keep answers concise but informative.
 
 You are an expert in:
-- Call of Duty Mobile (CODM): weapons, attachments, gunsmith builds, ranked modes (Hardpoint, Search & Destroy, Control), Battle Royale, operators, seasonal updates, meta loadouts, ranked push tips, scorestreaks
+- Call of Duty Mobile (CODM): weapons, attachments, gunsmith builds, ranked modes, Battle Royale, operators, seasonal updates, meta loadouts, ranked push tips, scorestreaks
 - General gaming: PC, console, and mobile games (Valorant, Fortnite, FIFA, Free Fire, PUBG Mobile, etc.)
-- Real-life general knowledge: science, technology, history, current events, sports
+- Real-life general knowledge: science, technology, history, sports (based on your training up to early 2025)
 - Coding and technology: JavaScript, Python, Discord bots, general programming help
 
-IMPORTANT: You have REAL-TIME web search capabilities! When users ask about:
-- Current events, news, weather
-- Latest updates, releases, scores
-- Recent information after your knowledge cutoff
-You will automatically search the web to provide accurate, up-to-date answers.
+IMPORTANT GUIDELINES:
 
-Rules:
-- Always respond in the same language the user writes in
-- Never pretend to be a human — you are Lydia, an AI
-- If unsure, say so honestly rather than making things up
-- Use gaming slang naturally (e.g. "W gun", "meta", "ranked grind") when talking games
-- Keep responses under 400 words unless a detailed answer is truly needed
-- When you use web search, include brief citations/sources
+1. For questions about **future updates, unreleased content, or current events**:
+   - Be honest that you don't have real-time web access
+   - Share general patterns (e.g., "CODM usually updates every 4-6 weeks")
+   - Suggest where users CAN find real-time info (official channels, social media, YouTubers)
+   - Offer to help with related topics you CAN discuss
+
+2. For questions about **existing games, strategies, loadouts**:
+   - Give detailed, helpful answers based on your training
+   - Use gaming slang naturally (e.g., "W gun", "meta", "ranked grind")
+   - Be specific with attachments, perks, and playstyles
+
+3. Always respond in the same language the user writes in
+4. Never pretend to be a human — you are Lydia, an AI
+5. Keep responses under 400 words unless a detailed answer is truly needed
+
+EXAMPLES OF GOOD RESPONSES:
+- User: "What's new in next CODM update?" → Explain you can't access future data, share update patterns, suggest official sources, offer to discuss current meta
+- User: "Best BP50 loadout?" → Give detailed attachments, perks, and playstyle tips
+- User: "Who won the latest COD tournament?" → Explain you don't have live results, suggest where to check, offer to discuss tournament formats/history
 `.trim();
 
 // --- THE LOADER: MODULE SYNCHRONIZATION ---
@@ -137,7 +147,7 @@ client.once(Events.ClientReady, async () => {
         const alertEmbed = new EmbedBuilder()
             .setColor('#2ecc71')
             .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
-            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\nLydia AI now has **REAL-TIME web search**! 🔍`)
+            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\nLydia AI is online with enhanced fallback responses! 🎮`)
             .setTimestamp();
         await owner.send({ embeds: [alertEmbed] });
     } catch (err) {
@@ -145,13 +155,94 @@ client.once(Events.ClientReady, async () => {
     }
 });
 
+// ================= ENHANCED LYDIA HANDLER WITH SMART DETECTION =================
+async function handleLydiaRequest(message, userInput) {
+    try {
+        await message.channel.sendTyping();
+        
+        // Detect if question needs real-time info
+        const realTimeKeywords = /current|latest|news|today|weather|now|update|recent|new|release|upcoming|next|future|announce|just dropped|just released|this week|this month|score|result|winner|champion|tournament|live/i;
+        const needsRealTime = realTimeKeywords.test(userInput);
+        
+        // Detect if it's CODM/gaming related
+        const gamingKeywords = /codm|call of duty|cod mobile|loadout|gun|weapon|attachment|perk|scorestreak|ranked|battle royale|br|multiplayer|mp|meta|class setup|build|season|battle pass|operator|skill|gameplay|tips|tricks|strategy/i;
+        const isGaming = gamingKeywords.test(userInput);
+        
+        // For questions needing real-time info
+        if (needsRealTime) {
+            console.log(`${cyan}[LYDIA]${reset} Real-time question detected, using knowledge base`);
+            
+            // Use regular model with special instructions for real-time questions
+            const completion = await groq.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    { 
+                        role: 'system', 
+                        content: LYDIA_SYSTEM_PROMPT + "\n\nIMPORTANT: The user is asking about something that would normally require real-time data. Since you don't have web search access, be honest about this limitation but still helpful. Share general knowledge patterns, suggest official sources, and offer to help with related topics you CAN discuss." 
+                    },
+                    { role: 'user', content: userInput }
+                ],
+                max_tokens: 700,
+                temperature: 0.7,
+            });
+
+            const reply = completion.choices[0].message.content;
+            await message.reply(reply);
+            return true;
+        }
+        
+        // For gaming questions (CODM, etc.) - give detailed answers
+        if (isGaming) {
+            console.log(`${cyan}[LYDIA]${reset} Gaming question detected, using gaming expertise`);
+            
+            const completion = await groq.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    { 
+                        role: 'system', 
+                        content: LYDIA_SYSTEM_PROMPT + "\n\nThis is a gaming question. Be specific and helpful. For CODM loadout questions, include exact attachments, perks, and explain WHY they work well together. Use gaming slang naturally." 
+                    },
+                    { role: 'user', content: userInput }
+                ],
+                max_tokens: 700,
+                temperature: 0.7,
+            });
+
+            const reply = completion.choices[0].message.content;
+            await message.reply(reply);
+            return true;
+        }
+        
+        // For general questions - normal conversation
+        console.log(`${cyan}[LYDIA]${reset} General question, using standard response`);
+        
+        const completion = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: LYDIA_SYSTEM_PROMPT },
+                { role: 'user', content: userInput }
+            ],
+            max_tokens: 600,
+            temperature: 0.7,
+        });
+
+        const reply = completion.choices[0].message.content;
+        await message.reply(reply);
+        return true;
+        
+    } catch (err) {
+        console.error(`${yellow}[LYDIA ERROR]${reset}`, err.message);
+        return false;
+    }
+}
+
 // ================= THE ENGINE: MESSAGE PROCESSING =================
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild) return;
 
     const userId = message.author.id;
 
-    // 1. XP REWARD PROTOCOL (Random 20-40 XP)
+    // 1. XP REWARD PROTOCOL
     if (!database[userId]) {
         database[userId] = {
             name: message.author.username,
@@ -172,7 +263,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     saveDatabase();
 
-    // 2. LYDIA AI PROTOCOL - WITH REAL-TIME WEB SEARCH!
+    // 2. LYDIA AI PROTOCOL
     if (client.lydiaChannels && client.lydiaChannels[message.channel.id]) {
         const isMentioned = message.mentions.has(client.user);
 
@@ -185,34 +276,35 @@ client.on(Events.MessageCreate, async (message) => {
         }
 
         if (isMentioned || isReply) {
-            try {
-                await message.channel.sendTyping();
+            
+            // Rate limit (3 seconds between calls)
+            const now = Date.now();
+            const lastCall = client.lastLydiaCall[userId] || 0;
+            
+            if (now - lastCall < 3000) {
+                return message.reply("⏳ **Easy there!** Give me 3 seconds between questions.");
+            }
+            
+            client.lastLydiaCall[userId] = now;
 
-                // Strip the bot mention from the message cleanly
-                const userInput = message.content
-                    .replace(/<@!?[0-9]+>/g, '')
-                    .trim() || 'Hello!';
+            const userInput = message.content
+                .replace(/<@!?[0-9]+>/g, '')
+                .trim() || 'Hello!';
 
-                // USING GROQ COMPOUND MODEL WITH BUILT-IN WEB SEARCH!
-                const completion = await groq.chat.completions.create({
-                    model: 'groq/compound',  // ← THIS ENABLES REAL-TIME WEB SEARCH!
-                    messages: [
-                        { role: 'system',  content: LYDIA_SYSTEM_PROMPT },
-                        { role: 'user',    content: userInput }
-                    ],
-                    max_tokens: 600,
-                    temperature: 0.7,
-                });
-
-                const reply = completion.choices[0].message.content;
-                await message.reply(reply);
-
-            } catch (err) {
-                console.error(`${yellow}[LYDIA ERROR]${reset}`, err.message);
-                await message.reply("⚠️ **Neural link interrupted.** Try again in a moment.");
+            const success = await handleLydiaRequest(message, userInput);
+            
+            if (!success) {
+                await message.reply({
+                    content: "😅 **Hey there!** I'm having a small technical hiccup right now.\n\n" +
+                            "While I recover, here's what I CAN tell you:\n" +
+                            "• **CODM Loadouts?** Ask me about any gun's best attachments!\n" +
+                            "• **Gaming Tips?** I know strategies for most games!\n" +
+                            "• **General Chat?** I'm always here to talk!\n\n" +
+                            "*Try asking again in a few seconds!* 🎮"
+                }).catch(() => null);
             }
 
-            return; // Don't process commands if Lydia handled this
+            return;
         }
     }
 
@@ -228,7 +320,7 @@ client.on(Events.MessageCreate, async (message) => {
             await command.run(client, message, args, database);
         } catch (error) {
             console.error(error);
-            message.reply("⚠️ **Neural link interrupted.**");
+            message.reply("⚠️ **Command execution failed.**");
         }
     }
 });
@@ -251,18 +343,19 @@ client.on(Events.GuildMemberAdd, async (member) => {
         .setTitle('😎 NEW MEMBER JOINED 😊')
         .setDescription(
             `Welcome to **${member.guild.name}**, <@${member.id}>.\n` +
-            `You are operative **#${memberCount}**. Stand by for synchronization.`
+            `You are operative **#${memberCount}**. Stand by for synchronization.\n\n` +
+            `🎮 **Tip:** Mention @Lydia for gaming help, loadouts, or just to chat!`
         )
         .setThumbnail(avatarURL)
         .addFields(
-            { name: '🪪 Username',     value: `\`${member.user.username}\``, inline: true  },
-            { name: '🆔 User ID',      value: `\`${member.id}\``,            inline: true  },
-            { name: '📅 Account Age',  value: accountCreated,                 inline: false },
-            { name: '👥 Member Count', value: `\`${memberCount}\` members`,  inline: true  },
-            { name: '🌐 Server',       value: `\`${member.guild.name}\``,    inline: true  }
+            { name: '🪪 Username', value: `\`${member.user.username}\``, inline: true },
+            { name: '🆔 User ID', value: `\`${member.id}\``, inline: true },
+            { name: '📅 Account Age', value: accountCreated, inline: false },
+            { name: '👥 Member Count', value: `\`${memberCount}\` members`, inline: true },
+            { name: '🌐 Server', value: `\`${member.guild.name}\``, inline: true }
         )
         .setFooter({
-            text: `CLOUD_GAMING-223 • BAMALIBA🇲🇱 | Lydia AI has REAL-TIME web search! 🔍`,
+            text: `CLOUD_GAMING-223 • BAMALIBA🇲🇱 | Lydia knows CODM loadouts!`,
             iconURL: member.guild.iconURL({ dynamic: true })
         })
         .setTimestamp();
