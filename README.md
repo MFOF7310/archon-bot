@@ -1,4 +1,4 @@
-🤖 Cloud Gaming-223 Bot
+## 🤖 Cloud Gaming-223 Bot
 
 ✨ Features
 
@@ -342,9 +342,13 @@ Your README now covers 4 deployment options:
 · ✅ VPS (Ubuntu)
 
 
-## 🔗 Connect with the Architect
-* **🔵 Facebook:** [Official Page](https://www.facebook.com/share/17KysmJrtm/)
-* **📱 TikTok:** [@cloudgaming223](https://www.tiktok.com/@cloudgaming223)
-* **📸 Instagram:** [mfof7310](https://www.instagram.com/mfof7310)
-* **💬 WhatsApp:** [+1 548 520 0518](https://wa.me/15485200518)
-* **📍 Node Location:** Bamako, Mali 🇲🇱
+## 📱 Connect With The Architect
+
+| Platform | Link |
+|----------|------|
+| 🔵 **Facebook** | [Official Page](https://www.facebook.com/share/17KysmJrtm/) |
+| 📱 **TikTok** | [@cloudgaming223](https://www.tiktok.com/@cloudgaming223) |
+| 📸 **Instagram** | [@mfof7310](https://www.instagram.com/mfof7310) |
+| 💬 **WhatsApp** | [+1 548 520 0518](https://wa.me/15485200518) |
+
+**📍 Node Location:** Bamako, Mali 🇲🇱
