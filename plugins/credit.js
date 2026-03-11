@@ -2,8 +2,8 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 
 module.exports = {
     name: 'credits',
-    description: 'Displays system authorization and credentials.',
-    category: 'System',
+    description: 'Display system authorization and credits.',
+    category: 'SYSTEM',
     run: async (client, message, args, database) => {
         const ARCHITECT_ID = process.env.OWNER_ID;
 
@@ -14,7 +14,8 @@ module.exports = {
             .setDescription('**ARCHITECT CG-223 | DIGITAL ENGINE**\nPrincipal Architect: <@' + ARCHITECT_ID + '>')
             .addFields(
                 { name: '🧠 Intelligence', value: 'Gemini 1.5 Flash', inline: true },
-                { name: '🇲🇱 Region', value: 'Bamako, Mali', inline: true }
+                { name: '🇲🇱 Region', value: 'Bamako, Mali', inline: true },
+                { name: '📦 Version', value: client.version || '2.6.0', inline: true }
             )
             .setFooter({ text: 'Eagle Community | Digital Sovereignty' })
             .setTimestamp();
