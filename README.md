@@ -1,8 +1,8 @@
 ### 🤖 Cloud Gaming-223 Bot ###
 
-## ✨ Features
+### ✨ Features ###
 
-## Feature Description
+## Feature Description ##
 🎮 Lydia AI Gaming expert specializing in CODM, with smart fallback responses
 📸 Gemini Vision Analyze images, screenshots, and pictures
 ⭐ XP System Level up by chatting in the server
