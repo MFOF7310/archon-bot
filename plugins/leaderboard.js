@@ -4,46 +4,60 @@ module.exports = {
     name: 'leaderboard',
     aliases: ['lb', 'top'],
     category: 'SYSTEM',
+    description: 'Display the top agents by XP.',
     run: async (client, message, args, database) => {
         if (!database || Object.keys(database).length === 0) {
             return message.reply("📊 **Database Offline:** No agent data detected in the node.");
         }
 
-        const fullList = Object.entries(database)
+        // Build sorted array
+        const entries = Object.entries(database)
             .map(([id, data]) => ({
                 id,
                 name: data.name || "Unknown Agent",
                 xp: data.xp || 0,
                 level: data.level || 1
             }))
-            .sort((a, b) => b.xp - a.xp)
-            .slice(0, 10);
+            .sort((a, b) => b.xp - a.xp);
 
-        const pages = [fullList.slice(0, 5), fullList.slice(5, 10)];
+        const totalPlayers = entries.length;
+        const pageSize = 5;
+        const maxPage = Math.ceil(entries.length / pageSize) - 1;
         let currentPage = 0;
 
-        const generateEmbed = (pageIdx) => {
-            const list = pages[pageIdx].map((user, index) => {
-                const globalRank = (pageIdx * 5) + index + 1;
-                let badge = `**#${globalRank}**`;
-                if (globalRank === 1) badge = '🥇';
-                if (globalRank === 2) badge = '🥈';
-                if (globalRank === 3) badge = '🥉';
-                return `${badge} <@${user.id}>\n╰ ✨ XP: \`${user.xp.toLocaleString()}\` | ⚡ Lvl: \`${user.level}\``;
+        const generateEmbed = (page) => {
+            const start = page * pageSize;
+            const pageEntries = entries.slice(start, start + pageSize);
+            const medal = ['🥇', '🥈', '🥉'];
+
+            const description = pageEntries.map((user, idx) => {
+                const rank = start + idx + 1;
+                const medalIcon = rank <= 3 ? medal[rank-1] : `**#${rank}**`;
+                const xpProgress = (user.xp % 1000) / 10; // 0-100
+                const bar = '█'.repeat(Math.floor(xpProgress/10)) + '░'.repeat(10 - Math.floor(xpProgress/10));
+                return `${medalIcon} <@${user.id}>\n╰ ✨ XP: \`${user.xp.toLocaleString()}\` | ⚡ Lvl: \`${user.level}\`\n╰ \`${bar}\` ${Math.floor(xpProgress)}% to next level`;
             }).join('\n\n');
 
             return new EmbedBuilder()
-                .setColor(pageIdx === 0 ? '#f1c40f' : '#3498db')
+                .setColor(page === 0 ? '#f1c40f' : '#3498db')
                 .setTitle('🏆 TOP-TIER AGENTS | RANKINGS')
-                .setDescription(list || "*No further data.*")
-                .setFooter({ text: `Page ${pageIdx + 1}/2 | Node: Bamako-223` })
+                .setDescription(description || '*No entries on this page.*')
+                .setFooter({ text: `Page ${page+1}/${maxPage+1} | Total Agents: ${totalPlayers} | Node: Bamako-223` })
                 .setTimestamp();
         };
 
-        const generateButtons = (pageIdx) => {
+        const generateButtons = (page) => {
             return new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('prev_lb').setLabel('⬅️').setStyle(ButtonStyle.Secondary).setDisabled(pageIdx === 0),
-                new ButtonBuilder().setCustomId('next_lb').setLabel('➡️').setStyle(ButtonStyle.Primary).setDisabled(pageIdx === 1 || pages[1].length === 0)
+                new ButtonBuilder()
+                    .setCustomId('prev_lb')
+                    .setLabel('◀')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(page === 0),
+                new ButtonBuilder()
+                    .setCustomId('next_lb')
+                    .setLabel('▶')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(page === maxPage)
             );
         };
 
@@ -52,14 +66,24 @@ module.exports = {
             components: [generateButtons(currentPage)]
         });
 
-        const collector = mainMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-
-        collector.on('collect', async (i) => {
-            if (i.user.id !== message.author.id) return i.reply({ content: "❌ Unauthorized.", ephemeral: true });
-            currentPage = i.customId === 'next_lb' ? 1 : 0;
-            await i.update({ embeds: [generateEmbed(currentPage)], components: [generateButtons(currentPage)] });
+        const collector = mainMessage.createMessageComponentCollector({
+            componentType: ComponentType.Button,
+            time: 60000
         });
 
-        collector.on('end', () => { mainMessage.edit({ components: [] }).catch(() => null); });
+        collector.on('collect', async (i) => {
+            if (i.user.id !== message.author.id) {
+                return i.reply({ content: "❌ Unauthorized.", ephemeral: true });
+            }
+            currentPage = i.customId === 'next_lb' ? currentPage + 1 : currentPage - 1;
+            await i.update({
+                embeds: [generateEmbed(currentPage)],
+                components: [generateButtons(currentPage)]
+            });
+        });
+
+        collector.on('end', () => {
+            mainMessage.edit({ components: [] }).catch(() => null);
+        });
     }
 };
