@@ -2,12 +2,17 @@ const { EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js')
 
 module.exports = {
     name: 'broadcast',
-    description: 'Sends a global announcement to all nodes.',
+    description: 'Send a global announcement to all servers (Owner only).',
+    category: 'OWNER',
     run: async (client, message, args, database) => {
-        if (message.author.id !== process.env.OWNER_ID) return message.reply("❌ **Restricted.** Admin override required.");
+        if (message.author.id !== process.env.OWNER_ID) {
+            return message.reply("❌ **Restricted.** Admin override required.");
+        }
 
         const announcement = args.join(' ');
-        if (!announcement) return message.reply(`❌ Usage: \`.broadcast [message]\``);
+        if (!announcement) {
+            return message.reply(`❌ Usage: \`${process.env.PREFIX || '.'}broadcast [message]\``);
+        }
 
         const broadcastEmbed = new EmbedBuilder()
             .setColor('#e74c3c')
@@ -31,8 +36,12 @@ module.exports = {
                 if (channel) {
                     await channel.send({ embeds: [broadcastEmbed] });
                     success++;
-                } else { fail++; }
-            } catch (err) { fail++; }
+                } else {
+                    fail++;
+                }
+            } catch (err) {
+                fail++;
+            }
         });
 
         await Promise.all(promises);
