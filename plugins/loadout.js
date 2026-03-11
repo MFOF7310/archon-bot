@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'loadout',
-    description: 'Displays elite weapon configurations and intelligence.',
+    description: 'Display elite weapon configurations and intelligence.',
     aliases: ['build', 'class'],
     category: 'GAMING',
     run: async (client, message, args, database) => {
@@ -14,7 +14,6 @@ module.exports = {
         
         // --- WEAPON DATABASE ---
         const loadouts = {
-            // THE ORIGINAL 5 (WITH BUILDS & DESCRIPTIONS)
             "AK117": { 
                 title: "AK117 - TACTICAL RELIABILITY", 
                 build: "OWC Marksman, No Stock, OWC Laser, 40 Rnd, Granulated Grip.",
@@ -45,8 +44,6 @@ module.exports = {
                 desc: "The gold standard for snipers. Maximum ADS speed and wall-bang potential.",
                 image: "LINK_HERE" 
             },
-
-            // THE REMAINING 5 (PLACEHOLDERS READY FOR YOUR LINKS)
             "RYTEC": { 
                 title: "RYTEC AMR - ANTI-MATERIAL RIFLE", 
                 build: "Configuration Pending...",
@@ -92,7 +89,6 @@ module.exports = {
             .setFooter({ text: 'Eagle Community | Loadout Intelligence' })
             .setTimestamp();
 
-        // If you replace "LINK_HERE" with a real Discord image link, it will show up:
         if (data.image && data.image !== "LINK_HERE") {
             embed.setImage(data.image);
         }
