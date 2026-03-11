@@ -1,9 +1,9 @@
 const os = require('os');
 
 module.exports = {
-    name: 'menu',
-    aliases: ['dashboard', 'sysinfo'],
-    description: 'System dashboard with command overview.',
+    name: 'dashboard',
+    aliases: ['menu', 'sysinfo'],
+    description: 'Display system dashboard with command categories.',
     category: 'SYSTEM',
     run: async (client, message, args, database) => {
         try {
@@ -51,7 +51,7 @@ module.exports = {
             await message.reply(output);
         } catch (error) {
             console.error(error);
-            message.reply('⚠️ Menu Engine Failure.');
+            message.reply('⚠️ Dashboard Engine Failure.');
         }
     }
 };
