@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'news',
-    description: 'Latest gaming intelligence briefing.',
+    description: 'Get the latest gaming intelligence briefing via AI.',
     category: 'GAMING',
     run: async (client, message, args, database) => {
         const game = args.join(' ') || 'Gaming Meta';
