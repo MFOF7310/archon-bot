@@ -5,6 +5,7 @@ const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require('groq-sdk');
+const axios = require('axios'); // Already in dependencies
 
 // --- TERMINAL COLORS ---
 const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", reset = "\x1b[0m", bold = "\x1b[1m";
@@ -22,7 +23,7 @@ const client = new Client({
 // --- SYSTEM GLOBALS ---
 client.commands  = new Collection();
 client.aliases   = new Collection();
-client.version   = "1.0.0";
+client.version   = "2.6.0";
 client.lydiaChannels = {};
 client.lastLydiaCall = {};
 
@@ -44,7 +45,7 @@ if (fs.existsSync(dbPath)) {
 const saveDatabase = () => {
     fs.writeFileSync(dbPath, JSON.stringify(database, null, 2));
 };
-client.saveDatabase = saveDatabase; // 👈 ADD THIS LINE
+client.saveDatabase = saveDatabase;
 
 // --- GEMINI AI CONFIGURATION (ENHANCED FOR IMAGES) ---
 if (!process.env.GEMINI_API_KEY) {
@@ -61,7 +62,7 @@ console.log(`${green}[SUCCESS]${reset} Gemini AI initialized with vision capabil
 // --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ================= UPDATED SYSTEM PROMPT WITH BETTER FALLBACK =================
+// ================= SYSTEM PROMPT FOR LYDIA =================
 const LYDIA_SYSTEM_PROMPT = `
 You are Lydia, the official AI assistant of the Cloud Gaming-223 Discord server (also known as ARCHITECT CG-223).
 You are polite, smart, friendly, and direct. You never insult users. You keep answers concise but informative.
@@ -75,7 +76,7 @@ You are an expert in:
 IMPORTANT GUIDELINES:
 
 1. For questions about **future updates, unreleased content, or current events**:
-   - Be honest that you don't have real-time web access
+   - Be honest that you don't have real-time web access (unless you actually do – the system will provide search results when available)
    - Share general patterns (e.g., "CODM usually updates every 4-6 weeks")
    - Suggest where users CAN find real-time info (official channels, social media, YouTubers)
    - Offer to help with related topics you CAN discuss
@@ -156,7 +157,7 @@ client.once(Events.ClientReady, async () => {
         const alertEmbed = new EmbedBuilder()
             .setColor('#2ecc71')
             .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
-            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\nLydia AI is online with enhanced fallback responses! 🎮`)
+            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\nLydia AI now has REAL-TIME web search via Brave! 🎮`)
             .setTimestamp();
         await owner.send({ embeds: [alertEmbed] });
     } catch (err) {
@@ -164,7 +165,40 @@ client.once(Events.ClientReady, async () => {
     }
 });
 
-// ================= ENHANCED LYDIA HANDLER WITH SMART DETECTION =================
+// ================= BRAVE SEARCH HELPER =================
+async function braveSearch(query) {
+    try {
+        const url = 'https://api.search.brave.com/res/v1/web/search';
+        const response = await axios.get(url, {
+            headers: {
+                'Accept': 'application/json',
+                'Accept-Encoding': 'gzip',
+                'X-Subscription-Token': process.env.BRAVE_API_KEY
+            },
+            params: {
+                q: query,
+                count: 3,
+                search_lang: 'en',
+                safesearch: 'moderate'
+            },
+            timeout: 8000
+        });
+
+        const results = response.data.web?.results;
+        if (!results || results.length === 0) return null;
+
+        return results.map(r => ({
+            title: r.title,
+            description: r.description,
+            url: r.url
+        }));
+    } catch (error) {
+        console.error(`${yellow}[BRAVE ERROR]${reset}`, error.message);
+        return null;
+    }
+}
+
+// ================= ENHANCED LYDIA HANDLER WITH BRAVE SEARCH =================
 async function handleLydiaRequest(message, userInput) {
     try {
         await message.channel.sendTyping();
@@ -177,30 +211,59 @@ async function handleLydiaRequest(message, userInput) {
         const gamingKeywords = /codm|call of duty|cod mobile|loadout|gun|weapon|attachment|perk|scorestreak|ranked|battle royale|br|multiplayer|mp|meta|class setup|build|season|battle pass|operator|skill|gameplay|tips|tricks|strategy/i;
         const isGaming = gamingKeywords.test(userInput);
         
-        // For questions needing real-time info
+        // --- CASE 1: Real-time information needed ---
         if (needsRealTime) {
-            console.log(`${cyan}[LYDIA]${reset} Real-time question detected, using knowledge base`);
+            console.log(`${cyan}[LYDIA]${reset} Real-time question detected, searching Brave...`);
             
-            // Use regular model with special instructions for real-time questions
-            const completion = await groq.chat.completions.create({
-                model: 'llama-3.3-70b-versatile',
-                messages: [
-                    { 
-                        role: 'system', 
-                        content: LYDIA_SYSTEM_PROMPT + "\n\nIMPORTANT: The user is asking about something that would normally require real-time data. Since you don't have web search access, be honest about this limitation but still helpful. Share general knowledge patterns, suggest official sources, and offer to help with related topics you CAN discuss." 
-                    },
-                    { role: 'user', content: userInput }
-                ],
-                max_tokens: 700,
-                temperature: 0.7,
-            });
+            const searchResults = await braveSearch(userInput);
+            
+            if (searchResults && searchResults.length > 0) {
+                // Format results for Groq
+                const context = searchResults.map((r, i) => 
+                    `Source ${i+1}: ${r.title}\n${r.description}\nURL: ${r.url}`
+                ).join('\n\n');
+                
+                const completion = await groq.chat.completions.create({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        { 
+                            role: 'system', 
+                            content: `You are Lydia, AI assistant of Cloud Gaming-223. The user asked a question that requires up-to-date information. 
+                            Below are search results from the web. Summarize them concisely and answer the user's question. 
+                            If the results contain relevant info, provide a clear answer and mention sources (URLs) if possible. 
+                            Be friendly and use gaming slang when appropriate.`
+                        },
+                        { role: 'user', content: `Question: ${userInput}\n\nSearch results:\n${context}` }
+                    ],
+                    max_tokens: 800,
+                    temperature: 0.7,
+                });
 
-            const reply = completion.choices[0].message.content;
-            await message.reply(reply);
-            return true;
+                const reply = completion.choices[0].message.content;
+                await message.reply(reply);
+                return true;
+            } else {
+                // No results: fallback to knowledge base
+                console.log(`${yellow}[LYDIA]${reset} No search results, using knowledge base`);
+                const completion = await groq.chat.completions.create({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        { 
+                            role: 'system', 
+                            content: LYDIA_SYSTEM_PROMPT + "\n\nIMPORTANT: The user is asking about something that would normally require real-time data. You couldn't fetch fresh results, so be honest about this limitation but still helpful. Share general knowledge patterns, suggest official sources, and offer to help with related topics you CAN discuss." 
+                        },
+                        { role: 'user', content: userInput }
+                    ],
+                    max_tokens: 700,
+                    temperature: 0.7,
+                });
+                const reply = completion.choices[0].message.content;
+                await message.reply(reply);
+                return true;
+            }
         }
         
-        // For gaming questions (CODM, etc.) - give detailed answers
+        // --- CASE 2: Gaming question ---
         if (isGaming) {
             console.log(`${cyan}[LYDIA]${reset} Gaming question detected, using gaming expertise`);
             
@@ -222,7 +285,7 @@ async function handleLydiaRequest(message, userInput) {
             return true;
         }
         
-        // For general questions - normal conversation
+        // --- CASE 3: General conversation ---
         console.log(`${cyan}[LYDIA]${reset} General question, using standard response`);
         
         const completion = await groq.chat.completions.create({
@@ -364,7 +427,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
             { name: '🌐 Server', value: `\`${member.guild.name}\``, inline: true }
         )
         .setFooter({
-            text: `CLOUD_GAMING-223 • BAMALIBA🇲🇱 | Lydia knows CODM loadouts!`,
+            text: `CLOUD_GAMING-223 • BAMALIBA🇲🇱 | Lydia now searches the web with Brave!`,
             iconURL: member.guild.iconURL({ dynamic: true })
         })
         .setTimestamp();
