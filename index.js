@@ -198,27 +198,40 @@ async function braveSearch(query) {
     }
 }
 
-// ================= ENHANCED LYDIA HANDLER WITH BRAVE SEARCH =================
+// ================= ENHANCED LYDIA HANDLER WITH AI CLASSIFIER =================
 async function handleLydiaRequest(message, userInput) {
     try {
         await message.channel.sendTyping();
         
-        // Detect if question needs real-time info
-        const realTimeKeywords = /current|latest|news|today|weather|now|update|recent|new|release|upcoming|next|future|announce|just dropped|just released|this week|this month|score|result|winner|champion|tournament|live/i;
-        const needsRealTime = realTimeKeywords.test(userInput);
+        // ---- STEP 1: Ask Groq if this question needs real-time info ----
+        const classification = await groq.chat.completions.create({
+            model: 'llama-3.1-8b-instant',  // Fast & cheap
+            messages: [
+                { 
+                    role: 'system', 
+                    content: `You are a classifier. Determine if the user's question requires up‑to‑date information from the web (news, current events, weather, scores, recent updates, etc.). 
+                    Answer with ONLY one word: "yes" or "no". Do not add anything else.` 
+                },
+                { role: 'user', content: userInput }
+            ],
+            max_tokens: 5,
+            temperature: 0,
+        });
+
+        const needsRealTime = classification.choices[0].message.content.trim().toLowerCase() === 'yes';
+        console.log(`${cyan}[LYDIA]${reset} AI classification: ${needsRealTime ? 'REAL-TIME' : 'GENERAL'}`);
         
-        // Detect if it's CODM/gaming related
+        // Detect if it's CODM/gaming related (for specialized responses)
         const gamingKeywords = /codm|call of duty|cod mobile|loadout|gun|weapon|attachment|perk|scorestreak|ranked|battle royale|br|multiplayer|mp|meta|class setup|build|season|battle pass|operator|skill|gameplay|tips|tricks|strategy/i;
         const isGaming = gamingKeywords.test(userInput);
         
         // --- CASE 1: Real-time information needed ---
         if (needsRealTime) {
-            console.log(`${cyan}[LYDIA]${reset} Real-time question detected, searching Brave...`);
+            console.log(`${cyan}[LYDIA]${reset} Searching Brave...`);
             
             const searchResults = await braveSearch(userInput);
             
             if (searchResults && searchResults.length > 0) {
-                // Format results for Groq
                 const context = searchResults.map((r, i) => 
                     `Source ${i+1}: ${r.title}\n${r.description}\nURL: ${r.url}`
                 ).join('\n\n');
@@ -229,7 +242,7 @@ async function handleLydiaRequest(message, userInput) {
                         { 
                             role: 'system', 
                             content: `You are Lydia, AI assistant of Cloud Gaming-223. The user asked a question that requires up-to-date information. 
-                            Below are search results from the web. Summarize them concisely and answer the user's question. 
+                            Below are search results from the web. Summarize them concisely and answer the user's question in the same language they used. 
                             If the results contain relevant info, provide a clear answer and mention sources (URLs) if possible. 
                             Be friendly and use gaming slang when appropriate.`
                         },
@@ -250,7 +263,7 @@ async function handleLydiaRequest(message, userInput) {
                     messages: [
                         { 
                             role: 'system', 
-                            content: LYDIA_SYSTEM_PROMPT + "\n\nIMPORTANT: The user is asking about something that would normally require real-time data. You couldn't fetch fresh results, so be honest about this limitation but still helpful. Share general knowledge patterns, suggest official sources, and offer to help with related topics you CAN discuss." 
+                            content: LYDIA_SYSTEM_PROMPT + "\n\nIMPORTANT: The user asked something that might need real-time data, but no fresh results were found. Be honest about this limitation, share general knowledge, suggest official sources, and offer to help with related topics you CAN discuss." 
                         },
                         { role: 'user', content: userInput }
                     ],
@@ -263,7 +276,7 @@ async function handleLydiaRequest(message, userInput) {
             }
         }
         
-        // --- CASE 2: Gaming question ---
+        // --- CASE 2: Gaming question (but not real-time) ---
         if (isGaming) {
             console.log(`${cyan}[LYDIA]${reset} Gaming question detected, using gaming expertise`);
             
