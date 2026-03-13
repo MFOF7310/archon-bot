@@ -349,6 +349,6 @@ Troubleshooting Common Bot-Hosting.net issues
 | 🔵 **Facebook** | [Official Page](https://www.facebook.com/share/17KysmJrtm/) |
 | 📱 **TikTok** | [@cloudgaming223](https://www.tiktok.com/@cloudgaming223) |
 | 📸 **Instagram** | [@mfof7310](https://www.instagram.com/mfof7310) |
-| 💬 **Discord** | [mfof7559](https://discord.gg/NFSMFJajp9) |
+| 💬 **Discord** | [Eagle Community](https://discord.gg/NFSMFJajp9) |
 
 **📍 Node Location:** Bamako, Mali 🇲🇱
