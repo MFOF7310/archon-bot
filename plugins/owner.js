@@ -11,7 +11,7 @@ module.exports = {
             "🔗 **Facebook:** https://www.facebook.com/share/17KysmJrtm/",
             "📱 **TikTok:** https://www.tiktok.com/@cloudgaming223",
             "📸 **Instagram:** https://www.instagram.com/mfof7310",
-            "💬 **WhatsApp:** https://wa.me/15485200518",
+            "💬 **Discord:** https://discord.gg/NFSMFJajp9",
             "",
             "ℹ️ *Community management and support frequency active.*"
         ].join('\n');
