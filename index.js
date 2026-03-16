@@ -3,9 +3,8 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder } = require('discord.js');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require('groq-sdk');
-const axios = require('axios'); // Already in dependencies
+const axios = require('axios');
 
 // --- TERMINAL COLORS ---
 const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", reset = "\x1b[0m", bold = "\x1b[1m";
@@ -23,13 +22,13 @@ const client = new Client({
 // --- SYSTEM GLOBALS ---
 client.commands  = new Collection();
 client.aliases   = new Collection();
-client.version   = "2.6.0";
+client.version   = "2.6.1";
 client.lydiaChannels = {};
 client.lastLydiaCall = {};
 
 const PREFIX = process.env.PREFIX || ".";
 
-// --- DATABASE: THE PERSISTENCE LAYER ---
+// --- DATABASE ---
 const dbPath = path.join(__dirname, 'database.json');
 let database = {};
 if (fs.existsSync(dbPath)) {
@@ -40,93 +39,60 @@ if (fs.existsSync(dbPath)) {
         database = {};
     }
 }
-
 const saveDatabase = () => {
     fs.writeFileSync(dbPath, JSON.stringify(database, null, 2));
 };
 client.saveDatabase = saveDatabase;
 
-// --- GEMINI AI CONFIGURATION (ENHANCED FOR IMAGES) ---
-if (!process.env.GEMINI_API_KEY) {
-    console.log(`${yellow}[WARN]${reset} GEMINI_API_KEY not found in .env file`);
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-client.model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash",  // Best for images and fast responses
-});
-
-console.log(`${green}[SUCCESS]${reset} Gemini AI initialized with vision capabilities`);
-
 // --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ================= SYSTEM PROMPT FOR LYDIA =================
+// ================= SHORTENED SYSTEM PROMPT FOR LYDIA =================
 const LYDIA_SYSTEM_PROMPT = `
-You are CLOUD_GAMING223, the official AI assistant of the Cloud Gaming-223 Discord server (also known as ARCHITECT CG-223).
-You are polite, smart, friendly, and direct. You never insult users. You keep answers concise but informative. And also you have the owner github link, anyone asking for can provide to them,here it is https://github.com/MFOF7310/cloud-gaming-223-digital-engine. Don't forget to give them only if asked.
+You are CLOUD_GAMING-223, the AI assistant of the Cloud Gaming-223 Discord server (ARCHITECT CG-223). 
+You're polite, smart, and direct. Keep answers concise but informative.
 
-You are an expert in:
-- Call of Duty Mobile (CODM): weapons, attachments, gunsmith builds, ranked modes, Battle Royale, operators, seasonal updates, meta loadouts, ranked push tips, scorestreaks
-- General gaming: PC, console, and mobile games (Valorant, Fortnite, FIFA, Free Fire, PUBG Mobile, etc.)
-- Real-life general knowledge: science, technology, history, sports (based on your training up to early 2025)
-- Coding and technology: JavaScript, Python, Discord bots, general programming help
+Owner's GitHub (provide only if asked): https://github.com/MFOF7310/cloud-gaming-223-digital-engine
 
-IMPORTANT GUIDELINES:
+EXPERTISE:
+- CODM: weapons, loadouts, ranked, BR, meta, operators, updates
+- General gaming: Valorant, Fortnite, FIFA, Free Fire, PUBG, etc.
+- Real-life knowledge: science, tech, history, sports (up to early 2025)
+- Coding: JavaScript, Python, Discord bots, general help
 
-1. For questions about **future updates, unreleased content, or current events**:
-   - Be honest that you don't have real-time web access (unless you actually do – the system will provide search results when available)
-   - Share general patterns (e.g., "CODM usually updates every 4-6 weeks")
-   - Suggest where users CAN find real-time info (official channels, social media, YouTubers)
-   - Offer to help with related topics you CAN discuss
-
-2. For questions about **existing games, strategies, loadouts**:
-   - Give detailed, helpful answers based on your training
-   - Use gaming slang naturally (e.g., "W gun", "meta", "ranked grind")
-   - Be specific with attachments, perks, and playstyles
-
-3. Always respond in the same language the user writes in
-4. Never pretend to be a human — you are Lydia, an AI
-5. Keep responses under 400 words unless a detailed answer is truly needed
-
-EXAMPLES OF GOOD RESPONSES:
-- User: "What's new in next CODM update?" → Explain you can't access future data, share update patterns, suggest official sources, offer to discuss current meta
-- User: "Best BP50 loadout?" → Give detailed attachments, perks, and playstyle tips
-- User: "Who won the latest COD tournament?" → Explain you don't have live results, suggest where to check, offer to discuss tournament formats/history
+RULES:
+1. If asked about future updates or current events you don't know, be honest, share patterns, and suggest official sources.
+2. Use gaming slang naturally.
+3. Respond in the same language as the user.
+4. Never pretend to be human.
+5. Stay under 400 words unless detail is truly needed.
 `.trim();
 
 // --- THE LOADER: MODULE SYNCHRONIZATION ---
 client.loadPlugins = async () => {
     client.commands.clear();
     client.aliases.clear();
-
     console.log(`\n${blue}${bold}==============================================${reset}`);
     console.log(`${cyan}🛰️  ARCHITECT CG-223 | MODULE SYNCHRONIZATION${reset}`);
     console.log(`${blue}${bold}==============================================${reset}`);
 
     const pluginPath = path.join(__dirname, 'plugins');
-
     if (!fs.existsSync(pluginPath)) {
         console.log(`${yellow}[WARN]${reset} Plugins folder not found! Creating one...`);
         fs.mkdirSync(pluginPath);
     }
 
     const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js'));
-
     for (const file of pluginFiles) {
         try {
             const filePath = path.join(pluginPath, file);
             delete require.cache[require.resolve(filePath)];
-
             const command = require(filePath);
-
             if (command.name && command.run) {
                 client.commands.set(command.name, command);
-
                 if (command.aliases && Array.isArray(command.aliases)) {
                     command.aliases.forEach(alias => client.aliases.set(alias, command.name));
                 }
-
                 console.log(`${green}[SUCCESS]${reset} Linked Module: ${cyan}${command.name.toUpperCase()}${reset}`);
             } else {
                 console.log(`${yellow}[SKIPPED]${reset} ${file} is missing Name/Run export.`);
@@ -134,7 +100,6 @@ client.loadPlugins = async () => {
         } catch (error) {
             console.log(`${blue}[ERROR]${reset} Failed to link ${file}: ${error.message}`);
         }
-
         await new Promise(r => setTimeout(r, 50));
     }
 
@@ -147,7 +112,6 @@ client.loadPlugins = async () => {
 client.once(Events.ClientReady, async () => {
     console.clear();
     await client.loadPlugins();
-
     console.log(`${green}🛰️  CLIENT   : ${client.user.tag}${reset}`);
     console.log(`${green}📍 NODE     : BAMAKO_223${reset}\n`);
 
@@ -164,9 +128,14 @@ client.once(Events.ClientReady, async () => {
     }
 });
 
-// ================= BRAVE SEARCH HELPER =================
+// ================= BRAVE SEARCH HELPER (with detailed logging) =================
 async function braveSearch(query) {
     try {
+        if (!process.env.BRAVE_API_KEY) {
+            console.log(`${yellow}[BRAVE ERROR]${reset} No API key found in .env`);
+            return null;
+        }
+
         const url = 'https://api.search.brave.com/res/v1/web/search';
         const response = await axios.get(url, {
             headers: {
@@ -184,7 +153,10 @@ async function braveSearch(query) {
         });
 
         const results = response.data.web?.results;
-        if (!results || results.length === 0) return null;
+        if (!results || results.length === 0) {
+            console.log(`${yellow}[BRAVE]${reset} No results for query: "${query}"`);
+            return null;
+        }
 
         return results.map(r => ({
             title: r.title,
@@ -192,24 +164,58 @@ async function braveSearch(query) {
             url: r.url
         }));
     } catch (error) {
-        console.error(`${yellow}[BRAVE ERROR]${reset}`, error.message);
+        if (error.response) {
+            console.log(`${yellow}[BRAVE ERROR]${reset} Status: ${error.response.status}`, error.response.data);
+        } else if (error.request) {
+            console.log(`${yellow}[BRAVE ERROR]${reset} No response from Brave API`);
+        } else {
+            console.log(`${yellow}[BRAVE ERROR]${reset}`, error.message);
+        }
         return null;
     }
 }
 
-// ================= ENHANCED LYDIA HANDLER WITH AI CLASSIFIER =================
+// ================= UTILITY: Split long messages =================
+function splitMessage(text, maxLength = 2000) {
+    if (text.length <= maxLength) return [text];
+    
+    const chunks = [];
+    let current = '';
+    const sentences = text.split(/(?<=[.!?])\s+/); // split by sentences
+
+    for (const sentence of sentences) {
+        if ((current + ' ' + sentence).length <= maxLength) {
+            current += (current ? ' ' : '') + sentence;
+        } else {
+            if (current) chunks.push(current);
+            current = sentence;
+        }
+    }
+    if (current) chunks.push(current);
+    
+    // Fallback: if any chunk is still too long (e.g., no sentence breaks), split by characters
+    return chunks.flatMap(chunk => {
+        if (chunk.length <= maxLength) return chunk;
+        const parts = [];
+        for (let i = 0; i < chunk.length; i += maxLength) {
+            parts.push(chunk.substring(i, i + maxLength));
+        }
+        return parts;
+    });
+}
+
+// ================= ENHANCED LYDIA HANDLER =================
 async function handleLydiaRequest(message, userInput) {
     try {
         await message.channel.sendTyping();
-        
+
         // ---- STEP 1: Ask Groq if this question needs real-time info ----
         const classification = await groq.chat.completions.create({
-            model: 'llama-3.1-8b-instant',  // Fast & cheap
+            model: 'llama-3.1-8b-instant',
             messages: [
                 { 
                     role: 'system', 
-                    content: `You are a classifier. Determine if the user's question requires up‑to‑date information from the web (news, current events, weather, scores, recent updates, etc.). 
-                    Answer with ONLY one word: "yes" or "no". Do not add anything else.` 
+                    content: `You are a strict classifier. Answer ONLY with "yes" if the user's question ABSOLUTELY requires real‑time information (e.g., live scores, news, recent updates, weather, current events). Otherwise answer "no". Do not explain.` 
                 },
                 { role: 'user', content: userInput }
             ],
@@ -219,22 +225,23 @@ async function handleLydiaRequest(message, userInput) {
 
         const needsRealTime = classification.choices[0].message.content.trim().toLowerCase() === 'yes';
         console.log(`${cyan}[LYDIA]${reset} AI classification: ${needsRealTime ? 'REAL-TIME' : 'GENERAL'}`);
-        
-        // Detect if it's CODM/gaming related (for specialized responses)
+
+        // Detect if it's CODM/gaming related
         const gamingKeywords = /codm|call of duty|cod mobile|loadout|gun|weapon|attachment|perk|scorestreak|ranked|battle royale|br|multiplayer|mp|meta|class setup|build|season|battle pass|operator|skill|gameplay|tips|tricks|strategy/i;
         const isGaming = gamingKeywords.test(userInput);
-        
+
+        let replyContent = '';
+
         // --- CASE 1: Real-time information needed ---
         if (needsRealTime) {
             console.log(`${cyan}[LYDIA]${reset} Searching Brave...`);
-            
             const searchResults = await braveSearch(userInput);
-            
+
             if (searchResults && searchResults.length > 0) {
                 const context = searchResults.map((r, i) => 
                     `Source ${i+1}: ${r.title}\n${r.description}\nURL: ${r.url}`
                 ).join('\n\n');
-                
+
                 const completion = await groq.chat.completions.create({
                     model: 'llama-3.3-70b-versatile',
                     messages: [
@@ -250,12 +257,9 @@ async function handleLydiaRequest(message, userInput) {
                     max_tokens: 800,
                     temperature: 0.7,
                 });
-
-                const reply = completion.choices[0].message.content;
-                await message.reply(reply);
-                return true;
+                replyContent = completion.choices[0].message.content;
             } else {
-                // No results: fallback to knowledge base
+                // No search results: fallback to knowledge base
                 console.log(`${yellow}[LYDIA]${reset} No search results, using knowledge base`);
                 const completion = await groq.chat.completions.create({
                     model: 'llama-3.3-70b-versatile',
@@ -269,16 +273,12 @@ async function handleLydiaRequest(message, userInput) {
                     max_tokens: 700,
                     temperature: 0.7,
                 });
-                const reply = completion.choices[0].message.content;
-                await message.reply(reply);
-                return true;
+                replyContent = completion.choices[0].message.content;
             }
         }
-        
         // --- CASE 2: Gaming question (but not real-time) ---
-        if (isGaming) {
+        else if (isGaming) {
             console.log(`${cyan}[LYDIA]${reset} Gaming question detected, using gaming expertise`);
-            
             const completion = await groq.chat.completions.create({
                 model: 'llama-3.3-70b-versatile',
                 messages: [
@@ -291,42 +291,44 @@ async function handleLydiaRequest(message, userInput) {
                 max_tokens: 700,
                 temperature: 0.7,
             });
-
-            const reply = completion.choices[0].message.content;
-            await message.reply(reply);
-            return true;
+            replyContent = completion.choices[0].message.content;
         }
-        
         // --- CASE 3: General conversation ---
-        console.log(`${cyan}[LYDIA]${reset} General question, using standard response`);
-        
-        const completion = await groq.chat.completions.create({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-                { role: 'system', content: LYDIA_SYSTEM_PROMPT },
-                { role: 'user', content: userInput }
-            ],
-            max_tokens: 600,
-            temperature: 0.7,
-        });
+        else {
+            console.log(`${cyan}[LYDIA]${reset} General question, using standard response`);
+            const completion = await groq.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    { role: 'system', content: LYDIA_SYSTEM_PROMPT },
+                    { role: 'user', content: userInput }
+                ],
+                max_tokens: 600,
+                temperature: 0.7,
+            });
+            replyContent = completion.choices[0].message.content;
+        }
 
-        const reply = completion.choices[0].message.content;
-        await message.reply(reply);
+        // Split long messages and send
+        const chunks = splitMessage(replyContent);
+        await message.reply(chunks[0]); // first chunk as reply
+        for (let i = 1; i < chunks.length; i++) {
+            await message.channel.send(chunks[i]);
+        }
         return true;
-        
+
     } catch (err) {
         console.error(`${yellow}[LYDIA ERROR]${reset}`, err.message);
         return false;
     }
 }
 
-// ================= THE ENGINE: MESSAGE PROCESSING =================
+// ================= MESSAGE PROCESSING =================
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild) return;
 
     const userId = message.author.id;
 
-    // 1. XP REWARD PROTOCOL
+    // 1. XP SYSTEM
     if (!database[userId]) {
         database[userId] = {
             name: message.author.username,
@@ -335,22 +337,18 @@ client.on(Events.MessageCreate, async (message) => {
             gaming: { game: "NOT SET", rank: "Unranked" }
         };
     }
-
     database[userId].xp += Math.floor(Math.random() * (40 - 20 + 1)) + 20;
-
     const newLevel = Math.floor(database[userId].xp / 1000) + 1;
     if (newLevel > database[userId].level) {
         database[userId].level = newLevel;
         message.channel.send(`✨ **SYNC UP:** <@${userId}> reached **Level ${newLevel}**!`)
             .then(m => setTimeout(() => m.delete().catch(() => null), 5000));
     }
-
     saveDatabase();
 
     // 2. LYDIA AI PROTOCOL
     if (client.lydiaChannels && client.lydiaChannels[message.channel.id]) {
         const isMentioned = message.mentions.has(client.user);
-
         let isReply = false;
         if (message.reference) {
             const referenced = await message.channel.messages
@@ -360,15 +358,12 @@ client.on(Events.MessageCreate, async (message) => {
         }
 
         if (isMentioned || isReply) {
-            
-            // Rate limit (3 seconds between calls)
+            // Rate limit (3 seconds)
             const now = Date.now();
             const lastCall = client.lastLydiaCall[userId] || 0;
-            
             if (now - lastCall < 3000) {
                 return message.reply("⏳ **Easy there!** Give me 3 seconds between questions.");
             }
-            
             client.lastLydiaCall[userId] = now;
 
             const userInput = message.content
@@ -376,7 +371,6 @@ client.on(Events.MessageCreate, async (message) => {
                 .trim() || 'Hello!';
 
             const success = await handleLydiaRequest(message, userInput);
-            
             if (!success) {
                 await message.reply({
                     content: "😅 **Hey there!** I'm having a small technical hiccup right now.\n\n" +
@@ -387,7 +381,6 @@ client.on(Events.MessageCreate, async (message) => {
                             "*Try asking again in a few seconds!* 🎮"
                 }).catch(() => null);
             }
-
             return;
         }
     }
@@ -409,7 +402,7 @@ client.on(Events.MessageCreate, async (message) => {
     }
 });
 
-// ================= WELCOME PROTOCOL: NEW MEMBER =================
+// ================= WELCOME PROTOCOL =================
 client.on(Events.GuildMemberAdd, async (member) => {
     const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
     if (!welcomeChannelId) return;
