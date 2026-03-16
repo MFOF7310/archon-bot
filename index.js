@@ -32,7 +32,6 @@ const PREFIX = process.env.PREFIX || ".";
 // --- DATABASE: THE PERSISTENCE LAYER ---
 const dbPath = path.join(__dirname, 'database.json');
 let database = {};
-
 if (fs.existsSync(dbPath)) {
     try {
         database = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
