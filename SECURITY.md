@@ -1,7 +1,7 @@
 # Security Policy
 
 ## Supported Versions
-Currently, only **v1.0.0 (Release)** and above are supported with security updates.
+Currently, only **v2.6.0 (Release)** and above are supported with security updates.
 
 ## Reporting a Vulnerability
 If you find a security bug (like an exposed API key or a crash command), please **do not** open a public Issue. 
