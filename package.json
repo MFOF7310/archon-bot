@@ -1,6 +1,6 @@
 {
   "name": "cloud-gaming-223-engine",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "Digital Engine for Cloud Gaming Community - Mali 🇲🇱",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,6 @@
   "dependencies": {
     "discord.js": "^14.16.3",
     "axios": "^1.7.9",
-    "@google/generative-ai": "^0.22.0",
     "google-translate-api-x": "^10.7.1",
     "google-tts-api": "^2.0.2",
     "dotenv": "^16.4.5",
