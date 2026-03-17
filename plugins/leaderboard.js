@@ -25,24 +25,43 @@ module.exports = {
         const maxPage = Math.ceil(entries.length / pageSize) - 1;
         let currentPage = 0;
 
+        // Helper: generate a gradient color based on page (gold for first page, then cooler)
+        const getEmbedColor = (page) => {
+            if (page === 0) return '#FFD700'; // Gold for page 1
+            const colors = ['#FFA500', '#FF8C00', '#FF7F50', '#FF6347', '#FF4500'];
+            return colors[page % colors.length] || '#3498db';
+        };
+
         const generateEmbed = (page) => {
             const start = page * pageSize;
             const pageEntries = entries.slice(start, start + pageSize);
-            const medal = ['🥇', '🥈', '🥉'];
+            const medalEmojis = ['🥇', '🥈', '🥉'];
 
-            const description = pageEntries.map((user, idx) => {
+            // Build description with clean formatting
+            let description = '';
+            pageEntries.forEach((user, idx) => {
                 const rank = start + idx + 1;
-                const medalIcon = rank <= 3 ? medal[rank-1] : `**#${rank}**`;
-                const xpProgress = (user.xp % 1000) / 10; // 0-100
-                const bar = '█'.repeat(Math.floor(xpProgress/10)) + '░'.repeat(10 - Math.floor(xpProgress/10));
-                return `${medalIcon} <@${user.id}>\n╰ ✨ XP: \`${user.xp.toLocaleString()}\` | ⚡ Lvl: \`${user.level}\`\n╰ \`${bar}\` ${Math.floor(xpProgress)}% to next level`;
-            }).join('\n\n');
+                const medal = rank <= 3 ? medalEmojis[rank-1] : `**#${rank}**`;
+                const xpProgress = user.xp % 1000;
+                const percent = Math.floor((xpProgress / 1000) * 100);
+                const bar = '▰'.repeat(Math.floor(percent / 10)) + '▱'.repeat(10 - Math.floor(percent / 10));
+                
+                description += `${medal} **<@${user.id}>**\n`;
+                description += `╰ ✨ XP \`${user.xp.toLocaleString()}\` • ⚡ Level \`${user.level}\`\n`;
+                description += `╰ \`${bar}\` ${percent}%\n\n`;
+            });
+
+            if (!description) description = '*No agents on this page.*';
 
             return new EmbedBuilder()
-                .setColor(page === 0 ? '#f1c40f' : '#3498db')
-                .setTitle('🏆 TOP-TIER AGENTS | RANKINGS')
-                .setDescription(description || '*No entries on this page.*')
-                .setFooter({ text: `Page ${page+1}/${maxPage+1} | Total Agents: ${totalPlayers} | Node: Bamako-223` })
+                .setColor(getEmbedColor(page))
+                .setTitle('🏆 TOP‑TIER AGENTS')
+                .setDescription(description)
+                .setThumbnail(message.guild.iconURL({ dynamic: true })) // Server icon
+                .setFooter({ 
+                    text: `Page ${page+1}/${maxPage+1} • Total Agents: ${totalPlayers} • Bamako‑223 Node`,
+                    iconURL: client.user.displayAvatarURL() 
+                })
                 .setTimestamp();
         };
 
@@ -50,12 +69,19 @@ module.exports = {
             return new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId('prev_lb')
-                    .setLabel('◀')
+                    .setEmoji('◀️')
+                    .setLabel('Previous')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(page === 0),
                 new ButtonBuilder()
+                    .setCustomId('page_indicator')
+                    .setLabel(`Page ${page+1}/${maxPage+1}`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true), // Always disabled – just for display
+                new ButtonBuilder()
                     .setCustomId('next_lb')
-                    .setLabel('▶')
+                    .setEmoji('▶️')
+                    .setLabel('Next')
                     .setStyle(ButtonStyle.Primary)
                     .setDisabled(page === maxPage)
             );
@@ -73,9 +99,11 @@ module.exports = {
 
         collector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) {
-                return i.reply({ content: "❌ Unauthorized.", ephemeral: true });
+                return i.reply({ content: "❌ These buttons aren't for you.", ephemeral: true });
             }
-            currentPage = i.customId === 'next_lb' ? currentPage + 1 : currentPage - 1;
+            if (i.customId === 'prev_lb' && currentPage > 0) currentPage--;
+            if (i.customId === 'next_lb' && currentPage < maxPage) currentPage++;
+
             await i.update({
                 embeds: [generateEmbed(currentPage)],
                 components: [generateButtons(currentPage)]
