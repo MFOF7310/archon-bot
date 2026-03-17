@@ -3,18 +3,39 @@ const { EmbedBuilder } = require('discord.js');
 module.exports = {
     name: 'rank',
     aliases: ['level', 'xp'],
-    description: 'Check your or another member’s rank and XP progress.',
+    description: 'Check your or another member’s rank, level, and XP progress.',
     category: 'PROFILE',
     run: async (client, message, args, database) => {
         const target = message.mentions.users.first() || message.author;
-        const userData = database[target.id] || { xp: 0, level: 1, gaming: { game: 'NOT SET', rank: 'Unranked' } };
+        
+        // Get user data (or create default if not exists)
+        let userData = database[target.id];
+        if (!userData) {
+            // Create a temporary entry for display, but don't save
+            userData = { xp: 0, level: 1, gaming: { game: 'NOT SET', rank: 'Unranked' } };
+        }
 
         const xp = userData.xp || 0;
         const level = userData.level || 1;
-        const xpForNext = level * 1000;
-        const xpInLevel = xp % 1000;
-        const progress = Math.floor((xpInLevel / 1000) * 100);
-        const bar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+
+        // Calculate rank among all users
+        const sorted = Object.entries(database)
+            .filter(([id]) => !isNaN(id)) // exclude non-user entries
+            .sort(([, a], [, b]) => (b.xp || 0) - (a.xp || 0));
+        const rank = sorted.findIndex(([id]) => id === target.id) + 1;
+        const totalUsers = sorted.length;
+
+        // Progress to next level (level = floor(xp/1000) + 1)
+        const xpForCurrentLevel = (level - 1) * 1000;
+        const xpForNextLevel = level * 1000;
+        const progressXP = xp - xpForCurrentLevel;
+        const neededXP = xpForNextLevel - xpForCurrentLevel;
+        const percent = Math.min(100, Math.floor((progressXP / neededXP) * 100));
+
+        // Progress bar (10 blocks)
+        const barLength = 10;
+        const filled = Math.floor((progressXP / neededXP) * barLength);
+        const bar = '█'.repeat(filled) + '░'.repeat(barLength - filled);
 
         const embed = new EmbedBuilder()
             .setColor('#00ffcc')
@@ -23,11 +44,13 @@ module.exports = {
             .addFields(
                 { name: '⚡ Level', value: `\`${level}\``, inline: true },
                 { name: '✨ Total XP', value: `\`${xp.toLocaleString()}\``, inline: true },
-                { name: '📈 Progress', value: `\`${bar}\` ${progress}%`, inline: false }
+                { name: '🏆 Global Rank', value: rank ? `#${rank} / ${totalUsers}` : 'Unranked', inline: true },
+                { name: '📈 Progress', value: `\`${bar}\` ${percent}% (${progressXP} / ${neededXP} XP)`, inline: false }
             )
             .setFooter({ text: 'Bamako Node • Eagle Community' })
             .setTimestamp();
 
+        // Add gaming info if set
         if (userData.gaming && userData.gaming.game !== 'NOT SET') {
             embed.addFields({ name: '🎮 Primary Game', value: `${userData.gaming.game} – ${userData.gaming.rank}`, inline: false });
         }
