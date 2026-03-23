@@ -2,29 +2,82 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'profile',
-    aliases: ['p'],
-    description: 'View your or another agent\'s profile and progression.',
-    category: 'PROFILE',
+    aliases: ['p', 'id'],
+    description: 'Dossier d\'agent intelligent et dynamique.',
     run: async (client, message, args, database) => {
         const target = message.mentions.users.first() || message.author;
-        const user = database[target.id] || { name: target.username, xp: 0, level: 1, gaming: { game: "NOT SET", rank: "Unranked" }};
+        
+        // --- DATA REPAIR & INITIALIZATION ---
+        // On s'assure que chaque champ existe pour éviter le NaN
+        const userData = database[target.id] || {};
+        const user = {
+            xp: userData.xp || 0,
+            level: userData.level || 1,
+            lastSeen: userData.lastSeen || Date.now(), // Réparation automatique si missing
+            achievements: userData.achievements || [],
+            gaming: {
+                game: userData.gaming?.game || "CODM",
+                rank: userData.gaming?.rank || "Unranked"
+            }
+        };
 
-        // Progress Bar calculation
-        const percent = Math.floor(((user.xp % 1000) / 1000) * 100);
-        const bar = '▰'.repeat(Math.floor(percent / 10)) + '▱'.repeat(10 - Math.floor(percent / 10));
+        // --- DYNAMIC XP CALCULATION ---
+        // Le prochain niveau demande (Niveau actuel + 1) * 1000 XP
+        const nextLevelXP = (user.level + 1) * 1000;
+        const currentLevelXP = user.xp % nextLevelXP; 
+        const progressPercent = Math.min(Math.floor((currentLevelXP / 1000) * 100), 100);
+
+        // --- MOBILE-OPTIMIZED PROGRESS BAR (Scale 7) ---
+        const barSize = 7; 
+        const filled = Math.round((progressPercent / 100) * barSize);
+        const progressBar = '🟦'.repeat(filled) + '⬛'.repeat(barSize - filled);
+
+        // --- TIMESTAMP REPAIR ---
+        // On vérifie que lastSeen est bien un nombre valide avant de diviser
+        const validTimestamp = !isNaN(user.lastSeen) ? Math.floor(user.lastSeen / 1000) : Math.floor(Date.now() / 1000);
+        const lastActive = `<t:${validTimestamp}:R>`;
+
+        // --- MEDALS LOGIC ---
+        const medalIcons = { "sniper": "🎯", "veteran": "🎖️", "elite": "🔥" };
+        const medals = user.achievements.length > 0 
+            ? user.achievements.map(m => medalIcons[m] || '🏅').join(' ') 
+            : "*Aucune médaille*";
 
         const embed = new EmbedBuilder()
-            .setColor('#3498db')
-            .setTitle(`🪪 AGENT PROFILE: ${user.name.toUpperCase()}`)
+            .setColor('#2b2d31')
+            .setAuthor({ 
+                name: `DOSSIER AGENT : ${target.username.toUpperCase()}`, 
+                iconURL: target.displayAvatarURL() 
+            })
             .setThumbnail(target.displayAvatarURL({ dynamic: true }))
             .addFields(
-                { name: '⚡ Level', value: `\`${user.level}\``, inline: true },
-                { name: '✨ Total XP', value: `\`${user.xp.toLocaleString()}\``, inline: true },
-                { name: '📈 Evolution', value: `${bar} \`${percent}%\`` },
-                { name: '🎮 Primary Game', value: `\`${user.gaming?.game || 'N/A'}\``, inline: true },
-                { name: '🏆 Skill Tier', value: `\`${user.gaming?.rank || 'Unranked'}\``, inline: true }
+                { 
+                    name: '📊 ÉTAT DE SERVICE', 
+                    value: `⚡ **Niveau:** \`${user.level}\` \n✨ **XP:** \`${user.xp.toLocaleString()}\``, 
+                    inline: true 
+                },
+                { 
+                    name: '🕹️ INFOS RANG', 
+                    value: `🎮 **Jeu:** \`${user.gaming.game}\` \n🏆 **Rang:** \`${user.gaming.rank}\``, 
+                    inline: true 
+                },
+                { 
+                    name: `📈 PROGRESSION VERS NIV. ${user.level + 1}`, 
+                    value: `${progressBar} \`${progressPercent}%\``, 
+                    inline: false 
+                },
+                { 
+                    name: '🏅 MÉDAILLES', 
+                    value: medals, 
+                    inline: true 
+                },
+                { 
+                    name: '🕒 DERNIÈRE ACTIVITÉ', 
+                    value: lastActive, 
+                    inline: true 
+                }
             )
-            .setFooter({ text: `Node: Bamako-223 | Secure ID: ${target.id.slice(0,8)}...` })
+            .setFooter({ text: `Eagle Community | Bamako-223 | ID: ${target.id.slice(0,8)}` })
             .setTimestamp();
 
         await message.reply({ embeds: [embed] });
