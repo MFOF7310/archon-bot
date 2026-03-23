@@ -2,57 +2,59 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'server',
-    description: 'Display information about the current server.',
-    category: 'INFORMATION',
+    aliases: ['si', 'sector', 'guild'],
+    description: 'Execute a deep-scan of the current Sector (Server) intelligence.',
+    category: 'SYSTEM', // Changed to SYSTEM to align with your Help Menu
     run: async (client, message, args, database) => {
         const { guild } = message;
-        const icon = guild.iconURL({ dynamic: true, size: 256 }) || client.user.displayAvatarURL();
+        const icon = guild.iconURL({ dynamic: true, size: 512 }) || client.user.displayAvatarURL();
 
-        // Helper to get verification level as readable string
-        const verificationLevels = {
-            0: 'None',
-            1: 'Low',
-            2: 'Medium',
-            3: 'High',
-            4: 'Very High'
-        };
+        // Verification & Boost Tier Data
+        const vLevels = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH'];
+        const bTiers = ['LEVEL_0', 'LEVEL_1', 'LEVEL_2', 'LEVEL_3'];
 
-        // Helper to get boost tier as readable string
-        const boostTiers = {
-            0: 'No Level',
-            1: 'Tier 1',
-            2: 'Tier 2',
-            3: 'Tier 3'
-        };
-
-        // Build fields array dynamically
-        const fields = [
-            { name: '🆔 Server ID', value: `\`${guild.id}\``, inline: false },
-            { name: '👑 Owner', value: `<@${guild.ownerId}>`, inline: true },
-            { name: '📅 Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
-            { name: '👥 Members', value: `\`${guild.memberCount}\` total`, inline: true },
-            { name: '💬 Channels', value: `\`${guild.channels.cache.size}\` total`, inline: true },
-            { name: '📜 Roles', value: `\`${guild.roles.cache.size}\` total`, inline: true },
-            { name: '😎 Emojis', value: `\`${guild.emojis.cache.size}\` custom`, inline: true },
-            { name: '🚀 Boosts', value: `\`${guild.premiumSubscriptionCount || 0}\` (${boostTiers[guild.premiumTier]})`, inline: true },
-            { name: '🛡️ Verification', value: `\`${verificationLevels[guild.verificationLevel]}\``, inline: true }
-        ];
-
-        // Add server description if available
-        if (guild.description) {
-            fields.push({ name: '📝 Description', value: `"${guild.description}"`, inline: false });
-        }
-
-        // Create the embed with a welcoming description
+        // ARCHITECT Style Embed
         const infoEmbed = new EmbedBuilder()
-            .setColor('#ffcc00')
-            .setTitle(`🏛️ ${guild.name} — Server Registry`)
-            .setDescription(`👋 Welcome to the **${guild.name}** information panel! Here's everything you need to know about our community.`)
+            .setColor('#00fbff') // Signature Architect Cyan
+            .setAuthor({ 
+                name: `SECTOR DATA_SCAN: ${guild.name.toUpperCase()}`, 
+                iconURL: icon 
+            })
+            .setTitle('─ ARCHITECT GUILD TELEMETRY ─')
             .setThumbnail(icon)
-            .addFields(fields)
-            .setFooter({ text: 'Eagle Community • Digital Engine' })
+            .setDescription(
+                `**Commander:** <@${guild.ownerId}>\n` +
+                `**Established:** <t:${Math.floor(guild.createdTimestamp / 1000)}:D> (<t:${Math.floor(guild.createdTimestamp / 1000)}:R>)\n` +
+                `**Sector ID:** \`${guild.id}\``
+            )
+            .addFields(
+                { 
+                    name: '📊 POPULATION METRICS', 
+                    value: `\`\`\`ansi\n\u001b[1;32m▣\u001b[0m Total: ${guild.memberCount}\n\u001b[1;34m▣\u001b[0m Roles: ${guild.roles.cache.size}\n\u001b[1;36m▣\u001b[0m Emojis: ${guild.emojis.cache.size}\`\`\``, 
+                    inline: true 
+                },
+                { 
+                    name: '🛰️ NETWORK GRID', 
+                    value: `\`\`\`ansi\n\u001b[1;35m▣\u001b[0m Channels: ${guild.channels.cache.size}\n\u001b[1;35m▣\u001b[0m Boosts: ${guild.premiumSubscriptionCount || 0}\n\u001b[1;35m▣\u001b[0m Tier: ${bTiers[guild.premiumTier]}\`\`\``, 
+                    inline: true 
+                },
+                { 
+                    name: '🛡️ SECURITY PROTOCOLS', 
+                    value: `\`\`\`prolog\nVerification: ${vLevels[guild.verificationLevel]}\nIntegrity: SYNCHRONIZED\nNode: Bamako-223\`\`\``, 
+                    inline: false 
+                }
+            )
+            .setFooter({ text: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY • v2.1.0' })
             .setTimestamp();
 
-        message.reply({ embeds: [infoEmbed] });
+        // Add description if the server has one
+        if (guild.description) {
+            infoEmbed.addFields({ name: '📝 SECTOR INTEL', value: `*"${guild.description}"*` });
+        }
+
+        message.reply({ 
+            content: `> **Accessing sector registry... signal locked.**`,
+            embeds: [infoEmbed] 
+        });
     }
 };
