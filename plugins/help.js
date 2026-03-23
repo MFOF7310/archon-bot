@@ -1,89 +1,102 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
 
 module.exports = {
     name: 'help',
-    aliases: ['h', 'menu', 'commands'],
-    description: 'Display all commands or get detailed info about a specific command.',
-    usage: 'help [command]',
+    aliases: ['h', 'menu', 'list', 'commands'],
+    description: 'Access the ARCHITECT Neural Directory and command database.',
     category: 'SYSTEM',
     run: async (client, message, args) => {
-        const now = new Date();
-        const preciseTime = now.toUTCString();
-        const footerTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-        // Icons for categories
-        const icons = {
-            'AI': '🧠',
-            'GAMING': '🎮',
-            'MODERATION': '🛡️',
-            'SYSTEM': '📡',
-            'SOCIAL': '🌐',
-            'UTILITY': '🛠️',
-            'FUN': '🎲',
-            'ECONOMY': '💰',
-            'MUSIC': '🎵',
-            'ADMIN': '👑'
+        const prefix = process.env.PREFIX || '.';
+        const emojiMap = {
+            SYSTEM: '📡', GAMING: '🎮', AI: '🧠', 
+            PROFILE: '👤', OWNER: '👑', GENERAL: '📁'
         };
 
-        // If user asked for a specific command
-        if (args.length) {
-            const commandName = args[0].toLowerCase();
-            const command = client.commands.get(commandName) || 
-                           client.commands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
+        // --- SUB-COMMAND LOGIC (Help <cmd>) ---
+        if (args[0]) {
+            const cmd = client.commands.get(args[0].toLowerCase()) || 
+                        client.commands.find(c => c.aliases && c.aliases.includes(args[0].toLowerCase()));
 
-            if (!command) {
-                return message.reply(`❌ Command **${args[0]}** not found. Use \`${process.env.PREFIX || '.'}help\` to see all commands.`);
-            }
+            if (!cmd) return message.reply("❌ **SIGNAL LOST:** Command not found in local database.");
 
-            // Build detailed embed
             const detailEmbed = new EmbedBuilder()
-                .setColor('#00ffcc')
-                .setAuthor({ name: 'ARCHITECT CG-223 | COMMAND DETAILS', iconURL: client.user.displayAvatarURL() })
-                .setTitle(`📋 ${command.name.charAt(0).toUpperCase() + command.name.slice(1)} Command`)
+                .setColor('#00fbff')
+                .setAuthor({ name: 'COMMAND DATA_EXTRACT', iconURL: client.user.displayAvatarURL() })
+                .setTitle(`◈ MODULE: ${cmd.name.toUpperCase()} ◈`)
+                .setDescription(`\`\`\`fix\n${cmd.description || 'No description encrypted.'}\`\`\``)
                 .addFields(
-                    { name: '📝 Description', value: command.description || 'No description provided.', inline: false },
-                    { name: '🔧 Usage', value: `\`${process.env.PREFIX || '.'}${command.usage || command.name}\``, inline: true },
-                    { name: '📂 Category', value: command.category || 'General', inline: true }
-                );
-
-            if (command.aliases && command.aliases.length) {
-                detailEmbed.addFields({ name: '🔀 Aliases', value: command.aliases.map(a => `\`${a}\``).join(', '), inline: true });
-            }
-
-            detailEmbed.setFooter({ text: `Protocol Eagle • ${footerTime} • Bamako Node` })
-                       .setTimestamp();
+                    { name: '📂 CATEGORY', value: `\`${cmd.category || 'GENERAL'}\``, inline: true },
+                    { name: '🔧 USAGE', value: `\`${prefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
+                    { name: '🔀 ALIASES', value: `\`${cmd.aliases?.join(', ') || 'NONE'}\``, inline: true }
+                )
+                .setFooter({ text: 'ARCHITECT CG-223 | Bamako Node' })
+                .setTimestamp();
 
             return message.reply({ embeds: [detailEmbed] });
         }
 
-        // Otherwise show category overview
-        const categories = {};
-        client.commands.forEach(cmd => {
-            const cat = (cmd.category || 'General').toUpperCase();
-            if (!categories[cat]) categories[cat] = [];
-            categories[cat].push(cmd);
-        });
-
-        const helpEmbed = new EmbedBuilder()
-            .setColor('#00ffcc')
-            .setAuthor({ name: 'ARCHITECT CG-223 | CONTROL INTERFACE', iconURL: client.user.displayAvatarURL() })
+        // --- MAIN DIRECTORY LOGIC ---
+        const categories = [...new Set(client.commands.map(cmd => cmd.category || 'GENERAL'))];
+        
+        const mainEmbed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setAuthor({ name: 'ARCHITECT CG-223 | NEURAL DIRECTORY', iconURL: client.user.displayAvatarURL() })
             .setThumbnail(client.user.displayAvatarURL())
-            .setDescription(`**Status:** 🟢 ONLINE\n**System Time:** \`${preciseTime}\` 🛰️\n**Modules Loaded:** \`${client.commands.size}\`\n\nUse \`${process.env.PREFIX || '.'}help <command>\` for detailed info.`);
+            .setDescription(
+                `**System Status:** \`🟢 ONLINE\`\n` +
+                `**Node:** \`Bamako-223\`\n` +
+                `**Core:** \`Groq LPU™ + Brave Search\`\n\n` +
+                `Select a module category from the menu below to decrypt available commands.`
+            )
+            .addFields({ name: '📊 DATA LOAD', value: `\`${client.commands.size}\` Modules Active`, inline: true })
+            .setFooter({ text: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY' })
+            .setTimestamp();
 
-        // Sort categories alphabetically
-        Object.keys(categories).sort().forEach(category => {
-            const icon = icons[category] || '📁';
-            const commandList = categories[category]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map(cmd => `\`${cmd.name}\``)
-                .join(' • ');
+        // Create the Select Menu
+        const menu = new StringSelectMenuBuilder()
+            .setCustomId('help_select')
+            .setPlaceholder('Select a System Module...')
+            .addOptions(categories.map(cat => ({
+                label: cat.toUpperCase(),
+                value: cat,
+                description: `View all ${cat} commands`,
+                emoji: emojiMap[cat.toUpperCase()] || '📁'
+            })));
 
-            helpEmbed.addFields({ name: `${icon} ${category} (${categories[category].length})`, value: commandList, inline: false });
+        const row = new ActionRowBuilder().addComponents(menu);
+
+        const response = await message.reply({
+            content: `> **Initializing Directory handshake...**`,
+            embeds: [mainEmbed],
+            components: [row]
         });
 
-        helpEmbed.setFooter({ text: `Protocol Eagle • ${footerTime} • Bamako Node` })
-                 .setTimestamp();
+        // --- INTERACTION COLLECTOR ---
+        const collector = response.createMessageComponentCollector({ 
+            componentType: ComponentType.StringSelect, 
+            time: 300000 // 5 Minutes
+        });
 
-        message.reply({ embeds: [helpEmbed] });
+        collector.on('collect', async (i) => {
+            if (i.user.id !== message.author.id) return i.reply({ content: '⛔ Access Denied.', ephemeral: true });
+
+            const category = i.values[0];
+            const cmds = client.commands.filter(c => (c.category || 'GENERAL') === category);
+
+            const catEmbed = new EmbedBuilder()
+                .setColor('#00fbff')
+                .setTitle(`─ ${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} MODULES ─`)
+                .setDescription(
+                    cmds.map(c => `**${prefix}${c.name}**\n└─ \`${c.description}\``).join('\n\n')
+                )
+                .setFooter({ text: `Use ${prefix}help <command> for deep-scan details.` });
+
+            await i.update({ embeds: [catEmbed] });
+        });
+
+        collector.on('end', () => {
+            const disabled = new ActionRowBuilder().addComponents(menu.setDisabled(true));
+            response.edit({ components: [disabled] }).catch(() => null);
+        });
     }
 };
