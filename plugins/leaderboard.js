@@ -6,8 +6,6 @@ module.exports = {
     category: 'SYSTEM',
     description: 'Display the top-tier agents by neural synchronization (XP).',
     run: async (client, message, args, database) => {
-        
-        // 1. DATA EXTRACTION
         const entries = Object.entries(database)
             .filter(([id]) => !isNaN(id)) 
             .map(([id, data]) => ({
@@ -17,16 +15,12 @@ module.exports = {
             }))
             .sort((a, b) => b.xp - a.xp);
 
-        if (entries.length === 0) {
-            return message.reply("📊 **DATABASE EMPTY:** No agent telemetry detected.");
-        }
+        if (entries.length === 0) return message.reply("📊 **DATABASE EMPTY:** No agent telemetry detected.");
 
-        // --- SURPRISE: PERSONAL POSITION SCAN ---
         const userIndex = entries.findIndex(e => e.id === message.author.id);
         const userRank = userIndex === -1 ? 'UNRANKED' : userIndex + 1;
         const userXP = userIndex === -1 ? 0 : entries[userIndex].xp;
         
-        // Calculate distance to the person above them
         let motivationalQuote = "";
         if (userIndex > 0) {
             const gap = entries[userIndex - 1].xp - userXP;
@@ -39,7 +33,6 @@ module.exports = {
         const maxPage = Math.ceil(entries.length / pageSize) - 1;
         let currentPage = 0;
 
-        // 2. DYNAMIC EMBED GENERATOR
         const generateEmbed = (page) => {
             const start = page * pageSize;
             const pageEntries = entries.slice(start, start + pageSize);
@@ -58,23 +51,19 @@ module.exports = {
                 description += `╰ \`[${bar}]\` **${percent}**%\n\n`;
             });
 
-            const embed = new EmbedBuilder()
+            return new EmbedBuilder()
                 .setColor('#00fbff')
                 .setAuthor({ name: 'ARCHITECT | HIGH-SYNC LEADERBOARD', iconURL: client.user.displayAvatarURL() })
                 .setThumbnail(message.guild.iconURL({ dynamic: true }))
                 .setDescription(description)
-                // --- THE SURPRISE FOOTER ---
                 .addFields({ 
                     name: '🛰️ YOUR POSITION', 
                     value: `\`\`\`prolog\nRank: #${userRank} | Total: ${userXP.toLocaleString()} XP\n${motivationalQuote}\`\`\`` 
                 })
-                .setFooter({ text: `Page ${page + 1}/${maxPage + 1} • Eagle Community Synchronization` })
+                .setFooter({ text: `Page ${page + 1}/${maxPage + 1} • Eagle Community • BKO-223` })
                 .setTimestamp();
-
-            return embed;
         };
 
-        // 3. NAVIGATION COMPONENTS
         const generateButtons = (page) => {
             return new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('prev_lb').setLabel('PREV').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
@@ -88,25 +77,15 @@ module.exports = {
             components: [generateButtons(currentPage)]
         });
 
-        // 4. INTERACTION COLLECTOR
-        const collector = lbMessage.createMessageComponentCollector({
-            componentType: ComponentType.Button,
-            time: 120000 
-        });
+        const collector = lbMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
 
         collector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) return i.reply({ content: "⛔ Lock active.", ephemeral: true });
             if (i.customId === 'prev_lb') currentPage--;
             if (i.customId === 'next_lb') currentPage++;
-
-            await i.update({
-                embeds: [generateEmbed(currentPage)],
-                components: [generateButtons(currentPage)]
-            });
+            await i.update({ embeds: [generateEmbed(currentPage)], components: [generateButtons(currentPage)] });
         });
 
-        collector.on('end', () => {
-            lbMessage.edit({ components: [] }).catch(() => null);
-        });
+        collector.on('end', () => lbMessage.edit({ components: [] }).catch(() => null));
     }
 };
