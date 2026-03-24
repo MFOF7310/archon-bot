@@ -3,17 +3,16 @@ const { EmbedBuilder } = require('discord.js');
 module.exports = {
     name: 'rank',
     aliases: ['level', 'xp', 'dossier', 'profile'],
-    description: 'Access an agent\'s neural synchronization level and XP telemetry.',
+    description: 'Access an agent\'s neural synchronization level and combat matrix.',
     category: 'PROFILE',
     run: async (client, message, args, database) => {
         const target = message.mentions.users.first() || message.author;
         
-        // 1. DATA RETRIEVAL (Default fallback for new agents)
-        const userData = database[target.id] || { xp: 0, level: 1, gaming: { game: 'NOT SET', rank: 'UNRANKED' } };
+        const userData = database[target.id] || { xp: 0, level: 1, gaming: null };
         const xp = userData.xp || 0;
         const level = userData.level || 1;
+        const gameData = userData.gaming;
 
-        // 2. GLOBAL RANK CALCULATION
         const sorted = Object.entries(database)
             .filter(([id]) => !isNaN(id)) 
             .sort(([, a], [, b]) => (b.xp || 0) - (a.xp || 0));
@@ -22,19 +21,15 @@ module.exports = {
         const rank = rankIndex === -1 ? 'PENDING' : `#${rankIndex + 1}`;
         const totalUsers = sorted.length;
 
-        // 3. XP PROGRESS LOGIC (1000 XP per level)
-        const xpForNextLevel = level * 1000;
         const progressXP = xp % 1000; 
         const percent = Math.floor((progressXP / 1000) * 100);
 
-        // Architect Style Progress Bar (12 units)
         const createBar = (p) => {
             const size = 12;
             const filled = Math.round((size * p) / 100);
             return '▰'.repeat(filled) + '▱'.repeat(size - filled);
         };
 
-        // 4. THE DOSSIER EMBED
         const dossierEmbed = new EmbedBuilder()
             .setColor('#00fbff')
             .setAuthor({ 
@@ -51,21 +46,29 @@ module.exports = {
                 },
                 { 
                     name: `🚀 PROGRESS TO LEVEL ${level + 1}`, 
-                    value: `\`\`\`ansi\n\u001b[1;33m${createBar(percent)}\u001b[0m ${percent}%\`\`\`\n*Next update at ${1000 - progressXP} XP.*`, 
+                    value: `\`\`\`ansi\n\u001b[1;33m${createBar(percent)}\u001b[0m ${percent}%\`\`\`\n*Sync gap: ${1000 - progressXP} XP.*`, 
                     inline: false 
                 }
             );
 
-        // 5. GAMING INTEL (Only if set)
-        if (userData.gaming && userData.gaming.game !== 'NOT SET') {
+        // --- ENHANCED COMBAT MATRIX WITH LAST SYNC ---
+        if (gameData && gameData.game) {
+            const lastSync = gameData.timestamp ? `<t:${Math.floor(gameData.timestamp / 1000)}:R>` : '`UNKNOWN`';
+            
             dossierEmbed.addFields({ 
-                name: '🎮 COMBAT SPECIALIZATION', 
-                value: `\`\`\`prolog\nPrimary: ${userData.gaming.game}\nRank: ${userData.gaming.rank}\`\`\``, 
+                name: '🎮 COMBAT MATRIX', 
+                value: `**Sector:** \`${gameData.game}\`\n**Theater:** \`${gameData.mode || 'N/A'}\`\n**Rank:** \`${gameData.rank || 'UNRANKED'}\`\n**Last Sync:** ${lastSync}`, 
+                inline: false 
+            });
+        } else {
+            dossierEmbed.addFields({ 
+                name: '🎮 COMBAT MATRIX', 
+                value: `\`\`\`fix\nSTATUS: NO_COMBAT_DATA\nRegister with .setgame [Game] | [Mode] | [Rank]\`\`\``, 
                 inline: false 
             });
         }
 
-        dossierEmbed.setFooter({ text: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY' })
+        dossierEmbed.setFooter({ text: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY • BKO-223' })
             .setTimestamp();
 
         message.reply({ 
