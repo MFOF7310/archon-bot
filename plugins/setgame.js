@@ -2,54 +2,89 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'setgame',
-    aliases: ['updategame', 'sg'],
+    aliases: ['sg', 'spec', 'combat'],
+    description: 'Register your primary combat sector, mode, and rank.',
     category: 'GAMING',
-    description: 'Set your primary game and rank (e.g., .setgame CODM | Legendary).',
     run: async (client, message, args, database) => {
-        const input = args.join(' ').split('|');
-        const gameName = input[0]?.trim();
-        const rankName = input[1]?.trim() || 'Pro';
+        const prefix = process.env.PREFIX || '.';
+        const fullInput = args.join(' ');
 
-        if (!gameName) {
-            return message.reply(`❌ **Usage:** \`${process.env.PREFIX || '.'}setgame [Game] | [Rank]\`\n*Example: .setgame CODM | Legendary*`);
+        // 1. ADVANCED MULTIMODAL PARSING (Supports Game | Mode | Rank)
+        const parts = fullInput.split('|').map(p => p.trim());
+        const gameName = parts[0];
+        const modeName = parts[1];
+        const rankName = parts[2];
+
+        // 2. ERROR HANDSHAKE (With Visual Mode Guide)
+        if (!gameName || !modeName || !rankName) {
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ff4757')
+                .setAuthor({ name: 'INPUT ERROR: MODE_UNDEFINED', iconURL: client.user.displayAvatarURL() })
+                .setDescription(
+                    `To register your specialization, you must define the **Game**, **Mode**, and **Rank**.\n` +
+                    `\`\`\`fix\n${prefix}setgame [Game] | [Mode] | [Rank]\`\`\``
+                )
+                .addFields(
+                    { name: '📂 RECOGNIZED MODES', value: `\`MP\` (Multiplayer), \`BR\` (Battle Royale), \`ZM\` (Zombies), \`DMZ\``, inline: true },
+                    { name: '📝 EXAMPLE', value: `\`${prefix}setgame CODM | BR | Legendary\``, inline: true }
+                )
+                .setFooter({ text: 'Neural Interface: Awaiting valid data...' });
+
+            return message.reply({ embeds: [errorEmbed] });
         }
 
-        // Truncate to avoid abuse
-        const safeGame = gameName.slice(0, 30);
+        // 3. DATA CLEANING & SECURITY
+        const safeGame = gameName.slice(0, 20).toUpperCase();
+        const safeMode = modeName.slice(0, 10).toUpperCase();
         const safeRank = rankName.slice(0, 20);
 
-        // Ensure user entry exists
+        // 4. DATABASE SYNC
         if (!database[message.author.id]) {
-            database[message.author.id] = {
-                name: message.author.username,
-                xp: 0,
-                level: 1,
-                gaming: {}
-            };
+            database[message.author.id] = { xp: 0, level: 1 };
         }
 
-        // Update gaming info
         database[message.author.id].gaming = {
-            game: safeGame.toUpperCase(),
+            game: safeGame,
+            mode: safeMode,
             rank: safeRank,
-            lastUpdate: Date.now()
+            timestamp: Date.now()
         };
 
-        // Save to file
-        client.saveDatabase();
+        if (typeof client.saveDatabase === 'function') {
+            await client.saveDatabase();
+        }
 
-        const embed = new EmbedBuilder()
-            .setColor('#f1c40f')
-            .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
-            .setTitle('🎮 GAME PROFILE UPDATED')
+        // 5. THE MULTIMODAL DOSSIER
+        const successEmbed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setAuthor({ 
+                name: `COMBAT PROFILE: ${message.author.username.toUpperCase()}`, 
+                iconURL: message.author.displayAvatarURL({ dynamic: true }) 
+            })
+            .setTitle('─ NEURAL SPECIALIZATION LOCKED ─')
             .addFields(
-                { name: 'Primary Game', value: safeGame.toUpperCase(), inline: true },
-                { name: 'Rank', value: safeRank, inline: true },
-                { name: 'Last Updated', value: `<t:${Math.floor(Date.now()/1000)}:R>`, inline: false }
+                { 
+                    name: '🕹️ SECTOR', 
+                    value: `\`\`\`ansi\n\u001b[1;36m${safeGame}\u001b[0m\`\`\``, 
+                    inline: true 
+                },
+                { 
+                    name: '🛰️ MODE', 
+                    value: `\`\`\`ansi\n\u001b[1;35m${safeMode}\u001b[0m\`\`\``, 
+                    inline: true 
+                },
+                { 
+                    name: '🎖️ RANK', 
+                    value: `\`\`\`ansi\n\u001b[1;33m${safeRank}\u001b[0m\`\`\``, 
+                    inline: true 
+                }
             )
-            .setFooter({ text: 'Eagle Community | Database Synchronized' })
+            .setFooter({ text: 'Eagle Community • Digital Sovereignty • BKO-223' })
             .setTimestamp();
 
-        message.reply({ embeds: [embed] });
+        message.reply({ 
+            content: `> **Syncing multimodal data... specialization recorded.**`,
+            embeds: [successEmbed] 
+        });
     }
 };
