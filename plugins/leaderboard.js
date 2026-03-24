@@ -2,107 +2,102 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentTyp
 
 module.exports = {
     name: 'leaderboard',
-    aliases: ['lb', 'top'],
+    aliases: ['lb', 'top', 'rankings'],
     category: 'SYSTEM',
-    description: 'Display the top agents by XP.',
+    description: 'Display the top-tier agents by neural synchronization (XP).',
     run: async (client, message, args, database) => {
-        if (!database || Object.keys(database).length === 0) {
-            return message.reply("📊 **Database Offline:** No agent data detected in the node.");
-        }
-
-        // Build sorted array
+        
+        // 1. DATA EXTRACTION
         const entries = Object.entries(database)
+            .filter(([id]) => !isNaN(id)) 
             .map(([id, data]) => ({
                 id,
-                name: data.name || "Unknown Agent",
                 xp: data.xp || 0,
                 level: data.level || 1
             }))
             .sort((a, b) => b.xp - a.xp);
 
-        const totalPlayers = entries.length;
+        if (entries.length === 0) {
+            return message.reply("📊 **DATABASE EMPTY:** No agent telemetry detected.");
+        }
+
+        // --- SURPRISE: PERSONAL POSITION SCAN ---
+        const userIndex = entries.findIndex(e => e.id === message.author.id);
+        const userRank = userIndex === -1 ? 'UNRANKED' : userIndex + 1;
+        const userXP = userIndex === -1 ? 0 : entries[userIndex].xp;
+        
+        // Calculate distance to the person above them
+        let motivationalQuote = "";
+        if (userIndex > 0) {
+            const gap = entries[userIndex - 1].xp - userXP;
+            motivationalQuote = `▫️ Need **${gap.toLocaleString()} XP** to overtake Rank #${userIndex}.`;
+        } else if (userIndex === 0) {
+            motivationalQuote = "👑 **APEX AGENT:** You are currently leading the sector.";
+        }
+
         const pageSize = 5;
         const maxPage = Math.ceil(entries.length / pageSize) - 1;
         let currentPage = 0;
 
-        // Helper: generate a gradient color based on page (gold for first page, then cooler)
-        const getEmbedColor = (page) => {
-            if (page === 0) return '#FFD700'; // Gold for page 1
-            const colors = ['#FFA500', '#FF8C00', '#FF7F50', '#FF6347', '#FF4500'];
-            return colors[page % colors.length] || '#3498db';
-        };
-
+        // 2. DYNAMIC EMBED GENERATOR
         const generateEmbed = (page) => {
             const start = page * pageSize;
             const pageEntries = entries.slice(start, start + pageSize);
-            const medalEmojis = ['🥇', '🥈', '🥉'];
+            const statusIcons = ['🥇', '🥈', '🥉', '🔹', '🔹'];
 
-            // Build description with clean formatting
-            let description = '';
+            let description = `**NODE:** \`Bamako-223\`\n**TOTAL AGENTS:** \`${entries.length}\`\n\n`;
+
             pageEntries.forEach((user, idx) => {
-                const rank = start + idx + 1;
-                const medal = rank <= 3 ? medalEmojis[rank-1] : `**#${rank}**`;
-                const xpProgress = user.xp % 1000;
-                const percent = Math.floor((xpProgress / 1000) * 100);
+                const globalRank = start + idx + 1;
+                const icon = globalRank <= 3 ? statusIcons[globalRank - 1] : '▪️';
+                const percent = Math.floor((user.xp % 1000) / 10);
                 const bar = '▰'.repeat(Math.floor(percent / 10)) + '▱'.repeat(10 - Math.floor(percent / 10));
                 
-                description += `${medal} **<@${user.id}>**\n`;
-                description += `╰ ✨ XP \`${user.xp.toLocaleString()}\` • ⚡ Level \`${user.level}\`\n`;
-                description += `╰ \`${bar}\` ${percent}%\n\n`;
+                description += `${icon} **<@${user.id}>**\n`;
+                description += `╰ \`LVL ${user.level}\` • \`${user.xp.toLocaleString()} XP\`\n`;
+                description += `╰ \`[${bar}]\` **${percent}**%\n\n`;
             });
 
-            if (!description) description = '*No agents on this page.*';
-
-            return new EmbedBuilder()
-                .setColor(getEmbedColor(page))
-                .setTitle('🏆 TOP‑TIER AGENTS')
+            const embed = new EmbedBuilder()
+                .setColor('#00fbff')
+                .setAuthor({ name: 'ARCHITECT | HIGH-SYNC LEADERBOARD', iconURL: client.user.displayAvatarURL() })
+                .setThumbnail(message.guild.iconURL({ dynamic: true }))
                 .setDescription(description)
-                .setThumbnail(message.guild.iconURL({ dynamic: true })) // Server icon
-                .setFooter({ 
-                    text: `Page ${page+1}/${maxPage+1} • Total Agents: ${totalPlayers} • Bamako‑223 Node`,
-                    iconURL: client.user.displayAvatarURL() 
+                // --- THE SURPRISE FOOTER ---
+                .addFields({ 
+                    name: '🛰️ YOUR POSITION', 
+                    value: `\`\`\`prolog\nRank: #${userRank} | Total: ${userXP.toLocaleString()} XP\n${motivationalQuote}\`\`\`` 
                 })
+                .setFooter({ text: `Page ${page + 1}/${maxPage + 1} • Eagle Community Synchronization` })
                 .setTimestamp();
+
+            return embed;
         };
 
+        // 3. NAVIGATION COMPONENTS
         const generateButtons = (page) => {
             return new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('prev_lb')
-                    .setEmoji('◀️')
-                    .setLabel('Previous')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(page === 0),
-                new ButtonBuilder()
-                    .setCustomId('page_indicator')
-                    .setLabel(`Page ${page+1}/${maxPage+1}`)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true), // Always disabled – just for display
-                new ButtonBuilder()
-                    .setCustomId('next_lb')
-                    .setEmoji('▶️')
-                    .setLabel('Next')
-                    .setStyle(ButtonStyle.Primary)
-                    .setDisabled(page === maxPage)
+                new ButtonBuilder().setCustomId('prev_lb').setLabel('PREV').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
+                new ButtonBuilder().setCustomId('next_lb').setLabel('NEXT').setStyle(ButtonStyle.Primary).setDisabled(page === maxPage)
             );
         };
 
-        const mainMessage = await message.reply({
+        const lbMessage = await message.reply({
+            content: `> **Scanning neural frequencies... standings acquired.**`,
             embeds: [generateEmbed(currentPage)],
             components: [generateButtons(currentPage)]
         });
 
-        const collector = mainMessage.createMessageComponentCollector({
+        // 4. INTERACTION COLLECTOR
+        const collector = lbMessage.createMessageComponentCollector({
             componentType: ComponentType.Button,
-            time: 60000
+            time: 120000 
         });
 
         collector.on('collect', async (i) => {
-            if (i.user.id !== message.author.id) {
-                return i.reply({ content: "❌ These buttons aren't for you.", ephemeral: true });
-            }
-            if (i.customId === 'prev_lb' && currentPage > 0) currentPage--;
-            if (i.customId === 'next_lb' && currentPage < maxPage) currentPage++;
+            if (i.user.id !== message.author.id) return i.reply({ content: "⛔ Lock active.", ephemeral: true });
+            if (i.customId === 'prev_lb') currentPage--;
+            if (i.customId === 'next_lb') currentPage++;
 
             await i.update({
                 embeds: [generateEmbed(currentPage)],
@@ -111,7 +106,7 @@ module.exports = {
         });
 
         collector.on('end', () => {
-            mainMessage.edit({ components: [] }).catch(() => null);
+            lbMessage.edit({ components: [] }).catch(() => null);
         });
     }
 };
