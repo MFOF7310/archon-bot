@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- CLOUD GAMING-223 | AUTO-RESTART SYSTEM ---
-echo "🛰️ Starting Digital Engine V2.7..."
+echo "🛰️ Starting Digital Engine V1.1..."
 
 while true
 do
