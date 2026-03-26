@@ -32,6 +32,9 @@ module.exports = {
             
             const data = weatherResponse.data;
             
+            // Get timezone offset (seconds from UTC)
+            const timezoneOffset = data.timezone;
+            
             // Calculate weather metrics
             const temp = Math.round(data.main.temp);
             const feelsLike = Math.round(data.main.feels_like);
@@ -49,6 +52,10 @@ module.exports = {
             const embedColor = getWeatherColor(weatherCondition, temp);
             const suggestion = getSmartSuggestion(weatherCondition, temp, humidity, windSpeed);
             const isDaytime = icon.includes('d');
+            
+            // Adjust sunrise/sunset timestamps with timezone offset
+            const sunriseTimestamp = data.sys.sunrise + timezoneOffset;
+            const sunsetTimestamp = data.sys.sunset + timezoneOffset;
             
             // SMART FALLBACK SYSTEM: Guarantees an image for every location
             let cityImage = null;
@@ -164,7 +171,7 @@ module.exports = {
                     },
                     {
                         name: '📊 Extra Info',
-                        value: `Cloudiness: **${data.clouds.all}%**\nSunrise: <t:${data.sys.sunrise}:t>\nSunset: <t:${data.sys.sunset}:t>`,
+                        value: `Cloudiness: **${data.clouds.all}%**\nSunrise: <t:${sunriseTimestamp}:t>\nSunset: <t:${sunsetTimestamp}:t>`,
                         inline: true
                     },
                     {
@@ -174,7 +181,7 @@ module.exports = {
                     }
                 )
                 .setFooter({ 
-                    text: `📍 ${data.coord.lat}, ${data.coord.lon}`,
+                    text: `📍 ${data.coord.lat}, ${data.coord.lon} | Timezone: UTC${timezoneOffset >= 0 ? '+' : ''}${timezoneOffset / 3600}`,
                     iconURL: message.author.displayAvatarURL({ dynamic: true })
                 })
                 .setTimestamp();
@@ -209,7 +216,7 @@ module.exports = {
     }
 };
 
-// Helper functions (same as before)
+// Helper functions
 function getWindDirection(degrees) {
     const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
     const index = Math.round(degrees / 22.5) % 16;
