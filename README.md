@@ -48,7 +48,7 @@ cloud-gaming-223-digital-engine/
 ​.gamestats [game] [player] — Retrieve statistics for titles like CODM or Valorant.
 ​.news [topic] — Aggregate the latest gaming and tech headlines.
 
-### ​🚀 Quick Start
+## ​🚀 Quick Start
 
 ### ​Prerequisites
 
