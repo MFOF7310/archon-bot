@@ -52,8 +52,7 @@ cloud-gaming-223-digital-engine/
 cd cloud-gaming-223-digital-engine
 ```
 2. Dependencies:
-```npm install
-```
+```npm install```
 
 3. Environment Setup:
 Create a .env file and populate:
