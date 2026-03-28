@@ -1,354 +1,557 @@
-## 🤖 Cloud Gaming-223 Bot ###
+☁️ CLOUD GAMING-223 DIGITAL ENGINE
 
-## ✨ Features ##
+<div align="center">
 
-## Feature Description ##
-🎮 Lydia AI Gaming expert specializing in CODM, with smart fallback responses
-📸 Gemini Vision Analyze images, screenshots, and pictures
-⭐ XP System Level up by chatting in the server
-👋 Welcome Messages Auto-greet new members with styled embeds
-🔒 Admin Controls Toggle AI features per channel
-⏱️ Rate Limiting Prevents spam (3s cooldown)
-📊 Database Persistent storage for user XP and levels
+High-performance modular Discord bot framework designed for cloud gamers and streamers
 
-## 🚀 Quick Start
+https://img.shields.io/badge/JavaScript-99.7%25-F7DF1E?logo=javascript
+https://img.shields.io/badge/Discord.js-v14-5865F2?logo=discord
+https://img.shields.io/badge/License-MIT-green.svg
+https://img.shields.io/badge/Node.js-v18%2B-339933?logo=nodedotjs
 
-### Prerequisites
+Optimized for Starlink connectivity in Mali 🇲🇱
 
-· Node.js v18 or higher
-· Discord Bot Token
-· Groq API Key
-· Google Gemini API Key
+</div>
 
-## Installation
+---
 
-### 1. Clone the repository
-   ```bash
-   git clone https://github.com/MFOF7310/cloud-gaming-223-bot.git
-   cd cloud-gaming-223-bot
-   ```
-### 2. Install dependencies
-   ```bash
-   npm install
-   ```
-### 3. Configure environment variables
-   Create a .env file in the root directory:
-   ```env
-   # Required
-   DISCORD_TOKEN=your_discord_bot_token_here
-   GROQ_API_KEY=your_groq_api_key_here
-   GEMINI_API_KEY=your_gemini_api_key_here
-   
-   # Optional (with defaults)
-   PREFIX=.
-   OWNER_ID=your_discord_user_id
-   WELCOME_CHANNEL_ID=channel_id_for_welcome_messages
-   ```
-### 4. Start the bot
-   ```bash
-   npm start
-   ```
-   Or for development with auto-restart:
-   ```bash
-   npm install -g nodemon
-   nodemon index.js
-   ```
+📋 Table of Contents
 
-## 📁 Project Structure
+· About
+· Features
+· Architecture
+· Commands
+· Quick Start
+· Deployment
+· Configuration
+· Plugin Development
+· Database Structure
+· Troubleshooting
+· Credits
+· Connect with the Architect
+
+---
+
+🎯 About
+
+Cloud Gaming-223 Digital Engine is a professional Discord bot framework built for the gaming community, with a focus on cloud gaming and streamers. Created by MFOF7310 in Bamako, Mali, this bot is specifically optimized for Starlink satellite internet connectivity, ensuring reliable performance even in regions with variable network conditions.
+
+The bot features a modular 14-plugin architecture that allows for easy extensibility, scalability, and maintainability. Whether you're a cloud gamer, streamer, or community manager, this bot provides the tools you need to engage your audience.
+
+---
+
+✨ Features
+
+Feature Description Status
+🎮 Lydia AI Gaming expert specializing in CODM (Call of Duty: Mobile) with intelligent fallback responses ✅ Live
+🔍 Brave Search Web search integration powered by Brave Search API ✅ Live
+📸 Image Analysis Advanced image recognition and analysis capabilities ✅ Live
+⭐ XP System Level up by chatting and engaging in your server ✅ Live
+👋 Welcome Messages Auto-greet new members with styled, customizable embeds ✅ Live
+🔒 Admin Controls Toggle AI features per channel with granular permissions ✅ Live
+⏱️ Rate Limiting Prevent spam with intelligent cooldown system (3s default) ✅ Live
+📊 Persistent Database JSON-based storage for user XP, levels, and gaming preferences ✅ Live
+🌐 Multi-Language Support for multiple languages with fallback system ✅ Live
+🎵 Music System YouTube audio streaming and playlist management ✅ Live
+🌤️ Weather Updates Real-time weather information for any location ✅ Live
+📰 News Feed Latest gaming and tech news aggregation ✅ Live
+🎮 Game Stats Player statistics for popular games (CODM, Valorant, etc.) ✅ Live
+📱 TikTok Monitor Live stream monitoring and notifications 🔄 In Development
+
+---
+
+🏗️ Architecture
+
+Core Structure
 
 ```
-cloud-gaming-223-bot/
-├── index.js                 # Main bot engine
+cloud-gaming-223-digital-engine/
+│
+├── index.js                 # Main bot engine (entry point)
 ├── package.json            # Dependencies and scripts
-├── .env                    # Environment variables
+├── .env                    # Environment variables (API keys, tokens)
 ├── database.json           # User XP database (auto-generated)
-├── plugins/                # Command modules
-│   ├── lydia.js           # Lydia AI toggle command
-│   ├── gemini.js          # Gemini image analysis
-│   └── ...                # Other commands
-└── README.md              # This file
+├── version.txt             # Version tracking
+├── start.sh                # Deployment startup script
+│
+├── plugins/                # Command modules (14+ plugins)
+│   ├── lydia.js           # Lydia AI - Groq-powered gaming assistant
+│   ├── brave.js           # Brave Search integration
+│   ├── xp.js              # XP and leveling system
+│   ├── welcome.js         # Welcome message handler
+│   ├── admin.js           # Admin controls and channel management
+│   ├── music.js           # YouTube music player
+│   ├── weather.js         # Weather information
+│   ├── news.js            # News aggregation
+│   ├── gamestats.js       # Game statistics
+│   ├── tiktok.js          # TikTok monitor (in development)
+│   ├── help.js            # Help command
+│   ├── ping.js            # Latency checker
+│   ├── userinfo.js        # User information display
+│   └── [more plugins]     # Additional commands
+│
+└── lib/                    # Core libraries and utilities
+    ├── database.js        # Database operations
+    ├── logger.js          # Logging utility
+    ├── rateLimiter.js     # Rate limiting logic
+    └── [other utils]      # Helper functions
 ```
 
-## 🎮 Commands
+Plugin System Logic
 
-### Lydia AI (Gaming Assistant)###
+Each plugin follows a standardized structure:
 
-### Command Description
-.lydia on Enable Lydia AI in current channel
-.lydia off Disable Lydia AI in current channel
-@Lydia [question] Ask Lydia anything (gaming, CODM, general)
-
-### Gemini Vision (Image Analysis)
-
-### Command Description
-.gemini [question] Ask Gemini with or without image
-.gemini + (attached image) Analyze the attached image
-Reply to image with .gemini Analyze the replied image
-
-### Examples
-
-```
-📸 .gemini What's in this screenshot? [attach image]
-🎮 @Lydia best BP50 loadout for ranked
-📢 .lydia on
-❓ @Lydia when is next CODM update?
+```javascript
+// Example plugin structure
+module.exports = {
+  name: 'commandName',
+  description: 'What the command does',
+  aliases: ['alt1', 'alt2'],
+  usage: '.command [args]',
+  cooldown: 3, // seconds
+  permissions: ['SendMessages'],
+  async execute(message, args, client) {
+    // Plugin logic here
+  }
+}
 ```
 
-## 🛠️ Configuration
+AI Integration Logic
 
-### Discord Developer Portal Setup
+Lydia AI (Groq-Powered):
 
-### 1. Go to Discord Developer Portal
-### 2. Create a new application and bot
-### 3. Enable these Privileged Gateway Intents:
-   · ✅ MESSAGE CONTENT INTENT
-   · ✅ SERVER MEMBERS INTENT
-   · ✅ GUILD MESSAGES INTENT
+· Uses Groq API with Llama-based models
+· Specialized gaming knowledge with CODM expertise
+· Smart fallback responses when API is unavailable
+· Context-aware conversation handling
+· Rate-limited to prevent abuse (3-second cooldown)
 
-## Bot Invite Link
+Brave Search:
 
-### Generate invite link with these permissions:
+· Web search via Brave Search API
+· Returns formatted results with titles, descriptions, and URLs
+· Configurable result count (default: 5)
+· Safe search filtering
 
-· Send Messages
-· Read Message History
-· Attach Files
-· Mention Everyone
-· Add Reactions
+Image Analysis:
 
-## 📊 Database
+· Advanced image recognition using Groq vision capabilities
+· Supports JPEG, PNG, GIF formats
+· Extracts text from images (OCR)
+· Analyzes gaming screenshots for meta information
 
-User XP is stored in database.json:
+Database Logic
 
-```json
+The bot uses a simple JSON-based database (database.json) for persistent storage:
+
+```javascript
 {
   "userId": {
     "name": "username",
+    "discriminator": "1234",
     "xp": 1250,
     "level": 2,
+    "totalMessages": 342,
+    "lastSeen": "2026-03-28T10:30:00Z",
     "gaming": {
-      "game": "CODM",
-      "rank": "Legendary"
+      "primaryGame": "CODM",
+      "rank": "Legendary",
+      "preferences": {
+        "loadout": "BP50 Aggressive",
+        "sensitivity": "High"
+      }
+    },
+    "settings": {
+      "aiEnabled": true,
+      "notifications": true
     }
   }
 }
 ```
 
-## 🚀 Deployment Options
+XP Calculation Logic:
 
-### Option 1: Deploy on Bot-Hosting.net (FREE) ✅
-
-Bot-Hosting.net offers free Discord bot hosting with 24/7 uptime, perfect for this bot!
-
-### Step 1: Prepare Your Files
-
-Create a ZIP archive containing:
-
-· index.js
-· package.json
-· package-lock.json (if exists)
-· plugins/ folder (with all command files)
-· .env file (IMPORTANT: Include this with your API keys)
-
-### Step 2: Create Bot-Hosting.net Account
-
-1. Go to Bot-Hosting.net
-2. Click "Register" and create an account
-3. Verify your email
-4. Log in to the dashboard
-
-### Step 3: Create New Bot
-
-1. Click "Create a Bot" or "New Bot" on the dashboard
-2. Fill in the details:
-   · Bot Name: Cloud Gaming-223 Bot
-   · Description: AI bot with gaming expertise and image analysis
-   · Start Command: npm start (or node index.js)
-   · Bot Type: Node.js
-
-### Step 4: Upload Files
-
-1. Upload your ZIP file containing all bot files
-2. The system will automatically extract it
-3. Wait for the upload to complete
-
-### Step 5: Configure Environment Variables
-
-Bot-Hosting.net will automatically read your .env file, but you can also add/edit them in the dashboard:
-
-· Go to "Environment Variables" tab
-· Verify all your keys are there:
-  · DISCORD_TOKEN
-  · GROQ_API_KEY
-  · GEMINI_API_KEY
-  · PREFIX (optional)
-  · OWNER_ID (optional)
-  · WELCOME_CHANNEL_ID (optional)
-
-### Step 6: Start the Bot
-
-1. Click "Start" button
-2. Watch the logs to confirm it's running
-3. You should see: 🛰️ ARCHITECT CG-223 | MODULE SYNCHRONIZATION
-
-### Step 7: Keep Bot Online
-
-· Free tier runs 24/7 automatically
-· Bot restarts if it crashes
-· You can monitor CPU/RAM usage in dashboard
-
-## Bot-Hosting.net Free Tier Limits:
-
-· ✅ 24/7 Uptime
-· ✅ 100MB RAM
-· ✅ 500MB Storage
-· ✅ 1 CPU Core
-· ✅ Perfect for small to medium Discord servers
+· Each message: +15-25 XP (randomized)
+· Voice activity: +5 XP per minute
+· Level formula: level = Math.floor(0.1 * Math.sqrt(xp))
+· Level-up messages with rewards
 
 ---
 
-## Option 2: Deploy on Render
+🎮 Commands
 
-1. Push code to GitHub
-2. Create new Web Service on Render
-3. Connect repository
-4. Set build command: npm install
-5. Set start command: node index.js
-6. Add environment variables
+Lydia AI (Gaming Assistant)
 
-## Option 3: Deploy on Heroku
+Command Description Example
+.lydia on Enable Lydia AI in current channel .lydia on
+.lydia off Disable Lydia AI in current channel .lydia off
+.lydia status Check Lydia AI status .lydia status
+@Lydia [question] Ask Lydia anything about gaming @Lydia best BP50 loadout for ranked
+
+Brave Search
+
+Command Description Example
+.search [query] Search the web .search CODM season 6
+.image [query] Search for images .image legendary operator
+
+XP System
+
+Command Description Example
+.rank Check your rank and XP .rank
+.leaderboard View server leaderboard .leaderboard
+.level [@user] Check another user's level .level @player
+
+Music System
+
+Command Description Example
+.play [song] Play a song from YouTube .play Lose Yourself
+.skip Skip current song .skip
+.stop Stop playback .stop
+.queue View song queue .queue
+
+Utility Commands
+
+Command Description Example
+.weather [city] Get weather information .weather Bamako
+.news [topic] Get latest news .news gaming
+.gamestats [game] [player] Get player statistics .gamestats CODM MFOF7310
+.ping Check bot latency .ping
+.userinfo [@user] Display user information .userinfo @member
+
+Admin Commands
+
+Command Description Example
+.setwelcome [#channel] Set welcome message channel .setwelcome #welcome
+.setprefix [prefix] Change command prefix .setprefix !
+.toggleai [#channel] Toggle AI in specific channel .toggleai #bot-commands
+
+---
+
+🚀 Quick Start
+
+Prerequisites
+
+· Node.js v18 or higher
+· Discord Bot Token from Discord Developer Portal
+· Groq API Key from Groq Console
+· Brave Search API Key from Brave Search API
+
+Installation
+
+1. Clone the repository
 
 ```bash
-heroku create your-bot-name
-heroku config:set DISCORD_TOKEN=your_token
-heroku config:set GROQ_API_KEY=your_key
-heroku config:set GEMINI_API_KEY=your_key
-git push heroku main
+git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+cd cloud-gaming-223-digital-engine
 ```
 
-## Option 4: Deploy on VPS (Ubuntu)
+2. Install dependencies
 
 ```bash
-# Connect to your VPS via SSH
-ssh user@your-server-ip
+npm install
+```
 
-# Update system
-sudo apt update && sudo apt upgrade -y
+3. Configure environment variables
+
+Create a .env file in the root directory:
+
+```env
+# Required
+DISCORD_TOKEN=your_discord_bot_token_here
+GROQ_API_KEY=your_groq_api_key_here
+BRAVE_API_KEY=your_brave_search_api_key_here
+
+# Optional (with defaults)
+PREFIX=.
+OWNER_ID=your_discord_user_id
+WELCOME_CHANNEL_ID=channel_id_for_welcome_messages
+MUSIC_DEFAULT_VOLUME=50
+COOLDOWN_SECONDS=3
+```
+
+4. Start the bot
+
+```bash
+npm start
+```
+
+For development with auto-restart:
+
+```bash
+npm install -g nodemon
+nodemon index.js
+```
+
+Discord Developer Portal Setup
+
+1. Go to Discord Developer Portal
+2. Create a new application and bot
+3. Enable these Privileged Gateway Intents:
+   · ✅ MESSAGE CONTENT INTENT
+   · ✅ SERVER MEMBERS INTENT
+   · ✅ GUILD MESSAGES INTENT
+
+Bot Invite Link Generation
+
+Generate invite link with these permissions:
+
+· Send Messages
+· Read Message History
+· Attach Files
+· Embed Links
+· Use Slash Commands
+· Connect (for voice/music)
+· Speak (for voice/music)
+
+---
+
+🚢 Deployment Options
+
+Option 1: Deploy on Bot-Hosting.net (FREE) ✅
+
+Free tier includes: 24/7 uptime, 100MB RAM, 500MB storage, 1 CPU core
+
+Step-by-step:
+
+1. Prepare your files - Create a ZIP archive containing:
+   · index.js
+   · package.json
+   · package-lock.json
+   · plugins/ folder (all command files)
+   · lib/ folder (core libraries)
+   · .env file (with all API keys)
+   · database.json (optional, will be created automatically)
+2. Create account at Bot-Hosting.net
+3. Create new bot:
+   · Bot Name: Cloud Gaming-223
+   · Start Command: npm start
+   · Bot Type: Node.js
+4. Upload your ZIP file
+5. Verify environment variables in the dashboard
+6. Start the bot
+
+Option 2: Deploy on Render
+
+```bash
+# Push to GitHub first, then:
+# Create new Web Service → Connect repo → Configure:
+Build Command: npm install
+Start Command: node index.js
+# Add environment variables in dashboard
+```
+
+Option 3: Deploy on VPS (Ubuntu)
+
+```bash
+# Connect to VPS
+ssh user@your-server-ip
 
 # Install Node.js
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
+sudo apt install -y nodejs git
 
-# Clone repository
-git clone https://github.com/MFOF7310/cloud-gaming-223-bot.git
-cd cloud-gaming-223-bot
-
-# Install dependencies
+# Clone and setup
+git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+cd cloud-gaming-223-digital-engine
 npm install
 
-# Create .env file with your keys
-nano .env
-
-# Use PM2 to keep bot running 24/7
+# Set up PM2 for persistence
 npm install -g pm2
-pm2 start index.js --name "cloud-gaming-bot"
+pm2 start index.js --name "cg223-bot"
 pm2 save
 pm2 startup
 ```
 
-## ⚙️ Environment Variables
+---
+
+⚙️ Configuration
+
+Environment Variables
 
 Variable Required Default Description
 DISCORD_TOKEN ✅ - Your Discord bot token
 GROQ_API_KEY ✅ - Groq API key for Lydia AI
-GEMINI_API_KEY ✅ - Google Gemini API key for vision
+BRAVE_API_KEY ✅ - Brave Search API key
 PREFIX ❌ . Command prefix
 OWNER_ID ❌ - Discord user ID for owner alerts
 WELCOME_CHANNEL_ID ❌ - Channel for welcome messages
+MUSIC_DEFAULT_VOLUME ❌ 50 Default music volume (0-100)
+COOLDOWN_SECONDS ❌ 3 Rate limit cooldown in seconds
 
-## 🚨 Troubleshooting 
+Rate Limiting Logic
 
-### Common Issues
+The bot implements a per-user, per-command cooldown system:
 
-"Neural link interrupted"
+· Default: 3 seconds between commands
+· Prevents spam and API abuse
+· Users receive feedback when rate-limited
+· Cooldown can be configured per command or globally
 
-· Check Groq API key in .env
-· Rate limit hit - wait 3 seconds between questions
+---
 
-### Gemini not analyzing images
+🔌 Plugin Development
 
-· Ensure axios is installed: npm install axios
-· Check file is actually an image (JPEG, PNG, GIF)
+Creating a New Plugin
 
-### Commands not working
+Create a new file in the plugins/ folder following this template:
 
-· Verify bot has proper intents enabled
-· Check command prefix (default: .)
+```javascript
+// plugins/example.js
+module.exports = {
+  name: 'example',
+  description: 'Example command',
+  aliases: ['ex', 'demo'],
+  usage: '.example [text]',
+  cooldown: 5,
+  permissions: ['SendMessages'],
+  async execute(message, args, client) {
+    const input = args.join(' ') || 'Hello World!';
+    
+    // Access database
+    const db = client.database;
+    const userData = await db.getUser(message.author.id);
+    
+    // Send response
+    await message.reply(`You said: ${input}`);
+  }
+};
+```
 
-### Bot-Hosting.net Specific Issues
+Plugin Registration
 
-· Bot won't start: Check logs in dashboard for errors
-· Environment variables not loading: Verify .env file is in the ZIP root
-· Out of memory: Free tier has 100MB limit - optimize code if needed
-· Bot stops responding: Check if rate limits are being hit
+The main bot (index.js) automatically loads all .js files from the plugins/ folder on startup. No manual registration needed!
 
+Best Practices
 
-## License
-​This project is licensed under the MIT License - see the LICENSE file for details.
+1. Error handling - Always wrap logic in try-catch
+2. Rate limiting - Respect the cooldown system
+3. Async operations - Use async/await for database calls
+4. Logging - Use the built-in logger utility
+5. Permissions - Check user permissions before executing
 
+---
 
-### 🙏 Credits
+📊 Database Structure
 
-· Developer: Architect (CG-223)
-· Community: Cloud Gaming-223 🇲🇱
-· Powered by: Groq AI, Google Gemini, Discord.js
+User Schema
 
-### 📞 Support
+```javascript
+{
+  "userId": {
+    "name": "string",
+    "discriminator": "string",
+    "xp": "number",
+    "level": "number",
+    "totalMessages": "number",
+    "voiceMinutes": "number",
+    "lastSeen": "ISO date string",
+    "lastDaily": "ISO date string",
+    "gaming": {
+      "primaryGame": "string",
+      "rank": "string",
+      "preferences": "object"
+    },
+    "settings": {
+      "aiEnabled": "boolean",
+      "notifications": "boolean",
+      "prefix": "string"
+    }
+  }
+}
+```
 
-For issues or questions:
+Database Operations
 
-· Open an issue on GitHub
-· Contact @Architect in Cloud Gaming-223 Discord
+```javascript
+// Get user data
+const user = await db.getUser(userId);
+
+// Update XP
+await db.addXP(userId, amount);
+
+// Set user preference
+await db.setPreference(userId, key, value);
+
+// Get leaderboard
+const leaderboard = await db.getLeaderboard(guildId, limit);
+```
+
+---
+
+🔧 Troubleshooting
+
+Common Issues
+
+Issue Cause Solution
+"Neural link interrupted" Groq API error or rate limit Check API key, wait 3 seconds between requests
+Commands not responding Intents not enabled Enable MESSAGE CONTENT, SERVER MEMBERS, GUILD MESSAGES intents
+Music won't play Missing voice permissions Ensure bot has Connect and Speak permissions
+Database not saving Permission issues Check write permissions for database.json
+Bot offline on Bot-Hosting.net Memory limit exceeded Free tier has 100MB limit, optimize code
+
+Debug Mode
+
+Enable debug logging by setting environment variable:
+
+```env
+DEBUG=true
+```
+
+This will output detailed logs to the console.
+
+---
+
+📝 Version History
+
+Current version: 2.6.0 (March 27, 2026)
+
+See version.txt for detailed version history.
+
+---
+
+🙏 Credits
+
+Component Technology
+Bot Framework Discord.js v14
+AI Engine Groq API (Llama-based models)
+Search Brave Search API
+Music YouTube Audio Streaming
+Hosting Bot-Hosting.net (free tier optimized)
+
+---
+
+📱 Connect with the Architect
+
+<div align="center">
+
+Platform Link
+🔵 GitHub @MFOF7310
+📸 Instagram @mfof7310
+📱 TikTok @cloudgaming223
+💬 Discord Eagle Community
+🔵 Facebook Official Page
+
+📍 Based in: Bamako, Mali 🇲🇱
+🌐 Optimized for: Starlink connectivity
+
+</div>
+
+---
+
+📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
 <div align="center">
-  <b>Made with ❤️ in Bamako, Mali</b><br>
-  <img src="https://img.shields.io/badge/Cloud_Gaming--223-Official-blue?style=for-the-badge" alt="Cloud Gaming-223">
-  <br>
-  <sub>✅ Optimized for Bot-Hosting.net free tier • 24/7 Uptime</sub>
+
+Made with ❤️ in Bamako, Mali
+
+Optimized for Bot-Hosting.net free tier • 24/7 Uptime • Cloud Gaming-223 Digital Engine
+
+Report Bug · Request Feature
+
 </div>
-```
 
-## 🎯 Key Bot-Hosting.net Features Added:
-
-Section What It Covers
-Step-by-step guide Create account → Upload ZIP → Start bot
-File preparation What to include in your ZIP
-Environment variables How to set them in dashboard
-Free tier limits RAM, storage, CPU specs
-Troubleshooting Common Bot-Hosting.net issues
-
-## 📝 Quick Tips for Bot-Hosting.net:
-
-1. Always include .env in your ZIP - This saves time setting up variables
-2. Keep ZIP under 50MB - Free tier has storage limits
-3. Monitor logs - Dashboard shows real-time errors
-4. Use npm start - Ensure your package.json has the start script
-
-
-· ✅ Bot-Hosting.net (FREE, easiest)
-· ✅ Render
-· ✅ Heroku
-· ✅ VPS (Ubuntu)
-
-
-## 📱 Connect With The Architect
-
-| Platform | Link |
-|----------|------|
-| 🔵 **Facebook** | [Official Page](https://www.facebook.com/share/17KysmJrtm/) |
-| 📱 **TikTok** | [@cloudgaming223](https://www.tiktok.com/@cloudgaming223) |
-| 📸 **Instagram** | [@mfof7310](https://www.instagram.com/mfof7310) |
-| 💬 **Discord** | [Eagle Community](https://discord.gg/NFSMFJajp9) |
-
-**📍 Node Location:** Bamako, Mali 🇲🇱
+---
