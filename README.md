@@ -2,9 +2,11 @@
 ​<div align="center">
 ​A high-performance, modular Discord bot framework optimized for cloud gamers, streamers, and low-latency connectivity.
 ​</div>
+
 ​📖 Overview
 ​Cloud Gaming-223 Digital Engine is a professional-grade Discord bot designed to bridge the gap between high-performance gaming and community engagement. Built with a modular 32-plugin architecture, it is specifically engineered for reliability on high-latency or satellite connections like Starlink.
 ​Developed by MFOF7310 in Bamako, Mali, the engine features an advanced AI integration (Lydia AI) and a robust persistent XP system, making it an ideal choice for community managers and competitive gaming servers.
+
 ​✨ Key Features
 Feature Description Status
 Lydia AI Groq-powered gaming expert specializing in CODM and intelligent conversation. ✅ Live
@@ -15,7 +17,7 @@ Starlink Optimized Built-in rate limiting and smart fallbacks for stable perform
 TikTok Monitor Real-time stream monitoring and automated notifications. 🔄 Dev
 
 📁 Project Architecture
-​The engine uses a streamlined structure where core utilities (database, logger, rate-limiter) are integrated into the main entry point for maximum efficiency.
+```​The engine uses a streamlined structure where core utilities (database, logger, rate-limiter) are integrated into the main entry point for maximum efficiency.
 cloud-gaming-223-digital-engine/
 ├── index.js             # Core Engine & Utility Suite
 ├── database.json        # Persistent User Store (Auto-generated)
@@ -25,7 +27,7 @@ cloud-gaming-223-digital-engine/
 │   ├── weather.js       # Global Weather Data
 │   └── ...              # 30+ Additional Plugins
 └── .env                 # Sensitive Configuration
-
+```
 🎮 Command Interface
 ​🤖 Lydia AI (Gaming Assistant)
 ​.lydia on/off — Toggle AI responsiveness in the current channel.
