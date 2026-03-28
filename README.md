@@ -1,35 +1,116 @@
-☁️ CLOUD GAMING-223 DIGITAL ENGINE
+🤖 Cloud Gaming-223 Digital Engine
 
-<div align="center">
-
-High-performance modular Discord bot framework designed for cloud gamers and streamers
-
-https://img.shields.io/badge/JavaScript-99.7%25-F7DF1E?logo=javascript
-https://img.shields.io/badge/Discord.js-v14-5865F2?logo=discord
-https://img.shields.io/badge/License-MIT-green.svg
-https://img.shields.io/badge/Node.js-v18%2B-339933?logo=nodedotjs
-
+Modular Discord bot framework for cloud gamers and streamers
 Optimized for Starlink connectivity in Mali 🇲🇱
-
-</div>
 
 ---
 
-📋 Table of Contents
+✨ Features
 
-· About
-· Features
-· Architecture
-· Commands
-· Quick Start
-· Deployment
-· Configuration
-· Plugin Development
-· Database Structure
-· Troubleshooting
-· Credits
-· Connect with the Architect
+Feature Description
+🎮 Lydia AI Gaming expert specializing in CODM, with smart fallback responses (Groq-powered)
+⭐ XP System Level up by chatting in the server
+👋 Welcome Messages Auto-greet new members with styled embeds
+🔒 Admin Controls Toggle AI features per channel
+⏱️ Rate Limiting Prevents spam (3s cooldown)
+📊 Database Persistent storage for user XP and levels
 
+---
+
+🚀 Quick Start
+
+Prerequisites
+
+· Node.js v18 or higher
+· Discord Bot Token
+· Groq API Key
+
+Installation
+
+1. Clone the repository
+
+```bash
+git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+cd cloud-gaming-223-digital-engine
+```
+
+2. Install dependencies
+
+```bash
+npm install
+```
+
+3. Configure environment variables
+Create a .env file in the root directory:
+
+```env
+# Required
+DISCORD_TOKEN=your_discord_bot_token_here
+GROQ_API_KEY=your_groq_api_key_here
+
+# Optional (with defaults)
+PREFIX=.
+OWNER_ID=your_discord_user_id
+WELCOME_CHANNEL_ID=channel_id_for_welcome_messages
+```
+
+4. Start the bot
+
+```bash
+npm start
+```
+
+For development with auto-restart:
+
+```bash
+npm install -g nodemon
+nodemon index.js
+```
+
+---
+
+📁 Project Structure
+
+```
+cloud-gaming-223-digital-engine/
+├── index.js                 # Main bot engine
+├── package.json            # Dependencies and scripts
+├── .env                    # Environment variables
+├── database.json           # User XP database (auto-generated)
+├── plugins/                # Command modules
+│   ├── lydia.js           # Lydia AI (Groq-powered)
+│   ├── xp.js              # XP and leveling system
+│   ├── welcome.js         # Welcome message handler
+│   ├── admin.js           # Admin controls
+│   ├── music.js           # YouTube music player
+│   ├── weather.js         # Weather information
+│   ├── news.js            # News feed
+│   ├── gamestats.js       # Game statistics
+│   ├── help.js            # Help command
+│   ├── ping.js            # Latency checker
+│   ├── userinfo.js        # User information
+│   └── ...                # Additional plugins
+└── README.md              # This file
+```
+
+Note: All core utilities (database, logger, rate limiter) are built directly into index.js — no separate lib/ folder.
+
+---
+
+🎮 Commands
+
+Lydia AI (Gaming Assistant)
+
+Command Description
+.lydia on Enable Lydia AI in current channel
+.lydia off Disable Lydia AI in current channel
+@Lydia [question] Ask Lydia about gaming, CODM, etc.
+
+XP System
+
+Command Description
+.rank Check your XP and level
+.leaderboard View server leaderboard
 ---
 
 🎯 About
