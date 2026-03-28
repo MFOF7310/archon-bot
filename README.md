@@ -11,13 +11,14 @@
 
 ## ​✨ Key Features
 
-Feature Description Status
-Lydia AI Groq-powered gaming expert specializing in CODM and intelligent conversation. ✅ Live
-Brave Search Real-time web and image search integration directly within Discord. ✅ Live
-XP System Global leveling and engagement tracking with persistent JSON storage. ✅ Live
-Modular Core Plugin-based system allowing seamless addition of new features without core modification. ✅ Live
-Starlink Optimized Built-in rate limiting and smart fallbacks for stable performance on satellite nets. ✅ Live
-TikTok Monitor Real-time stream monitoring and automated notifications. 🔄 Dev
+| Feature | Description | Status |
+| :--- | :--- | :--- |
+| **Lydia AI** | Groq-powered gaming expert specializing in CODM and intelligent conversation. | ✅ Live |
+| **Brave Search** | Real-time web and image search integration directly within Discord. | ✅ Live |
+| **XP System** | Global leveling and engagement tracking with persistent JSON storage. | ✅ Live |
+| **Modular Core** | Plugin-based system allowing seamless addition of new features without core modification. | ✅ Live |
+| **Starlink Optimized** | Built-in rate limiting and smart fallbacks for stable performance on satellite networks. | ✅ Live |
+| **TikTok Monitor** | Real-time stream monitoring and automated notifications. | 🔄 Dev |
 
 ## 📁 Project Architecture
 
