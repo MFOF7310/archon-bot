@@ -65,19 +65,33 @@ cd cloud-gaming-223-digital-engine
 ```npm install```
 
 ## 3. Environment Setup:
+
 Create a .env file and populate:
+
 ```env
 DISCORD_TOKEN=your_token
 GROQ_API_KEY=your_key
 BRAVE_API_KEY=your_key
 WEATHER_API_KEY=your_key
 PREFIX=.
+
+# //--- OWNER & SYSTEM ---//
+OWNER_ID=your_discord_owner_id
+WELCOME_CHANNEL=your_welcome_channel_id
+LOG_CHANNEL_ID=your_log_channel_id
+MEMBER_ROLE=your_member_role_id
+PREFIX=,
+
+# --- Support Link --- do not modify this part 
+SUPPORT_LINK=https://discord.gg/NFSMFJajp9
 ```
 
 ## 4. Launch:
+
 ```npm start```
 
 ### 🔌 Plugin Development
+
 ​Expanding the bot is simple. Add a .js file to the /plugins directory using the following standard:
 
 ```module.exports = {
