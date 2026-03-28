@@ -111,7 +111,7 @@ SUPPORT_LINK=https://discord.gg/NFSMFJajp9
 ​VPS/Ubuntu: Use PM2 to manage the process: pm2 start index.js --name "cg-223".
 ​Intents: Ensure Message Content, Server Members, and Guild Messages are enabled in the Discord Developer Portal.
 
- 📄 License
+## 📄 License
 ​<div align="center">
 Copyright (c) 2026 CLOUD GAMING-223 (Architect)
 
