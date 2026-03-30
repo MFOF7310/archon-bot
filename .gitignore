@@ -14,6 +14,11 @@ logs
 *.log
 npm-debug.log*
 yarn-debug.log*
+
+# --- DATABASE (USER DATA) ---
+database.sqlite
+node_modules/
+
 yarn-error.log*
 
 # --- SYSTEM & IDE FILES ---
