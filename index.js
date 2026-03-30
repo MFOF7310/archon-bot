@@ -87,7 +87,11 @@ db.prepare(`
         xp INTEGER DEFAULT 0,
         level INTEGER DEFAULT 1,
         totalMessages INTEGER DEFAULT 0,
-        last_xp_gain INTEGER DEFAULT 0
+        last_xp_gain INTEGER DEFAULT 0,
+        games_played INTEGER DEFAULT 0,
+        games_won INTEGER DEFAULT 0,
+        total_winnings INTEGER DEFAULT 0,
+        gaming TEXT
     )
 `).run();
 
@@ -154,7 +158,7 @@ const getLevelImage = (level) => {
     if (level >= 25) return process.env.IMG_LVL_25;
     if (level >= 10) return process.env.IMG_LVL_10;
     if (level >= 5) return process.env.IMG_LVL_5;
-    return process.env.IMG_LVL_5; // Default image for low levels
+    return process.env.IMG_LVL_5;
 };
 
 // Calculate XP progress
@@ -213,7 +217,7 @@ client.loadPlugins = async () => {
     const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js'));
     for (const file of pluginFiles) {
         try {
-            await sleep(100); // Reduced from 300ms to 100ms for faster loading
+            await sleep(100);
             
             const filePath = path.join(pluginPath, file);
             delete require.cache[require.resolve(filePath)];
@@ -232,7 +236,7 @@ client.loadPlugins = async () => {
             console.log(`${blue}[ERROR]${reset} Failed ${file}: ${error.message}`); 
         }
     }
-    await sleep(200); // Reduced from 500ms to 200ms
+    await sleep(200);
     console.log(`${green}🚀 ENGINE READY | ${client.commands.size} CORE MODULES ONLINE${reset}\n`);
 };
 
@@ -352,18 +356,20 @@ client.on(Events.MessageCreate, async (message) => {
             };
 
             let rewardText = getNextLevelReward(newLevel);
+            let roleAssigned = false;
 
             if (roleRewards[newLevel]) {
                 const role = message.guild.roles.cache.get(roleRewards[newLevel]);
                 if (role) {
                     await message.member.roles.add(role).catch(e => console.log(`${yellow}[ROLE ERROR]${reset} ${e.message}`));
                     rewardText = `✨ **Level ${newLevel} Role Unlocked!** — You've been granted the **${role.name}** role.`;
+                    roleAssigned = true;
                 }
             }
 
             const levelUpEmbed = new EmbedBuilder()
                 .setColor(getLevelColor(newLevel))
-                .setAuthor({ name: 'ACHIEVEMENT UNLOCKED!', iconURL: message.author.displayAvatarURL() })
+                .setAuthor({ name: '🏆 ACHIEVEMENT UNLOCKED!', iconURL: message.author.displayAvatarURL() })
                 .setTitle(achievement.name)
                 .setDescription(getCongratsMessage(newLevel, message.author.username))
                 .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
@@ -379,6 +385,25 @@ client.on(Events.MessageCreate, async (message) => {
                 .setTimestamp();
 
             await message.channel.send({ content: `🎉 **LEVEL UP!** <@${userId}>`, embeds: [levelUpEmbed] });
+            
+            // Send to log channel
+            const logChannel = message.guild.channels.cache.get(process.env.LOG_CHANNEL_ID);
+            if (logChannel) {
+                const logEmbed = new EmbedBuilder()
+                    .setColor(getLevelColor(newLevel))
+                    .setTitle('🏆 LEVEL UP - ACHIEVEMENT UNLOCKED')
+                    .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+                    .addFields(
+                        { name: '👤 User', value: `<@${userId}>`, inline: true },
+                        { name: '📊 Level', value: `${userData.level} → **${newLevel}**`, inline: true },
+                        { name: '🏅 Achievement', value: achievement.name, inline: true },
+                        { name: '💬 Total Messages', value: formatNumber(totalMsgs), inline: true },
+                        { name: '⭐ XP Gained', value: `+${xpGain} XP`, inline: true },
+                        { name: '🎁 Role Reward', value: roleAssigned ? '✅ Assigned' : '❌ None', inline: true }
+                    )
+                    .setTimestamp();
+                logChannel.send({ embeds: [logEmbed] });
+            }
         }
 
         // 4. Save updated data back to SQLite
@@ -402,7 +427,6 @@ client.on(Events.MessageCreate, async (message) => {
     
     if (command) {
         try { 
-            // Pass userData to the command so it has the level info
             await command.run(client, message, args, userData); 
         } 
         catch (e) { 
