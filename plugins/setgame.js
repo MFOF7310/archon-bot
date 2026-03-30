@@ -2,10 +2,10 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'setgame',
-    aliases: ['sg', 'spec', 'combat'],
-    description: 'Register your primary combat sector, mode, and rank.',
+    aliases: ['sg', 'spec', 'combat', 'loadout'],
+    description: 'Register your primary combat sector, mode, and rank into the neural network.',
     category: 'GAMING',
-    run: async (client, message, args, database) => {
+    run: async (client, message, args, userData) => {
         const prefix = process.env.PREFIX || '.';
         const fullInput = args.join(' ');
 
@@ -19,71 +19,127 @@ module.exports = {
         if (!gameName || !modeName || !rankName) {
             const errorEmbed = new EmbedBuilder()
                 .setColor('#ff4757')
-                .setAuthor({ name: 'INPUT ERROR: MODE_UNDEFINED', iconURL: client.user.displayAvatarURL() })
+                .setAuthor({ 
+                    name: '⚠️ INPUT ERROR: MODE_UNDEFINED', 
+                    iconURL: client.user.displayAvatarURL() 
+                })
+                .setTitle('❌ INCOMPLETE COMBAT DATA')
                 .setDescription(
+                    `**Neural interface requires complete synchronization.**\n\n` +
                     `To register your specialization, you must define the **Game**, **Mode**, and **Rank**.\n` +
-                    `\`\`\`fix\n${prefix}setgame [Game] | [Mode] | [Rank]\`\`\``
+                    `\`\`\`yaml\n${prefix}setgame [Game] | [Mode] | [Rank]\`\`\``
                 )
                 .addFields(
-                    { name: '📂 RECOGNIZED MODES', value: `\`MP\` (Multiplayer), \`BR\` (Battle Royale), \`ZM\` (Zombies), \`DMZ\``, inline: true },
-                    { name: '📝 EXAMPLE', value: `\`${prefix}setgame CODM | BR | Legendary\``, inline: true }
+                    { 
+                        name: '🎮 SUPPORTED GAMES', 
+                        value: `\`Call of Duty\` • \`Valorant\` • \`Apex Legends\` • \`Fortnite\` • \`CS:GO\` • \`League of Legends\``, 
+                        inline: false 
+                    },
+                    { 
+                        name: '⚔️ RECOGNIZED MODES', 
+                        value: `\`MP\` (Multiplayer) • \`BR\` (Battle Royale) • \`ZM\` (Zombies) • \`DMZ\` • \`Ranked\` • \`Casual\``, 
+                        inline: true 
+                    },
+                    { 
+                        name: '📝 EXAMPLE USAGE', 
+                        value: `\`\`\`fix\n${prefix}setgame Call of Duty | Ranked | Diamond II\`\`\``, 
+                        inline: true 
+                    }
                 )
-                .setFooter({ text: 'Neural Interface: Awaiting valid data...' });
+                .setFooter({ text: 'ARCHITECT CG-223 • Awaiting valid data transmission' })
+                .setTimestamp();
 
             return message.reply({ embeds: [errorEmbed] });
         }
 
         // 3. DATA CLEANING & SECURITY
-        const safeGame = gameName.slice(0, 20).toUpperCase();
-        const safeMode = modeName.slice(0, 10).toUpperCase();
-        const safeRank = rankName.slice(0, 20);
+        const safeGame = gameName.slice(0, 30).toUpperCase();
+        const safeMode = modeName.slice(0, 20).toUpperCase();
+        const safeRank = rankName.slice(0, 25);
 
-        // 4. DATABASE SYNC
-        if (!database[message.author.id]) {
-            database[message.author.id] = { xp: 0, level: 1 };
+        // 4. DATABASE SYNC (SQLite)
+        const db = require('better-sqlite3')('database.sqlite');
+        
+        // Check if the gaming column exists, if not, add it
+        try {
+            db.prepare(`ALTER TABLE users ADD COLUMN gaming TEXT`).run();
+        } catch (e) {
+            // Column already exists, ignore error
         }
-
-        database[message.author.id].gaming = {
+        
+        // Store gaming data as JSON string
+        const gamingData = JSON.stringify({
             game: safeGame,
             mode: safeMode,
             rank: safeRank,
-            timestamp: Date.now()
-        };
-
-        if (typeof client.saveDatabase === 'function') {
-            await client.saveDatabase();
-        }
+            timestamp: Date.now(),
+            lastUpdated: new Date().toISOString()
+        });
+        
+        // Update the user's gaming data
+        db.prepare(`UPDATE users SET gaming = ? WHERE id = ?`).run(gamingData, message.author.id);
+        
+        // Get updated user data
+        const updatedUser = db.prepare(`SELECT * FROM users WHERE id = ?`).get(message.author.id);
+        db.close();
 
         // 5. THE MULTIMODAL DOSSIER
         const successEmbed = new EmbedBuilder()
-            .setColor('#00fbff')
+            .setColor('#00ff9d')
             .setAuthor({ 
-                name: `COMBAT PROFILE: ${message.author.username.toUpperCase()}`, 
-                iconURL: message.author.displayAvatarURL({ dynamic: true }) 
+                name: `🎮 COMBAT PROFILE: ${message.author.username.toUpperCase()}`, 
+                iconURL: message.author.displayAvatarURL({ dynamic: true, size: 1024 }) 
             })
-            .setTitle('─ NEURAL SPECIALIZATION LOCKED ─')
+            .setTitle('✅ NEURAL SPECIALIZATION LOCKED')
+            .setDescription(`**Agent ${message.author.username} has been successfully registered into the combat matrix.**`)
+            .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
             .addFields(
                 { 
-                    name: '🕹️ SECTOR', 
-                    value: `\`\`\`ansi\n\u001b[1;36m${safeGame}\u001b[0m\`\`\``, 
+                    name: '🎯 PRIMARY SECTOR', 
+                    value: `\`\`\`prolog\n${safeGame}\`\`\``, 
                     inline: true 
                 },
                 { 
-                    name: '🛰️ MODE', 
-                    value: `\`\`\`ansi\n\u001b[1;35m${safeMode}\u001b[0m\`\`\``, 
+                    name: '⚙️ COMBAT MODE', 
+                    value: `\`\`\`prolog\n${safeMode}\`\`\``, 
                     inline: true 
                 },
                 { 
-                    name: '🎖️ RANK', 
-                    value: `\`\`\`ansi\n\u001b[1;33m${safeRank}\u001b[0m\`\`\``, 
+                    name: '🏆 RANK / TIER', 
+                    value: `\`\`\`prolog\n${safeRank}\`\`\``, 
                     inline: true 
                 }
             )
-            .setFooter({ text: 'Eagle Community • Digital Sovereignty • BKO-223' })
+            .addFields(
+                {
+                    name: '📊 AGENT STATUS',
+                    value: `\`\`\`ansi\n\u001b[1;36m▣\u001b[0m Level: ${updatedUser?.level || 1}\n\u001b[1;32m▣\u001b[0m XP: ${(updatedUser?.xp || 0).toLocaleString()}\n\u001b[1;33m▣\u001b[0m Messages: ${(updatedUser?.totalMessages || 0).toLocaleString()}\`\`\``,
+                    inline: true
+                },
+                {
+                    name: '⏱️ LAST SYNC',
+                    value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
+                    inline: true
+                }
+            )
+            .setFooter({ 
+                text: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY • BKO-223', 
+                iconURL: client.user.displayAvatarURL() 
+            })
             .setTimestamp();
 
+        // Add dynamic message based on rank tier
+        let rankMessage = '';
+        if (safeRank.toLowerCase().includes('bronze')) rankMessage = '🌱 **Starting your journey. Keep grinding!**';
+        else if (safeRank.toLowerCase().includes('silver')) rankMessage = '⚡ **Silver tier achieved. Progressing steadily!**';
+        else if (safeRank.toLowerCase().includes('gold')) rankMessage = '✨ **Gold tier! You\'re becoming a formidable agent.**';
+        else if (safeRank.toLowerCase().includes('platinum')) rankMessage = '💎 **Platinum tier! Elite skills detected.**';
+        else if (safeRank.toLowerCase().includes('diamond')) rankMessage = '👑 **Diamond tier! A true warrior emerges.**';
+        else if (safeRank.toLowerCase().includes('master')) rankMessage = '🔥 **MASTER TIER! Legendary status achieved!**';
+        else rankMessage = '🎯 **Combat data synchronized. Ready for deployment!**';
+
         message.reply({ 
-            content: `> **Syncing multimodal data... specialization recorded.**`,
+            content: `> **${rankMessage}**`,
             embeds: [successEmbed] 
         });
     }
