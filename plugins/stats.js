@@ -2,10 +2,10 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'stats',
-    aliases: ['st', 'stat'], // Removed 'level'/'rank' to avoid conflict with your other command files
+    aliases: ['st', 'stat'],
     description: 'Display detailed agent statistics and global rank.',
     category: 'PROFILE',
-    run: async (client, message, args, database) => {
+    run: async (client, message, args, userData) => {
         let target = message.mentions.users.first();
         
         // 1. INTELLIGENT SIGNAL INTERCEPTION (Reply detection)
@@ -20,17 +20,25 @@ module.exports = {
         if (!target) target = message.author;
 
         // 2. DATA SYNCHRONIZATION
-        const userData = database[target.id] || { xp: 0, level: 1, gaming: null };
-        const gameData = userData.gaming;
+        let targetData = userData;
+        
+        if (target.id !== message.author.id) {
+            const { getUser } = require('../index.js');
+            targetData = getUser(target.id);
+        }
+        
+        const xp = targetData?.xp || 0;
+        const level = targetData?.level || 1;
+        const totalMessages = targetData?.totalMessages || 0;
 
         // 3. CALCULATION HIERARCHY
-        const sortedUsers = Object.entries(database)
-            .filter(([id]) => !isNaN(id))
-            .sort(([, a], [, b]) => (b.xp || 0) - (a.xp || 0));
+        const db = require('better-sqlite3')('database.sqlite');
+        const allUsers = db.prepare("SELECT * FROM users ORDER BY xp DESC").all();
+        db.close();
         
-        const globalRank = sortedUsers.findIndex(([id]) => id === target.id) + 1 || 'PENDING';
+        const globalRank = allUsers.findIndex(user => user.id === target.id) + 1 || 'PENDING';
         
-        const xpInLevel = userData.xp % 1000;
+        const xpInLevel = xp % 1000;
         const progressPercent = Math.floor((xpInLevel / 1000) * 100);
         
         const createBar = (percent) => {
@@ -44,12 +52,12 @@ module.exports = {
         let tierLabel = 'RECRUIT';
         let accessLevel = 'BETA';
 
-        if (userData.level >= 10) { 
+        if (level >= 10) { 
             tierColor = '#f1c40f'; 
             tierLabel = 'ELITE AGENT'; 
             accessLevel = 'ALPHA';
         }
-        if (userData.level >= 50) { 
+        if (level >= 50) { 
             tierColor = '#e74c3c'; 
             tierLabel = 'COMMANDER'; 
             accessLevel = 'OMEGA';
@@ -66,7 +74,7 @@ module.exports = {
             .addFields(
                 { 
                     name: '📊 GLOBAL HIERARCHY', 
-                    value: `\`\`\`ansi\n\u001b[1;36mRank:\u001b[0m #${globalRank} / ${sortedUsers.length}\n\u001b[1;36mLevel:\u001b[0m ${userData.level}\`\`\``, 
+                    value: `\`\`\`ansi\n\u001b[1;36mRank:\u001b[0m #${globalRank} / ${allUsers.length}\n\u001b[1;36mLevel:\u001b[0m ${level}\n\u001b[1;33mMessages:\u001b[0m ${totalMessages.toLocaleString()}\`\`\``, 
                     inline: false 
                 },
                 { 
@@ -76,25 +84,9 @@ module.exports = {
                 }
             );
 
-        // 5. MULTIMODAL COMBAT INTEL (Game | Mode | Rank)
-        if (gameData && gameData.game) {
-            const lastSync = gameData.timestamp ? `<t:${Math.floor(gameData.timestamp / 1000)}:R>` : '`N/A`';
-            statsEmbed.addFields({ 
-                name: '🎮 COMBAT INTEL', 
-                value: `\`\`\`prolog\nSector: ${gameData.game}\nTheater: ${gameData.mode || 'N/A'}\nTier: ${gameData.rank || 'Unranked'}\`\`\`\n**Last Sync:** ${lastSync}`, 
-                inline: true 
-            });
-        } else {
-            statsEmbed.addFields({ 
-                name: '🎮 COMBAT INTEL', 
-                value: `\`\`\`fix\nNO_DATA_SYNCED\nRegister via .setgame\`\`\``, 
-                inline: true 
-            });
-        }
-
         statsEmbed.addFields({ 
             name: '🛡️ CORE STATUS', 
-            value: `\`\`\`prolog\nIdentity: VERIFIED\nAccess: LVL_${accessLevel}\nXP_Total: ${userData.xp.toLocaleString()}\`\`\``, 
+            value: `\`\`\`prolog\nIdentity: VERIFIED\nAccess: LVL_${accessLevel}\nXP_Total: ${xp.toLocaleString()}\`\`\``, 
             inline: true 
         })
         .setFooter({ 
