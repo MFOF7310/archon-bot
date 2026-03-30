@@ -3,7 +3,7 @@ const { EmbedBuilder } = require('discord.js');
 module.exports = {
     name: 'stats',
     aliases: ['st', 'stat'],
-    description: 'Display detailed agent statistics and global rank.',
+    description: 'Display detailed agent statistics and global rank with combat intelligence.',
     category: 'PROFILE',
     run: async (client, message, args, userData) => {
         let target = message.mentions.users.first();
@@ -19,85 +19,216 @@ module.exports = {
         }
         if (!target) target = message.author;
 
-        // 2. DATA SYNCHRONIZATION
-        let targetData = userData;
+        // 2. DATA SYNCHRONIZATION (SQLite)
+        const db = require('better-sqlite3')('database.sqlite');
         
-        if (target.id !== message.author.id) {
-            const { getUser } = require('../index.js');
-            targetData = getUser(target.id);
+        let targetData;
+        if (target.id === message.author.id && userData) {
+            targetData = userData;
+        } else {
+            targetData = db.prepare("SELECT * FROM users WHERE id = ?").get(target.id);
+        }
+        
+        // Parse gaming data if it exists
+        let gameData = null;
+        if (targetData?.gaming) {
+            try {
+                gameData = JSON.parse(targetData.gaming);
+            } catch (e) {
+                // Invalid JSON, ignore
+            }
         }
         
         const xp = targetData?.xp || 0;
         const level = targetData?.level || 1;
         const totalMessages = targetData?.totalMessages || 0;
 
-        // 3. CALCULATION HIERARCHY
-        const db = require('better-sqlite3')('database.sqlite');
+        // 3. GLOBAL RANKING CALCULATION
         const allUsers = db.prepare("SELECT * FROM users ORDER BY xp DESC").all();
         db.close();
         
         const globalRank = allUsers.findIndex(user => user.id === target.id) + 1 || 'PENDING';
+        const totalUsers = allUsers.length;
         
         const xpInLevel = xp % 1000;
+        const xpNeeded = 1000 - xpInLevel;
         const progressPercent = Math.floor((xpInLevel / 1000) * 100);
         
         const createBar = (percent) => {
-            const size = 12;
+            const size = 15;
             const progress = Math.round((size * percent) / 100);
-            return '▰'.repeat(progress) + '▱'.repeat(size - progress);
+            return '█'.repeat(progress) + '░'.repeat(size - progress);
         };
 
         // 4. DYNAMIC TIER LOGIC
-        let tierColor = '#00fbff';
+        let tierColor = '#5865F2';
         let tierLabel = 'RECRUIT';
         let accessLevel = 'BETA';
+        let tierEmoji = '🌱';
+        let tierBadge = '⬤';
 
-        if (level >= 10) { 
-            tierColor = '#f1c40f'; 
-            tierLabel = 'ELITE AGENT'; 
+        if (level >= 5) { 
+            tierColor = '#57F287'; 
+            tierLabel = 'OPERATIVE'; 
             accessLevel = 'ALPHA';
+            tierEmoji = '⚡';
+            tierBadge = '⬤';
+        }
+        if (level >= 10) { 
+            tierColor = '#FEE75C'; 
+            tierLabel = 'ELITE AGENT'; 
+            accessLevel = 'DELTA';
+            tierEmoji = '✨';
+            tierBadge = '⬤⬤';
+        }
+        if (level >= 25) { 
+            tierColor = '#EB459E'; 
+            tierLabel = 'SPECIALIST'; 
+            accessLevel = 'GAMMA';
+            tierEmoji = '💠';
+            tierBadge = '⬤⬤⬤';
         }
         if (level >= 50) { 
-            tierColor = '#e74c3c'; 
+            tierColor = '#ED4245'; 
             tierLabel = 'COMMANDER'; 
             accessLevel = 'OMEGA';
+            tierEmoji = '🔱';
+            tierBadge = '⬤⬤⬤⬤';
+        }
+        if (level >= 75) { 
+            tierColor = '#9B59B6'; 
+            tierLabel = 'WARLORD'; 
+            accessLevel = 'MASTER';
+            tierEmoji = '👑';
+            tierBadge = '⬤⬤⬤⬤⬤';
+        }
+        if (level >= 100) { 
+            tierColor = '#F1C40F'; 
+            tierLabel = 'LEGEND'; 
+            accessLevel = 'TRANSCENDENT';
+            tierEmoji = '🏆';
+            tierBadge = '★ LEGEND ★';
         }
 
+        // 5. NEXT MILESTONE CALCULATION
+        let nextMilestone = 5;
+        if (level < 5) nextMilestone = 5;
+        else if (level < 10) nextMilestone = 10;
+        else if (level < 25) nextMilestone = 25;
+        else if (level < 50) nextMilestone = 50;
+        else if (level < 75) nextMilestone = 75;
+        else if (level < 100) nextMilestone = 100;
+        else nextMilestone = 100;
+        
+        const xpToMilestone = nextMilestone * 1000 - xp;
+        
+        // 6. MAIN STATS EMBED
         const statsEmbed = new EmbedBuilder()
             .setColor(tierColor)
             .setAuthor({ 
-                name: `AGENT DOSSIER: ${target.username.toUpperCase()}`, 
-                iconURL: target.displayAvatarURL({ dynamic: true }) 
+                name: `${tierEmoji} AGENT DOSSIER: ${target.username.toUpperCase()} ${tierEmoji}`, 
+                iconURL: target.displayAvatarURL({ dynamic: true, size: 1024 }) 
             })
-            .setTitle('─ ARCHITECT NEURAL PROFILE ─')
-            .setDescription(`**Classification:** \`${tierLabel}\`\n**Current Node:** \`Bamako-223\``)
+            .setTitle('═ ARCHITECT NEURAL PROFILE ═')
+            .setDescription(
+                `**Classification:** \`${tierLabel}\` ${tierBadge}\n` +
+                `**Node:** \`BAMAKO-223\` • **Status:** \`🟢 ACTIVE\`\n` +
+                `**Agent ID:** \`${target.id}\``
+            )
+            .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 512 }))
             .addFields(
                 { 
                     name: '📊 GLOBAL HIERARCHY', 
-                    value: `\`\`\`ansi\n\u001b[1;36mRank:\u001b[0m #${globalRank} / ${allUsers.length}\n\u001b[1;36mLevel:\u001b[0m ${level}\n\u001b[1;33mMessages:\u001b[0m ${totalMessages.toLocaleString()}\`\`\``, 
+                    value: `\`\`\`yaml\nRank: #${globalRank} / ${totalUsers}\nLevel: ${level}\nMessages: ${totalMessages.toLocaleString()}\nTotal XP: ${xp.toLocaleString()}\`\`\``, 
                     inline: false 
                 },
                 { 
                     name: '🌀 NEURAL SYNC (XP PROGRESS)', 
-                    value: `\`${createBar(progressPercent)}\` **${progressPercent}%**\n*\`${xpInLevel} / 1000 XP until next sync upgrade*\``, 
+                    value: `\`\`\`\n${createBar(progressPercent)} ${progressPercent}%\n[${xpInLevel.toLocaleString()} / 1000 XP]\n└─ ${xpNeeded} XP to Level ${level + 1}\`\`\``, 
                     inline: false 
                 }
             );
 
+        // 7. COMBAT MATRIX SECTION (Enhanced with gaming data)
+        if (gameData && gameData.game) {
+            const lastSync = gameData.timestamp 
+                ? `<t:${Math.floor(gameData.timestamp / 1000)}:R>` 
+                : '`N/A`';
+            
+            // Get rank tier emoji based on rank name
+            let rankEmoji = '🎖️';
+            const rankLower = gameData.rank.toLowerCase();
+            if (rankLower.includes('bronze')) rankEmoji = '🥉';
+            else if (rankLower.includes('silver')) rankEmoji = '🥈';
+            else if (rankLower.includes('gold')) rankEmoji = '🥇';
+            else if (rankLower.includes('platinum')) rankEmoji = '💎';
+            else if (rankLower.includes('diamond')) rankEmoji = '💠';
+            else if (rankLower.includes('master')) rankEmoji = '👑';
+            else if (rankLower.includes('legend')) rankEmoji = '🏆';
+            
+            statsEmbed.addFields({ 
+                name: '🎮 COMBAT MATRIX', 
+                value: `\`\`\`prolog\n┌─ PRIMARY SECTOR: ${gameData.game}\n├─ COMBAT MODE: ${gameData.mode}\n└─ RANK/TIER: ${rankEmoji} ${gameData.rank}\`\`\`\n**Last Synchronization:** ${lastSync}`, 
+                inline: false 
+            });
+        } else {
+            statsEmbed.addFields({ 
+                name: '🎮 COMBAT MATRIX', 
+                value: `\`\`\`fix\n┌─ STATUS: NO_DATA_SYNCED\n├─ Use: .setgame [Game] | [Mode] | [Rank]\n└─ Example: .setgame Valorant | Ranked | Diamond II\`\`\``, 
+                inline: false 
+            });
+        }
+
+        // 8. MILESTONE & REWARDS SECTION
+        statsEmbed.addFields({ 
+            name: '🎯 NEXT MILESTONE', 
+            value: `\`\`\`yaml\nLevel ${nextMilestone} Achievement\n${xpToMilestone.toLocaleString()} XP remaining\nReward: ${getMilestoneReward(nextMilestone)}\`\`\``, 
+            inline: true 
+        });
+
+        // 9. CORE STATUS
         statsEmbed.addFields({ 
             name: '🛡️ CORE STATUS', 
-            value: `\`\`\`prolog\nIdentity: VERIFIED\nAccess: LVL_${accessLevel}\nXP_Total: ${xp.toLocaleString()}\`\`\``, 
+            value: `\`\`\`prolog\nIdentity: VERIFIED\nAccess: LVL_${accessLevel}\nIntegrity: 100%\nCombat Readiness: ${gameData ? 'ACTIVE' : 'STANDBY'}\`\`\``, 
             inline: true 
         })
         .setFooter({ 
-            text: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY • BKO-223', 
+            text: `EAGLE COMMUNITY • DIGITAL SOVEREIGNTY • BKO-223 • ${tierLabel} TIER`, 
             iconURL: client.user.displayAvatarURL() 
         })
         .setTimestamp();
 
+        // 10. RANK-BASED RESPONSE MESSAGE
+        let responseMessage = '';
+        if (target.id === message.author.id) {
+            if (level >= 100) responseMessage = `🏆 **TRANSCENDENT AGENT DETECTED!** You stand among legends, Commander. 🏆`;
+            else if (level >= 50) responseMessage = `🔱 **Commander ${target.username}** - Your tactical supremacy is noted. 🔱`;
+            else if (level >= 25) responseMessage = `💠 **Elite Agent** - Neural synchronization at ${progressPercent}% to next tier. 💠`;
+            else if (level >= 10) responseMessage = `✨ **Agent ${target.username}** - Progressing steadily toward elite status. ✨`;
+            else responseMessage = `🌱 **Agent ${target.username}** - Every journey begins with a single step. Continue your training. 🌱`;
+        } else {
+            if (level >= 100) responseMessage = `🏆 **LEGENDARY AGENT DETECTED!** ${target.username} has achieved transcendence. 🏆`;
+            else if (level >= 50) responseMessage = `🔱 **High-Value Asset:** ${target.username} - Commander tier operative. 🔱`;
+            else if (level >= 25) responseMessage = `💠 **Elite Asset:** ${target.username} - Specialist classification. 💠`;
+            else responseMessage = `📡 **Agent Profile:** ${target.username} - ${tierLabel} classification. 📡`;
+        }
+
         message.reply({ 
-            content: `> **Deciphering neural signature for ${target.username}...**`,
+            content: `> **${responseMessage}**`,
             embeds: [statsEmbed] 
         });
     }
 };
+
+// Helper function for milestone rewards
+function getMilestoneReward(level) {
+    const rewards = {
+        5: "✨ Level 5 Role Unlocked",
+        10: "🎁 VIP Access + Alpha Tier",
+        25: "🏆 Elite Status + Gamma Access",
+        50: "💎 Commander Role + Omega Tier",
+        75: "👑 Warlord Status",
+        100: "🏆 Legendary Achievement + Transcendent Access"
+    };
+    return rewards[level] || "🌟 Continue the grind!";
+}
