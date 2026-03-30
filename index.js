@@ -45,21 +45,57 @@ const getAccountAge = (createdAt) => {
     return `${years} Year(s), ${remainingMonths} Month(s) ago`;
 };
 
-// --- DATABASE ---
-const dbPath = path.join(__dirname, 'database.json');
-let database = {};
-if (fs.existsSync(dbPath)) {
-    try {
-        database = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    } catch (e) {
-        console.log(`${yellow}[WARN]${reset} Database corrupted. Initializing fresh.`);
-        database = {};
-    }
-}
-const saveDatabase = () => {
-    fs.writeFileSync(dbPath, JSON.stringify(database, null, 2));
+const formatNumber = (num) => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
-client.saveDatabase = saveDatabase;
+
+const getLevelColor = (level) => {
+    if (level >= 100) return '#ff4444';
+    if (level >= 75) return '#ff66cc';
+    if (level >= 50) return '#44aaff';
+    if (level >= 25) return '#ffaa44';
+    if (level >= 10) return '#dddddd';
+    return '#cd7f32';
+};
+
+const getNextLevelReward = (level) => {
+    const rewards = {
+        5: "✨ **Special Role** - @Level 5 role unlocked!",
+        10: "🎁 **VIP Access** - Exclusive channel access!",
+        25: "🏆 **Elite Status** - Custom nickname color!",
+        50: "💎 **Legendary** - Priority support access!",
+        100: "👑 **Gaming God** - Ultimate bragging rights!"
+    };
+    
+    for (const [reqLevel, reward] of Object.entries(rewards)) {
+        if (level === parseInt(reqLevel)) {
+            return reward;
+        }
+    }
+    return `🎯 **Next milestone:** ${Object.keys(rewards).find(l => l > level) || 'Level 100'} - Keep going!`;
+};
+
+// --- SQLITE DATABASE (PRO LEVEL) ---
+const Database = require('better-sqlite3');
+const db = new Database('database.sqlite');
+
+// Create Table
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT,
+        xp INTEGER DEFAULT 0,
+        level INTEGER DEFAULT 1,
+        totalMessages INTEGER DEFAULT 0,
+        last_xp_gain INTEGER DEFAULT 0
+    )
+`).run();
+
+// Helper Functions
+const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+const saveUser = (id, name, xp, lvl, msgs, last) => {
+    db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, totalMessages, last_xp_gain) VALUES (?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last);
+};
 
 // --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -71,7 +107,99 @@ You're polite, smart, and direct. Keep answers concise but informative.
 Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine
 `.trim();
 
-// --- THE LOADER: SMOOTH SYNCHRONIZATION ---
+// ================= ENHANCED LEVEL-UP SYSTEM =================
+
+// Achievement titles based on level
+const achievements = {
+    1: { name: "🌟 BEGINNER'S LUCK", desc: "Take your first step into greatness!" },
+    5: { name: "🎮 APPRENTICE GAMER", desc: "Level 5 reached! You're learning fast!" },
+    10: { name: "⚔️ SKILLED WARRIOR", desc: "Double digits! Your skills are sharpening!" },
+    25: { name: "🏆 ELITE FIGHTER", desc: "A true warrior emerges!" },
+    50: { name: "💎 MASTER TACTICIAN", desc: "Your strategies are legendary!" },
+    75: { name: "👑 GRAND MASTER", desc: "Among the elite few!" },
+    100: { name: "🌀 TRANSCENDENT", desc: "You've reached god-like status!" },
+    150: { name: "⭐ MYTHICAL LEGEND", desc: "Your name will echo through history!" },
+    200: { name: "🔥 INFINITY SLAYER", desc: "The ultimate gaming champion!" }
+};
+
+// Dynamic achievement name based on level
+const getAchievementName = (level) => {
+    for (const [milestone, achievement] of Object.entries(achievements).reverse()) {
+        if (level >= parseInt(milestone)) {
+            return achievement;
+        }
+    }
+    
+    const levelTiers = [
+        { max: 10, name: "🌱 NOVICE", desc: "Every journey begins with a single step!" },
+        { max: 25, name: "⭐ ASPIRANT", desc: "Building momentum and skill!" },
+        { max: 50, name: "⚔️ COMBATANT", desc: "Your dedication shows!" },
+        { max: 75, name: "🛡️ DEFENDER", desc: "Strong and reliable!" },
+        { max: 100, name: "💎 CHAMPION", desc: "A force to be reckoned with!" }
+    ];
+    
+    for (const tier of levelTiers) {
+        if (level <= tier.max) {
+            return { name: tier.name, desc: tier.desc };
+        }
+    }
+    
+    return { name: "🏆 LEGEND", desc: "Your legacy continues to grow!" };
+};
+
+// Get appropriate image based on level from environment variables
+const getLevelImage = (level) => {
+    if (level >= 100) return process.env.IMG_LVL_100;
+    if (level >= 50) return process.env.IMG_LVL_50;
+    if (level >= 25) return process.env.IMG_LVL_25;
+    if (level >= 10) return process.env.IMG_LVL_10;
+    if (level >= 5) return process.env.IMG_LVL_5;
+    return process.env.IMG_LVL_5; // Default image for low levels
+};
+
+// Calculate XP progress
+const getXPProgress = (xp, level) => {
+    const xpForCurrentLevel = (level - 1) * 1000;
+    const xpForNextLevel = level * 1000;
+    const currentProgress = xp - xpForCurrentLevel;
+    const xpNeeded = xpForNextLevel - xpForCurrentLevel;
+    const percentage = (currentProgress / xpNeeded) * 100;
+    
+    const barLength = 20;
+    const filledBars = Math.floor((percentage / 100) * barLength);
+    const emptyBars = barLength - filledBars;
+    const progressBar = `▰`.repeat(filledBars) + `▱`.repeat(emptyBars);
+    
+    return {
+        current: currentProgress,
+        needed: xpNeeded,
+        percentage: Math.round(percentage),
+        bar: progressBar
+    };
+};
+
+// Get random congratulatory message
+const getCongratsMessage = (level, userName) => {
+    const messages = [
+        `GG **${userName}**, you just unlocked the achievement: **${getAchievementName(level).name}**! 😍`,
+        `Amazing! **${userName}** reached **Level ${level}**! The grind pays off! 🎉`,
+        `**${userName}** levels up! ${getAchievementName(level).name} achieved! ⚡`,
+        `Congratulations **${userName}**! Level ${level} looks good on you! 🌟`,
+        `Power surge detected! **${userName}** hit **Level ${level}**! 🚀`,
+        `Legendary progression! **${userName}** ascends to **Level ${level}**! 👑`
+    ];
+    
+    if (level % 10 === 0) {
+        return `🏆 **MILESTONE UNLOCKED!** 🏆\n**${userName}** reaches **Level ${level}**! ${getAchievementName(level).name}!`;
+    }
+    if (level === 1) {
+        return `🎊 Welcome to the journey, **${userName}**! Level 1 achieved! The adventure begins! 🎊`;
+    }
+    
+    return messages[Math.floor(Math.random() * messages.length)];
+};
+
+// --- THE LOADER: SMOOTH SYNCHRONIZATION (FASTER RELOAD) ---
 client.loadPlugins = async () => {
     client.commands.clear();
     client.aliases.clear();
@@ -85,8 +213,7 @@ client.loadPlugins = async () => {
     const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js'));
     for (const file of pluginFiles) {
         try {
-            // Smooth loading delay (300ms per plugin)
-            await sleep(300); 
+            await sleep(100); // Reduced from 300ms to 100ms for faster loading
             
             const filePath = path.join(pluginPath, file);
             delete require.cache[require.resolve(filePath)];
@@ -105,7 +232,7 @@ client.loadPlugins = async () => {
             console.log(`${blue}[ERROR]${reset} Failed ${file}: ${error.message}`); 
         }
     }
-    await sleep(500);
+    await sleep(200); // Reduced from 500ms to 200ms
     console.log(`${green}🚀 ENGINE READY | ${client.commands.size} CORE MODULES ONLINE${reset}\n`);
 };
 
@@ -192,32 +319,73 @@ client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild) return;
 
     const userId = message.author.id;
+    let userData = getUser(userId);
 
-    if (!database[userId]) {
-        database[userId] = { name: message.author.username, xp: 0, level: 1, gaming: { game: "NOT SET", rank: "Unranked" } };
+    // 1. Initialize user if they don't exist in SQLite
+    if (!userData) {
+        saveUser(userId, message.author.username, 0, 1, 0, 0);
+        userData = getUser(userId);
     }
-    database[userId].xp += Math.floor(Math.random() * 21) + 20;
-    const newLevel = Math.floor(database[userId].xp / 1000) + 1;
 
-    if (newLevel > database[userId].level) {
-        database[userId].level = newLevel;
-        message.channel.send(`✨ **SYNC UP:** <@${userId}> reached **Level ${newLevel}**!`)
-            .then(m => setTimeout(() => m.delete().catch(() => null), 5000));
+    const now = Date.now();
+    const cooldown = 60000; // 1 minute XP cooldown
 
-        const logChannel = message.guild.channels.cache.get(process.env.LOG_CHANNEL_ID);
-        if (logChannel) {
-            const lvEmbed = new EmbedBuilder()
-                .setColor('#f1c40f').setTitle('🏆 LEVEL UP')
-                .setThumbnail(message.author.displayAvatarURL())
+    // 2. XP & Leveling Logic
+    if (now - userData.last_xp_gain > cooldown) {
+        const xpGain = Math.floor(Math.random() * 21) + 15;
+        let newXP = userData.xp + xpGain;
+        let newLevel = Math.floor(newXP / 1000) + 1;
+        let totalMsgs = (userData.totalMessages || 0) + 1;
+
+        // 3. Level Up Celebration
+        if (newLevel > userData.level) {
+            const xpProgress = getXPProgress(newXP, newLevel);
+            const achievement = getAchievementName(newLevel);
+            
+            // --- AUTOMATIC ROLE REWARDS FROM .ENV ---
+            const roleRewards = {
+                5: process.env.ROLE_LVL_5,
+                10: process.env.ROLE_LVL_10,
+                25: process.env.ROLE_LVL_25,
+                50: process.env.ROLE_LVL_50,
+                100: process.env.ROLE_LVL_100
+            };
+
+            let rewardText = getNextLevelReward(newLevel);
+
+            if (roleRewards[newLevel]) {
+                const role = message.guild.roles.cache.get(roleRewards[newLevel]);
+                if (role) {
+                    await message.member.roles.add(role).catch(e => console.log(`${yellow}[ROLE ERROR]${reset} ${e.message}`));
+                    rewardText = `✨ **Level ${newLevel} Role Unlocked!** — You've been granted the **${role.name}** role.`;
+                }
+            }
+
+            const levelUpEmbed = new EmbedBuilder()
+                .setColor(getLevelColor(newLevel))
+                .setAuthor({ name: 'ACHIEVEMENT UNLOCKED!', iconURL: message.author.displayAvatarURL() })
+                .setTitle(achievement.name)
+                .setDescription(getCongratsMessage(newLevel, message.author.username))
+                .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+                .setImage(getLevelImage(newLevel))
                 .addFields(
-                    { name: 'User', value: `<@${userId}>`, inline: true },
-                    { name: 'New Level', value: `\`${newLevel}\``, inline: true }
-                ).setTimestamp();
-            logChannel.send({ embeds: [lvEmbed] });
-        }
-    }
-    saveDatabase();
+                    { 
+                        name: '📊 PROGRESSION', 
+                        value: `\`\`\`\nLEVEL ${userData.level} → ${newLevel}\n${xpProgress.bar} ${xpProgress.percentage}%\nXP: ${formatNumber(newXP)}/${formatNumber(newLevel * 1000)}\n\`\`\`` 
+                    },
+                    { name: '🎁 REWARD', value: rewardText }
+                )
+                .setFooter({ text: `${message.guild.name} • Architect Engine` })
+                .setTimestamp();
 
+            await message.channel.send({ content: `🎉 **LEVEL UP!** <@${userId}>`, embeds: [levelUpEmbed] });
+        }
+
+        // 4. Save updated data back to SQLite
+        saveUser(userId, message.author.username, newXP, newLevel, totalMsgs, now);
+    }
+
+    // --- LYDIA AI HANDLER ---
     if (client.lydiaChannels && client.lydiaChannels[message.channel.id]) {
         if (message.mentions.has(client.user) || (message.reference && (await message.channel.messages.fetch(message.reference.messageId)).author.id === client.user.id)) {
             const userInput = message.content.replace(/<@!?[0-9]+>/g, '').trim() || 'Hello!';
@@ -226,13 +394,21 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
+    // --- COMMAND HANDLER ---
     if (!message.content.startsWith(PREFIX)) return;
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const cmdName = args.shift().toLowerCase();
     const command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
+    
     if (command) {
-        try { await command.run(client, message, args, database); } 
-        catch (e) { message.reply("⚠️ **Command execution failed.**"); }
+        try { 
+            // Pass userData to the command so it has the level info
+            await command.run(client, message, args, userData); 
+        } 
+        catch (e) { 
+            console.error(e);
+            message.reply("⚠️ **Command execution failed.**"); 
+        }
     }
 });
 
@@ -302,4 +478,5 @@ client.on(Events.GuildMemberAdd, async (member) => {
     }
 });
 
+// Login to Discord
 client.login(process.env.TOKEN);
