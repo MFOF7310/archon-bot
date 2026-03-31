@@ -79,7 +79,7 @@ const getNextLevelReward = (level) => {
 const Database = require('better-sqlite3');
 const db = new Database('database.sqlite');
 
-// Create Table with ALL columns (FIXED: total_matches, not totalMessages)
+// Create Table with ALL columns and proper JSON defaults
 db.prepare(`
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -91,16 +91,29 @@ db.prepare(`
         games_played INTEGER DEFAULT 0,
         games_won INTEGER DEFAULT 0,
         total_winnings INTEGER DEFAULT 0,
-        gaming TEXT
+        gaming TEXT DEFAULT '{"game":"CODM","rank":"Unranked"}'
     )
 `).run();
 
-// Helper Functions (UPDATED with total_matches)
+// Helper Functions (UPDATED with proper defaults)
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
 
 const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null) => {
+    // If gaming is null, use the default JSON string
+    const gamingValue = gaming !== null ? gaming : '{"game":"CODM","rank":"Unranked"}';
     db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gaming);
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gamingValue);
+};
+
+// Initialize new user (simplified since gaming has DB default)
+const initializeUser = (userId, username) => {
+    const existing = getUser(userId);
+    if (!existing) {
+        db.prepare(`INSERT INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
+                    VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}')`)
+            .run(userId, username);
+    }
+    return getUser(userId);
 };
 
 // Optional: Update specific gaming stats without touching other fields
@@ -344,7 +357,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     // 1. Initialize user if they don't exist in SQLite
     if (!userData) {
-        saveUser(userId, message.author.username, 0, 1, 0, 0, 0, 0, 0, null);
+        initializeUser(userId, message.author.username);
         userData = getUser(userId);
     }
 
@@ -352,14 +365,14 @@ client.on(Events.MessageCreate, async (message) => {
     const cooldown = 60000; // 1 minute XP cooldown
 
     // 2. XP & Leveling Logic
-    if (now - userData.last_xp_gain > cooldown) {
+    if (now - (userData.last_xp_gain || 0) > cooldown) {
         const xpGain = Math.floor(Math.random() * 21) + 15;
-        let newXP = userData.xp + xpGain;
+        let newXP = (userData.xp || 0) + xpGain;
         let newLevel = Math.floor(newXP / 1000) + 1;
-        let totalMsgs = (userData.total_messages || 0) + 1;  // FIXED: total_messages
+        let totalMsgs = (userData.total_messages || 0) + 1;
 
         // 3. Level Up Celebration
-        if (newLevel > userData.level) {
+        if (newLevel > (userData.level || 1)) {
             const xpProgress = getXPProgress(newXP, newLevel);
             const achievement = getAchievementName(newLevel);
             
@@ -394,7 +407,7 @@ client.on(Events.MessageCreate, async (message) => {
                 .addFields(
                     { 
                         name: '📊 PROGRESSION', 
-                        value: `\`\`\`\nLEVEL ${userData.level} → ${newLevel}\n${xpProgress.bar} ${xpProgress.percentage}%\nXP: ${formatNumber(newXP)}/${formatNumber(newLevel * 1000)}\n\`\`\`` 
+                        value: `\`\`\`\nLEVEL ${userData.level || 1} → ${newLevel}\n${xpProgress.bar} ${xpProgress.percentage}%\nXP: ${formatNumber(newXP)}/${formatNumber(newLevel * 1000)}\n\`\`\`` 
                     },
                     { name: '🎁 REWARD', value: rewardText }
                 )
@@ -412,7 +425,7 @@ client.on(Events.MessageCreate, async (message) => {
                     .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
                     .addFields(
                         { name: '👤 User', value: `<@${userId}>`, inline: true },
-                        { name: '📊 Level', value: `${userData.level} → **${newLevel}**`, inline: true },
+                        { name: '📊 Level', value: `${userData.level || 1} → **${newLevel}**`, inline: true },
                         { name: '🏅 Achievement', value: achievement.name, inline: true },
                         { name: '💬 Total Messages', value: formatNumber(totalMsgs), inline: true },
                         { name: '⭐ XP Gained', value: `+${xpGain} XP`, inline: true },
@@ -428,7 +441,7 @@ client.on(Events.MessageCreate, async (message) => {
                 userData.games_played || 0, 
                 userData.games_won || 0, 
                 userData.total_winnings || 0, 
-                userData.gaming || null);
+                userData.gaming || '{"game":"CODM","rank":"Unranked"}');
     }
 
     // --- LYDIA AI HANDLER ---
@@ -440,7 +453,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // --- COMMAND HANDLER (FIXED: pass db) ---
+    // --- COMMAND HANDLER ---
     if (!message.content.startsWith(PREFIX)) return;
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const cmdName = args.shift().toLowerCase();
@@ -448,7 +461,7 @@ client.on(Events.MessageCreate, async (message) => {
     
     if (command) {
         try { 
-            await command.run(client, message, args, db);  // FIXED: pass db, not userData
+            await command.run(client, message, args, db);
         } 
         catch (e) { 
             console.error(e);
