@@ -79,14 +79,14 @@ const getNextLevelReward = (level) => {
 const Database = require('better-sqlite3');
 const db = new Database('database.sqlite');
 
-// Create Table
+// Create Table with ALL columns (FIXED: total_matches, not totalMessages)
 db.prepare(`
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT,
         xp INTEGER DEFAULT 0,
         level INTEGER DEFAULT 1,
-        totalMessages INTEGER DEFAULT 0,
+        total_messages INTEGER DEFAULT 0,
         last_xp_gain INTEGER DEFAULT 0,
         games_played INTEGER DEFAULT 0,
         games_won INTEGER DEFAULT 0,
@@ -95,10 +95,27 @@ db.prepare(`
     )
 `).run();
 
-// Helper Functions
+// Helper Functions (UPDATED with total_matches)
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
-const saveUser = (id, name, xp, lvl, msgs, last) => {
-    db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, totalMessages, last_xp_gain) VALUES (?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last);
+
+const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null) => {
+    db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gaming);
+};
+
+// Optional: Update specific gaming stats without touching other fields
+const updateGamingStats = (userId, gamesPlayedInc = 0, gamesWonInc = 0, winningsInc = 0, gamingStatus = null) => {
+    const user = getUser(userId);
+    if (!user) return false;
+    
+    const newGamesPlayed = (user.games_played || 0) + gamesPlayedInc;
+    const newGamesWon = (user.games_won || 0) + gamesWonInc;
+    const newTotalWinnings = (user.total_winnings || 0) + winningsInc;
+    const newGaming = gamingStatus !== null ? gamingStatus : user.gaming;
+    
+    db.prepare(`UPDATE users SET games_played = ?, games_won = ?, total_winnings = ?, gaming = ? WHERE id = ?`)
+      .run(newGamesPlayed, newGamesWon, newTotalWinnings, newGaming, userId);
+    return true;
 };
 
 // --- GROQ AI CONFIGURATION ---
@@ -327,7 +344,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     // 1. Initialize user if they don't exist in SQLite
     if (!userData) {
-        saveUser(userId, message.author.username, 0, 1, 0, 0);
+        saveUser(userId, message.author.username, 0, 1, 0, 0, 0, 0, 0, null);
         userData = getUser(userId);
     }
 
@@ -339,7 +356,7 @@ client.on(Events.MessageCreate, async (message) => {
         const xpGain = Math.floor(Math.random() * 21) + 15;
         let newXP = userData.xp + xpGain;
         let newLevel = Math.floor(newXP / 1000) + 1;
-        let totalMsgs = (userData.totalMessages || 0) + 1;
+        let totalMsgs = (userData.total_messages || 0) + 1;  // FIXED: total_messages
 
         // 3. Level Up Celebration
         if (newLevel > userData.level) {
@@ -406,8 +423,12 @@ client.on(Events.MessageCreate, async (message) => {
             }
         }
 
-        // 4. Save updated data back to SQLite
-        saveUser(userId, message.author.username, newXP, newLevel, totalMsgs, now);
+        // 4. Save updated data back to SQLite (preserve gaming stats)
+        saveUser(userId, message.author.username, newXP, newLevel, totalMsgs, now, 
+                userData.games_played || 0, 
+                userData.games_won || 0, 
+                userData.total_winnings || 0, 
+                userData.gaming || null);
     }
 
     // --- LYDIA AI HANDLER ---
@@ -419,7 +440,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // --- COMMAND HANDLER ---
+    // --- COMMAND HANDLER (FIXED: pass db) ---
     if (!message.content.startsWith(PREFIX)) return;
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const cmdName = args.shift().toLowerCase();
@@ -427,7 +448,7 @@ client.on(Events.MessageCreate, async (message) => {
     
     if (command) {
         try { 
-            await command.run(client, message, args, userData); 
+            await command.run(client, message, args, db);  // FIXED: pass db, not userData
         } 
         catch (e) { 
             console.error(e);
