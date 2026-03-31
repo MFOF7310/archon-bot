@@ -1,16 +1,20 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 
+// ================= HELPER FUNCTIONS (Hoisted for availability) =================
+function createProgressBar(percent, length = 12) {
+    const filled = Math.floor((percent / 100) * length);
+    const empty = length - filled;
+    return '█'.repeat(filled) + '░'.repeat(empty);
+}
+
 module.exports = {
     name: 'leaderboard',
     aliases: ['lb', 'top', 'rankings'],
     category: 'SYSTEM',
     description: 'Display the top-tier agents by neural synchronization (XP) and gaming achievements.',
-    run: async (client, message, args, userData) => {
-        const db = require('better-sqlite3')('database.sqlite');
-        
-        // Get all users sorted by XP
-        let entries = db.prepare("SELECT * FROM users ORDER BY xp DESC").all();
-        db.close();
+    run: async (client, message, args, db) => {
+        // Get all users sorted by XP (optimized with LIMIT for large servers)
+        let entries = db.prepare("SELECT * FROM users ORDER BY xp DESC LIMIT 100").all();
         
         if (entries.length === 0) {
             return message.reply("📊 **DATABASE EMPTY:** No agent telemetry detected.");
@@ -18,43 +22,59 @@ module.exports = {
         
         // Check if user wants gaming leaderboard
         const subCommand = args[0]?.toLowerCase();
-        if (subCommand === 'games' || subCommand === 'wins' || subCommand === 'gaming') {
-            return showGameLeaderboard(client, message, args[1]);
+        if (subCommand === 'games' || subCommand === 'wins' || subCommand === 'gaming' || subCommand === 'played' || subCommand === 'winnings') {
+            return showGameLeaderboard(client, message, args[1] || subCommand, db);
         }
         
-        // Get user's rank
-        const userIndex = entries.findIndex(e => e.id === message.author.id);
-        const userRank = userIndex === -1 ? 'UNRANKED' : userIndex + 1;
-        const userXP = userIndex === -1 ? 0 : entries[userIndex].xp;
-        const userLevel = userIndex === -1 ? 0 : entries[userIndex].level;
+        // Get user's rank using optimized query
+        const userData = db.prepare("SELECT xp, level, games_played, games_won, total_winnings FROM users WHERE id = ?").get(message.author.id);
+        
+        let userRank = 'UNRANKED';
+        let userXP = 0;
+        let userLevel = 0;
+        let userGamesWon = 0;
+        let userTotalWinnings = 0;
+        
+        if (userData) {
+            userXP = userData.xp || 0;
+            userLevel = userData.level || 1;
+            userGamesWon = userData.games_won || 0;
+            userTotalWinnings = userData.total_winnings || 0;
+            
+            // Optimized rank calculation
+            const rankData = db.prepare("SELECT COUNT(*) as rank FROM users WHERE xp > ?").get(userXP);
+            userRank = (rankData?.rank || 0) + 1;
+        }
         
         // Calculate progress to next rank
         let motivationalQuote = "";
         let rankProgress = "";
         
-        if (userIndex > 0) {
-            const gap = entries[userIndex - 1].xp - userXP;
-            motivationalQuote = `▫️ Need **${gap.toLocaleString()} XP** to overtake Rank #${userIndex}.`;
-            
-            // Progress bar to next rank
-            const progressPercent = Math.min(100, Math.floor((userXP / entries[userIndex - 1].xp) * 100));
-            const progressBar = createProgressBar(progressPercent, 20);
-            rankProgress = `\n**Progress to #${userIndex}:** \`${progressBar} ${progressPercent}%\``;
-        } else if (userIndex === 0) {
+        if (userRank !== 'UNRANKED' && userRank > 1) {
+            // Get the XP of the user ahead
+            const aheadUser = db.prepare("SELECT xp FROM users WHERE xp > ? ORDER BY xp ASC LIMIT 1").get(userXP);
+            if (aheadUser) {
+                const gap = aheadUser.xp - userXP;
+                motivationalQuote = `▫️ Need **${gap.toLocaleString()} XP** to overtake Rank #${userRank - 1}.`;
+                
+                // Progress bar to next rank
+                const progressPercent = Math.min(100, Math.floor((userXP / aheadUser.xp) * 100));
+                const progressBar = createProgressBar(progressPercent, 20);
+                rankProgress = `\n**Progress to #${userRank - 1}:** \`${progressBar} ${progressPercent}%\``;
+            }
+        } else if (userRank === 1 && userRank !== 'UNRANKED') {
             motivationalQuote = "👑 **APEX AGENT:** You are currently leading the sector.";
             rankProgress = "\n**Status:** `🏆 SUPREME COMMANDER`";
         } else {
-            const topXP = entries[0].xp;
+            const topXP = entries[0]?.xp || 0;
             const gap = topXP - userXP;
-            motivationalQuote = `▫️ Need **${gap.toLocaleString()} XP** to enter the leaderboard.`;
+            if (gap > 0) {
+                motivationalQuote = `▫️ Need **${gap.toLocaleString()} XP** to enter the leaderboard.`;
+            }
         }
         
-        // Get user's gaming stats
-        const userGamesWon = userIndex === -1 ? 0 : (entries[userIndex].games_won || 0);
-        const userTotalWinnings = userIndex === -1 ? 0 : (entries[userIndex].total_winnings || 0);
-        
         const pageSize = 5;
-        const maxPage = Math.ceil(entries.length / pageSize) - 1;
+        const maxPage = Math.ceil(Math.min(entries.length, 100) / pageSize) - 1;
         let currentPage = 0;
         
         const generateEmbed = (page) => {
@@ -62,7 +82,7 @@ module.exports = {
             const pageEntries = entries.slice(start, start + pageSize);
             const statusIcons = ['🥇', '🥈', '🥉', '🔹', '🔹'];
             
-            let description = `**NODE:** \`BAMAKO-223\`\n**TOTAL AGENTS:** \`${entries.length}\`\n**SYNC STATUS:** \`🟢 ACTIVE\`\n\n`;
+            let description = `**NODE:** \`BAMAKO-223\`\n**TOTAL AGENTS:** \`${db.prepare("SELECT COUNT(*) as count FROM users").get().count}\`\n**SYNC STATUS:** \`🟢 ACTIVE\`\n\n`;
             
             pageEntries.forEach((user, idx) => {
                 const globalRank = start + idx + 1;
@@ -98,7 +118,7 @@ module.exports = {
                     },
                     { 
                         name: '🎮 GAMING LEADERBOARDS', 
-                        value: `\`🔹 .lb games wins\` - Most victories\n\`🔹 .lb games winnings\` - Richest agents\n\`🔹 .lb games played\` - Most active\n\nUse these commands to see specialized rankings!`,
+                        value: `\`🔹 .lb wins\` - Most victories\n\`🔹 .lb winnings\` - Richest agents\n\`🔹 .lb played\` - Most active\n\`🔹 .lb winrate\` - Highest win rate\n\nUse these commands to see specialized rankings!`,
                         inline: false 
                     }
                 )
@@ -135,16 +155,7 @@ module.exports = {
 };
 
 // ================= GAMING LEADERBOARD =================
-async function showGameLeaderboard(client, message, type = 'wins') {
-    const db = require('better-sqlite3')('database.sqlite');
-    
-    // Add game stats columns if they don't exist
-    try {
-        db.prepare(`ALTER TABLE users ADD COLUMN games_played INTEGER DEFAULT 0`).run();
-        db.prepare(`ALTER TABLE users ADD COLUMN games_won INTEGER DEFAULT 0`).run();
-        db.prepare(`ALTER TABLE users ADD COLUMN total_winnings INTEGER DEFAULT 0`).run();
-    } catch (e) {}
-    
+async function showGameLeaderboard(client, message, type = 'wins', db) {
     let orderBy = '';
     let title = '';
     let icon = '';
@@ -175,13 +186,8 @@ async function showGameLeaderboard(client, message, type = 'wins') {
             break;
         case 'winrate':
         case 'wr':
-            orderBy = 'win_rate DESC';
-            title = 'HIGHEST WIN RATE';
-            icon = '📈';
-            color = '#9B59B6';
             // Special handling for win rate
             const allUsers = db.prepare(`SELECT id, username, games_played, games_won, total_winnings FROM users WHERE games_played > 5 ORDER BY CAST(games_won AS FLOAT) / games_played DESC LIMIT 10`).all();
-            db.close();
             
             if (allUsers.length === 0) {
                 return message.reply('📊 No game data available yet. Play at least 5 games to appear on win rate leaderboard!');
@@ -194,8 +200,8 @@ async function showGameLeaderboard(client, message, type = 'wins') {
             }).join('\n');
             
             const winRateEmbed = new EmbedBuilder()
-                .setColor(color)
-                .setAuthor({ name: `${icon} GLOBAL LEADERBOARD: ${title}`, iconURL: client.user.displayAvatarURL() })
+                .setColor(color || '#9B59B6')
+                .setAuthor({ name: `${icon || '📈'} GLOBAL LEADERBOARD: ${title || 'HIGHEST WIN RATE'}`, iconURL: client.user.displayAvatarURL() })
                 .setTitle('═ NEURAL ARCADE RANKINGS ═')
                 .setDescription(`\`\`\`yaml\n${winRateText}\`\`\``)
                 .setFooter({ text: 'Requires minimum 5 games played • Win rate reflects strategic skill' })
@@ -212,21 +218,20 @@ async function showGameLeaderboard(client, message, type = 'wins') {
     let topPlayers;
     if (type !== 'winrate') {
         topPlayers = db.prepare(`SELECT id, username, games_played, games_won, total_winnings FROM users WHERE games_played > 0 ORDER BY ${orderBy} LIMIT 10`).all();
-        db.close();
     }
     
-    if (topPlayers.length === 0) {
+    if (!topPlayers || topPlayers.length === 0) {
         return message.reply('📊 No game data available yet. Start playing to appear on leaderboards!');
     }
     
     const leaderboardText = topPlayers.map((player, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
-        const winRate = Math.round((player.games_won / player.games_played) * 100);
+        const winRate = player.games_played > 0 ? Math.round((player.games_won / player.games_played) * 100) : 0;
         
         if (type === 'wins' || type === 'win') {
             return `${medal} **${player.username}** • 🏆 ${player.games_won} wins (${winRate}% WR)`;
         } else if (type === 'winnings' || type === 'money') {
-            return `${medal} **${player.username}** • 💰 ${player.total_winnings.toLocaleString()} 🪙 (${player.games_won} wins)`;
+            return `${medal} **${player.username}** • 💰 ${(player.total_winnings || 0).toLocaleString()} 🪙 (${player.games_won} wins)`;
         } else if (type === 'played' || type === 'active') {
             return `${medal} **${player.username}** • 🎮 ${player.games_played} games • 🏆 ${player.games_won} wins`;
         }
@@ -241,19 +246,12 @@ async function showGameLeaderboard(client, message, type = 'wins') {
         .addFields(
             { 
                 name: '📊 YOUR STATS', 
-                value: `\`\`\`prolog\nUse .game stats to view your personal gaming profile\`\`\``,
+                value: `\`\`\`prolog\nUse .profile to view your personal gaming profile\`\`\``,
                 inline: false 
             }
         )
-        .setFooter({ text: 'Play more games to climb the ranks! • .game menu to start', iconURL: client.user.displayAvatarURL() })
+        .setFooter({ text: 'Play more games to climb the ranks!', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
     
     message.reply({ embeds: [embed] });
-}
-
-// ================= HELPER FUNCTION =================
-function createProgressBar(percent, length = 12) {
-    const filled = Math.floor((percent / 100) * length);
-    const empty = length - filled;
-    return '█'.repeat(filled) + '░'.repeat(empty);
 }
