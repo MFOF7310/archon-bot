@@ -151,14 +151,14 @@ const getAchievementName = (level) => {
     return { name: "🏆 LEGEND", desc: "Your legacy continues to grow!" };
 };
 
-// Get appropriate image based on level from environment variables
+// Get appropriate image based on level from environment variables (GitHub Template Ready)
 const getLevelImage = (level) => {
-    if (level >= 100) return process.env.IMG_LVL_100;
-    if (level >= 50) return process.env.IMG_LVL_50;
-    if (level >= 25) return process.env.IMG_LVL_25;
-    if (level >= 10) return process.env.IMG_LVL_10;
-    if (level >= 5) return process.env.IMG_LVL_5;
-    return process.env.IMG_LVL_5;
+    if (level >= 100) return process.env.IMG_LVL_100 || 'https://via.placeholder.com/1200x400/ff4444/ffffff?text=MASTER+TIER';
+    if (level >= 50) return process.env.IMG_LVL_50 || 'https://via.placeholder.com/1200x400/44aaff/ffffff?text=DIAMOND+TIER';
+    if (level >= 25) return process.env.IMG_LVL_25 || 'https://via.placeholder.com/1200x400/ffaa44/ffffff?text=PLATINUM+TIER';
+    if (level >= 10) return process.env.IMG_LVL_10 || 'https://via.placeholder.com/1200x400/dddddd/000000?text=GOLD+TIER';
+    if (level >= 5) return process.env.IMG_LVL_5 || 'https://via.placeholder.com/1200x400/cd7f32/ffffff?text=SILVER+TIER';
+    return process.env.IMG_LVL_0 || 'https://via.placeholder.com/1200x400/8B5A2B/ffffff?text=BRONZE+TIER';
 };
 
 // Calculate XP progress
@@ -372,7 +372,7 @@ client.on(Events.MessageCreate, async (message) => {
                 .setAuthor({ name: '🏆 ACHIEVEMENT UNLOCKED!', iconURL: message.author.displayAvatarURL() })
                 .setTitle(achievement.name)
                 .setDescription(getCongratsMessage(newLevel, message.author.username))
-                .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+                .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 1024 }))
                 .setImage(getLevelImage(newLevel))
                 .addFields(
                     { 
@@ -381,7 +381,7 @@ client.on(Events.MessageCreate, async (message) => {
                     },
                     { name: '🎁 REWARD', value: rewardText }
                 )
-                .setFooter({ text: `${message.guild.name} • Architect Engine` })
+                .setFooter({ text: `${message.guild.name} • Architect Engine v${client.version}` })
                 .setTimestamp();
 
             await message.channel.send({ content: `🎉 **LEVEL UP!** <@${userId}>`, embeds: [levelUpEmbed] });
