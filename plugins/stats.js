@@ -5,7 +5,7 @@ module.exports = {
     aliases: ['st', 'stat'],
     description: 'Display detailed agent statistics and global rank with combat intelligence.',
     category: 'PROFILE',
-    run: async (client, message, args, userData) => {
+    run: async (client, message, args, db) => {
         let target = message.mentions.users.first();
         
         // 1. INTELLIGENT SIGNAL INTERCEPTION (Reply detection)
@@ -19,21 +19,20 @@ module.exports = {
         }
         if (!target) target = message.author;
 
-        // 2. DATA SYNCHRONIZATION (SQLite)
-        const db = require('better-sqlite3')('database.sqlite');
+        // 2. DATA SYNCHRONIZATION (Using passed db parameter)
+        let targetData = db.prepare("SELECT * FROM users WHERE id = ?").get(target.id);
         
-        let targetData;
-        if (target.id === message.author.id && userData) {
-            targetData = userData;
-        } else {
-            targetData = db.prepare("SELECT * FROM users WHERE id = ?").get(target.id);
+        if (!targetData) {
+            return message.reply(`❌ **Agent ${target.username}** has no recorded data in the neural network. Send a few messages to initialize!`);
         }
         
         // Parse gaming data if it exists
         let gameData = null;
         if (targetData?.gaming) {
             try {
-                gameData = JSON.parse(targetData.gaming);
+                gameData = typeof targetData.gaming === 'string' 
+                    ? JSON.parse(targetData.gaming) 
+                    : targetData.gaming;
             } catch (e) {
                 // Invalid JSON, ignore
             }
@@ -41,14 +40,14 @@ module.exports = {
         
         const xp = targetData?.xp || 0;
         const level = targetData?.level || 1;
-        const totalMessages = targetData?.totalMessages || 0;
+        const totalMessages = targetData?.total_messages || 0;
 
-        // 3. GLOBAL RANKING CALCULATION
-        const allUsers = db.prepare("SELECT * FROM users ORDER BY xp DESC").all();
-        db.close();
-        
-        const globalRank = allUsers.findIndex(user => user.id === target.id) + 1 || 'PENDING';
-        const totalUsers = allUsers.length;
+        // 3. OPTIMIZED GLOBAL RANKING CALCULATION (Lightning Fast!)
+        // Instead of fetching all users, we just count how many have more XP
+        const rankData = db.prepare("SELECT COUNT(*) as rank FROM users WHERE xp > ?").get(xp);
+        const globalRank = (rankData?.rank || 0) + 1;
+        const totalUsersData = db.prepare("SELECT COUNT(*) as count FROM users").get();
+        const totalUsers = totalUsersData?.count || 1;
         
         const xpInLevel = xp % 1000;
         const xpNeeded = 1000 - xpInLevel;
@@ -120,7 +119,7 @@ module.exports = {
         else if (level < 100) nextMilestone = 100;
         else nextMilestone = 100;
         
-        const xpToMilestone = nextMilestone * 1000 - xp;
+        const xpToMilestone = Math.max(0, nextMilestone * 1000 - xp);
         
         // 6. MAIN STATS EMBED
         const statsEmbed = new EmbedBuilder()
@@ -149,7 +148,7 @@ module.exports = {
                 }
             );
 
-        // 7. COMBAT MATRIX SECTION (Enhanced with gaming data)
+        // 7. COMBAT MATRIX SECTION (Enhanced with gaming data from schema)
         if (gameData && gameData.game) {
             const lastSync = gameData.timestamp 
                 ? `<t:${Math.floor(gameData.timestamp / 1000)}:R>` 
@@ -157,7 +156,7 @@ module.exports = {
             
             // Get rank tier emoji based on rank name
             let rankEmoji = '🎖️';
-            const rankLower = gameData.rank.toLowerCase();
+            const rankLower = (gameData.rank || '').toLowerCase();
             if (rankLower.includes('bronze')) rankEmoji = '🥉';
             else if (rankLower.includes('silver')) rankEmoji = '🥈';
             else if (rankLower.includes('gold')) rankEmoji = '🥇';
@@ -168,7 +167,7 @@ module.exports = {
             
             statsEmbed.addFields({ 
                 name: '🎮 COMBAT MATRIX', 
-                value: `\`\`\`prolog\n┌─ PRIMARY SECTOR: ${gameData.game}\n├─ COMBAT MODE: ${gameData.mode}\n└─ RANK/TIER: ${rankEmoji} ${gameData.rank}\`\`\`\n**Last Synchronization:** ${lastSync}`, 
+                value: `\`\`\`prolog\n┌─ PRIMARY SECTOR: ${gameData.game}\n├─ COMBAT MODE: ${gameData.mode || 'Standard'}\n└─ RANK/TIER: ${rankEmoji} ${gameData.rank}\`\`\`\n**Last Synchronization:** ${lastSync}`, 
                 inline: false 
             });
         } else {
@@ -186,10 +185,14 @@ module.exports = {
             inline: true 
         });
 
-        // 9. CORE STATUS
+        // 9. CORE STATUS (Added gaming stats from schema)
+        const gamesPlayed = targetData?.games_played || 0;
+        const gamesWon = targetData?.games_won || 0;
+        const winRate = gamesPlayed > 0 ? Math.floor((gamesWon / gamesPlayed) * 100) : 0;
+        
         statsEmbed.addFields({ 
             name: '🛡️ CORE STATUS', 
-            value: `\`\`\`prolog\nIdentity: VERIFIED\nAccess: LVL_${accessLevel}\nIntegrity: 100%\nCombat Readiness: ${gameData ? 'ACTIVE' : 'STANDBY'}\`\`\``, 
+            value: `\`\`\`prolog\nIdentity: VERIFIED\nAccess: LVL_${accessLevel}\nGames: ${gamesPlayed} (${winRate}% WR)\nCombat Ready: ${gameData ? 'ACTIVE' : 'STANDBY'}\`\`\``, 
             inline: true 
         })
         .setFooter({ 
