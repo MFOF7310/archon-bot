@@ -1,57 +1,82 @@
-const { EmbedBuilder } = require('discord.js');
+// plugins/lydia.js
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 
 module.exports = {
     name: 'lydia',
     aliases: ['ai', 'aimode'],
     description: 'Toggle Lydia AI with REAL-TIME web access in this channel.',
     category: 'SYSTEM',
+    cooldown: 5000,
+    
     run: async (client, message, args, database) => {
-        if (!message.member.permissions.has('Administrator')) {
-            return message.reply("⛔ **SECURITY BREACH:** Administrator clearance required to modify Neural Protocols.");
+        // Admin only - protect API credits
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ff4444')
+                .setTitle('⛔ ACCESS DENIED')
+                .setDescription('**Administrator clearance** required to modify Neural Protocols.')
+                .setFooter({ text: 'ARCHITECT CG-223 • Security Level: ADMIN' })
+                .setTimestamp();
+            
+            return message.reply({ embeds: [errorEmbed] });
         }
 
         const channelId = message.channel.id;
         const prefix = process.env.PREFIX || '.';
         const subCommand = args[0]?.toLowerCase();
 
-        // Ensure the channel tracker exists
+        // Initialize tracker if needed
         if (!client.lydiaChannels) client.lydiaChannels = {};
 
-        // --- USAGE / STATUS CHECK ---
+        // --- SIMPLE USAGE / STATUS ---
         if (!subCommand || (subCommand !== 'on' && subCommand !== 'off')) {
             const isEnabled = client.lydiaChannels[channelId];
-            const usageEmbed = new EmbedBuilder()
-                .setColor('#ff9900')
-                .setAuthor({ name: 'LYDIA NEURAL INTERFACE', iconURL: client.user.displayAvatarURL() })
-                .setTitle('⚙️ AI PROTOCOL CONFIGURATION')
+            
+            const statusEmbed = new EmbedBuilder()
+                .setColor(isEnabled ? '#00fbff' : '#95a5a6')
+                .setAuthor({ 
+                    name: '🤖 LYDIA NEURAL INTERFACE', 
+                    iconURL: client.user.displayAvatarURL() 
+                })
                 .setDescription(
-                    `**Current State:** ${isEnabled ? '`🟢 ACTIVE`' : '`🔴 OFFLINE`'}\n` +
-                    `Lydia utilizes **Groq LPU™** for inference and **Brave Search** for real-time intelligence.`
+                    `**Current Status:** ${isEnabled ? '🟢 **ACTIVE**' : '🔴 **STANDBY**'}\n\n` +
+                    `**${prefix}lydia on** - Activate AI in this channel\n` +
+                    `**${prefix}lydia off** - Deactivate AI\n\n` +
+                    `**Capabilities:** Real-time search • AI responses • Malian context 🇲🇱`
                 )
                 .addFields(
-                    { name: '◈ Commands', value: `\`${prefix}lydia on\` - Initialize Core\n\`${prefix}lydia off\` - Terminate Core`, inline: true },
-                    { name: '◈ Interaction', value: 'Mention or Reply to trigger Neural Link.', inline: true }
+                    { 
+                        name: '📡 API Status', 
+                        value: `Groq: ${process.env.GROQ_API_KEY ? '✅' : '❌'} | Brave: ${process.env.BRAVE_API_KEY ? '✅' : '❌'}`,
+                        inline: true 
+                    }
                 )
-                .setFooter({ text: 'ARCHITECT CG-223 | DIGITAL SOVEREIGNTY' })
+                .setFooter({ text: 'Mention or reply to interact with Lydia' })
                 .setTimestamp();
 
-            return message.reply({ embeds: [usageEmbed] });
+            return message.reply({ embeds: [statusEmbed] });
         }
 
-        // --- PROTOCOL: INITIALIZE (ON) ---
+        // --- ACTIVATE LYDIAS ---
         if (subCommand === 'on') {
             if (client.lydiaChannels[channelId]) {
-                return message.reply("⚠️ **SYSTEM NOTICE:** Lydia Neural Link is already synchronized with this channel.");
+                return message.reply("⚠️ **Lydia is already active** in this channel.");
             }
 
+            // Warn about missing APIs but still allow activation
+            let warning = '';
+            if (!process.env.GROQ_API_KEY) warning += '\n⚠️ **Groq API missing** - AI responses limited';
+            if (!process.env.BRAVE_API_KEY) warning += '\n⚠️ **Brave API missing** - Web search unavailable';
+
             client.lydiaChannels[channelId] = true;
+            
             const onEmbed = new EmbedBuilder()
-                .setColor('#00fbff')
+                .setColor('#2ecc71')
                 .setTitle('✅ NEURAL CORE INITIALIZED')
-                .setDescription(`**Lydia Engine is now ONLINE in <#${channelId}>.**`)
+                .setDescription(`**Lydia is now ONLINE** in <#${channelId}>${warning}`)
                 .addFields(
-                    { name: '📡 Capabilities', value: '`Real-Time Web Search` | `High-Speed Inference` | `Context Awareness`' },
-                    { name: '🔒 Security', value: `Disable anytime via \`${prefix}lydia off\`` }
+                    { name: '🎯 How to Use', value: `Mention **@Lydia** or reply to her messages`, inline: true },
+                    { name: '🔒 Security', value: `\`${prefix}lydia off\` to terminate`, inline: true }
                 )
                 .setFooter({ text: 'POWERED BY GROQ + BRAVE SEARCH' })
                 .setTimestamp();
@@ -59,21 +84,22 @@ module.exports = {
             return message.reply({ embeds: [onEmbed] });
         }
 
-        // --- PROTOCOL: TERMINATE (OFF) ---
+        // --- DEACTIVATE LYDIA ---
         if (subCommand === 'off') {
             if (!client.lydiaChannels[channelId]) {
-                return message.reply("⚠️ **SYSTEM NOTICE:** No active Neural Link detected in this sector.");
+                return message.reply("⚠️ **Lydia is not active** in this channel.");
             }
 
             delete client.lydiaChannels[channelId];
+            
             const offEmbed = new EmbedBuilder()
                 .setColor('#e74c3c')
                 .setTitle('❌ NEURAL CORE TERMINATED')
-                .setDescription(`**Lydia Engine has been purged from <#${channelId}>.**`)
+                .setDescription(`**Lydia has been deactivated** in <#${channelId}>.`)
                 .addFields(
-                    { name: '📉 Status', value: 'Inference modules set to standby mode.' }
+                    { name: '🔄 Reactivate', value: `\`${prefix}lydia on\` to restart`, inline: true }
                 )
-                .setFooter({ text: 'ARCHITECT CG-223 | Cloud Gaming-223' })
+                .setFooter({ text: 'ARCHITECT CG-223' })
                 .setTimestamp();
 
             return message.reply({ embeds: [offEmbed] });
