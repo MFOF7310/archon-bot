@@ -1,146 +1,44 @@
-### ☁️ CLOUD GAMING-223 DIGITAL ENGINE
-​<div align="center">
+# ☁️ CLOUD GAMING-223 DIGITAL ENGINE
 
-​A high-performance, modular Discord bot framework optimized for cloud gamers, streamers, and low-latency connectivity.
-​</div>
+<div align="center">
+  <img src="https://i.imgur.com/8NnQpPH.gif" width="100" height="100" alt="Engine Core">
+  <br>
+  <strong>A high-performance, modular Discord framework optimized for cloud gaming, neural interactions, and low-latency connectivity.</strong>
+  <br>
+  <em>Engineered in Bamako, Mali 🇲🇱</em>
+</div>
 
-## ​📖 Overview
+---
 
-​Cloud Gaming-223 Digital Engine is a professional-grade Discord bot designed to bridge the gap between high-performance gaming and community engagement. Built with a modular 32-plugin architecture, it is specifically engineered for reliability on high-latency or satellite connections like Starlink.
-​Developed by MFOF7310 in Bamako, Mali, the engine features an advanced AI integration (Lydia AI) and a robust persistent XP system, making it an ideal choice for community managers and competitive gaming servers.
+## 📖 Overview
 
-## ​✨ Key Features
+**Cloud Gaming-223 Digital Engine** is a professional-grade Discord bot designed to bridge the gap between high-performance gaming and community engagement. Built with a modular **v1.3.0 architecture**, it is specifically engineered for reliability on high-latency or satellite connections like **Starlink**.
+
+Developed by **MFOF7310**, the engine features an advanced **Lydia AI** with Multi-Agent switching, a high-performance **SQLite3** backend, and a real-time **GitHub Master Node Synchronization** system.
+
+## ✨ Key Features
 
 | Feature | Description | Status |
 | :--- | :--- | :--- |
-| **Lydia AI** | Groq-powered gaming expert specializing in CODM and intelligent conversation. | ✅ Live |
-| **Brave Search** | Real-time web and image search integration directly within Discord. | ✅ Live |
-| **XP System** | Global leveling and engagement tracking with persistent JSON storage. | ✅ Live |
-| **Modular Core** | Plugin-based system allowing seamless addition of new features without core modification. | ✅ Live |
-| **Starlink Optimized** | Built-in rate limiting and smart fallbacks for stable performance on satellite networks. | ✅ Live |
-| **TikTok Monitor** | Real-time stream monitoring and automated notifications. | 🔄 Dev |
+| **🧠 Neural Lydia AI** | Multi-Agent core (Architect, Tactical, Creative) with persistent memory. | ✅ v1.3.0 |
+| **🛰️ Master Node Sync** | Real-time GitHub synchronization with hot-reload plugin technology. | ✅ Live |
+| **🔎 Brave Search** | Real-time web and image search integration directly within Discord. | ✅ Live |
+| **📊 SQLite3 Engine** | High-performance, persistent database for XP, levels, and user memory. | ✅ Live |
+| **🎮 Gaming Ops** | Specialized tools for CODM stats, tournament tracking, and loadouts. | ✅ Live |
+| **📡 Starlink Optimized** | Built-in rate limiting and smart fallbacks for satellite network stability. | ✅ Live |
 
 ## 📁 Project Architecture
 
-```​The engine uses a streamlined structure where core utilities (database, logger, rate-limiter) are integrated into the main entry point for maximum efficiency.
+The engine uses a streamlined root structure for maximum efficiency, ensuring low RAM usage on hosting platforms.
+
+```text
 cloud-gaming-223-digital-engine/
-├── index.js             # Core Engine & Utility Suite
-├── database.json        # Persistent User Store (Auto-generated)
+├── index.js             # Core Engine & Neural Logic (v1.3.0)
+├── database.sqlite      # Persistent SQLite3 Database
+├── version.txt          # Local version tracking
+├── changelog.txt        # GitHub Update History
 ├── plugins/             # Extensible Command Modules
-│   ├── lydia.js         # AI Integration
-│   ├── top.js           # XP/Leaderboard Logic
-│   ├── weather.js       # Global Weather Data
-│   └── ...              # 30+ Additional Plugins
-└── .env                 # Sensitive Configuration
-```
-## 🎮 Command Interface
-
-​🤖 Lydia AI (Gaming Assistant)
-​.lydia on/off — Toggle AI responsiveness in the current channel.
-​.lydia status — View the current operational status of the AI.
-​@Lydia [query] — Interact with the AI regarding gaming, loadouts, or general chat.
-​🏆 Engagement & XP
-​.rank — Display your current level, XP, and progress.
-​.leaderboard — Show the top-performing members in the server.
-​.level [@user] — Check the status of another community member.
-​🛠️ Utilities & Search
-​.search [query] — Fetch the top 5 web results via Brave Search.
-​.weather [city] — Get real-time weather reports with local imagery.
-​.gamestats [game] [player] — Retrieve statistics for titles like CODM or Valorant.
-​.news [topic] — Aggregate the latest gaming and tech headlines.
-
-## ​🚀 Quick Start
-
-### ​Prerequisites
-
-​Node.js v18.0.0 or higher.
-​API Keys: Discord Bot Token, Groq API, Brave Search API, and Weather API.
-​Installation
-
-## 1. Clone & Enter:
-```git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
-cd cloud-gaming-223-digital-engine
-```
-## 2. Dependencies:
-```npm install```
-
-## 3. Environment Setup:
-
-Create a .env file and populate:
-
-```env
-DISCORD_TOKEN=your_token
-GROQ_API_KEY=your_key
-BRAVE_API_KEY=your_key
-WEATHER_API_KEY=your_key
-PREFIX=.
-
-# //--- OWNER & SYSTEM ---//
-OWNER_ID=your_discord_owner_id
-WELCOME_CHANNEL=your_welcome_channel_id
-LOG_CHANNEL_ID=your_log_channel_id
-MEMBER_ROLE=your_member_role_id
-PREFIX=,
-
-# --- Support Link --- do not modify this part 
-SUPPORT_LINK=https://discord.gg/NFSMFJajp9
-```
-
-## 4. Launch:
-
-```npm start```
-
-### 🔌 Plugin Development
-
-​Expanding the bot is simple. Add a .js file to the /plugins directory using the following standard:
-
-```module.exports = {
-  name: 'commandName',
-  description: 'Professional description',
-  cooldown: 3,
-  permissions: ['SendMessages'],
-  async execute(message, args, client) {
-    // Your logic here
-  }
-};
-```
-
-## 🚢 Deployment Tips
-
-​Free Tier (Bot-Hosting.net): Optimized for 100MB RAM environments. Ensure your database.json is included in your deployment ZIP.
-​VPS/Ubuntu: Use PM2 to manage the process: pm2 start index.js --name "cg-223".
-​Intents: Ensure Message Content, Server Members, and Guild Messages are enabled in the Discord Developer Portal.
-
-## 📄 License
-​<div align="center">
-Copyright (c) 2026 CLOUD GAMING-223 (Architect)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-## ​📝 Versioning & Metadata
-
-​Current Version: `1.1.0`
-​Architect: `MFOF7310`
-​Origin: `Bamako, Mali 🇲🇱`
-​License: MIT
-​<div align="center">
-### ​Made with ❤️ for the Cloud Gaming Community.
-Report Bug • Request Feature
-​</div>
+│   ├── lydia.js         # AI Multi-Agent Interface
+│   ├── update.js        # GitHub Sync Module
+│   └── ...              # 30+ Additional Core Modules
+└── .env                 # Environment Configuration
