@@ -4,19 +4,18 @@ const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 module.exports = {
     name: 'lydia',
     aliases: ['ai', 'aimode', 'neural'],
-    description: 'Toggle Lydia AI with persistent memory and multi-agent intelligence.',
+    description: '🎭 Multi-Agent AI with Neural Core Switching & Persistent Memory',
     category: 'SYSTEM',
     cooldown: 5000,
     
     run: async (client, message, args, database) => {
-        // Create memory table for persistent AI context
+        // Create agents table for persistent preferences (matches index.js structure with is_active)
         database.prepare(`
-            CREATE TABLE IF NOT EXISTS lydia_memory (
-                user_id TEXT,
-                memory_key TEXT,
-                memory_value TEXT,
-                updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-                PRIMARY KEY (user_id, memory_key)
+            CREATE TABLE IF NOT EXISTS lydia_agents (
+                channel_id TEXT PRIMARY KEY,
+                agent_key TEXT,
+                is_active INTEGER DEFAULT 0,
+                updated_at INTEGER DEFAULT (strftime('%s', 'now'))
             )
         `).run();
 
@@ -37,59 +36,75 @@ module.exports = {
         const subCommand = args[0]?.toLowerCase();
         const agentType = args[1]?.toLowerCase();
 
-        // Initialize tracker if needed
+        // Initialize trackers if needed
         if (!client.lydiaChannels) client.lydiaChannels = {};
         if (!client.lydiaAgents) client.lydiaAgents = {};
 
-        // Available Neural Cores (Multi-Agent Personalities)
+        // Available Neural Cores (Must match index.js)
         const neuralCores = {
             architect: {
                 name: '🏗️ ARCHITECT CORE',
+                emoji: '🔧',
                 description: 'Code, servers, and system architecture expert',
-                systemPrompt: 'You are ARCHITECT Lydia, a technical AI specializing in coding, Discord bot architecture, database management, and system optimization. Provide detailed technical solutions with code examples when relevant.'
+                color: '#00fbff'
             },
             tactical: {
                 name: '🎮 TACTICAL CORE',
+                emoji: '⚔️',
                 description: 'Gaming stats, strategies, and tournament insights',
-                systemPrompt: 'You are TACTICAL Lydia, a gaming AI focused on CODM, esports strategies, loadout optimization, and tournament coordination. Keep responses energetic and game-focused.'
+                color: '#57F287'
             },
             creative: {
                 name: '🎨 CREATIVE CORE',
+                emoji: '✨',
                 description: 'Content creation, scripts, and artistic direction',
-                systemPrompt: 'You are CREATIVE Lydia, an imaginative AI for content creation, storytelling, script writing, and artistic inspiration. Provide vivid, creative responses with examples.'
+                color: '#9B59B6'
             },
             default: {
                 name: '🧠 LYDIA CORE',
+                emoji: '🤖',
                 description: 'Balanced assistant for general queries',
-                systemPrompt: 'You are Lydia, the AI assistant of Cloud Gaming-223 Discord server. You\'re polite, smart, and direct with a touch of Malian 🇲🇱 flair. Keep answers concise but informative.'
+                color: '#5865F2'
             }
         };
 
-        // --- SIMPLE USAGE / STATUS ---
-        if (!subCommand || (subCommand !== 'on' && subCommand !== 'off' && subCommand !== 'memory' && subCommand !== 'agent')) {
+        // Helper: Save agent to database with is_active status
+        const saveAgentToDB = (channelId, agentKey) => {
+            database.prepare(`
+                INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at)
+                VALUES (?, ?, ?, strftime('%s', 'now'))
+            `).run(channelId, agentKey, client.lydiaChannels[channelId] ? 1 : 0);
+        };
+
+        // --- STATUS COMMAND ---
+        if (!subCommand || (subCommand !== 'on' && subCommand !== 'off' && subCommand !== 'agent')) {
             const isEnabled = client.lydiaChannels[channelId];
             const currentAgent = client.lydiaAgents[channelId] || 'default';
             const agentInfo = neuralCores[currentAgent] || neuralCores.default;
             
+            // Get memory stats
+            const memoryCount = database.prepare("SELECT COUNT(*) as count FROM lydia_memory").get().count;
+            const userMemoryCount = database.prepare("SELECT COUNT(*) as count FROM lydia_memory WHERE user_id = ?").get(message.author.id)?.count || 0;
+            
             const statusEmbed = new EmbedBuilder()
-                .setColor(isEnabled ? '#00fbff' : '#95a5a6')
+                .setColor(isEnabled ? agentInfo.color : '#95a5a6')
                 .setAuthor({ 
-                    name: '🤖 LYDIA NEURAL INTERFACE', 
+                    name: `${agentInfo.emoji} LYDIA NEURAL INTERFACE`, 
                     iconURL: client.user.displayAvatarURL() 
                 })
                 .setDescription(
-                    `**Status:** ${isEnabled ? '🟢 **ACTIVE**' : '🔴 **STANDBY**'}\n` +
-                    `**Active Core:** ${agentInfo.name}\n\n` +
+                    `**System Status:** ${isEnabled ? '🟢 **ACTIVE**' : '🔴 **STANDBY**'}\n` +
+                    `**Active Core:** ${agentInfo.name}\n` +
+                    `**Memory:** ${userMemoryCount} facts about you | ${memoryCount} total\n\n` +
                     `**Commands:**\n` +
-                    `\`${prefix}lydia on\` - Activate AI\n` +
-                    `\`${prefix}lydia off\` - Deactivate AI\n` +
-                    `\`${prefix}lydia agent <core>\` - Switch neural core\n` +
-                    `\`${prefix}lydia memory\` - View user memory stats\n\n` +
-                    `**Neural Cores Available:**\n` +
-                    `• \`architect\` - System & Code Expert\n` +
-                    `• \`tactical\` - Gaming Strategist\n` +
-                    `• \`creative\` - Content Creator\n` +
-                    `• \`default\` - Balanced Assistant`
+                    `└ \`${prefix}lydia on\` - Activate AI in this channel\n` +
+                    `└ \`${prefix}lydia off\` - Deactivate AI\n` +
+                    `└ \`${prefix}lydia agent <core>\` - Switch neural core\n\n` +
+                    `**Available Neural Cores:**\n` +
+                    `└ \`architect\` ${neuralCores.architect.emoji} - System & Code Expert\n` +
+                    `└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming Strategist\n` +
+                    `└ \`creative\` ${neuralCores.creative.emoji} - Content Creator\n` +
+                    `└ \`default\` ${neuralCores.default.emoji} - Balanced Assistant`
                 )
                 .addFields(
                     { 
@@ -99,58 +114,44 @@ module.exports = {
                     },
                     {
                         name: '🧠 Persistent Memory',
-                        value: `User preferences saved • Cross-session recall • Adaptive learning`,
+                        value: `Cross-session recall • Auto-learning • Personalization`,
                         inline: true
                     }
                 )
-                .setFooter({ text: 'Mention or reply to interact • Memory persists across conversations' })
+                .setFooter({ text: `ARCHITECT CG-223 • v${client.version} • Mention @Lydia to interact` })
                 .setTimestamp();
 
             return message.reply({ embeds: [statusEmbed] });
         }
 
-        // --- SWITCH NEURAL CORE (Multi-Agent) ---
+        // --- SWITCH NEURAL CORE ---
         if (subCommand === 'agent') {
             if (!agentType || !neuralCores[agentType]) {
                 const availableCores = Object.keys(neuralCores).map(c => `\`${c}\``).join(', ');
-                return message.reply(`⚠️ **Invalid neural core.** Available: ${availableCores}\nExample: \`${prefix}lydia agent tactical\``);
+                return message.reply(`⚠️ **Invalid neural core.**\nAvailable: ${availableCores}\nExample: \`${prefix}lydia agent tactical\``);
             }
 
+            // Update memory
             client.lydiaAgents[channelId] = agentType;
+            
+            // Save to database with current active status
+            saveAgentToDB(channelId, agentType);
+            
             const agentInfo = neuralCores[agentType];
             
             const agentEmbed = new EmbedBuilder()
-                .setColor('#9B59B6')
-                .setTitle('🔄 NEURAL CORE SWITCHED')
+                .setColor(agentInfo.color)
+                .setTitle(`${agentInfo.emoji} NEURAL CORE SWITCHED`)
                 .setDescription(`**${agentInfo.name}** is now active in <#${channelId}>`)
                 .addFields(
-                    { name: '📝 Description', value: agentInfo.description, inline: false },
+                    { name: '📝 Core Function', value: agentInfo.description, inline: false },
+                    { name: '💾 Persistence', value: 'Agent preference saved • Survives bot restarts', inline: true },
                     { name: '💡 Tip', value: `Mention @Lydia with your ${agentType}-related questions!`, inline: true }
                 )
-                .setFooter({ text: `ARCHITECT CG-223 • ${agentInfo.name} Online` })
+                .setFooter({ text: `ARCHITECT CG-223 • v${client.version}` })
                 .setTimestamp();
 
             return message.reply({ embeds: [agentEmbed] });
-        }
-
-        // --- VIEW MEMORY STATS ---
-        if (subCommand === 'memory') {
-            const memoryCount = database.prepare("SELECT COUNT(*) as count FROM lydia_memory").get().count;
-            const userMemoryCount = database.prepare("SELECT COUNT(*) as count FROM lydia_memory WHERE user_id = ?").get(message.author.id)?.count || 0;
-            
-            const memoryEmbed = new EmbedBuilder()
-                .setColor('#3498DB')
-                .setTitle('🧠 PERSISTENT MEMORY STATISTICS')
-                .setDescription(`Lydia remembers user preferences across conversations!`)
-                .addFields(
-                    { name: '📊 Global Memory', value: `\`${memoryCount}\` stored facts`, inline: true },
-                    { name: '👤 Your Memory', value: `\`${userMemoryCount}\$ stored about you`, inline: true },
-                    { name: '💾 Retention', value: `Permanent • Cross-session • Always learning`, inline: true }
-                )
-                .setFooter({ text: 'Memories are created when you share preferences or repeat topics' })
-                .setTimestamp();
-            
-            return message.reply({ embeds: [memoryEmbed] });
         }
 
         // --- ACTIVATE LYDIA ---
@@ -159,17 +160,26 @@ module.exports = {
                 return message.reply("⚠️ **Lydia is already active** in this channel.");
             }
 
-            // Set default agent if none selected
+            // Load saved agent preference if exists
             if (!client.lydiaAgents[channelId]) {
-                client.lydiaAgents[channelId] = 'default';
+                const savedAgent = database.prepare("SELECT agent_key FROM lydia_agents WHERE channel_id = ?").get(channelId);
+                if (savedAgent && neuralCores[savedAgent.agent_key]) {
+                    client.lydiaAgents[channelId] = savedAgent.agent_key;
+                } else {
+                    client.lydiaAgents[channelId] = 'default';
+                }
             }
 
-            // Warn about missing APIs but still allow activation
+            // Warn about missing APIs
             let warning = '';
             if (!process.env.GROQ_API_KEY) warning += '\n⚠️ **Groq API missing** - AI responses limited';
             if (!process.env.BRAVE_API_KEY) warning += '\n⚠️ **Brave API missing** - Web search unavailable';
 
             client.lydiaChannels[channelId] = true;
+            
+            // Update database with active status
+            saveAgentToDB(channelId, client.lydiaAgents[channelId]);
+            
             const currentAgent = neuralCores[client.lydiaAgents[channelId]] || neuralCores.default;
             
             const onEmbed = new EmbedBuilder()
@@ -178,12 +188,12 @@ module.exports = {
                 .setDescription(`**Lydia is now ONLINE** in <#${channelId}>${warning}`)
                 .addFields(
                     { name: '🎯 Active Core', value: currentAgent.name, inline: true },
-                    { name: '💾 Memory', value: 'Persistent recall enabled', inline: true },
+                    { name: '🧠 Memory', value: 'Persistent recall enabled', inline: true },
                     { name: '🎮 How to Use', value: `Mention **@Lydia** or reply to her messages`, inline: false },
                     { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
                     { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
                 )
-                .setFooter({ text: 'POWERED BY GROQ + BRAVE SEARCH + PERSISTENT MEMORY' })
+                .setFooter({ text: `POWERED BY GROQ + BRAVE SEARCH • v${client.version}` })
                 .setTimestamp();
 
             return message.reply({ embeds: [onEmbed] });
@@ -196,7 +206,14 @@ module.exports = {
             }
 
             delete client.lydiaChannels[channelId];
-            // Keep agent preference for next activation
+            
+            // Update database with inactive status (preserve agent preference)
+            if (client.lydiaAgents[channelId]) {
+                database.prepare(`
+                    UPDATE lydia_agents SET is_active = 0, updated_at = strftime('%s', 'now')
+                    WHERE channel_id = ?
+                `).run(channelId);
+            }
             
             const offEmbed = new EmbedBuilder()
                 .setColor('#e74c3c')
@@ -204,9 +221,9 @@ module.exports = {
                 .setDescription(`**Lydia has been deactivated** in <#${channelId}>.`)
                 .addFields(
                     { name: '🔄 Reactivate', value: `\`${prefix}lydia on\` to restart`, inline: true },
-                    { name: '🧠 Memory Saved', value: 'All memories preserved for next session', inline: true }
+                    { name: '🧠 Memory Preserved', value: 'Agent preference saved for next activation', inline: true }
                 )
-                .setFooter({ text: 'ARCHITECT CG-223 • Persistent Memory Active' })
+                .setFooter({ text: `ARCHITECT CG-223 • v${client.version}` })
                 .setTimestamp();
 
             return message.reply({ embeds: [offEmbed] });
