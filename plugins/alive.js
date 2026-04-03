@@ -14,7 +14,7 @@ module.exports = {
      * @param {Client} client - Discord client instance
      * @param {Message} message - Message object
      * @param {Array} args - Command arguments
-     * @param {Object} database - Database object
+     * @param {Object} database - Database object (better-sqlite3 instance)
      */
     run: async (client, message, args, database) => {
         const startTime = Date.now();
@@ -48,13 +48,13 @@ module.exports = {
         const userCount = client.users.cache.size;
         const channelCount = client.channels.cache.size;
         
-        // Get database stats
-        const dbUserCount = Object.keys(database).length;
+        // Get actual count from SQLite database
+        const dbUserCount = database.prepare("SELECT COUNT(*) as count FROM users").get().count;
         
         // Calculate API latency
         const apiLatency = Date.now() - startTime;
         
-        // Get bot version from client
+        // Get bot version from client (DYNAMIC - reads from version.txt)
         const botVersion = client.version || '1.1.0';
         
         // Create the main embed
@@ -122,6 +122,6 @@ module.exports = {
         await replyMsg.edit({ embeds: [updatedEmbed] });
         
         // Log to console for monitoring
-        console.log(`[ALIVE] Checked by ${message.author.tag} | Servers: ${serverCount} | Users: ${userCount} | Version: v${botVersion}`);
+        console.log(`[ALIVE] Checked by ${message.author.tag} | Servers: ${serverCount} | Users: ${userCount} | DB Users: ${dbUserCount} | Version: v${botVersion}`);
     }
 };
