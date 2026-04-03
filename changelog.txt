@@ -1,0 +1,7 @@
++ [v1.2.0] - Neural Sync Update
+- Implemented Dynamic Versioning (via version.txt) across all core modules.
+- Upgraded !dashboard with Power Ranking system and SQL Analytics.
+- Optimized !alive with real-time API latency and RAM tracking.
+- Enhanced !help with interactive Select Menus and category emojis.
+- Fixed command collector logic to prevent interaction failures.
+- Synced system time to Africa/Bamako for local node accuracy.
