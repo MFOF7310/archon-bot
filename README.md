@@ -1,7 +1,8 @@
 # ☁️ CLOUD GAMING-223 DIGITAL ENGINE
 
 <div align="center">
-  <img src="https://i.imgur.com/8NnQpPH.gif" width="100" height="100" alt="Engine Core">
+  <img src="https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/assets/engine-core.gif
+(Note: You'll need to upload a GIF named engine-core.gif to an assets folder in your repo, or use a stable link like https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxx6rS6Yhry/giphy.gif)">
   <br>
   <strong>A high-performance, modular Discord framework optimized for cloud gaming, neural interactions, and low-latency connectivity.</strong>
   <br>
