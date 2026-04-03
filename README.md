@@ -77,7 +77,7 @@ WELCOME_CHANNEL_ID=your_welcome_id
 };
 ```
 
-### 📄 License
+## 📄 License
 ​<div align="center">
 Copyright (c) 2026 CLOUD GAMING-223 (Architect)
 Licensed under the MIT License.
