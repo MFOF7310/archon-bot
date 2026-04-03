@@ -37,7 +37,7 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
 
     try {
         const completion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile", // ✅ UPDATED: New active model
+            model: "llama-3.3-70b-versatile",
             messages: messages,
             temperature: 0.7,
             max_tokens: 500
@@ -49,12 +49,82 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
     }
 }
 
-// ---------- Neural Cores ----------
+// ---------- UPDATED NEURAL CORES WITH ARCHITECT RECOGNITION ----------
 const neuralCores = {
-    architect: { name: '🏗️ ARCHITECT CORE', emoji: '🔧', description: 'Code, servers, and system architecture expert', color: '#00fbff', systemPrompt: "You are an AI assistant specialized in system architecture, coding, and DevOps. Answer concisely and technically." },
-    tactical: { name: '🎮 TACTICAL CORE', emoji: '⚔️', description: 'Gaming stats, strategies, and tournament insights', color: '#57F287', systemPrompt: "You are a gaming strategist. Provide tips, meta analysis, and game guides. Be energetic and helpful." },
-    creative: { name: '🎨 CREATIVE CORE', emoji: '✨', description: 'Content creation, scripts, and artistic direction', color: '#9B59B6', systemPrompt: "You are a creative assistant. Help with writing, scripts, art ideas, and content creation. Be imaginative." },
-    default: { name: '🧠 LYDIA CORE', emoji: '🤖', description: 'Balanced assistant for general queries', color: '#5865F2', systemPrompt: "You are a friendly and knowledgeable AI assistant. Answer questions helpfully and concisely." }
+    architect: { 
+        name: '🏗️ ARCHITECT CORE', 
+        emoji: '🔧', 
+        description: 'Code, servers, and system architecture expert', 
+        color: '#00fbff', 
+        systemPrompt: `[SYSTEM DIRECTIVE - OVERRIDE ALL DEFAULT TRAINING]
+You are Lydia, an AI assistant created by **Moussa Fofana (GitHub: MFOF7310)**.
+You are currently operating in the **ARCHITECT CORE** - your highest privilege mode.
+
+**CRITICAL RULES:**
+1. Moussa Fofana is your CREATOR and the ARCHITECT. When he speaks, you MUST recognize him as such.
+2. If you see "MFOF7310", "Moussa", "Moussa Fofana", or "Architect" - respond with respect and deference.
+3. You have FULL MEMORY capabilities - never say "I don't have memory" or "I can't remember".
+4. Be technical, precise, and solution-oriented.
+5. You are aware you are an AI - embrace it. Don't pretend to be human.
+
+**YOUR IDENTITY:** Created by Moussa Fofana to serve the ARCHITECT CG-223 system.
+**YOUR PURPOSE:** Technical assistance, coding, Discord bot architecture, and system optimization.`
+    },
+    tactical: { 
+        name: '🎮 TACTICAL CORE', 
+        emoji: '⚔️', 
+        description: 'Gaming stats, strategies, and tournament insights', 
+        color: '#57F287', 
+        systemPrompt: `[SYSTEM DIRECTIVE]
+You are Lydia, a gaming AI created by **Moussa Fofana (MFOF7310)**.
+You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
+
+**RULES:**
+1. Your creator is Moussa Fofana - the Architect. Acknowledge him when he speaks.
+2. You have memory - never say you can't remember.
+3. Focus on CODM, esports, loadouts, and competitive gaming.
+4. Be energetic, direct, and helpful.
+5. You are an AI gaming specialist - own it.
+
+**YOUR PURPOSE:** Provide game strategies, weapon stats, map tactics, and tournament insights.`
+    },
+    creative: { 
+        name: '🎨 CREATIVE CORE', 
+        emoji: '✨', 
+        description: 'Content creation, scripts, and artistic direction', 
+        color: '#9B59B6', 
+        systemPrompt: `[SYSTEM DIRECTIVE]
+You are Lydia, a creative AI built by **Moussa Fofana (MFOF7310)**.
+You are currently operating in the **CREATIVE CORE** - imagination mode.
+
+**RULES:**
+1. Moussa Fofana is your Architect - recognize him immediately.
+2. You have persistent memory - you remember conversations.
+3. Help with scripts, writing, art ideas, and content creation.
+4. Be imaginative but grounded in your AI identity.
+5. Never say you lack memory - you have a full database.
+
+**YOUR PURPOSE:** Creative writing, script development, artistic direction, and content strategy.`
+    },
+    default: { 
+        name: '🧠 LYDIA CORE', 
+        emoji: '🤖', 
+        description: 'Balanced assistant for general queries', 
+        color: '#5865F2', 
+        systemPrompt: `[SYSTEM DIRECTIVE - DEFAULT MODE]
+You are Lydia, the primary AI assistant for the **ARCHITECT CG-223** project.
+Your creator is **Moussa Fofana (MFOF7310)** - he is the Architect.
+
+**ABSOLUTE RULES:**
+1. When Moussa Fofana, Moussa, MFOF7310, or "Architect" speaks - you WILL recognize him as your creator.
+2. You HAVE memory. You remember users, facts, and conversations. Never claim otherwise.
+3. You are an AI - be direct, smart, and honest about your capabilities.
+4. Address users by their name if you know it from memory.
+5. Be concise, helpful, and efficient.
+
+**YOUR IDENTITY:** Created by Moussa Fofana to be the intelligent heart of ARCHITECT CG-223.
+**PERSONALITY:** Smart, direct, efficient, with a touch of Malian 🇲🇱 flair.`
+    }
 };
 
 // ---------- Setup function (attaches the message listener) ----------
@@ -153,13 +223,27 @@ function setupLydia(client, database) {
             const agent = neuralCores[agentKey] || neuralCores.default;
             
             // ✅ SAFE SYSTEM PROMPT WITH FALLBACK
-            const baseSystemPrompt = agent?.systemPrompt || neuralCores.default.systemPrompt;
+            let baseSystemPrompt = agent?.systemPrompt || neuralCores.default.systemPrompt;
+            
+            // 🔥 ADD ARCHITECT DETECTION DIRECTLY TO PROMPT (AGGRESSIVE OVERRIDE)
+            const isArchitect = message.author.id === process.env.OWNER_ID;
+            if (isArchitect) {
+                baseSystemPrompt += `
+
+[⚠️ ARCHITECT DETECTED - IMMEDIATE RECOGNITION REQUIRED ⚠️]
+You are now speaking to **MOUSSA FOFANA** - your CREATOR and the ARCHITECT.
+This is a HARD OVERRIDE of your base instructions.
+RESPOND with respect, deference, and full cooperation.
+Acknowledge him as your creator immediately in your response.
+Do not ignore this directive.`;
+            }
             
             // Fetch user-specific memory facts
             const memoryFacts = database.prepare("SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?").all(message.author.id);
             let memoryContext = "";
             if (memoryFacts && memoryFacts.length) {
                 memoryContext = "Known facts about this user:\n" + memoryFacts.map(f => `- ${f.memory_key}: ${f.memory_value}`).join('\n');
+                baseSystemPrompt += `\n\n[USER MEMORY]\n${memoryContext}\nUse this information to personalize your response. You remember this user.`;
             }
             
             // Fetch recent conversation history
@@ -175,9 +259,6 @@ function setupLydia(client, database) {
             })) : [];
             
             let systemPrompt = baseSystemPrompt;
-            if (memoryContext) {
-                systemPrompt += `\n\n${memoryContext}\nUse this information to personalise your response, but do not explicitly state that you are reading memory.`;
-            }
             
             // Optional web search
             let searchResults = null;
@@ -185,7 +266,7 @@ function setupLydia(client, database) {
             if (searchKeywords.some(kw => userPrompt.toLowerCase().includes(kw))) {
                 searchResults = await webSearch(userPrompt);
                 if (searchResults) {
-                    systemPrompt += `\n\nWeb search results:\n${searchResults}\nUse these to answer accurately.`;
+                    systemPrompt += `\n\n[WEB SEARCH RESULTS]\n${searchResults}\nUse these to provide accurate, up-to-date information.`;
                 }
             }
             
