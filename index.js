@@ -9,8 +9,20 @@ const axios = require('axios');
 // IMPORT LYDIA SETUP FUNCTION
 const { setupLydia } = require('./plugins/lydia.js');
 
+// --- GLOBAL ERROR HANDLER (Prevents crashes) ---
+process.on('uncaughtException', (error) => {
+    console.log(`\x1b[31m[UNCAUGHT EXCEPTION]\x1b[0m ${error.message}`);
+    console.log(error.stack);
+    // Don't crash - just log and continue
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.log(`\x1b[31m[UNHANDLED REJECTION]\x1b[0m ${reason}`);
+    // Don't crash - just log and continue
+});
+
 // --- TERMINAL COLORS ---
-const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", reset = "\x1b[0m", bold = "\x1b[1m";
+const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m", bold = "\x1b[1m";
 
 const client = new Client({
     intents: [
@@ -163,21 +175,55 @@ const updateGamingStats = (userId, gamesPlayedInc = 0, gamesWonInc = 0, winnings
     return true;
 };
 
-// Load saved agent preferences from database on startup
+// Load saved agent preferences from database on startup (CRASH-PROOF)
 const loadAgentPreferences = () => {
-    // Fetch from the lydia_agents table
-    const savedAgents = db.prepare("SELECT * FROM lydia_agents").all();
-    
-    savedAgents.forEach(agent => {
-        // Only mark them as active if the database says is_active = 1
-        if (agent.is_active === 1) {
-            client.lydiaChannels[agent.channel_id] = true;
-            client.lydiaAgents[agent.channel_id] = agent.agent_key;
+    try {
+        // First, verify the table exists
+        const tableCheck = db.prepare(`
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='lydia_agents'
+        `).get();
+        
+        if (!tableCheck) {
+            console.log(`${yellow}[AGENT]${reset} lydia_agents table not found, skipping load.`);
+            return;
         }
-    });
-    
-    console.log(`${green}[AGENT]${reset} Synchronized ${savedAgents.length} neural paths.`);
-    console.log(`${cyan}[AGENT]${reset} Active channels: ${Object.keys(client.lydiaChannels).length}`);
+        
+        // Fetch all agents
+        const savedAgents = db.prepare("SELECT * FROM lydia_agents").all();
+        
+        if (!savedAgents || savedAgents.length === 0) {
+            console.log(`${green}[AGENT]${reset} No saved agents found. Ready for new registrations.`);
+            return;
+        }
+        
+        // Initialize objects if they don't exist
+        if (!client.lydiaChannels) client.lydiaChannels = {};
+        if (!client.lydiaAgents) client.lydiaAgents = {};
+        
+        let activeCount = 0;
+        
+        savedAgents.forEach(agent => {
+            try {
+                // Only restore if channel_id exists
+                if (agent.channel_id && agent.is_active === 1) {
+                    client.lydiaChannels[agent.channel_id] = true;
+                    client.lydiaAgents[agent.channel_id] = agent.agent_key || 'default';
+                    activeCount++;
+                }
+            } catch (err) {
+                console.log(`${yellow}[AGENT]${reset} Failed to restore agent for ${agent.channel_id}: ${err.message}`);
+            }
+        });
+        
+        console.log(`${green}[AGENT]${reset} Synchronized ${savedAgents.length} neural paths (${activeCount} active).`);
+        
+    } catch (err) {
+        console.log(`${red}[AGENT CRITICAL]${reset} Failed to load preferences: ${err.message}`);
+        // Don't crash - just initialize empty objects
+        client.lydiaChannels = client.lydiaChannels || {};
+        client.lydiaAgents = client.lydiaAgents || {};
+    }
 };
 
 // Save agent preference to database with is_active status
@@ -315,7 +361,7 @@ client.loadPlugins = async () => {
                 console.log(`${yellow}[SKIPPED]${reset} ${file}: Incomplete Structure.`);
             }
         } catch (error) { 
-            console.log(`${blue}[ERROR]${reset} Failed ${file}: ${error.message}`); 
+            console.log(`${red}[ERROR]${reset} Failed ${file}: ${error.message}`); 
         }
     }
     
