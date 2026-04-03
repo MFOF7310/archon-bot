@@ -48,8 +48,48 @@ cloud-gaming-223-digital-engine/
 
 ### ​1. Clone & Enter
 ```git clone [https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git](https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git)
-cd cloud-gaming-223-digital-engine```
+cd cloud-gaming-223-digital-engine
+```
 
 ### 2. Dependencies
 ```npm install```
+
+### 3. Environment Setup (.env)
+```DISCORD_TOKEN=your_token
+GROQ_API_KEY=your_key
+BRAVE_API_KEY=your_key
+PREFIX=.
+
+# --- SYSTEM SETTINGS ---
+OWNER_ID=your_discord_id
+LOG_CHANNEL_ID=your_channel_id
+WELCOME_CHANNEL_ID=your_welcome_id
+```
+
+## 🔌 Plugin Development
+​Expanding the engine is modular. Simply add a .js file to /plugins:
+```module.exports = {
+  name: 'cmd',
+  description: 'Pro Description',
+  async run(client, message, args, database) {
+    // Your logic here
+  }
+};
+```
+
+### 📄 License
+​<div align="center">
+Copyright (c) 2026 CLOUD GAMING-223 (Architect)
+Licensed under the MIT License.
+
+
+
+<strong>Made with ❤️ for the Cloud Gaming Community.</strong>
+
+
+<a href="https://www.google.com/search?q=https://github.com/MFOF7310/cloud-gaming-223-digital-engine/issues">Report Bug</a> • <a href="https://www.google.com/search?q=https://github.com/MFOF7310/cloud-gaming-223-digital-engine/issues">Request Feature</a>
+</div>
+​Current Version: 1.3.0
+Architect: MFOF7310
+Node: BAMAKO_223 🇲🇱
 
