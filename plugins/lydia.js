@@ -49,7 +49,7 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
     }
 }
 
-// ---------- UPDATED NEURAL CORES WITH ARCHITECT RECOGNITION ----------
+// ---------- NEURAL CORES WITH ARCHITECT RECOGNITION ----------
 const neuralCores = {
     architect: { 
         name: '🏗️ ARCHITECT CORE', 
@@ -225,6 +225,11 @@ function setupLydia(client, database) {
             // ✅ SAFE SYSTEM PROMPT WITH FALLBACK
             let baseSystemPrompt = agent?.systemPrompt || neuralCores.default.systemPrompt;
             
+            // 🛰️ CAPTURE LIVE DISCORD CONTEXT
+            const serverName = message.guild ? message.guild.name : "Direct Message";
+            const channelName = message.channel ? message.channel.name : "Unknown Channel";
+            const currentUserName = message.member?.displayName || message.author.username;
+            
             // 🔥 ADD ARCHITECT DETECTION DIRECTLY TO PROMPT (AGGRESSIVE OVERRIDE)
             const isArchitect = message.author.id === process.env.OWNER_ID;
             if (isArchitect) {
@@ -258,7 +263,21 @@ Do not ignore this directive.`;
                 content: row.content
             })) : [];
             
+            // 🛰️ BUILD FINAL SYSTEM PROMPT WITH LIVE CONTEXT
             let systemPrompt = baseSystemPrompt;
+            
+            // INJECT LIVE DISCORD CONTEXT (Server & Channel)
+            systemPrompt += `
+
+[🛰️ LIVE SESSION DATA - CURRENT CONTEXT]
+- Current Server: ${serverName}
+- Current Channel: #${channelName}
+- Current User: ${currentUserName}
+- Interaction Mode: Discord Server Engagement
+
+You are currently active in the "${serverName}" server, speaking with ${currentUserName} in the #${channelName} channel.
+Use this context to orient your responses appropriately.
+This is REAL-TIME data from the Discord server.`;
             
             // Optional web search
             let searchResults = null;
