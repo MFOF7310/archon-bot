@@ -117,11 +117,12 @@ db.prepare(`
     )
 `).run();
 
-// Create Lydia Agents Table for persistent agent preferences across bot restarts
+// Create Lydia Agents Table with is_active column
 db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_agents (
         channel_id TEXT PRIMARY KEY,
         agent_key TEXT,
+        is_active INTEGER DEFAULT 0,
         updated_at INTEGER DEFAULT (strftime('%s', 'now'))
     )
 `).run();
@@ -161,20 +162,20 @@ const updateGamingStats = (userId, gamesPlayedInc = 0, gamesWonInc = 0, winnings
 
 // Load saved agent preferences from database on startup
 const loadAgentPreferences = () => {
-    const savedAgents = db.prepare("SELECT channel_id, agent_key FROM lydia_agents").all();
+    const savedAgents = db.prepare("SELECT channel_id, agent_key, is_active FROM lydia_agents").all();
     for (const agent of savedAgents) {
         client.lydiaAgents[agent.channel_id] = agent.agent_key;
-        console.log(`${cyan}[AGENT]${reset} Loaded ${agent.agent_key} for channel ${agent.channel_id}`);
+        console.log(`${cyan}[AGENT]${reset} Loaded ${agent.agent_key} for channel ${agent.channel_id} (active: ${agent.is_active ? 'ON' : 'OFF'})`);
     }
     console.log(`${green}[AGENT]${reset} Loaded ${savedAgents.length} persistent agent preferences`);
 };
 
-// Save agent preference to database
+// Save agent preference to database with is_active status
 const saveAgentPreference = (channelId, agentKey) => {
     db.prepare(`
-        INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, updated_at)
-        VALUES (?, ?, strftime('%s', 'now'))
-    `).run(channelId, agentKey);
+        INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at)
+        VALUES (?, ?, ?, strftime('%s', 'now'))
+    `).run(channelId, agentKey, client.lydiaChannels[channelId] ? 1 : 0);
 };
 
 // --- GROQ AI CONFIGURATION ---
