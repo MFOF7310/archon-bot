@@ -1,7 +1,9 @@
 # ☁️ CLOUD GAMING-223 DIGITAL ENGINE
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine">
+  <img src="https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/assets/core.png" width="300" height="300" alt="Architect CG-223 Core">
+  <br>
+  <strong>A high-performance, modular Discord framework optimized for cloud gaming, neural interactions, and low-latency connectivity.</strong>
   <br>
   <em>Engineered in Bamako, Mali 🇲🇱</em>
 </div>
