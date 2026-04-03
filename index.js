@@ -23,7 +23,16 @@ const client = new Client({
 // --- SYSTEM GLOBALS ---
 client.commands  = new Collection();
 client.aliases   = new Collection();
-client.version   = "1.1.0"; 
+
+// --- NEW DYNAMIC VERSIONING ---
+try {
+    const versionPath = path.join(__dirname, 'version.txt');
+    client.version = fs.readFileSync(versionPath, 'utf8').trim();
+} catch (err) {
+    console.log(`${yellow}[WARNING]${reset} version.txt not found. Defaulting to 1.1.0`);
+    client.version = "1.1.0"; 
+}
+
 client.lydiaChannels = {};
 client.lastLydiaCall = {};
 
