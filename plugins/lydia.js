@@ -9,7 +9,7 @@ module.exports = {
     cooldown: 5000,
     
     run: async (client, message, args, database) => {
-        // Create agents table for persistent preferences (matches index.js structure with is_active)
+        // Create agents table for persistent preferences (MUST match index.js structure)
         database.prepare(`
             CREATE TABLE IF NOT EXISTS lydia_agents (
                 channel_id TEXT PRIMARY KEY,
