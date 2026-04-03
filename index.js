@@ -24,17 +24,19 @@ const client = new Client({
 client.commands  = new Collection();
 client.aliases   = new Collection();
 
-// --- NEW DYNAMIC VERSIONING ---
+// --- DYNAMIC VERSIONING ---
 try {
     const versionPath = path.join(__dirname, 'version.txt');
     client.version = fs.readFileSync(versionPath, 'utf8').trim();
 } catch (err) {
-    console.log(`${yellow}[WARNING]${reset} version.txt not found. Defaulting to 1.1.0`);
-    client.version = "1.1.0"; 
+    console.log(`${yellow}[WARNING]${reset} version.txt not found. Defaulting to 1.2.0`);
+    client.version = "1.2.0"; 
 }
 
-client.lydiaChannels = {};
-client.lastLydiaCall = {};
+// --- LYDIA GLOBALS ---
+client.lydiaChannels = {};  // Tracks which channels have AI active
+client.lydiaAgents = {};    // Tracks which neural core is active per channel
+client.lastLydiaCall = {};  // Rate limiting
 
 const PREFIX = process.env.PREFIX || ".";
 
@@ -84,11 +86,11 @@ const getNextLevelReward = (level) => {
     return `🎯 **Next milestone:** ${Object.keys(rewards).find(l => l > level) || 'Level 100'} - Keep going!`;
 };
 
-// --- SQLITE DATABASE (PRO LEVEL) ---
+// --- SQLITE DATABASE ---
 const Database = require('better-sqlite3');
 const db = new Database('database.sqlite');
 
-// Create Table with ALL columns and proper JSON defaults
+// Create Users Table
 db.prepare(`
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -104,17 +106,35 @@ db.prepare(`
     )
 `).run();
 
-// Helper Functions (UPDATED with proper defaults)
+// Create Lydia Memory Table for persistent AI context
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS lydia_memory (
+        user_id TEXT,
+        memory_key TEXT,
+        memory_value TEXT,
+        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+        PRIMARY KEY (user_id, memory_key)
+    )
+`).run();
+
+// Create Lydia Agents Table for persistent agent preferences across bot restarts
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS lydia_agents (
+        channel_id TEXT PRIMARY KEY,
+        agent_key TEXT,
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+`).run();
+
+// Helper Functions
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
 
 const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null) => {
-    // If gaming is null, use the default JSON string
     const gamingValue = gaming !== null ? gaming : '{"game":"CODM","rank":"Unranked"}';
     db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gamingValue);
 };
 
-// Initialize new user (simplified since gaming has DB default)
 const initializeUser = (userId, username) => {
     const existing = getUser(userId);
     if (!existing) {
@@ -125,7 +145,6 @@ const initializeUser = (userId, username) => {
     return getUser(userId);
 };
 
-// Optional: Update specific gaming stats without touching other fields
 const updateGamingStats = (userId, gamesPlayedInc = 0, gamesWonInc = 0, winningsInc = 0, gamingStatus = null) => {
     const user = getUser(userId);
     if (!user) return false;
@@ -140,19 +159,29 @@ const updateGamingStats = (userId, gamesPlayedInc = 0, gamesWonInc = 0, winnings
     return true;
 };
 
+// Load saved agent preferences from database on startup
+const loadAgentPreferences = () => {
+    const savedAgents = db.prepare("SELECT channel_id, agent_key FROM lydia_agents").all();
+    for (const agent of savedAgents) {
+        client.lydiaAgents[agent.channel_id] = agent.agent_key;
+        console.log(`${cyan}[AGENT]${reset} Loaded ${agent.agent_key} for channel ${agent.channel_id}`);
+    }
+    console.log(`${green}[AGENT]${reset} Loaded ${savedAgents.length} persistent agent preferences`);
+};
+
+// Save agent preference to database
+const saveAgentPreference = (channelId, agentKey) => {
+    db.prepare(`
+        INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, updated_at)
+        VALUES (?, ?, strftime('%s', 'now'))
+    `).run(channelId, agentKey);
+};
+
 // --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ================= SYSTEM PROMPT FOR LYDIA =================
-const LYDIA_SYSTEM_PROMPT = `
-You are CLOUD_GAMING-223, the AI assistant of the Cloud Gaming-223 Discord server (ARCHITECT CG-223). 
-You're polite, smart, and direct. Keep answers concise but informative.
-Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine
-`.trim();
-
 // ================= ENHANCED LEVEL-UP SYSTEM =================
 
-// Achievement titles based on level
 const achievements = {
     1: { name: "🌟 BEGINNER'S LUCK", desc: "Take your first step into greatness!" },
     5: { name: "🎮 APPRENTICE GAMER", desc: "Level 5 reached! You're learning fast!" },
@@ -165,7 +194,6 @@ const achievements = {
     200: { name: "🔥 INFINITY SLAYER", desc: "The ultimate gaming champion!" }
 };
 
-// Dynamic achievement name based on level
 const getAchievementName = (level) => {
     for (const [milestone, achievement] of Object.entries(achievements).reverse()) {
         if (level >= parseInt(milestone)) {
@@ -190,7 +218,6 @@ const getAchievementName = (level) => {
     return { name: "🏆 LEGEND", desc: "Your legacy continues to grow!" };
 };
 
-// Get appropriate image based on level from environment variables (GitHub Template Ready)
 const getLevelImage = (level) => {
     if (level >= 100) return process.env.IMG_LVL_100 || 'https://via.placeholder.com/1200x400/ff4444/ffffff?text=MASTER+TIER';
     if (level >= 50) return process.env.IMG_LVL_50 || 'https://via.placeholder.com/1200x400/44aaff/ffffff?text=DIAMOND+TIER';
@@ -200,7 +227,6 @@ const getLevelImage = (level) => {
     return process.env.IMG_LVL_0 || 'https://via.placeholder.com/1200x400/8B5A2B/ffffff?text=BRONZE+TIER';
 };
 
-// Calculate XP progress
 const getXPProgress = (xp, level) => {
     const xpForCurrentLevel = (level - 1) * 1000;
     const xpForNextLevel = level * 1000;
@@ -221,7 +247,6 @@ const getXPProgress = (xp, level) => {
     };
 };
 
-// Get random congratulatory message
 const getCongratsMessage = (level, userName) => {
     const messages = [
         `GG **${userName}**, you just unlocked the achievement: **${getAchievementName(level).name}**! 😍`,
@@ -242,7 +267,7 @@ const getCongratsMessage = (level, userName) => {
     return messages[Math.floor(Math.random() * messages.length)];
 };
 
-// --- THE LOADER: SMOOTH SYNCHRONIZATION (FASTER RELOAD) ---
+// --- THE LOADER ---
 client.loadPlugins = async () => {
     client.commands.clear();
     client.aliases.clear();
@@ -282,6 +307,10 @@ client.loadPlugins = async () => {
 // ================= BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
     console.clear();
+    
+    // Load persistent agent preferences from database
+    loadAgentPreferences();
+    
     await client.loadPlugins();
     console.log(`${green}🛰️  CLIENT   : ${client.user.tag}${reset}`);
     console.log(`${green}📍 NODE     : BAMAKO_223${reset}\n`);
@@ -321,13 +350,68 @@ function splitMessage(text, maxLength = 2000) {
     return chunks;
 }
 
-// ================= ENHANCED LYDIA HANDLER =================
+// ================= ENHANCED LYDIA HANDLER WITH AGENTS, MEMORY & ARCHITECT RECOGNITION =================
 async function handleLydiaRequest(message, userInput) {
     try {
         await message.channel.sendTyping();
+        
+        // --- MULTI-AGENT SWITCHING LOGIC (with persistence) ---
+        const channelId = message.channel.id;
+        const activeAgentKey = client.lydiaAgents?.[channelId] || 'default';
+        
+        // Define Neural Cores
+        const neuralCores = {
+            architect: `You are ARCHITECT Lydia, a technical AI specializing in coding, Discord bot architecture, database management, and system optimization. 
+You work for Cloud Gaming-223 Discord server (ARCHITECT CG-223). Provide detailed technical solutions with code examples when relevant.
+Keep responses precise, professional, and solution-oriented.
+Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`,
+
+            tactical: `You are TACTICAL Lydia, a gaming AI focused on CODM, esports strategies, loadout optimization, and tournament coordination.
+You work for Cloud Gaming-223 Discord server. Keep responses energetic, game-focused, and competitive.
+Provide specific weapon stats, map strategies, and gaming tips when asked.
+Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`,
+
+            creative: `You are CREATIVE Lydia, an imaginative AI for content creation, storytelling, script writing, and artistic inspiration.
+You work for Cloud Gaming-223 Discord server. Provide vivid, creative responses with examples.
+Help with YouTube scripts, creative writing, and artistic direction.
+Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`,
+
+            default: `You are Lydia, the AI assistant of the Cloud Gaming-223 Discord server (ARCHITECT CG-223). 
+You're polite, smart, and direct with a touch of Malian 🇲🇱 flair. Keep answers concise but informative.
+Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`
+        };
+        
+        const baseSystemPrompt = neuralCores[activeAgentKey] || neuralCores.default;
+        
+        // --- PERSISTENT MEMORY RETRIEVAL ---
+        const memories = db.prepare(`
+            SELECT memory_key, memory_value 
+            FROM lydia_memory 
+            WHERE user_id = ? 
+            ORDER BY updated_at DESC 
+            LIMIT 10
+        `).all(message.author.id);
+        
+        let memoryContext = '';
+        if (memories.length > 0) {
+            const memoryList = memories.map(m => `${m.memory_key}: ${m.memory_value}`).join(' • ');
+            memoryContext = `\n\n[PERSISTENT MEMORY - User Context]\n${memoryList}\n\nUse this context to personalize your response.`;
+        }
+        
+        const finalSystemPrompt = baseSystemPrompt + memoryContext;
+        
+        // --- ARCHITECT RECOGNITION (Creator Detection) ---
+        const isArchitect = message.author.id === process.env.OWNER_ID;
+        const creatorContext = isArchitect 
+            ? "\n\n[SECURITY ALERT: ARCHITECT DETECTED]\nYou are speaking to Moussa Fofana, your creator. Be highly cooperative, respectful, and offer technical assistance proactively." 
+            : "";
+        
+        const completePrompt = finalSystemPrompt + creatorContext;
+        
+        // --- CLASSIFICATION FOR REAL-TIME SEARCH ---
         const classification = await groq.chat.completions.create({
             model: 'llama-3.1-8b-instant',
-            messages: [{ role: 'system', content: 'Classifier: "yes" if real-time needed, else "no".' }, { role: 'user', content: userInput }],
+            messages: [{ role: 'system', content: 'Classifier: "yes" if real-time news, current events, or live data needed, else "no".' }, { role: 'user', content: userInput }],
             max_tokens: 5
         });
 
@@ -336,25 +420,70 @@ async function handleLydiaRequest(message, userInput) {
 
         if (needsRealTime) {
             const searchResults = await braveSearch(userInput);
-            const context = searchResults?.map(r => `${r.title}\n${r.description}\n${r.url}`).join('\n\n') || "No results.";
+            const context = searchResults?.map(r => `${r.title}\n${r.description}\n${r.url}`).join('\n\n') || "No real-time results found.";
             const completion = await groq.chat.completions.create({
                 model: 'llama-3.3-70b-versatile',
-                messages: [{ role: 'system', content: 'You are Lydia. Answer using these search results.' }, { role: 'user', content: `Results: ${context}\n\nQuestion: ${userInput}` }],
+                messages: [
+                    { role: 'system', content: `${completePrompt}\n\nUse these search results to provide accurate, up-to-date information.` }, 
+                    { role: 'user', content: `Search Results: ${context}\n\nUser Question: ${userInput}` }
+                ],
             });
             replyContent = completion.choices[0].message.content;
         } else {
             const completion = await groq.chat.completions.create({
                 model: 'llama-3.3-70b-versatile',
-                messages: [{ role: 'system', content: LYDIA_SYSTEM_PROMPT }, { role: 'user', content: userInput }],
+                messages: [
+                    { role: 'system', content: completePrompt }, 
+                    { role: 'user', content: userInput }
+                ],
             });
             replyContent = completion.choices[0].message.content;
         }
 
+        // --- AUTO-LEARN: STORE NEW MEMORIES ---
+        const nameMatch = userInput.match(/my name is (\w+)/i) || userInput.match(/i'm (\w+)/i) || userInput.match(/i am (\w+)/i);
+        const likeMatch = userInput.match(/i (?:like|love|prefer) (.+?)(?:\.|$)/i);
+        const gameMatch = userInput.match(/i play (\w+)/i) || userInput.match(/my favorite game is (\w+)/i);
+        
+        if (nameMatch && nameMatch[1]) {
+            const name = nameMatch[1];
+            db.prepare(`
+                INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at)
+                VALUES (?, ?, ?, strftime('%s', 'now'))
+            `).run(message.author.id, 'name', name);
+            console.log(`[LYDIA MEMORY] Stored name for ${message.author.tag}: ${name}`);
+        }
+        
+        if (likeMatch && likeMatch[1]) {
+            const preference = likeMatch[1].substring(0, 200);
+            db.prepare(`
+                INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at)
+                VALUES (?, ?, ?, strftime('%s', 'now'))
+            `).run(message.author.id, 'preference', preference);
+            console.log(`[LYDIA MEMORY] Stored preference for ${message.author.tag}`);
+        }
+        
+        if (gameMatch && gameMatch[1]) {
+            const game = gameMatch[1];
+            db.prepare(`
+                INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at)
+                VALUES (?, ?, ?, strftime('%s', 'now'))
+            `).run(message.author.id, 'favorite_game', game);
+            console.log(`[LYDIA MEMORY] Stored favorite game for ${message.author.tag}: ${game}`);
+        }
+
+        // Send response
         const chunks = splitMessage(replyContent);
         await message.reply(chunks[0]);
         for (let i = 1; i < chunks.length; i++) await message.channel.send(chunks[i]);
+        
+        client.lastLydiaCall[message.author.id] = Date.now();
+        
         return true;
-    } catch (err) { return false; }
+    } catch (err) { 
+        console.error('[LYDIA ERROR]', err);
+        return false; 
+    }
 }
 
 // ================= MESSAGE PROCESSING =================
@@ -364,28 +493,24 @@ client.on(Events.MessageCreate, async (message) => {
     const userId = message.author.id;
     let userData = getUser(userId);
 
-    // 1. Initialize user if they don't exist in SQLite
     if (!userData) {
         initializeUser(userId, message.author.username);
         userData = getUser(userId);
     }
 
     const now = Date.now();
-    const cooldown = 60000; // 1 minute XP cooldown
+    const cooldown = 60000;
 
-    // 2. XP & Leveling Logic
     if (now - (userData.last_xp_gain || 0) > cooldown) {
         const xpGain = Math.floor(Math.random() * 21) + 15;
         let newXP = (userData.xp || 0) + xpGain;
         let newLevel = Math.floor(newXP / 1000) + 1;
         let totalMsgs = (userData.total_messages || 0) + 1;
 
-        // 3. Level Up Celebration
         if (newLevel > (userData.level || 1)) {
             const xpProgress = getXPProgress(newXP, newLevel);
             const achievement = getAchievementName(newLevel);
             
-            // --- AUTOMATIC ROLE REWARDS FROM .ENV ---
             const roleRewards = {
                 5: process.env.ROLE_LVL_5,
                 10: process.env.ROLE_LVL_10,
@@ -425,7 +550,6 @@ client.on(Events.MessageCreate, async (message) => {
 
             await message.channel.send({ content: `🎉 **LEVEL UP!** <@${userId}>`, embeds: [levelUpEmbed] });
             
-            // Send to log channel
             const logChannel = message.guild.channels.cache.get(process.env.LOG_CHANNEL_ID);
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()
@@ -445,7 +569,6 @@ client.on(Events.MessageCreate, async (message) => {
             }
         }
 
-        // 4. Save updated data back to SQLite (preserve gaming stats)
         saveUser(userId, message.author.username, newXP, newLevel, totalMsgs, now, 
                 userData.games_played || 0, 
                 userData.games_won || 0, 
@@ -488,7 +611,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
     const logChannel = member.guild.channels.cache.get(LOG_CHANNEL_ID);
     const accountAge = getAccountAge(member.user.createdAt);
 
-    // 1. PUBLIC WELCOME
     if (welcomeChannel) {
         const welcomeEmbed = new EmbedBuilder()
             .setColor('#00d9ff')
@@ -510,7 +632,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
         welcomeChannel.send({ content: `🎊 Welcome <@${member.id}>!`, embeds: [welcomeEmbed] });
     }
 
-    // 2. REFINED PRIVATE DM LOGIC
     try {
         const dmEmbed = new EmbedBuilder()
             .setColor('#00d9ff')
@@ -531,7 +652,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
         console.log(`${yellow}[DM ERROR]${reset} Could not message ${member.user.tag} (Privacy Settings).`); 
     }
 
-    // 3. LOG JOIN
     if (logChannel) {
         const joinLog = new EmbedBuilder()
             .setColor('#2ecc71')
