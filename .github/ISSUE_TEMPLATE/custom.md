@@ -1,8 +1,10 @@
 ---
-name: 💡 General Inquiry or Collaboration
+name: "\U0001F4A1 General Inquiry or Collaboration"
 about: Use this for questions, partnerships, or general feedback.
-title: '[QUERY] '
+title: "[QUERY] "
 labels: question
+assignees: ''
+
 ---
 
 **What is your inquiry about?**
