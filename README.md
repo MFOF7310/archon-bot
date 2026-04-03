@@ -48,8 +48,7 @@ cloud-gaming-223-digital-engine/
 
 ### ​1. Clone & Enter
 ```git clone [https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git](https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git)
-cd cloud-gaming-223-digital-engine
-```
+cd cloud-gaming-223-digital-engine```
 ### 2. Dependencies
 ```npm install```
 
