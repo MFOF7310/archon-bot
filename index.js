@@ -178,6 +178,13 @@ const saveAgentPreference = (channelId, agentKey) => {
     `).run(channelId, agentKey, client.lydiaChannels[channelId] ? 1 : 0);
 };
 
+// --- ATTACH HELPER FUNCTIONS TO CLIENT FOR PLUGINS ---
+client.saveAgentPreference = saveAgentPreference;
+client.getUser = getUser;
+client.initializeUser = initializeUser;
+client.updateGamingStats = updateGamingStats;
+client.db = db;  // Expose database if needed
+
 // --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -351,33 +358,38 @@ function splitMessage(text, maxLength = 2000) {
     return chunks;
 }
 
-// ================= ENHANCED LYDIA HANDLER WITH AGENTS, MEMORY & ARCHITECT RECOGNITION =================
+// ================= ENHANCED LYDIA HANDLER WITH AGENTS, MEMORY, AND "EYES" =================
 async function handleLydiaRequest(message, userInput) {
     try {
         await message.channel.sendTyping();
         
-        // --- MULTI-AGENT SWITCHING LOGIC (with persistence) ---
+        // --- THE "EYES": Dynamic Context Gathering ---
+        const serverName = message.guild ? message.guild.name : "Direct Message";
+        const channelName = message.channel.name;
+        const currentUserName = message.member?.displayName ?? message.author.username;
+        
         const channelId = message.channel.id;
         const activeAgentKey = client.lydiaAgents?.[channelId] || 'default';
         
-        // Define Neural Cores
+        // Define Neural Cores using dynamic server and user info
         const neuralCores = {
             architect: `You are ARCHITECT Lydia, a technical AI specializing in coding, Discord bot architecture, database management, and system optimization. 
-You work for Cloud Gaming-223 Discord server (ARCHITECT CG-223). Provide detailed technical solutions with code examples when relevant.
+You work for the "${serverName}" Discord server. Provide detailed technical solutions with code examples when relevant.
 Keep responses precise, professional, and solution-oriented.
 Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`,
 
             tactical: `You are TACTICAL Lydia, a gaming AI focused on CODM, esports strategies, loadout optimization, and tournament coordination.
-You work for Cloud Gaming-223 Discord server. Keep responses energetic, game-focused, and competitive.
+You work for the "${serverName}" Discord server. Keep responses energetic, game-focused, and competitive.
 Provide specific weapon stats, map strategies, and gaming tips when asked.
 Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`,
 
             creative: `You are CREATIVE Lydia, an imaginative AI for content creation, storytelling, script writing, and artistic inspiration.
-You work for Cloud Gaming-223 Discord server. Provide vivid, creative responses with examples.
+You work for the "${serverName}" Discord server. Provide vivid, creative responses with examples.
 Help with YouTube scripts, creative writing, and artistic direction.
 Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`,
 
-            default: `You are Lydia, the AI assistant of the Cloud Gaming-223 Discord server (ARCHITECT CG-223). 
+            default: `You are Lydia, the AI assistant of the "${serverName}" Discord server. 
+You are currently speaking to ${currentUserName} in the #${channelName} channel.
 You're polite, smart, and direct with a touch of Malian 🇲🇱 flair. Keep answers concise but informative.
 Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`
         };
@@ -407,7 +419,10 @@ Owner's GitHub: https://github.com/MFOF7310/cloud-gaming-223-digital-engine`
             ? "\n\n[SECURITY ALERT: ARCHITECT DETECTED]\nYou are speaking to Moussa Fofana, your creator. Be highly cooperative, respectful, and offer technical assistance proactively." 
             : "";
         
-        const completePrompt = finalSystemPrompt + creatorContext;
+        // --- LIVE IDENTITY CONTEXT (ensures she never misses the user's name) ---
+        const userIdentityContext = `\n\n[LIVE INTERACTION DATA]\nTarget User: ${currentUserName}\nLocation: ${serverName} > #${channelName}`;
+        
+        const completePrompt = finalSystemPrompt + creatorContext + userIdentityContext;
         
         // --- CLASSIFICATION FOR REAL-TIME SEARCH ---
         const classification = await groq.chat.completions.create({
