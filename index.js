@@ -183,7 +183,7 @@ client.saveAgentPreference = saveAgentPreference;
 client.getUser = getUser;
 client.initializeUser = initializeUser;
 client.updateGamingStats = updateGamingStats;
-client.db = db;  // Expose database if needed
+client.db = db;
 
 // --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -275,7 +275,7 @@ const getCongratsMessage = (level, userName) => {
     return messages[Math.floor(Math.random() * messages.length)];
 };
 
-// --- THE LOADER ---
+// --- THE LOADER (FIXED STYLING) ---
 client.loadPlugins = async () => {
     client.commands.clear();
     client.aliases.clear();
@@ -308,8 +308,12 @@ client.loadPlugins = async () => {
             console.log(`${blue}[ERROR]${reset} Failed ${file}: ${error.message}`); 
         }
     }
+    
+    // --- FIXED BOTTOM STYLE ---
     await sleep(200);
-    console.log(`${green}🚀 ENGINE READY | ${client.commands.size} CORE MODULES ONLINE${reset}\n`);
+    console.log(`${blue}${bold}==============================================${reset}`);
+    console.log(`${green}🚀 ENGINE READY | ${client.commands.size} CORE MODULES ONLINE${reset}`);
+    console.log(`${blue}${bold}==============================================${reset}\n`);
 };
 
 // ================= BOOT SEQUENCE =================
