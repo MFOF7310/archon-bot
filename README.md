@@ -1,10 +1,7 @@
 # ☁️ CLOUD GAMING-223 DIGITAL ENGINE
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine/main/assets/engine-core.gif
-(Note: You'll need to upload a GIF named engine-core.gif to an assets folder in your repo, or use a stable link like https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmZ3JmJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxx6rS6Yhry/giphy.gif)">
-  <br>
-  <strong>A high-performance, modular Discord framework optimized for cloud gaming, neural interactions, and low-latency connectivity.</strong>
+  <img src="https://raw.githubusercontent.com/MFOF7310/cloud-gaming-223-digital-engine">
   <br>
   <em>Engineered in Bamako, Mali 🇲🇱</em>
 </div>
@@ -88,7 +85,7 @@ Licensed under the MIT License.
 <strong>Made with ❤️ for the Cloud Gaming Community.</strong>
 
 
-<a href="https://www.google.com/search?q=https://github.com/MFOF7310/cloud-gaming-223-digital-engine/issues">Report Bug</a> • <a href="https://www.google.com/search?q=https://github.com/MFOF7310/cloud-gaming-223-digital-engine/issues">Request Feature</a>
+<a href="https://github.com/MFOF7310/cloud-gaming-223-digital-engine/issues">Report Bug</a> • <a href="https://github.com/MFOF7310/cloud-gaming-223-digital-engine/issues">Request Feature</a>
 </div>
 ​Current Version: 1.3.0
 Architect: MFOF7310
