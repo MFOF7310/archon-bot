@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const db = require('better-sqlite3')('database.sqlite'); // Single database connection
 
 module.exports = {
     name: 'game',
@@ -32,6 +33,12 @@ module.exports = {
             case 'rps':
             case 'rockpaperscissors':
                 return playRPS(client, message, userData, args[1]);
+            case 'trivia':
+            case 'quiz':
+                return playTrivia(client, message, userData);
+            case 'hangman':
+            case 'hm':
+                return playHangman(client, message, userData);
             case 'leaderboard':
             case 'lb':
                 return showGameLeaderboard(client, message, args[1]);
@@ -42,7 +49,7 @@ module.exports = {
                     .setColor('#ff4757')
                     .setAuthor({ name: 'GAME ERROR: COMMAND_NOT_FOUND', iconURL: client.user.displayAvatarURL() })
                     .setDescription(`Unknown game: \`${subCommand}\``)
-                    .addFields({ name: '📜 AVAILABLE GAMES', value: '`dice` • `coinflip` • `guess` • `slots` • `blackjack` • `rps` • `leaderboard` • `stats`' })
+                    .addFields({ name: '📜 AVAILABLE GAMES', value: '`dice` • `coinflip` • `guess` • `slots` • `blackjack` • `rps` • `trivia` • `hangman` • `leaderboard` • `stats`' })
                     .setFooter({ text: 'Use .game menu to see game details' });
                 return message.reply({ embeds: [errorEmbed] });
         }
@@ -90,6 +97,16 @@ async function showGameMenu(client, message, userData) {
         )
         .addFields(
             { 
+                name: '🧠 NEURAL TRIVIA', 
+                value: '`🧠 .game trivia`\n*Test your data banks. Fast answers win more!*\n**Payout:** Up to 50x • **Cooldown:** 60s', 
+                inline: true 
+            },
+            { 
+                name: '🪑 HANGMAN', 
+                value: '`🪑 .game hangman`\n*Decode the hidden string before the system fails.*\n**Payout:** 20x • **Cooldown:** 60s', 
+                inline: true 
+            },
+            { 
                 name: '📊 YOUR STATS', 
                 value: `\`\`\`yaml\nGames Played: ${userData?.games_played || 0}\nGames Won: ${userData?.games_won || 0}\nWin Rate: ${calculateWinRate(userData)}%\nTotal Winnings: ${(userData?.total_winnings || 0).toLocaleString()} 🪙\`\`\``, 
                 inline: false 
@@ -134,6 +151,18 @@ async function showGameMenu(client, message, userData) {
                 .setLabel('🔢 GUESS')
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
+                .setCustomId('game_trivia')
+                .setLabel('🧠 TRIVIA')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('game_hangman')
+                .setLabel('🪑 HANGMAN')
+                .setStyle(ButtonStyle.Success)
+        );
+    
+    const row3 = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
                 .setCustomId('game_stats')
                 .setLabel('📊 STATS')
                 .setStyle(ButtonStyle.Secondary),
@@ -143,7 +172,7 @@ async function showGameMenu(client, message, userData) {
                 .setStyle(ButtonStyle.Danger)
         );
     
-    const reply = await message.reply({ embeds: [menuEmbed], components: [row, row2] });
+    const reply = await message.reply({ embeds: [menuEmbed], components: [row, row2, row3] });
     
     // Button collector
     const collector = reply.createMessageComponentCollector({ time: 60000 });
@@ -174,6 +203,12 @@ async function showGameMenu(client, message, userData) {
             case 'game_guess':
                 await playNumberGuess(client, message, userData);
                 break;
+            case 'game_trivia':
+                await playTrivia(client, message, userData);
+                break;
+            case 'game_hangman':
+                await playHangman(client, message, userData);
+                break;
             case 'game_stats':
                 await showGameStats(client, message, userData);
                 break;
@@ -186,9 +221,8 @@ async function showGameMenu(client, message, userData) {
     });
 }
 
-// ================= DICE GAME (Interactive with user choice) =================
+// ================= DICE GAME =================
 async function playDiceGame(client, message, userData, guess) {
-    // Check if user provided a guess
     if (!guess) {
         const embed = new EmbedBuilder()
             .setColor('#ff4757')
@@ -201,7 +235,6 @@ async function playDiceGame(client, message, userData, guess) {
     
     const userGuess = parseInt(guess);
     
-    // Validate guess
     if (isNaN(userGuess) || userGuess < 1 || userGuess > 6) {
         const embed = new EmbedBuilder()
             .setColor('#ff4757')
@@ -211,18 +244,14 @@ async function playDiceGame(client, message, userData, guess) {
         return message.reply({ embeds: [embed] });
     }
     
-    const bet = 100; // Base bet amount
+    const bet = 100;
     const roll = Math.floor(Math.random() * 6) + 1;
     const won = userGuess === roll;
     const winnings = won ? bet * 5 : -bet;
     
-    // Update stats
     updateGameStats(message.author.id, won, winnings);
     
-    // Get updated user data for win rate display
-    const db = require('better-sqlite3')('database.sqlite');
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
-    db.close();
     
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : '#ED4245')
@@ -250,7 +279,6 @@ async function playCoinFlip(client, message, userData, choice) {
         return message.reply({ embeds: [embed] });
     }
     
-    // Normalize choice
     let normalizedChoice = choice.toLowerCase();
     if (normalizedChoice === 'h') normalizedChoice = 'heads';
     if (normalizedChoice === 't') normalizedChoice = 'tails';
@@ -263,9 +291,7 @@ async function playCoinFlip(client, message, userData, choice) {
     
     updateGameStats(message.author.id, won, winnings);
     
-    const db = require('better-sqlite3')('database.sqlite');
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
-    db.close();
     
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : '#ED4245')
@@ -281,11 +307,10 @@ async function playCoinFlip(client, message, userData, choice) {
     message.reply({ embeds: [embed] });
 }
 
-// ================= NUMBER GUESS (Interactive) =================
+// ================= NUMBER GUESS (Enhanced Rewards) =================
 let activeGuesses = new Map();
 
 async function playNumberGuess(client, message, userData) {
-    // Check if user already has an active game
     if (activeGuesses.has(message.author.id)) {
         return message.reply('❌ You already have an active guess game! Complete it first.');
     }
@@ -303,14 +328,13 @@ async function playNumberGuess(client, message, userData) {
         .setDescription(`I'm thinking of a number between **1** and **100**.\nYou have **${maxAttempts}** attempts to guess it!`)
         .addFields(
             { name: '📝 HOW TO PLAY', value: 'Type your guess as a number in this channel.\nExample: `42`' },
-            { name: '🏆 REWARD', value: 'Higher reward for fewer attempts!\n1 attempt: 100x • 2 attempts: 50x • 3 attempts: 25x • 4 attempts: 10x • 5 attempts: 5x' }
+            { name: '🏆 REWARD', value: 'Higher reward for fewer attempts!\n1 attempt: 200x • 2 attempts: 100x • 3 attempts: 50x • 4 attempts: 25x • 5 attempts: 10x' }
         )
         .setFooter({ text: 'You have 60 seconds to guess!' })
         .setTimestamp();
     
     await message.reply({ embeds: [embed] });
     
-    // Create message collector for guesses
     const filter = m => m.author.id === message.author.id && !isNaN(parseInt(m.content));
     const collector = message.channel.createMessageCollector({ filter, time: 60000, max: maxAttempts });
     
@@ -322,17 +346,14 @@ async function playNumberGuess(client, message, userData) {
         game.attempts++;
         
         if (guess === game.target) {
-            // Win!
-            const multiplier = [100, 50, 25, 10, 5][game.attempts - 1];
+            const multiplier = [200, 100, 50, 25, 10][game.attempts - 1];
             const winnings = 100 * multiplier;
             
             updateGameStats(message.author.id, true, winnings);
             activeGuesses.delete(message.author.id);
             collector.stop();
             
-            const db = require('better-sqlite3')('database.sqlite');
             const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
-            db.close();
             
             const winEmbed = new EmbedBuilder()
                 .setColor('#57F287')
@@ -347,8 +368,7 @@ async function playNumberGuess(client, message, userData) {
             
             await message.reply({ embeds: [winEmbed] });
         } else if (game.attempts >= game.maxAttempts) {
-            // Lose - out of attempts
-            updateGameStats(message.author.id, false, -50);
+            updateGameStats(message.author.id, false, -100);
             activeGuesses.delete(message.author.id);
             collector.stop();
             
@@ -358,13 +378,12 @@ async function playNumberGuess(client, message, userData) {
                 .setTitle('💔 GAME OVER')
                 .setDescription(`**The number was:** \`${game.target}\`\n**You ran out of attempts!**`)
                 .addFields(
-                    { name: '💰 OUTCOME', value: `-50 🪙`, inline: true }
+                    { name: '💰 OUTCOME', value: `-100 🪙`, inline: true }
                 )
                 .setFooter({ text: 'Better luck next time!' });
             
             await message.reply({ embeds: [loseEmbed] });
         } else {
-            // Give hint
             const hint = guess < game.target ? 'higher' : 'lower';
             const remaining = game.maxAttempts - game.attempts;
             
@@ -380,7 +399,7 @@ async function playNumberGuess(client, message, userData) {
         if (activeGuesses.has(message.author.id)) {
             const game = activeGuesses.get(message.author.id);
             if (game.attempts < game.maxAttempts) {
-                updateGameStats(message.author.id, false, -50);
+                updateGameStats(message.author.id, false, -100);
                 activeGuesses.delete(message.author.id);
                 message.reply('⏰ **Time\'s up!** You took too long to guess.');
             }
@@ -400,13 +419,12 @@ async function playSlots(client, message, userData) {
     
     let multiplier = 0;
     if (reels[0] === reels[1] && reels[1] === reels[2]) {
-        // Jackpot - all same
         if (reels[0] === '7️⃣') multiplier = 500;
         else if (reels[0] === '💎') multiplier = 250;
         else if (reels[0] === '🎰') multiplier = 100;
         else multiplier = 50;
     } else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) {
-        multiplier = 2; // Two matching
+        multiplier = 2;
     }
     
     const won = multiplier > 0;
@@ -414,9 +432,7 @@ async function playSlots(client, message, userData) {
     
     updateGameStats(message.author.id, won, winnings);
     
-    const db = require('better-sqlite3')('database.sqlite');
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
-    db.close();
     
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : '#ED4245')
@@ -433,61 +449,94 @@ async function playSlots(client, message, userData) {
     message.reply({ embeds: [embed] });
 }
 
-// ================= BLACKJACK =================
+// ================= BLACKJACK (Interactive Boss Level) =================
 async function playBlackjack(client, message, userData) {
-    const playerHand = [drawCard(), drawCard()];
-    const dealerHand = [drawCard(), drawCard()];
-    
-    const playerScore = calculateHand(playerHand);
-    const dealerScore = calculateHand(dealerHand);
-    
-    let result = '';
-    let won = false;
-    let winnings = 0;
-    
-    if (playerScore > 21) {
-        result = '💀 BUST! You exceeded 21.';
-        won = false;
-        winnings = -100;
-    } else if (dealerScore > 21) {
-        result = '🎉 DEALER BUST! You win!';
-        won = true;
-        winnings = 100;
-    } else if (playerScore > dealerScore) {
-        result = '🏆 VICTORY! Higher hand than dealer.';
-        won = true;
-        winnings = 100;
-    } else if (dealerScore > playerScore) {
-        result = '💔 DEFEAT! Dealer has higher hand.';
-        won = false;
-        winnings = -100;
-    } else {
-        result = '🤝 PUSH! It\'s a tie.';
-        won = false;
-        winnings = 0;
-    }
-    
-    if (won) updateGameStats(message.author.id, true, winnings);
-    else if (winnings < 0) updateGameStats(message.author.id, false, winnings);
-    
-    const db = require('better-sqlite3')('database.sqlite');
-    const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
-    db.close();
-    
-    const embed = new EmbedBuilder()
-        .setColor(won ? '#57F287' : (winnings === 0 ? '#FEE75C' : '#ED4245'))
-        .setAuthor({ name: '🃏 BLACKJACK', iconURL: message.author.displayAvatarURL() })
-        .setTitle('═ CARD DUEL ═')
-        .setDescription(result)
-        .addFields(
-            { name: '🎴 YOUR HAND', value: `\`${playerHand.join(' ')}\`\n**Score:** ${playerScore}`, inline: true },
-            { name: '🃟 DEALER HAND', value: `\`${dealerHand.join(' ')}\`\n**Score:** ${dealerScore}`, inline: true },
-            { name: '💰 RESULT', value: winnings !== 0 ? `${winnings > 0 ? '+' : ''}${winnings.toLocaleString()} 🪙` : 'No change', inline: false },
-            { name: '📊 WIN RATE', value: `${calculateWinRate(updatedUser)}%`, inline: true }
-        )
-        .setFooter({ text: 'Strategic card counting • 21 or bust' });
-    
-    message.reply({ embeds: [embed] });
+    let playerHand = [drawCard(), drawCard()];
+    let dealerHand = [drawCard(), drawCard()];
+    let gameOver = false;
+
+    const generateEmbed = (status = 'Your turn, Agent.') => {
+        const pScore = calculateHand(playerHand);
+        const dScore = gameOver ? calculateHand(dealerHand) : '??';
+        const dDisplay = gameOver ? dealerHand.join(' ') : `${dealerHand[0]} 🃟`;
+
+        return new EmbedBuilder()
+            .setColor(gameOver ? '#00fbff' : '#f1c40f')
+            .setAuthor({ name: '🃏 NEURAL BLACKJACK', iconURL: message.author.displayAvatarURL() })
+            .setTitle('═ HIGH STAKES DATA DUEL ═')
+            .setDescription(`**Status:** ${status}`)
+            .addFields(
+                { name: '🎴 YOUR HAND', value: `\`${playerHand.join(' ')}\` \n**Score:** ${pScore}`, inline: true },
+                { name: '🃟 DEALER HAND', value: `\`${dDisplay}\` \n**Score:** ${dScore}`, inline: true }
+            )
+            .setFooter({ text: '21 or bust • Strategy is your only weapon' });
+    };
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('bj_hit').setLabel('HIT').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('bj_stand').setLabel('STAND').setStyle(ButtonStyle.Secondary)
+    );
+
+    const gameMsg = await message.reply({ embeds: [generateEmbed()], components: [row] });
+
+    const collector = gameMsg.createMessageComponentCollector({ 
+        filter: i => i.user.id === message.author.id, 
+        time: 30000 
+    });
+
+    collector.on('collect', async (i) => {
+        if (i.customId === 'bj_hit') {
+            playerHand.push(drawCard());
+            if (calculateHand(playerHand) > 21) {
+                gameOver = true;
+                collector.stop('bust');
+            } else {
+                await i.update({ embeds: [generateEmbed()] });
+            }
+        } else {
+            gameOver = true;
+            collector.stop('stand');
+        }
+    });
+
+    collector.on('end', async (collected, reason) => {
+        let pScore = calculateHand(playerHand);
+        let dScore = calculateHand(dealerHand);
+
+        if (reason === 'stand') {
+            while (dScore < 17) {
+                dealerHand.push(drawCard());
+                dScore = calculateHand(dealerHand);
+            }
+        }
+
+        let result = '';
+        let won = false;
+        let winnings = 0;
+
+        if (pScore > 21) {
+            result = '💀 BUST! System overload.';
+            winnings = -200;
+        } else if (dScore > 21 || pScore > dScore) {
+            result = '🎉 VICTORY! Neural link stable.';
+            won = true;
+            winnings = 200;
+        } else if (dScore > pScore) {
+            result = '💔 DEFEAT! Dealer out-calculated you.';
+            winnings = -200;
+        } else {
+            result = '🤝 PUSH! Synchronized data.';
+            winnings = 0;
+        }
+
+        updateGameStats(message.author.id, won, winnings);
+        
+        const finalEmbed = generateEmbed(result)
+            .setColor(won ? '#57F287' : (winnings === 0 ? '#FEE75C' : '#ED4245'))
+            .addFields({ name: '💰 OUTCOME', value: `${winnings > 0 ? '+' : ''}${winnings.toLocaleString()} 🪙`, inline: false });
+
+        await gameMsg.edit({ embeds: [finalEmbed], components: [] });
+    });
 }
 
 // ================= ROCK PAPER SCISSORS =================
@@ -502,7 +551,6 @@ async function playRPS(client, message, userData, choice) {
         return message.reply({ embeds: [embed] });
     }
     
-    // Normalize choice
     let normalizedChoice = choice.toLowerCase();
     if (normalizedChoice === 'r') normalizedChoice = 'rock';
     if (normalizedChoice === 'p') normalizedChoice = 'paper';
@@ -536,9 +584,7 @@ async function playRPS(client, message, userData, choice) {
     if (won) updateGameStats(message.author.id, true, winnings);
     else if (winnings < 0) updateGameStats(message.author.id, false, winnings);
     
-    const db = require('better-sqlite3')('database.sqlite');
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
-    db.close();
     
     const emojis = { rock: '✊', paper: '✋', scissors: '✌️' };
     
@@ -558,11 +604,107 @@ async function playRPS(client, message, userData, choice) {
     message.reply({ embeds: [embed] });
 }
 
+// ================= NEURAL TRIVIA =================
+async function playTrivia(client, message, userData) {
+    const questions = [
+        { q: "What does HTML stand for?", a: ["HyperText Markup Language", "High Tech Modern Language", "Hyperlink Text Management"], correct: 0 },
+        { q: "Which language is used for bot logic?", a: ["CSS", "JavaScript", "HTML"], correct: 1 },
+        { q: "What is the capital of Mali?", a: ["Bamako", "Dakar", "Niamey"], correct: 0 },
+        { q: "In CODM, what does 'ADS' stand for?", a: ["Aim Down Sights", "Auto Deploy System", "Advanced Defense Shield"], correct: 0 }
+    ];
+
+    const data = questions[Math.floor(Math.random() * questions.length)];
+    
+    const embed = new EmbedBuilder()
+        .setColor('#00fbff')
+        .setTitle('🧠 NEURAL TRIVIA')
+        .setDescription(`**Question:** ${data.q}`)
+        .setFooter({ text: 'You have 15 seconds to answer!' });
+
+    const row = new ActionRowBuilder().addComponents(
+        data.a.map((choice, index) => 
+            new ButtonBuilder()
+                .setCustomId(`trivia_${index}`)
+                .setLabel(choice)
+                .setStyle(ButtonStyle.Primary)
+        )
+    );
+
+    const reply = await message.reply({ embeds: [embed], components: [row] });
+
+    const collector = reply.createMessageComponentCollector({ time: 15000 });
+
+    collector.on('collect', async (i) => {
+        if (i.user.id !== message.author.id) return i.reply({ content: "Not your game!", ephemeral: true });
+        
+        const isCorrect = i.customId === `trivia_${data.correct}`;
+        const winnings = isCorrect ? 500 : -100;
+        
+        updateGameStats(message.author.id, isCorrect, winnings);
+        
+        const resultEmbed = new EmbedBuilder()
+            .setColor(isCorrect ? '#57F287' : '#ED4245')
+            .setTitle(isCorrect ? '✅ CORRECT' : '❌ INCORRECT')
+            .setDescription(isCorrect ? `You earned **500 🪙**!` : `The correct answer was: **${data.a[data.correct]}**`);
+
+        await i.update({ embeds: [resultEmbed], components: [] });
+        collector.stop();
+    });
+}
+
+// ================= HANGMAN =================
+async function playHangman(client, message, userData) {
+    const words = ['ARCHITECT', 'JAVASCRIPT', 'GAMING', 'BAMAKO', 'STARLINK', 'DATABASE'];
+    const targetWord = words[Math.floor(Math.random() * words.length)];
+    let guessed = [];
+    let lives = 6;
+
+    const getDisplay = () => targetWord.split('').map(l => guessed.includes(l) ? l : ' \_ ').join('');
+
+    const hmEmbed = new EmbedBuilder()
+        .setColor('#FEE75C')
+        .setTitle('🪑 NEURAL HANGMAN')
+        .setDescription(`**Word:** \`${getDisplay()}\` \n\n**Lives:** ❤️ ${lives}\nType a letter to guess!`)
+        .setFooter({ text: 'Send one letter at a time.' });
+
+    const gameMsg = await message.reply({ embeds: [hmEmbed] });
+
+    const filter = m => m.author.id === message.author.id && m.content.length === 1;
+    const collector = message.channel.createMessageCollector({ filter, time: 60000 });
+
+    collector.on('collect', async (m) => {
+        const char = m.content.toUpperCase();
+        if (guessed.includes(char)) return m.reply("Already guessed!");
+
+        guessed.push(char);
+        if (!targetWord.includes(char)) lives--;
+
+        if (getDisplay() === targetWord) {
+            updateGameStats(message.author.id, true, 1000);
+            collector.stop('win');
+        } else if (lives <= 0) {
+            updateGameStats(message.author.id, false, -200);
+            collector.stop('lose');
+        } else {
+            hmEmbed.setDescription(`**Word:** \`${getDisplay()}\` \n\n**Lives:** ❤️ ${lives}\n**Guessed:** ${guessed.join(', ')}`);
+            await gameMsg.edit({ embeds: [hmEmbed] });
+        }
+    });
+
+    collector.on('end', (collected, reason) => {
+        const endEmbed = new EmbedBuilder();
+        if (reason === 'win') {
+            endEmbed.setColor('#57F287').setTitle('🎉 SURVIVED').setDescription(`You decoded the word: **${targetWord}**!\n**+1,000 🪙**`);
+        } else {
+            endEmbed.setColor('#ED4245').setTitle('💀 FAILED').setDescription(`The system crashed. Word was: **${targetWord}**.`);
+        }
+        gameMsg.edit({ embeds: [endEmbed] });
+    });
+}
+
 // ================= GAME STATS =================
 async function showGameStats(client, message, userData) {
-    const db = require('better-sqlite3')('database.sqlite');
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
-    db.close();
     
     const gamesPlayed = user?.games_played || 0;
     const gamesWon = user?.games_won || 0;
@@ -592,8 +734,6 @@ async function showGameStats(client, message, userData) {
 
 // ================= LEADERBOARD =================
 async function showGameLeaderboard(client, message, type = 'wins') {
-    const db = require('better-sqlite3')('database.sqlite');
-    
     let orderBy = '';
     let title = '';
     let icon = '';
@@ -630,7 +770,6 @@ async function showGameLeaderboard(client, message, type = 'wins') {
     }
     
     const topPlayers = db.prepare(`SELECT id, username, games_played, games_won, total_winnings FROM users WHERE games_played > 0 ORDER BY ${orderBy} LIMIT 10`).all();
-    db.close();
     
     if (topPlayers.length === 0) {
         return message.reply('📊 No game data available yet. Start playing to appear on leaderboards!');
@@ -700,8 +839,6 @@ function calculateWinRate(userData) {
 }
 
 function updateGameStats(userId, won, winnings) {
-    const db = require('better-sqlite3')('database.sqlite');
-    
     // Add columns if needed
     try {
         db.prepare(`ALTER TABLE users ADD COLUMN games_played INTEGER DEFAULT 0`).run();
@@ -714,6 +851,4 @@ function updateGameStats(userId, won, winnings) {
     } else {
         db.prepare(`UPDATE users SET games_played = games_played + 1, total_winnings = total_winnings + ? WHERE id = ?`).run(winnings, userId);
     }
-    
-    db.close();
 }
