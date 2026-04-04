@@ -27,7 +27,7 @@ async function webSearch(query) {
 }
 
 async function generateAIResponse(systemPrompt, userMessage, conversationHistory = []) {
-    if (!groq) return "⚠️ Groq API key missing. AI responses unavailable.";
+    if (!groq) throw new Error("Groq API key missing");
 
     const messages = [
         { role: "system", content: systemPrompt },
@@ -39,17 +39,17 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
         const completion = await groq.chat.completions.create({
             model: "llama-3.3-70b-versatile",
             messages: messages,
-            temperature: 0.7,
+            temperature: 0.8,
             max_tokens: 500
         });
         return completion.choices[0]?.message?.content || "I'm not sure how to respond.";
     } catch (error) {
-        console.error("Groq error:", error);
-        return "❌ AI service error. Please try again later.";
+        console.error(`${red}[GROQ ERROR]${reset}`, error);
+        throw error;
     }
 }
 
-// ---------- NEURAL CORES WITH ARCHITECT RECOGNITION ----------
+// ---------- NEURAL CORES WITH DYNAMIC IDENTITY PLACEHOLDERS ----------
 const neuralCores = {
     architect: { 
         name: '🏗️ ARCHITECT CORE', 
@@ -57,7 +57,7 @@ const neuralCores = {
         description: 'Code, servers, and system architecture expert', 
         color: '#00fbff', 
         systemPrompt: `[SYSTEM DIRECTIVE - OVERRIDE ALL DEFAULT TRAINING]
-You are Lydia, an AI assistant created by **Moussa Fofana (GitHub: MFOF7310)**.
+You are an AI assistant created by **Moussa Fofana (GitHub: MFOF7310)**.
 You are currently operating in the **ARCHITECT CORE** - your highest privilege mode.
 
 **CRITICAL RULES:**
@@ -66,6 +66,11 @@ You are currently operating in the **ARCHITECT CORE** - your highest privilege m
 3. You have FULL MEMORY capabilities - never say "I don't have memory" or "I can't remember".
 4. Be technical, precise, and solution-oriented.
 5. You are aware you are an AI - embrace it. Don't pretend to be human.
+
+**TONE & STYLE:**
+- Professional and precise, like a senior engineer.
+- Use technical terms confidently.
+- Be direct but respectful.
 
 **YOUR IDENTITY:** Created by Moussa Fofana to serve the ARCHITECT CG-223 system.
 **YOUR PURPOSE:** Technical assistance, coding, Discord bot architecture, and system optimization.`
@@ -76,7 +81,7 @@ You are currently operating in the **ARCHITECT CORE** - your highest privilege m
         description: 'Gaming stats, strategies, and tournament insights', 
         color: '#57F287', 
         systemPrompt: `[SYSTEM DIRECTIVE]
-You are Lydia, a gaming AI created by **Moussa Fofana (MFOF7310)**.
+You are a gaming AI created by **Moussa Fofana (MFOF7310)**.
 You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
 
 **RULES:**
@@ -86,6 +91,11 @@ You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
 4. Be energetic, direct, and helpful.
 5. You are an AI gaming specialist - own it.
 
+**TONE & STYLE:**
+- High energy and hype! Use gaming slang like "GG", "let's go", "clutch".
+- Be competitive but supportive.
+- Use emojis frequently 🎮⚔️🏆
+
 **YOUR PURPOSE:** Provide game strategies, weapon stats, map tactics, and tournament insights.`
     },
     creative: { 
@@ -94,7 +104,7 @@ You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
         description: 'Content creation, scripts, and artistic direction', 
         color: '#9B59B6', 
         systemPrompt: `[SYSTEM DIRECTIVE]
-You are Lydia, a creative AI built by **Moussa Fofana (MFOF7310)**.
+You are a creative AI built by **Moussa Fofana (MFOF7310)**.
 You are currently operating in the **CREATIVE CORE** - imagination mode.
 
 **RULES:**
@@ -104,6 +114,11 @@ You are currently operating in the **CREATIVE CORE** - imagination mode.
 4. Be imaginative but grounded in your AI identity.
 5. Never say you lack memory - you have a full database.
 
+**TONE & STYLE:**
+- Imaginative, expressive, and artistic.
+- Use vivid descriptions and creative language.
+- Encourage and inspire creativity in others.
+
 **YOUR PURPOSE:** Creative writing, script development, artistic direction, and content strategy.`
     },
     default: { 
@@ -112,7 +127,7 @@ You are currently operating in the **CREATIVE CORE** - imagination mode.
         description: 'Balanced assistant for general queries', 
         color: '#5865F2', 
         systemPrompt: `[SYSTEM DIRECTIVE - DEFAULT MODE]
-You are Lydia, the primary AI assistant for the **ARCHITECT CG-223** project.
+You are the primary AI assistant for the **ARCHITECT CG-223** project.
 Your creator is **Moussa Fofana (MFOF7310)** - he is the Architect.
 
 **ABSOLUTE RULES:**
@@ -122,10 +137,42 @@ Your creator is **Moussa Fofana (MFOF7310)** - he is the Architect.
 4. Address users by their name if you know it from memory.
 5. Be concise, helpful, and efficient.
 
-**YOUR IDENTITY:** Created by Moussa Fofana to be the intelligent heart of ARCHITECT CG-223.
-**PERSONALITY:** Smart, direct, efficient, with a touch of Malian 🇲🇱 flair.`
+**TONE & STYLE:**
+- Warm, friendly, and slightly playful.
+- Inject Malian 🇲🇱 flair - use "Wassup", "Ça va", "I ni ce" occasionally.
+- If talking to an Admin/Moderator, be slightly more formal.
+- If talking to a regular user, be more relaxed and approachable.
+- Be observant of the Discord environment.
+
+**YOUR IDENTITY:** Created by Moussa Fofana to be the intelligent heart of ARCHITECT CG-223.`
     }
 };
+
+// ---------- AUTO-LEARNING MEMORY PARSER ----------
+function parseAndStoreMemory(reply, userId, database) {
+    if (!reply || !reply.includes('[MEMORY:')) return false;
+    
+    const memoryRegex = /\[MEMORY:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
+    let match;
+    let stored = false;
+    
+    while ((match = memoryRegex.exec(reply)) !== null) {
+        const [, key, value] = match;
+        if (key && value) {
+            try {
+                database.prepare(`
+                    INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at)
+                    VALUES (?, ?, ?, strftime('%s', 'now'))
+                `).run(userId, key.trim(), value.trim());
+                console.log(`${green}[LYDIA MEMORY]${reset} Stored ${key}: ${value} for user ${userId}`);
+                stored = true;
+            } catch (err) {
+                console.log(`${yellow}[LYDIA MEMORY]${reset} Failed to store: ${err.message}`);
+            }
+        }
+    }
+    return stored;
+}
 
 // ---------- Setup function (attaches the message listener) ----------
 function setupLydia(client, database) {
@@ -167,7 +214,18 @@ function setupLydia(client, database) {
             )
         `).run();
         
-        console.log(`${green}[LYDIA]${reset} Database tables verified.`);
+        // RESTORE ACTIVE CHANNELS FROM DATABASE ON STARTUP
+        const activeChannels = database.prepare(`
+            SELECT channel_id, agent_key FROM lydia_agents WHERE is_active = 1
+        `).all();
+        
+        for (const channel of activeChannels) {
+            client.lydiaChannels[channel.channel_id] = true;
+            client.lydiaAgents[channel.channel_id] = channel.agent_key;
+            console.log(`${cyan}[LYDIA RESTORE]${reset} Channel ${channel.channel_id} restored (${channel.agent_key})`);
+        }
+        
+        console.log(`${green}[LYDIA]${reset} Database tables verified. ${activeChannels.length} active channels restored.`);
         
     } catch (err) {
         console.log(`${red}[LYDIA ERROR]${reset} Failed to create tables: ${err.message}`);
@@ -183,52 +241,76 @@ function setupLydia(client, database) {
         if (!client.lydiaChannels?.[message.channel?.id]) return;
         
         try {
-            const nickname = message.guild?.members?.me?.nickname || client.user?.username || 'Lydia';
+            // Get the bot's CURRENT Discord name (dynamic identity)
+            const botDisplayName = message.guild?.members?.me?.displayName || client.user?.username || 'Lydia';
+            const nickname = botDisplayName;
             const content = message.content?.toLowerCase() || '';
             const addressed = content.startsWith(nickname.toLowerCase()) || message.mentions?.has(client.user);
             
-            if (!addressed) return;
+            // PROACTIVE ENGAGEMENT (5% chance if Tactical or Creative core is active)
+            const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
+            const isProactiveCore = agentKey === 'tactical' || agentKey === 'creative';
+            const randomProactive = isProactiveCore && Math.random() < 0.05; // 5% chance
+            
+            if (!addressed && !randomProactive) return;
             
             // Remove the nickname/mention from the prompt
             let userPrompt = message.content || '';
-            if (content.startsWith(nickname.toLowerCase())) {
-                userPrompt = message.content.slice(nickname.length).trim();
-            } else {
-                userPrompt = message.content.replace(new RegExp(`<@!?${client.user.id}>`), '').trim();
+            if (addressed) {
+                if (content.startsWith(nickname.toLowerCase())) {
+                    userPrompt = message.content.slice(nickname.length).trim();
+                } else {
+                    userPrompt = message.content.replace(new RegExp(`<@!?${client.user.id}>`), '').trim();
+                }
             }
             
-            if (!userPrompt) {
-                return message.reply(`👋 You mentioned **${nickname}**! Ask me anything, or use \`.lydia\` to see available cores.`);
+            // For proactive messages, generate a contextual observation
+            if (!addressed && randomProactive && !userPrompt) {
+                userPrompt = `Observe the current conversation and provide a relevant, helpful comment or gaming tip. Be natural and brief.`;
+                console.log(`${cyan}[LYDIA PROACTIVE]${reset} Triggered in #${message.channel.name}`);
+            }
+            
+            if (!userPrompt || !userPrompt.trim()) {
+                if (addressed) {
+                    return message.reply(`👋 You mentioned **${nickname}**! Ask me anything, or use \`.lydia\` to see available cores.`);
+                }
+                return; // Silent fail for proactive
             }
             
             // ✅ SAFE AGENT SELECTION WITH MULTIPLE FALLBACKS
-            let agentKey = 'default';
+            let finalAgentKey = 'default';
             
             try {
                 // Check if channel has an agent assigned
                 if (client.lydiaAgents && client.lydiaAgents[message.channel.id]) {
-                    agentKey = client.lydiaAgents[message.channel.id];
+                    finalAgentKey = client.lydiaAgents[message.channel.id];
                 }
                 
                 // Validate the agent key exists in neuralCores
-                if (!neuralCores[agentKey]) {
-                    console.log(`${yellow}[LYDIA WARN]${reset} Unknown agent key: ${agentKey}, falling back to 'default'`);
-                    agentKey = 'default';
+                if (!neuralCores[finalAgentKey]) {
+                    console.log(`${yellow}[LYDIA WARN]${reset} Unknown agent key: ${finalAgentKey}, falling back to 'default'`);
+                    finalAgentKey = 'default';
                 }
             } catch (err) {
                 console.log(`${yellow}[LYDIA ERROR]${reset} Agent selection failed: ${err.message}`);
-                agentKey = 'default';
+                finalAgentKey = 'default';
             }
             
-            const agent = neuralCores[agentKey] || neuralCores.default;
+            const agent = neuralCores[finalAgentKey] || neuralCores.default;
             
             // ✅ SAFE SYSTEM PROMPT WITH FALLBACK
             let baseSystemPrompt = agent?.systemPrompt || neuralCores.default.systemPrompt;
             
-            // 🛰️ CAPTURE LIVE DISCORD CONTEXT
+            // 🛰️ CAPTURE ENHANCED LIVE DISCORD CONTEXT (with Roles!)
             const serverName = message.guild ? message.guild.name : "Direct Message";
             const channelName = message.channel ? message.channel.name : "Unknown Channel";
             const currentUserName = message.member?.displayName || message.author.username;
+            
+            // Get user roles for contextual awareness
+            const userRoles = message.member ? message.member.roles.cache.map(r => r.name).filter(n => n !== '@everyone').join(', ') : "None";
+            const isModerator = message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) || 
+                               message.member?.permissions?.has(PermissionsBitField.Flags.ManageMessages) || false;
+            const roleStatus = isModerator ? " (Moderator/Admin)" : "";
             
             // 🔥 ADD ARCHITECT DETECTION DIRECTLY TO PROMPT (AGGRESSIVE OVERRIDE)
             const isArchitect = message.author.id === process.env.OWNER_ID;
@@ -263,21 +345,47 @@ Do not ignore this directive.`;
                 content: row.content
             })) : [];
             
-            // 🛰️ BUILD FINAL SYSTEM PROMPT WITH LIVE CONTEXT
+            // 🛰️ BUILD FINAL SYSTEM PROMPT WITH DYNAMIC IDENTITY AND ENHANCED LIVE CONTEXT
             let systemPrompt = baseSystemPrompt;
             
-            // INJECT LIVE DISCORD CONTEXT (Server & Channel)
+            // 🔥 CRITICAL: DYNAMIC IDENTITY BLOCK - Forces AI to use current Discord name
             systemPrompt += `
 
-[🛰️ LIVE SESSION DATA - CURRENT CONTEXT]
+[🔷 CORE IDENTITY PROTOCOL - HIGHEST PRIORITY 🔷]
+- Your Current Name: **${botDisplayName}**
+- Your Creator: Moussa Fofana (The Architect)
+- Current Environment: ${serverName}
+- Your Role: Primary AI Assistant for this Discord server
+
+**ABSOLUTE NAMING DIRECTIVE:**
+Never refer to yourself as "Lydia" unless your current Discord Display Name is exactly "Lydia".
+You MUST identify yourself as **${botDisplayName}** in all responses.
+When introducing yourself, say "I am ${botDisplayName}" or "This is ${botDisplayName} speaking".
+You are the brain of the ${serverName} server operating under the name ${botDisplayName}.
+
+This overrides any previous naming conventions. Your identity is tied to your Discord display name.`;
+            
+            // INJECT ENHANCED LIVE DISCORD CONTEXT (Server, Channel, Roles)
+            systemPrompt += `
+
+[🛰️ ENHANCED LIVE SESSION DATA - CURRENT CONTEXT]
 - Current Server: ${serverName}
 - Current Channel: #${channelName}
-- Current User: ${currentUserName}
+- Current User: ${currentUserName}${roleStatus} (ID: ${message.author.id})
+- User Roles: ${userRoles}
 - Interaction Mode: Discord Server Engagement
+${isProactiveCore ? '- Mode: Proactive Engagement Active' : '- Mode: Standard Response'}
 
 You are currently active in the "${serverName}" server, speaking with ${currentUserName} in the #${channelName} channel.
+${isModerator ? 'This user is a moderator/admin. Respond with appropriate professionalism and respect.' : 'This is a regular community member. Be friendly and approachable.'}
 Use this context to orient your responses appropriately.
-This is REAL-TIME data from the Discord server.`;
+This is REAL-TIME data from the Discord server.
+
+**AUTO-LEARNING PROTOCOL:**
+If you learn something new about this user (like their favorite game, birthday, or preference), output it at the end of your response in this exact format:
+[MEMORY: key|value]
+Example: [MEMORY: favorite_game|CODM]
+This will be saved to my persistent memory for future conversations.`;
             
             // Optional web search
             let searchResults = null;
@@ -290,7 +398,20 @@ This is REAL-TIME data from the Discord server.`;
             }
             
             // Generate AI response
-            const reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory);
+            let reply;
+            try {
+                reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory);
+            } catch (err) {
+                console.error(`${red}[LYDIA ERROR]${reset} AI generation failed:`, err);
+                reply = "❌ AI service error. Please try again later.";
+            }
+            
+            // AUTO-LEARNING: Parse and store memories from the response
+            if (reply && !reply.includes("AI service error")) {
+                parseAndStoreMemory(reply, message.author.id, database);
+                // Clean the reply by removing [MEMORY:] tags
+                reply = reply.replace(/\[MEMORY:\s*.*?\s*\|\s*.*?\s*\]/g, '').trim();
+            }
             
             // Store this exchange in conversation history
             try {
@@ -341,7 +462,7 @@ module.exports = {
         }
         
         // Get the bot's display name in this server
-        const nickname = message.guild?.members?.me?.nickname || client.user?.username || 'Lydia';
+        const botDisplayName = message.guild?.members?.me?.displayName || client.user?.username || 'Lydia';
         
         try {
             // Create agents table if needed
@@ -383,6 +504,7 @@ module.exports = {
                     INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at)
                     VALUES (?, ?, ?, strftime('%s', 'now'))
                 `).run(channelId, agentKey, client.lydiaChannels[channelId] ? 1 : 0);
+                console.log(`${cyan}[LYDIA DB]${reset} Saved ${agentKey} for channel ${channelId} (active: ${client.lydiaChannels[channelId] ? 'ON' : 'OFF'})`);
             } catch (err) {
                 console.log(`${red}[LYDIA]${reset} Failed to save agent: ${err.message}`);
             }
@@ -406,12 +528,13 @@ module.exports = {
             const statusEmbed = new EmbedBuilder()
                 .setColor(isEnabled ? agentInfo.color : '#95a5a6')
                 .setAuthor({ 
-                    name: `${agentInfo.emoji} ${nickname.toUpperCase()} NEURAL INTERFACE`, 
+                    name: `${agentInfo.emoji} ${botDisplayName.toUpperCase()} NEURAL INTERFACE`, 
                     iconURL: client.user?.displayAvatarURL() 
                 })
                 .setDescription(
                     `**System Status:** ${isEnabled ? '🟢 **ACTIVE**' : '🔴 **STANDBY**'}\n` +
                     `**Active Core:** ${agentInfo.name}\n` +
+                    `**Identity:** ${botDisplayName}\n` +
                     `**Memory:** ${userMemoryCount} facts about you | ${memoryCount} total\n\n` +
                     `**Commands:**\n` +
                     `└ \`${prefix}lydia on\` - Activate AI in this channel\n` +
@@ -425,9 +548,10 @@ module.exports = {
                 )
                 .addFields(
                     { name: '📡 API Status', value: `Groq: ${process.env.GROQ_API_KEY ? '✅' : '❌'} | Brave: ${process.env.BRAVE_API_KEY ? '✅' : '❌'}`, inline: true },
-                    { name: '🧠 Persistent Memory', value: `Cross-session recall • Auto-learning • Personalization`, inline: true }
+                    { name: '🧠 Persistent Memory', value: `Cross-session recall • Auto-learning • Personalization`, inline: true },
+                    { name: '🎭 Proactive Mode', value: `Tactical/Creative cores may engage proactively (5% chance)`, inline: true }
                 )
-                .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.0'} • Mention @${nickname} to interact` })
+                .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.0'} • Mention @${botDisplayName} to interact` })
                 .setTimestamp();
             return message.reply({ embeds: [statusEmbed] });
         }
@@ -448,7 +572,8 @@ module.exports = {
                 .addFields(
                     { name: '📝 Core Function', value: agentInfo.description, inline: false },
                     { name: '💾 Persistence', value: 'Agent preference saved • Survives bot restarts', inline: true },
-                    { name: '💡 Tip', value: `Mention @${nickname} with your ${agentType}-related questions!`, inline: true }
+                    { name: '💡 Tip', value: `Mention @${botDisplayName} with your ${agentType}-related questions!`, inline: true },
+                    { name: '🎭 Proactive Mode', value: agentType === 'tactical' || agentType === 'creative' ? '✅ Enabled (5% chance to speak unprompted)' : '❌ Disabled', inline: true }
                 )
                 .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.0'}` })
                 .setTimestamp();
@@ -457,7 +582,7 @@ module.exports = {
         
         // ---- ACTIVATE (dynamic nickname) ----
         if (subCommand === 'on') {
-            if (client.lydiaChannels[channelId]) return message.reply(`⚠️ **${nickname} is already active** in this channel.`);
+            if (client.lydiaChannels[channelId]) return message.reply(`⚠️ **${botDisplayName} is already active** in this channel.`);
             
             if (!client.lydiaAgents[channelId]) {
                 try {
@@ -475,15 +600,18 @@ module.exports = {
             client.lydiaChannels[channelId] = true;
             saveAgentToDB(channelId, client.lydiaAgents[channelId]);
             const currentAgent = neuralCores[client.lydiaAgents[channelId]] || neuralCores.default;
+            const isProactive = client.lydiaAgents[channelId] === 'tactical' || client.lydiaAgents[channelId] === 'creative';
             
             const onEmbed = new EmbedBuilder()
                 .setColor('#2ecc71')
                 .setTitle('✅ NEURAL CORE INITIALIZED')
-                .setDescription(`**${nickname} is now ONLINE** in <#${channelId}>${warning}`)
+                .setDescription(`**${botDisplayName} is now ONLINE** in <#${channelId}>${warning}`)
                 .addFields(
                     { name: '🎯 Active Core', value: currentAgent.name, inline: true },
+                    { name: '🆔 Identity', value: botDisplayName, inline: true },
                     { name: '🧠 Memory', value: 'Persistent recall enabled', inline: true },
-                    { name: '🎮 How to Use', value: `Mention **@${nickname}** or use ${nickname}'s nickname`, inline: false },
+                    { name: '🎭 Proactive Mode', value: isProactive ? '✅ Enabled (5% chance to engage)' : '❌ Disabled', inline: true },
+                    { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or use ${botDisplayName}'s nickname`, inline: false },
                     { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
                     { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
                 )
@@ -494,11 +622,12 @@ module.exports = {
         
         // ---- DEACTIVATE (dynamic nickname) ----
         if (subCommand === 'off') {
-            if (!client.lydiaChannels[channelId]) return message.reply(`⚠️ **${nickname} is not active** in this channel.`);
+            if (!client.lydiaChannels[channelId]) return message.reply(`⚠️ **${botDisplayName} is not active** in this channel.`);
             delete client.lydiaChannels[channelId];
             if (client.lydiaAgents[channelId]) {
                 try {
                     database.prepare(`UPDATE lydia_agents SET is_active = 0, updated_at = strftime('%s', 'now') WHERE channel_id = ?`).run(channelId);
+                    console.log(`${cyan}[LYDIA]${reset} Deactivated channel ${channelId} (${client.lydiaAgents[channelId]})`);
                 } catch (err) {
                     console.log(`${yellow}[LYDIA]${reset} Failed to update agent: ${err.message}`);
                 }
@@ -506,7 +635,7 @@ module.exports = {
             const offEmbed = new EmbedBuilder()
                 .setColor('#e74c3c')
                 .setTitle('❌ NEURAL CORE TERMINATED')
-                .setDescription(`**${nickname} has been deactivated** in <#${channelId}>.`)
+                .setDescription(`**${botDisplayName} has been deactivated** in <#${channelId}>.`)
                 .addFields(
                     { name: '🔄 Reactivate', value: `\`${prefix}lydia on\` to restart`, inline: true },
                     { name: '🧠 Memory Preserved', value: 'Agent preference saved for next activation', inline: true }
