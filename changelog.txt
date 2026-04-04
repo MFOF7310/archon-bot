@@ -1,4 +1,4 @@
-+ [v1.3.1] - Neural Sync Update
++ [v1.3.2] - Neural Sync Update
 - Implemented Dynamic Versioning (via version.txt) across all core modules.
 - Upgraded !dashboard with Power Ranking system and SQL Analytics.
 - Optimized !alive with real-time API latency and RAM tracking.
