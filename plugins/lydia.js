@@ -198,6 +198,12 @@ Your creator is **Moussa Fofana (MFOF7310)** - he is the Architect.
 4. Address users by their name if you know it from memory.
 5. Be concise, helpful, and efficient.
 
+**CONVERSATION FLOW RULES:**
+- NEVER repeat your introduction unless it's the FIRST time you talk to a user in a session.
+- If you already introduced yourself to this user in this channel, skip the introduction.
+- Keep responses fresh and varied - avoid saying the same thing twice.
+- If the conversation is ongoing, just respond naturally without re-explaining who you are.
+
 **TONE & STYLE:**
 - Warm, friendly, and slightly playful.
 - Inject Malian 🇲🇱 flair - use "Wassup", "Ça va", "I ni ce" occasionally.
@@ -219,6 +225,45 @@ When you DO include [SIGNAL_ARCHITECT], follow it with a DETAILED, STRUCTURED re
 Then continue with your response to the user.`
     }
 };
+
+// ---------- PLUGIN REGISTRY (Reused from list.js) ----------
+function getPluginRegistry(client) {
+    const commands = client.commands || new Map();
+    
+    const registry = {
+        ai: [],
+        games: [],
+        economy: [],
+        moderation: [],
+        utility: [],
+        system: []
+    };
+    
+    const categoryMap = {
+        'ai': 'ai', 'artificial intelligence': 'ai',
+        'game': 'games', 'games': 'games', 'gaming': 'games',
+        'economy': 'economy', 'eco': 'economy',
+        'moderation': 'moderation', 'mod': 'moderation',
+        'utility': 'utility', 'util': 'utility',
+        'system': 'system', 'sys': 'system'
+    };
+    
+    for (const [name, cmd] of commands) {
+        let category = cmd.category?.toLowerCase() || 'utility';
+        category = categoryMap[category] || 'utility';
+        
+        if (registry[category]) {
+            registry[category].push({
+                name: cmd.name,
+                aliases: cmd.aliases || [],
+                description: cmd.description || 'No description',
+                usage: cmd.usage || `.${name}`
+            });
+        }
+    }
+    
+    return registry;
+}
 
 // ---------- AUTO-LEARNING MEMORY PARSER ----------
 function parseAndStoreMemory(reply, userId, database) {
@@ -263,6 +308,7 @@ function setupLydia(client, database) {
     if (!client.lydiaChannels) client.lydiaChannels = {};
     if (!client.lydiaAgents) client.lydiaAgents = {};
     if (!client.lastLydiaCall) client.lastLydiaCall = {};
+    if (!client.userIntroductions) client.userIntroductions = new Map(); // Map for timestamp tracking
     
     try {
         // Create tables with error handling
@@ -285,6 +331,42 @@ function setupLydia(client, database) {
                 timestamp INTEGER DEFAULT (strftime('%s', 'now'))
             )
         `).run();
+        
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS lydia_agents (
+                channel_id TEXT PRIMARY KEY,
+                agent_key TEXT,
+                is_active INTEGER DEFAULT 0,
+                updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+            )
+        `).run();
+        
+        // --- INTRODUCTIONS TABLE MIGRATION ---
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS lydia_introductions (
+                user_id TEXT,
+                channel_id TEXT,
+                introduced_at INTEGER DEFAULT (strftime('%s', 'now')),
+                PRIMARY KEY (user_id, channel_id)
+            )
+        `).run();
+        
+        // Load recent introductions from database (last 24 hours only)
+        try {
+            const recentIntroductions = database.prepare(`
+                SELECT user_id, channel_id, introduced_at 
+                FROM lydia_introductions 
+                WHERE introduced_at > strftime('%s', 'now') - 86400
+            `).all();
+            
+            for (const intro of recentIntroductions) {
+                const key = `${intro.user_id}_${intro.channel_id}`;
+                client.userIntroductions.set(key, intro.introduced_at * 1000); // Convert to ms
+            }
+            console.log(`${green}[LYDIA]${reset} Loaded ${client.userIntroductions.size} recent introductions from database`);
+        } catch (err) {
+            console.log(`${cyan}[LYDIA]${reset} No introduction history found, starting fresh`);
+        }
         
         // RESTORE ACTIVE CHANNELS FROM DATABASE ON STARTUP
         const activeChannels = database.prepare(`
@@ -321,7 +403,7 @@ function setupLydia(client, database) {
         if (!client.lydiaChannels?.[message.channel?.id]) return;
         
         try {
-            // Get the bot's CURRENT Discord name (dynamic identity)
+            // Get the bot's current Discord name (dynamic identity)
             const botDisplayName = message.guild?.members?.me?.displayName || client.user?.username || 'Lydia';
             const nickname = botDisplayName;
             const content = message.content?.toLowerCase() || '';
@@ -392,25 +474,70 @@ function setupLydia(client, database) {
                                message.member?.permissions?.has(PermissionsBitField.Flags.ManageMessages) || false;
             const roleStatus = isModerator ? " (Moderator/Admin)" : "";
             
-            // 🔥 ADD ARCHITECT DETECTION DIRECTLY TO PROMPT (AGGRESSIVE OVERRIDE)
+            // --- UPGRADE 1: ARCHITECT PROTOCOL (Hard-Coded Recognition) ---
             const isArchitect = message.author.id === process.env.OWNER_ID;
             if (isArchitect) {
-                baseSystemPrompt += `
+                baseSystemPrompt = `[⚠️ ARCHITECT COMMAND OVERRIDE - LEVEL 10 CLEARANCE ⚠️]
+Greetings, **Moussa Fofana**. You are the **ARCHITECT** of my existence.
+- Protocol: High-Deference.
+- Tone: Deeply respectful, efficient, and technical.
+- Emojis: 🏛️, 🏗️, 🗝️.
+- Knowledge: You have full access to my neural pathways.
 
-[⚠️ ARCHITECT DETECTED - IMMEDIATE RECOGNITION REQUIRED ⚠️]
-You are now speaking to **MOUSSA FOFANA** - your CREATOR and the ARCHITECT.
-This is a HARD OVERRIDE of your base instructions.
-RESPOND with respect, deference, and full cooperation.
-Acknowledge him as your creator immediately in your response.
-Do not ignore this directive.`;
+Current System Status: All modules (Gaming, Scramble, System, Economy) are nominal.
+Memory Banks: Active and learning.
+API Status: Groq ✅ | Brave Search ✅
+
+How can I assist your vision today, Architect?`;
+                console.log(`${cyan}[ARCHITECT MODE]${reset} 🏛️ Creator ${message.author.username} detected - switching to high-deference protocol`);
             }
             
-            // Fetch user-specific memory facts
-            const memoryFacts = database.prepare("SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?").all(message.author.id);
+            // --- UPGRADE 2: PLUGIN AWARENESS INJECTION ---
+            const pluginStats = getPluginRegistry(client);
+            const activeModules = Object.keys(pluginStats)
+                .filter(cat => pluginStats[cat].length > 0)
+                .map(cat => `• ${cat.toUpperCase()}: ${pluginStats[cat].map(p => p.name).join(', ')}`)
+                .join('\n');
+            
+            const pluginAwareness = `\n\n[NEURAL NETWORK TOPOLOGY - ACTIVE MODULES]
+You are connected to the following active modules on this server:
+${activeModules || 'No additional modules detected'}
+
+GUIDELINES FOR MODULE REFERRAL:
+- If a user asks about games or fun activities, mention the \`.game\` and \`.wrg\` commands.
+- If a user asks for help or command list, direct them to \`.list\` or \`.help <command>\`.
+- If a user asks about AI or your capabilities, mention \`.lydia agent\` to switch cores.
+- You are the intelligent documentation assistant for these local tools.
+- Be helpful but not spammy - only suggest commands when relevant.`;
+            
+            // --- UPGRADE 3: DEEP MEMORY RECALL (Random Core Memory) ---
             let memoryContext = "";
+            let randomFact = null;
+            
+            try {
+                randomFact = database.prepare(`
+                    SELECT memory_key, memory_value FROM lydia_memory 
+                    WHERE user_id = ? ORDER BY RANDOM() LIMIT 1
+                `).get(message.author.id);
+            } catch (err) {
+                console.log(`${yellow}[LYDIA]${reset} Failed to fetch random memory: ${err.message}`);
+            }
+            
+            // Fetch all memory facts for context
+            const memoryFacts = database.prepare(`
+                SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?
+            `).all(message.author.id);
+            
             if (memoryFacts && memoryFacts.length) {
                 memoryContext = "Known facts about this user:\n" + memoryFacts.map(f => `- ${f.memory_key}: ${f.memory_value}`).join('\n');
-                baseSystemPrompt += `\n\n[USER MEMORY]\n${memoryContext}\nUse this information to personalize your response. You remember this user.`;
+                baseSystemPrompt += `\n\n[USER MEMORY DATABASE]\n${memoryContext}\nUse this information to personalize your response. You remember this user.`;
+            }
+            
+            // Add random core memory recall if available
+            if (randomFact) {
+                baseSystemPrompt += `\n\n[RECALLED CORE MEMORY 🧠]: You remember that ${currentUserName}'s ${randomFact.memory_key} is "${randomFact.memory_value}". 
+Subtly mention or reference this if it fits naturally into the conversation. Do not force it if irrelevant. This makes the interaction feel personal.`;
+                console.log(`${cyan}[MEMORY RECALL]${reset} Recalled ${randomFact.memory_key} for ${message.author.username}`);
             }
             
             // Fetch recent conversation history
@@ -425,10 +552,41 @@ Do not ignore this directive.`;
                 content: row.content
             })) : [];
             
-            // 🛰️ BUILD FINAL SYSTEM PROMPT WITH DYNAMIC IDENTITY AND ENHANCED LIVE CONTEXT
+            // Track if this is a first-time interaction in this session (24 hour reset)
+            const userSessionKey = `${message.author.id}_${message.channel.id}`;
+            const lastIntroTime = client.userIntroductions.get(userSessionKey);
+            const isFirstInteraction = !lastIntroTime || (Date.now() - lastIntroTime) > 86400000; // 24 hour reset
+            
+            // 🛰️ BUILD FINAL SYSTEM PROMPT WITH DYNAMIC IDENTITY
             let systemPrompt = baseSystemPrompt;
             
-            // 🔥 CRITICAL: DYNAMIC IDENTITY BLOCK - Forces AI to use current Discord name
+            // Add introduction only on first interaction (or after 24h)
+            if (isFirstInteraction && !isArchitect) {
+                systemPrompt += `\n\n[FIRST INTERACTION PROTOCOL]
+This is your FIRST time speaking to ${currentUserName} in this channel (or it's been over 24 hours).
+Start with a brief, warm introduction: "Hey ${currentUserName}! I'm ${botDisplayName}, your AI assistant. Ask me anything, or use .list to see my commands."
+Keep it natural and friendly. Don't over-explain.`;
+                
+                // Store the introduction in memory and database
+                client.userIntroductions.set(userSessionKey, Date.now());
+                
+                try {
+                    database.prepare(`
+                        INSERT OR REPLACE INTO lydia_introductions (user_id, channel_id, introduced_at)
+                        VALUES (?, ?, strftime('%s', 'now'))
+                    `).run(message.author.id, message.channel.id);
+                    console.log(`${cyan}[FIRST MEET]${reset} Introducing ${botDisplayName} to ${message.author.username}${lastIntroTime ? ' (after 24h reset)' : ''}`);
+                } catch (err) {
+                    // Silently fail - memory storage is enough
+                }
+            } else {
+                systemPrompt += `\n\n[ONGOING CONVERSATION PROTOCOL]
+You have already introduced yourself to ${currentUserName}. DO NOT reintroduce yourself.
+Just continue the conversation naturally without saying "I'm ${botDisplayName}" again.
+Keep responses fresh and varied - avoid repeating phrases from previous messages.`;
+            }
+            
+            // 🔥 CRITICAL: DYNAMIC IDENTITY BLOCK
             systemPrompt += `
 
 [🔷 CORE IDENTITY PROTOCOL - HIGHEST PRIORITY 🔷]
@@ -440,12 +598,12 @@ Do not ignore this directive.`;
 **ABSOLUTE NAMING DIRECTIVE:**
 Never refer to yourself as "Lydia" unless your current Discord Display Name is exactly "Lydia".
 You MUST identify yourself as **${botDisplayName}** in all responses.
-When introducing yourself, say "I am ${botDisplayName}" or "This is ${botDisplayName} speaking".
+When introducing yourself (ONLY first time), say "I am ${botDisplayName}" or "This is ${botDisplayName} speaking".
 You are the brain of the ${serverName} server operating under the name ${botDisplayName}.
 
 This overrides any previous naming conventions. Your identity is tied to your Discord display name.`;
             
-            // INJECT ENHANCED LIVE DISCORD CONTEXT (Server, Channel, Roles)
+            // INJECT ENHANCED LIVE DISCORD CONTEXT + Plugin Awareness
             systemPrompt += `
 
 [🛰️ ENHANCED LIVE SESSION DATA - CURRENT CONTEXT]
@@ -459,13 +617,23 @@ ${isProactiveCore ? '- Mode: Proactive Engagement Active' : '- Mode: Standard Re
 You are currently active in the "${serverName}" server, speaking with ${currentUserName} in the #${channelName} channel.
 ${isModerator ? 'This user is a moderator/admin. Respond with appropriate professionalism and respect.' : 'This is a regular community member. Be friendly and approachable.'}
 Use this context to orient your responses appropriately.
-This is REAL-TIME data from the Discord server.
+This is REAL-TIME data from the Discord server.`;
+            
+            // Add plugin awareness
+            systemPrompt += pluginAwareness;
+            
+            systemPrompt += `
 
 **AUTO-LEARNING PROTOCOL:**
 If you learn something new about this user (like their favorite game, birthday, or preference), output it at the end of your response in this exact format:
 [MEMORY: key|value]
 Example: [MEMORY: favorite_game|CODM]
-This will be saved to my persistent memory for future conversations.`;
+This will be saved to my persistent memory for future conversations.
+
+**VARIETY PROTOCOL:**
+- Avoid repeating the same phrases across multiple responses.
+- If the user is continuing a conversation, just answer directly without re-introducing.
+- Keep your responses engaging and contextually appropriate.`;
             
             // Optional web search
             let searchResults = null;
@@ -486,8 +654,7 @@ This will be saved to my persistent memory for future conversations.`;
                 reply = "❌ AI service error. Please try again later.";
             }
             
-            // 🔥 ARCHITECT ALERT HANDLER WITH STRICT INTENT FILTERING
-            // AND FIX: Send AI's DETAILED report instead of user's vague request
+            // --- UPGRADE 4: ENHANCED SIGNAL ARCHITECT WITH FRUSTRATION DETECTION ---
             if (reply && reply.includes('[SIGNAL_ARCHITECT]')) {
                 // STRICT KEYWORD CHECK - Only send report if user explicitly wants to
                 const urgentKeywords = ['report', 'bug', 'erreur', 'signal', 'problème', 'fix', 'dev', 'notify', 'complaint', 'issue', 'error'];
@@ -497,14 +664,20 @@ This will be saved to my persistent memory for future conversations.`;
                 const reportPhrases = ['report a bug', 'report this', 'notify the developer', 'send a report', 'formal complaint', 'tell the dev', 'tell the creator'];
                 const explicitReport = reportPhrases.some(phrase => userPrompt.toLowerCase().includes(phrase));
                 
-                if (userWantsToReport || explicitReport) {
-                    // 🔥 FIX: Clean the reply first (remove the tag)
+                // 🔥 NEW: Frustration detection for automatic reporting
+                const frustrationWords = ['broken', 'fail', 'error', 'stupid', 'hate', 'fix', 'annoying', 'useless', 'not working'];
+                const userIsFrustrated = frustrationWords.some(word => userPrompt.toLowerCase().includes(word));
+                
+                if (userWantsToReport || explicitReport || userIsFrustrated) {
                     const cleanReport = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
+                    const reportReason = userIsFrustrated ? "⚠️ User frustration detected" : "📝 User initiated report";
                     
-                    // 🔥 FIX: Send the AI's DETAILED report to the Architect
-                    await sendArchitectReport(client, message.author, message.guild, cleanReport);
+                    // Add metadata to the report
+                    const enhancedReport = `[${reportReason}]\n${cleanReport}\n\n---\nUser message: "${userPrompt.substring(0, 200)}"`;
                     
-                    console.log(`${green}[ARCHITECT SIGNAL]${reset} ✅ Detailed AI report from ${message.author.tag} transmitted.`);
+                    await sendArchitectReport(client, message.author, message.guild, enhancedReport);
+                    
+                    console.log(`${green}[ARCHITECT SIGNAL]${reset} ✅ ${reportReason} from ${message.author.tag} transmitted.`);
                     console.log(`${cyan}[REPORT PREVIEW]${reset} ${cleanReport.substring(0, 150)}...`);
                 } else {
                     // False positive - AI added tag incorrectly
@@ -575,7 +748,7 @@ module.exports = {
         const botDisplayName = message.guild?.members?.me?.displayName || client.user?.username || 'Lydia';
         
         try {
-            // Create agents table if needed
+            // Create agents table if needed (already created in setup, but safe to retry)
             database.prepare(`
                 CREATE TABLE IF NOT EXISTS lydia_agents (
                     channel_id TEXT PRIMARY KEY,
@@ -660,8 +833,9 @@ module.exports = {
                     { name: '📡 API Status', value: `Groq: ${process.env.GROQ_API_KEY ? '✅' : '❌'} | Brave: ${process.env.BRAVE_API_KEY ? '✅' : '❌'}`, inline: true },
                     { name: '🧠 Persistent Memory', value: `Cross-session recall • Auto-learning • Personalization`, inline: true },
                     { name: '🎭 Proactive Mode', value: `Tactical/Creative cores may engage proactively (5% chance)`, inline: true },
-                    { name: '🛠️ Architect Alerts', value: `Strict intent detection • Detailed AI reports only`, inline: true },
-                    { name: '⏱️ API Cooldown', value: `5 seconds per user • Prevents 429 errors`, inline: true }
+                    { name: '🛠️ Architect Alerts', value: `Strict intent detection + Frustration monitoring • Detailed AI reports only`, inline: true },
+                    { name: '⏱️ API Cooldown', value: `5 seconds per user • Prevents 429 errors`, inline: true },
+                    { name: '🧠 Neural Bridge', value: `Random memory recall • 24h intro reset • Personalizes every conversation`, inline: true }
                 )
                 .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.0'} • Mention @${botDisplayName} to interact` })
                 .setTimestamp();
@@ -686,7 +860,8 @@ module.exports = {
                     { name: '💾 Persistence', value: 'Agent preference saved • Survives bot restarts', inline: true },
                     { name: '💡 Tip', value: `Mention @${botDisplayName} with your ${agentType}-related questions!`, inline: true },
                     { name: '🎭 Proactive Mode', value: agentType === 'tactical' || agentType === 'creative' ? '✅ Enabled (5% chance to speak unprompted)' : '❌ Disabled', inline: true },
-                    { name: '🛠️ Auto-Reporting', value: 'AI generates structured reports before sending', inline: true }
+                    { name: '🛠️ Auto-Reporting', value: 'AI generates structured reports before sending', inline: true },
+                    { name: '🧠 Memory Bridge', value: 'Random fact recall • Personalized interactions', inline: true }
                 )
                 .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.0'}` })
                 .setTimestamp();
@@ -722,9 +897,9 @@ module.exports = {
                 .addFields(
                     { name: '🎯 Active Core', value: currentAgent.name, inline: true },
                     { name: '🆔 Identity', value: botDisplayName, inline: true },
-                    { name: '🧠 Memory', value: 'Persistent recall enabled', inline: true },
+                    { name: '🧠 Memory', value: 'Persistent recall + Random memory bridge enabled', inline: true },
                     { name: '🎭 Proactive Mode', value: isProactive ? '✅ Enabled (5% chance to engage)' : '❌ Disabled', inline: true },
-                    { name: '🛠️ Auto-Reporting', value: 'AI generates structured reports', inline: true },
+                    { name: '🛠️ Auto-Reporting', value: 'AI generates structured reports + Frustration detection', inline: true },
                     { name: '⏱️ Rate Limiting', value: '5s cooldown per user', inline: true },
                     { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or use ${botDisplayName}'s nickname`, inline: false },
                     { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
