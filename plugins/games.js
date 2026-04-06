@@ -34,17 +34,19 @@ function createProgressBar(percentage, length = 10) {
     return '█'.repeat(filled) + '░'.repeat(empty) + ` ${percentage.toFixed(1)}%`;
 }
 
-// ================= DÉTECTION DE LANGUE =================
-function detectLanguage(args, subCommand) {
-    const frenchIndicators = ['dé', 'pileface', 'devine', 'machine', 'vingtetun', 'pfc', 'culture', 'pendu', 'classement', 'statistiques', 'rang'];
-    const englishIndicators = ['dice', 'coinflip', 'guess', 'slots', 'blackjack', 'rps', 'trivia', 'hangman', 'leaderboard', 'stats', 'rank'];
+// ================= DÉTECTION DE LANGUE AMÉLIORÉE =================
+function detectLanguage(message, args) {
+    const content = message.content.toLowerCase();
     
-    const commandUsed = subCommand || (args[0]?.toLowerCase());
-    
-    if (frenchIndicators.includes(commandUsed)) return 'fr';
-    if (englishIndicators.includes(commandUsed)) return 'en';
-    
-    return 'fr';
+    // Check if the user used an English trigger/alias
+    const englishTriggers = ['.play', '.arcade', '.game', '.minigame'];
+    const englishKeywords = ['dice', 'coinflip', 'guess', 'slots', 'blackjack', 'rps', 'trivia', 'hangman', 'stats', 'rank', 'heads', 'tails'];
+
+    // If starts with .play or contains 'dice', 'stats', etc -> switch to EN
+    if (englishTriggers.some(t => content.startsWith(t))) return 'en';
+    if (args.some(a => englishKeywords.includes(a.toLowerCase()))) return 'en';
+
+    return 'fr'; // Default back to French
 }
 
 // ================= TEXTRES MULTILANGUES =================
@@ -119,25 +121,25 @@ const texts = {
     }
 };
 
-// ================= FONCTION DE LEVEL UP AVEC ANNONCE =================
-function checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel) {
+// ================= FONCTION DE LEVEL UP DYNAMIQUE =================
+function checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel, lang) {
     const oldLevel = calculateLevel(oldXp);
     const newLevel = calculateLevel(newXp);
     
     if (newLevel > oldLevel) {
         const rank = getRank(newLevel);
-        const lang = 'fr';
+        const t = texts[lang]; // Pulls correct translations
         
         const levelUpEmbed = new EmbedBuilder()
             .setColor(rank.color)
-            .setAuthor({ name: texts[lang].neuralArcade, iconURL: channel.client.user.displayAvatarURL() })
-            .setTitle(texts[lang].levelUp)
-            .setDescription(`${texts[lang].congratulations} **${username}**! ${texts[lang].newRank} **${rank.emoji} ${rank.title[lang]}** (Niveau ${newLevel})`)
+            .setAuthor({ name: t.neuralArcade, iconURL: channel.client.user.displayAvatarURL() })
+            .setTitle(t.levelUp)
+            .setDescription(`${t.congratulations} **${username}**! ${t.newRank} **${rank.emoji} ${rank.title[lang]}** (${t.level} ${newLevel})`)
             .addFields(
-                { name: "📊 PROGRESSION", value: `Niveau ${oldLevel} → Niveau ${newLevel}`, inline: true },
-                { name: "🎯 RANG ATTEINT", value: `${rank.emoji} ${rank.title[lang]}`, inline: true }
+                { name: lang === 'fr' ? "📊 PROGRESSION" : "📊 PROGRESS", value: `${t.level} ${oldLevel} → ${t.level} ${newLevel}`, inline: true },
+                { name: lang === 'fr' ? "🎯 RANG ATTEINT" : "🎯 RANK ATTAINED", value: `${rank.emoji} ${rank.title[lang]}`, inline: true }
             )
-            .setFooter({ text: "Continuez à jouer pour gravir les échelons!", iconURL: channel.client.user.displayAvatarURL() })
+            .setFooter({ text: lang === 'fr' ? "Continuez à jouer pour monter en grade!" : "Keep playing to climb the ranks!" })
             .setTimestamp();
         
         channel.send({ embeds: [levelUpEmbed] });
@@ -146,11 +148,14 @@ function checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel) {
     return false;
 }
 
-// ================= UPDATE GAME STATS AVEC LEVEL UP =================
-function updateGameStats(userId, won, winnings, channel, username) {
+// ================= UPDATE STATS =================
+function updateGameStats(userId, won, winnings, channel, username, lang) {
     const oldUser = db.prepare("SELECT xp FROM users WHERE id = ?").get(userId);
     const oldXp = oldUser?.xp || 0;
     
+    const xpGain = won ? 100 : 25;
+    
+    // Ensure columns exist
     try {
         db.prepare(`ALTER TABLE users ADD COLUMN games_played INTEGER DEFAULT 0`).run();
         db.prepare(`ALTER TABLE users ADD COLUMN games_won INTEGER DEFAULT 0`).run();
@@ -158,19 +163,12 @@ function updateGameStats(userId, won, winnings, channel, username) {
         db.prepare(`ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0`).run();
     } catch (e) {}
     
-    const xpGain = won ? 100 : 25;
-    
-    if (won) {
-        db.prepare(`UPDATE users SET games_played = games_played + 1, games_won = games_won + 1, total_winnings = total_winnings + ?, xp = xp + ? WHERE id = ?`)
-            .run(winnings, xpGain, userId);
-    } else {
-        db.prepare(`UPDATE users SET games_played = games_played + 1, total_winnings = total_winnings + ?, xp = xp + ? WHERE id = ?`)
-            .run(winnings, xpGain, userId);
-    }
+    db.prepare(`UPDATE users SET games_played = games_played + 1, games_won = games_won + ${won ? 1 : 0}, total_winnings = total_winnings + ?, xp = xp + ? WHERE id = ?`)
+      .run(winnings, xpGain, userId);
     
     const newUser = db.prepare("SELECT xp FROM users WHERE id = ?").get(userId);
-    const newXp = newUser?.xp || 0;
-    checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel);
+    // Passing 'lang' here ensures the announcement is in the right language
+    checkAndAnnounceLevelUp(oldXp, newUser?.xp || 0, userId, username, channel, lang);
 }
 
 module.exports = {
@@ -179,8 +177,9 @@ module.exports = {
     description: 'Lancez les jeux neural arcade.',
     category: 'GAMING',
     run: async (client, message, args, userData) => {
+        // Detect language based on command and arguments
+        const lang = detectLanguage(message, args);
         const subCommand = args[0]?.toLowerCase();
-        const lang = detectLanguage(args, subCommand);
         
         if (!subCommand || subCommand === 'menu') {
             return showGameMenu(client, message, userData, lang);
@@ -243,54 +242,54 @@ module.exports = {
 
 // ================= GAME MENU =================
 async function showGameMenu(client, message, oldData, lang) {
+    const t = texts[lang];
     const userData = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const xp = userData?.xp || 0;
     const level = calculateLevel(xp);
     const rank = getRank(level);
     const progress = calculateProgress(xp, level);
     const progressBar = createProgressBar(progress.percentage);
-    const t = texts[lang];
     
     const menuEmbed = new EmbedBuilder()
         .setColor(rank.color)
-        .setAuthor({ name: `🎮 ${t.neuralArcade} • SÉLECTION DES JEUX`, iconURL: client.user.displayAvatarURL() })
-        .setTitle('═ SUITE DE JEUX ARCHITECT ═')
-        .setDescription('Sélectionnez un jeu pour tester vos réflexes.')
+        .setAuthor({ name: `🎮 ${t.neuralArcade} • ${lang === 'fr' ? 'SÉLECTION DES JEUX' : 'GAME SELECTION'}`, iconURL: client.user.displayAvatarURL() })
+        .setTitle(lang === 'fr' ? '═ SUITE DE JEUX ARCHITECT ═' : '═ ARCHITECT GAME SUITE ═')
+        .setDescription(lang === 'fr' ? 'Sélectionnez un jeu pour tester vos réflexes.' : 'Select a game to test your reflexes.')
         .addFields(
             { name: '🎲 DÉ ROULETTE', value: '`.game dice [1-6]`\n**Gain:** 5x', inline: true },
             { name: '🪙 PILE OU FACE', value: '`.game coinflip [pile/face]`\n**Gain:** 2x', inline: true },
-            { name: '🔢 DEVINE LE NOMBRE', value: '`.game guess`\n**Gain:** Jusqu\'à 100x', inline: true },
+            { name: '🔢 DEVINE LE NOMBRE', value: '`.game guess`\n**Gain:** Jusqu\'à 200x', inline: true },
             { name: '🎰 MACHINE À SOUS', value: '`.game slots`\n**Gain:** Jusqu\'à 500x', inline: true },
             { name: '🃏 BLACKJACK', value: '`.game blackjack`\n**Gain:** 2x', inline: true },
             { name: '✊ PFC DUEL', value: '`.game rps [pierre/feuille/ciseaux]`\n**Gain:** 2x', inline: true },
             { name: '🧠 CULTURE', value: '`.game trivia`\n**Gain:** 500 🪙', inline: true },
             { name: '🪑 PENDU', value: '`.game hangman`\n**Gain:** 1000 🪙', inline: true },
-            { name: '📊 VOS STATS', value: `\`\`\`yaml\n${rank.emoji} Grade: ${rank.title[lang]}\nNiveau: ${level}\nXP: ${xp.toLocaleString()}\nProgression: ${progress.percentage.toFixed(1)}%\n${progressBar}\nVictoires: ${userData?.games_won || 0}/${userData?.games_played || 0}\`\`\``, inline: false }
+            { name: `📊 ${t.gameStats}`, value: `\`\`\`yaml\n${rank.emoji} Grade: ${rank.title[lang]}\n${t.level}: ${level}\n${t.xp}: ${xp.toLocaleString()}\n${t.progress}: ${progress.percentage.toFixed(1)}%\n${progressBar}\n${t.won}: ${userData?.games_won || 0}/${userData?.games_played || 0}\`\`\``, inline: false }
         )
-        .setFooter({ text: 'COMMUNAUTÉ EAGLE • ARCADE NEURALE V2.0' })
+        .setFooter({ text: lang === 'fr' ? 'COMMUNAUTÉ EAGLE • ARCADE NEURALE V2.0' : 'EAGLE COMMUNITY • NEURAL ARCADE V2.0' })
         .setTimestamp();
     
     const row = new ActionRowBuilder()
         .addComponents(
-            new ButtonBuilder().setCustomId('game_dice').setLabel('🎲 DÉ').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('game_coinflip').setLabel('🪙 PILE/FACE').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('game_dice').setLabel(lang === 'fr' ? '🎲 DÉ' : '🎲 DICE').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('game_coinflip').setLabel(lang === 'fr' ? '🪙 PILE/FACE' : '🪙 COIN FLIP').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('game_slots').setLabel('🎰 SLOTS').setStyle(ButtonStyle.Danger),
             new ButtonBuilder().setCustomId('game_blackjack').setLabel('🃏 BLACKJACK').setStyle(ButtonStyle.Secondary)
         );
     
     const row2 = new ActionRowBuilder()
         .addComponents(
-            new ButtonBuilder().setCustomId('game_rps').setLabel('✊ PFC').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('game_guess').setLabel('🔢 DEVINE').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('game_trivia').setLabel('🧠 CULTURE').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('game_hangman').setLabel('🪑 PENDU').setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId('game_rps').setLabel(lang === 'fr' ? '✊ PFC' : '✊ RPS').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('game_guess').setLabel(lang === 'fr' ? '🔢 DEVINE' : '🔢 GUESS').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('game_trivia').setLabel(lang === 'fr' ? '🧠 CULTURE' : '🧠 TRIVIA').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('game_hangman').setLabel(lang === 'fr' ? '🪑 PENDU' : '🪑 HANGMAN').setStyle(ButtonStyle.Success)
         );
     
     const row3 = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder().setCustomId('game_stats').setLabel('📊 STATS').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('game_leaderboard').setLabel('🏆 CLASSEMENT').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('game_rank').setLabel('📈 RANG').setStyle(ButtonStyle.Primary)
+            new ButtonBuilder().setCustomId('game_leaderboard').setLabel('🏆 LEADERBOARD').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('game_rank').setLabel('📈 RANK').setStyle(ButtonStyle.Primary)
         );
     
     const reply = await message.reply({ embeds: [menuEmbed], components: [row, row2, row3] });
@@ -324,12 +323,12 @@ async function showGameMenu(client, message, oldData, lang) {
 
 // ================= PROFIL AGENT =================
 async function showAgentProfile(client, message, userData, lang) {
+    const t = texts[lang];
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const xp = user?.xp || 0;
     const level = calculateLevel(xp);
     const rank = getRank(level);
     const progress = calculateProgress(xp, level);
-    const t = texts[lang];
     
     const gamesPlayed = user?.games_played || 0;
     const gamesWon = user?.games_won || 0;
@@ -355,8 +354,8 @@ async function showAgentProfile(client, message, userData, lang) {
         const xpNeededForNextRank = Math.pow((nextRank.minLevel - 1) / 0.1, 2);
         const xpRemaining = Math.max(0, xpNeededForNextRank - xp);
         embed.addFields({ 
-            name: '🎯 PROCHAINE PROMOTION', 
-            value: `**${nextRank.emoji} ${nextRank.title[lang]}**\nNiveau ${nextRank.minLevel}\nXP restant: ${Math.ceil(xpRemaining).toLocaleString()}`,
+            name: lang === 'fr' ? '🎯 PROCHAINE PROMOTION' : '🎯 NEXT PROMOTION', 
+            value: `**${nextRank.emoji} ${nextRank.title[lang]}**\n${t.level} ${nextRank.minLevel}\n${lang === 'fr' ? 'XP restant' : 'XP remaining'}: ${Math.ceil(xpRemaining).toLocaleString()}`,
             inline: false 
         });
     }
@@ -367,11 +366,11 @@ async function showAgentProfile(client, message, userData, lang) {
     message.reply({ embeds: [embed] });
 }
 
-// ================= DICE GAME (CORRIGÉ) =================
+// ================= DICE GAME =================
 async function playDiceGame(client, message, userData, guess, lang) {
     const t = texts[lang];
     
-    // 🔧 CORRECTION: Vérification si guess est null (appel via bouton)
+    // Vérification si guess est null (appel via bouton)
     if (guess === null || guess === undefined) {
         return message.reply(lang === 'fr' ? t.useCommand : t.useCommandEn);
     }
@@ -379,9 +378,9 @@ async function playDiceGame(client, message, userData, guess, lang) {
     if (!guess) {
         const embed = new EmbedBuilder()
             .setColor('#ff4757')
-            .setAuthor({ name: '🎲 DÉ ROULETTE', iconURL: message.author.displayAvatarURL() })
+            .setAuthor({ name: lang === 'fr' ? '🎲 DÉ ROULETTE' : '🎲 DICE ROULETTE', iconURL: message.author.displayAvatarURL() })
             .setDescription(`❌ **${t.invalidGuess}**`)
-            .addFields({ name: '📝 UTILISATION', value: '`.game dice [1-6]`\nExemple: `.game dice 4`' });
+            .addFields({ name: lang === 'fr' ? '📝 UTILISATION' : '📝 USAGE', value: '`.game dice [1-6]`\nExample: `.game dice 4`' });
         return message.reply({ embeds: [embed] });
     }
     
@@ -390,8 +389,8 @@ async function playDiceGame(client, message, userData, guess, lang) {
     if (isNaN(userGuess) || userGuess < 1 || userGuess > 6) {
         const embed = new EmbedBuilder()
             .setColor('#ff4757')
-            .setAuthor({ name: '🎲 DÉ ROULETTE', iconURL: message.author.displayAvatarURL() })
-            .setDescription(`❌ **${t.invalidGuess}** Nombre entre 1-6.`);
+            .setAuthor({ name: lang === 'fr' ? '🎲 DÉ ROULETTE' : '🎲 DICE ROULETTE', iconURL: message.author.displayAvatarURL() })
+            .setDescription(`❌ **${t.invalidGuess}** ${lang === 'fr' ? 'Nombre entre 1-6.' : 'Number between 1-6.'}`);
         return message.reply({ embeds: [embed] });
     }
     
@@ -400,7 +399,7 @@ async function playDiceGame(client, message, userData, guess, lang) {
     const won = userGuess === roll;
     const winnings = won ? bet * 5 : -bet;
     
-    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username);
+    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
     
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const level = calculateLevel(updatedUser?.xp || 0);
@@ -408,9 +407,11 @@ async function playDiceGame(client, message, userData, guess, lang) {
     
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : '#ED4245')
-        .setAuthor({ name: '🎲 DÉ ROULETTE', iconURL: message.author.displayAvatarURL() })
+        .setAuthor({ name: lang === 'fr' ? '🎲 DÉ ROULETTE' : '🎲 DICE ROULETTE', iconURL: message.author.displayAvatarURL() })
         .setTitle(won ? t.win : t.lose)
-        .setDescription(`**Vous avez prédit:** \`${userGuess}\`\n**Le dé a montré:** \`${roll}\``)
+        .setDescription(lang === 'fr' 
+            ? `**Vous avez prédit:** \`${userGuess}\`\n**Le dé a montré:** \`${roll}\``
+            : `**You predicted:** \`${userGuess}\`\n**The die showed:** \`${roll}\``)
         .addFields(
             { name: '💰 RÉSULTAT', value: won ? `+${winnings.toLocaleString()} ${t.coins}` : `${winnings.toLocaleString()} ${t.coins}`, inline: true },
             { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
@@ -427,8 +428,8 @@ async function playCoinFlip(client, message, userData, choice, lang) {
         const embed = new EmbedBuilder()
             .setColor('#ff4757')
             .setAuthor({ name: '🪙 PILE OU FACE', iconURL: message.author.displayAvatarURL() })
-            .setDescription(`❌ **Veuillez spécifier pile ou face!**`)
-            .addFields({ name: '📝 UTILISATION', value: '`.game coinflip [pile/face]`\nExemple: `.game coinflip pile`' });
+            .setDescription(`❌ ${lang === 'fr' ? 'Veuillez spécifier pile ou face!' : 'Please specify heads or tails!'}`)
+            .addFields({ name: lang === 'fr' ? '📝 UTILISATION' : '📝 USAGE', value: '`.game coinflip [pile/face]`\nExample: `.game coinflip pile`' });
         return message.reply({ embeds: [embed] });
     }
     
@@ -444,7 +445,7 @@ async function playCoinFlip(client, message, userData, choice, lang) {
     const won = normalizedChoice === result;
     const winnings = won ? bet : -bet;
     
-    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username);
+    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
     
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const level = calculateLevel(updatedUser?.xp || 0);
@@ -456,8 +457,10 @@ async function playCoinFlip(client, message, userData, choice, lang) {
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : '#ED4245')
         .setAuthor({ name: '🪙 PILE OU FACE', iconURL: message.author.displayAvatarURL() })
-        .setTitle(won ? '✨ BONNE PRÉDICTION!' : '❌ MAUVAISE PRÉDICTION')
-        .setDescription(`**Vous avez choisi:** \`${choiceFr}\`\n**La pièce est tombée sur:** \`${resultFr}\``)
+        .setTitle(won ? (lang === 'fr' ? '✨ BONNE PRÉDICTION!' : '✨ GOOD PREDICTION!') : (lang === 'fr' ? '❌ MAUVAISE PRÉDICTION' : '❌ WRONG PREDICTION'))
+        .setDescription(lang === 'fr'
+            ? `**Vous avez choisi:** \`${choiceFr}\`\n**La pièce est tombée sur:** \`${resultFr}\``
+            : `**You chose:** \`${choiceFr}\`\n**The coin landed on:** \`${resultFr}\``)
         .addFields(
             { name: '💰 RÉSULTAT', value: won ? `+${winnings.toLocaleString()} ${t.coins}` : `${winnings.toLocaleString()} ${t.coins}`, inline: true },
             { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
@@ -473,7 +476,7 @@ async function playNumberGuess(client, message, userData, lang) {
     const t = texts[lang];
     
     if (activeGuesses.has(message.author.id)) {
-        return message.reply(`❌ Vous avez déjà une partie en cours! Terminez-la d'abord.`);
+        return message.reply(`❌ ${lang === 'fr' ? 'Vous avez déjà une partie en cours! Terminez-la d\'abord.' : 'You already have a game in progress! Finish it first.'}`);
     }
     
     const target = Math.floor(Math.random() * 100) + 1;
@@ -484,13 +487,15 @@ async function playNumberGuess(client, message, userData, lang) {
     
     const embed = new EmbedBuilder()
         .setColor('#00fbff')
-        .setAuthor({ name: '🔢 DEVINE LE NOMBRE', iconURL: message.author.displayAvatarURL() })
-        .setTitle('🎯 DEVINEZ LE NOMBRE')
-        .setDescription(`Je pense à un nombre entre **1** et **100**.\nVous avez **${maxAttempts}** essais!`)
+        .setAuthor({ name: lang === 'fr' ? '🔢 DEVINE LE NOMBRE' : '🔢 GUESS THE NUMBER', iconURL: message.author.displayAvatarURL() })
+        .setTitle(lang === 'fr' ? '🎯 DEVINEZ LE NOMBRE' : '🎯 GUESS THE NUMBER')
+        .setDescription(lang === 'fr'
+            ? `Je pense à un nombre entre **1** et **100**.\nVous avez **${maxAttempts}** essais!`
+            : `I'm thinking of a number between **1** and **100**.\nYou have **${maxAttempts}** attempts!`)
         .addFields(
-            { name: '🏆 RÉCOMPENSE', value: '1 essai: 200x • 2: 100x • 3: 50x • 4: 25x • 5: 10x' }
+            { name: lang === 'fr' ? '🏆 RÉCOMPENSE' : '🏆 REWARD', value: '1 essai: 200x • 2: 100x • 3: 50x • 4: 25x • 5: 10x' }
         )
-        .setFooter({ text: 'Vous avez 60 secondes!' });
+        .setFooter({ text: lang === 'fr' ? 'Vous avez 60 secondes!' : 'You have 60 seconds!' });
     
     await message.reply({ embeds: [embed] });
     
@@ -508,7 +513,7 @@ async function playNumberGuess(client, message, userData, lang) {
             const multiplier = [200, 100, 50, 25, 10][game.attempts - 1];
             const winnings = 100 * multiplier;
             
-            updateGameStats(message.author.id, true, winnings, message.channel, message.author.username);
+            updateGameStats(message.author.id, true, winnings, message.channel, message.author.username, lang);
             activeGuesses.delete(message.author.id);
             collector.stop();
             
@@ -518,9 +523,11 @@ async function playNumberGuess(client, message, userData, lang) {
             
             const winEmbed = new EmbedBuilder()
                 .setColor('#57F287')
-                .setAuthor({ name: '🔢 DEVINE LE NOMBRE', iconURL: message.author.displayAvatarURL() })
-                .setTitle('🎉 DEVINETTE PARFAITE!')
-                .setDescription(`**Le nombre était:** \`${game.target}\`\n**Trouvé en:** \`${game.attempts}\` essai(s)`)
+                .setAuthor({ name: lang === 'fr' ? '🔢 DEVINE LE NOMBRE' : '🔢 GUESS THE NUMBER', iconURL: message.author.displayAvatarURL() })
+                .setTitle(lang === 'fr' ? '🎉 DEVINETTE PARFAITE!' : '🎉 PERFECT GUESS!')
+                .setDescription(lang === 'fr'
+                    ? `**Le nombre était:** \`${game.target}\`\n**Trouvé en:** \`${game.attempts}\` essai(s)`
+                    : `**The number was:** \`${game.target}\`\n**Found in:** \`${game.attempts}\` attempt(s)`)
                 .addFields(
                     { name: '💰 RÉCOMPENSE', value: `+${winnings.toLocaleString()} ${t.coins} (${multiplier}x)`, inline: true },
                     { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
@@ -528,25 +535,27 @@ async function playNumberGuess(client, message, userData, lang) {
             
             await message.reply({ embeds: [winEmbed] });
         } else if (game.attempts >= game.maxAttempts) {
-            updateGameStats(message.author.id, false, -100, message.channel, message.author.username);
+            updateGameStats(message.author.id, false, -100, message.channel, message.author.username, lang);
             activeGuesses.delete(message.author.id);
             collector.stop();
             
             const loseEmbed = new EmbedBuilder()
                 .setColor('#ED4245')
-                .setAuthor({ name: '🔢 DEVINE LE NOMBRE', iconURL: message.author.displayAvatarURL() })
-                .setTitle('💔 PARTIE TERMINÉE')
-                .setDescription(`**Le nombre était:** \`${game.target}\``)
+                .setAuthor({ name: lang === 'fr' ? '🔢 DEVINE LE NOMBRE' : '🔢 GUESS THE NUMBER', iconURL: message.author.displayAvatarURL() })
+                .setTitle(lang === 'fr' ? '💔 PARTIE TERMINÉE' : '💔 GAME OVER')
+                .setDescription(lang === 'fr'
+                    ? `**Le nombre était:** \`${game.target}\``
+                    : `**The number was:** \`${game.target}\``)
                 .addFields({ name: '💰 RÉSULTAT', value: `-100 ${t.coins}`, inline: true });
             
             await message.reply({ embeds: [loseEmbed] });
         } else {
-            const hint = guess < game.target ? 'plus grand' : 'plus petit';
+            const hint = guess < game.target ? (lang === 'fr' ? 'plus grand' : 'higher') : (lang === 'fr' ? 'plus petit' : 'lower');
             const remaining = game.maxAttempts - game.attempts;
             
             const hintEmbed = new EmbedBuilder()
                 .setColor('#FEE75C')
-                .setDescription(`❌ **${guess}** n'est pas correct. ${t.guessHint} **${hint}**!\n*${remaining} ${t.attemptsLeft}*`);
+                .setDescription(`❌ **${guess}** ${lang === 'fr' ? "n'est pas correct." : "is not correct."} ${t.guessHint} **${hint}**!\n*${remaining} ${t.attemptsLeft}*`);
             
             await msg.reply({ embeds: [hintEmbed] });
         }
@@ -556,7 +565,7 @@ async function playNumberGuess(client, message, userData, lang) {
         if (activeGuesses.has(message.author.id)) {
             const game = activeGuesses.get(message.author.id);
             if (game.attempts < game.maxAttempts) {
-                updateGameStats(message.author.id, false, -100, message.channel, message.author.username);
+                updateGameStats(message.author.id, false, -100, message.channel, message.author.username, lang);
                 activeGuesses.delete(message.author.id);
                 message.reply(`⏰ **${t.timeOut}**`);
             }
@@ -588,7 +597,7 @@ async function playSlots(client, message, userData, lang) {
     const won = multiplier > 0;
     const winnings = won ? bet * multiplier : -bet;
     
-    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username);
+    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
     
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const level = calculateLevel(updatedUser?.xp || 0);
@@ -596,11 +605,11 @@ async function playSlots(client, message, userData, lang) {
     
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : '#ED4245')
-        .setAuthor({ name: '🎰 MACHINE À SOUS', iconURL: message.author.displayAvatarURL() })
-        .setTitle(won ? '✨ JACKPOT!' : '💔 PAS DE CHANCE')
+        .setAuthor({ name: lang === 'fr' ? '🎰 MACHINE À SOUS' : '🎰 SLOT MACHINE', iconURL: message.author.displayAvatarURL() })
+        .setTitle(won ? (lang === 'fr' ? '✨ JACKPOT!' : '✨ JACKPOT!') : (lang === 'fr' ? '💔 PAS DE CHANCE' : '💔 NO LUCK'))
         .setDescription(`\`\`\`\n┌─────┬─────┬─────┐\n│  ${reels[0]}  │  ${reels[1]}  │  ${reels[2]}  │\n└─────┴─────┴─────┘\n\`\`\``)
         .addFields(
-            { name: '🎁 GAIN', value: won ? `${winnings.toLocaleString()} ${t.coins} (${multiplier}x)` : `${winnings.toLocaleString()} ${t.coins}`, inline: true },
+            { name: lang === 'fr' ? '🎁 GAIN' : '🎁 WINNING', value: won ? `${winnings.toLocaleString()} ${t.coins} (${multiplier}x)` : `${winnings.toLocaleString()} ${t.coins}`, inline: true },
             { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
         );
     
@@ -614,25 +623,25 @@ async function playBlackjack(client, message, userData, lang) {
     let dealerHand = [drawCard(), drawCard()];
     let gameOver = false;
 
-    const generateEmbed = (status = 'À votre tour, Agent.') => {
+    const generateEmbed = (status = lang === 'fr' ? 'À votre tour, Agent.' : 'Your turn, Agent.') => {
         const pScore = calculateHand(playerHand);
         const dScore = gameOver ? calculateHand(dealerHand) : '??';
         const dDisplay = gameOver ? dealerHand.join(' ') : `${dealerHand[0]} 🃟`;
 
         return new EmbedBuilder()
             .setColor(gameOver ? '#00fbff' : '#f1c40f')
-            .setAuthor({ name: '🃏 BLACKJACK NEURAL', iconURL: message.author.displayAvatarURL() })
-            .setTitle('═ DUEL DE DONNÉES À HAUT RISQUE ═')
-            .setDescription(`**Statut:** ${status}`)
+            .setAuthor({ name: lang === 'fr' ? '🃏 BLACKJACK NEURAL' : '🃏 NEURAL BLACKJACK', iconURL: message.author.displayAvatarURL() })
+            .setTitle(lang === 'fr' ? '═ DUEL DE DONNÉES À HAUT RISQUE ═' : '═ HIGH-RISK DATA DUEL ═')
+            .setDescription(`**Status:** ${status}`)
             .addFields(
-                { name: '🎴 VOTRE MAIN', value: `\`${playerHand.join(' ')}\` \n**Score:** ${pScore}`, inline: true },
-                { name: '🃟 MAIN DU CROUPIER', value: `\`${dDisplay}\` \n**Score:** ${dScore}`, inline: true }
+                { name: lang === 'fr' ? '🎴 VOTRE MAIN' : '🎴 YOUR HAND', value: `\`${playerHand.join(' ')}\` \n**Score:** ${pScore}`, inline: true },
+                { name: lang === 'fr' ? '🃟 MAIN DU CROUPIER' : '🃟 DEALER HAND', value: `\`${dDisplay}\` \n**Score:** ${dScore}`, inline: true }
             );
     };
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_hit').setLabel('PIOCHE').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('bj_stand').setLabel('RESTE').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('bj_hit').setLabel(lang === 'fr' ? 'PIOCHE' : 'HIT').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('bj_stand').setLabel(lang === 'fr' ? 'RESTE' : 'STAND').setStyle(ButtonStyle.Secondary)
     );
 
     const gameMsg = await message.reply({ embeds: [generateEmbed()], components: [row] });
@@ -673,21 +682,21 @@ async function playBlackjack(client, message, userData, lang) {
         let winnings = 0;
 
         if (pScore > 21) {
-            result = '💀 DÉPASSEMENT! Surcharge système.';
+            result = lang === 'fr' ? '💀 DÉPASSEMENT! Surcharge système.' : '💀 BUST! System overload.';
             winnings = -200;
         } else if (dScore > 21 || pScore > dScore) {
-            result = '🎉 VICTOIRE! Liaison neurale stable.';
+            result = lang === 'fr' ? '🎉 VICTOIRE! Liaison neurale stable.' : '🎉 VICTORY! Neural link stable.';
             won = true;
             winnings = 200;
         } else if (dScore > pScore) {
-            result = '💔 DÉFAITE! Le croupier vous a surpassé.';
+            result = lang === 'fr' ? '💔 DÉFAITE! Le croupier vous a surpassé.' : '💔 DEFEAT! Dealer outplayed you.';
             winnings = -200;
         } else {
-            result = '🤝 ÉGALITÉ! Données synchronisées.';
+            result = lang === 'fr' ? '🤝 ÉGALITÉ! Données synchronisées.' : '🤝 TIE! Data synchronized.';
             winnings = 0;
         }
 
-        updateGameStats(message.author.id, won, winnings, message.channel, message.author.username);
+        updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
         
         const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
         const level = calculateLevel(updatedUser?.xp || 0);
@@ -711,9 +720,9 @@ async function playRPS(client, message, userData, choice, lang) {
     if (!choice || !['rock', 'paper', 'scissors', 'r', 'p', 's', 'pierre', 'feuille', 'ciseaux', 'pi', 'fe', 'ci'].includes(choice.toLowerCase())) {
         const embed = new EmbedBuilder()
             .setColor('#ff4757')
-            .setAuthor({ name: '✊ PFC DUEL', iconURL: message.author.displayAvatarURL() })
-            .setDescription('❌ **Veuillez spécifier pierre, feuille ou ciseaux!**')
-            .addFields({ name: '📝 UTILISATION', value: '`.game rps [pierre/feuille/ciseaux]`\nExemple: `.game rps pierre`' });
+            .setAuthor({ name: lang === 'fr' ? '✊ PFC DUEL' : '✊ RPS DUEL', iconURL: message.author.displayAvatarURL() })
+            .setDescription(`❌ ${lang === 'fr' ? 'Veuillez spécifier pierre, feuille ou ciseaux!' : 'Please specify rock, paper, or scissors!'}`)
+            .addFields({ name: lang === 'fr' ? '📝 UTILISATION' : '📝 USAGE', value: '`.game rps [pierre/feuille/ciseaux]`\nExample: `.game rps pierre`' });
         return message.reply({ embeds: [embed] });
     }
     
@@ -750,8 +759,8 @@ async function playRPS(client, message, userData, choice, lang) {
         winnings = -100;
     }
     
-    if (won) updateGameStats(message.author.id, true, winnings, message.channel, message.author.username);
-    else if (winnings < 0) updateGameStats(message.author.id, false, winnings, message.channel, message.author.username);
+    if (won) updateGameStats(message.author.id, true, winnings, message.channel, message.author.username, lang);
+    else if (winnings < 0) updateGameStats(message.author.id, false, winnings, message.channel, message.author.username, lang);
     
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const level = calculateLevel(updatedUser?.xp || 0);
@@ -759,16 +768,18 @@ async function playRPS(client, message, userData, choice, lang) {
     
     const emojis = { rock: '✊', paper: '✋', scissors: '✌️' };
     const namesFr = { rock: 'PIERRE', paper: 'FEUILLE', scissors: 'CISEAUX' };
+    const namesEn = { rock: 'ROCK', paper: 'PAPER', scissors: 'SCISSORS' };
+    const names = lang === 'fr' ? namesFr : namesEn;
     
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : (winnings === 0 ? '#FEE75C' : '#ED4245'))
-        .setAuthor({ name: '✊ PFC DUEL', iconURL: message.author.displayAvatarURL() })
-        .setTitle('═ COMBAT STRATÉGIQUE ═')
+        .setAuthor({ name: lang === 'fr' ? '✊ PFC DUEL' : '✊ RPS DUEL', iconURL: message.author.displayAvatarURL() })
+        .setTitle(lang === 'fr' ? '═ COMBAT STRATÉGIQUE ═' : '═ STRATEGIC COMBAT ═')
         .setDescription(result)
         .addFields(
-            { name: '🎮 VOTRE MOUVEMENT', value: `${emojis[normalizedChoice]} **${namesFr[normalizedChoice]}**`, inline: true },
-            { name: '🤖 MOUVEMENT IA', value: `${emojis[botChoice]} **${namesFr[botChoice]}**`, inline: true },
-            { name: '💰 RÉSULTAT', value: winnings !== 0 ? `${winnings > 0 ? '+' : ''}${winnings.toLocaleString()} ${t.coins}` : 'Aucun changement', inline: false },
+            { name: lang === 'fr' ? '🎮 VOTRE MOUVEMENT' : '🎮 YOUR MOVE', value: `${emojis[normalizedChoice]} **${names[normalizedChoice]}**`, inline: true },
+            { name: lang === 'fr' ? '🤖 MOUVEMENT IA' : '🤖 AI MOVE', value: `${emojis[botChoice]} **${names[botChoice]}**`, inline: true },
+            { name: '💰 RÉSULTAT', value: winnings !== 0 ? `${winnings > 0 ? '+' : ''}${winnings.toLocaleString()} ${t.coins}` : (lang === 'fr' ? 'Aucun changement' : 'No change'), inline: false },
             { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
         );
     
@@ -778,22 +789,28 @@ async function playRPS(client, message, userData, choice, lang) {
 // ================= TRIVIA =================
 async function playTrivia(client, message, userData, lang) {
     const t = texts[lang];
-    const questions = [
+    const questions = lang === 'fr' ? [
         { q: "Que signifie HTML ?", a: ["HyperText Markup Language", "High Tech Modern Language", "Hyperlink Text Management"], correct: 0, fact: "HTML est la structure de base du web." },
         { q: "Quel langage est utilisé pour ce bot ?", a: ["CSS", "JavaScript", "C++"], correct: 1, fact: "JavaScript (Node.js) est le standard pour les bots Discord." },
         { q: "Dans CODM, que signifie 'ADS' ?", a: ["Aim Down Sights", "Auto Deploy System", "Advanced Defense Shield"], correct: 0, fact: "L'ADS est le temps de visée." },
         { q: "Capitale du Mali ?", a: ["Bamako", "Ségou", "Mopti"], correct: 0, fact: "Bamako est le centre économique du Mali." },
         { q: "Peintre de la Joconde ?", a: ["Van Gogh", "Picasso", "Léonard de Vinci"], correct: 2, fact: "La Joconde est au Louvre." }
+    ] : [
+        { q: "What does HTML stand for?", a: ["HyperText Markup Language", "High Tech Modern Language", "Hyperlink Text Management"], correct: 0, fact: "HTML is the basic structure of the web." },
+        { q: "Which language is used for this bot?", a: ["CSS", "JavaScript", "C++"], correct: 1, fact: "JavaScript (Node.js) is the standard for Discord bots." },
+        { q: "In CODM, what does 'ADS' mean?", a: ["Aim Down Sights", "Auto Deploy System", "Advanced Defense Shield"], correct: 0, fact: "ADS is the aiming time." },
+        { q: "Capital of Mali?", a: ["Bamako", "Ségou", "Mopti"], correct: 0, fact: "Bamako is the economic center of Mali." },
+        { q: "Painter of the Mona Lisa?", a: ["Van Gogh", "Picasso", "Leonardo da Vinci"], correct: 2, fact: "The Mona Lisa is at the Louvre." }
     ];
 
     const data = questions[Math.floor(Math.random() * questions.length)];
     
     const embed = new EmbedBuilder()
         .setColor('#00fbff')
-        .setAuthor({ name: '🧠 CULTURE GÉNÉRALE', iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ name: lang === 'fr' ? '🧠 CULTURE GÉNÉRALE' : '🧠 GENERAL KNOWLEDGE', iconURL: client.user.displayAvatarURL() })
         .setTitle('📥 QUESTION')
         .setDescription(`**${data.q}**`)
-        .setFooter({ text: 'Temps: 15 secondes' });
+        .setFooter({ text: lang === 'fr' ? 'Temps: 15 secondes' : 'Time: 15 seconds' });
 
     const row = new ActionRowBuilder().addComponents(
         data.a.map((choice, index) => 
@@ -808,12 +825,12 @@ async function playTrivia(client, message, userData, lang) {
     const collector = reply.createMessageComponentCollector({ time: 15000 });
 
     collector.on('collect', async (i) => {
-        if (i.user.id !== message.author.id) return i.reply({ content: "Accès refusé.", ephemeral: true });
+        if (i.user.id !== message.author.id) return i.reply({ content: lang === 'fr' ? "Accès refusé." : "Access denied.", ephemeral: true });
         
         const isCorrect = i.customId === `trivia_${data.correct}`;
         const winnings = isCorrect ? 500 : -100;
         
-        updateGameStats(message.author.id, isCorrect, winnings, message.channel, message.author.username);
+        updateGameStats(message.author.id, isCorrect, winnings, message.channel, message.author.username, lang);
         
         const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
         const level = calculateLevel(updatedUser?.xp || 0);
@@ -821,8 +838,8 @@ async function playTrivia(client, message, userData, lang) {
         
         const resultEmbed = new EmbedBuilder()
             .setColor(isCorrect ? '#57F287' : '#ED4245')
-            .setTitle(isCorrect ? '✅ CORRECT' : '❌ INCORRECT')
-            .setDescription(isCorrect ? `+500 ${t.coins}` : `-100 ${t.coins}\nRéponse: **${data.a[data.correct]}**`)
+            .setTitle(isCorrect ? (lang === 'fr' ? '✅ CORRECT' : '✅ CORRECT') : (lang === 'fr' ? '❌ INCORRECT' : '❌ INCORRECT'))
+            .setDescription(isCorrect ? `+500 ${t.coins}` : `-100 ${t.coins}\n${lang === 'fr' ? 'Réponse' : 'Answer'}: **${data.a[data.correct]}**`)
             .addFields(
                 { name: '🧠 INFO', value: data.fact },
                 { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
@@ -836,7 +853,9 @@ async function playTrivia(client, message, userData, lang) {
 // ================= HANGMAN =================
 async function playHangman(client, message, userData, lang) {
     const t = texts[lang];
-    const words = ['ARCHITECTE', 'JAVASCRIPT', 'BAMAKO', 'DISCORD', 'VICTOIRE', 'STRATEGIE', 'NEURAL', 'ARCADE'];
+    const words = lang === 'fr' 
+        ? ['ARCHITECTE', 'JAVASCRIPT', 'BAMAKO', 'DISCORD', 'VICTOIRE', 'STRATEGIE', 'NEURAL', 'ARCADE']
+        : ['ARCHITECT', 'JAVASCRIPT', 'BAMAKO', 'DISCORD', 'VICTORY', 'STRATEGY', 'NEURAL', 'ARCADE'];
     const targetWord = words[Math.floor(Math.random() * words.length)];
     let guessed = [];
     let lives = 6;
@@ -845,8 +864,8 @@ async function playHangman(client, message, userData, lang) {
 
     const hmEmbed = new EmbedBuilder()
         .setColor('#FEE75C')
-        .setTitle('🪑 PENDU NEURAL')
-        .setDescription(`**Mot:** \`${getDisplay()}\` \n\n**Vies:** ❤️ ${lives}\nTapez une lettre!`);
+        .setTitle(lang === 'fr' ? '🪑 PENDU NEURAL' : '🪑 NEURAL HANGMAN')
+        .setDescription(`**Word:** \`${getDisplay()}\` \n\n**Lives:** ❤️ ${lives}\n${lang === 'fr' ? 'Tapez une lettre!' : 'Type a letter!'}`);
 
     const gameMsg = await message.reply({ embeds: [hmEmbed] });
 
@@ -855,19 +874,19 @@ async function playHangman(client, message, userData, lang) {
 
     collector.on('collect', async (m) => {
         const char = m.content.toUpperCase();
-        if (guessed.includes(char)) return m.reply("Lettre déjà essayée!");
+        if (guessed.includes(char)) return m.reply(lang === 'fr' ? "Lettre déjà essayée!" : "Letter already tried!");
 
         guessed.push(char);
         if (!targetWord.includes(char)) lives--;
 
         if (getDisplay() === targetWord) {
-            updateGameStats(message.author.id, true, 1000, message.channel, message.author.username);
+            updateGameStats(message.author.id, true, 1000, message.channel, message.author.username, lang);
             collector.stop('win');
         } else if (lives <= 0) {
-            updateGameStats(message.author.id, false, -200, message.channel, message.author.username);
+            updateGameStats(message.author.id, false, -200, message.channel, message.author.username, lang);
             collector.stop('lose');
         } else {
-            hmEmbed.setDescription(`**Mot:** \`${getDisplay()}\` \n\n**Vies:** ❤️ ${lives}\n**Lettres:** ${guessed.join(', ')}`);
+            hmEmbed.setDescription(`**Word:** \`${getDisplay()}\` \n\n**Lives:** ❤️ ${lives}\n**Letters:** ${guessed.join(', ')}`);
             await gameMsg.edit({ embeds: [hmEmbed] });
         }
     });
@@ -880,12 +899,12 @@ async function playHangman(client, message, userData, lang) {
         const endEmbed = new EmbedBuilder();
         if (reason === 'win') {
             endEmbed.setColor('#57F287')
-                .setTitle('🎉 SAUVÉ!')
-                .setDescription(`Mot: **${targetWord}**!\n**+1,000 ${t.coins}**\n📈 ${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`);
+                .setTitle(lang === 'fr' ? '🎉 SAUVÉ!' : '🎉 SAVED!')
+                .setDescription(`${lang === 'fr' ? 'Mot' : 'Word'}: **${targetWord}**!\n**+1,000 ${t.coins}**\n📈 ${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`);
         } else {
             endEmbed.setColor('#ED4245')
-                .setTitle('💀 ÉCHEC')
-                .setDescription(`Mot: **${targetWord}**.\n📈 ${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`);
+                .setTitle(lang === 'fr' ? '💀 ÉCHEC' : '💀 FAILED')
+                .setDescription(`${lang === 'fr' ? 'Mot' : 'Word'}: **${targetWord}**.\n📈 ${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`);
         }
         await gameMsg.edit({ embeds: [endEmbed] });
     });
@@ -916,13 +935,13 @@ async function showGameStats(client, message, userData, lang) {
             { name: `📈 ${t.progress}`, value: `\`\`\`yaml\n${t.level}: ${level}\n${t.xp}: ${xp.toLocaleString()}\n${t.progress}: ${progress.percentage.toFixed(1)}%\n${progressBar}\`\`\``, inline: false },
             { name: `🎮 ${t.gameStats}`, value: `\`\`\`yaml\n${t.played}: ${gamesPlayed}\n${t.won}: ${gamesWon}\n${t.winRate}: ${winRate}%\nGains: ${totalWinnings.toLocaleString()} ${t.coins}\`\`\``, inline: false }
         )
-        .setFooter({ text: '.game rank pour plus de détails' })
+        .setFooter({ text: lang === 'fr' ? '.game rank pour plus de détails' : '.game rank for more details' })
         .setTimestamp();
     
     message.reply({ embeds: [embed] });
 }
 
-// ================= LEADERBOARD (CORRIGÉ AVEC TRADUCTION) =================
+// ================= LEADERBOARD =================
 async function showGameLeaderboard(client, message, type = 'wins', lang) {
     const t = texts[lang];
     let orderBy = '';
@@ -930,7 +949,6 @@ async function showGameLeaderboard(client, message, type = 'wins', lang) {
     let icon = '';
     let color = '';
     
-    // 🔧 CORRECTION: Traduction des titres avec l'objet t
     switch(type) {
         case 'wins':
         case 'win':
@@ -967,7 +985,7 @@ async function showGameLeaderboard(client, message, type = 'wins', lang) {
     const topPlayers = db.prepare(`SELECT id, username, games_played, games_won, total_winnings, xp FROM users WHERE games_played > 0 ORDER BY ${orderBy} LIMIT 10`).all();
     
     if (topPlayers.length === 0) {
-        return message.reply('📊 Aucune donnée disponible. Commencez à jouer!');
+        return message.reply(lang === 'fr' ? '📊 Aucune donnée disponible. Commencez à jouer!' : '📊 No data available. Start playing!');
     }
     
     const leaderboardText = topPlayers.map((player, i) => {
@@ -988,9 +1006,9 @@ async function showGameLeaderboard(client, message, type = 'wins', lang) {
     const embed = new EmbedBuilder()
         .setColor(color)
         .setAuthor({ name: `${icon} ${t.leaderboard}: ${title}`, iconURL: client.user.displayAvatarURL() })
-        .setTitle('═ CLASSEMENT ARCADE NEURALE ═')
+        .setTitle(lang === 'fr' ? '═ CLASSEMENT ARCADE NEURALE ═' : '═ NEURAL ARCADE LEADERBOARD ═')
         .setDescription(`\`\`\`yaml\n${leaderboardText}\`\`\``)
-        .setFooter({ text: '.game rank pour votre profil' })
+        .setFooter({ text: lang === 'fr' ? '.game rank pour votre profil' : '.game rank for your profile' })
         .setTimestamp();
     
     message.reply({ embeds: [embed] });
