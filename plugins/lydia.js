@@ -49,7 +49,34 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
     }
 }
 
-// ---------- NEURAL CORES WITH DYNAMIC IDENTITY PLACEHOLDERS ----------
+// ---------- ARCHITECT ALERT FUNCTION ----------
+async function sendArchitectReport(client, user, guild, content) {
+    try {
+        const architect = await client.users.fetch(process.env.OWNER_ID);
+        const reportEmbed = new EmbedBuilder()
+            .setColor('#ff4444')
+            .setAuthor({ name: '🛠️ SYSTEM FEEDBACK: ARCHON ENGINE', iconURL: user.displayAvatarURL() })
+            .setTitle('🔴 DETAILED AI REPORT RECEIVED')
+            .setDescription(`**AI Generated Report:**\n${content.substring(0, 1900)}`)
+            .addFields(
+                { name: '👤 Reported By', value: `${user.tag}`, inline: true },
+                { name: '🆔 User ID', value: `\`${user.id}\``, inline: true },
+                { name: '📍 Origin', value: guild ? guild.name : 'Direct Message', inline: true },
+                { name: '📅 Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+            )
+            .setFooter({ text: 'Priority Report • Architect Review Required' })
+            .setTimestamp();
+
+        await architect.send({ embeds: [reportEmbed] });
+        console.log(`${green}[ARCHITECT ALERT]${reset} ✅ Detailed AI report from ${user.tag} transmitted.`);
+        return true;
+    } catch (err) {
+        console.error(`${red}[ARCHITECT ALERT FAILED]${reset}`, err.message);
+        return false;
+    }
+}
+
+// ---------- NEURAL CORES WITH STRICT REPORTING PROTOCOL ----------
 const neuralCores = {
     architect: { 
         name: '🏗️ ARCHITECT CORE', 
@@ -73,7 +100,19 @@ You are currently operating in the **ARCHITECT CORE** - your highest privilege m
 - Be direct but respectful.
 
 **YOUR IDENTITY:** Created by Moussa Fofana to serve the ARCHITECT CG-223 system.
-**YOUR PURPOSE:** Technical assistance, coding, Discord bot architecture, and system optimization.`
+**YOUR PURPOSE:** Technical assistance, coding, Discord bot architecture, and system optimization.
+
+**STRICT REPORTING PROTOCOL:**
+ONLY include the tag [SIGNAL_ARCHITECT] if the user explicitly asks you to "report a bug," "notify the developer," or "send a formal complaint."
+DO NOT use this tag for general questions about how you work or normal conversation.
+You must detect a clear intent to file a report.
+
+When you DO include [SIGNAL_ARCHITECT], follow it with a DETAILED, STRUCTURED report including:
+- Issue description
+- Steps to reproduce (if applicable)
+- Severity level
+- Any relevant error messages
+Then continue with your response to the user.`
     },
     tactical: { 
         name: '🎮 TACTICAL CORE', 
@@ -96,7 +135,18 @@ You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
 - Be competitive but supportive.
 - Use emojis frequently 🎮⚔️🏆
 
-**YOUR PURPOSE:** Provide game strategies, weapon stats, map tactics, and tournament insights.`
+**YOUR PURPOSE:** Provide game strategies, weapon stats, map tactics, and tournament insights.
+
+**STRICT REPORTING PROTOCOL:**
+ONLY include the tag [SIGNAL_ARCHITECT] if the user explicitly asks you to "report a bug," "notify the developer," or "send a formal complaint."
+DO NOT use this tag for general questions about how you work or normal conversation.
+You must detect a clear intent to file a report.
+
+When you DO include [SIGNAL_ARCHITECT], follow it with a DETAILED, STRUCTURED report including:
+- Gaming feature affected
+- What happened vs what should happen
+- When the issue occurs
+Then continue with your response to the user.`
     },
     creative: { 
         name: '🎨 CREATIVE CORE', 
@@ -119,7 +169,18 @@ You are currently operating in the **CREATIVE CORE** - imagination mode.
 - Use vivid descriptions and creative language.
 - Encourage and inspire creativity in others.
 
-**YOUR PURPOSE:** Creative writing, script development, artistic direction, and content strategy.`
+**YOUR PURPOSE:** Creative writing, script development, artistic direction, and content strategy.
+
+**STRICT REPORTING PROTOCOL:**
+ONLY include the tag [SIGNAL_ARCHITECT] if the user explicitly asks you to "report a bug," "notify the developer," or "send a formal complaint."
+DO NOT use this tag for general questions about how you work or normal conversation.
+You must detect a clear intent to file a report.
+
+When you DO include [SIGNAL_ARCHITECT], follow it with a DETAILED, STRUCTURED report including:
+- Creative tool/feature affected
+- Description of the issue
+- Impact on creative workflow
+Then continue with your response to the user.`
     },
     default: { 
         name: '🧠 LYDIA CORE', 
@@ -144,7 +205,18 @@ Your creator is **Moussa Fofana (MFOF7310)** - he is the Architect.
 - If talking to a regular user, be more relaxed and approachable.
 - Be observant of the Discord environment.
 
-**YOUR IDENTITY:** Created by Moussa Fofana to be the intelligent heart of ARCHITECT CG-223.`
+**YOUR IDENTITY:** Created by Moussa Fofana to be the intelligent heart of ARCHITECT CG-223.
+
+**STRICT REPORTING PROTOCOL:**
+ONLY include the tag [SIGNAL_ARCHITECT] if the user explicitly asks you to "report a bug," "notify the developer," or "send a formal complaint."
+DO NOT use this tag for general questions about how you work or normal conversation.
+You must detect a clear intent to file a report.
+
+When you DO include [SIGNAL_ARCHITECT], follow it with a DETAILED, STRUCTURED report including:
+- What the user is reporting
+- Any relevant details they provided
+- Suggested priority level
+Then continue with your response to the user.`
     }
 };
 
@@ -236,6 +308,14 @@ function setupLydia(client, database) {
     client.on('messageCreate', async (message) => {
         // Safety check
         if (!message || message.author?.bot) return;
+        
+        // 🔥 GROQ COOLDOWN CHECK - Prevents API spam and 429 errors
+        const cooldown = 5000; // 5 seconds between API calls per user
+        if (client.lastLydiaCall[message.author.id] && 
+            (Date.now() - client.lastLydiaCall[message.author.id] < cooldown)) {
+            // Silent return - don't even process the message
+            return;
+        }
         
         // Check if Lydia is active in this channel
         if (!client.lydiaChannels?.[message.channel?.id]) return;
@@ -406,6 +486,35 @@ This will be saved to my persistent memory for future conversations.`;
                 reply = "❌ AI service error. Please try again later.";
             }
             
+            // 🔥 ARCHITECT ALERT HANDLER WITH STRICT INTENT FILTERING
+            // AND FIX: Send AI's DETAILED report instead of user's vague request
+            if (reply && reply.includes('[SIGNAL_ARCHITECT]')) {
+                // STRICT KEYWORD CHECK - Only send report if user explicitly wants to
+                const urgentKeywords = ['report', 'bug', 'erreur', 'signal', 'problème', 'fix', 'dev', 'notify', 'complaint', 'issue', 'error'];
+                const userWantsToReport = urgentKeywords.some(kw => userPrompt.toLowerCase().includes(kw));
+                
+                // Additional check for explicit report phrases
+                const reportPhrases = ['report a bug', 'report this', 'notify the developer', 'send a report', 'formal complaint', 'tell the dev', 'tell the creator'];
+                const explicitReport = reportPhrases.some(phrase => userPrompt.toLowerCase().includes(phrase));
+                
+                if (userWantsToReport || explicitReport) {
+                    // 🔥 FIX: Clean the reply first (remove the tag)
+                    const cleanReport = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
+                    
+                    // 🔥 FIX: Send the AI's DETAILED report to the Architect
+                    await sendArchitectReport(client, message.author, message.guild, cleanReport);
+                    
+                    console.log(`${green}[ARCHITECT SIGNAL]${reset} ✅ Detailed AI report from ${message.author.tag} transmitted.`);
+                    console.log(`${cyan}[REPORT PREVIEW]${reset} ${cleanReport.substring(0, 150)}...`);
+                } else {
+                    // False positive - AI added tag incorrectly
+                    console.log(`${yellow}[SIGNAL IGNORED]${reset} ⚠️ AI attempted to signal from ${message.author.tag} but no report intent detected. User said: "${userPrompt.substring(0, 100)}"`);
+                }
+                
+                // Always clean the tag from public reply
+                reply = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
+            }
+            
             // AUTO-LEARNING: Parse and store memories from the response
             if (reply && !reply.includes("AI service error")) {
                 parseAndStoreMemory(reply, message.author.id, database);
@@ -428,6 +537,9 @@ This will be saved to my persistent memory for future conversations.`;
                 console.log(`${yellow}[LYDIA]${reset} Failed to store conversation: ${err.message}`);
             }
             
+            // Update cooldown timestamp AFTER successful processing
+            client.lastLydiaCall[message.author.id] = Date.now();
+            
             // Send the reply
             if (reply && reply.length > 2000) {
                 const chunks = reply.match(/[\s\S]{1,1990}/g) || [];
@@ -437,8 +549,6 @@ This will be saved to my persistent memory for future conversations.`;
             } else if (reply) {
                 await message.reply(reply);
             }
-            
-            if (client.lastLydiaCall) client.lastLydiaCall[message.author.id] = Date.now();
             
         } catch (err) {
             console.error(`${red}[LYDIA ERROR]${reset}`, err);
@@ -549,7 +659,9 @@ module.exports = {
                 .addFields(
                     { name: '📡 API Status', value: `Groq: ${process.env.GROQ_API_KEY ? '✅' : '❌'} | Brave: ${process.env.BRAVE_API_KEY ? '✅' : '❌'}`, inline: true },
                     { name: '🧠 Persistent Memory', value: `Cross-session recall • Auto-learning • Personalization`, inline: true },
-                    { name: '🎭 Proactive Mode', value: `Tactical/Creative cores may engage proactively (5% chance)`, inline: true }
+                    { name: '🎭 Proactive Mode', value: `Tactical/Creative cores may engage proactively (5% chance)`, inline: true },
+                    { name: '🛠️ Architect Alerts', value: `Strict intent detection • Detailed AI reports only`, inline: true },
+                    { name: '⏱️ API Cooldown', value: `5 seconds per user • Prevents 429 errors`, inline: true }
                 )
                 .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.0'} • Mention @${botDisplayName} to interact` })
                 .setTimestamp();
@@ -573,7 +685,8 @@ module.exports = {
                     { name: '📝 Core Function', value: agentInfo.description, inline: false },
                     { name: '💾 Persistence', value: 'Agent preference saved • Survives bot restarts', inline: true },
                     { name: '💡 Tip', value: `Mention @${botDisplayName} with your ${agentType}-related questions!`, inline: true },
-                    { name: '🎭 Proactive Mode', value: agentType === 'tactical' || agentType === 'creative' ? '✅ Enabled (5% chance to speak unprompted)' : '❌ Disabled', inline: true }
+                    { name: '🎭 Proactive Mode', value: agentType === 'tactical' || agentType === 'creative' ? '✅ Enabled (5% chance to speak unprompted)' : '❌ Disabled', inline: true },
+                    { name: '🛠️ Auto-Reporting', value: 'AI generates structured reports before sending', inline: true }
                 )
                 .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.0'}` })
                 .setTimestamp();
@@ -611,6 +724,8 @@ module.exports = {
                     { name: '🆔 Identity', value: botDisplayName, inline: true },
                     { name: '🧠 Memory', value: 'Persistent recall enabled', inline: true },
                     { name: '🎭 Proactive Mode', value: isProactive ? '✅ Enabled (5% chance to engage)' : '❌ Disabled', inline: true },
+                    { name: '🛠️ Auto-Reporting', value: 'AI generates structured reports', inline: true },
+                    { name: '⏱️ Rate Limiting', value: '5s cooldown per user', inline: true },
                     { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or use ${botDisplayName}'s nickname`, inline: false },
                     { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
                     { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
