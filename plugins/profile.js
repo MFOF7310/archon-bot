@@ -45,7 +45,7 @@ function createProgressBar(percentage, length = 12) {
 
 module.exports = {
     name: 'profile',
-    aliases: ['p', 'id', 'stats', 'userinfo', 'agent'],
+    aliases: ['p', 'id', 'userinfo', 'agent'], // Removed 'stats'
     description: '📊 Complete Agent Dossier with unified neural statistics.',
     category: 'PROFILE',
     usage: '.profile [@user]',
