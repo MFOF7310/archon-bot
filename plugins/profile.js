@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+Const { EmbedBuilder } = require('discord.js');
 
 // --- UNIFIED CONFIGURATION (Matches games.js & rank.js) ---
 const AGENT_RANKS = [
