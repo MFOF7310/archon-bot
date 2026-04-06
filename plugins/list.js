@@ -1,8 +1,8 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType, ButtonBuilder, ButtonStyle } = require('discord.js');
+Const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
     name: 'list',
-    aliases: ['directory', 'modules', 'commands', 'cmds'], // Removed 'help' to avoid confusion
+    aliases: ['directory', 'modules', 'commands', 'cmds'],
     description: 'Dynamic Archon System Directory - Complete Plugin Registry',
     category: 'SYSTEM',
     usage: '.list [category]',
@@ -238,7 +238,7 @@ module.exports = {
             await interaction.editReply({ embeds: [categoryEmbed] });
         });
         
-        // Handle button interactions with CROSS-LINKING to help.js
+        // Handle button interactions with NEURAL HANDSHAKE to help.js
         buttonCollector.on('collect', async (interaction) => {
             if (interaction.user.id !== message.author.id) {
                 return interaction.reply({ 
@@ -256,7 +256,7 @@ module.exports = {
                     break;
                     
                 case 'nav_help':
-                    // --- NEURAL CROSS-LINKING TO HELP.JS ---
+                    // --- NEURAL HANDSHAKE WITH HELP.JS ---
                     const helpCommand = client.commands.get('help');
                     if (!helpCommand) {
                         const errorEmbed = new EmbedBuilder()
@@ -265,27 +265,16 @@ module.exports = {
                             .setDescription('Help module not found in neural database.');
                         return interaction.editReply({ embeds: [errorEmbed] });
                     }
-
-                    // Intelligent Argument Selection based on last viewed category
-                    let helpArgs = [];
-                    if (lastSelectedCategory && lastSelectedView === 'category') {
-                        // Map category to help.js expected format
-                        const categoryMap = {
-                            'cat_ai': 'AI',
-                            'cat_games': 'GAMING',
-                            'cat_economy': 'ECONOMY',
-                            'cat_mod': 'MODERATION',
-                            'cat_util': 'UTILITY',
-                            'cat_sys': 'SYSTEM'
-                        };
-                        const mappedCategory = categoryMap[lastSelectedCategory];
-                        if (mappedCategory) {
-                            helpArgs = [mappedCategory.toLowerCase()];
-                        }
-                    }
-
-                    // Trigger help.js logic directly with context awareness
-                    await helpCommand.run(client, message, helpArgs);
+                    
+                    // Map 'cat_games' to 'GAMING' for help.js category detection
+                    const mappedCategory = lastSelectedCategory 
+                        ? lastSelectedCategory.replace('cat_', '').toUpperCase()
+                        : null;
+                    
+                    // Trigger help.js with category context
+                    // If mappedCategory is "GAMES", help.js will automatically
+                    // fire showCategoryHelp() and display the Gaming menu!
+                    await helpCommand.run(client, message, [mappedCategory].filter(Boolean));
                     
                     // No need to edit the list embed since help sends its own message
                     break;
@@ -633,3 +622,5 @@ const translations = {
         statsFooter: 'Métriques en Temps Réel'
     }
 };
+And now ?
+Wait did we changed the help.js ?
