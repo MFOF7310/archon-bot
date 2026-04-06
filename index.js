@@ -114,7 +114,7 @@ const db = new Database('database.sqlite');
 
 // ================= COMPLETE DATABASE SCHEMA (v1.3.2-STABLE) =================
 
-// --- USERS TABLE (Complete with all 12 columns) ---
+// --- USERS TABLE (Complete with all columns) ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -128,33 +128,45 @@ db.prepare(`
         games_played INTEGER DEFAULT 0,
         games_won INTEGER DEFAULT 0,
         total_winnings INTEGER DEFAULT 0,
-        gaming TEXT DEFAULT '{"game":"CODM","rank":"Unranked"}'
+        gaming TEXT DEFAULT '{"game":"CODM","rank":"Unranked"}',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
     )
 `).run();
 
-// --- DATABASE PATCHER (Adds missing columns to existing databases) ---
-console.log(`${cyan}[DB PATCH]${reset} Verifying database schema for v${client.version}...`);
+// ================= GLOBAL AUTO-PATCHER (v1.3.2-STABLE) =================
+// This automatically detects and adds any missing columns without manual updates
+console.log(`${cyan}[SYSTEM]${reset} Syncing Global Neural Schema...`);
 
-const requiredColumns = [
-    { name: 'credits', type: 'INTEGER DEFAULT 0' },
-    { name: 'streak_days', type: 'INTEGER DEFAULT 0' },
-    { name: 'total_winnings', type: 'INTEGER DEFAULT 0' },
-    { name: 'games_played', type: 'INTEGER DEFAULT 0' },
-    { name: 'games_won', type: 'INTEGER DEFAULT 0' }
-];
+const expectedSchema = {
+    credits: "INTEGER DEFAULT 0",
+    streak_days: "INTEGER DEFAULT 0",
+    total_winnings: "INTEGER DEFAULT 0",
+    games_played: "INTEGER DEFAULT 0",
+    games_won: "INTEGER DEFAULT 0",
+    created_at: "DATETIME DEFAULT CURRENT_TIMESTAMP",
+    last_daily: "INTEGER DEFAULT 0",
+    total_messages: "INTEGER DEFAULT 0",
+    last_seen: "DATETIME DEFAULT CURRENT_TIMESTAMP"
+};
 
-requiredColumns.forEach(col => {
+Object.entries(expectedSchema).forEach(([colName, colType]) => {
     try {
-        db.prepare(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`).run();
-        console.log(`${green}[DB PATCH]${reset} Added column: ${col.name}`);
-    } catch (err) {
-        if (err.message.includes('duplicate column')) {
-            console.log(`${yellow}[DB PATCH]${reset} Column exists: ${col.name}`);
+        // This check prevents the "duplicate column" error before it even happens
+        const columnExists = db.prepare(`PRAGMA table_info(users)`).all().some(col => col.name === colName);
+        
+        if (!columnExists) {
+            db.prepare(`ALTER TABLE users ADD COLUMN ${colName} ${colType}`).run();
+            console.log(`${green}[DB SYNC]${reset} Column added: ${colName}`);
         } else {
-            console.log(`${red}[DB PATCH]${reset} Failed to add ${col.name}: ${err.message}`);
+            console.log(`${yellow}[DB SYNC]${reset} Column exists: ${colName}`);
         }
+    } catch (err) {
+        console.log(`${red}[DB ERROR]${reset} Failed to sync ${colName}: ${err.message}`);
     }
 });
+
+console.log(`${green}[READY]${reset} Bamako Node Schema is 100% Synchronized.`);
 
 // --- LYDIA MEMORY TABLE ---
 db.prepare(`
@@ -210,8 +222,6 @@ db.prepare(`
     )
 `).run();
 
-console.log(`${green}[DB PATCH]${reset} Database schema verified for v${client.version}.`);
-
 // ================= FIXED HELPER FUNCTIONS (v1.3.2-STABLE SYNC) =================
 
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
@@ -222,13 +232,16 @@ const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gamingValue, credits, streakDays);
 };
 
+// FIXED: Added created_at and last_seen with CURRENT_TIMESTAMP
 const initializeUser = (userId, username) => {
     const existing = getUser(userId);
     if (!existing) {
-        // FIXED: Added all 12 default values to match the table structure
-        db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
-                    VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}')`)
-            .run(userId, username);
+        db.prepare(`INSERT INTO users (
+            id, username, xp, level, credits, streak_days, 
+            total_messages, last_xp_gain, games_played, games_won, 
+            total_winnings, gaming, created_at, last_seen
+        ) VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+        .run(userId, username);
     }
     return getUser(userId);
 };
