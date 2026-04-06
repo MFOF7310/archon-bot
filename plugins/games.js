@@ -83,7 +83,9 @@ const texts = {
         richest: "AGENTS LES PLUS RICHES",
         bestRanks: "MEILLEURS RANGS",
         useCommand: "Utilisez `.game dice [1-6]` pour parier!",
-        useCommandEn: "Use `.game dice [1-6]` to bet!"
+        useCommandEn: "Use `.game dice [1-6]` to bet!",
+        insufficientCredits: "❌ **Crédits insuffisants!** Réclamez votre `.daily` d'abord.",
+        balance: "Solde actuel"
     },
     en: {
         win: "🎉 VICTORY!",
@@ -117,7 +119,9 @@ const texts = {
         richest: "RICHEST AGENTS",
         bestRanks: "BEST RANKS",
         useCommand: "Use `.game dice [1-6]` to bet!",
-        useCommandEn: "Use `.game dice [1-6]` to bet!"
+        useCommandEn: "Use `.game dice [1-6]` to bet!",
+        insufficientCredits: "❌ **Insufficient credits!** Claim your `.daily` first.",
+        balance: "Current balance"
     }
 };
 
@@ -128,7 +132,8 @@ function checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel, lang) 
     
     if (newLevel > oldLevel) {
         const rank = getRank(newLevel);
-        const t = texts[lang]; // Pulls correct translations
+        const t = texts[lang];
+        const version = channel.client?.version || '1.3.2';
         
         const levelUpEmbed = new EmbedBuilder()
             .setColor(rank.color)
@@ -139,7 +144,7 @@ function checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel, lang) 
                 { name: lang === 'fr' ? "📊 PROGRESSION" : "📊 PROGRESS", value: `${t.level} ${oldLevel} → ${t.level} ${newLevel}`, inline: true },
                 { name: lang === 'fr' ? "🎯 RANG ATTEINT" : "🎯 RANK ATTAINED", value: `${rank.emoji} ${rank.title[lang]}`, inline: true }
             )
-            .setFooter({ text: lang === 'fr' ? "Continuez à jouer pour monter en grade!" : "Keep playing to climb the ranks!" })
+            .setFooter({ text: `${lang === 'fr' ? "Continuez à jouer pour monter en grade!" : "Keep playing to climb the ranks!"} • v${version}` })
             .setTimestamp();
         
         channel.send({ embeds: [levelUpEmbed] });
@@ -148,27 +153,54 @@ function checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel, lang) 
     return false;
 }
 
-// ================= UPDATE STATS =================
+// ================= ECONOMY SYNC: UPDATE STATS WITH CREDITS =================
 function updateGameStats(userId, won, winnings, channel, username, lang) {
-    const oldUser = db.prepare("SELECT xp FROM users WHERE id = ?").get(userId);
+    const oldUser = db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(userId);
     const oldXp = oldUser?.xp || 0;
+    const currentCredits = oldUser?.credits || 0;
+    
+    // Anti-Bankruptcy Guard
+    let actualWinnings = winnings;
+    if (winnings < 0 && Math.abs(winnings) > currentCredits) {
+        actualWinnings = -currentCredits;
+    }
     
     const xpGain = won ? 100 : 25;
     
-    // Ensure columns exist
+    // Ensure all columns exist
     try {
         db.prepare(`ALTER TABLE users ADD COLUMN games_played INTEGER DEFAULT 0`).run();
         db.prepare(`ALTER TABLE users ADD COLUMN games_won INTEGER DEFAULT 0`).run();
         db.prepare(`ALTER TABLE users ADD COLUMN total_winnings INTEGER DEFAULT 0`).run();
-        db.prepare(`ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0`).run();
+        db.prepare(`ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0`).run();
     } catch (e) {}
     
-    db.prepare(`UPDATE users SET games_played = games_played + 1, games_won = games_won + ${won ? 1 : 0}, total_winnings = total_winnings + ?, xp = xp + ? WHERE id = ?`)
-      .run(winnings, xpGain, userId);
+    // SYNC WITH REAL ECONOMY COLUMNS
+    db.prepare(`
+        UPDATE users SET 
+            games_played = games_played + 1, 
+            games_won = games_won + ${won ? 1 : 0}, 
+            total_winnings = total_winnings + ?,
+            credits = credits + ?,
+            xp = xp + ? 
+        WHERE id = ?
+    `).run(actualWinnings, actualWinnings, xpGain, userId);
     
     const newUser = db.prepare("SELECT xp FROM users WHERE id = ?").get(userId);
-    // Passing 'lang' here ensures the announcement is in the right language
     checkAndAnnounceLevelUp(oldXp, newUser?.xp || 0, userId, username, channel, lang);
+    
+    return actualWinnings;
+}
+
+// ================= CHECK CREDITS BEFORE GAME =================
+function hasEnoughCredits(userId, betAmount, lang) {
+    const userData = db.prepare("SELECT credits FROM users WHERE id = ?").get(userId);
+    const credits = userData?.credits || 0;
+    
+    if (credits < betAmount) {
+        return false;
+    }
+    return true;
 }
 
 module.exports = {
@@ -243,12 +275,14 @@ module.exports = {
 // ================= GAME MENU =================
 async function showGameMenu(client, message, oldData, lang) {
     const t = texts[lang];
+    const version = client.version || '1.3.2';
     const userData = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const xp = userData?.xp || 0;
     const level = calculateLevel(xp);
     const rank = getRank(level);
     const progress = calculateProgress(xp, level);
     const progressBar = createProgressBar(progress.percentage);
+    const credits = userData?.credits || 0;
     
     const menuEmbed = new EmbedBuilder()
         .setColor(rank.color)
@@ -256,17 +290,17 @@ async function showGameMenu(client, message, oldData, lang) {
         .setTitle(lang === 'fr' ? '═ SUITE DE JEUX ARCHITECT ═' : '═ ARCHITECT GAME SUITE ═')
         .setDescription(lang === 'fr' ? 'Sélectionnez un jeu pour tester vos réflexes.' : 'Select a game to test your reflexes.')
         .addFields(
-            { name: '🎲 DÉ ROULETTE', value: '`.game dice [1-6]`\n**Gain:** 5x', inline: true },
-            { name: '🪙 PILE OU FACE', value: '`.game coinflip [pile/face]`\n**Gain:** 2x', inline: true },
-            { name: '🔢 DEVINE LE NOMBRE', value: '`.game guess`\n**Gain:** Jusqu\'à 200x', inline: true },
-            { name: '🎰 MACHINE À SOUS', value: '`.game slots`\n**Gain:** Jusqu\'à 500x', inline: true },
-            { name: '🃏 BLACKJACK', value: '`.game blackjack`\n**Gain:** 2x', inline: true },
-            { name: '✊ PFC DUEL', value: '`.game rps [pierre/feuille/ciseaux]`\n**Gain:** 2x', inline: true },
-            { name: '🧠 CULTURE', value: '`.game trivia`\n**Gain:** 500 🪙', inline: true },
-            { name: '🪑 PENDU', value: '`.game hangman`\n**Gain:** 1000 🪙', inline: true },
-            { name: `📊 ${t.gameStats}`, value: `\`\`\`yaml\n${rank.emoji} Grade: ${rank.title[lang]}\n${t.level}: ${level}\n${t.xp}: ${xp.toLocaleString()}\n${t.progress}: ${progress.percentage.toFixed(1)}%\n${progressBar}\n${t.won}: ${userData?.games_won || 0}/${userData?.games_played || 0}\`\`\``, inline: false }
+            { name: '🎲 DÉ ROULETTE', value: '`.game dice [1-6]`\n**Gain:** 5x • Mise: 100 🪙', inline: true },
+            { name: '🪙 PILE OU FACE', value: '`.game coinflip [pile/face]`\n**Gain:** 2x • Mise: 100 🪙', inline: true },
+            { name: '🔢 DEVINE LE NOMBRE', value: '`.game guess`\n**Gain:** Jusqu\'à 200x • Mise: 100 🪙', inline: true },
+            { name: '🎰 MACHINE À SOUS', value: '`.game slots`\n**Gain:** Jusqu\'à 500x • Mise: 100 🪙', inline: true },
+            { name: '🃏 BLACKJACK', value: '`.game blackjack`\n**Gain:** 2x • Mise: 200 🪙', inline: true },
+            { name: '✊ PFC DUEL', value: '`.game rps [pierre/feuille/ciseaux]`\n**Gain:** 2x • Mise: 100 🪙', inline: true },
+            { name: '🧠 CULTURE', value: '`.game trivia`\n**Gain:** 500 🪙 • Mise: 100 🪙', inline: true },
+            { name: '🪑 PENDU', value: '`.game hangman`\n**Gain:** 1000 🪙 • Mise: 200 🪙', inline: true },
+            { name: `📊 ${t.gameStats}`, value: `\`\`\`yaml\n💰 ${t.balance}: ${credits.toLocaleString()} 🪙\n${rank.emoji} Grade: ${rank.title[lang]}\n${t.level}: ${level}\n${t.xp}: ${xp.toLocaleString()}\n${t.progress}: ${progress.percentage.toFixed(1)}%\n${progressBar}\n${t.won}: ${userData?.games_won || 0}/${userData?.games_played || 0}\`\`\``, inline: false }
         )
-        .setFooter({ text: lang === 'fr' ? 'COMMUNAUTÉ EAGLE • ARCADE NEURALE V2.0' : 'EAGLE COMMUNITY • NEURAL ARCADE V2.0' })
+        .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` })
         .setTimestamp();
     
     const row = new ActionRowBuilder()
@@ -324,11 +358,13 @@ async function showGameMenu(client, message, oldData, lang) {
 // ================= PROFIL AGENT =================
 async function showAgentProfile(client, message, userData, lang) {
     const t = texts[lang];
+    const version = client.version || '1.3.2';
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const xp = user?.xp || 0;
     const level = calculateLevel(xp);
     const rank = getRank(level);
     const progress = calculateProgress(xp, level);
+    const credits = user?.credits || 0;
     
     const gamesPlayed = user?.games_played || 0;
     const gamesWon = user?.games_won || 0;
@@ -346,6 +382,7 @@ async function showAgentProfile(client, message, userData, lang) {
         .setDescription(`**Agent:** ${message.author.username}`)
         .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
         .addFields(
+            { name: `💰 ${t.balance}`, value: `\`${credits.toLocaleString()} 🪙\``, inline: true },
             { name: `📈 ${t.progress}`, value: `\`\`\`yaml\n${t.level}: ${level}\n${t.xp}: ${xp.toLocaleString()}\n${t.progress}: ${progress.percentage.toFixed(1)}%\n${progressBar}\n${t.nextLevel}: ${xpToNext.toLocaleString()} XP\`\`\``, inline: false },
             { name: `🎮 ${t.gameStats}`, value: `\`\`\`yaml\n${t.played}: ${gamesPlayed}\n${t.won}: ${gamesWon}\n${t.winRate}: ${winRate}%\nGains: ${totalWinnings.toLocaleString()} ${t.coins}\`\`\``, inline: false }
         );
@@ -360,7 +397,7 @@ async function showAgentProfile(client, message, userData, lang) {
         });
     }
     
-    embed.setFooter({ text: '.game menu • Continue playing!', iconURL: client.user.displayAvatarURL() })
+    embed.setFooter({ text: `.game menu • Continue playing! • v${version}`, iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
     
     message.reply({ embeds: [embed] });
@@ -369,8 +406,13 @@ async function showAgentProfile(client, message, userData, lang) {
 // ================= DICE GAME =================
 async function playDiceGame(client, message, userData, guess, lang) {
     const t = texts[lang];
+    const bet = 100;
     
-    // Vérification si guess est null (appel via bouton)
+    // Anti-Bankruptcy Guard
+    if (!hasEnoughCredits(message.author.id, bet, lang)) {
+        return message.reply(t.insufficientCredits);
+    }
+    
     if (guess === null || guess === undefined) {
         return message.reply(lang === 'fr' ? t.useCommand : t.useCommandEn);
     }
@@ -394,16 +436,17 @@ async function playDiceGame(client, message, userData, guess, lang) {
         return message.reply({ embeds: [embed] });
     }
     
-    const bet = 100;
     const roll = Math.floor(Math.random() * 6) + 1;
     const won = userGuess === roll;
     const winnings = won ? bet * 5 : -bet;
     
-    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
+    const actualWinnings = updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
     
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const level = calculateLevel(updatedUser?.xp || 0);
     const rank = getRank(level);
+    const credits = updatedUser?.credits || 0;
+    const version = client.version || '1.3.2';
     
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : '#ED4245')
@@ -413,9 +456,11 @@ async function playDiceGame(client, message, userData, guess, lang) {
             ? `**Vous avez prédit:** \`${userGuess}\`\n**Le dé a montré:** \`${roll}\``
             : `**You predicted:** \`${userGuess}\`\n**The die showed:** \`${roll}\``)
         .addFields(
-            { name: '💰 RÉSULTAT', value: won ? `+${winnings.toLocaleString()} ${t.coins}` : `${winnings.toLocaleString()} ${t.coins}`, inline: true },
+            { name: '💰 RÉSULTAT', value: won ? `+${actualWinnings.toLocaleString()} ${t.coins}` : `${actualWinnings.toLocaleString()} ${t.coins}`, inline: true },
+            { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true },
             { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
-        );
+        )
+        .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
     
     message.reply({ embeds: [embed] });
 }
@@ -423,6 +468,12 @@ async function playDiceGame(client, message, userData, guess, lang) {
 // ================= COIN FLIP =================
 async function playCoinFlip(client, message, userData, choice, lang) {
     const t = texts[lang];
+    const bet = 100;
+    
+    // Anti-Bankruptcy Guard
+    if (!hasEnoughCredits(message.author.id, bet, lang)) {
+        return message.reply(t.insufficientCredits);
+    }
     
     if (!choice || !['heads', 'tails', 'h', 't', 'pile', 'face', 'p', 'f'].includes(choice.toLowerCase())) {
         const embed = new EmbedBuilder()
@@ -439,17 +490,18 @@ async function playCoinFlip(client, message, userData, choice, lang) {
     if (normalizedChoice === 'h') normalizedChoice = 'heads';
     if (normalizedChoice === 't') normalizedChoice = 'tails';
     
-    const bet = 100;
     const sides = ['heads', 'tails'];
     const result = sides[Math.floor(Math.random() * 2)];
     const won = normalizedChoice === result;
     const winnings = won ? bet : -bet;
     
-    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
+    const actualWinnings = updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
     
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const level = calculateLevel(updatedUser?.xp || 0);
     const rank = getRank(level);
+    const credits = updatedUser?.credits || 0;
+    const version = client.version || '1.3.2';
     
     const resultFr = result === 'heads' ? 'pile' : 'face';
     const choiceFr = normalizedChoice === 'heads' ? 'pile' : 'face';
@@ -462,9 +514,11 @@ async function playCoinFlip(client, message, userData, choice, lang) {
             ? `**Vous avez choisi:** \`${choiceFr}\`\n**La pièce est tombée sur:** \`${resultFr}\``
             : `**You chose:** \`${choiceFr}\`\n**The coin landed on:** \`${resultFr}\``)
         .addFields(
-            { name: '💰 RÉSULTAT', value: won ? `+${winnings.toLocaleString()} ${t.coins}` : `${winnings.toLocaleString()} ${t.coins}`, inline: true },
+            { name: '💰 RÉSULTAT', value: won ? `+${actualWinnings.toLocaleString()} ${t.coins}` : `${actualWinnings.toLocaleString()} ${t.coins}`, inline: true },
+            { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true },
             { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
-        );
+        )
+        .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
     
     message.reply({ embeds: [embed] });
 }
@@ -474,16 +528,29 @@ let activeGuesses = new Map();
 
 async function playNumberGuess(client, message, userData, lang) {
     const t = texts[lang];
+    const bet = 100;
+    
+    // Anti-Bankruptcy Guard
+    if (!hasEnoughCredits(message.author.id, bet, lang)) {
+        return message.reply(t.insufficientCredits);
+    }
     
     if (activeGuesses.has(message.author.id)) {
         return message.reply(`❌ ${lang === 'fr' ? 'Vous avez déjà une partie en cours! Terminez-la d\'abord.' : 'You already have a game in progress! Finish it first.'}`);
     }
     
+    // Deduct bet immediately for guess game
+    const currentCredits = db.prepare("SELECT credits FROM users WHERE id = ?").get(message.author.id)?.credits || 0;
+    if (currentCredits < bet) {
+        return message.reply(t.insufficientCredits);
+    }
+    db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ?`).run(bet, message.author.id);
+    
     const target = Math.floor(Math.random() * 100) + 1;
     let attempts = 0;
     const maxAttempts = 5;
     
-    activeGuesses.set(message.author.id, { target, attempts, maxAttempts });
+    activeGuesses.set(message.author.id, { target, attempts, maxAttempts, bet });
     
     const embed = new EmbedBuilder()
         .setColor('#00fbff')
@@ -493,7 +560,8 @@ async function playNumberGuess(client, message, userData, lang) {
             ? `Je pense à un nombre entre **1** et **100**.\nVous avez **${maxAttempts}** essais!`
             : `I'm thinking of a number between **1** and **100**.\nYou have **${maxAttempts}** attempts!`)
         .addFields(
-            { name: lang === 'fr' ? '🏆 RÉCOMPENSE' : '🏆 REWARD', value: '1 essai: 200x • 2: 100x • 3: 50x • 4: 25x • 5: 10x' }
+            { name: lang === 'fr' ? '🏆 RÉCOMPENSE' : '🏆 REWARD', value: '1 essai: 200x • 2: 100x • 3: 50x • 4: 25x • 5: 10x' },
+            { name: `💰 ${t.balance}`, value: `${(currentCredits - bet).toLocaleString()} 🪙`, inline: true }
         )
         .setFooter({ text: lang === 'fr' ? 'Vous avez 60 secondes!' : 'You have 60 seconds!' });
     
@@ -511,15 +579,19 @@ async function playNumberGuess(client, message, userData, lang) {
         
         if (guess === game.target) {
             const multiplier = [200, 100, 50, 25, 10][game.attempts - 1];
-            const winnings = 100 * multiplier;
+            const winnings = game.bet * multiplier;
             
-            updateGameStats(message.author.id, true, winnings, message.channel, message.author.username, lang);
+            // Refund bet + add winnings
+            const totalGain = winnings;
+            updateGameStats(message.author.id, true, totalGain, message.channel, message.author.username, lang);
             activeGuesses.delete(message.author.id);
             collector.stop();
             
             const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
             const level = calculateLevel(updatedUser?.xp || 0);
             const rank = getRank(level);
+            const credits = updatedUser?.credits || 0;
+            const version = client.version || '1.3.2';
             
             const winEmbed = new EmbedBuilder()
                 .setColor('#57F287')
@@ -529,15 +601,21 @@ async function playNumberGuess(client, message, userData, lang) {
                     ? `**Le nombre était:** \`${game.target}\`\n**Trouvé en:** \`${game.attempts}\` essai(s)`
                     : `**The number was:** \`${game.target}\`\n**Found in:** \`${game.attempts}\` attempt(s)`)
                 .addFields(
-                    { name: '💰 RÉCOMPENSE', value: `+${winnings.toLocaleString()} ${t.coins} (${multiplier}x)`, inline: true },
+                    { name: '💰 RÉCOMPENSE', value: `+${totalGain.toLocaleString()} ${t.coins} (${multiplier}x)`, inline: true },
+                    { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true },
                     { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
-                );
+                )
+                .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
             
             await message.reply({ embeds: [winEmbed] });
         } else if (game.attempts >= game.maxAttempts) {
-            updateGameStats(message.author.id, false, -100, message.channel, message.author.username, lang);
+            updateGameStats(message.author.id, false, 0, message.channel, message.author.username, lang);
             activeGuesses.delete(message.author.id);
             collector.stop();
+            
+            const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
+            const credits = updatedUser?.credits || 0;
+            const version = client.version || '1.3.2';
             
             const loseEmbed = new EmbedBuilder()
                 .setColor('#ED4245')
@@ -546,7 +624,11 @@ async function playNumberGuess(client, message, userData, lang) {
                 .setDescription(lang === 'fr'
                     ? `**Le nombre était:** \`${game.target}\``
                     : `**The number was:** \`${game.target}\``)
-                .addFields({ name: '💰 RÉSULTAT', value: `-100 ${t.coins}`, inline: true });
+                .addFields(
+                    { name: '💰 RÉSULTAT', value: `-${game.bet} ${t.coins}`, inline: true },
+                    { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true }
+                )
+                .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
             
             await message.reply({ embeds: [loseEmbed] });
         } else {
@@ -563,12 +645,7 @@ async function playNumberGuess(client, message, userData, lang) {
     
     collector.on('end', () => {
         if (activeGuesses.has(message.author.id)) {
-            const game = activeGuesses.get(message.author.id);
-            if (game.attempts < game.maxAttempts) {
-                updateGameStats(message.author.id, false, -100, message.channel, message.author.username, lang);
-                activeGuesses.delete(message.author.id);
-                message.reply(`⏰ **${t.timeOut}**`);
-            }
+            activeGuesses.delete(message.author.id);
         }
     });
 }
@@ -577,6 +654,12 @@ async function playNumberGuess(client, message, userData, lang) {
 async function playSlots(client, message, userData, lang) {
     const t = texts[lang];
     const bet = 100;
+    
+    // Anti-Bankruptcy Guard
+    if (!hasEnoughCredits(message.author.id, bet, lang)) {
+        return message.reply(t.insufficientCredits);
+    }
+    
     const symbols = ['🍒', '🍋', '🍊', '7️⃣', '💎', '🎰'];
     const reels = [
         symbols[Math.floor(Math.random() * symbols.length)],
@@ -597,11 +680,13 @@ async function playSlots(client, message, userData, lang) {
     const won = multiplier > 0;
     const winnings = won ? bet * multiplier : -bet;
     
-    updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
+    const actualWinnings = updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
     
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const level = calculateLevel(updatedUser?.xp || 0);
     const rank = getRank(level);
+    const credits = updatedUser?.credits || 0;
+    const version = client.version || '1.3.2';
     
     const embed = new EmbedBuilder()
         .setColor(won ? '#57F287' : '#ED4245')
@@ -609,9 +694,11 @@ async function playSlots(client, message, userData, lang) {
         .setTitle(won ? (lang === 'fr' ? '✨ JACKPOT!' : '✨ JACKPOT!') : (lang === 'fr' ? '💔 PAS DE CHANCE' : '💔 NO LUCK'))
         .setDescription(`\`\`\`\n┌─────┬─────┬─────┐\n│  ${reels[0]}  │  ${reels[1]}  │  ${reels[2]}  │\n└─────┴─────┴─────┘\n\`\`\``)
         .addFields(
-            { name: lang === 'fr' ? '🎁 GAIN' : '🎁 WINNING', value: won ? `${winnings.toLocaleString()} ${t.coins} (${multiplier}x)` : `${winnings.toLocaleString()} ${t.coins}`, inline: true },
+            { name: lang === 'fr' ? '🎁 GAIN' : '🎁 WINNING', value: won ? `+${actualWinnings.toLocaleString()} ${t.coins} (${multiplier}x)` : `${actualWinnings.toLocaleString()} ${t.coins}`, inline: true },
+            { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true },
             { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
-        );
+        )
+        .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
     
     message.reply({ embeds: [embed] });
 }
@@ -619,14 +706,28 @@ async function playSlots(client, message, userData, lang) {
 // ================= BLACKJACK =================
 async function playBlackjack(client, message, userData, lang) {
     const t = texts[lang];
+    const bet = 200;
+    
+    // Anti-Bankruptcy Guard
+    if (!hasEnoughCredits(message.author.id, bet, lang)) {
+        return message.reply(t.insufficientCredits);
+    }
+    
+    // Deduct bet immediately
+    db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ?`).run(bet, message.author.id);
+    
     let playerHand = [drawCard(), drawCard()];
     let dealerHand = [drawCard(), drawCard()];
     let gameOver = false;
+    let playerBusted = false;
+    
+    const version = client.version || '1.3.2';
 
-    const generateEmbed = (status = lang === 'fr' ? 'À votre tour, Agent.' : 'Your turn, Agent.') => {
+    const generateEmbed = (status = lang === 'fr' ? 'À votre tour, Agent.' : 'Your turn, Agent.', currentCredits = null) => {
         const pScore = calculateHand(playerHand);
         const dScore = gameOver ? calculateHand(dealerHand) : '??';
         const dDisplay = gameOver ? dealerHand.join(' ') : `${dealerHand[0]} 🃟`;
+        const credits = currentCredits !== null ? currentCredits : db.prepare("SELECT credits FROM users WHERE id = ?").get(message.author.id)?.credits || 0;
 
         return new EmbedBuilder()
             .setColor(gameOver ? '#00fbff' : '#f1c40f')
@@ -635,8 +736,10 @@ async function playBlackjack(client, message, userData, lang) {
             .setDescription(`**Status:** ${status}`)
             .addFields(
                 { name: lang === 'fr' ? '🎴 VOTRE MAIN' : '🎴 YOUR HAND', value: `\`${playerHand.join(' ')}\` \n**Score:** ${pScore}`, inline: true },
-                { name: lang === 'fr' ? '🃟 MAIN DU CROUPIER' : '🃟 DEALER HAND', value: `\`${dDisplay}\` \n**Score:** ${dScore}`, inline: true }
-            );
+                { name: lang === 'fr' ? '🃟 MAIN DU CROUPIER' : '🃟 DEALER HAND', value: `\`${dDisplay}\` \n**Score:** ${dScore}`, inline: true },
+                { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} 🪙`, inline: true }
+            )
+            .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
     };
 
     const row = new ActionRowBuilder().addComponents(
@@ -654,7 +757,9 @@ async function playBlackjack(client, message, userData, lang) {
     collector.on('collect', async (i) => {
         if (i.customId === 'bj_hit') {
             playerHand.push(drawCard());
-            if (calculateHand(playerHand) > 21) {
+            const pScore = calculateHand(playerHand);
+            if (pScore > 21) {
+                playerBusted = true;
                 gameOver = true;
                 collector.stop('bust');
             } else {
@@ -670,7 +775,7 @@ async function playBlackjack(client, message, userData, lang) {
         let pScore = calculateHand(playerHand);
         let dScore = calculateHand(dealerHand);
 
-        if (reason === 'stand') {
+        if (reason === 'stand' && !playerBusted) {
             while (dScore < 17) {
                 dealerHand.push(drawCard());
                 dScore = calculateHand(dealerHand);
@@ -681,31 +786,32 @@ async function playBlackjack(client, message, userData, lang) {
         let won = false;
         let winnings = 0;
 
-        if (pScore > 21) {
+        if (playerBusted || pScore > 21) {
             result = lang === 'fr' ? '💀 DÉPASSEMENT! Surcharge système.' : '💀 BUST! System overload.';
-            winnings = -200;
+            winnings = -bet;
         } else if (dScore > 21 || pScore > dScore) {
             result = lang === 'fr' ? '🎉 VICTOIRE! Liaison neurale stable.' : '🎉 VICTORY! Neural link stable.';
             won = true;
-            winnings = 200;
+            winnings = bet * 2;
         } else if (dScore > pScore) {
             result = lang === 'fr' ? '💔 DÉFAITE! Le croupier vous a surpassé.' : '💔 DEFEAT! Dealer outplayed you.';
-            winnings = -200;
+            winnings = -bet;
         } else {
             result = lang === 'fr' ? '🤝 ÉGALITÉ! Données synchronisées.' : '🤝 TIE! Data synchronized.';
-            winnings = 0;
+            winnings = bet; // Refund bet
         }
 
-        updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
+        const actualWinnings = updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
         
         const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
         const level = calculateLevel(updatedUser?.xp || 0);
         const rank = getRank(level);
+        const credits = updatedUser?.credits || 0;
         
-        const finalEmbed = generateEmbed(result)
-            .setColor(won ? '#57F287' : (winnings === 0 ? '#FEE75C' : '#ED4245'))
+        const finalEmbed = generateEmbed(result, credits)
+            .setColor(won ? '#57F287' : (winnings === bet ? '#FEE75C' : '#ED4245'))
             .addFields(
-                { name: '💰 RÉSULTAT', value: `${winnings > 0 ? '+' : ''}${winnings.toLocaleString()} ${t.coins}`, inline: false },
+                { name: '💰 RÉSULTAT', value: `${actualWinnings > 0 ? '+' : ''}${actualWinnings.toLocaleString()} ${t.coins}`, inline: false },
                 { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
             );
 
@@ -716,6 +822,12 @@ async function playBlackjack(client, message, userData, lang) {
 // ================= ROCK PAPER SCISSORS =================
 async function playRPS(client, message, userData, choice, lang) {
     const t = texts[lang];
+    const bet = 100;
+    
+    // Anti-Bankruptcy Guard
+    if (!hasEnoughCredits(message.author.id, bet, lang)) {
+        return message.reply(t.insufficientCredits);
+    }
     
     if (!choice || !['rock', 'paper', 'scissors', 'r', 'p', 's', 'pierre', 'feuille', 'ciseaux', 'pi', 'fe', 'ci'].includes(choice.toLowerCase())) {
         const embed = new EmbedBuilder()
@@ -752,19 +864,20 @@ async function playRPS(client, message, userData, choice, lang) {
     ) {
         result = t.win;
         won = true;
-        winnings = 100;
+        winnings = bet * 2;
     } else {
         result = t.lose;
         won = false;
-        winnings = -100;
+        winnings = -bet;
     }
     
-    if (won) updateGameStats(message.author.id, true, winnings, message.channel, message.author.username, lang);
-    else if (winnings < 0) updateGameStats(message.author.id, false, winnings, message.channel, message.author.username, lang);
+    const actualWinnings = updateGameStats(message.author.id, won, winnings, message.channel, message.author.username, lang);
     
     const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const level = calculateLevel(updatedUser?.xp || 0);
     const rank = getRank(level);
+    const credits = updatedUser?.credits || 0;
+    const version = client.version || '1.3.2';
     
     const emojis = { rock: '✊', paper: '✋', scissors: '✌️' };
     const namesFr = { rock: 'PIERRE', paper: 'FEUILLE', scissors: 'CISEAUX' };
@@ -779,9 +892,11 @@ async function playRPS(client, message, userData, choice, lang) {
         .addFields(
             { name: lang === 'fr' ? '🎮 VOTRE MOUVEMENT' : '🎮 YOUR MOVE', value: `${emojis[normalizedChoice]} **${names[normalizedChoice]}**`, inline: true },
             { name: lang === 'fr' ? '🤖 MOUVEMENT IA' : '🤖 AI MOVE', value: `${emojis[botChoice]} **${names[botChoice]}**`, inline: true },
-            { name: '💰 RÉSULTAT', value: winnings !== 0 ? `${winnings > 0 ? '+' : ''}${winnings.toLocaleString()} ${t.coins}` : (lang === 'fr' ? 'Aucun changement' : 'No change'), inline: false },
+            { name: '💰 RÉSULTAT', value: actualWinnings !== 0 ? `${actualWinnings > 0 ? '+' : ''}${actualWinnings.toLocaleString()} ${t.coins}` : (lang === 'fr' ? 'Aucun changement' : 'No change'), inline: false },
+            { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true },
             { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
-        );
+        )
+        .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
     
     message.reply({ embeds: [embed] });
 }
@@ -789,6 +904,13 @@ async function playRPS(client, message, userData, choice, lang) {
 // ================= TRIVIA =================
 async function playTrivia(client, message, userData, lang) {
     const t = texts[lang];
+    const bet = 100;
+    
+    // Anti-Bankruptcy Guard
+    if (!hasEnoughCredits(message.author.id, bet, lang)) {
+        return message.reply(t.insufficientCredits);
+    }
+    
     const questions = lang === 'fr' ? [
         { q: "Que signifie HTML ?", a: ["HyperText Markup Language", "High Tech Modern Language", "Hyperlink Text Management"], correct: 0, fact: "HTML est la structure de base du web." },
         { q: "Quel langage est utilisé pour ce bot ?", a: ["CSS", "JavaScript", "C++"], correct: 1, fact: "JavaScript (Node.js) est le standard pour les bots Discord." },
@@ -804,19 +926,20 @@ async function playTrivia(client, message, userData, lang) {
     ];
 
     const data = questions[Math.floor(Math.random() * questions.length)];
+    const version = client.version || '1.3.2';
     
     const embed = new EmbedBuilder()
         .setColor('#00fbff')
         .setAuthor({ name: lang === 'fr' ? '🧠 CULTURE GÉNÉRALE' : '🧠 GENERAL KNOWLEDGE', iconURL: client.user.displayAvatarURL() })
         .setTitle('📥 QUESTION')
         .setDescription(`**${data.q}**`)
-        .setFooter({ text: lang === 'fr' ? 'Temps: 15 secondes' : 'Time: 15 seconds' });
+        .setFooter({ text: `${lang === 'fr' ? 'Temps: 15 secondes' : 'Time: 15 seconds'} • v${version}` });
 
     const row = new ActionRowBuilder().addComponents(
         data.a.map((choice, index) => 
             new ButtonBuilder()
                 .setCustomId(`trivia_${index}`)
-                .setLabel(choice)
+                .setLabel(choice.length > 50 ? choice.substring(0, 47) + '...' : choice)
                 .setStyle(ButtonStyle.Primary)
         )
     );
@@ -830,20 +953,23 @@ async function playTrivia(client, message, userData, lang) {
         const isCorrect = i.customId === `trivia_${data.correct}`;
         const winnings = isCorrect ? 500 : -100;
         
-        updateGameStats(message.author.id, isCorrect, winnings, message.channel, message.author.username, lang);
+        const actualWinnings = updateGameStats(message.author.id, isCorrect, winnings, message.channel, message.author.username, lang);
         
         const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
         const level = calculateLevel(updatedUser?.xp || 0);
         const rank = getRank(level);
+        const credits = updatedUser?.credits || 0;
         
         const resultEmbed = new EmbedBuilder()
             .setColor(isCorrect ? '#57F287' : '#ED4245')
             .setTitle(isCorrect ? (lang === 'fr' ? '✅ CORRECT' : '✅ CORRECT') : (lang === 'fr' ? '❌ INCORRECT' : '❌ INCORRECT'))
-            .setDescription(isCorrect ? `+500 ${t.coins}` : `-100 ${t.coins}\n${lang === 'fr' ? 'Réponse' : 'Answer'}: **${data.a[data.correct]}**`)
+            .setDescription(isCorrect ? `+${actualWinnings} ${t.coins}` : `${actualWinnings} ${t.coins}\n${lang === 'fr' ? 'Réponse' : 'Answer'}: **${data.a[data.correct]}**`)
             .addFields(
                 { name: '🧠 INFO', value: data.fact },
+                { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true },
                 { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
-            );
+            )
+            .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
 
         await i.update({ embeds: [resultEmbed], components: [] });
         collector.stop();
@@ -853,19 +979,31 @@ async function playTrivia(client, message, userData, lang) {
 // ================= HANGMAN =================
 async function playHangman(client, message, userData, lang) {
     const t = texts[lang];
+    const bet = 200;
+    
+    // Anti-Bankruptcy Guard
+    if (!hasEnoughCredits(message.author.id, bet, lang)) {
+        return message.reply(t.insufficientCredits);
+    }
+    
+    // Deduct bet immediately
+    db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ?`).run(bet, message.author.id);
+    
     const words = lang === 'fr' 
         ? ['ARCHITECTE', 'JAVASCRIPT', 'BAMAKO', 'DISCORD', 'VICTOIRE', 'STRATEGIE', 'NEURAL', 'ARCADE']
         : ['ARCHITECT', 'JAVASCRIPT', 'BAMAKO', 'DISCORD', 'VICTORY', 'STRATEGY', 'NEURAL', 'ARCADE'];
     const targetWord = words[Math.floor(Math.random() * words.length)];
     let guessed = [];
     let lives = 6;
+    const version = client.version || '1.3.2';
 
     const getDisplay = () => targetWord.split('').map(l => guessed.includes(l) ? l : ' _ ').join('');
 
     const hmEmbed = new EmbedBuilder()
         .setColor('#FEE75C')
         .setTitle(lang === 'fr' ? '🪑 PENDU NEURAL' : '🪑 NEURAL HANGMAN')
-        .setDescription(`**Word:** \`${getDisplay()}\` \n\n**Lives:** ❤️ ${lives}\n${lang === 'fr' ? 'Tapez une lettre!' : 'Type a letter!'}`);
+        .setDescription(`**Word:** \`${getDisplay()}\` \n\n**Lives:** ❤️ ${lives}\n${lang === 'fr' ? 'Tapez une lettre!' : 'Type a letter!'}`)
+        .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
 
     const gameMsg = await message.reply({ embeds: [hmEmbed] });
 
@@ -880,10 +1018,11 @@ async function playHangman(client, message, userData, lang) {
         if (!targetWord.includes(char)) lives--;
 
         if (getDisplay() === targetWord) {
-            updateGameStats(message.author.id, true, 1000, message.channel, message.author.username, lang);
+            const winnings = bet * 5;
+            updateGameStats(message.author.id, true, winnings, message.channel, message.author.username, lang);
             collector.stop('win');
         } else if (lives <= 0) {
-            updateGameStats(message.author.id, false, -200, message.channel, message.author.username, lang);
+            updateGameStats(message.author.id, false, -bet, message.channel, message.author.username, lang);
             collector.stop('lose');
         } else {
             hmEmbed.setDescription(`**Word:** \`${getDisplay()}\` \n\n**Lives:** ❤️ ${lives}\n**Letters:** ${guessed.join(', ')}`);
@@ -895,16 +1034,27 @@ async function playHangman(client, message, userData, lang) {
         const updatedUser = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
         const level = calculateLevel(updatedUser?.xp || 0);
         const rank = getRank(level);
+        const credits = updatedUser?.credits || 0;
         
-        const endEmbed = new EmbedBuilder();
+        const endEmbed = new EmbedBuilder()
+            .setFooter({ text: `EAGLE COMMUNITY • NEURAL ARCADE v${version}` });
+            
         if (reason === 'win') {
             endEmbed.setColor('#57F287')
                 .setTitle(lang === 'fr' ? '🎉 SAUVÉ!' : '🎉 SAVED!')
-                .setDescription(`${lang === 'fr' ? 'Mot' : 'Word'}: **${targetWord}**!\n**+1,000 ${t.coins}**\n📈 ${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`);
+                .setDescription(`${lang === 'fr' ? 'Mot' : 'Word'}: **${targetWord}**!\n**+1,000 ${t.coins}**`)
+                .addFields(
+                    { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true },
+                    { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
+                );
         } else {
             endEmbed.setColor('#ED4245')
                 .setTitle(lang === 'fr' ? '💀 ÉCHEC' : '💀 FAILED')
-                .setDescription(`${lang === 'fr' ? 'Mot' : 'Word'}: **${targetWord}**.\n📈 ${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`);
+                .setDescription(`${lang === 'fr' ? 'Mot' : 'Word'}: **${targetWord}**`)
+                .addFields(
+                    { name: `💰 ${t.balance}`, value: `${credits.toLocaleString()} ${t.coins}`, inline: true },
+                    { name: `📈 ${t.rank}`, value: `${rank.emoji} ${rank.title[lang]} (${t.level} ${level})`, inline: true }
+                );
         }
         await gameMsg.edit({ embeds: [endEmbed] });
     });
@@ -913,11 +1063,13 @@ async function playHangman(client, message, userData, lang) {
 // ================= GAME STATS =================
 async function showGameStats(client, message, userData, lang) {
     const t = texts[lang];
+    const version = client.version || '1.3.2';
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(message.author.id);
     const xp = user?.xp || 0;
     const level = calculateLevel(xp);
     const rank = getRank(level);
     const progress = calculateProgress(xp, level);
+    const credits = user?.credits || 0;
     
     const gamesPlayed = user?.games_played || 0;
     const gamesWon = user?.games_won || 0;
@@ -932,10 +1084,11 @@ async function showGameStats(client, message, userData, lang) {
         .setDescription(`**Agent:** ${message.author.username}`)
         .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
         .addFields(
+            { name: `💰 ${t.balance}`, value: `\`${credits.toLocaleString()} 🪙\``, inline: true },
             { name: `📈 ${t.progress}`, value: `\`\`\`yaml\n${t.level}: ${level}\n${t.xp}: ${xp.toLocaleString()}\n${t.progress}: ${progress.percentage.toFixed(1)}%\n${progressBar}\`\`\``, inline: false },
             { name: `🎮 ${t.gameStats}`, value: `\`\`\`yaml\n${t.played}: ${gamesPlayed}\n${t.won}: ${gamesWon}\n${t.winRate}: ${winRate}%\nGains: ${totalWinnings.toLocaleString()} ${t.coins}\`\`\``, inline: false }
         )
-        .setFooter({ text: lang === 'fr' ? '.game rank pour plus de détails' : '.game rank for more details' })
+        .setFooter({ text: `.game rank pour plus de détails • v${version}`, iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
     
     message.reply({ embeds: [embed] });
@@ -944,6 +1097,7 @@ async function showGameStats(client, message, userData, lang) {
 // ================= LEADERBOARD =================
 async function showGameLeaderboard(client, message, type = 'wins', lang) {
     const t = texts[lang];
+    const version = client.version || '1.3.2';
     let orderBy = '';
     let title = '';
     let icon = '';
@@ -967,6 +1121,14 @@ async function showGameLeaderboard(client, message, type = 'wins', lang) {
             icon = '💰';
             color = '#57F287';
             break;
+        case 'credits':
+        case 'balance':
+        case 'riche':
+            orderBy = 'credits DESC';
+            title = t.richest;
+            icon = '💰';
+            color = '#57F287';
+            break;
         case 'level':
         case 'xp':
         case 'rank':
@@ -982,7 +1144,7 @@ async function showGameLeaderboard(client, message, type = 'wins', lang) {
             color = '#FEE75C';
     }
     
-    const topPlayers = db.prepare(`SELECT id, username, games_played, games_won, total_winnings, xp FROM users WHERE games_played > 0 ORDER BY ${orderBy} LIMIT 10`).all();
+    const topPlayers = db.prepare(`SELECT id, username, games_played, games_won, total_winnings, credits, xp FROM users WHERE games_played > 0 ORDER BY ${orderBy} LIMIT 10`).all();
     
     if (topPlayers.length === 0) {
         return message.reply(lang === 'fr' ? '📊 Aucune donnée disponible. Commencez à jouer!' : '📊 No data available. Start playing!');
@@ -993,7 +1155,9 @@ async function showGameLeaderboard(client, message, type = 'wins', lang) {
         const level = calculateLevel(player.xp || 0);
         const rank = getRank(level);
         
-        if (type === 'level' || type === 'xp' || type === 'rank') {
+        if (type === 'credits' || type === 'balance' || type === 'riche') {
+            return `${medal} **${player.username}** • 💰 ${(player.credits || 0).toLocaleString()} 🪙 • ${rank.emoji} ${t.level} ${level}`;
+        } else if (type === 'level' || type === 'xp' || type === 'rank') {
             return `${medal} **${player.username}** • ${rank.emoji} ${t.level} ${level} (${player.xp?.toLocaleString() || 0} XP)`;
         } else if (type === 'wins' || type === 'win' || type === 'victoires') {
             const winRate = Math.round((player.games_won / player.games_played) * 100);
@@ -1008,7 +1172,7 @@ async function showGameLeaderboard(client, message, type = 'wins', lang) {
         .setAuthor({ name: `${icon} ${t.leaderboard}: ${title}`, iconURL: client.user.displayAvatarURL() })
         .setTitle(lang === 'fr' ? '═ CLASSEMENT ARCADE NEURALE ═' : '═ NEURAL ARCADE LEADERBOARD ═')
         .setDescription(`\`\`\`yaml\n${leaderboardText}\`\`\``)
-        .setFooter({ text: lang === 'fr' ? '.game rank pour votre profil' : '.game rank for your profile' })
+        .setFooter({ text: `.game rank pour votre profil • v${version}` })
         .setTimestamp();
     
     message.reply({ embeds: [embed] });
