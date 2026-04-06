@@ -1,8 +1,31 @@
 const { EmbedBuilder } = require('discord.js');
 
+// --- UNIFIED AGENT RANKS (Matches games.js & profile.js) ---
+const AGENT_RANKS = [
+    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
+    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
+    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
+    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
+];
+
+function calculateLevel(xp) {
+    return Math.floor(0.1 * Math.sqrt(xp)) + 1;
+}
+
+function getAgentRank(level) {
+    return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
+}
+
+function createProgressBar(percent, length = 12) {
+    const filled = Math.round((percent / 100) * length);
+    const empty = length - filled;
+    return '█'.repeat(filled) + '░'.repeat(empty);
+}
+
 module.exports = {
     name: 'rank',
-    aliases: ['level', 'xp', 'rang', 'niveau', 'dossier', 'agent'], // Removed 'profile'
+    aliases: ['level', 'xp', 'rang', 'niveau', 'dossier', 'agent'], // REMOVED 'profile'
     description: '📊 Display neural synchronization level and agent dossier.',
     category: 'PROFILE',
     usage: '.rank [@user]',
@@ -24,12 +47,9 @@ module.exports = {
             }
         }
 
-        // --- TARGET USER ---
         const target = message.mentions.users.first() || message.author;
-        const isSelf = target.id === message.author.id;
         const version = client.version || '1.3.2';
 
-        // --- LANGUAGE PACK (Full Bilingual) ---
         const t = {
             fr: {
                 title: (name) => `📜 DOSSIER AGENT: ${name.toUpperCase()}`,
@@ -95,14 +115,13 @@ module.exports = {
             }
         }[lang];
 
-        // --- DATABASE FETCH ---
-        let targetData = db.prepare(`
+        const userData = db.prepare(`
             SELECT id, xp, credits, streak_days, created_at, 
-                   games_played, games_won, total_messages, total_winnings 
+                   games_played, games_won, total_messages, total_winnings, gaming
             FROM users WHERE id = ?
         `).get(target.id);
 
-        if (!targetData) {
+        if (!userData) {
             const errorEmbed = new EmbedBuilder()
                 .setColor('#ED4245')
                 .setDescription(t.noData(target.username))
@@ -110,116 +129,44 @@ module.exports = {
             return message.reply({ embeds: [errorEmbed] });
         }
 
-        // --- XP & LEVEL SYNC (Matches game.js formula) ---
-        const xp = targetData.xp || 0;
-        const level = Math.floor(0.1 * Math.sqrt(xp)) + 1;
+        const xp = userData.xp || 0;
+        const level = calculateLevel(xp);
+        const agentRank = getAgentRank(level);
         
-        // --- CREDITS & WEALTH ---
-        const credits = targetData.credits || 0;
-        const streakDays = targetData.streak_days || 0;
-        const totalWinnings = targetData.total_winnings || 0;
-        
-        // --- GAME STATS ---
-        const gamesPlayed = targetData.games_played || 0;
-        const gamesWon = targetData.games_won || 0;
+        const credits = userData.credits || 0;
+        const streakDays = userData.streak_days || 0;
+        const totalWinnings = userData.total_winnings || 0;
+        const gamesPlayed = userData.games_played || 0;
+        const gamesWon = userData.games_won || 0;
         const winRate = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
+        const totalMessages = userData.total_messages || 0;
         
-        // --- MESSAGE STATS ---
-        const totalMessages = targetData.total_messages || 0;
-        
-        // --- ACCOUNT AGE ---
-        const createdAt = targetData.created_at ? new Date(targetData.created_at) : new Date();
+        const createdAt = userData.created_at ? new Date(userData.created_at) : new Date();
         const accountAgeDays = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
         
-        // --- RANK CALCULATION (Global leaderboard position) ---
         const rankData = db.prepare("SELECT COUNT(*) as rank FROM users WHERE xp > ?").get(xp);
         const rank = (rankData?.rank || 0) + 1;
         const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get()?.count || 1;
         
-        // --- PROGRESS TO NEXT LEVEL ---
-        // Formula: Level = floor(0.1 * sqrt(XP)) + 1
-        // Reverse: XP_for_level = ((level - 1) / 0.1)^2
         const currentLevelXP = Math.pow((level - 1) / 0.1, 2);
         const nextLevelXP = Math.pow(level / 0.1, 2);
         const xpForCurrentLevel = xp - currentLevelXP;
         const xpNeededForNext = nextLevelXP - currentLevelXP;
         const percent = Math.min(100, Math.max(0, (xpForCurrentLevel / xpNeededForNext) * 100));
         const xpRemaining = Math.ceil(nextLevelXP - xp);
+        const progressBar = createProgressBar(percent, 15);
         
-        // --- PROGRESS BAR ---
-        const createBar = (p) => {
-            const size = 15;
-            const filled = Math.round((size * p) / 100);
-            return '█'.repeat(filled) + '░'.repeat(size - filled);
-        };
-        
-        // --- AGENT RANK TITLES (Matches game.js) ---
-        function getAgentRank(level) {
-            if (lang === 'fr') {
-                if (level >= 51) return '👑 ARCHITECTE SYSTÈME';
-                if (level >= 31) return '⚜️ COMMANDANT BKO';
-                if (level >= 16) return '💠 SPÉCIALISTE CYBER';
-                if (level >= 6) return '🔹 AGENT DE TERRAIN';
-                return '🌱 RECRUE NEURALE';
-            }
-            if (level >= 51) return '👑 SYSTEM ARCHITECT';
-            if (level >= 31) return '⚜️ BKO COMMANDER';
-            if (level >= 16) return '💠 CYBER SPECIALIST';
-            if (level >= 6) return '🔹 FIELD AGENT';
-            return '🌱 NEURAL RECRUIT';
-        }
-        
-        // --- WEALTH TIERS (Credit-based) ---
-        function getWealthTier(credits) {
-            if (lang === 'fr') {
-                if (credits >= 100000) return '🏆 LÉGENDE FINANCIÈRE';
-                if (credits >= 50000) return '👑 MAGNAT';
-                if (credits >= 15000) return '🏦 BARON';
-                if (credits >= 5000) return '📈 INVESTISSEUR';
-                if (credits >= 1000) return '💰 COLLECTIONNEUR';
-                if (credits >= 100) return '🪙 PETIT PORTEFEUILLE';
-                return '💀 SANS LE SOU';
-            }
-            if (credits >= 100000) return '🏆 FINANCIAL LEGEND';
-            if (credits >= 50000) return '👑 MAGNATE';
-            if (credits >= 15000) return '🏦 BARON';
-            if (credits >= 5000) return '📈 INVESTOR';
-            if (credits >= 1000) return '💰 COLLECTOR';
-            if (credits >= 100) return '🪙 SMALL WALLET';
-            return '💀 BROKE';
-        }
-        
-        const agentRank = getAgentRank(level);
-        const wealthTier = getWealthTier(credits);
-        
-        // --- LEVEL COLOR ---
-        function getLevelColor(lvl) {
-            if (lvl >= 51) return '#e74c3c';
-            if (lvl >= 31) return '#e67e22';
-            if (lvl >= 16) return '#9b59b6';
-            if (lvl >= 6) return '#3498db';
-            return '#2ecc71';
-        }
-        
-        // --- NEURAL EFFICIENCY CALCULATION ---
         const neuralEfficiency = Math.min(100, Math.floor((gamesPlayed * 0.5) + (totalMessages * 0.1) + (streakDays * 2)));
         
-        // --- COMBAT MATRIX (Gaming Data) ---
-        let combatMatrixValue;
-        if (targetData.gaming) {
-            try {
-                const gameData = JSON.parse(targetData.gaming);
-                combatMatrixValue = `\`\`\`yaml\n${t.primarySector}: ${gameData.game}\n${t.combatMode}: ${gameData.mode || 'Standard'}\n${t.rankTier}: ${gameData.rank}\`\`\``;
-            } catch {
-                combatMatrixValue = `\`\`\`fix\nSTATUS: ${t.awaiting}\n${t.setGame}\`\`\``;
-            }
-        } else {
-            combatMatrixValue = `\`\`\`fix\nSTATUS: ${t.awaiting}\n${t.setGame}\`\`\``;
+        let gamingData = { game: "CODM", rank: "Unranked", mode: "Standard" };
+        if (userData.gaming) {
+            try { gamingData = JSON.parse(userData.gaming); } catch (e) { }
         }
         
-        // --- BUILD DOSSIER EMBED ---
+        const combatMatrixValue = `\`\`\`yaml\n${t.primarySector}: ${gamingData.game}\n${t.combatMode}: ${gamingData.mode}\n${t.rankTier}: ${gamingData.rank}\`\`\``;
+        
         const dossierEmbed = new EmbedBuilder()
-            .setColor(getLevelColor(level))
+            .setColor(agentRank.color)
             .setAuthor({
                 name: t.title(target.username),
                 iconURL: target.displayAvatarURL({ dynamic: true })
@@ -228,7 +175,7 @@ module.exports = {
             .setDescription(
                 `\`\`\`prolog\n` +
                 `${t.node}: BKO-223 • ${t.status}: ${t.syncOk}\n` +
-                `${t.classification}: ${agentRank}\n` +
+                `${t.classification}: ${agentRank.emoji} ${agentRank.title[lang]}\n` +
                 `Core: Groq LPU™ 70B\`\`\``
             )
             .addFields(
@@ -244,7 +191,7 @@ module.exports = {
                 },
                 {
                     name: `💰 ${t.credits}`,
-                    value: `**${credits.toLocaleString()}** 🪙\n└─ ${t.wealthTier}: ${wealthTier}`,
+                    value: `**${credits.toLocaleString()}** 🪙`,
                     inline: true
                 },
                 {
@@ -259,7 +206,7 @@ module.exports = {
                 },
                 {
                     name: `🚀 ${t.progress}`,
-                    value: `\`\`\`\n${createBar(percent)} ${percent.toFixed(1)}%\n└─ ${t.syncGap}: ${xpRemaining.toLocaleString()} XP\`\`\``,
+                    value: `\`\`\`\n${progressBar} ${percent.toFixed(1)}%\n└─ ${t.syncGap}: ${xpRemaining.toLocaleString()} XP\`\`\``,
                     inline: false
                 },
                 {
@@ -284,7 +231,6 @@ module.exports = {
             })
             .setTimestamp();
 
-        // --- ADD ARCHITECT SPECIAL MESSAGE ---
         const ARCHITECT_ID = process.env.OWNER_ID;
         if (target.id === ARCHITECT_ID) {
             dossierEmbed.addFields({
