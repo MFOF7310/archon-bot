@@ -135,7 +135,6 @@ db.prepare(`
 `).run();
 
 // ================= GLOBAL AUTO-PATCHER (v1.3.2-STABLE) =================
-// This automatically detects and adds any missing columns without manual updates
 console.log(`${cyan}[SYSTEM]${reset} Syncing Global Neural Schema...`);
 
 const expectedSchema = {
@@ -152,14 +151,10 @@ const expectedSchema = {
 
 Object.entries(expectedSchema).forEach(([colName, colType]) => {
     try {
-        // This check prevents the "duplicate column" error before it even happens
         const columnExists = db.prepare(`PRAGMA table_info(users)`).all().some(col => col.name === colName);
-        
         if (!columnExists) {
             db.prepare(`ALTER TABLE users ADD COLUMN ${colName} ${colType}`).run();
             console.log(`${green}[DB SYNC]${reset} Column added: ${colName}`);
-        } else {
-            console.log(`${yellow}[DB SYNC]${reset} Column exists: ${colName}`);
         }
     } catch (err) {
         console.log(`${red}[DB ERROR]${reset} Failed to sync ${colName}: ${err.message}`);
@@ -222,7 +217,7 @@ db.prepare(`
     )
 `).run();
 
-// ================= FIXED HELPER FUNCTIONS (v1.3.2-STABLE SYNC) =================
+// ================= FIXED HELPER FUNCTIONS =================
 
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
 
@@ -232,7 +227,6 @@ const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gamingValue, credits, streakDays);
 };
 
-// FIXED: Added created_at and last_seen with CURRENT_TIMESTAMP
 const initializeUser = (userId, username) => {
     const existing = getUser(userId);
     if (!existing) {
@@ -264,19 +258,16 @@ const updateGamingStats = (userId, gamesPlayedInc = 0, gamesWonInc = 0, winnings
 const loadAgentPreferences = () => {
     try {
         const savedAgents = db.prepare("SELECT * FROM lydia_agents WHERE is_active = 1").all();
-        
         if (!savedAgents || savedAgents.length === 0) {
             console.log(`${green}[AGENT]${reset} No active agents found.`);
             return;
         }
-        
         savedAgents.forEach(agent => {
             if (agent.channel_id) {
                 client.lydiaChannels[agent.channel_id] = true;
                 client.lydiaAgents[agent.channel_id] = agent.agent_key || 'default';
             }
         });
-        
         console.log(`${green}[AGENT]${reset} Restored ${savedAgents.length} active agents.`);
     } catch (err) {
         console.log(`${yellow}[AGENT]${reset} No agents to restore.`);
@@ -296,6 +287,30 @@ client.getUser = getUser;
 client.initializeUser = initializeUser;
 client.updateGamingStats = updateGamingStats;
 client.db = db;
+
+// ================= FINAL FIXED: XP PROGRESS FUNCTION (SYNCED WITH rank.js & games.js) =================
+const getXPProgress = (xp, level) => {
+    const barLength = 20; // Progress bar length (defined inside function for safety)
+    
+    // SYNCED FORMULA: Matches rank.js and games.js exactly
+    const xpForCurrentLevel = Math.pow((level - 1) / 0.1, 2);
+    const xpForNextLevel = Math.pow(level / 0.1, 2);
+    
+    // SAFETY: Prevent negative values
+    const currentProgress = Math.max(0, xp - xpForCurrentLevel);
+    const xpNeeded = Math.max(1, xpForNextLevel - xpForCurrentLevel);
+    
+    // SAFETY: Clamp percentage between 0 and 100
+    const percentage = Math.min(100, Math.max(0, (currentProgress / xpNeeded) * 100));
+    const filledBars = Math.max(0, Math.floor((percentage / 100) * barLength));
+    
+    return {
+        current: currentProgress,
+        needed: xpNeeded,
+        percentage: Math.round(percentage),
+        bar: `▰`.repeat(filledBars) + `▱`.repeat(Math.max(0, barLength - filledBars))
+    };
+};
 
 // --- LEVEL-UP ACHIEVEMENTS ---
 const achievements = {
@@ -324,26 +339,6 @@ const getLevelImage = (level) => {
     if (level >= 10) return 'https://via.placeholder.com/1200x400/dddddd/000000?text=GOLD+TIER';
     if (level >= 5) return 'https://via.placeholder.com/1200x400/cd7f32/ffffff?text=SILVER+TIER';
     return 'https://via.placeholder.com/1200x400/8B5A2B/ffffff?text=BRONZE+TIER';
-};
-
-const getXPProgress = (xp, level) => {
-    const xpForCurrentLevel = (level - 1) * 1000;
-    const xpForNextLevel = level * 1000;
-    const currentProgress = xp - xpForCurrentLevel;
-    const xpNeeded = xpForNextLevel - xpForCurrentLevel;
-    const percentage = (currentProgress / xpNeeded) * 100;
-    
-    const barLength = 20;
-    const filledBars = Math.floor((percentage / 100) * barLength);
-    const emptyBars = barLength - filledBars;
-    const progressBar = `▰`.repeat(filledBars) + `▱`.repeat(emptyBars);
-    
-    return {
-        current: currentProgress,
-        needed: xpNeeded,
-        percentage: Math.round(percentage),
-        bar: progressBar
-    };
 };
 
 const getCongratsMessage = (level, userName) => {
@@ -453,11 +448,12 @@ client.on(Events.MessageCreate, async (message) => {
         const xpGain = Math.floor(Math.random() * 21) + 15;
         let newXP = (userData.xp || 0) + xpGain;
         
-        // FIXED: Using the SAME level formula as rank.js, profile.js, and games.js
+        // SYNCED: Using the SAME level formula as rank.js, profile.js, and games.js
         let newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
         let totalMsgs = (userData.total_messages || 0) + 1;
 
         if (newLevel > (userData.level || 1)) {
+            // SYNCED: Now uses the same square root formula for progress
             const xpProgress = getXPProgress(newXP, newLevel);
             const achievement = getAchievementName(newLevel);
             
@@ -491,7 +487,7 @@ client.on(Events.MessageCreate, async (message) => {
                 .addFields(
                     { 
                         name: '📊 PROGRESSION', 
-                        value: `\`\`\`\nLEVEL ${userData.level || 1} → ${newLevel}\n${xpProgress.bar} ${xpProgress.percentage}%\nXP: ${formatNumber(newXP)}/${formatNumber(newLevel * 1000)}\n\`\`\`` 
+                        value: `\`\`\`\nLEVEL ${userData.level || 1} → ${newLevel}\n${xpProgress.bar} ${xpProgress.percentage}%\nXP: ${formatNumber(newXP)}/${formatNumber(xpProgress.needed)}\n\`\`\`` 
                     },
                     { name: '🎁 REWARD', value: rewardText }
                 )
@@ -519,7 +515,6 @@ client.on(Events.MessageCreate, async (message) => {
             }
         }
 
-        // FIXED: Save ALL user data including credits and streak_days
         saveUser(userId, message.author.username, newXP, newLevel, totalMsgs, now, 
                 userData.games_played || 0, 
                 userData.games_won || 0, 
