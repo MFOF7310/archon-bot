@@ -114,7 +114,7 @@ const db = new Database('database.sqlite');
 
 // ================= COMPLETE DATABASE SCHEMA (v1.3.2-STABLE) =================
 
-// --- USERS TABLE (Complete with all columns) ---
+// --- USERS TABLE (Complete with all 12 columns) ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -212,7 +212,8 @@ db.prepare(`
 
 console.log(`${green}[DB PATCH]${reset} Database schema verified for v${client.version}.`);
 
-// --- HELPER FUNCTIONS ---
+// ================= FIXED HELPER FUNCTIONS (v1.3.2-STABLE SYNC) =================
+
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
 
 const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null, credits = 0, streakDays = 0) => {
@@ -224,6 +225,7 @@ const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, 
 const initializeUser = (userId, username) => {
     const existing = getUser(userId);
     if (!existing) {
+        // FIXED: Added all 12 default values to match the table structure
         db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
                     VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}')`)
             .run(userId, username);
@@ -438,7 +440,7 @@ client.on(Events.MessageCreate, async (message) => {
         const xpGain = Math.floor(Math.random() * 21) + 15;
         let newXP = (userData.xp || 0) + xpGain;
         
-        // 🔥 FIXED: Using the SAME level formula as rank.js, profile.js, and games.js
+        // FIXED: Using the SAME level formula as rank.js, profile.js, and games.js
         let newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
         let totalMsgs = (userData.total_messages || 0) + 1;
 
@@ -504,6 +506,7 @@ client.on(Events.MessageCreate, async (message) => {
             }
         }
 
+        // FIXED: Save ALL user data including credits and streak_days
         saveUser(userId, message.author.username, newXP, newLevel, totalMsgs, now, 
                 userData.games_played || 0, 
                 userData.games_won || 0, 
