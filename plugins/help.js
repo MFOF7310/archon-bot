@@ -2,7 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType, 
 
 module.exports = {
     name: 'help',
-    aliases: ['h', 'menu', 'commands', 'docs'],
+    aliases: ['h', 'menu', 'docs'],
     description: 'Access the ARCHITECT Neural Directory and command database with advanced navigation.',
     category: 'SYSTEM',
     cooldown: 3000,
@@ -58,56 +58,74 @@ module.exports = {
         
         uptimeString = uptimeString.trim() || '0s';
         
-        // --- SUB-COMMAND LOGIC (Help <cmd>) ---
+        // --- ENHANCED SUB-COMMAND LOGIC WITH CATEGORY AWARENESS ---
         if (args[0]) {
-            const cmdName = args[0].toLowerCase();
-            const cmd = client.commands.get(cmdName) || 
-                        client.commands.find(c => c.aliases && c.aliases.includes(cmdName));
+            const searchTerm = args[0].toLowerCase();
+            
+            // 1. Check if it's a Command
+            const cmd = client.commands.get(searchTerm) || 
+                        client.commands.find(c => c.aliases && c.aliases.includes(searchTerm));
+            
+            // 2. NEW: Check if it's a Category (This is what list.js sends!)
+            const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toLowerCase()))];
+            
+            if (!cmd && categories.includes(searchTerm)) {
+                // Find the original casing (e.g., 'GAMING')
+                const originalCat = [...new Set(client.commands.map(cmd => cmd.category || 'GENERAL'))]
+                    .find(c => c.toLowerCase() === searchTerm);
+                
+                if (originalCat) {
+                    // This triggers your existing category display function
+                    return showCategoryHelp(client, message, originalCat, prefix, emojiMap, colorMap);
+                }
+            }
+            
+            // 3. If it IS a command, show the detailed data extract
+            if (cmd) {
+                const category = cmd.category || 'GENERAL';
+                const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
+                const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
 
-            if (!cmd) {
-                const errorEmbed = new EmbedBuilder()
-                    .setColor('#ED4245')
-                    .setAuthor({ name: '❌ SIGNAL LOST', iconURL: client.user.displayAvatarURL() })
-                    .setTitle('Command Not Found')
-                    .setDescription(`\`\`\`diff\n- Command "${args[0]}" not found in neural database\n- Use ${prefix}help to view all available modules\`\`\``)
-                    .setFooter({ text: 'ARCHITECT CG-223 • Check your spelling and try again' })
+                const detailEmbed = new EmbedBuilder()
+                    .setColor(categoryColor)
+                    .setAuthor({ 
+                        name: `${categoryEmoji} COMMAND DATA_EXTRACT`, 
+                        iconURL: client.user.displayAvatarURL() 
+                    })
+                    .setTitle(`◈ MODULE: ${cmd.name.toUpperCase()} ◈`)
+                    .setDescription(`\`\`\`prolog\n${cmd.description || 'No description encrypted. Use .help for module list.'}\`\`\``)
+                    .addFields(
+                        { name: '📂 CATEGORY', value: `\`${category}\``, inline: true },
+                        { name: '🔧 USAGE', value: `\`${prefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
+                        { name: '🔀 ALIASES', value: `\`${cmd.aliases?.join(', ') || 'NONE'}\``, inline: true },
+                        { name: '🎯 EXAMPLES', value: cmd.examples ? `\`${cmd.examples.map(ex => `${prefix}${cmd.name} ${ex}`).join('`\n`')}\`` : '`No examples available`', inline: false }
+                    )
+                    .setFooter({ text: `ARCHITECT CG-223 • Bamako Node • ${client.commands.size} modules online • v${client.version || '1.1.0'}` })
                     .setTimestamp();
-                return message.reply({ embeds: [errorEmbed] });
+
+                if (cmd.cooldown) {
+                    detailEmbed.addFields({ name: '⏱️ COOLDOWN', value: `\`${cmd.cooldown/1000} seconds\``, inline: true });
+                }
+
+                return message.reply({ embeds: [detailEmbed] });
             }
 
-            const category = cmd.category || 'GENERAL';
-            const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
-            const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
-
-            const detailEmbed = new EmbedBuilder()
-                .setColor(categoryColor)
-                .setAuthor({ 
-                    name: `${categoryEmoji} COMMAND DATA_EXTRACT`, 
-                    iconURL: client.user.displayAvatarURL() 
-                })
-                .setTitle(`◈ MODULE: ${cmd.name.toUpperCase()} ◈`)
-                .setDescription(`\`\`\`prolog\n${cmd.description || 'No description encrypted. Use .help for module list.'}\`\`\``)
-                .addFields(
-                    { name: '📂 CATEGORY', value: `\`${category}\``, inline: true },
-                    { name: '🔧 USAGE', value: `\`${prefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
-                    { name: '🔀 ALIASES', value: `\`${cmd.aliases?.join(', ') || 'NONE'}\``, inline: true },
-                    { name: '🎯 EXAMPLES', value: cmd.examples ? `\`${cmd.examples.map(ex => `${prefix}${cmd.name} ${ex}`).join('`\n`')}\`` : '`No examples available`', inline: false }
-                )
-                .setFooter({ text: `ARCHITECT CG-223 • Bamako Node • ${client.commands.size} modules online • v${client.version || '1.1.0'}` })
+            // 4. If nothing found
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setAuthor({ name: '❌ SIGNAL LOST', iconURL: client.user.displayAvatarURL() })
+                .setTitle('Command Not Found')
+                .setDescription(`\`\`\`diff\n- Command or category "${args[0]}" not found in neural database\n- Use ${prefix}help to view all available modules\`\`\``)
+                .setFooter({ text: 'ARCHITECT CG-223 • Check your spelling and try again' })
                 .setTimestamp();
-
-            if (cmd.cooldown) {
-                detailEmbed.addFields({ name: '⏱️ COOLDOWN', value: `\`${cmd.cooldown/1000} seconds\``, inline: true });
-            }
-
-            return message.reply({ embeds: [detailEmbed] });
+            return message.reply({ embeds: [errorEmbed] });
         }
 
-        // --- MAIN DIRECTORY LOGIC ---
+        // --- MAIN DIRECTORY LOGIC (No args) ---
         const categories = [...new Set(client.commands.map(cmd => cmd.category || 'GENERAL'))].sort();
         
         const totalCommands = client.commands.size;
-        const totalAliases = client.aliases.size;
+        const totalAliases = client.aliases?.size || 0;
         const categoriesCount = categories.length;
         
         const mainEmbed = new EmbedBuilder()
@@ -176,9 +194,9 @@ module.exports = {
 
         let currentView = 'main';
         
-        // --- FIXED: Proper collector that captures both buttons and select menus ---
+        // Collector for interactions
         const collector = response.createMessageComponentCollector({ 
-            time: 300000 // 5 minutes - no componentType needed, captures all
+            time: 300000 // 5 minutes
         });
         
         collector.on('collect', async (i) => {
@@ -259,91 +277,9 @@ module.exports = {
             // Handle Category Selection
             if (i.isStringSelectMenu() && i.customId === 'help_select') {
                 const category = i.values[0];
-                const cmds = client.commands.filter(c => (c.category || 'GENERAL') === category);
-                const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
-                const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
-                
-                const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
-                
-                const commandList = sortedCmds.map(cmd => {
-                    const aliasesText = cmd.aliases?.length ? ` (${cmd.aliases.slice(0, 3).join(', ')})` : '';
-                    return `**\`${prefix}${cmd.name}\`**${aliasesText}\n└─ *${cmd.description || 'No description'}*`;
-                }).join('\n\n');
-                
-                const maxLength = 4000;
-                if (commandList.length > maxLength) {
-                    const chunks = [];
-                    let currentChunk = '';
-                    for (const cmd of sortedCmds) {
-                        const cmdText = `**\`${prefix}${cmd.name}\`**\n└─ *${cmd.description || 'No description'}*\n\n`;
-                        if ((currentChunk + cmdText).length > maxLength) {
-                            chunks.push(currentChunk);
-                            currentChunk = cmdText;
-                        } else {
-                            currentChunk += cmdText;
-                        }
-                    }
-                    if (currentChunk) chunks.push(currentChunk);
-                    
-                    const catEmbed = new EmbedBuilder()
-                        .setColor(categoryColor)
-                        .setAuthor({ 
-                            name: `${categoryEmoji} ${category.toUpperCase()} MODULES (1/${chunks.length})`, 
-                            iconURL: client.user.displayAvatarURL() 
-                        })
-                        .setTitle('═ NEURAL COMMAND DATABASE ═')
-                        .setDescription(chunks[0])
-                        .setFooter({ text: `Use ${prefix}help <command> for details • Page 1/${chunks.length} • v${client.version || '1.1.0'}` });
-                    
-                    await i.update({ embeds: [catEmbed] });
-                    
-                    for (let idx = 1; idx < chunks.length; idx++) {
-                        const chunkEmbed = new EmbedBuilder()
-                            .setColor(categoryColor)
-                            .setAuthor({ 
-                                name: `${categoryEmoji} ${category.toUpperCase()} MODULES (${idx+1}/${chunks.length})`, 
-                                iconURL: client.user.displayAvatarURL() 
-                            })
-                            .setDescription(chunks[idx])
-                            .setFooter({ text: `Page ${idx+1}/${chunks.length} • Use ${prefix}help <command> for details • v${client.version || '1.1.0'}` });
-                        
-                        await message.channel.send({ embeds: [chunkEmbed] });
-                    }
-                    
-                    currentView = 'category';
-                    const updatedRow2 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('back_to_main')
-                            .setLabel('🏠 MAIN MENU')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(false)
-                    );
-                    await response.edit({ components: [row1, updatedRow2] });
-                    return;
-                }
-                
-                const catEmbed = new EmbedBuilder()
-                    .setColor(categoryColor)
-                    .setAuthor({ 
-                        name: `${categoryEmoji} ${category.toUpperCase()} MODULES`, 
-                        iconURL: client.user.displayAvatarURL() 
-                    })
-                    .setTitle('═ NEURAL COMMAND DATABASE ═')
-                    .setDescription(commandList)
-                    .addFields(
-                        { 
-                            name: '📊 MODULE STATS', 
-                            value: `\`\`\`yaml\nTotal Commands: ${cmds.size}\nAliases Registered: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\`\`\``, 
-                            inline: false 
-                        }
-                    )
-                    .setFooter({ 
-                        text: `Use ${prefix}help <command> for details • ${cmds.size} commands available • v${client.version || '1.1.0'}`, 
-                        iconURL: client.user.displayAvatarURL() 
-                    })
-                    .setTimestamp();
-                
+                await showCategoryHelp(client, message, category, prefix, emojiMap, colorMap, i);
                 currentView = 'category';
+                
                 const updatedRow2 = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
                         .setCustomId('back_to_main')
@@ -351,8 +287,7 @@ module.exports = {
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(false)
                 );
-                
-                await i.update({ embeds: [catEmbed], components: [row1, updatedRow2] });
+                await response.edit({ components: [row1, updatedRow2] });
             }
         });
 
@@ -369,3 +304,91 @@ module.exports = {
         });
     }
 };
+
+// --- CATEGORY HELP DISPLAY FUNCTION ---
+async function showCategoryHelp(client, message, category, prefix, emojiMap, colorMap, interaction = null) {
+    const cmds = client.commands.filter(c => (c.category || 'GENERAL') === category);
+    const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
+    const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
+    
+    const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
+    
+    const commandList = sortedCmds.map(cmd => {
+        const aliasesText = cmd.aliases?.length ? ` (${cmd.aliases.slice(0, 3).join(', ')})` : '';
+        const examples = cmd.examples?.length ? `\n└─ 📝 Example: \`${prefix}${cmd.name} ${cmd.examples[0]}\`` : '';
+        return `**\`${prefix}${cmd.name}\`**${aliasesText}\n└─ *${cmd.description || 'No description'}*${examples}`;
+    }).join('\n\n');
+    
+    const maxLength = 4000;
+    if (commandList.length > maxLength) {
+        const chunks = [];
+        let currentChunk = '';
+        for (const cmd of sortedCmds) {
+            const cmdText = `**\`${prefix}${cmd.name}\`**\n└─ *${cmd.description || 'No description'}*\n\n`;
+            if ((currentChunk + cmdText).length > maxLength) {
+                chunks.push(currentChunk);
+                currentChunk = cmdText;
+            } else {
+                currentChunk += cmdText;
+            }
+        }
+        if (currentChunk) chunks.push(currentChunk);
+        
+        const catEmbed = new EmbedBuilder()
+            .setColor(categoryColor)
+            .setAuthor({ 
+                name: `${categoryEmoji} ${category.toUpperCase()} MODULES (1/${chunks.length})`, 
+                iconURL: client.user.displayAvatarURL() 
+            })
+            .setTitle('═ NEURAL COMMAND DATABASE ═')
+            .setDescription(chunks[0])
+            .setFooter({ text: `Use ${prefix}help <command> for details • Page 1/${chunks.length} • v${client.version || '1.1.0'}` });
+        
+        if (interaction) {
+            await interaction.update({ embeds: [catEmbed] });
+        } else {
+            await message.reply({ embeds: [catEmbed] });
+        }
+        
+        for (let idx = 1; idx < chunks.length; idx++) {
+            const chunkEmbed = new EmbedBuilder()
+                .setColor(categoryColor)
+                .setAuthor({ 
+                    name: `${categoryEmoji} ${category.toUpperCase()} MODULES (${idx+1}/${chunks.length})`, 
+                    iconURL: client.user.displayAvatarURL() 
+                })
+                .setDescription(chunks[idx])
+                .setFooter({ text: `Page ${idx+1}/${chunks.length} • Use ${prefix}help <command> for details • v${client.version || '1.1.0'}` });
+            
+            await message.channel.send({ embeds: [chunkEmbed] });
+        }
+        return;
+    }
+    
+    const catEmbed = new EmbedBuilder()
+        .setColor(categoryColor)
+        .setAuthor({ 
+            name: `${categoryEmoji} ${category.toUpperCase()} MODULES`, 
+            iconURL: client.user.displayAvatarURL() 
+        })
+        .setTitle('═ NEURAL COMMAND DATABASE ═')
+        .setDescription(commandList)
+        .addFields(
+            { 
+                name: '📊 MODULE STATS', 
+                value: `\`\`\`yaml\nTotal Commands: ${cmds.size}\nAliases Registered: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\`\`\``, 
+                inline: false 
+            }
+        )
+        .setFooter({ 
+            text: `Use ${prefix}help <command> for details • ${cmds.size} commands available • v${client.version || '1.1.0'}`, 
+            iconURL: client.user.displayAvatarURL() 
+        })
+        .setTimestamp();
+    
+    if (interaction) {
+        await interaction.update({ embeds: [catEmbed] });
+    } else {
+        await message.reply({ embeds: [catEmbed] });
+    }
+}
