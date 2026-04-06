@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'rank',
-    aliases: ['level', 'xp', 'rang', 'niveau', 'dossier', 'profile', 'agent'],
+    aliases: ['level', 'xp', 'rang', 'niveau', 'dossier', 'agent'], // Removed 'profile'
     description: '📊 Display neural synchronization level and agent dossier.',
     category: 'PROFILE',
     usage: '.rank [@user]',
