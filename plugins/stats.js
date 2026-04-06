@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+Const { EmbedBuilder } = require('discord.js');
 
 const statsTranslations = {
     en: {
@@ -47,7 +47,7 @@ const statsTranslations = {
 
 module.exports = {
     name: 'stats',
-    aliases: ['botstats', 'statistiques', 'systemstats', 'botinfo', 'sysinfo', 'diagnostics'], // Removed 'info' conflict
+    aliases: ['botstats', 'statistiques', 'systemstats', 'sysinfo', 'diagnostics'], // REMOVED 'botinfo'
     description: '📊 Display live neural bot statistics and system telemetry.',
     category: 'SYSTEM',
     usage: '.stats',
@@ -56,7 +56,7 @@ module.exports = {
 
     run: async (client, message, args) => {
         
-        // --- INTELLIGENT LANGUAGE DETECTION (Matches rank.js & profile.js) ---
+        // --- INTELLIGENT LANGUAGE DETECTION ---
         let lang = 'en';
         const guildSettings = client.settings?.get(message.guild?.id);
         if (guildSettings?.language) {
@@ -69,7 +69,6 @@ module.exports = {
             }
         }
         
-        // Check French aliases (no 'info' conflict)
         const cmdUsed = message.content.split(' ')[0].toLowerCase();
         const isFrenchAlias = ['statistiques'].some(alias => cmdUsed.includes(alias));
         if (isFrenchAlias) lang = 'fr';
@@ -77,7 +76,6 @@ module.exports = {
         const t = statsTranslations[lang];
         const version = client.version || '1.3.2';
 
-        // --- CALCULATION LOGIC ---
         const uptime = process.uptime();
         const d = Math.floor(uptime / (3600 * 24));
         const h = Math.floor((uptime % (3600 * 24)) / 3600);
@@ -91,24 +89,22 @@ module.exports = {
         const totalUsers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
         const totalCommands = client.commands?.size || 0;
         
-        // --- API STATUS ---
         const groqStatus = process.env.GROQ_API_KEY ? '✅' : '❌';
         const braveStatus = process.env.BRAVE_API_KEY ? '✅' : '❌';
         
-        // --- DATABASE STATUS ---
         let dbStatus = '✅';
         try {
-            const db = require('better-sqlite3')('database.sqlite');
-            db.prepare("SELECT 1").get();
+            const Database = require('better-sqlite3');
+            const testDb = new Database('database.sqlite');
+            testDb.prepare("SELECT 1").get();
+            testDb.close();
         } catch {
             dbStatus = '❌';
         }
 
-        // --- PLATFORM INFO ---
         const platform = `${process.platform} (${process.arch})`;
         const nodeVersion = process.version;
 
-        // --- BUILD EMBED ---
         const statsEmbed = new EmbedBuilder()
             .setColor('#00fbff')
             .setAuthor({ 
@@ -119,22 +115,15 @@ module.exports = {
             .setDescription(`\`\`\`prolog\n${t.desc}\n${t.node}: BKO-223 • ${t.region}: Bamako, Mali\`\`\``)
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
             .addFields(
-                // Core Information
                 { name: t.core, value: `\`Groq LPU™ 70B\`\nNeural Core: LYDIA`, inline: true },
                 { name: t.version, value: `\`v${version}\``, inline: true },
                 { name: t.latency, value: `\`${ping}ms\``, inline: true },
-                
-                // System Stats
                 { name: t.uptime, value: `\`${uptimeStr}\``, inline: false },
                 { name: t.memory, value: `\`Heap: ${memory} MB\`\n\`RSS: ${memoryRss} MB\``, inline: true },
                 { name: t.platform, value: `\`${platform}\`\n\`Node: ${nodeVersion}\``, inline: true },
-                
-                // Bot Stats
                 { name: t.commands, value: `\`${totalCommands}\``, inline: true },
                 { name: t.servers, value: `\`${client.guilds.cache.size}\``, inline: true },
                 { name: t.users, value: `\`${totalUsers.toLocaleString()}\``, inline: true },
-                
-                // API Status
                 { 
                     name: t.apiStatus, 
                     value: `\`\`\`yaml\n${t.groq}: ${groqStatus}\n${t.brave}: ${braveStatus}\n${t.database}: ${dbStatus}\`\`\``, 
@@ -147,7 +136,6 @@ module.exports = {
             })
             .setTimestamp();
 
-        // --- ADD WARNING FOR MISSING APIS ---
         if (groqStatus === '❌') {
             statsEmbed.addFields({
                 name: lang === 'fr' ? '⚠️ CONFIGURATION MANQUANTE' : '⚠️ MISSING CONFIGURATION',
@@ -170,7 +158,6 @@ module.exports = {
 
         await message.reply({ embeds: [statsEmbed] });
         
-        // --- LOG COMMAND USAGE ---
-        console.log(`[STATS] ${message.author.tag} viewed system stats | Lang: ${lang} | Version: ${version} | Groq: ${groqStatus} | Brave: ${braveStatus}`);
+        console.log(`[STATS] ${message.author.tag} viewed system stats | Lang: ${lang} | Version: ${version}`);
     }
 };
