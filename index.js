@@ -13,12 +13,10 @@ const { setupLydia } = require('./plugins/lydia.js');
 process.on('uncaughtException', (error) => {
     console.log(`\x1b[31m[UNCAUGHT EXCEPTION]\x1b[0m ${error.message}`);
     console.log(error.stack);
-    // Don't crash - just log and continue
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     console.log(`\x1b[31m[UNHANDLED REJECTION]\x1b[0m ${reason}`);
-    // Don't crash - just log and continue
 });
 
 // --- TERMINAL COLORS ---
@@ -36,22 +34,31 @@ const client = new Client({
 });
 
 // --- SYSTEM GLOBALS ---
-client.commands  = new Collection();
-client.aliases   = new Collection();
+client.commands = new Collection();
+client.aliases = new Collection();
 
 // --- DYNAMIC VERSIONING ---
-try {
-    const versionPath = path.join(__dirname, 'version.txt');
-    client.version = fs.readFileSync(versionPath, 'utf8').trim();
-} catch (err) {
-    console.log(`${yellow}[WARNING]${reset} version.txt not found. Defaulting to 1.2.0`);
-    client.version = "1.2.0"; 
+function getVersion() {
+    try {
+        const versionPath = path.join(__dirname, 'version.txt');
+        if (fs.existsSync(versionPath)) {
+            const version = fs.readFileSync(versionPath, 'utf8').trim();
+            return version;
+        } else {
+            fs.writeFileSync(versionPath, '1.3.2', 'utf8');
+            return '1.3.2';
+        }
+    } catch (err) {
+        return '1.3.2';
+    }
 }
 
-// --- LYDIA GLOBALS (will be populated by setupLydia and loadAgentPreferences) ---
-client.lydiaChannels = {};  // Tracks which channels have AI active
-client.lydiaAgents = {};    // Tracks which neural core is active per channel
-client.lastLydiaCall = {};  // Rate limiting
+client.version = getVersion();
+
+// --- LYDIA GLOBALS ---
+client.lydiaChannels = {};
+client.lydiaAgents = {};
+client.lastLydiaCall = {};
 
 const PREFIX = process.env.PREFIX || ".";
 
@@ -105,13 +112,17 @@ const getNextLevelReward = (level) => {
 const Database = require('better-sqlite3');
 const db = new Database('database.sqlite');
 
-// Create Users Table
+// ================= COMPLETE DATABASE SCHEMA (v1.3.2-STABLE) =================
+
+// --- USERS TABLE (Complete with all columns) ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT,
         xp INTEGER DEFAULT 0,
         level INTEGER DEFAULT 1,
+        credits INTEGER DEFAULT 0,
+        streak_days INTEGER DEFAULT 0,
         total_messages INTEGER DEFAULT 0,
         last_xp_gain INTEGER DEFAULT 0,
         games_played INTEGER DEFAULT 0,
@@ -121,7 +132,31 @@ db.prepare(`
     )
 `).run();
 
-// Create Lydia Memory Table for persistent AI context
+// --- DATABASE PATCHER (Adds missing columns to existing databases) ---
+console.log(`${cyan}[DB PATCH]${reset} Verifying database schema for v${client.version}...`);
+
+const requiredColumns = [
+    { name: 'credits', type: 'INTEGER DEFAULT 0' },
+    { name: 'streak_days', type: 'INTEGER DEFAULT 0' },
+    { name: 'total_winnings', type: 'INTEGER DEFAULT 0' },
+    { name: 'games_played', type: 'INTEGER DEFAULT 0' },
+    { name: 'games_won', type: 'INTEGER DEFAULT 0' }
+];
+
+requiredColumns.forEach(col => {
+    try {
+        db.prepare(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`).run();
+        console.log(`${green}[DB PATCH]${reset} Added column: ${col.name}`);
+    } catch (err) {
+        if (err.message.includes('duplicate column')) {
+            console.log(`${yellow}[DB PATCH]${reset} Column exists: ${col.name}`);
+        } else {
+            console.log(`${red}[DB PATCH]${reset} Failed to add ${col.name}: ${err.message}`);
+        }
+    }
+});
+
+// --- LYDIA MEMORY TABLE ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_memory (
         user_id TEXT,
@@ -132,7 +167,7 @@ db.prepare(`
     )
 `).run();
 
-// Create Lydia Agents Table with is_active column
+// --- LYDIA AGENTS TABLE ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_agents (
         channel_id TEXT PRIMARY KEY,
@@ -142,20 +177,55 @@ db.prepare(`
     )
 `).run();
 
-// Helper Functions
+// --- USER INVENTORY TABLE (for shop) ---
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS user_inventory (
+        user_id TEXT,
+        item_id TEXT,
+        quantity INTEGER DEFAULT 1,
+        purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
+        expires_at INTEGER,
+        PRIMARY KEY (user_id, item_id)
+    )
+`).run();
+
+// --- LYDIA INTRODUCTIONS TABLE (24h reset tracking) ---
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS lydia_introductions (
+        user_id TEXT,
+        channel_id TEXT,
+        introduced_at INTEGER DEFAULT (strftime('%s', 'now')),
+        PRIMARY KEY (user_id, channel_id)
+    )
+`).run();
+
+// --- LYDIA CONVERSATIONS TABLE (chat history) ---
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS lydia_conversations (
+        channel_id TEXT,
+        user_id TEXT,
+        role TEXT,
+        content TEXT,
+        timestamp INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+`).run();
+
+console.log(`${green}[DB PATCH]${reset} Database schema verified for v${client.version}.`);
+
+// --- HELPER FUNCTIONS ---
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
 
-const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null) => {
+const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null, credits = 0, streakDays = 0) => {
     const gamingValue = gaming !== null ? gaming : '{"game":"CODM","rank":"Unranked"}';
-    db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gamingValue);
+    db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming, credits, streak_days) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gamingValue, credits, streakDays);
 };
 
 const initializeUser = (userId, username) => {
     const existing = getUser(userId);
     if (!existing) {
-        db.prepare(`INSERT INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
-                    VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}')`)
+        db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
+                    VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}')`)
             .run(userId, username);
     }
     return getUser(userId);
@@ -175,58 +245,29 @@ const updateGamingStats = (userId, gamesPlayedInc = 0, gamesWonInc = 0, winnings
     return true;
 };
 
-// Load saved agent preferences from database on startup (CRASH-PROOF)
+// Load saved agent preferences
 const loadAgentPreferences = () => {
     try {
-        // First, verify the table exists
-        const tableCheck = db.prepare(`
-            SELECT name FROM sqlite_master 
-            WHERE type='table' AND name='lydia_agents'
-        `).get();
-        
-        if (!tableCheck) {
-            console.log(`${yellow}[AGENT]${reset} lydia_agents table not found, skipping load.`);
-            return;
-        }
-        
-        // Fetch all agents
-        const savedAgents = db.prepare("SELECT * FROM lydia_agents").all();
+        const savedAgents = db.prepare("SELECT * FROM lydia_agents WHERE is_active = 1").all();
         
         if (!savedAgents || savedAgents.length === 0) {
-            console.log(`${green}[AGENT]${reset} No saved agents found. Ready for new registrations.`);
+            console.log(`${green}[AGENT]${reset} No active agents found.`);
             return;
         }
         
-        // Initialize objects if they don't exist
-        if (!client.lydiaChannels) client.lydiaChannels = {};
-        if (!client.lydiaAgents) client.lydiaAgents = {};
-        
-        let activeCount = 0;
-        
         savedAgents.forEach(agent => {
-            try {
-                // Only restore if channel_id exists
-                if (agent.channel_id && agent.is_active === 1) {
-                    client.lydiaChannels[agent.channel_id] = true;
-                    client.lydiaAgents[agent.channel_id] = agent.agent_key || 'default';
-                    activeCount++;
-                }
-            } catch (err) {
-                console.log(`${yellow}[AGENT]${reset} Failed to restore agent for ${agent.channel_id}: ${err.message}`);
+            if (agent.channel_id) {
+                client.lydiaChannels[agent.channel_id] = true;
+                client.lydiaAgents[agent.channel_id] = agent.agent_key || 'default';
             }
         });
         
-        console.log(`${green}[AGENT]${reset} Synchronized ${savedAgents.length} neural paths (${activeCount} active).`);
-        
+        console.log(`${green}[AGENT]${reset} Restored ${savedAgents.length} active agents.`);
     } catch (err) {
-        console.log(`${red}[AGENT CRITICAL]${reset} Failed to load preferences: ${err.message}`);
-        // Don't crash - just initialize empty objects
-        client.lydiaChannels = client.lydiaChannels || {};
-        client.lydiaAgents = client.lydiaAgents || {};
+        console.log(`${yellow}[AGENT]${reset} No agents to restore.`);
     }
 };
 
-// Save agent preference to database with is_active status
 const saveAgentPreference = (channelId, agentKey) => {
     db.prepare(`
         INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at)
@@ -234,18 +275,14 @@ const saveAgentPreference = (channelId, agentKey) => {
     `).run(channelId, agentKey, client.lydiaChannels[channelId] ? 1 : 0);
 };
 
-// --- ATTACH HELPER FUNCTIONS TO CLIENT FOR PLUGINS ---
+// --- ATTACH HELPERS TO CLIENT ---
 client.saveAgentPreference = saveAgentPreference;
 client.getUser = getUser;
 client.initializeUser = initializeUser;
 client.updateGamingStats = updateGamingStats;
 client.db = db;
 
-// --- GROQ AI CONFIGURATION ---
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-// ================= ENHANCED LEVEL-UP SYSTEM =================
-
+// --- LEVEL-UP ACHIEVEMENTS ---
 const achievements = {
     1: { name: "🌟 BEGINNER'S LUCK", desc: "Take your first step into greatness!" },
     5: { name: "🎮 APPRENTICE GAMER", desc: "Level 5 reached! You're learning fast!" },
@@ -253,9 +290,7 @@ const achievements = {
     25: { name: "🏆 ELITE FIGHTER", desc: "A true warrior emerges!" },
     50: { name: "💎 MASTER TACTICIAN", desc: "Your strategies are legendary!" },
     75: { name: "👑 GRAND MASTER", desc: "Among the elite few!" },
-    100: { name: "🌀 TRANSCENDENT", desc: "You've reached god-like status!" },
-    150: { name: "⭐ MYTHICAL LEGEND", desc: "Your name will echo through history!" },
-    200: { name: "🔥 INFINITY SLAYER", desc: "The ultimate gaming champion!" }
+    100: { name: "🌀 TRANSCENDENT", desc: "You've reached god-like status!" }
 };
 
 const getAchievementName = (level) => {
@@ -264,31 +299,16 @@ const getAchievementName = (level) => {
             return achievement;
         }
     }
-    
-    const levelTiers = [
-        { max: 10, name: "🌱 NOVICE", desc: "Every journey begins with a single step!" },
-        { max: 25, name: "⭐ ASPIRANT", desc: "Building momentum and skill!" },
-        { max: 50, name: "⚔️ COMBATANT", desc: "Your dedication shows!" },
-        { max: 75, name: "🛡️ DEFENDER", desc: "Strong and reliable!" },
-        { max: 100, name: "💎 CHAMPION", desc: "A force to be reckoned with!" }
-    ];
-    
-    for (const tier of levelTiers) {
-        if (level <= tier.max) {
-            return { name: tier.name, desc: tier.desc };
-        }
-    }
-    
-    return { name: "🏆 LEGEND", desc: "Your legacy continues to grow!" };
+    return { name: "🌱 NOVICE", desc: "Every journey begins with a single step!" };
 };
 
 const getLevelImage = (level) => {
-    if (level >= 100) return process.env.IMG_LVL_100 || 'https://via.placeholder.com/1200x400/ff4444/ffffff?text=MASTER+TIER';
-    if (level >= 50) return process.env.IMG_LVL_50 || 'https://via.placeholder.com/1200x400/44aaff/ffffff?text=DIAMOND+TIER';
-    if (level >= 25) return process.env.IMG_LVL_25 || 'https://via.placeholder.com/1200x400/ffaa44/ffffff?text=PLATINUM+TIER';
-    if (level >= 10) return process.env.IMG_LVL_10 || 'https://via.placeholder.com/1200x400/dddddd/000000?text=GOLD+TIER';
-    if (level >= 5) return process.env.IMG_LVL_5 || 'https://via.placeholder.com/1200x400/cd7f32/ffffff?text=SILVER+TIER';
-    return process.env.IMG_LVL_0 || 'https://via.placeholder.com/1200x400/8B5A2B/ffffff?text=BRONZE+TIER';
+    if (level >= 100) return 'https://via.placeholder.com/1200x400/ff4444/ffffff?text=MASTER+TIER';
+    if (level >= 50) return 'https://via.placeholder.com/1200x400/44aaff/ffffff?text=DIAMOND+TIER';
+    if (level >= 25) return 'https://via.placeholder.com/1200x400/ffaa44/ffffff?text=PLATINUM+TIER';
+    if (level >= 10) return 'https://via.placeholder.com/1200x400/dddddd/000000?text=GOLD+TIER';
+    if (level >= 5) return 'https://via.placeholder.com/1200x400/cd7f32/ffffff?text=SILVER+TIER';
+    return 'https://via.placeholder.com/1200x400/8B5A2B/ffffff?text=BRONZE+TIER';
 };
 
 const getXPProgress = (xp, level) => {
@@ -313,25 +333,23 @@ const getXPProgress = (xp, level) => {
 
 const getCongratsMessage = (level, userName) => {
     const messages = [
-        `GG **${userName}**, you just unlocked the achievement: **${getAchievementName(level).name}**! 😍`,
-        `Amazing! **${userName}** reached **Level ${level}**! The grind pays off! 🎉`,
-        `**${userName}** levels up! ${getAchievementName(level).name} achieved! ⚡`,
-        `Congratulations **${userName}**! Level ${level} looks good on you! 🌟`,
-        `Power surge detected! **${userName}** hit **Level ${level}**! 🚀`,
-        `Legendary progression! **${userName}** ascends to **Level ${level}**! 👑`
+        `GG **${userName}**, you just reached **Level ${level}**! 🎉`,
+        `Amazing! **${userName}** hit **Level ${level}**! The grind pays off! ⚡`,
+        `**${userName}** levels up to **Level ${level}**! 🌟`,
+        `Congratulations **${userName}**! Level ${level} looks good on you! 👑`
     ];
     
     if (level % 10 === 0) {
-        return `🏆 **MILESTONE UNLOCKED!** 🏆\n**${userName}** reaches **Level ${level}**! ${getAchievementName(level).name}!`;
+        return `🏆 **MILESTONE UNLOCKED!** 🏆\n**${userName}** reaches **Level ${level}**!`;
     }
     if (level === 1) {
-        return `🎊 Welcome to the journey, **${userName}**! Level 1 achieved! The adventure begins! 🎊`;
+        return `🎊 Welcome to the journey, **${userName}**! Level 1 achieved! 🎊`;
     }
     
     return messages[Math.floor(Math.random() * messages.length)];
 };
 
-// --- THE LOADER ---
+// --- PLUGIN LOADER ---
 client.loadPlugins = async () => {
     client.commands.clear();
     client.aliases.clear();
@@ -346,7 +364,6 @@ client.loadPlugins = async () => {
     for (const file of pluginFiles) {
         try {
             await sleep(100);
-            
             const filePath = path.join(pluginPath, file);
             delete require.cache[require.resolve(filePath)];
             const command = require(filePath);
@@ -371,22 +388,23 @@ client.loadPlugins = async () => {
     console.log(`${blue}${bold}==============================================${reset}\n`);
 };
 
-// ================= BOOT SEQUENCE =================
+// --- BOOT SEQUENCE ---
 client.once(Events.ClientReady, async () => {
     console.clear();
     
+    client.version = getVersion();
+    
     await client.loadPlugins();
     
-    // 1️⃣ Initialize Lydia structure (creates empty objects if needed)
     console.log(`${cyan}[LYDIA]${reset} Initializing Neural Interface...`);
     setupLydia(client, db);
     console.log(`${green}[LYDIA]${reset} Neural Core structure ready.`);
     
-    // 2️⃣ Load saved preferences from database into the existing objects
     loadAgentPreferences();
     
     console.log(`${green}🛰️  CLIENT   : ${client.user.tag}${reset}`);
-    console.log(`${green}📍 NODE     : BAMAKO_223${reset}\n`);
+    console.log(`${green}📍 NODE     : BAMAKO_223${reset}`);
+    console.log(`${green}📦 VERSION  : v${client.version}${reset}\n`);
 
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
@@ -419,7 +437,9 @@ client.on(Events.MessageCreate, async (message) => {
     if (now - (userData.last_xp_gain || 0) > cooldown) {
         const xpGain = Math.floor(Math.random() * 21) + 15;
         let newXP = (userData.xp || 0) + xpGain;
-        let newLevel = Math.floor(newXP / 1000) + 1;
+        
+        // 🔥 FIXED: Using the SAME level formula as rank.js, profile.js, and games.js
+        let newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
         let totalMsgs = (userData.total_messages || 0) + 1;
 
         if (newLevel > (userData.level || 1)) {
@@ -488,11 +508,11 @@ client.on(Events.MessageCreate, async (message) => {
                 userData.games_played || 0, 
                 userData.games_won || 0, 
                 userData.total_winnings || 0, 
-                userData.gaming || '{"game":"CODM","rank":"Unranked"}');
+                userData.gaming || '{"game":"CODM","rank":"Unranked"}',
+                userData.credits || 0,
+                userData.streak_days || 0);
     }
 
-    // ❌ LYDIA HANDLER REMOVED - Now handled exclusively by plugins/lydia.js
-    
     // --- COMMAND HANDLER ---
     if (!message.content.startsWith(PREFIX)) return;
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
@@ -510,7 +530,7 @@ client.on(Events.MessageCreate, async (message) => {
     }
 });
 
-// ================= PROFESSIONAL WELCOME & DM PROTOCOL =================
+// --- WELCOME SYSTEM ---
 client.on(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
 
@@ -573,5 +593,5 @@ client.on(Events.GuildMemberAdd, async (member) => {
     }
 });
 
-// Login to Discord
+// --- LOGIN ---
 client.login(process.env.TOKEN);
