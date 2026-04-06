@@ -28,7 +28,9 @@ const tttTranslations = {
         insufficientCredits: '❌ **Insufficient credits!** You need 50 🪙 to play. Use `.daily` to claim your daily reward.',
         opponentInsufficientCredits: '❌ **${opponent}** does not have enough credits (50 🪙 required) to accept the challenge!',
         levelUp: '🎉 AGENT PROMOTION!',
-        levelUpDesc: (username, level) => `Congratulations **${username}**! You've reached level **${level}**!`
+        levelUpDesc: (username, level) => `Congratulations **${username}**! You've reached level **${level}**!`,
+        waiting: 'Waiting for players...',
+        gameActive: 'Game in progress'
     },
     fr: {
         title: '⚔️ TIC-TAC-TOE NEURAL',
@@ -56,13 +58,60 @@ const tttTranslations = {
         insufficientCredits: '❌ **Crédits insuffisants!** Vous avez besoin de 50 🪙 pour jouer. Utilisez `.daily` pour réclamer votre récompense quotidienne.',
         opponentInsufficientCredits: '❌ **${opponent}** n\'a pas assez de crédits (50 🪙 requis) pour accepter le défi!',
         levelUp: '🎉 PROMOTION D\'AGENT!',
-        levelUpDesc: (username, level) => `Félicitations **${username}**! Vous avez atteint le niveau **${level}**!`
+        levelUpDesc: (username, level) => `Félicitations **${username}**! Vous avez atteint le niveau **${level}**!`,
+        waiting: 'En attente des joueurs...',
+        gameActive: 'Partie en cours'
     }
 };
 
 // --- UNIFIED LEVEL CALCULATION (Matches rank.js & games.js) ---
 function calculateLevel(xp) {
     return Math.floor(0.1 * Math.sqrt(xp)) + 1;
+}
+
+// --- UNIFIED RANK TITLES ---
+const AGENT_RANKS = [
+    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
+    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
+    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
+    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
+];
+
+function getRank(level) {
+    return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
+}
+
+// --- PROGRESS BAR FUNCTION ---
+function createProgressBar(percentage, length = 15) {
+    const filled = Math.round((percentage / 100) * length);
+    const empty = length - filled;
+    return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty));
+}
+
+// --- UNIFIED LEVEL-UP EMBED ---
+async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP, lang, version) {
+    const rank = getRank(newLevel);
+    const nextLevelXP = Math.pow(newLevel / 0.1, 2);
+    const prevLevelXP = Math.pow((newLevel - 1) / 0.1, 2);
+    const xpInLevel = currentXP - prevLevelXP;
+    const xpNeeded = nextLevelXP - prevLevelXP;
+    const progressPercent = xpNeeded > 0 ? Math.min(100, Math.max(0, (xpInLevel / xpNeeded) * 100)) : 100;
+    const progressBar = createProgressBar(progressPercent, 12);
+    
+    const levelUpEmbed = new EmbedBuilder()
+        .setColor(rank.color)
+        .setTitle(`🎊 ${lang === 'fr' ? 'PROMOTION D\'AGENT' : 'AGENT PROMOTION'}! 🎊`)
+        .setDescription(
+            `**${username}** ${lang === 'fr' ? 'vient d\'atteindre le niveau' : 'just reached level'} **${newLevel}**!\n\n` +
+            `${rank.emoji} **${rank.title[lang]}**\n` +
+            `\`${progressBar}\` ${progressPercent.toFixed(1)}%\n` +
+            `└─ ${lang === 'fr' ? 'Prochain niveau' : 'Next level'}: ${Math.ceil(xpNeeded - xpInLevel).toLocaleString()} XP`
+        )
+        .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+        .setTimestamp();
+    
+    await channel.send({ embeds: [levelUpEmbed] });
 }
 
 // --- ECONOMY SYNC: UPDATE GAME STATS (Consistent with games.js) ---
@@ -76,10 +125,10 @@ function updateGameStats(userId, won, winnings, channel, username, lang, db) {
         actualWinnings = -currentCredits;
     }
     
-    // FIXED: XP Gain consistent with other games (100 for win, 25 for loss)
+    // XP Gain consistent with other games (100 for win, 25 for loss)
     const xpGain = won ? 100 : 25;
     
-    // Ensure columns exist
+    // Ensure columns exist (safe check)
     try {
         db.prepare(`ALTER TABLE users ADD COLUMN games_played INTEGER DEFAULT 0`).run();
         db.prepare(`ALTER TABLE users ADD COLUMN games_won INTEGER DEFAULT 0`).run();
@@ -87,6 +136,7 @@ function updateGameStats(userId, won, winnings, channel, username, lang, db) {
         db.prepare(`ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0`).run();
     } catch (e) {}
     
+    // Update stats
     db.prepare(`
         UPDATE users SET 
             games_played = games_played + 1, 
@@ -97,21 +147,13 @@ function updateGameStats(userId, won, winnings, channel, username, lang, db) {
         WHERE id = ?
     `).run(actualWinnings, actualWinnings, xpGain, userId);
     
-    const newUser = db.prepare("SELECT xp FROM users WHERE id = ?").get(userId);
-    
     // Check for level up
+    const newUser = db.prepare("SELECT xp FROM users WHERE id = ?").get(userId);
     const oldLevel = calculateLevel(oldXp);
     const newLevel = calculateLevel(newUser?.xp || 0);
     
     if (newLevel > oldLevel) {
-        const levelUpEmbed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setTitle(lang === 'fr' ? '🎉 PROMOTION D\'AGENT!' : '🎉 AGENT PROMOTION!')
-            .setDescription(lang === 'fr' 
-                ? `Félicitations **${username}**! Vous avez atteint le niveau **${newLevel}**!`
-                : `Congratulations **${username}**! You've reached level **${newLevel}**!`)
-            .setTimestamp();
-        channel.send({ embeds: [levelUpEmbed] });
+        sendLevelUpEmbed(channel, username, oldLevel, newLevel, newUser?.xp || 0, lang, '1.3.2');
     }
     
     return actualWinnings;
@@ -135,7 +177,6 @@ module.exports = {
     cooldown: 5000,
     examples: ['.ttt @friend'],
 
-    // FIXED: Changed 'database' to 'db' to match index.js handler
     run: async (client, message, args, db) => {
         
         // --- INTELLIGENT LANGUAGE DETECTION ---
@@ -219,6 +260,15 @@ module.exports = {
         // Store in active games
         activeGames.set(gameKey, true);
         
+        // Get user stats for embed
+        const challengerStats = db.prepare("SELECT xp, credits, games_played, games_won FROM users WHERE id = ?").get(challenger.id);
+        const opponentStats = db.prepare("SELECT xp, credits, games_played, games_won FROM users WHERE id = ?").get(opponent.id);
+        
+        const challengerLevel = calculateLevel(challengerStats?.xp || 0);
+        const opponentLevel = calculateLevel(opponentStats?.xp || 0);
+        const challengerRank = getRank(challengerLevel);
+        const opponentRank = getRank(opponentLevel);
+        
         // --- BOARD CREATION ---
         const createBoard = () => {
             const rows = [];
@@ -267,8 +317,8 @@ module.exports = {
                 `\`\`\`prolog\n${t.challenge(challenger.username, opponent.username)}\n${t.betInfo}\`\`\``
             )
             .addFields(
-                { name: '❌ X', value: challenger.username, inline: true },
-                { name: '⭕ O', value: opponent.username, inline: true },
+                { name: '❌ X', value: `${challenger.username}\n${challengerRank.emoji} Lvl ${challengerLevel}`, inline: true },
+                { name: '⭕ O', value: `${opponent.username}\n${opponentRank.emoji} Lvl ${opponentLevel}`, inline: true },
                 { name: t.turn, value: `<@${turn}>`, inline: true }
             )
             .setFooter({ text: `${t.footer} • v${version}` })
@@ -350,6 +400,8 @@ module.exports = {
                     
                     // Get winner stats for display
                     const winnerStats = db.prepare("SELECT games_played, games_won, xp FROM users WHERE id = ?").get(winnerId);
+                    const winnerLevel = calculateLevel(winnerStats?.xp || 0);
+                    const winnerRank = getRank(winnerLevel);
                     const winRate = winnerStats?.games_played > 0 
                         ? Math.round((winnerStats.games_won / winnerStats.games_played) * 100) 
                         : 0;
@@ -362,6 +414,7 @@ module.exports = {
                             { name: t.reward, value: `+${winnerReward} 🪙`, inline: true },
                             { name: t.xpGain, value: `+100 XP`, inline: true },
                             { name: t.creditsGain, value: `+${winnerReward} 🪙`, inline: true },
+                            { name: `📈 ${lang === 'fr' ? 'Nouveau Niveau' : 'New Level'}`, value: `${winnerRank.emoji} Lvl ${winnerLevel}`, inline: true },
                             { name: t.winnerStats, value: `📊 ${t.gamesPlayed}: ${winnerStats?.games_played || 0}\n🏆 ${t.winRate}: ${winRate}%`, inline: false }
                         );
                     
