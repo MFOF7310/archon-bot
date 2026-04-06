@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+Const { EmbedBuilder } = require('discord.js');
 
 // --- UNIFIED AGENT RANKS (Matches games.js & profile.js) ---
 const AGENT_RANKS = [
