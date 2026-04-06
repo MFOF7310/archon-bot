@@ -84,7 +84,7 @@ function calculateLevel(xp) {
 
 module.exports = {
     name: 'daily',
-    aliases: ['claim', 'recompense', 'dailyreward', 'checkin', 'quotidien'],
+    aliases: ['claim', 'recompense', 'dailyreward', 'checkin', 'quotidien','journalier','cadeau','bjr'],
     description: '⚡ Claim your daily Archon Credits and XP boost with streak bonuses.',
     category: 'ECONOMY',
     usage: '.daily',
