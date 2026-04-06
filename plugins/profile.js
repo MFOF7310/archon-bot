@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 
-// --- UNIFIED CONFIGURATION (Must match games.js & rank.js EXACTLY) ---
+// --- UNIFIED CONFIGURATION (Matches games.js & rank.js) ---
 const AGENT_RANKS = [
     { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
     { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
@@ -19,7 +19,6 @@ const WEALTH_TIERS = [
     { minCredits: 100000, title: { fr: "LÉGENDE FINANCIÈRE", en: "FINANCIAL LEGEND" }, emoji: "🏆", color: "#e74c3c" }
 ];
 
-// --- UNIFIED MATH FUNCTIONS (Matches rank.js & games.js) ---
 function calculateLevel(xp) { 
     return Math.floor(0.1 * Math.sqrt(xp)) + 1; 
 }
@@ -36,7 +35,6 @@ function getNextWealthTier(credits) {
     return WEALTH_TIERS.find(t => t.minCredits > credits);
 }
 
-// --- PROGRESS BAR FUNCTION ---
 function createProgressBar(percentage, length = 12) {
     const filled = Math.round((percentage / 100) * length);
     const empty = length - filled;
@@ -45,7 +43,7 @@ function createProgressBar(percentage, length = 12) {
 
 module.exports = {
     name: 'profile',
-    aliases: ['p', 'id', 'userinfo', 'agent'], // Removed 'stats'
+    aliases: ['p', 'id', 'userinfo', 'agent'], // REMOVED 'stats' and 'rank'
     description: '📊 Complete Agent Dossier with unified neural statistics.',
     category: 'PROFILE',
     usage: '.profile [@user]',
@@ -55,23 +53,21 @@ module.exports = {
     run: async (client, message, args, db) => {
         try {
             const target = message.mentions.users.first() || message.author;
-            const isSelf = target.id === message.author.id;
             const version = client.version || '1.3.2';
 
-            // --- INTELLIGENT LANGUAGE DETECTION ---
+            // --- BILINGUAL DETECTION ---
             let lang = 'en';
             const guildSettings = client.settings?.get(message.guild?.id);
             if (guildSettings?.language) {
                 lang = guildSettings.language;
             } else {
-                const frenchKeywords = ['fr', 'francais', 'français', 'french', 'profile', 'profil'];
+                const frenchKeywords = ['fr', 'francais', 'français', 'french', 'profil'];
                 const content = message.content.toLowerCase();
                 if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
                     lang = 'fr';
                 }
             }
 
-            // --- LANGUAGE PACK ---
             const t = {
                 fr: {
                     title: (name) => `📜 DOSSIER AGENT: ${name.toUpperCase()}`,
@@ -133,7 +129,6 @@ module.exports = {
                 }
             }[lang];
 
-            // --- DATA RETRIEVAL ---
             const userData = db.prepare(`
                 SELECT id, xp, credits, streak_days, total_messages, 
                        games_played, games_won, total_winnings, gaming 
@@ -148,7 +143,6 @@ module.exports = {
                 return message.reply({ embeds: [errorEmbed] });
             }
 
-            // --- STATS CALCULATION (Unified with rank.js & games.js) ---
             const xp = userData.xp || 0;
             const credits = userData.credits || 0;
             const streakDays = userData.streak_days || 0;
@@ -164,12 +158,10 @@ module.exports = {
             const totalWinnings = userData.total_winnings || 0;
             const winRate = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
             
-            // --- GLOBAL RANK CALCULATION ---
             const rankData = db.prepare("SELECT COUNT(*) as rank FROM users WHERE xp > ?").get(xp);
             const globalRank = (rankData?.rank || 0) + 1;
             const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get()?.count || 1;
             
-            // --- PROGRESS MATH (Matches rank.js EXACTLY) ---
             const currentLevelXP = Math.pow((level - 1) / 0.1, 2);
             const nextLevelXP = Math.pow(level / 0.1, 2);
             const xpForCurrentLevel = xp - currentLevelXP;
@@ -177,7 +169,6 @@ module.exports = {
             const progressPercent = Math.min(100, Math.max(0, (xpForCurrentLevel / xpNeededForNext) * 100));
             const xpRemaining = Math.ceil(nextLevelXP - xp);
             
-            // --- WEALTH TIER PROGRESS ---
             let wealthProgress = 0;
             let creditsToNextTier = 0;
             if (nextWealthTier) {
@@ -188,27 +179,21 @@ module.exports = {
                 wealthProgress = Math.min(100, Math.max(0, (creditsInRange / tierRange) * 100));
             }
             
-            // --- PROGRESS BARS ---
             const levelProgressBar = createProgressBar(progressPercent, 15);
             const wealthProgressBar = createProgressBar(wealthProgress, 15);
             
-            // --- GAMING DATA (Safe Parsing) ---
             let gamingData = { game: "CODM", rank: "Unranked", mode: "Standard" };
             if (userData.gaming) {
                 try { 
                     gamingData = JSON.parse(userData.gaming); 
-                } catch (e) { 
-                    /* use default */ 
-                }
+                } catch (e) { }
             }
             
-            // --- DISCORD MEMBER INFO ---
             const member = message.guild?.members.cache.get(target.id);
             const highestRole = member?.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
             const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
             const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
             
-            // --- BUILD EMBED ---
             const embed = new EmbedBuilder()
                 .setColor(agentRank.color)
                 .setAuthor({ 
@@ -240,7 +225,6 @@ module.exports = {
                     }
                 );
             
-            // Add wealth progress if not at max tier
             if (nextWealthTier) {
                 embed.addFields({
                     name: `💎 ${t.wealthProgress}`,
@@ -293,7 +277,6 @@ module.exports = {
             })
             .setTimestamp();
 
-            // --- ARCHITECT SPECIAL RECOGNITION ---
             const ARCHITECT_ID = process.env.OWNER_ID;
             if (target.id === ARCHITECT_ID) {
                 embed.addFields({
