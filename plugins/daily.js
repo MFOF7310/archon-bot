@@ -38,7 +38,7 @@ const dailyTranslations = {
         reminder: (hours) => `⏰ I'll remind you in ${hours} hours! Use \`.daily\` then to claim your next reward.`,
         
         // Footer
-        footer: 'Mali Node • Archon v1.3.2-STABLE • Claim tomorrow for streak bonus!',
+        footer: 'Mali Node • Archon v{version} • Claim tomorrow for streak bonus!',
         
         // Errors
         error: '❌ An error occurred while processing your daily claim. Please try again later.',
@@ -89,7 +89,7 @@ const dailyTranslations = {
         reminder: (hours) => `⏰ Je vous rappellerai dans ${hours} heures! Utilisez \`.daily\` pour réclamer votre prochaine récompense.`,
         
         // Footer
-        footer: 'Nœud Mali • Archon v1.3.2-STABLE • Réclamez demain pour le bonus de série!',
+        footer: 'Nœud Mali • Archon v{version} • Réclamez demain pour le bonus de série!',
         
         // Errors
         error: '❌ Une erreur est survenue lors du traitement de votre réclamation quotidienne. Veuillez réessayer plus tard.',
@@ -130,6 +130,9 @@ module.exports = {
             }
         }
         const t = dailyTranslations[lang];
+        
+        // --- DYNAMIC VERSION ---
+        const version = client.version || '1.3.2';
         
         const userId = message.author.id;
         const userName = message.author.username;
@@ -249,7 +252,7 @@ module.exports = {
                             inline: true 
                         }
                     )
-                    .setFooter({ text: 'ARCHITECT CG-223 • Neural Lockdown Protocol • v1.3.2' })
+                    .setFooter({ text: 'ARCHITECT CG-223 • Neural Lockdown Protocol • v' + version })
                     .setTimestamp();
                 
                 return message.reply({ embeds: [cooldownEmbed] });
@@ -355,8 +358,12 @@ module.exports = {
             }
         }
         
+        // --- NEURAL SYNC PATCH: Dynamic Version Footer ---
         successEmbed
-            .setFooter({ text: t.footer, iconURL: client.user.displayAvatarURL() })
+            .setFooter({ 
+                text: t.footer.replace('{version}', version), 
+                iconURL: client.user.displayAvatarURL() 
+            })
             .setTimestamp();
         
         // --- ADD INTERACTIVE BUTTONS ---
@@ -422,6 +429,6 @@ module.exports = {
         });
         
         // --- LOG THE CLAIM ---
-        console.log(`[DAILY] ${message.author.tag} claimed ${totalXP} XP and ${totalCredits} credits (Streak: ${streak}) | Lang: ${lang}`);
+        console.log(`[DAILY] ${message.author.tag} claimed ${totalXP} XP and ${totalCredits} credits (Streak: ${streak}) | Lang: ${lang} | Version: ${version}`);
     }
 };
