@@ -720,7 +720,6 @@ function setupLydia(client, database) {
     try {
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_memory (user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER, PRIMARY KEY (user_id, memory_key))`).run();
         
-        // ENHANCED: Added user_name column for group awareness
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (
             channel_id TEXT, 
             user_id TEXT, 
@@ -734,12 +733,10 @@ function setupLydia(client, database) {
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_introductions (user_id TEXT, channel_id TEXT, introduced_at INTEGER, PRIMARY KEY (user_id, channel_id))`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, user_id TEXT, channel_id TEXT, message TEXT, execute_at INTEGER, status TEXT DEFAULT 'pending')`).run();
 
-        // Migrate old table if needed (add user_name column)
         try {
             database.prepare(`ALTER TABLE lydia_conversations ADD COLUMN user_name TEXT`).run();
-        } catch(e) { /* Column might already exist */ }
+        } catch(e) { }
 
-        // Restore active channels
         const activeChannels = database.prepare(`SELECT channel_id, agent_key FROM lydia_agents WHERE is_active = 1`).all();
         for (const ch of activeChannels) {
             client.lydiaChannels[ch.channel_id] = true;
@@ -776,7 +773,7 @@ function setupLydia(client, database) {
             
             const addressed = content.startsWith(currentIdentity.toLowerCase()) || message.mentions?.has(client.user);
             const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
-            const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.1; // Increased from 0.05 to be more engaging
+            const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.1;
             
             if (!addressed && !isProactive) return;
 
@@ -801,7 +798,6 @@ function setupLydia(client, database) {
                 return;
             }
 
-            // ================= FETCH REAL-TIME DATA =================
             let realTimeData = null;
             const realTimeKeywords = ['weather', 'météo', 'temp', 'temperature', 'news', 'actualités', 'crypto', 
                                      'bitcoin', 'ethereum', 'time', 'heure', 'stock', 'action', 'score', 'match'];
@@ -868,8 +864,6 @@ function setupLydia(client, database) {
                 systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
             }
 
-            // ===== GROUP AWARENESS FIX: Get channel-wide conversation history =====
-            // Remove 'user_id' filter to hear everyone in the channel
             const historyRows = database.prepare(`
                 SELECT role, content, user_name 
                 FROM lydia_conversations 
@@ -878,18 +872,15 @@ function setupLydia(client, database) {
                 LIMIT 12
             `).all(message.channel.id);
             
-            // Build conversation history with context
             const conversationHistory = historyRows.reverse().map(row => ({
                 role: row.role,
                 content: row.user_name ? `[${row.user_name}]: ${row.content}` : row.content
             }));
             
-            // Add current message to history with user name
             try {
                 database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
                     .run(message.channel.id, message.author.id, userName, 'user', userPrompt);
             } catch(e) {
-                // Fallback without user_name if column doesn't exist
                 database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
                     .run(message.channel.id, message.author.id, 'user', userPrompt);
             }
@@ -900,14 +891,13 @@ function setupLydia(client, database) {
             
             if (isFirst && !isArchitect) {
                 const introMsg = isFrench 
-                    ? `\n\n[FIRST INTERACTION] Salue l'utilisateur: "Salut ${userName}! Je suis ${currentIdentity}, ton assistant IA. Je peux suivre toute la conversation du canal, donc n'hésitez pas à parler entre vous - je suivrai! Tape .list pour voir mes commandes!"`
-                    : `\n\n[FIRST INTERACTION] Greet the user: "Hey ${userName}! I'm ${currentIdentity}, your AI assistant. I can follow the entire channel conversation, so feel free to talk amongst yourselves - I'll keep up! Type .list to see my commands!"`;
+                    ? `\n\n[FIRST INTERACTION] Salue l'utilisateur: "Salut ${userName}! Je suis ${currentIdentity}, ton assistant IA. Je peux suivre toute la conversation du canal! Tape .list pour voir mes commandes!"`
+                    : `\n\n[FIRST INTERACTION] Greet the user: "Hey ${userName}! I'm ${currentIdentity}, your AI assistant. I can follow the entire channel conversation! Type .list to see my commands!"`;
                 systemPrompt += introMsg;
                 client.userIntroductions.set(introKey, Date.now());
                 try { database.prepare(`INSERT OR REPLACE INTO lydia_introductions (user_id, channel_id, introduced_at) VALUES (?, ?, strftime('%s', 'now'))`).run(message.author.id, message.channel.id); } catch(e) {}
             }
 
-            // Web search for queries that need current info
             const searchTerms = ['latest', 'news', 'today', 'current', 'update', 'weather', 'score', 'recherche', 'météo', 'search', 'google'];
             if (searchTerms.some(term => userPrompt.toLowerCase().includes(term)) && !realTimeData) {
                 const searchResults = await webSearch(userPrompt);
@@ -939,7 +929,6 @@ function setupLydia(client, database) {
                 reply = reply.replace(/\[MEMORY:.*?\]/g, '').trim();
             }
 
-            // Store AI response in conversation history
             try {
                 database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
                     .run(message.channel.id, client.user.id, currentIdentity, 'assistant', reply);
@@ -962,7 +951,7 @@ function setupLydia(client, database) {
     });
 }
 
-// ================= COMMAND .lydia (ENHANCED) =================
+// ================= COMMAND .lydia =================
 async function runLydiaCommand(client, message, args, database) {
     if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
@@ -1092,33 +1081,22 @@ async function runLydiaCommand(client, message, args, database) {
         const embed = new EmbedBuilder()
             .setColor('#e74c3c')
             .setTitle('❌ NEURAL CORE TERMINATED')
-            .setDescription(`**${botDisplayName} has been deactivated** in <#${channelId}>.`)
-            .addFields(
-                { name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` },
-                { name: '🧠 Memory Preserved', value: 'Agent preference saved' },
-                { name: '👥 Group Awareness', value: 'Conversation tracking stopped' }
-            )
-            .setFooter({ text: `v1.5.0` })
+            .setDescription(`**${botDisplayName}** has been deactivated in <#${channelId}>.`)
+            .addFields({ name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` }, { name: '🧠 Memory Preserved', value: 'Agent preference saved' })
+            .setFooter({ text: `v${client.version || '1.3.2'}` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
 }
 
-// ================= FINAL EXPORTS =================
-module.exports = {
-    name: 'lydia',
-    aliases: ['ai', 'neural'],
-    description: '🎭 Multi-Agent AI with Group Awareness & Real-Time Data Fetching',
-    category: 'SYSTEM',
-    cooldown: 5000,
-    run: runLydiaCommand,
-    setupLydia,
-    buildPluginAwarenessPrompt,
-    getGlobalModuleCount,
-    getPluginRegistry,
-    generateAIResponse,
-    webSearch,
-    fetchRealTimeData,
-    parseAndStoreMemory,
-    parseAndScheduleReminder
-};
+// ================= CRITICAL: EXPORTS (OUTSIDE THE OBJECT) =================
+// These MUST be outside the module.exports object above to be seen by index.js
+module.exports.setupLydia = setupLydia;
+module.exports.buildPluginAwarenessPrompt = buildPluginAwarenessPrompt;
+module.exports.getGlobalModuleCount = getGlobalModuleCount;
+module.exports.getPluginRegistry = getPluginRegistry;
+module.exports.generateAIResponse = generateAIResponse;
+module.exports.webSearch = webSearch;
+module.exports.fetchRealTimeData = fetchRealTimeData;
+module.exports.parseAndStoreMemory = parseAndStoreMemory;
+module.exports.parseAndScheduleReminder = parseAndScheduleReminder;
