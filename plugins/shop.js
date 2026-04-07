@@ -1,7 +1,21 @@
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType, ButtonBuilder, ButtonStyle } = require('discord.js');
 
+// ================= UNIFIED LEVEL CALCULATION =================
+function calculateLevel(xp) { 
+    return Math.floor(0.1 * Math.sqrt(xp)) + 1; 
+}
+
 // --- BILINGUAL SHOP ITEMS (Dynamic with requirements) ---
 const shopItems = [
+    { 
+        id: 'starter_pack', 
+        price: 500, 
+        emoji: '📦', 
+        type: 'consumable',
+        effect: { xp: 100, credits: 50 },
+        en: { name: 'New Recruit Pack', desc: 'A small boost for new agents.', perk: '+100 XP & +50 Credits' },
+        fr: { name: 'Pack Nouvelle Recrue', desc: 'Un petit boost pour les nouveaux agents.', perk: '+100 XP & +50 Crédits' }
+    },
     { 
         id: 'role_veteran', 
         price: 5000, 
@@ -80,7 +94,7 @@ const shopTranslations = {
         insufficient: '❌ Insufficient Credits.',
         insufficientWithAmount: (price, balance) => `❌ **Insufficient Credits!**\n└─ Required: \`${price.toLocaleString()}\` Credits\n└─ Your Balance: \`${balance.toLocaleString()}\` Credits`,
         alreadyOwned: '⚠️ You already possess this upgrade.',
-        levelRequirement: (level) => `⚠️ **Level Requirement Not Met**\n└─ Required Level: \`${level}\`\n└─ Your Level: Check \`.rank\``,
+        levelRequirement: (level, current) => `⚠️ **Level Requirement Not Met**\n└─ Required Level: \`${level}\`\n└─ Your Level: \`${current}\``,
         purchaseSuccess: (name, price) => `✅ **${name}** purchased successfully!\n└─ \`-${price.toLocaleString()}\` Credits`,
         inventory: '📦 My Inventory',
         refresh: '🔄 Refresh',
@@ -98,7 +112,17 @@ const shopTranslations = {
         permanent: 'Permanent',
         days: 'days',
         level: 'Level',
-        none: 'None'
+        none: 'None',
+        expires: 'Expires',
+        expiresIn: (days) => `Expires in ${days} days`,
+        permanentItem: 'Permanent',
+        emptyInventory: 'Your inventory is empty. Visit the shop to purchase upgrades!',
+        inventoryTitle: '📦 INVENTORY',
+        agentInventory: (name) => `═ ${name}'s Neural Assets ═`,
+        itemsOwned: (count) => `${count} items owned`,
+        purchased: 'Purchased',
+        owned: 'OWNED',
+        locked: 'LVL'
     },
     fr: {
         title: '═ MARCHÉ NEURAL ARCHON ═',
@@ -110,7 +134,7 @@ const shopTranslations = {
         insufficient: '❌ Crédits Insuffisants.',
         insufficientWithAmount: (price, balance) => `❌ **Crédits Insuffisants!**\n└─ Requis: \`${price.toLocaleString()}\` Crédits\n└─ Votre Solde: \`${balance.toLocaleString()}\` Crédits`,
         alreadyOwned: '⚠️ Vous possédez déjà cette amélioration.',
-        levelRequirement: (level) => `⚠️ **Niveau Requis Non Atteint**\n└─ Niveau Requis: \`${level}\`\n└─ Votre Niveau: Vérifiez avec \`.rank\``,
+        levelRequirement: (level, current) => `⚠️ **Niveau Requis Non Atteint**\n└─ Niveau Requis: \`${level}\`\n└─ Votre Niveau: \`${current}\``,
         purchaseSuccess: (name, price) => `✅ **${name}** acheté avec succès!\n└─ \`-${price.toLocaleString()}\` Crédits`,
         inventory: '📦 Mon Inventaire',
         refresh: '🔄 Actualiser',
@@ -128,7 +152,17 @@ const shopTranslations = {
         permanent: 'Permanent',
         days: 'jours',
         level: 'Niveau',
-        none: 'Aucun'
+        none: 'Aucun',
+        expires: 'Expire',
+        expiresIn: (days) => `Expire dans ${days} jours`,
+        permanentItem: 'Permanent',
+        emptyInventory: 'Votre inventaire est vide. Visitez la boutique pour acheter des améliorations!',
+        inventoryTitle: '📦 INVENTAIRE',
+        agentInventory: (name) => `═ Actifs Neuraux de ${name} ═`,
+        itemsOwned: (count) => `${count} objets possédés`,
+        purchased: 'Acheté',
+        owned: 'POSSÉDÉ',
+        locked: 'NIV'
     }
 };
 
@@ -149,7 +183,7 @@ module.exports = {
         if (guildSettings?.language) {
             lang = guildSettings.language;
         } else {
-            const frenchKeywords = ['fr', 'francais', 'français', 'french', 'bonjour', 'salut', 'merci'];
+            const frenchKeywords = ['fr', 'francais', 'français', 'french', 'bonjour', 'salut', 'merci', 'boutique', 'magasin'];
             const content = message.content.toLowerCase();
             if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
                 lang = 'fr';
@@ -161,7 +195,7 @@ module.exports = {
         const userName = message.author.username;
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
         
-        // --- ENSURE INVENTORY TABLE EXISTS ---
+        // --- ENSURE INVENTORY TABLE EXISTS (WITH EXPIRATION SUPPORT) ---
         try {
             database.prepare(`
                 CREATE TABLE IF NOT EXISTS user_inventory (
@@ -170,9 +204,19 @@ module.exports = {
                     quantity INTEGER DEFAULT 1,
                     purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
                     expires_at INTEGER,
+                    active BOOLEAN DEFAULT 1,
                     PRIMARY KEY (user_id, item_id)
                 )
             `).run();
+            
+            // Clean expired items on shop open
+            const now = Math.floor(Date.now() / 1000);
+            database.prepare(`
+                UPDATE user_inventory 
+                SET active = 0 
+                WHERE expires_at IS NOT NULL AND expires_at < ? AND active = 1
+            `).run(now);
+            
         } catch (err) {
             console.error('Inventory table creation error:', err);
         }
@@ -183,11 +227,13 @@ module.exports = {
         `).get(userId);
         
         const balance = userData?.credits || 0;
-        const userLevel = Math.floor((userData?.xp || 0) / 1000);
+        const userXP = userData?.xp || 0;
+        const userLevel = calculateLevel(userXP); // ✅ FIXED: Using unified Neural Formula
         
-        // --- GET USER INVENTORY ---
+        // --- GET USER INVENTORY (Only active items) ---
         const inventory = database.prepare(`
-            SELECT item_id, purchased_at FROM user_inventory WHERE user_id = ?
+            SELECT item_id, purchased_at, expires_at FROM user_inventory 
+            WHERE user_id = ? AND active = 1
         `).all(userId);
         
         const ownedItems = new Set(inventory.map(i => i.item_id));
@@ -197,7 +243,7 @@ module.exports = {
             .setColor('#f1c40f')
             .setAuthor({ name: '🏪 NEURAL MARKETPLACE', iconURL: client.user.displayAvatarURL() })
             .setTitle(t.title)
-            .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${balance.toLocaleString()}\` Credits\n📊 **Your Level:** \`${userLevel}\``)
+            .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${balance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${userLevel}\``)
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setFooter({ text: `${t.version} • ARCHITECT CG-223`, iconURL: message.author.displayAvatarURL() })
             .setTimestamp();
@@ -206,10 +252,10 @@ module.exports = {
         const menuOptions = shopItems.map(item => {
             let description = `${item.price.toLocaleString()} Credits - ${item[lang].desc}`;
             if (ownedItems.has(item.id)) {
-                description = `✅ OWNED - ${description}`;
+                description = `✅ ${t.owned} - ${description}`;
             }
             if (item.requirement?.level && userLevel < item.requirement.level) {
-                description = `🔒 LVL ${item.requirement.level} - ${description}`;
+                description = `🔒 ${t.locked} ${item.requirement.level} - ${description}`;
             }
             
             return {
@@ -257,14 +303,15 @@ module.exports = {
             // Handle Inventory Button
             if (i.customId === 'view_inventory') {
                 const userInventory = database.prepare(`
-                    SELECT item_id, purchased_at FROM user_inventory WHERE user_id = ?
+                    SELECT item_id, purchased_at, expires_at FROM user_inventory 
+                    WHERE user_id = ? AND active = 1
                 `).all(userId);
                 
                 if (userInventory.length === 0) {
                     const emptyEmbed = new EmbedBuilder()
                         .setColor('#95a5a6')
-                        .setTitle('📦 INVENTORY')
-                        .setDescription('Your inventory is empty. Visit the shop to purchase upgrades!')
+                        .setTitle(t.inventoryTitle)
+                        .setDescription(t.emptyInventory)
                         .setFooter({ text: t.version })
                         .setTimestamp();
                     return i.reply({ embeds: [emptyEmbed], ephemeral: true });
@@ -273,16 +320,23 @@ module.exports = {
                 const inventoryList = userInventory.map(inv => {
                     const item = shopItems.find(si => si.id === inv.item_id);
                     if (!item) return null;
-                    const date = new Date(inv.purchased_at * 1000);
-                    return `**${item.emoji} ${item[lang].name}**\n└─ Purchased: <t:${inv.purchased_at}:R>\n└─ ${item[lang].perk}`;
+                    
+                    let expirationText = '';
+                    if (inv.expires_at) {
+                        expirationText = `\n└─ ⏰ ${t.expires}: <t:${inv.expires_at}:R>`;
+                    } else {
+                        expirationText = `\n└─ ⏰ ${t.permanentItem}`;
+                    }
+                    
+                    return `**${item.emoji} ${item[lang].name}**\n└─ 📅 ${t.purchased}: <t:${inv.purchased_at}:R>${expirationText}\n└─ ✨ ${item[lang].perk}`;
                 }).filter(Boolean).join('\n\n');
                 
                 const inventoryEmbed = new EmbedBuilder()
                     .setColor('#2ecc71')
                     .setAuthor({ name: '📦 AGENT INVENTORY', iconURL: avatarURL })
-                    .setTitle(`═ ${userName}'s Neural Assets ═`)
+                    .setTitle(t.agentInventory(userName))
                     .setDescription(inventoryList || 'No items found.')
-                    .setFooter({ text: `${t.version} • ${userInventory.length} items owned` })
+                    .setFooter({ text: `${t.version} • ${t.itemsOwned(userInventory.length)}` })
                     .setTimestamp();
                 
                 return i.reply({ embeds: [inventoryEmbed], ephemeral: true });
@@ -290,19 +344,31 @@ module.exports = {
             
             // Handle Refresh Button
             if (i.customId === 'refresh_shop') {
+                // Clean expired items first
+                const now = Math.floor(Date.now() / 1000);
+                database.prepare(`
+                    UPDATE user_inventory 
+                    SET active = 0 
+                    WHERE expires_at IS NOT NULL AND expires_at < ? AND active = 1
+                `).run(now);
+                
                 const freshData = database.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
                 const freshBalance = freshData?.credits || 0;
-                const freshLevel = Math.floor((freshData?.xp || 0) / 1000);
-                const freshInventory = database.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ?`).all(userId);
+                const freshXP = freshData?.xp || 0;
+                const freshLevel = calculateLevel(freshXP); // ✅ FIXED: Unified calculation
+                const freshInventory = database.prepare(`
+                    SELECT item_id FROM user_inventory 
+                    WHERE user_id = ? AND active = 1
+                `).all(userId);
                 const freshOwned = new Set(freshInventory.map(inv => inv.item_id));
                 
                 const refreshedEmbed = new EmbedBuilder(shopEmbed)
-                    .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${freshBalance.toLocaleString()}\` Credits\n📊 **Your Level:** \`${freshLevel}\``);
+                    .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${freshBalance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${freshLevel}\``);
                 
                 const refreshedOptions = shopItems.map(item => {
                     let description = `${item.price.toLocaleString()} Credits - ${item[lang].desc}`;
-                    if (freshOwned.has(item.id)) description = `✅ OWNED - ${description}`;
-                    if (item.requirement?.level && freshLevel < item.requirement.level) description = `🔒 LVL ${item.requirement.level} - ${description}`;
+                    if (freshOwned.has(item.id)) description = `✅ ${t.owned} - ${description}`;
+                    if (item.requirement?.level && freshLevel < item.requirement.level) description = `🔒 ${t.locked} ${item.requirement.level} - ${description}`;
                     return {
                         label: `${item.emoji} ${item[lang].name}`.substring(0, 100),
                         description: description.substring(0, 100),
@@ -325,26 +391,39 @@ module.exports = {
                     return i.reply({ content: '❌ Item not found.', ephemeral: true });
                 }
                 
+                // Clean expired items
+                const now = Math.floor(Date.now() / 1000);
+                database.prepare(`
+                    UPDATE user_inventory 
+                    SET active = 0 
+                    WHERE expires_at IS NOT NULL AND expires_at < ? AND active = 1
+                `).run(now);
+                
                 // Re-fetch fresh data to prevent exploits
                 const freshData = database.prepare(`
                     SELECT credits, xp FROM users WHERE id = ?
                 `).get(i.user.id);
                 
                 const currentCredits = freshData?.credits || 0;
-                const currentLevel = Math.floor((freshData?.xp || 0) / 1000);
+                const currentXP = freshData?.xp || 0;
+                const currentLevel = calculateLevel(currentXP); // ✅ FIXED: Unified calculation
                 
-                // Check if already owned
+                // Check if already owned (only for non-consumable, non-boost items)
                 const alreadyOwned = database.prepare(`
-                    SELECT 1 FROM user_inventory WHERE user_id = ? AND item_id = ?
+                    SELECT 1 FROM user_inventory 
+                    WHERE user_id = ? AND item_id = ? AND active = 1
                 `).get(i.user.id, selectedItem.id);
                 
-                if (alreadyOwned && selectedItem.type !== 'consumable') {
+                if (alreadyOwned && selectedItem.type !== 'consumable' && selectedItem.type !== 'boost') {
                     return i.reply({ content: t.alreadyOwned, ephemeral: true });
                 }
                 
                 // Check level requirement
                 if (selectedItem.requirement?.level && currentLevel < selectedItem.requirement.level) {
-                    return i.reply({ content: t.levelRequirement(selectedItem.requirement.level), ephemeral: true });
+                    return i.reply({ 
+                        content: t.levelRequirement(selectedItem.requirement.level, currentLevel), 
+                        ephemeral: true 
+                    });
                 }
                 
                 // Check balance
@@ -362,16 +441,26 @@ module.exports = {
                         UPDATE users SET credits = credits - ? WHERE id = ?
                     `).run(selectedItem.price, i.user.id);
                     
-                    // Add to inventory
+                    // Calculate expiration if applicable
                     const expiresAt = selectedItem.duration 
                         ? Math.floor(Date.now() / 1000) + (selectedItem.duration * 86400)
                         : null;
                     
-                    database.prepare(`
-                        INSERT OR REPLACE INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at)
-                        VALUES (?, ?, COALESCE((SELECT quantity + 1 FROM user_inventory WHERE user_id = ? AND item_id = ?), 1), 
-                                strftime('%s', 'now'), ?)
-                    `).run(i.user.id, selectedItem.id, i.user.id, selectedItem.id, expiresAt);
+                    // Add to inventory (allow stacking for consumables)
+                    if (selectedItem.type === 'consumable') {
+                        database.prepare(`
+                            INSERT INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at, active)
+                            VALUES (?, ?, 1, strftime('%s', 'now'), ?, 1)
+                            ON CONFLICT(user_id, item_id) DO UPDATE SET 
+                                quantity = quantity + 1,
+                                purchased_at = strftime('%s', 'now')
+                        `).run(i.user.id, selectedItem.id, expiresAt);
+                    } else {
+                        database.prepare(`
+                            INSERT OR REPLACE INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at, active)
+                            VALUES (?, ?, 1, strftime('%s', 'now'), ?, 1)
+                        `).run(i.user.id, selectedItem.id, expiresAt);
+                    }
                     
                     // Apply immediate effects
                     if (selectedItem.effect) {
@@ -403,9 +492,24 @@ module.exports = {
                         .setDescription(`${selectedItem[lang].desc}\n\n${selectedItem[lang].perk}`)
                         .addFields(
                             { name: t.price, value: `\`-${selectedItem.price.toLocaleString()}\` Credits`, inline: true },
-                            { name: t.type, value: `\`${t[selectedItem.type] || t.consumable}\``, inline: true },
-                            { name: '📅', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
-                        )
+                            { name: t.type, value: `\`${t[selectedItem.type] || t.consumable}\``, inline: true }
+                        );
+                    
+                    if (expiresAt) {
+                        successEmbed.addFields({
+                            name: t.expires,
+                            value: `<t:${expiresAt}:R>`,
+                            inline: true
+                        });
+                    } else {
+                        successEmbed.addFields({
+                            name: t.expires,
+                            value: t.permanentItem,
+                            inline: true
+                        });
+                    }
+                    
+                    successEmbed
                         .setFooter({ text: t.version })
                         .setTimestamp();
                     
@@ -418,17 +522,21 @@ module.exports = {
                     setTimeout(async () => {
                         const finalData = database.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
                         const finalBalance = finalData?.credits || 0;
-                        const finalLevel = Math.floor((finalData?.xp || 0) / 1000);
-                        const finalInventory = database.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ?`).all(userId);
+                        const finalXP = finalData?.xp || 0;
+                        const finalLevel = calculateLevel(finalXP); // ✅ FIXED: Unified calculation
+                        const finalInventory = database.prepare(`
+                            SELECT item_id FROM user_inventory 
+                            WHERE user_id = ? AND active = 1
+                        `).all(userId);
                         const finalOwned = new Set(finalInventory.map(inv => inv.item_id));
                         
                         const finalEmbed = new EmbedBuilder(shopEmbed)
-                            .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${finalBalance.toLocaleString()}\` Credits\n📊 **Your Level:** \`${finalLevel}\``);
+                            .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${finalBalance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${finalLevel}\``);
                         
                         const finalOptions = shopItems.map(item => {
                             let description = `${item.price.toLocaleString()} Credits - ${item[lang].desc}`;
-                            if (finalOwned.has(item.id)) description = `✅ OWNED - ${description}`;
-                            if (item.requirement?.level && finalLevel < item.requirement.level) description = `🔒 LVL ${item.requirement.level} - ${description}`;
+                            if (finalOwned.has(item.id)) description = `✅ ${t.owned} - ${description}`;
+                            if (item.requirement?.level && finalLevel < item.requirement.level) description = `🔒 ${t.locked} ${item.requirement.level} - ${description}`;
                             return {
                                 label: `${item.emoji} ${item[lang].name}`.substring(0, 100),
                                 description: description.substring(0, 100),
