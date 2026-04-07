@@ -70,25 +70,40 @@ function safeStringify(obj, indent = 2) {
     }, indent);
 }
 
-// ================= ENHANCED REAL-TIME DATA FETCHER =================
+// ================= ENHANCED REAL-TIME DATA FETCHER (OPTIMIZED - Only fetches what's needed) =================
 async function fetchRealTimeData(query, type = 'auto') {
     const data = {};
     const lowerQuery = query.toLowerCase();
     const fetchPromises = [];
     
-    // Improved city regex with validation
-    if (lowerQuery.includes('weather') || lowerQuery.includes('temperature') || lowerQuery.includes('météo') || 
-        lowerQuery.includes('temp') || lowerQuery.includes('pluie') || lowerQuery.includes('rain')) {
+    // Weather detection - ONLY fetch if specifically mentioned
+    if (lowerQuery.includes('weather') || lowerQuery.includes('météo') || 
+        lowerQuery.includes('température') || lowerQuery.includes('pluie') || lowerQuery.includes('rain')) {
         
-        const cityMatch = query.match(/(?:weather|météo|temp(?:érature)?)(?:\s+in|\s+at|\s+for|\s+à|\s+de|\s+du|\s+de la)?\s+([a-zA-Z\s-]+)/i);
+        // IMPROVED: Stricter city detection with context awareness
         let city = 'Bamako';
         
-        if (cityMatch && cityMatch[1]) {
-            const possibleCity = cityMatch[1].trim();
-            const invalidWords = ['today', 'now', 'please', 'pls', '?', '!', 'current', 'actuel', 'maintenant'];
-            if (possibleCity.length > 2 && !invalidWords.includes(possibleCity.toLowerCase())) {
-                city = possibleCity;
-                console.log(`${cyan}[WEATHER]${reset} Detected city: ${city}`);
+        // Check for city patterns: "weather in Paris", "météo à Paris", "temp Paris"
+        const cityPatterns = [
+            /(?:weather|météo|temp(?:érature)?)\s+(?:in|at|for|à|de|du|de la|d')\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$|\s+(?:today|now|please|pls|stp|s'il|actual|current))/i,
+            /(?:weather|météo|temp(?:érature)?)\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$)/i,
+            /quel(?:le)?\s+(?:temps|météo|température)\s+(?:à|dans|pour)\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$)/i
+        ];
+        
+        for (const pattern of cityPatterns) {
+            const match = query.match(pattern);
+            if (match && match[1]) {
+                const possibleCity = match[1].trim();
+                // Validate it's a real city name, not a common word
+                const invalidWords = ['today', 'now', 'please', 'pls', 'stp', '?', '!', 'current', 'actuel', 
+                                     'maintenant', 'sick', 'fever', 'fièvre', 'temperature', 'température'];
+                const hasInvalidWord = invalidWords.some(word => possibleCity.toLowerCase().includes(word));
+                
+                if (possibleCity.length > 2 && !hasInvalidWord && !/^\d+$/.test(possibleCity)) {
+                    city = possibleCity;
+                    console.log(`${cyan}[WEATHER]${reset} Detected city: ${city}`);
+                    break;
+                }
             }
         }
         
@@ -129,7 +144,7 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(weatherPromise);
     }
     
-    // News detection
+    // News detection - ONLY fetch if specifically mentioned
     if (lowerQuery.includes('news') || lowerQuery.includes('actualités') || lowerQuery.includes('headlines') ||
         lowerQuery.includes('breaking') || lowerQuery.includes('dernières nouvelles')) {
         const newsPromise = (async () => {
@@ -155,9 +170,10 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(newsPromise);
     }
     
-    // Cryptocurrency detection
+    // Cryptocurrency detection - ONLY fetch if specifically mentioned
     if (lowerQuery.includes('bitcoin') || lowerQuery.includes('ethereum') || lowerQuery.includes('crypto') ||
-        lowerQuery.includes('btc') || lowerQuery.includes('eth') || lowerQuery.includes('prix')) {
+        lowerQuery.includes('btc') || lowerQuery.includes('eth') || lowerQuery.includes('solana') ||
+        lowerQuery.includes('prix crypto')) {
         const cryptoPromise = (async () => {
             try {
                 const cryptoUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,ripple&vs_currencies=usd&include_24hr_change=true';
@@ -173,8 +189,9 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(cryptoPromise);
     }
     
-    // Time detection
-    if (lowerQuery.includes('time') || lowerQuery.includes('heure') || lowerQuery.includes('horloge')) {
+    // Time detection - ONLY fetch if specifically mentioned
+    if (lowerQuery.includes('time') || lowerQuery.includes('heure') || lowerQuery.includes('horloge') ||
+        lowerQuery.includes('quelle heure')) {
         const timePromise = (async () => {
             const timezones = [
                 { name: 'Bamako', tz: 'Africa/Bamako' },
@@ -196,7 +213,7 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(timePromise);
     }
     
-    // Stock market detection
+    // Stock market detection - ONLY fetch if specifically mentioned
     if (lowerQuery.includes('stock') || lowerQuery.includes('action') || lowerQuery.includes('bourse') ||
         lowerQuery.includes('nasdaq') || lowerQuery.includes('s&p') || lowerQuery.includes('dow jones')) {
         const stockPromise = (async () => {
@@ -219,8 +236,8 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(stockPromise);
     }
     
-    // Sports scores detection
-    if (lowerQuery.includes('score') || lowerQuery.includes('match') || lowerQuery.includes('sport') ||
+    // Sports scores detection - ONLY fetch if specifically mentioned
+    if (lowerQuery.includes('score') || lowerQuery.includes('match') || 
         lowerQuery.includes('football') || lowerQuery.includes('soccer') || lowerQuery.includes('basketball')) {
         const sportsPromise = (async () => {
             try {
@@ -245,7 +262,7 @@ async function fetchRealTimeData(query, type = 'auto') {
     
     // Execute all fetches in parallel
     if (fetchPromises.length > 0) {
-        console.log(`${cyan}[REAL-TIME]${reset} Executing ${fetchPromises.length} parallel fetches...`);
+        console.log(`${cyan}[REAL-TIME]${reset} Executing ${fetchPromises.length} targeted fetches...`);
         await Promise.allSettled(fetchPromises);
         console.log(`${green}[REAL-TIME]${reset} Completed ${Object.keys(data).length} data types`);
     }
@@ -412,10 +429,33 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
         }
         
         try {
-            console.log(`${yellow}[AI]${reset} Fallback to Gemini Flash...`);
+            console.log(`${yellow}[AI]${reset} Fallback to Gemini Flash with conversation history...`);
+            // FIXED: Pass conversation history to fallback so it doesn't "forget"
+            const fallbackMessages = [{ role: "system", content: systemPrompt || "You are a helpful assistant." }];
+            
+            // Add recent conversation history (last 5 messages for context)
+            for (const msg of conversationHistory.slice(-5)) {
+                fallbackMessages.push({ role: msg.role, content: msg.content });
+            }
+            
+            // Add the current user message
+            let fallbackContent = userMessage;
+            if (realTimeData && Object.keys(realTimeData).length > 0) {
+                // Include real-time data in simplified form
+                const simpleData = {};
+                for (const key in realTimeData) {
+                    if (realTimeData[key] && !realTimeData[key].error) {
+                        simpleData[key] = typeof realTimeData[key] === 'object' ? 
+                            Object.keys(realTimeData[key]).join(', ') : realTimeData[key];
+                    }
+                }
+                fallbackContent = `[Data: ${JSON.stringify(simpleData)}]\n\n${userMessage}`;
+            }
+            fallbackMessages.push({ role: "user", content: fallbackContent });
+            
             const fallbackResponse = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
                 model: "google/gemini-2.0-flash-001",
-                messages: [{ role: "user", content: userMessage }],
+                messages: fallbackMessages,
                 max_tokens: 500
             }, {
                 headers: {
@@ -424,8 +464,11 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
                 },
                 timeout: 15000
             });
-            return fallbackResponse.data.choices[0]?.message?.content || "❌ Fallback failed.";
+            
+            const fallbackReply = fallbackResponse.data.choices[0]?.message?.content;
+            return fallbackReply ? fallbackReply + "\n\n*⚠️ (Fallback mode - limited response)*" : "❌ Fallback failed.";
         } catch (fallbackError) {
+            console.error(`${red}[FALLBACK ERROR]${reset}`, fallbackError.message);
             return "❌ AI service error. Please try again later.";
         }
     }
@@ -705,7 +748,7 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     return prompt;
 }
 
-// ================= SETUP LYDIA (ENHANCED WITH GROUP AWARENESS) =================
+// ================= SETUP LYDIA (ENHANCED WITH GROUP AWARENESS & TYPING INDICATOR) =================
 function setupLydia(client, database) {
     if (!client || !database) {
         console.error(`${red}[LYDIA FATAL]${reset} Client or DB missing`);
@@ -776,6 +819,10 @@ function setupLydia(client, database) {
             const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.1;
             
             if (!addressed && !isProactive) return;
+
+            // ✍️ START TYPING IMMEDIATELY - Shows the bot is working!
+            await message.channel.sendTyping();
+            console.log(`${cyan}[TYPING]${reset} Started typing indicator for ${userName}`);
 
             let userPrompt = message.content || '';
             let imageUrl = null;
@@ -939,11 +986,57 @@ function setupLydia(client, database) {
 
             client.lastLydiaCall[message.author.id] = Date.now();
 
+            // IMPROVED: Smart chunking that preserves markdown formatting
             if (reply.length > 2000) {
-                for (const chunk of reply.match(/[\s\S]{1,1990}/g) || []) await message.reply(chunk);
+                const chunks = [];
+                let currentChunk = '';
+                
+                // Split by paragraphs first to preserve formatting
+                const paragraphs = reply.split(/\n\n+/);
+                
+                for (const paragraph of paragraphs) {
+                    // If adding this paragraph would exceed limit
+                    if (currentChunk.length + paragraph.length + 2 > 1950) {
+                        // Check if we're in a code block
+                        const openCodeBlocks = (currentChunk.match(/```/g) || []).length % 2;
+                        
+                        if (openCodeBlocks === 1) {
+                            // We're inside a code block, close it before splitting
+                            currentChunk += '\n```';
+                            chunks.push(currentChunk);
+                            currentChunk = '```' + paragraph;
+                        } else {
+                            chunks.push(currentChunk);
+                            currentChunk = paragraph;
+                        }
+                    } else {
+                        currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+                    }
+                }
+                
+                // Add any remaining content
+                if (currentChunk) {
+                    // Close any open code blocks
+                    const openCodeBlocks = (currentChunk.match(/```/g) || []).length % 2;
+                    if (openCodeBlocks === 1) {
+                        currentChunk += '\n```';
+                    }
+                    chunks.push(currentChunk);
+                }
+                
+                // Send chunks with continuation indicators
+                for (let i = 0; i < chunks.length; i++) {
+                    let chunk = chunks[i];
+                    if (i < chunks.length - 1) {
+                        chunk += `\n\n*[${i + 1}/${chunks.length} continues...]*`;
+                    }
+                    await message.reply(chunk);
+                }
             } else {
                 await message.reply(reply);
             }
+            
+            console.log(`${green}[LYDIA]${reset} Responded to ${userName} in ${message.channel.name} (${reply.length} chars${reply.length > 2000 ? ', chunked' : ''})`);
         } catch (err) {
             console.error(`${red}[LYDIA ERROR]${reset}`, err);
             message.reply("❌ An error occurred.").catch(()=>{});
@@ -1090,14 +1183,13 @@ async function runLydiaCommand(client, message, args, database) {
 }
 
 // ================= FINAL EXPORTS =================
-// This combines the command object AND the extra functions
 module.exports = {
     name: 'lydia',
     aliases: ['ai', 'neural'],
     description: '🎭 Multi-Agent AI with Group Awareness & Real-Time Data Fetching',
     category: 'SYSTEM',
     cooldown: 5000,
-    run: runLydiaCommand, // This links the run function back!
+    run: runLydiaCommand,
     
     // Attach the helper functions to the same export object
     setupLydia,
