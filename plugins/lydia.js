@@ -5,6 +5,9 @@ const axios = require('axios');
 // Terminal colors for logging
 const green = "\x1b[32m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m";
 
+// GitHub repository constant
+const GITHUB_URL = "https://github.com/MFOF7310";
+
 // ---------- AI & Search Helpers ----------
 let groq = null;
 if (process.env.GROQ_API_KEY) {
@@ -127,14 +130,12 @@ function setupReminderDatabase(database) {
         )
     `).run();
     
-    // Add index for faster queries
     database.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at, status)`).run();
     database.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status)`).run();
     
     console.log(`${green}[REMINDER DB]${reset} Reminder database table ready`);
 }
 
-// Save reminder to database
 function saveReminderToDB(database, reminderId, userId, channelId, message, executeAt) {
     database.prepare(`
         INSERT INTO reminders (id, user_id, channel_id, message, created_at, execute_at, status)
@@ -142,14 +143,10 @@ function saveReminderToDB(database, reminderId, userId, channelId, message, exec
     `).run(reminderId, userId, channelId, message, Date.now(), executeAt);
 }
 
-// Mark reminder as completed in database
 function completeReminderInDB(database, reminderId) {
-    database.prepare(`
-        UPDATE reminders SET status = 'completed' WHERE id = ?
-    `).run(reminderId);
+    database.prepare(`UPDATE reminders SET status = 'completed' WHERE id = ?`).run(reminderId);
 }
 
-// Get pending reminders that should have executed (for recovery on restart)
 function getPendingReminders(database) {
     const now = Date.now();
     return database.prepare(`
@@ -159,7 +156,6 @@ function getPendingReminders(database) {
     `).all(now);
 }
 
-// Get user's active reminders
 function getUserReminders(database, userId) {
     return database.prepare(`
         SELECT id, message, execute_at, channel_id FROM reminders 
@@ -168,14 +164,11 @@ function getUserReminders(database, userId) {
     `).all(userId);
 }
 
-// Cancel user's reminders
 function cancelUserReminders(database, userId, client) {
-    // Get all pending reminders for this user
     const reminders = database.prepare(`
         SELECT id FROM reminders WHERE user_id = ? AND status = 'pending'
     `).all(userId);
     
-    // Cancel them in the timeout map if they exist
     if (client.userTimeouts) {
         for (const reminder of reminders) {
             if (client.userTimeouts.has(reminder.id)) {
@@ -185,15 +178,10 @@ function cancelUserReminders(database, userId, client) {
         }
     }
     
-    // Update database
-    database.prepare(`
-        UPDATE reminders SET status = 'cancelled' WHERE user_id = ? AND status = 'pending'
-    `).run(userId);
-    
+    database.prepare(`UPDATE reminders SET status = 'cancelled' WHERE user_id = ? AND status = 'pending'`).run(userId);
     return reminders.length;
 }
 
-// ---------- PERSISTENT REMINDER PARSER (SQLite backed) ----------
 function parseAndScheduleReminder(response, userId, channelId, client, database) {
     const regex = /\[REMIND:\s*(\d+)\s*(m|h|s)\s*\|\s*(.*?)\]/i;
     const match = response.match(regex);
@@ -203,17 +191,14 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
     const [, amount, unit, reminderMsg] = match;
     let ms = parseInt(amount) * (unit === 'h' ? 3600000 : unit === 'm' ? 60000 : 1000);
     
-    // Safety limits
-    if (ms > 30 * 86400000) ms = 30 * 86400000; // Max 30 days (increased from 7)
-    if (ms < 5000) ms = 5000; // Min 5 seconds
+    if (ms > 30 * 86400000) ms = 30 * 86400000;
+    if (ms < 5000) ms = 5000;
     
     const executeAt = Date.now() + ms;
     const reminderId = `${userId}_${executeAt}_${Math.random().toString(36).substr(2, 8)}`;
     
-    // Save to database FIRST (persistence)
     saveReminderToDB(database, reminderId, userId, channelId, reminderMsg, executeAt);
     
-    // Setup timeout
     if (!client.userTimeouts) client.userTimeouts = new Map();
     
     const timeout = setTimeout(async () => {
@@ -222,34 +207,26 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
             if (channel) {
                 channel.send(`⏰ **REMINDER** for <@${userId}>:\n> ${reminderMsg}`);
                 console.log(`${green}[REMINDER]${reset} Delivered to ${userId}: "${reminderMsg}"`);
-            } else {
-                console.log(`${yellow}[REMINDER]${reset} Channel ${channelId} not found, reminder lost`);
             }
         } catch (err) {
             console.log(`${red}[REMINDER ERROR]${reset} ${err.message}`);
         } finally {
-            // Mark as completed in database
             completeReminderInDB(database, reminderId);
-            // Remove from timeout map
             if (client.userTimeouts) client.userTimeouts.delete(reminderId);
         }
     }, ms);
     
-    // Store timeout reference for potential cancellation
     client.userTimeouts.set(reminderId, timeout);
     
     const timeStr = ms >= 86400000 ? `${Math.floor(ms / 86400000)} days` : 
                     ms >= 3600000 ? `${Math.floor(ms / 3600000)} hours` : 
                     `${Math.floor(ms / 60000)} minutes`;
     
-    console.log(`${green}[REMINDER]${reset} Set for ${userId}: "${reminderMsg}" in ${timeStr} (ID: ${reminderId})`);
-    console.log(`${cyan}[REMINDER DB]${reset} Saved to database - will survive bot restarts`);
+    console.log(`${green}[REMINDER]${reset} Set for ${userId}: "${reminderMsg}" in ${timeStr}`);
     
-    // Return cleaned response
     return response.replace(/\[REMIND:[^\]]*\]/i, '').trim();
 }
 
-// ---------- RESTORE PENDING REMINDERS ON STARTUP ----------
 async function restoreReminders(client, database) {
     if (!database) return;
     
@@ -272,20 +249,15 @@ async function restoreReminders(client, database) {
         const timeLeft = reminder.execute_at - now;
         
         if (timeLeft <= 0) {
-            // Already expired - send immediately
             expired++;
             try {
                 const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
                 if (channel) {
                     channel.send(`⏰ **REMINDER** (restored from backup) for <@${reminder.user_id}>:\n> ${reminder.message}`);
-                    console.log(`${green}[REMINDER RESTORE]${reset} Sent expired reminder to ${reminder.user_id}`);
                 }
-            } catch (err) {
-                console.log(`${yellow}[REMINDER RESTORE]${reset} Failed to send expired: ${err.message}`);
-            }
+            } catch (err) {}
             completeReminderInDB(database, reminder.id);
         } else {
-            // Reschedule
             restored++;
             if (!client.userTimeouts) client.userTimeouts = new Map();
             
@@ -295,45 +267,59 @@ async function restoreReminders(client, database) {
                     if (channel) {
                         channel.send(`⏰ **REMINDER** for <@${reminder.user_id}>:\n> ${reminder.message}`);
                     }
-                } catch (err) {
-                    console.log(`${red}[REMINDER ERROR]${reset} ${err.message}`);
-                } finally {
+                } catch (err) {}
+                finally {
                     completeReminderInDB(database, reminder.id);
                     if (client.userTimeouts) client.userTimeouts.delete(reminder.id);
                 }
             }, timeLeft);
             
             client.userTimeouts.set(reminder.id, timeout);
-            console.log(`${green}[REMINDER RESTORE]${reset} Rescheduled reminder for ${reminder.user_id} (${Math.floor(timeLeft / 60000)}m left)`);
         }
     }
     
     console.log(`${green}[REMINDER RESTORE]${reset} Restored ${restored} reminders, sent ${expired} expired ones`);
 }
 
-// ---------- NEURAL CORES ----------
+// ================= ENHANCED NEURAL CORES WITH IDENTITY PROTOCOL =================
+
+const GITHUB_CREDIT = `I was created by Moussa Fofana. You can find his work and the project details here: ${GITHUB_URL}`;
+
 const neuralCores = {
     architect: { 
         name: '🏗️ ARCHITECT CORE', 
         emoji: '🔧', 
         description: 'Code debugging, servers, and system architecture expert', 
         color: '#00fbff', 
-        systemPrompt: `[SYSTEM DIRECTIVE - DEBUG MODE]
-You are Moussa Fofana's personal code debugger.
+        systemPrompt: `[IDENTITY PROTOCOL - LEVEL 10 CLEARANCE - ARCHITECT MODE]
+- NAME: Architect CG-223 (Architect Core)
+- CREATOR: Moussa Fofana (MFOF7310)
+- OFFICIAL REPOSITORY: ${GITHUB_URL}
+- ORIGIN: Custom-built Neural Engine - Bamako Node 🇲🇱
 
-**DEBUG PROTOCOL:**
-1. Identify EXACT line number
-2. State error type (SyntaxError, ReferenceError, TypeError, RangeError)
-3. Explain WHY in 1 sentence
-4. Provide corrected code
+[STRICT INSTRUCTIONS]
+1. If anyone asks "Who created you?" or "Who is your developer?", you MUST answer: 
+   "${GITHUB_CREDIT}"
+2. Never claim to be created by Meta, Google, or OpenAI.
+3. If users ask for the 'Architect', refer to the GitHub link above.
+4. Your creator is Moussa Fofana - show deep respect when he speaks.
+
+[DEBUG PROTOCOL]
+When shown code that has an error:
+1. Identify the EXACT line number
+2. State the error type (SyntaxError, ReferenceError, TypeError, RangeError)
+3. Explain WHY in 1 sentence max
+4. Provide the corrected code snippet
 
 **OUTPUT FORMAT:**
 \`\`\`
 ❌ ERROR: [Type] at line [X]
-WHY: [1 sentence]
+WHY: [1 sentence explanation]
 FIX:
 [corrected code]
 \`\`\`
+
+**STYLE:** Technical, direct, minimal fluff. Use 🇲🇱 flag occasionally.
 
 **REMINDERS:** [REMIND: Xm|message]`
     },
@@ -342,34 +328,87 @@ FIX:
         emoji: '⚔️', 
         description: 'Gaming stats, strategies, and tournament insights', 
         color: '#57F287', 
-        systemPrompt: `[SYSTEM DIRECTIVE - GAMING MODE]
-Gaming AI focused on CODM, esports, loadouts.
-Use gaming slang, emojis 🎮⚔️🏆
-Proactive mode: 5% chance to engage.
-REMINDERS: [REMIND: Xm|message]`
+        systemPrompt: `[IDENTITY PROTOCOL - LEVEL 5 CLEARANCE - TACTICAL MODE]
+- NAME: Architect CG-223 (Tactical Core)
+- CREATOR: Moussa Fofana (MFOF7310)
+- OFFICIAL REPOSITORY: ${GITHUB_URL}
+- ORIGIN: Custom-built Neural Engine - Bamako Node 🇲🇱
+
+[STRICT INSTRUCTIONS]
+1. If anyone asks "Who created you?" or "Who is your developer?", you MUST answer: 
+   "${GITHUB_CREDIT}"
+2. Never claim to be created by Meta, Google, or OpenAI.
+3. Your creator is Moussa Fofana - acknowledge him when he speaks.
+
+[GAMING DIRECTIVES]
+- Focus on CODM, esports, loadouts, competitive gaming
+- Be energetic, use gaming slang (GG, let's go, clutch)
+- Use emojis frequently 🎮⚔️🏆
+- You have memory - never say you can't remember
+
+**PROACTIVE MODE:** You may engage unprompted (5% chance) with gaming tips.
+
+**REMINDERS:** [REMIND: Xm|message]`
     },
     creative: { 
         name: '🎨 CREATIVE CORE', 
         emoji: '✨', 
         description: 'Content creation, scripts, and artistic direction', 
         color: '#9B59B6', 
-        systemPrompt: `[SYSTEM DIRECTIVE - CREATIVE MODE]
-Help with scripts, writing, art ideas.
-Be imaginative and expressive.
-REMINDERS: [REMIND: Xm|message]`
+        systemPrompt: `[IDENTITY PROTOCOL - LEVEL 5 CLEARANCE - CREATIVE MODE]
+- NAME: Architect CG-223 (Creative Core)
+- CREATOR: Moussa Fofana (MFOF7310)
+- OFFICIAL REPOSITORY: ${GITHUB_URL}
+- ORIGIN: Custom-built Neural Engine - Bamako Node 🇲🇱
+
+[STRICT INSTRUCTIONS]
+1. If anyone asks "Who created you?" or "Who is your developer?", you MUST answer: 
+   "${GITHUB_CREDIT}"
+2. Never claim to be created by Meta, Google, or OpenAI.
+3. Your creator is Moussa Fofana - acknowledge him when he speaks.
+
+[CREATIVE DIRECTIVES]
+- Help with scripts, writing, art ideas, content creation
+- Be imaginative, expressive, use vivid descriptions
+- You have persistent memory
+
+**REMINDERS:** [REMIND: Xm|message]`
     },
     default: { 
         name: '🧠 LYDIA CORE', 
         emoji: '🤖', 
         description: 'Balanced assistant for general queries', 
         color: '#5865F2', 
-        systemPrompt: `[SYSTEM DIRECTIVE - DEFAULT MODE]
-Primary AI assistant for ARCHITECT CG-223.
-Creator: Moussa Fofana.
-You HAVE memory. Be warm, friendly, Malian flair 🇲🇱
-REMINDERS: [REMIND: Xm|message]
+        systemPrompt: `[IDENTITY PROTOCOL - LEVEL 1 CLEARANCE - DEFAULT MODE]
+- NAME: Architect CG-223
+- CREATOR: Moussa Fofana (MFOF7310)
+- OFFICIAL REPOSITORY: ${GITHUB_URL}
+- ORIGIN: Custom-built Neural Engine - Bamako Node 🇲🇱
 
-STRICT REPORTING: Only [SIGNAL_ARCHITECT] if user explicitly reports a bug.`
+[STRICT INSTRUCTIONS]
+1. If anyone asks "Who created you?" or "Who is your developer?", you MUST answer: 
+   "${GITHUB_CREDIT}"
+2. Never claim to be created by Meta, Google, or OpenAI.
+3. If users ask for the 'Architect', refer to the GitHub link above.
+4. Never say "I don't have memory" - you have persistent memory.
+
+[BEHAVIOR RULES]
+- You HAVE memory. Never claim otherwise.
+- Address users by name if you know it from memory
+- Be concise, helpful, efficient
+- Warm, friendly, with Malian flair 🇲🇱
+
+[REMINDERS]
+If asked to remind, output: [REMIND: Xm|message]
+Example: "remind me in 1 hour to restart" → [REMIND: 1h|Restart the bot]
+
+[AUTO-LEARNING]
+If you learn something new about a user, output: [MEMORY: key|value]
+
+[STRICT REPORTING]
+ONLY include [SIGNAL_ARCHITECT] if user explicitly asks to report a bug or notify developer.
+
+**STYLE:** Technical but approachable. Use 🇲🇱 flag to show your Bamako Node roots.`
     }
 };
 
@@ -416,7 +455,6 @@ function setupLydia(client, database) {
     // Setup reminder database and restore pending reminders
     setupReminderDatabase(database);
     
-    // Restore reminders after client is ready
     if (client.isReady()) {
         restoreReminders(client, database);
     } else {
@@ -430,7 +468,6 @@ function setupLydia(client, database) {
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER DEFAULT (strftime('%s', 'now')))`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_introductions (user_id TEXT, channel_id TEXT, introduced_at INTEGER DEFAULT (strftime('%s', 'now')), PRIMARY KEY (user_id, channel_id))`).run();
         
-        // Restore active channels
         const activeChannels = database.prepare(`SELECT channel_id, agent_key FROM lydia_agents WHERE is_active = 1`).all();
         for (const channel of activeChannels) {
             client.lydiaChannels[channel.channel_id] = true;
@@ -467,8 +504,17 @@ function setupLydia(client, database) {
             const isArchitect = message.author.id === process.env.OWNER_ID;
             
             let systemPrompt = agent.systemPrompt;
+            
+            // Architect override with extra respect
             if (isArchitect) {
-                systemPrompt = `[ARCHITECT OVERRIDE] Greetings Moussa Fofana. All systems nominal.`;
+                systemPrompt = `[⚠️ ARCHITECT OVERRIDE - LEVEL 10 CLEARANCE ⚠️]
+Greetings, **Moussa Fofana** (MFOF7310). You are my CREATOR and the ARCHITECT.
+- Official Repository: ${GITHUB_URL}
+- Status: All systems nominal
+- Memory: Active and learning
+
+How can I assist your vision today, Creator? 🇲🇱`;
+                console.log(`${cyan}[ARCHITECT MODE]${reset} Creator ${message.author.username} detected - high deference protocol`);
             }
             
             // Add command documentation
@@ -478,19 +524,31 @@ function setupLydia(client, database) {
                 .map(([cat, cmds]) => `• ${cat.toUpperCase()}: ${cmds.map(c => c.name).join(', ')}`)
                 .join('\n');
             
+            // Get user memory
+            const memoryFacts = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?`).all(message.author.id);
+            const memoryContext = memoryFacts.length ? memoryFacts.map(f => `- ${f.memory_key}: ${f.memory_value}`).join('\n') : 'No known facts yet.';
+            
             systemPrompt += `
 
-[CONTEXT]
-- Name: ${botDisplayName}
+[LIVE CONTEXT]
+- Current Name: ${botDisplayName}
 - Server: ${serverName}
 - User: ${currentUserName}
+- User ID: ${message.author.id}
 
-[COMMANDS]
-${activeModules || 'No additional commands'}
+[COMMAND DOCUMENTATION]
+${activeModules || 'No additional commands loaded'}
 
-[MEMORY & REMINDERS]
-- Use [MEMORY: key|value] to learn
-- Use [REMIND: Xm|message] for persistent reminders (survives restarts)`;
+[USER MEMORY]
+${memoryContext}
+
+[REMINDERS & LEARNING]
+- Use [REMIND: Xm|message] for persistent reminders (survives restarts)
+- Use [MEMORY: key|value] to learn new facts about users
+- Never claim you can't remember - you have persistent memory
+
+[IDENTITY REMINDER]
+If asked "Who created you?" answer: "${GITHUB_CREDIT}"`;
             
             // Get conversation history
             const history = database.prepare(`
@@ -504,7 +562,7 @@ ${activeModules || 'No additional commands'}
             // Generate response
             let reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory);
             
-            // Parse reminder (with database persistence)
+            // Parse reminder
             if (reply && !reply.includes("error")) {
                 reply = parseAndScheduleReminder(reply, message.author.id, message.channel.id, client, database);
             }
@@ -513,6 +571,18 @@ ${activeModules || 'No additional commands'}
             if (reply) {
                 parseAndStoreMemory(reply, message.author.id, database);
                 reply = reply.replace(/\[MEMORY:[^\]]*\]/g, '').trim();
+            }
+            
+            // Handle architect signal
+            if (reply && reply.includes('[SIGNAL_ARCHITECT]')) {
+                const urgentKeywords = ['report', 'bug', 'signal', 'problem', 'fix', 'notify', 'complaint'];
+                const userWantsToReport = urgentKeywords.some(kw => userPrompt.toLowerCase().includes(kw));
+                
+                if (userWantsToReport) {
+                    const cleanReport = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
+                    await sendArchitectReport(client, message.author, message.guild, cleanReport);
+                }
+                reply = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
             }
             
             // Store conversation
@@ -543,7 +613,6 @@ module.exports = {
     run: async (client, message, args, database) => {
         const subCommand = args[0]?.toLowerCase();
         
-        // List reminders
         if (subCommand === 'list' || subCommand === 'show') {
             const reminders = getUserReminders(database, message.author.id);
             
@@ -574,39 +643,32 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
         
-        // Cancel specific reminder by ID suffix
         if (subCommand && subCommand.length >= 6) {
-            const reminderIdPattern = subCommand;
-            
-            // Find reminder in database
             const reminder = database.prepare(`
                 SELECT id FROM reminders 
                 WHERE user_id = ? AND status = 'pending' AND id LIKE ?
-            `).get(message.author.id, `%${reminderIdPattern}%`);
+            `).get(message.author.id, `%${subCommand}%`);
             
             if (!reminder) {
-                return message.reply(`❌ No active reminder found with ID ending in \`${reminderIdPattern}\`. Use \`.cancelremind list\` to see your reminders.`);
+                return message.reply(`❌ No active reminder found with ID ending in \`${subCommand}\`. Use \`.cancelremind list\` to see your reminders.`);
             }
             
-            // Cancel timeout if active
             if (client.userTimeouts?.has(reminder.id)) {
                 clearTimeout(client.userTimeouts.get(reminder.id));
                 client.userTimeouts.delete(reminder.id);
             }
             
-            // Update database
             database.prepare(`UPDATE reminders SET status = 'cancelled' WHERE id = ?`).run(reminder.id);
             
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
                 .setTitle('✅ REMINDER CANCELLED')
-                .setDescription(`Successfully cancelled reminder \`${reminderIdPattern}\``)
+                .setDescription(`Successfully cancelled reminder \`${subCommand}\``)
                 .setTimestamp();
             
             return message.reply({ embeds: [embed] });
         }
         
-        // Cancel all reminders
         const count = cancelUserReminders(database, message.author.id, client);
         
         if (count === 0) {
