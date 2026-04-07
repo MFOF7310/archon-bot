@@ -407,7 +407,7 @@ client.loadPlugins = async () => {
     console.log(`${blue}${bold}==============================================${reset}\n`);
 };
 
-// --- BOOT SEQUENCE ---
+// ================= BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
     console.clear();
     
@@ -422,18 +422,32 @@ client.once(Events.ClientReady, async () => {
     
     loadAgentPreferences();
     
-    // ========== ARCHITECT CG-223 BOOT HEADER ==========
-    console.log(`\n${blue}${bold}╔══════════════════════════════════════════════════════════════╗${reset}`);
-    console.log(`${blue}${bold}║${reset}     ${cyan}🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE${reset}          ${blue}${bold}║${reset}`);
-    console.log(`${blue}${bold}╠══════════════════════════════════════════════════════════════╣${reset}`);
-    console.log(`${blue}${bold}║${reset}  ${green}🤖 CLIENT    :${reset} ${client.user.tag}                                      ${blue}${bold}║${reset}`);
-    console.log(`${blue}${bold}║${reset}  ${green}📍 NODE      :${reset} BAMAKO_223 🇲🇱                                    ${blue}${bold}║${reset}`);
-    console.log(`${blue}${bold}║${reset}  ${green}📦 VERSION   :${reset} v${client.version}                                             ${blue}${bold}║${reset}`);
-    console.log(`${blue}${bold}║${reset}  ${green}🔗 REPOSITORY :${reset} https://github.com/MFOF7310                          ${blue}${bold}║${reset}`);
-    console.log(`${blue}${bold}║${reset}  ${green}🏗️  ARCHITECT  :${reset} MOUSSA FOFANA                                      ${blue}${bold}║${reset}`);
-    console.log(`${blue}${bold}╚══════════════════════════════════════════════════════════════╝${reset}\n`);
+    // ========== ARCHITECT CG-223 BOOT HEADER (DYNAMIC ALIGNMENT) ==========
+    const boxWidth = 64;
+    
+    const drawBoxLine = (label, value) => {
+        const lineContent = `║  ${label.padEnd(12)} : ${value}`;
+        const paddingNeeded = boxWidth - lineContent.length - 1;
+        return `${lineContent}${' '.repeat(Math.max(0, paddingNeeded))}║`;
+    };
 
-    // Clear old timeouts on restart (prevents memory leaks)
+    console.log(`\n${blue}${bold}╔${'═'.repeat(boxWidth - 2)}╗${reset}`);
+    
+    const title = "🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE";
+    const titlePadding = Math.floor((boxWidth - title.length - 2) / 2);
+    console.log(`${blue}${bold}║${' '.repeat(Math.max(0, titlePadding))}${cyan}${title}${reset}${' '.repeat(Math.max(0, boxWidth - title.length - titlePadding - 2))}║${reset}`);
+    
+    console.log(`${blue}${bold}╠${'═'.repeat(boxWidth - 2)}╣${reset}`);
+    
+    console.log(`${blue}${bold}${drawBoxLine(`${green}🤖 CLIENT`, client.user.tag)}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}📍 NODE`, 'BAMAKO_223 🇲🇱')}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}📦 VERSION`, `v${client.version}`)}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}🔗 REPOSITORY`, 'https://github.com/MFOF7310')}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}🏗️  ARCHITECT`, 'MOUSSA FOFANA')}${reset}`);
+    
+    console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
+
+    // Clear old timeouts on restart
     if (client.userTimeouts) {
         for (const [id, timeout] of client.userTimeouts) {
             clearTimeout(timeout);
