@@ -1089,14 +1089,24 @@ async function runLydiaCommand(client, message, args, database) {
     }
 }
 
-// ================= CRITICAL: EXPORTS (OUTSIDE THE OBJECT) =================
-// These MUST be outside the module.exports object above to be seen by index.js
-module.exports.setupLydia = setupLydia;
-module.exports.buildPluginAwarenessPrompt = buildPluginAwarenessPrompt;
-module.exports.getGlobalModuleCount = getGlobalModuleCount;
-module.exports.getPluginRegistry = getPluginRegistry;
-module.exports.generateAIResponse = generateAIResponse;
-module.exports.webSearch = webSearch;
-module.exports.fetchRealTimeData = fetchRealTimeData;
-module.exports.parseAndStoreMemory = parseAndStoreMemory;
-module.exports.parseAndScheduleReminder = parseAndScheduleReminder;
+// ================= FINAL EXPORTS =================
+// This combines the command object AND the extra functions
+module.exports = {
+    name: 'lydia',
+    aliases: ['ai', 'neural'],
+    description: '🎭 Multi-Agent AI with Group Awareness & Real-Time Data Fetching',
+    category: 'SYSTEM',
+    cooldown: 5000,
+    run: runLydiaCommand, // This links the run function back!
+    
+    // Attach the helper functions to the same export object
+    setupLydia,
+    buildPluginAwarenessPrompt,
+    getGlobalModuleCount,
+    getPluginRegistry,
+    generateAIResponse,
+    webSearch,
+    fetchRealTimeData,
+    parseAndStoreMemory,
+    parseAndScheduleReminder
+};
