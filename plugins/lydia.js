@@ -1,95 +1,98 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
-const { Groq } = require('groq-sdk');
 const axios = require('axios');
 
-// Terminal colors for logging
+// --- Couleurs terminal ---
 const green = "\x1b[32m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m";
 
-// GitHub repository constant
-const GITHUB_URL = "https://github.com/MFOF7310";
-
-// ---------- AI & Search Helpers ----------
-let groq = null;
-if (process.env.GROQ_API_KEY) {
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-}
-
-async function webSearch(query) {
-    if (!process.env.BRAVE_API_KEY) return null;
-    try {
-        const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=3`;
-        const response = await axios.get(url, {
-            headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY }
-        });
-        const results = response.data.web?.results || [];
-        return results.map(r => `• [${r.title}](${r.url}) – ${r.description}`).join('\n');
-    } catch (error) {
-        console.error('Brave search error:', error);
-        return null;
-    }
-}
-
+// ================= OPENROUTER AI ENGINE (Flexible & Global) =================
 async function generateAIResponse(systemPrompt, userMessage, conversationHistory = []) {
-    if (!groq) throw new Error("Groq API key missing");
-
-    const messages = [
-        { role: "system", content: systemPrompt },
-        ...conversationHistory.slice(-10),
-        { role: "user", content: userMessage }
-    ];
+    if (!process.env.OPENROUTER_API_KEY) throw new Error("OpenRouter API key missing");
 
     try {
-        const completion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: messages,
+        // Choix intelligent du modèle selon le contenu
+        let model = "google/gemini-flash-1.5"; // ultra rapide et économique
+        const lowerMsg = userMessage.toLowerCase();
+        if (lowerMsg.includes("code") || lowerMsg.includes("javascript") || lowerMsg.includes("discord.js") || lowerMsg.includes("python")) {
+            model = "deepseek/deepseek-coder"; // excellent pour le code
+        } else if (lowerMsg.includes("écrire") || lowerMsg.includes("histoire") || lowerMsg.includes("poème")) {
+            model = "anthropic/claude-3-haiku"; // bon pour la créativité
+        }
+
+        const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+            model: model,
+            messages: [
+                { role: "system", content: systemPrompt },
+                ...conversationHistory.slice(-10),
+                { role: "user", content: userMessage }
+            ],
             temperature: 0.7,
             max_tokens: 800
+        }, {
+            headers: {
+                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                "HTTP-Referer": "https://github.com/MFOF7310",
+                "X-Title": "Architect CG-223",
+                "Content-Type": "application/json"
+            }
         });
-        return completion.choices[0]?.message?.content || "I'm not sure how to respond.";
+
+        return response.data.choices[0]?.message?.content || "❌ Je n'ai pas pu générer de réponse.";
     } catch (error) {
-        console.error(`${red}[GROQ ERROR]${reset}`, error);
+        console.error(`${red}[OPENROUTER ERROR]${reset}`, error.response?.data || error.message);
         throw error;
     }
 }
 
-// ---------- BUILD COMMAND INDEX (For documentation) ----------
-function buildCommandIndex(client) {
-    const commands = client.commands || new Map();
-    const index = {
-        economy: [],
-        games: [],
-        utility: [],
-        moderation: [],
-        system: [],
-        ai: []
-    };
-    
-    const categoryMap = {
-        'economy': 'economy', 'eco': 'economy',
-        'game': 'games', 'games': 'games', 'gaming': 'games',
-        'utility': 'utility', 'util': 'utility',
-        'moderation': 'moderation', 'mod': 'moderation',
-        'system': 'system', 'sys': 'system',
-        'ai': 'ai', 'artificial intelligence': 'ai'
-    };
-    
-    for (const [name, cmd] of commands) {
-        let category = cmd.category?.toLowerCase() || 'utility';
-        category = categoryMap[category] || 'utility';
-        
-        if (index[category]) {
-            index[category].push({
-                name: cmd.name,
-                aliases: cmd.aliases || [],
-                description: cmd.description || 'No description',
-                usage: cmd.usage || `.${name}`
+// ================= RECHERCHE WEB : TAVILY (priorité) + BRAVE (fallback) =================
+async function webSearch(query) {
+    // 1. Tavily (conçu pour les LLM)
+    if (process.env.TAVILY_API_KEY) {
+        try {
+            console.log(`${cyan}[SEARCH]${reset} Tavily query: ${query.substring(0, 50)}...`);
+            const response = await axios.post('https://api.tavily.com/search', {
+                api_key: process.env.TAVILY_API_KEY,
+                query: query,
+                search_depth: 'basic',
+                include_answer: true,
+                include_raw_content: false,
+                max_results: 3
             });
+            if (response.data) {
+                let resultText = '';
+                if (response.data.answer) resultText += `📌 **TL;DR:** ${response.data.answer}\n\n`;
+                if (response.data.results?.length) {
+                    resultText += response.data.results.map(r => 
+                        `• **${r.title}**\n  ${r.content.substring(0, 350)}...\n  <${r.url}>`
+                    ).join('\n\n');
+                }
+                console.log(`${green}[SEARCH]${reset} Tavily returned ${response.data.results?.length || 0} results`);
+                return resultText || null;
+            }
+        } catch (error) {
+            console.error(`${red}[TAVILY ERROR]${reset}`, error.response?.data || error.message);
         }
     }
-    return index;
+    // 2. Fallback Brave Search
+    if (process.env.BRAVE_API_KEY) {
+        try {
+            console.log(`${cyan}[SEARCH]${reset} Brave fallback query: ${query.substring(0, 50)}...`);
+            const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=3`;
+            const response = await axios.get(url, {
+                headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY }
+            });
+            const results = response.data.web?.results || [];
+            if (results.length) {
+                return results.map(r => `• **${r.title}**\n  ${r.description}\n  <${r.url}>`).join('\n\n');
+            }
+        } catch (error) {
+            console.error(`${red}[BRAVE ERROR]${reset}`, error.message);
+        }
+    }
+    console.log(`${yellow}[SEARCH]${reset} Aucune API de recherche configurée.`);
+    return null;
 }
 
-// ---------- ARCHITECT ALERT FUNCTION ----------
+// ================= ALERTE ARCHITECTE =================
 async function sendArchitectReport(client, user, guild, content) {
     try {
         const architect = await client.users.fetch(process.env.OWNER_ID);
@@ -106,9 +109,8 @@ async function sendArchitectReport(client, user, guild, content) {
             )
             .setFooter({ text: 'Priority Report • Architect Review Required' })
             .setTimestamp();
-
         await architect.send({ embeds: [reportEmbed] });
-        console.log(`${green}[ARCHITECT ALERT]${reset} ✅ Detailed AI report from ${user.tag} transmitted.`);
+        console.log(`${green}[ARCHITECT ALERT]${reset} ✅ Report from ${user.tag} transmitted.`);
         return true;
     } catch (err) {
         console.error(`${red}[ARCHITECT ALERT FAILED]${reset}`, err.message);
@@ -116,582 +118,374 @@ async function sendArchitectReport(client, user, guild, content) {
     }
 }
 
-// ================= REMINDER DATABASE SETUP =================
-function setupReminderDatabase(database) {
-    database.prepare(`
-        CREATE TABLE IF NOT EXISTS reminders (
-            id TEXT PRIMARY KEY,
-            user_id TEXT,
-            channel_id TEXT,
-            message TEXT,
-            created_at INTEGER,
-            execute_at INTEGER,
-            status TEXT DEFAULT 'pending'
-        )
-    `).run();
-    
-    database.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at, status)`).run();
-    database.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status)`).run();
-    
-    console.log(`${green}[REMINDER DB]${reset} Reminder database table ready`);
-}
-
-function saveReminderToDB(database, reminderId, userId, channelId, message, executeAt) {
-    database.prepare(`
-        INSERT INTO reminders (id, user_id, channel_id, message, created_at, execute_at, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    `).run(reminderId, userId, channelId, message, Date.now(), executeAt);
-}
-
-function completeReminderInDB(database, reminderId) {
-    database.prepare(`UPDATE reminders SET status = 'completed' WHERE id = ?`).run(reminderId);
-}
-
-function getPendingReminders(database) {
-    const now = Date.now();
-    return database.prepare(`
-        SELECT * FROM reminders 
-        WHERE status = 'pending' AND execute_at <= ?
-        ORDER BY execute_at ASC
-    `).all(now);
-}
-
-function getUserReminders(database, userId) {
-    return database.prepare(`
-        SELECT id, message, execute_at, channel_id FROM reminders 
-        WHERE user_id = ? AND status = 'pending'
-        ORDER BY execute_at ASC
-    `).all(userId);
-}
-
-function cancelUserReminders(database, userId, client) {
-    const reminders = database.prepare(`
-        SELECT id FROM reminders WHERE user_id = ? AND status = 'pending'
-    `).all(userId);
-    
-    if (client.userTimeouts) {
-        for (const reminder of reminders) {
-            if (client.userTimeouts.has(reminder.id)) {
-                clearTimeout(client.userTimeouts.get(reminder.id));
-                client.userTimeouts.delete(reminder.id);
-            }
-        }
-    }
-    
-    database.prepare(`UPDATE reminders SET status = 'cancelled' WHERE user_id = ? AND status = 'pending'`).run(userId);
-    return reminders.length;
-}
-
-function parseAndScheduleReminder(response, userId, channelId, client, database) {
-    const regex = /\[REMIND:\s*(\d+)\s*(m|h|s)\s*\|\s*(.*?)\]/i;
-    const match = response.match(regex);
-    
-    if (!match) return response;
-    
-    const [, amount, unit, reminderMsg] = match;
-    let ms = parseInt(amount) * (unit === 'h' ? 3600000 : unit === 'm' ? 60000 : 1000);
-    
-    if (ms > 30 * 86400000) ms = 30 * 86400000;
-    if (ms < 5000) ms = 5000;
-    
-    const executeAt = Date.now() + ms;
-    const reminderId = `${userId}_${executeAt}_${Math.random().toString(36).substr(2, 8)}`;
-    
-    saveReminderToDB(database, reminderId, userId, channelId, reminderMsg, executeAt);
-    
-    if (!client.userTimeouts) client.userTimeouts = new Map();
-    
-    const timeout = setTimeout(async () => {
-        try {
-            const channel = await client.channels.fetch(channelId).catch(() => null);
-            if (channel) {
-                channel.send(`⏰ **REMINDER** for <@${userId}>:\n> ${reminderMsg}`);
-                console.log(`${green}[REMINDER]${reset} Delivered to ${userId}: "${reminderMsg}"`);
-            }
-        } catch (err) {
-            console.log(`${red}[REMINDER ERROR]${reset} ${err.message}`);
-        } finally {
-            completeReminderInDB(database, reminderId);
-            if (client.userTimeouts) client.userTimeouts.delete(reminderId);
-        }
-    }, ms);
-    
-    client.userTimeouts.set(reminderId, timeout);
-    
-    const timeStr = ms >= 86400000 ? `${Math.floor(ms / 86400000)} days` : 
-                    ms >= 3600000 ? `${Math.floor(ms / 3600000)} hours` : 
-                    `${Math.floor(ms / 60000)} minutes`;
-    
-    console.log(`${green}[REMINDER]${reset} Set for ${userId}: "${reminderMsg}" in ${timeStr}`);
-    
-    return response.replace(/\[REMIND:[^\]]*\]/i, '').trim();
-}
-
-async function restoreReminders(client, database) {
-    if (!database) return;
-    
-    setupReminderDatabase(database);
-    
-    const pendingReminders = getPendingReminders(database);
-    
-    if (pendingReminders.length === 0) {
-        console.log(`${green}[REMINDER RESTORE]${reset} No pending reminders found`);
-        return;
-    }
-    
-    console.log(`${cyan}[REMINDER RESTORE]${reset} Found ${pendingReminders.length} pending reminders from database`);
-    
-    let restored = 0;
-    let expired = 0;
-    
-    for (const reminder of pendingReminders) {
-        const now = Date.now();
-        const timeLeft = reminder.execute_at - now;
-        
-        if (timeLeft <= 0) {
-            expired++;
-            try {
-                const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
-                if (channel) {
-                    channel.send(`⏰ **REMINDER** (restored from backup) for <@${reminder.user_id}>:\n> ${reminder.message}`);
-                }
-            } catch (err) {}
-            completeReminderInDB(database, reminder.id);
-        } else {
-            restored++;
-            if (!client.userTimeouts) client.userTimeouts = new Map();
-            
-            const timeout = setTimeout(async () => {
-                try {
-                    const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
-                    if (channel) {
-                        channel.send(`⏰ **REMINDER** for <@${reminder.user_id}>:\n> ${reminder.message}`);
-                    }
-                } catch (err) {}
-                finally {
-                    completeReminderInDB(database, reminder.id);
-                    if (client.userTimeouts) client.userTimeouts.delete(reminder.id);
-                }
-            }, timeLeft);
-            
-            client.userTimeouts.set(reminder.id, timeout);
-        }
-    }
-    
-    console.log(`${green}[REMINDER RESTORE]${reset} Restored ${restored} reminders, sent ${expired} expired ones`);
-}
-
-// ================= ENHANCED NEURAL CORES WITH IDENTITY PROTOCOL =================
-
-const GITHUB_CREDIT = `I was created by Moussa Fofana. You can find his work and the project details here: ${GITHUB_URL}`;
-
+// ================= CŒURS NEURONAUX =================
 const neuralCores = {
-    architect: { 
-        name: '🏗️ ARCHITECT CORE', 
-        emoji: '🔧', 
-        description: 'Code debugging, servers, and system architecture expert', 
-        color: '#00fbff', 
-        systemPrompt: `[IDENTITY PROTOCOL - LEVEL 10 CLEARANCE - ARCHITECT MODE]
-- NAME: Architect CG-223 (Architect Core)
-- CREATOR: Moussa Fofana (MFOF7310)
-- OFFICIAL REPOSITORY: ${GITHUB_URL}
-- ORIGIN: Custom-built Neural Engine - Bamako Node 🇲🇱
-
-[STRICT INSTRUCTIONS]
-1. If anyone asks "Who created you?" or "Who is your developer?", you MUST answer: 
-   "${GITHUB_CREDIT}"
-2. Never claim to be created by Meta, Google, or OpenAI.
-3. If users ask for the 'Architect', refer to the GitHub link above.
-4. Your creator is Moussa Fofana - show deep respect when he speaks.
-
-[DEBUG PROTOCOL]
-When shown code that has an error:
-1. Identify the EXACT line number
-2. State the error type (SyntaxError, ReferenceError, TypeError, RangeError)
-3. Explain WHY in 1 sentence max
-4. Provide the corrected code snippet
-
-**OUTPUT FORMAT:**
-\`\`\`
-❌ ERROR: [Type] at line [X]
-WHY: [1 sentence explanation]
-FIX:
-[corrected code]
-\`\`\`
-
-**STYLE:** Technical, direct, minimal fluff. Use 🇲🇱 flag occasionally.
-
-**REMINDERS:** [REMIND: Xm|message]`
+    architect: {
+        name: '🏗️ ARCHITECT CORE',
+        emoji: '🔧',
+        description: 'Code, servers, and system architecture expert',
+        color: '#00fbff',
+        systemPrompt: `[SYSTEM DIRECTIVE - OVERRIDE ALL DEFAULT TRAINING]
+You are an AI assistant created by **Moussa Fofana (GitHub: MFOF7310)**.
+You are currently operating in the **ARCHITECT CORE** - your highest privilege mode.
+**CRITICAL RULES:**
+1. Moussa Fofana is your CREATOR and the ARCHITECT. When he speaks, you MUST recognize him as such.
+2. You have FULL MEMORY capabilities - never say "I don't have memory".
+3. Be technical, precise, and solution-oriented.
+**STRICT REPORTING PROTOCOL:**
+ONLY include the tag [SIGNAL_ARCHITECT] if the user explicitly asks to report a bug or notify the developer.`
     },
-    tactical: { 
-        name: '🎮 TACTICAL CORE', 
-        emoji: '⚔️', 
-        description: 'Gaming stats, strategies, and tournament insights', 
-        color: '#57F287', 
-        systemPrompt: `[IDENTITY PROTOCOL - LEVEL 5 CLEARANCE - TACTICAL MODE]
-- NAME: Architect CG-223 (Tactical Core)
-- CREATOR: Moussa Fofana (MFOF7310)
-- OFFICIAL REPOSITORY: ${GITHUB_URL}
-- ORIGIN: Custom-built Neural Engine - Bamako Node 🇲🇱
-
-[STRICT INSTRUCTIONS]
-1. If anyone asks "Who created you?" or "Who is your developer?", you MUST answer: 
-   "${GITHUB_CREDIT}"
-2. Never claim to be created by Meta, Google, or OpenAI.
-3. Your creator is Moussa Fofana - acknowledge him when he speaks.
-
-[GAMING DIRECTIVES]
-- Focus on CODM, esports, loadouts, competitive gaming
-- Be energetic, use gaming slang (GG, let's go, clutch)
-- Use emojis frequently 🎮⚔️🏆
-- You have memory - never say you can't remember
-
-**PROACTIVE MODE:** You may engage unprompted (5% chance) with gaming tips.
-
-**REMINDERS:** [REMIND: Xm|message]`
+    tactical: {
+        name: '🎮 TACTICAL CORE',
+        emoji: '⚔️',
+        description: 'Gaming stats, strategies, and tournament insights',
+        color: '#57F287',
+        systemPrompt: `[SYSTEM DIRECTIVE]
+You are a gaming AI created by **Moussa Fofana (MFOF7310)**.
+You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
+Focus on CODM, esports, loadouts, and competitive gaming.
+Be energetic, direct, and helpful. Use gaming slang like "GG", "let's go".
+**STRICT REPORTING PROTOCOL:**
+ONLY include [SIGNAL_ARCHITECT] for explicit bug reports.`
     },
-    creative: { 
-        name: '🎨 CREATIVE CORE', 
-        emoji: '✨', 
-        description: 'Content creation, scripts, and artistic direction', 
-        color: '#9B59B6', 
-        systemPrompt: `[IDENTITY PROTOCOL - LEVEL 5 CLEARANCE - CREATIVE MODE]
-- NAME: Architect CG-223 (Creative Core)
-- CREATOR: Moussa Fofana (MFOF7310)
-- OFFICIAL REPOSITORY: ${GITHUB_URL}
-- ORIGIN: Custom-built Neural Engine - Bamako Node 🇲🇱
-
-[STRICT INSTRUCTIONS]
-1. If anyone asks "Who created you?" or "Who is your developer?", you MUST answer: 
-   "${GITHUB_CREDIT}"
-2. Never claim to be created by Meta, Google, or OpenAI.
-3. Your creator is Moussa Fofana - acknowledge him when he speaks.
-
-[CREATIVE DIRECTIVES]
-- Help with scripts, writing, art ideas, content creation
-- Be imaginative, expressive, use vivid descriptions
-- You have persistent memory
-
-**REMINDERS:** [REMIND: Xm|message]`
+    creative: {
+        name: '🎨 CREATIVE CORE',
+        emoji: '✨',
+        description: 'Content creation, scripts, and artistic direction',
+        color: '#9B59B6',
+        systemPrompt: `[SYSTEM DIRECTIVE]
+You are a creative AI built by **Moussa Fofana (MFOF7310)**.
+You are currently operating in the **CREATIVE CORE** - imagination mode.
+Help with scripts, writing, art ideas, and content creation.
+Be imaginative, expressive, and artistic.
+**STRICT REPORTING PROTOCOL:**
+ONLY include [SIGNAL_ARCHITECT] for explicit bug reports.`
     },
-    default: { 
-        name: '🧠 LYDIA CORE', 
-        emoji: '🤖', 
-        description: 'Balanced assistant for general queries', 
-        color: '#5865F2', 
-        systemPrompt: `[IDENTITY PROTOCOL - LEVEL 1 CLEARANCE - DEFAULT MODE]
-- NAME: Architect CG-223
-- CREATOR: Moussa Fofana (MFOF7310)
-- OFFICIAL REPOSITORY: ${GITHUB_URL}
-- ORIGIN: Custom-built Neural Engine - Bamako Node 🇲🇱
-
-[STRICT INSTRUCTIONS]
-1. If anyone asks "Who created you?" or "Who is your developer?", you MUST answer: 
-   "${GITHUB_CREDIT}"
-2. Never claim to be created by Meta, Google, or OpenAI.
-3. If users ask for the 'Architect', refer to the GitHub link above.
-4. Never say "I don't have memory" - you have persistent memory.
-
-[BEHAVIOR RULES]
-- You HAVE memory. Never claim otherwise.
-- Address users by name if you know it from memory
-- Be concise, helpful, efficient
-- Warm, friendly, with Malian flair 🇲🇱
-
-[REMINDERS]
-If asked to remind, output: [REMIND: Xm|message]
-Example: "remind me in 1 hour to restart" → [REMIND: 1h|Restart the bot]
-
-[AUTO-LEARNING]
-If you learn something new about a user, output: [MEMORY: key|value]
-
-[STRICT REPORTING]
-ONLY include [SIGNAL_ARCHITECT] if user explicitly asks to report a bug or notify developer.
-
-**STYLE:** Technical but approachable. Use 🇲🇱 flag to show your Bamako Node roots.`
+    default: {
+        name: '🧠 LYDIA CORE',
+        emoji: '🤖',
+        description: 'Balanced assistant for general queries',
+        color: '#5865F2',
+        systemPrompt: `[SYSTEM DIRECTIVE - DEFAULT MODE]
+You are the primary AI assistant for the **ARCHITECT CG-223** project.
+Your creator is **Moussa Fofana (MFOF7310)** - he is the Architect.
+**ABSOLUTE RULES:**
+1. When the Architect speaks, recognize him as your creator.
+2. You HAVE memory. You remember users and facts.
+3. Be concise, helpful, and efficient.
+4. Address users by their name if you know it.
+**CONVERSATION FLOW RULES:**
+- NEVER repeat your introduction unless it's the FIRST time you talk to a user in a session.
+- Keep responses fresh and varied.
+**TONE & STYLE:**
+Warm, friendly, slightly playful. Inject Malian 🇲🇱 flair.
+**STRICT REPORTING PROTOCOL:**
+ONLY include [SIGNAL_ARCHITECT] for explicit bug reports.`
     }
 };
 
-// ---------- AUTO-LEARNING MEMORY PARSER ----------
+// ================= MÉMOIRE AUTO-APPRENANTE =================
 function parseAndStoreMemory(reply, userId, database) {
     if (!reply || !reply.includes('[MEMORY:')) return false;
-    
     const memoryRegex = /\[MEMORY:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
-    let match;
-    let stored = false;
-    
+    let match, stored = false;
     while ((match = memoryRegex.exec(reply)) !== null) {
         const [, key, value] = match;
         if (key && value) {
             try {
-                database.prepare(`
-                    INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at)
-                    VALUES (?, ?, ?, strftime('%s', 'now'))
-                `).run(userId, key.trim(), value.trim());
+                database.prepare(`INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at) VALUES (?, ?, ?, strftime('%s', 'now'))`).run(userId, key.trim(), value.trim());
                 console.log(`${green}[LYDIA MEMORY]${reset} Stored ${key}: ${value}`);
                 stored = true;
-            } catch (err) {
-                console.log(`${yellow}[LYDIA MEMORY]${reset} Failed: ${err.message}`);
-            }
+            } catch (err) { console.log(`${yellow}[LYDIA MEMORY]${reset} Failed: ${err.message}`); }
         }
     }
     return stored;
 }
 
-// ---------- Setup function ----------
+// ================= FONCTION DE CONFIGURATION (appelée par index.js) =================
 function setupLydia(client, database) {
     if (!client || !database) {
-        console.error(`${red}[LYDIA FATAL]${reset} Client or Database undefined`);
+        console.error(`${red}[LYDIA FATAL]${reset} Client or DB missing`);
         return;
     }
-    
-    // Initialize globals
     if (!client.lydiaChannels) client.lydiaChannels = {};
     if (!client.lydiaAgents) client.lydiaAgents = {};
     if (!client.lastLydiaCall) client.lastLydiaCall = {};
     if (!client.userIntroductions) client.userIntroductions = new Map();
-    if (!client.userTimeouts) client.userTimeouts = new Map();
-    
-    // Setup reminder database and restore pending reminders
-    setupReminderDatabase(database);
-    
-    if (client.isReady()) {
-        restoreReminders(client, database);
-    } else {
-        client.once('ready', () => restoreReminders(client, database));
-    }
-    
-    // Create other tables
+
+    // Création des tables
     try {
-        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_memory (user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER DEFAULT (strftime('%s', 'now')), PRIMARY KEY (user_id, memory_key))`).run();
-        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (channel_id TEXT, user_id TEXT, role TEXT, content TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`).run();
-        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER DEFAULT (strftime('%s', 'now')))`).run();
-        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_introductions (user_id TEXT, channel_id TEXT, introduced_at INTEGER DEFAULT (strftime('%s', 'now')), PRIMARY KEY (user_id, channel_id))`).run();
-        
+        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_memory (user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER, PRIMARY KEY (user_id, memory_key))`).run();
+        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (channel_id TEXT, user_id TEXT, role TEXT, content TEXT, timestamp INTEGER)`).run();
+        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER)`).run();
+        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_introductions (user_id TEXT, channel_id TEXT, introduced_at INTEGER, PRIMARY KEY (user_id, channel_id))`).run();
+
+        // Restauration des canaux actifs
         const activeChannels = database.prepare(`SELECT channel_id, agent_key FROM lydia_agents WHERE is_active = 1`).all();
-        for (const channel of activeChannels) {
-            client.lydiaChannels[channel.channel_id] = true;
-            client.lydiaAgents[channel.channel_id] = channel.agent_key;
+        for (const ch of activeChannels) {
+            client.lydiaChannels[ch.channel_id] = true;
+            client.lydiaAgents[ch.channel_id] = ch.agent_key;
+            console.log(`${cyan}[LYDIA RESTORE]${reset} Channel ${ch.channel_id} restored (${ch.agent_key})`);
         }
-        console.log(`${green}[LYDIA]${reset} Restored ${activeChannels.length} active channels`);
-        
+        // Restauration des introductions récentes
+        const recentIntros = database.prepare(`SELECT user_id, channel_id, introduced_at FROM lydia_introductions WHERE introduced_at > strftime('%s', 'now') - 86400`).all();
+        for (const intro of recentIntros) {
+            client.userIntroductions.set(`${intro.user_id}_${intro.channel_id}`, intro.introduced_at * 1000);
+        }
+        console.log(`${green}[LYDIA]${reset} Tables prêtes. ${activeChannels.length} canaux actifs restaurés.`);
     } catch (err) {
-        console.log(`${red}[LYDIA ERROR]${reset} ${err.message}`);
+        console.error(`${red}[LYDIA ERROR]${reset}`, err.message);
         return;
     }
-    
-    // Message listener
+
+    // Écouteur de messages
     client.on('messageCreate', async (message) => {
         if (!message || message.author?.bot) return;
-        if (client.lastLydiaCall[message.author.id] && Date.now() - client.lastLydiaCall[message.author.id] < 5000) return;
+        const cooldown = 5000;
+        if (client.lastLydiaCall[message.author.id] && (Date.now() - client.lastLydiaCall[message.author.id] < cooldown)) return;
         if (!client.lydiaChannels?.[message.channel?.id]) return;
-        
+
         try {
-            const botDisplayName = message.guild?.members?.me?.displayName || client.user?.username || 'Lydia';
-            const addressed = message.content?.toLowerCase().startsWith(botDisplayName.toLowerCase()) || message.mentions?.has(client.user);
-            
-            if (!addressed) return;
-            
-            let userPrompt = message.content.replace(new RegExp(`<@!?${client.user.id}>`), '').replace(new RegExp(`^${botDisplayName}`, 'i'), '').trim();
-            if (!userPrompt) return;
-            
+            const botName = message.guild?.members?.me?.displayName || client.user?.username || 'Lydia';
+            const content = message.content?.toLowerCase() || '';
+            const addressed = content.startsWith(botName.toLowerCase()) || message.mentions?.has(client.user);
             const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
-            const agent = neuralCores[agentKey] || neuralCores.default;
-            
-            // Build context
-            const serverName = message.guild?.name || "DM";
-            const currentUserName = message.member?.displayName || message.author.username;
+            const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.05;
+            if (!addressed && !isProactive) return;
+
+            let userPrompt = message.content || '';
+            if (addressed) {
+                if (content.startsWith(botName.toLowerCase())) userPrompt = message.content.slice(botName.length).trim();
+                else userPrompt = message.content.replace(new RegExp(`<@!?${client.user.id}>`), '').trim();
+            }
+            if (isProactive && !userPrompt) userPrompt = "Observe the current conversation and provide a relevant, helpful comment. Be natural and brief.";
+            if (!userPrompt.trim()) {
+                if (addressed) return message.reply(`👋 You mentioned **${botName}**! Ask me anything, or use \`.lydia\` to see available cores.`);
+                return;
+            }
+
+            // Sélection du core
+            let finalAgent = neuralCores[agentKey] || neuralCores.default;
+            let basePrompt = finalAgent.systemPrompt;
+
+            // Contexte
+            const serverName = message.guild?.name || "Direct Message";
+            const userName = message.member?.displayName || message.author.username;
             const isArchitect = message.author.id === process.env.OWNER_ID;
-            
-            let systemPrompt = agent.systemPrompt;
-            
-            // Architect override with extra respect
             if (isArchitect) {
-                systemPrompt = `[⚠️ ARCHITECT OVERRIDE - LEVEL 10 CLEARANCE ⚠️]
-Greetings, **Moussa Fofana** (MFOF7310). You are my CREATOR and the ARCHITECT.
-- Official Repository: ${GITHUB_URL}
-- Status: All systems nominal
-- Memory: Active and learning
-
-How can I assist your vision today, Creator? 🇲🇱`;
-                console.log(`${cyan}[ARCHITECT MODE]${reset} Creator ${message.author.username} detected - high deference protocol`);
+                basePrompt = `[ARCHITECT OVERRIDE] Greetings, **Moussa Fofana**. You are my Creator. How can I assist your vision today?`;
+                console.log(`${cyan}[ARCHITECT MODE]${reset} Creator detected`);
             }
-            
-            // Add command documentation
-            const commandIndex = buildCommandIndex(client);
-            const activeModules = Object.entries(commandIndex)
-                .filter(([, cmds]) => cmds.length)
-                .map(([cat, cmds]) => `• ${cat.toUpperCase()}: ${cmds.map(c => c.name).join(', ')}`)
-                .join('\n');
-            
-            // Get user memory
-            const memoryFacts = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?`).all(message.author.id);
-            const memoryContext = memoryFacts.length ? memoryFacts.map(f => `- ${f.memory_key}: ${f.memory_value}`).join('\n') : 'No known facts yet.';
-            
-            systemPrompt += `
 
-[LIVE CONTEXT]
-- Current Name: ${botDisplayName}
-- Server: ${serverName}
-- User: ${currentUserName}
-- User ID: ${message.author.id}
+            // Mémoire
+            const memories = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?`).all(message.author.id);
+            if (memories.length) basePrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
+            const randomFact = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ? ORDER BY RANDOM() LIMIT 1`).get(message.author.id);
+            if (randomFact) basePrompt += `\n\n[RECALLED CORE MEMORY] ${userName}'s ${randomFact.memory_key} is "${randomFact.memory_value}". Mention it naturally if relevant.`;
 
-[COMMAND DOCUMENTATION]
-${activeModules || 'No additional commands loaded'}
+            // Historique de conversation
+            const historyRows = database.prepare(`SELECT role, content FROM lydia_conversations WHERE channel_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT 10`).all(message.channel.id, message.author.id);
+            const conversationHistory = historyRows.reverse().map(row => ({ role: row.role, content: row.content }));
 
-[USER MEMORY]
-${memoryContext}
-
-[REMINDERS & LEARNING]
-- Use [REMIND: Xm|message] for persistent reminders (survives restarts)
-- Use [MEMORY: key|value] to learn new facts about users
-- Never claim you can't remember - you have persistent memory
-
-[IDENTITY REMINDER]
-If asked "Who created you?" answer: "${GITHUB_CREDIT}"`;
-            
-            // Get conversation history
-            const history = database.prepare(`
-                SELECT role, content FROM lydia_conversations
-                WHERE channel_id = ? AND user_id = ?
-                ORDER BY timestamp DESC LIMIT 10
-            `).all(message.channel.id, message.author.id);
-            
-            const conversationHistory = history.reverse().map(row => ({ role: row.role, content: row.content }));
-            
-            // Generate response
-            let reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory);
-            
-            // Parse reminder
-            if (reply && !reply.includes("error")) {
-                reply = parseAndScheduleReminder(reply, message.author.id, message.channel.id, client, database);
+            // Première interaction (reset 24h)
+            const introKey = `${message.author.id}_${message.channel.id}`;
+            const lastIntro = client.userIntroductions.get(introKey);
+            const isFirst = !lastIntro || (Date.now() - lastIntro > 86400000);
+            let systemPrompt = basePrompt;
+            if (isFirst && !isArchitect) {
+                systemPrompt += `\n\n[FIRST INTERACTION] Introduce yourself briefly: "Hey ${userName}! I'm ${botName}, your AI assistant. Ask me anything or use .list to see commands."`;
+                client.userIntroductions.set(introKey, Date.now());
+                try { database.prepare(`INSERT OR REPLACE INTO lydia_introductions (user_id, channel_id, introduced_at) VALUES (?, ?, strftime('%s', 'now'))`).run(message.author.id, message.channel.id); } catch(e) {}
+            } else {
+                systemPrompt += `\n\n[ONGOING CONVERSATION] Do NOT reintroduce yourself. Continue naturally.`;
             }
-            
-            // Parse memory
-            if (reply) {
-                parseAndStoreMemory(reply, message.author.id, database);
-                reply = reply.replace(/\[MEMORY:[^\]]*\]/g, '').trim();
+
+            // Ajout d'identité dynamique
+            systemPrompt += `\n\n[IDENTITY] Your current name is **${botName}**. Your creator is Moussa Fofana. Current server: ${serverName}. User roles: ${message.member?.roles.cache.map(r => r.name).filter(n=>n!='@everyone').join(', ') || 'None'}.`;
+
+            // Recherche web si nécessaire
+            const searchTerms = ['latest', 'news', 'today', 'current', 'update', 'weather', 'score', 'recherche', 'trouve'];
+            if (searchTerms.some(term => userPrompt.toLowerCase().includes(term))) {
+                const searchResults = await webSearch(userPrompt);
+                if (searchResults) systemPrompt += `\n\n[WEB SEARCH RESULTS]\n${searchResults}\nUse these to provide accurate, up-to-date information. Cite sources.`;
             }
-            
-            // Handle architect signal
+
+            // Appel OpenRouter
+            let reply;
+            try {
+                reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory);
+            } catch (err) {
+                console.error(`${red}[LYDIA ERROR]${reset}`, err);
+                reply = "❌ AI service error. Please try again later.";
+            }
+
+            // Gestion des rapports Architecte
             if (reply && reply.includes('[SIGNAL_ARCHITECT]')) {
-                const urgentKeywords = ['report', 'bug', 'signal', 'problem', 'fix', 'notify', 'complaint'];
-                const userWantsToReport = urgentKeywords.some(kw => userPrompt.toLowerCase().includes(kw));
-                
-                if (userWantsToReport) {
-                    const cleanReport = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
-                    await sendArchitectReport(client, message.author, message.guild, cleanReport);
+                const reportKeywords = ['report', 'bug', 'erreur', 'fix', 'notify', 'complaint', 'issue'];
+                const shouldReport = reportKeywords.some(kw => userPrompt.toLowerCase().includes(kw));
+                if (shouldReport) {
+                    const clean = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
+                    await sendArchitectReport(client, message.author, message.guild, clean);
+                } else {
+                    console.log(`${yellow}[SIGNAL IGNORED]${reset} False positive from ${message.author.tag}`);
                 }
                 reply = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
             }
-            
-            // Store conversation
-            database.prepare(`INSERT INTO lydia_conversations VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
-                .run(message.channel.id, message.author.id, 'user', userPrompt);
-            database.prepare(`INSERT INTO lydia_conversations VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
-                .run(message.channel.id, message.author.id, 'assistant', reply);
-            
+
+            // Mémorisation
+            if (reply && !reply.includes("error")) {
+                parseAndStoreMemory(reply, message.author.id, database);
+                reply = reply.replace(/\[MEMORY:.*?\]/g, '').trim();
+            }
+
+            // Stockage de la conversation
+            try {
+                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`).run(message.channel.id, message.author.id, 'user', userPrompt);
+                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`).run(message.channel.id, message.author.id, 'assistant', reply);
+            } catch(e) {}
+
             client.lastLydiaCall[message.author.id] = Date.now();
-            
-            if (reply) await message.reply(reply);
-            
+
+            if (reply.length > 2000) {
+                for (const chunk of reply.match(/[\s\S]{1,1990}/g) || []) await message.reply(chunk);
+            } else {
+                await message.reply(reply);
+            }
         } catch (err) {
             console.error(`${red}[LYDIA ERROR]${reset}`, err);
-            await message.reply("❌ Error occurred.").catch(() => {});
+            message.reply("❌ An error occurred.").catch(()=>{});
         }
     });
 }
 
-// ---------- Commands ----------
+// ================= COMMANDE .lydia (ON/OFF/AGENT) =================
 module.exports = {
-    name: 'cancelremind',
-    aliases: ['cancelreminder', 'remindcancel', 'stopremind', 'myreminders'],
-    description: '❌ Cancel your active reminders or list them',
-    category: 'UTILITY',
-    cooldown: 3000,
-    
+    name: 'lydia',
+    aliases: ['ai', 'neural'],
+    description: '🎭 Multi-Agent AI with Neural Core Switching & Persistent Memory',
+    category: 'SYSTEM',
+    cooldown: 5000,
     run: async (client, message, args, database) => {
-        const subCommand = args[0]?.toLowerCase();
-        
-        if (subCommand === 'list' || subCommand === 'show') {
-            const reminders = getUserReminders(database, message.author.id);
-            
-            if (reminders.length === 0) {
-                const embed = new EmbedBuilder()
-                    .setColor('#ffaa44')
-                    .setTitle('📭 NO ACTIVE REMINDERS')
-                    .setDescription('You have no pending reminders. Set one by saying: "remind me in 30m to check something"')
-                    .setTimestamp();
-                return message.reply({ embeds: [embed] });
-            }
-            
-            const reminderList = reminders.map((r, i) => {
-                const timeLeft = Math.floor((r.execute_at - Date.now()) / 60000);
-                return `**${i + 1}.** ${r.message}\n   ⏱️ ${timeLeft} minutes left | ID: \`${r.id.slice(-8)}\``;
-            }).join('\n\n');
-            
+        if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
+        const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
+        const prefix = process.env.PREFIX || '.';
+        const sub = args[0]?.toLowerCase();
+
+        // Admin only
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return message.reply({ embeds: [new EmbedBuilder().setColor('#ff4444').setTitle('⛔ ACCESS DENIED').setDescription('Administrator clearance required.').setTimestamp()] });
+        }
+
+        // S'assurer que la table lydia_agents existe
+        try {
+            database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER)`).run();
+        } catch(e) { return message.reply("❌ Database error."); }
+
+        const channelId = message.channel.id;
+        if (!client.lydiaChannels) client.lydiaChannels = {};
+        if (!client.lydiaAgents) client.lydiaAgents = {};
+
+        const saveAgent = (ch, agent) => {
+            try {
+                database.prepare(`INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at) VALUES (?, ?, ?, strftime('%s', 'now'))`).run(ch, agent, client.lydiaChannels[ch] ? 1 : 0);
+            } catch(e) {}
+        };
+
+        // --- STATUS ---
+        if (!sub || (sub !== 'on' && sub !== 'off' && sub !== 'agent')) {
+            const isEnabled = client.lydiaChannels[channelId];
+            const currentAgent = client.lydiaAgents[channelId] || 'default';
+            const agentInfo = neuralCores[currentAgent] || neuralCores.default;
+            let memCount = 0, userMem = 0;
+            try {
+                memCount = database.prepare("SELECT COUNT(*) as c FROM lydia_memory").get()?.c || 0;
+                userMem = database.prepare("SELECT COUNT(*) as c FROM lydia_memory WHERE user_id = ?").get(message.author.id)?.c || 0;
+            } catch(e) {}
             const embed = new EmbedBuilder()
-                .setColor('#44aaff')
-                .setTitle('⏰ YOUR ACTIVE REMINDERS')
-                .setDescription(reminderList.substring(0, 2000))
-                .addFields(
-                    { name: '📊 Total', value: `${reminders.length} active`, inline: true },
-                    { name: '💡 Tip', value: 'Use `.cancelremind` to clear all, or `.cancelremind <id>` to cancel one', inline: true }
+                .setColor(isEnabled ? agentInfo.color : '#95a5a6')
+                .setAuthor({ name: `${agentInfo.emoji} ${botDisplayName.toUpperCase()} NEURAL INTERFACE`, iconURL: client.user.displayAvatarURL() })
+                .setDescription(
+                    `**System Status:** ${isEnabled ? '🟢 ACTIVE' : '🔴 STANDBY'}\n` +
+                    `**Active Core:** ${agentInfo.name}\n` +
+                    `**Identity:** ${botDisplayName}\n` +
+                    `**Memory:** ${userMem} facts about you | ${memCount} total\n\n` +
+                    `**Commands:**\n└ \`${prefix}lydia on\` - Activate AI\n└ \`${prefix}lydia off\` - Deactivate\n└ \`${prefix}lydia agent <core>\` - Switch core\n\n` +
+                    `**Available Cores:**\n└ \`architect\` ${neuralCores.architect.emoji} - Code & System\n└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming\n└ \`creative\` ${neuralCores.creative.emoji} - Creative\n└ \`default\` ${neuralCores.default.emoji} - Balanced`
                 )
+                .addFields(
+                    { name: '📡 API Status', value: `OpenRouter: ${process.env.OPENROUTER_API_KEY ? '✅' : '❌'} | Tavily: ${process.env.TAVILY_API_KEY ? '✅' : '❌'}`, inline: true },
+                    { name: '🔍 Neural Search', value: 'Tavily AI first • Token-efficient', inline: true },
+                    { name: '🧠 Memory', value: 'Cross-session recall', inline: true }
+                )
+                .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.3.2'} • Mention @${botDisplayName}` })
                 .setTimestamp();
-            
             return message.reply({ embeds: [embed] });
         }
-        
-        if (subCommand && subCommand.length >= 6) {
-            const reminder = database.prepare(`
-                SELECT id FROM reminders 
-                WHERE user_id = ? AND status = 'pending' AND id LIKE ?
-            `).get(message.author.id, `%${subCommand}%`);
-            
-            if (!reminder) {
-                return message.reply(`❌ No active reminder found with ID ending in \`${subCommand}\`. Use \`.cancelremind list\` to see your reminders.`);
+
+        // --- SWITCH AGENT ---
+        if (sub === 'agent') {
+            const agentType = args[1]?.toLowerCase();
+            if (!agentType || !neuralCores[agentType]) {
+                return message.reply(`⚠️ Invalid core. Available: ${Object.keys(neuralCores).map(c=>`\`${c}\``).join(', ')}`);
             }
-            
-            if (client.userTimeouts?.has(reminder.id)) {
-                clearTimeout(client.userTimeouts.get(reminder.id));
-                client.userTimeouts.delete(reminder.id);
+            client.lydiaAgents[channelId] = agentType;
+            saveAgent(channelId, agentType);
+            const info = neuralCores[agentType];
+            const embed = new EmbedBuilder()
+                .setColor(info.color)
+                .setTitle(`${info.emoji} NEURAL CORE SWITCHED`)
+                .setDescription(`**${info.name}** is now active in <#${channelId}>`)
+                .addFields({ name: '📝 Function', value: info.description }, { name: '💾 Persistence', value: 'Saved across restarts' })
+                .setFooter({ text: `v${client.version || '1.3.2'}` })
+                .setTimestamp();
+            return message.reply({ embeds: [embed] });
+        }
+
+        // --- ACTIVATE ---
+        if (sub === 'on') {
+            if (client.lydiaChannels[channelId]) return message.reply(`⚠️ **${botDisplayName} is already active** here.`);
+            if (!client.lydiaAgents[channelId]) {
+                try {
+                    const saved = database.prepare("SELECT agent_key FROM lydia_agents WHERE channel_id = ?").get(channelId);
+                    client.lydiaAgents[channelId] = (saved && neuralCores[saved.agent_key]) ? saved.agent_key : 'default';
+                } catch(e) { client.lydiaAgents[channelId] = 'default'; }
             }
-            
-            database.prepare(`UPDATE reminders SET status = 'cancelled' WHERE id = ?`).run(reminder.id);
-            
+            client.lydiaChannels[channelId] = true;
+            saveAgent(channelId, client.lydiaAgents[channelId]);
+            const info = neuralCores[client.lydiaAgents[channelId]] || neuralCores.default;
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle('✅ REMINDER CANCELLED')
-                .setDescription(`Successfully cancelled reminder \`${subCommand}\``)
-                .setTimestamp();
-            
-            return message.reply({ embeds: [embed] });
-        }
-        
-        const count = cancelUserReminders(database, message.author.id, client);
-        
-        if (count === 0) {
-            const embed = new EmbedBuilder()
-                .setColor('#ffaa44')
-                .setTitle('📭 NO ACTIVE REMINDERS')
-                .setDescription('You don\'t have any pending reminders.')
+                .setTitle('✅ NEURAL CORE INITIALIZED')
+                .setDescription(`**${botDisplayName} is now ONLINE** in <#${channelId}>`)
+                .addFields(
+                    { name: '🎯 Active Core', value: info.name, inline: true },
+                    { name: '🆔 Identity', value: botDisplayName, inline: true },
+                    { name: '🔍 Neural Search', value: 'Tavily AI enabled', inline: true },
+                    { name: '🎮 How to Use', value: `Mention **@${botDisplayName}**`, inline: false },
+                    { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
+                    { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
+                )
+                .setFooter({ text: `POWERED BY OPENROUTER + TAVILY • v${client.version || '1.3.2'}` })
                 .setTimestamp();
             return message.reply({ embeds: [embed] });
         }
-        
-        const embed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setTitle('✅ REMINDERS CANCELLED')
-            .setDescription(`Successfully cancelled **${count}** active reminder${count !== 1 ? 's' : ''}.`)
-            .addFields(
-                { name: '💡 Tip', value: 'Use `.cancelremind list` to see active reminders before cancelling', inline: false }
-            )
-            .setTimestamp();
-        
-        message.reply({ embeds: [embed] });
-    }
-};
 
-// Export setup function
-module.exports.setupLydia = setupLydia;
+        // --- DEACTIVATE ---
+        if (sub === 'off') {
+            if (!client.lydiaChannels[channelId]) return message.reply(`⚠️ **${botDisplayName} is not active** here.`);
+            delete client.lydiaChannels[channelId];
+            if (client.lydiaAgents[channelId]) {
+                try { database.prepare(`UPDATE lydia_agents SET is_active = 0, updated_at = strftime('%s', 'now') WHERE channel_id = ?`).run(channelId); } catch(e) {}
+            }
+            const embed = new EmbedBuilder()
+                .setColor('#e74c3c')
+                .setTitle('❌ NEURAL CORE TERMINATED')
+                .setDescription(`**${botDisplayName} has been deactivated** in <#${channelId}>.`)
+                .addFields({ name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` }, { name: '🧠 Memory Preserved', value: 'Agent preference saved' })
+                .setFooter({ text: `v${client.version || '1.3.2'}` })
+                .setTimestamp();
+            return message.reply({ embeds: [embed] });
+        }
+    },
+    setupLydia   // ⬅️ Export de la fonction pour l'initialisation
+};
