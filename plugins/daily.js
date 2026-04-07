@@ -27,6 +27,8 @@ const dailyTranslations = {
         profile: 'My Profile',
         remindMe: 'Remind Me',
         reminder: (hours) => `⏰ I'll remind you in ${hours} hours! Use \`.daily\` then to claim your next reward.`,
+        reminderActive: (h, m) => `⚠️ **Protocol already active!** Your reminder is already scheduled.\n⏳ Triggering in: \`${h}h ${m}m\`.`,
+        reminderError: '❌ Error setting reminder. Please try again later.',
         footer: 'Mali Node • Archon v{version} • Claim tomorrow for streak bonus!',
         error: '❌ An error occurred while processing your daily claim. Please try again later.',
         errorReport: '⚠️ **System Error**\nPlease contact the Architect with this error code:',
@@ -37,7 +39,8 @@ const dailyTranslations = {
         fortnightChampion: 'Fortnight Champion',
         monthlyLegend: 'Monthly Legend',
         centuryMaster: 'Century Master',
-        bonusAwarded: 'Bonus +{bonus} XP awarded for your dedication!'
+        bonusAwarded: 'Bonus +{bonus} XP awarded for your dedication!',
+        reminderMessage: 'your next daily reward is ready!'
     },
     fr: {
         cooldownTitle: '◈ VERROUILLAGE SYSTÈME ACTIF ◈',
@@ -64,6 +67,8 @@ const dailyTranslations = {
         profile: 'Mon Profil',
         remindMe: 'Rappeler',
         reminder: (hours) => `⏰ Je vous rappellerai dans ${hours} heures! Utilisez \`.daily\` pour réclamer votre prochaine récompense.`,
+        reminderActive: (h, m) => `⚠️ **Protocole déjà actif !** Votre rappel est déjà programmé.\n⏳ Déclenchement dans : \`${h}h ${m}m\`.`,
+        reminderError: '❌ Erreur lors de la configuration du rappel. Veuillez réessayer plus tard.',
         footer: 'Nœud Mali • Archon v{version} • Réclamez demain pour le bonus de série!',
         error: '❌ Une erreur est survenue lors du traitement de votre réclamation quotidienne. Veuillez réessayer plus tard.',
         errorReport: '⚠️ **Erreur Système**\nVeuillez contacter l\'Architecte avec ce code d\'erreur:',
@@ -74,7 +79,8 @@ const dailyTranslations = {
         fortnightChampion: 'Champion de Quinze Jours',
         monthlyLegend: 'Légende Mensuelle',
         centuryMaster: 'Maître du Centenaire',
-        bonusAwarded: 'Bonus +{bonus} XP attribué pour votre dévouement!'
+        bonusAwarded: 'Bonus +{bonus} XP attribué pour votre dévouement!',
+        reminderMessage: 'votre prochaine récompense quotidienne est prête !'
     }
 };
 
@@ -127,6 +133,23 @@ module.exports = {
                     } catch (e) {
                         // Column already exists, ignore
                     }
+                }
+                
+                // Ensure reminders table exists
+                try {
+                    database.prepare(`
+                        CREATE TABLE IF NOT EXISTS reminders (
+                            id TEXT PRIMARY KEY,
+                            user_id TEXT NOT NULL,
+                            channel_id TEXT NOT NULL,
+                            message TEXT NOT NULL,
+                            execute_at INTEGER NOT NULL,
+                            status TEXT DEFAULT 'pending',
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `).run();
+                } catch (e) {
+                    console.log(`[DAILY] Reminders table check: ${e.message}`);
                 }
             } catch (err) {
                 console.log(`[DAILY] Column check error: ${err.message}`);
@@ -338,6 +361,7 @@ module.exports = {
                             await interaction.reply({ content: t.leaderboardNotFound, ephemeral: true });
                         }
                         break;
+                        
                     case 'view_profile':
                         const rankCommand = client.commands.get('rank') || client.commands.get('profile');
                         if (rankCommand) {
@@ -347,10 +371,55 @@ module.exports = {
                             await interaction.reply({ content: t.profileNotFound, ephemeral: true });
                         }
                         break;
+                        
                     case 'remind_me':
+                        // 🔍 Check if a reminder already exists for this user
+                        const existingReminder = database.prepare(`
+                            SELECT execute_at FROM reminders 
+                            WHERE user_id = ? AND status = 'pending' AND message LIKE '%next reward%'
+                        `).get(userId);
+
+                        if (existingReminder) {
+                            const timeLeft = (existingReminder.execute_at * 1000) - Date.now();
+                            const h = Math.floor(timeLeft / 3600000);
+                            const m = Math.floor((timeLeft % 3600000) / 60000);
+                            
+                            return interaction.reply({ 
+                                content: t.reminderActive(h, m), 
+                                ephemeral: true 
+                            });
+                        }
+
+                        // ⏰ Create the new reminder if none exists
                         const nextClaimTime = new Date(now + oneDay);
-                        const timeUntil = Math.floor((nextClaimTime - now) / 1000 / 60 / 60);
-                        await interaction.reply({ content: t.reminder(timeUntil), ephemeral: true });
+                        const timeUntilHours = Math.floor((nextClaimTime - now) / 1000 / 60 / 60);
+                        
+                        // Use your global reminder parser logic or manual insert
+                        const executeAt = Math.floor(nextClaimTime.getTime() / 1000);
+                        const reminderId = `daily_${userId}_${executeAt}`;
+                        const reminderMsg = lang === 'fr' 
+                            ? `**Agent ${userName}**, ${t.reminderMessage}` 
+                            : `**Agent ${userName}**, ${t.reminderMessage}`;
+
+                        try {
+                            database.prepare(`
+                                INSERT INTO reminders (id, user_id, channel_id, message, execute_at, status) 
+                                VALUES (?, ?, ?, ?, ?, 'pending')
+                            `).run(reminderId, userId, interaction.channelId, reminderMsg, executeAt);
+
+                            await interaction.reply({ 
+                                content: t.reminder(timeUntilHours), 
+                                ephemeral: true 
+                            });
+                            
+                            console.log(`[DAILY] Reminder set for ${message.author.tag} at ${nextClaimTime.toISOString()}`);
+                        } catch (e) {
+                            console.error(`[DAILY] Reminder creation error: ${e.message}`);
+                            await interaction.reply({ 
+                                content: t.reminderError, 
+                                ephemeral: true 
+                            });
+                        }
                         break;
                 }
             });
