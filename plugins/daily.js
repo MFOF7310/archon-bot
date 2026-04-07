@@ -26,6 +26,7 @@ const dailyTranslations = {
         leaderboard: 'Leaderboard',
         profile: 'My Profile',
         remindMe: 'Remind Me',
+        reminderSet: 'Reminder Set',
         reminder: (hours) => `⏰ I'll remind you in ${hours} hours! Use \`.daily\` then to claim your next reward.`,
         reminderActive: (h, m) => `⚠️ **Protocol already active!** Your reminder is already scheduled.\n⏳ Triggering in: \`${h}h ${m}m\`.`,
         reminderError: '❌ Error setting reminder. Please try again later.',
@@ -66,6 +67,7 @@ const dailyTranslations = {
         leaderboard: 'Classement',
         profile: 'Mon Profil',
         remindMe: 'Rappeler',
+        reminderSet: 'Rappel Actif',
         reminder: (hours) => `⏰ Je vous rappellerai dans ${hours} heures! Utilisez \`.daily\` pour réclamer votre prochaine récompense.`,
         reminderActive: (h, m) => `⚠️ **Protocole déjà actif !** Votre rappel est déjà programmé.\n⏳ Déclenchement dans : \`${h}h ${m}m\`.`,
         reminderError: '❌ Erreur lors de la configuration du rappel. Veuillez réessayer plus tard.',
@@ -217,6 +219,12 @@ module.exports = {
                     const timeString = `${hours}h ${minutes}m ${seconds}s`;
                     const nextReset = new Date(lastClaim + oneDay);
                     
+                    // 🔍 Check for existing reminder for cooldown embed too
+                    const activeReminderCooldown = database.prepare(`
+                        SELECT id FROM reminders 
+                        WHERE user_id = ? AND status = 'pending' AND message LIKE '%next reward%'
+                    `).get(userId);
+                    
                     const cooldownEmbed = new EmbedBuilder()
                         .setColor('#ff4444')
                         .setAuthor({ name: t.cooldownAuthor, iconURL: avatarURL })
@@ -231,7 +239,100 @@ module.exports = {
                         .setFooter({ text: 'ARCHITECT CG-223 • Neural Lockdown Protocol • v' + version })
                         .setTimestamp();
                     
-                    return message.reply({ embeds: [cooldownEmbed] });
+                    // Build dynamic row for cooldown
+                    const cooldownRow = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder().setCustomId('view_leaderboard').setLabel(t.leaderboard).setStyle(ButtonStyle.Primary).setEmoji('🏆'),
+                            new ButtonBuilder().setCustomId('view_profile').setLabel(t.profile).setStyle(ButtonStyle.Secondary).setEmoji('👤')
+                        );
+                    
+                    // Add reminder button only if none exists
+                    if (!activeReminderCooldown) {
+                        cooldownRow.addComponents(
+                            new ButtonBuilder().setCustomId('remind_me').setLabel(t.remindMe).setStyle(ButtonStyle.Success).setEmoji('⏰')
+                        );
+                    } else {
+                        cooldownRow.addComponents(
+                            new ButtonBuilder().setCustomId('reminder_active').setLabel(t.reminderSet).setStyle(ButtonStyle.Secondary).setEmoji('✅').setDisabled(true)
+                        );
+                    }
+                    
+                    const cooldownReply = await message.reply({ embeds: [cooldownEmbed], components: [cooldownRow] });
+                    
+                    // Add collector for cooldown buttons
+                    const cooldownCollector = cooldownReply.createMessageComponentCollector({ time: 60000 });
+                    
+                    cooldownCollector.on('collect', async (interaction) => {
+                        if (interaction.user.id !== message.author.id) {
+                            return interaction.reply({ content: t.accessDenied, ephemeral: true });
+                        }
+                        
+                        if (interaction.customId === 'view_leaderboard') {
+                            const lbCommand = client.commands.get('lb') || client.commands.get('leaderboard');
+                            if (lbCommand) {
+                                await lbCommand.run(client, message, [], database);
+                                await interaction.reply({ content: `🏆 ${lang === 'fr' ? 'Classement affiché ci-dessus!' : 'Leaderboard displayed above!'}`, ephemeral: true });
+                            } else {
+                                await interaction.reply({ content: t.leaderboardNotFound, ephemeral: true });
+                            }
+                        } else if (interaction.customId === 'view_profile') {
+                            const rankCommand = client.commands.get('rank') || client.commands.get('profile');
+                            if (rankCommand) {
+                                await rankCommand.run(client, message, [], database);
+                                await interaction.reply({ content: `👤 ${lang === 'fr' ? 'Profil affiché ci-dessus!' : 'Profile displayed above!'}`, ephemeral: true });
+                            } else {
+                                await interaction.reply({ content: t.profileNotFound, ephemeral: true });
+                            }
+                        } else if (interaction.customId === 'remind_me') {
+                            // 🔍 Double-check for existing reminder
+                            const existingReminder = database.prepare(`
+                                SELECT execute_at FROM reminders 
+                                WHERE user_id = ? AND status = 'pending' AND message LIKE '%next reward%'
+                            `).get(userId);
+
+                            if (existingReminder) {
+                                const timeLeft = (existingReminder.execute_at * 1000) - Date.now();
+                                const h = Math.floor(timeLeft / 3600000);
+                                const m = Math.floor((timeLeft % 3600000) / 60000);
+                                
+                                return interaction.reply({ 
+                                    content: t.reminderActive(h, m), 
+                                    ephemeral: true 
+                                });
+                            }
+
+                            // Create the new reminder
+                            const nextClaimTime = new Date(lastClaim + oneDay);
+                            const timeUntilHours = Math.floor((nextClaimTime - now) / 1000 / 60 / 60);
+                            const executeAt = Math.floor(nextClaimTime.getTime() / 1000);
+                            const reminderId = `daily_${userId}_${executeAt}`;
+                            const reminderMsg = lang === 'fr' 
+                                ? `**Agent ${userName}**, ${t.reminderMessage}` 
+                                : `**Agent ${userName}**, ${t.reminderMessage}`;
+
+                            try {
+                                database.prepare(`
+                                    INSERT INTO reminders (id, user_id, channel_id, message, execute_at, status) 
+                                    VALUES (?, ?, ?, ?, ?, 'pending')
+                                `).run(reminderId, userId, interaction.channelId, reminderMsg, executeAt);
+
+                                await interaction.reply({ 
+                                    content: t.reminder(timeUntilHours), 
+                                    ephemeral: true 
+                                });
+                                
+                                console.log(`[DAILY] Reminder set for ${message.author.tag} at ${nextClaimTime.toISOString()}`);
+                            } catch (e) {
+                                console.error(`[DAILY] Reminder creation error: ${e.message}`);
+                                await interaction.reply({ 
+                                    content: t.reminderError, 
+                                    ephemeral: true 
+                                });
+                            }
+                        }
+                    });
+                    
+                    return;
                 }
             }
             
@@ -335,13 +436,32 @@ module.exports = {
                 .setFooter({ text: t.footer.replace('{version}', version), iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();
             
-            const row = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder().setCustomId('view_leaderboard').setLabel(t.leaderboard).setStyle(ButtonStyle.Primary).setEmoji('🏆'),
-                    new ButtonBuilder().setCustomId('view_profile').setLabel(t.profile).setStyle(ButtonStyle.Secondary).setEmoji('👤'),
+            // 🔍 DYNAMIC UI: Check for existing reminder BEFORE creating the buttons
+            const activeReminder = database.prepare(`
+                SELECT id FROM reminders 
+                WHERE user_id = ? AND status = 'pending' AND message LIKE '%next reward%'
+            `).get(userId);
+
+            const row = new ActionRowBuilder();
+            
+            // Primary buttons (always show)
+            row.addComponents(
+                new ButtonBuilder().setCustomId('view_leaderboard').setLabel(t.leaderboard).setStyle(ButtonStyle.Primary).setEmoji('🏆'),
+                new ButtonBuilder().setCustomId('view_profile').setLabel(t.profile).setStyle(ButtonStyle.Secondary).setEmoji('👤')
+            );
+
+            // ⚡ DYNAMIC BUTTON: Only add 'Remind Me' if no reminder is active
+            if (!activeReminder) {
+                row.addComponents(
                     new ButtonBuilder().setCustomId('remind_me').setLabel(t.remindMe).setStyle(ButtonStyle.Success).setEmoji('⏰')
                 );
-            
+            } else {
+                // Show disabled "Reminder Set" button instead of removing it entirely
+                row.addComponents(
+                    new ButtonBuilder().setCustomId('reminder_active').setLabel(t.reminderSet).setStyle(ButtonStyle.Secondary).setEmoji('✅').setDisabled(true)
+                );
+            }
+
             const reply = await message.reply({ embeds: [successEmbed], components: [row] });
             
             const buttonCollector = reply.createMessageComponentCollector({ time: 60000 });
@@ -373,7 +493,7 @@ module.exports = {
                         break;
                         
                     case 'remind_me':
-                        // 🔍 Check if a reminder already exists for this user
+                        // 🔍 Double-check for existing reminder (belt and suspenders!)
                         const existingReminder = database.prepare(`
                             SELECT execute_at FROM reminders 
                             WHERE user_id = ? AND status = 'pending' AND message LIKE '%next reward%'
