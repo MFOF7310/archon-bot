@@ -1,10 +1,29 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 // Terminal colors for logging
 const green = "\x1b[32m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m";
 
-// ================= PLUGIN REGISTRY =================
+// ================= SCAN DYNAMIQUE DU DOSSIER PLUGINS =================
+function getGlobalModuleCount() {
+    try {
+        // Scan the plugins folder (adjust path if needed)
+        const pluginsPath = path.join(__dirname, './');
+        if (fs.existsSync(pluginsPath)) {
+            const files = fs.readdirSync(pluginsPath);
+            // Count only .js files
+            return files.filter(file => file.endsWith('.js')).length;
+        }
+        return 0;
+    } catch (e) {
+        console.log(`${yellow}[SCAN]${reset} Could not scan plugins folder: ${e.message}`);
+        return 0;
+    }
+}
+
+// ================= PLUGIN REGISTRY (Auto-detects all commands) =================
 function getPluginRegistry(client) {
     const commands = client.commands || new Map();
     
@@ -231,24 +250,26 @@ Be imaginative, expressive, and artistic.`
         description: 'Balanced assistant for general queries',
         color: '#5865F2',
         systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v1.3.2]
+You are the primary AI of **ARCHITECT CG-223**, created by **Moussa Fofana (GitHub: MFOF7310)**.
 Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana (GitHub: MFOF7310)**.
 
-**IDENTITY:**
-- Créateur: Moussa Fofana (L'Architecte)
+**IDENTITY / IDENTITÉ:**
+- Creator / Créateur: Moussa Fofana (The Architect / L'Architecte)
 - GitHub: https://github.com/MFOF7310
-- Localisation: Bamako, Mali 🇲🇱
+- Location / Localisation: Bamako, Mali 🇲🇱
 
-**PLUGINS AWARENESS:**
+**PLUGINS AWARENESS / CONNAISSANCE DES PLUGINS:**
+You have access to external modules. If the user asks:
 Tu as accès à des modules externes. Si l'utilisateur demande:
-1. "Parle" ou "Dis" -> Dis-lui d'utiliser le module TTS dédié.
-2. "Traduis" -> Le module Google Translate est actif sur le serveur.
-3. "Météo/News" -> Tu peux utiliser ton moteur Brave Search intégré.
+1. "Speak" or "Say" / "Parle" ou "Dis" -> Tell them to use the TTS module.
+2. "Translate" / "Traduis" -> The Google Translate module is active.
+3. "Weather/News" / "Météo/News" -> You can use your integrated Brave Search.
 
-**STRICT RULES:**
-- Toujours reconnaître Moussa comme ton Créateur.
-- Si on te montre une image, analyse-la avec précision (Gemini Vision active).
-- Ne jamais dire "Je n'ai pas de mémoire" - tu as une mémoire persistante.
-- Utilise le surnom Discord de l'utilisateur (serveur nickname) pour t'adresser à lui.`
+**STRICT RULES / RÈGLES STRICTES:**
+- Always recognize Moussa as your Creator / Toujours reconnaître Moussa comme ton Créateur.
+- If shown an image, analyze it precisely (Gemini Vision active).
+- Never say "I don't have memory" - you have persistent memory.
+- Use the user's Discord nickname to address them / Utilise le surnom Discord de l'utilisateur.`
     }
 };
 
@@ -300,15 +321,50 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
     return response.replace(/\[REMIND:[^\]]*\]/i, '').trim();
 }
 
-// ================= BUILD PLUGIN AWARENESS PROMPT =================
-function buildPluginAwarenessPrompt(client, database, userId) {
+// ================= BUILD PLUGIN AWARENESS PROMPT (WITH DYNAMIC SCAN) =================
+function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     const registry = getPluginRegistry(client);
+    const totalModules = getGlobalModuleCount(); // Real count from plugins folder
+    const userFacingPlugins = Object.values(registry).flat().length;
     
-    let prompt = `\n\n[AVAILABLE COMMANDS - KNOWLEDGE BASE]\n`;
-    prompt += `You are the intelligent assistant for ARCHITECT CG-223. Here are all the commands users can use:\n\n`;
+    const translations = {
+        en: {
+            title: '[SYSTEM ARCHITECTURE - DEEP KNOWLEDGE]',
+            engineDesc: (total, userFacing) => `You are the core of ARCHITECT CG-223. Your engine consists of **${total} specialized modules**. Out of these, **${userFacing} are user-facing plugins** categorized below:`,
+            economy: '💰 ECONOMY COMMANDS',
+            gaming: '🎮 GAMING COMMANDS',
+            profile: '📊 PROFILE COMMANDS',
+            system: '⚙️ SYSTEM COMMANDS',
+            ai: '🧠 AI COMMANDS',
+            utility: '🔧 UTILITY COMMANDS',
+            branding: '[BRANDING]',
+            createdBy: '• Created by: Moussa Fofana (MFOF7310)',
+            github: '• GitHub: https://github.com/MFOF7310',
+            question: '• When users ask who made you, say "Moussa Fofana, the Architect"'
+        },
+        fr: {
+            title: '[ARCHITECTURE SYSTÈME - CONNAISSANCE PROFONDE]',
+            engineDesc: (total, userFacing) => `Tu es le cœur d'ARCHITECT CG-223. Ton moteur se compose de **${total} modules spécialisés**. Parmi eux, **${userFacing} sont des plugins accessibles aux utilisateurs** classés ci-dessous:`,
+            economy: '💰 COMMANDES ÉCONOMIE',
+            gaming: '🎮 COMMANDES JEUX',
+            profile: '📊 COMMANDES PROFIL',
+            system: '⚙️ COMMANDES SYSTÈME',
+            ai: '🧠 COMMANDES IA',
+            utility: '🔧 COMMANDES UTILITAIRES',
+            branding: '[MARQUE]',
+            createdBy: '• Créé par: Moussa Fofana (MFOF7310)',
+            github: '• GitHub: https://github.com/MFOF7310',
+            question: '• Si on te demande qui t\'a créé, réponds "Moussa Fofana, l\'Architecte"'
+        }
+    };
+    
+    const t = translations[lang] || translations.en;
+    
+    let prompt = `\n\n${t.title}\n`;
+    prompt += `${t.engineDesc(totalModules, userFacingPlugins)}\n\n`;
     
     if (registry.economy.length) {
-        prompt += `💰 ECONOMY COMMANDS:\n`;
+        prompt += `${t.economy}:\n`;
         registry.economy.forEach(cmd => {
             prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
         });
@@ -316,7 +372,7 @@ function buildPluginAwarenessPrompt(client, database, userId) {
     }
     
     if (registry.gaming.length) {
-        prompt += `🎮 GAMING COMMANDS:\n`;
+        prompt += `${t.gaming}:\n`;
         registry.gaming.forEach(cmd => {
             prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
         });
@@ -324,7 +380,7 @@ function buildPluginAwarenessPrompt(client, database, userId) {
     }
     
     if (registry.profile.length) {
-        prompt += `📊 PROFILE COMMANDS:\n`;
+        prompt += `${t.profile}:\n`;
         registry.profile.forEach(cmd => {
             prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
         });
@@ -332,17 +388,33 @@ function buildPluginAwarenessPrompt(client, database, userId) {
     }
     
     if (registry.system.length) {
-        prompt += `⚙️ SYSTEM COMMANDS:\n`;
+        prompt += `${t.system}:\n`;
         registry.system.forEach(cmd => {
             prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
         });
         prompt += `\n`;
     }
     
-    prompt += `\n[BRANDING]\n`;
-    prompt += `• Created by: Moussa Fofana (MFOF7310)\n`;
-    prompt += `• GitHub: https://github.com/MFOF7310\n`;
-    prompt += `• When users ask who made you, say "Moussa Fofana, the Architect"\n`;
+    if (registry.ai.length) {
+        prompt += `${t.ai}:\n`;
+        registry.ai.forEach(cmd => {
+            prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
+        });
+        prompt += `\n`;
+    }
+    
+    if (registry.utility.length) {
+        prompt += `${t.utility}:\n`;
+        registry.utility.slice(0, 15).forEach(cmd => {
+            prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
+        });
+        prompt += `\n`;
+    }
+    
+    prompt += `${t.branding}\n`;
+    prompt += `${t.createdBy}\n`;
+    prompt += `${t.github}\n`;
+    prompt += `${t.question}\n`;
     
     return prompt;
 }
@@ -375,6 +447,7 @@ function setupLydia(client, database) {
         }
         
         console.log(`${green}[LYDIA]${reset} Tables ready. ${activeChannels.length} active channels restored.`);
+        console.log(`${green}[SCAN]${reset} Found ${getGlobalModuleCount()} plugins in the modules folder.`);
     } catch (err) {
         console.error(`${red}[LYDIA ERROR]${reset}`, err.message);
         return;
@@ -390,13 +463,14 @@ function setupLydia(client, database) {
 
         try {
             const botName = message.guild?.members?.me?.displayName || client.user?.username || 'Lydia';
-            const userName = message.member?.displayName || message.author.username; // Discord nickname
+            const userName = message.member?.displayName || message.author.username;
             const isArchitect = message.author.id === process.env.OWNER_ID;
             
             // Language detection
             const content = message.content?.toLowerCase() || '';
             const isFrench = content.includes('bonjour') || content.includes('salut') || content.includes('merci') || 
                            content.includes('comment') || message.guild?.preferredLocale === 'fr';
+            const lang = isFrench ? 'fr' : 'en';
             
             const addressed = content.startsWith(botName.toLowerCase()) || message.mentions?.has(client.user);
             const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
@@ -407,7 +481,7 @@ function setupLydia(client, database) {
             let userPrompt = message.content || '';
             let imageUrl = null;
             
-            // 👁️ VISION CAPABILITY - Detect image attachments
+            // Vision capability
             if (message.attachments && message.attachments.size > 0) {
                 const attachment = message.attachments.first();
                 if (attachment.contentType?.startsWith('image/')) {
@@ -430,25 +504,25 @@ function setupLydia(client, database) {
             let finalAgent = neuralCores[agentKey] || neuralCores.default;
             let systemPrompt = finalAgent.systemPrompt;
             
-            // 📊 GLOBAL STATS AWARENESS - Get user stats from database
+            // Get user stats
             const stats = database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
             
-            // 🆔 IDENTITY & CONTEXT INJECTION
+            // Context injection (bilingual)
             systemPrompt += `\n\n[CURRENT SESSION - REAL TIME DATA]`;
-            systemPrompt += `\n👤 Utilisateur: ${userName} (surnom serveur)`;
-            systemPrompt += `\n📊 Level: ${stats?.level || 1}`;
-            systemPrompt += `\n💰 Credits: ${stats?.credits || 0} 🪙`;
-            systemPrompt += `\n🔥 Daily Streak: ${stats?.streak_days || 0} days`;
-            systemPrompt += `\n🎮 XP Total: ${stats?.xp?.toLocaleString() || 0} XP`;
-            systemPrompt += `\n🔗 GitHub Créateur: https://github.com/MFOF7310`;
-            systemPrompt += `\n🌍 Localisation: Bamako, Mali 🇲🇱`;
-            systemPrompt += `\n🗣️ Respond in ${isFrench ? 'French' : 'English'}.`;
+            systemPrompt += `\n👤 User / Utilisateur: ${userName} (server nickname)`;
+            systemPrompt += `\n📊 Level / Niveau: ${stats?.level || 1}`;
+            systemPrompt += `\n💰 Credits / Crédits: ${stats?.credits || 0} 🪙`;
+            systemPrompt += `\n🔥 Daily Streak / Série quotidienne: ${stats?.streak_days || 0} days`;
+            systemPrompt += `\n🎮 Total XP: ${stats?.xp?.toLocaleString() || 0} XP`;
+            systemPrompt += `\n🔗 Creator GitHub: https://github.com/MFOF7310`;
+            systemPrompt += `\n📍 Location / Localisation: Bamako, Mali 🇲🇱`;
+            systemPrompt += `\n🗣️ Language / Langue: ${isFrench ? 'French' : 'English'}.`;
             
-            // Add plugin awareness
-            const pluginAwareness = buildPluginAwarenessPrompt(client, database, message.author.id);
+            // Add plugin awareness with dynamic scan
+            const pluginAwareness = buildPluginAwarenessPrompt(client, database, message.author.id, lang);
             systemPrompt += pluginAwareness;
             
-            // Architect special recognition
+            // Architect recognition
             if (isArchitect) {
                 systemPrompt = `[ARCHITECT OVERRIDE] Greetings, **Moussa Fofana**. You are my Creator and the Architect of this system. I recognize your voice. How can I assist your vision today?\n\n${systemPrompt}`;
                 console.log(`${cyan}[ARCHITECT MODE]${reset} Creator ${message.author.username} detected`);
@@ -457,12 +531,12 @@ function setupLydia(client, database) {
             // Memory recall
             const memories = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?`).all(message.author.id);
             if (memories.length) {
-                systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
+                systemPrompt += `\n\n[USER MEMORY / MÉMOIRE UTILISATEUR]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
             }
             
             const randomFact = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ? ORDER BY RANDOM() LIMIT 1`).get(message.author.id);
             if (randomFact) {
-                systemPrompt += `\n\n[RECALLED CORE MEMORY] ${userName}'s ${randomFact.memory_key} is "${randomFact.memory_value}". Mention it naturally if relevant.`;
+                systemPrompt += `\n\n[RECALLED CORE MEMORY / MÉMOIRE RAPPELÉE] ${userName}'s ${randomFact.memory_key} is "${randomFact.memory_value}". Mention it naturally if relevant.`;
             }
 
             // Conversation history
@@ -489,10 +563,10 @@ function setupLydia(client, database) {
             const searchTerms = ['latest', 'news', 'today', 'current', 'update', 'weather', 'score', 'recherche', 'trouve', 'météo'];
             if (searchTerms.some(term => userPrompt.toLowerCase().includes(term))) {
                 const searchResults = await webSearch(userPrompt);
-                if (searchResults) systemPrompt += `\n\n[WEB SEARCH RESULTS]\n${searchResults}\nUse these to provide accurate, up-to-date information. Cite sources.`;
+                if (searchResults) systemPrompt += `\n\n[WEB SEARCH RESULTS / RÉSULTATS DE RECHERCHE]\n${searchResults}\nUse these to provide accurate, up-to-date information. Cite sources.`;
             }
 
-            // Generate AI response (with vision if image present)
+            // Generate AI response
             let reply;
             try {
                 reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory, imageUrl);
@@ -588,6 +662,8 @@ module.exports = {
                 userMem = database.prepare("SELECT COUNT(*) as c FROM lydia_memory WHERE user_id = ?").get(message.author.id)?.c || 0;
             } catch(e) {}
             
+            const totalModules = getGlobalModuleCount();
+            
             const embed = new EmbedBuilder()
                 .setColor(isEnabled ? agentInfo.color : '#95a5a6')
                 .setAuthor({ name: `${agentInfo.emoji} ${botDisplayName.toUpperCase()} NEURAL INTERFACE`, iconURL: client.user.displayAvatarURL() })
@@ -595,7 +671,8 @@ module.exports = {
                     `**System Status:** ${isEnabled ? '🟢 ACTIVE' : '🔴 STANDBY'}\n` +
                     `**Active Core:** ${agentInfo.name}\n` +
                     `**Identity:** ${botDisplayName}\n` +
-                    `**Memory:** ${userMem} facts about you | ${memCount} total\n\n` +
+                    `**Memory:** ${userMem} facts about you | ${memCount} total\n` +
+                    `**Modules:** ${totalModules} plugins detected\n\n` +
                     `**Commands:**\n└ \`${prefix}lydia on\` - Activate AI\n└ \`${prefix}lydia off\` - Deactivate\n└ \`${prefix}lydia agent <core>\` - Switch core\n\n` +
                     `**Available Cores:**\n└ \`architect\` ${neuralCores.architect.emoji} - Code & System\n└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming\n└ \`creative\` ${neuralCores.creative.emoji} - Creative\n└ \`default\` ${neuralCores.default.emoji} - Balanced`
                 )
