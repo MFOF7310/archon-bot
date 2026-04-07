@@ -422,9 +422,16 @@ client.once(Events.ClientReady, async () => {
     
     loadAgentPreferences();
     
-    console.log(`${green}🛰️  CLIENT   : ${client.user.tag}${reset}`);
-    console.log(`${green}📍 NODE     : BAMAKO_223${reset}`);
-    console.log(`${green}📦 VERSION  : v${client.version}${reset}\n`);
+    // ========== ARCHITECT CG-223 BOOT HEADER ==========
+    console.log(`\n${blue}${bold}╔══════════════════════════════════════════════════════════════╗${reset}`);
+    console.log(`${blue}${bold}║${reset}     ${cyan}🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE${reset}          ${blue}${bold}║${reset}`);
+    console.log(`${blue}${bold}╠══════════════════════════════════════════════════════════════╣${reset}`);
+    console.log(`${blue}${bold}║${reset}  ${green}🤖 CLIENT    :${reset} ${client.user.tag}                                      ${blue}${bold}║${reset}`);
+    console.log(`${blue}${bold}║${reset}  ${green}📍 NODE      :${reset} BAMAKO_223 🇲🇱                                    ${blue}${bold}║${reset}`);
+    console.log(`${blue}${bold}║${reset}  ${green}📦 VERSION   :${reset} v${client.version}                                             ${blue}${bold}║${reset}`);
+    console.log(`${blue}${bold}║${reset}  ${green}🔗 REPOSITORY :${reset} https://github.com/MFOF7310                          ${blue}${bold}║${reset}`);
+    console.log(`${blue}${bold}║${reset}  ${green}🏗️  ARCHITECT  :${reset} MOUSSA FOFANA                                      ${blue}${bold}║${reset}`);
+    console.log(`${blue}${bold}╚══════════════════════════════════════════════════════════════╝${reset}\n`);
 
     // Clear old timeouts on restart (prevents memory leaks)
     if (client.userTimeouts) {
@@ -441,6 +448,10 @@ client.once(Events.ClientReady, async () => {
             .setColor('#2ecc71')
             .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
             .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\nVersion: **${client.version}**\nNode: **BAMAKO_223** 🎮`)
+            .addFields(
+                { name: '🔗 Repository', value: 'https://github.com/MFOF7310', inline: true },
+                { name: '🏗️ Architect', value: 'Moussa Fofana', inline: true }
+            )
             .setTimestamp();
         await owner.send({ embeds: [alertEmbed] });
     } catch (err) { 
@@ -579,7 +590,8 @@ client.on(Events.GuildMemberAdd, async (member) => {
                 `🚀 **Initialization Protocol:**\n` +
                 `• 📜 Review Rules: <#${RULES_CHANNEL_ID}>\n` +
                 `• 💬 Main Discussion: <#${GENERAL_CHANNEL_ID}>\n\n` +
-                `🤖 Mention **@Lydia** for AI assistance.`
+                `🤖 Mention **@Lydia** for AI assistance.\n` +
+                `🔗 **Developer:** Moussa Fofana (https://github.com/MFOF7310)`
             )
             .setFooter({ text: `ARCHITECT CG-223 | Intelligent System` })
             .setTimestamp();
@@ -597,7 +609,9 @@ client.on(Events.GuildMemberAdd, async (member) => {
                 `Welcome to the inner circle. To get started, please check the following sectors:\n\n` +
                 `📂 **Directives:** <#${RULES_CHANNEL_ID}>\n` +
                 `💬 **Hub:** <#${GENERAL_CHANNEL_ID}>\n\n` +
-                `*I am ARCHITECT CG-223. Type \`${PREFIX}help\` in the server for my command list.*`
+                `*I am ARCHITECT CG-223. Type \`${PREFIX}help\` in the server for my command list.*\n\n` +
+                `🔗 **Created by:** Moussa Fofana\n` +
+                `📦 **Repository:** https://github.com/MFOF7310`
             )
             .setFooter({ text: 'Automated Welcome Protocol' })
             .setTimestamp();
@@ -613,7 +627,8 @@ client.on(Events.GuildMemberAdd, async (member) => {
             .setTitle('📥 MEMBER JOINED')
             .addFields(
                 { name: 'User', value: `<@${member.id}> (\`${member.id}\`)`, inline: false },
-                { name: 'Account Age', value: `\`${accountAge}\``, inline: true }
+                { name: 'Account Age', value: `\`${accountAge}\``, inline: true },
+                { name: 'Repository', value: 'https://github.com/MFOF7310', inline: true }
             )
             .setTimestamp();
         logChannel.send({ embeds: [joinLog] });
@@ -624,7 +639,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
 process.on('SIGINT', () => {
     console.log(`${yellow}[SHUTDOWN]${reset} Cleaning up...`);
     
-    // Clear all pending timeouts
     if (client.userTimeouts) {
         for (const [id, timeout] of client.userTimeouts) {
             clearTimeout(timeout);
