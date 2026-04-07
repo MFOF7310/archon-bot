@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
 
 // IMPORT LYDIA SETUP FUNCTION
 const { setupLydia } = require('./plugins/lydia.js');
@@ -473,9 +473,10 @@ client.once(Events.ClientReady, async () => {
     }
 });
 
-// ================= MESSAGE PROCESSING =================
+// ================= MESSAGE PROCESSING (WITH ANTI-LOOP SAFETY) =================
 client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot || !message.guild) return;
+    // IGNORE LES BOTS ET LES WEBHOOKS (Empêche Lydia de se répondre à elle-même)
+    if (!message || message.author?.bot || message.webhookId) return;
 
     const userId = message.author.id;
     let userData = getUser(userId);
