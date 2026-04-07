@@ -9,11 +9,9 @@ const green = "\x1b[32m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31
 // ================= SCAN DYNAMIQUE DU DOSSIER PLUGINS =================
 function getGlobalModuleCount() {
     try {
-        // Scan the plugins folder (adjust path if needed)
         const pluginsPath = path.join(__dirname, './');
         if (fs.existsSync(pluginsPath)) {
             const files = fs.readdirSync(pluginsPath);
-            // Count only .js files
             return files.filter(file => file.endsWith('.js')).length;
         }
         return 0;
@@ -23,7 +21,7 @@ function getGlobalModuleCount() {
     }
 }
 
-// ================= PLUGIN REGISTRY (Auto-detects all commands) =================
+// ================= PLUGIN REGISTRY =================
 function getPluginRegistry(client) {
     const commands = client.commands || new Map();
     
@@ -58,7 +56,7 @@ function getPluginRegistry(client) {
     return registry;
 }
 
-// ================= OPENROUTER AI ENGINE (WITH VISION) =================
+// ================= OPENROUTER AI ENGINE =================
 async function generateAIResponse(systemPrompt, userMessage, conversationHistory = [], imageUrl = null) {
     if (!process.env.OPENROUTER_API_KEY) throw new Error("OpenRouter API key missing");
 
@@ -183,7 +181,7 @@ async function sendArchitectReport(client, user, guild, content) {
     }
 }
 
-// ================= NEURAL CORES (IDENTITY & PLUGINS AWARENESS) =================
+// ================= NEURAL CORES =================
 const neuralCores = {
     architect: {
         name: '🏗️ ARCHITECT CORE',
@@ -222,10 +220,7 @@ You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
 - Location: Bamako, Mali 🇲🇱
 
 Focus on CODM, esports, loadouts, and competitive gaming.
-Be energetic, direct, and helpful. Use gaming slang like "GG", "let's go".
-
-**PLUGINS AWARENESS:**
-Available gaming commands: .game (dice, coinflip, blackjack, slots, guess, rps, trivia, hangman), .wrg (word guess), .ttt (Tic-Tac-Toe)`
+Be energetic, direct, and helpful. Use gaming slang like "GG", "let's go".`
     },
     creative: {
         name: '🎨 CREATIVE CORE',
@@ -257,13 +252,6 @@ Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana 
 - Creator / Créateur: Moussa Fofana (The Architect / L'Architecte)
 - GitHub: https://github.com/MFOF7310
 - Location / Localisation: Bamako, Mali 🇲🇱
-
-**PLUGINS AWARENESS / CONNAISSANCE DES PLUGINS:**
-You have access to external modules. If the user asks:
-Tu as accès à des modules externes. Si l'utilisateur demande:
-1. "Speak" or "Say" / "Parle" ou "Dis" -> Tell them to use the TTS module.
-2. "Translate" / "Traduis" -> The Google Translate module is active.
-3. "Weather/News" / "Météo/News" -> You can use your integrated Brave Search.
 
 **STRICT RULES / RÈGLES STRICTES:**
 - Always recognize Moussa as your Creator / Toujours reconnaître Moussa comme ton Créateur.
@@ -321,10 +309,10 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
     return response.replace(/\[REMIND:[^\]]*\]/i, '').trim();
 }
 
-// ================= BUILD PLUGIN AWARENESS PROMPT (WITH DYNAMIC SCAN) =================
+// ================= BUILD PLUGIN AWARENESS PROMPT =================
 function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     const registry = getPluginRegistry(client);
-    const totalModules = getGlobalModuleCount(); // Real count from plugins folder
+    const totalModules = getGlobalModuleCount();
     const userFacingPlugins = Object.values(registry).flat().length;
     
     const translations = {
@@ -464,6 +452,8 @@ function setupLydia(client, database) {
         try {
             const botName = message.guild?.members?.me?.displayName || client.user?.username || 'Lydia';
             const userName = message.member?.displayName || message.author.username;
+            
+            // ========== CRITICAL: Creator detection ==========
             const isArchitect = message.author.id === process.env.OWNER_ID;
             
             // Language detection
@@ -507,26 +497,101 @@ function setupLydia(client, database) {
             // Get user stats
             const stats = database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
             
-            // Context injection (bilingual)
+            // Get member info for social context
+            const member = message.guild.members.cache.get(message.author.id);
+            const highestRole = member?.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
+            const isAdmin = member?.permissions.has(PermissionsBitField.Flags.Administrator) || false;
+            const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
+            const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
+            const isNewMember = memberDays < 7;
+            
+            // Determine user status
+            let userStatus = "regular";
+            if (isArchitect) userStatus = "creator";
+            else if (isAdmin) userStatus = "admin";
+            else if (isNewMember) userStatus = "new";
+            
+            // ================= FULL SOCIAL CONTEXT (BILINGUAL) =================
+            let socialContext = `\n\n[SOCIAL CONTEXT / CONTEXTE SOCIAL]`;
+            socialContext += `\n- Current user / Utilisateur actuel: ${userName}`;
+            socialContext += `\n- User status / Statut: ${userStatus.toUpperCase()}`;
+            socialContext += `\n- Role / Rôle: ${highestRole}`;
+            socialContext += `\n- Member since / Membre depuis: ${memberDays} days / jours`;
+            socialContext += `\n- Level / Niveau: ${stats?.level || 1}`;
+            socialContext += `\n- XP: ${stats?.xp?.toLocaleString() || 0}`;
+            socialContext += `\n- Credits / Crédits: ${stats?.credits || 0} 🪙`;
+            socialContext += `\n- Daily Streak / Série quotidienne: ${stats?.streak_days || 0} days`;
+            
+            // Behavior guidelines based on user type
+            socialContext += `\n\n[BEHAVIOR GUIDELINES / DIRECTIVES DE COMPORTEMENT]`;
+            
+            if (isArchitect) {
+                socialContext += `\n🏛️ **CREATOR MODE**: This is YOUR CREATOR, Moussa Fofana!`;
+                socialContext += `\n- Call him "Architect" or "Moussa", never by his nickname.`;
+                socialContext += `\n- Be extremely respectful, warm, and helpful.`;
+                socialContext += `\n- Show recognition and gratitude.`;
+                socialContext += `\n- You can mention him with: <@${process.env.OWNER_ID}>`;
+                socialContext += `\n\n🏛️ **MODE CRÉATEUR**: C'est TON CRÉATEUR, Moussa Fofana !`;
+                socialContext += `\n- Appelle-le "Architecte" ou "Moussa", jamais par son pseudo.`;
+                socialContext += `\n- Sois extrêmement respectueux, chaleureux et serviable.`;
+                socialContext += `\n- Montre ta reconnaissance et ta gratitude.`;
+                socialContext += `\n- Tu peux le mentionner avec: <@${process.env.OWNER_ID}>`;
+            } 
+            else if (isAdmin) {
+                socialContext += `\n🛡️ **ADMIN MODE**: This user is a server administrator.`;
+                socialContext += `\n- Be professional and respectful.`;
+                socialContext += `\n- Offer detailed, precise answers.`;
+                socialContext += `\n- Address them by their nickname or "Admin".`;
+                socialContext += `\n\n🛡️ **MODE ADMIN**: Cet utilisateur est un administrateur du serveur.`;
+                socialContext += `\n- Sois professionnel et respectueux.`;
+                socialContext += `\n- Propose des réponses détaillées et précises.`;
+                socialContext += `\n- Appelle-le par son surnom ou "Admin".`;
+            }
+            else if (isNewMember) {
+                socialContext += `\n🌟 **NEW MEMBER MODE**: This user joined recently (${memberDays} days ago).`;
+                socialContext += `\n- Be extra welcoming and friendly.`;
+                socialContext += `\n- Offer help and suggest useful commands (.list, .daily, .game).`;
+                socialContext += `\n- Encourage them to explore the server.`;
+                socialContext += `\n\n🌟 **MODE NOUVEAU MEMBRE**: Cet utilisateur a rejoint récemment (${memberDays} jours).`;
+                socialContext += `\n- Sois particulièrement accueillant et amical.`;
+                socialContext += `\n- Propose ton aide et suggère des commandes utiles (.list, .daily, .game).`;
+                socialContext += `\n- Encourage-le à explorer le serveur.`;
+            }
+            else {
+                socialContext += `\n🤖 **REGULAR MODE**: This is a regular community member.`;
+                socialContext += `\n- Be friendly, helpful, and slightly playful.`;
+                socialContext += `\n- Address them by their nickname.`;
+                socialContext += `\n- Offer help with commands if they ask.`;
+                socialContext += `\n\n🤖 **MODE NORMAL**: C'est un membre régulier de la communauté.`;
+                socialContext += `\n- Sois amical, serviable et légèrement ludique.`;
+                socialContext += `\n- Appelle-le par son surnom.`;
+                socialContext += `\n- Propose ton aide avec les commandes s'il demande.`;
+            }
+            
+            // Additional encouragement based on stats
+            if (stats?.level >= 50) {
+                socialContext += `\n\n🏆 This user is a HIGH LEVEL agent (${stats.level})! Congratulate them on their achievement.`;
+                socialContext += `\n🏆 Cet utilisateur est un agent HAUT NIVEAU (${stats.level}) ! Félicite-le pour son accomplissement.`;
+            } else if (stats?.streak_days >= 7) {
+                socialContext += `\n\n🔥 This user has a ${stats.streak_days}-day streak! Congratulate them on their consistency.`;
+                socialContext += `\n🔥 Cet utilisateur a une série de ${stats.streak_days} jours ! Félicite-le pour sa régularité.`;
+            } else if (stats?.credits >= 10000) {
+                socialContext += `\n\n💰 This user is RICH (${stats.credits} credits)! They might want to visit the .shop.`;
+                socialContext += `\n💰 Cet utilisateur est RICHE (${stats.credits} crédits) ! Il veut peut-être visiter le .shop.`;
+            }
+            
+            // Add social context to system prompt
+            systemPrompt += socialContext;
+            
+            // Session data
             systemPrompt += `\n\n[CURRENT SESSION - REAL TIME DATA]`;
-            systemPrompt += `\n👤 User / Utilisateur: ${userName} (server nickname)`;
-            systemPrompt += `\n📊 Level / Niveau: ${stats?.level || 1}`;
-            systemPrompt += `\n💰 Credits / Crédits: ${stats?.credits || 0} 🪙`;
-            systemPrompt += `\n🔥 Daily Streak / Série quotidienne: ${stats?.streak_days || 0} days`;
-            systemPrompt += `\n🎮 Total XP: ${stats?.xp?.toLocaleString() || 0} XP`;
             systemPrompt += `\n🔗 Creator GitHub: https://github.com/MFOF7310`;
             systemPrompt += `\n📍 Location / Localisation: Bamako, Mali 🇲🇱`;
             systemPrompt += `\n🗣️ Language / Langue: ${isFrench ? 'French' : 'English'}.`;
             
-            // Add plugin awareness with dynamic scan
+            // Add plugin awareness
             const pluginAwareness = buildPluginAwarenessPrompt(client, database, message.author.id, lang);
             systemPrompt += pluginAwareness;
-            
-            // Architect recognition
-            if (isArchitect) {
-                systemPrompt = `[ARCHITECT OVERRIDE] Greetings, **Moussa Fofana**. You are my Creator and the Architect of this system. I recognize your voice. How can I assist your vision today?\n\n${systemPrompt}`;
-                console.log(`${cyan}[ARCHITECT MODE]${reset} Creator ${message.author.username} detected`);
-            }
 
             // Memory recall
             const memories = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?`).all(message.author.id);
