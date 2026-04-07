@@ -473,7 +473,7 @@ client.once(Events.ClientReady, async () => {
     }
 });
 
-// ================= MESSAGE PROCESSING (WITH ANTI-LOOP SAFETY) =================
+// ================= MESSAGE PROCESSING (WITH ANTI-LOOP SAFETY & LYDIA FIX) =================
 client.on(Events.MessageCreate, async (message) => {
     // IGNORE LES BOTS ET LES WEBHOOKS (Empêche Lydia de se répondre à elle-même)
     if (!message || message.author?.bot || message.webhookId) return;
@@ -566,18 +566,34 @@ client.on(Events.MessageCreate, async (message) => {
                 userData.streak_days || 0);
     }
 
-    // --- COMMAND HANDLER ---
+    // ================= COMMAND HANDLER (WITH LYDIA FIX) =================
     if (!message.content.startsWith(PREFIX)) return;
+    
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const cmdName = args.shift().toLowerCase();
-    const command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
     
+    // 🛰️ CRITICAL FIX: Manually link the 'lydia' command if it was excluded from scan
+    let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
+    
+    // Special handling for Lydia command (bypasses the normal command registry if needed)
+    if (!command && (cmdName === 'lydia' || cmdName === 'ai' || cmdName === 'neural')) {
+        console.log(`${cyan}[LYDIA]${reset} Manual command trigger detected: ${cmdName}`);
+        try {
+            const lydiaModule = require('./plugins/lydia.js');
+            // Run the command manually from the exported 'run' function
+            return await lydiaModule.run(client, message, args, db);
+        } catch (e) {
+            console.error(`${red}[LYDIA CMD ERROR]${reset}`, e);
+            return message.reply("❌ Lydia command execution failed. Please check logs.");
+        }
+    }
+
+    // Normal command execution for all other commands
     if (command) {
         try { 
             await command.run(client, message, args, db);
-        } 
-        catch (e) { 
-            console.error(e);
+        } catch (e) { 
+            console.error(`${red}[COMMAND ERROR]${reset} ${cmdName}:`, e);
             message.reply("⚠️ **Command execution failed.**"); 
         }
     }
