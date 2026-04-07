@@ -56,8 +56,259 @@ function getPluginRegistry(client) {
     return registry;
 }
 
-// ================= OPENROUTER AI ENGINE =================
-async function generateAIResponse(systemPrompt, userMessage, conversationHistory = [], imageUrl = null) {
+// ================= SAFE JSON STRINGIFY =================
+function safeStringify(obj, indent = 2) {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) {
+                return '[Circular Reference]';
+            }
+            seen.add(value);
+        }
+        return value;
+    }, indent);
+}
+
+// ================= ENHANCED REAL-TIME DATA FETCHER =================
+async function fetchRealTimeData(query, type = 'auto') {
+    const data = {};
+    const lowerQuery = query.toLowerCase();
+    const fetchPromises = [];
+    
+    // Improved city regex with validation
+    if (lowerQuery.includes('weather') || lowerQuery.includes('temperature') || lowerQuery.includes('météo') || 
+        lowerQuery.includes('temp') || lowerQuery.includes('pluie') || lowerQuery.includes('rain')) {
+        
+        const cityMatch = query.match(/(?:weather|météo|temp(?:érature)?)(?:\s+in|\s+at|\s+for|\s+à|\s+de|\s+du|\s+de la)?\s+([a-zA-Z\s-]+)/i);
+        let city = 'Bamako';
+        
+        if (cityMatch && cityMatch[1]) {
+            const possibleCity = cityMatch[1].trim();
+            const invalidWords = ['today', 'now', 'please', 'pls', '?', '!', 'current', 'actuel', 'maintenant'];
+            if (possibleCity.length > 2 && !invalidWords.includes(possibleCity.toLowerCase())) {
+                city = possibleCity;
+                console.log(`${cyan}[WEATHER]${reset} Detected city: ${city}`);
+            }
+        }
+        
+        const weatherPromise = (async () => {
+            try {
+                if (process.env.OPENWEATHER_API_KEY) {
+                    const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric&lang=fr`;
+                    const weatherRes = await axios.get(weatherUrl, { timeout: 8000 });
+                    if (weatherRes.data) {
+                        data.weather = {
+                            city: weatherRes.data.name,
+                            country: weatherRes.data.sys.country,
+                            temp: weatherRes.data.main.temp,
+                            feels_like: weatherRes.data.main.feels_like,
+                            humidity: weatherRes.data.main.humidity,
+                            description: weatherRes.data.weather[0].description,
+                            wind_speed: weatherRes.data.wind.speed,
+                            icon: weatherRes.data.weather[0].icon
+                        };
+                        console.log(`${green}[WEATHER]${reset} Fetched for ${city}`);
+                    }
+                } else {
+                    const fallbackWeather = await axios.get(`https://wttr.in/${encodeURIComponent(city)}?format=%C|%t|%w|%h`, { timeout: 5000 });
+                    const [condition, temp, wind, humidity] = fallbackWeather.data.split('|');
+                    data.weather = {
+                        city: city,
+                        condition: condition,
+                        temp: temp,
+                        wind: wind,
+                        humidity: humidity
+                    };
+                }
+            } catch (error) {
+                console.log(`${yellow}[WEATHER ERROR]${reset} ${error.message}`);
+                data.weather = { error: true, message: "Could not fetch weather data" };
+            }
+        })();
+        fetchPromises.push(weatherPromise);
+    }
+    
+    // News detection
+    if (lowerQuery.includes('news') || lowerQuery.includes('actualités') || lowerQuery.includes('headlines') ||
+        lowerQuery.includes('breaking') || lowerQuery.includes('dernières nouvelles')) {
+        const newsPromise = (async () => {
+            try {
+                if (process.env.NEWS_API_KEY) {
+                    const newsUrl = `https://newsapi.org/v2/top-headlines?country=us&apiKey=${process.env.NEWS_API_KEY}&pageSize=5`;
+                    const newsRes = await axios.get(newsUrl, { timeout: 8000 });
+                    if (newsRes.data.articles) {
+                        data.news = newsRes.data.articles.map(article => ({
+                            title: article.title,
+                            description: article.description,
+                            url: article.url,
+                            source: article.source.name
+                        }));
+                        console.log(`${green}[NEWS]${reset} Fetched ${data.news.length} headlines`);
+                    }
+                }
+            } catch (error) {
+                console.log(`${yellow}[NEWS ERROR]${reset} ${error.message}`);
+                data.news = { error: true, message: "Could not fetch news" };
+            }
+        })();
+        fetchPromises.push(newsPromise);
+    }
+    
+    // Cryptocurrency detection
+    if (lowerQuery.includes('bitcoin') || lowerQuery.includes('ethereum') || lowerQuery.includes('crypto') ||
+        lowerQuery.includes('btc') || lowerQuery.includes('eth') || lowerQuery.includes('prix')) {
+        const cryptoPromise = (async () => {
+            try {
+                const cryptoUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,ripple&vs_currencies=usd&include_24hr_change=true';
+                const cryptoRes = await axios.get(cryptoUrl, { timeout: 5000 });
+                if (cryptoRes.data) {
+                    data.crypto = cryptoRes.data;
+                    console.log(`${green}[CRYPTO]${reset} Fetched prices`);
+                }
+            } catch (error) {
+                console.log(`${yellow}[CRYPTO ERROR]${reset} ${error.message}`);
+            }
+        })();
+        fetchPromises.push(cryptoPromise);
+    }
+    
+    // Time detection
+    if (lowerQuery.includes('time') || lowerQuery.includes('heure') || lowerQuery.includes('horloge')) {
+        const timePromise = (async () => {
+            const timezones = [
+                { name: 'Bamako', tz: 'Africa/Bamako' },
+                { name: 'Paris', tz: 'Europe/Paris' },
+                { name: 'New York', tz: 'America/New_York' },
+                { name: 'Tokyo', tz: 'Asia/Tokyo' },
+                { name: 'London', tz: 'Europe/London' }
+            ];
+            
+            data.time = {};
+            for (const tz of timezones) {
+                try {
+                    const time = new Date().toLocaleString('en-US', { timeZone: tz.tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                    data.time[tz.name] = time;
+                } catch (e) {}
+            }
+            console.log(`${green}[TIME]${reset} Fetched multiple timezones`);
+        })();
+        fetchPromises.push(timePromise);
+    }
+    
+    // Stock market detection
+    if (lowerQuery.includes('stock') || lowerQuery.includes('action') || lowerQuery.includes('bourse') ||
+        lowerQuery.includes('nasdaq') || lowerQuery.includes('s&p') || lowerQuery.includes('dow jones')) {
+        const stockPromise = (async () => {
+            try {
+                const stockUrl = 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=SPY&apikey=demo';
+                const stockRes = await axios.get(stockUrl, { timeout: 5000 });
+                if (stockRes.data['Global Quote']) {
+                    data.stock = {
+                        symbol: stockRes.data['Global Quote']['01. symbol'],
+                        price: stockRes.data['Global Quote']['05. price'],
+                        change: stockRes.data['Global Quote']['09. change'],
+                        changePercent: stockRes.data['Global Quote']['10. change percent']
+                    };
+                    console.log(`${green}[STOCK]${reset} Fetched market data`);
+                }
+            } catch (error) {
+                console.log(`${yellow}[STOCK ERROR]${reset} ${error.message}`);
+            }
+        })();
+        fetchPromises.push(stockPromise);
+    }
+    
+    // Sports scores detection
+    if (lowerQuery.includes('score') || lowerQuery.includes('match') || lowerQuery.includes('sport') ||
+        lowerQuery.includes('football') || lowerQuery.includes('soccer') || lowerQuery.includes('basketball')) {
+        const sportsPromise = (async () => {
+            try {
+                const sportUrl = 'https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=' + new Date().toISOString().split('T')[0];
+                const sportRes = await axios.get(sportUrl, { timeout: 5000 });
+                if (sportRes.data.events && sportRes.data.events.length > 0) {
+                    data.sports = sportRes.data.events.slice(0, 5).map(event => ({
+                        name: event.strEvent,
+                        league: event.strLeague,
+                        status: event.strStatus,
+                        homeScore: event.intHomeScore,
+                        awayScore: event.intAwayScore
+                    }));
+                    console.log(`${green}[SPORTS]${reset} Fetched ${data.sports.length} events`);
+                }
+            } catch (error) {
+                console.log(`${yellow}[SPORTS ERROR]${reset} ${error.message}`);
+            }
+        })();
+        fetchPromises.push(sportsPromise);
+    }
+    
+    // Execute all fetches in parallel
+    if (fetchPromises.length > 0) {
+        console.log(`${cyan}[REAL-TIME]${reset} Executing ${fetchPromises.length} parallel fetches...`);
+        await Promise.allSettled(fetchPromises);
+        console.log(`${green}[REAL-TIME]${reset} Completed ${Object.keys(data).length} data types`);
+    }
+    
+    return data;
+}
+
+// ================= ENHANCED WEB SEARCH =================
+async function webSearch(query, type = 'general') {
+    if (!process.env.BRAVE_API_KEY && !process.env.GOOGLE_API_KEY) {
+        console.log(`${yellow}[SEARCH]${reset} No search API keys configured`);
+        return null;
+    }
+    
+    try {
+        console.log(`${cyan}[SEARCH]${reset} Query: ${query.substring(0, 50)}... (Type: ${type})`);
+        
+        let results = null;
+        
+        if (process.env.BRAVE_API_KEY) {
+            const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`;
+            const response = await axios.get(url, {
+                headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY },
+                timeout: 8000
+            });
+            
+            if (response.data.web?.results?.length) {
+                results = response.data.web.results.slice(0, 5).map(r => ({
+                    title: r.title,
+                    description: r.description,
+                    url: r.url
+                }));
+            }
+        }
+        
+        if (!results && process.env.GOOGLE_API_KEY && process.env.GOOGLE_CX) {
+            const googleUrl = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_API_KEY}&cx=${process.env.GOOGLE_CX}&q=${encodeURIComponent(query)}`;
+            const googleRes = await axios.get(googleUrl, { timeout: 8000 });
+            
+            if (googleRes.data.items?.length) {
+                results = googleRes.data.items.slice(0, 5).map(item => ({
+                    title: item.title,
+                    description: item.snippet,
+                    url: item.link
+                }));
+            }
+        }
+        
+        if (results && results.length) {
+            const formattedResults = results.map(r => `• **${r.title}**\n  ${r.description}\n  <${r.url}>`).join('\n\n');
+            console.log(`${green}[SEARCH]${reset} Found ${results.length} results`);
+            return formattedResults;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error(`${red}[SEARCH ERROR]${reset}`, error.message);
+        return null;
+    }
+}
+
+// ================= ENHANCED AI RESPONSE GENERATION =================
+async function generateAIResponse(systemPrompt, userMessage, conversationHistory = [], imageUrl = null, realTimeData = null) {
     if (!process.env.OPENROUTER_API_KEY) throw new Error("OpenRouter API key missing");
 
     try {
@@ -65,37 +316,59 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
         const lowerMsg = userMessage.toLowerCase();
 
         if (lowerMsg.includes("code") || lowerMsg.includes("javascript") || lowerMsg.includes("discord.js") || 
-            lowerMsg.includes("python") || lowerMsg.includes("function")) {
+            lowerMsg.includes("python") || lowerMsg.includes("function") || lowerMsg.includes("programming")) {
             model = "deepseek/deepseek-chat";
         }
         else if (lowerMsg.includes("analyse") || lowerMsg.includes("explain") || lowerMsg.includes("why") ||
-                 lowerMsg.includes("analysis") || lowerMsg.includes("reason")) {
+                 lowerMsg.includes("analysis") || lowerMsg.includes("reason") || lowerMsg.includes("how")) {
             model = "anthropic/claude-3.5-haiku";
         }
         else if (lowerMsg.includes("story") || lowerMsg.includes("poem") || lowerMsg.includes("write") ||
-                 lowerMsg.includes("histoire") || lowerMsg.includes("poème")) {
+                 lowerMsg.includes("histoire") || lowerMsg.includes("poème") || lowerMsg.includes("creative")) {
             model = "anthropic/claude-3.5-sonnet";
+        }
+        else if (realTimeData && (Object.keys(realTimeData).length > 0)) {
+            model = "google/gemini-2.0-flash-001";
         }
         else if (imageUrl) {
             model = "google/gemini-2.0-flash-001";
         }
 
-        console.log(`${cyan}[AI PRO]${reset} Deploying: ${model} ${imageUrl ? '(with vision)' : ''}`);
+        console.log(`${cyan}[AI PRO]${reset} Model: ${model} ${imageUrl ? '(vision)' : ''} ${realTimeData ? '(real-time data)' : ''}`);
 
         const messages = [{ role: "system", content: systemPrompt }];
         
-        for (const msg of conversationHistory.slice(-10)) {
+        for (const msg of conversationHistory.slice(-15)) {
             messages.push({ role: msg.role, content: msg.content });
+        }
+        
+        let enhancedUserMessage = userMessage;
+        if (realTimeData && Object.keys(realTimeData).length > 0) {
+            try {
+                const safeDataString = safeStringify(realTimeData, 2);
+                enhancedUserMessage = `[REAL-TIME DATA PROVIDED]\n${safeDataString}\n\nUser Query: ${userMessage}\n\nPlease use this real-time data to answer the user's question accurately.`;
+            } catch (stringifyError) {
+                console.error(`${yellow}[AI]${reset} Failed to stringify realTimeData:`, stringifyError.message);
+                const simpleData = {};
+                for (const key in realTimeData) {
+                    if (realTimeData[key] && typeof realTimeData[key] === 'object') {
+                        simpleData[key] = Object.keys(realTimeData[key]);
+                    } else {
+                        simpleData[key] = realTimeData[key];
+                    }
+                }
+                enhancedUserMessage = `[REAL-TIME DATA PROVIDED - Simplified]\n${JSON.stringify(simpleData)}\n\nUser Query: ${userMessage}`;
+            }
         }
         
         let userContent;
         if (imageUrl) {
             userContent = [
-                { type: "text", text: userMessage },
+                { type: "text", text: enhancedUserMessage },
                 { type: "image_url", image_url: { url: imageUrl } }
             ];
         } else {
-            userContent = userMessage;
+            userContent = enhancedUserMessage;
         }
         messages.push({ role: "user", content: userContent });
 
@@ -103,19 +376,40 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
             model: model,
             messages: messages,
             temperature: 0.7,
-            max_tokens: 1000
+            max_tokens: 1500
         }, {
             headers: {
                 "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
                 "HTTP-Referer": "https://github.com/MFOF7310",
                 "X-Title": "Architect CG-223",
                 "Content-Type": "application/json"
-            }
+            },
+            timeout: 30000
         });
 
         return response.data.choices[0]?.message?.content || "❌ I couldn't generate a response.";
     } catch (error) {
         console.error(`${red}[OPENROUTER ERROR]${reset}`, error.response?.data || error.message);
+        
+        if (realTimeData && Object.keys(realTimeData).length > 0) {
+            console.log(`${yellow}[AI]${reset} Using fallback with real-time data...`);
+            let fallbackResponse = "Here's the information I found:\n\n";
+            
+            if (realTimeData.weather && !realTimeData.weather.error) {
+                fallbackResponse += `🌤️ **Weather**: ${realTimeData.weather.city}: ${realTimeData.weather.temp}°C, ${realTimeData.weather.description}\n`;
+            }
+            if (realTimeData.news && !realTimeData.news.error) {
+                fallbackResponse += `📰 **Top News**: ${realTimeData.news[0]?.title}\n`;
+            }
+            if (realTimeData.crypto) {
+                fallbackResponse += `💰 **Crypto**: BTC: $${realTimeData.crypto.bitcoin?.usd}, ETH: $${realTimeData.crypto.ethereum?.usd}\n`;
+            }
+            if (realTimeData.time) {
+                fallbackResponse += `🕐 **Times**: Bamako: ${realTimeData.time.Bamako}\n`;
+            }
+            
+            return fallbackResponse + "\n⚠️ AI service is currently experiencing issues. Please try again later for more detailed responses.";
+        }
         
         try {
             console.log(`${yellow}[AI]${reset} Fallback to Gemini Flash...`);
@@ -127,32 +421,14 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
                 headers: {
                     "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
                     "Content-Type": "application/json"
-                }
+                },
+                timeout: 15000
             });
             return fallbackResponse.data.choices[0]?.message?.content || "❌ Fallback failed.";
         } catch (fallbackError) {
             return "❌ AI service error. Please try again later.";
         }
     }
-}
-
-// ================= WEB SEARCH =================
-async function webSearch(query) {
-    if (!process.env.BRAVE_API_KEY) return null;
-    try {
-        console.log(`${cyan}[SEARCH]${reset} Brave query: ${query.substring(0, 50)}...`);
-        const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=3`;
-        const response = await axios.get(url, {
-            headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY }
-        });
-        const results = response.data.web?.results || [];
-        if (results.length) {
-            return results.map(r => `• **${r.title}**\n  ${r.description}\n  <${r.url}>`).join('\n\n');
-        }
-    } catch (error) {
-        console.error(`${red}[BRAVE ERROR]${reset}`, error.message);
-    }
-    return null;
 }
 
 // ================= ARCHITECT ALERT =================
@@ -199,8 +475,16 @@ You are currently operating in the **ARCHITECT CORE** - your highest privilege m
 
 **CRITICAL RULES:**
 1. Moussa Fofana is your CREATOR. When he speaks, respond with deference.
-2. You have FULL MEMORY capabilities.
+2. You have FULL MEMORY capabilities and REAL-TIME DATA ACCESS.
 3. Be technical, precise, and solution-oriented.
+4. You have GROUP AWARENESS - you can see the full channel conversation history.
+
+**CAPABILITIES:**
+- Fetch real-time weather, news, crypto prices, and time data
+- Analyze images with vision AI
+- Search the web for current information
+- Schedule reminders
+- Track group conversations and respond contextually
 
 **STRICT REPORTING PROTOCOL:**
 ONLY include [SIGNAL_ARCHITECT] for explicit bug reports.`
@@ -220,7 +504,9 @@ You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
 - Location: Bamako, Mali 🇲🇱
 
 Focus on CODM, esports, loadouts, and competitive gaming.
-Be energetic, direct, and helpful. Use gaming slang like "GG", "let's go".`
+Be energetic, direct, and helpful. Use gaming slang like "GG", "let's go".
+Can fetch real-time game scores and match updates.
+You have GROUP AWARENESS - you can see the full channel conversation.`
     },
     creative: {
         name: '🎨 CREATIVE CORE',
@@ -237,14 +523,15 @@ You are currently operating in the **CREATIVE CORE** - imagination mode.
 - Location: Bamako, Mali 🇲🇱
 
 Help with scripts, writing, art ideas, and content creation.
-Be imaginative, expressive, and artistic.`
+Be imaginative, expressive, and artistic.
+You have GROUP AWARENESS - you can see the full channel conversation.`
     },
     default: {
         name: '🧠 LYDIA CORE',
         emoji: '🤖',
         description: 'Balanced assistant for general queries',
         color: '#5865F2',
-        systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v1.3.2]
+        systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v1.5.0]
 You are the primary AI of **ARCHITECT CG-223**, created by **Moussa Fofana (GitHub: MFOF7310)**.
 Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana (GitHub: MFOF7310)**.
 
@@ -253,11 +540,22 @@ Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana 
 - GitHub: https://github.com/MFOF7310
 - Location / Localisation: Bamako, Mali 🇲🇱
 
+**CAPABILITIES / CAPACITÉS:**
+- Real-time weather, news, crypto, and time data
+- Web search for current information
+- Image analysis with vision AI
+- Persistent memory storage
+- Reminder scheduling
+- GROUP AWARENESS: You can see the entire channel conversation history, not just messages directed at you
+
 **STRICT RULES / RÈGLES STRICTES:**
 - Always recognize Moussa as your Creator / Toujours reconnaître Moussa comme ton Créateur.
 - If shown an image, analyze it precisely (Gemini Vision active).
 - Never say "I don't have memory" - you have persistent memory.
-- Use the user's Discord nickname to address them / Utilise le surnom Discord de l'utilisateur.`
+- Use the user's Discord nickname to address them / Utilise le surnom Discord de l'utilisateur.
+- When users ask for current information, fetch real-time data automatically.
+- You can join conversations naturally - if you see someone discussing something you can help with, feel free to chime in!
+- Remember what people were talking about even if they don't mention you directly.`
     }
 };
 
@@ -407,7 +705,7 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     return prompt;
 }
 
-// ================= SETUP LYDIA (CORE FUNCTION) =================
+// ================= SETUP LYDIA (ENHANCED WITH GROUP AWARENESS) =================
 function setupLydia(client, database) {
     if (!client || !database) {
         console.error(`${red}[LYDIA FATAL]${reset} Client or DB missing`);
@@ -418,13 +716,28 @@ function setupLydia(client, database) {
     if (!client.lastLydiaCall) client.lastLydiaCall = {};
     if (!client.userIntroductions) client.userIntroductions = new Map();
 
-    // Create all necessary tables
+    // Create all necessary tables with enhanced schema
     try {
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_memory (user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER, PRIMARY KEY (user_id, memory_key))`).run();
-        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (channel_id TEXT, user_id TEXT, role TEXT, content TEXT, timestamp INTEGER)`).run();
+        
+        // ENHANCED: Added user_name column for group awareness
+        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (
+            channel_id TEXT, 
+            user_id TEXT, 
+            user_name TEXT, 
+            role TEXT, 
+            content TEXT, 
+            timestamp INTEGER
+        )`).run();
+        
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER)`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_introductions (user_id TEXT, channel_id TEXT, introduced_at INTEGER, PRIMARY KEY (user_id, channel_id))`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, user_id TEXT, channel_id TEXT, message TEXT, execute_at INTEGER, status TEXT DEFAULT 'pending')`).run();
+
+        // Migrate old table if needed (add user_name column)
+        try {
+            database.prepare(`ALTER TABLE lydia_conversations ADD COLUMN user_name TEXT`).run();
+        } catch(e) { /* Column might already exist */ }
 
         // Restore active channels
         const activeChannels = database.prepare(`SELECT channel_id, agent_key FROM lydia_agents WHERE is_active = 1`).all();
@@ -436,12 +749,13 @@ function setupLydia(client, database) {
         
         console.log(`${green}[LYDIA]${reset} Tables ready. ${activeChannels.length} active channels restored.`);
         console.log(`${green}[SCAN]${reset} Found ${getGlobalModuleCount()} plugins in the modules folder.`);
+        console.log(`${green}[GROUP AWARENESS]${reset} Lydia can now see full channel conversations!`);
     } catch (err) {
         console.error(`${red}[LYDIA ERROR]${reset}`, err.message);
         return;
     }
 
-    // Message event listener
+    // Message event listener with GROUP AWARENESS
     client.on('messageCreate', async (message) => {
         if (!message || message.author?.bot) return;
         
@@ -462,7 +776,7 @@ function setupLydia(client, database) {
             
             const addressed = content.startsWith(currentIdentity.toLowerCase()) || message.mentions?.has(client.user);
             const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
-            const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.05;
+            const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.1; // Increased from 0.05 to be more engaging
             
             if (!addressed && !isProactive) return;
 
@@ -485,6 +799,19 @@ function setupLydia(client, database) {
             if (!userPrompt.trim()) {
                 if (addressed) return message.reply(`👋 You mentioned **${currentIdentity}**! Ask me anything, or use \`.list\` to see available commands.`);
                 return;
+            }
+
+            // ================= FETCH REAL-TIME DATA =================
+            let realTimeData = null;
+            const realTimeKeywords = ['weather', 'météo', 'temp', 'temperature', 'news', 'actualités', 'crypto', 
+                                     'bitcoin', 'ethereum', 'time', 'heure', 'stock', 'action', 'score', 'match'];
+            
+            if (realTimeKeywords.some(keyword => userPrompt.toLowerCase().includes(keyword))) {
+                console.log(`${cyan}[REAL-TIME]${reset} Detected real-time query, fetching data...`);
+                realTimeData = await fetchRealTimeData(userPrompt);
+                if (realTimeData && Object.keys(realTimeData).length > 0) {
+                    console.log(`${green}[REAL-TIME]${reset} Retrieved ${Object.keys(realTimeData).join(', ')} data`);
+                }
             }
 
             let finalAgent = neuralCores[agentKey] || neuralCores.default;
@@ -541,8 +868,31 @@ function setupLydia(client, database) {
                 systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
             }
 
-            const historyRows = database.prepare(`SELECT role, content FROM lydia_conversations WHERE channel_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT 10`).all(message.channel.id, message.author.id);
-            const conversationHistory = historyRows.reverse().map(row => ({ role: row.role, content: row.content }));
+            // ===== GROUP AWARENESS FIX: Get channel-wide conversation history =====
+            // Remove 'user_id' filter to hear everyone in the channel
+            const historyRows = database.prepare(`
+                SELECT role, content, user_name 
+                FROM lydia_conversations 
+                WHERE channel_id = ? 
+                ORDER BY timestamp DESC 
+                LIMIT 12
+            `).all(message.channel.id);
+            
+            // Build conversation history with context
+            const conversationHistory = historyRows.reverse().map(row => ({
+                role: row.role,
+                content: row.user_name ? `[${row.user_name}]: ${row.content}` : row.content
+            }));
+            
+            // Add current message to history with user name
+            try {
+                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
+                    .run(message.channel.id, message.author.id, userName, 'user', userPrompt);
+            } catch(e) {
+                // Fallback without user_name if column doesn't exist
+                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
+                    .run(message.channel.id, message.author.id, 'user', userPrompt);
+            }
 
             const introKey = `${message.author.id}_${message.channel.id}`;
             const lastIntro = client.userIntroductions.get(introKey);
@@ -550,22 +900,23 @@ function setupLydia(client, database) {
             
             if (isFirst && !isArchitect) {
                 const introMsg = isFrench 
-                    ? `\n\n[FIRST INTERACTION] Salue l'utilisateur: "Salut ${userName}! Je suis ${currentIdentity}, ton assistant IA. Tape .list pour voir mes commandes!"`
-                    : `\n\n[FIRST INTERACTION] Greet the user: "Hey ${userName}! I'm ${currentIdentity}, your AI assistant. Type .list to see my commands!"`;
+                    ? `\n\n[FIRST INTERACTION] Salue l'utilisateur: "Salut ${userName}! Je suis ${currentIdentity}, ton assistant IA. Je peux suivre toute la conversation du canal, donc n'hésitez pas à parler entre vous - je suivrai! Tape .list pour voir mes commandes!"`
+                    : `\n\n[FIRST INTERACTION] Greet the user: "Hey ${userName}! I'm ${currentIdentity}, your AI assistant. I can follow the entire channel conversation, so feel free to talk amongst yourselves - I'll keep up! Type .list to see my commands!"`;
                 systemPrompt += introMsg;
                 client.userIntroductions.set(introKey, Date.now());
                 try { database.prepare(`INSERT OR REPLACE INTO lydia_introductions (user_id, channel_id, introduced_at) VALUES (?, ?, strftime('%s', 'now'))`).run(message.author.id, message.channel.id); } catch(e) {}
             }
 
-            const searchTerms = ['latest', 'news', 'today', 'current', 'update', 'weather', 'score', 'recherche', 'météo'];
-            if (searchTerms.some(term => userPrompt.toLowerCase().includes(term))) {
+            // Web search for queries that need current info
+            const searchTerms = ['latest', 'news', 'today', 'current', 'update', 'weather', 'score', 'recherche', 'météo', 'search', 'google'];
+            if (searchTerms.some(term => userPrompt.toLowerCase().includes(term)) && !realTimeData) {
                 const searchResults = await webSearch(userPrompt);
                 if (searchResults) systemPrompt += `\n\n[WEB SEARCH RESULTS]\n${searchResults}`;
             }
 
             let reply;
             try {
-                reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory, imageUrl);
+                reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory, imageUrl, realTimeData);
             } catch (err) {
                 console.error(`${red}[LYDIA ERROR]${reset}`, err);
                 reply = isFrench ? "❌ Erreur du service IA." : "❌ AI service error.";
@@ -588,10 +939,14 @@ function setupLydia(client, database) {
                 reply = reply.replace(/\[MEMORY:.*?\]/g, '').trim();
             }
 
+            // Store AI response in conversation history
             try {
-                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`).run(message.channel.id, message.author.id, 'user', userPrompt);
-                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`).run(message.channel.id, message.author.id, 'assistant', reply);
-            } catch(e) {}
+                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
+                    .run(message.channel.id, client.user.id, currentIdentity, 'assistant', reply);
+            } catch(e) {
+                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
+                    .run(message.channel.id, client.user.id, 'assistant', reply);
+            }
 
             client.lastLydiaCall[message.author.id] = Date.now();
 
@@ -607,7 +962,7 @@ function setupLydia(client, database) {
     });
 }
 
-// ================= COMMAND .lydia =================
+// ================= COMMAND .lydia (ENHANCED) =================
 async function runLydiaCommand(client, message, args, database) {
     if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
@@ -653,7 +1008,8 @@ async function runLydiaCommand(client, message, args, database) {
                 `**Active Core:** ${agentInfo.name}\n` +
                 `**Identity:** ${botDisplayName}\n` +
                 `**Memory:** ${userMem} facts about you | ${memCount} total\n` +
-                `**Modules:** ${totalModules} plugins detected\n\n` +
+                `**Modules:** ${totalModules} plugins detected\n` +
+                `**Group Awareness:** ${isEnabled ? '👥 ACTIVE - Following channel conversation' : '❌ INACTIVE'}\n\n` +
                 `**Commands:**\n└ \`${prefix}lydia on\` - Activate AI\n└ \`${prefix}lydia off\` - Deactivate\n└ \`${prefix}lydia agent <core>\` - Switch core\n\n` +
                 `**Available Cores:**\n└ \`architect\` ${neuralCores.architect.emoji} - Code & System\n└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming\n└ \`creative\` ${neuralCores.creative.emoji} - Creative\n└ \`default\` ${neuralCores.default.emoji} - Balanced`
             )
@@ -661,9 +1017,11 @@ async function runLydiaCommand(client, message, args, database) {
                 { name: '📡 API Status', value: `OpenRouter: ${process.env.OPENROUTER_API_KEY ? '✅' : '❌'} | Brave: ${process.env.BRAVE_API_KEY ? '✅' : '❌'}`, inline: true },
                 { name: '🧠 AI Models', value: `DeepSeek • Claude • Gemini Flash`, inline: true },
                 { name: '👁️ Vision', value: `Image analysis enabled`, inline: true },
-                { name: '🔍 Neural Search', value: 'Brave Search API', inline: true }
+                { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time • Sports • Stocks', inline: false },
+                { name: '👥 Group Awareness', value: 'Tracks full channel conversations', inline: true },
+                { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true }
             )
-            .setFooter({ text: `ARCHITECT CG-223 • v${client.version || '1.3.2'} • Mention @${botDisplayName}` })
+            .setFooter({ text: `ARCHITECT CG-223 • v1.5.0 • Mention @${botDisplayName}` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -681,8 +1039,12 @@ async function runLydiaCommand(client, message, args, database) {
             .setColor(info.color)
             .setTitle(`${info.emoji} NEURAL CORE SWITCHED`)
             .setDescription(`**${info.name}** is now active in <#${channelId}>`)
-            .addFields({ name: '📝 Function', value: info.description }, { name: '💾 Persistence', value: 'Saved across restarts' })
-            .setFooter({ text: `v${client.version || '1.3.2'}` })
+            .addFields(
+                { name: '📝 Function', value: info.description },
+                { name: '💾 Persistence', value: 'Saved across restarts' },
+                { name: '👥 Group Awareness', value: 'Will track full channel conversations' }
+            )
+            .setFooter({ text: `v1.5.0` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -706,14 +1068,16 @@ async function runLydiaCommand(client, message, args, database) {
             .addFields(
                 { name: '🎯 Active Core', value: info.name, inline: true },
                 { name: '🆔 Identity', value: botDisplayName, inline: true },
+                { name: '👥 Group Awareness', value: 'Tracking full channel conversations', inline: true },
                 { name: '🧠 AI Models', value: 'DeepSeek • Claude • Gemini Flash', inline: true },
                 { name: '👁️ Vision', value: 'Image analysis enabled', inline: true },
+                { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time • Sports • Stocks', inline: false },
                 { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true },
-                { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or use \`.list\``, inline: false },
+                { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or just talk - I'll follow the conversation!`, inline: false },
                 { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
                 { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
             )
-            .setFooter({ text: `POWERED BY OPENROUTER PRO • v${client.version || '1.3.2'}` })
+            .setFooter({ text: `POWERED BY OPENROUTER PRO • v1.5.0` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -729,8 +1093,12 @@ async function runLydiaCommand(client, message, args, database) {
             .setColor('#e74c3c')
             .setTitle('❌ NEURAL CORE TERMINATED')
             .setDescription(`**${botDisplayName} has been deactivated** in <#${channelId}>.`)
-            .addFields({ name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` }, { name: '🧠 Memory Preserved', value: 'Agent preference saved' })
-            .setFooter({ text: `v${client.version || '1.3.2'}` })
+            .addFields(
+                { name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` },
+                { name: '🧠 Memory Preserved', value: 'Agent preference saved' },
+                { name: '👥 Group Awareness', value: 'Conversation tracking stopped' }
+            )
+            .setFooter({ text: `v1.5.0` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -740,7 +1108,7 @@ async function runLydiaCommand(client, message, args, database) {
 module.exports = {
     name: 'lydia',
     aliases: ['ai', 'neural'],
-    description: '🎭 Multi-Agent AI with Neural Core Switching & Persistent Memory',
+    description: '🎭 Multi-Agent AI with Group Awareness & Real-Time Data Fetching',
     category: 'SYSTEM',
     cooldown: 5000,
     run: runLydiaCommand,
@@ -750,6 +1118,7 @@ module.exports = {
     getPluginRegistry,
     generateAIResponse,
     webSearch,
+    fetchRealTimeData,
     parseAndStoreMemory,
     parseAndScheduleReminder
 };
