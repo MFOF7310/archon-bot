@@ -84,7 +84,7 @@ function calculateLevel(xp) {
 
 module.exports = {
     name: 'daily',
-    aliases: ['claim', 'recompense', 'dailyreward', 'checkin', 'quotidien','journalier','cadeau','bjr'],
+    aliases: ['claim', 'recompense', 'dailyreward', 'checkin', 'quotidien','journalier','cadeau'],
     description: '⚡ Claim your daily Archon Credits and XP boost with streak bonuses.',
     category: 'ECONOMY',
     usage: '.daily',
@@ -100,7 +100,7 @@ module.exports = {
             if (guildSettings?.language) {
                 lang = guildSettings.language;
             } else {
-                const frenchKeywords = ['fr', 'francais', 'français', 'french', 'bonjour', 'salut', 'merci'];
+                const frenchKeywords = ['fr', 'francais', 'français', 'french', 'bonjour', 'salut', 'merci','cadeau','journalier','quotidien'];
                 const content = message.content.toLowerCase();
                 if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
                     lang = 'fr';
