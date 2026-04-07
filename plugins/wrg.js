@@ -1,6 +1,9 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const path = require('path');
 const Database = require('better-sqlite3');
-const db = new Database('database.sqlite');
+
+// Point to the database in the ROOT folder, not the plugins folder
+const db = new Database(path.join(__dirname, '../database.sqlite'));
 
 // ================= UNIFIED LEVEL CALCULATION =================
 function calculateLevel(xp) { 
@@ -133,37 +136,50 @@ async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP
     await channel.send({ embeds: [embed] });
 }
 
-// ================= ATOMIC REWARD FUNCTION (FIXED SQL) =================
-function updateUserRewards(userId, xpAmount, creditAmount, channel, username, lang, version) {
+// ================= ATOMIC REWARD FUNCTION (FIXED) =================
+async function updateUserRewards(client, userId, xpAmount, creditAmount, channel, username, lang, version) {
     try {
+        // Use the DB attached to the client for consistency
+        const database = client.db || db;
+        
+        // Ensure user exists using your global helper if available
+        if (client.initializeUser) {
+            client.initializeUser(userId, username);
+        } else {
+            // Fallback: Ensure user exists
+            const exists = database.prepare("SELECT id FROM users WHERE id = ?").get(userId);
+            if (!exists) {
+                database.prepare(`INSERT INTO users (id, username, xp, level, credits, last_daily) 
+                    VALUES (?, ?, 0, 1, 0, ?)`)
+                    .run(userId, username, Date.now());
+            }
+        }
+        
         // Get current user data
-        const user = db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(userId);
+        const user = database.prepare("SELECT xp, credits, level FROM users WHERE id = ?").get(userId);
         const oldXP = user ? user.xp : 0;
         const oldCredits = user ? user.credits : 0;
+        const oldLevel = user ? user.level : 1;
         
-        // FIXED: Proper SQLite upsert syntax
-        const stmt = db.prepare(`
-            INSERT INTO users (id, xp, credits, last_seen) 
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP) 
-            ON CONFLICT(id) DO UPDATE SET 
-                xp = xp + ?,
-                credits = credits + ?,
-                last_seen = CURRENT_TIMESTAMP
-        `);
-        
-        stmt.run(userId, xpAmount, creditAmount, xpAmount, creditAmount);
+        // Update rewards
+        database.prepare(`
+            UPDATE users 
+            SET xp = xp + ?, 
+                credits = credits + ?, 
+                last_seen = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        `).run(xpAmount, creditAmount, userId);
         
         // Get updated data
-        const updated = db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(userId);
+        const updated = database.prepare("SELECT xp, credits, level FROM users WHERE id = ?").get(userId);
         const newXP = updated.xp;
         const newCredits = updated.credits;
-        const oldLevel = calculateLevel(oldXP);
         const newLevel = calculateLevel(newXP);
         
         // Handle level up
         if (newLevel > oldLevel) {
-            db.prepare("UPDATE users SET level = ? WHERE id = ?").run(newLevel, userId);
-            sendLevelUpEmbed(channel, username, oldLevel, newLevel, newXP, lang, version);
+            database.prepare("UPDATE users SET level = ? WHERE id = ?").run(newLevel, userId);
+            await sendLevelUpEmbed(channel, username, oldLevel, newLevel, newXP, lang, version);
         }
         
         return {
@@ -195,143 +211,155 @@ module.exports = {
 
     run: async (client, message, args) => {
         
-        // --- LANGUAGE DETECTION ---
-        const content = message.content.toLowerCase();
-        const isFrench = content.includes('devine') || content.includes('mot') || message.guild?.preferredLocale === 'fr';
-        const lang = isFrench ? 'fr' : 'en';
-        const t = wrgTexts[lang];
-        const version = client.version || '1.3.2';
-        
-        // --- CATEGORY SELECTION ---
-        let categoryKey = 'easy';
-        if (args[0]) {
-            const cat = args[0].toLowerCase();
-            if (cat === 'medium' || cat === 'moyen') categoryKey = 'medium';
-            if (cat === 'hard' || cat === 'difficile') categoryKey = 'hard';
-            if (cat === 'expert') categoryKey = 'expert';
-        }
-        
-        const data = wordCategories[categoryKey] || wordCategories.easy;
-        const wordPool = data[lang];
-        const rawWord = wordPool[Math.floor(Math.random() * wordPool.length)];
-        const targetWord = sanitizeWord(rawWord);
-        const scrambled = fisherYatesShuffle(targetWord);
-        
-        const totalXP = (targetWord.length * 10) + data.xpBonus;
-        const totalCredits = (targetWord.length * 2) + data.creditBonus;
-        const timeLimit = data.timeLimit;
-        
-        // Get user stats for progress bar
-        const userStats = db.prepare("SELECT xp FROM users WHERE id = ?").get(message.author.id);
-        const currentLevel = calculateLevel(userStats?.xp || 0);
-        const currentLevelXP = Math.pow((currentLevel - 1) / 0.1, 2);
-        const nextLevelXP = Math.pow(currentLevel / 0.1, 2);
-        const xpProgress = (userStats?.xp || 0) - currentLevelXP;
-        const xpNeeded = nextLevelXP - currentLevelXP;
-        const progressPercent = xpNeeded > 0 ? Math.min(100, Math.max(0, (xpProgress / xpNeeded) * 100)) : 100;
-        const progressBar = createProgressBar(progressPercent, 10);
-        
-        // --- START EMBED ---
-        const startEmbed = new EmbedBuilder()
-            .setColor(data.color)
-            .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-            .setTitle(`${data.emoji} ${lang === 'fr' ? 'DEFI NEURAL' : 'NEURAL CHALLENGE'}`)
-            .setDescription(
-                `\`\`\`prolog\n` +
-                `${t.difficulty}: ${categoryKey.toUpperCase()}\n` +
-                `${t.length}: ${targetWord.length}\n` +
-                `${t.scrambled}: ${scrambled}\n` +
-                `${t.limit}: ${timeLimit/1000}s\`\`\``
-            )
-            .addFields(
-                { name: `💡 ${data.hint[lang].split(':')[0]}`, value: data.hint[lang], inline: false },
-                { name: `💰 ${t.reward}`, value: `┌─ ${t.xpGain}: **+${totalXP} XP**\n└─ ${t.creditGain}: **+${totalCredits} 🪙**`, inline: true },
-                { name: `📊 ${t.progress}`, value: `\`${progressBar}\` ${progressPercent.toFixed(0)}%\n└─ ${Math.ceil(xpNeeded - xpProgress).toLocaleString()} XP ${t.nextLevel.toLowerCase()}`, inline: true }
-            )
-            .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
-            .setTimestamp();
+        try {
+            // --- LANGUAGE DETECTION ---
+            const content = message.content.toLowerCase();
+            const isFrench = content.includes('devine') || content.includes('mot') || message.guild?.preferredLocale === 'fr';
+            const lang = isFrench ? 'fr' : 'en';
+            const t = wrgTexts[lang];
+            const version = client.version || '1.3.2';
+            
+            // --- CATEGORY SELECTION ---
+            let categoryKey = 'easy';
+            if (args[0]) {
+                const cat = args[0].toLowerCase();
+                if (cat === 'medium' || cat === 'moyen') categoryKey = 'medium';
+                if (cat === 'hard' || cat === 'difficile') categoryKey = 'hard';
+                if (cat === 'expert') categoryKey = 'expert';
+            }
+            
+            const data = wordCategories[categoryKey] || wordCategories.easy;
+            const wordPool = data[lang];
+            const rawWord = wordPool[Math.floor(Math.random() * wordPool.length)];
+            const targetWord = sanitizeWord(rawWord);
+            const scrambled = fisherYatesShuffle(targetWord);
+            
+            const totalXP = (targetWord.length * 10) + data.xpBonus;
+            const totalCredits = (targetWord.length * 2) + data.creditBonus;
+            const timeLimit = data.timeLimit;
+            
+            // Get user stats for progress bar
+            const database = client.db || db;
+            const userStats = database.prepare("SELECT xp FROM users WHERE id = ?").get(message.author.id);
+            const currentLevel = calculateLevel(userStats?.xp || 0);
+            const currentLevelXP = Math.pow((currentLevel - 1) / 0.1, 2);
+            const nextLevelXP = Math.pow(currentLevel / 0.1, 2);
+            const xpProgress = (userStats?.xp || 0) - currentLevelXP;
+            const xpNeeded = nextLevelXP - currentLevelXP;
+            const progressPercent = xpNeeded > 0 ? Math.min(100, Math.max(0, (xpProgress / xpNeeded) * 100)) : 100;
+            const progressBar = createProgressBar(progressPercent, 10);
+            
+            // --- START EMBED ---
+            const startEmbed = new EmbedBuilder()
+                .setColor(data.color)
+                .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`${data.emoji} ${lang === 'fr' ? 'DEFI NEURAL' : 'NEURAL CHALLENGE'}`)
+                .setDescription(
+                    `\`\`\`prolog\n` +
+                    `${t.difficulty}: ${categoryKey.toUpperCase()}\n` +
+                    `${t.length}: ${targetWord.length}\n` +
+                    `${t.scrambled}: ${scrambled}\n` +
+                    `${t.limit}: ${timeLimit/1000}s\`\`\``
+                )
+                .addFields(
+                    { name: `💡 ${data.hint[lang].split(':')[0]}`, value: data.hint[lang], inline: false },
+                    { name: `💰 ${t.reward}`, value: `┌─ ${t.xpGain}: **+${totalXP} XP**\n└─ ${t.creditGain}: **+${totalCredits} 🪙**`, inline: true },
+                    { name: `📊 ${t.progress}`, value: `\`${progressBar}\` ${progressPercent.toFixed(0)}%\n└─ ${Math.ceil(xpNeeded - xpProgress).toLocaleString()} XP ${t.nextLevel.toLowerCase()}`, inline: true }
+                )
+                .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                .setTimestamp();
 
-        await message.channel.send({ embeds: [startEmbed] });
-        
-        let winnerDeclared = false;
-        
-        // --- COLLECTOR ---
-        const collector = message.channel.createMessageCollector({ 
-            filter: m => !m.author.bot, 
-            time: timeLimit
-        });
-        
-        collector.on('collect', async (m) => {
-            if (winnerDeclared) return;
+            await message.channel.send({ embeds: [startEmbed] });
             
-            // FIXED: Proper sanitization
-            const guess = sanitizeWord(m.content);
+            let winnerDeclared = false;
             
-            if (guess === targetWord) {
-                winnerDeclared = true;
-                collector.stop('winner');
+            // --- COLLECTOR ---
+            const collector = message.channel.createMessageCollector({ 
+                filter: m => !m.author.bot, 
+                time: timeLimit
+            });
+            
+            collector.on('collect', async (m) => {
+                if (winnerDeclared) return;
                 
-                // Update rewards with proper SQL
-                const result = updateUserRewards(m.author.id, totalXP, totalCredits, message.channel, m.author.username, lang, version);
+                // FIXED: Proper sanitization
+                const guess = sanitizeWord(m.content);
                 
-                if (!result) {
-                    return message.channel.send(`❌ ${lang === 'fr' ? 'Erreur de base de donnees' : 'Database error'}`);
-                }
-                
-                // Get updated user stats for win embed
-                const updatedUser = db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(m.author.id);
-                const newLevelNum = calculateLevel(updatedUser.xp);
-                const finalRank = getRank(newLevelNum);
-                
-                // Calculate new progress
-                const newCurrentLevelXP = Math.pow((newLevelNum - 1) / 0.1, 2);
-                const newNextLevelXP = Math.pow(newLevelNum / 0.1, 2);
-                const newXpProgress = updatedUser.xp - newCurrentLevelXP;
-                const newXpNeeded = newNextLevelXP - newCurrentLevelXP;
-                const newProgressPercent = newXpNeeded > 0 ? Math.min(100, Math.max(0, (newXpProgress / newXpNeeded) * 100)) : 100;
-                const newProgressBar = createProgressBar(newProgressPercent, 15);
-                
-                // --- WIN EMBED ---
-                const winEmbed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setAuthor({ name: t.winner, iconURL: m.author.displayAvatarURL() })
-                    .setTitle(`✅ ${t.correct}`)
-                    .setDescription(
-                        `**${m.author.username}** ${t.cracked}\n\n` +
-                        `\`\`\`yaml\n` +
-                        `Word: ${targetWord}\n` +
-                        `Difficulty: ${categoryKey.toUpperCase()}\n` +
-                        `Length: ${targetWord.length} letters\`\`\``
-                    )
-                    .addFields(
-                        { name: `💰 ${t.reward}`, value: `┌─ ${t.xpGain}: **+${result.xpGained} XP**\n└─ ${t.creditGain}: **+${result.creditsGained} 🪙**`, inline: true },
-                        { name: `📈 ${t.rank}`, value: `${finalRank.emoji} ${finalRank.title[lang]} (${lang === 'fr' ? 'Niveau' : 'Level'} ${newLevelNum})`, inline: true },
-                        { name: `💎 ${lang === 'fr' ? 'Crédits' : 'Credits'}`, value: `\`${updatedUser.credits.toLocaleString()} 🪙\``, inline: true },
-                        { name: `📊 ${t.progress}`, value: `\`${newProgressBar}\` ${newProgressPercent.toFixed(1)}%\n└─ ${Math.ceil(newXpNeeded - newXpProgress).toLocaleString()} XP ${t.nextLevel.toLowerCase()}`, inline: false }
-                    )
-                    .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
-                    .setTimestamp();
-                
-                await message.channel.send({ embeds: [winEmbed] });
-            }
-        });
-        
-        collector.on('end', (collected, reason) => {
-            if (!winnerDeclared && reason !== 'winner') {
-                const failEmbed = new EmbedBuilder()
-                    .setColor('#e74c3c')
-                    .setTitle(t.timesUp)
-                    .setDescription(
-                        `${t.theWordWas}: **${targetWord}**\n\n` +
-                        `💡 **Tip:** Try easier words like \`.wrg easy\` to practice!`
-                    )
-                    .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
-                    .setTimestamp();
+                if (guess === targetWord) {
+                    winnerDeclared = true;
+                    collector.stop('winner');
                     
-                message.channel.send({ embeds: [failEmbed] });
-            }
-        });
-        
-        console.log(`[WRG] ${message.author.tag} started a ${categoryKey} word game | Lang: ${lang}`);
+                    // Update rewards with proper SQL - PASS THE CLIENT
+                    const result = await updateUserRewards(client, m.author.id, totalXP, totalCredits, message.channel, m.author.username, lang, version);
+                    
+                    if (!result) {
+                        return message.channel.send(`❌ ${lang === 'fr' ? 'Erreur de base de donnees' : 'Database error'}`);
+                    }
+                    
+                    // Get updated user stats for win embed
+                    const updatedUser = database.prepare("SELECT xp, credits FROM users WHERE id = ?").get(m.author.id);
+                    const newLevelNum = calculateLevel(updatedUser.xp);
+                    const finalRank = getRank(newLevelNum);
+                    
+                    // Calculate new progress
+                    const newCurrentLevelXP = Math.pow((newLevelNum - 1) / 0.1, 2);
+                    const newNextLevelXP = Math.pow(newLevelNum / 0.1, 2);
+                    const newXpProgress = updatedUser.xp - newCurrentLevelXP;
+                    const newXpNeeded = newNextLevelXP - newCurrentLevelXP;
+                    const newProgressPercent = newXpNeeded > 0 ? Math.min(100, Math.max(0, (newXpProgress / newXpNeeded) * 100)) : 100;
+                    const newProgressBar = createProgressBar(newProgressPercent, 15);
+                    
+                    // --- WIN EMBED ---
+                    const winEmbed = new EmbedBuilder()
+                        .setColor('#2ecc71')
+                        .setAuthor({ name: t.winner, iconURL: m.author.displayAvatarURL() })
+                        .setTitle(`✅ ${t.correct}`)
+                        .setDescription(
+                            `**${m.author.username}** ${t.cracked}\n\n` +
+                            `\`\`\`yaml\n` +
+                            `Word: ${targetWord}\n` +
+                            `Difficulty: ${categoryKey.toUpperCase()}\n` +
+                            `Length: ${targetWord.length} letters\`\`\``
+                        )
+                        .addFields(
+                            { name: `💰 ${t.reward}`, value: `┌─ ${t.xpGain}: **+${result.xpGained} XP**\n└─ ${t.creditGain}: **+${result.creditsGained} 🪙**`, inline: true },
+                            { name: `📈 ${t.rank}`, value: `${finalRank.emoji} ${finalRank.title[lang]} (${lang === 'fr' ? 'Niveau' : 'Level'} ${newLevelNum})`, inline: true },
+                            { name: `💎 ${lang === 'fr' ? 'Crédits' : 'Credits'}`, value: `\`${updatedUser.credits.toLocaleString()} 🪙\``, inline: true },
+                            { name: `📊 ${t.progress}`, value: `\`${newProgressBar}\` ${newProgressPercent.toFixed(1)}%\n└─ ${Math.ceil(newXpNeeded - newXpProgress).toLocaleString()} XP ${t.nextLevel.toLowerCase()}`, inline: false }
+                        )
+                        .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                        .setTimestamp();
+                    
+                    await message.channel.send({ embeds: [winEmbed] });
+                }
+            });
+            
+            collector.on('end', (collected, reason) => {
+                if (!winnerDeclared && reason !== 'winner') {
+                    const failEmbed = new EmbedBuilder()
+                        .setColor('#e74c3c')
+                        .setTitle(t.timesUp)
+                        .setDescription(
+                            `${t.theWordWas}: **${targetWord}**\n\n` +
+                            `💡 **Tip:** Try easier words like \`.wrg easy\` to practice!`
+                        )
+                        .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                        .setTimestamp();
+                        
+                    message.channel.send({ embeds: [failEmbed] });
+                }
+            });
+            
+            console.log(`[WRG] ${message.author.tag} started a ${categoryKey} word game | Lang: ${lang}`);
+            
+        } catch (error) {
+            console.error(`[WRG] Fatal error:`, error);
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setTitle('❌ GAME ERROR')
+                .setDescription(`An error occurred while starting the game.\n\n**Error:** \`${error.message}\`\n\nPlease try again later.`)
+                .setTimestamp();
+            return message.reply({ embeds: [errorEmbed] });
+        }
     }
 };
