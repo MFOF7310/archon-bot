@@ -12,7 +12,6 @@
     "google-translate-api-x": "^10.7.1",
     "google-tts-api": "^2.0.2",
     "dotenv": "^16.4.5",
-    "groq-sdk": "^0.11.0",
     "better-sqlite3": "^11.0.0"
   },
   "engines": {
