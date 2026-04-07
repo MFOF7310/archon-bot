@@ -3,8 +3,6 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder } = require('discord.js');
-const Groq = require('groq-sdk');
-const axios = require('axios');
 
 // IMPORT LYDIA SETUP FUNCTION
 const { setupLydia } = require('./plugins/lydia.js');
@@ -36,6 +34,7 @@ const client = new Client({
 // --- SYSTEM GLOBALS ---
 client.commands = new Collection();
 client.aliases = new Collection();
+client.userTimeouts = new Map(); // For persistent reminders
 
 // --- DYNAMIC VERSIONING ---
 function getVersion() {
@@ -112,9 +111,9 @@ const getNextLevelReward = (level) => {
 const Database = require('better-sqlite3');
 const db = new Database('database.sqlite');
 
-// ================= COMPLETE DATABASE SCHEMA (v1.3.2-STABLE) =================
+// ================= COMPLETE DATABASE SCHEMA =================
 
-// --- USERS TABLE (Complete with all columns) ---
+// --- USERS TABLE ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -130,11 +129,12 @@ db.prepare(`
         total_winnings INTEGER DEFAULT 0,
         gaming TEXT DEFAULT '{"game":"CODM","rank":"Unranked"}',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
+        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_daily INTEGER DEFAULT 0
     )
 `).run();
 
-// ================= GLOBAL AUTO-PATCHER (v1.3.2-STABLE) =================
+// ================= GLOBAL AUTO-PATCHER =================
 console.log(`${cyan}[SYSTEM]${reset} Syncing Global Neural Schema...`);
 
 const expectedSchema = {
@@ -161,9 +161,9 @@ Object.entries(expectedSchema).forEach(([colName, colType]) => {
     }
 });
 
-console.log(`${green}[READY]${reset} Bamako Node Schema is 100% Synchronized.`);
+console.log(`${green}[READY]${reset} Database schema is 100% Synchronized.`);
 
-// --- LYDIA MEMORY TABLE ---
+// --- LYDIA TABLES ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_memory (
         user_id TEXT,
@@ -174,7 +174,6 @@ db.prepare(`
     )
 `).run();
 
-// --- LYDIA AGENTS TABLE ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_agents (
         channel_id TEXT PRIMARY KEY,
@@ -184,7 +183,6 @@ db.prepare(`
     )
 `).run();
 
-// --- USER INVENTORY TABLE (for shop) ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS user_inventory (
         user_id TEXT,
@@ -196,7 +194,6 @@ db.prepare(`
     )
 `).run();
 
-// --- LYDIA INTRODUCTIONS TABLE (24h reset tracking) ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_introductions (
         user_id TEXT,
@@ -206,7 +203,6 @@ db.prepare(`
     )
 `).run();
 
-// --- LYDIA CONVERSATIONS TABLE (chat history) ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_conversations (
         channel_id TEXT,
@@ -217,7 +213,26 @@ db.prepare(`
     )
 `).run();
 
-// ================= FIXED HELPER FUNCTIONS =================
+// ================= REMINDERS TABLE (PERSISTENT) =================
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS reminders (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        channel_id TEXT,
+        message TEXT,
+        created_at INTEGER,
+        execute_at INTEGER,
+        status TEXT DEFAULT 'pending'
+    )
+`).run();
+
+// Add indexes for better performance
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at, status)`).run();
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status)`).run();
+
+console.log(`${green}[DB]${reset} Reminders table ready for persistent storage`);
+
+// ================= HELPER FUNCTIONS =================
 
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
 
@@ -233,8 +248,8 @@ const initializeUser = (userId, username) => {
         db.prepare(`INSERT INTO users (
             id, username, xp, level, credits, streak_days, 
             total_messages, last_xp_gain, games_played, games_won, 
-            total_winnings, gaming, created_at, last_seen
-        ) VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+            total_winnings, gaming, created_at, last_seen, last_daily
+        ) VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)`)
         .run(userId, username);
     }
     return getUser(userId);
@@ -288,19 +303,13 @@ client.initializeUser = initializeUser;
 client.updateGamingStats = updateGamingStats;
 client.db = db;
 
-// ================= FINAL FIXED: XP PROGRESS FUNCTION (SYNCED WITH rank.js & games.js) =================
+// ================= XP PROGRESS FUNCTION =================
 const getXPProgress = (xp, level) => {
-    const barLength = 20; // Progress bar length (defined inside function for safety)
-    
-    // SYNCED FORMULA: Matches rank.js and games.js exactly
+    const barLength = 20;
     const xpForCurrentLevel = Math.pow((level - 1) / 0.1, 2);
     const xpForNextLevel = Math.pow(level / 0.1, 2);
-    
-    // SAFETY: Prevent negative values
     const currentProgress = Math.max(0, xp - xpForCurrentLevel);
     const xpNeeded = Math.max(1, xpForNextLevel - xpForCurrentLevel);
-    
-    // SAFETY: Clamp percentage between 0 and 100
     const percentage = Math.min(100, Math.max(0, (currentProgress / xpNeeded) * 100));
     const filledBars = Math.max(0, Math.floor((percentage / 100) * barLength));
     
@@ -406,6 +415,7 @@ client.once(Events.ClientReady, async () => {
     
     await client.loadPlugins();
     
+    // ✅ CRITICAL: Initialize Lydia with database
     console.log(`${cyan}[LYDIA]${reset} Initializing Neural Interface...`);
     setupLydia(client, db);
     console.log(`${green}[LYDIA]${reset} Neural Core structure ready.`);
@@ -415,6 +425,15 @@ client.once(Events.ClientReady, async () => {
     console.log(`${green}🛰️  CLIENT   : ${client.user.tag}${reset}`);
     console.log(`${green}📍 NODE     : BAMAKO_223${reset}`);
     console.log(`${green}📦 VERSION  : v${client.version}${reset}\n`);
+
+    // Clear old timeouts on restart (prevents memory leaks)
+    if (client.userTimeouts) {
+        for (const [id, timeout] of client.userTimeouts) {
+            clearTimeout(timeout);
+        }
+        client.userTimeouts.clear();
+        console.log(`${cyan}[REMINDER]${reset} Cleared old timeout queue on restart`);
+    }
 
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
@@ -447,13 +466,10 @@ client.on(Events.MessageCreate, async (message) => {
     if (now - (userData.last_xp_gain || 0) > cooldown) {
         const xpGain = Math.floor(Math.random() * 21) + 15;
         let newXP = (userData.xp || 0) + xpGain;
-        
-        // SYNCED: Using the SAME level formula as rank.js, profile.js, and games.js
         let newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
         let totalMsgs = (userData.total_messages || 0) + 1;
 
         if (newLevel > (userData.level || 1)) {
-            // SYNCED: Now uses the same square root formula for progress
             const xpProgress = getXPProgress(newXP, newLevel);
             const achievement = getAchievementName(newLevel);
             
@@ -602,6 +618,23 @@ client.on(Events.GuildMemberAdd, async (member) => {
             .setTimestamp();
         logChannel.send({ embeds: [joinLog] });
     }
+});
+
+// --- CLEANUP ON SHUTDOWN ---
+process.on('SIGINT', () => {
+    console.log(`${yellow}[SHUTDOWN]${reset} Cleaning up...`);
+    
+    // Clear all pending timeouts
+    if (client.userTimeouts) {
+        for (const [id, timeout] of client.userTimeouts) {
+            clearTimeout(timeout);
+        }
+        client.userTimeouts.clear();
+        console.log(`${green}[SHUTDOWN]${reset} Cleared all pending reminders`);
+    }
+    
+    console.log(`${green}[SHUTDOWN]${reset} Cleanup complete. Goodbye!`);
+    process.exit(0);
 });
 
 // --- LOGIN ---
