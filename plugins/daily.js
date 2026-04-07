@@ -100,7 +100,7 @@ module.exports = {
             if (guildSettings?.language) {
                 lang = guildSettings.language;
             } else {
-                const frenchKeywords = ['fr', 'francais', 'français', 'french', 'bonjour', 'salut', 'merci','cadeau','journalier','quotidien'];
+                const frenchKeywords = ['fr', 'francais', 'français', 'french', 'bonjour', 'salut', 'merci','quotidien','journalier','cadeau'];
                 const content = message.content.toLowerCase();
                 if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
                     lang = 'fr';
@@ -119,7 +119,7 @@ module.exports = {
             // --- EMERGENCY DATABASE FIX ---
             try {
                 // Ensure all required columns exist
-                const columns = ['credits', 'streak_days', 'last_streak_date', 'last_seen'];
+                const columns = ['credits', 'streak_days', 'last_daily'];
                 for (const col of columns) {
                     try {
                         database.prepare(`ALTER TABLE users ADD COLUMN ${col} INTEGER DEFAULT 0`).run();
@@ -128,10 +128,6 @@ module.exports = {
                         // Column already exists, ignore
                     }
                 }
-                // Add last_streak_date as DATETIME if not exists
-                try {
-                    database.prepare(`ALTER TABLE users ADD COLUMN last_streak_date DATETIME`).run();
-                } catch (e) {}
             } catch (err) {
                 console.log(`[DAILY] Column check error: ${err.message}`);
             }
@@ -143,7 +139,7 @@ module.exports = {
             
             try {
                 userData = database.prepare(`
-                    SELECT last_seen, xp, credits, streak_days, last_streak_date 
+                    SELECT last_daily, xp, credits, streak_days 
                     FROM users 
                     WHERE id = ?
                 `).get(userId);
@@ -153,9 +149,9 @@ module.exports = {
             }
             
             // --- STREAK CALCULATION ---
-            if (userData && userData.last_seen) {
+            if (userData && userData.last_daily) {
                 const now = new Date();
-                const lastClaim = new Date(userData.last_seen).getTime();
+                const lastClaim = parseInt(userData.last_daily);
                 const oneDay = 24 * 60 * 60 * 1000;
                 const timePassed = now.getTime() - lastClaim;
                 const daysPassed = Math.floor(timePassed / oneDay);
@@ -186,8 +182,8 @@ module.exports = {
             const oneDay = 24 * 60 * 60 * 1000;
             
             // --- COOLDOWN CHECK ---
-            if (userData && userData.last_seen) {
-                const lastClaim = new Date(userData.last_seen).getTime();
+            if (userData && userData.last_daily) {
+                const lastClaim = parseInt(userData.last_daily);
                 const timePassed = now - lastClaim;
                 
                 if (timePassed < oneDay && timePassed > 0) {
@@ -216,28 +212,29 @@ module.exports = {
                 }
             }
             
-            // --- PROCESS CLAIM (FIXED SQL) ---
+            // --- PROCESS CLAIM (FIXED FOR ARCHON v1.5.0) ---
             try {
+                const nowTimestamp = Date.now(); // Integer timestamp for SQLite
+                
                 // First, ensure user exists
                 const exists = database.prepare("SELECT id FROM users WHERE id = ?").get(userId);
                 if (!exists) {
-                    database.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
-                        VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}')`)
-                        .run(userId, message.author.username);
+                    database.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming) 
+                        VALUES (?, ?, 0, 1, 0, 0, ?, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}')`)
+                        .run(userId, message.author.username, nowTimestamp);
                 }
                 
-                // Update user with daily rewards
+                // Update user with daily rewards using CORRECT column 'last_daily'
                 const updateStmt = database.prepare(`
                     UPDATE users 
                     SET xp = COALESCE(xp, 0) + ?,
                         credits = COALESCE(credits, 0) + ?,
                         streak_days = ?,
-                        last_streak_date = CURRENT_TIMESTAMP,
-                        last_seen = CURRENT_TIMESTAMP
+                        last_daily = ?
                     WHERE id = ?
                 `);
                 
-                const result = updateStmt.run(totalXP, totalCredits, streak, userId);
+                const result = updateStmt.run(totalXP, totalCredits, streak, nowTimestamp, userId);
                 
                 if (result.changes === 0) {
                     throw new Error("No rows updated - user may not exist");
