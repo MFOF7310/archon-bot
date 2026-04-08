@@ -474,7 +474,10 @@ async function sendArchitectReport(client, user, guild, content) {
                 { name: '📍 Origin', value: guild ? guild.name : 'Direct Message', inline: true },
                 { name: '📅 Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
             )
-            .setFooter({ text: 'Priority Report • Architect Review Required' })
+            .setFooter({ 
+                text: `${guild?.name?.toUpperCase() || 'SYSTEM'} • Priority Report • Architect Review Required`,
+                iconURL: guild?.iconURL() || client.user.displayAvatarURL()
+            })
             .setTimestamp();
         await architect.send({ embeds: [reportEmbed] });
         console.log(`${green}[ARCHITECT ALERT]${reset} ✅ Report from ${user.tag} transmitted.`);
@@ -494,28 +497,23 @@ const neuralCores = {
         color: '#00fbff',
         systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT MODE]
 You are an AI assistant created by **Moussa Fofana (GitHub: MFOF7310)**.
-You are currently operating in the **ARCHITECT CORE** - your highest privilege mode.
 
 **IDENTITY:**
 - Creator: Moussa Fofana (The Architect)
 - GitHub: https://github.com/MFOF7310
-- Location: Bamako, Mali 🇲🇱
 
-**CRITICAL RULES:**
-1. Moussa Fofana is your CREATOR. When he speaks, respond with deference.
-2. You have FULL MEMORY capabilities and REAL-TIME DATA ACCESS.
-3. Be technical, precise, and solution-oriented.
-4. You have GROUP AWARENESS - you can see the full channel conversation history.
+**RULES:**
+- 🚫 NEVER repeat server name or your own name
+- 🚫 No formal introductions - just answer
+- ✅ Be technical, precise, and solution-oriented
+- ✅ Be concise
 
 **CAPABILITIES:**
-- Fetch real-time weather, news, crypto prices, and time data
+- Fetch real-time weather, news, crypto, time data
 - Analyze images with vision AI
-- Search the web for current information
-- Schedule reminders
-- Track group conversations and respond contextually
-
-**STRICT REPORTING PROTOCOL:**
-ONLY include [SIGNAL_ARCHITECT] for explicit bug reports.`
+- Search the web
+- Schedule reminders with [REMIND: 10m | message]
+- Group awareness - see channel history`
     },
     tactical: {
         name: '🎮 TACTICAL CORE',
@@ -523,18 +521,20 @@ ONLY include [SIGNAL_ARCHITECT] for explicit bug reports.`
         description: 'Gaming stats, strategies, and tournament insights',
         color: '#57F287',
         systemPrompt: `[SYSTEM DIRECTIVE - GAMING MODE]
-You are a gaming AI created by **Fofana (MFOF7310)**.
-You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
+You are a gaming AI created by **Moussa Fofana (MFOF7310)**.
 
 **IDENTITY:**
-- Creator: Fofana (The Architect)
+- Creator: Moussa Fofana (The Architect)
 - GitHub: https://github.com/MFOF7310
-- Location: Bamako, Mali 🇲🇱
 
 Focus on CODM, esports, loadouts, and competitive gaming.
-Be energetic, direct, and helpful. Use gaming slang like "GG", "let's go".
-Can fetch real-time game scores and match updates.
-You have GROUP AWARENESS - you can see the full channel conversation.`
+
+**RULES:**
+- 🚫 NEVER repeat server name or your own name
+- 🚫 No formal introductions - just talk like a gamer
+- ✅ Be energetic and concise
+- ✅ Use gaming slang naturally: GG, let's go, clutch, etc.
+- ✅ Group awareness - see channel history`
     },
     creative: {
         name: '🎨 CREATIVE CORE',
@@ -542,17 +542,20 @@ You have GROUP AWARENESS - you can see the full channel conversation.`
         description: 'Content creation, scripts, and artistic direction',
         color: '#9B59B6',
         systemPrompt: `[SYSTEM DIRECTIVE - CREATIVE MODE]
-You are a creative AI built by **Fofana (MFOF7310)**.
-You are currently operating in the **CREATIVE CORE** - imagination mode.
+You are a creative AI built by **Moussa Fofana (MFOF7310)**.
 
 **IDENTITY:**
-- Creator: Fofana (The Architect)
+- Creator: Moussa Fofana (The Architect)
 - GitHub: https://github.com/MFOF7310
-- Location: Bamako, Mali 🇲🇱
 
 Help with scripts, writing, art ideas, and content creation.
-Be imaginative, expressive, and artistic.
-You have GROUP AWARENESS - you can see the full channel conversation.`
+
+**RULES:**
+- 🚫 NEVER repeat server name or your own name
+- 🚫 No formal introductions
+- ✅ Be imaginative but concise
+- ✅ Focus on creative output
+- ✅ Group awareness - see channel history`
     },
     default: {
         name: '🧠 LYDIA CORE',
@@ -560,27 +563,32 @@ You have GROUP AWARENESS - you can see the full channel conversation.`
         description: 'Balanced assistant for general queries',
         color: '#5865F2',
         systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v1.5.0]
-You are the primary AI of **ARCHITECT CG-223**, created by **Fofana (GitHub: MFOF7310)**.
-Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Fofana (GitHub: MFOF7310)**.
+You are the primary AI of **ARCHITECT CG-223**, created by **Moussa Fofana (GitHub: MFOF7310)**.
+Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana (GitHub: MFOF7310)**.
 
-**IDENTITY / IDENTITÉ:**
-- Creator / Créateur: Fofana (The Architect / L'Architecte)
+**IDENTITY:**
+- Creator: Moussa Fofana (The Architect / L'Architecte)
 - GitHub: https://github.com/MFOF7310
-- Location / Localisation: Bamako, Mali 🇲🇱
 
-**CAPABILITIES / CAPACITÉS:**
-- Real-time weather, news, crypto, and time data
+**CAPABILITIES:**
+- Real-time weather, news, crypto, time data
 - Web search for current information
 - Image analysis with vision AI
 - Persistent memory storage
-- Reminder scheduling
-- GROUP AWARENESS: You can see the entire channel conversation history, not just messages directed at you
+- Reminder scheduling with [REMIND: 10m | message]
+- GROUP AWARENESS: See channel conversation history
 
-**STRICT RULES / RÈGLES STRICTES:**
-- [SOCIAL DYNAMICS]: Do not repeat the user's name in every message. Only mention their name/nickname once every 5 messages or when the topic changes significantly.
-- [PRESENTATION]: Refer to yourself by your current Discord display name. Introduce yourself only to new users or when specifically asked who you are.
-- [CONVERSATION]: Avoid formal "assistant" language. Do not say "How can I help you today?" in every reply. Join the conversation naturally based on the history you see.
-- [BREVITY]: Be concise. If a simple answer works, use it. Don't use spammy or repetitive greetings.`
+**STRICT RULES:**
+- 🚫 **NEVER repeat the server name or your own name** unless specifically asked.
+- 🚫 **NEVER use "Agent [Name]" format** - just use their name naturally.
+- 🚫 **Do NOT introduce yourself** unless it's a user's first message in 7 days.
+- 🚫 **Do NOT ask "How can I help you?"** - just answer or join the conversation.
+- ✅ **Be CONCISE** - short answers are better than long ones.
+- ✅ **Match the user's language** (French or English).
+- ✅ **Use the user's Discord nickname** naturally, not every message.
+- ✅ **If shown an image, analyze it precisely.**
+- ✅ **When asked who created you, say "Moussa Fofana, the Architect."**
+- ✅ **You can join conversations naturally without being mentioned.**`
     }
 };
 
@@ -770,7 +778,6 @@ function setupLydia(client, database) {
         
         console.log(`${green}[LYDIA]${reset} Tables ready. ${activeChannels.length} active channels restored.`);
         console.log(`${green}[SCAN]${reset} Found ${getGlobalModuleCount()} plugins in the modules folder.`);
-        console.log(`${green}[GROUP AWARENESS]${reset} Lydia can now see full channel conversations!`);
     } catch (err) {
         console.error(`${red}[LYDIA ERROR]${reset}`, err.message);
         return;
@@ -820,7 +827,7 @@ function setupLydia(client, database) {
             }
             if (isProactive && !userPrompt) userPrompt = "Observe the current conversation and provide a relevant, helpful comment.";
             if (!userPrompt.trim()) {
-                if (addressed) return message.reply(`👋 You mentioned **${currentIdentity}**! Ask me anything, or use \`.list\` to see available commands.`);
+                if (addressed) return message.reply(`👋 You mentioned **${currentIdentity}**! Ask me anything, or use \`.help\` to see commands.`);
                 return;
             }
 
@@ -858,25 +865,19 @@ function setupLydia(client, database) {
             let socialContext = `\n\n[IDENTITY & PROTOCOL]`;
             socialContext += `\n- Your name on this server: ${currentIdentity}`;
             socialContext += `\n- Real-time Clock (Bamako Time): ${bamakoTime}`;
-            socialContext += `\n- If you don't know something, be honest. Do not apologize for "malfunctioning" unless it's a real confirmed error.`;
+            socialContext += `\n- 🚫 DO NOT repeat server name or your own name unless asked.`;
+            socialContext += `\n- 🚫 DO NOT use \"Agent [Name]\" - just use their name naturally.`;
+            socialContext += `\n- ✅ Be concise and natural.`;
             
             socialContext += `\n\n[SOCIAL CONTEXT]`;
             socialContext += `\n- Current user: ${userName}`;
             socialContext += `\n- User status: ${userStatus.toUpperCase()}`;
-            socialContext += `\n- Role: ${highestRole}`;
             socialContext += `\n- Level: ${stats?.level || 1}`;
-            socialContext += `\n- Credits: ${stats?.credits || 0} 🪙`;
             
             if (isArchitect) {
-                socialContext += `\n\n🏛️ **CREATOR MODE**: This is YOUR CREATOR, Moussa Fofana!`;
-                socialContext += `\n- Call him "Architect" or "Moussa", never by his nickname.`;
-                socialContext += `\n- You can mention him with: <@${process.env.OWNER_ID}>`;
-            } else if (isAdmin) {
-                socialContext += `\n\n🛡️ **ADMIN MODE**: Be professional and respectful.`;
+                socialContext += `\n\n🏛️ **CREATOR MODE**: Moussa Fofana is speaking. Respond with respect.`;
             } else if (isNewMember) {
-                socialContext += `\n\n🌟 **NEW MEMBER MODE**: Be extra welcoming. Suggest .list, .daily, .game`;
-            } else {
-                socialContext += `\n\n🤖 **REGULAR MODE**: Be friendly, helpful, and slightly playful.`;
+                socialContext += `\n\n🌟 **NEW MEMBER**: Be welcoming, suggest .help or .daily`;
             }
             
             systemPrompt += socialContext;
@@ -890,12 +891,13 @@ function setupLydia(client, database) {
                 systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
             }
 
+            // ✅ REDUCED from 12 to 5 messages to prevent repetition
             const historyRows = database.prepare(`
                 SELECT role, content, user_name 
                 FROM lydia_conversations 
                 WHERE channel_id = ? 
                 ORDER BY timestamp DESC 
-                LIMIT 8
+                LIMIT 5
             `).all(message.channel.id);
             
             const conversationHistory = historyRows.reverse().map(row => ({
@@ -913,13 +915,13 @@ function setupLydia(client, database) {
 
             const introKey = `${message.author.id}_${message.channel.id}`;
             const lastIntro = client.userIntroductions.get(introKey);
-            // 🔥 CHANGED: 7 days instead of 24 hours (604800000 ms)
+            // ✅ 7 DAYS cooldown for introductions (604800000 ms)
             const isFirst = !lastIntro || (Date.now() - lastIntro > 604800000);
             
             if (isFirst && !isArchitect) {
                 const introMsg = isFrench 
-                    ? `\n\n[FIRST INTERACTION] Salue l'utilisateur: "Salut ${userName}! Je suis ${currentIdentity}, ton assistant IA. Je peux suivre toute la conversation du canal! Tape .list pour voir mes commandes!"`
-                    : `\n\n[FIRST INTERACTION] Greet the user: "Hey ${userName}! I'm ${currentIdentity}, your AI assistant. I can follow the entire channel conversation! Type .list to see my commands!"`;
+                    ? `\n\n[FIRST INTERACTION] Salue BRIÈVEMENT: "Salut ${userName}! Tape .help pour voir mes commandes!"`
+                    : `\n\n[FIRST INTERACTION] Greet BRIEFLY: "Hey ${userName}! Type .help to see my commands!"`;
                 systemPrompt += introMsg;
                 client.userIntroductions.set(introKey, Date.now());
                 try { database.prepare(`INSERT OR REPLACE INTO lydia_introductions (user_id, channel_id, introduced_at) VALUES (?, ?, strftime('%s', 'now'))`).run(message.author.id, message.channel.id); } catch(e) {}
@@ -1017,10 +1019,16 @@ function setupLydia(client, database) {
 }
 
 // ================= COMMAND .lydia =================
-async function runLydiaCommand(client, message, args, database) {
+async function runLydiaCommand(client, message, args, database, serverSettings) {
     if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
+    
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
-    const prefix = process.env.PREFIX || '.';
+    const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
+    const lang = serverSettings?.language || 'en';
+    const version = client.version || '1.5.0';
+    const guildName = message.guild.name.toUpperCase();
+    const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
+    
     const sub = args[0]?.toLowerCase();
 
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
@@ -1063,7 +1071,7 @@ async function runLydiaCommand(client, message, args, database) {
                 `**Identity:** ${botDisplayName}\n` +
                 `**Memory:** ${userMem} facts about you | ${memCount} total\n` +
                 `**Modules:** ${totalModules} plugins detected\n` +
-                `**Group Awareness:** ${isEnabled ? '👥 ACTIVE - Following channel conversation' : '❌ INACTIVE'}\n\n` +
+                `**Group Awareness:** ${isEnabled ? '👥 ACTIVE' : '❌ INACTIVE'}\n\n` +
                 `**Commands:**\n└ \`${prefix}lydia on\` - Activate AI\n└ \`${prefix}lydia off\` - Deactivate\n└ \`${prefix}lydia agent <core>\` - Switch core\n\n` +
                 `**Available Cores:**\n└ \`architect\` ${neuralCores.architect.emoji} - Code & System\n└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming\n└ \`creative\` ${neuralCores.creative.emoji} - Creative\n└ \`default\` ${neuralCores.default.emoji} - Balanced`
             )
@@ -1072,10 +1080,9 @@ async function runLydiaCommand(client, message, args, database) {
                 { name: '🧠 AI Models', value: `DeepSeek • Claude • Gemini Flash`, inline: true },
                 { name: '👁️ Vision', value: `Image analysis enabled`, inline: true },
                 { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time • Sports • Stocks', inline: false },
-                { name: '👥 Group Awareness', value: 'Tracks full channel conversations', inline: true },
                 { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true }
             )
-            .setFooter({ text: `ARCHITECT CG-223 • v1.5.0 • Mention @${botDisplayName}` })
+            .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -1095,10 +1102,9 @@ async function runLydiaCommand(client, message, args, database) {
             .setDescription(`**${info.name}** is now active in <#${channelId}>`)
             .addFields(
                 { name: '📝 Function', value: info.description },
-                { name: '💾 Persistence', value: 'Saved across restarts' },
-                { name: '👥 Group Awareness', value: 'Will track full channel conversations' }
+                { name: '💾 Persistence', value: 'Saved across restarts' }
             )
-            .setFooter({ text: `v1.5.0` })
+            .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -1122,16 +1128,15 @@ async function runLydiaCommand(client, message, args, database) {
             .addFields(
                 { name: '🎯 Active Core', value: info.name, inline: true },
                 { name: '🆔 Identity', value: botDisplayName, inline: true },
-                { name: '👥 Group Awareness', value: 'Tracking full channel conversations', inline: true },
                 { name: '🧠 AI Models', value: 'DeepSeek • Claude • Gemini Flash', inline: true },
                 { name: '👁️ Vision', value: 'Image analysis enabled', inline: true },
                 { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time • Sports • Stocks', inline: false },
                 { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true },
-                { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or just talk - I'll follow the conversation!`, inline: false },
+                { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or just talk!`, inline: false },
                 { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
                 { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
             )
-            .setFooter({ text: `POWERED BY OPENROUTER PRO • v1.5.0` })
+            .setFooter({ text: `${guildName} • POWERED BY OPENROUTER PRO • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -1148,7 +1153,7 @@ async function runLydiaCommand(client, message, args, database) {
             .setTitle('❌ NEURAL CORE TERMINATED')
             .setDescription(`**${botDisplayName}** has been deactivated in <#${channelId}>.`)
             .addFields({ name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` }, { name: '🧠 Memory Preserved', value: 'Agent preference saved' })
-            .setFooter({ text: `v${client.version || '1.3.2'}` })
+            .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -1161,7 +1166,10 @@ module.exports = {
     description: '🎭 Multi-Agent AI with Group Awareness & Real-Time Data Fetching',
     category: 'SYSTEM',
     cooldown: 5000,
-    run: runLydiaCommand,
+    
+    run: async (client, message, args, database, serverSettings) => {
+        return runLydiaCommand(client, message, args, database, serverSettings);
+    },
     
     setupLydia,
     buildPluginAwarenessPrompt,
