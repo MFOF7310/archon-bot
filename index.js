@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
 
-// IMPORT LYDIA SETUP FUNCTION
+// IMPORT LYDIA SETUP FUNCTION - MOVE TO TOP
 const { setupLydia } = require('./plugins/lydia.js');
 
 // --- GLOBAL ERROR HANDLER (Prevents crashes) ---
@@ -168,14 +168,14 @@ console.log(`${green}[READY]${reset} Database schema is 100% Synchronized.`);
 db.prepare(`
     CREATE TABLE IF NOT EXISTS server_settings (
         guild_id TEXT PRIMARY KEY,
-        prefix TEXT DEFAULT ?,
+        prefix TEXT DEFAULT '.',
         language TEXT DEFAULT 'en',
         welcome_channel TEXT,
         log_channel TEXT,
         daily_channel TEXT,
         updated_at INTEGER DEFAULT (strftime('%s', 'now'))
     )
-`).run(PREFIX);
+`).run();
 
 console.log(`${green}[DB]${reset} Server settings table ready.`);
 
@@ -246,6 +246,62 @@ db.prepare(`
 
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at, status)`).run();
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status)`).run();
+
+// ================= WARNINGS TABLE =================
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS warnings (
+        id TEXT PRIMARY KEY,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        moderator_id TEXT NOT NULL,
+        reason TEXT,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        expires_at INTEGER,
+        active BOOLEAN DEFAULT 1
+    )
+`).run();
+
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id)`).run();
+
+// ================= MODERATION LOGS TABLE =================
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS moderation_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        moderator_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        reason TEXT,
+        warning_id TEXT,
+        timestamp INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+`).run();
+
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_modlogs_guild_user ON moderation_logs(guild_id, user_id)`).run();
+
+// ================= SERVER BACKUPS TABLE =================
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS server_backups (
+        id TEXT PRIMARY KEY,
+        guild_id TEXT NOT NULL,
+        name TEXT,
+        data TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        roles INTEGER,
+        channels INTEGER
+    )
+`).run();
+
+// ================= AUTO BACKUP SETTINGS TABLE =================
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS auto_backup_settings (
+        guild_id TEXT PRIMARY KEY,
+        enabled BOOLEAN DEFAULT 0,
+        last_backup INTEGER,
+        channel_id TEXT
+    )
+`).run();
 
 console.log(`${green}[DB]${reset} All tables synchronized.`);
 
