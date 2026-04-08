@@ -225,7 +225,9 @@ const texts = {
         perfect: '🏆 PERFECT SCORE!',
         almost: 'Great effort!',
         good: 'Well done!',
-        tryAgain: 'Try again!'
+        tryAgain: 'Try again!',
+        accessDenied: '❌ This menu is not yours.',
+        progress: 'Progress'
     },
     fr: {
         title: '🧠 TRIVIA NEURAL',
@@ -268,7 +270,9 @@ const texts = {
         perfect: '🏆 SCORE PARFAIT !',
         almost: 'Excellent effort !',
         good: 'Bien joué !',
-        tryAgain: 'Réessayez !'
+        tryAgain: 'Réessayez !',
+        accessDenied: '❌ Ce menu ne vous appartient pas.',
+        progress: 'Progression'
     }
 };
 
@@ -285,7 +289,7 @@ function createProgressBar(percentage, length = 15) {
     return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty));
 }
 
-function checkAndAnnounceLevelUp(client, oldXp, newXp, userId, username, channel, lang) {
+function checkAndAnnounceLevelUp(client, oldXp, newXp, userId, username, channel, lang, guildName) {
     const oldLevel = calculateLevel(oldXp);
     const newLevel = calculateLevel(newXp);
     if (newLevel > oldLevel) {
@@ -300,7 +304,7 @@ function checkAndAnnounceLevelUp(client, oldXp, newXp, userId, username, channel
                 { name: '📊 PROGRESSION', value: `${lang === 'fr' ? 'Niveau' : 'Level'} ${oldLevel} → ${newLevel}`, inline: true },
                 { name: '🎯 RANG', value: `${rank.emoji} ${rank.title[lang]}`, inline: true }
             )
-            .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+            .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}` })
             .setTimestamp();
         channel.send({ embeds: [levelUpEmbed] });
         return true;
@@ -318,23 +322,16 @@ module.exports = {
     cooldown: 3000,
     examples: ['.trivia'],
 
-    run: async (client, message, args, database) => {
+    // ✅ FIXED: Added serverSettings parameter
+    run: async (client, message, args, database, serverSettings) => {
         const db = database;
         
-        // --- LANGUAGE DETECTION ---
-        let lang = 'en';
-        const guildSettings = client.settings?.get(message.guild?.id);
-        if (guildSettings?.language) {
-            lang = guildSettings.language;
-        } else {
-            const frenchKeywords = ['fr', 'francais', 'français', 'culture', 'questions'];
-            const content = message.content.toLowerCase();
-            if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
-                lang = 'fr';
-            }
-        }
+        // ✅ FIXED: Use server language
+        const lang = serverSettings?.language || 'en';
         const t = texts[lang];
         const version = client.version || '1.5.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
         const userId = message.author.id;
         const userName = message.author.username;
@@ -373,7 +370,7 @@ module.exports = {
                 value: `\`${credits.toLocaleString()} 🪙\` • ${userRank.emoji} ${userRank.title[lang]} (${lang === 'fr' ? 'Niv.' : 'Lvl.'} ${userLevel})`,
                 inline: false
             })
-            .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+            .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         
         const categoryOptions = Object.entries(CATEGORIES).map(([key, cat]) => ({
@@ -399,11 +396,11 @@ module.exports = {
         
         categoryCollector.on('collect', async (i) => {
             if (i.user.id !== userId) {
-                return i.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', ephemeral: true });
+                return i.reply({ content: t.accessDenied, ephemeral: true });
             }
             
             if (i.customId === 'trivia_cancel') {
-                await i.update({ embeds: [categoryEmbed.setColor('#ED4245').setFooter({ text: lang === 'fr' ? '❌ Quiz annulé' : '❌ Quiz cancelled' })], components: [] });
+                await i.update({ embeds: [categoryEmbed.setColor('#ED4245').setFooter({ text: `${guildName} • ${lang === 'fr' ? '❌ Quiz annulé' : '❌ Quiz cancelled'} • v${version}`, iconURL: guildIcon })], components: [] });
                 return categoryCollector.stop();
             }
             
@@ -429,7 +426,7 @@ module.exports = {
                         value: `\`${credits.toLocaleString()} 🪙\``,
                         inline: false
                     })
-                    .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                    .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
                 const diffOptions = Object.entries(DIFFICULTIES).map(([key, diff]) => ({
@@ -456,11 +453,11 @@ module.exports = {
                 
                 diffCollector.on('collect', async (j) => {
                     if (j.user.id !== userId) {
-                        return j.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', ephemeral: true });
+                        return j.reply({ content: t.accessDenied, ephemeral: true });
                     }
                     
                     if (j.customId === 'trivia_cancel') {
-                        await j.update({ embeds: [diffEmbed.setColor('#ED4245').setFooter({ text: lang === 'fr' ? '❌ Quiz annulé' : '❌ Quiz cancelled' })], components: [] });
+                        await j.update({ embeds: [diffEmbed.setColor('#ED4245').setFooter({ text: `${guildName} • ${lang === 'fr' ? '❌ Quiz annulé' : '❌ Quiz cancelled'} • v${version}`, iconURL: guildIcon })], components: [] });
                         return diffCollector.stop();
                     }
                     
@@ -492,7 +489,8 @@ module.exports = {
                         if (questions.length === 0) {
                             const errorEmbed = new EmbedBuilder()
                                 .setColor('#ED4245')
-                                .setDescription(lang === 'fr' ? '❌ Aucune question disponible dans cette catégorie.' : '❌ No questions available in this category.');
+                                .setDescription(lang === 'fr' ? '❌ Aucune question disponible dans cette catégorie.' : '❌ No questions available in this category.')
+                                .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon });
                             return categoryMsg.edit({ embeds: [errorEmbed], components: [] });
                         }
                         
@@ -500,7 +498,6 @@ module.exports = {
                         let correctAnswers = 0;
                         let streak = 0;
                         let maxStreak = 0;
-                        const startTime = Date.now();
                         
                         // ================= QUIZ LOOP =================
                         for (let qIndex = 0; qIndex < questions.length; qIndex++) {
@@ -517,7 +514,7 @@ module.exports = {
                                     { name: `✅ ${t.correctAnswers}`, value: `\`${correctAnswers}/${questions.length}\``, inline: true },
                                     { name: `⏰ ${t.timeLeft}`, value: `\`${diff.timeLimit}s\``, inline: true }
                                 )
-                                .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                                .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon })
                                 .setTimestamp();
                             
                             const answerRow = new ActionRowBuilder().addComponents(
@@ -540,7 +537,7 @@ module.exports = {
                                 
                                 answerCollector.on('collect', async (k) => {
                                     if (k.user.id !== userId) {
-                                        await k.reply({ content: lang === 'fr' ? '❌ Ce quiz ne vous appartient pas.' : '❌ This quiz is not yours.', ephemeral: true });
+                                        await k.reply({ content: t.accessDenied, ephemeral: true });
                                         return;
                                     }
                                     clearTimeout(timeout);
@@ -596,7 +593,7 @@ module.exports = {
                                     { name: `🔥 ${t.streak}`, value: `\`${streak}\``, inline: true },
                                     { name: `✅ ${t.correctAnswers}`, value: `\`${correctAnswers}/${currentQuestion}\``, inline: true }
                                 )
-                                .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                                .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon })
                                 .setTimestamp();
                             
                             const nextRow = new ActionRowBuilder().addComponents(
@@ -615,7 +612,7 @@ module.exports = {
                                 
                                 nextCollector.on('collect', async (k) => {
                                     if (k.user.id !== userId) {
-                                        await k.reply({ content: lang === 'fr' ? '❌ Ce quiz ne vous appartient pas.' : '❌ This quiz is not yours.', ephemeral: true });
+                                        await k.reply({ content: t.accessDenied, ephemeral: true });
                                         return;
                                     }
                                     await k.deferUpdate();
@@ -647,7 +644,7 @@ module.exports = {
                         const newLevel = calculateLevel(newUser.xp);
                         const newRank = getRank(newLevel);
                         
-                        checkAndAnnounceLevelUp(client, oldXp, newUser.xp, userId, userName, message.channel, lang);
+                        checkAndAnnounceLevelUp(client, oldXp, newUser.xp, userId, userName, message.channel, lang, guildName);
                         
                         // ================= FINAL RESULTS =================
                         let performanceMessage = '';
@@ -670,9 +667,9 @@ module.exports = {
                             )
                             .addFields(
                                 { name: `💰 ${t.reward}`, value: `\`\`\`yaml\n${t.baseReward}: ${baseReward} 🪙\n${t.streakBonus}: ${streakBonus} 🪙\n${lang === 'fr' ? 'Bonus Précision' : 'Accuracy Bonus'}: ${accuracyBonus} 🪙\n${t.total}: ${totalReward} 🪙\`\`\``, inline: true },
-                                { name: `📊 ${t.progress || 'Progress'}`, value: `\`\`\`yaml\n${t.xpGained}: ${xpGain} XP\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${newLevel}\n${newRank.emoji} ${newRank.title[lang]}\n${t.balance}: ${newUser.credits.toLocaleString()} 🪙\`\`\``, inline: true }
+                                { name: `📊 ${t.progress}`, value: `\`\`\`yaml\n${t.xpGained}: ${xpGain} XP\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${newLevel}\n${newRank.emoji} ${newRank.title[lang]}\n${t.balance}: ${newUser.credits.toLocaleString()} 🪙\`\`\``, inline: true }
                             )
-                            .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                            .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon })
                             .setTimestamp();
                         
                         const finalRow = new ActionRowBuilder().addComponents(
@@ -687,24 +684,22 @@ module.exports = {
                         
                         finalCollector.on('collect', async (k) => {
                             if (k.user.id !== userId) {
-                                return k.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', ephemeral: true });
+                                return k.reply({ content: t.accessDenied, ephemeral: true });
                             }
                             
                             if (k.customId === 'trivia_again') {
                                 await k.deferUpdate();
                                 finalCollector.stop();
-                                // Restart quiz
                                 const triviaCmd = client.commands.get('trivia');
                                 if (triviaCmd) {
-                                    await triviaCmd.run(client, message, [], db);
+                                    await triviaCmd.run(client, message, [], db, serverSettings);
                                 }
                             } else if (k.customId === 'trivia_menu') {
                                 await k.deferUpdate();
                                 finalCollector.stop();
-                                // Back to game menu
                                 const gameCmd = client.commands.get('game');
                                 if (gameCmd) {
-                                    await gameCmd.run(client, message, ['menu'], db);
+                                    await gameCmd.run(client, message, ['menu'], db, serverSettings);
                                 }
                             }
                         });
