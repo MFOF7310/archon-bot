@@ -34,7 +34,8 @@ const client = new Client({
 // --- SYSTEM GLOBALS ---
 client.commands = new Collection();
 client.aliases = new Collection();
-client.userTimeouts = new Map(); // For persistent reminders
+client.userTimeouts = new Map();
+client.settings = new Map(); // Cache for server settings
 
 // --- DYNAMIC VERSIONING ---
 function getVersion() {
@@ -44,11 +45,11 @@ function getVersion() {
             const version = fs.readFileSync(versionPath, 'utf8').trim();
             return version;
         } else {
-            fs.writeFileSync(versionPath, '1.3.2', 'utf8');
-            return '1.3.2';
+            fs.writeFileSync(versionPath, '1.5.0', 'utf8');
+            return '1.5.0';
         }
     } catch (err) {
-        return '1.3.2';
+        return '1.5.0';
     }
 }
 
@@ -163,6 +164,21 @@ Object.entries(expectedSchema).forEach(([colName, colType]) => {
 
 console.log(`${green}[READY]${reset} Database schema is 100% Synchronized.`);
 
+// ================= SERVER SETTINGS TABLE =================
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS server_settings (
+        guild_id TEXT PRIMARY KEY,
+        prefix TEXT DEFAULT ?,
+        language TEXT DEFAULT 'en',
+        welcome_channel TEXT,
+        log_channel TEXT,
+        daily_channel TEXT,
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+`).run(PREFIX);
+
+console.log(`${green}[DB]${reset} Server settings table ready.`);
+
 // --- LYDIA TABLES ---
 db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_memory (
@@ -190,6 +206,7 @@ db.prepare(`
         quantity INTEGER DEFAULT 1,
         purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
         expires_at INTEGER,
+        active BOOLEAN DEFAULT 1,
         PRIMARY KEY (user_id, item_id)
     )
 `).run();
@@ -207,13 +224,14 @@ db.prepare(`
     CREATE TABLE IF NOT EXISTS lydia_conversations (
         channel_id TEXT,
         user_id TEXT,
+        user_name TEXT,
         role TEXT,
         content TEXT,
         timestamp INTEGER DEFAULT (strftime('%s', 'now'))
     )
 `).run();
 
-// ================= REMINDERS TABLE (PERSISTENT) =================
+// ================= REMINDERS TABLE =================
 db.prepare(`
     CREATE TABLE IF NOT EXISTS reminders (
         id TEXT PRIMARY KEY,
@@ -226,14 +244,90 @@ db.prepare(`
     )
 `).run();
 
-// Add indexes for better performance
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at, status)`).run();
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status)`).run();
 
-console.log(`${green}[DB]${reset} Reminders table ready for persistent storage`);
+console.log(`${green}[DB]${reset} All tables synchronized.`);
+
+// ================= SERVER SETTINGS UTILITY (GLOBAL PROXY) =================
+const DEFAULT_SETTINGS = {
+    prefix: PREFIX,
+    language: 'en',
+    welcomeChannel: null,
+    logChannel: null,
+    dailyChannel: null
+};
+
+function getServerSettings(guildId) {
+    // Check cache first
+    if (client.settings.has(guildId)) {
+        return client.settings.get(guildId);
+    }
+    
+    try {
+        let settings = db.prepare(`SELECT * FROM server_settings WHERE guild_id = ?`).get(guildId);
+        
+        if (!settings) {
+            db.prepare(`
+                INSERT INTO server_settings (guild_id, prefix, language)
+                VALUES (?, ?, ?)
+            `).run(guildId, DEFAULT_SETTINGS.prefix, DEFAULT_SETTINGS.language);
+            
+            settings = { ...DEFAULT_SETTINGS, guild_id: guildId };
+        }
+        
+        const result = {
+            prefix: settings.prefix || DEFAULT_SETTINGS.prefix,
+            language: settings.language || DEFAULT_SETTINGS.language,
+            welcomeChannel: settings.welcome_channel,
+            logChannel: settings.log_channel,
+            dailyChannel: settings.daily_channel
+        };
+        
+        // Cache for future use
+        client.settings.set(guildId, result);
+        
+        return result;
+    } catch (err) {
+        console.error(`${red}[SETTINGS ERROR]${reset}`, err.message);
+        return DEFAULT_SETTINGS;
+    }
+}
+
+function updateServerSetting(guildId, setting, value) {
+    const columnMap = {
+        prefix: 'prefix',
+        language: 'language',
+        welcome: 'welcome_channel',
+        log: 'log_channel',
+        daily: 'daily_channel'
+    };
+    
+    const column = columnMap[setting];
+    if (!column) return false;
+    
+    try {
+        db.prepare(`
+            UPDATE server_settings 
+            SET ${column} = ?, updated_at = strftime('%s', 'now')
+            WHERE guild_id = ?
+        `).run(value, guildId);
+        
+        // Clear cache
+        client.settings.delete(guildId);
+        
+        return true;
+    } catch (err) {
+        console.error(`${red}[SETTINGS ERROR]${reset}`, err.message);
+        return false;
+    }
+}
+
+// Attach to client for global access
+client.getServerSettings = getServerSettings;
+client.updateServerSetting = updateServerSetting;
 
 // ================= HELPER FUNCTIONS =================
-
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
 
 const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null, credits = 0, streakDays = 0) => {
@@ -422,7 +516,7 @@ client.once(Events.ClientReady, async () => {
     
     loadAgentPreferences();
     
-    // ========== ARCHITECT CG-223 BOOT HEADER (DYNAMIC ALIGNMENT) ==========
+    // ========== ARCHITECT CG-223 BOOT HEADER ==========
     const boxWidth = 64;
     
     const drawBoxLine = (label, value) => {
@@ -456,6 +550,38 @@ client.once(Events.ClientReady, async () => {
         console.log(`${cyan}[REMINDER]${reset} Cleared old timeout queue on restart`);
     }
 
+    // Load pending reminders from database
+    try {
+        const pendingReminders = db.prepare(`
+            SELECT * FROM reminders 
+            WHERE status = 'pending' AND execute_at > ?
+        `).all(Math.floor(Date.now() / 1000));
+        
+        for (const reminder of pendingReminders) {
+            const timeLeft = (reminder.execute_at * 1000) - Date.now();
+            if (timeLeft > 0) {
+                const timeout = setTimeout(async () => {
+                    try {
+                        const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
+                        if (channel) {
+                            await channel.send(`⏰ **REMINDER** for <@${reminder.user_id}>:\n> ${reminder.message}`);
+                        }
+                        db.prepare(`UPDATE reminders SET status = 'completed' WHERE id = ?`).run(reminder.id);
+                        client.userTimeouts.delete(reminder.id);
+                    } catch (err) {
+                        console.log(`${red}[REMINDER ERROR]${reset} ${err.message}`);
+                    }
+                }, timeLeft);
+                
+                client.userTimeouts.set(reminder.id, timeout);
+            }
+        }
+        
+        console.log(`${green}[REMINDER]${reset} Restored ${pendingReminders.length} pending reminders`);
+    } catch (err) {
+        console.log(`${yellow}[REMINDER]${reset} No pending reminders to restore.`);
+    }
+
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
         const alertEmbed = new EmbedBuilder()
@@ -473,9 +599,8 @@ client.once(Events.ClientReady, async () => {
     }
 });
 
-// ================= MESSAGE PROCESSING (WITH ANTI-LOOP SAFETY & LYDIA FIX) =================
+// ================= MESSAGE PROCESSING =================
 client.on(Events.MessageCreate, async (message) => {
-    // IGNORE LES BOTS ET LES WEBHOOKS (Empêche Lydia de se répondre à elle-même)
     if (!message || message.author?.bot || message.webhookId) return;
 
     const userId = message.author.id;
@@ -538,7 +663,11 @@ client.on(Events.MessageCreate, async (message) => {
 
             await message.channel.send({ content: `🎉 **LEVEL UP!** <@${userId}>`, embeds: [levelUpEmbed] });
             
-            const logChannel = message.guild.channels.cache.get(process.env.LOG_CHANNEL_ID);
+            // Use server settings for log channel
+            const settings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
+            const logChannelId = settings.logChannel || process.env.LOG_CHANNEL_ID;
+            const logChannel = message.guild.channels.cache.get(logChannelId);
+            
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()
                     .setColor(getLevelColor(newLevel))
@@ -566,32 +695,34 @@ client.on(Events.MessageCreate, async (message) => {
                 userData.streak_days || 0);
     }
 
-    // ================= COMMAND HANDLER (WITH LYDIA FIX) =================
-    if (!message.content.startsWith(PREFIX)) return;
+    // ================= COMMAND HANDLER (WITH GLOBAL PROXY) =================
+    // Get server settings ONCE for this message
+    const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
+    const effectivePrefix = serverSettings.prefix || PREFIX;
     
-    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+    if (!message.content.startsWith(effectivePrefix)) return;
+    
+    const args = message.content.slice(effectivePrefix.length).trim().split(/ +/);
     const cmdName = args.shift().toLowerCase();
     
-    // 🛰️ CRITICAL FIX: Manually link the 'lydia' command if it was excluded from scan
     let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
     
-    // Special handling for Lydia command (bypasses the normal command registry if needed)
+    // Special handling for Lydia command
     if (!command && (cmdName === 'lydia' || cmdName === 'ai' || cmdName === 'neural')) {
         console.log(`${cyan}[LYDIA]${reset} Manual command trigger detected: ${cmdName}`);
         try {
             const lydiaModule = require('./plugins/lydia.js');
-            // Run the command manually from the exported 'run' function
-            return await lydiaModule.run(client, message, args, db);
+            return await lydiaModule.run(client, message, args, db, serverSettings);
         } catch (e) {
             console.error(`${red}[LYDIA CMD ERROR]${reset}`, e);
             return message.reply("❌ Lydia command execution failed. Please check logs.");
         }
     }
 
-    // Normal command execution for all other commands
+    // Normal command execution - PASS SETTINGS as 5th argument
     if (command) {
-        try { 
-            await command.run(client, message, args, db);
+        try {
+            await command.run(client, message, args, db, serverSettings);
         } catch (e) { 
             console.error(`${red}[COMMAND ERROR]${reset} ${cmdName}:`, e);
             message.reply("⚠️ **Command execution failed.**"); 
@@ -599,51 +730,103 @@ client.on(Events.MessageCreate, async (message) => {
     }
 });
 
-// --- WELCOME SYSTEM ---
+// ================= WELCOME SYSTEM (USING SERVER SETTINGS) =================
 client.on(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
 
-    const { WELCOME_CHANNEL_ID, RULES_CHANNEL_ID, GENERAL_CHANNEL_ID, LOG_CHANNEL_ID } = process.env;
-    const welcomeChannel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
-    const logChannel = member.guild.channels.cache.get(LOG_CHANNEL_ID);
+    const settings = getServerSettings(member.guild.id);
+    const lang = settings.language || 'en';
+    
+    const welcomeChannelId = settings.welcomeChannel || process.env.WELCOME_CHANNEL_ID;
+    const logChannelId = settings.logChannel || process.env.LOG_CHANNEL_ID;
+    
+    const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
+    const logChannel = member.guild.channels.cache.get(logChannelId);
     const accountAge = getAccountAge(member.user.createdAt);
+
+    const welcomeMessages = {
+        en: {
+            title: `👋 Welcome to the Network, ${member.user.username}!`,
+            description: (id, count, rulesChannel, generalChannel) =>
+                `🎉 **Greetings <@${id}>.** You are official **Member #${count}**.\n\n` +
+                `📊 **Security Check:**\n` +
+                `• 🛠️ Account Created: \`${accountAge}\`\n\n` +
+                `🚀 **Initialization Protocol:**\n` +
+                `• 📜 Review Rules: <#${rulesChannel}>\n` +
+                `• 💬 Main Discussion: <#${generalChannel}>\n\n` +
+                `🤖 Mention **@Lydia** for AI assistance.\n` +
+                `🔗 **Developer:** Moussa Fofana (https://github.com/MFOF7310)`
+        },
+        fr: {
+            title: `👋 Bienvenue sur le Réseau, ${member.user.username} !`,
+            description: (id, count, rulesChannel, generalChannel) =>
+                `🎉 **Salutations <@${id}>.** Vous êtes officiellement **Membre #${count}**.\n\n` +
+                `📊 **Vérification de Sécurité:**\n` +
+                `• 🛠️ Compte Créé: \`${accountAge}\`\n\n` +
+                `🚀 **Protocole d'Initialisation:**\n` +
+                `• 📜 Lire les Règles: <#${rulesChannel}>\n` +
+                `• 💬 Discussion Principale: <#${generalChannel}>\n\n` +
+                `🤖 Mentionnez **@Lydia** pour l'assistance IA.\n` +
+                `🔗 **Développeur:** Moussa Fofana (https://github.com/MFOF7310)`
+        }
+    };
+
+    const t = welcomeMessages[lang] || welcomeMessages.en;
 
     if (welcomeChannel) {
         const welcomeEmbed = new EmbedBuilder()
             .setColor('#00d9ff')
             .setAuthor({ name: `CONNECTION ESTABLISHED: ${member.guild.name.toUpperCase()}`, iconURL: member.guild.iconURL() })
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-            .setTitle(`👋 Welcome to the Network, ${member.user.username}!`)
-            .setDescription(
-                `🎉 **Greetings <@${member.id}>.** You are official **Member #${member.guild.memberCount}**.\n\n` +
-                `📊 **Security Check:**\n` +
-                `• 🛠️ Account Created: \`${accountAge}\`\n\n` +
-                `🚀 **Initialization Protocol:**\n` +
-                `• 📜 Review Rules: <#${RULES_CHANNEL_ID}>\n` +
-                `• 💬 Main Discussion: <#${GENERAL_CHANNEL_ID}>\n\n` +
-                `🤖 Mention **@Lydia** for AI assistance.\n` +
-                `🔗 **Developer:** Moussa Fofana (https://github.com/MFOF7310)`
-            )
+            .setTitle(t.title)
+            .setDescription(t.description(
+                member.id, 
+                member.guild.memberCount, 
+                process.env.RULES_CHANNEL_ID || 'N/A', 
+                process.env.GENERAL_CHANNEL_ID || 'N/A'
+            ))
             .setFooter({ text: `ARCHITECT CG-223 | Intelligent System` })
             .setTimestamp();
 
-        welcomeChannel.send({ content: `🎊 Welcome <@${member.id}>!`, embeds: [welcomeEmbed] });
+        welcomeChannel.send({ content: `🎊 ${lang === 'fr' ? 'Bienvenue' : 'Welcome'} <@${member.id}>!`, embeds: [welcomeEmbed] });
     }
 
     try {
+        const dmMessages = {
+            en: {
+                title: `🔒 ENCRYPTED TRANSMISSION: ${member.guild.name.toUpperCase()}`,
+                description: (rulesChannel, generalChannel) =>
+                    `Hello **${member.user.username}**, initialization complete.\n\n` +
+                    `Welcome to the inner circle. To get started, please check the following sectors:\n\n` +
+                    `📂 **Directives:** <#${rulesChannel}>\n` +
+                    `💬 **Hub:** <#${generalChannel}>\n\n` +
+                    `*I am ARCHITECT CG-223. Type \`${settings.prefix}help\` in the server for my command list.*\n\n` +
+                    `🔗 **Created by:** Moussa Fofana\n` +
+                    `📦 **Repository:** https://github.com/MFOF7310`
+            },
+            fr: {
+                title: `🔒 TRANSMISSION CRYPTÉE: ${member.guild.name.toUpperCase()}`,
+                description: (rulesChannel, generalChannel) =>
+                    `Bonjour **${member.user.username}**, initialisation terminée.\n\n` +
+                    `Bienvenue dans le cercle restreint. Pour commencer, veuillez consulter les secteurs suivants:\n\n` +
+                    `📂 **Directives:** <#${rulesChannel}>\n` +
+                    `💬 **Hub:** <#${generalChannel}>\n\n` +
+                    `*Je suis ARCHITECT CG-223. Tapez \`${settings.prefix}help\` dans le serveur pour ma liste de commandes.*\n\n` +
+                    `🔗 **Créé par:** Moussa Fofana\n` +
+                    `📦 **Dépôt:** https://github.com/MFOF7310`
+            }
+        };
+        
+        const dmT = dmMessages[lang] || dmMessages.en;
+        
         const dmEmbed = new EmbedBuilder()
             .setColor('#00d9ff')
-            .setTitle(`🔒 ENCRYPTED TRANSMISSION: ${member.guild.name.toUpperCase()}`)
+            .setTitle(dmT.title)
             .setThumbnail(member.guild.iconURL())
-            .setDescription(
-                `Hello **${member.user.username}**, initialization complete.\n\n` +
-                `Welcome to the inner circle. To get started, please check the following sectors:\n\n` +
-                `📂 **Directives:** <#${RULES_CHANNEL_ID}>\n` +
-                `💬 **Hub:** <#${GENERAL_CHANNEL_ID}>\n\n` +
-                `*I am ARCHITECT CG-223. Type \`${PREFIX}help\` in the server for my command list.*\n\n` +
-                `🔗 **Created by:** Moussa Fofana\n` +
-                `📦 **Repository:** https://github.com/MFOF7310`
-            )
+            .setDescription(dmT.description(
+                process.env.RULES_CHANNEL_ID || 'N/A',
+                process.env.GENERAL_CHANNEL_ID || 'N/A'
+            ))
             .setFooter({ text: 'Automated Welcome Protocol' })
             .setTimestamp();
 
@@ -659,6 +842,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
             .addFields(
                 { name: 'User', value: `<@${member.id}> (\`${member.id}\`)`, inline: false },
                 { name: 'Account Age', value: `\`${accountAge}\``, inline: true },
+                { name: 'Language', value: `\`${lang.toUpperCase()}\``, inline: true },
                 { name: 'Repository', value: 'https://github.com/MFOF7310', inline: true }
             )
             .setTimestamp();
@@ -678,6 +862,8 @@ process.on('SIGINT', () => {
         console.log(`${green}[SHUTDOWN]${reset} Cleared all pending reminders`);
     }
     
+    db.close();
+    console.log(`${green}[SHUTDOWN]${reset} Database connection closed.`);
     console.log(`${green}[SHUTDOWN]${reset} Cleanup complete. Goodbye!`);
     process.exit(0);
 });
