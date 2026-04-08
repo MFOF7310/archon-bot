@@ -161,14 +161,3 @@
 "better-sqlite3": "^9.0.0"
 ```
 
-## COMING IN VI.6.0
-
-Voice channel integration for Lydia
-
-Marriage/Relationship system
-
-Server backup system
-
-Web dashboard
-
-Mobile app notifications
