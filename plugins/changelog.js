@@ -8,19 +8,13 @@ const green = "\x1b[32m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     en: {
-        // Headers
         title: '📋 NEURAL CHANGELOG',
         systemStatus: 'SYSTEM STATUS',
         versionHistory: 'VERSION HISTORY',
         currentVersion: 'CURRENT VERSION',
         releasedOn: 'Released',
-        
-        // Stats
         totalVersions: 'Total Versions',
         latestUpdate: 'Latest Update',
-        modules: 'Active Modules',
-        
-        // Categories
         newFeatures: '🆕 NEW FEATURES',
         enhancements: '⚡ ENHANCEMENTS',
         bugFixes: '🐛 BUG FIXES',
@@ -31,59 +25,40 @@ const translations = {
         performance: '🚀 PERFORMANCE',
         database: '💾 DATABASE',
         api: '🔌 API INTEGRATION',
-        
-        // Buttons
         previous: '◀ Previous',
         next: 'Next ▶',
         latest: '🆕 Latest',
         overview: '📊 Overview',
         details: '📝 Details',
-        jumpTo: 'Jump to Version',
         refresh: '🔄 Refresh',
         github: '🔗 GitHub',
-        
-        // Placeholders
         selectVersion: 'Select a version to view...',
         loading: '🔍 Scanning neural archives...',
         noChangelog: '❌ CHANGELOG.md not found in system root.',
         error: '❌ Neural sync error. Please try again.',
         createHint: '💡 Create CHANGELOG.md in bot root directory',
-        
-        // Footer
         footer: 'ARCHITECT CG-223 • Neural Changelog System',
         madeBy: 'Built by Moussa Fofana',
         node: 'BAMAKO-223',
-        
-        // Status messages
         stable: '🟢 STABLE',
         beta: '🟡 BETA',
         alpha: '🔴 ALPHA',
         lts: '🔷 LTS',
-        
-        // Time
         today: 'Today',
         yesterday: 'Yesterday',
         daysAgo: (days) => `${days} days ago`,
-        justNow: 'Just now',
-        
-        // Misc
         page: 'Page',
-        version: 'Version'
+        version: 'Version',
+        accessDenied: '❌ This menu is not yours.'
     },
     fr: {
-        // Headers
         title: '📋 JOURNAL NEURAL',
         systemStatus: 'ÉTAT DU SYSTÈME',
         versionHistory: 'HISTORIQUE DES VERSIONS',
         currentVersion: 'VERSION ACTUELLE',
         releasedOn: 'Publié le',
-        
-        // Stats
         totalVersions: 'Total Versions',
         latestUpdate: 'Dernière MÀJ',
-        modules: 'Modules Actifs',
-        
-        // Categories
         newFeatures: '🆕 NOUVEAUTÉS',
         enhancements: '⚡ AMÉLIORATIONS',
         bugFixes: '🐛 CORRECTIONS',
@@ -94,44 +69,31 @@ const translations = {
         performance: '🚀 PERFORMANCE',
         database: '💾 BASE DE DONNÉES',
         api: '🔌 INTÉGRATION API',
-        
-        // Buttons
         previous: '◀ Précédent',
         next: 'Suivant ▶',
         latest: '🆕 Récent',
         overview: '📊 Aperçu',
         details: '📝 Détails',
-        jumpTo: 'Aller à la Version',
         refresh: '🔄 Actualiser',
         github: '🔗 GitHub',
-        
-        // Placeholders
         selectVersion: 'Sélectionnez une version...',
         loading: '🔍 Analyse des archives neurales...',
         noChangelog: '❌ CHANGELOG.md introuvable dans le système.',
         error: '❌ Erreur de synchronisation neurale.',
         createHint: '💡 Créez CHANGELOG.md dans le dossier racine',
-        
-        // Footer
         footer: 'ARCHITECT CG-223 • Journal Neural',
         madeBy: 'Développé par Moussa Fofana',
         node: 'BAMAKO-223',
-        
-        // Status messages
         stable: '🟢 STABLE',
         beta: '🟡 BÊTA',
         alpha: '🔴 ALPHA',
         lts: '🔷 LTS',
-        
-        // Time
         today: "Aujourd'hui",
         yesterday: 'Hier',
         daysAgo: (days) => `Il y a ${days} jours`,
-        justNow: "À l'instant",
-        
-        // Misc
         page: 'Page',
-        version: 'Version'
+        version: 'Version',
+        accessDenied: '❌ Ce menu ne vous appartient pas.'
     }
 };
 
@@ -163,7 +125,6 @@ function getVersionStatus(version, index, total) {
     if (version.includes('beta')) return 'beta';
     if (version.includes('alpha')) return 'alpha';
     if (version.includes('lts')) return 'lts';
-    if (index < total - 3) return 'stable';
     return 'stable';
 }
 
@@ -206,8 +167,6 @@ function findChangelogFile() {
 // ================= INTELLIGENT CHANGELOG PARSER =================
 function parseChangelogIntelligent(content) {
     const versions = [];
-    
-    // Enhanced regex to capture version, date, and title
     const versionRegex = /##\s*\[v?(\d+\.\d+\.\d+(?:-[a-zA-Z]+)?(?:\.[0-9]+)?)\]\s*(?:-\s*([^\n]+))?(?:\s*\((\d{4}-\d{2}-\d{2})\))?/gi;
     const matches = [...content.matchAll(versionRegex)];
     
@@ -220,8 +179,6 @@ function parseChangelogIntelligent(content) {
         const endIndex = i < matches.length - 1 ? matches[i + 1].index : content.length;
         
         let section = content.substring(startIndex, endIndex).trim();
-        
-        // Parse categories within this version
         const categories = parseCategories(section);
         
         versions.push({
@@ -250,8 +207,6 @@ function parseCategories(section) {
         const endIndex = i < matches.length - 1 ? matches[i + 1].index : section.length;
         
         let categoryContent = section.substring(startIndex, endIndex).trim();
-        
-        // Extract bullet points
         const items = [];
         const bulletRegex = /^[-*•]\s+(.+)$/gm;
         const bulletMatches = [...categoryContent.matchAll(bulletRegex)];
@@ -271,18 +226,15 @@ function parseCategories(section) {
         });
     }
     
-    // Sort by priority
     return categories.sort((a, b) => a.priority - b.priority);
 }
 
 // ================= CREATE STATISTICS CARD =================
 function generateStatistics(versions, lang) {
-    const t = translations[lang];
     const totalVersions = versions.length;
     const latestVersion = versions[0]?.version || 'N/A';
     const latestDate = versions[0]?.date || new Date().toISOString().split('T')[0];
     
-    // Count total changes
     let totalChanges = 0;
     let newFeatures = 0;
     let bugFixes = 0;
@@ -360,7 +312,6 @@ function createDetailEmbed(versionData, page, totalPages, lang, client) {
     const t = translations[lang];
     const version = client.version || versionData.version;
     
-    // Build description with categories
     let description = '';
     
     for (const cat of versionData.categories) {
@@ -373,7 +324,6 @@ function createDetailEmbed(versionData, page, totalPages, lang, client) {
         description += '\n';
     }
     
-    // If no categories parsed, show raw content
     if (!description) {
         description = versionData.content
             .replace(/##\s*\[v?[\d.]+\][^\n]*/g, '')
@@ -401,7 +351,7 @@ function createDetailEmbed(versionData, page, totalPages, lang, client) {
     return embed;
 }
 
-// ================= CREATE JUMP TO VERSION MENU (FIXED) =================
+// ================= CREATE JUMP TO VERSION MENU =================
 function createVersionSelectMenu(versions, lang, disabled = false) {
     const t = translations[lang];
     
@@ -425,6 +375,27 @@ function createVersionSelectMenu(versions, lang, disabled = false) {
         .setPlaceholder(t.selectVersion)
         .setDisabled(disabled)
         .addOptions(options);
+}
+
+// ================= REBUILD ROWS HELPER =================
+function rebuildRows(versions, viewMode, currentPage, lang, t) {
+    const totalPages = versions.length;
+    const jumpMenu = createVersionSelectMenu(versions, lang, false);
+    
+    return [
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('changelog_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(viewMode === 'overview' || currentPage === 0),
+            new ButtonBuilder().setCustomId('changelog_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(viewMode === 'overview' || currentPage === totalPages - 1),
+            new ButtonBuilder().setCustomId('changelog_overview').setLabel(t.overview).setStyle(viewMode === 'overview' ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('📊').setDisabled(viewMode === 'overview'),
+            new ButtonBuilder().setCustomId('changelog_details').setLabel(t.details).setStyle(viewMode === 'details' ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('📝').setDisabled(viewMode === 'details'),
+            new ButtonBuilder().setCustomId('changelog_latest').setLabel(t.latest).setStyle(ButtonStyle.Primary).setEmoji('🆕').setDisabled(currentPage === 0)
+        ),
+        new ActionRowBuilder().addComponents(jumpMenu),
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('changelog_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
+            new ButtonBuilder().setLabel(t.github).setStyle(ButtonStyle.Link).setURL('https://github.com/MFOF7310/Architect-CG-223').setEmoji('🔗')
+        )
+    ];
 }
 
 // ================= MAIN COMMAND =================
@@ -477,16 +448,13 @@ module.exports = {
                 if (fs.existsSync(versionPath)) {
                     currentVersion = fs.readFileSync(versionPath, 'utf8').trim();
                 }
-            } catch (e) {
-                // Use client.version as fallback
-            }
+            } catch (e) {}
             
             // ================= READ & PARSE CHANGELOG =================
             const changelog = fs.readFileSync(changelogPath, 'utf8');
-            const versions = parseChangelogIntelligent(changelog);
+            let versions = parseChangelogIntelligent(changelog);
             
             if (versions.length === 0) {
-                // Show raw content as fallback
                 const embed = new EmbedBuilder()
                     .setColor('#00fbff')
                     .setAuthor({ name: `🏗️ ARCHITECT CG-223 v${currentVersion}`, iconURL: client.user.displayAvatarURL() })
@@ -498,14 +466,12 @@ module.exports = {
             }
             
             // ================= GENERATE STATISTICS =================
-            const stats = generateStatistics(versions, lang);
+            let stats = generateStatistics(versions, lang);
             
             // ================= DETERMINE VIEW MODE =================
-            let viewMode = 'overview'; // overview or details
+            let viewMode = 'overview';
             let currentPage = 0;
-            const totalPages = versions.length;
             
-            // Check for specific version request
             const requestedVersion = args[0];
             if (requestedVersion && requestedVersion !== 'overview' && requestedVersion !== 'details') {
                 const versionIndex = versions.findIndex(v => 
@@ -518,43 +484,17 @@ module.exports = {
                 }
             }
             
-            // Check for mode flag
             if (args.includes('overview') || args.includes('stats')) {
                 viewMode = 'overview';
             } else if (args.includes('details') || args.includes('full')) {
                 viewMode = 'details';
             }
             
-            // ================= CREATE INITIAL EMBED & COMPONENTS =================
-            let embed;
-            if (viewMode === 'overview') {
-                embed = createOverviewEmbed(versions, stats, lang, client);
-            } else {
-                embed = createDetailEmbed(versions[currentPage], currentPage + 1, totalPages, lang, client);
-            }
+            // ================= CREATE INITIAL EMBED =================
+            let embed = viewMode === 'overview'
+                ? createOverviewEmbed(versions, stats, lang, client)
+                : createDetailEmbed(versions[currentPage], currentPage + 1, versions.length, lang, client);
             
-            // Helper function to rebuild rows
-            function rebuildRows(versions, viewMode, currentPage, lang, t) {
-                const totalPages = versions.length;
-                const jumpMenu = createVersionSelectMenu(versions, lang, false);
-                
-                return [
-                    new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('changelog_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(viewMode === 'overview' || currentPage === 0),
-                        new ButtonBuilder().setCustomId('changelog_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(viewMode === 'overview' || currentPage === totalPages - 1),
-                        new ButtonBuilder().setCustomId('changelog_overview').setLabel(t.overview).setStyle(viewMode === 'overview' ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('📊').setDisabled(viewMode === 'overview'),
-                        new ButtonBuilder().setCustomId('changelog_details').setLabel(t.details).setStyle(viewMode === 'details' ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('📝').setDisabled(viewMode === 'details'),
-                        new ButtonBuilder().setCustomId('changelog_latest').setLabel(t.latest).setStyle(ButtonStyle.Primary).setEmoji('🆕').setDisabled(currentPage === 0)
-                    ),
-                    new ActionRowBuilder().addComponents(jumpMenu),
-                    new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('changelog_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
-                        new ButtonBuilder().setLabel(t.github).setStyle(ButtonStyle.Link).setURL('https://github.com/MFOF7310/Architect-CG-223').setEmoji('🔗')
-                    )
-                ];
-            }
-            
-            // Build action rows
             const rows = rebuildRows(versions, viewMode, currentPage, lang, t);
             
             const reply = await message.reply({ 
@@ -563,93 +503,75 @@ module.exports = {
                 components: rows 
             });
             
-            // ================= INTERACTION COLLECTOR =================
+            // ================= BULLETPROOF COLLECTOR =================
             const collector = reply.createMessageComponentCollector({ 
                 componentType: [ComponentType.Button, ComponentType.StringSelect], 
-                time: 300000 // 5 minutes
+                time: 300000 
             });
             
             collector.on('collect', async (i) => {
                 if (i.user.id !== message.author.id) {
-                    return i.reply({ 
-                        content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', 
-                        ephemeral: true 
+                    return i.reply({ content: t.accessDenied, ephemeral: true });
+                }
+
+                // Handle Refresh specifically (needs fresh file reading)
+                if (i.customId === 'changelog_refresh') {
+                    const freshChangelog = fs.readFileSync(changelogPath, 'utf8');
+                    const freshVersions = parseChangelogIntelligent(freshChangelog);
+                    const freshStats = generateStatistics(freshVersions, lang);
+                    
+                    // Update the module-level variables
+                    versions = freshVersions;
+                    stats = freshStats;
+                    
+                    // Clamp current page
+                    currentPage = Math.max(0, Math.min(currentPage, versions.length - 1));
+                    
+                    const refreshEmbed = viewMode === 'overview' 
+                        ? createOverviewEmbed(versions, stats, lang, client)
+                        : createDetailEmbed(versions[currentPage], currentPage + 1, versions.length, lang, client);
+                    
+                    return await i.update({ 
+                        embeds: [refreshEmbed], 
+                        components: rebuildRows(versions, viewMode, currentPage, lang, t) 
                     });
                 }
-                
-                let newEmbed;
-                let newViewMode = viewMode;
-                let newPage = currentPage;
-                
-                // Handle button interactions
+
+                // Handle Navigation and View Switching
                 if (i.isButton()) {
-                    switch (i.customId) {
-                        case 'changelog_prev':
-                            newPage--;
-                            newViewMode = 'details';
-                            break;
-                        case 'changelog_next':
-                            newPage++;
-                            newViewMode = 'details';
-                            break;
-                        case 'changelog_overview':
-                            newViewMode = 'overview';
-                            break;
-                        case 'changelog_details':
-                            newViewMode = 'details';
-                            break;
-                        case 'changelog_latest':
-                            newPage = 0;
-                            newViewMode = 'details';
-                            break;
-                        case 'changelog_refresh':
-                            // Re-read changelog for fresh data
-                            const freshChangelog = fs.readFileSync(changelogPath, 'utf8');
-                            const freshVersions = parseChangelogIntelligent(freshChangelog);
-                            const freshStats = generateStatistics(freshVersions, lang);
-                            
-                            if (viewMode === 'overview') {
-                                newEmbed = createOverviewEmbed(freshVersions, freshStats, lang, client);
-                            } else {
-                                const safePage = Math.min(currentPage, freshVersions.length - 1);
-                                newEmbed = createDetailEmbed(freshVersions[safePage], safePage + 1, freshVersions.length, lang, client);
-                            }
-                            
-                            const refreshedRows = rebuildRows(freshVersions, viewMode, currentPage, lang, t);
-                            await i.update({ embeds: [newEmbed], components: refreshedRows });
-                            return;
+                    if (i.customId === 'changelog_prev') currentPage--;
+                    if (i.customId === 'changelog_next') currentPage++;
+                    if (i.customId === 'changelog_overview') viewMode = 'overview';
+                    if (i.customId === 'changelog_details') viewMode = 'details';
+                    if (i.customId === 'changelog_latest') { 
+                        currentPage = 0; 
+                        viewMode = 'details'; 
                     }
                 }
-                
-                // Handle select menu
+
                 if (i.isStringSelectMenu() && i.customId === 'changelog_jump') {
                     const selectedValue = i.values[0];
                     if (selectedValue !== 'none') {
-                        newPage = parseInt(selectedValue);
-                        newViewMode = 'details';
+                        currentPage = parseInt(selectedValue);
+                        viewMode = 'details';
                     }
                 }
-                
-                // Update state
-                viewMode = newViewMode;
-                currentPage = newPage;
-                
-                // Create appropriate embed
-                if (viewMode === 'overview') {
-                    newEmbed = createOverviewEmbed(versions, stats, lang, client);
-                } else {
-                    newEmbed = createDetailEmbed(versions[currentPage], currentPage + 1, totalPages, lang, client);
-                }
-                
-                // Rebuild rows with updated state
-                const updatedRows = rebuildRows(versions, viewMode, currentPage, lang, t);
-                
-                await i.update({ embeds: [newEmbed], components: updatedRows });
+
+                // Safety: Clamp the page index
+                currentPage = Math.max(0, Math.min(currentPage, versions.length - 1));
+
+                const finalEmbed = viewMode === 'overview'
+                    ? createOverviewEmbed(versions, stats, lang, client)
+                    : createDetailEmbed(versions[currentPage], currentPage + 1, versions.length, lang, client);
+
+                await i.update({ 
+                    embeds: [finalEmbed], 
+                    components: rebuildRows(versions, viewMode, currentPage, lang, t) 
+                });
             });
             
             collector.on('end', async () => {
                 const disabledMenu = createVersionSelectMenu(versions, lang, true);
-                
                 const disabledRows = [
                     new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId('changelog_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(true),
