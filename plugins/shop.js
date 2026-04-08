@@ -21,7 +21,7 @@ const shopItems = [
         price: 5000, 
         emoji: '🎖️', 
         type: 'role',
-        roleId: 'YOUR_VETERAN_ROLE_ID', // Replace with actual role ID
+        roleId: 'YOUR_VETERAN_ROLE_ID',
         requirement: { level: 10 },
         en: { name: 'Veteran Agent Role', desc: 'Exclusive Discord role for elite agents.', perk: '+50% respect in server' },
         fr: { name: 'Rôle Agent Vétéran', desc: 'Rôle Discord exclusif pour les agents d\'élite.', perk: '+50% de respect dans le serveur' }
@@ -58,7 +58,7 @@ const shopItems = [
         price: 10000, 
         emoji: '📈', 
         type: 'boost',
-        duration: 7, // days
+        duration: 7,
         effect: { multiplier: 1.5 },
         en: { name: 'Neural Accelerator', desc: '7-day XP boost (1.5x).', perk: 'Earn 50% more XP from all sources' },
         fr: { name: 'Accélérateur Neural', desc: 'Boost XP de 7 jours (1.5x).', perk: 'Gagnez 50% plus d\'XP de toutes les sources' }
@@ -86,7 +86,6 @@ const shopItems = [
 const shopTranslations = {
     en: {
         title: '═ ARCHON NEURAL MARKETPLACE ═',
-        version: 'v1.3.2-STABLE',
         desc: 'Exchange your earned credits for system upgrades and status symbols.',
         placeholder: 'Select an upgrade to purchase...',
         balance: 'Current Balance',
@@ -122,11 +121,15 @@ const shopTranslations = {
         itemsOwned: (count) => `${count} items owned`,
         purchased: 'Purchased',
         owned: 'OWNED',
-        locked: 'LVL'
+        locked: 'LVL',
+        accessDenied: '❌ These controls are locked to your session.',
+        itemNotFound: '❌ Item not found.',
+        purchaseError: '❌ An error occurred during purchase. Please try again.',
+        inventoryOpened: '📦 Inventory displayed above!',
+        footer: 'ARCHITECT CG-223 • Neural Marketplace'
     },
     fr: {
         title: '═ MARCHÉ NEURAL ARCHON ═',
-        version: 'v1.3.2-STABLE',
         desc: 'Échangez vos crédits contre des améliorations système et des symboles de statut.',
         placeholder: 'Sélectionnez une amélioration...',
         balance: 'Solde Actuel',
@@ -162,7 +165,12 @@ const shopTranslations = {
         itemsOwned: (count) => `${count} objets possédés`,
         purchased: 'Acheté',
         owned: 'POSSÉDÉ',
-        locked: 'NIV'
+        locked: 'NIV',
+        accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
+        itemNotFound: '❌ Article introuvable.',
+        purchaseError: '❌ Une erreur est survenue lors de l\'achat. Veuillez réessayer.',
+        inventoryOpened: '📦 Inventaire affiché ci-dessus !',
+        footer: 'ARCHITECT CG-223 • Marché Neural'
     }
 };
 
@@ -175,21 +183,14 @@ module.exports = {
     cooldown: 3000,
     examples: ['.shop'],
 
-    run: async (client, message, args, database) => {
+    // ✅ MODIFIED: Added serverSettings as 5th argument
+    run: async (client, message, args, database, serverSettings) => {
         
-        // --- INTELLIGENT LANGUAGE DETECTION ---
-        let lang = 'en';
-        const guildSettings = client.settings?.get(message.guild?.id);
-        if (guildSettings?.language) {
-            lang = guildSettings.language;
-        } else {
-            const frenchKeywords = ['fr', 'francais', 'français', 'french', 'bonjour', 'salut', 'merci', 'boutique', 'magasin'];
-            const content = message.content.toLowerCase();
-            if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
-                lang = 'fr';
-            }
-        }
+        // ✅ MODIFIED: Use server-specific language from settings
+        const lang = serverSettings?.language || 'en';
         const t = shopTranslations[lang];
+        const prefix = serverSettings?.prefix || '.';
+        const version = client.version || '1.5.0';
         
         const userId = message.author.id;
         const userName = message.author.username;
@@ -218,7 +219,7 @@ module.exports = {
             `).run(now);
             
         } catch (err) {
-            console.error('Inventory table creation error:', err);
+            console.error('[SHOP] Inventory table creation error:', err);
         }
         
         // --- GET USER DATA ---
@@ -226,9 +227,14 @@ module.exports = {
             SELECT credits, xp FROM users WHERE id = ?
         `).get(userId);
         
+        if (!userData) {
+            database.prepare(`INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, 0)`)
+                .run(userId, userName);
+        }
+        
         const balance = userData?.credits || 0;
         const userXP = userData?.xp || 0;
-        const userLevel = calculateLevel(userXP); // ✅ FIXED: Using unified Neural Formula
+        const userLevel = calculateLevel(userXP);
         
         // --- GET USER INVENTORY (Only active items) ---
         const inventory = database.prepare(`
@@ -245,7 +251,7 @@ module.exports = {
             .setTitle(t.title)
             .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${balance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${userLevel}\``)
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setFooter({ text: `${t.version} • ARCHITECT CG-223`, iconURL: message.author.displayAvatarURL() })
+            .setFooter({ text: `${t.footer} • v${version}`, iconURL: message.author.displayAvatarURL() })
             .setTimestamp();
         
         // --- CREATE SHOP MENU ---
@@ -297,11 +303,19 @@ module.exports = {
         
         collector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) {
-                return i.reply({ content: '❌ These controls are locked to your session.', ephemeral: true });
+                return i.reply({ content: t.accessDenied, ephemeral: true });
             }
             
             // Handle Inventory Button
             if (i.customId === 'view_inventory') {
+                const invCmd = client.commands.get('inventory');
+                if (invCmd) {
+                    // ✅ PASS serverSettings to the inventory command
+                    await invCmd.run(client, message, [], database, serverSettings);
+                    return await i.reply({ content: t.inventoryOpened, ephemeral: true });
+                }
+                
+                // Fallback if inventory command not found
                 const userInventory = database.prepare(`
                     SELECT item_id, purchased_at, expires_at FROM user_inventory 
                     WHERE user_id = ? AND active = 1
@@ -312,7 +326,7 @@ module.exports = {
                         .setColor('#95a5a6')
                         .setTitle(t.inventoryTitle)
                         .setDescription(t.emptyInventory)
-                        .setFooter({ text: t.version })
+                        .setFooter({ text: `v${version}` })
                         .setTimestamp();
                     return i.reply({ embeds: [emptyEmbed], ephemeral: true });
                 }
@@ -336,7 +350,7 @@ module.exports = {
                     .setAuthor({ name: '📦 AGENT INVENTORY', iconURL: avatarURL })
                     .setTitle(t.agentInventory(userName))
                     .setDescription(inventoryList || 'No items found.')
-                    .setFooter({ text: `${t.version} • ${t.itemsOwned(userInventory.length)}` })
+                    .setFooter({ text: `v${version} • ${t.itemsOwned(userInventory.length)}` })
                     .setTimestamp();
                 
                 return i.reply({ embeds: [inventoryEmbed], ephemeral: true });
@@ -355,7 +369,7 @@ module.exports = {
                 const freshData = database.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
                 const freshBalance = freshData?.credits || 0;
                 const freshXP = freshData?.xp || 0;
-                const freshLevel = calculateLevel(freshXP); // ✅ FIXED: Unified calculation
+                const freshLevel = calculateLevel(freshXP);
                 const freshInventory = database.prepare(`
                     SELECT item_id FROM user_inventory 
                     WHERE user_id = ? AND active = 1
@@ -388,7 +402,7 @@ module.exports = {
                 const selectedItem = shopItems.find(item => item.id === i.values[0]);
                 
                 if (!selectedItem) {
-                    return i.reply({ content: '❌ Item not found.', ephemeral: true });
+                    return i.reply({ content: t.itemNotFound, ephemeral: true });
                 }
                 
                 // Clean expired items
@@ -406,7 +420,7 @@ module.exports = {
                 
                 const currentCredits = freshData?.credits || 0;
                 const currentXP = freshData?.xp || 0;
-                const currentLevel = calculateLevel(currentXP); // ✅ FIXED: Unified calculation
+                const currentLevel = calculateLevel(currentXP);
                 
                 // Check if already owned (only for non-consumable, non-boost items)
                 const alreadyOwned = database.prepare(`
@@ -480,7 +494,7 @@ module.exports = {
                             const member = await message.guild.members.fetch(i.user.id);
                             await member.roles.add(selectedItem.roleId);
                         } catch (err) {
-                            console.error('Role assignment error:', err);
+                            console.error('[SHOP] Role assignment error:', err);
                         }
                     }
                     
@@ -510,12 +524,11 @@ module.exports = {
                     }
                     
                     successEmbed
-                        .setFooter({ text: t.version })
+                        .setFooter({ text: `v${version}` })
                         .setTimestamp();
                     
                     await i.update({ embeds: [successEmbed], components: [] });
                     
-                    // Log the purchase
                     console.log(`[SHOP] ${message.author.tag} purchased ${selectedItem.id} for ${selectedItem.price} credits`);
                     
                     // Auto-refresh the shop view after 3 seconds
@@ -523,7 +536,7 @@ module.exports = {
                         const finalData = database.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
                         const finalBalance = finalData?.credits || 0;
                         const finalXP = finalData?.xp || 0;
-                        const finalLevel = calculateLevel(finalXP); // ✅ FIXED: Unified calculation
+                        const finalLevel = calculateLevel(finalXP);
                         const finalInventory = database.prepare(`
                             SELECT item_id FROM user_inventory 
                             WHERE user_id = ? AND active = 1
@@ -551,8 +564,8 @@ module.exports = {
                     }, 3000);
                     
                 } catch (err) {
-                    console.error('Purchase error:', err);
-                    await i.reply({ content: '❌ An error occurred during purchase. Please try again.', ephemeral: true });
+                    console.error('[SHOP] Purchase error:', err);
+                    await i.reply({ content: t.purchaseError, ephemeral: true });
                 }
             }
         });
