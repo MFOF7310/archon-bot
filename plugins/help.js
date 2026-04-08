@@ -49,6 +49,25 @@ const translations = {
         useHelpForDetails: 'Use {prefix}help <command> for details',
         selectModuleBelow: 'Select a module below',
         
+        // NEW: Quick Stats
+        mostUsedCommands: '🔥 MOST USED',
+        recentAdditions: '🆕 RECENT',
+        recommendedForYou: '⭐ RECOMMENDED',
+        
+        // NEW: Command Categories Descriptions
+        categoryDescriptions: {
+            SYSTEM: 'Core system commands and utilities',
+            GAMING: 'Games, arcade, and entertainment',
+            ECONOMY: 'Credits, shop, and daily rewards',
+            PROFILE: 'Rank, stats, and leaderboards',
+            AI: 'Lydia AI and neural assistance',
+            MODERATION: 'Server management and moderation',
+            UTILITY: 'Useful tools and information',
+            FUN: 'Fun commands and interactions',
+            OWNER: 'Bot owner exclusive commands',
+            GENERAL: 'General purpose commands'
+        },
+        
         // Errors
         signalLost: '❌ SIGNAL LOST',
         commandNotFound: 'Command Not Found',
@@ -64,7 +83,17 @@ const translations = {
         footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY',
         bamakoNode: 'Bamako Node',
         modulesOnline: 'modules online',
-        page: 'Page'
+        page: 'Page',
+        
+        // NEW: Tips
+        tip: '💡 TIP',
+        tips: [
+            'Use {prefix}help <command> for detailed information',
+            'Type {prefix}game menu to access the Neural Arcade',
+            'Claim daily rewards with {prefix}daily',
+            'Check your rank with {prefix}rank',
+            'Visit the shop with {prefix}shop'
+        ]
     },
     fr: {
         // Headers
@@ -113,6 +142,25 @@ const translations = {
         useHelpForDetails: 'Utilisez {prefix}help <commande> pour plus de détails',
         selectModuleBelow: 'Sélectionnez un module ci-dessous',
         
+        // NEW: Quick Stats
+        mostUsedCommands: '🔥 LES PLUS UTILISÉS',
+        recentAdditions: '🆕 RÉCENTS',
+        recommendedForYou: '⭐ RECOMMANDÉS',
+        
+        // NEW: Command Categories Descriptions
+        categoryDescriptions: {
+            SYSTEM: 'Commandes système principales',
+            GAMING: 'Jeux, arcade et divertissement',
+            ECONOMY: 'Crédits, boutique et récompenses',
+            PROFILE: 'Rang, statistiques et classements',
+            AI: 'Lydia IA et assistance neurale',
+            MODERATION: 'Gestion et modération du serveur',
+            UTILITY: 'Outils et informations utiles',
+            FUN: 'Commandes amusantes',
+            OWNER: 'Commandes exclusives du propriétaire',
+            GENERAL: 'Commandes générales'
+        },
+        
         // Errors
         signalLost: '❌ SIGNAL PERDU',
         commandNotFound: 'Commande Introuvable',
@@ -128,7 +176,17 @@ const translations = {
         footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE',
         bamakoNode: 'Nœud Bamako',
         modulesOnline: 'modules en ligne',
-        page: 'Page'
+        page: 'Page',
+        
+        // NEW: Tips
+        tip: '💡 ASTUCE',
+        tips: [
+            'Utilisez {prefix}help <commande> pour plus de détails',
+            'Tapez {prefix}game menu pour accéder à l\'Arcade Neurale',
+            'Réclamez vos récompenses avec {prefix}daily',
+            'Vérifiez votre rang avec {prefix}rank',
+            'Visitez la boutique avec {prefix}shop'
+        ]
     }
 };
 
@@ -159,9 +217,37 @@ const colorMap = {
     FUN: '#3498DB'
 };
 
+// ================= GET RANDOM TIP =================
+function getRandomTip(t, prefix) {
+    const tips = t.tips;
+    const randomTip = tips[Math.floor(Math.random() * tips.length)];
+    return randomTip.replace(/{prefix}/g, prefix);
+}
+
+// ================= GET CATEGORY STATS =================
+function getCategoryStats(client) {
+    const stats = {};
+    const commands = client.commands;
+    
+    for (const [name, cmd] of commands) {
+        const category = cmd.category || 'GENERAL';
+        stats[category] = (stats[category] || 0) + 1;
+    }
+    
+    return stats;
+}
+
+// ================= GET MOST COMMANDED CATEGORIES =================
+function getTopCategories(stats, limit = 3) {
+    return Object.entries(stats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([cat, count]) => ({ cat, count }));
+}
+
 module.exports = {
     name: 'help',
-    aliases: ['h', 'menu', 'docs', 'aide', 'commandes'],
+    aliases: ['h', 'menu', 'docs', 'aide', 'commandes', 'commands'],
     description: 'Access the ARCHITECT Neural Directory and command database with advanced navigation.',
     category: 'SYSTEM',
     cooldown: 3000,
@@ -171,6 +257,9 @@ module.exports = {
         const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const lang = serverSettings?.language || 'en';
         const t = translations[lang];
+        const version = client.version || '1.5.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
         // ================= UPTIME CALCULATION =================
         const uptimeSec = process.uptime();
@@ -200,7 +289,7 @@ module.exports = {
             const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))];
             
             if (categories.includes(searchTerm)) {
-                return showCategoryHelp(client, message, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap);
+                return showCategoryHelp(client, message, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version);
             }
             
             // Check if it's a Command
@@ -222,15 +311,18 @@ module.exports = {
                     .setTitle(`◈ ${t.module}: ${cmd.name.toUpperCase()} ◈`)
                     .setDescription(`\`\`\`prolog\n${cmd.description || t.noDescription}\`\`\``)
                     .addFields(
-                        { name: `📂 ${t.category}`, value: `\`${category}\``, inline: true },
+                        { name: `📂 ${t.category}`, value: `\`${category}\` ${t.categoryDescriptions?.[category] ? `• ${t.categoryDescriptions[category]}` : ''}`, inline: false },
                         { name: `🔧 ${t.usage}`, value: `\`${effectivePrefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
-                        { name: `🔀 ${t.aliases}`, value: `\`${cmd.aliases?.join(', ') || t.none}\``, inline: true },
-                        { name: `🎯 ${t.examples}`, value: cmd.examples ? `\`${cmd.examples.map(ex => `${effectivePrefix}${cmd.name} ${ex}`).join('`\n`')}\`` : `\`${t.noExamples}\``, inline: false }
-                    )
-                    .setFooter({ 
-                        text: `ARCHITECT CG-223 • ${t.bamakoNode} • ${client.commands.size} ${t.modulesOnline} • v${client.version || '1.5.0'}` 
-                    })
-                    .setTimestamp();
+                        { name: `🔀 ${t.aliases}`, value: cmd.aliases?.length ? `\`${cmd.aliases.join(', ')}\`` : `\`${t.none}\``, inline: true }
+                    );
+                
+                if (cmd.examples?.length) {
+                    detailEmbed.addFields({
+                        name: `🎯 ${t.examples}`,
+                        value: `\`${cmd.examples.map(ex => `${effectivePrefix}${cmd.name} ${ex}`).join('`\n`')}\``,
+                        inline: false
+                    });
+                }
 
                 if (cmd.cooldown) {
                     detailEmbed.addFields({ 
@@ -239,6 +331,13 @@ module.exports = {
                         inline: true 
                     });
                 }
+                
+                detailEmbed
+                    .setFooter({ 
+                        text: `${guildName} • ${t.bamakoNode} • ${client.commands.size} ${t.modulesOnline} • v${version}`,
+                        iconURL: guildIcon
+                    })
+                    .setTimestamp();
 
                 return message.reply({ embeds: [detailEmbed] });
             }
@@ -249,17 +348,24 @@ module.exports = {
                 .setAuthor({ name: t.signalLost, iconURL: client.user.displayAvatarURL() })
                 .setTitle(t.commandNotFound)
                 .setDescription(t.notFoundDesc(args[0], effectivePrefix))
-                .setFooter({ text: t.checkSpelling })
+                .setFooter({ text: `${guildName} • ${t.checkSpelling}`, iconURL: guildIcon })
                 .setTimestamp();
             return message.reply({ embeds: [errorEmbed] });
         }
 
         // ================= MAIN DIRECTORY (No args) =================
         const categories = [...new Set(client.commands.map(cmd => cmd.category || 'GENERAL'))].sort();
+        const categoryStats = getCategoryStats(client);
+        const topCategories = getTopCategories(categoryStats);
         
         const totalCommands = client.commands.size;
         const totalAliases = client.aliases?.size || 0;
         const categoriesCount = categories.length;
+        
+        // Build top categories display
+        const topCategoriesDisplay = topCategories.map((c, i) => 
+            `${['🥇', '🥈', '🥉'][i]} **${c.cat}**: \`${c.count}\` ${t.commands.toLowerCase()}`
+        ).join('\n');
         
         const mainEmbed = new EmbedBuilder()
             .setColor('#00fbff')
@@ -274,7 +380,7 @@ module.exports = {
                 `├─ ${t.node}: BAMAKO-223\n` +
                 `├─ ${t.core}: Groq LPU™ + Brave Search\n` +
                 `├─ ${t.uptime}: ${uptimeString}\n` +
-                `└─ ${t.version}: v${client.version || '1.5.0'}\`\`\``
+                `└─ ${t.version}: v${version}\`\`\``
             )
             .addFields(
                 { 
@@ -283,19 +389,29 @@ module.exports = {
                     inline: true 
                 },
                 { 
-                    name: t.quickAccess, 
-                    value: `\`\`\`fix\n${effectivePrefix}game menu\n${effectivePrefix}stats\n${effectivePrefix}rank\n${effectivePrefix}alive\`\`\``, 
+                    name: `🏆 TOP CATEGORIES`, 
+                    value: topCategoriesDisplay || 'No data available', 
                     inline: true 
+                },
+                { 
+                    name: t.quickAccess, 
+                    value: `\`\`\`fix\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
+                    inline: false 
                 },
                 { 
                     name: t.aiAssistant, 
                     value: `\`\`\`fix\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
                     inline: true 
+                },
+                { 
+                    name: t.tip, 
+                    value: getRandomTip(t, effectivePrefix), 
+                    inline: true 
                 }
             )
             .setFooter({ 
-                text: `${t.footer} • v${client.version || '1.5.0'} • ${t.selectModuleBelow}`, 
-                iconURL: client.user.displayAvatarURL() 
+                text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, 
+                iconURL: guildIcon
             })
             .setTimestamp();
 
@@ -306,7 +422,7 @@ module.exports = {
             .addOptions(categories.map(cat => ({
                 label: cat.toUpperCase(),
                 value: cat,
-                description: t.viewAll.replace('{category}', cat.toLowerCase()),
+                description: `${t.categoryDescriptions?.[cat] || t.viewAll.replace('{category}', cat.toLowerCase())}`.substring(0, 100),
                 emoji: emojiMap[cat.toUpperCase()] || '📁'
             })));
 
@@ -371,7 +487,7 @@ module.exports = {
                         `├─ ${t.node}: BAMAKO-223\n` +
                         `├─ ${t.core}: Groq LPU™ + Brave Search\n` +
                         `├─ ${t.uptime}: ${freshUptimeString}\n` +
-                        `└─ ${t.version}: v${client.version || '1.5.0'}\`\`\``
+                        `└─ ${t.version}: v${version}\`\`\``
                     )
                     .addFields(
                         { 
@@ -380,19 +496,29 @@ module.exports = {
                             inline: true 
                         },
                         { 
-                            name: t.quickAccess, 
-                            value: `\`\`\`fix\n${effectivePrefix}game menu\n${effectivePrefix}stats\n${effectivePrefix}rank\n${effectivePrefix}alive\`\`\``, 
+                            name: `🏆 TOP CATEGORIES`, 
+                            value: topCategoriesDisplay || 'No data available', 
                             inline: true 
+                        },
+                        { 
+                            name: t.quickAccess, 
+                            value: `\`\`\`fix\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
+                            inline: false 
                         },
                         { 
                             name: t.aiAssistant, 
                             value: `\`\`\`fix\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
                             inline: true 
+                        },
+                        { 
+                            name: t.tip, 
+                            value: getRandomTip(t, effectivePrefix), 
+                            inline: true 
                         }
                     )
                     .setFooter({ 
-                        text: `${t.footer} • v${client.version || '1.5.0'} • ${t.selectModuleBelow}`, 
-                        iconURL: client.user.displayAvatarURL() 
+                        text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, 
+                        iconURL: guildIcon
                     })
                     .setTimestamp();
                 
@@ -410,7 +536,7 @@ module.exports = {
             // Handle Category Selection
             if (i.isStringSelectMenu() && i.customId === 'help_select') {
                 const category = i.values[0];
-                await showCategoryHelp(client, message, category, effectivePrefix, lang, t, emojiMap, colorMap, i);
+                await showCategoryHelp(client, message, category, effectivePrefix, lang, t, emojiMap, colorMap, i, guildName, guildIcon, version);
                 currentView = 'category';
                 
                 const updatedRow2 = new ActionRowBuilder().addComponents(
@@ -439,7 +565,7 @@ module.exports = {
 };
 
 // ================= CATEGORY HELP DISPLAY FUNCTION =================
-async function showCategoryHelp(client, message, category, prefix, lang, t, emojiMap, colorMap, interaction = null) {
+async function showCategoryHelp(client, message, category, prefix, lang, t, emojiMap, colorMap, interaction, guildName, guildIcon, version) {
     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
     const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
     const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
@@ -475,7 +601,8 @@ async function showCategoryHelp(client, message, category, prefix, lang, t, emoj
             .setTitle(`═ ${t.modulesTitle} ═`)
             .setDescription(chunks[0])
             .setFooter({ 
-                text: `${t.useHelpForDetails.replace('{prefix}', prefix)} • ${t.page} 1/${chunks.length} • v${client.version || '1.5.0'}` 
+                text: `${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${t.page} 1/${chunks.length} • v${version}`,
+                iconURL: guildIcon
             });
         
         if (interaction) {
@@ -493,7 +620,8 @@ async function showCategoryHelp(client, message, category, prefix, lang, t, emoj
                 })
                 .setDescription(chunks[idx])
                 .setFooter({ 
-                    text: `${t.page} ${idx+1}/${chunks.length} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • v${client.version || '1.5.0'}` 
+                    text: `${guildName} • ${t.page} ${idx+1}/${chunks.length} • v${version}`,
+                    iconURL: guildIcon
                 });
             
             await message.channel.send({ embeds: [chunkEmbed] });
@@ -517,8 +645,8 @@ async function showCategoryHelp(client, message, category, prefix, lang, t, emoj
             }
         )
         .setFooter({ 
-            text: `${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${client.version || '1.5.0'}`, 
-            iconURL: client.user.displayAvatarURL() 
+            text: `${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${version}`,
+            iconURL: guildIcon
         })
         .setTimestamp();
     
