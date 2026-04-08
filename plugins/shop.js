@@ -5,7 +5,7 @@ function calculateLevel(xp) {
     return Math.floor(0.1 * Math.sqrt(xp)) + 1; 
 }
 
-// --- BILINGUAL SHOP ITEMS (Dynamic with requirements) ---
+// --- BILINGUAL SHOP ITEMS ---
 const shopItems = [
     { 
         id: 'starter_pack', 
@@ -89,88 +89,56 @@ const shopTranslations = {
         desc: 'Exchange your earned credits for system upgrades and status symbols.',
         placeholder: 'Select an upgrade to purchase...',
         balance: 'Current Balance',
-        success: 'Purchase Successful!',
-        insufficient: '❌ Insufficient Credits.',
         insufficientWithAmount: (price, balance) => `❌ **Insufficient Credits!**\n└─ Required: \`${price.toLocaleString()}\` Credits\n└─ Your Balance: \`${balance.toLocaleString()}\` Credits`,
         alreadyOwned: '⚠️ You already possess this upgrade.',
         levelRequirement: (level, current) => `⚠️ **Level Requirement Not Met**\n└─ Required Level: \`${level}\`\n└─ Your Level: \`${current}\``,
-        purchaseSuccess: (name, price) => `✅ **${name}** purchased successfully!\n└─ \`-${price.toLocaleString()}\` Credits`,
         inventory: '📦 My Inventory',
         refresh: '🔄 Refresh',
-        confirmPurchase: 'Confirm Purchase',
-        cancel: 'Cancel',
-        itemDetails: 'Item Details',
         price: 'Price',
         type: 'Type',
-        perk: 'Perk',
-        requirement: 'Requirement',
         consumable: 'Consumable',
         role: 'Role',
         badge: 'Badge',
         boost: 'Boost',
         permanent: 'Permanent',
-        days: 'days',
         level: 'Level',
-        none: 'None',
         expires: 'Expires',
-        expiresIn: (days) => `Expires in ${days} days`,
         permanentItem: 'Permanent',
-        emptyInventory: 'Your inventory is empty. Visit the shop to purchase upgrades!',
-        inventoryTitle: '📦 INVENTORY',
-        agentInventory: (name) => `═ ${name}'s Neural Assets ═`,
-        itemsOwned: (count) => `${count} items owned`,
-        purchased: 'Purchased',
         owned: 'OWNED',
         locked: 'LVL',
         accessDenied: '❌ These controls are locked to your session.',
         itemNotFound: '❌ Item not found.',
         purchaseError: '❌ An error occurred during purchase. Please try again.',
-        inventoryOpened: '📦 Inventory displayed above!',
-        footer: 'ARCHITECT CG-223 • Neural Marketplace'
+        footer: 'ARCHITECT CG-223 • Neural Marketplace',
+        purchaseComplete: '✅ PURCHASE COMPLETE'
     },
     fr: {
         title: '═ MARCHÉ NEURAL ARCHON ═',
         desc: 'Échangez vos crédits contre des améliorations système et des symboles de statut.',
         placeholder: 'Sélectionnez une amélioration...',
         balance: 'Solde Actuel',
-        success: 'Achat Réussi !',
-        insufficient: '❌ Crédits Insuffisants.',
         insufficientWithAmount: (price, balance) => `❌ **Crédits Insuffisants!**\n└─ Requis: \`${price.toLocaleString()}\` Crédits\n└─ Votre Solde: \`${balance.toLocaleString()}\` Crédits`,
         alreadyOwned: '⚠️ Vous possédez déjà cette amélioration.',
         levelRequirement: (level, current) => `⚠️ **Niveau Requis Non Atteint**\n└─ Niveau Requis: \`${level}\`\n└─ Votre Niveau: \`${current}\``,
-        purchaseSuccess: (name, price) => `✅ **${name}** acheté avec succès!\n└─ \`-${price.toLocaleString()}\` Crédits`,
         inventory: '📦 Mon Inventaire',
         refresh: '🔄 Actualiser',
-        confirmPurchase: 'Confirmer l\'Achat',
-        cancel: 'Annuler',
-        itemDetails: 'Détails de l\'Article',
         price: 'Prix',
         type: 'Type',
-        perk: 'Avantage',
-        requirement: 'Prérequis',
         consumable: 'Consommable',
         role: 'Rôle',
         badge: 'Badge',
         boost: 'Boost',
         permanent: 'Permanent',
-        days: 'jours',
         level: 'Niveau',
-        none: 'Aucun',
         expires: 'Expire',
-        expiresIn: (days) => `Expire dans ${days} jours`,
         permanentItem: 'Permanent',
-        emptyInventory: 'Votre inventaire est vide. Visitez la boutique pour acheter des améliorations!',
-        inventoryTitle: '📦 INVENTAIRE',
-        agentInventory: (name) => `═ Actifs Neuraux de ${name} ═`,
-        itemsOwned: (count) => `${count} objets possédés`,
-        purchased: 'Acheté',
         owned: 'POSSÉDÉ',
         locked: 'NIV',
         accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
         itemNotFound: '❌ Article introuvable.',
         purchaseError: '❌ Une erreur est survenue lors de l\'achat. Veuillez réessayer.',
-        inventoryOpened: '📦 Inventaire affiché ci-dessus !',
-        footer: 'ARCHITECT CG-223 • Marché Neural'
+        footer: 'ARCHITECT CG-223 • Marché Neural',
+        purchaseComplete: '✅ ACHAT RÉUSSI'
     }
 };
 
@@ -183,22 +151,23 @@ module.exports = {
     cooldown: 3000,
     examples: ['.shop'],
 
-    // ✅ MODIFIED: Added serverSettings as 5th argument
     run: async (client, message, args, database, serverSettings) => {
         
-        // ✅ MODIFIED: Use server-specific language from settings
         const lang = serverSettings?.language || 'en';
         const t = shopTranslations[lang];
-        const prefix = serverSettings?.prefix || '.';
         const version = client.version || '1.5.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
         const userId = message.author.id;
         const userName = message.author.username;
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
+        const db = database;
         
-        // --- ENSURE INVENTORY TABLE EXISTS (WITH EXPIRATION SUPPORT) ---
+        // ✅ FIXED: Ensure tables exist BEFORE any queries
         try {
-            database.prepare(`
+            // Create inventory table FIRST
+            db.prepare(`
                 CREATE TABLE IF NOT EXISTS user_inventory (
                     user_id TEXT,
                     item_id TEXT,
@@ -210,51 +179,49 @@ module.exports = {
                 )
             `).run();
             
-            // Clean expired items on shop open
+            // Clean expired items
             const now = Math.floor(Date.now() / 1000);
-            database.prepare(`
+            db.prepare(`
                 UPDATE user_inventory 
                 SET active = 0 
-                WHERE expires_at IS NOT NULL AND expires_at < ? AND active = 1
+                WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
             `).run(now);
             
         } catch (err) {
-            console.error('[SHOP] Inventory table creation error:', err);
+            console.error('[SHOP] Inventory table error:', err.message);
         }
         
-        // --- GET USER DATA ---
-        const userData = database.prepare(`
-            SELECT credits, xp FROM users WHERE id = ?
-        `).get(userId);
-        
+        // ✅ FIXED: Ensure user exists before querying
+        let userData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
         if (!userData) {
-            database.prepare(`INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, 0)`)
+            db.prepare(`INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, 0)`)
                 .run(userId, userName);
+            userData = { credits: 0, xp: 0 };
         }
         
         const balance = userData?.credits || 0;
         const userXP = userData?.xp || 0;
         const userLevel = calculateLevel(userXP);
         
-        // --- GET USER INVENTORY (Only active items) ---
-        const inventory = database.prepare(`
-            SELECT item_id, purchased_at, expires_at FROM user_inventory 
+        // Get inventory
+        const inventory = db.prepare(`
+            SELECT item_id FROM user_inventory 
             WHERE user_id = ? AND active = 1
         `).all(userId);
         
         const ownedItems = new Set(inventory.map(i => i.item_id));
         
-        // --- SHOP EMBED ---
+        // Shop embed
         const shopEmbed = new EmbedBuilder()
             .setColor('#f1c40f')
             .setAuthor({ name: '🏪 NEURAL MARKETPLACE', iconURL: client.user.displayAvatarURL() })
             .setTitle(t.title)
             .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${balance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${userLevel}\``)
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setFooter({ text: `${t.footer} • v${version}`, iconURL: message.author.displayAvatarURL() })
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         
-        // --- CREATE SHOP MENU ---
+        // Create menu
         const menuOptions = shopItems.map(item => {
             let description = `${item.price.toLocaleString()} Credits - ${item[lang].desc}`;
             if (ownedItems.has(item.id)) {
@@ -278,7 +245,6 @@ module.exports = {
         
         const row = new ActionRowBuilder().addComponents(menu);
         
-        // --- ADD INVENTORY BUTTON ---
         const buttonRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -298,7 +264,6 @@ module.exports = {
             components: [row, buttonRow] 
         });
         
-        // --- COLLECTOR FOR BOTH SELECT MENU AND BUTTONS ---
         const collector = response.createMessageComponentCollector({ time: 120000 });
         
         collector.on('collect', async (i) => {
@@ -310,70 +275,26 @@ module.exports = {
             if (i.customId === 'view_inventory') {
                 const invCmd = client.commands.get('inventory');
                 if (invCmd) {
-                    // ✅ PASS serverSettings to the inventory command
-                    await invCmd.run(client, message, [], database, serverSettings);
-                    return await i.reply({ content: t.inventoryOpened, ephemeral: true });
+                    await invCmd.run(client, message, [], db, serverSettings);
+                    return await i.reply({ content: '📦 Inventory displayed above!', ephemeral: true });
                 }
-                
-                // Fallback if inventory command not found
-                const userInventory = database.prepare(`
-                    SELECT item_id, purchased_at, expires_at FROM user_inventory 
-                    WHERE user_id = ? AND active = 1
-                `).all(userId);
-                
-                if (userInventory.length === 0) {
-                    const emptyEmbed = new EmbedBuilder()
-                        .setColor('#95a5a6')
-                        .setTitle(t.inventoryTitle)
-                        .setDescription(t.emptyInventory)
-                        .setFooter({ text: `v${version}` })
-                        .setTimestamp();
-                    return i.reply({ embeds: [emptyEmbed], ephemeral: true });
-                }
-                
-                const inventoryList = userInventory.map(inv => {
-                    const item = shopItems.find(si => si.id === inv.item_id);
-                    if (!item) return null;
-                    
-                    let expirationText = '';
-                    if (inv.expires_at) {
-                        expirationText = `\n└─ ⏰ ${t.expires}: <t:${inv.expires_at}:R>`;
-                    } else {
-                        expirationText = `\n└─ ⏰ ${t.permanentItem}`;
-                    }
-                    
-                    return `**${item.emoji} ${item[lang].name}**\n└─ 📅 ${t.purchased}: <t:${inv.purchased_at}:R>${expirationText}\n└─ ✨ ${item[lang].perk}`;
-                }).filter(Boolean).join('\n\n');
-                
-                const inventoryEmbed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setAuthor({ name: '📦 AGENT INVENTORY', iconURL: avatarURL })
-                    .setTitle(t.agentInventory(userName))
-                    .setDescription(inventoryList || 'No items found.')
-                    .setFooter({ text: `v${version} • ${t.itemsOwned(userInventory.length)}` })
-                    .setTimestamp();
-                
-                return i.reply({ embeds: [inventoryEmbed], ephemeral: true });
+                return i.reply({ content: '❌ Inventory command not found.', ephemeral: true });
             }
             
             // Handle Refresh Button
             if (i.customId === 'refresh_shop') {
-                // Clean expired items first
                 const now = Math.floor(Date.now() / 1000);
-                database.prepare(`
+                db.prepare(`
                     UPDATE user_inventory 
                     SET active = 0 
-                    WHERE expires_at IS NOT NULL AND expires_at < ? AND active = 1
+                    WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
                 `).run(now);
                 
-                const freshData = database.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
+                const freshData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
                 const freshBalance = freshData?.credits || 0;
                 const freshXP = freshData?.xp || 0;
                 const freshLevel = calculateLevel(freshXP);
-                const freshInventory = database.prepare(`
-                    SELECT item_id FROM user_inventory 
-                    WHERE user_id = ? AND active = 1
-                `).all(userId);
+                const freshInventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
                 const freshOwned = new Set(freshInventory.map(inv => inv.item_id));
                 
                 const refreshedEmbed = new EmbedBuilder(shopEmbed)
@@ -397,7 +318,7 @@ module.exports = {
                 return;
             }
             
-            // Handle Shop Purchase
+            // Handle Purchase
             if (i.isStringSelectMenu() && i.customId === 'shop_select') {
                 const selectedItem = shopItems.find(item => item.id === i.values[0]);
                 
@@ -405,64 +326,36 @@ module.exports = {
                     return i.reply({ content: t.itemNotFound, ephemeral: true });
                 }
                 
-                // Clean expired items
-                const now = Math.floor(Date.now() / 1000);
-                database.prepare(`
-                    UPDATE user_inventory 
-                    SET active = 0 
-                    WHERE expires_at IS NOT NULL AND expires_at < ? AND active = 1
-                `).run(now);
-                
-                // Re-fetch fresh data to prevent exploits
-                const freshData = database.prepare(`
-                    SELECT credits, xp FROM users WHERE id = ?
-                `).get(i.user.id);
-                
+                const freshData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(i.user.id);
                 const currentCredits = freshData?.credits || 0;
                 const currentXP = freshData?.xp || 0;
                 const currentLevel = calculateLevel(currentXP);
                 
-                // Check if already owned (only for non-consumable, non-boost items)
-                const alreadyOwned = database.prepare(`
-                    SELECT 1 FROM user_inventory 
-                    WHERE user_id = ? AND item_id = ? AND active = 1
-                `).get(i.user.id, selectedItem.id);
+                const alreadyOwned = db.prepare(`SELECT 1 FROM user_inventory WHERE user_id = ? AND item_id = ? AND active = 1`).get(i.user.id, selectedItem.id);
                 
                 if (alreadyOwned && selectedItem.type !== 'consumable' && selectedItem.type !== 'boost') {
                     return i.reply({ content: t.alreadyOwned, ephemeral: true });
                 }
                 
-                // Check level requirement
                 if (selectedItem.requirement?.level && currentLevel < selectedItem.requirement.level) {
-                    return i.reply({ 
-                        content: t.levelRequirement(selectedItem.requirement.level, currentLevel), 
-                        ephemeral: true 
-                    });
+                    return i.reply({ content: t.levelRequirement(selectedItem.requirement.level, currentLevel), ephemeral: true });
                 }
                 
-                // Check balance
                 if (currentCredits < selectedItem.price) {
-                    return i.reply({ 
-                        content: t.insufficientWithAmount(selectedItem.price, currentCredits), 
-                        ephemeral: true 
-                    });
+                    return i.reply({ content: t.insufficientWithAmount(selectedItem.price, currentCredits), ephemeral: true });
                 }
                 
-                // --- PROCESS PURCHASE ---
                 try {
                     // Deduct credits
-                    database.prepare(`
-                        UPDATE users SET credits = credits - ? WHERE id = ?
-                    `).run(selectedItem.price, i.user.id);
+                    db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ?`).run(selectedItem.price, i.user.id);
                     
-                    // Calculate expiration if applicable
                     const expiresAt = selectedItem.duration 
                         ? Math.floor(Date.now() / 1000) + (selectedItem.duration * 86400)
                         : null;
                     
-                    // Add to inventory (allow stacking for consumables)
+                    // Add to inventory
                     if (selectedItem.type === 'consumable') {
-                        database.prepare(`
+                        db.prepare(`
                             INSERT INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at, active)
                             VALUES (?, ?, 1, strftime('%s', 'now'), ?, 1)
                             ON CONFLICT(user_id, item_id) DO UPDATE SET 
@@ -470,38 +363,35 @@ module.exports = {
                                 purchased_at = strftime('%s', 'now')
                         `).run(i.user.id, selectedItem.id, expiresAt);
                     } else {
-                        database.prepare(`
+                        db.prepare(`
                             INSERT OR REPLACE INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at, active)
                             VALUES (?, ?, 1, strftime('%s', 'now'), ?, 1)
                         `).run(i.user.id, selectedItem.id, expiresAt);
                     }
                     
-                    // Apply immediate effects
+                    // Apply effects
                     if (selectedItem.effect) {
                         if (selectedItem.effect.xp) {
-                            database.prepare(`UPDATE users SET xp = xp + ? WHERE id = ?`)
-                                .run(selectedItem.effect.xp, i.user.id);
+                            db.prepare(`UPDATE users SET xp = xp + ? WHERE id = ?`).run(selectedItem.effect.xp, i.user.id);
                         }
                         if (selectedItem.effect.credits) {
-                            database.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`)
-                                .run(selectedItem.effect.credits, i.user.id);
+                            db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(selectedItem.effect.credits, i.user.id);
                         }
                     }
                     
-                    // Apply role if applicable
+                    // Apply role
                     if (selectedItem.type === 'role' && selectedItem.roleId && message.guild) {
                         try {
                             const member = await message.guild.members.fetch(i.user.id);
                             await member.roles.add(selectedItem.roleId);
                         } catch (err) {
-                            console.error('[SHOP] Role assignment error:', err);
+                            console.error('[SHOP] Role error:', err);
                         }
                     }
                     
-                    // Send success message
                     const successEmbed = new EmbedBuilder()
                         .setColor('#2ecc71')
-                        .setAuthor({ name: '✅ PURCHASE COMPLETE', iconURL: avatarURL })
+                        .setAuthor({ name: t.purchaseComplete, iconURL: avatarURL })
                         .setTitle(`${selectedItem.emoji} ${selectedItem[lang].name}`)
                         .setDescription(`${selectedItem[lang].desc}\n\n${selectedItem[lang].perk}`)
                         .addFields(
@@ -510,37 +400,26 @@ module.exports = {
                         );
                     
                     if (expiresAt) {
-                        successEmbed.addFields({
-                            name: t.expires,
-                            value: `<t:${expiresAt}:R>`,
-                            inline: true
-                        });
+                        successEmbed.addFields({ name: t.expires, value: `<t:${expiresAt}:R>`, inline: true });
                     } else {
-                        successEmbed.addFields({
-                            name: t.expires,
-                            value: t.permanentItem,
-                            inline: true
-                        });
+                        successEmbed.addFields({ name: t.expires, value: t.permanentItem, inline: true });
                     }
                     
                     successEmbed
-                        .setFooter({ text: `v${version}` })
+                        .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                     
                     await i.update({ embeds: [successEmbed], components: [] });
                     
-                    console.log(`[SHOP] ${message.author.tag} purchased ${selectedItem.id} for ${selectedItem.price} credits`);
+                    console.log(`[SHOP] ${message.author.tag} purchased ${selectedItem.id}`);
                     
-                    // Auto-refresh the shop view after 3 seconds
+                    // Auto-refresh after 3 seconds
                     setTimeout(async () => {
-                        const finalData = database.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
+                        const finalData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
                         const finalBalance = finalData?.credits || 0;
                         const finalXP = finalData?.xp || 0;
                         const finalLevel = calculateLevel(finalXP);
-                        const finalInventory = database.prepare(`
-                            SELECT item_id FROM user_inventory 
-                            WHERE user_id = ? AND active = 1
-                        `).all(userId);
+                        const finalInventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
                         const finalOwned = new Set(finalInventory.map(inv => inv.item_id));
                         
                         const finalEmbed = new EmbedBuilder(shopEmbed)
@@ -575,18 +454,8 @@ module.exports = {
             const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
             const disabledButtons = new ActionRowBuilder()
                 .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('view_inventory')
-                        .setLabel(t.inventory)
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true)
-                        .setEmoji('📦'),
-                    new ButtonBuilder()
-                        .setCustomId('refresh_shop')
-                        .setLabel(t.refresh)
-                        .setStyle(ButtonStyle.Success)
-                        .setDisabled(true)
-                        .setEmoji('🔄')
+                    new ButtonBuilder().setCustomId('view_inventory').setLabel(t.inventory).setStyle(ButtonStyle.Secondary).setDisabled(true).setEmoji('📦'),
+                    new ButtonBuilder().setCustomId('refresh_shop').setLabel(t.refresh).setStyle(ButtonStyle.Success).setDisabled(true).setEmoji('🔄')
                 );
             response.edit({ components: [disabledRow, disabledButtons] }).catch(() => {});
         });
