@@ -29,7 +29,7 @@ function createProgressBar(percentage, length = 15) {
     return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty));
 }
 
-// ================= SANITIZATION (FIXED - More Robust) =================
+// ================= SANITIZATION =================
 function sanitizeWord(word) { 
     return word.toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z]/g, ''); 
 }
@@ -111,8 +111,8 @@ const wrgTexts = {
     }
 };
 
-// ================= LEVEL-UP EMBED (FIXED - No rankData reference) =================
-async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP, lang, version) {
+// ================= LEVEL-UP EMBED =================
+async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP, lang, version, guildName, guildIcon) {
     const rank = getRank(newLevel);
     const nextLevelXP = Math.pow(newLevel / 0.1, 2);
     const prevLevelXP = Math.pow((newLevel - 1) / 0.1, 2);
@@ -130,23 +130,20 @@ async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP
             `\`${progressBar}\` ${progressPercent.toFixed(1)}%\n` +
             `└─ ${lang === 'fr' ? 'Prochain niveau' : 'Next level'}: ${Math.ceil(xpNeeded - xpInLevel).toLocaleString()} XP`
         )
-        .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+        .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
         .setTimestamp();
     
     await channel.send({ embeds: [embed] });
 }
 
-// ================= ATOMIC REWARD FUNCTION (FIXED) =================
-async function updateUserRewards(client, userId, xpAmount, creditAmount, channel, username, lang, version) {
+// ================= ATOMIC REWARD FUNCTION =================
+async function updateUserRewards(client, userId, xpAmount, creditAmount, channel, username, lang, version, guildName, guildIcon) {
     try {
-        // Use the DB attached to the client for consistency
         const database = client.db || db;
         
-        // Ensure user exists using your global helper if available
         if (client.initializeUser) {
             client.initializeUser(userId, username);
         } else {
-            // Fallback: Ensure user exists
             const exists = database.prepare("SELECT id FROM users WHERE id = ?").get(userId);
             if (!exists) {
                 database.prepare(`INSERT INTO users (id, username, xp, level, credits, last_daily) 
@@ -155,13 +152,11 @@ async function updateUserRewards(client, userId, xpAmount, creditAmount, channel
             }
         }
         
-        // Get current user data
         const user = database.prepare("SELECT xp, credits, level FROM users WHERE id = ?").get(userId);
         const oldXP = user ? user.xp : 0;
         const oldCredits = user ? user.credits : 0;
         const oldLevel = user ? user.level : 1;
         
-        // Update rewards
         database.prepare(`
             UPDATE users 
             SET xp = xp + ?, 
@@ -170,28 +165,20 @@ async function updateUserRewards(client, userId, xpAmount, creditAmount, channel
             WHERE id = ?
         `).run(xpAmount, creditAmount, userId);
         
-        // Get updated data
         const updated = database.prepare("SELECT xp, credits, level FROM users WHERE id = ?").get(userId);
         const newXP = updated.xp;
         const newCredits = updated.credits;
         const newLevel = calculateLevel(newXP);
         
-        // Handle level up
         if (newLevel > oldLevel) {
             database.prepare("UPDATE users SET level = ? WHERE id = ?").run(newLevel, userId);
-            await sendLevelUpEmbed(channel, username, oldLevel, newLevel, newXP, lang, version);
+            await sendLevelUpEmbed(channel, username, oldLevel, newLevel, newXP, lang, version, guildName, guildIcon);
         }
         
         return {
-            oldXP,
-            newXP,
-            oldCredits,
-            newCredits,
-            xpGained: xpAmount,
-            creditsGained: creditAmount,
-            oldLevel,
-            newLevel,
-            leveledUp: newLevel > oldLevel
+            oldXP, newXP, oldCredits, newCredits,
+            xpGained: xpAmount, creditsGained: creditAmount,
+            oldLevel, newLevel, leveledUp: newLevel > oldLevel
         };
     } catch (err) {
         console.error(`[WRG] Update error: ${err.message}`);
@@ -209,15 +196,24 @@ module.exports = {
     cooldown: 3000,
     examples: ['.wrg', '.wrg easy', '.wrg hard'],
 
-    run: async (client, message, args) => {
+    // ✅ FIXED: Added serverSettings parameter
+    run: async (client, message, args, database, serverSettings) => {
         
         try {
-            // --- LANGUAGE DETECTION ---
-            const content = message.content.toLowerCase();
-            const isFrench = content.includes('devine') || content.includes('mot') || message.guild?.preferredLocale === 'fr';
-            const lang = isFrench ? 'fr' : 'en';
+            // ✅ FIXED: Use server language with fallback
+            let lang = serverSettings?.language || 'en';
+            
+            // Fallback detection if no server setting
+            if (!serverSettings?.language) {
+                const content = message.content.toLowerCase();
+                const isFrench = content.includes('devine') || content.includes('mot') || message.guild?.preferredLocale === 'fr';
+                lang = isFrench ? 'fr' : 'en';
+            }
+            
             const t = wrgTexts[lang];
-            const version = client.version || '1.3.2';
+            const version = client.version || '1.5.0';
+            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
             
             // --- CATEGORY SELECTION ---
             let categoryKey = 'easy';
@@ -266,7 +262,7 @@ module.exports = {
                     { name: `💰 ${t.reward}`, value: `┌─ ${t.xpGain}: **+${totalXP} XP**\n└─ ${t.creditGain}: **+${totalCredits} 🪙**`, inline: true },
                     { name: `📊 ${t.progress}`, value: `\`${progressBar}\` ${progressPercent.toFixed(0)}%\n└─ ${Math.ceil(xpNeeded - xpProgress).toLocaleString()} XP ${t.nextLevel.toLowerCase()}`, inline: true }
                 )
-                .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                .setFooter({ text: `${guildName} • NEURAL WRG • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
 
             await message.channel.send({ embeds: [startEmbed] });
@@ -282,26 +278,22 @@ module.exports = {
             collector.on('collect', async (m) => {
                 if (winnerDeclared) return;
                 
-                // FIXED: Proper sanitization
                 const guess = sanitizeWord(m.content);
                 
                 if (guess === targetWord) {
                     winnerDeclared = true;
                     collector.stop('winner');
                     
-                    // Update rewards with proper SQL - PASS THE CLIENT
-                    const result = await updateUserRewards(client, m.author.id, totalXP, totalCredits, message.channel, m.author.username, lang, version);
+                    const result = await updateUserRewards(client, m.author.id, totalXP, totalCredits, message.channel, m.author.username, lang, version, guildName, guildIcon);
                     
                     if (!result) {
                         return message.channel.send(`❌ ${lang === 'fr' ? 'Erreur de base de donnees' : 'Database error'}`);
                     }
                     
-                    // Get updated user stats for win embed
                     const updatedUser = database.prepare("SELECT xp, credits FROM users WHERE id = ?").get(m.author.id);
                     const newLevelNum = calculateLevel(updatedUser.xp);
                     const finalRank = getRank(newLevelNum);
                     
-                    // Calculate new progress
                     const newCurrentLevelXP = Math.pow((newLevelNum - 1) / 0.1, 2);
                     const newNextLevelXP = Math.pow(newLevelNum / 0.1, 2);
                     const newXpProgress = updatedUser.xp - newCurrentLevelXP;
@@ -327,7 +319,7 @@ module.exports = {
                             { name: `💎 ${lang === 'fr' ? 'Crédits' : 'Credits'}`, value: `\`${updatedUser.credits.toLocaleString()} 🪙\``, inline: true },
                             { name: `📊 ${t.progress}`, value: `\`${newProgressBar}\` ${newProgressPercent.toFixed(1)}%\n└─ ${Math.ceil(newXpNeeded - newXpProgress).toLocaleString()} XP ${t.nextLevel.toLowerCase()}`, inline: false }
                         )
-                        .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                        .setFooter({ text: `${guildName} • NEURAL WRG • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                     
                     await message.channel.send({ embeds: [winEmbed] });
@@ -343,7 +335,7 @@ module.exports = {
                             `${t.theWordWas}: **${targetWord}**\n\n` +
                             `💡 **Tip:** Try easier words like \`.wrg easy\` to practice!`
                         )
-                        .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                        .setFooter({ text: `${guildName} • NEURAL WRG • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                         
                     message.channel.send({ embeds: [failEmbed] });
