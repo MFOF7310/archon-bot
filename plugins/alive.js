@@ -7,17 +7,16 @@ module.exports = {
     aliases: ['ping', 'status', 'health', 'uptime', 'version'],
     description: 'Check if the bot is alive and get system statistics',
     usage: '.alive',
-    cooldown: 3000, // 3 seconds cooldown
-    
-    /**
-     * Execute the alive command
-     * @param {Client} client - Discord client instance
-     * @param {Message} message - Message object
-     * @param {Array} args - Command arguments
-     * @param {Object} database - Database object (better-sqlite3 instance)
-     */
-    run: async (client, message, args, database) => {
+    cooldown: 3000,
+
+    run: async (client, message, args, database, serverSettings) => {
         const startTime = Date.now();
+        
+        // ✅ Use server language for future expansion
+        const lang = serverSettings?.language || 'en';
+        const version = client.version || '1.5.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
         // Calculate bot uptime
         const uptime = client.uptime;
@@ -38,7 +37,7 @@ module.exports = {
         const platform = os.platform();
         const arch = os.arch();
         const cpus = os.cpus();
-        const cpuModel = cpus[0].model;
+        const cpuModel = cpus[0]?.model || 'Unknown';
         const cpuCores = cpus.length;
         const totalMem = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
         const freeMem = (os.freemem() / 1024 / 1024 / 1024).toFixed(2);
@@ -54,9 +53,6 @@ module.exports = {
         // Calculate API latency
         const apiLatency = Date.now() - startTime;
         
-        // Get bot version from client (DYNAMIC - reads from version.txt)
-        const botVersion = client.version || '1.1.0';
-        
         // Create the main embed
         const aliveEmbed = new EmbedBuilder()
             .setColor('#2ecc71')
@@ -69,7 +65,7 @@ module.exports = {
             .addFields(
                 { 
                     name: '📡 BOT INFORMATION', 
-                    value: `\`\`\`yaml\nName: ${client.user.tag}\nID: ${client.user.id}\nVersion: v${botVersion}\nUptime: ${uptimeString}\nLatency: ${apiLatency}ms\nAPI Ping: ${Math.round(client.ws.ping)}ms\`\`\``,
+                    value: `\`\`\`yaml\nName: ${client.user.tag}\nID: ${client.user.id}\nVersion: v${version}\nUptime: ${uptimeString}\nLatency: ${apiLatency}ms\nAPI Ping: ${Math.round(client.ws.ping)}ms\`\`\``,
                     inline: false
                 },
                 { 
@@ -84,8 +80,8 @@ module.exports = {
                 }
             )
             .setFooter({ 
-                text: `ARCHITECT CG-223 | Node: ${process.version} | Discord.js: v${discordVersion}`,
-                iconURL: message.guild?.iconURL() || client.user.displayAvatarURL()
+                text: `${guildName} • Node: ${process.version} • Discord.js: v${discordVersion}`,
+                iconURL: guildIcon
             })
             .setTimestamp();
 
@@ -121,7 +117,6 @@ module.exports = {
         
         await replyMsg.edit({ embeds: [updatedEmbed] });
         
-        // Log to console for monitoring
-        console.log(`[ALIVE] Checked by ${message.author.tag} | Servers: ${serverCount} | Users: ${userCount} | DB Users: ${dbUserCount} | Version: v${botVersion}`);
+        console.log(`[ALIVE] Checked by ${message.author.tag} | Servers: ${serverCount} | Users: ${userCount} | DB Users: ${dbUserCount} | Version: v${version}`);
     }
 };
