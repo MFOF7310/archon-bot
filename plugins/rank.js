@@ -1,4 +1,4 @@
-Const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 
 // --- UNIFIED AGENT RANKS (Matches games.js & profile.js) ---
 const AGENT_RANKS = [
@@ -23,97 +23,99 @@ function createProgressBar(percent, length = 12) {
     return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
+// ================= BILINGUAL TRANSLATIONS =================
+const translations = {
+    fr: {
+        title: (name) => `📜 DOSSIER AGENT: ${name.toUpperCase()}`,
+        node: 'Nœud',
+        status: 'Statut',
+        syncOk: '🟢 SYNC_OK',
+        classification: 'Classification',
+        syncTelemetry: '📊 TÉLÉMÉTRIE NEURALE',
+        level: 'Niveau',
+        rank: 'Classement',
+        total: 'Total',
+        xp: 'XP',
+        messages: 'Messages',
+        games: 'Parties',
+        winRate: '% VICTOIRES',
+        progress: '🚀 PROGRESSION',
+        syncGap: 'XP requis',
+        combat: '🎮 MATRICE DE COMBAT',
+        primarySector: 'SECTEUR PRINCIPAL',
+        combatMode: 'MODE COMBAT',
+        rankTier: 'RANG/ÉCHELON',
+        awaiting: 'EN_ATTENTE_DE_DONNÉES',
+        setGame: 'Utilisez .setgame',
+        noData: (name) => `❌ **Agent ${name}** n'a aucune donnée enregistrée dans le système.`,
+        agentSince: 'Agent depuis',
+        neuralEfficiency: 'Efficacité Neurale',
+        commandStats: 'STATS COMMANDES',
+        dailyStreak: 'Série Quotidienne',
+        credits: 'Crédits',
+        wealthTier: 'Niveau de Richesse',
+        architectTitle: '🏛️ RECONNAISSANCE ARCHITECTE',
+        architectValue: 'Le Créateur marche parmi nous. Le Système honore son Architecte.',
+        digitalSovereignty: 'SOUVERAINETÉ NUMÉRIQUE'
+    },
+    en: {
+        title: (name) => `📜 AGENT DOSSIER: ${name.toUpperCase()}`,
+        node: 'Node',
+        status: 'Status',
+        syncOk: '🟢 SYNC_OK',
+        classification: 'Classification',
+        syncTelemetry: '📊 NEURAL TELEMETRY',
+        level: 'Level',
+        rank: 'Rank',
+        total: 'Total',
+        xp: 'XP',
+        messages: 'Messages',
+        games: 'Games',
+        winRate: 'WIN %',
+        progress: '🚀 PROGRESS',
+        syncGap: 'XP needed',
+        combat: '🎮 COMBAT MATRIX',
+        primarySector: 'PRIMARY SECTOR',
+        combatMode: 'COMBAT MODE',
+        rankTier: 'RANK/TIER',
+        awaiting: 'AWAITING_DATA',
+        setGame: 'Use .setgame',
+        noData: (name) => `❌ **Agent ${name}** has no recorded data in the system.`,
+        agentSince: 'Agent Since',
+        neuralEfficiency: 'Neural Efficiency',
+        commandStats: 'COMMAND STATS',
+        dailyStreak: 'Daily Streak',
+        credits: 'Credits',
+        wealthTier: 'Wealth Tier',
+        architectTitle: '🏛️ ARCHITECT RECOGNITION',
+        architectValue: 'The Creator walks among us. System honors its Architect.',
+        digitalSovereignty: 'DIGITAL SOVEREIGNTY'
+    }
+};
+
 module.exports = {
     name: 'rank',
-    aliases: ['level', 'xp', 'rang', 'niveau', 'dossier', 'agent'], // REMOVED 'profile'
+    aliases: ['level', 'xp', 'rang', 'niveau', 'dossier', 'agent'],
     description: '📊 Display neural synchronization level and agent dossier.',
     category: 'PROFILE',
     usage: '.rank [@user]',
     cooldown: 3000,
     examples: ['.rank', '.rank @user'],
 
-    run: async (client, message, args, db) => {
+    // ✅ MODIFIED: Added serverSettings as 5th argument
+    run: async (client, message, args, db, serverSettings) => {
 
-        // --- INTELLIGENT LANGUAGE DETECTION ---
-        let lang = 'en';
-        const guildSettings = client.settings?.get(message.guild?.id);
-        if (guildSettings?.language) {
-            lang = guildSettings.language;
-        } else {
-            const frenchKeywords = ['fr', 'francais', 'français', 'french', 'rang', 'niveau'];
-            const content = message.content.toLowerCase();
-            if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
-                lang = 'fr';
-            }
-        }
+        // ✅ MODIFIED: Use server-specific language from settings
+        const lang = serverSettings?.language || 'en';
+        const t = translations[lang];
+        
+        // ✅ MODIFIED: Dynamic version from client
+        const version = client.version || '1.5.0';
+        
+        // ✅ MODIFIED: Dynamic node name (Global Identity Rule)
+        const nodeName = message.guild?.name || 'NEURAL_NODE';
 
         const target = message.mentions.users.first() || message.author;
-        const version = client.version || '1.3.2';
-
-        const t = {
-            fr: {
-                title: (name) => `📜 DOSSIER AGENT: ${name.toUpperCase()}`,
-                node: 'Nœud',
-                status: 'Statut',
-                syncOk: '🟢 SYNC_OK',
-                classification: 'Classification',
-                syncTelemetry: '📊 TÉLÉMÉTRIE NEURALE',
-                level: 'Niveau',
-                rank: 'Classement',
-                total: 'Total',
-                xp: 'XP',
-                messages: 'Messages',
-                games: 'Parties',
-                winRate: '% VICTOIRES',
-                progress: '🚀 PROGRESSION',
-                syncGap: 'XP requis',
-                combat: '🎮 MATRICE DE COMBAT',
-                primarySector: 'SECTEUR PRINCIPAL',
-                combatMode: 'MODE COMBAT',
-                rankTier: 'RANG/ÉCHELON',
-                awaiting: 'EN_ATTENTE_DE_DONNÉES',
-                setGame: 'Utilisez .setgame',
-                noData: (name) => `❌ **Agent ${name}** n'a aucune donnée enregistrée dans le système.`,
-                footer: 'COMMUNAUTÉ EAGLE • BKO-223',
-                agentSince: 'Agent depuis',
-                neuralEfficiency: 'Efficacité Neurale',
-                commandStats: 'STATS COMMANDES',
-                dailyStreak: 'Série Quotidienne',
-                credits: 'Crédits',
-                wealthTier: 'Niveau de Richesse'
-            },
-            en: {
-                title: (name) => `📜 AGENT DOSSIER: ${name.toUpperCase()}`,
-                node: 'Node',
-                status: 'Status',
-                syncOk: '🟢 SYNC_OK',
-                classification: 'Classification',
-                syncTelemetry: '📊 NEURAL TELEMETRY',
-                level: 'Level',
-                rank: 'Rank',
-                total: 'Total',
-                xp: 'XP',
-                messages: 'Messages',
-                games: 'Games',
-                winRate: 'WIN %',
-                progress: '🚀 PROGRESS',
-                syncGap: 'XP needed',
-                combat: '🎮 COMBAT MATRIX',
-                primarySector: 'PRIMARY SECTOR',
-                combatMode: 'COMBAT MODE',
-                rankTier: 'RANK/TIER',
-                awaiting: 'AWAITING_DATA',
-                setGame: 'Use .setgame',
-                noData: (name) => `❌ **Agent ${name}** has no recorded data in the system.`,
-                footer: 'EAGLE COMMUNITY • BKO-223',
-                agentSince: 'Agent Since',
-                neuralEfficiency: 'Neural Efficiency',
-                commandStats: 'COMMAND STATS',
-                dailyStreak: 'Daily Streak',
-                credits: 'Credits',
-                wealthTier: 'Wealth Tier'
-            }
-        }[lang];
 
         const userData = db.prepare(`
             SELECT id, xp, credits, streak_days, created_at, 
@@ -125,6 +127,10 @@ module.exports = {
             const errorEmbed = new EmbedBuilder()
                 .setColor('#ED4245')
                 .setDescription(t.noData(target.username))
+                .setFooter({
+                    text: `${nodeName.toUpperCase()} • v${version}`,
+                    iconURL: message.guild?.iconURL() || client.user.displayAvatarURL()
+                })
                 .setTimestamp();
             return message.reply({ embeds: [errorEmbed] });
         }
@@ -174,7 +180,8 @@ module.exports = {
             .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 512 }))
             .setDescription(
                 `\`\`\`prolog\n` +
-                `${t.node}: BKO-223 • ${t.status}: ${t.syncOk}\n` +
+                // ✅ MODIFIED: Using dynamic node name (Global Identity Rule)
+                `${t.node}: ${nodeName.toUpperCase()} • ${t.status}: ${t.syncOk}\n` +
                 `${t.classification}: ${agentRank.emoji} ${agentRank.title[lang]}\n` +
                 `Core: Groq LPU™ 70B\`\`\``
             )
@@ -225,8 +232,9 @@ module.exports = {
                     inline: false
                 }
             )
+            // ✅ MODIFIED: Dynamic footer with server identity (Global Identity Rule)
             .setFooter({
-                text: `${t.footer} • v${version}`,
+                text: `${nodeName.toUpperCase()} • ${t.digitalSovereignty} • v${version}`,
                 iconURL: message.guild?.iconURL() || client.user.displayAvatarURL()
             })
             .setTimestamp();
@@ -234,8 +242,8 @@ module.exports = {
         const ARCHITECT_ID = process.env.OWNER_ID;
         if (target.id === ARCHITECT_ID) {
             dossierEmbed.addFields({
-                name: '🏛️ ARCHITECT RECOGNITION',
-                value: `The Creator walks among us. System honors its Architect.`,
+                name: t.architectTitle,
+                value: t.architectValue,
                 inline: false
             });
         }
