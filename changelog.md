@@ -144,9 +144,31 @@
 
 ### 🚀 UPGRADE NOTES
 
-1. **Database Migration Required**:
+## 1. **Database Migration Required**:
    ```sql
    ALTER TABLE users ADD COLUMN last_daily INTEGER DEFAULT 0;
    ALTER TABLE users ADD COLUMN streak_days INTEGER DEFAULT 0;
    CREATE TABLE IF NOT EXISTS reminders (...);
    CREATE TABLE IF NOT EXISTS user_inventory (...);
+```
+## 2. Environment Variables Added:
+```OPENROUTER_API_KEY=your_key OPENWEATHER_API_KEY=your_key NEWS_API_KEY=your_key BRAVE_API_KEY=your_key
+```
+## 3. New Pependencies:
+
+```"axios": "^1.6.0",
+
+"better-sqlite3": "^9.0.0"
+```
+
+## COMING IN VI.6.0
+
+Voice channel integration for Lydia
+
+Marriage/Relationship system
+
+Server backup system
+
+Web dashboard
+
+Mobile app notifications
