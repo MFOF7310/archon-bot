@@ -44,7 +44,7 @@ const translations = {
             global: '🌍 **GLOBAL ELITE! World-class operator!**',
             default: '🎯 **Combat data synchronized. Ready for deployment!**'
         },
-        footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY • BKO-223',
+        footer: 'DIGITAL SOVEREIGNTY',
         quickButtons: {
             cod: '🎯 CoD',
             val: '🔫 Valorant',
@@ -66,7 +66,12 @@ const translations = {
             duo: 'Duo',
             trio: 'Trio',
             squad: 'Squad'
-        }
+        },
+        accessDenied: '❌ This menu is not yours.',
+        manualFormat: 'MANUAL FORMAT',
+        examples_title: 'EXAMPLES',
+        interactiveSetup: 'INTERACTIVE SETUP',
+        chooseGame: 'Choose your game, mode, and rank using the menus below.'
     },
     fr: {
         title: '🎮 ENREGISTREMENT DE COMBAT',
@@ -110,7 +115,7 @@ const translations = {
             global: '🌍 **ÉLITE MONDIALE ! Opérateur de classe mondiale !**',
             default: '🎯 **Données de combat synchronisées. Prêt pour le déploiement !**'
         },
-        footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE • BKO-223',
+        footer: 'SOUVERAINETÉ NUMÉRIQUE',
         quickButtons: {
             cod: '🎯 CoD',
             val: '🔫 Valorant',
@@ -132,7 +137,12 @@ const translations = {
             duo: 'Duo',
             trio: 'Trio',
             squad: 'Escouade'
-        }
+        },
+        accessDenied: '❌ Ce menu ne vous appartient pas.',
+        manualFormat: 'FORMAT MANUEL',
+        examples_title: 'EXEMPLES',
+        interactiveSetup: 'CONFIGURATION INTERACTIVE',
+        chooseGame: 'Choisissez votre jeu, mode, et rang en utilisant les menus ci-dessous.'
     }
 };
 
@@ -230,25 +240,6 @@ function createGameSelectMenu(lang) {
         ]);
 }
 
-// ================= CREATE MODE SELECT MENU =================
-function createModeSelectMenu(game, lang) {
-    const t = translations[lang];
-    const gameData = GAME_PATTERNS[game];
-    
-    if (!gameData) return null;
-    
-    const options = gameData.modes.slice(0, 25).map(mode => ({
-        label: mode,
-        value: mode.toLowerCase().replace(/\s+/g, '_'),
-        description: `${t.modes[mode.toLowerCase()] || mode} mode`
-    }));
-    
-    return new StringSelectMenuBuilder()
-        .setCustomId('select_mode')
-        .setPlaceholder(t.selectMode)
-        .addOptions(options);
-}
-
 // ================= MAIN COMMAND =================
 module.exports = {
     name: 'setgame',
@@ -263,25 +254,19 @@ module.exports = {
         '.sg Apex Legends | BR | Master'
     ],
 
-    run: async (client, message, args, userData) => {
+    // ✅ FIXED: Added serverSettings parameter
+    run: async (client, message, args, database, serverSettings) => {
         
-        // ================= LANGUAGE DETECTION =================
-        let lang = 'en';
-        const guildSettings = client.settings?.get(message.guild?.id);
-        if (guildSettings?.language) {
-            lang = guildSettings.language;
-        } else {
-            const frenchKeywords = ['jeu', 'specialisation', 'spécialisation'];
-            const content = message.content.toLowerCase();
-            if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
-                lang = 'fr';
-            }
-        }
+        // ✅ FIXED: Use server language
+        const lang = serverSettings?.language || 'en';
         const t = translations[lang];
-        const prefix = process.env.PREFIX || '.';
+        const prefix = serverSettings?.prefix || '.';
+        const version = client.version || '1.5.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
         const fullInput = args.join(' ');
-        const db = require('better-sqlite3')('database.sqlite');
+        const db = database;
         
         // Ensure gaming column exists
         try {
@@ -296,17 +281,13 @@ module.exports = {
                     name: `🎮 ${t.title} • ${message.author.username.toUpperCase()}`, 
                     iconURL: message.author.displayAvatarURL() 
                 })
-                .setTitle(lang === 'fr' ? '═ CONFIGURATION INTERACTIVE ═' : '═ INTERACTIVE SETUP ═')
-                .setDescription(
-                    lang === 'fr' 
-                        ? 'Choisissez votre jeu, mode, et rang en utilisant les menus ci-dessous.'
-                        : 'Choose your game, mode, and rank using the menus below.'
-                )
+                .setTitle(lang === 'fr' ? `═ ${t.interactiveSetup} ═` : `═ ${t.interactiveSetup} ═`)
+                .setDescription(lang === 'fr' ? t.chooseGame : 'Choose your game, mode, and rank using the menus below.')
                 .addFields(
-                    { name: '📝 ' + (lang === 'fr' ? 'FORMAT MANUEL' : 'MANUAL FORMAT'), value: `\`${prefix}setgame [Jeu] | [Mode] | [Rang]\``, inline: false },
-                    { name: '💡 ' + (lang === 'fr' ? 'EXEMPLES' : 'EXAMPLES'), value: t.examples.map(ex => `\`${ex}\``).join('\n'), inline: false }
+                    { name: '📝 ' + t.manualFormat, value: `\`${prefix}setgame [Jeu] | [Mode] | [Rang]\``, inline: false },
+                    { name: '💡 ' + t.examples_title, value: t.examples.map(ex => `\`${ex}\``).join('\n'), inline: false }
                 )
-                .setFooter({ text: t.footer })
+                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             
             const gameMenu = createGameSelectMenu(lang);
@@ -322,7 +303,7 @@ module.exports = {
             
             collector.on('collect', async (i) => {
                 if (i.user.id !== message.author.id) {
-                    return i.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', ephemeral: true });
+                    return i.reply({ content: t.accessDenied, ephemeral: true });
                 }
                 
                 // Quick buttons
@@ -395,7 +376,7 @@ module.exports = {
                     { name: t.recognizedModes, value: '`MP` • `BR` • `ZM` • `DMZ` • `Ranked` • `Competitive` • `Casual`', inline: true },
                     { name: t.exampleUsage, value: t.examples.map(ex => `\`${ex}\``).join('\n'), inline: true }
                 )
-                .setFooter({ text: t.footer })
+                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
 
             return message.reply({ embeds: [errorEmbed] });
@@ -417,7 +398,6 @@ module.exports = {
         
         db.prepare(`UPDATE users SET gaming = ? WHERE id = ?`).run(gamingData, message.author.id);
         const updatedUser = db.prepare(`SELECT * FROM users WHERE id = ?`).get(message.author.id);
-        db.close();
 
         // Success embed
         const successEmbed = new EmbedBuilder()
@@ -446,10 +426,7 @@ module.exports = {
                     inline: true
                 }
             )
-            .setFooter({ 
-                text: t.footer, 
-                iconURL: client.user.displayAvatarURL() 
-            })
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
 
         const rankMessage = getRankMessage(safeRank, lang);
