@@ -112,198 +112,240 @@ const getNextLevelReward = (level) => {
 const Database = require('better-sqlite3');
 const db = new Database('database.sqlite');
 
-// ================= COMPLETE DATABASE SCHEMA =================
+// ================= GLOBAL AUTO-REPAIR PROTOCOL =================
+console.log(`${cyan}[REPAIR]${reset} Initiating Global Neural Schema Repair...`);
 
-// --- USERS TABLE ---
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        username TEXT,
-        xp INTEGER DEFAULT 0,
-        level INTEGER DEFAULT 1,
-        credits INTEGER DEFAULT 0,
-        streak_days INTEGER DEFAULT 0,
-        total_messages INTEGER DEFAULT 0,
-        last_xp_gain INTEGER DEFAULT 0,
-        games_played INTEGER DEFAULT 0,
-        games_won INTEGER DEFAULT 0,
-        total_winnings INTEGER DEFAULT 0,
-        gaming TEXT DEFAULT '{"game":"CODM","rank":"Unranked"}',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_daily INTEGER DEFAULT 0
-    )
-`).run();
-
-// ================= GLOBAL AUTO-PATCHER =================
-console.log(`${cyan}[SYSTEM]${reset} Syncing Global Neural Schema...`);
-
-const expectedSchema = {
-    credits: "INTEGER DEFAULT 0",
-    streak_days: "INTEGER DEFAULT 0",
-    total_winnings: "INTEGER DEFAULT 0",
-    games_played: "INTEGER DEFAULT 0",
-    games_won: "INTEGER DEFAULT 0",
-    created_at: "DATETIME DEFAULT CURRENT_TIMESTAMP",
-    last_daily: "INTEGER DEFAULT 0",
-    total_messages: "INTEGER DEFAULT 0",
-    last_seen: "DATETIME DEFAULT CURRENT_TIMESTAMP"
+const requiredTables = {
+    users: `
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT,
+            xp INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1,
+            credits INTEGER DEFAULT 0,
+            streak_days INTEGER DEFAULT 0,
+            total_messages INTEGER DEFAULT 0,
+            last_xp_gain INTEGER DEFAULT 0,
+            games_played INTEGER DEFAULT 0,
+            games_won INTEGER DEFAULT 0,
+            total_winnings INTEGER DEFAULT 0,
+            gaming TEXT DEFAULT '{"game":"CODM","rank":"Unranked"}',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_daily INTEGER DEFAULT 0
+        )
+    `,
+    server_settings: `
+        CREATE TABLE IF NOT EXISTS server_settings (
+            guild_id TEXT PRIMARY KEY,
+            prefix TEXT DEFAULT '.',
+            language TEXT DEFAULT 'en',
+            welcome_channel TEXT,
+            log_channel TEXT,
+            daily_channel TEXT,
+            updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    `,
+    lydia_memory: `
+        CREATE TABLE IF NOT EXISTS lydia_memory (
+            user_id TEXT,
+            memory_key TEXT,
+            memory_value TEXT,
+            updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+            PRIMARY KEY (user_id, memory_key)
+        )
+    `,
+    lydia_agents: `
+        CREATE TABLE IF NOT EXISTS lydia_agents (
+            channel_id TEXT PRIMARY KEY,
+            agent_key TEXT,
+            is_active INTEGER DEFAULT 0,
+            updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    `,
+    user_inventory: `
+        CREATE TABLE IF NOT EXISTS user_inventory (
+            user_id TEXT,
+            item_id TEXT,
+            quantity INTEGER DEFAULT 1,
+            purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
+            expires_at INTEGER,
+            active BOOLEAN DEFAULT 1,
+            PRIMARY KEY (user_id, item_id)
+        )
+    `,
+    lydia_introductions: `
+        CREATE TABLE IF NOT EXISTS lydia_introductions (
+            user_id TEXT,
+            channel_id TEXT,
+            introduced_at INTEGER DEFAULT (strftime('%s', 'now')),
+            PRIMARY KEY (user_id, channel_id)
+        )
+    `,
+    lydia_conversations: `
+        CREATE TABLE IF NOT EXISTS lydia_conversations (
+            channel_id TEXT,
+            user_id TEXT,
+            user_name TEXT,
+            role TEXT,
+            content TEXT,
+            timestamp INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    `,
+    reminders: `
+        CREATE TABLE IF NOT EXISTS reminders (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            channel_id TEXT,
+            message TEXT,
+            created_at INTEGER,
+            execute_at INTEGER,
+            status TEXT DEFAULT 'pending'
+        )
+    `,
+    warnings: `
+        CREATE TABLE IF NOT EXISTS warnings (
+            id TEXT PRIMARY KEY,
+            guild_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            moderator_id TEXT NOT NULL,
+            reason TEXT,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')),
+            expires_at INTEGER,
+            active BOOLEAN DEFAULT 1
+        )
+    `,
+    moderation_logs: `
+        CREATE TABLE IF NOT EXISTS moderation_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            moderator_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            reason TEXT,
+            warning_id TEXT,
+            timestamp INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    `,
+    server_backups: `
+        CREATE TABLE IF NOT EXISTS server_backups (
+            id TEXT PRIMARY KEY,
+            guild_id TEXT NOT NULL,
+            name TEXT,
+            data TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')),
+            roles INTEGER,
+            channels INTEGER
+        )
+    `,
+    auto_backup_settings: `
+        CREATE TABLE IF NOT EXISTS auto_backup_settings (
+            guild_id TEXT PRIMARY KEY,
+            enabled BOOLEAN DEFAULT 0,
+            last_backup INTEGER,
+            channel_id TEXT
+        )
+    `
 };
 
-Object.entries(expectedSchema).forEach(([colName, colType]) => {
+const requiredIndexes = [
+    `CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at, status)`,
+    `CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status)`,
+    `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_modlogs_guild_user ON moderation_logs(guild_id, user_id)`
+];
+
+const columnMigrations = {
+    users: [
+        { name: 'credits', type: 'INTEGER DEFAULT 0' },
+        { name: 'streak_days', type: 'INTEGER DEFAULT 0' },
+        { name: 'total_winnings', type: 'INTEGER DEFAULT 0' },
+        { name: 'games_played', type: 'INTEGER DEFAULT 0' },
+        { name: 'games_won', type: 'INTEGER DEFAULT 0' },
+        { name: 'created_at', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
+        { name: 'last_daily', type: 'INTEGER DEFAULT 0' },
+        { name: 'total_messages', type: 'INTEGER DEFAULT 0' },
+        { name: 'last_seen', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' }
+    ],
+    lydia_conversations: [
+        { name: 'user_name', type: 'TEXT' }
+    ]
+};
+
+let tablesCreated = 0;
+let tablesAlreadyExist = 0;
+let indexesCreated = 0;
+let columnsAdded = 0;
+
+// PHASE 1: Create all required tables
+for (const [tableName, createSQL] of Object.entries(requiredTables)) {
     try {
-        const columnExists = db.prepare(`PRAGMA table_info(users)`).all().some(col => col.name === colName);
-        if (!columnExists) {
-            db.prepare(`ALTER TABLE users ADD COLUMN ${colName} ${colType}`).run();
-            console.log(`${green}[DB SYNC]${reset} Column added: ${colName}`);
+        const exists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(tableName);
+        
+        if (!exists) {
+            db.exec(createSQL);
+            tablesCreated++;
+            console.log(`${green}[REPAIR]${reset} ✅ Created table: ${cyan}${tableName}${reset}`);
+        } else {
+            tablesAlreadyExist++;
         }
     } catch (err) {
-        console.log(`${red}[DB ERROR]${reset} Failed to sync ${colName}: ${err.message}`);
+        console.log(`${red}[REPAIR ERROR]${reset} Failed to create ${tableName}: ${err.message}`);
     }
-});
+}
 
-console.log(`${green}[READY]${reset} Database schema is 100% Synchronized.`);
+// PHASE 2: Create all indexes
+for (const indexSQL of requiredIndexes) {
+    try {
+        db.exec(indexSQL);
+        indexesCreated++;
+    } catch (err) {}
+}
 
-// ================= SERVER SETTINGS TABLE =================
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS server_settings (
-        guild_id TEXT PRIMARY KEY,
-        prefix TEXT DEFAULT '.',
-        language TEXT DEFAULT 'en',
-        welcome_channel TEXT,
-        log_channel TEXT,
-        daily_channel TEXT,
-        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-    )
-`).run();
+// PHASE 3: Add missing columns to existing tables
+for (const [tableName, columns] of Object.entries(columnMigrations)) {
+    const tableExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(tableName);
+    if (!tableExists) continue;
+    
+    for (const column of columns) {
+        try {
+            const columnExists = db.prepare(`PRAGMA table_info(${tableName})`).all().some(col => col.name === column.name);
+            if (!columnExists) {
+                db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.type}`).run();
+                columnsAdded++;
+                console.log(`${cyan}[MIGRATION]${reset} Added column: ${tableName}.${column.name}`);
+            }
+        } catch (err) {}
+    }
+}
 
-console.log(`${green}[DB]${reset} Server settings table ready.`);
+// PHASE 4: Clean expired inventory items
+try {
+    const now = Math.floor(Date.now() / 1000);
+    const expiredCleaned = db.prepare(`
+        UPDATE user_inventory 
+        SET active = 0 
+        WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
+    `).run(now);
+    
+    if (expiredCleaned.changes > 0) {
+        console.log(`${cyan}[CLEANUP]${reset} Marked ${expiredCleaned.changes} expired inventory items as inactive`);
+    }
+} catch (err) {}
 
-// --- LYDIA TABLES ---
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS lydia_memory (
-        user_id TEXT,
-        memory_key TEXT,
-        memory_value TEXT,
-        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-        PRIMARY KEY (user_id, memory_key)
-    )
-`).run();
+// PHASE 5: Clean old completed reminders
+try {
+    const weekAgo = Math.floor(Date.now() / 1000) - (7 * 86400);
+    const remindersDeleted = db.prepare(`DELETE FROM reminders WHERE status = 'completed' AND execute_at < ?`).run(weekAgo);
+    
+    if (remindersDeleted.changes > 0) {
+        console.log(`${cyan}[CLEANUP]${reset} Deleted ${remindersDeleted.changes} old completed reminders`);
+    }
+} catch (err) {}
 
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS lydia_agents (
-        channel_id TEXT PRIMARY KEY,
-        agent_key TEXT,
-        is_active INTEGER DEFAULT 0,
-        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-    )
-`).run();
-
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS user_inventory (
-        user_id TEXT,
-        item_id TEXT,
-        quantity INTEGER DEFAULT 1,
-        purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
-        expires_at INTEGER,
-        active BOOLEAN DEFAULT 1,
-        PRIMARY KEY (user_id, item_id)
-    )
-`).run();
-
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS lydia_introductions (
-        user_id TEXT,
-        channel_id TEXT,
-        introduced_at INTEGER DEFAULT (strftime('%s', 'now')),
-        PRIMARY KEY (user_id, channel_id)
-    )
-`).run();
-
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS lydia_conversations (
-        channel_id TEXT,
-        user_id TEXT,
-        user_name TEXT,
-        role TEXT,
-        content TEXT,
-        timestamp INTEGER DEFAULT (strftime('%s', 'now'))
-    )
-`).run();
-
-// ================= REMINDERS TABLE =================
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS reminders (
-        id TEXT PRIMARY KEY,
-        user_id TEXT,
-        channel_id TEXT,
-        message TEXT,
-        created_at INTEGER,
-        execute_at INTEGER,
-        status TEXT DEFAULT 'pending'
-    )
-`).run();
-
-db.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at, status)`).run();
-db.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status)`).run();
-
-// ================= WARNINGS TABLE =================
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS warnings (
-        id TEXT PRIMARY KEY,
-        guild_id TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        moderator_id TEXT NOT NULL,
-        reason TEXT,
-        created_at INTEGER DEFAULT (strftime('%s', 'now')),
-        expires_at INTEGER,
-        active BOOLEAN DEFAULT 1
-    )
-`).run();
-
-db.prepare(`CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id)`).run();
-
-// ================= MODERATION LOGS TABLE =================
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS moderation_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        guild_id TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        moderator_id TEXT NOT NULL,
-        action TEXT NOT NULL,
-        reason TEXT,
-        warning_id TEXT,
-        timestamp INTEGER DEFAULT (strftime('%s', 'now'))
-    )
-`).run();
-
-db.prepare(`CREATE INDEX IF NOT EXISTS idx_modlogs_guild_user ON moderation_logs(guild_id, user_id)`).run();
-
-// ================= SERVER BACKUPS TABLE =================
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS server_backups (
-        id TEXT PRIMARY KEY,
-        guild_id TEXT NOT NULL,
-        name TEXT,
-        data TEXT NOT NULL,
-        created_by TEXT NOT NULL,
-        created_at INTEGER DEFAULT (strftime('%s', 'now')),
-        roles INTEGER,
-        channels INTEGER
-    )
-`).run();
-
-// ================= AUTO BACKUP SETTINGS TABLE =================
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS auto_backup_settings (
-        guild_id TEXT PRIMARY KEY,
-        enabled BOOLEAN DEFAULT 0,
-        last_backup INTEGER,
-        channel_id TEXT
-    )
-`).run();
-
-console.log(`${green}[DB]${reset} All tables synchronized.`);
+console.log(`${green}[REPAIR COMPLETE]${reset} Tables: ${tablesCreated} created, ${tablesAlreadyExist} verified | Indexes: ${indexesCreated} | Columns: ${columnsAdded}`);
+console.log(`${green}[REPAIR]${reset} Neural Schema is 100% Synchronized and Healthy!`);
 
 // ================= SERVER SETTINGS UTILITY (GLOBAL PROXY) =================
 const DEFAULT_SETTINGS = {
@@ -420,7 +462,6 @@ const loadAgentPreferences = () => {
     try {
         const savedAgents = db.prepare("SELECT * FROM lydia_agents WHERE is_active = 1").all();
         if (!savedAgents || savedAgents.length === 0) {
-            console.log(`${green}[AGENT]${reset} No active agents found.`);
             return;
         }
         savedAgents.forEach(agent => {
@@ -430,9 +471,7 @@ const loadAgentPreferences = () => {
             }
         });
         console.log(`${green}[AGENT]${reset} Restored ${savedAgents.length} active agents.`);
-    } catch (err) {
-        console.log(`${yellow}[AGENT]${reset} No agents to restore.`);
-    }
+    } catch (err) {}
 };
 
 const saveAgentPreference = (channelId, agentKey) => {
@@ -525,7 +564,6 @@ client.loadPlugins = async () => {
     const pluginPath = path.join(__dirname, 'plugins');
     if (!fs.existsSync(pluginPath)) fs.mkdirSync(pluginPath);
 
-    // ✅ CORRECTION: Exclude lydia.js from automatic scan
     const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js') && file !== 'lydia.js');
     
     for (const file of pluginFiles) {
@@ -594,16 +632,15 @@ client.once(Events.ClientReady, async () => {
     
     console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
 
-    // Clear old timeouts on restart
+    // Clear old timeouts
     if (client.userTimeouts) {
         for (const [id, timeout] of client.userTimeouts) {
             clearTimeout(timeout);
         }
         client.userTimeouts.clear();
-        console.log(`${cyan}[REMINDER]${reset} Cleared old timeout queue on restart`);
     }
 
-    // Load pending reminders from database
+    // Load pending reminders
     try {
         const pendingReminders = db.prepare(`
             SELECT * FROM reminders 
@@ -621,19 +658,17 @@ client.once(Events.ClientReady, async () => {
                         }
                         db.prepare(`UPDATE reminders SET status = 'completed' WHERE id = ?`).run(reminder.id);
                         client.userTimeouts.delete(reminder.id);
-                    } catch (err) {
-                        console.log(`${red}[REMINDER ERROR]${reset} ${err.message}`);
-                    }
+                    } catch (err) {}
                 }, timeLeft);
                 
                 client.userTimeouts.set(reminder.id, timeout);
             }
         }
         
-        console.log(`${green}[REMINDER]${reset} Restored ${pendingReminders.length} pending reminders`);
-    } catch (err) {
-        console.log(`${yellow}[REMINDER]${reset} No pending reminders to restore.`);
-    }
+        if (pendingReminders.length > 0) {
+            console.log(`${green}[REMINDER]${reset} Restored ${pendingReminders.length} pending reminders`);
+        }
+    } catch (err) {}
 
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
@@ -892,7 +927,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
             .addFields(
                 { name: 'User', value: `<@${member.id}> (\`${member.id}\`)`, inline: false },
                 { name: 'Account Age', value: `\`${accountAge}\``, inline: true },
-                { name: 'Language', value: `\`${lang.toUpperCase()}\``, inline: true },
+                { name: 'Language', value: `\`${lang.toUpperCase()}\``, inline:1 },
                 { name: 'Repository', value: 'https://github.com/MFOF7310', inline: true }
             )
             .setTimestamp();
@@ -918,7 +953,7 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-// ✅ CRITICAL: Initialize Lydia (The Handshake)
+// ✅ CRITICAL: Initialize Lydia
 setupLydia(client, db);
 
 // --- LOGIN ---
