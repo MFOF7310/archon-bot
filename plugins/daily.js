@@ -33,7 +33,12 @@ const dailyTranslations = {
         accessDenied: '❌ These controls are locked to your session.',
         reminderSuccess: (hours) => `🔔 **Reminder Set!** I'll notify you in ${hours} hours. Then use \`.claim\` to collect your rewards!`,
         reminderAlreadyActive: (h, m) => `⚠️ **Protocol already active!** Your reminder triggers in \`${h}h ${m}m\`.`,
-        footer: 'ARCHITECT CG-223 • v{version} • Use .claim to collect rewards'
+        footer: 'ARCHITECT CG-223 • v{version} • Use .claim to collect rewards',
+        channelRestricted: (channelId) => `📊 The dashboard is restricted to the <#${channelId}> channel.`,
+        claimNotFound: '❌ Claim command not found.',
+        profileNotFound: '❌ Profile command not found.',
+        leaderboardNotFound: '❌ Leaderboard command not found.',
+        error: '❌ An error occurred.'
     },
     fr: {
         title: '📊 TABLEAU DE BORD NEURAL',
@@ -61,7 +66,12 @@ const dailyTranslations = {
         accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
         reminderSuccess: (hours) => `🔔 **Rappel Défini!** Je vous notifierai dans ${hours} heures. Utilisez ensuite \`.claim\` pour réclamer vos récompenses!`,
         reminderAlreadyActive: (h, m) => `⚠️ **Protocole déjà actif!** Votre rappel se déclenche dans \`${h}h ${m}m\`.`,
-        footer: 'ARCHITECT CG-223 • v{version} • Utilisez .claim pour réclamer'
+        footer: 'ARCHITECT CG-223 • v{version} • Utilisez .claim pour réclamer',
+        channelRestricted: (channelId) => `📊 Le tableau de bord est restreint au canal <#${channelId}>.`,
+        claimNotFound: '❌ Commande de réclamation introuvable.',
+        profileNotFound: '❌ Commande de profil introuvable.',
+        leaderboardNotFound: '❌ Commande de classement introuvable.',
+        error: '❌ Une erreur est survenue.'
     }
 };
 
@@ -80,22 +90,23 @@ module.exports = {
     cooldown: 3000,
     examples: ['.daily'],
 
-    run: async (client, message, args, database) => {
+    // ✅ MODIFIED: Added serverSettings as 5th argument
+    run: async (client, message, args, database, serverSettings) => {
         
         try {
-            // --- LANGUAGE DETECTION ---
-            let lang = 'en';
-            const guildSettings = client.settings?.get(message.guild?.id);
-            if (guildSettings?.language) {
-                lang = guildSettings.language;
-            } else {
-                const frenchKeywords = ['fr', 'francais', 'français', 'quotidien', 'journalier', 'tableau'];
-                const content = message.content.toLowerCase();
-                if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
-                    lang = 'fr';
-                }
-            }
+            // ✅ MODIFIED: Use server-specific language
+            const lang = serverSettings?.language || 'en';
             const t = dailyTranslations[lang];
+            
+            // ✅ ADDED: Channel Restriction Check
+            if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
+                return message.reply({ 
+                    content: t.channelRestricted(serverSettings.dailyChannel), 
+                    ephemeral: true 
+                });
+            }
+            
+            // ✅ Use actual client version, not hardcoded
             const version = client.version || '1.5.0';
             
             const userId = message.author.id;
@@ -182,7 +193,6 @@ module.exports = {
             // --- CALCULATE STREAK & BONUSES ---
             let streak = userData.streak_days || 0;
             if (!canClaim && lastClaim > 0) {
-                // Show what streak WILL be if they claim now (for preview)
                 const daysPassed = Math.floor(timePassed / oneDay);
                 if (daysPassed === 1) {
                     streak = streak + 1;
@@ -248,7 +258,6 @@ module.exports = {
             
             // Dynamic third button based on state
             if (canClaim) {
-                // Ready to claim - show Claim button
                 row.addComponents(
                     new ButtonBuilder()
                         .setCustomId('go_claim')
@@ -257,7 +266,6 @@ module.exports = {
                         .setEmoji('⚡')
                 );
             } else if (!reminderActive) {
-                // Cooldown active, no reminder - show Remind Me button
                 row.addComponents(
                     new ButtonBuilder()
                         .setCustomId('remind_me')
@@ -266,7 +274,6 @@ module.exports = {
                         .setEmoji('⏰')
                 );
             } else {
-                // Cooldown active, reminder set - show disabled Reminder Set button
                 row.addComponents(
                     new ButtonBuilder()
                         .setCustomId('reminder_active')
@@ -291,26 +298,33 @@ module.exports = {
                     case 'view_profile':
                         const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                         if (rankCmd) {
-                            await rankCmd.run(client, message, [], database);
+                            // ✅ PASS serverSettings to rank command
+                            await rankCmd.run(client, message, [], database, serverSettings);
                             await i.reply({ content: '👤 Profile displayed above!', ephemeral: true });
+                        } else {
+                            await i.reply({ content: t.profileNotFound, ephemeral: true });
                         }
                         break;
                         
                     case 'view_leaderboard':
                         const lbCmd = client.commands.get('lb') || client.commands.get('leaderboard');
                         if (lbCmd) {
-                            await lbCmd.run(client, message, [], database);
+                            // ✅ PASS serverSettings to leaderboard command
+                            await lbCmd.run(client, message, [], database, serverSettings);
                             await i.reply({ content: '🏆 Leaderboard displayed above!', ephemeral: true });
+                        } else {
+                            await i.reply({ content: t.leaderboardNotFound, ephemeral: true });
                         }
                         break;
                         
                     case 'go_claim':
                         const claimCmd = client.commands.get('claim');
                         if (claimCmd) {
-                            await claimCmd.run(client, message, [], database);
+                            // ✅ PASS serverSettings to claim command
+                            await claimCmd.run(client, message, [], database, serverSettings);
                             await i.reply({ content: '⚡ Claim processed!', ephemeral: true });
                         } else {
-                            await i.reply({ content: '❌ Claim command not found.', ephemeral: true });
+                            await i.reply({ content: t.claimNotFound, ephemeral: true });
                         }
                         break;
                         
@@ -346,7 +360,7 @@ module.exports = {
                             await i.reply({ content: t.reminderSuccess(timeUntilHours), ephemeral: true });
                             console.log(`[DAILY] Reminder set for ${message.author.tag}`);
                         } catch (e) {
-                            await i.reply({ content: '❌ Error setting reminder.', ephemeral: true });
+                            await i.reply({ content: t.error, ephemeral: true });
                         }
                         break;
                 }
@@ -354,7 +368,8 @@ module.exports = {
             
         } catch (error) {
             console.error(`[DAILY] FATAL ERROR:`, error);
-            return message.reply({ content: '❌ An error occurred.' });
+            const lang = serverSettings?.language || 'en';
+            return message.reply({ content: dailyTranslations[lang].error });
         }
     }
 };
