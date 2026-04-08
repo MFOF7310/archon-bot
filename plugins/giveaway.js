@@ -33,13 +33,18 @@ const translations = {
         noPrize: '❌ Please specify a prize.',
         usage: 'Usage: `.giveaway [time] [winners] [prize]`',
         example: 'Example: `.giveaway 1h 2 1000 Credits`',
-        footer: 'ARCHITECT CG-223 • Neural Giveaway System',
+        footer: 'NEURAL GIVEAWAY',
         accessDenied: '❌ This menu is not yours.',
         noPermission: '❌ You need **Manage Server** permission to create giveaways.',
         entriesList: 'Entries',
         totalEntries: 'Total Entries',
         rerolling: '🔄 Rerolling...',
-        timeUnits: { s: 'seconds', m: 'minutes', h: 'hours', d: 'days' }
+        timeUnits: { s: 'seconds', m: 'minutes', h: 'hours', d: 'days' },
+        noActiveGiveaways: 'No active giveaways on this server.\n\nCreate one with: `{prefix}giveaway [time] [winners] [prize]`',
+        activeGiveaways: 'Active Giveaway(s)',
+        jumpToGiveaway: 'Jump to Giveaway',
+        timeFormats: 'Time formats:',
+        missingArguments: 'Missing Arguments'
     },
     fr: {
         title: '🎁 CONCOURS NEURAL',
@@ -72,13 +77,18 @@ const translations = {
         noPrize: '❌ Veuillez spécifier un prix.',
         usage: 'Utilisation: `.concours [temps] [gagnants] [prix]`',
         example: 'Exemple: `.concours 1h 2 1000 Crédits`',
-        footer: 'ARCHITECT CG-223 • Système de Concours Neural',
+        footer: 'CONCOURS NEURAL',
         accessDenied: '❌ Ce menu ne vous appartient pas.',
         noPermission: '❌ Vous avez besoin de la permission **Gérer le Serveur** pour créer des concours.',
         entriesList: 'Participations',
         totalEntries: 'Total Participations',
         rerolling: '🔄 Nouveau tirage...',
-        timeUnits: { s: 'secondes', m: 'minutes', h: 'heures', d: 'jours' }
+        timeUnits: { s: 'secondes', m: 'minutes', h: 'heures', d: 'jours' },
+        noActiveGiveaways: 'Aucun concours actif sur ce serveur.\n\nCréez-en un avec: `{prefix}concours [temps] [gagnants] [prix]`',
+        activeGiveaways: 'Concours Actif(s)',
+        jumpToGiveaway: 'Aller au Concours',
+        timeFormats: 'Formats de temps:',
+        missingArguments: 'Arguments Manquants'
     }
 };
 
@@ -108,8 +118,9 @@ function parseTime(timeStr, lang) {
 }
 
 // ================= CREATE GIVEAWAY EMBED =================
-function createGiveawayEmbed(giveaway, status = 'active', lang = 'en') {
+function createGiveawayEmbed(giveaway, status = 'active', lang = 'en', guild, client) {
     const t = translations[lang];
+    const version = client.version || '1.5.0';
     
     const color = status === 'active' ? '#2ecc71' : '#e74c3c';
     const title = status === 'active' ? `${t.title} • ${t.active}` : `${t.title} • ${t.ended}`;
@@ -126,7 +137,10 @@ function createGiveawayEmbed(giveaway, status = 'active', lang = 'en') {
                 ? `**${t.timeRemaining}:** ${giveaway.displayTime || giveaway.endTime}\n**${t.ends}:** <t:${Math.floor(giveaway.endTimestamp / 1000)}:R>`
                 : `**${t.ended}:** <t:${Math.floor(giveaway.endTimestamp / 1000)}:R>`)
         )
-        .setFooter({ text: `${t.footer} • v1.5.0` })
+        .setFooter({ 
+            text: `${guild.name.toUpperCase()} • ${t.footer} • v${version}`, 
+            iconURL: guild.iconURL() || client.user.displayAvatarURL() 
+        })
         .setTimestamp();
     
     if (status === 'ended' && giveaway.winnersList && giveaway.winnersList.length > 0) {
@@ -205,6 +219,9 @@ module.exports = {
         const lang = serverSettings?.language || 'en';
         const t = translations[lang];
         const prefix = serverSettings?.prefix || '.';
+        const version = client.version || '1.5.0';
+        const guildName = message.guild.name.toUpperCase();
+        const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
         
         // ================= PERMISSION CHECK =================
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
@@ -222,10 +239,8 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setColor('#95a5a6')
                     .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-                    .setDescription(lang === 'fr' 
-                        ? 'Aucun concours actif sur ce serveur.\n\nCréez-en un avec: `' + prefix + 'concours [temps] [gagnants] [prix]`'
-                        : 'No active giveaways on this server.\n\nCreate one with: `' + prefix + 'giveaway [time] [winners] [prize]`')
-                    .setFooter({ text: t.footer });
+                    .setDescription(t.noActiveGiveaways.replace('{prefix}', prefix))
+                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
                 
                 return message.reply({ embeds: [embed] });
             }
@@ -233,16 +248,16 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
                 .setAuthor({ name: `${t.title} • ${t.active}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`🎁 ${guildGiveaways.length} Active Giveaway(s)`)
+                .setTitle(`🎁 ${guildGiveaways.length} ${t.activeGiveaways}`)
                 .setDescription(
                     guildGiveaways.map((g, i) => 
                         `**${i + 1}.** 🎁 **${g.prize}**\n` +
                         `└─ ${t.winners}: ${g.winners} • ${t.entries}: ${g.entries.length}\n` +
                         `└─ ${t.ends}: <t:${Math.floor(g.endTimestamp / 1000)}:R>\n` +
-                        `└─ 🔗 [Jump to Giveaway](https://discord.com/channels/${g.guildId}/${g.channelId}/${g.messageId})`
+                        `└─ 🔗 [${t.jumpToGiveaway}](https://discord.com/channels/${g.guildId}/${g.channelId}/${g.messageId})`
                     ).join('\n\n')
                 )
-                .setFooter({ text: t.footer })
+                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             
             return message.reply({ embeds: [embed] });
@@ -257,13 +272,13 @@ module.exports = {
         if (!timeStr || !winnersStr || !prize) {
             const embed = new EmbedBuilder()
                 .setColor('#ED4245')
-                .setTitle('❌ ' + (lang === 'fr' ? 'Arguments Manquants' : 'Missing Arguments'))
+                .setTitle('❌ ' + t.missingArguments)
                 .setDescription(
                     `**${t.usage}**\n` +
                     `**${t.example}**\n\n` +
-                    `**${lang === 'fr' ? 'Formats de temps:' : 'Time formats:'}** \`10s\`, \`5m\`, \`2h\`, \`1d\``
+                    `**${t.timeFormats}** \`10s\`, \`5m\`, \`2h\`, \`1d\``
                 )
-                .setFooter({ text: t.footer });
+                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
             
             return message.reply({ embeds: [embed] });
         }
@@ -299,7 +314,7 @@ module.exports = {
         };
         
         // Create embed
-        const embed = createGiveawayEmbed(giveaway, 'active', lang);
+        const embed = createGiveawayEmbed(giveaway, 'active', lang, message.guild, client);
         const row = createButtonRow('active', lang);
         
         const giveawayMessage = await message.channel.send({ 
@@ -333,7 +348,7 @@ module.exports = {
                 currentGiveaway.entries.push(i.user.id);
                 activeGiveaways.set(giveawayId, currentGiveaway);
                 
-                const updatedEmbed = createGiveawayEmbed(currentGiveaway, 'active', lang);
+                const updatedEmbed = createGiveawayEmbed(currentGiveaway, 'active', lang, message.guild, client);
                 await i.update({ embeds: [updatedEmbed], components: [row] });
                 
                 return i.followUp({ content: t.enterSuccess, ephemeral: true });
@@ -349,7 +364,7 @@ module.exports = {
                 currentGiveaway.entries.splice(index, 1);
                 activeGiveaways.set(giveawayId, currentGiveaway);
                 
-                const updatedEmbed = createGiveawayEmbed(currentGiveaway, 'active', lang);
+                const updatedEmbed = createGiveawayEmbed(currentGiveaway, 'active', lang, message.guild, client);
                 await i.update({ embeds: [updatedEmbed], components: [row] });
                 
                 return i.followUp({ content: t.leaveSuccess, ephemeral: true });
@@ -361,15 +376,15 @@ module.exports = {
                     return i.reply({ content: t.accessDenied, ephemeral: true });
                 }
                 
-                const winners = selectWinners(currentGiveaway.entries, currentGiveaway.winners);
+                const newWinners = selectWinners(currentGiveaway.entries, currentGiveaway.winners);
                 
-                if (winners.length === 0) {
+                if (newWinners.length === 0) {
                     return i.reply({ content: t.noEntries, ephemeral: true });
                 }
                 
-                currentGiveaway.winnersList = winners;
+                currentGiveaway.winnersList = newWinners;
                 
-                const rerollEmbed = createGiveawayEmbed(currentGiveaway, 'ended', lang);
+                const rerollEmbed = createGiveawayEmbed(currentGiveaway, 'ended', lang, message.guild, client);
                 await i.update({ embeds: [rerollEmbed], components: [createButtonRow('ended', lang)] });
                 
                 // Announce winners
@@ -378,14 +393,14 @@ module.exports = {
                     .setTitle(`🎊 ${t.giveawayEnded}`)
                     .setDescription(
                         `**${t.prize}:** ${currentGiveaway.prize}\n` +
-                        `**${t.winnersList}:** ${winners.map(w => `<@${w}>`).join(', ')}\n\n` +
+                        `**${t.winnersList}:** ${newWinners.map(w => `<@${w}>`).join(', ')}\n\n` +
                         `🎉 **${t.congratulations}!**`
                     )
-                    .setFooter({ text: t.footer })
+                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
                 await i.channel.send({ 
-                    content: winners.map(w => `<@${w}>`).join(' '),
+                    content: newWinners.map(w => `<@${w}>`).join(' '),
                     embeds: [winnerAnnouncement] 
                 });
                 
@@ -418,7 +433,7 @@ module.exports = {
             currentGiveaway.winnersList = winners;
             currentGiveaway.ended = true;
             
-            const endedEmbed = createGiveawayEmbed(currentGiveaway, 'ended', lang);
+            const endedEmbed = createGiveawayEmbed(currentGiveaway, 'ended', lang, message.guild, client);
             const endedRow = createButtonRow('ended', lang);
             
             try {
@@ -438,7 +453,7 @@ module.exports = {
                             `**${t.winnersList}:** ${winners.map(w => `<@${w}>`).join(', ')}\n\n` +
                             `🎉 **${t.congratulations}!**`
                         )
-                        .setFooter({ text: t.footer })
+                        .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                     
                     await message.channel.send({ 
@@ -488,7 +503,7 @@ module.exports = {
                 `⏰ **${t.timeRemaining}:** ${timeData.text}\n\n` +
                 `✅ ${lang === 'fr' ? 'Concours créé avec succès!' : 'Giveaway created successfully!'}`
             )
-            .setFooter({ text: t.footer })
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         
         return message.reply({ embeds: [confirmEmbed], ephemeral: true });
