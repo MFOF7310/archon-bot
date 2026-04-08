@@ -1,6 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType } = require('discord.js');
 
-// ================= BILINGUAL TRANSLATIONS (Enhanced) =================
+// ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     en: {
         title: '📦 NEURAL INVENTORY',
@@ -17,7 +17,8 @@ const translations = {
             role: '🎖️ Roles',
             badge: '🏅 Badges',
             boost: '📈 Boosts',
-            permanent: '🌟 Permanent'
+            permanent: '🌟 Permanent',
+            unknown: '❓ Unknown'
         },
         itemType: 'Type',
         quantity: 'Quantity',
@@ -48,7 +49,9 @@ const translations = {
         footer: 'ARCHITECT CG-223 • Neural Inventory System',
         accessDenied: '❌ This menu is not yours.',
         xpGained: 'XP Gained',
-        creditsGained: 'Credits Gained'
+        creditsGained: 'Credits Gained',
+        unknownItem: '⚠️ Unknown Item (ID: {id})',
+        unknownItemHint: 'This item may be from an older version.'
     },
     fr: {
         title: '📦 INVENTAIRE NEURAL',
@@ -65,7 +68,8 @@ const translations = {
             role: '🎖️ Rôles',
             badge: '🏅 Badges',
             boost: '📈 Boosts',
-            permanent: '🌟 Permanents'
+            permanent: '🌟 Permanents',
+            unknown: '❓ Inconnu'
         },
         itemType: 'Type',
         quantity: 'Quantité',
@@ -96,7 +100,9 @@ const translations = {
         footer: 'ARCHITECT CG-223 • Système d\'Inventaire Neural',
         accessDenied: '❌ Ce menu ne vous appartient pas.',
         xpGained: 'XP Gagnés',
-        creditsGained: 'Crédits Gagnés'
+        creditsGained: 'Crédits Gagnés',
+        unknownItem: '⚠️ Objet Inconnu (ID: {id})',
+        unknownItemHint: 'Cet objet provient peut-être d\'une ancienne version.'
     }
 };
 
@@ -148,7 +154,7 @@ const ITEM_DEFINITIONS = {
         type: 'boost',
         effect: { multiplier: 1.5 },
         duration: 7,
-        usable: false // Auto-applies on purchase
+        usable: false
     },
     color_role: {
         name: { en: 'Custom Color Role', fr: 'Rôle Couleur Personnalisée' },
@@ -194,7 +200,6 @@ function useItem(userId, itemId, db, lang) {
         return { success: false, message: t.useNoEffect };
     }
     
-    // Check if user has the item
     const inventoryItem = db.prepare(`
         SELECT quantity, active FROM user_inventory 
         WHERE user_id = ? AND item_id = ? AND active = 1
@@ -204,7 +209,6 @@ function useItem(userId, itemId, db, lang) {
         return { success: false, message: lang === 'fr' ? 'Objet non disponible.' : 'Item not available.' };
     }
     
-    // Apply effects
     let effectMessage = '';
     let xpGained = 0;
     let creditsGained = 0;
@@ -222,7 +226,6 @@ function useItem(userId, itemId, db, lang) {
         }
     }
     
-    // Decrease quantity or remove item
     if (inventoryItem.quantity > 1) {
         db.prepare(`UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?`)
             .run(userId, itemId);
@@ -231,7 +234,6 @@ function useItem(userId, itemId, db, lang) {
             .run(userId, itemId);
     }
     
-    // Check for level up
     const userData = db.prepare(`SELECT xp, level FROM users WHERE id = ?`).get(userId);
     const newLevel = calculateLevel(userData.xp || 0);
     const oldLevel = userData.level || 1;
@@ -257,7 +259,7 @@ function createUseItemMenu(items, lang) {
     
     const usableItems = items.filter(item => {
         const def = ITEM_DEFINITIONS[item.item_id];
-        return def && def.usable && item.active && item.type === 'consumable';
+        return def && def.usable && item.active && def.type === 'consumable';
     });
     
     if (usableItems.length === 0) {
@@ -281,8 +283,9 @@ function createUseItemMenu(items, lang) {
 }
 
 // ================= CREATE INVENTORY EMBED =================
-function createInventoryEmbed(items, category, page, totalPages, stats, lang, client, user) {
+function createInventoryEmbed(items, category, page, totalPages, stats, lang, client, user, guildName) {
     const t = translations[lang];
+    const version = client.version || '1.5.0';
     
     let filteredItems = items;
     if (category !== 'all') {
@@ -301,11 +304,14 @@ function createInventoryEmbed(items, category, page, totalPages, stats, lang, cl
             : '*No items in this category.*';
     } else {
         for (const item of pageItems) {
-            const def = ITEM_DEFINITIONS[item.item_id] || { 
-                name: { en: item.item_id, fr: item.item_id }, 
-                emoji: '📦', 
-                type: 'unknown' 
-            };
+            const def = ITEM_DEFINITIONS[item.item_id];
+            
+            if (!def) {
+                description += `**❓ ${t.unknownItem.replace('{id}', item.item_id)}**\n`;
+                description += `└─ 📦 ${t.quantity}: ${item.quantity || 1}\n`;
+                description += `└─ ⚠️ ${t.unknownItemHint}\n\n`;
+                continue;
+            }
             
             const status = item.active ? `🟢 ${t.active}` : `🔴 ${t.expired}`;
             const expiration = item.expires_at 
@@ -337,7 +343,7 @@ function createInventoryEmbed(items, category, page, totalPages, stats, lang, cl
             }
         )
         .setFooter({ 
-            text: `${t.footer} • ${t.page} ${page + 1}/${Math.max(1, totalPages)} • v${client.version || '1.5.0'}`,
+            text: `${guildName} • ${t.footer} • ${t.page} ${page + 1}/${Math.max(1, totalPages)} • v${version}`,
             iconURL: client.user.displayAvatarURL()
         })
         .setTimestamp();
@@ -365,28 +371,20 @@ function createCategoryMenu(lang, currentCategory) {
 // ================= MAIN COMMAND =================
 module.exports = {
     name: 'inventory',
-    aliases: ['inv', 'items', 'backpack', 'inventaire', 'objets', 'sac'],
+    aliases: ['inv', 'items', 'backpack', 'inventaire', 'objets', 'sac', 'iventory'],
     description: '📦 View and use your neural inventory items.',
     category: 'ECONOMY',
     cooldown: 3000,
     usage: '.inventory [category]',
     examples: ['.inventory', '.inv consumable', '.items boost'],
 
-    run: async (client, message, args, database) => {
+    // ✅ FIXED: Added serverSettings as 5th parameter
+    run: async (client, message, args, database, serverSettings) => {
         
-        // ================= LANGUAGE DETECTION =================
-        let lang = 'en';
-        const guildSettings = client.settings?.get(message.guild?.id);
-        if (guildSettings?.language) {
-            lang = guildSettings.language;
-        } else {
-            const frenchKeywords = ['inventaire', 'objets', 'sac'];
-            const content = message.content.toLowerCase();
-            if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
-                lang = 'fr';
-            }
-        }
+        // ================= LANGUAGE SETUP =================
+        const lang = serverSettings?.language || 'en';
         const t = translations[lang];
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         
         const userId = message.author.id;
         const db = database;
@@ -405,11 +403,12 @@ module.exports = {
                 )
             `).run();
             
+            // Only expire items that have an actual future expiration date
             const now = Math.floor(Date.now() / 1000);
             db.prepare(`
                 UPDATE user_inventory 
                 SET active = 0 
-                WHERE expires_at IS NOT NULL AND expires_at < ? AND active = 1
+                WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
             `).run(now);
             
         } catch (err) {
@@ -425,15 +424,19 @@ module.exports = {
         `).all(userId);
         
         let enrichedItems = items.map(item => {
-            const def = ITEM_DEFINITIONS[item.item_id] || { type: 'unknown' };
-            return { ...item, type: def.type };
+            const def = ITEM_DEFINITIONS[item.item_id];
+            return { 
+                ...item, 
+                type: def?.type || 'unknown',
+                hasDefinition: !!def
+            };
         });
         
         // ================= CALCULATE STATS =================
         const stats = {
             total: items.length,
-            activeBoosts: items.filter(i => i.active && (i.type === 'boost' || i.type === 'consumable')).length,
-            permanent: items.filter(i => i.type === 'permanent' || i.type === 'role' || i.type === 'badge').length
+            activeBoosts: enrichedItems.filter(i => i.active && (i.type === 'boost' || i.type === 'consumable')).length,
+            permanent: enrichedItems.filter(i => i.type === 'permanent' || i.type === 'role' || i.type === 'badge').length
         };
         
         // ================= EMPTY INVENTORY =================
@@ -442,7 +445,10 @@ module.exports = {
                 .setColor('#95a5a6')
                 .setAuthor({ name: t.empty, iconURL: message.author.displayAvatarURL() })
                 .setDescription(`${t.emptyDesc}\n\n💡 **${t.shopTip}**`)
-                .setFooter({ text: t.footer })
+                .setFooter({ 
+                    text: `${guildName} • ${t.footer} • v${client.version || '1.5.0'}`,
+                    iconURL: message.guild?.iconURL() || client.user.displayAvatarURL()
+                })
                 .setTimestamp();
             
             const row = new ActionRowBuilder().addComponents(
@@ -459,7 +465,7 @@ module.exports = {
                 if (i.customId === 'goto_shop') {
                     const shopCmd = client.commands.get('shop');
                     if (shopCmd) {
-                        await shopCmd.run(client, message, [], db);
+                        await shopCmd.run(client, message, [], db, serverSettings);
                         await i.reply({ content: '🛒 Shop opened!', ephemeral: true });
                     }
                 }
@@ -471,7 +477,7 @@ module.exports = {
         // ================= DETERMINE CATEGORY =================
         let category = 'all';
         const categoryArg = args[0]?.toLowerCase();
-        const validCategories = ['all', 'consumable', 'role', 'badge', 'boost', 'permanent'];
+        const validCategories = ['all', 'consumable', 'role', 'badge', 'boost', 'permanent', 'unknown'];
         if (categoryArg && validCategories.includes(categoryArg)) {
             category = categoryArg;
         }
@@ -486,7 +492,9 @@ module.exports = {
         let currentPage = 0;
         
         // ================= CREATE INITIAL VIEW =================
-        const { embed, pageItems } = createInventoryEmbed(enrichedItems, category, currentPage, totalPages, stats, lang, client, message.author);
+        const { embed, pageItems } = createInventoryEmbed(
+            enrichedItems, category, currentPage, totalPages, stats, lang, client, message.author, guildName
+        );
         
         const categoryMenu = createCategoryMenu(lang, category);
         const menuRow = new ActionRowBuilder().addComponents(categoryMenu);
@@ -498,10 +506,8 @@ module.exports = {
             new ButtonBuilder().setCustomId('inv_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setEmoji('🛒')
         );
         
-        // Build components array
         const components = [menuRow];
         
-        // Add Use Item menu if there are usable items on this page
         const useMenu = createUseItemMenu(pageItems, lang);
         if (useMenu) {
             components.push(new ActionRowBuilder().addComponents(useMenu));
@@ -536,7 +542,10 @@ module.exports = {
                         .setAuthor({ name: t.useSuccess, iconURL: message.author.displayAvatarURL() })
                         .setTitle(`${itemDef.emoji} ${itemDef.name[lang]}`)
                         .setDescription(t.useSuccessDesc(itemDef.name[lang], result.message))
-                        .setFooter({ text: t.footer })
+                        .setFooter({ 
+                            text: `${guildName} • ${t.footer} • v${client.version || '1.5.0'}`,
+                            iconURL: message.guild?.iconURL() || client.user.displayAvatarURL()
+                        })
                         .setTimestamp();
                     
                     await i.reply({ embeds: [successEmbed], ephemeral: true });
@@ -549,8 +558,12 @@ module.exports = {
                     `).all(userId);
                     
                     enrichedItems = items.map(item => {
-                        const def = ITEM_DEFINITIONS[item.item_id] || { type: 'unknown' };
-                        return { ...item, type: def.type };
+                        const def = ITEM_DEFINITIONS[item.item_id];
+                        return { 
+                            ...item, 
+                            type: def?.type || 'unknown',
+                            hasDefinition: !!def
+                        };
                     });
                 } else {
                     await i.reply({ content: result.message || t.useError, ephemeral: true });
@@ -579,14 +592,18 @@ module.exports = {
                     `).all(userId);
                     
                     enrichedItems = items.map(item => {
-                        const def = ITEM_DEFINITIONS[item.item_id] || { type: 'unknown' };
-                        return { ...item, type: def.type };
+                        const def = ITEM_DEFINITIONS[item.item_id];
+                        return { 
+                            ...item, 
+                            type: def?.type || 'unknown',
+                            hasDefinition: !!def
+                        };
                     });
                 }
                 if (i.customId === 'inv_shop') {
                     const shopCmd = client.commands.get('shop');
                     if (shopCmd) {
-                        await shopCmd.run(client, message, [], db);
+                        await shopCmd.run(client, message, [], db, serverSettings);
                         await i.reply({ content: '🛒 Shop opened!', ephemeral: true });
                     }
                     return;
@@ -606,7 +623,7 @@ module.exports = {
             
             // Create new embed
             const { embed: newEmbed, pageItems: newPageItems } = createInventoryEmbed(
-                enrichedItems, category, currentPage, updatedTotalPages, stats, lang, client, message.author
+                enrichedItems, category, currentPage, updatedTotalPages, stats, lang, client, message.author, guildName
             );
             
             // Build new components
