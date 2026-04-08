@@ -6,6 +6,12 @@ const path = require('path');
 // Terminal colors for logging
 const green = "\x1b[32m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m";
 
+// ================= SINGLETON FLAG =================
+let isLydiaInitialized = false;
+const messageProcessingLocks = new Set();
+const userCooldowns = new Map();
+const COOLDOWN_TIME = 3000; // 3 seconds between messages per user
+
 // ================= SCAN DYNAMIQUE DU DOSSIER PLUGINS =================
 function getGlobalModuleCount() {
     try {
@@ -203,51 +209,6 @@ async function fetchRealTimeData(query, type = 'auto') {
             console.log(`${green}[TIME]${reset} Fetched multiple timezones`);
         })();
         fetchPromises.push(timePromise);
-    }
-    
-    if (lowerQuery.includes('stock') || lowerQuery.includes('action') || lowerQuery.includes('bourse') ||
-        lowerQuery.includes('nasdaq') || lowerQuery.includes('s&p') || lowerQuery.includes('dow jones')) {
-        const stockPromise = (async () => {
-            try {
-                const stockUrl = 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=SPY&apikey=demo';
-                const stockRes = await axios.get(stockUrl, { timeout: 5000 });
-                if (stockRes.data['Global Quote']) {
-                    data.stock = {
-                        symbol: stockRes.data['Global Quote']['01. symbol'],
-                        price: stockRes.data['Global Quote']['05. price'],
-                        change: stockRes.data['Global Quote']['09. change'],
-                        changePercent: stockRes.data['Global Quote']['10. change percent']
-                    };
-                    console.log(`${green}[STOCK]${reset} Fetched market data`);
-                }
-            } catch (error) {
-                console.log(`${yellow}[STOCK ERROR]${reset} ${error.message}`);
-            }
-        })();
-        fetchPromises.push(stockPromise);
-    }
-    
-    if (lowerQuery.includes('score') || lowerQuery.includes('match') || 
-        lowerQuery.includes('football') || lowerQuery.includes('soccer') || lowerQuery.includes('basketball')) {
-        const sportsPromise = (async () => {
-            try {
-                const sportUrl = 'https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=' + new Date().toISOString().split('T')[0];
-                const sportRes = await axios.get(sportUrl, { timeout: 5000 });
-                if (sportRes.data.events && sportRes.data.events.length > 0) {
-                    data.sports = sportRes.data.events.slice(0, 5).map(event => ({
-                        name: event.strEvent,
-                        league: event.strLeague,
-                        status: event.strStatus,
-                        homeScore: event.intHomeScore,
-                        awayScore: event.intAwayScore
-                    }));
-                    console.log(`${green}[SPORTS]${reset} Fetched ${data.sports.length} events`);
-                }
-            } catch (error) {
-                console.log(`${yellow}[SPORTS ERROR]${reset} ${error.message}`);
-            }
-        })();
-        fetchPromises.push(sportsPromise);
     }
     
     if (fetchPromises.length > 0) {
@@ -738,12 +699,276 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     return prompt;
 }
 
-// ================= SETUP LYDIA =================
+// ================= MESSAGE HANDLER (Single instance) =================
+async function handleLydiaMessage(message, client, database) {
+    // Prevent duplicate processing
+    const messageKey = `${message.id}-${message.author.id}`;
+    if (messageProcessingLocks.has(messageKey)) {
+        console.log(`${yellow}[LYDIA LOCK]${reset} Message ${message.id} already processing`);
+        return;
+    }
+    
+    // User cooldown check
+    const userId = message.author.id;
+    const now = Date.now();
+    const lastMessage = userCooldowns.get(userId) || 0;
+    
+    if (now - lastMessage < COOLDOWN_TIME) {
+        console.log(`${yellow}[LYDIA COOLDOWN]${reset} User ${message.author.tag} on cooldown`);
+        return;
+    }
+    
+    // Check if Lydia is active in this channel
+    if (!client.lydiaChannels?.[message.channel?.id]) return;
+    
+    // Lock the message
+    messageProcessingLocks.add(messageKey);
+    userCooldowns.set(userId, now);
+    
+    try {
+        const botMember = message.guild.members.me;
+        const currentIdentity = botMember?.displayName || client.user?.username || 'Lydia';
+        const userName = message.member?.displayName || message.author.username;
+        const isArchitect = message.author.id === process.env.OWNER_ID;
+        
+        const content = message.content?.toLowerCase() || '';
+        const isFrench = content.includes('bonjour') || content.includes('salut') || content.includes('merci') || 
+                       content.includes('comment') || message.guild?.preferredLocale === 'fr';
+        const lang = isFrench ? 'fr' : 'en';
+        
+        const addressed = content.startsWith(currentIdentity.toLowerCase()) || message.mentions?.has(client.user);
+        const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
+        const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.1;
+        
+        if (!addressed && !isProactive) return;
+
+        await message.channel.sendTyping();
+        console.log(`${cyan}[LYDIA]${reset} Processing message from ${userName} in ${message.channel.name}`);
+
+        let userPrompt = message.content || '';
+        let imageUrl = null;
+        
+        if (message.attachments && message.attachments.size > 0) {
+            const attachment = message.attachments.first();
+            if (attachment.contentType?.startsWith('image/')) {
+                imageUrl = attachment.url;
+                console.log(`${cyan}[VISION]${reset} Image detected`);
+            }
+        }
+        
+        if (addressed) {
+            if (content.startsWith(currentIdentity.toLowerCase())) userPrompt = message.content.slice(currentIdentity.length).trim();
+            else userPrompt = message.content.replace(new RegExp(`<@!?${client.user.id}>`), '').trim();
+        }
+        if (isProactive && !userPrompt) userPrompt = "Observe the current conversation and provide a relevant, helpful comment.";
+        if (!userPrompt.trim()) {
+            if (addressed) return message.reply(`👋 You mentioned **${currentIdentity}**! Ask me anything, or use \`.help\` to see commands.`);
+            return;
+        }
+
+        let realTimeData = null;
+        const realTimeKeywords = ['weather', 'météo', 'temp', 'temperature', 'news', 'actualités', 'crypto', 
+                                 'bitcoin', 'ethereum', 'time', 'heure', 'stock', 'action', 'score', 'match'];
+        
+        if (realTimeKeywords.some(keyword => userPrompt.toLowerCase().includes(keyword))) {
+            console.log(`${cyan}[REAL-TIME]${reset} Detected real-time query, fetching data...`);
+            realTimeData = await fetchRealTimeData(userPrompt);
+            if (realTimeData && Object.keys(realTimeData).length > 0) {
+                console.log(`${green}[REAL-TIME]${reset} Retrieved ${Object.keys(realTimeData).join(', ')} data`);
+            }
+        }
+
+        let finalAgent = neuralCores[agentKey] || neuralCores.default;
+        let systemPrompt = finalAgent.systemPrompt;
+        
+        const stats = database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
+        const member = message.guild.members.cache.get(message.author.id);
+        const highestRole = member?.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
+        const isAdmin = member?.permissions.has(PermissionsBitField.Flags.Administrator) || false;
+        const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
+        const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
+        const isNewMember = memberDays < 7;
+        
+        let userStatus = "regular";
+        if (isArchitect) userStatus = "creator";
+        else if (isAdmin) userStatus = "admin";
+        else if (isNewMember) userStatus = "new";
+        
+        const now2 = new Date();
+        const bamakoTime = now2.toLocaleString('en-US', { timeZone: 'Africa/Bamako' });
+        
+        let socialContext = `\n\n[IDENTITY & PROTOCOL]`;
+        socialContext += `\n- Your name on this server: ${currentIdentity}`;
+        socialContext += `\n- Real-time Clock (Bamako Time): ${bamakoTime}`;
+        socialContext += `\n- 🚫 DO NOT repeat server name or your own name unless asked.`;
+        socialContext += `\n- 🚫 DO NOT use \"Agent [Name]\" - just use their name naturally.`;
+        socialContext += `\n- ✅ Be concise and natural.`;
+        
+        socialContext += `\n\n[SOCIAL CONTEXT]`;
+        socialContext += `\n- Current user: ${userName}`;
+        socialContext += `\n- User status: ${userStatus.toUpperCase()}`;
+        socialContext += `\n- Level: ${stats?.level || 1}`;
+        
+        if (isArchitect) {
+            socialContext += `\n\n🏛️ **CREATOR MODE**: Moussa Fofana is speaking. Respond with respect.`;
+        } else if (isNewMember) {
+            socialContext += `\n\n🌟 **NEW MEMBER**: Be welcoming, suggest .help or .daily`;
+        }
+        
+        systemPrompt += socialContext;
+        systemPrompt += `\n\n🗣️ Language: ${isFrench ? 'French' : 'English'}.`;
+        
+        const pluginAwareness = buildPluginAwarenessPrompt(client, database, message.author.id, lang);
+        systemPrompt += pluginAwareness;
+
+        const memories = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?`).all(message.author.id);
+        if (memories.length) {
+            systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
+        }
+
+        // Reduced from 12 to 5 messages to prevent repetition
+        const historyRows = database.prepare(`
+            SELECT role, content, user_name 
+            FROM lydia_conversations 
+            WHERE channel_id = ? 
+            ORDER BY timestamp DESC 
+            LIMIT 5
+        `).all(message.channel.id);
+        
+        const conversationHistory = historyRows.reverse().map(row => ({
+            role: row.role,
+            content: row.user_name ? `[${row.user_name}]: ${row.content}` : row.content
+        }));
+        
+        try {
+            database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
+                .run(message.channel.id, message.author.id, userName, 'user', userPrompt);
+        } catch(e) {
+            database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
+                .run(message.channel.id, message.author.id, 'user', userPrompt);
+        }
+
+        const introKey = `${message.author.id}_${message.channel.id}`;
+        const lastIntro = client.userIntroductions.get(introKey);
+        const isFirst = !lastIntro || (Date.now() - lastIntro > 604800000);
+        
+        if (isFirst && !isArchitect) {
+            const introMsg = isFrench 
+                ? `\n\n[FIRST INTERACTION] Salue BRIÈVEMENT: "Salut ${userName}! Tape .help pour voir mes commandes!"`
+                : `\n\n[FIRST INTERACTION] Greet BRIEFLY: "Hey ${userName}! Type .help to see my commands!"`;
+            systemPrompt += introMsg;
+            client.userIntroductions.set(introKey, Date.now());
+            try { database.prepare(`INSERT OR REPLACE INTO lydia_introductions (user_id, channel_id, introduced_at) VALUES (?, ?, strftime('%s', 'now'))`).run(message.author.id, message.channel.id); } catch(e) {}
+        }
+
+        const searchTerms = ['latest', 'news', 'today', 'current', 'update', 'weather', 'score', 'recherche', 'météo', 'search', 'google'];
+        if (searchTerms.some(term => userPrompt.toLowerCase().includes(term)) && !realTimeData) {
+            const searchResults = await webSearch(userPrompt);
+            if (searchResults) systemPrompt += `\n\n[WEB SEARCH RESULTS]\n${searchResults}`;
+        }
+
+        let reply;
+        try {
+            reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory, imageUrl, realTimeData);
+        } catch (err) {
+            console.error(`${red}[LYDIA ERROR]${reset}`, err);
+            reply = isFrench ? "❌ Erreur du service IA." : "❌ AI service error.";
+        }
+
+        reply = parseAndScheduleReminder(reply, message.author.id, message.channel.id, client, database);
+
+        if (reply && reply.includes('[SIGNAL_ARCHITECT]')) {
+            const reportKeywords = ['report', 'bug', 'erreur', 'fix', 'notify', 'issue'];
+            const shouldReport = reportKeywords.some(kw => userPrompt.toLowerCase().includes(kw));
+            if (shouldReport) {
+                const clean = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
+                await sendArchitectReport(client, message.author, message.guild, clean);
+            }
+            reply = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
+        }
+
+        if (reply && !reply.includes("error")) {
+            parseAndStoreMemory(reply, message.author.id, database);
+            reply = reply.replace(/\[MEMORY:.*?\]/g, '').trim();
+        }
+
+        try {
+            database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
+                .run(message.channel.id, client.user.id, currentIdentity, 'assistant', reply);
+        } catch(e) {
+            database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
+                .run(message.channel.id, client.user.id, 'assistant', reply);
+        }
+
+        if (reply.length > 2000) {
+            const chunks = [];
+            let currentChunk = '';
+            
+            const paragraphs = reply.split(/\n\n+/);
+            
+            for (const paragraph of paragraphs) {
+                if (currentChunk.length + paragraph.length + 2 > 1950) {
+                    const openCodeBlocks = (currentChunk.match(/```/g) || []).length % 2;
+                    
+                    if (openCodeBlocks === 1) {
+                        currentChunk += '\n```';
+                        chunks.push(currentChunk);
+                        currentChunk = '```' + paragraph;
+                    } else {
+                        chunks.push(currentChunk);
+                        currentChunk = paragraph;
+                    }
+                } else {
+                    currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+                }
+            }
+            
+            if (currentChunk) {
+                const openCodeBlocks = (currentChunk.match(/```/g) || []).length % 2;
+                if (openCodeBlocks === 1) {
+                    currentChunk += '\n```';
+                }
+                chunks.push(currentChunk);
+            }
+            
+            for (let i = 0; i < chunks.length; i++) {
+                let chunk = chunks[i];
+                if (i < chunks.length - 1) {
+                    chunk += `\n\n*[${i + 1}/${chunks.length} continues...]*`;
+                }
+                await message.reply(chunk);
+            }
+        } else {
+            await message.reply(reply);
+        }
+        
+        console.log(`${green}[LYDIA]${reset} Responded to ${userName} in ${message.channel.name} (${reply.length} chars${reply.length > 2000 ? ', chunked' : ''})`);
+    } catch (err) {
+        console.error(`${red}[LYDIA ERROR]${reset}`, err);
+        message.reply("❌ An error occurred.").catch(()=>{});
+    } finally {
+        // Clean up lock after delay
+        setTimeout(() => {
+            messageProcessingLocks.delete(messageKey);
+        }, 5000);
+    }
+}
+
+// ================= SETUP LYDIA (ONCE ONLY) =================
 function setupLydia(client, database) {
     if (!client || !database) {
         console.error(`${red}[LYDIA FATAL]${reset} Client or DB missing`);
         return;
     }
+    
+    // CRITICAL: Prevent multiple initializations
+    if (isLydiaInitialized) {
+        console.log(`${yellow}[LYDIA]${reset} Already initialized, skipping duplicate setup`);
+        return;
+    }
+    
+    isLydiaInitialized = true;
+    
     if (!client.lydiaChannels) client.lydiaChannels = {};
     if (!client.lydiaAgents) client.lydiaAgents = {};
     if (!client.lastLydiaCall) client.lastLydiaCall = {};
@@ -780,242 +1005,24 @@ function setupLydia(client, database) {
         console.log(`${green}[SCAN]${reset} Found ${getGlobalModuleCount()} plugins in the modules folder.`);
     } catch (err) {
         console.error(`${red}[LYDIA ERROR]${reset}`, err.message);
+        isLydiaInitialized = false;
         return;
     }
 
+    // Remove any existing listeners before adding new one
+    client.removeAllListeners('messageCreate');
+    
+    // Add SINGLE event listener
     client.on('messageCreate', async (message) => {
         if (!message || message.author?.bot) return;
-        
-        const cooldown = 5000;
-        if (client.lastLydiaCall[message.author.id] && (Date.now() - client.lastLydiaCall[message.author.id] < cooldown)) return;
-        if (!client.lydiaChannels?.[message.channel?.id]) return;
-
-        try {
-            const botMember = message.guild.members.me;
-            const currentIdentity = botMember?.displayName || client.user?.username || 'Lydia';
-            const userName = message.member?.displayName || message.author.username;
-            const isArchitect = message.author.id === process.env.OWNER_ID;
-            
-            const content = message.content?.toLowerCase() || '';
-            const isFrench = content.includes('bonjour') || content.includes('salut') || content.includes('merci') || 
-                           content.includes('comment') || message.guild?.preferredLocale === 'fr';
-            const lang = isFrench ? 'fr' : 'en';
-            
-            const addressed = content.startsWith(currentIdentity.toLowerCase()) || message.mentions?.has(client.user);
-            const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
-            const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.1;
-            
-            if (!addressed && !isProactive) return;
-
-            await message.channel.sendTyping();
-            console.log(`${cyan}[TYPING]${reset} Started typing indicator for ${userName}`);
-
-            let userPrompt = message.content || '';
-            let imageUrl = null;
-            
-            if (message.attachments && message.attachments.size > 0) {
-                const attachment = message.attachments.first();
-                if (attachment.contentType?.startsWith('image/')) {
-                    imageUrl = attachment.url;
-                    console.log(`${cyan}[VISION]${reset} Image detected`);
-                }
-            }
-            
-            if (addressed) {
-                if (content.startsWith(currentIdentity.toLowerCase())) userPrompt = message.content.slice(currentIdentity.length).trim();
-                else userPrompt = message.content.replace(new RegExp(`<@!?${client.user.id}>`), '').trim();
-            }
-            if (isProactive && !userPrompt) userPrompt = "Observe the current conversation and provide a relevant, helpful comment.";
-            if (!userPrompt.trim()) {
-                if (addressed) return message.reply(`👋 You mentioned **${currentIdentity}**! Ask me anything, or use \`.help\` to see commands.`);
-                return;
-            }
-
-            let realTimeData = null;
-            const realTimeKeywords = ['weather', 'météo', 'temp', 'temperature', 'news', 'actualités', 'crypto', 
-                                     'bitcoin', 'ethereum', 'time', 'heure', 'stock', 'action', 'score', 'match'];
-            
-            if (realTimeKeywords.some(keyword => userPrompt.toLowerCase().includes(keyword))) {
-                console.log(`${cyan}[REAL-TIME]${reset} Detected real-time query, fetching data...`);
-                realTimeData = await fetchRealTimeData(userPrompt);
-                if (realTimeData && Object.keys(realTimeData).length > 0) {
-                    console.log(`${green}[REAL-TIME]${reset} Retrieved ${Object.keys(realTimeData).join(', ')} data`);
-                }
-            }
-
-            let finalAgent = neuralCores[agentKey] || neuralCores.default;
-            let systemPrompt = finalAgent.systemPrompt;
-            
-            const stats = database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
-            const member = message.guild.members.cache.get(message.author.id);
-            const highestRole = member?.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
-            const isAdmin = member?.permissions.has(PermissionsBitField.Flags.Administrator) || false;
-            const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
-            const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
-            const isNewMember = memberDays < 7;
-            
-            let userStatus = "regular";
-            if (isArchitect) userStatus = "creator";
-            else if (isAdmin) userStatus = "admin";
-            else if (isNewMember) userStatus = "new";
-            
-            const now = new Date();
-            const bamakoTime = now.toLocaleString('en-US', { timeZone: 'Africa/Bamako' });
-            
-            let socialContext = `\n\n[IDENTITY & PROTOCOL]`;
-            socialContext += `\n- Your name on this server: ${currentIdentity}`;
-            socialContext += `\n- Real-time Clock (Bamako Time): ${bamakoTime}`;
-            socialContext += `\n- 🚫 DO NOT repeat server name or your own name unless asked.`;
-            socialContext += `\n- 🚫 DO NOT use \"Agent [Name]\" - just use their name naturally.`;
-            socialContext += `\n- ✅ Be concise and natural.`;
-            
-            socialContext += `\n\n[SOCIAL CONTEXT]`;
-            socialContext += `\n- Current user: ${userName}`;
-            socialContext += `\n- User status: ${userStatus.toUpperCase()}`;
-            socialContext += `\n- Level: ${stats?.level || 1}`;
-            
-            if (isArchitect) {
-                socialContext += `\n\n🏛️ **CREATOR MODE**: Moussa Fofana is speaking. Respond with respect.`;
-            } else if (isNewMember) {
-                socialContext += `\n\n🌟 **NEW MEMBER**: Be welcoming, suggest .help or .daily`;
-            }
-            
-            systemPrompt += socialContext;
-            systemPrompt += `\n\n🗣️ Language: ${isFrench ? 'French' : 'English'}.`;
-            
-            const pluginAwareness = buildPluginAwarenessPrompt(client, database, message.author.id, lang);
-            systemPrompt += pluginAwareness;
-
-            const memories = database.prepare(`SELECT memory_key, memory_value FROM lydia_memory WHERE user_id = ?`).all(message.author.id);
-            if (memories.length) {
-                systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
-            }
-
-            // ✅ REDUCED from 12 to 5 messages to prevent repetition
-            const historyRows = database.prepare(`
-                SELECT role, content, user_name 
-                FROM lydia_conversations 
-                WHERE channel_id = ? 
-                ORDER BY timestamp DESC 
-                LIMIT 5
-            `).all(message.channel.id);
-            
-            const conversationHistory = historyRows.reverse().map(row => ({
-                role: row.role,
-                content: row.user_name ? `[${row.user_name}]: ${row.content}` : row.content
-            }));
-            
-            try {
-                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
-                    .run(message.channel.id, message.author.id, userName, 'user', userPrompt);
-            } catch(e) {
-                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
-                    .run(message.channel.id, message.author.id, 'user', userPrompt);
-            }
-
-            const introKey = `${message.author.id}_${message.channel.id}`;
-            const lastIntro = client.userIntroductions.get(introKey);
-            // ✅ 7 DAYS cooldown for introductions (604800000 ms)
-            const isFirst = !lastIntro || (Date.now() - lastIntro > 604800000);
-            
-            if (isFirst && !isArchitect) {
-                const introMsg = isFrench 
-                    ? `\n\n[FIRST INTERACTION] Salue BRIÈVEMENT: "Salut ${userName}! Tape .help pour voir mes commandes!"`
-                    : `\n\n[FIRST INTERACTION] Greet BRIEFLY: "Hey ${userName}! Type .help to see my commands!"`;
-                systemPrompt += introMsg;
-                client.userIntroductions.set(introKey, Date.now());
-                try { database.prepare(`INSERT OR REPLACE INTO lydia_introductions (user_id, channel_id, introduced_at) VALUES (?, ?, strftime('%s', 'now'))`).run(message.author.id, message.channel.id); } catch(e) {}
-            }
-
-            const searchTerms = ['latest', 'news', 'today', 'current', 'update', 'weather', 'score', 'recherche', 'météo', 'search', 'google'];
-            if (searchTerms.some(term => userPrompt.toLowerCase().includes(term)) && !realTimeData) {
-                const searchResults = await webSearch(userPrompt);
-                if (searchResults) systemPrompt += `\n\n[WEB SEARCH RESULTS]\n${searchResults}`;
-            }
-
-            let reply;
-            try {
-                reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory, imageUrl, realTimeData);
-            } catch (err) {
-                console.error(`${red}[LYDIA ERROR]${reset}`, err);
-                reply = isFrench ? "❌ Erreur du service IA." : "❌ AI service error.";
-            }
-
-            reply = parseAndScheduleReminder(reply, message.author.id, message.channel.id, client, database);
-
-            if (reply && reply.includes('[SIGNAL_ARCHITECT]')) {
-                const reportKeywords = ['report', 'bug', 'erreur', 'fix', 'notify', 'issue'];
-                const shouldReport = reportKeywords.some(kw => userPrompt.toLowerCase().includes(kw));
-                if (shouldReport) {
-                    const clean = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
-                    await sendArchitectReport(client, message.author, message.guild, clean);
-                }
-                reply = reply.replace('[SIGNAL_ARCHITECT]', '').trim();
-            }
-
-            if (reply && !reply.includes("error")) {
-                parseAndStoreMemory(reply, message.author.id, database);
-                reply = reply.replace(/\[MEMORY:.*?\]/g, '').trim();
-            }
-
-            try {
-                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
-                    .run(message.channel.id, client.user.id, currentIdentity, 'assistant', reply);
-            } catch(e) {
-                database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, strftime('%s', 'now'))`)
-                    .run(message.channel.id, client.user.id, 'assistant', reply);
-            }
-
-            client.lastLydiaCall[message.author.id] = Date.now();
-
-            if (reply.length > 2000) {
-                const chunks = [];
-                let currentChunk = '';
-                
-                const paragraphs = reply.split(/\n\n+/);
-                
-                for (const paragraph of paragraphs) {
-                    if (currentChunk.length + paragraph.length + 2 > 1950) {
-                        const openCodeBlocks = (currentChunk.match(/```/g) || []).length % 2;
-                        
-                        if (openCodeBlocks === 1) {
-                            currentChunk += '\n```';
-                            chunks.push(currentChunk);
-                            currentChunk = '```' + paragraph;
-                        } else {
-                            chunks.push(currentChunk);
-                            currentChunk = paragraph;
-                        }
-                    } else {
-                        currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
-                    }
-                }
-                
-                if (currentChunk) {
-                    const openCodeBlocks = (currentChunk.match(/```/g) || []).length % 2;
-                    if (openCodeBlocks === 1) {
-                        currentChunk += '\n```';
-                    }
-                    chunks.push(currentChunk);
-                }
-                
-                for (let i = 0; i < chunks.length; i++) {
-                    let chunk = chunks[i];
-                    if (i < chunks.length - 1) {
-                        chunk += `\n\n*[${i + 1}/${chunks.length} continues...]*`;
-                    }
-                    await message.reply(chunk);
-                }
-            } else {
-                await message.reply(reply);
-            }
-            
-            console.log(`${green}[LYDIA]${reset} Responded to ${userName} in ${message.channel.name} (${reply.length} chars${reply.length > 2000 ? ', chunked' : ''})`);
-        } catch (err) {
-            console.error(`${red}[LYDIA ERROR]${reset}`, err);
-            message.reply("❌ An error occurred.").catch(()=>{});
-        }
+        await handleLydiaMessage(message, client, database);
     });
+    
+    console.log(`${green}[LYDIA]${reset} ✅ Event listener registered ONCE`);
+    
+    // Debug: Show listener count
+    const listenerCount = client.listenerCount('messageCreate');
+    console.log(`${cyan}[LYDIA DEBUG]${reset} messageCreate listeners: ${listenerCount}`);
 }
 
 // ================= COMMAND .lydia =================
@@ -1061,6 +1068,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
         } catch(e) {}
         
         const totalModules = getGlobalModuleCount();
+        const listenerCount = client.listenerCount('messageCreate');
         
         const embed = new EmbedBuilder()
             .setColor(isEnabled ? agentInfo.color : '#95a5a6')
@@ -1071,6 +1079,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 `**Identity:** ${botDisplayName}\n` +
                 `**Memory:** ${userMem} facts about you | ${memCount} total\n` +
                 `**Modules:** ${totalModules} plugins detected\n` +
+                `**Event Listeners:** ${listenerCount} (should be 1)\n` +
                 `**Group Awareness:** ${isEnabled ? '👥 ACTIVE' : '❌ INACTIVE'}\n\n` +
                 `**Commands:**\n└ \`${prefix}lydia on\` - Activate AI\n└ \`${prefix}lydia off\` - Deactivate\n└ \`${prefix}lydia agent <core>\` - Switch core\n\n` +
                 `**Available Cores:**\n└ \`architect\` ${neuralCores.architect.emoji} - Code & System\n└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming\n└ \`creative\` ${neuralCores.creative.emoji} - Creative\n└ \`default\` ${neuralCores.default.emoji} - Balanced`
