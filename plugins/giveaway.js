@@ -118,7 +118,7 @@ function parseTime(timeStr, lang) {
 }
 
 // ================= CREATE GIVEAWAY EMBED =================
-function createGiveawayEmbed(giveaway, status = 'active', lang = 'en', guild, client) {
+function createGiveawayEmbed(giveaway, status, lang, guild, client) {
     const t = translations[lang];
     const version = client.version || '1.5.0';
     
@@ -155,7 +155,7 @@ function createGiveawayEmbed(giveaway, status = 'active', lang = 'en', guild, cl
 }
 
 // ================= CREATE BUTTON ROW =================
-function createButtonRow(status = 'active', lang = 'en') {
+function createButtonRow(status, lang) {
     const t = translations[lang];
     
     const row = new ActionRowBuilder();
@@ -429,35 +429,35 @@ module.exports = {
             const currentGiveaway = activeGiveaways.get(giveawayId);
             if (!currentGiveaway) return;
             
-            const winners = selectWinners(currentGiveaway.entries, currentGiveaway.winners);
-            currentGiveaway.winnersList = winners;
+            const winnersList = selectWinners(currentGiveaway.entries, currentGiveaway.winners);
+            currentGiveaway.winnersList = winnersList;
             currentGiveaway.ended = true;
             
             const endedEmbed = createGiveawayEmbed(currentGiveaway, 'ended', lang, message.guild, client);
             const endedRow = createButtonRow('ended', lang);
             
             try {
-                const msg = await giveawayMessage.edit({ 
+                await giveawayMessage.edit({ 
                     content: `🎊 **${t.giveawayEnded}** 🎊`,
                     embeds: [endedEmbed], 
                     components: [endedRow] 
                 });
                 
                 // Announce winners
-                if (winners.length > 0) {
+                if (winnersList.length > 0) {
                     const winnerAnnouncement = new EmbedBuilder()
                         .setColor('#FEE75C')
                         .setTitle(`🎊 ${t.giveawayEnded}`)
                         .setDescription(
                             `**${t.prize}:** ${currentGiveaway.prize}\n` +
-                            `**${t.winnersList}:** ${winners.map(w => `<@${w}>`).join(', ')}\n\n` +
+                            `**${t.winnersList}:** ${winnersList.map(w => `<@${w}>`).join(', ')}\n\n` +
                             `🎉 **${t.congratulations}!**`
                         )
                         .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                     
                     await message.channel.send({ 
-                        content: winners.map(w => `<@${w}>`).join(' '),
+                        content: winnersList.map(w => `<@${w}>`).join(' '),
                         embeds: [winnerAnnouncement] 
                     });
                     
@@ -467,7 +467,7 @@ module.exports = {
                         const creditMatch = currentGiveaway.prize.match(/(\d+)/);
                         if (creditMatch) {
                             const creditAmount = parseInt(creditMatch[0]);
-                            for (const winnerId of winners) {
+                            for (const winnerId of winnersList) {
                                 try {
                                     db.prepare(`UPDATE users SET credits = COALESCE(credits, 0) + ? WHERE id = ?`)
                                         .run(creditAmount, winnerId);
