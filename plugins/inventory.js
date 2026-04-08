@@ -33,25 +33,13 @@ const translations = {
         useSuccessDesc: (item, effect) => `**${item}** activated!\n${effect}`,
         useNoEffect: 'This item has no immediate effect.',
         useError: '❌ Could not use this item.',
-        details: 'Details',
         refresh: '🔄 Refresh',
         shop: '🛒 Shop',
         page: 'Page',
-        of: 'of',
-        noExpiration: 'Never expires',
-        expiresIn: 'Expires',
-        itemDetails: '📋 ITEM DETAILS',
-        effect: 'Effect',
-        duration: 'Duration',
-        days: 'days',
-        usesLeft: 'Uses Left',
-        unlimited: 'Unlimited',
-        footer: 'ARCHITECT CG-223 • Neural Inventory System',
         accessDenied: '❌ This menu is not yours.',
-        xpGained: 'XP Gained',
-        creditsGained: 'Credits Gained',
         unknownItem: '⚠️ Unknown Item (ID: {id})',
-        unknownItemHint: 'This item may be from an older version.'
+        unknownItemHint: 'This item may be from an older version.',
+        footer: 'ARCHITECT CG-223 • Neural Inventory System'
     },
     fr: {
         title: '📦 INVENTAIRE NEURAL',
@@ -84,25 +72,13 @@ const translations = {
         useSuccessDesc: (item, effect) => `**${item}** activé !\n${effect}`,
         useNoEffect: 'Cet objet n\'a pas d\'effet immédiat.',
         useError: '❌ Impossible d\'utiliser cet objet.',
-        details: 'Détails',
         refresh: '🔄 Actualiser',
         shop: '🛒 Boutique',
         page: 'Page',
-        of: 'sur',
-        noExpiration: 'N\'expire jamais',
-        expiresIn: 'Expire dans',
-        itemDetails: '📋 DÉTAILS',
-        effect: 'Effet',
-        duration: 'Durée',
-        days: 'jours',
-        usesLeft: 'Utilisations',
-        unlimited: 'Illimité',
-        footer: 'ARCHITECT CG-223 • Système d\'Inventaire Neural',
         accessDenied: '❌ Ce menu ne vous appartient pas.',
-        xpGained: 'XP Gagnés',
-        creditsGained: 'Crédits Gagnés',
         unknownItem: '⚠️ Objet Inconnu (ID: {id})',
-        unknownItemHint: 'Cet objet provient peut-être d\'une ancienne version.'
+        unknownItemHint: 'Cet objet provient peut-être d\'une ancienne version.',
+        footer: 'ARCHITECT CG-223 • Système d\'Inventaire Neural'
     }
 };
 
@@ -110,68 +86,6 @@ const translations = {
 function calculateLevel(xp) {
     return Math.floor(0.1 * Math.sqrt(xp)) + 1;
 }
-
-// ================= ITEM DEFINITIONS (Sync with shop.js) =================
-const ITEM_DEFINITIONS = {
-    starter_pack: {
-        name: { en: 'New Recruit Pack', fr: 'Pack Nouvelle Recrue' },
-        emoji: '📦',
-        type: 'consumable',
-        effect: { xp: 100, credits: 50 },
-        usable: true
-    },
-    role_veteran: {
-        name: { en: 'Veteran Agent Role', fr: 'Rôle Agent Vétéran' },
-        emoji: '🎖️',
-        type: 'role',
-        permanent: true,
-        usable: false
-    },
-    xp_boost: {
-        name: { en: 'Quantum XP Overdrive', fr: 'Overdrive XP Quantique' },
-        emoji: '⚡',
-        type: 'consumable',
-        effect: { xp: 1000 },
-        usable: true
-    },
-    credit_boost: {
-        name: { en: 'Credit Surge', fr: 'Afflux de Crédits' },
-        emoji: '💰',
-        type: 'consumable',
-        effect: { credits: 500 },
-        usable: true
-    },
-    tag_architect: {
-        name: { en: 'Architect Apprentice', fr: 'Apprenti Architecte' },
-        emoji: '🏗️',
-        type: 'badge',
-        permanent: true,
-        usable: false
-    },
-    xp_multiplier: {
-        name: { en: 'Neural Accelerator', fr: 'Accélérateur Neural' },
-        emoji: '📈',
-        type: 'boost',
-        effect: { multiplier: 1.5 },
-        duration: 7,
-        usable: false
-    },
-    color_role: {
-        name: { en: 'Custom Color Role', fr: 'Rôle Couleur Personnalisée' },
-        emoji: '🎨',
-        type: 'role',
-        permanent: true,
-        usable: false
-    },
-    daily_boost: {
-        name: { en: 'Premium Daily Bonus', fr: 'Bonus Quotidien Premium' },
-        emoji: '🌟',
-        type: 'permanent',
-        effect: { dailyBonus: 50 },
-        permanent: true,
-        usable: false
-    }
-};
 
 // ================= FORMAT TIME REMAINING =================
 function formatTimeRemaining(expiresAt, lang) {
@@ -192,9 +106,9 @@ function formatTimeRemaining(expiresAt, lang) {
 }
 
 // ================= USE ITEM FUNCTION =================
-function useItem(userId, itemId, db, lang) {
+function useItem(userId, itemId, db, lang, itemDefs) {
     const t = translations[lang];
-    const itemDef = ITEM_DEFINITIONS[itemId];
+    const itemDef = itemDefs[itemId];
     
     if (!itemDef || !itemDef.usable) {
         return { success: false, message: t.useNoEffect };
@@ -212,6 +126,10 @@ function useItem(userId, itemId, db, lang) {
     let effectMessage = '';
     let xpGained = 0;
     let creditsGained = 0;
+    
+    const userDataBefore = db.prepare(`SELECT xp, level FROM users WHERE id = ?`).get(userId);
+    const oldXP = userDataBefore?.xp || 0;
+    const oldLevel = userDataBefore?.level || calculateLevel(oldXP) || 1;
     
     if (itemDef.effect) {
         if (itemDef.effect.xp) {
@@ -234,9 +152,9 @@ function useItem(userId, itemId, db, lang) {
             .run(userId, itemId);
     }
     
-    const userData = db.prepare(`SELECT xp, level FROM users WHERE id = ?`).get(userId);
-    const newLevel = calculateLevel(userData.xp || 0);
-    const oldLevel = userData.level || 1;
+    const userDataAfter = db.prepare(`SELECT xp FROM users WHERE id = ?`).get(userId);
+    const newXP = userDataAfter?.xp || 0;
+    const newLevel = calculateLevel(newXP);
     
     if (newLevel > oldLevel) {
         db.prepare(`UPDATE users SET level = ? WHERE id = ?`).run(newLevel, userId);
@@ -254,12 +172,12 @@ function useItem(userId, itemId, db, lang) {
 }
 
 // ================= CREATE USE ITEM MENU =================
-function createUseItemMenu(items, lang) {
+function createUseItemMenu(items, lang, itemDefs) {
     const t = translations[lang];
     
     const usableItems = items.filter(item => {
-        const def = ITEM_DEFINITIONS[item.item_id];
-        return def && def.usable && item.active && def.type === 'consumable';
+        const def = itemDefs[item.item_id];
+        return def && def.usable && item.active === 1 && def.type === 'consumable';
     });
     
     if (usableItems.length === 0) {
@@ -267,7 +185,7 @@ function createUseItemMenu(items, lang) {
     }
     
     const options = usableItems.slice(0, 25).map(item => {
-        const def = ITEM_DEFINITIONS[item.item_id];
+        const def = itemDefs[item.item_id];
         return {
             label: `${def.emoji} ${def.name[lang]}`.substring(0, 100),
             description: `${t.quantity}: ${item.quantity}`.substring(0, 100),
@@ -283,7 +201,7 @@ function createUseItemMenu(items, lang) {
 }
 
 // ================= CREATE INVENTORY EMBED =================
-function createInventoryEmbed(items, category, page, totalPages, stats, lang, client, user, guildName) {
+function createInventoryEmbed(items, category, page, totalPages, stats, lang, client, user, guildName, itemDefs) {
     const t = translations[lang];
     const version = client.version || '1.5.0';
     
@@ -304,7 +222,7 @@ function createInventoryEmbed(items, category, page, totalPages, stats, lang, cl
             : '*No items in this category.*';
     } else {
         for (const item of pageItems) {
-            const def = ITEM_DEFINITIONS[item.item_id];
+            const def = itemDefs[item.item_id];
             
             if (!def) {
                 description += `**❓ ${t.unknownItem.replace('{id}', item.item_id)}**\n`;
@@ -313,9 +231,9 @@ function createInventoryEmbed(items, category, page, totalPages, stats, lang, cl
                 continue;
             }
             
-            const status = item.active ? `🟢 ${t.active}` : `🔴 ${t.expired}`;
+            const status = item.active === 1 ? `🟢 ${t.active}` : `🔴 ${t.expired}`;
             const expiration = item.expires_at 
-                ? `${t.expiresIn} ${formatTimeRemaining(item.expires_at, lang)}` 
+                ? `${formatTimeRemaining(item.expires_at, lang)}` 
                 : t.permanent;
             
             description += `**${def.emoji} ${def.name[lang]}**\n`;
@@ -371,17 +289,15 @@ function createCategoryMenu(lang, currentCategory) {
 // ================= MAIN COMMAND =================
 module.exports = {
     name: 'inventory',
-    aliases: ['inv', 'items', 'backpack', 'inventaire', 'objets', 'sac', 'iventory'],
+    aliases: ['inv', 'items', 'backpack', 'inventaire', 'objets', 'sac'],
     description: '📦 View and use your neural inventory items.',
     category: 'ECONOMY',
     cooldown: 3000,
     usage: '.inventory [category]',
     examples: ['.inventory', '.inv consumable', '.items boost'],
 
-    // ✅ FIXED: Added serverSettings as 5th parameter
     run: async (client, message, args, database, serverSettings) => {
         
-        // ================= LANGUAGE SETUP =================
         const lang = serverSettings?.language || 'en';
         const t = translations[lang];
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -389,31 +305,16 @@ module.exports = {
         const userId = message.author.id;
         const db = database;
         
-        // ================= ENSURE INVENTORY TABLE EXISTS =================
-        try {
-            db.prepare(`
-                CREATE TABLE IF NOT EXISTS user_inventory (
-                    user_id TEXT,
-                    item_id TEXT,
-                    quantity INTEGER DEFAULT 1,
-                    purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
-                    expires_at INTEGER,
-                    active BOOLEAN DEFAULT 1,
-                    PRIMARY KEY (user_id, item_id)
-                )
-            `).run();
-            
-            // Only expire items that have an actual future expiration date
-            const now = Math.floor(Date.now() / 1000);
-            db.prepare(`
-                UPDATE user_inventory 
-                SET active = 0 
-                WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
-            `).run(now);
-            
-        } catch (err) {
-            console.error('[INVENTORY] Table creation error:', err);
-        }
+        // ================= USE GLOBAL ITEM DEFINITIONS FROM CLIENT =================
+        const itemDefs = client.getItemDefinitions ? client.getItemDefinitions() : {};
+        
+        // ================= DATABASE (Global migration handled in index.js) =================
+        const now = Math.floor(Date.now() / 1000);
+        db.prepare(`
+            UPDATE user_inventory 
+            SET active = 0 
+            WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
+        `).run(now);
         
         // ================= FETCH INVENTORY =================
         let items = db.prepare(`
@@ -424,7 +325,7 @@ module.exports = {
         `).all(userId);
         
         let enrichedItems = items.map(item => {
-            const def = ITEM_DEFINITIONS[item.item_id];
+            const def = itemDefs[item.item_id];
             return { 
                 ...item, 
                 type: def?.type || 'unknown',
@@ -435,7 +336,7 @@ module.exports = {
         // ================= CALCULATE STATS =================
         const stats = {
             total: items.length,
-            activeBoosts: enrichedItems.filter(i => i.active && (i.type === 'boost' || i.type === 'consumable')).length,
+            activeBoosts: enrichedItems.filter(i => i.active === 1 && (i.type === 'boost' || i.type === 'consumable')).length,
             permanent: enrichedItems.filter(i => i.type === 'permanent' || i.type === 'role' || i.type === 'badge').length
         };
         
@@ -477,7 +378,7 @@ module.exports = {
         // ================= DETERMINE CATEGORY =================
         let category = 'all';
         const categoryArg = args[0]?.toLowerCase();
-        const validCategories = ['all', 'consumable', 'role', 'badge', 'boost', 'permanent', 'unknown'];
+        const validCategories = ['all', 'consumable', 'role', 'badge', 'boost', 'permanent'];
         if (categoryArg && validCategories.includes(categoryArg)) {
             category = categoryArg;
         }
@@ -493,7 +394,7 @@ module.exports = {
         
         // ================= CREATE INITIAL VIEW =================
         const { embed, pageItems } = createInventoryEmbed(
-            enrichedItems, category, currentPage, totalPages, stats, lang, client, message.author, guildName
+            enrichedItems, category, currentPage, totalPages, stats, lang, client, message.author, guildName, itemDefs
         );
         
         const categoryMenu = createCategoryMenu(lang, category);
@@ -508,7 +409,7 @@ module.exports = {
         
         const components = [menuRow];
         
-        const useMenu = createUseItemMenu(pageItems, lang);
+        const useMenu = createUseItemMenu(pageItems, lang, itemDefs);
         if (useMenu) {
             components.push(new ActionRowBuilder().addComponents(useMenu));
         }
@@ -533,10 +434,10 @@ module.exports = {
             // Handle Use Item
             if (i.isStringSelectMenu() && i.customId === 'inventory_use') {
                 const itemId = i.values[0];
-                const result = useItem(userId, itemId, db, lang);
+                const result = useItem(userId, itemId, db, lang, itemDefs);
                 
                 if (result.success) {
-                    const itemDef = ITEM_DEFINITIONS[itemId];
+                    const itemDef = itemDefs[itemId];
                     const successEmbed = new EmbedBuilder()
                         .setColor('#2ecc71')
                         .setAuthor({ name: t.useSuccess, iconURL: message.author.displayAvatarURL() })
@@ -558,7 +459,7 @@ module.exports = {
                     `).all(userId);
                     
                     enrichedItems = items.map(item => {
-                        const def = ITEM_DEFINITIONS[item.item_id];
+                        const def = itemDefs[item.item_id];
                         return { 
                             ...item, 
                             type: def?.type || 'unknown',
@@ -574,13 +475,11 @@ module.exports = {
             let newCategory = category;
             let newPage = currentPage;
             
-            // Handle category select
             if (i.isStringSelectMenu() && i.customId === 'inventory_category') {
                 newCategory = i.values[0];
                 newPage = 0;
             }
             
-            // Handle buttons
             if (i.isButton()) {
                 if (i.customId === 'inv_prev') newPage--;
                 if (i.customId === 'inv_next') newPage++;
@@ -592,7 +491,7 @@ module.exports = {
                     `).all(userId);
                     
                     enrichedItems = items.map(item => {
-                        const def = ITEM_DEFINITIONS[item.item_id];
+                        const def = itemDefs[item.item_id];
                         return { 
                             ...item, 
                             type: def?.type || 'unknown',
@@ -610,27 +509,23 @@ module.exports = {
                 }
             }
             
-            // Update state
             category = newCategory;
             currentPage = newPage;
             
-            // Recalculate filtered items
             const updatedFiltered = category === 'all' 
                 ? enrichedItems 
                 : enrichedItems.filter(i => i.type === category);
             const updatedTotalPages = Math.max(1, Math.ceil(updatedFiltered.length / pageSize));
             currentPage = Math.max(0, Math.min(currentPage, updatedTotalPages - 1));
             
-            // Create new embed
             const { embed: newEmbed, pageItems: newPageItems } = createInventoryEmbed(
-                enrichedItems, category, currentPage, updatedTotalPages, stats, lang, client, message.author, guildName
+                enrichedItems, category, currentPage, updatedTotalPages, stats, lang, client, message.author, guildName, itemDefs
             );
             
-            // Build new components
             const newComponents = [];
             newComponents.push(new ActionRowBuilder().addComponents(createCategoryMenu(lang, category)));
             
-            const newUseMenu = createUseItemMenu(newPageItems, lang);
+            const newUseMenu = createUseItemMenu(newPageItems, lang, itemDefs);
             if (newUseMenu) {
                 newComponents.push(new ActionRowBuilder().addComponents(newUseMenu));
             }
