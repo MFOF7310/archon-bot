@@ -1,7 +1,22 @@
-+ [v1.3.2] - Neural Sync Update
-- Implemented Dynamic Versioning (via version.txt) across all core modules.
-- Upgraded !dashboard with Power Ranking system and SQL Analytics.
-- Optimized !alive with real-time API latency and RAM tracking.
-- Enhanced !help with interactive Select Menus and category emojis.
-- Fixed command collector logic to prevent interaction failures.
-- Synced system time to Africa/Bamako for local node accuracy.
+## [v1.5.0] - NEURAL SYNC UPDATE - 2024
+
+### 🆕 NEW
+- `.trivia` - 6 categories, 4 difficulties, streak bonuses
+- `.claim` - Separated claim action from dashboard
+- `.shop` - Neural Marketplace with inventory system
+
+### ⚡ ENHANCED
+- `.daily` - Power Rankings, reminder integration, dynamic buttons
+- `.wrg` - 4 difficulties, bilingual word database
+- `.lydia` - Group awareness, real-time data, optimized API calls
+- `.help` - Interactive select menus, real-time stats
+
+### 🔧 FIXED
+- Unified level formula across all modules
+- `last_daily` column sync
+- Markdown-preserving message chunking
+- City detection in weather queries
+
+### 🌐 LOCALIZATION
+- Full EN/FR bilingual support
+- System time synced to Africa/Bamako
