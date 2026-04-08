@@ -4,17 +4,17 @@ const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
 
-// IMPORT LYDIA SETUP FUNCTION - MOVE TO TOP
+// IMPORT LYDIA SETUP FUNCTION
 const { setupLydia } = require('./plugins/lydia.js');
 
-// --- GLOBAL ERROR HANDLER (Prevents crashes) ---
-process.on('uncaughtException', (error) => {
-    console.log(`\x1b[31m[UNCAUGHT EXCEPTION]\x1b[0m ${error.message}`);
-    console.log(error.stack);
+// ================= SELF-HEALING PROTOCOL =================
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('\x1b[31m[ANTI-CRASH]\x1b[0m Unhandled Rejection:', reason);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.log(`\x1b[31m[UNHANDLED REJECTION]\x1b[0m ${reason}`);
+process.on('uncaughtException', (err, origin) => {
+    console.error('\x1b[31m[ANTI-CRASH]\x1b[0m Uncaught Exception:', err.message);
+    console.error(err.stack); 
 });
 
 // --- TERMINAL COLORS ---
@@ -315,7 +315,6 @@ const DEFAULT_SETTINGS = {
 };
 
 function getServerSettings(guildId) {
-    // Check cache first
     if (client.settings.has(guildId)) {
         return client.settings.get(guildId);
     }
@@ -340,7 +339,6 @@ function getServerSettings(guildId) {
             dailyChannel: settings.daily_channel
         };
         
-        // Cache for future use
         client.settings.set(guildId, result);
         
         return result;
@@ -369,7 +367,6 @@ function updateServerSetting(guildId, setting, value) {
             WHERE guild_id = ?
         `).run(value, guildId);
         
-        // Clear cache
         client.settings.delete(guildId);
         
         return true;
@@ -379,7 +376,6 @@ function updateServerSetting(guildId, setting, value) {
     }
 }
 
-// Attach to client for global access
 client.getServerSettings = getServerSettings;
 client.updateServerSetting = updateServerSetting;
 
@@ -529,7 +525,9 @@ client.loadPlugins = async () => {
     const pluginPath = path.join(__dirname, 'plugins');
     if (!fs.existsSync(pluginPath)) fs.mkdirSync(pluginPath);
 
-    const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js'));
+    // ✅ CORRECTION: Exclude lydia.js from automatic scan
+    const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js') && file !== 'lydia.js');
+    
     for (const file of pluginFiles) {
         try {
             await sleep(100);
@@ -565,7 +563,6 @@ client.once(Events.ClientReady, async () => {
     
     await client.loadPlugins();
     
-    // ✅ CRITICAL: Initialize Lydia with database
     console.log(`${cyan}[LYDIA]${reset} Initializing Neural Interface...`);
     setupLydia(client, db);
     console.log(`${green}[LYDIA]${reset} Neural Core structure ready.`);
@@ -719,7 +716,6 @@ client.on(Events.MessageCreate, async (message) => {
 
             await message.channel.send({ content: `🎉 **LEVEL UP!** <@${userId}>`, embeds: [levelUpEmbed] });
             
-            // Use server settings for log channel
             const settings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
             const logChannelId = settings.logChannel || process.env.LOG_CHANNEL_ID;
             const logChannel = message.guild.channels.cache.get(logChannelId);
@@ -751,8 +747,7 @@ client.on(Events.MessageCreate, async (message) => {
                 userData.streak_days || 0);
     }
 
-    // ================= COMMAND HANDLER (WITH GLOBAL PROXY) =================
-    // Get server settings ONCE for this message
+    // ================= COMMAND HANDLER =================
     const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
     const effectivePrefix = serverSettings.prefix || PREFIX;
     
@@ -775,7 +770,6 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // Normal command execution - PASS SETTINGS as 5th argument
     if (command) {
         try {
             await command.run(client, message, args, db, serverSettings);
@@ -786,7 +780,7 @@ client.on(Events.MessageCreate, async (message) => {
     }
 });
 
-// ================= WELCOME SYSTEM (USING SERVER SETTINGS) =================
+// ================= WELCOME SYSTEM =================
 client.on(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
 
@@ -923,6 +917,9 @@ process.on('SIGINT', () => {
     console.log(`${green}[SHUTDOWN]${reset} Cleanup complete. Goodbye!`);
     process.exit(0);
 });
+
+// ✅ CRITICAL: Initialize Lydia (The Handshake)
+setupLydia(client, db);
 
 // --- LOGIN ---
 client.login(process.env.TOKEN);
