@@ -3,9 +3,18 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'ping',
+    aliases: ['pong', 'latency'],
     description: 'Measure the digital engine latency.',
     category: 'SYSTEM',
-    run: async (client, message, args, database) => {
+    cooldown: 3000,
+    
+    run: async (client, message, args, database, serverSettings) => {
+        // ✅ Use server settings
+        const lang = serverSettings?.language || 'en';
+        const version = client.version || '1.5.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+        
         // Record time BEFORE sending the first message
         const start = performance.now();
         
@@ -57,10 +66,15 @@ module.exports = {
                     inline: true 
                 }
             )
-            .setFooter({ text: 'Digital Engine • Real-time latency measurement' })
+            .setFooter({ 
+                text: `${guildName} • Digital Engine • Real-time latency measurement • v${version}`,
+                iconURL: guildIcon
+            })
             .setTimestamp();
         
         // Send second message with the professional embed
         await message.channel.send({ embeds: [embed] });
-    },
+        
+        console.log(`[PING] ${message.author.tag} | Latency: ${latency}ms | API: ${apiPing}ms`);
+    }
 };
