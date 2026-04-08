@@ -33,7 +33,9 @@ const claimTranslations = {
         accessDenied: '❌ These controls are locked to your session.',
         reminderActive: (time) => `🔔 **Reminder Active!** You'll be notified ${time}. Use \`.daily\` to view your dashboard.`,
         claimed: '✅ Claimed!',
-        levelUp: '🎉 LEVEL UP!'
+        levelUp: '🎉 LEVEL UP!',
+        channelRestricted: (channelId) => `📊 The claim protocol is restricted to the <#${channelId}> channel.`,
+        tip: '💡 TIP'
     },
     fr: {
         title: '⚡ PROTOCOLE DE RÉCLAMATION NEURALE',
@@ -61,7 +63,9 @@ const claimTranslations = {
         accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
         reminderActive: (time) => `🔔 **Rappel Actif!** Vous serez notifié ${time}. Utilisez \`.daily\` pour voir votre tableau de bord.`,
         claimed: '✅ Réclamé!',
-        levelUp: '🎉 NIVEAU SUPÉRIEUR!'
+        levelUp: '🎉 NIVEAU SUPÉRIEUR!',
+        channelRestricted: (channelId) => `📊 Le protocole de réclamation est restreint au canal <#${channelId}>.`,
+        tip: '💡 ASTUCE'
     }
 };
 
@@ -111,29 +115,29 @@ async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP
 
 module.exports = {
     name: 'claim',
-    aliases: ['reclamer', 'reclaim', 'collect', 'recolter'],
+    aliases: ['reclamer', 'reclaim', 'collect', 'recolter', 'réclamer'],
     description: '⚡ Claim your daily rewards when the neural cycle is complete.',
     category: 'ECONOMY',
     usage: '.claim',
     cooldown: 3000,
     examples: ['.claim'],
 
-    run: async (client, message, args, database) => {
+    // ✅ MODIFIED: Added serverSettings as 5th argument
+    run: async (client, message, args, database, serverSettings) => {
         
         try {
-            // --- LANGUAGE DETECTION ---
-            let lang = 'en';
-            const guildSettings = client.settings?.get(message.guild?.id);
-            if (guildSettings?.language) {
-                lang = guildSettings.language;
-            } else {
-                const frenchKeywords = ['fr', 'francais', 'français', 'french', 'reclamer', 'réclamer', 'collecter'];
-                const content = message.content.toLowerCase();
-                if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
-                    lang = 'fr';
-                }
-            }
+            // ✅ MODIFIED: Use server-specific language from settings
+            const lang = serverSettings?.language || 'en';
             const t = claimTranslations[lang];
+            
+            // ✅ ADDED: Channel Restriction Check
+            if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
+                return message.reply({ 
+                    content: t.channelRestricted(serverSettings.dailyChannel), 
+                    ephemeral: true 
+                });
+            }
+            
             const version = client.version || '1.5.0';
             
             const userId = message.author.id;
@@ -188,7 +192,7 @@ module.exports = {
                     .setTitle('🔒 NEURAL CYCLE INCOMPLETE')
                     .setDescription(t.cooldownDesc(userName, timeString))
                     .addFields(
-                        { name: '💡 TIP', value: lang === 'fr' ? 'Utilisez `.daily` pour voir votre tableau de bord complet.' : 'Use `.daily` to view your full dashboard.', inline: false }
+                        { name: t.tip, value: lang === 'fr' ? 'Utilisez `.daily` pour voir votre tableau de bord complet.' : 'Use `.daily` to view your full dashboard.', inline: false }
                     )
                     .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
                     .setTimestamp();
@@ -223,7 +227,8 @@ module.exports = {
                     if (i.customId === 'goto_daily') {
                         const dailyCmd = client.commands.get('daily');
                         if (dailyCmd) {
-                            await dailyCmd.run(client, message, [], database);
+                            // ✅ Pass serverSettings to daily command
+                            await dailyCmd.run(client, message, [], database, serverSettings);
                             await i.reply({ content: '📊 Dashboard displayed above!', ephemeral: true });
                         }
                     }
@@ -335,13 +340,15 @@ module.exports = {
                 if (i.customId === 'view_daily') {
                     const dailyCmd = client.commands.get('daily');
                     if (dailyCmd) {
-                        await dailyCmd.run(client, message, [], database);
+                        // ✅ Pass serverSettings to daily command
+                        await dailyCmd.run(client, message, [], database, serverSettings);
                         await i.reply({ content: '📊 Dashboard displayed above!', ephemeral: true });
                     }
                 } else if (i.customId === 'view_profile') {
                     const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                     if (rankCmd) {
-                        await rankCmd.run(client, message, [], database);
+                        // ✅ Pass serverSettings to rank command
+                        await rankCmd.run(client, message, [], database, serverSettings);
                         await i.reply({ content: '👤 Profile displayed above!', ephemeral: true });
                     }
                 }
@@ -349,7 +356,8 @@ module.exports = {
             
         } catch (error) {
             console.error(`[CLAIM] FATAL ERROR:`, error);
-            return message.reply({ content: claimTranslations[lang === 'fr' ? 'fr' : 'en'].error });
+            const lang = serverSettings?.language || 'en';
+            return message.reply({ content: claimTranslations[lang].error });
         }
     }
 };
