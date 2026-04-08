@@ -70,12 +70,13 @@ function safeStringify(obj, indent = 2) {
     }, indent);
 }
 
-// ================= ENHANCED REAL-TIME DATA FETCHER (OPTIMIZED - Only fetches what's needed) =================
+// ================= ENHANCED REAL-TIME DATA FETCHER =================
 async function fetchRealTimeData(query, type = 'auto') {
     const data = {};
     const lowerQuery = query.toLowerCase();
     const fetchPromises = [];
     
+    // Weather detection
     if (lowerQuery.includes('weather') || lowerQuery.includes('météo') || 
         lowerQuery.includes('température') || lowerQuery.includes('pluie') || lowerQuery.includes('rain')) {
         
@@ -140,6 +141,7 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(weatherPromise);
     }
     
+    // News detection
     if (lowerQuery.includes('news') || lowerQuery.includes('actualités') || lowerQuery.includes('headlines') ||
         lowerQuery.includes('breaking') || lowerQuery.includes('dernières nouvelles')) {
         const newsPromise = (async () => {
@@ -165,6 +167,7 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(newsPromise);
     }
     
+    // Cryptocurrency detection
     if (lowerQuery.includes('bitcoin') || lowerQuery.includes('ethereum') || lowerQuery.includes('crypto') ||
         lowerQuery.includes('btc') || lowerQuery.includes('eth') || lowerQuery.includes('solana') ||
         lowerQuery.includes('prix crypto')) {
@@ -183,6 +186,7 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(cryptoPromise);
     }
     
+    // Time detection
     if (lowerQuery.includes('time') || lowerQuery.includes('heure') || lowerQuery.includes('horloge') ||
         lowerQuery.includes('quelle heure')) {
         const timePromise = (async () => {
@@ -206,6 +210,7 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(timePromise);
     }
     
+    // Stock market detection
     if (lowerQuery.includes('stock') || lowerQuery.includes('action') || lowerQuery.includes('bourse') ||
         lowerQuery.includes('nasdaq') || lowerQuery.includes('s&p') || lowerQuery.includes('dow jones')) {
         const stockPromise = (async () => {
@@ -228,6 +233,7 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(stockPromise);
     }
     
+    // Sports scores detection
     if (lowerQuery.includes('score') || lowerQuery.includes('match') || 
         lowerQuery.includes('football') || lowerQuery.includes('soccer') || lowerQuery.includes('basketball')) {
         const sportsPromise = (async () => {
@@ -475,10 +481,7 @@ async function sendArchitectReport(client, user, guild, content) {
                 { name: '📍 Origin', value: guild ? guild.name : 'Direct Message', inline: true },
                 { name: '📅 Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
             )
-            .setFooter({ 
-                text: `${guild?.name?.toUpperCase() || 'SYSTEM'} • Priority Report • Architect Review Required`,
-                iconURL: guild?.iconURL() || client.user.displayAvatarURL()
-            })
+            .setFooter({ text: 'Priority Report • Architect Review Required' })
             .setTimestamp();
         await architect.send({ embeds: [reportEmbed] });
         console.log(`${green}[ARCHITECT ALERT]${reset} ✅ Report from ${user.tag} transmitted.`);
@@ -737,7 +740,7 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     return prompt;
 }
 
-// ================= SETUP LYDIA (ENHANCED WITH GROUP AWARENESS & TYPING INDICATOR) =================
+// ================= SETUP LYDIA =================
 function setupLydia(client, database) {
     if (!client || !database) {
         console.error(`${red}[LYDIA FATAL]${reset} Client or DB missing`);
@@ -1023,16 +1026,10 @@ function setupLydia(client, database) {
 }
 
 // ================= COMMAND .lydia =================
-async function runLydiaCommand(client, message, args, database, serverSettings) {
+async function runLydiaCommand(client, message, args, database) {
     if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
-    
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
-    const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-    const lang = serverSettings?.language || 'en';
-    const version = client.version || '1.5.0';
-    const guildName = message.guild.name.toUpperCase();
-    const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
-    
+    const prefix = process.env.PREFIX || '.';
     const sub = args[0]?.toLowerCase();
 
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
@@ -1087,10 +1084,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 { name: '👥 Group Awareness', value: 'Tracks full channel conversations', inline: true },
                 { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true }
             )
-            .setFooter({ 
-                text: `${guildName} • ARCHITECT CG-223 • v${version}`, 
-                iconURL: guildIcon 
-            })
+            .setFooter({ text: `ARCHITECT CG-223 • v1.5.0 • Mention @${botDisplayName}` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -1113,10 +1107,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 { name: '💾 Persistence', value: 'Saved across restarts' },
                 { name: '👥 Group Awareness', value: 'Will track full channel conversations' }
             )
-            .setFooter({ 
-                text: `${guildName} • ARCHITECT CG-223 • v${version}`,
-                iconURL: guildIcon
-            })
+            .setFooter({ text: `v1.5.0` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -1149,10 +1140,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
                 { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
             )
-            .setFooter({ 
-                text: `${guildName} • POWERED BY OPENROUTER PRO • v${version}`,
-                iconURL: guildIcon
-            })
+            .setFooter({ text: `POWERED BY OPENROUTER PRO • v1.5.0` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -1168,14 +1156,8 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
             .setColor('#e74c3c')
             .setTitle('❌ NEURAL CORE TERMINATED')
             .setDescription(`**${botDisplayName}** has been deactivated in <#${channelId}>.`)
-            .addFields(
-                { name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` }, 
-                { name: '🧠 Memory Preserved', value: 'Agent preference saved' }
-            )
-            .setFooter({ 
-                text: `${guildName} • ARCHITECT CG-223 • v${version}`,
-                iconURL: guildIcon
-            })
+            .addFields({ name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` }, { name: '🧠 Memory Preserved', value: 'Agent preference saved' })
+            .setFooter({ text: `v${client.version || '1.3.2'}` })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
     }
@@ -1188,9 +1170,7 @@ module.exports = {
     description: '🎭 Multi-Agent AI with Group Awareness & Real-Time Data Fetching',
     category: 'SYSTEM',
     cooldown: 5000,
-    run: async (client, message, args, database, serverSettings) => {
-        return runLydiaCommand(client, message, args, database, serverSettings);
-    },
+    run: runLydiaCommand,
     
     setupLydia,
     buildPluginAwarenessPrompt,
