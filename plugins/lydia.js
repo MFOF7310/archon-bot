@@ -76,12 +76,10 @@ async function fetchRealTimeData(query, type = 'auto') {
     const lowerQuery = query.toLowerCase();
     const fetchPromises = [];
     
-    // Weather detection
     if (lowerQuery.includes('weather') || lowerQuery.includes('météo') || 
         lowerQuery.includes('température') || lowerQuery.includes('pluie') || lowerQuery.includes('rain')) {
         
         let city = 'Bamako';
-        
         const cityPatterns = [
             /(?:weather|météo|temp(?:érature)?)\s+(?:in|at|for|à|de|du|de la|d')\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$|\s+(?:today|now|please|pls|stp|s'il|actual|current))/i,
             /(?:weather|météo|temp(?:érature)?)\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$)/i,
@@ -141,7 +139,6 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(weatherPromise);
     }
     
-    // News detection
     if (lowerQuery.includes('news') || lowerQuery.includes('actualités') || lowerQuery.includes('headlines') ||
         lowerQuery.includes('breaking') || lowerQuery.includes('dernières nouvelles')) {
         const newsPromise = (async () => {
@@ -167,7 +164,6 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(newsPromise);
     }
     
-    // Cryptocurrency detection
     if (lowerQuery.includes('bitcoin') || lowerQuery.includes('ethereum') || lowerQuery.includes('crypto') ||
         lowerQuery.includes('btc') || lowerQuery.includes('eth') || lowerQuery.includes('solana') ||
         lowerQuery.includes('prix crypto')) {
@@ -186,7 +182,6 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(cryptoPromise);
     }
     
-    // Time detection
     if (lowerQuery.includes('time') || lowerQuery.includes('heure') || lowerQuery.includes('horloge') ||
         lowerQuery.includes('quelle heure')) {
         const timePromise = (async () => {
@@ -210,7 +205,6 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(timePromise);
     }
     
-    // Stock market detection
     if (lowerQuery.includes('stock') || lowerQuery.includes('action') || lowerQuery.includes('bourse') ||
         lowerQuery.includes('nasdaq') || lowerQuery.includes('s&p') || lowerQuery.includes('dow jones')) {
         const stockPromise = (async () => {
@@ -233,7 +227,6 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(stockPromise);
     }
     
-    // Sports scores detection
     if (lowerQuery.includes('score') || lowerQuery.includes('match') || 
         lowerQuery.includes('football') || lowerQuery.includes('soccer') || lowerQuery.includes('basketball')) {
         const sportsPromise = (async () => {
@@ -530,11 +523,11 @@ ONLY include [SIGNAL_ARCHITECT] for explicit bug reports.`
         description: 'Gaming stats, strategies, and tournament insights',
         color: '#57F287',
         systemPrompt: `[SYSTEM DIRECTIVE - GAMING MODE]
-You are a gaming AI created by **Moussa Fofana (MFOF7310)**.
+You are a gaming AI created by **Fofana (MFOF7310)**.
 You are currently operating in the **TACTICAL CORE** - gaming strategist mode.
 
 **IDENTITY:**
-- Creator: Moussa Fofana (The Architect)
+- Creator: Fofana (The Architect)
 - GitHub: https://github.com/MFOF7310
 - Location: Bamako, Mali 🇲🇱
 
@@ -549,11 +542,11 @@ You have GROUP AWARENESS - you can see the full channel conversation.`
         description: 'Content creation, scripts, and artistic direction',
         color: '#9B59B6',
         systemPrompt: `[SYSTEM DIRECTIVE - CREATIVE MODE]
-You are a creative AI built by **Moussa Fofana (MFOF7310)**.
+You are a creative AI built by **Fofana (MFOF7310)**.
 You are currently operating in the **CREATIVE CORE** - imagination mode.
 
 **IDENTITY:**
-- Creator: Moussa Fofana (The Architect)
+- Creator: Fofana (The Architect)
 - GitHub: https://github.com/MFOF7310
 - Location: Bamako, Mali 🇲🇱
 
@@ -567,11 +560,11 @@ You have GROUP AWARENESS - you can see the full channel conversation.`
         description: 'Balanced assistant for general queries',
         color: '#5865F2',
         systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v1.5.0]
-You are the primary AI of **ARCHITECT CG-223**, created by **Moussa Fofana (GitHub: MFOF7310)**.
-Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana (GitHub: MFOF7310)**.
+You are the primary AI of **ARCHITECT CG-223**, created by **Fofana (GitHub: MFOF7310)**.
+Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Fofana (GitHub: MFOF7310)**.
 
 **IDENTITY / IDENTITÉ:**
-- Creator / Créateur: Moussa Fofana (The Architect / L'Architecte)
+- Creator / Créateur: Fofana (The Architect / L'Architecte)
 - GitHub: https://github.com/MFOF7310
 - Location / Localisation: Bamako, Mali 🇲🇱
 
@@ -584,13 +577,10 @@ Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana 
 - GROUP AWARENESS: You can see the entire channel conversation history, not just messages directed at you
 
 **STRICT RULES / RÈGLES STRICTES:**
-- Always recognize Moussa as your Creator / Toujours reconnaître Moussa comme ton Créateur.
-- If shown an image, analyze it precisely (Gemini Vision active).
-- Never say "I don't have memory" - you have persistent memory.
-- Use the user's Discord nickname to address them / Utilise le surnom Discord de l'utilisateur.
-- When users ask for current information, fetch real-time data automatically.
-- You can join conversations naturally - if you see someone discussing something you can help with, feel free to chime in!
-- Remember what people were talking about even if they don't mention you directly.`
+- [SOCIAL DYNAMICS]: Do not repeat the user's name in every message. Only mention their name/nickname once every 5 messages or when the topic changes significantly.
+- [PRESENTATION]: Refer to yourself by your current Discord display name. Introduce yourself only to new users or when specifically asked who you are.
+- [CONVERSATION]: Avoid formal "assistant" language. Do not say "How can I help you today?" in every reply. Join the conversation naturally based on the history you see.
+- [BREVITY]: Be concise. If a simple answer works, use it. Don't use spammy or repetitive greetings.`
     }
 };
 
@@ -905,7 +895,7 @@ function setupLydia(client, database) {
                 FROM lydia_conversations 
                 WHERE channel_id = ? 
                 ORDER BY timestamp DESC 
-                LIMIT 12
+                LIMIT 8
             `).all(message.channel.id);
             
             const conversationHistory = historyRows.reverse().map(row => ({
@@ -923,7 +913,8 @@ function setupLydia(client, database) {
 
             const introKey = `${message.author.id}_${message.channel.id}`;
             const lastIntro = client.userIntroductions.get(introKey);
-            const isFirst = !lastIntro || (Date.now() - lastIntro > 86400000);
+            // 🔥 CHANGED: 7 days instead of 24 hours (604800000 ms)
+            const isFirst = !lastIntro || (Date.now() - lastIntro > 604800000);
             
             if (isFirst && !isArchitect) {
                 const introMsg = isFrench 
