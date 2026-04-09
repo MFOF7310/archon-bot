@@ -767,11 +767,17 @@ client.once(Events.ClientReady, async () => {
     
     await client.loadPlugins();
     
+    // ❌ REMOVED: setupLydia was called here (duplicate)
+    // setupLydia(client, db); // <-- REMOVED THIS LINE
+    
     console.log(`${cyan}[LYDIA]${reset} Initializing Neural Interface...`);
-    setupLydia(client, db);
-    console.log(`${green}[LYDIA]${reset} Neural Core structure ready.`);
+    // ✅ Lydia is already initialized at the bottom of the file
     
     loadAgentPreferences();
+    
+    // Debug: Show listener count
+    const listenerCount = client.listenerCount('messageCreate');
+    console.log(`${cyan}[LYDIA DEBUG]${reset} messageCreate listeners: ${listenerCount} (should be 1)`);
     
     // ========== ARCHITECT CG-223 BOOT HEADER ==========
     const boxWidth = 64;
@@ -795,6 +801,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`${blue}${bold}${drawBoxLine(`${green}📦 VERSION`, `v${client.version}`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🔗 REPOSITORY`, 'https://github.com/MFOF7310')}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🏗️  ARCHITECT`, 'MOUSSA FOFANA')}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}🎧 LISTENERS`, `${listenerCount} messageCreate`)}${reset}`);
     
     console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
 
@@ -841,7 +848,7 @@ client.once(Events.ClientReady, async () => {
         const alertEmbed = new EmbedBuilder()
             .setColor('#2ecc71')
             .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
-            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\nVersion: **${client.version}**\nNode: **BAMAKO_223** 🎮`)
+            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\nVersion: **${client.version}**\nNode: **BAMAKO_223** 🎮\nListeners: **${listenerCount}**`)
             .addFields(
                 { name: '🔗 Repository', value: 'https://github.com/MFOF7310', inline: true },
                 { name: '🏗️ Architect', value: 'Moussa Fofana', inline: true }
@@ -1119,8 +1126,9 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-// ✅ CRITICAL: Initialize Lydia
+// ✅ CRITICAL: Initialize Lydia ONCE at the bottom (NOT in ready event)
 setupLydia(client, db);
+console.log(`${green}[INIT]${reset} Lydia setup called ONCE at startup`);
 
 // --- LOGIN ---
 client.login(process.env.TOKEN);
