@@ -57,6 +57,7 @@ const translations = {
         footer: 'ARCHITECT CG-223 • Server Configuration',
         accessDenied: '❌ This menu is not yours.',
         error: '❌ An error occurred while processing your request.',
+        prefixInvalid: '❌ Prefix must be 1-3 characters.',
         
         // Channel types
         textChannel: 'Text Channel',
@@ -117,6 +118,7 @@ const translations = {
         footer: 'ARCHITECT CG-223 • Configuration du Serveur',
         accessDenied: '❌ Ce menu ne vous appartient pas.',
         error: '❌ Une erreur est survenue lors du traitement de votre demande.',
+        prefixInvalid: '❌ Le préfixe doit avoir 1-3 caractères.',
         
         // Channel types
         textChannel: 'Canal Texte',
@@ -212,21 +214,21 @@ function createLanguageMenu(lang) {
         .setCustomId('settings_language')
         .setPlaceholder(t.selectLanguage)
         .addOptions([
-            { label: t.english, value: 'en', emoji: '🇬🇧', description: 'Set server language to English' },
-            { label: t.french, value: 'fr', emoji: '🇫🇷', description: 'Définir la langue du serveur sur Français' }
+            { label: t.english, value: 'en', emoji: '🇬🇧', description: lang === 'en' ? 'Set server language to English' : 'Définir la langue du serveur sur Anglais' },
+            { label: t.french, value: 'fr', emoji: '🇫🇷', description: lang === 'en' ? 'Set server language to French' : 'Définir la langue du serveur sur Français' }
         ]);
 }
 
 // ================= MAIN COMMAND =================
 module.exports = {
     name: 'settings',
-    aliases: ['config', 'setup', 'configuration', 'parametres', 'params'],
+    aliases: ['config', 'setup', 'configuration', 'parametres', 'params', 'paramètres'],
     description: '⚙️ Configure server settings like prefix, language, and channels.',
     category: 'SYSTEM',
     cooldown: 3000,
     userPermissions: ['Administrator'],
     usage: '.settings',
-    examples: ['.settings', '.config'],
+    examples: ['.settings', '.config', '.paramètres'],
 
     run: async (client, message, args, database, serverSettings) => {
         
@@ -237,7 +239,7 @@ module.exports = {
             return message.reply({ content: t.noPermission });
         }
         
-        // ================= LANGUAGE SETUP =================
+        // ================= LANGUAGE SETUP - Use server's language =================
         const lang = serverSettings?.language || 'en';
         const t = translations[lang];
         
@@ -343,9 +345,7 @@ module.exports = {
                                 
                                 if (newPrefix.length < 1 || newPrefix.length > 3) {
                                     const errorMsg = await m.reply({ 
-                                        content: lang === 'fr' 
-                                            ? '❌ Le préfixe doit avoir 1-3 caractères.' 
-                                            : '❌ Prefix must be 1-3 characters.'
+                                        content: t.prefixInvalid
                                     });
                                     setTimeout(() => errorMsg.delete().catch(() => {}), 5000);
                                     prefixCollector.stop();
@@ -378,7 +378,7 @@ module.exports = {
                             if (reason === 'timeout' && collected.size === 0) {
                                 const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
                                 const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
-                                await reply.edit({ embeds: [newEmbed], components: [newMenuRow });
+                                await reply.edit({ embeds: [newEmbed], components: [newMenuRow] });
                             }
                         });
                     }
