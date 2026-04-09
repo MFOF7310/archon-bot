@@ -1,4 +1,4 @@
-Const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 
 // --- UNIFIED CONFIGURATION (Matches games.js & rank.js) ---
 const AGENT_RANKS = [
@@ -43,30 +43,25 @@ function createProgressBar(percentage, length = 12) {
 
 module.exports = {
     name: 'profile',
-    aliases: ['p', 'id', 'userinfo', 'agent'], // REMOVED 'stats' and 'rank'
+    aliases: ['p', 'id', 'userinfo', 'agent', 'profil'],
     description: '📊 Complete Agent Dossier with unified neural statistics.',
     category: 'PROFILE',
     usage: '.profile [@user]',
     cooldown: 3000,
     examples: ['.profile', '.profile @user'],
 
-    run: async (client, message, args, db) => {
+    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
             const target = message.mentions.users.first() || message.author;
-            const version = client.version || '1.3.2';
+            const version = client.version || '1.6.0';
+            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
-            // --- BILINGUAL DETECTION ---
-            let lang = 'en';
-            const guildSettings = client.settings?.get(message.guild?.id);
-            if (guildSettings?.language) {
-                lang = guildSettings.language;
-            } else {
-                const frenchKeywords = ['fr', 'francais', 'français', 'french', 'profil'];
-                const content = message.content.toLowerCase();
-                if (frenchKeywords.some(word => content.includes(word)) || message.guild?.preferredLocale === 'fr') {
-                    lang = 'fr';
-                }
-            }
+            // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
+            const lang = client.detectLanguage 
+                ? client.detectLanguage(usedCommand, 'en')
+                : 'en';
 
             const t = {
                 fr: {
@@ -93,10 +88,13 @@ module.exports = {
                     totalWinnings: '🏆 Gains Totaux',
                     globalRank: '📈 Classement Global',
                     days: 'jours',
-                    footer: 'Communauté Eagle 🇲🇱 • Nœud Bamako',
+                    footer: 'EAGLE COMMUNITY 🇲🇱 • Nœud Bamako',
                     noData: (name) => `❌ **Agent ${name}** n'a aucune donnée enregistrée.`,
                     wealthProgress: 'Progression de Richesse',
-                    required: 'requis'
+                    required: 'requis',
+                    architectRecognition: '🏛️ RECONNAISSANCE ARCHITECTE',
+                    architectDesc: 'Le Créateur marche parmi nous. Le Système honore son Architecte.',
+                    neuralLinkError: '⚠️ **Erreur de Liaison Neurale:** Incohérence de base de données détectée.'
                 },
                 en: {
                     title: (name) => `📜 AGENT DOSSIER: ${name.toUpperCase()}`,
@@ -122,25 +120,32 @@ module.exports = {
                     totalWinnings: '🏆 Total Winnings',
                     globalRank: '📈 Global Rank',
                     days: 'days',
-                    footer: 'Eagle Community 🇲🇱 • Bamako Node',
+                    footer: 'EAGLE COMMUNITY 🇲🇱 • Bamako Node',
                     noData: (name) => `❌ **Agent ${name}** has no recorded data.`,
                     wealthProgress: 'Wealth Progress',
-                    required: 'required'
+                    required: 'required',
+                    architectRecognition: '🏛️ ARCHITECT RECOGNITION',
+                    architectDesc: 'The Creator walks among us. The System honors its Architect.',
+                    neuralLinkError: '⚠️ **Neural Link Error:** Database mismatch detected.'
                 }
             }[lang];
 
-            const userData = db.prepare(`
-                SELECT id, xp, credits, streak_days, total_messages, 
-                       games_played, games_won, total_winnings, gaming 
-                FROM users WHERE id = ?
-            `).get(target.id);
+            // 🔥 USE RAM-FIRST CACHE
+            let userData = client.getUserData 
+                ? client.getUserData(target.id) 
+                : db.prepare(`
+                    SELECT id, xp, credits, streak_days, total_messages, 
+                           games_played, games_won, total_winnings, gaming, level
+                    FROM users WHERE id = ?
+                `).get(target.id);
 
             if (!userData) {
                 const errorEmbed = new EmbedBuilder()
                     .setColor('#ED4245')
                     .setDescription(t.noData(target.username))
+                    .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
-                return message.reply({ embeds: [errorEmbed] });
+                return message.reply({ embeds: [errorEmbed] }).catch(() => {});
             }
 
             const xp = userData.xp || 0;
@@ -148,7 +153,7 @@ module.exports = {
             const streakDays = userData.streak_days || 0;
             const totalMessages = userData.total_messages || 0;
             
-            const level = calculateLevel(xp);
+            const level = userData.level || calculateLevel(xp);
             const agentRank = getAgentRank(level);
             const wealthTier = getWealthTier(credits);
             const nextWealthTier = getNextWealthTier(credits);
@@ -235,7 +240,7 @@ module.exports = {
                 embed.addFields({
                     name: `🏆 ${t.wealth}`,
                     value: `**MAXIMUM ${t.wealth.toUpperCase()} ACHIEVED!**\n└─ ${credits.toLocaleString()} 🪙`,
-                    inline: false
+                    inline:0
                 });
             }
             
@@ -272,25 +277,31 @@ module.exports = {
                 }
             )
             .setFooter({ 
-                text: `${t.footer} • v${version}`, 
-                iconURL: message.guild?.iconURL() || client.user.displayAvatarURL() 
+                text: `${guildName} • ${t.footer} • v${version}`, 
+                iconURL: guildIcon
             })
             .setTimestamp();
 
             const ARCHITECT_ID = process.env.OWNER_ID;
             if (target.id === ARCHITECT_ID) {
                 embed.addFields({
-                    name: '🏛️ ARCHITECT RECOGNITION',
-                    value: `The Creator walks among us. System honors its Architect.`,
+                    name: t.architectRecognition,
+                    value: t.architectDesc,
                     inline: false
                 });
             }
 
-            await message.reply({ embeds: [embed] });
+            await message.reply({ embeds: [embed] }).catch(() => {});
 
         } catch (error) {
-            console.error("PROFILE_ERROR:", error);
-            message.reply("⚠️ **Neural Link Error:** Database mismatch detected. Please contact the Architect.");
+            console.error("[PROFILE ERROR]:", error);
+            const lang = client.detectLanguage 
+                ? client.detectLanguage(usedCommand || 'profile', 'en')
+                : 'en';
+            const errorMsg = lang === 'fr' 
+                ? "⚠️ **Erreur de Liaison Neurale:** Incohérence de base de données détectée. Contactez l'Architecte."
+                : "⚠️ **Neural Link Error:** Database mismatch detected. Please contact the Architect.";
+            message.reply(errorMsg).catch(() => {});
         }
     }
 };
