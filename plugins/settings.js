@@ -239,8 +239,20 @@ module.exports = {
             return message.reply({ content: t.noPermission });
         }
         
-        // ================= LANGUAGE SETUP - Use server's language =================
-        const lang = serverSettings?.language || 'en';
+        // ================= SMART LANGUAGE DETECTION =================
+        const usedCommand = message.content.split(' ')[0].slice(1).toLowerCase();
+        
+        let lang = serverSettings?.language || 'en';
+        if (client.detectLanguage) {
+            lang = client.detectLanguage(usedCommand, lang);
+        } else {
+            // Fallback if detector not available
+            const frenchAliases = ['paramètres', 'params', 'configuration', 'config'];
+            if (frenchAliases.includes(usedCommand) || usedCommand.includes('è') || usedCommand.includes('é')) {
+                lang = 'fr';
+            }
+        }
+        
         const t = translations[lang];
         
         const db = database;
@@ -272,7 +284,7 @@ module.exports = {
         
         // ================= COLLECTOR =================
         const collector = reply.createMessageComponentCollector({ 
-            componentType: ComponentType.StringSelect, 
+            componentType: [ComponentType.StringSelect, ComponentType.Button], 
             time: 180000 
         });
         
@@ -292,7 +304,7 @@ module.exports = {
                 }
                 
                 // Handle main settings selection
-                if (i.customId === 'settings_select') {
+                if (i.isStringSelectMenu() && i.customId === 'settings_select') {
                     selectedSetting = i.values[0];
                     
                     if (selectedSetting === 'language') {
@@ -344,9 +356,7 @@ module.exports = {
                                 let newPrefix = m.content.trim();
                                 
                                 if (newPrefix.length < 1 || newPrefix.length > 3) {
-                                    const errorMsg = await m.reply({ 
-                                        content: t.prefixInvalid
-                                    });
+                                    const errorMsg = await m.reply({ content: t.prefixInvalid });
                                     setTimeout(() => errorMsg.delete().catch(() => {}), 5000);
                                     prefixCollector.stop();
                                     return;
@@ -361,7 +371,6 @@ module.exports = {
                                 await reply.edit({ embeds: [newEmbed], components: [newMenuRow] });
                                 await m.delete().catch(() => {});
                                 
-                                // Show success message
                                 const successMsg = await message.channel.send({
                                     content: `✅ ${t.updatedDesc(t.settingOptions.prefix, newPrefix)}`
                                 });
@@ -385,12 +394,11 @@ module.exports = {
                 }
                 
                 // Handle language selection
-                if (i.customId === 'settings_language') {
+                if (i.isStringSelectMenu() && i.customId === 'settings_language') {
                     const newLang = i.values[0];
                     updateSetting('language', newLang);
                     settings = getSettings();
                     
-                    // Use the new language for success message
                     const newT = translations[newLang];
                     
                     const successEmbed = new EmbedBuilder()
@@ -408,15 +416,24 @@ module.exports = {
                 }
                 
                 // Handle channel selection
-                if (i.customId === 'settings_channel') {
+                if (i.isStringSelectMenu() && i.customId === 'settings_channel') {
                     const channelId = i.values[0];
                     if (channelId === 'none') {
                         return i.reply({ content: '❌ ' + t.noChannels, ephemeral: true });
                     }
                     
                     const channel = message.guild.channels.cache.get(channelId);
+                    if (!channel) {
+                        return i.reply({ content: t.error, ephemeral: true });
+                    }
                     
-                    updateSetting(selectedSetting, channelId);
+                    const settingMap = { 'welcome': 'welcome', 'log': 'log', 'daily': 'daily' };
+                    const dbSetting = settingMap[selectedSetting];
+                    if (!dbSetting) {
+                        return i.reply({ content: t.error, ephemeral: true });
+                    }
+                    
+                    updateSetting(dbSetting, channelId);
                     settings = getSettings();
                     
                     const settingNames = {
@@ -428,7 +445,7 @@ module.exports = {
                     const successEmbed = new EmbedBuilder()
                         .setColor('#2ecc71')
                         .setTitle(t.updated)
-                        .setDescription(t.updatedDesc(settingNames[selectedSetting], `#${channel?.name || channelId}`))
+                        .setDescription(t.updatedDesc(settingNames[selectedSetting], `#${channel.name}`))
                         .setFooter({ text: t.footer });
                     
                     await i.reply({ embeds: [successEmbed], ephemeral: true });
@@ -440,8 +457,7 @@ module.exports = {
                 }
                 
                 // Handle back button
-                if (i.customId === 'settings_back') {
-                    // Stop any running prefix collector
+                if (i.isButton() && i.customId === 'settings_back') {
                     if (prefixCollector) {
                         prefixCollector.stop();
                         prefixCollector = null;
@@ -453,8 +469,7 @@ module.exports = {
                 }
                 
                 // Handle cancel button
-                if (i.customId === 'settings_cancel') {
-                    // Stop any running prefix collector
+                if (i.isButton() && i.customId === 'settings_cancel') {
                     if (prefixCollector) {
                         prefixCollector.stop();
                         prefixCollector = null;
@@ -466,8 +481,14 @@ module.exports = {
                 }
                 
                 // Handle reset button
-                if (i.customId === 'settings_reset') {
-                    updateSetting(selectedSetting, null);
+                if (i.isButton() && i.customId === 'settings_reset') {
+                    const settingMap = { 'welcome': 'welcome', 'log': 'log', 'daily': 'daily' };
+                    const dbSetting = settingMap[selectedSetting];
+                    if (!dbSetting) {
+                        return i.reply({ content: t.error, ephemeral: true });
+                    }
+                    
+                    updateSetting(dbSetting, null);
                     settings = getSettings();
                     
                     const settingNames = {
@@ -502,7 +523,6 @@ module.exports = {
         });
         
         collector.on('end', async () => {
-            // Stop prefix collector if running
             if (prefixCollector) {
                 prefixCollector.stop();
                 prefixCollector = null;
