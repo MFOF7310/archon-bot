@@ -59,6 +59,7 @@ client.version = getVersion();
 client.lydiaChannels = {};
 client.lydiaAgents = {};
 client.lastLydiaCall = {};
+client.userIntroductions = new Map();
 
 const PREFIX = process.env.PREFIX || ".";
 
@@ -68,13 +69,6 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 // ================= UNIVERSAL LANGUAGE DETECTION (PATTERN-BASED) =================
-/**
- * Universal language detection using linguistic patterns
- * Works for ANY French word without hardcoded lists!
- * 
- * @param {string} usedCommand - The exact command/alias the user typed
- * @returns {string} - 'fr' for French, 'en' for English (default)
- */
 function detectLanguage(usedCommand) {
     const cmd = usedCommand.toLowerCase().trim();
     
@@ -260,12 +254,12 @@ const requiredTables = {
     
     reminders: `CREATE TABLE IF NOT EXISTS reminders (
         id TEXT PRIMARY KEY, 
-        user_id TEXT, 
-        channel_id TEXT, 
-        message TEXT, 
-        created_at INTEGER, 
-        execute_at INTEGER, 
-        status TEXT DEFAULT 'pending'
+        user_id TEXT NOT NULL, 
+        channel_id TEXT NOT NULL, 
+        message TEXT NOT NULL, 
+        execute_at INTEGER NOT NULL, 
+        status TEXT DEFAULT 'pending',
+        created_at INTEGER DEFAULT (strftime('%s', 'now'))
     )`,
     
     warnings: `CREATE TABLE IF NOT EXISTS warnings (
@@ -445,6 +439,7 @@ client.pendingUserUpdates = new Map();
 client.userDataCache = new Map(); // Full user objects cached in memory
 client.batchWriteInterval = null;
 client.cacheJanitorInterval = null;
+client.reminderHeartbeatInterval = null;
 client.lastBatchWrite = Date.now();
 
 const WRITE_STRATEGY = {
@@ -541,8 +536,8 @@ async function flushUserUpdates() {
             const updateStmt = db.prepare(`
                 INSERT OR REPLACE INTO users (
                     id, username, xp, level, total_messages, last_xp_gain, 
-                    games_played, games_won, total_winnings, gaming, credits, streak_days
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    games_played, games_won, total_winnings, gaming, credits, streak_days, last_daily
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             
             db.transaction(() => {
@@ -560,7 +555,8 @@ async function flushUserUpdates() {
                         userData.total_winnings ?? 0,
                         userData.gaming || '{"game":"CODM","rank":"Unranked"}',
                         userData.credits ?? 0,
-                        userData.streak_days ?? 0
+                        userData.streak_days ?? 0,
+                        userData.last_daily ?? 0 // ✅ FIXED: Added last_daily parameter
                     );
                 }
             })();
@@ -617,6 +613,40 @@ function startBatchWriteInterval() {
             flushUserUpdates();
         }
     }, WRITE_STRATEGY.MAX_WAIT_MS);
+}
+
+// ================= 🔔 REMINDER HEARTBEAT =================
+function startReminderHeartbeat() {
+    if (client.reminderHeartbeatInterval) clearInterval(client.reminderHeartbeatInterval);
+    
+    client.reminderHeartbeatInterval = setInterval(async () => {
+        const now = Math.floor(Date.now() / 1000);
+        const dueReminders = db.prepare(`
+            SELECT id, user_id, channel_id, message 
+            FROM reminders 
+            WHERE execute_at <= ? AND status = 'pending'
+        `).all(now);
+        
+        for (const r of dueReminders) {
+            try {
+                const channel = await client.channels.fetch(r.channel_id).catch(() => null);
+                if (channel) {
+                    await channel.send(`<@${r.user_id}> ${r.message}`);
+                    console.log(`${green}[REMINDER]${reset} Sent to ${r.user_id} in ${r.channel_id}`);
+                }
+                db.prepare(`UPDATE reminders SET status = 'sent' WHERE id = ?`).run(r.id);
+            } catch (err) {
+                console.error(`${red}[REMINDER ERROR]${reset}`, err.message);
+                db.prepare(`UPDATE reminders SET status = 'failed' WHERE id = ?`).run(r.id);
+            }
+        }
+        
+        // Clean up old reminders (7+ days)
+        const weekAgo = now - (7 * 86400);
+        db.prepare(`DELETE FROM reminders WHERE execute_at < ? AND status != 'pending'`).run(weekAgo);
+    }, 30000); // Check every 30 seconds
+    
+    console.log(`${green}[REMINDER]${reset} Heartbeat started (30s interval)`);
 }
 
 // ================= CACHE JANITOR SYSTEM =================
@@ -743,6 +773,7 @@ function startCacheJanitor() {
 client.queueUserUpdate = queueUserUpdate;
 client.flushUserUpdates = flushUserUpdates;
 client.getUserData = getUserData;
+client.cacheUserData = cacheUserData;
 client.pruneUserCache = pruneUserCache;
 client.getCacheStats = getCacheStats;
 
@@ -847,6 +878,7 @@ client.once(Events.ClientReady, async () => {
     
     // Start background services
     startBatchWriteInterval();
+    startReminderHeartbeat();
     startCacheJanitor();
     
     const boxWidth = 64;
@@ -864,6 +896,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`${blue}${bold}${drawBoxLine(`${green}🔗 REPOSITORY`, 'github.com/MFOF7310')}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🏗️ ARCHITECT`, 'MOUSSA FOFANA')}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}💾 DB BATCH`, `${WRITE_STRATEGY.MAX_WAIT_MS/1000}s delay`)}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}🔔 REMINDERS`, `30s heartbeat`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🧹 CACHE TTL`, `${CACHE_CONFIG.MAX_AGE_MS/3600000}h`)}${reset}`);
     console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
 
@@ -881,6 +914,7 @@ client.once(Events.ClientReady, async () => {
                 .setDescription(
                     `System reboot complete. **${client.commands.size}** modules synced.\n\n` +
                     `**Database:** Batch writes (${WRITE_STRATEGY.MAX_WAIT_MS/1000}s delay)\n` +
+                    `**Reminders:** 30s heartbeat\n` +
                     `**Cache:** ${CACHE_CONFIG.MAX_AGE_MS/3600000}h TTL with auto-cleanup`
                 )
                 .setTimestamp()
@@ -889,7 +923,7 @@ client.once(Events.ClientReady, async () => {
     } catch (err) {}
 });
 
-// ================= OPTIMIZED MESSAGE PROCESSING =================
+// ================= 🔥 OPTIMIZED MESSAGE PROCESSING (WITH SPREAD FIX) =================
 client.on(Events.MessageCreate, async (message) => {
     if (!message || message.author?.bot || message.webhookId) return;
 
@@ -916,19 +950,14 @@ client.on(Events.MessageCreate, async (message) => {
         userData.total_messages = totalMsgs;
         userData.last_xp_gain = now;
 
-        // Queue for batched database write with FULL object
+        // 🔥 ARCHITECT FIX: Use spread operator to preserve EVERY field in cache!
         client.queueUserUpdate(userId, {
+            ...userData,  // ✅ Preserves: credits, streak_days, games_played, games_won, total_winnings, gaming, last_daily
             username: message.author.username,
             xp: newXP,
             level: newLevel,
             total_messages: totalMsgs,
             last_xp_gain: now,
-            credits: userData.credits,
-            games_played: userData.games_played,
-            games_won: userData.games_won,
-            total_winnings: userData.total_winnings,
-            gaming: userData.gaming,
-            streak_days: userData.streak_days
         });
 
         if (newLevel > (userData.level || 1)) {
@@ -1000,17 +1029,21 @@ client.on(Events.GuildMemberAdd, async (member) => {
     }
 });
 
-// ================= GRACEFUL SHUTDOWN =================
+// ================= 🔥 PILLAR 4: GRACEFUL SHUTDOWN =================
 async function gracefulShutdown(signal) {
-    console.log(`${yellow}[SHUTDOWN]${reset} Received ${signal}, cleaning up...`);
+    console.log(`\n${yellow}[SHUTDOWN]${reset} 🛑 ${signal} detected. Saving all pending neural data...`);
     
     // Stop background services
     if (client.cacheJanitorInterval) {
         clearInterval(client.cacheJanitorInterval);
         client.cacheJanitorInterval = null;
     }
+    if (client.reminderHeartbeatInterval) {
+        clearInterval(client.reminderHeartbeatInterval);
+        client.reminderHeartbeatInterval = null;
+    }
     
-    // Flush pending database writes
+    // Force one final sync to the DB
     if (client.pendingUserUpdates && client.pendingUserUpdates.size > 0) {
         console.log(`${cyan}[SHUTDOWN]${reset} Flushing ${client.pendingUserUpdates.size} pending updates...`);
         await flushUserUpdates();
@@ -1045,7 +1078,7 @@ async function gracefulShutdown(signal) {
         console.error(`${red}[SHUTDOWN]${reset} Database close error:`, err.message);
     }
     
-    console.log(`${green}[SHUTDOWN]${reset} Cleanup complete, exiting...`);
+    console.log(`${green}[SHUTDOWN]${reset} ✅ All neural data saved. Exiting...`);
     process.exit(0);
 }
 
