@@ -1,5 +1,10 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
+// ================= UNIFIED LEVEL CALCULATION =================
+function calculateLevel(xp) { 
+    return Math.floor(0.1 * Math.sqrt(xp)) + 1; 
+}
+
 // ================= BILINGUAL TRANSLATIONS =================
 const claimTranslations = {
     en: {
@@ -60,7 +65,7 @@ const claimTranslations = {
     }
 };
 
-// ================= RANK TITLES (For embed aesthetics only) =================
+// ================= RANK TITLES =================
 const AGENT_RANKS = [
     { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
     { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
@@ -107,10 +112,9 @@ module.exports = {
             const oneDay = 24 * 60 * 60 * 1000;
             
             // Get user data
-            let userData = db.prepare(`
-                SELECT last_daily, xp, credits, streak_days, level 
-                FROM users WHERE id = ?
-            `).get(userId);
+            let userData = client.getUserData 
+                ? client.getUserData(userId) 
+                : db.prepare(`SELECT last_daily, xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
             
             if (!userData) {
                 db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
@@ -158,14 +162,19 @@ module.exports = {
                         const dailyCmd = client.commands.get('daily');
                         if (dailyCmd) {
                             await dailyCmd.run(client, message, [], db, serverSettings, usedCommand);
-                            await i.reply({ content: t.dashboardOpened, ephemeral: true });
+                            // 🔥 FIXED: Check if already deferred
+                            if (i.deferred) {
+                                await i.followUp({ content: t.dashboardOpened, ephemeral: true });
+                            } else {
+                                await i.reply({ content: t.dashboardOpened, ephemeral: true });
+                            }
                         }
                     }
                 });
                 return;
             }
             
-            // Streak calculation (resets after 48h)
+            // Streak calculation
             let streak = 1;
             let streakBonusXP = 25;
             let streakBonusCredits = 10;
@@ -177,44 +186,40 @@ module.exports = {
                     streakBonusXP = Math.min(streak * 25, 250);
                     streakBonusCredits = Math.min(streak * 10, 100);
                 }
-                // If daysPassed > 1, streak resets to 1 (already default)
             }
             
             const totalXP = baseXP + streakBonusXP;
             const totalCredits = baseCredits + streakBonusCredits;
             
-            // 🔥 USE BATCH WRITE SYSTEM (if available) OR DIRECT DB
+            // 🔥 USE BATCH WRITE SYSTEM
+            const currentUserData = client.getUserData 
+                ? client.getUserData(userId) 
+                : db.prepare(`SELECT xp, credits FROM users WHERE id = ?`).get(userId);
+            
             const nowTimestamp = Date.now();
             
-            if (client.queueUserUpdate) {
-                // Optimized batch write
+            if (client.queueUserUpdate && currentUserData) {
                 client.queueUserUpdate(userId, {
+                    ...currentUserData,
                     username: userName,
-                    xp: (userData.xp || 0) + totalXP,
-                    credits: (userData.credits || 0) + totalCredits,
+                    xp: (currentUserData.xp || 0) + totalXP,
+                    credits: (currentUserData.credits || 0) + totalCredits,
                     streak_days: streak,
                     last_daily: nowTimestamp
                 });
             } else {
-                // Fallback direct DB write
-                db.prepare(`
-                    UPDATE users 
-                    SET xp = COALESCE(xp, 0) + ?,
-                        credits = COALESCE(credits, 0) + ?,
-                        streak_days = ?,
-                        last_daily = ?
-                    WHERE id = ?
-                `).run(totalXP, totalCredits, streak, nowTimestamp, userId);
+                db.prepare(`UPDATE users SET xp = COALESCE(xp, 0) + ?, credits = COALESCE(credits, 0) + ?, streak_days = ?, last_daily = ? WHERE id = ?`)
+                    .run(totalXP, totalCredits, streak, nowTimestamp, userId);
             }
             
-            // Get updated stats (cache-aware)
+            // Get updated stats
             const updatedUser = client.getUserData 
                 ? client.getUserData(userId) 
                 : db.prepare(`SELECT xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
             
             const currentXP = updatedUser.xp;
             const currentCredits = updatedUser.credits;
-            const currentLevel = updatedUser.level;
+            const currentLevel = updatedUser.level || calculateLevel(currentXP);
             
             // Success embed
             const successEmbed = new EmbedBuilder()
@@ -254,30 +259,38 @@ module.exports = {
             
             const reply = await message.reply({ embeds: [successEmbed], components: [actionRow] });
             
-            // Button collector
+            // 🔥 FIXED: Button collector with proper reply/followUp handling
             const buttonCollector = reply.createMessageComponentCollector({ time: 60000 });
+            
             buttonCollector.on('collect', async (i) => {
                 if (i.user.id !== userId) {
                     return i.reply({ content: t.accessDenied, ephemeral: true });
                 }
                 
+                const alreadyDeferred = i.deferred;
+                
                 if (i.customId === 'view_daily') {
                     const dailyCmd = client.commands.get('daily');
                     if (dailyCmd) {
                         await dailyCmd.run(client, message, [], db, serverSettings, usedCommand);
-                        await i.reply({ content: t.dashboardOpened, ephemeral: true });
+                        if (alreadyDeferred) {
+                            await i.followUp({ content: t.dashboardOpened, ephemeral: true });
+                        } else {
+                            await i.reply({ content: t.dashboardOpened, ephemeral: true });
+                        }
                     }
                 } else if (i.customId === 'view_profile') {
                     const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                     if (rankCmd) {
                         await rankCmd.run(client, message, [], db, serverSettings, usedCommand);
-                        await i.reply({ content: t.profileOpened, ephemeral: true });
+                        if (alreadyDeferred) {
+                            await i.followUp({ content: t.profileOpened, ephemeral: true });
+                        } else {
+                            await i.reply({ content: t.profileOpened, ephemeral: true });
+                        }
                     }
                 }
             });
-            
-            // 🎯 LEVEL UP IS NOW HANDLED BY MAIN FILE - no manual trigger needed!
-            // The main index.js will automatically detect XP changes and send level up messages.
             
         } catch (error) {
             console.error(`[CLAIM] FATAL ERROR:`, error);
