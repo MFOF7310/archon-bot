@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType } = require('discord.js');
+Const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType } = require('discord.js');
 
 // ================= UNIFIED LEVEL CALCULATION =================
 function calculateLevel(xp) {
@@ -16,6 +16,28 @@ const AGENT_RANKS = [
 
 function getRank(level) {
     return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
+}
+
+// ================= ANSWER SHUFFLER (No more all 'A' answers! 哈哈哈) =================
+function shuffleQuestionAnswers(question) {
+    const answerPairs = question.a.map((answer, index) => ({
+        text: answer,
+        isCorrect: index === question.correct
+    }));
+    
+    for (let i = answerPairs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [answerPairs[i], answerPairs[j]] = [answerPairs[j], answerPairs[i]];
+    }
+    
+    const shuffledAnswers = answerPairs.map(pair => pair.text);
+    const newCorrectIndex = answerPairs.findIndex(pair => pair.isCorrect);
+    
+    return {
+        ...question,
+        a: shuffledAnswers,
+        correct: newCorrectIndex
+    };
 }
 
 // ================= TRIVIA QUESTION DATABASE =================
@@ -100,7 +122,6 @@ const TRIVIA_QUESTIONS = {
         en: [
             { q: "What is the capital of France?", a: ["Paris", "Lyon", "Marseille", "Bordeaux"], correct: 0, fact: "Paris is known as the City of Light." },
             { q: "Which is the largest ocean on Earth?", a: ["Pacific Ocean", "Atlantic Ocean", "Indian Ocean", "Arctic Ocean"], correct: 0, fact: "The Pacific Ocean covers about 63 million square miles." },
-            { q: "What is the capital of Mali?", a: ["Bamako", "Ségou", "Mopti", "Kayes"], correct: 0, fact: "Bamako is the economic and cultural center of Mali." },
             { q: "Which country has the most natural lakes?", a: ["Canada", "USA", "Russia", "Finland"], correct: 0, fact: "Canada has over 2 million lakes covering about 9% of its surface." },
             { q: "What is the longest river in the world?", a: ["Nile", "Amazon", "Yangtze", "Mississippi"], correct: 0, fact: "The Nile River is approximately 6,650 km (4,132 miles) long." },
             { q: "Which continent is the largest?", a: ["Asia", "Africa", "North America", "Europe"], correct: 0, fact: "Asia covers about 30% of Earth's total land area." }
@@ -108,7 +129,6 @@ const TRIVIA_QUESTIONS = {
         fr: [
             { q: "Quelle est la capitale de la France ?", a: ["Paris", "Lyon", "Marseille", "Bordeaux"], correct: 0, fact: "Paris est connue comme la Ville Lumière." },
             { q: "Quel est le plus grand océan sur Terre ?", a: ["Océan Pacifique", "Océan Atlantique", "Océan Indien", "Océan Arctique"], correct: 0, fact: "L'océan Pacifique couvre environ 165 millions de km²." },
-            { q: "Quelle est la capitale du Mali ?", a: ["Bamako", "Ségou", "Mopti", "Kayes"], correct: 0, fact: "Bamako est le centre économique et culturel du Mali." },
             { q: "Quel pays a le plus de lacs naturels ?", a: ["Canada", "États-Unis", "Russie", "Finlande"], correct: 0, fact: "Le Canada compte plus de 2 millions de lacs." },
             { q: "Quel est le plus long fleuve du monde ?", a: ["Nil", "Amazone", "Yangtsé", "Mississippi"], correct: 0, fact: "Le Nil mesure environ 6 650 km de long." },
             { q: "Quel continent est le plus grand ?", a: ["Asie", "Afrique", "Amérique du Nord", "Europe"], correct: 0, fact: "L'Asie couvre environ 30% de la surface terrestre." }
@@ -117,17 +137,36 @@ const TRIVIA_QUESTIONS = {
     general: {
         en: [
             { q: "How many days are in a leap year?", a: ["366", "365", "364", "367"], correct: 0, fact: "Leap years occur every 4 years to account for Earth's orbit." },
-            { q: "What is the capital of Mali?", a: ["Bamako", "Ségou", "Mopti", "Kayes"], correct: 0, fact: "Bamako is located on the Niger River." },
             { q: "Who created this bot?", a: ["Moussa Fofana", "OpenAI", "Google", "Microsoft"], correct: 0, fact: "Moussa Fofana (MFOF7310) is the Architect of this system." },
-            { q: "How many continents are there?", a: ["7", "6", "5", "8"], correct: 0, fact: "The seven continents are: Asia, Africa, North America, South America, Antarctica, Europe, and Australia." },
-            { q: "What is the currency of Mali?", a: ["CFA Franc", "Dollar", "Euro", "Pound"], correct: 0, fact: "Mali uses the West African CFA franc (XOF)." }
+            { q: "How many continents are there?", a: ["7", "6", "5", "8"], correct: 0, fact: "The seven continents are: Asia, Africa, North America, South America, Antarctica, Europe, and Australia." }
         ],
         fr: [
             { q: "Combien de jours y a-t-il dans une année bissextile ?", a: ["366", "365", "364", "367"], correct: 0, fact: "Les années bissextiles se produisent tous les 4 ans." },
-            { q: "Quelle est la capitale du Mali ?", a: ["Bamako", "Ségou", "Mopti", "Kayes"], correct: 0, fact: "Bamako est située sur le fleuve Niger." },
             { q: "Qui a créé ce bot ?", a: ["Moussa Fofana", "OpenAI", "Google", "Microsoft"], correct: 0, fact: "Moussa Fofana (MFOF7310) est l'Architecte de ce système." },
-            { q: "Combien y a-t-il de continents ?", a: ["7", "6", "5", "8"], correct: 0, fact: "Les sept continents sont : Asie, Afrique, Amérique du Nord, Amérique du Sud, Antarctique, Europe et Australie." },
-            { q: "Quelle est la monnaie du Mali ?", a: ["Franc CFA", "Dollar", "Euro", "Livre"], correct: 0, fact: "Le Mali utilise le franc CFA d'Afrique de l'Ouest (XOF)." }
+            { q: "Combien y a-t-il de continents ?", a: ["7", "6", "5", "8"], correct: 0, fact: "Les sept continents sont : Asie, Afrique, Amérique du Nord, Amérique du Sud, Antarctique, Europe et Australie." }
+        ]
+    },
+    // 🆕🇲🇱 MALIAN PRIDE CATEGORY - 🇲🇱🆕
+    mali: {
+        en: [
+            { q: "Which great river flows through Bamako?", a: ["Niger River", "Nile River", "Congo River", "Senegal River"], correct: 0, fact: "The Niger River is the lifeblood of Bamako and flows through much of West Africa." },
+            { q: "What is the official currency of Mali?", a: ["CFA Franc", "Malian Dollar", "Euro", "Pound Sterling"], correct: 0, fact: "Mali uses the West African CFA franc (XOF), shared with 7 other West African countries." },
+            { q: "Which Malian city is famous for its ancient libraries and '333 Saints'?", a: ["Timbuktu", "Bamako", "Mopti", "Ségou"], correct: 0, fact: "Timbuktu (Tombouctou) was a major intellectual center with manuscripts dating back to the 13th century." },
+            { q: "What is the capital city of Mali?", a: ["Bamako", "Timbuktu", "Mopti", "Ségou"], correct: 0, fact: "Bamako is located on the banks of the Niger River and is Mali's largest city." },
+            { q: "Which famous Malian musician is known as the 'Bluesman of Africa'?", a: ["Ali Farka Touré", "Salif Keita", "Toumani Diabaté", "Oumou Sangaré"], correct: 0, fact: "Ali Farka Touré blended traditional Malian music with American blues, winning multiple Grammy Awards." },
+            { q: "What is the largest ethnic group in Mali?", a: ["Bambara", "Fulani", "Tuareg", "Songhai"], correct: 0, fact: "The Bambara (Bamana) make up about 34% of Mali's population." },
+            { q: "Which ancient empire was centered in Mali and founded by Sundiata Keita?", a: ["Mali Empire", "Ghana Empire", "Songhai Empire", "Bamana Empire"], correct: 0, fact: "The Mali Empire (1235-1670) was one of the largest and wealthiest empires in African history." },
+            { q: "What is the name of the famous mosque in Djenné, Mali?", a: ["Great Mosque of Djenné", "Djingareyber Mosque", "Sankore Mosque", "Sidi Yahya Mosque"], correct: 0, fact: "The Great Mosque of Djenné is the largest mud-brick building in the world and a UNESCO World Heritage site." }
+        ],
+        fr: [
+            { q: "Quel grand fleuve traverse Bamako ?", a: ["Fleuve Niger", "Fleuve Nil", "Fleuve Congo", "Fleuve Sénégal"], correct: 0, fact: "Le fleuve Niger est l'artère vitale de Bamako et traverse une grande partie de l'Afrique de l'Ouest." },
+            { q: "Quelle est la monnaie officielle du Mali ?", a: ["Franc CFA", "Dollar Malien", "Euro", "Livre Sterling"], correct: 0, fact: "Le Mali utilise le franc CFA d'Afrique de l'Ouest (XOF), partagé avec 7 autres pays d'Afrique de l'Ouest." },
+            { q: "Quelle ville malienne est célèbre pour ses bibliothèques anciennes et ses '333 Saints' ?", a: ["Tombouctou", "Bamako", "Mopti", "Ségou"], correct: 0, fact: "Tombouctou était un centre intellectuel majeur avec des manuscrits datant du 13ème siècle." },
+            { q: "Quelle est la capitale du Mali ?", a: ["Bamako", "Tombouctou", "Mopti", "Ségou"], correct: 0, fact: "Bamako est située sur les rives du fleuve Niger et est la plus grande ville du Mali." },
+            { q: "Quel célèbre musicien malien est connu comme le 'Bluesman de l'Afrique' ?", a: ["Ali Farka Touré", "Salif Keita", "Toumani Diabaté", "Oumou Sangaré"], correct: 0, fact: "Ali Farka Touré a mélangé la musique traditionnelle malienne avec le blues américain, remportant plusieurs Grammy Awards." },
+            { q: "Quel est le plus grand groupe ethnique du Mali ?", a: ["Bambara", "Peul", "Touareg", "Songhaï"], correct: 0, fact: "Les Bambaras (Bamanan) représentent environ 34% de la population malienne." },
+            { q: "Quel ancien empire était centré au Mali et fondé par Soundiata Keïta ?", a: ["Empire du Mali", "Empire du Ghana", "Empire Songhaï", "Empire Bamana"], correct: 0, fact: "L'Empire du Mali (1235-1670) fut l'un des plus grands et des plus riches empires de l'histoire africaine." },
+            { q: "Quel est le nom de la célèbre mosquée de Djenné, au Mali ?", a: ["Grande Mosquée de Djenné", "Mosquée Djingareyber", "Mosquée Sankoré", "Mosquée Sidi Yahya"], correct: 0, fact: "La Grande Mosquée de Djenné est le plus grand bâtiment en terre crue au monde et un site du patrimoine mondial de l'UNESCO." }
         ]
     }
 };
@@ -139,140 +178,65 @@ const CATEGORIES = {
     gaming: { emoji: '🎮', color: '#9b59b6', name: { en: 'Gaming', fr: 'Jeux Vidéo' } },
     tech: { emoji: '💻', color: '#3498db', name: { en: 'Technology', fr: 'Technologie' } },
     geography: { emoji: '🌍', color: '#1abc9c', name: { en: 'Geography', fr: 'Géographie' } },
-    general: { emoji: '🧠', color: '#f1c40f', name: { en: 'General', fr: 'Général' } }
+    general: { emoji: '🧠', color: '#f1c40f', name: { en: 'General', fr: 'Général' } },
+    mali: { emoji: '🇲🇱', color: '#FEE75C', name: { en: 'Malian Pride', fr: 'Fierté Malienne' } }
 };
 
-// ================= DIFFICULTY CONFIGURATION =================
+// ================= DIFFICULTY CONFIGURATION (BALANCED TIMERS) =================
 const DIFFICULTIES = {
     easy: { 
-        emoji: '🟢', 
-        color: '#2ecc71',
-        name: { en: 'Easy', fr: 'Facile' },
-        questions: 5,
-        baseReward: 50,
-        timeLimit: 20,
-        bet: 50
+        emoji: '🟢', color: '#2ecc71', name: { en: 'Easy', fr: 'Facile' },
+        questions: 5, baseReward: 50, timeLimit: 25, bet: 50
     },
     medium: { 
-        emoji: '🟡', 
-        color: '#f1c40f',
-        name: { en: 'Medium', fr: 'Moyen' },
-        questions: 7,
-        baseReward: 100,
-        timeLimit: 15,
-        bet: 100
+        emoji: '🟡', color: '#f1c40f', name: { en: 'Medium', fr: 'Moyen' },
+        questions: 7, baseReward: 100, timeLimit: 30, bet: 100
     },
     hard: { 
-        emoji: '🔴', 
-        color: '#e74c3c',
-        name: { en: 'Hard', fr: 'Difficile' },
-        questions: 10,
-        baseReward: 200,
-        timeLimit: 10,
-        bet: 200
+        emoji: '🔴', color: '#e74c3c', name: { en: 'Hard', fr: 'Difficile' },
+        questions: 10, baseReward: 200, timeLimit: 35, bet: 200
     },
     expert: { 
-        emoji: '👑', 
-        color: '#8e44ad',
-        name: { en: 'Expert', fr: 'Expert' },
-        questions: 15,
-        baseReward: 500,
-        timeLimit: 8,
-        bet: 500
+        emoji: '👑', color: '#8e44ad', name: { en: 'Expert', fr: 'Expert' },
+        questions: 15, baseReward: 500, timeLimit: 40, bet: 500
     }
 };
 
 // ================= BILINGUAL TRANSLATIONS =================
 const texts = {
     en: {
-        title: '🧠 NEURAL TRIVIA',
-        selectCategory: 'Select a Category',
-        selectDifficulty: 'Select Difficulty',
-        category: 'Category',
-        difficulty: 'Difficulty',
-        questions: 'Questions',
-        timePerQuestion: 'Time per question',
-        bet: 'Bet',
-        potentialReward: 'Potential Reward',
-        start: 'Start Quiz',
-        cancel: 'Cancel',
-        back: 'Back',
-        question: 'Question',
-        of: 'of',
-        timeLeft: 'Time Left',
-        correct: '✅ CORRECT!',
-        incorrect: '❌ INCORRECT!',
-        timeout: '⏰ TIME\'S UP!',
-        answer: 'Answer',
-        fact: 'Did you know?',
-        streak: 'Streak',
-        correctAnswers: 'Correct',
-        totalQuestions: 'Total',
-        accuracy: 'Accuracy',
-        reward: 'Reward',
-        baseReward: 'Base',
-        streakBonus: 'Streak Bonus',
-        total: 'Total',
-        xpGained: 'XP Gained',
-        creditsGained: 'Credits Gained',
-        newRank: 'New Rank',
-        playAgain: 'Play Again',
-        mainMenu: 'Main Menu',
-        insufficientCredits: '❌ **Insufficient Credits!** You need {bet} 🪙 to play.',
-        balance: 'Balance',
-        loading: 'Loading neural database...',
-        gameOver: 'Quiz Complete!',
-        perfect: '🏆 PERFECT SCORE!',
-        almost: 'Great effort!',
-        good: 'Well done!',
-        tryAgain: 'Try again!',
-        accessDenied: '❌ This menu is not yours.',
-        progress: 'Progress'
+        title: '🧠 NEURAL TRIVIA', selectCategory: 'Select a Category', selectDifficulty: 'Select Difficulty',
+        category: 'Category', difficulty: 'Difficulty', questions: 'Questions', timePerQuestion: 'Time per question',
+        bet: 'Bet', potentialReward: 'Potential Reward', start: 'Start Quiz', cancel: 'Cancel', back: 'Back',
+        question: 'Question', of: 'of', timeLeft: 'Time Left', correct: '✅ CORRECT!', incorrect: '❌ INCORRECT!',
+        timeout: '⏰ TIME\'S UP!', answer: 'Answer', fact: 'Did you know?', streak: 'Streak',
+        correctAnswers: 'Correct', totalQuestions: 'Total', accuracy: 'Accuracy', reward: 'Reward',
+        baseReward: 'Base', streakBonus: 'Streak Bonus', total: 'Total', xpGained: 'XP Gained',
+        creditsGained: 'Credits Gained', newRank: 'New Rank', playAgain: 'Play Again', mainMenu: 'Main Menu',
+        insufficientCredits: '❌ **Insufficient Credits!** You need {bet} 🪙 to play.', balance: 'Balance',
+        loading: 'Loading neural database...', gameOver: 'Quiz Complete!', perfect: '🏆 PERFECT SCORE!',
+        almost: 'Great effort!', good: 'Well done!', tryAgain: 'Try again!', accessDenied: '❌ This menu is not yours.',
+        progress: 'Progress', maliDesc: 'History, culture, and Malian pride', 
+        scienceDesc: 'Physics, chemistry, biology...', historyDesc: 'Historical events and figures',
+        gamingDesc: 'Video games, CODM, esports...', techDesc: 'Programming, hardware, internet',
+        geographyDesc: 'Countries, capitals, geography', generalDesc: 'Mixed general knowledge'
     },
     fr: {
-        title: '🧠 TRIVIA NEURAL',
-        selectCategory: 'Choisissez une Catégorie',
-        selectDifficulty: 'Choisissez la Difficulté',
-        category: 'Catégorie',
-        difficulty: 'Difficulté',
-        questions: 'Questions',
-        timePerQuestion: 'Temps par question',
-        bet: 'Mise',
-        potentialReward: 'Récompense Potentielle',
-        start: 'Commencer',
-        cancel: 'Annuler',
-        back: 'Retour',
-        question: 'Question',
-        of: 'sur',
-        timeLeft: 'Temps Restant',
-        correct: '✅ CORRECT !',
-        incorrect: '❌ INCORRECT !',
-        timeout: '⏰ TEMPS ÉCOULÉ !',
-        answer: 'Réponse',
-        fact: 'Le saviez-vous ?',
-        streak: 'Série',
-        correctAnswers: 'Correct',
-        totalQuestions: 'Total',
-        accuracy: 'Précision',
-        reward: 'Récompense',
-        baseReward: 'Base',
-        streakBonus: 'Bonus de Série',
-        total: 'Total',
-        xpGained: 'XP Gagnés',
-        creditsGained: 'Crédits Gagnés',
-        newRank: 'Nouveau Rang',
-        playAgain: 'Rejouer',
-        mainMenu: 'Menu Principal',
-        insufficientCredits: '❌ **Crédits Insuffisants !** Vous avez besoin de {bet} 🪙 pour jouer.',
-        balance: 'Solde',
-        loading: 'Chargement de la base neurale...',
-        gameOver: 'Quiz Terminé !',
-        perfect: '🏆 SCORE PARFAIT !',
-        almost: 'Excellent effort !',
-        good: 'Bien joué !',
-        tryAgain: 'Réessayez !',
-        accessDenied: '❌ Ce menu ne vous appartient pas.',
-        progress: 'Progression'
+        title: '🧠 TRIVIA NEURAL', selectCategory: 'Choisissez une Catégorie', selectDifficulty: 'Choisissez la Difficulté',
+        category: 'Catégorie', difficulty: 'Difficulté', questions: 'Questions', timePerQuestion: 'Temps par question',
+        bet: 'Mise', potentialReward: 'Récompense Potentielle', start: 'Commencer', cancel: 'Annuler', back: 'Retour',
+        question: 'Question', of: 'sur', timeLeft: 'Temps Restant', correct: '✅ CORRECT !', incorrect: '❌ INCORRECT !',
+        timeout: '⏰ TEMPS ÉCOULÉ !', answer: 'Réponse', fact: 'Le saviez-vous ?', streak: 'Série',
+        correctAnswers: 'Correct', totalQuestions: 'Total', accuracy: 'Précision', reward: 'Récompense',
+        baseReward: 'Base', streakBonus: 'Bonus de Série', total: 'Total', xpGained: 'XP Gagnés',
+        creditsGained: 'Crédits Gagnés', newRank: 'Nouveau Rang', playAgain: 'Rejouer', mainMenu: 'Menu Principal',
+        insufficientCredits: '❌ **Crédits Insuffisants !** Vous avez besoin de {bet} 🪙 pour jouer.', balance: 'Solde',
+        loading: 'Chargement de la base neurale...', gameOver: 'Quiz Terminé !', perfect: '🏆 SCORE PARFAIT !',
+        almost: 'Excellent effort !', good: 'Bien joué !', tryAgain: 'Réessayez !', accessDenied: '❌ Ce menu ne vous appartient pas.',
+        progress: 'Progression', maliDesc: 'Histoire, culture et fierté malienne',
+        scienceDesc: 'Physique, chimie, biologie...', historyDesc: 'Événements et personnages historiques',
+        gamingDesc: 'Jeux vidéo, CODM, esports...', techDesc: 'Programmation, hardware, internet',
+        geographyDesc: 'Pays, capitales, géographie', generalDesc: 'Culture générale mélangée'
     }
 };
 
@@ -280,7 +244,8 @@ const texts = {
 function getRandomQuestions(category, difficulty, lang, count) {
     const questions = TRIVIA_QUESTIONS[category]?.[lang] || TRIVIA_QUESTIONS.general[lang];
     const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(count, questions.length));
+    const selected = shuffled.slice(0, Math.min(count, questions.length));
+    return selected.map(q => shuffleQuestionAnswers(q));
 }
 
 function createProgressBar(percentage, length = 15) {
@@ -289,7 +254,7 @@ function createProgressBar(percentage, length = 15) {
     return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty));
 }
 
-function checkAndAnnounceLevelUp(client, oldXp, newXp, userId, username, channel, lang, guildName) {
+function checkAndAnnounceLevelUp(client, oldXp, newXp, userId, username, channel, lang, guildName, guildIcon) {
     const oldLevel = calculateLevel(oldXp);
     const newLevel = calculateLevel(newXp);
     if (newLevel > oldLevel) {
@@ -304,7 +269,7 @@ function checkAndAnnounceLevelUp(client, oldXp, newXp, userId, username, channel
                 { name: '📊 PROGRESSION', value: `${lang === 'fr' ? 'Niveau' : 'Level'} ${oldLevel} → ${newLevel}`, inline: true },
                 { name: '🎯 RANG', value: `${rank.emoji} ${rank.title[lang]}`, inline: true }
             )
-            .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}` })
+            .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         channel.send({ embeds: [levelUpEmbed] });
         return true;
@@ -322,12 +287,13 @@ module.exports = {
     cooldown: 3000,
     examples: ['.trivia'],
 
-    // ✅ FIXED: Added serverSettings parameter
-    run: async (client, message, args, database, serverSettings) => {
+    run: async (client, message, args, database, serverSettings, usedCommand) => {
         const db = database;
         
-        // ✅ FIXED: Use server language
-        const lang = serverSettings?.language || 'en';
+        const lang = client.detectLanguage 
+            ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
+            : (serverSettings?.language || 'en');
+            
         const t = texts[lang];
         const version = client.version || '1.5.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -337,7 +303,6 @@ module.exports = {
         const userName = message.author.username;
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
         
-        // --- GET USER DATA ---
         let userData = db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(userId);
         if (!userData) {
             db.prepare("INSERT INTO users (id, username, xp, credits, level) VALUES (?, ?, 0, 0, 1)").run(userId, userName);
@@ -351,19 +316,19 @@ module.exports = {
         let selectedCategory = null;
         let selectedDifficulty = null;
         
-        // ================= CATEGORY SELECTION MENU =================
         const categoryEmbed = new EmbedBuilder()
             .setColor('#00fbff')
             .setAuthor({ name: `${t.title} • ${lang === 'fr' ? 'SÉLECTION' : 'SELECTION'}`, iconURL: client.user.displayAvatarURL() })
             .setTitle(lang === 'fr' ? '═ CHOISISSEZ UNE CATÉGORIE ═' : '═ SELECT A CATEGORY ═')
             .setDescription(lang === 'fr' ? 'Sélectionnez une catégorie pour commencer le quiz.' : 'Select a category to begin the quiz.')
             .addFields(
-                { name: `🔬 ${CATEGORIES.science.name[lang]}`, value: `${lang === 'fr' ? 'Physique, chimie, biologie...' : 'Physics, chemistry, biology...'}`, inline: true },
-                { name: `📜 ${CATEGORIES.history.name[lang]}`, value: `${lang === 'fr' ? 'Événements et personnages historiques' : 'Historical events and figures'}`, inline: true },
-                { name: `🎮 ${CATEGORIES.gaming.name[lang]}`, value: `${lang === 'fr' ? 'Jeux vidéo, CODM, esports...' : 'Video games, CODM, esports...'}`, inline: true },
-                { name: `💻 ${CATEGORIES.tech.name[lang]}`, value: `${lang === 'fr' ? 'Programmation, hardware, internet' : 'Programming, hardware, internet'}`, inline: true },
-                { name: `🌍 ${CATEGORIES.geography.name[lang]}`, value: `${lang === 'fr' ? 'Pays, capitales, géographie' : 'Countries, capitals, geography'}`, inline: true },
-                { name: `🧠 ${CATEGORIES.general.name[lang]}`, value: `${lang === 'fr' ? 'Culture générale mélangée' : 'Mixed general knowledge'}`, inline: true }
+                { name: `🔬 ${CATEGORIES.science.name[lang]}`, value: t.scienceDesc, inline: true },
+                { name: `📜 ${CATEGORIES.history.name[lang]}`, value: t.historyDesc, inline: true },
+                { name: `🎮 ${CATEGORIES.gaming.name[lang]}`, value: t.gamingDesc, inline: true },
+                { name: `💻 ${CATEGORIES.tech.name[lang]}`, value: t.techDesc, inline: true },
+                { name: `🌍 ${CATEGORIES.geography.name[lang]}`, value: t.geographyDesc, inline: true },
+                { name: `🧠 ${CATEGORIES.general.name[lang]}`, value: t.generalDesc, inline: true },
+                { name: `🇲🇱 ${CATEGORIES.mali.name[lang]}`, value: t.maliDesc, inline: true }
             )
             .addFields({
                 name: `💰 ${t.balance}`,
@@ -391,13 +356,10 @@ module.exports = {
         
         const categoryMsg = await message.reply({ embeds: [categoryEmbed], components: [categoryRow, cancelRow] });
         
-        // ================= CATEGORY COLLECTOR =================
         const categoryCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
         
         categoryCollector.on('collect', async (i) => {
-            if (i.user.id !== userId) {
-                return i.reply({ content: t.accessDenied, ephemeral: true });
-            }
+            if (i.user.id !== userId) return i.reply({ content: t.accessDenied, ephemeral: true });
             
             if (i.customId === 'trivia_cancel') {
                 await i.update({ embeds: [categoryEmbed.setColor('#ED4245').setFooter({ text: `${guildName} • ${lang === 'fr' ? '❌ Quiz annulé' : '❌ Quiz cancelled'} • v${version}`, iconURL: guildIcon })], components: [] });
@@ -409,7 +371,6 @@ module.exports = {
                 await i.deferUpdate();
                 categoryCollector.stop();
                 
-                // ================= DIFFICULTY SELECTION =================
                 const diffEmbed = new EmbedBuilder()
                     .setColor(CATEGORIES[selectedCategory].color)
                     .setAuthor({ name: `${t.title} • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]}`, iconURL: client.user.displayAvatarURL() })
@@ -421,11 +382,7 @@ module.exports = {
                         { name: `🔴 ${DIFFICULTIES.hard.name[lang]}`, value: `${DIFFICULTIES.hard.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.hard.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.hard.bet} 🪙`, inline: false },
                         { name: `👑 ${DIFFICULTIES.expert.name[lang]}`, value: `${DIFFICULTIES.expert.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.expert.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.expert.bet} 🪙`, inline: false }
                     )
-                    .addFields({
-                        name: `💰 ${t.balance}`,
-                        value: `\`${credits.toLocaleString()} 🪙\``,
-                        inline: false
-                    })
+                    .addFields({ name: `💰 ${t.balance}`, value: `\`${credits.toLocaleString()} 🪙\``, inline: false })
                     .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
@@ -448,13 +405,10 @@ module.exports = {
                 
                 await categoryMsg.edit({ embeds: [diffEmbed], components: [diffRow, backRow] });
                 
-                // ================= DIFFICULTY COLLECTOR =================
                 const diffCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
                 
                 diffCollector.on('collect', async (j) => {
-                    if (j.user.id !== userId) {
-                        return j.reply({ content: t.accessDenied, ephemeral: true });
-                    }
+                    if (j.user.id !== userId) return j.reply({ content: t.accessDenied, ephemeral: true });
                     
                     if (j.customId === 'trivia_cancel') {
                         await j.update({ embeds: [diffEmbed.setColor('#ED4245').setFooter({ text: `${guildName} • ${lang === 'fr' ? '❌ Quiz annulé' : '❌ Quiz cancelled'} • v${version}`, iconURL: guildIcon })], components: [] });
@@ -471,19 +425,15 @@ module.exports = {
                         selectedDifficulty = j.values[0];
                         const diff = DIFFICULTIES[selectedDifficulty];
                         
-                        // Check credits
                         if (credits < diff.bet) {
-                            await j.reply({ content: t.insufficientCredits.replace('{bet}', diff.bet), ephemeral: true });
-                            return;
+                            return j.reply({ content: t.insufficientCredits.replace('{bet}', diff.bet), ephemeral: true });
                         }
                         
                         await j.deferUpdate();
                         diffCollector.stop();
                         
-                        // Deduct bet
                         db.prepare("UPDATE users SET credits = credits - ? WHERE id = ?").run(diff.bet, userId);
                         
-                        // ================= START QUIZ =================
                         const questions = getRandomQuestions(selectedCategory, selectedDifficulty, lang, diff.questions);
                         
                         if (questions.length === 0) {
@@ -494,12 +444,8 @@ module.exports = {
                             return categoryMsg.edit({ embeds: [errorEmbed], components: [] });
                         }
                         
-                        let currentQuestion = 0;
-                        let correctAnswers = 0;
-                        let streak = 0;
-                        let maxStreak = 0;
+                        let currentQuestion = 0, correctAnswers = 0, streak = 0, maxStreak = 0;
                         
-                        // ================= QUIZ LOOP =================
                         for (let qIndex = 0; qIndex < questions.length; qIndex++) {
                             currentQuestion = qIndex + 1;
                             const q = questions[qIndex];
@@ -526,63 +472,37 @@ module.exports = {
                             
                             await categoryMsg.edit({ embeds: [questionEmbed], components: [answerRow] });
                             
-                            // Wait for answer
                             const answer = await new Promise((resolve) => {
                                 const answerCollector = categoryMsg.createMessageComponentCollector({ time: diff.timeLimit * 1000, max: 1 });
-                                
-                                const timeout = setTimeout(() => {
-                                    answerCollector.stop('timeout');
-                                    resolve({ timeout: true });
-                                }, diff.timeLimit * 1000);
+                                const timeout = setTimeout(() => { answerCollector.stop('timeout'); resolve({ timeout: true }); }, diff.timeLimit * 1000);
                                 
                                 answerCollector.on('collect', async (k) => {
-                                    if (k.user.id !== userId) {
-                                        await k.reply({ content: t.accessDenied, ephemeral: true });
-                                        return;
-                                    }
+                                    if (k.user.id !== userId) { await k.reply({ content: t.accessDenied, ephemeral: true }); return; }
                                     clearTimeout(timeout);
                                     answerCollector.stop();
-                                    
                                     const answerMap = { 'trivia_a': 0, 'trivia_b': 1, 'trivia_c': 2, 'trivia_d': 3 };
                                     const selectedAnswer = answerMap[k.customId];
-                                    const isCorrect = selectedAnswer === q.correct;
-                                    
-                                    resolve({ isCorrect, selectedAnswer, interaction: k });
+                                    resolve({ isCorrect: selectedAnswer === q.correct, selectedAnswer, interaction: k });
                                 });
                                 
-                                answerCollector.on('end', (collected, reason) => {
-                                    if (reason === 'timeout') {
-                                        resolve({ timeout: true });
-                                    }
-                                });
+                                answerCollector.on('end', (collected, reason) => { if (reason === 'timeout') resolve({ timeout: true }); });
                             });
                             
-                            // Process answer
-                            let resultText = '';
-                            let resultColor = diff.color;
+                            let resultText = '', resultColor = diff.color;
                             
                             if (answer.timeout) {
-                                resultText = t.timeout;
-                                resultColor = '#95a5a6';
-                                streak = 0;
+                                resultText = t.timeout; resultColor = '#95a5a6'; streak = 0;
                             } else {
-                                const isCorrect = answer.isCorrect;
-                                if (isCorrect) {
-                                    correctAnswers++;
-                                    streak++;
+                                if (answer.isCorrect) {
+                                    correctAnswers++; streak++;
                                     if (streak > maxStreak) maxStreak = streak;
-                                    resultText = t.correct;
-                                    resultColor = '#2ecc71';
+                                    resultText = t.correct; resultColor = '#2ecc71';
                                 } else {
-                                    resultText = t.incorrect;
-                                    resultColor = '#e74c3c';
-                                    streak = 0;
+                                    resultText = t.incorrect; resultColor = '#e74c3c'; streak = 0;
                                 }
-                                
                                 await answer.interaction.deferUpdate();
                             }
                             
-                            // Show result
                             const resultEmbed = new EmbedBuilder()
                                 .setColor(resultColor)
                                 .setAuthor({ name: `${t.title} • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]}`, iconURL: client.user.displayAvatarURL() })
@@ -597,43 +517,30 @@ module.exports = {
                                 .setTimestamp();
                             
                             const nextRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder()
-                                    .setCustomId('trivia_next')
+                                new ButtonBuilder().setCustomId('trivia_next')
                                     .setLabel(currentQuestion === questions.length ? t.gameOver.split('!')[0] : (lang === 'fr' ? 'Suivant' : 'Next'))
-                                    .setStyle(ButtonStyle.Success)
-                                    .setEmoji(currentQuestion === questions.length ? '🏁' : '▶')
+                                    .setStyle(ButtonStyle.Success).setEmoji(currentQuestion === questions.length ? '🏁' : '▶')
                             );
                             
                             await categoryMsg.edit({ embeds: [resultEmbed], components: [nextRow] });
                             
-                            // Wait for next button
                             await new Promise((resolve) => {
                                 const nextCollector = categoryMsg.createMessageComponentCollector({ time: 30000, max: 1 });
-                                
                                 nextCollector.on('collect', async (k) => {
-                                    if (k.user.id !== userId) {
-                                        await k.reply({ content: t.accessDenied, ephemeral: true });
-                                        return;
-                                    }
-                                    await k.deferUpdate();
-                                    nextCollector.stop();
-                                    resolve();
+                                    if (k.user.id !== userId) { await k.reply({ content: t.accessDenied, ephemeral: true }); return; }
+                                    await k.deferUpdate(); nextCollector.stop(); resolve();
                                 });
-                                
                                 nextCollector.on('end', () => resolve());
                             });
                         }
                         
-                        // ================= CALCULATE REWARDS =================
                         const accuracy = (correctAnswers / questions.length) * 100;
                         const baseReward = diff.baseReward;
                         const streakBonus = maxStreak * 25;
                         const accuracyBonus = accuracy >= 80 ? Math.floor(baseReward * 0.5) : 0;
                         const totalReward = baseReward + streakBonus + accuracyBonus;
-                        
                         const xpGain = Math.floor((correctAnswers * 25) + (maxStreak * 10) + (accuracy >= 70 ? 50 : 0));
                         
-                        // Update database
                         const oldUser = db.prepare("SELECT xp FROM users WHERE id = ?").get(userId);
                         const oldXp = oldUser?.xp || 0;
                         
@@ -644,9 +551,8 @@ module.exports = {
                         const newLevel = calculateLevel(newUser.xp);
                         const newRank = getRank(newLevel);
                         
-                        checkAndAnnounceLevelUp(client, oldXp, newUser.xp, userId, userName, message.channel, lang, guildName);
+                        checkAndAnnounceLevelUp(client, oldXp, newUser.xp, userId, userName, message.channel, lang, guildName, guildIcon);
                         
-                        // ================= FINAL RESULTS =================
                         let performanceMessage = '';
                         if (accuracy === 100) performanceMessage = t.perfect;
                         else if (accuracy >= 80) performanceMessage = t.almost;
@@ -657,14 +563,8 @@ module.exports = {
                             .setColor(newRank.color)
                             .setAuthor({ name: `${t.title} • ${t.gameOver}`, iconURL: avatarURL })
                             .setTitle(performanceMessage)
-                            .setDescription(
-                                `**${userName}** • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]} • ${DIFFICULTIES[selectedDifficulty].emoji} ${DIFFICULTIES[selectedDifficulty].name[lang]}\n\n` +
-                                `\`\`\`yaml\n` +
-                                `${t.correctAnswers}: ${correctAnswers}/${questions.length}\n` +
-                                `${t.accuracy}: ${accuracy.toFixed(1)}%\n` +
-                                `${t.streak}: ${maxStreak} 🔥\n` +
-                                `\`\`\``
-                            )
+                            .setDescription(`**${userName}** • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]} • ${DIFFICULTIES[selectedDifficulty].emoji} ${DIFFICULTIES[selectedDifficulty].name[lang]}\n\n` +
+                                `\`\`\`yaml\n${t.correctAnswers}: ${correctAnswers}/${questions.length}\n${t.accuracy}: ${accuracy.toFixed(1)}%\n${t.streak}: ${maxStreak} 🔥\n\`\`\``)
                             .addFields(
                                 { name: `💰 ${t.reward}`, value: `\`\`\`yaml\n${t.baseReward}: ${baseReward} 🪙\n${t.streakBonus}: ${streakBonus} 🪙\n${lang === 'fr' ? 'Bonus Précision' : 'Accuracy Bonus'}: ${accuracyBonus} 🪙\n${t.total}: ${totalReward} 🪙\`\`\``, inline: true },
                                 { name: `📊 ${t.progress}`, value: `\`\`\`yaml\n${t.xpGained}: ${xpGain} XP\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${newLevel}\n${newRank.emoji} ${newRank.title[lang]}\n${t.balance}: ${newUser.credits.toLocaleString()} 🪙\`\`\``, inline: true }
@@ -679,27 +579,24 @@ module.exports = {
                         
                         await categoryMsg.edit({ embeds: [finalEmbed], components: [finalRow] });
                         
-                        // Final collector
                         const finalCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
                         
                         finalCollector.on('collect', async (k) => {
-                            if (k.user.id !== userId) {
-                                return k.reply({ content: t.accessDenied, ephemeral: true });
-                            }
+                            if (k.user.id !== userId) return k.reply({ content: t.accessDenied, ephemeral: true });
                             
                             if (k.customId === 'trivia_again') {
                                 await k.deferUpdate();
                                 finalCollector.stop();
                                 const triviaCmd = client.commands.get('trivia');
                                 if (triviaCmd) {
-                                    await triviaCmd.run(client, message, [], db, serverSettings);
+                                    await triviaCmd.run(client, message, [], db, serverSettings, usedCommand);
                                 }
                             } else if (k.customId === 'trivia_menu') {
                                 await k.deferUpdate();
                                 finalCollector.stop();
                                 const gameCmd = client.commands.get('game');
                                 if (gameCmd) {
-                                    await gameCmd.run(client, message, ['menu'], db, serverSettings);
+                                    await gameCmd.run(client, message, ['menu'], db, serverSettings, usedCommand);
                                 }
                             }
                         });
