@@ -704,6 +704,9 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
 
 // ================= MESSAGE HANDLER (Single instance) =================
 async function handleLydiaMessage(message, client, database) {
+    // Skip if not a guild message
+    if (!message.guild) return;
+    
     // Prevent duplicate processing
     const messageKey = `${message.id}-${message.author.id}`;
     if (messageProcessingLocks.has(messageKey)) {
@@ -721,8 +724,10 @@ async function handleLydiaMessage(message, client, database) {
         return;
     }
     
-    // Check if Lydia is active in this channel
-    if (!client.lydiaChannels?.[message.channel?.id]) return;
+    // CRITICAL: Only process if Lydia is ACTIVATED in this channel
+    if (!client.lydiaChannels?.[message.channel?.id]) {
+        return; // Lydia not active here - let commands work normally
+    }
     
     // Lock the message
     messageProcessingLocks.add(messageKey);
@@ -786,7 +791,6 @@ async function handleLydiaMessage(message, client, database) {
         
         const stats = database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
         const member = message.guild.members.cache.get(message.author.id);
-        const highestRole = member?.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
         const isAdmin = member?.permissions.has(PermissionsBitField.Flags.Administrator) || false;
         const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
         const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -1027,16 +1031,13 @@ function setupLydia(client, database) {
         return;
     }
 
-    // Remove any existing listeners before adding new one
-    client.removeAllListeners('messageCreate');
-    
-    // Add SINGLE event listener
+    // ✅ ADD SINGLE EVENT LISTENER (without removing others - PRESERVES COMMAND HANDLER!)
     client.on('messageCreate', async (message) => {
         if (!message || message.author?.bot) return;
         await handleLydiaMessage(message, client, database);
     });
     
-    console.log(`${green}[LYDIA]${reset} ✅ Event listener registered ONCE`);
+    console.log(`${green}[LYDIA]${reset} ✅ Event listener registered (preserved existing listeners)`);
     
     // Debug: Show listener count
     const listenerCount = client.listenerCount('messageCreate');
@@ -1097,7 +1098,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 `**Identity:** ${botDisplayName}\n` +
                 `**Memory:** ${userMem} facts about you | ${memCount} total\n` +
                 `**Modules:** ${totalModules} plugins detected\n` +
-                `**Event Listeners:** ${listenerCount} (should be 1)\n` +
+                `**Event Listeners:** ${listenerCount}\n` +
                 `**Group Awareness:** ${isEnabled ? '👥 ACTIVE' : '❌ INACTIVE'}\n\n` +
                 `**Commands:**\n└ \`${prefix}lydia on\` - Activate AI\n└ \`${prefix}lydia off\` - Deactivate\n└ \`${prefix}lydia agent <core>\` - Switch core\n\n` +
                 `**Available Cores:**\n└ \`architect\` ${neuralCores.architect.emoji} - Code & System\n└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming\n└ \`creative\` ${neuralCores.creative.emoji} - Creative\n└ \`default\` ${neuralCores.default.emoji} - Balanced`
@@ -1106,7 +1107,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 { name: '📡 API Status', value: `OpenRouter: ${process.env.OPENROUTER_API_KEY ? '✅' : '❌'} | Brave: ${process.env.BRAVE_API_KEY ? '✅' : '❌'}`, inline: true },
                 { name: '🧠 AI Models', value: `DeepSeek • Claude • Gemini Flash`, inline: true },
                 { name: '👁️ Vision', value: `Image analysis enabled`, inline: true },
-                { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time • Sports • Stocks', inline: false },
+                { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time', inline: false },
                 { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true }
             )
             .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
@@ -1157,7 +1158,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 { name: '🆔 Identity', value: botDisplayName, inline: true },
                 { name: '🧠 AI Models', value: 'DeepSeek • Claude • Gemini Flash', inline: true },
                 { name: '👁️ Vision', value: 'Image analysis enabled', inline: true },
-                { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time • Sports • Stocks', inline: false },
+                { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time', inline: false },
                 { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true },
                 { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or just talk!`, inline: false },
                 { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
