@@ -179,7 +179,8 @@ function getTopCategories(stats, limit = 3) {
         .map(([cat, count]) => ({ cat, count }));
 }
 
-async function showCategoryHelp(client, message, category, prefix, lang, t, emojiMap, colorMap, interaction, guildName, guildIcon, version) {
+// 🔥 FIXED: This function now only creates the embed, doesn't handle interactions
+function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version) {
     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
     const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
     const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
@@ -191,7 +192,7 @@ async function showCategoryHelp(client, message, category, prefix, lang, t, emoj
         return `**\`${prefix}${cmd.name}\`**${aliasesText}\n└─ *${cmd.description || t.noDescription}*${examples}`;
     }).join('\n\n');
     
-    const catEmbed = new EmbedBuilder()
+    return new EmbedBuilder()
         .setColor(categoryColor)
         .setAuthor({ 
             name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}`, 
@@ -211,12 +212,6 @@ async function showCategoryHelp(client, message, category, prefix, lang, t, emoj
             iconURL: guildIcon
         })
         .setTimestamp();
-    
-    if (interaction) {
-        await interaction.update({ embeds: [catEmbed] }).catch(() => {});
-    } else {
-        await message.reply({ embeds: [catEmbed] }).catch(() => {});
-    }
 }
 
 module.exports = {
@@ -226,15 +221,13 @@ module.exports = {
     category: 'SYSTEM',
     cooldown: 3000,
 
-    // 🔥 FIXED: Handle undefined usedCommand
     run: async (client, message, args, database, serverSettings, usedCommand) => {
         
-        // 🔥 SAFE LANGUAGE DETECTION - Handle undefined usedCommand
+        // 🔥 SAFE LANGUAGE DETECTION
         let lang = 'en';
         if (client.detectLanguage && usedCommand) {
             lang = client.detectLanguage(usedCommand, 'en');
         } else if (usedCommand) {
-            // Fallback: Check if the command itself is French
             const cmd = usedCommand.toLowerCase();
             if (cmd === 'aide' || cmd === 'commandes') lang = 'fr';
             else if (cmd === 'help' || cmd === 'commands') lang = 'en';
@@ -269,7 +262,8 @@ module.exports = {
             const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))];
             
             if (categories.includes(searchTerm)) {
-                return showCategoryHelp(client, message, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap, null, guildName, guildIcon, version);
+                const embed = createCategoryEmbed(client, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version);
+                return message.reply({ embeds: [embed] }).catch(() => {});
             }
             
             const cmdLower = args[0].toLowerCase();
@@ -288,7 +282,7 @@ module.exports = {
                         iconURL: client.user.displayAvatarURL() 
                     })
                     .setTitle(`◈ ${t.module}: ${cmd.name.toUpperCase()} ◈`)
-                    .setDescription(`\`\`\`prolog\n${cmd.description || t.noDescription}\`\`\``)
+                    .setDescription(`\`\`\`yaml\n${cmd.description || t.noDescription}\`\`\``)
                     .addFields(
                         { name: `📂 ${t.category}`, value: `\`${category}\` ${t.categoryDescriptions?.[category] ? `• ${t.categoryDescriptions[category]}` : ''}`, inline: false },
                         { name: `🔧 ${t.usage}`, value: `\`${effectivePrefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
@@ -352,12 +346,12 @@ module.exports = {
             })
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
             .setDescription(
-                `\`\`\`prolog\n` +
-                `┌─ ${t.systemStatus}: 🟢 ${t.online}\n` +
-                `├─ ${t.node}: BAMAKO-223\n` +
-                `├─ ${t.core}: Groq LPU™ + Brave Search\n` +
-                `├─ ${t.uptime}: ${uptimeString}\n` +
-                `└─ ${t.version}: v${version}\`\`\``
+                `\`\`\`yaml\n` +
+                `${t.systemStatus}: 🟢 ${t.online}\n` +
+                `${t.node}: BAMAKO-223\n` +
+                `${t.core}: Groq LPU™ + Brave Search\n` +
+                `${t.uptime}: ${uptimeString}\n` +
+                `${t.version}: v${version}\`\`\``
             )
             .addFields(
                 { 
@@ -372,12 +366,12 @@ module.exports = {
                 },
                 { 
                     name: t.quickAccess, 
-                    value: `\`\`\`fix\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
+                    value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
                     inline: false 
                 },
                 { 
                     name: t.aiAssistant, 
-                    value: `\`\`\`fix\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
+                    value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
                     inline: true 
                 },
                 { 
@@ -396,7 +390,7 @@ module.exports = {
             .setCustomId('help_select')
             .setPlaceholder(t.selectPlaceholder)
             .addOptions(categories.map(cat => ({
-                label: cat.toUpperCase(),
+                label: cat.toUpperCase().substring(0, 100),
                 value: cat,
                 description: `${t.categoryDescriptions?.[cat] || t.viewAll.replace('{category}', cat.toLowerCase())}`.substring(0, 100),
                 emoji: emojiMap[cat.toUpperCase()] || '📁'
@@ -405,7 +399,7 @@ module.exports = {
         const row1 = new ActionRowBuilder().addComponents(menu);
         const row2 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('back_to_main')
+                .setCustomId('help_back')
                 .setLabel(t.mainMenu)
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true)
@@ -415,14 +409,11 @@ module.exports = {
             content: `> **${t.loading}**\n> *${t.accessing(totalGuilds)}*`,
             embeds: [mainEmbed],
             components: [row1, row2]
-        }).catch(err => {
-            console.error('[HELP] Failed to send message:', err);
-            return null;
-        });
+        }).catch(() => null);
         
         if (!response) return;
 
-        let currentView = 'main';
+        let currentCategory = null;
         
         const collector = response.createMessageComponentCollector({ time: 300000 });
         
@@ -431,8 +422,9 @@ module.exports = {
                 return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
             }
 
-            if (i.customId === 'back_to_main' && currentView !== 'main') {
-                currentView = 'main';
+            // 🔥 FIXED: Handle back to main
+            if (i.customId === 'help_back') {
+                currentCategory = null;
                 
                 const freshUptimeSec = process.uptime();
                 const freshDays = Math.floor(freshUptimeSec / 86400);
@@ -457,12 +449,12 @@ module.exports = {
                     })
                     .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
                     .setDescription(
-                        `\`\`\`prolog\n` +
-                        `┌─ ${t.systemStatus}: 🟢 ${t.online}\n` +
-                        `├─ ${t.node}: BAMAKO-223\n` +
-                        `├─ ${t.core}: Groq LPU™ + Brave Search\n` +
-                        `├─ ${t.uptime}: ${freshUptimeString}\n` +
-                        `└─ ${t.version}: v${version}\`\`\``
+                        `\`\`\`yaml\n` +
+                        `${t.systemStatus}: 🟢 ${t.online}\n` +
+                        `${t.node}: BAMAKO-223\n` +
+                        `${t.core}: Groq LPU™ + Brave Search\n` +
+                        `${t.uptime}: ${freshUptimeString}\n` +
+                        `${t.version}: v${version}\`\`\``
                     )
                     .addFields(
                         { 
@@ -477,12 +469,12 @@ module.exports = {
                         },
                         { 
                             name: t.quickAccess, 
-                            value: `\`\`\`fix\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
+                            value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
                             inline: false 
                         },
                         { 
                             name: t.aiAssistant, 
-                            value: `\`\`\`fix\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
+                            value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
                             inline: true 
                         },
                         { 
@@ -499,41 +491,46 @@ module.exports = {
                 
                 const disabledRow2 = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
-                        .setCustomId('back_to_main')
+                        .setCustomId('help_back')
                         .setLabel(t.mainMenu)
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(true)
                 );
+                
                 await i.update({ embeds: [freshMainEmbed], components: [row1, disabledRow2] }).catch(() => {});
                 return;
             }
             
+            // 🔥 FIXED: Handle category selection
             if (i.isStringSelectMenu() && i.customId === 'help_select') {
                 const category = i.values[0];
-                await showCategoryHelp(client, message, category, effectivePrefix, lang, t, emojiMap, colorMap, i, guildName, guildIcon, version);
-                currentView = 'category';
+                currentCategory = category;
+                
+                const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version);
                 
                 const updatedRow2 = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
-                        .setCustomId('back_to_main')
+                        .setCustomId('help_back')
                         .setLabel(t.backToMain)
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(false)
                 );
-                await response.edit({ components: [row1, updatedRow2] }).catch(() => {});
+                
+                await i.update({ embeds: [categoryEmbed], components: [row1, updatedRow2] }).catch(() => {});
             }
         });
 
         collector.on('end', () => {
-            const disabled = new ActionRowBuilder().addComponents(menu.setDisabled(true));
+            const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
+            const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
             const disabledButton = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                    .setCustomId('back_to_main')
+                    .setCustomId('help_back')
                     .setLabel(t.mainMenu)
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(true)
             );
-            response.edit({ components: [disabled, disabledButton] }).catch(() => {});
+            response.edit({ components: [disabledRow, disabledButton] }).catch(() => {});
         });
     }
 };
