@@ -187,7 +187,7 @@ function createUseItemMenu(items, lang, itemDefs) {
     const options = usableItems.slice(0, 25).map(item => {
         const def = itemDefs[item.item_id];
         return {
-            label: `${def.emoji} ${def.name[lang]}`.substring(0, 100),
+            label: `${def.emoji} ${def.name[lang] || def.name.en}`.substring(0, 100),
             description: `${t.quantity}: ${item.quantity}`.substring(0, 100),
             value: item.item_id
         };
@@ -235,7 +235,7 @@ function createInventoryEmbed(items, category, page, totalPages, stats, lang, cl
                 ? `${formatTimeRemaining(item.expires_at, lang)}` 
                 : t.permanent;
             
-            description += `**${def.emoji} ${def.name[lang]}**\n`;
+            description += `**${def.emoji} ${def.name[lang] || def.name.en}**\n`;
             description += `└─ 📦 ${t.quantity}: ${item.quantity || 1}\n`;
             description += `└─ ⏰ ${expiration}\n`;
             description += `└─ 📅 ${t.purchased}: <t:${item.purchased_at}:R>\n`;
@@ -307,6 +307,8 @@ module.exports = {
         // ================= USE GLOBAL ITEM DEFINITIONS FROM CLIENT =================
         const itemDefs = client.getItemDefinitions ? client.getItemDefinitions() : {};
         
+        console.log('[INVENTORY DEBUG] Item definitions loaded:', Object.keys(itemDefs).length);
+        
         // ================= DATABASE CLEANUP =================
         const now = Math.floor(Date.now() / 1000);
         db.prepare(`
@@ -344,6 +346,8 @@ module.exports = {
         
         let { items, enrichedItems, stats } = refreshInventory();
         
+        console.log('[INVENTORY DEBUG] Items found:', items.length);
+        
         // ================= EMPTY INVENTORY =================
         if (items.length === 0) {
             const emptyEmbed = new EmbedBuilder()
@@ -380,13 +384,6 @@ module.exports = {
                 }
             });
             
-            collector.on('end', async () => {
-                const disabledRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('inv_goto_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setDisabled(true).setEmoji('🛒')
-                );
-                await reply.edit({ components: [disabledRow] }).catch(() => {});
-            });
-            
             return;
         }
         
@@ -415,39 +412,38 @@ module.exports = {
         const categoryMenu = createCategoryMenu(lang, category);
         const menuRow = new ActionRowBuilder().addComponents(categoryMenu);
         
+        const components = [menuRow];
+        
+        const useMenu = createUseItemMenu(pageItems, lang, itemDefs);
+        if (useMenu) {
+            components.push(new ActionRowBuilder().addComponents(useMenu));
+            console.log('[INVENTORY DEBUG] Use menu created with items');
+        }
+        
         const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('inv_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
             new ButtonBuilder().setCustomId('inv_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages - 1),
             new ButtonBuilder().setCustomId('inv_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
             new ButtonBuilder().setCustomId('inv_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setEmoji('🛒')
         );
-        
-        const components = [menuRow];
-        
-        const useMenu = createUseItemMenu(pageItems, lang, itemDefs);
-        if (useMenu) {
-            components.push(new ActionRowBuilder().addComponents(useMenu));
-        }
-        
-        if (totalPages > 1 || useMenu) {
-            components.push(buttonRow);
-        }
+        components.push(buttonRow);
         
         const reply = await message.reply({ embeds: [embed], components });
         
         // ================= COLLECTOR =================
         const collector = reply.createMessageComponentCollector({ 
-            componentType: [ComponentType.Button, ComponentType.StringSelect], 
             time: 180000 
         });
         
         collector.on('collect', async (i) => {
+            console.log('[INVENTORY DEBUG] Interaction received:', i.customId);
+            
             if (i.user.id !== userId) {
                 return i.reply({ content: t.accessDenied, ephemeral: true });
             }
             
             // Handle Shop Button
-            if (i.isButton() && i.customId === 'inv_shop') {
+            if (i.customId === 'inv_shop') {
                 await i.deferUpdate();
                 collector.stop();
                 await reply.delete().catch(() => {});
@@ -459,9 +455,11 @@ module.exports = {
                 return;
             }
             
-            // Handle Use Item
-            if (i.isStringSelectMenu() && i.customId === 'inventory_use') {
+            // Handle Use Item (StringSelectMenu)
+            if (i.customId === 'inventory_use') {
                 const itemId = i.values[0];
+                console.log('[INVENTORY DEBUG] Using item:', itemId);
+                
                 const result = useItem(userId, itemId, db, lang, itemDefs);
                 
                 if (result.success) {
@@ -469,8 +467,8 @@ module.exports = {
                     const successEmbed = new EmbedBuilder()
                         .setColor('#2ecc71')
                         .setAuthor({ name: t.useSuccess, iconURL: message.author.displayAvatarURL() })
-                        .setTitle(`${itemDef.emoji} ${itemDef.name[lang]}`)
-                        .setDescription(t.useSuccessDesc(itemDef.name[lang], result.message))
+                        .setTitle(`${itemDef.emoji} ${itemDef.name[lang] || itemDef.name.en}`)
+                        .setDescription(t.useSuccessDesc(itemDef.name[lang] || itemDef.name.en, result.message))
                         .setFooter({ 
                             text: `${guildName} • ${t.footer} • v${client.version || '1.5.0'}`,
                             iconURL: message.guild?.iconURL() || client.user.displayAvatarURL()
@@ -485,39 +483,34 @@ module.exports = {
                     enrichedItems = refreshed.enrichedItems;
                     stats = refreshed.stats;
                 } else {
-                    await i.reply({ content: result.message || t.useError, ephemeral: true });
-                    return;
+                    return i.reply({ content: result.message || t.useError, ephemeral: true });
                 }
             }
             
-            let newCategory = category;
-            let newPage = currentPage;
-            
-            if (i.isStringSelectMenu() && i.customId === 'inventory_category') {
-                newCategory = i.values[0];
-                newPage = 0;
+            // Handle Category Selection
+            if (i.customId === 'inventory_category') {
+                category = i.values[0];
+                currentPage = 0;
             }
             
-            if (i.isButton()) {
-                if (i.customId === 'inv_prev') newPage--;
-                if (i.customId === 'inv_next') newPage++;
-                if (i.customId === 'inv_refresh') {
-                    const refreshed = refreshInventory();
-                    items = refreshed.items;
-                    enrichedItems = refreshed.enrichedItems;
-                    stats = refreshed.stats;
-                }
+            // Handle Button Navigation
+            if (i.customId === 'inv_prev') currentPage--;
+            if (i.customId === 'inv_next') currentPage++;
+            if (i.customId === 'inv_refresh') {
+                const refreshed = refreshInventory();
+                items = refreshed.items;
+                enrichedItems = refreshed.enrichedItems;
+                stats = refreshed.stats;
             }
             
-            category = newCategory;
-            currentPage = newPage;
-            
+            // Recalculate filtered items and pages
             const updatedFiltered = category === 'all' 
                 ? enrichedItems 
                 : enrichedItems.filter(i => i.type === category);
             const updatedTotalPages = Math.max(1, Math.ceil(updatedFiltered.length / pageSize));
             currentPage = Math.max(0, Math.min(currentPage, updatedTotalPages - 1));
             
+            // Create new embed and components
             const { embed: newEmbed, pageItems: newPageItems } = createInventoryEmbed(
                 enrichedItems, category, currentPage, updatedTotalPages, stats, lang, client, message.author, guildName, itemDefs
             );
@@ -536,10 +529,7 @@ module.exports = {
                 new ButtonBuilder().setCustomId('inv_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
                 new ButtonBuilder().setCustomId('inv_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setEmoji('🛒')
             );
-            
-            if (updatedTotalPages > 1 || newUseMenu) {
-                newComponents.push(newButtonRow);
-            }
+            newComponents.push(newButtonRow);
             
             await i.update({ embeds: [newEmbed], components: newComponents });
         });
