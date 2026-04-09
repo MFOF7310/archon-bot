@@ -56,6 +56,7 @@ const translations = {
         timeout: '⏰ Configuration timed out.',
         footer: 'ARCHITECT CG-223 • Server Configuration',
         accessDenied: '❌ This menu is not yours.',
+        error: '❌ An error occurred while processing your request.',
         
         // Channel types
         textChannel: 'Text Channel',
@@ -115,6 +116,7 @@ const translations = {
         timeout: '⏰ Configuration expirée.',
         footer: 'ARCHITECT CG-223 • Configuration du Serveur',
         accessDenied: '❌ Ce menu ne vous appartient pas.',
+        error: '❌ Une erreur est survenue lors du traitement de votre demande.',
         
         // Channel types
         textChannel: 'Canal Texte',
@@ -232,7 +234,7 @@ module.exports = {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             const lang = serverSettings?.language || 'en';
             const t = translations[lang];
-            return message.reply({ content: t.noPermission, ephemeral: true });
+            return message.reply({ content: t.noPermission });
         }
         
         // ================= LANGUAGE SETUP =================
@@ -268,212 +270,250 @@ module.exports = {
         
         // ================= COLLECTOR =================
         const collector = reply.createMessageComponentCollector({ 
-            componentType: [ComponentType.StringSelect, ComponentType.Button], 
+            componentType: ComponentType.StringSelect, 
             time: 180000 
         });
         
         let selectedSetting = null;
+        let prefixCollector = null;
         
         collector.on('collect', async (i) => {
-            if (i.user.id !== message.author.id) {
-                return i.reply({ content: t.accessDenied, ephemeral: true });
-            }
-            
-            // Handle main settings selection
-            if (i.customId === 'settings_select') {
-                selectedSetting = i.values[0];
+            try {
+                // Stop any existing prefix collector
+                if (prefixCollector) {
+                    prefixCollector.stop();
+                    prefixCollector = null;
+                }
                 
-                if (selectedSetting === 'language') {
-                    // Language selection
-                    const langMenu = createLanguageMenu(lang);
-                    const backRow = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('settings_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀'),
-                        new ButtonBuilder().setCustomId('settings_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Danger).setEmoji('❌')
-                    );
+                if (i.user.id !== message.author.id) {
+                    return i.reply({ content: t.accessDenied, ephemeral: true });
+                }
+                
+                // Handle main settings selection
+                if (i.customId === 'settings_select') {
+                    selectedSetting = i.values[0];
                     
-                    await i.update({ components: [new ActionRowBuilder().addComponents(langMenu), backRow] });
-                    
-                } else if (selectedSetting === 'welcome' || selectedSetting === 'log' || selectedSetting === 'daily') {
-                    // Channel selection
-                    const channelMenu = createChannelSelectMenu(message.guild, lang);
-                    const backRow = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('settings_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀'),
-                        new ButtonBuilder().setCustomId('settings_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Danger).setEmoji('❌'),
-                        new ButtonBuilder().setCustomId('settings_reset').setLabel(t.reset).setStyle(ButtonStyle.Secondary).setEmoji('🔄')
-                    );
-                    
-                    await i.update({ components: [new ActionRowBuilder().addComponents(channelMenu), backRow] });
-                    
-                } else if (selectedSetting === 'prefix') {
-                    // Prefix input prompt
-                    const promptEmbed = new EmbedBuilder()
-                        .setColor('#FEE75C')
-                        .setTitle('🔧 ' + t.settingOptions.prefix)
-                        .setDescription(
-                            `**${t.currentValue}:** \`${settings.prefix}\`\n\n` +
-                            `${t.enterPrefix}\n\n` +
-                            `*${lang === 'fr' ? 'Tapez votre réponse dans le chat' : 'Type your response in chat'}*`
-                        )
-                        .setFooter({ text: t.footer });
-                    
-                    const backRow = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('settings_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀'),
-                        new ButtonBuilder().setCustomId('settings_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Danger).setEmoji('❌')
-                    );
-                    
-                    await i.update({ embeds: [promptEmbed], components: [backRow] });
-                    
-                    // Wait for message
-                    const filter = m => m.author.id === message.author.id;
-                    const messageCollector = message.channel.createMessageCollector({ filter, time: 30000, max: 1 });
-                    
-                    messageCollector.on('collect', async (m) => {
-                        let newPrefix = m.content.trim();
+                    if (selectedSetting === 'language') {
+                        // Language selection
+                        const langMenu = createLanguageMenu(lang);
+                        const backRow = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder().setCustomId('settings_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀'),
+                            new ButtonBuilder().setCustomId('settings_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Danger).setEmoji('❌')
+                        );
                         
-                        if (newPrefix.length < 1 || newPrefix.length > 3) {
-                            await m.reply({ 
-                                content: lang === 'fr' 
-                                    ? '❌ Le préfixe doit avoir 1-3 caractères.' 
-                                    : '❌ Prefix must be 1-3 characters.', 
-                                ephemeral: true 
-                            });
-                            messageCollector.stop();
-                            return;
-                        }
+                        await i.update({ components: [new ActionRowBuilder().addComponents(langMenu), backRow] });
                         
-                        updateSetting('prefix', newPrefix);
-                        settings = getSettings();
+                    } else if (selectedSetting === 'welcome' || selectedSetting === 'log' || selectedSetting === 'daily') {
+                        // Channel selection
+                        const channelMenu = createChannelSelectMenu(message.guild, lang);
+                        const backRow = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder().setCustomId('settings_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀'),
+                            new ButtonBuilder().setCustomId('settings_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Danger).setEmoji('❌'),
+                            new ButtonBuilder().setCustomId('settings_reset').setLabel(t.reset).setStyle(ButtonStyle.Secondary).setEmoji('🔄')
+                        );
                         
-                        const successEmbed = new EmbedBuilder()
-                            .setColor('#2ecc71')
-                            .setTitle(t.updated)
-                            .setDescription(t.updatedDesc(t.settingOptions.prefix, newPrefix))
+                        await i.update({ components: [new ActionRowBuilder().addComponents(channelMenu), backRow] });
+                        
+                    } else if (selectedSetting === 'prefix') {
+                        // Prefix input prompt
+                        const promptEmbed = new EmbedBuilder()
+                            .setColor('#FEE75C')
+                            .setTitle('🔧 ' + t.settingOptions.prefix)
+                            .setDescription(
+                                `**${t.currentValue}:** \`${settings.prefix}\`\n\n` +
+                                `${t.enterPrefix}\n\n` +
+                                `*${lang === 'fr' ? 'Tapez votre réponse dans le chat' : 'Type your response in chat'}*`
+                            )
                             .setFooter({ text: t.footer });
                         
-                        const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
-                        const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
+                        const backRow = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder().setCustomId('settings_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀'),
+                            new ButtonBuilder().setCustomId('settings_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Danger).setEmoji('❌')
+                        );
                         
-                        await reply.edit({ embeds: [newEmbed], components: [newMenuRow] });
-                        await m.delete().catch(() => {});
-                        messageCollector.stop();
-                    });
+                        await i.update({ embeds: [promptEmbed], components: [backRow] });
+                        
+                        // Wait for message
+                        const filter = m => m.author.id === message.author.id;
+                        prefixCollector = message.channel.createMessageCollector({ filter, time: 30000, max: 1 });
+                        
+                        prefixCollector.on('collect', async (m) => {
+                            try {
+                                let newPrefix = m.content.trim();
+                                
+                                if (newPrefix.length < 1 || newPrefix.length > 3) {
+                                    const errorMsg = await m.reply({ 
+                                        content: lang === 'fr' 
+                                            ? '❌ Le préfixe doit avoir 1-3 caractères.' 
+                                            : '❌ Prefix must be 1-3 characters.'
+                                    });
+                                    setTimeout(() => errorMsg.delete().catch(() => {}), 5000);
+                                    prefixCollector.stop();
+                                    return;
+                                }
+                                
+                                updateSetting('prefix', newPrefix);
+                                settings = getSettings();
+                                
+                                const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
+                                const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
+                                
+                                await reply.edit({ embeds: [newEmbed], components: [newMenuRow] });
+                                await m.delete().catch(() => {});
+                                
+                                // Show success message
+                                const successMsg = await message.channel.send({
+                                    content: `✅ ${t.updatedDesc(t.settingOptions.prefix, newPrefix)}`
+                                });
+                                setTimeout(() => successMsg.delete().catch(() => {}), 5000);
+                                
+                                prefixCollector.stop();
+                            } catch (error) {
+                                console.error('Prefix collection error:', error);
+                            }
+                        });
+                        
+                        prefixCollector.on('end', async (collected, reason) => {
+                            prefixCollector = null;
+                            if (reason === 'timeout' && collected.size === 0) {
+                                const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
+                                const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
+                                await reply.edit({ embeds: [newEmbed], components: [newMenuRow });
+                            }
+                        });
+                    }
+                }
+                
+                // Handle language selection
+                if (i.customId === 'settings_language') {
+                    const newLang = i.values[0];
+                    updateSetting('language', newLang);
+                    settings = getSettings();
                     
-                    messageCollector.on('end', async (collected, reason) => {
-                        if (reason === 'timeout' && collected.size === 0) {
-                            const timeoutEmbed = new EmbedBuilder()
-                                .setColor('#ED4245')
-                                .setDescription(t.timeout)
-                                .setFooter({ text: t.footer });
-                            const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
-                            const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
-                            await reply.edit({ embeds: [newEmbed], components: [newMenuRow] });
-                        }
-                    });
-                }
-            }
-            
-            // Handle language selection
-            if (i.customId === 'settings_language') {
-                const newLang = i.values[0];
-                updateSetting('language', newLang);
-                settings = getSettings();
-                
-                // Use the new language for success message
-                const newT = translations[newLang];
-                
-                const successEmbed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setTitle(newT.updated)
-                    .setDescription(newT.updatedDesc(newT.settingOptions.language, newLang === 'fr' ? newT.french : newT.english))
-                    .setFooter({ text: newT.footer });
-                
-                await i.reply({ embeds: [successEmbed], ephemeral: true });
-                
-                const newEmbed = createSettingsEmbed(settings, newLang, message.guild, client);
-                const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(newLang));
-                
-                await reply.edit({ embeds: [newEmbed], components: [newMenuRow] });
-            }
-            
-            // Handle channel selection
-            if (i.customId === 'settings_channel') {
-                const channelId = i.values[0];
-                if (channelId === 'none') {
-                    return i.reply({ content: '❌ ' + t.noChannels, ephemeral: true });
+                    // Use the new language for success message
+                    const newT = translations[newLang];
+                    
+                    const successEmbed = new EmbedBuilder()
+                        .setColor('#2ecc71')
+                        .setTitle(newT.updated)
+                        .setDescription(newT.updatedDesc(newT.settingOptions.language, newLang === 'fr' ? newT.french : newT.english))
+                        .setFooter({ text: newT.footer });
+                    
+                    await i.reply({ embeds: [successEmbed], ephemeral: true });
+                    
+                    const newEmbed = createSettingsEmbed(settings, newLang, message.guild, client);
+                    const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(newLang));
+                    
+                    await i.message.edit({ embeds: [newEmbed], components: [newMenuRow] });
                 }
                 
-                const channel = message.guild.channels.cache.get(channelId);
+                // Handle channel selection
+                if (i.customId === 'settings_channel') {
+                    const channelId = i.values[0];
+                    if (channelId === 'none') {
+                        return i.reply({ content: '❌ ' + t.noChannels, ephemeral: true });
+                    }
+                    
+                    const channel = message.guild.channels.cache.get(channelId);
+                    
+                    updateSetting(selectedSetting, channelId);
+                    settings = getSettings();
+                    
+                    const settingNames = {
+                        welcome: t.settingOptions.welcome,
+                        log: t.settingOptions.log,
+                        daily: t.settingOptions.daily
+                    };
+                    
+                    const successEmbed = new EmbedBuilder()
+                        .setColor('#2ecc71')
+                        .setTitle(t.updated)
+                        .setDescription(t.updatedDesc(settingNames[selectedSetting], `#${channel?.name || channelId}`))
+                        .setFooter({ text: t.footer });
+                    
+                    await i.reply({ embeds: [successEmbed], ephemeral: true });
+                    
+                    const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
+                    const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
+                    
+                    await i.message.edit({ embeds: [newEmbed], components: [newMenuRow] });
+                }
                 
-                updateSetting(selectedSetting, channelId);
-                settings = getSettings();
+                // Handle back button
+                if (i.customId === 'settings_back') {
+                    // Stop any running prefix collector
+                    if (prefixCollector) {
+                        prefixCollector.stop();
+                        prefixCollector = null;
+                    }
+                    
+                    const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
+                    const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
+                    await i.update({ embeds: [newEmbed], components: [newMenuRow] });
+                }
                 
-                const settingNames = {
-                    welcome: t.settingOptions.welcome,
-                    log: t.settingOptions.log,
-                    daily: t.settingOptions.daily
-                };
+                // Handle cancel button
+                if (i.customId === 'settings_cancel') {
+                    // Stop any running prefix collector
+                    if (prefixCollector) {
+                        prefixCollector.stop();
+                        prefixCollector = null;
+                    }
+                    
+                    const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
+                    const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
+                    await i.update({ embeds: [newEmbed], components: [newMenuRow] });
+                }
                 
-                const successEmbed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setTitle(t.updated)
-                    .setDescription(t.updatedDesc(settingNames[selectedSetting], `#${channel?.name || channelId}`))
-                    .setFooter({ text: t.footer });
-                
-                await i.reply({ embeds: [successEmbed], ephemeral: true });
-                
-                const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
-                const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
-                
-                await reply.edit({ embeds: [newEmbed], components: [newMenuRow] });
-            }
-            
-            // Handle back button
-            if (i.customId === 'settings_back') {
-                const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
-                const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
-                await i.update({ embeds: [newEmbed], components: [newMenuRow] });
-            }
-            
-            // Handle cancel button
-            if (i.customId === 'settings_cancel') {
-                const cancelEmbed = new EmbedBuilder()
-                    .setColor('#ED4245')
-                    .setDescription(t.cancelled)
-                    .setFooter({ text: t.footer });
-                const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
-                const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
-                await i.update({ embeds: [newEmbed], components: [newMenuRow] });
-            }
-            
-            // Handle reset button
-            if (i.customId === 'settings_reset') {
-                updateSetting(selectedSetting, null);
-                settings = getSettings();
-                
-                const settingNames = {
-                    welcome: t.settingOptions.welcome,
-                    log: t.settingOptions.log,
-                    daily: t.settingOptions.daily
-                };
-                
-                const successEmbed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setTitle(t.updated)
-                    .setDescription(t.resetSuccess(settingNames[selectedSetting]))
-                    .setFooter({ text: t.footer });
-                
-                await i.reply({ embeds: [successEmbed], ephemeral: true });
-                
-                const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
-                const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
-                
-                await reply.edit({ embeds: [newEmbed], components: [newMenuRow] });
+                // Handle reset button
+                if (i.customId === 'settings_reset') {
+                    updateSetting(selectedSetting, null);
+                    settings = getSettings();
+                    
+                    const settingNames = {
+                        welcome: t.settingOptions.welcome,
+                        log: t.settingOptions.log,
+                        daily: t.settingOptions.daily
+                    };
+                    
+                    const successEmbed = new EmbedBuilder()
+                        .setColor('#2ecc71')
+                        .setTitle(t.updated)
+                        .setDescription(t.resetSuccess(settingNames[selectedSetting]))
+                        .setFooter({ text: t.footer });
+                    
+                    await i.reply({ embeds: [successEmbed], ephemeral: true });
+                    
+                    const newEmbed = createSettingsEmbed(settings, lang, message.guild, client);
+                    const newMenuRow = new ActionRowBuilder().addComponents(createSettingsMenu(lang));
+                    
+                    await i.message.edit({ embeds: [newEmbed], components: [newMenuRow] });
+                }
+            } catch (error) {
+                console.error('Collector error:', error);
+                try {
+                    if (!i.replied && !i.deferred) {
+                        await i.reply({ content: t.error, ephemeral: true });
+                    }
+                } catch (e) {
+                    console.error('Failed to send error message:', e);
+                }
             }
         });
         
         collector.on('end', async () => {
-            const disabledMenu = new ActionRowBuilder().addComponents(createSettingsMenu(lang).setDisabled(true));
-            await reply.edit({ components: [disabledMenu] }).catch(() => {});
+            // Stop prefix collector if running
+            if (prefixCollector) {
+                prefixCollector.stop();
+                prefixCollector = null;
+            }
+            
+            try {
+                const disabledMenu = new ActionRowBuilder().addComponents(createSettingsMenu(lang).setDisabled(true));
+                await reply.edit({ components: [disabledMenu] }).catch(() => {});
+            } catch (error) {
+                console.error('Collector end error:', error);
+            }
         });
     }
 };
