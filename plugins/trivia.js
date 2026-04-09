@@ -1,4 +1,4 @@
-Const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 
 // ================= UNIFIED LEVEL CALCULATION =================
 function calculateLevel(xp) {
@@ -18,28 +18,6 @@ function getRank(level) {
     return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
 }
 
-// ================= ANSWER SHUFFLER (No more all 'A' answers! 哈哈哈) =================
-function shuffleQuestionAnswers(question) {
-    const answerPairs = question.a.map((answer, index) => ({
-        text: answer,
-        isCorrect: index === question.correct
-    }));
-    
-    for (let i = answerPairs.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [answerPairs[i], answerPairs[j]] = [answerPairs[j], answerPairs[i]];
-    }
-    
-    const shuffledAnswers = answerPairs.map(pair => pair.text);
-    const newCorrectIndex = answerPairs.findIndex(pair => pair.isCorrect);
-    
-    return {
-        ...question,
-        a: shuffledAnswers,
-        correct: newCorrectIndex
-    };
-}
-
 // ================= TRIVIA QUESTION DATABASE =================
 const TRIVIA_QUESTIONS = {
     science: {
@@ -49,9 +27,7 @@ const TRIVIA_QUESTIONS = {
             { q: "What is the hardest natural substance on Earth?", a: ["Diamond", "Gold", "Iron", "Platinum"], correct: 0, fact: "Diamond scores a perfect 10 on the Mohs hardness scale." },
             { q: "What is the largest organ in the human body?", a: ["Skin", "Liver", "Heart", "Brain"], correct: 0, fact: "Skin accounts for about 15% of your body weight." },
             { q: "What is the speed of light?", a: ["300,000 km/s", "150,000 km/s", "500,000 km/s", "1,000,000 km/s"], correct: 0, fact: "Light travels at exactly 299,792,458 meters per second." },
-            { q: "What is the most abundant gas in Earth's atmosphere?", a: ["Nitrogen", "Oxygen", "Carbon Dioxide", "Argon"], correct: 0, fact: "Nitrogen makes up about 78% of Earth's atmosphere." },
-            { q: "What is the smallest unit of life?", a: ["Cell", "Atom", "Molecule", "Organ"], correct: 0, fact: "Cells are the basic building blocks of all living things." },
-            { q: "What is the boiling point of water at sea level?", a: ["100°C", "90°C", "110°C", "80°C"], correct: 0, fact: "Water boils at 100°C (212°F) at standard atmospheric pressure." }
+            { q: "What is the most abundant gas in Earth's atmosphere?", a: ["Nitrogen", "Oxygen", "Carbon Dioxide", "Argon"], correct: 0, fact: "Nitrogen makes up about 78% of Earth's atmosphere." }
         ],
         fr: [
             { q: "Quel est le symbole chimique de l'or ?", a: ["Au", "Ag", "Fe", "Cu"], correct: 0, fact: "Le symbole 'Au' vient du latin 'aurum'." },
@@ -59,114 +35,43 @@ const TRIVIA_QUESTIONS = {
             { q: "Quelle est la substance naturelle la plus dure sur Terre ?", a: ["Diamant", "Or", "Fer", "Platine"], correct: 0, fact: "Le diamant obtient un score parfait de 10 sur l'échelle de Mohs." },
             { q: "Quel est le plus grand organe du corps humain ?", a: ["Peau", "Foie", "Cœur", "Cerveau"], correct: 0, fact: "La peau représente environ 15% de votre poids corporel." },
             { q: "Quelle est la vitesse de la lumière ?", a: ["300 000 km/s", "150 000 km/s", "500 000 km/s", "1 000 000 km/s"], correct: 0, fact: "La lumière voyage à exactement 299 792 458 mètres par seconde." },
-            { q: "Quel est le gaz le plus abondant dans l'atmosphère terrestre ?", a: ["Azote", "Oxygène", "Dioxyde de carbone", "Argon"], correct: 0, fact: "L'azote représente environ 78% de l'atmosphère terrestre." },
-            { q: "Quelle est la plus petite unité de vie ?", a: ["Cellule", "Atome", "Molécule", "Organe"], correct: 0, fact: "Les cellules sont les éléments constitutifs de tous les êtres vivants." },
-            { q: "Quel est le point d'ébullition de l'eau au niveau de la mer ?", a: ["100°C", "90°C", "110°C", "80°C"], correct: 0, fact: "L'eau bout à 100°C à la pression atmosphérique standard." }
+            { q: "Quel est le gaz le plus abondant dans l'atmosphère terrestre ?", a: ["Azote", "Oxygène", "Dioxyde de carbone", "Argon"], correct: 0, fact: "L'azote représente environ 78% de l'atmosphère terrestre." }
         ]
     },
     history: {
         en: [
             { q: "Who was the first President of the United States?", a: ["George Washington", "Thomas Jefferson", "Abraham Lincoln", "John Adams"], correct: 0, fact: "Washington served from 1789 to 1797." },
             { q: "In which year did World War II end?", a: ["1945", "1944", "1946", "1943"], correct: 0, fact: "WWII ended in 1945 with Germany's surrender in May and Japan's in September." },
-            { q: "Who painted the Mona Lisa?", a: ["Leonardo da Vinci", "Michelangelo", "Raphael", "Donatello"], correct: 0, fact: "Da Vinci painted the Mona Lisa between 1503 and 1519." },
-            { q: "Which ancient civilization built the Machu Picchu?", a: ["Incas", "Mayas", "Aztèques", "Olmèques"], correct: 0, fact: "Machu Picchu was built by the Inca Empire in the 15th century." },
-            { q: "Who was the first man on the moon?", a: ["Neil Armstrong", "Buzz Aldrin", "Yuri Gagarin", "Michael Collins"], correct: 0, fact: "Neil Armstrong stepped on the moon on July 20, 1969." },
-            { q: "Which empire was ruled by Julius Caesar?", a: ["Roman Empire", "Greek Empire", "Persian Empire", "Ottoman Empire"], correct: 0, fact: "Julius Caesar was a Roman general and statesman." }
+            { q: "Who painted the Mona Lisa?", a: ["Leonardo da Vinci", "Michelangelo", "Raphael", "Donatello"], correct: 0, fact: "Da Vinci painted the Mona Lisa between 1503 and 1519." }
         ],
         fr: [
             { q: "Qui était le premier président des États-Unis ?", a: ["George Washington", "Thomas Jefferson", "Abraham Lincoln", "John Adams"], correct: 0, fact: "Washington a servi de 1789 à 1797." },
             { q: "En quelle année la Seconde Guerre mondiale s'est-elle terminée ?", a: ["1945", "1944", "1946", "1943"], correct: 0, fact: "La guerre s'est terminée en 1945 avec la capitulation de l'Allemagne en mai et du Japon en septembre." },
-            { q: "Qui a peint la Joconde ?", a: ["Léonard de Vinci", "Michel-Ange", "Raphaël", "Donatello"], correct: 0, fact: "De Vinci a peint la Joconde entre 1503 et 1519." },
-            { q: "Quelle civilisation ancienne a construit le Machu Picchu ?", a: ["Incas", "Mayas", "Aztèques", "Olmèques"], correct: 0, fact: "Le Machu Picchu a été construit par l'Empire Inca au 15ème siècle." },
-            { q: "Qui était le premier homme sur la lune ?", a: ["Neil Armstrong", "Buzz Aldrin", "Youri Gagarine", "Michael Collins"], correct: 0, fact: "Neil Armstrong a marché sur la lune le 20 juillet 1969." },
-            { q: "Quel empire était dirigé par Jules César ?", a: ["Empire Romain", "Empire Grec", "Empire Perse", "Empire Ottoman"], correct: 0, fact: "Jules César était un général et homme d'État romain." }
+            { q: "Qui a peint la Joconde ?", a: ["Léonard de Vinci", "Michel-Ange", "Raphaël", "Donatello"], correct: 0, fact: "De Vinci a peint la Joconde entre 1503 et 1519." }
         ]
     },
     gaming: {
         en: [
             { q: "Which company created Mario?", a: ["Nintendo", "Sega", "Sony", "Microsoft"], correct: 0, fact: "Mario was created by Shigeru Miyamoto and first appeared in Donkey Kong (1981)." },
             { q: "In CODM, what does 'ADS' mean?", a: ["Aim Down Sights", "Auto Deploy System", "Advanced Defense Shield", "Aerial Drop Support"], correct: 0, fact: "ADS refers to aiming down your weapon's sights for better accuracy." },
-            { q: "What is the best-selling video game of all time?", a: ["Minecraft", "GTA V", "Tetris", "Wii Sports"], correct: 0, fact: "Minecraft has sold over 300 million copies worldwide." },
-            { q: "Which game features 'The King of the Iron Fist Tournament'?", a: ["Tekken", "Street Fighter", "Mortal Kombat", "SoulCalibur"], correct: 0, fact: "Tekken's tournament is sponsored by the Mishima Zaibatsu." },
-            { q: "What year was the first Call of Duty released?", a: ["2003", "2001", "2005", "2007"], correct: 0, fact: "The original Call of Duty was released on October 29, 2003." },
-            { q: "In Pokemon, what type is Pikachu?", a: ["Electric", "Fire", "Water", "Normal"], correct: 0, fact: "Pikachu is the mascot of the Pokémon franchise." }
+            { q: "What is the best-selling video game of all time?", a: ["Minecraft", "GTA V", "Tetris", "Wii Sports"], correct: 0, fact: "Minecraft has sold over 300 million copies worldwide." }
         ],
         fr: [
             { q: "Quelle entreprise a créé Mario ?", a: ["Nintendo", "Sega", "Sony", "Microsoft"], correct: 0, fact: "Mario a été créé par Shigeru Miyamoto et est apparu dans Donkey Kong (1981)." },
             { q: "Dans CODM, que signifie 'ADS' ?", a: ["Viser", "Système Auto Déploiement", "Bouclier Défensif Avancé", "Support Aérien"], correct: 0, fact: "L'ADS fait référence au fait de viser avec le viseur de votre arme." },
-            { q: "Quel est le jeu vidéo le plus vendu de tous les temps ?", a: ["Minecraft", "GTA V", "Tetris", "Wii Sports"], correct: 0, fact: "Minecraft s'est vendu à plus de 300 millions d'exemplaires dans le monde." },
-            { q: "Quel jeu présente 'Le Tournoi du Roi du Poing de Fer' ?", a: ["Tekken", "Street Fighter", "Mortal Kombat", "SoulCalibur"], correct: 0, fact: "Le tournoi de Tekken est sponsorisé par le Mishima Zaibatsu." },
-            { q: "En quelle année le premier Call of Duty est-il sorti ?", a: ["2003", "2001", "2005", "2007"], correct: 0, fact: "Le Call of Duty original est sorti le 29 octobre 2003." },
-            { q: "Dans Pokemon, quel type est Pikachu ?", a: ["Électrique", "Feu", "Eau", "Normal"], correct: 0, fact: "Pikachu est la mascotte de la franchise Pokémon." }
-        ]
-    },
-    tech: {
-        en: [
-            { q: "What does CPU stand for?", a: ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Core Processing Utility"], correct: 0, fact: "The CPU is the brain of the computer." },
-            { q: "Which company created JavaScript?", a: ["Netscape", "Microsoft", "Google", "Apple"], correct: 0, fact: "JavaScript was created by Brendan Eich at Netscape in 1995." },
-            { q: "What does 'HTTP' stand for?", a: ["HyperText Transfer Protocol", "High Tech Transfer Process", "Hyperlink Text Protocol", "Home Tool Transfer Protocol"], correct: 0, fact: "HTTP is the foundation of data communication on the web." },
-            { q: "Who is the creator of Linux?", a: ["Linus Torvalds", "Bill Gates", "Steve Jobs", "Mark Zuckerberg"], correct: 0, fact: "Linus Torvalds created Linux in 1991 as a free operating system kernel." },
-            { q: "What year was the first iPhone released?", a: ["2007", "2005", "2008", "2006"], correct: 0, fact: "Steve Jobs unveiled the first iPhone on January 9, 2007." },
-            { q: "What is the most popular programming language according to GitHub 2024?", a: ["JavaScript", "Python", "Java", "TypeScript"], correct: 0, fact: "JavaScript has remained the most popular language for over a decade." }
-        ],
-        fr: [
-            { q: "Que signifie CPU ?", a: ["Unité Centrale de Traitement", "Unité Personnelle d'Ordinateur", "Utilitaire Central de Programme", "Utilitaire de Traitement Central"], correct: 0, fact: "Le CPU est le cerveau de l'ordinateur." },
-            { q: "Quelle entreprise a créé JavaScript ?", a: ["Netscape", "Microsoft", "Google", "Apple"], correct: 0, fact: "JavaScript a été créé par Brendan Eich chez Netscape en 1995." },
-            { q: "Que signifie 'HTTP' ?", a: ["Protocole de Transfert HyperTexte", "Processus de Transfert Haute Tech", "Protocole de Texte Hyperlien", "Protocole de Transfert d'Outil Domestique"], correct: 0, fact: "HTTP est la base de la communication de données sur le web." },
-            { q: "Qui est le créateur de Linux ?", a: ["Linus Torvalds", "Bill Gates", "Steve Jobs", "Mark Zuckerberg"], correct: 0, fact: "Linus Torvalds a créé Linux en 1991 comme noyau de système d'exploitation gratuit." },
-            { q: "En quelle année le premier iPhone est-il sorti ?", a: ["2007", "2005", "2008", "2006"], correct: 0, fact: "Steve Jobs a dévoilé le premier iPhone le 9 janvier 2007." },
-            { q: "Quel est le langage de programmation le plus populaire selon GitHub 2024 ?", a: ["JavaScript", "Python", "Java", "TypeScript"], correct: 0, fact: "JavaScript est resté le langage le plus populaire pendant plus d'une décennie." }
-        ]
-    },
-    geography: {
-        en: [
-            { q: "What is the capital of France?", a: ["Paris", "Lyon", "Marseille", "Bordeaux"], correct: 0, fact: "Paris is known as the City of Light." },
-            { q: "Which is the largest ocean on Earth?", a: ["Pacific Ocean", "Atlantic Ocean", "Indian Ocean", "Arctic Ocean"], correct: 0, fact: "The Pacific Ocean covers about 63 million square miles." },
-            { q: "Which country has the most natural lakes?", a: ["Canada", "USA", "Russia", "Finland"], correct: 0, fact: "Canada has over 2 million lakes covering about 9% of its surface." },
-            { q: "What is the longest river in the world?", a: ["Nile", "Amazon", "Yangtze", "Mississippi"], correct: 0, fact: "The Nile River is approximately 6,650 km (4,132 miles) long." },
-            { q: "Which continent is the largest?", a: ["Asia", "Africa", "North America", "Europe"], correct: 0, fact: "Asia covers about 30% of Earth's total land area." }
-        ],
-        fr: [
-            { q: "Quelle est la capitale de la France ?", a: ["Paris", "Lyon", "Marseille", "Bordeaux"], correct: 0, fact: "Paris est connue comme la Ville Lumière." },
-            { q: "Quel est le plus grand océan sur Terre ?", a: ["Océan Pacifique", "Océan Atlantique", "Océan Indien", "Océan Arctique"], correct: 0, fact: "L'océan Pacifique couvre environ 165 millions de km²." },
-            { q: "Quel pays a le plus de lacs naturels ?", a: ["Canada", "États-Unis", "Russie", "Finlande"], correct: 0, fact: "Le Canada compte plus de 2 millions de lacs." },
-            { q: "Quel est le plus long fleuve du monde ?", a: ["Nil", "Amazone", "Yangtsé", "Mississippi"], correct: 0, fact: "Le Nil mesure environ 6 650 km de long." },
-            { q: "Quel continent est le plus grand ?", a: ["Asie", "Afrique", "Amérique du Nord", "Europe"], correct: 0, fact: "L'Asie couvre environ 30% de la surface terrestre." }
+            { q: "Quel est le jeu vidéo le plus vendu de tous les temps ?", a: ["Minecraft", "GTA V", "Tetris", "Wii Sports"], correct: 0, fact: "Minecraft s'est vendu à plus de 300 millions d'exemplaires dans le monde." }
         ]
     },
     general: {
         en: [
             { q: "How many days are in a leap year?", a: ["366", "365", "364", "367"], correct: 0, fact: "Leap years occur every 4 years to account for Earth's orbit." },
-            { q: "Who created this bot?", a: ["Moussa Fofana", "OpenAI", "Google", "Microsoft"], correct: 0, fact: "Moussa Fofana (MFOF7310) is the Architect of this system." },
-            { q: "How many continents are there?", a: ["7", "6", "5", "8"], correct: 0, fact: "The seven continents are: Asia, Africa, North America, South America, Antarctica, Europe, and Australia." }
+            { q: "What is the capital of Mali?", a: ["Bamako", "Ségou", "Mopti", "Kayes"], correct: 0, fact: "Bamako is located on the Niger River." },
+            { q: "Who created this bot?", a: ["Moussa Fofana", "OpenAI", "Google", "Microsoft"], correct: 0, fact: "Moussa Fofana (MFOF7310) is the Architect of this system." }
         ],
         fr: [
             { q: "Combien de jours y a-t-il dans une année bissextile ?", a: ["366", "365", "364", "367"], correct: 0, fact: "Les années bissextiles se produisent tous les 4 ans." },
-            { q: "Qui a créé ce bot ?", a: ["Moussa Fofana", "OpenAI", "Google", "Microsoft"], correct: 0, fact: "Moussa Fofana (MFOF7310) est l'Architecte de ce système." },
-            { q: "Combien y a-t-il de continents ?", a: ["7", "6", "5", "8"], correct: 0, fact: "Les sept continents sont : Asie, Afrique, Amérique du Nord, Amérique du Sud, Antarctique, Europe et Australie." }
-        ]
-    },
-    // 🆕🇲🇱 MALIAN PRIDE CATEGORY - 🇲🇱🆕
-    mali: {
-        en: [
-            { q: "Which great river flows through Bamako?", a: ["Niger River", "Nile River", "Congo River", "Senegal River"], correct: 0, fact: "The Niger River is the lifeblood of Bamako and flows through much of West Africa." },
-            { q: "What is the official currency of Mali?", a: ["CFA Franc", "Malian Dollar", "Euro", "Pound Sterling"], correct: 0, fact: "Mali uses the West African CFA franc (XOF), shared with 7 other West African countries." },
-            { q: "Which Malian city is famous for its ancient libraries and '333 Saints'?", a: ["Timbuktu", "Bamako", "Mopti", "Ségou"], correct: 0, fact: "Timbuktu (Tombouctou) was a major intellectual center with manuscripts dating back to the 13th century." },
-            { q: "What is the capital city of Mali?", a: ["Bamako", "Timbuktu", "Mopti", "Ségou"], correct: 0, fact: "Bamako is located on the banks of the Niger River and is Mali's largest city." },
-            { q: "Which famous Malian musician is known as the 'Bluesman of Africa'?", a: ["Ali Farka Touré", "Salif Keita", "Toumani Diabaté", "Oumou Sangaré"], correct: 0, fact: "Ali Farka Touré blended traditional Malian music with American blues, winning multiple Grammy Awards." },
-            { q: "What is the largest ethnic group in Mali?", a: ["Bambara", "Fulani", "Tuareg", "Songhai"], correct: 0, fact: "The Bambara (Bamana) make up about 34% of Mali's population." },
-            { q: "Which ancient empire was centered in Mali and founded by Sundiata Keita?", a: ["Mali Empire", "Ghana Empire", "Songhai Empire", "Bamana Empire"], correct: 0, fact: "The Mali Empire (1235-1670) was one of the largest and wealthiest empires in African history." },
-            { q: "What is the name of the famous mosque in Djenné, Mali?", a: ["Great Mosque of Djenné", "Djingareyber Mosque", "Sankore Mosque", "Sidi Yahya Mosque"], correct: 0, fact: "The Great Mosque of Djenné is the largest mud-brick building in the world and a UNESCO World Heritage site." }
-        ],
-        fr: [
-            { q: "Quel grand fleuve traverse Bamako ?", a: ["Fleuve Niger", "Fleuve Nil", "Fleuve Congo", "Fleuve Sénégal"], correct: 0, fact: "Le fleuve Niger est l'artère vitale de Bamako et traverse une grande partie de l'Afrique de l'Ouest." },
-            { q: "Quelle est la monnaie officielle du Mali ?", a: ["Franc CFA", "Dollar Malien", "Euro", "Livre Sterling"], correct: 0, fact: "Le Mali utilise le franc CFA d'Afrique de l'Ouest (XOF), partagé avec 7 autres pays d'Afrique de l'Ouest." },
-            { q: "Quelle ville malienne est célèbre pour ses bibliothèques anciennes et ses '333 Saints' ?", a: ["Tombouctou", "Bamako", "Mopti", "Ségou"], correct: 0, fact: "Tombouctou était un centre intellectuel majeur avec des manuscrits datant du 13ème siècle." },
-            { q: "Quelle est la capitale du Mali ?", a: ["Bamako", "Tombouctou", "Mopti", "Ségou"], correct: 0, fact: "Bamako est située sur les rives du fleuve Niger et est la plus grande ville du Mali." },
-            { q: "Quel célèbre musicien malien est connu comme le 'Bluesman de l'Afrique' ?", a: ["Ali Farka Touré", "Salif Keita", "Toumani Diabaté", "Oumou Sangaré"], correct: 0, fact: "Ali Farka Touré a mélangé la musique traditionnelle malienne avec le blues américain, remportant plusieurs Grammy Awards." },
-            { q: "Quel est le plus grand groupe ethnique du Mali ?", a: ["Bambara", "Peul", "Touareg", "Songhaï"], correct: 0, fact: "Les Bambaras (Bamanan) représentent environ 34% de la population malienne." },
-            { q: "Quel ancien empire était centré au Mali et fondé par Soundiata Keïta ?", a: ["Empire du Mali", "Empire du Ghana", "Empire Songhaï", "Empire Bamana"], correct: 0, fact: "L'Empire du Mali (1235-1670) fut l'un des plus grands et des plus riches empires de l'histoire africaine." },
-            { q: "Quel est le nom de la célèbre mosquée de Djenné, au Mali ?", a: ["Grande Mosquée de Djenné", "Mosquée Djingareyber", "Mosquée Sankoré", "Mosquée Sidi Yahya"], correct: 0, fact: "La Grande Mosquée de Djenné est le plus grand bâtiment en terre crue au monde et un site du patrimoine mondial de l'UNESCO." }
+            { q: "Quelle est la capitale du Mali ?", a: ["Bamako", "Ségou", "Mopti", "Kayes"], correct: 0, fact: "Bamako est située sur le fleuve Niger." },
+            { q: "Qui a créé ce bot ?", a: ["Moussa Fofana", "OpenAI", "Google", "Microsoft"], correct: 0, fact: "Moussa Fofana (MFOF7310) est l'Architecte de ce système." }
         ]
     }
 };
@@ -176,126 +81,182 @@ const CATEGORIES = {
     science: { emoji: '🔬', color: '#2ecc71', name: { en: 'Science', fr: 'Science' } },
     history: { emoji: '📜', color: '#e67e22', name: { en: 'History', fr: 'Histoire' } },
     gaming: { emoji: '🎮', color: '#9b59b6', name: { en: 'Gaming', fr: 'Jeux Vidéo' } },
-    tech: { emoji: '💻', color: '#3498db', name: { en: 'Technology', fr: 'Technologie' } },
-    geography: { emoji: '🌍', color: '#1abc9c', name: { en: 'Geography', fr: 'Géographie' } },
-    general: { emoji: '🧠', color: '#f1c40f', name: { en: 'General', fr: 'Général' } },
-    mali: { emoji: '🇲🇱', color: '#FEE75C', name: { en: 'Malian Pride', fr: 'Fierté Malienne' } }
+    general: { emoji: '🧠', color: '#f1c40f', name: { en: 'General', fr: 'Général' } }
 };
 
-// ================= DIFFICULTY CONFIGURATION (BALANCED TIMERS) =================
+// ================= DIFFICULTY CONFIGURATION =================
 const DIFFICULTIES = {
     easy: { 
         emoji: '🟢', color: '#2ecc71', name: { en: 'Easy', fr: 'Facile' },
-        questions: 5, baseReward: 50, timeLimit: 25, bet: 50
+        questions: 5, baseReward: 50, timeLimit: 20, bet: 50
     },
     medium: { 
         emoji: '🟡', color: '#f1c40f', name: { en: 'Medium', fr: 'Moyen' },
-        questions: 7, baseReward: 100, timeLimit: 30, bet: 100
+        questions: 7, baseReward: 100, timeLimit: 15, bet: 100
     },
     hard: { 
         emoji: '🔴', color: '#e74c3c', name: { en: 'Hard', fr: 'Difficile' },
-        questions: 10, baseReward: 200, timeLimit: 35, bet: 200
-    },
-    expert: { 
-        emoji: '👑', color: '#8e44ad', name: { en: 'Expert', fr: 'Expert' },
-        questions: 15, baseReward: 500, timeLimit: 40, bet: 500
+        questions: 10, baseReward: 200, timeLimit: 10, bet: 200
     }
 };
 
 // ================= BILINGUAL TRANSLATIONS =================
 const texts = {
     en: {
-        title: '🧠 NEURAL TRIVIA', selectCategory: 'Select a Category', selectDifficulty: 'Select Difficulty',
-        category: 'Category', difficulty: 'Difficulty', questions: 'Questions', timePerQuestion: 'Time per question',
-        bet: 'Bet', potentialReward: 'Potential Reward', start: 'Start Quiz', cancel: 'Cancel', back: 'Back',
-        question: 'Question', of: 'of', timeLeft: 'Time Left', correct: '✅ CORRECT!', incorrect: '❌ INCORRECT!',
-        timeout: '⏰ TIME\'S UP!', answer: 'Answer', fact: 'Did you know?', streak: 'Streak',
-        correctAnswers: 'Correct', totalQuestions: 'Total', accuracy: 'Accuracy', reward: 'Reward',
-        baseReward: 'Base', streakBonus: 'Streak Bonus', total: 'Total', xpGained: 'XP Gained',
-        creditsGained: 'Credits Gained', newRank: 'New Rank', playAgain: 'Play Again', mainMenu: 'Main Menu',
-        insufficientCredits: '❌ **Insufficient Credits!** You need {bet} 🪙 to play.', balance: 'Balance',
-        loading: 'Loading neural database...', gameOver: 'Quiz Complete!', perfect: '🏆 PERFECT SCORE!',
-        almost: 'Great effort!', good: 'Well done!', tryAgain: 'Try again!', accessDenied: '❌ This menu is not yours.',
-        progress: 'Progress', maliDesc: 'History, culture, and Malian pride', 
-        scienceDesc: 'Physics, chemistry, biology...', historyDesc: 'Historical events and figures',
-        gamingDesc: 'Video games, CODM, esports...', techDesc: 'Programming, hardware, internet',
-        geographyDesc: 'Countries, capitals, geography', generalDesc: 'Mixed general knowledge'
+        title: '🧠 NEURAL TRIVIA',
+        selectCategory: 'Select a Category',
+        selectDifficulty: 'Select Difficulty',
+        category: 'Category',
+        difficulty: 'Difficulty',
+        questions: 'Questions',
+        timePerQuestion: 'Time per question',
+        bet: 'Bet',
+        start: 'Start Quiz',
+        cancel: 'Cancel',
+        back: 'Back',
+        question: 'Question',
+        of: 'of',
+        timeLeft: 'Time Left',
+        correct: '✅ CORRECT!',
+        incorrect: '❌ INCORRECT!',
+        timeout: '⏰ TIME\'S UP!',
+        answer: 'Answer',
+        fact: 'Did you know?',
+        streak: 'Streak',
+        correctAnswers: 'Correct',
+        totalQuestions: 'Total',
+        accuracy: 'Accuracy',
+        reward: 'Reward',
+        baseReward: 'Base',
+        streakBonus: 'Streak Bonus',
+        accuracyBonus: 'Accuracy Bonus',
+        total: 'Total',
+        xpGained: 'XP Gained',
+        creditsGained: 'Credits Gained',
+        newRank: 'New Rank',
+        playAgain: 'Play Again',
+        mainMenu: 'Main Menu',
+        backToGames: 'Games Menu',
+        insufficientCredits: '❌ **Insufficient Credits!** You need {bet} 🪙 to play.',
+        balance: 'Balance',
+        loading: 'Loading neural database...',
+        gameOver: 'Quiz Complete!',
+        perfect: '🏆 PERFECT SCORE!',
+        almost: 'Great effort!',
+        good: 'Well done!',
+        tryAgain: 'Try again!',
+        accessDenied: '❌ This menu is not yours.',
+        progress: 'Progress',
+        levelUp: '🎉 LEVEL UP!',
+        promotedTo: 'promoted to',
+        clickFast: '⚡ Click fast! Timer is ticking...',
+        fairTimerNote: '⏱️ Timer scales with difficulty'
     },
     fr: {
-        title: '🧠 TRIVIA NEURAL', selectCategory: 'Choisissez une Catégorie', selectDifficulty: 'Choisissez la Difficulté',
-        category: 'Catégorie', difficulty: 'Difficulté', questions: 'Questions', timePerQuestion: 'Temps par question',
-        bet: 'Mise', potentialReward: 'Récompense Potentielle', start: 'Commencer', cancel: 'Annuler', back: 'Retour',
-        question: 'Question', of: 'sur', timeLeft: 'Temps Restant', correct: '✅ CORRECT !', incorrect: '❌ INCORRECT !',
-        timeout: '⏰ TEMPS ÉCOULÉ !', answer: 'Réponse', fact: 'Le saviez-vous ?', streak: 'Série',
-        correctAnswers: 'Correct', totalQuestions: 'Total', accuracy: 'Précision', reward: 'Récompense',
-        baseReward: 'Base', streakBonus: 'Bonus de Série', total: 'Total', xpGained: 'XP Gagnés',
-        creditsGained: 'Crédits Gagnés', newRank: 'Nouveau Rang', playAgain: 'Rejouer', mainMenu: 'Menu Principal',
-        insufficientCredits: '❌ **Crédits Insuffisants !** Vous avez besoin de {bet} 🪙 pour jouer.', balance: 'Solde',
-        loading: 'Chargement de la base neurale...', gameOver: 'Quiz Terminé !', perfect: '🏆 SCORE PARFAIT !',
-        almost: 'Excellent effort !', good: 'Bien joué !', tryAgain: 'Réessayez !', accessDenied: '❌ Ce menu ne vous appartient pas.',
-        progress: 'Progression', maliDesc: 'Histoire, culture et fierté malienne',
-        scienceDesc: 'Physique, chimie, biologie...', historyDesc: 'Événements et personnages historiques',
-        gamingDesc: 'Jeux vidéo, CODM, esports...', techDesc: 'Programmation, hardware, internet',
-        geographyDesc: 'Pays, capitales, géographie', generalDesc: 'Culture générale mélangée'
+        title: '🧠 TRIVIA NEURAL',
+        selectCategory: 'Choisissez une Catégorie',
+        selectDifficulty: 'Choisissez la Difficulté',
+        category: 'Catégorie',
+        difficulty: 'Difficulté',
+        questions: 'Questions',
+        timePerQuestion: 'Temps par question',
+        bet: 'Mise',
+        start: 'Commencer',
+        cancel: 'Annuler',
+        back: 'Retour',
+        question: 'Question',
+        of: 'sur',
+        timeLeft: 'Temps Restant',
+        correct: '✅ CORRECT !',
+        incorrect: '❌ INCORRECT !',
+        timeout: '⏰ TEMPS ÉCOULÉ !',
+        answer: 'Réponse',
+        fact: 'Le saviez-vous ?',
+        streak: 'Série',
+        correctAnswers: 'Correct',
+        totalQuestions: 'Total',
+        accuracy: 'Précision',
+        reward: 'Récompense',
+        baseReward: 'Base',
+        streakBonus: 'Bonus de Série',
+        accuracyBonus: 'Bonus Précision',
+        total: 'Total',
+        xpGained: 'XP Gagnés',
+        creditsGained: 'Crédits Gagnés',
+        newRank: 'Nouveau Rang',
+        playAgain: 'Rejouer',
+        mainMenu: 'Menu Principal',
+        backToGames: 'Menu Jeux',
+        insufficientCredits: '❌ **Crédits Insuffisants !** Vous avez besoin de {bet} 🪙 pour jouer.',
+        balance: 'Solde',
+        loading: 'Chargement de la base neurale...',
+        gameOver: 'Quiz Terminé !',
+        perfect: '🏆 SCORE PARFAIT !',
+        almost: 'Excellent effort !',
+        good: 'Bien joué !',
+        tryAgain: 'Réessayez !',
+        accessDenied: '❌ Ce menu ne vous appartient pas.',
+        progress: 'Progression',
+        levelUp: '🎉 PROMOTION !',
+        promotedTo: 'promu au rang de',
+        clickFast: '⚡ Cliquez vite ! Le temps presse...',
+        fairTimerNote: '⏱️ Le chrono s\'adapte à la difficulté'
     }
 };
 
 // ================= HELPER FUNCTIONS =================
+/**
+ * 🔥 SHUFFLE ANSWERS - Randomizes A/B/C/D positions!
+ */
+function shuffleAnswers(question) {
+    // Create array of { answer, isCorrect } objects
+    const answers = question.a.map((text, index) => ({
+        text: text,
+        isCorrect: index === question.correct
+    }));
+    
+    // Fisher-Yates shuffle for true randomness
+    for (let i = answers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [answers[i], answers[j]] = [answers[j], answers[i]];
+    }
+    
+    // Find new correct index after shuffle
+    const newCorrectIndex = answers.findIndex(a => a.isCorrect);
+    
+    return {
+        q: question.q,
+        a: answers.map(a => a.text),
+        correct: newCorrectIndex,
+        fact: question.fact
+    };
+}
+
 function getRandomQuestions(category, difficulty, lang, count) {
     const questions = TRIVIA_QUESTIONS[category]?.[lang] || TRIVIA_QUESTIONS.general[lang];
     const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, Math.min(count, questions.length));
-    return selected.map(q => shuffleQuestionAnswers(q));
-}
-
-function createProgressBar(percentage, length = 15) {
-    const filled = Math.round((percentage / 100) * length);
-    const empty = length - filled;
-    return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty));
-}
-
-function checkAndAnnounceLevelUp(client, oldXp, newXp, userId, username, channel, lang, guildName, guildIcon) {
-    const oldLevel = calculateLevel(oldXp);
-    const newLevel = calculateLevel(newXp);
-    if (newLevel > oldLevel) {
-        const rank = getRank(newLevel);
-        const version = client.version || '1.5.0';
-        const levelUpEmbed = new EmbedBuilder()
-            .setColor(rank.color)
-            .setAuthor({ name: lang === 'fr' ? '🎉 PROMOTION !' : '🎉 LEVEL UP!', iconURL: client.user.displayAvatarURL() })
-            .setTitle(lang === 'fr' ? '═ PROMOTION D\'AGENT ═' : '═ AGENT PROMOTION ═')
-            .setDescription(`${lang === 'fr' ? 'Félicitations' : 'Congratulations'} **${username}**! ${lang === 'fr' ? 'Vous êtes promu' : 'You\'ve been promoted to'} **${rank.emoji} ${rank.title[lang]}** (${lang === 'fr' ? 'Niveau' : 'Level'} ${newLevel})`)
-            .addFields(
-                { name: '📊 PROGRESSION', value: `${lang === 'fr' ? 'Niveau' : 'Level'} ${oldLevel} → ${newLevel}`, inline: true },
-                { name: '🎯 RANG', value: `${rank.emoji} ${rank.title[lang]}`, inline: true }
-            )
-            .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
-        channel.send({ embeds: [levelUpEmbed] });
-        return true;
-    }
-    return false;
+    // 🔥 Apply shuffle to each question for random answer order!
+    return shuffled.slice(0, Math.min(count, questions.length)).map(q => shuffleAnswers(q));
 }
 
 // ================= MAIN COMMAND =================
 module.exports = {
     name: 'trivia',
-    aliases: ['quiz', 'culture', 'questions', 'trivial'],
+    aliases: ['quiz', 'culture', 'questions', 'trivial', 'quizz'],
     description: '🧠 Test your knowledge with the Neural Trivia System!',
     category: 'GAMING',
     usage: '.trivia',
     cooldown: 3000,
-    examples: ['.trivia'],
 
-    run: async (client, message, args, database, serverSettings, usedCommand) => {
-        const db = database;
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
         
+        // 🔥 ALIAS-BASED LANGUAGE DETECTION
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
             : (serverSettings?.language || 'en');
-            
+        
         const t = texts[lang];
-        const version = client.version || '1.5.0';
+        const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
@@ -303,32 +264,34 @@ module.exports = {
         const userName = message.author.username;
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
         
-        let userData = db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(userId);
+        // 🔥 USE OPTIMIZED getUserData
+        let userData = client.getUserData 
+            ? client.getUserData(userId) 
+            : db.prepare("SELECT xp, credits, level FROM users WHERE id = ?").get(userId);
+        
         if (!userData) {
             db.prepare("INSERT INTO users (id, username, xp, credits, level) VALUES (?, ?, 0, 0, 1)").run(userId, userName);
-            userData = { xp: 0, credits: 0 };
+            userData = { xp: 0, credits: 0, level: 1 };
         }
         
         const credits = userData.credits || 0;
-        const userLevel = calculateLevel(userData.xp || 0);
+        const userLevel = userData.level || calculateLevel(userData.xp || 0);
         const userRank = getRank(userLevel);
         
         let selectedCategory = null;
         let selectedDifficulty = null;
         
+        // ================= CATEGORY SELECTION MENU =================
         const categoryEmbed = new EmbedBuilder()
             .setColor('#00fbff')
             .setAuthor({ name: `${t.title} • ${lang === 'fr' ? 'SÉLECTION' : 'SELECTION'}`, iconURL: client.user.displayAvatarURL() })
             .setTitle(lang === 'fr' ? '═ CHOISISSEZ UNE CATÉGORIE ═' : '═ SELECT A CATEGORY ═')
             .setDescription(lang === 'fr' ? 'Sélectionnez une catégorie pour commencer le quiz.' : 'Select a category to begin the quiz.')
             .addFields(
-                { name: `🔬 ${CATEGORIES.science.name[lang]}`, value: t.scienceDesc, inline: true },
-                { name: `📜 ${CATEGORIES.history.name[lang]}`, value: t.historyDesc, inline: true },
-                { name: `🎮 ${CATEGORIES.gaming.name[lang]}`, value: t.gamingDesc, inline: true },
-                { name: `💻 ${CATEGORIES.tech.name[lang]}`, value: t.techDesc, inline: true },
-                { name: `🌍 ${CATEGORIES.geography.name[lang]}`, value: t.geographyDesc, inline: true },
-                { name: `🧠 ${CATEGORIES.general.name[lang]}`, value: t.generalDesc, inline: true },
-                { name: `🇲🇱 ${CATEGORIES.mali.name[lang]}`, value: t.maliDesc, inline: true }
+                { name: `🔬 ${CATEGORIES.science.name[lang]}`, value: `${lang === 'fr' ? 'Physique, chimie, biologie...' : 'Physics, chemistry, biology...'}`, inline: true },
+                { name: `📜 ${CATEGORIES.history.name[lang]}`, value: `${lang === 'fr' ? 'Événements et personnages historiques' : 'Historical events and figures'}`, inline: true },
+                { name: `🎮 ${CATEGORIES.gaming.name[lang]}`, value: `${lang === 'fr' ? 'Jeux vidéo, CODM, esports...' : 'Video games, CODM, esports...'}`, inline: true },
+                { name: `🧠 ${CATEGORIES.general.name[lang]}`, value: `${lang === 'fr' ? 'Culture générale mélangée' : 'Mixed general knowledge'}`, inline: true }
             )
             .addFields({
                 name: `💰 ${t.balance}`,
@@ -356,10 +319,13 @@ module.exports = {
         
         const categoryMsg = await message.reply({ embeds: [categoryEmbed], components: [categoryRow, cancelRow] });
         
+        // ================= CATEGORY COLLECTOR =================
         const categoryCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
         
         categoryCollector.on('collect', async (i) => {
-            if (i.user.id !== userId) return i.reply({ content: t.accessDenied, ephemeral: true });
+            if (i.user.id !== userId) {
+                return i.reply({ content: t.accessDenied, ephemeral: true });
+            }
             
             if (i.customId === 'trivia_cancel') {
                 await i.update({ embeds: [categoryEmbed.setColor('#ED4245').setFooter({ text: `${guildName} • ${lang === 'fr' ? '❌ Quiz annulé' : '❌ Quiz cancelled'} • v${version}`, iconURL: guildIcon })], components: [] });
@@ -371,25 +337,29 @@ module.exports = {
                 await i.deferUpdate();
                 categoryCollector.stop();
                 
+                // ================= DIFFICULTY SELECTION =================
                 const diffEmbed = new EmbedBuilder()
                     .setColor(CATEGORIES[selectedCategory].color)
                     .setAuthor({ name: `${t.title} • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]}`, iconURL: client.user.displayAvatarURL() })
                     .setTitle(lang === 'fr' ? '═ CHOISISSEZ LA DIFFICULTÉ ═' : '═ SELECT DIFFICULTY ═')
                     .setDescription(lang === 'fr' ? 'Choisissez un niveau de difficulté.' : 'Choose a difficulty level.')
                     .addFields(
-                        { name: `🟢 ${DIFFICULTIES.easy.name[lang]}`, value: `${DIFFICULTIES.easy.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.easy.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.easy.bet} 🪙`, inline: false },
-                        { name: `🟡 ${DIFFICULTIES.medium.name[lang]}`, value: `${DIFFICULTIES.medium.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.medium.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.medium.bet} 🪙`, inline: false },
-                        { name: `🔴 ${DIFFICULTIES.hard.name[lang]}`, value: `${DIFFICULTIES.hard.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.hard.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.hard.bet} 🪙`, inline: false },
-                        { name: `👑 ${DIFFICULTIES.expert.name[lang]}`, value: `${DIFFICULTIES.expert.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.expert.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.expert.bet} 🪙`, inline: false }
+                        { name: `🟢 ${DIFFICULTIES.easy.name[lang]}`, value: `${DIFFICULTIES.easy.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.easy.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.easy.bet} 🪙\n${t.fairTimerNote}`, inline: false },
+                        { name: `🟡 ${DIFFICULTIES.medium.name[lang]}`, value: `${DIFFICULTIES.medium.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.medium.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.medium.bet} 🪙\n⚡ ${t.clickFast}`, inline: false },
+                        { name: `🔴 ${DIFFICULTIES.hard.name[lang]}`, value: `${DIFFICULTIES.hard.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${DIFFICULTIES.hard.timeLimit}s/${lang === 'fr' ? 'question' : 'question'} • ${DIFFICULTIES.hard.bet} 🪙\n🔥 ${lang === 'fr' ? 'Experts seulement!' : 'Experts only!'}`, inline: false }
                     )
-                    .addFields({ name: `💰 ${t.balance}`, value: `\`${credits.toLocaleString()} 🪙\``, inline: false })
+                    .addFields({
+                        name: `💰 ${t.balance}`,
+                        value: `\`${credits.toLocaleString()} 🪙\``,
+                        inline: false
+                    })
                     .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
                 const diffOptions = Object.entries(DIFFICULTIES).map(([key, diff]) => ({
                     label: `${diff.emoji} ${diff.name[lang]}`,
                     value: key,
-                    description: `${diff.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${diff.bet} 🪙`
+                    description: `${diff.questions} ${lang === 'fr' ? 'questions' : 'questions'} • ${diff.bet} 🪙 • ${diff.timeLimit}s`
                 }));
                 
                 const diffMenu = new StringSelectMenuBuilder()
@@ -405,10 +375,13 @@ module.exports = {
                 
                 await categoryMsg.edit({ embeds: [diffEmbed], components: [diffRow, backRow] });
                 
+                // ================= DIFFICULTY COLLECTOR =================
                 const diffCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
                 
                 diffCollector.on('collect', async (j) => {
-                    if (j.user.id !== userId) return j.reply({ content: t.accessDenied, ephemeral: true });
+                    if (j.user.id !== userId) {
+                        return j.reply({ content: t.accessDenied, ephemeral: true });
+                    }
                     
                     if (j.customId === 'trivia_cancel') {
                         await j.update({ embeds: [diffEmbed.setColor('#ED4245').setFooter({ text: `${guildName} • ${lang === 'fr' ? '❌ Quiz annulé' : '❌ Quiz cancelled'} • v${version}`, iconURL: guildIcon })], components: [] });
@@ -425,15 +398,27 @@ module.exports = {
                         selectedDifficulty = j.values[0];
                         const diff = DIFFICULTIES[selectedDifficulty];
                         
+                        // Check credits
                         if (credits < diff.bet) {
-                            return j.reply({ content: t.insufficientCredits.replace('{bet}', diff.bet), ephemeral: true });
+                            await j.reply({ content: t.insufficientCredits.replace('{bet}', diff.bet), ephemeral: true });
+                            return;
                         }
                         
                         await j.deferUpdate();
                         diffCollector.stop();
                         
-                        db.prepare("UPDATE users SET credits = credits - ? WHERE id = ?").run(diff.bet, userId);
+                        // 🔥 DEDUCT BET USING BATCH SYSTEM
+                        const currentUserData = client.getUserData ? client.getUserData(userId) : userData;
+                        if (client.queueUserUpdate) {
+                            client.queueUserUpdate(userId, {
+                                credits: (currentUserData.credits || 0) - diff.bet,
+                                username: userName
+                            });
+                        } else {
+                            db.prepare("UPDATE users SET credits = credits - ? WHERE id = ?").run(diff.bet, userId);
+                        }
                         
+                        // ================= START QUIZ =================
                         const questions = getRandomQuestions(selectedCategory, selectedDifficulty, lang, diff.questions);
                         
                         if (questions.length === 0) {
@@ -444,8 +429,12 @@ module.exports = {
                             return categoryMsg.edit({ embeds: [errorEmbed], components: [] });
                         }
                         
-                        let currentQuestion = 0, correctAnswers = 0, streak = 0, maxStreak = 0;
+                        let currentQuestion = 0;
+                        let correctAnswers = 0;
+                        let streak = 0;
+                        let maxStreak = 0;
                         
+                        // ================= QUIZ LOOP =================
                         for (let qIndex = 0; qIndex < questions.length; qIndex++) {
                             currentQuestion = qIndex + 1;
                             const q = questions[qIndex];
@@ -472,37 +461,68 @@ module.exports = {
                             
                             await categoryMsg.edit({ embeds: [questionEmbed], components: [answerRow] });
                             
+                            // ⚡ FAST BUTTON RESPONSE - No artificial delays!
+                            const answerStartTime = Date.now();
+                            
+                            // Wait for answer
                             const answer = await new Promise((resolve) => {
                                 const answerCollector = categoryMsg.createMessageComponentCollector({ time: diff.timeLimit * 1000, max: 1 });
-                                const timeout = setTimeout(() => { answerCollector.stop('timeout'); resolve({ timeout: true }); }, diff.timeLimit * 1000);
+                                
+                                const timeout = setTimeout(() => {
+                                    answerCollector.stop('timeout');
+                                    resolve({ timeout: true });
+                                }, diff.timeLimit * 1000);
                                 
                                 answerCollector.on('collect', async (k) => {
-                                    if (k.user.id !== userId) { await k.reply({ content: t.accessDenied, ephemeral: true }); return; }
+                                    if (k.user.id !== userId) {
+                                        await k.reply({ content: t.accessDenied, ephemeral: true });
+                                        return;
+                                    }
                                     clearTimeout(timeout);
                                     answerCollector.stop();
+                                    
+                                    const responseTime = Date.now() - answerStartTime;
+                                    console.log(`${cyan}[TRIVIA]${reset} ${userName} answered in ${responseTime}ms`);
+                                    
                                     const answerMap = { 'trivia_a': 0, 'trivia_b': 1, 'trivia_c': 2, 'trivia_d': 3 };
                                     const selectedAnswer = answerMap[k.customId];
-                                    resolve({ isCorrect: selectedAnswer === q.correct, selectedAnswer, interaction: k });
+                                    const isCorrect = selectedAnswer === q.correct;
+                                    
+                                    resolve({ isCorrect, selectedAnswer, interaction: k, responseTime });
                                 });
                                 
-                                answerCollector.on('end', (collected, reason) => { if (reason === 'timeout') resolve({ timeout: true }); });
+                                answerCollector.on('end', (collected, reason) => {
+                                    if (reason === 'timeout') {
+                                        resolve({ timeout: true });
+                                    }
+                                });
                             });
                             
-                            let resultText = '', resultColor = diff.color;
+                            // Process answer
+                            let resultText = '';
+                            let resultColor = diff.color;
                             
                             if (answer.timeout) {
-                                resultText = t.timeout; resultColor = '#95a5a6'; streak = 0;
+                                resultText = t.timeout;
+                                resultColor = '#95a5a6';
+                                streak = 0;
                             } else {
                                 if (answer.isCorrect) {
-                                    correctAnswers++; streak++;
+                                    correctAnswers++;
+                                    streak++;
                                     if (streak > maxStreak) maxStreak = streak;
-                                    resultText = t.correct; resultColor = '#2ecc71';
+                                    resultText = t.correct;
+                                    resultColor = '#2ecc71';
                                 } else {
-                                    resultText = t.incorrect; resultColor = '#e74c3c'; streak = 0;
+                                    resultText = t.incorrect;
+                                    resultColor = '#e74c3c';
+                                    streak = 0;
                                 }
+                                
                                 await answer.interaction.deferUpdate();
                             }
                             
+                            // Show result
                             const resultEmbed = new EmbedBuilder()
                                 .setColor(resultColor)
                                 .setAuthor({ name: `${t.title} • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]}`, iconURL: client.user.displayAvatarURL() })
@@ -517,42 +537,89 @@ module.exports = {
                                 .setTimestamp();
                             
                             const nextRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('trivia_next')
+                                new ButtonBuilder()
+                                    .setCustomId('trivia_next')
                                     .setLabel(currentQuestion === questions.length ? t.gameOver.split('!')[0] : (lang === 'fr' ? 'Suivant' : 'Next'))
-                                    .setStyle(ButtonStyle.Success).setEmoji(currentQuestion === questions.length ? '🏁' : '▶')
+                                    .setStyle(ButtonStyle.Success)
+                                    .setEmoji(currentQuestion === questions.length ? '🏁' : '▶')
                             );
                             
                             await categoryMsg.edit({ embeds: [resultEmbed], components: [nextRow] });
                             
+                            // Wait for next button
                             await new Promise((resolve) => {
                                 const nextCollector = categoryMsg.createMessageComponentCollector({ time: 30000, max: 1 });
+                                
                                 nextCollector.on('collect', async (k) => {
-                                    if (k.user.id !== userId) { await k.reply({ content: t.accessDenied, ephemeral: true }); return; }
-                                    await k.deferUpdate(); nextCollector.stop(); resolve();
+                                    if (k.user.id !== userId) {
+                                        await k.reply({ content: t.accessDenied, ephemeral: true });
+                                        return;
+                                    }
+                                    await k.deferUpdate();
+                                    nextCollector.stop();
+                                    resolve();
                                 });
+                                
                                 nextCollector.on('end', () => resolve());
                             });
                         }
                         
+                        // ================= CALCULATE REWARDS (OPTIMIZED) =================
                         const accuracy = (correctAnswers / questions.length) * 100;
                         const baseReward = diff.baseReward;
                         const streakBonus = maxStreak * 25;
                         const accuracyBonus = accuracy >= 80 ? Math.floor(baseReward * 0.5) : 0;
                         const totalReward = baseReward + streakBonus + accuracyBonus;
+                        
                         const xpGain = Math.floor((correctAnswers * 25) + (maxStreak * 10) + (accuracy >= 70 ? 50 : 0));
                         
-                        const oldUser = db.prepare("SELECT xp FROM users WHERE id = ?").get(userId);
-                        const oldXp = oldUser?.xp || 0;
+                        // 🔥 USE BATCH SYSTEM
+                        const finalUserData = client.getUserData 
+                            ? client.getUserData(userId) 
+                            : db.prepare("SELECT xp, credits, games_played, games_won FROM users WHERE id = ?").get(userId);
                         
-                        db.prepare("UPDATE users SET credits = credits + ?, xp = xp + ?, games_played = COALESCE(games_played, 0) + 1, games_won = COALESCE(games_won, 0) + ? WHERE id = ?")
-                            .run(totalReward, xpGain, correctAnswers >= questions.length / 2 ? 1 : 0, userId);
+                        if (finalUserData) {
+                            const oldXp = finalUserData.xp || 0;
+                            const newXp = oldXp + xpGain;
+                            const oldLevel = calculateLevel(oldXp);
+                            const newLevel = calculateLevel(newXp);
+                            
+                            if (client.queueUserUpdate) {
+                                client.queueUserUpdate(userId, {
+                                    credits: (finalUserData.credits || 0) + totalReward,
+                                    xp: newXp,
+                                    level: newLevel,
+                                    games_played: (finalUserData.games_played || 0) + 1,
+                                    games_won: (finalUserData.games_won || 0) + (correctAnswers >= questions.length / 2 ? 1 : 0),
+                                    username: userName
+                                });
+                            } else {
+                                db.prepare("UPDATE users SET credits = credits + ?, xp = xp + ?, level = ?, games_played = COALESCE(games_played, 0) + 1, games_won = COALESCE(games_won, 0) + ? WHERE id = ?")
+                                    .run(totalReward, xpGain, newLevel, correctAnswers >= questions.length / 2 ? 1 : 0, userId);
+                            }
+                            
+                            // Level up check
+                            if (newLevel > oldLevel) {
+                                const newRank = getRank(newLevel);
+                                const levelUpEmbed = new EmbedBuilder()
+                                    .setColor(newRank.color)
+                                    .setTitle(t.levelUp)
+                                    .setDescription(`**${userName}** ${t.promotedTo} **${newRank.emoji} ${newRank.title[lang]}** (${lang === 'fr' ? 'Niveau' : 'Level'} ${newLevel})!`)
+                                    .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
+                                    .setTimestamp();
+                                await message.channel.send({ embeds: [levelUpEmbed] });
+                            }
+                        }
                         
-                        const newUser = db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(userId);
-                        const newLevel = calculateLevel(newUser.xp);
-                        const newRank = getRank(newLevel);
+                        // Refresh user data for display
+                        const displayUserData = client.getUserData 
+                            ? client.getUserData(userId) 
+                            : db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(userId);
                         
-                        checkAndAnnounceLevelUp(client, oldXp, newUser.xp, userId, userName, message.channel, lang, guildName, guildIcon);
+                        const displayLevel = displayUserData?.level || calculateLevel(displayUserData?.xp || 0);
+                        const displayRank = getRank(displayLevel);
                         
+                        // ================= FINAL RESULTS =================
                         let performanceMessage = '';
                         if (accuracy === 100) performanceMessage = t.perfect;
                         else if (accuracy >= 80) performanceMessage = t.almost;
@@ -560,29 +627,39 @@ module.exports = {
                         else performanceMessage = t.tryAgain;
                         
                         const finalEmbed = new EmbedBuilder()
-                            .setColor(newRank.color)
+                            .setColor(displayRank.color)
                             .setAuthor({ name: `${t.title} • ${t.gameOver}`, iconURL: avatarURL })
                             .setTitle(performanceMessage)
-                            .setDescription(`**${userName}** • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]} • ${DIFFICULTIES[selectedDifficulty].emoji} ${DIFFICULTIES[selectedDifficulty].name[lang]}\n\n` +
-                                `\`\`\`yaml\n${t.correctAnswers}: ${correctAnswers}/${questions.length}\n${t.accuracy}: ${accuracy.toFixed(1)}%\n${t.streak}: ${maxStreak} 🔥\n\`\`\``)
+                            .setDescription(
+                                `**${userName}** • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]} • ${DIFFICULTIES[selectedDifficulty].emoji} ${DIFFICULTIES[selectedDifficulty].name[lang]}\n\n` +
+                                `\`\`\`yaml\n` +
+                                `${t.correctAnswers}: ${correctAnswers}/${questions.length}\n` +
+                                `${t.accuracy}: ${accuracy.toFixed(1)}%\n` +
+                                `${t.streak}: ${maxStreak} 🔥\n` +
+                                `\`\`\``
+                            )
                             .addFields(
-                                { name: `💰 ${t.reward}`, value: `\`\`\`yaml\n${t.baseReward}: ${baseReward} 🪙\n${t.streakBonus}: ${streakBonus} 🪙\n${lang === 'fr' ? 'Bonus Précision' : 'Accuracy Bonus'}: ${accuracyBonus} 🪙\n${t.total}: ${totalReward} 🪙\`\`\``, inline: true },
-                                { name: `📊 ${t.progress}`, value: `\`\`\`yaml\n${t.xpGained}: ${xpGain} XP\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${newLevel}\n${newRank.emoji} ${newRank.title[lang]}\n${t.balance}: ${newUser.credits.toLocaleString()} 🪙\`\`\``, inline: true }
+                                { name: `💰 ${t.reward}`, value: `\`\`\`yaml\n${t.baseReward}: ${baseReward} 🪙\n${t.streakBonus}: ${streakBonus} 🪙\n${t.accuracyBonus}: ${accuracyBonus} 🪙\n${t.total}: ${totalReward} 🪙\`\`\``, inline: true },
+                                { name: `📊 ${t.progress}`, value: `\`\`\`yaml\n${t.xpGained}: ${xpGain} XP\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${displayLevel}\n${displayRank.emoji} ${displayRank.title[lang]}\n${t.balance}: ${displayUserData?.credits?.toLocaleString() || 0} 🪙\`\`\``, inline: true }
                             )
                             .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon })
                             .setTimestamp();
                         
                         const finalRow = new ActionRowBuilder().addComponents(
                             new ButtonBuilder().setCustomId('trivia_again').setLabel(t.playAgain).setStyle(ButtonStyle.Success).setEmoji('🔄'),
-                            new ButtonBuilder().setCustomId('trivia_menu').setLabel(t.mainMenu).setStyle(ButtonStyle.Primary).setEmoji('🏠')
+                            new ButtonBuilder().setCustomId('trivia_menu').setLabel(t.mainMenu).setStyle(ButtonStyle.Primary).setEmoji('🏠'),
+                            new ButtonBuilder().setCustomId('trivia_games').setLabel(t.backToGames).setStyle(ButtonStyle.Secondary).setEmoji('🎮')
                         );
                         
                         await categoryMsg.edit({ embeds: [finalEmbed], components: [finalRow] });
                         
+                        // Final collector
                         const finalCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
                         
                         finalCollector.on('collect', async (k) => {
-                            if (k.user.id !== userId) return k.reply({ content: t.accessDenied, ephemeral: true });
+                            if (k.user.id !== userId) {
+                                return k.reply({ content: t.accessDenied, ephemeral: true });
+                            }
                             
                             if (k.customId === 'trivia_again') {
                                 await k.deferUpdate();
@@ -594,9 +671,23 @@ module.exports = {
                             } else if (k.customId === 'trivia_menu') {
                                 await k.deferUpdate();
                                 finalCollector.stop();
+                                const helpCmd = client.commands.get('help');
+                                if (helpCmd) {
+                                    await helpCmd.run(client, message, [], db, serverSettings, usedCommand);
+                                }
+                            } else if (k.customId === 'trivia_games') {
+                                // 🔗 BRIDGE TO GAME.JS
+                                await k.deferUpdate();
+                                finalCollector.stop();
                                 const gameCmd = client.commands.get('game');
                                 if (gameCmd) {
                                     await gameCmd.run(client, message, ['menu'], db, serverSettings, usedCommand);
+                                } else {
+                                    // Fallback to help
+                                    const helpCmd = client.commands.get('help');
+                                    if (helpCmd) {
+                                        await helpCmd.run(client, message, [], db, serverSettings, usedCommand);
+                                    }
                                 }
                             }
                         });
