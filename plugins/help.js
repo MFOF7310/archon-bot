@@ -41,9 +41,6 @@ const translations = {
         commandsAvailable: 'commands available',
         useHelpForDetails: 'Use {prefix}help <command> for details',
         selectModuleBelow: 'Select a module below',
-        mostUsedCommands: '🔥 MOST USED',
-        recentAdditions: '🆕 RECENT',
-        recommendedForYou: '⭐ RECOMMENDED',
         categoryDescriptions: {
             SYSTEM: 'Core system commands and utilities',
             GAMING: 'Games, arcade, and entertainment',
@@ -115,9 +112,6 @@ const translations = {
         commandsAvailable: 'commandes disponibles',
         useHelpForDetails: 'Utilisez {prefix}help <commande> pour plus de détails',
         selectModuleBelow: 'Sélectionnez un module ci-dessous',
-        mostUsedCommands: '🔥 LES PLUS UTILISÉS',
-        recentAdditions: '🆕 RÉCENTS',
-        recommendedForYou: '⭐ RECOMMANDÉS',
         categoryDescriptions: {
             SYSTEM: 'Commandes système principales',
             GAMING: 'Jeux, arcade et divertissement',
@@ -185,7 +179,6 @@ function getTopCategories(stats, limit = 3) {
         .map(([cat, count]) => ({ cat, count }));
 }
 
-// ================= CATEGORY HELP DISPLAY FUNCTION =================
 async function showCategoryHelp(client, message, category, prefix, lang, t, emojiMap, colorMap, interaction, guildName, guildIcon, version) {
     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
     const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
@@ -233,13 +226,19 @@ module.exports = {
     category: 'SYSTEM',
     cooldown: 3000,
 
-    // 🔥 FIXED: Added usedCommand as 6th parameter for Neural Language Bridge!
+    // 🔥 FIXED: Handle undefined usedCommand
     run: async (client, message, args, database, serverSettings, usedCommand) => {
         
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, 'en')
-            : 'en';
+        // 🔥 SAFE LANGUAGE DETECTION - Handle undefined usedCommand
+        let lang = 'en';
+        if (client.detectLanguage && usedCommand) {
+            lang = client.detectLanguage(usedCommand, 'en');
+        } else if (usedCommand) {
+            // Fallback: Check if the command itself is French
+            const cmd = usedCommand.toLowerCase();
+            if (cmd === 'aide' || cmd === 'commandes') lang = 'fr';
+            else if (cmd === 'help' || cmd === 'commands') lang = 'en';
+        }
         
         const t = translations[lang];
         const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
@@ -416,7 +415,12 @@ module.exports = {
             content: `> **${t.loading}**\n> *${t.accessing(totalGuilds)}*`,
             embeds: [mainEmbed],
             components: [row1, row2]
+        }).catch(err => {
+            console.error('[HELP] Failed to send message:', err);
+            return null;
         });
+        
+        if (!response) return;
 
         let currentView = 'main';
         
