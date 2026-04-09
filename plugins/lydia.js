@@ -12,6 +12,10 @@ const messageProcessingLocks = new Set();
 const userCooldowns = new Map();
 const COOLDOWN_TIME = 3000; // 3 seconds between messages per user
 
+// ================= SEARCH CACHE (5 min TTL) =================
+const searchCache = new Map();
+const CACHE_TTL = 300000; // 5 minutes
+
 // ================= SCAN DYNAMIQUE DU DOSSIER PLUGINS =================
 function getGlobalModuleCount() {
     try {
@@ -67,42 +71,94 @@ function safeStringify(obj, indent = 2) {
     const seen = new WeakSet();
     return JSON.stringify(obj, (key, value) => {
         if (typeof value === 'object' && value !== null) {
-            if (seen.has(value)) {
-                return '[Circular Reference]';
-            }
+            if (seen.has(value)) return '[Circular Reference]';
             seen.add(value);
         }
         return value;
     }, indent);
 }
 
+// ================= AI-POWERED SEARCH DECISION (WITH TIMEOUT PROTECTION) =================
+async function shouldSearchAI(userMessage) {
+    if (!process.env.OPENROUTER_API_KEY) return false;
+    
+    try {
+        const actualSearchDecision = async () => {
+            const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+                model: "google/gemini-2.0-flash-001",
+                temperature: 0,
+                max_tokens: 10,
+                messages: [
+                    {
+                        role: "system",
+                        content: `Decide if this query needs real-time web search.
+Return ONLY: YES or NO
+
+Search if query involves:
+- Current events, news, politics
+- Weather, sports scores, crypto prices
+- Recent facts, "who is" questions about living people
+- Time-sensitive information
+- Specific dates or events after 2023
+
+Do NOT search for:
+- Math, coding help, definitions
+- General knowledge, philosophy
+- Opinions, creative writing
+- Historical facts before 2023`
+                    },
+                    { role: "user", content: userMessage }
+                ]
+            }, {
+                headers: {
+                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                    "HTTP-Referer": "https://github.com/MFOF7310",
+                    "Content-Type": "application/json"
+                },
+                timeout: 5000
+            });
+            
+            const decision = response.data.choices[0]?.message?.content?.trim().toUpperCase() || 'NO';
+            console.log(`${cyan}[AI SEARCH DECISION]${reset} "${userMessage.substring(0, 50)}..." → ${decision}`);
+            return decision.includes('YES');
+        };
+        
+        // ⚡ TIMEOUT PROTECTION - Fallback after 4 seconds
+        const timeoutPromise = new Promise(resolve => setTimeout(() => {
+            console.log(`${yellow}[SEARCH DECISION TIMEOUT]${reset} Falling back to keyword check`);
+            return resolve(false);
+        }, 4000));
+        
+        return await Promise.race([actualSearchDecision(), timeoutPromise]);
+        
+    } catch (error) {
+        console.log(`${yellow}[SEARCH DECISION ERROR]${reset} ${error.message}`);
+        // Fallback to keyword check if AI fails
+        const searchKeywords = ['weather', 'météo', 'news', 'actualités', 'crypto', 'bitcoin', 
+                               'ethereum', 'score', 'match', 'today', 'current', 'latest', 'president', 'minister'];
+        return searchKeywords.some(kw => userMessage.toLowerCase().includes(kw));
+    }
+}
+
 // ================= ENHANCED REAL-TIME DATA FETCHER =================
-async function fetchRealTimeData(query, type = 'auto') {
+async function fetchRealTimeData(query) {
     const data = {};
     const lowerQuery = query.toLowerCase();
     const fetchPromises = [];
     
-    if (lowerQuery.includes('weather') || lowerQuery.includes('météo') || 
-        lowerQuery.includes('température') || lowerQuery.includes('pluie') || lowerQuery.includes('rain')) {
-        
+    if (lowerQuery.includes('weather') || lowerQuery.includes('météo') || lowerQuery.includes('température')) {
         let city = 'Bamako';
         const cityPatterns = [
-            /(?:weather|météo|temp(?:érature)?)\s+(?:in|at|for|à|de|du|de la|d')\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$|\s+(?:today|now|please|pls|stp|s'il|actual|current))/i,
-            /(?:weather|météo|temp(?:érature)?)\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$)/i,
-            /quel(?:le)?\s+(?:temps|météo|température)\s+(?:à|dans|pour)\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$)/i
+            /(?:weather|météo|temp(?:érature)?)\s+(?:in|at|for|à|de|du|de la|d')\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$)/i,
+            /(?:weather|météo|temp(?:érature)?)\s+([a-zA-ZÀ-ÿ\s-]+?)(?:\s*\?|\s*$)/i
         ];
         
         for (const pattern of cityPatterns) {
             const match = query.match(pattern);
             if (match && match[1]) {
                 const possibleCity = match[1].trim();
-                const invalidWords = ['today', 'now', 'please', 'pls', 'stp', '?', '!', 'current', 'actuel', 
-                                     'maintenant', 'sick', 'fever', 'fièvre', 'temperature', 'température'];
-                const hasInvalidWord = invalidWords.some(word => possibleCity.toLowerCase().includes(word));
-                
-                if (possibleCity.length > 2 && !hasInvalidWord && !/^\d+$/.test(possibleCity)) {
+                if (possibleCity.length > 2 && !/^\d+$/.test(possibleCity)) {
                     city = possibleCity;
-                    console.log(`${cyan}[WEATHER]${reset} Detected city: ${city}`);
                     break;
                 }
             }
@@ -126,27 +182,15 @@ async function fetchRealTimeData(query, type = 'auto') {
                         };
                         console.log(`${green}[WEATHER]${reset} Fetched for ${city}`);
                     }
-                } else {
-                    const fallbackWeather = await axios.get(`https://wttr.in/${encodeURIComponent(city)}?format=%C|%t|%w|%h`, { timeout: 5000 });
-                    const [condition, temp, wind, humidity] = fallbackWeather.data.split('|');
-                    data.weather = {
-                        city: city,
-                        condition: condition,
-                        temp: temp,
-                        wind: wind,
-                        humidity: humidity
-                    };
                 }
             } catch (error) {
                 console.log(`${yellow}[WEATHER ERROR]${reset} ${error.message}`);
-                data.weather = { error: true, message: "Could not fetch weather data" };
             }
         })();
         fetchPromises.push(weatherPromise);
     }
     
-    if (lowerQuery.includes('news') || lowerQuery.includes('actualités') || lowerQuery.includes('headlines') ||
-        lowerQuery.includes('breaking') || lowerQuery.includes('dernières nouvelles')) {
+    if (lowerQuery.includes('news') || lowerQuery.includes('actualités')) {
         const newsPromise = (async () => {
             try {
                 if (process.env.NEWS_API_KEY) {
@@ -164,18 +208,15 @@ async function fetchRealTimeData(query, type = 'auto') {
                 }
             } catch (error) {
                 console.log(`${yellow}[NEWS ERROR]${reset} ${error.message}`);
-                data.news = { error: true, message: "Could not fetch news" };
             }
         })();
         fetchPromises.push(newsPromise);
     }
     
-    if (lowerQuery.includes('bitcoin') || lowerQuery.includes('ethereum') || lowerQuery.includes('crypto') ||
-        lowerQuery.includes('btc') || lowerQuery.includes('eth') || lowerQuery.includes('solana') ||
-        lowerQuery.includes('prix crypto')) {
+    if (lowerQuery.includes('bitcoin') || lowerQuery.includes('ethereum') || lowerQuery.includes('crypto')) {
         const cryptoPromise = (async () => {
             try {
-                const cryptoUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,ripple&vs_currencies=usd&include_24hr_change=true';
+                const cryptoUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true';
                 const cryptoRes = await axios.get(cryptoUrl, { timeout: 5000 });
                 if (cryptoRes.data) {
                     data.crypto = cryptoRes.data;
@@ -188,31 +229,7 @@ async function fetchRealTimeData(query, type = 'auto') {
         fetchPromises.push(cryptoPromise);
     }
     
-    if (lowerQuery.includes('time') || lowerQuery.includes('heure') || lowerQuery.includes('horloge') ||
-        lowerQuery.includes('quelle heure')) {
-        const timePromise = (async () => {
-            const timezones = [
-                { name: 'Bamako', tz: 'Africa/Bamako' },
-                { name: 'Paris', tz: 'Europe/Paris' },
-                { name: 'New York', tz: 'America/New_York' },
-                { name: 'Tokyo', tz: 'Asia/Tokyo' },
-                { name: 'London', tz: 'Europe/London' }
-            ];
-            
-            data.time = {};
-            for (const tz of timezones) {
-                try {
-                    const time = new Date().toLocaleString('en-US', { timeZone: tz.tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-                    data.time[tz.name] = time;
-                } catch (e) {}
-            }
-            console.log(`${green}[TIME]${reset} Fetched multiple timezones`);
-        })();
-        fetchPromises.push(timePromise);
-    }
-    
     if (fetchPromises.length > 0) {
-        console.log(`${cyan}[REAL-TIME]${reset} Executing ${fetchPromises.length} targeted fetches...`);
         await Promise.allSettled(fetchPromises);
         console.log(`${green}[REAL-TIME]${reset} Completed ${Object.keys(data).length} data types`);
     }
@@ -220,50 +237,50 @@ async function fetchRealTimeData(query, type = 'auto') {
     return data;
 }
 
-// ================= ENHANCED WEB SEARCH =================
-async function webSearch(query, type = 'general') {
-    if (!process.env.BRAVE_API_KEY && !process.env.GOOGLE_API_KEY) {
-        console.log(`${yellow}[SEARCH]${reset} No search API keys configured`);
+// ================= ENHANCED WEB SEARCH (WITH CACHE) =================
+async function webSearch(query) {
+    if (!process.env.BRAVE_API_KEY) {
+        console.log(`${yellow}[SEARCH]${reset} No Brave API key configured`);
         return null;
     }
     
+    const cacheKey = query.toLowerCase().trim();
+    
+    // ⚡ CACHE CHECK - 5 minute TTL
+    if (searchCache.has(cacheKey)) {
+        const cached = searchCache.get(cacheKey);
+        console.log(`${green}[CACHE HIT]${reset} Using cached search for: "${query.substring(0, 40)}..."`);
+        return cached;
+    }
+    
     try {
-        console.log(`${cyan}[SEARCH]${reset} Query: ${query.substring(0, 50)}... (Type: ${type})`);
+        console.log(`${cyan}[BRAVE SEARCH]${reset} Query: ${query.substring(0, 50)}...`);
         
-        let results = null;
+        const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`;
+        const response = await axios.get(url, {
+            headers: { 
+                'Accept': 'application/json', 
+                'X-Subscription-Token': process.env.BRAVE_API_KEY 
+            },
+            timeout: 8000
+        });
         
-        if (process.env.BRAVE_API_KEY) {
-            const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`;
-            const response = await axios.get(url, {
-                headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY },
-                timeout: 8000
-            });
+        if (response.data.web?.results?.length) {
+            const results = response.data.web.results.slice(0, 5).map(r => ({
+                title: r.title,
+                description: r.description,
+                url: r.url
+            }));
             
-            if (response.data.web?.results?.length) {
-                results = response.data.web.results.slice(0, 5).map(r => ({
-                    title: r.title,
-                    description: r.description,
-                    url: r.url
-                }));
-            }
-        }
-        
-        if (!results && process.env.GOOGLE_API_KEY && process.env.GOOGLE_CX) {
-            const googleUrl = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_API_KEY}&cx=${process.env.GOOGLE_CX}&q=${encodeURIComponent(query)}`;
-            const googleRes = await axios.get(googleUrl, { timeout: 8000 });
+            const formattedResults = results.map(r => 
+                `• **${r.title}**\n  ${r.description}\n  <${r.url}>`
+            ).join('\n\n');
             
-            if (googleRes.data.items?.length) {
-                results = googleRes.data.items.slice(0, 5).map(item => ({
-                    title: item.title,
-                    description: item.snippet,
-                    url: item.link
-                }));
-            }
-        }
-        
-        if (results && results.length) {
-            const formattedResults = results.map(r => `• **${r.title}**\n  ${r.description}\n  <${r.url}>`).join('\n\n');
-            console.log(`${green}[SEARCH]${reset} Found ${results.length} results`);
+            // ⚡ STORE IN CACHE
+            searchCache.set(cacheKey, formattedResults);
+            setTimeout(() => searchCache.delete(cacheKey), CACHE_TTL);
+            
+            console.log(`${green}[BRAVE SEARCH]${reset} Found ${results.length} results (cached for 5min)`);
             return formattedResults;
         }
         
@@ -294,18 +311,13 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
                  lowerMsg.includes("histoire") || lowerMsg.includes("poème") || lowerMsg.includes("creative")) {
             model = "anthropic/claude-3.5-sonnet";
         }
-        else if (realTimeData && (Object.keys(realTimeData).length > 0)) {
-            model = "google/gemini-2.0-flash-001";
-        }
-        else if (imageUrl) {
-            model = "google/gemini-2.0-flash-001";
-        }
 
-        console.log(`${cyan}[AI PRO]${reset} Model: ${model} ${imageUrl ? '(vision)' : ''} ${realTimeData ? '(real-time data)' : ''}`);
+        console.log(`${cyan}[AI PRO]${reset} Model: ${model} ${imageUrl ? '(vision)' : ''}`);
 
         const messages = [{ role: "system", content: systemPrompt }];
         
-        for (const msg of conversationHistory.slice(-15)) {
+        // 🚨 CRITICAL FIX: Reduced from 15 to 8 for lower token cost
+        for (const msg of conversationHistory.slice(-8)) {
             messages.push({ role: msg.role, content: msg.content });
         }
         
@@ -313,18 +325,9 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
         if (realTimeData && Object.keys(realTimeData).length > 0) {
             try {
                 const safeDataString = safeStringify(realTimeData, 2);
-                enhancedUserMessage = `[REAL-TIME DATA PROVIDED]\n${safeDataString}\n\nUser Query: ${userMessage}\n\nPlease use this real-time data to answer the user's question accurately.`;
+                enhancedUserMessage = `[REAL-TIME DATA PROVIDED]\n${safeDataString}\n\nUser Query: ${userMessage}`;
             } catch (stringifyError) {
-                console.error(`${yellow}[AI]${reset} Failed to stringify realTimeData:`, stringifyError.message);
-                const simpleData = {};
-                for (const key in realTimeData) {
-                    if (realTimeData[key] && typeof realTimeData[key] === 'object') {
-                        simpleData[key] = Object.keys(realTimeData[key]);
-                    } else {
-                        simpleData[key] = realTimeData[key];
-                    }
-                }
-                enhancedUserMessage = `[REAL-TIME DATA PROVIDED - Simplified]\n${JSON.stringify(simpleData)}\n\nUser Query: ${userMessage}`;
+                enhancedUserMessage = userMessage;
             }
         }
         
@@ -357,66 +360,7 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
         return response.data.choices[0]?.message?.content || "❌ I couldn't generate a response.";
     } catch (error) {
         console.error(`${red}[OPENROUTER ERROR]${reset}`, error.response?.data || error.message);
-        
-        if (realTimeData && Object.keys(realTimeData).length > 0) {
-            console.log(`${yellow}[AI]${reset} Using fallback with real-time data...`);
-            let fallbackResponse = "Here's the information I found:\n\n";
-            
-            if (realTimeData.weather && !realTimeData.weather.error) {
-                fallbackResponse += `🌤️ **Weather**: ${realTimeData.weather.city}: ${realTimeData.weather.temp}°C, ${realTimeData.weather.description}\n`;
-            }
-            if (realTimeData.news && !realTimeData.news.error) {
-                fallbackResponse += `📰 **Top News**: ${realTimeData.news[0]?.title}\n`;
-            }
-            if (realTimeData.crypto) {
-                fallbackResponse += `💰 **Crypto**: BTC: $${realTimeData.crypto.bitcoin?.usd}, ETH: $${realTimeData.crypto.ethereum?.usd}\n`;
-            }
-            if (realTimeData.time) {
-                fallbackResponse += `🕐 **Times**: Bamako: ${realTimeData.time.Bamako}\n`;
-            }
-            
-            return fallbackResponse + "\n⚠️ AI service is currently experiencing issues. Please try again later for more detailed responses.";
-        }
-        
-        try {
-            console.log(`${yellow}[AI]${reset} Fallback to Gemini Flash with conversation history...`);
-            const fallbackMessages = [{ role: "system", content: systemPrompt || "You are a helpful assistant." }];
-            
-            for (const msg of conversationHistory.slice(-5)) {
-                fallbackMessages.push({ role: msg.role, content: msg.content });
-            }
-            
-            let fallbackContent = userMessage;
-            if (realTimeData && Object.keys(realTimeData).length > 0) {
-                const simpleData = {};
-                for (const key in realTimeData) {
-                    if (realTimeData[key] && !realTimeData[key].error) {
-                        simpleData[key] = typeof realTimeData[key] === 'object' ? 
-                            Object.keys(realTimeData[key]).join(', ') : realTimeData[key];
-                    }
-                }
-                fallbackContent = `[Data: ${JSON.stringify(simpleData)}]\n\n${userMessage}`;
-            }
-            fallbackMessages.push({ role: "user", content: fallbackContent });
-            
-            const fallbackResponse = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-                model: "google/gemini-2.0-flash-001",
-                messages: fallbackMessages,
-                max_tokens: 500
-            }, {
-                headers: {
-                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                    "Content-Type": "application/json"
-                },
-                timeout: 15000
-            });
-            
-            const fallbackReply = fallbackResponse.data.choices[0]?.message?.content;
-            return fallbackReply ? fallbackReply + "\n\n*⚠️ (Fallback mode - limited response)*" : "❌ Fallback failed.";
-        } catch (fallbackError) {
-            console.error(`${red}[FALLBACK ERROR]${reset}`, fallbackError.message);
-            return "❌ AI service error. Please try again later.";
-        }
+        return "❌ AI service error. Please try again later.";
     }
 }
 
@@ -471,9 +415,8 @@ You are an AI assistant created by **Moussa Fofana (GitHub: MFOF7310)**.
 - ✅ Be concise
 
 **CAPABILITIES:**
-- Fetch real-time weather, news, crypto, time data
+- Real-time weather, news via Brave Search
 - Analyze images with vision AI
-- Search the web
 - Schedule reminders with [REMIND: 10m | message]
 - Group awareness - see channel history`
     },
@@ -526,7 +469,7 @@ Help with scripts, writing, art ideas, and content creation.
         emoji: '🤖',
         description: 'Balanced assistant for general queries',
         color: '#5865F2',
-        systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v1.5.0]
+        systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v1.6.0]
 You are the primary AI of **ARCHITECT CG-223**, created by **Moussa Fofana (GitHub: MFOF7310)**.
 Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana (GitHub: MFOF7310)**.
 
@@ -535,8 +478,8 @@ Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana 
 - GitHub: https://github.com/MFOF7310
 
 **CAPABILITIES:**
-- Real-time weather, news, crypto, time data
-- Web search for current information
+- Smart search routing (AI decides when to search!)
+- Real-time weather & news via Brave Search
 - Image analysis with vision AI
 - Persistent memory storage
 - Reminder scheduling with [REMIND: 10m | message]
@@ -774,16 +717,21 @@ async function handleLydiaMessage(message, client, database) {
             return;
         }
 
-        let realTimeData = null;
-        const realTimeKeywords = ['weather', 'météo', 'temp', 'temperature', 'news', 'actualités', 'crypto', 
-                                 'bitcoin', 'ethereum', 'time', 'heure', 'stock', 'action', 'score', 'match'];
+        // 🔥 SMART SEARCH - AI decides if search needed!
+        let searchResults = null;
+        if (await shouldSearchAI(userPrompt)) {
+            console.log(`${cyan}[SMART SEARCH]${reset} AI decided search is needed`);
+            searchResults = await webSearch(userPrompt);
+        }
         
+        if (searchResults) {
+            userPrompt = `[REAL-TIME SEARCH RESULTS]\n${searchResults}\n\nUser Question: ${userPrompt}`;
+        }
+
+        let realTimeData = null;
+        const realTimeKeywords = ['weather', 'météo', 'température', 'news', 'actualités', 'crypto', 'bitcoin'];
         if (realTimeKeywords.some(keyword => userPrompt.toLowerCase().includes(keyword))) {
-            console.log(`${cyan}[REAL-TIME]${reset} Detected real-time query, fetching data...`);
             realTimeData = await fetchRealTimeData(userPrompt);
-            if (realTimeData && Object.keys(realTimeData).length > 0) {
-                console.log(`${green}[REAL-TIME]${reset} Retrieved ${Object.keys(realTimeData).join(', ')} data`);
-            }
         }
 
         let finalAgent = neuralCores[agentKey] || neuralCores.default;
@@ -839,7 +787,7 @@ async function handleLydiaMessage(message, client, database) {
             FROM lydia_conversations 
             WHERE channel_id = ? 
             ORDER BY timestamp DESC 
-            LIMIT 5
+            LIMIT 8
         `).all(message.channel.id);
         
         // Store original rows for context summary (with user_name)
@@ -881,12 +829,6 @@ async function handleLydiaMessage(message, client, database) {
             systemPrompt += introMsg;
             client.userIntroductions.set(introKey, Date.now());
             try { database.prepare(`INSERT OR REPLACE INTO lydia_introductions (user_id, channel_id, introduced_at) VALUES (?, ?, strftime('%s', 'now'))`).run(message.author.id, message.channel.id); } catch(e) {}
-        }
-
-        const searchTerms = ['latest', 'news', 'today', 'current', 'update', 'weather', 'score', 'recherche', 'météo', 'search', 'google'];
-        if (searchTerms.some(term => userPrompt.toLowerCase().includes(term)) && !realTimeData) {
-            const searchResults = await webSearch(userPrompt);
-            if (searchResults) systemPrompt += `\n\n[WEB SEARCH RESULTS]\n${searchResults}`;
         }
 
         let reply;
@@ -1051,7 +993,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
     const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
     const lang = serverSettings?.language || 'en';
-    const version = client.version || '1.5.0';
+    const version = client.version || '1.6.0';
     const guildName = message.guild.name.toUpperCase();
     const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
     
@@ -1099,16 +1041,16 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 `**Memory:** ${userMem} facts about you | ${memCount} total\n` +
                 `**Modules:** ${totalModules} plugins detected\n` +
                 `**Event Listeners:** ${listenerCount}\n` +
-                `**Group Awareness:** ${isEnabled ? '👥 ACTIVE' : '❌ INACTIVE'}\n\n` +
+                `**Smart Search:** 🧠 AI-powered\n` +
+                `**Cache:** ⚡ 5min TTL\n` +
+                `**History:** 📝 8 messages\n\n` +
                 `**Commands:**\n└ \`${prefix}lydia on\` - Activate AI\n└ \`${prefix}lydia off\` - Deactivate\n└ \`${prefix}lydia agent <core>\` - Switch core\n\n` +
                 `**Available Cores:**\n└ \`architect\` ${neuralCores.architect.emoji} - Code & System\n└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming\n└ \`creative\` ${neuralCores.creative.emoji} - Creative\n└ \`default\` ${neuralCores.default.emoji} - Balanced`
             )
             .addFields(
                 { name: '📡 API Status', value: `OpenRouter: ${process.env.OPENROUTER_API_KEY ? '✅' : '❌'} | Brave: ${process.env.BRAVE_API_KEY ? '✅' : '❌'}`, inline: true },
                 { name: '🧠 AI Models', value: `DeepSeek • Claude • Gemini Flash`, inline: true },
-                { name: '👁️ Vision', value: `Image analysis enabled`, inline: true },
-                { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time', inline: false },
-                { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true }
+                { name: '👁️ Vision', value: `Image analysis enabled`, inline: true }
             )
             .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
             .setTimestamp();
@@ -1158,8 +1100,6 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
                 { name: '🆔 Identity', value: botDisplayName, inline: true },
                 { name: '🧠 AI Models', value: 'DeepSeek • Claude • Gemini Flash', inline: true },
                 { name: '👁️ Vision', value: 'Image analysis enabled', inline: true },
-                { name: '🔍 Real-Time Data', value: 'Weather • News • Crypto • Time', inline: false },
-                { name: '⏰ Reminders', value: 'Use `[REMIND: 10m | message]`', inline: true },
                 { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or just talk!`, inline: false },
                 { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
                 { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
@@ -1190,8 +1130,8 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
 // ================= FINAL EXPORTS =================
 module.exports = {
     name: 'lydia',
-    aliases: ['ai', 'neural'],
-    description: '🎭 Multi-Agent AI with Group Awareness & Real-Time Data Fetching',
+    aliases: ['ai', 'neural', 'ia'],
+    description: '🎭 Multi-Agent AI with Smart Search Routing',
     category: 'SYSTEM',
     cooldown: 5000,
     
