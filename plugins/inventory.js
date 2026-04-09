@@ -189,8 +189,7 @@ function createUseItemMenu(items, lang, itemDefs) {
         return {
             label: `${def.emoji} ${def.name[lang]}`.substring(0, 100),
             description: `${t.quantity}: ${item.quantity}`.substring(0, 100),
-            value: item.item_id,
-            emoji: def.emoji
+            value: item.item_id
         };
     });
     
@@ -308,7 +307,7 @@ module.exports = {
         // ================= USE GLOBAL ITEM DEFINITIONS FROM CLIENT =================
         const itemDefs = client.getItemDefinitions ? client.getItemDefinitions() : {};
         
-        // ================= DATABASE (Global migration handled in index.js) =================
+        // ================= DATABASE CLEANUP =================
         const now = Math.floor(Date.now() / 1000);
         db.prepare(`
             UPDATE user_inventory 
@@ -316,29 +315,34 @@ module.exports = {
             WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
         `).run(now);
         
-        // ================= FETCH INVENTORY =================
-        let items = db.prepare(`
-            SELECT item_id, quantity, purchased_at, expires_at, active
-            FROM user_inventory 
-            WHERE user_id = ?
-            ORDER BY active DESC, purchased_at DESC
-        `).all(userId);
-        
-        let enrichedItems = items.map(item => {
-            const def = itemDefs[item.item_id];
-            return { 
-                ...item, 
-                type: def?.type || 'unknown',
-                hasDefinition: !!def
+        // ================= REFRESH FUNCTION =================
+        const refreshInventory = () => {
+            const items = db.prepare(`
+                SELECT item_id, quantity, purchased_at, expires_at, active
+                FROM user_inventory 
+                WHERE user_id = ?
+                ORDER BY active DESC, purchased_at DESC
+            `).all(userId);
+            
+            const enrichedItems = items.map(item => {
+                const def = itemDefs[item.item_id];
+                return { 
+                    ...item, 
+                    type: def?.type || 'unknown',
+                    hasDefinition: !!def
+                };
+            });
+            
+            const stats = {
+                total: items.length,
+                activeBoosts: enrichedItems.filter(i => i.active === 1 && (i.type === 'boost' || i.type === 'consumable')).length,
+                permanent: enrichedItems.filter(i => i.type === 'permanent' || i.type === 'role' || i.type === 'badge').length
             };
-        });
-        
-        // ================= CALCULATE STATS =================
-        const stats = {
-            total: items.length,
-            activeBoosts: enrichedItems.filter(i => i.active === 1 && (i.type === 'boost' || i.type === 'consumable')).length,
-            permanent: enrichedItems.filter(i => i.type === 'permanent' || i.type === 'role' || i.type === 'badge').length
+            
+            return { items, enrichedItems, stats };
         };
+        
+        let { items, enrichedItems, stats } = refreshInventory();
         
         // ================= EMPTY INVENTORY =================
         if (items.length === 0) {
@@ -353,23 +357,34 @@ module.exports = {
                 .setTimestamp();
             
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('goto_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setEmoji('🛒')
+                new ButtonBuilder().setCustomId('inv_goto_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setEmoji('🛒')
             );
             
             const reply = await message.reply({ embeds: [emptyEmbed], components: [row] });
             
             const collector = reply.createMessageComponentCollector({ time: 30000 });
+            
             collector.on('collect', async (i) => {
                 if (i.user.id !== userId) {
                     return i.reply({ content: t.accessDenied, ephemeral: true });
                 }
-                if (i.customId === 'goto_shop') {
+                if (i.customId === 'inv_goto_shop') {
+                    await i.deferUpdate();
+                    collector.stop();
+                    await reply.delete().catch(() => {});
+                    
                     const shopCmd = client.commands.get('shop');
                     if (shopCmd) {
-                        await shopCmd.run(client, message, [], db, serverSettings);
-                        await i.reply({ content: '🛒 Shop opened!', ephemeral: true });
+                        return await shopCmd.run(client, message, [], db, serverSettings);
                     }
                 }
+            });
+            
+            collector.on('end', async () => {
+                const disabledRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('inv_goto_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setDisabled(true).setEmoji('🛒')
+                );
+                await reply.edit({ components: [disabledRow] }).catch(() => {});
             });
             
             return;
@@ -431,6 +446,19 @@ module.exports = {
                 return i.reply({ content: t.accessDenied, ephemeral: true });
             }
             
+            // Handle Shop Button
+            if (i.isButton() && i.customId === 'inv_shop') {
+                await i.deferUpdate();
+                collector.stop();
+                await reply.delete().catch(() => {});
+                
+                const shopCmd = client.commands.get('shop');
+                if (shopCmd) {
+                    return await shopCmd.run(client, message, [], db, serverSettings);
+                }
+                return;
+            }
+            
             // Handle Use Item
             if (i.isStringSelectMenu() && i.customId === 'inventory_use') {
                 const itemId = i.values[0];
@@ -451,21 +479,11 @@ module.exports = {
                     
                     await i.reply({ embeds: [successEmbed], ephemeral: true });
                     
-                    // Refresh inventory data
-                    items = db.prepare(`
-                        SELECT item_id, quantity, purchased_at, expires_at, active
-                        FROM user_inventory WHERE user_id = ?
-                        ORDER BY active DESC, purchased_at DESC
-                    `).all(userId);
-                    
-                    enrichedItems = items.map(item => {
-                        const def = itemDefs[item.item_id];
-                        return { 
-                            ...item, 
-                            type: def?.type || 'unknown',
-                            hasDefinition: !!def
-                        };
-                    });
+                    // Refresh inventory
+                    const refreshed = refreshInventory();
+                    items = refreshed.items;
+                    enrichedItems = refreshed.enrichedItems;
+                    stats = refreshed.stats;
                 } else {
                     await i.reply({ content: result.message || t.useError, ephemeral: true });
                     return;
@@ -484,28 +502,10 @@ module.exports = {
                 if (i.customId === 'inv_prev') newPage--;
                 if (i.customId === 'inv_next') newPage++;
                 if (i.customId === 'inv_refresh') {
-                    items = db.prepare(`
-                        SELECT item_id, quantity, purchased_at, expires_at, active
-                        FROM user_inventory WHERE user_id = ?
-                        ORDER BY active DESC, purchased_at DESC
-                    `).all(userId);
-                    
-                    enrichedItems = items.map(item => {
-                        const def = itemDefs[item.item_id];
-                        return { 
-                            ...item, 
-                            type: def?.type || 'unknown',
-                            hasDefinition: !!def
-                        };
-                    });
-                }
-                if (i.customId === 'inv_shop') {
-                    const shopCmd = client.commands.get('shop');
-                    if (shopCmd) {
-                        await shopCmd.run(client, message, [], db, serverSettings);
-                        await i.reply({ content: '🛒 Shop opened!', ephemeral: true });
-                    }
-                    return;
+                    const refreshed = refreshInventory();
+                    items = refreshed.items;
+                    enrichedItems = refreshed.enrichedItems;
+                    stats = refreshed.stats;
                 }
             }
             
@@ -544,7 +544,9 @@ module.exports = {
             await i.update({ embeds: [newEmbed], components: newComponents });
         });
         
-        collector.on('end', async () => {
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'messageDeleted') return;
+            
             const disabledComponents = [];
             disabledComponents.push(new ActionRowBuilder().addComponents(createCategoryMenu(lang, category).setDisabled(true)));
             
