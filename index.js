@@ -35,9 +35,9 @@ const client = new Client({
 client.commands = new Collection();
 client.aliases = new Collection();
 client.userTimeouts = new Map();
-client.settings = new Map(); // Cache for server settings
+client.settings = new Map();
 
-// --- DYNAMIC VERSIONING (LOADED ONCE) ---
+// --- DYNAMIC VERSIONING ---
 function getVersion() {
     try {
         const versionPath = path.join(__dirname, 'version.txt');
@@ -65,71 +65,30 @@ const PREFIX = process.env.PREFIX || ".";
 // --- UTILITIES ---
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const getAccountAge = (createdAt) => {
-    const now = new Date();
-    const diff = now - createdAt;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days < 1) return "Joined Today";
-    if (days < 30) return `${days} Days ago`;
-    const months = Math.floor(days / 30.44);
-    if (months < 12) return `${months} Month(s) ago`;
-    const years = Math.floor(months / 12);
-    const remainingMonths = months % 12;
-    return `${years} Year(s), ${remainingMonths} Month(s) ago`;
-};
+const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-const formatNumber = (num) => {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-};
-
-const getLevelColor = (level) => {
-    if (level >= 100) return '#ff4444';
-    if (level >= 75) return '#ff66cc';
-    if (level >= 50) return '#44aaff';
-    if (level >= 25) return '#ffaa44';
-    if (level >= 10) return '#dddddd';
-    return '#cd7f32';
-};
-
-const getNextLevelReward = (level) => {
-    const rewards = {
-        5: "✨ **Special Role** - @Level 5 role unlocked!",
-        10: "🎁 **VIP Access** - Exclusive channel access!",
-        25: "🏆 **Elite Status** - Custom nickname color!",
-        50: "💎 **Legendary** - Priority support access!",
-        100: "👑 **Gaming God** - Ultimate bragging rights!"
-    };
-    
-    for (const [reqLevel, reward] of Object.entries(rewards)) {
-        if (level === parseInt(reqLevel)) {
-            return reward;
-        }
-    }
-    return `🎯 **Next milestone:** ${Object.keys(rewards).find(l => l > level) || 'Level 100'} - Keep going!`;
-};
-
-// ================= GLOBAL SMART LANGUAGE DETECTION (SIMPLE) =================
+// ================= MINIMALIST LANGUAGE DETECTION (SELF-CONTAINED) =================
 /**
- * SMART LANGUAGE DETECTION - Simple pattern based on French accents
+ * Detects if a command should use French based on the alias used
+ * NO EXTERNAL FILES NEEDED - Pure pattern matching!
+ * 
  * @param {string} usedCommand - The command/alias the user typed
- * @param {string} serverLanguage - The server's default language (fallback)
+ * @param {string} serverLanguage - The server's default language
  * @returns {string} - 'en' or 'fr'
  */
 function detectLanguage(usedCommand, serverLanguage = 'en') {
     const cmd = usedCommand.toLowerCase();
     
-    // If command contains French accents, return French
-    if (/[éèêëàâäùûüîïôöç]/.test(cmd)) {
-        return 'fr';
-    }
+    // Rule 1: French accents = French
+    // Rule 2: Common French word endings = French  
+    // Rule 3: Explicit French aliases (only 13 keywords!)
+    const isFrench = /[éèêëàâäùûüîïôöç]/.test(cmd) || 
+                     /(ier|ière|eur|euse|ment|tion|ique|ette|eau|age|oire|ance)s?$/i.test(cmd) ||
+                     ['aide', 'jeu', 'rang', 'niveau', 'quotidien', 'boutique', 'devine', 'quiz', 'ia', 'config', 'param', 'params', 'paramètres'].includes(cmd);
     
-    // Fall back to server language
-    return serverLanguage;
+    return isFrench ? 'fr' : serverLanguage;
 }
 
-/**
- * Calculate level from XP (unified across all plugins)
- */
 function calculateLevel(xp) {
     return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1;
 }
@@ -138,295 +97,57 @@ function calculateLevel(xp) {
 client.detectLanguage = detectLanguage;
 client.calculateLevel = calculateLevel;
 client.formatNumber = formatNumber;
-client.getLevelColor = getLevelColor;
 
-console.log(`${green}[LANGUAGE]${reset} Smart language detection initialized (accent-based)`);
-console.log(`${green}[UTILITIES]${reset} Global utilities attached to client`);
+console.log(`${green}[LANGUAGE]${reset} Minimalist detection initialized (accents + endings + 13 keywords)`);
 
 // --- SQLITE DATABASE ---
 const Database = require('better-sqlite3');
 const db = new Database('database.sqlite');
 
-// ============================================================================
-// ================= GLOBAL AUTO-REPAIR PROTOCOL (SINGLE SOURCE OF TRUTH) =================
-// ============================================================================
+// ================= GLOBAL AUTO-REPAIR PROTOCOL =================
 console.log(`${cyan}[REPAIR]${reset} Initiating Global Neural Schema Repair...`);
 
 const requiredTables = {
-    users: `
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT,
-            xp INTEGER DEFAULT 0,
-            level INTEGER DEFAULT 1,
-            credits INTEGER DEFAULT 0,
-            streak_days INTEGER DEFAULT 0,
-            total_messages INTEGER DEFAULT 0,
-            last_xp_gain INTEGER DEFAULT 0,
-            games_played INTEGER DEFAULT 0,
-            games_won INTEGER DEFAULT 0,
-            total_winnings INTEGER DEFAULT 0,
-            gaming TEXT DEFAULT '{"game":"CODM","rank":"Unranked"}',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_daily INTEGER DEFAULT 0
-        )
-    `,
-    server_settings: `
-        CREATE TABLE IF NOT EXISTS server_settings (
-            guild_id TEXT PRIMARY KEY,
-            prefix TEXT DEFAULT '.',
-            language TEXT DEFAULT 'en',
-            welcome_channel TEXT,
-            log_channel TEXT,
-            daily_channel TEXT,
-            updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-        )
-    `,
-    lydia_memory: `
-        CREATE TABLE IF NOT EXISTS lydia_memory (
-            user_id TEXT,
-            memory_key TEXT,
-            memory_value TEXT,
-            updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-            PRIMARY KEY (user_id, memory_key)
-        )
-    `,
-    lydia_agents: `
-        CREATE TABLE IF NOT EXISTS lydia_agents (
-            channel_id TEXT PRIMARY KEY,
-            agent_key TEXT,
-            is_active INTEGER DEFAULT 0,
-            updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-        )
-    `,
-    user_inventory: `
-        CREATE TABLE IF NOT EXISTS user_inventory (
-            user_id TEXT,
-            item_id TEXT,
-            quantity INTEGER DEFAULT 1,
-            purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
-            expires_at INTEGER,
-            active INTEGER DEFAULT 1,
-            PRIMARY KEY (user_id, item_id)
-        )
-    `,
-    lydia_introductions: `
-        CREATE TABLE IF NOT EXISTS lydia_introductions (
-            user_id TEXT,
-            channel_id TEXT,
-            introduced_at INTEGER DEFAULT (strftime('%s', 'now')),
-            PRIMARY KEY (user_id, channel_id)
-        )
-    `,
-    lydia_conversations: `
-        CREATE TABLE IF NOT EXISTS lydia_conversations (
-            channel_id TEXT,
-            user_id TEXT,
-            user_name TEXT,
-            role TEXT,
-            content TEXT,
-            timestamp INTEGER DEFAULT (strftime('%s', 'now'))
-        )
-    `,
-    reminders: `
-        CREATE TABLE IF NOT EXISTS reminders (
-            id TEXT PRIMARY KEY,
-            user_id TEXT,
-            channel_id TEXT,
-            message TEXT,
-            created_at INTEGER,
-            execute_at INTEGER,
-            status TEXT DEFAULT 'pending'
-        )
-    `,
-    warnings: `
-        CREATE TABLE IF NOT EXISTS warnings (
-            id TEXT PRIMARY KEY,
-            guild_id TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            moderator_id TEXT NOT NULL,
-            reason TEXT,
-            created_at INTEGER DEFAULT (strftime('%s', 'now')),
-            expires_at INTEGER,
-            active INTEGER DEFAULT 1
-        )
-    `,
-    moderation_logs: `
-        CREATE TABLE IF NOT EXISTS moderation_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guild_id TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            moderator_id TEXT NOT NULL,
-            action TEXT NOT NULL,
-            reason TEXT,
-            warning_id TEXT,
-            timestamp INTEGER DEFAULT (strftime('%s', 'now'))
-        )
-    `,
-    server_backups: `
-        CREATE TABLE IF NOT EXISTS server_backups (
-            id TEXT PRIMARY KEY,
-            guild_id TEXT NOT NULL,
-            name TEXT,
-            data TEXT NOT NULL,
-            created_by TEXT NOT NULL,
-            created_at INTEGER DEFAULT (strftime('%s', 'now')),
-            roles INTEGER,
-            channels INTEGER
-        )
-    `,
-    auto_backup_settings: `
-        CREATE TABLE IF NOT EXISTS auto_backup_settings (
-            guild_id TEXT PRIMARY KEY,
-            enabled INTEGER DEFAULT 0,
-            last_backup INTEGER,
-            channel_id TEXT
-        )
-    `
+    users: `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT, xp INTEGER DEFAULT 0, level INTEGER DEFAULT 1, credits INTEGER DEFAULT 0, streak_days INTEGER DEFAULT 0, total_messages INTEGER DEFAULT 0, last_xp_gain INTEGER DEFAULT 0, games_played INTEGER DEFAULT 0, games_won INTEGER DEFAULT 0, total_winnings INTEGER DEFAULT 0, gaming TEXT DEFAULT '{"game":"CODM","rank":"Unranked"}', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_seen DATETIME DEFAULT CURRENT_TIMESTAMP, last_daily INTEGER DEFAULT 0)`,
+    server_settings: `CREATE TABLE IF NOT EXISTS server_settings (guild_id TEXT PRIMARY KEY, prefix TEXT DEFAULT '.', language TEXT DEFAULT 'en', welcome_channel TEXT, log_channel TEXT, daily_channel TEXT, shop_channel TEXT, updated_at INTEGER DEFAULT (strftime('%s', 'now')))`,
+    lydia_memory: `CREATE TABLE IF NOT EXISTS lydia_memory (user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER DEFAULT (strftime('%s', 'now')), PRIMARY KEY (user_id, memory_key))`,
+    lydia_agents: `CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER DEFAULT (strftime('%s', 'now')))`,
+    user_inventory: `CREATE TABLE IF NOT EXISTS user_inventory (user_id TEXT, item_id TEXT, quantity INTEGER DEFAULT 1, purchased_at INTEGER DEFAULT (strftime('%s', 'now')), expires_at INTEGER, active INTEGER DEFAULT 1, PRIMARY KEY (user_id, item_id))`,
+    lydia_introductions: `CREATE TABLE IF NOT EXISTS lydia_introductions (user_id TEXT, channel_id TEXT, introduced_at INTEGER DEFAULT (strftime('%s', 'now')), PRIMARY KEY (user_id, channel_id))`,
+    lydia_conversations: `CREATE TABLE IF NOT EXISTS lydia_conversations (channel_id TEXT, user_id TEXT, user_name TEXT, role TEXT, content TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`,
+    reminders: `CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, user_id TEXT, channel_id TEXT, message TEXT, created_at INTEGER, execute_at INTEGER, status TEXT DEFAULT 'pending')`,
+    warnings: `CREATE TABLE IF NOT EXISTS warnings (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER DEFAULT (strftime('%s', 'now')), expires_at INTEGER, active INTEGER DEFAULT 1)`,
+    moderation_logs: `CREATE TABLE IF NOT EXISTS moderation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, warning_id TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`,
+    server_backups: `CREATE TABLE IF NOT EXISTS server_backups (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, name TEXT, data TEXT NOT NULL, created_by TEXT NOT NULL, created_at INTEGER DEFAULT (strftime('%s', 'now')), roles INTEGER, channels INTEGER)`,
+    auto_backup_settings: `CREATE TABLE IF NOT EXISTS auto_backup_settings (guild_id TEXT PRIMARY KEY, enabled INTEGER DEFAULT 0, last_backup INTEGER, channel_id TEXT)`
 };
 
-const requiredIndexes = [
-    `CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at, status)`,
-    `CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status)`,
-    `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_modlogs_guild_user ON moderation_logs(guild_id, user_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_inventory_user_active ON user_inventory(user_id, active)`
-];
-
-const columnMigrations = {
-    users: [
-        { name: 'credits', type: 'INTEGER DEFAULT 0' },
-        { name: 'streak_days', type: 'INTEGER DEFAULT 0' },
-        { name: 'total_winnings', type: 'INTEGER DEFAULT 0' },
-        { name: 'games_played', type: 'INTEGER DEFAULT 0' },
-        { name: 'games_won', type: 'INTEGER DEFAULT 0' },
-        { name: 'created_at', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
-        { name: 'last_daily', type: 'INTEGER DEFAULT 0' },
-        { name: 'total_messages', type: 'INTEGER DEFAULT 0' },
-        { name: 'last_seen', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
-        { name: 'level', type: 'INTEGER DEFAULT 1' }
-    ],
-    lydia_conversations: [
-        { name: 'user_name', type: 'TEXT' }
-    ],
-    user_inventory: [
-        { name: 'active', type: 'INTEGER DEFAULT 1' }
-    ],
-    warnings: [
-        { name: 'active', type: 'INTEGER DEFAULT 1' }
-    ]
-};
-
-let tablesCreated = 0;
-let tablesAlreadyExist = 0;
-let indexesCreated = 0;
-let columnsAdded = 0;
-
-// PHASE 1: Create all required tables
 for (const [tableName, createSQL] of Object.entries(requiredTables)) {
     try {
-        const exists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(tableName);
-        
-        if (!exists) {
-            db.exec(createSQL);
-            tablesCreated++;
-            console.log(`${green}[REPAIR]${reset} ✅ Created table: ${cyan}${tableName}${reset}`);
-        } else {
-            tablesAlreadyExist++;
-        }
-    } catch (err) {
-        console.log(`${red}[REPAIR ERROR]${reset} Failed to create ${tableName}: ${err.message}`);
-    }
-}
-
-// PHASE 2: Create all indexes
-for (const indexSQL of requiredIndexes) {
-    try {
-        db.exec(indexSQL);
-        indexesCreated++;
+        db.exec(createSQL);
     } catch (err) {}
 }
 
-// PHASE 3: Add missing columns to existing tables
-for (const [tableName, columns] of Object.entries(columnMigrations)) {
-    const tableExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(tableName);
-    if (!tableExists) continue;
-    
-    for (const column of columns) {
-        try {
-            const columnExists = db.prepare(`PRAGMA table_info(${tableName})`).all().some(col => col.name === column.name);
-            if (!columnExists) {
-                db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.type}`).run();
-                columnsAdded++;
-                console.log(`${cyan}[MIGRATION]${reset} Added column: ${tableName}.${column.name} (${column.type})`);
-            }
-        } catch (err) {}
-    }
-}
-
-// PHASE 3.5: Fix user_inventory active column type if it was created as BOOLEAN
+// Add shop_channel column if missing
 try {
-    const tableInfo = db.prepare(`PRAGMA table_info(user_inventory)`).all();
-    const activeColumn = tableInfo.find(col => col.name === 'active');
-    
-    if (activeColumn && activeColumn.type.toUpperCase().includes('BOOL')) {
-        db.exec(`
-            BEGIN TRANSACTION;
-            CREATE TABLE user_inventory_temp (
-                user_id TEXT, item_id TEXT, quantity INTEGER DEFAULT 1,
-                purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
-                expires_at INTEGER, active INTEGER DEFAULT 1,
-                PRIMARY KEY (user_id, item_id)
-            );
-            INSERT INTO user_inventory_temp SELECT user_id, item_id, quantity, purchased_at, expires_at, 
-                CASE WHEN active = 1 OR active = 'true' THEN 1 ELSE 0 END FROM user_inventory;
-            DROP TABLE user_inventory;
-            ALTER TABLE user_inventory_temp RENAME TO user_inventory;
-            COMMIT;
-        `);
-        console.log(`${cyan}[MIGRATION]${reset} Converted user_inventory.active from BOOLEAN to INTEGER`);
+    const columnExists = db.prepare(`PRAGMA table_info(server_settings)`).all().some(col => col.name === 'shop_channel');
+    if (!columnExists) {
+        db.prepare(`ALTER TABLE server_settings ADD COLUMN shop_channel TEXT`).run();
+        console.log(`${cyan}[MIGRATION]${reset} Added column: server_settings.shop_channel`);
     }
 } catch (err) {}
 
-// PHASE 4: Clean expired inventory items
-try {
-    const now = Math.floor(Date.now() / 1000);
-    db.prepare(`UPDATE user_inventory SET active = 0 WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1`).run(now);
-} catch (err) {}
-
-// PHASE 5: Sync user levels based on XP
-try {
-    const usersNeedingSync = db.prepare(`SELECT id, xp FROM users WHERE level IS NULL OR level = 0 OR level = 1`).all();
-    let syncedCount = 0;
-    for (const user of usersNeedingSync) {
-        const calculatedLevel = Math.floor(0.1 * Math.sqrt(user.xp || 0)) + 1;
-        if (calculatedLevel > 1) {
-            db.prepare(`UPDATE users SET level = ? WHERE id = ?`).run(calculatedLevel, user.id);
-            syncedCount++;
-        }
-    }
-    if (syncedCount > 0) console.log(`${cyan}[SYNC]${reset} Updated levels for ${syncedCount} users`);
-} catch (err) {}
-
-console.log(`${green}[REPAIR COMPLETE]${reset} Tables: ${tablesCreated} created, ${tablesAlreadyExist} verified`);
+console.log(`${green}[REPAIR COMPLETE]${reset} All tables verified`);
 
 // ================= SERVER SETTINGS UTILITY =================
-const DEFAULT_SETTINGS = {
-    prefix: PREFIX,
-    language: 'en',
-    welcomeChannel: null,
-    logChannel: null,
-    dailyChannel: null
-};
+const DEFAULT_SETTINGS = { prefix: PREFIX, language: 'en', welcomeChannel: null, logChannel: null, dailyChannel: null, shopChannel: null };
 
 function getServerSettings(guildId) {
     if (client.settings.has(guildId)) return client.settings.get(guildId);
     try {
         let settings = db.prepare(`SELECT * FROM server_settings WHERE guild_id = ?`).get(guildId);
         if (!settings) {
-            db.prepare(`INSERT INTO server_settings (guild_id, prefix, language) VALUES (?, ?, ?)`)
-                .run(guildId, DEFAULT_SETTINGS.prefix, DEFAULT_SETTINGS.language);
+            db.prepare(`INSERT INTO server_settings (guild_id, prefix, language) VALUES (?, ?, ?)`).run(guildId, DEFAULT_SETTINGS.prefix, DEFAULT_SETTINGS.language);
             settings = { ...DEFAULT_SETTINGS, guild_id: guildId };
         }
         const result = {
@@ -434,7 +155,8 @@ function getServerSettings(guildId) {
             language: settings.language || DEFAULT_SETTINGS.language,
             welcomeChannel: settings.welcome_channel,
             logChannel: settings.log_channel,
-            dailyChannel: settings.daily_channel
+            dailyChannel: settings.daily_channel,
+            shopChannel: settings.shop_channel
         };
         client.settings.set(guildId, result);
         return result;
@@ -444,10 +166,7 @@ function getServerSettings(guildId) {
 }
 
 function updateServerSetting(guildId, setting, value) {
-    const columnMap = {
-        prefix: 'prefix', language: 'language', welcome: 'welcome_channel',
-        log: 'log_channel', daily: 'daily_channel'
-    };
+    const columnMap = { prefix: 'prefix', language: 'language', welcome: 'welcome_channel', log: 'log_channel', daily: 'daily_channel', shop: 'shop_channel' };
     const column = columnMap[setting];
     if (!column) return false;
     try {
@@ -465,19 +184,17 @@ client.updateServerSetting = updateServerSetting;
 // ================= HELPER FUNCTIONS =================
 const getUser = (userId) => db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
 
-const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null, credits = 0, streakDays = 0) => {
-    const gamingValue = gaming !== null ? gaming : '{"game":"CODM","rank":"Unranked"}';
-    db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming, credits, streak_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gamingValue, credits, streakDays);
-};
-
 const initializeUser = (userId, username) => {
     const existing = getUser(userId);
     if (!existing) {
-        db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming, created_at, last_seen, last_daily) VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)`)
-            .run(userId, username);
+        db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming, created_at, last_seen, last_daily) VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)`).run(userId, username);
     }
     return getUser(userId);
+};
+
+const saveUser = (id, name, xp, lvl, msgs, last, gamesPlayed = 0, gamesWon = 0, totalWinnings = 0, gaming = null, credits = 0, streakDays = 0) => {
+    const gamingValue = gaming !== null ? gaming : '{"game":"CODM","rank":"Unranked"}';
+    db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming, credits, streak_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, name, xp, lvl, msgs, last, gamesPlayed, gamesWon, totalWinnings, gamingValue, credits, streakDays);
 };
 
 const loadAgentPreferences = () => {
@@ -511,17 +228,6 @@ client.shopItems = [
 ];
 
 client.getItem = (itemId) => client.shopItems.find(item => item.id === itemId);
-client.getItemDefinitions = () => {
-    const definitions = {};
-    client.shopItems.forEach(item => {
-        definitions[item.id] = {
-            name: { en: item.en.name, fr: item.fr.name },
-            emoji: item.emoji, type: item.type, effect: item.effect || null,
-            duration: item.duration || null, usable: item.type === 'consumable'
-        };
-    });
-    return definitions;
-};
 
 // --- PLUGIN LOADER ---
 client.loadPlugins = async () => {
@@ -567,9 +273,6 @@ client.once(Events.ClientReady, async () => {
     await client.loadPlugins();
     loadAgentPreferences();
     
-    const listenerCount = client.listenerCount('messageCreate');
-    console.log(`${cyan}[LYDIA DEBUG]${reset} messageCreate listeners: ${listenerCount}`);
-    
     const boxWidth = 64;
     const drawBoxLine = (label, value) => {
         const lineContent = `║  ${label.padEnd(12)} : ${value}`;
@@ -593,8 +296,7 @@ client.once(Events.ClientReady, async () => {
 
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
-        await owner.send({ embeds: [new EmbedBuilder().setColor('#2ecc71').setTitle('🦅 ARCHITECT CG-223 // ONLINE')
-            .setDescription(`System reboot complete. **${client.commands.size}** modules synced.`).setTimestamp()] });
+        await owner.send({ embeds: [new EmbedBuilder().setColor('#2ecc71').setTitle('🦅 ARCHITECT CG-223 // ONLINE').setDescription(`System reboot complete. **${client.commands.size}** modules synced.`).setTimestamp()] });
     } catch (err) {}
 });
 
@@ -631,14 +333,17 @@ client.on(Events.MessageCreate, async (message) => {
     
     const args = message.content.slice(effectivePrefix.length).trim().split(/ +/);
     const cmdName = args.shift().toLowerCase();
+    
+    // 🔥 THE MAGIC LINE - Captures the exact alias used for language detection!
     const usedCommand = cmdName;
     
     let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
     
+    // Special handling for Lydia command
     if (!command && (cmdName === 'lydia' || cmdName === 'ai' || cmdName === 'neural' || cmdName === 'ia')) {
         try {
             const lydiaModule = require('./plugins/lydia.js');
-            return await lydiaModule.run(client, message, args, db, serverSettings);
+            return await lydiaModule.run(client, message, args, db, serverSettings, usedCommand);
         } catch (e) {
             return message.reply("❌ Lydia command execution failed.");
         }
@@ -646,10 +351,26 @@ client.on(Events.MessageCreate, async (message) => {
 
     if (command) {
         try {
+            // 🚀 Pass usedCommand to EVERY plugin for automatic language detection!
             await command.run(client, message, args, db, serverSettings, usedCommand);
         } catch (e) { 
             console.error(`${red}[COMMAND ERROR]${reset} ${cmdName}:`, e);
             message.reply("⚠️ **Command execution failed.**"); 
+        }
+    }
+});
+
+// ================= INTERACTION HANDLER (WITH SAFETY DEFER) =================
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (interaction.isButton() || interaction.isStringSelectMenu()) {
+        console.log(`${cyan}[INTERACTION]${reset} ${interaction.customId} from ${interaction.user.tag}`);
+        
+        // Safety defer to prevent timeout - tells Discord "I'm working on it"
+        if (!interaction.deferred && !interaction.replied) {
+            try {
+                await interaction.deferUpdate();
+                console.log(`${green}[INTERACTION]${reset} Deferred ${interaction.customId}`);
+            } catch (err) {}
         }
     }
 });
@@ -660,7 +381,11 @@ client.on(Events.GuildMemberAdd, async (member) => {
     const settings = getServerSettings(member.guild.id);
     const welcomeChannel = member.guild.channels.cache.get(settings.welcomeChannel || process.env.WELCOME_CHANNEL_ID);
     if (welcomeChannel) {
-        welcomeChannel.send({ content: `🎊 Welcome <@${member.id}> to **${member.guild.name}**!` });
+        const lang = settings.language || 'en';
+        const welcomeMsg = lang === 'fr' 
+            ? `🎊 Bienvenue <@${member.id}> sur **${member.guild.name}**!`
+            : `🎊 Welcome <@${member.id}> to **${member.guild.name}**!`;
+        welcomeChannel.send({ content: welcomeMsg });
     }
 });
 
