@@ -38,7 +38,10 @@ const dailyTranslations = {
         claimNotFound: '❌ Claim command not found.',
         profileNotFound: '❌ Profile command not found.',
         leaderboardNotFound: '❌ Leaderboard command not found.',
-        error: '❌ An error occurred.'
+        error: '❌ An error occurred.',
+        profileOpened: '👤 Profile displayed above!',
+        leaderboardOpened: '🏆 Leaderboard displayed above!',
+        claimProcessed: '⚡ Claim processed!'
     },
     fr: {
         title: '📊 TABLEAU DE BORD NEURAL',
@@ -71,7 +74,10 @@ const dailyTranslations = {
         claimNotFound: '❌ Commande de réclamation introuvable.',
         profileNotFound: '❌ Commande de profil introuvable.',
         leaderboardNotFound: '❌ Commande de classement introuvable.',
-        error: '❌ Une erreur est survenue.'
+        error: '❌ Une erreur est survenue.',
+        profileOpened: '👤 Profil affiché ci-dessus !',
+        leaderboardOpened: '🏆 Classement affiché ci-dessus !',
+        claimProcessed: '⚡ Réclamation effectuée !'
     }
 };
 
@@ -90,15 +96,17 @@ module.exports = {
     cooldown: 3000,
     examples: ['.daily'],
 
-    // ✅ MODIFIED: Added serverSettings as 5th argument
-    run: async (client, message, args, database, serverSettings) => {
+    run: async (client, message, args, database, serverSettings, usedCommand) => {
         
         try {
-            // ✅ MODIFIED: Use server-specific language
-            const lang = serverSettings?.language || 'en';
+            // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
+            const lang = client.detectLanguage 
+                ? client.detectLanguage(usedCommand, 'en')
+                : 'en';
+                
             const t = dailyTranslations[lang];
             
-            // ✅ ADDED: Channel Restriction Check
+            // Channel Restriction Check
             if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
                 return message.reply({ 
                     content: t.channelRestricted(serverSettings.dailyChannel), 
@@ -106,8 +114,9 @@ module.exports = {
                 });
             }
             
-            // ✅ Use actual client version, not hardcoded
-            const version = client.version || '1.5.0';
+            const version = client.version || '1.6.0';
+            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
             
             const userId = message.author.id;
             const userName = message.author.username;
@@ -118,7 +127,7 @@ module.exports = {
             const oneDay = 24 * 60 * 60 * 1000;
             const now = Date.now();
             
-            // --- ENSURE REMINDERS TABLE EXISTS ---
+            // ================= ENSURE REMINDERS TABLE EXISTS =================
             try {
                 database.prepare(`
                     CREATE TABLE IF NOT EXISTS reminders (
@@ -128,28 +137,37 @@ module.exports = {
                         message TEXT NOT NULL,
                         execute_at INTEGER NOT NULL,
                         status TEXT DEFAULT 'pending',
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        created_at INTEGER DEFAULT (strftime('%s', 'now'))
                     )
                 `).run();
             } catch (e) {
                 console.log(`[DAILY] Reminders table check: ${e.message}`);
             }
             
-            // --- GET USER DATA ---
-            let userData = null;
-            try {
+            // 🔥 HIGH-SPEED DATA BRIDGE - RAM-first cache!
+            let userData = client.getUserData ? client.getUserData(userId) : null;
+            
+            if (!userData) {
+                // Only hit DB if cache miss (rare with your optimized index.js)
                 userData = database.prepare(`
                     SELECT last_daily, xp, credits, streak_days, level 
                     FROM users WHERE id = ?
                 `).get(userId);
-            } catch (err) {
-                console.error(`[DAILY] Fetch error: ${err.message}`);
+                
+                if (userData && client.cacheUserData) {
+                    client.cacheUserData(userId, userData);
+                }
             }
             
+            // Initialize user if doesn't exist
             if (!userData) {
                 database.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
                     VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
                 userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
+                
+                if (client.cacheUserData) {
+                    client.cacheUserData(userId, userData);
+                }
             }
             
             // --- CALCULATE COOLDOWN STATUS ---
@@ -236,13 +254,12 @@ module.exports = {
                     { name: t.stats, value: `\`\`\`yaml\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${currentLevel}\n${lang === 'fr' ? 'XP' : 'XP'}: ${currentXP.toLocaleString()} / ${Math.ceil(nextLevelXP).toLocaleString()}\n${lang === 'fr' ? 'Crédits' : 'Credits'}: ${currentCredits.toLocaleString()}\n\`\`\`\n\`${progressBar}\` ${progressPercent.toFixed(1)}%`, inline: false },
                     { name: t.tip, value: t.tipText, inline: false }
                 )
-                .setFooter({ text: t.footer.replace('{version}', version), iconURL: client.user.displayAvatarURL() })
+                .setFooter({ text: `${guildName} • ${t.footer.replace('{version}', version)}`, iconURL: guildIcon })
                 .setTimestamp();
             
             // --- BUILD DYNAMIC BUTTON ROW ---
             const row = new ActionRowBuilder();
             
-            // Always show Profile and Leaderboard
             row.addComponents(
                 new ButtonBuilder()
                     .setCustomId('view_profile')
@@ -256,7 +273,6 @@ module.exports = {
                     .setEmoji('🏆')
             );
             
-            // Dynamic third button based on state
             if (canClaim) {
                 row.addComponents(
                     new ButtonBuilder()
@@ -298,9 +314,8 @@ module.exports = {
                     case 'view_profile':
                         const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                         if (rankCmd) {
-                            // ✅ PASS serverSettings to rank command
-                            await rankCmd.run(client, message, [], database, serverSettings);
-                            await i.reply({ content: '👤 Profile displayed above!', ephemeral: true });
+                            await rankCmd.run(client, message, [], database, serverSettings, usedCommand);
+                            await i.reply({ content: t.profileOpened, ephemeral: true });
                         } else {
                             await i.reply({ content: t.profileNotFound, ephemeral: true });
                         }
@@ -309,9 +324,8 @@ module.exports = {
                     case 'view_leaderboard':
                         const lbCmd = client.commands.get('lb') || client.commands.get('leaderboard');
                         if (lbCmd) {
-                            // ✅ PASS serverSettings to leaderboard command
-                            await lbCmd.run(client, message, [], database, serverSettings);
-                            await i.reply({ content: '🏆 Leaderboard displayed above!', ephemeral: true });
+                            await lbCmd.run(client, message, [], database, serverSettings, usedCommand);
+                            await i.reply({ content: t.leaderboardOpened, ephemeral: true });
                         } else {
                             await i.reply({ content: t.leaderboardNotFound, ephemeral: true });
                         }
@@ -320,16 +334,15 @@ module.exports = {
                     case 'go_claim':
                         const claimCmd = client.commands.get('claim');
                         if (claimCmd) {
-                            // ✅ PASS serverSettings to claim command
-                            await claimCmd.run(client, message, [], database, serverSettings);
-                            await i.reply({ content: '⚡ Claim processed!', ephemeral: true });
+                            await claimCmd.run(client, message, [], database, serverSettings, usedCommand);
+                            await i.reply({ content: t.claimProcessed, ephemeral: true });
                         } else {
                             await i.reply({ content: t.claimNotFound, ephemeral: true });
                         }
                         break;
                         
                     case 'remind_me':
-                        // Double-check no reminder exists
+                        // Check for existing reminder
                         const existing = database.prepare(`
                             SELECT execute_at FROM reminders 
                             WHERE user_id = ? AND status = 'pending' AND message LIKE '%reward%'
@@ -342,7 +355,7 @@ module.exports = {
                             return i.reply({ content: t.reminderAlreadyActive(h, m), ephemeral: true });
                         }
                         
-                        // Create reminder
+                        // Calculate next claim time
                         const nextClaimTime = new Date(lastClaim + oneDay);
                         const timeUntilHours = Math.floor((nextClaimTime - now) / 1000 / 60 / 60);
                         const executeAt = Math.floor(nextClaimTime.getTime() / 1000);
@@ -358,8 +371,9 @@ module.exports = {
                             `).run(reminderId, userId, i.channelId, reminderMsg, executeAt);
                             
                             await i.reply({ content: t.reminderSuccess(timeUntilHours), ephemeral: true });
-                            console.log(`[DAILY] Reminder set for ${message.author.tag}`);
+                            console.log(`[DAILY] Reminder set for ${message.author.tag} in ${timeUntilHours}h`);
                         } catch (e) {
+                            console.error(`[DAILY] Reminder error:`, e);
                             await i.reply({ content: t.error, ephemeral: true });
                         }
                         break;
@@ -368,7 +382,7 @@ module.exports = {
             
         } catch (error) {
             console.error(`[DAILY] FATAL ERROR:`, error);
-            const lang = serverSettings?.language || 'en';
+            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
             return message.reply({ content: dailyTranslations[lang].error });
         }
     }
