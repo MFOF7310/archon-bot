@@ -87,8 +87,7 @@ module.exports = {
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
         const db = database;
         
-        // ================= DATABASE (Global migration handled in index.js) =================
-        // Only clean expired items
+        // ================= DATABASE CLEANUP =================
         const now = Math.floor(Date.now() / 1000);
         db.prepare(`
             UPDATE user_inventory 
@@ -119,6 +118,18 @@ module.exports = {
         
         const ownedItems = new Set(inventory.map(i => i.item_id));
         
+        // Function to refresh shop display
+        const refreshShopDisplay = () => {
+            const currentData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
+            const currentBalance = currentData?.credits || 0;
+            const currentXP = currentData?.xp || 0;
+            const currentLevel = calculateLevel(currentXP);
+            const currentInventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
+            const currentOwned = new Set(currentInventory.map(inv => inv.item_id));
+            
+            return { currentBalance, currentXP, currentLevel, currentOwned };
+        };
+        
         // Shop embed
         const shopEmbed = new EmbedBuilder()
             .setColor('#f1c40f')
@@ -130,49 +141,51 @@ module.exports = {
             .setTimestamp();
         
         // Create menu
-        const menuOptions = shopItems.map(item => {
-            let description = `${item.price.toLocaleString()} Credits - ${item[lang]?.desc || item.en.desc}`;
-            if (ownedItems.has(item.id)) {
-                description = `✅ ${t.owned} - ${description}`;
-            }
-            if (item.requirement?.level && userLevel < item.requirement.level) {
-                description = `🔒 ${t.locked} ${item.requirement.level} - ${description}`;
-            }
-            
-            return {
-                label: `${item.emoji} ${item[lang]?.name || item.en.name}`.substring(0, 100),
-                description: description.substring(0, 100),
-                value: item.id
-            };
-        });
+        const createMenuOptions = (ownedSet, currentLevel) => {
+            return shopItems.map(item => {
+                let description = `${item.price.toLocaleString()} Credits - ${item[lang]?.desc || item.en.desc}`;
+                if (ownedSet.has(item.id)) {
+                    description = `✅ ${t.owned} - ${description}`;
+                }
+                if (item.requirement?.level && currentLevel < item.requirement.level) {
+                    description = `🔒 ${t.locked} ${item.requirement.level} - ${description}`;
+                }
+                
+                return {
+                    label: `${item.emoji} ${item[lang]?.name || item.en.name}`.substring(0, 100),
+                    description: description.substring(0, 100),
+                    value: item.id
+                };
+            });
+        };
         
         const menu = new StringSelectMenuBuilder()
             .setCustomId('shop_select')
             .setPlaceholder(t.placeholder)
-            .addOptions(menuOptions);
+            .addOptions(createMenuOptions(ownedItems, userLevel));
         
         const row = new ActionRowBuilder().addComponents(menu);
         
         const buttonRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('view_inventory')
+                    .setCustomId('shop_inventory')
                     .setLabel(t.inventory)
                     .setStyle(ButtonStyle.Secondary)
                     .setEmoji('📦'),
                 new ButtonBuilder()
-                    .setCustomId('refresh_shop')
+                    .setCustomId('shop_refresh')
                     .setLabel(t.refresh)
                     .setStyle(ButtonStyle.Success)
                     .setEmoji('🔄')
             );
         
-        const response = await message.reply({ 
+        const reply = await message.reply({ 
             embeds: [shopEmbed], 
             components: [row, buttonRow] 
         });
         
-        const collector = response.createMessageComponentCollector({ time: 120000 });
+        const collector = reply.createMessageComponentCollector({ time: 180000 });
         
         collector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) {
@@ -180,46 +193,36 @@ module.exports = {
             }
             
             // Handle Inventory Button
-            if (i.customId === 'view_inventory') {
+            if (i.customId === 'shop_inventory') {
+                await i.deferUpdate();
+                collector.stop();
+                await reply.delete().catch(() => {});
+                
                 const invCmd = client.commands.get('inventory');
                 if (invCmd) {
-                    await invCmd.run(client, message, [], db, serverSettings);
-                    return await i.reply({ content: '📦 Inventory displayed above!', ephemeral: true });
+                    return await invCmd.run(client, message, [], db, serverSettings);
                 }
-                return i.reply({ content: '❌ Inventory command not found.', ephemeral: true });
+                return;
             }
             
             // Handle Refresh Button
-            if (i.customId === 'refresh_shop') {
-                const now = Math.floor(Date.now() / 1000);
-                db.prepare(`
-                    UPDATE user_inventory 
-                    SET active = 0 
-                    WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
-                `).run(now);
+            if (i.customId === 'shop_refresh') {
+                const { currentBalance, currentLevel, currentOwned } = refreshShopDisplay();
                 
-                const freshData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
-                const freshBalance = freshData?.credits || 0;
-                const freshXP = freshData?.xp || 0;
-                const freshLevel = calculateLevel(freshXP);
-                const freshInventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
-                const freshOwned = new Set(freshInventory.map(inv => inv.item_id));
+                const refreshedEmbed = new EmbedBuilder()
+                    .setColor('#f1c40f')
+                    .setAuthor({ name: '🏪 NEURAL MARKETPLACE', iconURL: client.user.displayAvatarURL() })
+                    .setTitle(t.title)
+                    .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${currentBalance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${currentLevel}\``)
+                    .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                    .setTimestamp();
                 
-                const refreshedEmbed = new EmbedBuilder(shopEmbed)
-                    .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${freshBalance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${freshLevel}\``);
+                const refreshedMenu = new StringSelectMenuBuilder()
+                    .setCustomId('shop_select')
+                    .setPlaceholder(t.placeholder)
+                    .addOptions(createMenuOptions(currentOwned, currentLevel));
                 
-                const refreshedOptions = shopItems.map(item => {
-                    let description = `${item.price.toLocaleString()} Credits - ${item[lang]?.desc || item.en.desc}`;
-                    if (freshOwned.has(item.id)) description = `✅ ${t.owned} - ${description}`;
-                    if (item.requirement?.level && freshLevel < item.requirement.level) description = `🔒 ${t.locked} ${item.requirement.level} - ${description}`;
-                    return {
-                        label: `${item.emoji} ${item[lang]?.name || item.en.name}`.substring(0, 100),
-                        description: description.substring(0, 100),
-                        value: item.id
-                    };
-                });
-                
-                const refreshedMenu = new StringSelectMenuBuilder(menu.data).setOptions(refreshedOptions);
                 const refreshedRow = new ActionRowBuilder().addComponents(refreshedMenu);
                 
                 await i.update({ embeds: [refreshedEmbed], components: [refreshedRow, buttonRow] });
@@ -229,20 +232,15 @@ module.exports = {
             // Handle Purchase
             if (i.isStringSelectMenu() && i.customId === 'shop_select') {
                 const selectedId = i.values[0];
-                const selectedItem = client.getItem ? client.getItem(selectedId) : shopItems.find(item => item.id === selectedId);
+                const selectedItem = shopItems.find(item => item.id === selectedId);
                 
                 if (!selectedItem) {
                     return i.reply({ content: t.itemNotFound, ephemeral: true });
                 }
                 
-                const freshData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(i.user.id);
-                const currentCredits = freshData?.credits || 0;
-                const currentXP = freshData?.xp || 0;
-                const currentLevel = calculateLevel(currentXP);
+                const { currentBalance: freshCredits, currentXP, currentLevel, currentOwned } = refreshShopDisplay();
                 
-                const alreadyOwned = db.prepare(`SELECT 1 FROM user_inventory WHERE user_id = ? AND item_id = ? AND active = 1`).get(i.user.id, selectedItem.id);
-                
-                if (alreadyOwned && selectedItem.type !== 'consumable' && selectedItem.type !== 'boost') {
+                if (currentOwned.has(selectedItem.id) && selectedItem.type !== 'consumable' && selectedItem.type !== 'boost') {
                     return i.reply({ content: t.alreadyOwned, ephemeral: true });
                 }
                 
@@ -250,8 +248,8 @@ module.exports = {
                     return i.reply({ content: t.levelRequirement(selectedItem.requirement.level, currentLevel), ephemeral: true });
                 }
                 
-                if (currentCredits < selectedItem.price) {
-                    return i.reply({ content: t.insufficientWithAmount(selectedItem.price, currentCredits), ephemeral: true });
+                if (freshCredits < selectedItem.price) {
+                    return i.reply({ content: t.insufficientWithAmount(selectedItem.price, freshCredits), ephemeral: true });
                 }
                 
                 try {
@@ -322,38 +320,30 @@ module.exports = {
                         .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                     
-                    await i.update({ embeds: [successEmbed], components: [] });
+                    await i.reply({ embeds: [successEmbed], ephemeral: true });
+                    
+                    // Refresh the shop after purchase
+                    const { currentBalance: finalBalance, currentLevel: finalLevel, currentOwned: finalOwned } = refreshShopDisplay();
+                    
+                    const finalEmbed = new EmbedBuilder()
+                        .setColor('#f1c40f')
+                        .setAuthor({ name: '🏪 NEURAL MARKETPLACE', iconURL: client.user.displayAvatarURL() })
+                        .setTitle(t.title)
+                        .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${finalBalance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${finalLevel}\``)
+                        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                        .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                        .setTimestamp();
+                    
+                    const finalMenu = new StringSelectMenuBuilder()
+                        .setCustomId('shop_select')
+                        .setPlaceholder(t.placeholder)
+                        .addOptions(createMenuOptions(finalOwned, finalLevel));
+                    
+                    const finalRow = new ActionRowBuilder().addComponents(finalMenu);
+                    
+                    await reply.edit({ embeds: [finalEmbed], components: [finalRow, buttonRow] });
                     
                     console.log(`[SHOP] ${message.author.tag} purchased ${selectedItem.id}`);
-                    
-                    // Auto-refresh after 3 seconds
-                    setTimeout(async () => {
-                        const finalData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
-                        const finalBalance = finalData?.credits || 0;
-                        const finalXP = finalData?.xp || 0;
-                        const finalLevel = calculateLevel(finalXP);
-                        const finalInventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
-                        const finalOwned = new Set(finalInventory.map(inv => inv.item_id));
-                        
-                        const finalEmbed = new EmbedBuilder(shopEmbed)
-                            .setDescription(`${t.desc}\n\n💰 **${t.balance}:** \`${finalBalance.toLocaleString()}\` Credits\n📊 **${t.level}:** \`${finalLevel}\``);
-                        
-                        const finalOptions = shopItems.map(item => {
-                            let description = `${item.price.toLocaleString()} Credits - ${item[lang]?.desc || item.en.desc}`;
-                            if (finalOwned.has(item.id)) description = `✅ ${t.owned} - ${description}`;
-                            if (item.requirement?.level && finalLevel < item.requirement.level) description = `🔒 ${t.locked} ${item.requirement.level} - ${description}`;
-                            return {
-                                label: `${item.emoji} ${item[lang]?.name || item.en.name}`.substring(0, 100),
-                                description: description.substring(0, 100),
-                                value: item.id
-                            };
-                        });
-                        
-                        const finalMenu = new StringSelectMenuBuilder(menu.data).setOptions(finalOptions);
-                        const finalRow = new ActionRowBuilder().addComponents(finalMenu);
-                        
-                        await response.edit({ embeds: [finalEmbed], components: [finalRow, buttonRow] }).catch(() => {});
-                    }, 3000);
                     
                 } catch (err) {
                     console.error('[SHOP] Purchase error:', err);
@@ -362,15 +352,17 @@ module.exports = {
             }
         });
         
-        collector.on('end', () => {
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'messageDeleted') return;
+            
             const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
             const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
             const disabledButtons = new ActionRowBuilder()
                 .addComponents(
-                    new ButtonBuilder().setCustomId('view_inventory').setLabel(t.inventory).setStyle(ButtonStyle.Secondary).setDisabled(true).setEmoji('📦'),
-                    new ButtonBuilder().setCustomId('refresh_shop').setLabel(t.refresh).setStyle(ButtonStyle.Success).setDisabled(true).setEmoji('🔄')
+                    new ButtonBuilder().setCustomId('shop_inventory').setLabel(t.inventory).setStyle(ButtonStyle.Secondary).setDisabled(true).setEmoji('📦'),
+                    new ButtonBuilder().setCustomId('shop_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Success).setDisabled(true).setEmoji('🔄')
                 );
-            response.edit({ components: [disabledRow, disabledButtons] }).catch(() => {});
+            await reply.edit({ components: [disabledRow, disabledButtons] }).catch(() => {});
         });
     }
 };
