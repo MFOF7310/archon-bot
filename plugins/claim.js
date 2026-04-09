@@ -35,7 +35,9 @@ const claimTranslations = {
         claimed: '✅ Claimed!',
         levelUp: '🎉 LEVEL UP!',
         channelRestricted: (channelId) => `📊 The claim protocol is restricted to the <#${channelId}> channel.`,
-        tip: '💡 TIP'
+        tip: '💡 TIP',
+        dashboardOpened: '📊 Dashboard displayed above!',
+        profileOpened: '👤 Profile displayed above!'
     },
     fr: {
         title: '⚡ PROTOCOLE DE RÉCLAMATION NEURALE',
@@ -65,7 +67,9 @@ const claimTranslations = {
         claimed: '✅ Réclamé!',
         levelUp: '🎉 NIVEAU SUPÉRIEUR!',
         channelRestricted: (channelId) => `📊 Le protocole de réclamation est restreint au canal <#${channelId}>.`,
-        tip: '💡 ASTUCE'
+        tip: '💡 ASTUCE',
+        dashboardOpened: '📊 Tableau de bord affiché ci-dessus !',
+        profileOpened: '👤 Profil affiché ci-dessus !'
     }
 };
 
@@ -89,7 +93,7 @@ function createProgressBar(percentage, length = 15) {
 }
 
 // ================= LEVEL UP EMBED =================
-async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP, lang, version) {
+async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP, lang, version, guildName, guildIcon) {
     const rank = getRank(newLevel);
     const nextLevelXP = Math.pow(newLevel / 0.1, 2);
     const prevLevelXP = Math.pow((newLevel - 1) / 0.1, 2);
@@ -107,7 +111,7 @@ async function sendLevelUpEmbed(channel, username, oldLevel, newLevel, currentXP
             `\`${progressBar}\` ${progressPercent.toFixed(1)}%\n` +
             `└─ ${lang === 'fr' ? 'Prochain niveau' : 'Next level'}: ${Math.ceil(xpNeeded - xpInLevel).toLocaleString()} XP`
         )
-        .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+        .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
         .setTimestamp();
     
     await channel.send({ embeds: [embed] });
@@ -122,23 +126,27 @@ module.exports = {
     cooldown: 3000,
     examples: ['.claim'],
 
-    // ✅ MODIFIED: Added serverSettings as 5th argument
-    run: async (client, message, args, database, serverSettings) => {
+    // ✅ FIXED: Added usedCommand as 6th parameter for language bridge!
+    run: async (client, message, args, database, serverSettings, usedCommand) => {
         
         try {
-            // ✅ MODIFIED: Use server-specific language from settings
-            const lang = serverSettings?.language || 'en';
+            // ✅ NEW LOGIC: Alias detection first (Neural Language Bridge!)
+            const lang = client.detectLanguage 
+                ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
+                : serverSettings?.language || 'en';
             const t = claimTranslations[lang];
             
-            // ✅ ADDED: Channel Restriction Check
+            const version = client.version || '1.5.0';
+            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+            
+            // ✅ Channel Restriction Check
             if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
                 return message.reply({ 
                     content: t.channelRestricted(serverSettings.dailyChannel), 
                     ephemeral: true 
                 });
             }
-            
-            const version = client.version || '1.5.0';
             
             const userId = message.author.id;
             const userName = message.author.username;
@@ -167,7 +175,7 @@ module.exports = {
                 userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
             }
             
-            // --- COOLDOWN VALIDATION (THE GATEKEEPER) ---
+            // --- COOLDOWN VALIDATION ---
             const lastClaim = parseInt(userData.last_daily || 0);
             const now = Date.now();
             const timePassed = now - lastClaim;
@@ -194,7 +202,7 @@ module.exports = {
                     .addFields(
                         { name: t.tip, value: lang === 'fr' ? 'Utilisez `.daily` pour voir votre tableau de bord complet.' : 'Use `.daily` to view your full dashboard.', inline: false }
                     )
-                    .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                    .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
                 const row = new ActionRowBuilder()
@@ -227,9 +235,9 @@ module.exports = {
                     if (i.customId === 'goto_daily') {
                         const dailyCmd = client.commands.get('daily');
                         if (dailyCmd) {
-                            // ✅ Pass serverSettings to daily command
-                            await dailyCmd.run(client, message, [], database, serverSettings);
-                            await i.reply({ content: '📊 Dashboard displayed above!', ephemeral: true });
+                            // ✅ Pass serverSettings AND usedCommand to daily
+                            await dailyCmd.run(client, message, [], database, serverSettings, usedCommand);
+                            await i.reply({ content: t.dashboardOpened, ephemeral: true });
                         }
                     }
                 });
@@ -305,7 +313,7 @@ module.exports = {
             }
             
             successEmbed
-                .setFooter({ text: `ARCHITECT CG-223 • v${version} • ${lang === 'fr' ? 'Réclamez demain!' : 'Claim tomorrow!'}` })
+                .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version} • ${lang === 'fr' ? 'Réclamez demain!' : 'Claim tomorrow!'}`, iconURL: guildIcon })
                 .setTimestamp();
             
             const actionRow = new ActionRowBuilder()
@@ -327,7 +335,7 @@ module.exports = {
             // Level up check
             if (currentLevel > oldLevel) {
                 database.prepare(`UPDATE users SET level = ? WHERE id = ?`).run(currentLevel, userId);
-                await sendLevelUpEmbed(message.channel, userName, oldLevel, currentLevel, currentXP, lang, version);
+                await sendLevelUpEmbed(message.channel, userName, oldLevel, currentLevel, currentXP, lang, version, guildName, guildIcon);
             }
             
             // Button collector
@@ -340,16 +348,16 @@ module.exports = {
                 if (i.customId === 'view_daily') {
                     const dailyCmd = client.commands.get('daily');
                     if (dailyCmd) {
-                        // ✅ Pass serverSettings to daily command
-                        await dailyCmd.run(client, message, [], database, serverSettings);
-                        await i.reply({ content: '📊 Dashboard displayed above!', ephemeral: true });
+                        // ✅ Pass serverSettings AND usedCommand to daily
+                        await dailyCmd.run(client, message, [], database, serverSettings, usedCommand);
+                        await i.reply({ content: t.dashboardOpened, ephemeral: true });
                     }
                 } else if (i.customId === 'view_profile') {
                     const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                     if (rankCmd) {
-                        // ✅ Pass serverSettings to rank command
-                        await rankCmd.run(client, message, [], database, serverSettings);
-                        await i.reply({ content: '👤 Profile displayed above!', ephemeral: true });
+                        // ✅ Pass serverSettings AND usedCommand to rank
+                        await rankCmd.run(client, message, [], database, serverSettings, usedCommand);
+                        await i.reply({ content: t.profileOpened, ephemeral: true });
                     }
                 }
             });
