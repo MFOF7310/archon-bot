@@ -68,8 +68,11 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-// ================= UNIVERSAL LANGUAGE DETECTION (PATTERN-BASED) =================
+// ================= 🔥 SAFE UNIVERSAL LANGUAGE DETECTION =================
 function detectLanguage(usedCommand) {
+    // 🔥 SAFETY CHECK: Handle undefined/null
+    if (!usedCommand || typeof usedCommand !== 'string') return 'en';
+    
     const cmd = usedCommand.toLowerCase().trim();
     
     if (!cmd || cmd.length === 0) return 'en';
@@ -143,10 +146,10 @@ const Database = require('better-sqlite3');
 const db = new Database('database.sqlite');
 
 // ================= 🔥 PILLAR 3: HIGH-PERFORMANCE PRAGMA =================
-db.exec("PRAGMA journal_mode = WAL;");      // Write-Ahead Logging - allows concurrent reads during writes
-db.exec("PRAGMA synchronous = NORMAL;");     // Faster writes for hosted environments
-db.exec("PRAGMA cache_size = -64000;");      // 64MB cache for high performance
-db.exec("PRAGMA temp_store = MEMORY;");      // Store temp tables in RAM
+db.exec("PRAGMA journal_mode = WAL;");
+db.exec("PRAGMA synchronous = NORMAL;");
+db.exec("PRAGMA cache_size = -64000;");
+db.exec("PRAGMA temp_store = MEMORY;");
 console.log(`${green}[PRAGMA]${reset} WAL mode enabled - High-performance concurrent mode`);
 
 // ================= GLOBAL AUTO-REPAIR PROTOCOL =================
@@ -309,7 +312,6 @@ try {
     if (languageColumn) {
         console.log(`${yellow}[MIGRATION]${reset} Initiating atomic table rebuild...`);
         
-        // 🔥 WRAPPED IN TRANSACTION - If power fails, database stays uncorrupted!
         db.transaction(() => {
             db.exec(`
                 CREATE TABLE server_settings_new (
@@ -836,7 +838,7 @@ async function gracefulShutdown(signal) {
     client.settings.clear();
     
     try {
-        db.exec("PRAGMA wal_checkpoint(TRUNCATE);"); // 🔥 Clean WAL before closing
+        db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
         db.close();
         console.log(`${green}[SHUTDOWN]${reset} Database closed successfully (WAL cleaned)`);
     } catch (err) {
