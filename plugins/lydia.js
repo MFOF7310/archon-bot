@@ -464,6 +464,7 @@ You are an AI assistant created by **Moussa Fofana (GitHub: MFOF7310)**.
 - GitHub: https://github.com/MFOF7310
 
 **RULES:**
+- 🚫 NEVER use "[Name]:" or "[Username]:" format in responses
 - 🚫 NEVER repeat server name or your own name
 - 🚫 No formal introductions - just answer
 - ✅ Be technical, precise, and solution-oriented
@@ -491,6 +492,7 @@ You are a gaming AI created by **Moussa Fofana (MFOF7310)**.
 Focus on CODM, esports, loadouts, and competitive gaming.
 
 **RULES:**
+- 🚫 NEVER use "[Name]:" or "[Username]:" format in responses
 - 🚫 NEVER repeat server name or your own name
 - 🚫 No formal introductions - just talk like a gamer
 - ✅ Be energetic and concise
@@ -512,6 +514,7 @@ You are a creative AI built by **Moussa Fofana (MFOF7310)**.
 Help with scripts, writing, art ideas, and content creation.
 
 **RULES:**
+- 🚫 NEVER use "[Name]:" or "[Username]:" format in responses
 - 🚫 NEVER repeat server name or your own name
 - 🚫 No formal introductions
 - ✅ Be imaginative but concise
@@ -540,8 +543,8 @@ Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana 
 - GROUP AWARENESS: See channel conversation history
 
 **STRICT RULES:**
+- 🚫 **NEVER use "[Name]:" or "[Username]:" format in your responses. Speak naturally.**
 - 🚫 **NEVER repeat the server name or your own name** unless specifically asked.
-- 🚫 **NEVER use "Agent [Name]" format** - just use their name naturally.
 - 🚫 **Do NOT introduce yourself** unless it's a user's first message in 7 days.
 - 🚫 **Do NOT ask "How can I help you?"** - just answer or join the conversation.
 - ✅ **Be CONCISE** - short answers are better than long ones.
@@ -801,7 +804,7 @@ async function handleLydiaMessage(message, client, database) {
         socialContext += `\n- Your name on this server: ${currentIdentity}`;
         socialContext += `\n- Real-time Clock (Bamako Time): ${bamakoTime}`;
         socialContext += `\n- 🚫 DO NOT repeat server name or your own name unless asked.`;
-        socialContext += `\n- 🚫 DO NOT use \"Agent [Name]\" - just use their name naturally.`;
+        socialContext += `\n- 🚫 DO NOT use \"[Name]:\" format - just speak naturally.`;
         socialContext += `\n- ✅ Be concise and natural.`;
         
         socialContext += `\n\n[SOCIAL CONTEXT]`;
@@ -826,7 +829,7 @@ async function handleLydiaMessage(message, client, database) {
             systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
         }
 
-        // Reduced from 12 to 5 messages to prevent repetition
+        // ================= FIXED: Conversation History Without Brackets =================
         const historyRows = database.prepare(`
             SELECT role, content, user_name 
             FROM lydia_conversations 
@@ -835,10 +838,25 @@ async function handleLydiaMessage(message, client, database) {
             LIMIT 5
         `).all(message.channel.id);
         
+        // Store original rows for context summary (with user_name)
+        const originalRows = [...historyRows];
+        
+        // ✅ IMPORTANT: Pass raw content only - NO [Name]: formatting
         const conversationHistory = historyRows.reverse().map(row => ({
             role: row.role,
-            content: row.user_name ? `[${row.user_name}]: ${row.content}` : row.content
+            content: row.content  // Clean content without name prefixes
         }));
+        
+        // Add context separately in system prompt (using original rows)
+        if (originalRows.length > 0) {
+            const contextSummary = originalRows
+                .slice(0, 3)
+                .map(r => `${r.role === 'user' ? r.user_name : 'You'}: ${r.content?.substring(0, 80) || ''}`)
+                .join(' | ');
+            
+            systemPrompt += `\n\n[CONTEXT - Last messages: ${contextSummary}]\n`;
+            systemPrompt += `[IMPORTANT: Never use "[Name]:" format in your responses. Just speak naturally.]`;
+        }
         
         try {
             database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
