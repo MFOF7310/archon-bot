@@ -33,7 +33,8 @@ const shopTranslations = {
         itemNotFound: '❌ Item not found.',
         purchaseError: '❌ An error occurred during purchase. Please try again.',
         footer: 'ARCHITECT CG-223 • Neural Marketplace',
-        purchaseComplete: '✅ PURCHASE COMPLETE'
+        purchaseComplete: '✅ PURCHASE COMPLETE',
+        processing: '⚡ Processing transaction...'
     },
     fr: {
         title: '═ MARCHÉ NEURAL ARCHON ═',
@@ -61,7 +62,8 @@ const shopTranslations = {
         itemNotFound: '❌ Article introuvable.',
         purchaseError: '❌ Une erreur est survenue lors de l\'achat. Veuillez réessayer.',
         footer: 'ARCHITECT CG-223 • Marché Neural',
-        purchaseComplete: '✅ ACHAT RÉUSSI'
+        purchaseComplete: '✅ ACHAT RÉUSSI',
+        processing: '⚡ Transaction en cours...'
     }
 };
 
@@ -74,20 +76,24 @@ module.exports = {
     cooldown: 3000,
     examples: ['.shop'],
 
-    run: async (client, message, args, database, serverSettings) => {
+    // ✅ NEW SIGNATURE: 6 parameters with usedCommand
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
         
-        const lang = serverSettings?.language || 'en';
+        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
+        const lang = client.detectLanguage 
+            ? client.detectLanguage(usedCommand, 'en')
+            : 'en';
         const t = shopTranslations[lang];
-        const version = client.version || '1.5.0';
+        
+        const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
         const userId = message.author.id;
         const userName = message.author.username;
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
-        const db = database;
         
-        // ================= DATABASE CLEANUP =================
+        // ================= DATABASE CLEANUP (Expired Items) =================
         const now = Math.floor(Date.now() / 1000);
         db.prepare(`
             UPDATE user_inventory 
@@ -95,22 +101,29 @@ module.exports = {
             WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
         `).run(now);
         
-        // Ensure user exists
-        let userData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
+        // 🔥 HIGH-SPEED DATA BRIDGE - RAM-first cache!
+        let userData = client.getUserData 
+            ? client.getUserData(userId) 
+            : db.prepare(`SELECT credits, xp, level FROM users WHERE id = ?`).get(userId);
+        
         if (!userData) {
             db.prepare(`INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, 0)`)
                 .run(userId, userName);
-            userData = { credits: 0, xp: 0 };
+            userData = { credits: 0, xp: 0, level: 1 };
+            
+            // Cache the new user
+            if (client.getUserData && client.cacheUserData) {
+                client.cacheUserData(userId, userData);
+            }
         }
         
-        const balance = userData?.credits || 0;
-        const userXP = userData?.xp || 0;
-        const userLevel = calculateLevel(userXP);
+        const balance = userData.credits || 0;
+        const userLevel = userData.level || calculateLevel(userData.xp || 0);
         
         // ================= USE GLOBAL ITEMS FROM CLIENT =================
         const shopItems = client.shopItems || [];
         
-        // Get inventory
+        // Get inventory (direct DB - needed for accurate owned status)
         const inventory = db.prepare(`
             SELECT item_id FROM user_inventory 
             WHERE user_id = ? AND active = 1
@@ -118,16 +131,20 @@ module.exports = {
         
         const ownedItems = new Set(inventory.map(i => i.item_id));
         
-        // Function to refresh shop display
-        const refreshShopDisplay = () => {
-            const currentData = db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
-            const currentBalance = currentData?.credits || 0;
-            const currentXP = currentData?.xp || 0;
-            const currentLevel = calculateLevel(currentXP);
-            const currentInventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
-            const currentOwned = new Set(currentInventory.map(inv => inv.item_id));
+        // 🔥 SIMPLIFIED REFRESH - Cache updates automatically!
+        const getCurrentState = () => {
+            // Cache may have been updated by batch system
+            const currentData = client.getUserData 
+                ? client.getUserData(userId) 
+                : db.prepare(`SELECT credits, xp, level FROM users WHERE id = ?`).get(userId);
             
-            return { currentBalance, currentXP, currentLevel, currentOwned };
+            const currentInventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
+            
+            return {
+                balance: currentData?.credits || 0,
+                level: currentData?.level || calculateLevel(currentData?.xp || 0),
+                owned: new Set(currentInventory.map(inv => inv.item_id))
+            };
         };
         
         // Shop embed
@@ -200,14 +217,14 @@ module.exports = {
                 
                 const invCmd = client.commands.get('inventory');
                 if (invCmd) {
-                    return await invCmd.run(client, message, [], db, serverSettings);
+                    return await invCmd.run(client, message, [], db, serverSettings, usedCommand);
                 }
                 return;
             }
             
             // Handle Refresh Button
             if (i.customId === 'shop_refresh') {
-                const { currentBalance, currentLevel, currentOwned } = refreshShopDisplay();
+                const { balance: currentBalance, level: currentLevel, owned: currentOwned } = getCurrentState();
                 
                 const refreshedEmbed = new EmbedBuilder()
                     .setColor('#f1c40f')
@@ -238,8 +255,10 @@ module.exports = {
                     return i.reply({ content: t.itemNotFound, ephemeral: true });
                 }
                 
-                const { currentBalance: freshCredits, currentXP, currentLevel, currentOwned } = refreshShopDisplay();
+                // 🔥 Get fresh state from cache
+                const { balance: freshCredits, level: currentLevel, owned: currentOwned } = getCurrentState();
                 
+                // Validation checks
                 if (currentOwned.has(selectedItem.id) && selectedItem.type !== 'consumable' && selectedItem.type !== 'boost') {
                     return i.reply({ content: t.alreadyOwned, ephemeral: true });
                 }
@@ -252,15 +271,42 @@ module.exports = {
                     return i.reply({ content: t.insufficientWithAmount(selectedItem.price, freshCredits), ephemeral: true });
                 }
                 
+                // Acknowledge processing
+                await i.deferReply({ ephemeral: true });
+                
                 try {
-                    // Deduct credits
-                    db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ?`).run(selectedItem.price, i.user.id);
+                    // 🔥 BATCH TRANSACTION - Single queue update for credits/XP!
+                    const currentUserData = client.getUserData 
+                        ? client.getUserData(userId) 
+                        : db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
                     
+                    const bonusXP = selectedItem.effect?.xp || 0;
+                    const bonusCredits = selectedItem.effect?.credits || 0;
+                    
+                    const newCredits = (currentUserData?.credits || 0) - selectedItem.price + bonusCredits;
+                    const newXP = (currentUserData?.xp || 0) + bonusXP;
+                    const newLevel = calculateLevel(newXP);
+                    
+                    // Queue the batch update (30-second window)
+                    if (client.queueUserUpdate) {
+                        client.queueUserUpdate(userId, {
+                            credits: newCredits,
+                            xp: newXP,
+                            level: newLevel,
+                            username: userName
+                        });
+                        console.log(`[SHOP BATCH] Queued update for ${userName}: -${selectedItem.price} credits, +${bonusXP} XP`);
+                    } else {
+                        // Fallback direct DB
+                        db.prepare(`UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ?`)
+                            .run(newCredits, newXP, newLevel, userId);
+                    }
+                    
+                    // 📦 DIRECT DB FOR INVENTORY - Prevents double-purchase race conditions!
                     const expiresAt = selectedItem.duration 
                         ? Math.floor(Date.now() / 1000) + (selectedItem.duration * 86400)
                         : null;
                     
-                    // Add to inventory
                     if (selectedItem.type === 'consumable') {
                         db.prepare(`
                             INSERT INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at, active)
@@ -268,34 +314,26 @@ module.exports = {
                             ON CONFLICT(user_id, item_id) DO UPDATE SET 
                                 quantity = quantity + 1,
                                 purchased_at = strftime('%s', 'now')
-                        `).run(i.user.id, selectedItem.id, expiresAt);
+                        `).run(userId, selectedItem.id, expiresAt);
                     } else {
                         db.prepare(`
                             INSERT OR REPLACE INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at, active)
                             VALUES (?, ?, 1, strftime('%s', 'now'), ?, 1)
-                        `).run(i.user.id, selectedItem.id, expiresAt);
+                        `).run(userId, selectedItem.id, expiresAt);
                     }
                     
-                    // Apply effects
-                    if (selectedItem.effect) {
-                        if (selectedItem.effect.xp) {
-                            db.prepare(`UPDATE users SET xp = xp + ? WHERE id = ?`).run(selectedItem.effect.xp, i.user.id);
-                        }
-                        if (selectedItem.effect.credits) {
-                            db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(selectedItem.effect.credits, i.user.id);
-                        }
-                    }
-                    
-                    // Apply role
+                    // Apply role (Discord API - cannot be batched)
                     if (selectedItem.type === 'role' && selectedItem.roleId && message.guild) {
                         try {
-                            const member = await message.guild.members.fetch(i.user.id);
+                            const member = await message.guild.members.fetch(userId);
                             await member.roles.add(selectedItem.roleId);
+                            console.log(`[SHOP] Added role ${selectedItem.roleId} to ${userName}`);
                         } catch (err) {
-                            console.error('[SHOP] Role error:', err);
+                            console.error('[SHOP] Role error:', err.message);
                         }
                     }
                     
+                    // Build success embed
                     const itemName = selectedItem[lang]?.name || selectedItem.en.name;
                     const itemDesc = selectedItem[lang]?.desc || selectedItem.en.desc;
                     const itemPerk = selectedItem[lang]?.perk || selectedItem.en.perk;
@@ -316,14 +354,22 @@ module.exports = {
                         successEmbed.addFields({ name: t.expires, value: t.permanentItem, inline: true });
                     }
                     
+                    if (bonusXP > 0 || bonusCredits > 0) {
+                        successEmbed.addFields({ 
+                            name: '✨ Bonus Effects', 
+                            value: `${bonusXP > 0 ? `+${bonusXP} XP\n` : ''}${bonusCredits > 0 ? `+${bonusCredits} Credits` : ''}`,
+                            inline: false 
+                        });
+                    }
+                    
                     successEmbed
                         .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                     
-                    await i.reply({ embeds: [successEmbed], ephemeral: true });
+                    await i.editReply({ embeds: [successEmbed] });
                     
-                    // Refresh the shop after purchase
-                    const { currentBalance: finalBalance, currentLevel: finalLevel, currentOwned: finalOwned } = refreshShopDisplay();
+                    // Refresh the shop display
+                    const { balance: finalBalance, level: finalLevel, owned: finalOwned } = getCurrentState();
                     
                     const finalEmbed = new EmbedBuilder()
                         .setColor('#f1c40f')
@@ -343,11 +389,11 @@ module.exports = {
                     
                     await reply.edit({ embeds: [finalEmbed], components: [finalRow, buttonRow] });
                     
-                    console.log(`[SHOP] ${message.author.tag} purchased ${selectedItem.id}`);
+                    console.log(`${green}[SHOP]${reset} ${message.author.tag} purchased ${selectedItem.id} (Batched credits: ${newCredits})`);
                     
                 } catch (err) {
                     console.error('[SHOP] Purchase error:', err);
-                    await i.reply({ content: t.purchaseError, ephemeral: true });
+                    await i.editReply({ content: t.purchaseError });
                 }
             }
         });
