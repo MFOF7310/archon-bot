@@ -645,7 +645,7 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     return prompt;
 }
 
-// ================= MESSAGE HANDLER (Single instance) =================
+// ================= 🔥 OPTIMIZED MESSAGE HANDLER =================
 async function handleLydiaMessage(message, client, database) {
     // Skip if not a guild message
     if (!message.guild) return;
@@ -683,9 +683,10 @@ async function handleLydiaMessage(message, client, database) {
         const isArchitect = message.author.id === process.env.OWNER_ID;
         
         const content = message.content?.toLowerCase() || '';
-        const isFrench = content.includes('bonjour') || content.includes('salut') || content.includes('merci') || 
-                       content.includes('comment') || message.guild?.preferredLocale === 'fr';
-        const lang = isFrench ? 'fr' : 'en';
+        
+        // 🔥 USE THE NEW LANGUAGE DETECTION SYSTEM!
+        const usedCommand = content.split(' ')[0] || '';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
         
         const addressed = content.startsWith(currentIdentity.toLowerCase()) || message.mentions?.has(client.user);
         const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
@@ -694,7 +695,7 @@ async function handleLydiaMessage(message, client, database) {
         if (!addressed && !isProactive) return;
 
         await message.channel.sendTyping();
-        console.log(`${cyan}[LYDIA]${reset} Processing message from ${userName} in ${message.channel.name}`);
+        console.log(`${cyan}[LYDIA]${reset} Processing message from ${userName} in ${message.channel.name} (${lang})`);
 
         let userPrompt = message.content || '';
         let imageUrl = null;
@@ -737,7 +738,10 @@ async function handleLydiaMessage(message, client, database) {
         let finalAgent = neuralCores[agentKey] || neuralCores.default;
         let systemPrompt = finalAgent.systemPrompt;
         
-        const stats = database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
+        // 🔥 USE OPTIMIZED getUserData FROM MAIN FILE
+        const userData = client.getUserData ? client.getUserData(message.author.id) : 
+                        database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
+        
         const member = message.guild.members.cache.get(message.author.id);
         const isAdmin = member?.permissions.has(PermissionsBitField.Flags.Administrator) || false;
         const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
@@ -762,7 +766,7 @@ async function handleLydiaMessage(message, client, database) {
         socialContext += `\n\n[SOCIAL CONTEXT]`;
         socialContext += `\n- Current user: ${userName}`;
         socialContext += `\n- User status: ${userStatus.toUpperCase()}`;
-        socialContext += `\n- Level: ${stats?.level || 1}`;
+        socialContext += `\n- Level: ${userData?.level || 1}`;
         
         if (isArchitect) {
             socialContext += `\n\n🏛️ **CREATOR MODE**: Moussa Fofana is speaking. Respond with respect.`;
@@ -771,7 +775,7 @@ async function handleLydiaMessage(message, client, database) {
         }
         
         systemPrompt += socialContext;
-        systemPrompt += `\n\n🗣️ Language: ${isFrench ? 'French' : 'English'}.`;
+        systemPrompt += `\n\n🗣️ Language: ${lang === 'fr' ? 'French' : 'English'}.`;
         
         const pluginAwareness = buildPluginAwarenessPrompt(client, database, message.author.id, lang);
         systemPrompt += pluginAwareness;
@@ -790,16 +794,13 @@ async function handleLydiaMessage(message, client, database) {
             LIMIT 8
         `).all(message.channel.id);
         
-        // Store original rows for context summary (with user_name)
         const originalRows = [...historyRows];
         
-        // ✅ IMPORTANT: Pass raw content only - NO [Name]: formatting
         const conversationHistory = historyRows.reverse().map(row => ({
             role: row.role,
-            content: row.content  // Clean content without name prefixes
+            content: row.content
         }));
         
-        // Add context separately in system prompt (using original rows)
         if (originalRows.length > 0) {
             const contextSummary = originalRows
                 .slice(0, 3)
@@ -823,7 +824,7 @@ async function handleLydiaMessage(message, client, database) {
         const isFirst = !lastIntro || (Date.now() - lastIntro > 604800000);
         
         if (isFirst && !isArchitect) {
-            const introMsg = isFrench 
+            const introMsg = lang === 'fr'
                 ? `\n\n[FIRST INTERACTION] Salue BRIÈVEMENT: "Salut ${userName}! Tape .help pour voir mes commandes!"`
                 : `\n\n[FIRST INTERACTION] Greet BRIEFLY: "Hey ${userName}! Type .help to see my commands!"`;
             systemPrompt += introMsg;
@@ -836,7 +837,7 @@ async function handleLydiaMessage(message, client, database) {
             reply = await generateAIResponse(systemPrompt, userPrompt, conversationHistory, imageUrl, realTimeData);
         } catch (err) {
             console.error(`${red}[LYDIA ERROR]${reset}`, err);
-            reply = isFrench ? "❌ Erreur du service IA." : "❌ AI service error.";
+            reply = lang === 'fr' ? "❌ Erreur du service IA." : "❌ AI service error.";
         }
 
         reply = parseAndScheduleReminder(reply, message.author.id, message.channel.id, client, database);
@@ -864,6 +865,7 @@ async function handleLydiaMessage(message, client, database) {
                 .run(message.channel.id, client.user.id, 'assistant', reply);
         }
 
+        // Smart chunking for long responses
         if (reply.length > 2000) {
             const chunks = [];
             let currentChunk = '';
@@ -918,7 +920,7 @@ async function handleLydiaMessage(message, client, database) {
     }
 }
 
-// ================= SETUP LYDIA (ONCE ONLY) =================
+// ================= 🔥 OPTIMIZED SETUP - PRESERVES COMMAND HANDLER =================
 function setupLydia(client, database) {
     if (!client || !database) {
         console.error(`${red}[LYDIA FATAL]${reset} Client or DB missing`);
@@ -973,26 +975,38 @@ function setupLydia(client, database) {
         return;
     }
 
-    // ✅ ADD SINGLE EVENT LISTENER (without removing others - PRESERVES COMMAND HANDLER!)
+    // ✅ PRESERVE EXISTING LISTENERS - Don't remove, just add ours
+    const originalListeners = client.listeners('messageCreate');
+    client.removeAllListeners('messageCreate');
+    
+    // Re-add original listeners first
+    originalListeners.forEach(listener => {
+        client.on('messageCreate', listener);
+    });
+    
+    // Add Lydia listener
     client.on('messageCreate', async (message) => {
         if (!message || message.author?.bot) return;
         await handleLydiaMessage(message, client, database);
     });
     
-    console.log(`${green}[LYDIA]${reset} ✅ Event listener registered (preserved existing listeners)`);
-    
-    // Debug: Show listener count
     const listenerCount = client.listenerCount('messageCreate');
-    console.log(`${cyan}[LYDIA DEBUG]${reset} messageCreate listeners: ${listenerCount}`);
+    console.log(`${green}[LYDIA]${reset} ✅ Event listener registered (preserved ${originalListeners.length} existing, total: ${listenerCount})`);
 }
 
 // ================= COMMAND .lydia =================
-async function runLydiaCommand(client, message, args, database, serverSettings) {
+async function runLydiaCommand(client, message, args, database, usedCommand) {
     if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
     
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
+    
+    // 🔥 USE NEW LANGUAGE DETECTION
+    const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
+    
+    // Get prefix from settings or default
+    const serverSettings = message.guild ? client.getServerSettings(message.guild.id) : { prefix: '.' };
     const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-    const lang = serverSettings?.language || 'en';
+    
     const version = client.version || '1.6.0';
     const guildName = message.guild.name.toUpperCase();
     const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
@@ -1000,12 +1014,17 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
     const sub = args[0]?.toLowerCase();
 
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ embeds: [new EmbedBuilder().setColor('#ff4444').setTitle('⛔ ACCESS DENIED').setDescription('Administrator clearance required.').setTimestamp()] });
+        const errorMsg = lang === 'fr' 
+            ? '⛔ **ACCÈS REFUSÉ**\nAutorisation d\'administrateur requise.'
+            : '⛔ **ACCESS DENIED**\nAdministrator clearance required.';
+        return message.reply({ embeds: [new EmbedBuilder().setColor('#ff4444').setTitle(errorMsg).setTimestamp()] });
     }
 
     try {
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER)`).run();
-    } catch(e) { return message.reply("❌ Database error."); }
+    } catch(e) { 
+        return message.reply(lang === 'fr' ? "❌ Erreur de base de données." : "❌ Database error.");
+    }
 
     const channelId = message.channel.id;
     if (!client.lydiaChannels) client.lydiaChannels = {};
@@ -1061,18 +1080,21 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
     if (sub === 'agent') {
         const agentType = args[1]?.toLowerCase();
         if (!agentType || !neuralCores[agentType]) {
-            return message.reply(`⚠️ Invalid core. Available: ${Object.keys(neuralCores).map(c=>`\`${c}\``).join(', ')}`);
+            const available = Object.keys(neuralCores).map(c=>`\`${c}\``).join(', ');
+            return message.reply(lang === 'fr' 
+                ? `⚠️ Noyau invalide. Disponibles: ${available}`
+                : `⚠️ Invalid core. Available: ${available}`);
         }
         client.lydiaAgents[channelId] = agentType;
         saveAgent(channelId, agentType);
         const info = neuralCores[agentType];
         const embed = new EmbedBuilder()
             .setColor(info.color)
-            .setTitle(`${info.emoji} NEURAL CORE SWITCHED`)
-            .setDescription(`**${info.name}** is now active in <#${channelId}>`)
+            .setTitle(`${info.emoji} ${lang === 'fr' ? 'NOYAU NEURAL CHANGÉ' : 'NEURAL CORE SWITCHED'}`)
+            .setDescription(`**${info.name}** ${lang === 'fr' ? 'est maintenant actif dans' : 'is now active in'} <#${channelId}>`)
             .addFields(
-                { name: '📝 Function', value: info.description },
-                { name: '💾 Persistence', value: 'Saved across restarts' }
+                { name: lang === 'fr' ? '📝 Fonction' : '📝 Function', value: info.description },
+                { name: '💾 Persistence', value: lang === 'fr' ? 'Sauvegardé après redémarrage' : 'Saved across restarts' }
             )
             .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
             .setTimestamp();
@@ -1081,7 +1103,11 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
 
     // --- ACTIVATE ---
     if (sub === 'on') {
-        if (client.lydiaChannels[channelId]) return message.reply(`⚠️ **${botDisplayName} is already active** here.`);
+        if (client.lydiaChannels[channelId]) {
+            return message.reply(lang === 'fr' 
+                ? `⚠️ **${botDisplayName} est déjà actif** ici.`
+                : `⚠️ **${botDisplayName} is already active** here.`);
+        }
         if (!client.lydiaAgents[channelId]) {
             try {
                 const saved = database.prepare("SELECT agent_key FROM lydia_agents WHERE channel_id = ?").get(channelId);
@@ -1093,16 +1119,18 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
         const info = neuralCores[client.lydiaAgents[channelId]] || neuralCores.default;
         const embed = new EmbedBuilder()
             .setColor('#2ecc71')
-            .setTitle('✅ NEURAL CORE INITIALIZED')
-            .setDescription(`**${botDisplayName} is now ONLINE** in <#${channelId}>`)
+            .setTitle(lang === 'fr' ? '✅ NOYAU NEURAL INITIALISÉ' : '✅ NEURAL CORE INITIALIZED')
+            .setDescription(lang === 'fr' 
+                ? `**${botDisplayName} est maintenant EN LIGNE** dans <#${channelId}>`
+                : `**${botDisplayName} is now ONLINE** in <#${channelId}>`)
             .addFields(
                 { name: '🎯 Active Core', value: info.name, inline: true },
                 { name: '🆔 Identity', value: botDisplayName, inline: true },
                 { name: '🧠 AI Models', value: 'DeepSeek • Claude • Gemini Flash', inline: true },
-                { name: '👁️ Vision', value: 'Image analysis enabled', inline: true },
-                { name: '🎮 How to Use', value: `Mention **@${botDisplayName}** or just talk!`, inline: false },
-                { name: '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
-                { name: '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
+                { name: '👁️ Vision', value: lang === 'fr' ? 'Analyse d\'image activée' : 'Image analysis enabled', inline: true },
+                { name: lang === 'fr' ? '🎮 Comment utiliser' : '🎮 How to Use', value: lang === 'fr' ? `Mentionne **@${botDisplayName}** ou parle simplement!` : `Mention **@${botDisplayName}** or just talk!`, inline: false },
+                { name: lang === 'fr' ? '🔄 Changer de noyau' : '🔄 Switch Core', value: `\`${prefix}lydia agent <core>\``, inline: true },
+                { name: lang === 'fr' ? '🔒 Désactiver' : '🔒 Deactivate', value: `\`${prefix}lydia off\``, inline: true }
             )
             .setFooter({ text: `${guildName} • POWERED BY OPENROUTER PRO • v${version}`, iconURL: guildIcon })
             .setTimestamp();
@@ -1111,16 +1139,25 @@ async function runLydiaCommand(client, message, args, database, serverSettings) 
 
     // --- DEACTIVATE ---
     if (sub === 'off') {
-        if (!client.lydiaChannels[channelId]) return message.reply(`⚠️ **${botDisplayName} is not active** here.`);
+        if (!client.lydiaChannels[channelId]) {
+            return message.reply(lang === 'fr' 
+                ? `⚠️ **${botDisplayName} n'est pas actif** ici.`
+                : `⚠️ **${botDisplayName} is not active** here.`);
+        }
         delete client.lydiaChannels[channelId];
         if (client.lydiaAgents[channelId]) {
             try { database.prepare(`UPDATE lydia_agents SET is_active = 0, updated_at = strftime('%s', 'now') WHERE channel_id = ?`).run(channelId); } catch(e) {}
         }
         const embed = new EmbedBuilder()
             .setColor('#e74c3c')
-            .setTitle('❌ NEURAL CORE TERMINATED')
-            .setDescription(`**${botDisplayName}** has been deactivated in <#${channelId}>.`)
-            .addFields({ name: '🔄 Reactivate', value: `\`${prefix}lydia on\`` }, { name: '🧠 Memory Preserved', value: 'Agent preference saved' })
+            .setTitle(lang === 'fr' ? '❌ NOYAU NEURAL TERMINÉ' : '❌ NEURAL CORE TERMINATED')
+            .setDescription(lang === 'fr'
+                ? `**${botDisplayName}** a été désactivé dans <#${channelId}>.`
+                : `**${botDisplayName}** has been deactivated in <#${channelId}>.`)
+            .addFields(
+                { name: lang === 'fr' ? '🔄 Réactiver' : '🔄 Reactivate', value: `\`${prefix}lydia on\`` }, 
+                { name: lang === 'fr' ? '🧠 Mémoire préservée' : '🧠 Memory Preserved', value: lang === 'fr' ? 'Préférence d\'agent sauvegardée' : 'Agent preference saved' }
+            )
             .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         return message.reply({ embeds: [embed] });
@@ -1135,8 +1172,9 @@ module.exports = {
     category: 'SYSTEM',
     cooldown: 5000,
     
-    run: async (client, message, args, database, serverSettings) => {
-        return runLydiaCommand(client, message, args, database, serverSettings);
+    run: async (client, message, args, db, usedCommand) => {
+        // 🔥 Pass usedCommand for language detection!
+        return runLydiaCommand(client, message, args, db, usedCommand);
     },
     
     setupLydia,
