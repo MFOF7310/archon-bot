@@ -205,23 +205,17 @@ const texts = {
 };
 
 // ================= HELPER FUNCTIONS =================
-/**
- * 🔥 SHUFFLE ANSWERS - Randomizes A/B/C/D positions!
- */
 function shuffleAnswers(question) {
-    // Create array of { answer, isCorrect } objects
     const answers = question.a.map((text, index) => ({
         text: text,
         isCorrect: index === question.correct
     }));
     
-    // Fisher-Yates shuffle for true randomness
     for (let i = answers.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [answers[i], answers[j]] = [answers[j], answers[i]];
     }
     
-    // Find new correct index after shuffle
     const newCorrectIndex = answers.findIndex(a => a.isCorrect);
     
     return {
@@ -235,7 +229,6 @@ function shuffleAnswers(question) {
 function getRandomQuestions(category, difficulty, lang, count) {
     const questions = TRIVIA_QUESTIONS[category]?.[lang] || TRIVIA_QUESTIONS.general[lang];
     const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    // 🔥 Apply shuffle to each question for random answer order!
     return shuffled.slice(0, Math.min(count, questions.length)).map(q => shuffleAnswers(q));
 }
 
@@ -252,8 +245,8 @@ module.exports = {
         
         // 🔥 ALIAS-BASED LANGUAGE DETECTION
         const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
-            : (serverSettings?.language || 'en');
+            ? client.detectLanguage(usedCommand, 'en')
+            : 'en';
         
         const t = texts[lang];
         const version = client.version || '1.6.0';
@@ -398,10 +391,8 @@ module.exports = {
                         selectedDifficulty = j.values[0];
                         const diff = DIFFICULTIES[selectedDifficulty];
                         
-                        // Check credits
                         if (credits < diff.bet) {
-                            await j.reply({ content: t.insufficientCredits.replace('{bet}', diff.bet), ephemeral: true });
-                            return;
+                            return j.reply({ content: t.insufficientCredits.replace('{bet}', diff.bet), ephemeral: true });
                         }
                         
                         await j.deferUpdate();
@@ -411,6 +402,7 @@ module.exports = {
                         const currentUserData = client.getUserData ? client.getUserData(userId) : userData;
                         if (client.queueUserUpdate) {
                             client.queueUserUpdate(userId, {
+                                ...currentUserData,
                                 credits: (currentUserData.credits || 0) - diff.bet,
                                 username: userName
                             });
@@ -461,10 +453,8 @@ module.exports = {
                             
                             await categoryMsg.edit({ embeds: [questionEmbed], components: [answerRow] });
                             
-                            // ⚡ FAST BUTTON RESPONSE - No artificial delays!
                             const answerStartTime = Date.now();
                             
-                            // Wait for answer
                             const answer = await new Promise((resolve) => {
                                 const answerCollector = categoryMsg.createMessageComponentCollector({ time: diff.timeLimit * 1000, max: 1 });
                                 
@@ -498,7 +488,6 @@ module.exports = {
                                 });
                             });
                             
-                            // Process answer
                             let resultText = '';
                             let resultColor = diff.color;
                             
@@ -522,7 +511,6 @@ module.exports = {
                                 await answer.interaction.deferUpdate();
                             }
                             
-                            // Show result
                             const resultEmbed = new EmbedBuilder()
                                 .setColor(resultColor)
                                 .setAuthor({ name: `${t.title} • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]}`, iconURL: client.user.displayAvatarURL() })
@@ -546,7 +534,6 @@ module.exports = {
                             
                             await categoryMsg.edit({ embeds: [resultEmbed], components: [nextRow] });
                             
-                            // Wait for next button
                             await new Promise((resolve) => {
                                 const nextCollector = categoryMsg.createMessageComponentCollector({ time: 30000, max: 1 });
                                 
@@ -564,19 +551,16 @@ module.exports = {
                             });
                         }
                         
-                        // ================= CALCULATE REWARDS (OPTIMIZED) =================
+                        // ================= CALCULATE REWARDS =================
                         const accuracy = (correctAnswers / questions.length) * 100;
                         const baseReward = diff.baseReward;
                         const streakBonus = maxStreak * 25;
                         const accuracyBonus = accuracy >= 80 ? Math.floor(baseReward * 0.5) : 0;
                         const totalReward = baseReward + streakBonus + accuracyBonus;
-                        
                         const xpGain = Math.floor((correctAnswers * 25) + (maxStreak * 10) + (accuracy >= 70 ? 50 : 0));
                         
                         // 🔥 USE BATCH SYSTEM
-                        const finalUserData = client.getUserData 
-                            ? client.getUserData(userId) 
-                            : db.prepare("SELECT xp, credits, games_played, games_won FROM users WHERE id = ?").get(userId);
+                        const finalUserData = client.getUserData ? client.getUserData(userId) : userData;
                         
                         if (finalUserData) {
                             const oldXp = finalUserData.xp || 0;
@@ -586,6 +570,7 @@ module.exports = {
                             
                             if (client.queueUserUpdate) {
                                 client.queueUserUpdate(userId, {
+                                    ...finalUserData,
                                     credits: (finalUserData.credits || 0) + totalReward,
                                     xp: newXp,
                                     level: newLevel,
@@ -598,7 +583,6 @@ module.exports = {
                                     .run(totalReward, xpGain, newLevel, correctAnswers >= questions.length / 2 ? 1 : 0, userId);
                             }
                             
-                            // Level up check
                             if (newLevel > oldLevel) {
                                 const newRank = getRank(newLevel);
                                 const levelUpEmbed = new EmbedBuilder()
@@ -611,11 +595,7 @@ module.exports = {
                             }
                         }
                         
-                        // Refresh user data for display
-                        const displayUserData = client.getUserData 
-                            ? client.getUserData(userId) 
-                            : db.prepare("SELECT xp, credits FROM users WHERE id = ?").get(userId);
-                        
+                        const displayUserData = client.getUserData ? client.getUserData(userId) : finalUserData;
                         const displayLevel = displayUserData?.level || calculateLevel(displayUserData?.xp || 0);
                         const displayRank = getRank(displayLevel);
                         
@@ -653,7 +633,6 @@ module.exports = {
                         
                         await categoryMsg.edit({ embeds: [finalEmbed], components: [finalRow] });
                         
-                        // Final collector
                         const finalCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
                         
                         finalCollector.on('collect', async (k) => {
@@ -676,18 +655,11 @@ module.exports = {
                                     await helpCmd.run(client, message, [], db, serverSettings, usedCommand);
                                 }
                             } else if (k.customId === 'trivia_games') {
-                                // 🔗 BRIDGE TO GAME.JS
                                 await k.deferUpdate();
                                 finalCollector.stop();
                                 const gameCmd = client.commands.get('game');
                                 if (gameCmd) {
                                     await gameCmd.run(client, message, ['menu'], db, serverSettings, usedCommand);
-                                } else {
-                                    // Fallback to help
-                                    const helpCmd = client.commands.get('help');
-                                    if (helpCmd) {
-                                        await helpCmd.run(client, message, [], db, serverSettings, usedCommand);
-                                    }
                                 }
                             }
                         });
