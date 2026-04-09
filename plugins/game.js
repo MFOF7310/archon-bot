@@ -148,15 +148,22 @@ function hasEnoughCredits(userId, betAmount) {
 
 module.exports = {
     name: 'game',
-    aliases: ['play', 'minigame', 'arcade', 'jeu'],
+    aliases: ['play', 'minigame', 'arcade', 'jeu', 'jeux'],
     description: '🎮 Lancez les jeux neural arcade.',
     category: 'GAMING',
-    run: async (client, message, args, userData, serverSettings) => {
-        const lang = serverSettings?.language || 'fr';
+    
+    // ✅ FIXED: Added usedCommand as 6th parameter for language bridge!
+    run: async (client, message, args, userData, serverSettings, usedCommand) => {
+        
+        // ✅ NEW LOGIC: Unified detection via Neural Language Bridge!
+        const lang = client.detectLanguage 
+            ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
+            : serverSettings?.language || 'en';
+            
         const subCommand = args[0]?.toLowerCase();
         
         if (!subCommand || subCommand === 'menu') {
-            return showGameMenu(client, message, userData, lang, serverSettings);
+            return showGameMenu(client, message, userData, lang, serverSettings, usedCommand);
         }
         
         switch(subCommand) {
@@ -185,7 +192,7 @@ module.exports = {
 };
 
 // ================= GAME MENU =================
-async function showGameMenu(client, message, oldData, lang, serverSettings) {
+async function showGameMenu(client, message, oldData, lang, serverSettings, usedCommand) {
     const t = texts[lang];
     const version = client.version || '1.5.0';
     const guildName = message.guild.name.toUpperCase();
@@ -253,15 +260,18 @@ async function showGameMenu(client, message, oldData, lang, serverSettings) {
             case 'game_rps': await playRPS(client, message, userData, null, lang, serverSettings); break;
             case 'game_guess': await playNumberGuess(client, message, userData, lang, serverSettings); break;
             case 'game_hangman': await playHangman(client, message, userData, lang, serverSettings); break;
+            
+            // ✅ FIXED: Proper bridge to trivia with ALL required parameters!
             case 'goto_trivia': 
                 const triviaCmd = client.commands.get('trivia');
                 if (triviaCmd) {
-                    // ✅ FIXED: Pass DATABASE (db) instead of userData!
-                    await triviaCmd.run(client, message, [], db, serverSettings);
+                    // ✅ CORRECT SIGNATURE: (client, message, args, database, serverSettings, usedCommand)
+                    await triviaCmd.run(client, message, [], db, serverSettings, usedCommand);
                 } else {
                     await message.reply({ content: t.triviaNotFound, ephemeral: true });
                 }
                 break;
+                
             case 'game_stats': await showGameStats(client, message, userData, lang, serverSettings); break;
             case 'game_leaderboard': await showGameLeaderboard(client, message, null, lang, serverSettings); break;
             case 'game_rank': await showAgentProfile(client, message, userData, lang, serverSettings); break;
@@ -851,7 +861,7 @@ async function showAgentProfile(client, message, userData, lang, serverSettings)
         .addFields(
             { name: `💰 ${t.balance}`, value: `\`${credits.toLocaleString()} 🪙\``, inline: true },
             { name: `📈 ${t.progress}`, value: `\`\`\`yaml\n${t.level}: ${level}\n${t.xp}: ${xp.toLocaleString()}\n${t.progress}: ${progress.percentage.toFixed(1)}%\n${progressBar}\n${t.nextLevel}: ${xpToNext.toLocaleString()} XP\`\`\``, inline: false },
-            { name: `🎮 ${t.gameStats}`, value: `\`\`\`yaml\n${t.played}: ${gamesPlayed}\n${t.won}: ${gamesWon}\n${t.winRate}: ${winRate}%\nGains: ${totalWinnings.toLocaleString()} ${t.coins}\`\`\``, inline: false }
+            { name: `🎮 ${t.gameStats}`, value: `\`\`\`yaml\n${t.played}: ${gamesPlayed}\n${t.won}: ${gamesWon}\n${t.winRate}: ${winRate}%\nGains: ${totalWinnings.toLocaleString()} ${t.coins}\`\`\``, inline:1 }
         )
         .setFooter({ text: `${guildName} • .game menu • Continue playing! • v${version}`, iconURL: guildIcon })
         .setTimestamp();
