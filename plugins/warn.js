@@ -189,10 +189,8 @@ module.exports = {
     userPermissions: ['ModerateMembers'],
     usage: '.warn [@user] [reason] | .warnings [@user] | .clearwarn [@user] | .modlogs [@user]',
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
-        // 🔥 NEURAL LANGUAGE BRIDGE
         const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
         const t = translations[lang];
         const version = client.version || '1.6.0';
@@ -242,9 +240,14 @@ module.exports = {
             const reply = await message.reply({ embeds: [embed], components: totalPages > 1 ? [row] : [] }).catch(() => {});
             if (!reply || totalPages <= 1) return;
             
+            // ================= 🔥 COLLECTOR CORRIGÉ =================
             const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
             collector.on('collect', async (i) => {
                 if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                
+                // 🛡️ LA LIGNE CRITIQUE
+                await i.deferUpdate().catch(() => {});
+                
                 if (i.customId === 'warn_prev') currentPage--;
                 if (i.customId === 'warn_next') currentPage++;
                 
@@ -253,7 +256,7 @@ module.exports = {
                     new ButtonBuilder().setCustomId('warn_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
                     new ButtonBuilder().setCustomId('warn_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages - 1)
                 );
-                await i.update({ embeds: [newEmbed], components: [newRow] }).catch(() => {});
+                await i.editReply({ embeds: [newEmbed], components: [newRow] }).catch(() => {});
             });
             return;
         }
@@ -289,15 +292,18 @@ module.exports = {
             collector.on('collect', async (i) => {
                 if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
                 
+                // 🛡️ LA LIGNE CRITIQUE
+                await i.deferUpdate().catch(() => {});
+                
                 if (i.customId === 'clear_confirm') {
                     db.prepare(`UPDATE warnings SET active = 0 WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?)`).run(guildId, target.id, now);
                     logModAction(db, guildId, target.id, message.author.id, 'clear', `Cleared ${activeWarnings.length} warnings`);
                     
                     const successEmbed = new EmbedBuilder().setColor('#2ecc71').setDescription(t.clearSuccess(target.username, activeWarnings.length)).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                    await i.update({ embeds: [successEmbed], components: [] }).catch(() => {});
+                    await i.editReply({ embeds: [successEmbed], components: [] }).catch(() => {});
                 } else {
                     const cancelEmbed = new EmbedBuilder().setColor('#ED4245').setDescription(`❌ ${lang === 'fr' ? 'Annulé' : 'Cancelled'}`).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                    await i.update({ embeds: [cancelEmbed], components: [] }).catch(() => {});
+                    await i.editReply({ embeds: [cancelEmbed], components: [] }).catch(() => {});
                 }
             });
             return;
@@ -345,6 +351,10 @@ module.exports = {
             const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
             collector.on('collect', async (i) => {
                 if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                
+                // 🛡️ LA LIGNE CRITIQUE
+                await i.deferUpdate().catch(() => {});
+                
                 if (i.customId === 'log_prev') currentPage--;
                 if (i.customId === 'log_next') currentPage++;
                 
@@ -353,7 +363,7 @@ module.exports = {
                     new ButtonBuilder().setCustomId('log_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
                     new ButtonBuilder().setCustomId('log_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages - 1)
                 );
-                await i.update({ embeds: [newEmbed], components: [newRow] }).catch(() => {});
+                await i.editReply({ embeds: [newEmbed], components: [newRow] }).catch(() => {});
             });
             return;
         }
