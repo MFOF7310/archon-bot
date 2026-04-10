@@ -1,99 +1,93 @@
-const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     en: {
-        accessDenied: '❌ **Access Denied.** You need `Manage Messages` permission.',
-        sanitization: (count) => `✨ **Sanitization:** ${count} packets removed from node.`,
-        noPackets: '⚠️ **No deletable packets identified.**',
+        title: '🧹 NEURAL PURGE',
+        sanitizing: '✨ SANITIZING',
+        complete: '✅ PURGE COMPLETE',
+        accessDenied: '❌ **Access Denied.**\nYou need `Manage Messages` permission.',
+        invalidAmount: (max) => `❌ **Invalid amount.**\nPlease specify a number between 1 and ${max}.`,
+        purgedMessages: (count, target) => `🧹 **Sanitization Complete!**\n\`${count}\` messages ${target ? `from **${target}** ` : ''}purged from the neural channel.`,
+        noMessages: '⚠️ **No deletable packets identified.**\nMessages must be under 14 days old and not pinned.',
         error: '❌ **Error:** Could not purge messages.',
-        fetching: '🔍 Scanning channel for packets...',
-        invalidAmount: '❌ Please provide a number between 1-100.',
-        userPurge: (count, user) => `✨ **Sanitization:** ${count} packets from **${user}** removed.`,
-        allMessages: 'all messages',
-        pinnedSkipped: '📌 Pinned messages preserved.',
-        oldSkipped: '⏰ Messages older than 14 days preserved.',
-        summary: '📊 PURGE SUMMARY',
-        totalDeleted: 'Total Deleted',
-        target: 'Target',
-        moderator: 'Moderator',
-        channel: 'Channel',
-        timestamp: 'Timestamp'
+        footer: 'ARCHITECT CG-223 • Neural Purge System',
+        packetsRemoved: 'packets removed',
+        fromNode: 'from node',
+        targetUser: 'Target User',
+        amount: 'Amount',
+        reason: 'Reason'
     },
     fr: {
-        accessDenied: '❌ **Accès Refusé.** Permission `Gérer les Messages` requise.',
-        sanitization: (count) => `✨ **Assainissement:** ${count} paquets retirés du nœud.`,
-        noPackets: '⚠️ **Aucun paquet supprimable identifié.**',
+        title: '🧹 PURGE NEURALE',
+        sanitizing: '✨ NETTOYAGE',
+        complete: '✅ PURGE TERMINÉE',
+        accessDenied: '❌ **Accès Refusé.**\nVous avez besoin de la permission `Gérer les Messages`.',
+        invalidAmount: (max) => `❌ **Montant invalide.**\nVeuillez spécifier un nombre entre 1 et ${max}.`,
+        purgedMessages: (count, target) => `🧹 **Nettoyage Terminé!**\n\`${count}\` messages ${target ? `de **${target}** ` : ''}supprimés du canal neural.`,
+        noMessages: '⚠️ **Aucun paquet supprimable identifié.**\nLes messages doivent avoir moins de 14 jours et ne pas être épinglés.',
         error: '❌ **Erreur:** Impossible de purger les messages.',
-        fetching: '🔍 Analyse du canal à la recherche de paquets...',
-        invalidAmount: '❌ Veuillez fournir un nombre entre 1-100.',
-        userPurge: (count, user) => `✨ **Assainissement:** ${count} paquets de **${user}** retirés.`,
-        allMessages: 'tous les messages',
-        pinnedSkipped: '📌 Messages épinglés préservés.',
-        oldSkipped: '⏰ Messages de plus de 14 jours préservés.',
-        summary: '📊 RÉSUMÉ DE LA PURGE',
-        totalDeleted: 'Total Supprimé',
-        target: 'Cible',
-        moderator: 'Modérateur',
-        channel: 'Salon',
-        timestamp: 'Horodatage'
+        footer: 'ARCHITECT CG-223 • Système de Purge Neurale',
+        packetsRemoved: 'paquets supprimés',
+        fromNode: 'du nœud',
+        targetUser: 'Utilisateur Cible',
+        amount: 'Quantité',
+        reason: 'Raison'
     }
 };
 
 module.exports = {
     name: 'clear',
-    aliases: ['purge', 'clean', 'nettoyer', 'effacer', 'bulkdelete'],
+    aliases: ['purge', 'clean', 'nettoyer', 'effacer', 'delete'],
     description: '🧹 Bulk delete messages in the current channel.',
     category: 'MODERATION',
     cooldown: 5000,
     usage: '.clear [amount] [@user]',
-    examples: ['.clear 10', '.clear 50 @user', '.clear all', '.purge 100'],
+    examples: ['.clear 10', '.clear 50 @user', '.clear all'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, database, serverSettings, usedCommand) => {
         
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, 'en')
-            : 'en';
-        
-        const t = translations[lang];
-        const version = client.version || '1.6.0';
+        // ================= PERMISSION CHECK =================
         const isArchitect = message.author.id === process.env.OWNER_ID;
         const hasPerms = message.member.permissions.has(PermissionFlagsBits.ManageMessages);
         
-        // ================= PERMISSION CHECK =================
         if (!isArchitect && !hasPerms) {
-            return message.reply({ 
-                content: t.accessDenied, 
-                ephemeral: true 
-            }).catch(() => {});
+            const lang = serverSettings?.language || 'en';
+            const t = translations[lang];
+            return message.reply({ content: t.accessDenied, ephemeral: true });
         }
 
-        // 🔥 PRIVACY: Delete command message immediately
-        await message.delete().catch(() => {});
-
-        // ================= PARSE ARGUMENTS =================
-        const targetUser = message.mentions.users.first();
-        let amountArg = targetUser ? args[1] : args[0];
+        // ================= LANGUAGE SETUP =================
+        const lang = client.detectLanguage 
+            ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
+            : (serverSettings?.language || 'en');
+        const t = translations[lang];
         
-        // Handle "all" keyword
+        // ✅ DYNAMIC VERSION
+        const version = client.version || '1.5.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+
+        // Delete command message immediately
+        await message.delete().catch(() => null);
+
+        // Parse arguments
+        const targetUser = message.mentions.users.first();
+        const amountArg = targetUser ? args[1] : args[0];
+        const maxAmount = 100; // Discord limit
+        
         let amount;
         if (amountArg?.toLowerCase() === 'all') {
-            amount = 100;
+            amount = maxAmount;
         } else {
             amount = parseInt(amountArg);
             if (isNaN(amount) || amount < 1) amount = 10;
+            if (amount > maxAmount) {
+                const errorMsg = await message.channel.send(t.invalidAmount(maxAmount));
+                setTimeout(() => errorMsg.delete().catch(() => null), 4000);
+                return;
+            }
         }
-        
-        // Discord limit
-        amount = Math.min(amount, 100);
-        
-        // ================= FETCHING MESSAGE =================
-        const fetchingMsg = await message.channel.send({ 
-            content: `🔍 ${t.fetching}`,
-            ephemeral: true
-        }).catch(() => null);
 
         try {
             // Fetch messages
@@ -107,66 +101,66 @@ module.exports = {
                 return notPinned && recent && matchesTarget;
             });
 
-            // Count skipped messages
-            const pinnedCount = fetched.filter(m => m.pinned).size;
-            const oldCount = fetched.filter(m => (Date.now() - m.createdTimestamp) >= 1209600000).size;
-
-            if (messagesToDelete.size > 0) {
-                // Perform bulk delete
-                const deleted = await message.channel.bulkDelete(messagesToDelete, true);
-                
-                // Create success message
-                const successContent = targetUser 
-                    ? t.userPurge(deleted.size, targetUser.username)
-                    : t.sanitization(deleted.size);
-                
-                // Add skipped info if any
-                let fullContent = successContent;
-                if (pinnedCount > 0) fullContent += `\n${t.pinnedSkipped}`;
-                if (oldCount > 0) fullContent += `\n${t.oldSkipped}`;
-                
-                // Delete fetching message if it exists
-                if (fetchingMsg) await fetchingMsg.delete().catch(() => {});
-                
-                // Send ephemeral success
-                const successMsg = await message.channel.send({ 
-                    content: fullContent,
-                    ephemeral: true
-                }).catch(() => {});
-                
-                // Auto-delete after 5 seconds
-                setTimeout(() => successMsg?.delete().catch(() => {}), 5000);
-                
-                // Console log
-                console.log(`[CLEAR] ${message.author.tag} deleted ${deleted.size} messages${targetUser ? ` from ${targetUser.tag}` : ''} in #${message.channel.name} | Lang: ${lang}`);
-                
-            } else {
-                // No messages to delete
-                if (fetchingMsg) await fetchingMsg.delete().catch(() => {});
-                
-                let noPacketsContent = t.noPackets;
-                if (pinnedCount > 0) noPacketsContent += `\n${t.pinnedSkipped}`;
-                if (oldCount > 0) noPacketsContent += `\n${t.oldSkipped}`;
-                
-                const noFoundMsg = await message.channel.send({ 
-                    content: noPacketsContent,
-                    ephemeral: true
-                }).catch(() => {});
-                
-                setTimeout(() => noFoundMsg?.delete().catch(() => {}), 5000);
+            if (messagesToDelete.size === 0) {
+                const noFound = await message.channel.send({ 
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor('#FEE75C')
+                            .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
+                            .setDescription(t.noMessages)
+                            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                            .setTimestamp()
+                    ]
+                });
+                setTimeout(() => noFound.delete().catch(() => null), 5000);
+                return;
             }
+
+            // Bulk delete
+            const deleted = await message.channel.bulkDelete(messagesToDelete, true);
+            
+            // Create success embed
+            const successEmbed = new EmbedBuilder()
+                .setColor('#2ecc71')
+                .setAuthor({ name: `${t.title} • ${t.complete}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`🧹 ${t.sanitizing}`)
+                .setDescription(
+                    targetUser 
+                        ? `**${deleted.size}** ${t.packetsRemoved} ${t.fromNode} **${targetUser.username}**.\n` +
+                          `\`\`\`yaml\n${t.targetUser}: ${targetUser.tag}\n${t.amount}: ${deleted.size} messages\n\`\`\``
+                        : `**${deleted.size}** ${t.packetsRemoved} ${t.fromNode}.\n` +
+                          `\`\`\`yaml\n${t.amount}: ${deleted.size} messages\n\`\`\``
+                )
+                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                .setTimestamp();
+            
+            // Add moderator info
+            successEmbed.addFields({
+                name: '🛡️ Moderator',
+                value: `${message.author.tag}`,
+                inline: true
+            });
+            
+            const reply = await message.channel.send({ embeds: [successEmbed] });
+            
+            // Auto-delete confirmation after 5 seconds
+            setTimeout(() => reply.delete().catch(() => null), 5000);
+            
+            // Log the action
+            console.log(`[CLEAR] ${message.author.tag} purged ${deleted.size} messages in #${message.channel.name} | Target: ${targetUser?.tag || 'All'} | Lang: ${lang}`);
             
         } catch (err) {
-            console.error('[CLEAR] Error:', err);
+            console.error("[CLEAR] Purge Error:", err);
             
-            if (fetchingMsg) await fetchingMsg.delete().catch(() => {});
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
+                .setDescription(t.error)
+                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                .setTimestamp();
             
-            const errorMsg = await message.channel.send({ 
-                content: t.error,
-                ephemeral: true
-            }).catch(() => {});
-            
-            setTimeout(() => errorMsg?.delete().catch(() => {}), 5000);
+            const errorMsg = await message.channel.send({ embeds: [errorEmbed] });
+            setTimeout(() => errorMsg.delete().catch(() => null), 5000);
         }
     }
 };
