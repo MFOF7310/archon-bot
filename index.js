@@ -7,6 +7,18 @@ const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, P
 // IMPORT LYDIA SETUP FUNCTION
 const { setupLydia } = require('./plugins/lydia.js');
 
+// ================= 🔥 AFK SYSTEM IMPORT =================
+const { afkUsers } = require('./plugins/afk.js');
+
+// ================= 🔮 v1.7.0 PREPARATION (TELEGRAM BRIDGE) =================
+// Décommentez ces lignes quand vous serez prêt pour la v1.7.0 !
+/*
+const { setupTelegramBridge } = require('./telegram/telegram-bot.js');
+const sharedDB = require('./shared/database.js');
+const sharedCache = require('./shared/cache.js');
+const sharedLanguage = require('./shared/language.js');
+*/
+
 // ================= SELF-HEALING PROTOCOL =================
 process.on('unhandledRejection', (reason, promise) => {
     console.error('\x1b[31m[ANTI-CRASH]\x1b[0m Unhandled Rejection:', reason);
@@ -65,7 +77,6 @@ const PREFIX = process.env.PREFIX || ".";
 
 // --- UTILITIES ---
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 // ================= 🔥 SAFE UNIVERSAL LANGUAGE DETECTION =================
@@ -73,7 +84,6 @@ function detectLanguage(usedCommand) {
     if (!usedCommand || typeof usedCommand !== 'string') return 'en';
     
     const cmd = usedCommand.toLowerCase().trim();
-    
     if (!cmd || cmd.length === 0) return 'en';
     
     if (/[àâäéèêëîïôöùûüÿçœæ]/i.test(cmd)) return 'fr';
@@ -671,6 +681,13 @@ client.once(Events.ClientReady, async () => {
     startReminderHeartbeat();
     startCacheJanitor();
     
+    // ================= 🔮 v1.7.0 TELEGRAM BRIDGE INIT (COMMENTÉ - PRÊT À ACTIVER) =================
+    /*
+    console.log(`${cyan}[TELEGRAM]${reset} Initializing Telegram Bridge...`);
+    await setupTelegramBridge(client, db);
+    console.log(`${green}[TELEGRAM]${reset} Bridge active - Discord ↔ Telegram synchronized`);
+    */
+    
     const boxWidth = 64;
     const drawBoxLine = (label, value) => {
         const lineContent = `║  ${label.padEnd(12)} : ${value}`;
@@ -688,6 +705,8 @@ client.once(Events.ClientReady, async () => {
     console.log(`${blue}${bold}${drawBoxLine(`${green}💾 DB MODE`, 'WAL • High Performance')}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}💾 DB BATCH`, `${WRITE_STRATEGY.MAX_WAIT_MS/1000}s delay`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🔔 REMINDERS`, `30s heartbeat`)}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}💤 AFK SYSTEM`, `ACTIVE`)}${reset}`);
+    // console.log(`${blue}${bold}${drawBoxLine(`${green}📡 TELEGRAM`, `BRIDGE READY`)}${reset}`); // v1.7.0
     console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
 
     if (client.userTimeouts) {
@@ -701,14 +720,14 @@ client.once(Events.ClientReady, async () => {
             embeds: [new EmbedBuilder()
                 .setColor('#2ecc71')
                 .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
-                .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\n\n**Database:** WAL Mode (High Performance)`)
+                .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\n\n**Database:** WAL Mode (High Performance)\n**AFK System:** Active`)
                 .setTimestamp()
             ] 
         });
     } catch (err) {}
 });
 
-// ================= 🔥 FIXED MESSAGE PROCESSING (COMMAND PRIORITY) =================
+// ================= 🔥 FIXED MESSAGE PROCESSING (COMMAND PRIORITY + AFK) =================
 client.on(Events.MessageCreate, async (message) => {
     if (!message || message.author?.bot || message.webhookId) return;
 
@@ -720,9 +739,45 @@ client.on(Events.MessageCreate, async (message) => {
         cacheUserData(userId, userData);
     }
 
+    // ================= 💤 AFK SYSTEM - MENTION CHECK =================
+    if (message.mentions.users.size > 0) {
+        for (const [mentionedId, user] of message.mentions.users) {
+            if (afkUsers.has(mentionedId)) {
+                const afkData = afkUsers.get(mentionedId);
+                const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
+                const timeText = minutes === 0 ? 'just now' : `${minutes} min`;
+                
+                const lang = detectLanguage(message.content.split(' ')[0] || '');
+                const mentionMsg = lang === 'fr'
+                    ? `💤 **${user.username}** est AFK (${timeText}): *${afkData.reason}*`
+                    : `💤 **${user.username}** is AFK (${timeText}): *${afkData.reason}*`;
+                
+                await message.reply({ content: mentionMsg, allowedMentions: { repliedUser: true } }).catch(() => {});
+                break;
+            }
+        }
+    }
+
+    // ================= 💤 AFK SYSTEM - RETURN CHECK =================
+    if (afkUsers.has(message.author.id)) {
+        const afkData = afkUsers.get(message.author.id);
+        const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
+        
+        afkUsers.delete(message.author.id);
+        
+        const lang = detectLanguage(message.content.split(' ')[0] || '');
+        const welcomeMsg = lang === 'fr'
+            ? `👋 Bon retour **${message.author.username}**! AFK retiré (${minutes} min).`
+            : `👋 Welcome back **${message.author.username}**! AFK removed (${minutes} min).`;
+        
+        await message.reply({ content: welcomeMsg }).catch(() => {});
+        console.log(`[AFK] ${message.author.tag} returned after ${minutes} min`);
+    }
+
     const now = Date.now();
     const cooldown = 60000;
 
+    // XP Gain
     if (now - (userData.last_xp_gain || 0) > cooldown) {
         const xpGain = Math.floor(Math.random() * 21) + 15;
         const newXP = (userData.xp || 0) + xpGain;
@@ -753,7 +808,7 @@ client.on(Events.MessageCreate, async (message) => {
     const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
     const effectivePrefix = serverSettings.prefix || PREFIX;
     
-    // 🔥 CHECK FOR COMMANDS FIRST - Return after executing so Lydia doesn't process!
+    // Command handling
     if (message.content.startsWith(effectivePrefix)) {
         const args = message.content.slice(effectivePrefix.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
@@ -761,7 +816,7 @@ client.on(Events.MessageCreate, async (message) => {
         
         let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
         
-        // ✅ CORRECT: Passes all 6 parameters to Lydia
+        // Lydia command
         if (!command && (cmdName === 'lydia' || cmdName === 'ai' || cmdName === 'neural' || cmdName === 'ia')) {
             try {
                 const lydiaModule = require('./plugins/lydia.js');
