@@ -114,10 +114,8 @@ module.exports = {
     cooldown: 5000,
     examples: ['.ttt @friend'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, 'en')
             : 'en';
@@ -143,7 +141,6 @@ module.exports = {
             return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
         
-        // Check if either player is already in a game
         const gameKey = `${challenger.id}_${opponent.id}`;
         const reverseKey = `${opponent.id}_${challenger.id}`;
         
@@ -207,7 +204,6 @@ module.exports = {
         let gameActive = true;
         activeGames.set(gameKey, { board, turn, gameActive, challenger, opponent, startTime: Date.now() });
         
-        // Get player stats for display
         const challengerLevel = calculateLevel(challengerData?.xp || 0);
         const opponentLevel = calculateLevel(opponentData?.xp || 0);
         const challengerRank = getRank(challengerLevel);
@@ -289,7 +285,7 @@ module.exports = {
             return;
         }
         
-        // ================= COLLECTOR =================
+        // ================= 🔥 COLLECTOR CORRIGÉ =================
         const collector = msg.createMessageComponentCollector({ 
             componentType: ComponentType.Button, 
             time: 120000
@@ -306,6 +302,9 @@ module.exports = {
             if (board[index]) {
                 return i.reply({ content: t.cellTaken, ephemeral: true }).catch(() => {});
             }
+            
+            // 🛡️ LA LIGNE CRITIQUE
+            await i.deferUpdate().catch(() => {});
             
             // Make move
             board[index] = turn === challenger.id ? 'X' : 'O';
@@ -333,7 +332,6 @@ module.exports = {
                     .setTimestamp();
                 
                 if (result === 'tie') {
-                    // Refund both players on tie
                     if (client.queueUserUpdate) {
                         const cData = client.getUserData(challenger.id) || challengerData;
                         const oData = client.getUserData(opponent.id) || opponentData;
@@ -350,7 +348,6 @@ module.exports = {
                         .setDescription(t.tieDesc)
                         .addFields({ name: t.refund, value: t.refundDesc, inline: false });
                 } else {
-                    // Award winner
                     const winnerData = client.getUserData(winnerId) || (winnerId === challenger.id ? challengerData : opponentData);
                     const loserData = client.getUserData(loserId) || (loserId === challenger.id ? challengerData : opponentData);
                     
@@ -389,7 +386,6 @@ module.exports = {
                         );
                 }
                 
-                // Create final board
                 const finalRows = [];
                 for (let i = 0; i < 3; i++) {
                     const row = new ActionRowBuilder();
@@ -403,13 +399,12 @@ module.exports = {
                     finalRows.push(row);
                 }
                 
-                return i.update({ embeds: [resultEmbed], components: finalRows }).catch(() => {});
+                return i.editReply({ embeds: [resultEmbed], components: finalRows }).catch(() => {});
             }
             
             // Switch turn
             turn = turn === challenger.id ? opponent.id : challenger.id;
             
-            // Refresh player data for updated credits
             const updatedChallenger = client.getUserData(challenger.id) || challengerData;
             const updatedOpponent = client.getUserData(opponent.id) || opponentData;
             
@@ -436,7 +431,7 @@ module.exports = {
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             
-            await i.update({ embeds: [updatedEmbed], components: createBoard(true) }).catch(() => {});
+            await i.editReply({ embeds: [updatedEmbed], components: createBoard(true) }).catch(() => {});
         });
         
         collector.on('end', async (collected, reason) => {
@@ -444,7 +439,6 @@ module.exports = {
                 gameActive = false;
                 activeGames.delete(gameKey);
                 
-                // Refund both players on timeout
                 if (client.queueUserUpdate) {
                     const cData = client.getUserData(challenger.id) || challengerData;
                     const oData = client.getUserData(opponent.id) || opponentData;
