@@ -1154,3 +1154,11 @@ console.log(`${green}[INIT]${reset} Lydia setup completed`);
 
 // ================= LOGIN =================
 client.login(process.env.TOKEN);
+
+// ================= DÉMARRER LE DASHBOARD WEB =================
+try {
+    const { startDashboard } = require('./web/server.js');
+    startDashboard(client);
+} catch (err) {
+    console.log(`${yellow}[DASHBOARD]${reset} Web dashboard not available: ${err.message}`);
+}
