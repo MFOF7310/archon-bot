@@ -706,7 +706,7 @@ client.once(Events.ClientReady, async () => {
         client.userTimeouts.clear();
     }
 
-    // 🔥 LE DM STYLÉ COMME DANS L'IMAGE
+    // 🔥 LE DM ULTRA-STYLÉ AVEC ANSI COLORS
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
         
@@ -720,22 +720,29 @@ client.once(Events.ClientReady, async () => {
             })
             .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
             .setDescription(
-                `**System reboot complete.**\n` +
-                `**Modules:** ${client.commands.size} plugins synced\n` +
-                `**Version:** v${client.version}\n` +
-                `**Node:** BAMAKO_223 🇲🇱\n` +
-                `**Listeners:** ${client.listenerCount('messageCreate')} active\n` +
-                `**Database:** WAL Mode (High Performance)`
+                `\`\`\`ansi\n` +
+                `\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n` +
+                `\u001b[1;32m║\u001b[0m \u001b[1;36m🦅 ARCHITECT CG-223 // NEURAL ENGINE\u001b[0m \u001b[1;32m║\u001b[0m\n` +
+                `\u001b[1;32m╠═══════════════════════════════════════╣\u001b[0m\n` +
+                `\u001b[1;32m║\u001b[0m \u001b[1;33mSystem:\u001b[0m reboot complete                \u001b[1;32m║\u001b[0m\n` +
+                `\u001b[1;32m║\u001b[0m \u001b[1;36mModules:\u001b[0m ${String(client.commands.size).padStart(2, ' ')} plugins synced              \u001b[1;32m║\u001b[0m\n` +
+                `\u001b[1;32m║\u001b[0m \u001b[1;35mVersion:\u001b[0m v${client.version}                       \u001b[1;32m║\u001b[0m\n` +
+                `\u001b[1;32m║\u001b[0m \u001b[1;34mNode:\u001b[0m BAMAKO_223 🇲🇱                      \u001b[1;32m║\u001b[0m\n` +
+                `\u001b[1;32m║\u001b[0m \u001b[1;36mListeners:\u001b[0m ${client.listenerCount('messageCreate')} active                          \u001b[1;32m║\u001b[0m\n` +
+                `\u001b[1;32m║\u001b[0m \u001b[1;32mDatabase:\u001b[0m WAL Mode (High Performance)  \u001b[1;32m║\u001b[0m\n` +
+                `\u001b[1;32m║\u001b[0m \u001b[1;35mAFK System:\u001b[0m ACTIVE                     \u001b[1;32m║\u001b[0m\n` +
+                `\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n` +
+                `\`\`\``
             )
             .addFields(
                 { 
                     name: '🔗 Repository', 
-                    value: '[github.com/MFOF7310](https://github.com/MFOF7310)', 
+                    value: '```ansi\n\u001b[1;36mgithub.com/MFOF7310\u001b[0m\n```', 
                     inline: true 
                 },
                 { 
                     name: '🏗️ Architect', 
-                    value: 'Moussa Fofana', 
+                    value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', 
                     inline: true 
                 },
                 { 
