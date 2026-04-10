@@ -82,6 +82,13 @@ function safeStringify(obj, indent = 2) {
 async function shouldSearchAI(userMessage) {
     if (!process.env.OPENROUTER_API_KEY) return false;
     
+    // Quick skip for obvious non-search queries
+    const quickNoSearch = ['game', 'jeu', 'play', 'trivia', 'quiz', 'help', 'aide', 'profile', 'rank', 'daily', 'claim', 'shop'];
+    if (quickNoSearch.some(kw => userMessage.toLowerCase().includes(kw))) {
+        console.log(`${cyan}[AI SEARCH]${reset} Quick skip - game/command detected`);
+        return false;
+    }
+    
     try {
         const actualSearchDecision = async () => {
             const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
@@ -91,21 +98,7 @@ async function shouldSearchAI(userMessage) {
                 messages: [
                     {
                         role: "system",
-                        content: `Decide if this query needs real-time web search.
-Return ONLY: YES or NO
-
-Search if query involves:
-- Current events, news, politics
-- Weather, sports scores, crypto prices
-- Recent facts, "who is" questions about living people
-- Time-sensitive information
-- Specific dates or events after 2023
-
-Do NOT search for:
-- Math, coding help, definitions
-- General knowledge, philosophy
-- Opinions, creative writing
-- Historical facts before 2023`
+                        content: `Decide if this query needs real-time web search. Return ONLY: YES or NO`
                     },
                     { role: "user", content: userMessage }
                 ]
@@ -115,7 +108,7 @@ Do NOT search for:
                     "HTTP-Referer": "https://github.com/MFOF7310",
                     "Content-Type": "application/json"
                 },
-                timeout: 5000
+                timeout: 3000
             });
             
             const decision = response.data.choices[0]?.message?.content?.trim().toUpperCase() || 'NO';
@@ -123,20 +116,16 @@ Do NOT search for:
             return decision.includes('YES');
         };
         
-        // ⚡ TIMEOUT PROTECTION - Fallback after 4 seconds
         const timeoutPromise = new Promise(resolve => setTimeout(() => {
             console.log(`${yellow}[SEARCH DECISION TIMEOUT]${reset} Falling back to keyword check`);
             return resolve(false);
-        }, 4000));
+        }, 2000));
         
         return await Promise.race([actualSearchDecision(), timeoutPromise]);
         
     } catch (error) {
         console.log(`${yellow}[SEARCH DECISION ERROR]${reset} ${error.message}`);
-        // Fallback to keyword check if AI fails
-        const searchKeywords = ['weather', 'météo', 'news', 'actualités', 'crypto', 'bitcoin', 
-                               'ethereum', 'score', 'match', 'today', 'current', 'latest', 'president', 'minister'];
-        return searchKeywords.some(kw => userMessage.toLowerCase().includes(kw));
+        return false;
     }
 }
 
@@ -246,7 +235,6 @@ async function webSearch(query) {
     
     const cacheKey = query.toLowerCase().trim();
     
-    // ⚡ CACHE CHECK - 5 minute TTL
     if (searchCache.has(cacheKey)) {
         const cached = searchCache.get(cacheKey);
         console.log(`${green}[CACHE HIT]${reset} Using cached search for: "${query.substring(0, 40)}..."`);
@@ -276,7 +264,6 @@ async function webSearch(query) {
                 `• **${r.title}**\n  ${r.description}\n  <${r.url}>`
             ).join('\n\n');
             
-            // ⚡ STORE IN CACHE
             searchCache.set(cacheKey, formattedResults);
             setTimeout(() => searchCache.delete(cacheKey), CACHE_TTL);
             
@@ -316,7 +303,6 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
 
         const messages = [{ role: "system", content: systemPrompt }];
         
-        // 🚨 CRITICAL FIX: Reduced from 15 to 8 for lower token cost
         for (const msg of conversationHistory.slice(-8)) {
             messages.push({ role: msg.role, content: msg.content });
         }
@@ -647,17 +633,14 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
 
 // ================= 🔥 OPTIMIZED MESSAGE HANDLER =================
 async function handleLydiaMessage(message, client, database) {
-    // Skip if not a guild message
     if (!message.guild) return;
     
-    // Prevent duplicate processing
     const messageKey = `${message.id}-${message.author.id}`;
     if (messageProcessingLocks.has(messageKey)) {
         console.log(`${yellow}[LYDIA LOCK]${reset} Message ${message.id} already processing`);
         return;
     }
     
-    // User cooldown check
     const userId = message.author.id;
     const now = Date.now();
     const lastMessage = userCooldowns.get(userId) || 0;
@@ -667,12 +650,10 @@ async function handleLydiaMessage(message, client, database) {
         return;
     }
     
-    // CRITICAL: Only process if Lydia is ACTIVATED in this channel
     if (!client.lydiaChannels?.[message.channel?.id]) {
-        return; // Lydia not active here - let commands work normally
+        return;
     }
     
-    // Lock the message
     messageProcessingLocks.add(messageKey);
     userCooldowns.set(userId, now);
     
@@ -684,7 +665,6 @@ async function handleLydiaMessage(message, client, database) {
         
         const content = message.content?.toLowerCase() || '';
         
-        // 🔥 USE THE NEW LANGUAGE DETECTION SYSTEM!
         const usedCommand = content.split(' ')[0] || '';
         const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
         
@@ -718,7 +698,6 @@ async function handleLydiaMessage(message, client, database) {
             return;
         }
 
-        // 🔥 SMART SEARCH - AI decides if search needed!
         let searchResults = null;
         if (await shouldSearchAI(userPrompt)) {
             console.log(`${cyan}[SMART SEARCH]${reset} AI decided search is needed`);
@@ -738,7 +717,6 @@ async function handleLydiaMessage(message, client, database) {
         let finalAgent = neuralCores[agentKey] || neuralCores.default;
         let systemPrompt = finalAgent.systemPrompt;
         
-        // 🔥 USE OPTIMIZED getUserData FROM MAIN FILE
         const userData = client.getUserData ? client.getUserData(message.author.id) : 
                         database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
         
@@ -785,7 +763,6 @@ async function handleLydiaMessage(message, client, database) {
             systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
         }
 
-        // ================= FIXED: Conversation History Without Brackets =================
         const historyRows = database.prepare(`
             SELECT role, content, user_name 
             FROM lydia_conversations 
@@ -865,7 +842,6 @@ async function handleLydiaMessage(message, client, database) {
                 .run(message.channel.id, client.user.id, 'assistant', reply);
         }
 
-        // Smart chunking for long responses
         if (reply.length > 2000) {
             const chunks = [];
             let currentChunk = '';
@@ -913,21 +889,19 @@ async function handleLydiaMessage(message, client, database) {
         console.error(`${red}[LYDIA ERROR]${reset}`, err);
         message.reply("❌ An error occurred.").catch(()=>{});
     } finally {
-        // Clean up lock after delay
         setTimeout(() => {
             messageProcessingLocks.delete(messageKey);
         }, 5000);
     }
 }
 
-// ================= 🔥 OPTIMIZED SETUP - PRESERVES COMMAND HANDLER =================
+// ================= 🔥 OPTIMIZED SETUP - SIMPLE EVENT LISTENER =================
 function setupLydia(client, database) {
     if (!client || !database) {
         console.error(`${red}[LYDIA FATAL]${reset} Client or DB missing`);
         return;
     }
     
-    // CRITICAL: Prevent multiple initializations
     if (isLydiaInitialized) {
         console.log(`${yellow}[LYDIA]${reset} Already initialized, skipping duplicate setup`);
         return;
@@ -942,16 +916,7 @@ function setupLydia(client, database) {
 
     try {
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_memory (user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER, PRIMARY KEY (user_id, memory_key))`).run();
-        
-        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (
-            channel_id TEXT, 
-            user_id TEXT, 
-            user_name TEXT, 
-            role TEXT, 
-            content TEXT, 
-            timestamp INTEGER
-        )`).run();
-        
+        database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (channel_id TEXT, user_id TEXT, user_name TEXT, role TEXT, content TEXT, timestamp INTEGER)`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER)`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_introductions (user_id TEXT, channel_id TEXT, introduced_at INTEGER, PRIMARY KEY (user_id, channel_id))`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, user_id TEXT, channel_id TEXT, message TEXT, execute_at INTEGER, status TEXT DEFAULT 'pending')`).run();
@@ -975,27 +940,19 @@ function setupLydia(client, database) {
         return;
     }
 
-    // ✅ PRESERVE EXISTING LISTENERS - Don't remove, just add ours
-    const originalListeners = client.listeners('messageCreate');
-    client.removeAllListeners('messageCreate');
-    
-    // Re-add original listeners first
-    originalListeners.forEach(listener => {
-        client.on('messageCreate', listener);
-    });
-    
-    // Add Lydia listener
+    // ✅ SIMPLE EVENT LISTENER - No removal of existing listeners
     client.on('messageCreate', async (message) => {
         if (!message || message.author?.bot) return;
         await handleLydiaMessage(message, client, database);
     });
     
     const listenerCount = client.listenerCount('messageCreate');
-    console.log(`${green}[LYDIA]${reset} ✅ Event listener registered (preserved ${originalListeners.length} existing, total: ${listenerCount})`);
+    console.log(`${green}[LYDIA]${reset} ✅ Event listener registered (total listeners: ${listenerCount})`);
 }
 
 // ================= COMMAND .lydia =================
-async function runLydiaCommand(client, message, args, database, usedCommand) {
+// 🔥 FIXED: Added serverSettings parameter
+async function runLydiaCommand(client, message, args, database, serverSettings, usedCommand) {
     if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
     
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
@@ -1003,8 +960,7 @@ async function runLydiaCommand(client, message, args, database, usedCommand) {
     // 🔥 USE NEW LANGUAGE DETECTION
     const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
     
-    // Get prefix from settings or default
-    const serverSettings = message.guild ? client.getServerSettings(message.guild.id) : { prefix: '.' };
+    // 🔥 FIXED: Use passed serverSettings instead of fetching again
     const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
     
     const version = client.version || '1.6.0';
@@ -1172,9 +1128,9 @@ module.exports = {
     category: 'SYSTEM',
     cooldown: 5000,
     
-    run: async (client, message, args, db, usedCommand) => {
-        // 🔥 Pass usedCommand for language detection!
-        return runLydiaCommand(client, message, args, db, usedCommand);
+    // 🔥 FIXED: Added serverSettings parameter to match index.js
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
+        return runLydiaCommand(client, message, args, db, serverSettings, usedCommand);
     },
     
     setupLydia,
