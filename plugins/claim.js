@@ -67,19 +67,6 @@ const claimTranslations = {
     }
 };
 
-// ================= RANK TITLES =================
-const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
-    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
-    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
-    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
-];
-
-function getRank(level) { 
-    return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1]; 
-}
-
 module.exports = {
     name: 'claim',
     aliases: ['reclamer', 'reclaim', 'collect', 'recolter', 'réclamer'],
@@ -98,6 +85,7 @@ module.exports = {
                 : (serverSettings?.language || 'en');
             const t = claimTranslations[lang];
             
+            // ✅ DYNAMIC VERSION from client.version (reads from version.txt)
             const version = client.version || '1.5.0';
             const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
@@ -115,12 +103,11 @@ module.exports = {
             const baseCredits = 100;
             const oneDay = 24 * 60 * 60 * 1000;
             
-            // ✅ USE client.getUser (EXISTS in index.js!)
+            // ✅ GET USER DATA
             let userData = client.getUser 
                 ? client.getUser(userId) 
                 : database.prepare(`SELECT last_daily, xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
             
-            // ✅ ENSURE USER EXISTS
             if (!userData) {
                 if (client.initializeUser) {
                     userData = client.initializeUser(userId, userName);
