@@ -75,11 +75,9 @@ const texts = {
 };
 
 // ================= MEMORY-SAFE GAME STORAGE =================
-// Auto-cleanup after 5 minutes of inactivity
 const activeGames = new Map();
-const GAME_SESSION_TTL = 300000; // 5 minutes
+const GAME_SESSION_TTL = 300000;
 
-// Cleanup interval for stale games
 setInterval(() => {
     const now = Date.now();
     for (const [userId, game] of activeGames.entries()) {
@@ -88,7 +86,7 @@ setInterval(() => {
             console.log(`[GAME CLEANUP] Removed stale session for ${userId}`);
         }
     }
-}, 60000); // Check every minute
+}, 60000);
 
 function checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel, lang, client) {
     const oldLevel = calculateLevel(oldXp);
@@ -120,15 +118,12 @@ function checkAndAnnounceLevelUp(oldXp, newXp, userId, username, channel, lang, 
     return false;
 }
 
-// 🔥 DYNAMIC BET CALCULATION - Scales with player level!
 function calculateDynamicBet(baseBet, userLevel, isVIP = false) {
-    // Level multiplier: Level 1 = 1x, Level 50 = 3x
     const levelMultiplier = 1 + Math.min((userLevel - 1) * 0.04, 2);
     const vipMultiplier = isVIP ? 2 : 1;
     return Math.floor(baseBet * levelMultiplier * vipMultiplier);
 }
 
-// 🔥 DYNAMIC REWARD CALCULATION
 function calculateDynamicReward(baseReward, userLevel, isVIP = false) {
     const levelMultiplier = 1 + Math.min((userLevel - 1) * 0.05, 2.5);
     const vipMultiplier = isVIP ? 2 : 1;
@@ -232,7 +227,6 @@ async function showGameMenu(client, message, lang, serverSettings, usedCommand, 
     const credits = userData?.credits || 0;
     const isVIP = level >= 51 || message.author.id === process.env.OWNER_ID;
     
-    // 🔥 DYNAMIC BET DISPLAY
     const diceBet = calculateDynamicBet(100, level, isVIP);
     const coinflipBet = calculateDynamicBet(100, level, isVIP);
     const slotsBet = calculateDynamicBet(100, level, isVIP);
@@ -489,7 +483,7 @@ async function playSlots(client, message, lang, db) {
     message.reply({ embeds: [embed] });
 }
 
-// ================= BLACKJACK (with Memory Safety) =================
+// ================= BLACKJACK (CORRIGÉ) =================
 async function playBlackjack(client, message, lang, db) {
     const t = texts[lang];
     const userId = message.author.id;
@@ -508,12 +502,10 @@ async function playBlackjack(client, message, lang, db) {
         return message.reply({ embeds: [new EmbedBuilder().setColor('#ED4245').setDescription(t.insufficientCredits(bet, balance))] });
     }
     
-    // Check for existing game
     if (activeGames.has(userId)) {
         return message.reply({ content: `❌ ${lang === 'fr' ? 'Vous avez déjà une partie en cours!' : 'You already have a game in progress!'}`, ephemeral: true });
     }
     
-    // Deduct bet
     if (client.queueUserUpdate) {
         client.queueUserUpdate(userId, {
             credits: (userData.credits || 0) - bet,
@@ -526,12 +518,7 @@ async function playBlackjack(client, message, lang, db) {
     let gameOver = false;
     let playerBusted = false;
     
-    // Store game session with timestamp
-    activeGames.set(userId, {
-        type: 'blackjack',
-        lastActivity: Date.now(),
-        bet: bet
-    });
+    activeGames.set(userId, { type: 'blackjack', lastActivity: Date.now(), bet: bet });
 
     const generateEmbed = (status = lang === 'fr' ? 'À votre tour, Agent.' : 'Your turn, Agent.') => {
         const pScore = calculateHand(playerHand);
@@ -562,9 +549,11 @@ async function playBlackjack(client, message, lang, db) {
     const collector = gameMsg.createMessageComponentCollector({ filter: i => i.user.id === userId, time: 60000 });
 
     collector.on('collect', async (i) => {
-        // Update activity timestamp
         const game = activeGames.get(userId);
         if (game) game.lastActivity = Date.now();
+        
+        // 🛡️ LA LIGNE CRITIQUE
+        await i.deferUpdate().catch(() => {});
         
         if (i.customId === 'bj_hit') {
             playerHand.push(drawCard());
@@ -574,7 +563,7 @@ async function playBlackjack(client, message, lang, db) {
                 gameOver = true;
                 collector.stop('bust');
             } else {
-                await i.update({ embeds: [generateEmbed()] });
+                await i.editReply({ embeds: [generateEmbed()] }).catch(() => {});
             }
         } else {
             gameOver = true;
@@ -583,10 +572,8 @@ async function playBlackjack(client, message, lang, db) {
     });
 
     collector.on('end', async (collected, reason) => {
-        // Clean up game session
         activeGames.delete(userId);
         
-        // Handle timeout
         if (reason === 'time') {
             const timeoutEmbed = new EmbedBuilder()
                 .setColor('#95a5a6')
@@ -724,7 +711,7 @@ async function playRPS(client, message, choice, lang, db) {
     message.reply({ embeds: [embed] });
 }
 
-// ================= NUMBER GUESS (with Memory Safety) =================
+// ================= NUMBER GUESS (CORRIGÉ) =================
 async function playNumberGuess(client, message, lang, db) {
     const t = texts[lang];
     const userId = message.author.id;
@@ -747,7 +734,6 @@ async function playNumberGuess(client, message, lang, db) {
         return message.reply({ content: `❌ ${lang === 'fr' ? 'Vous avez déjà une partie en cours!' : 'You already have a game in progress!'}`, ephemeral: true });
     }
     
-    // Deduct bet
     if (client.queueUserUpdate) {
         client.queueUserUpdate(userId, {
             credits: (userData.credits || 0) - bet,
@@ -760,12 +746,7 @@ async function playNumberGuess(client, message, lang, db) {
     const maxAttempts = isVIP ? 7 : 5;
     
     activeGames.set(userId, {
-        type: 'guess',
-        target,
-        attempts,
-        maxAttempts,
-        bet,
-        lastActivity: Date.now()
+        type: 'guess', target, attempts, maxAttempts, bet, lastActivity: Date.now()
     });
     
     const multipliers = isVIP ? [300, 150, 75, 40, 20, 10, 5] : [200, 100, 50, 25, 10];
@@ -860,7 +841,7 @@ async function playNumberGuess(client, message, lang, db) {
     });
 }
 
-// ================= HANGMAN (with Memory Safety) =================
+// ================= HANGMAN =================
 async function playHangman(client, message, lang, db) {
     const t = texts[lang];
     const userId = message.author.id;
@@ -883,7 +864,6 @@ async function playHangman(client, message, lang, db) {
         return message.reply({ content: `❌ ${lang === 'fr' ? 'Vous avez déjà une partie en cours!' : 'You already have a game in progress!'}`, ephemeral: true });
     }
     
-    // Deduct bet
     if (client.queueUserUpdate) {
         client.queueUserUpdate(userId, {
             credits: (userData.credits || 0) - bet,
@@ -899,12 +879,7 @@ async function playHangman(client, message, lang, db) {
     let lives = isVIP ? 8 : 6;
     
     activeGames.set(userId, {
-        type: 'hangman',
-        targetWord,
-        guessed,
-        lives,
-        bet,
-        lastActivity: Date.now()
+        type: 'hangman', targetWord, guessed, lives, bet, lastActivity: Date.now()
     });
 
     const getDisplay = () => targetWord.split('').map(l => guessed.includes(l) ? l : ' _ ').join('');
@@ -945,7 +920,6 @@ async function playHangman(client, message, lang, db) {
         if (!game.targetWord.includes(char)) game.lives--;
         
         const displayWord = game.targetWord.split('').map(l => game.guessed.includes(l) ? l : ' _ ').join('');
-        // 🔥 FIXED: Remove spaces for proper comparison
         const wordWithoutSpaces = displayWord.replace(/\s/g, '');
         
         const stageIndex = Math.min((isVIP ? 8 : 6) - game.lives, 7);
