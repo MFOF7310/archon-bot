@@ -96,13 +96,10 @@ module.exports = {
     cooldown: 3000,
     examples: ['.daily'],
 
-    // ✅ FIXED: Added usedCommand as 6th parameter
-    run: async (client, message, args, database, serverSettings, usedCommand) => {
+    // ✅ SIGNATURE CORRECTE: 6 paramètres
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         try {
-            // ✅ FIXED: Use the database parameter correctly
-            const db = database;
-            
             // ✅ NEURAL BRIDGE: Priority on alias, fallback to server default
             const lang = client.detectLanguage 
                 ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
@@ -110,8 +107,8 @@ module.exports = {
                 
             const t = dailyTranslations[lang];
             
-            // ✅ DYNAMIC VERSION from client.version (reads from version.txt)
-            const version = client.version || '1.5.0';
+            // ✅ DYNAMIC VERSION
+            const version = client.version || '1.6.0';
             const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
             
@@ -126,6 +123,28 @@ module.exports = {
             const userId = message.author.id;
             const userName = message.author.username;
             const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
+            
+            // ================= 🔥 PILLAR 1: RAM-FIRST CACHE =================
+            let userData = client.getUserData ? client.getUserData(userId) : null;
+            
+            if (!userData) {
+                // Fallback de sécurité si l'utilisateur n'est pas encore en RAM
+                userData = db.prepare(`
+                    SELECT last_daily, xp, credits, streak_days, level 
+                    FROM users WHERE id = ?
+                `).get(userId);
+                
+                if (!userData) {
+                    db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
+                        VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
+                    userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
+                }
+                
+                // Mettre en cache pour la prochaine fois
+                if (client.cacheUserData) {
+                    client.cacheUserData(userId, userData);
+                }
+            }
             
             const baseXP = 250;
             const baseCredits = 100;
@@ -142,28 +161,11 @@ module.exports = {
                         message TEXT NOT NULL,
                         execute_at INTEGER NOT NULL,
                         status TEXT DEFAULT 'pending',
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        created_at INTEGER DEFAULT (strftime('%s', 'now'))
                     )
                 `).run();
             } catch (e) {
                 console.log(`[DAILY] Reminders table check: ${e.message}`);
-            }
-            
-            // --- GET USER DATA ---
-            let userData = null;
-            try {
-                userData = db.prepare(`
-                    SELECT last_daily, xp, credits, streak_days, level 
-                    FROM users WHERE id = ?
-                `).get(userId);
-            } catch (err) {
-                console.error(`[DAILY] Fetch error: ${err.message}`);
-            }
-            
-            if (!userData) {
-                db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
-                    VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
-                userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
             }
             
             // --- CALCULATE COOLDOWN STATUS ---
@@ -256,25 +258,23 @@ module.exports = {
             // --- BUILD DYNAMIC BUTTON ROW ---
             const row = new ActionRowBuilder();
             
-            // Always show Profile and Leaderboard
             row.addComponents(
                 new ButtonBuilder()
-                    .setCustomId('view_profile')
+                    .setCustomId('daily_profile')
                     .setLabel(t.myProfile)
                     .setStyle(ButtonStyle.Secondary)
                     .setEmoji('👤'),
                 new ButtonBuilder()
-                    .setCustomId('view_leaderboard')
+                    .setCustomId('daily_leaderboard')
                     .setLabel(t.leaderboard)
                     .setStyle(ButtonStyle.Secondary)
                     .setEmoji('🏆')
             );
             
-            // Dynamic third button based on state
             if (canClaim) {
                 row.addComponents(
                     new ButtonBuilder()
-                        .setCustomId('go_claim')
+                        .setCustomId('daily_claim')
                         .setLabel(t.claimNow)
                         .setStyle(ButtonStyle.Success)
                         .setEmoji('⚡')
@@ -282,7 +282,7 @@ module.exports = {
             } else if (!reminderActive) {
                 row.addComponents(
                     new ButtonBuilder()
-                        .setCustomId('remind_me')
+                        .setCustomId('daily_remind')
                         .setLabel(t.remindMe)
                         .setStyle(ButtonStyle.Primary)
                         .setEmoji('⏰')
@@ -290,7 +290,7 @@ module.exports = {
             } else {
                 row.addComponents(
                     new ButtonBuilder()
-                        .setCustomId('reminder_active')
+                        .setCustomId('daily_reminder_active')
                         .setLabel(t.reminderSet)
                         .setStyle(ButtonStyle.Secondary)
                         .setEmoji('✅')
@@ -298,52 +298,52 @@ module.exports = {
                 );
             }
             
-            const reply = await message.reply({ embeds: [dashboardEmbed], components: [row] });
+            const reply = await message.reply({ embeds: [dashboardEmbed], components: [row] }).catch(() => {});
+            if (!reply) return;
             
-            // --- BUTTON COLLECTOR (FIXED - NO DOUBLE REPLY) ---
+            // ================= 🔥 PILLAR 2: COLLECTOR CORRIGÉ =================
             const collector = reply.createMessageComponentCollector({ time: 120000 });
             
             collector.on('collect', async (i) => {
                 if (i.user.id !== userId) {
-                    return i.reply({ content: t.accessDenied, ephemeral: true });
+                    return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
                 }
                 
-                // ✅ Defer first to prevent "InteractionAlreadyReplied" errors
-                await i.deferUpdate();
+                // 🛡️ LA LIGNE CRITIQUE : Avertit Discord que le bot traite l'appui sur le bouton
+                await i.deferUpdate().catch(() => {});
                 
                 switch (i.customId) {
-                    case 'view_profile':
+                    case 'daily_profile':
                         const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                         if (rankCmd) {
                             await rankCmd.run(client, message, [], db, serverSettings, usedCommand);
-                            await i.followUp({ content: t.profileOpened, ephemeral: true });
+                            await i.followUp({ content: t.profileOpened, ephemeral: true }).catch(() => {});
                         } else {
-                            await i.followUp({ content: t.profileNotFound, ephemeral: true });
+                            await i.followUp({ content: t.profileNotFound, ephemeral: true }).catch(() => {});
                         }
                         break;
                         
-                    case 'view_leaderboard':
+                    case 'daily_leaderboard':
                         const lbCmd = client.commands.get('lb') || client.commands.get('leaderboard');
                         if (lbCmd) {
                             await lbCmd.run(client, message, [], db, serverSettings, usedCommand);
-                            await i.followUp({ content: t.leaderboardOpened, ephemeral: true });
+                            await i.followUp({ content: t.leaderboardOpened, ephemeral: true }).catch(() => {});
                         } else {
-                            await i.followUp({ content: t.leaderboardNotFound, ephemeral: true });
+                            await i.followUp({ content: t.leaderboardNotFound, ephemeral: true }).catch(() => {});
                         }
                         break;
                         
-                    case 'go_claim':
+                    case 'daily_claim':
                         const claimCmd = client.commands.get('claim');
                         if (claimCmd) {
                             await claimCmd.run(client, message, [], db, serverSettings, usedCommand);
-                            await i.followUp({ content: t.claimProcessed, ephemeral: true });
+                            await i.followUp({ content: t.claimProcessed, ephemeral: true }).catch(() => {});
                         } else {
-                            await i.followUp({ content: t.claimNotFound, ephemeral: true });
+                            await i.followUp({ content: t.claimNotFound, ephemeral: true }).catch(() => {});
                         }
                         break;
                         
-                    case 'remind_me':
-                        // Double-check no reminder exists
+                    case 'daily_remind':
                         const existing = db.prepare(`
                             SELECT execute_at FROM reminders 
                             WHERE user_id = ? AND status = 'pending' AND message LIKE '%reward%'
@@ -353,10 +353,9 @@ module.exports = {
                             const timeLeft = (existing.execute_at * 1000) - Date.now();
                             const h = Math.floor(timeLeft / 3600000);
                             const m = Math.floor((timeLeft % 3600000) / 60000);
-                            return i.followUp({ content: t.reminderAlreadyActive(h, m), ephemeral: true });
+                            return i.followUp({ content: t.reminderAlreadyActive(h, m), ephemeral: true }).catch(() => {});
                         }
                         
-                        // Create reminder
                         const nextClaimTime = new Date(lastClaim + oneDay);
                         const timeUntilHours = Math.floor((nextClaimTime - now) / 1000 / 60 / 60);
                         const executeAt = Math.floor(nextClaimTime.getTime() / 1000);
@@ -371,10 +370,10 @@ module.exports = {
                                 VALUES (?, ?, ?, ?, ?, 'pending')
                             `).run(reminderId, userId, i.channelId, reminderMsg, executeAt);
                             
-                            await i.followUp({ content: t.reminderSuccess(timeUntilHours), ephemeral: true });
-                            console.log(`[DAILY] Reminder set for ${message.author.tag}`);
+                            await i.followUp({ content: t.reminderSuccess(timeUntilHours), ephemeral: true }).catch(() => {});
+                            console.log(`[DAILY] Reminder set for ${message.author.tag} in ${timeUntilHours}h`);
                         } catch (e) {
-                            await i.followUp({ content: t.error, ephemeral: true });
+                            await i.followUp({ content: t.error, ephemeral: true }).catch(() => {});
                         }
                         break;
                 }
@@ -382,7 +381,7 @@ module.exports = {
             
         } catch (error) {
             console.error(`[DAILY] FATAL ERROR:`, error);
-            return message.reply({ content: '❌ An error occurred.' });
+            return message.reply({ content: '❌ An error occurred.' }).catch(() => {});
         }
     }
 };
