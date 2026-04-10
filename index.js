@@ -2,9 +2,9 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-// IMPORT LYDIA SETUP FUNCTION
+// ================= IMPORT LYDIA SETUP FUNCTION =================
 const { setupLydia } = require('./plugins/lydia.js');
 
 // ================= 🔥 AFK SYSTEM IMPORT =================
@@ -29,7 +29,7 @@ process.on('uncaughtException', (err, origin) => {
     console.error(err.stack); 
 });
 
-// --- TERMINAL COLORS ---
+// ================= TERMINAL COLORS =================
 const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m", bold = "\x1b[1m";
 
 const client = new Client({
@@ -43,13 +43,13 @@ const client = new Client({
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
 
-// --- SYSTEM GLOBALS ---
+// ================= SYSTEM GLOBALS =================
 client.commands = new Collection();
 client.aliases = new Collection();
 client.userTimeouts = new Map();
 client.settings = new Map();
 
-// --- DYNAMIC VERSIONING ---
+// ================= DYNAMIC VERSIONING =================
 function getVersion() {
     try {
         const versionPath = path.join(__dirname, 'version.txt');
@@ -75,7 +75,7 @@ client.userIntroductions = new Map();
 
 const PREFIX = process.env.PREFIX || ".";
 
-// --- UTILITIES ---
+// ================= UTILITIES =================
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
@@ -706,7 +706,7 @@ client.once(Events.ClientReady, async () => {
         client.userTimeouts.clear();
     }
 
-    // 🔥 LE DM STYLÉ AVEC ANSI COLORS (OPTION 4)
+    // ================= 🔥 LE DM STYLÉ AVEC ANSI COLORS =================
 try {
     const owner = await client.users.fetch(process.env.OWNER_ID);
     
@@ -763,7 +763,7 @@ try {
 }
 });
 
-// ================= 🔥 FIXED MESSAGE PROCESSING (COMMAND PRIORITY + AFK CORRIGÉ) =================
+// ================= 🔥 FIXED MESSAGE PROCESSING =================
 client.on(Events.MessageCreate, async (message) => {
     if (!message || message.author?.bot || message.webhookId) return;
 
@@ -775,7 +775,7 @@ client.on(Events.MessageCreate, async (message) => {
         cacheUserData(userId, userData);
     }
 
-    // ================= 💤 AFK SYSTEM - MENTION CHECK (CORRIGÉ) =================
+    // ================= 💤 AFK SYSTEM - MENTION =================
     if (message.mentions.users.size > 0) {
         const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
         const lang = serverSettings?.language || 'en';
@@ -798,7 +798,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // ================= 💤 AFK SYSTEM - RETURN CHECK (CORRIGÉ) =================
+    // ================= 💤 AFK SYSTEM =================
     if (afkUsers.has(message.author.id)) {
         const afkData = afkUsers.get(message.author.id);
         const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
@@ -850,7 +850,7 @@ client.on(Events.MessageCreate, async (message) => {
     const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
     const effectivePrefix = serverSettings.prefix || PREFIX;
     
-    // Command handling
+    // ================= Command handling =================
     if (message.content.startsWith(effectivePrefix)) {
         const args = message.content.slice(effectivePrefix.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
@@ -858,7 +858,7 @@ client.on(Events.MessageCreate, async (message) => {
         
         let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
         
-        // Lydia command
+        // ================= Lydia command =================
         if (!command && (cmdName === 'lydia' || cmdName === 'ai' || cmdName === 'neural' || cmdName === 'ia')) {
             try {
                 const lydiaModule = require('./plugins/lydia.js');
@@ -900,17 +900,216 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 });
 
-// ================= WELCOME SYSTEM =================
+// =================🔥 ULTRA PROFESSIONAL WELCOME SYSTEM =================
 client.on(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     
     const settings = getServerSettings(member.guild.id);
     const welcomeChannel = member.guild.channels.cache.get(settings.welcomeChannel || process.env.WELCOME_CHANNEL_ID);
+    const logChannel = member.guild.channels.cache.get(settings.logChannel || process.env.LOG_CHANNEL_ID);
     
-    if (welcomeChannel) {
-        const welcomeMsg = `🎊 Bienvenue <@${member.id}> sur **${member.guild.name}**! | Welcome to **${member.guild.name}**!`;
-        welcomeChannel.send({ content: welcomeMsg }).catch(() => {});
+    // 🔒 SÉCURITÉ : From .env file credentials =================
+    const RULES_CHANNEL_ID = process.env.RULES_CHANNEL_ID;
+    const GENERAL_CHANNEL_ID = process.env.GENERAL_CHANNEL_ID;
+    const MEMBER_ROLE_ID = process.env.MEMBER_ROLE;
+    
+    // ================= If logs not configured W Fallback =================
+    if (!RULES_CHANNEL_ID) console.log(`${yellow}[WELCOME]${reset} RULES_CHANNEL_ID not configured in .env`);
+    if (!GENERAL_CHANNEL_ID) console.log(`${yellow}[WELCOME]${reset} GENERAL_CHANNEL_ID not configured in .env`);
+    if (!MEMBER_ROLE_ID) console.log(`${yellow}[WELCOME]${reset} MEMBER_ROLE not configured in .env`);
+    
+    // ================= Calculs =================
+    const memberCount = member.guild.memberCount;
+    const accountAge = Date.now() - member.user.createdTimestamp;
+    const accountAgeDays = Math.floor(accountAge / (1000 * 60 * 60 * 24));
+    const isNewAccount = accountAgeDays < 7;
+    const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
+    
+    // ================= Ajouter le rôle membre automatiquement =================
+    if (MEMBER_ROLE_ID) {
+        try {
+            const memberRole = member.guild.roles.cache.get(MEMBER_ROLE_ID);
+            if (memberRole) await member.roles.add(memberRole);
+        } catch (err) {
+            console.log(`${yellow}[WELCOME]${reset} Could not add member role: ${err.message}`);
+        }
     }
+    
+    // ================= TRADUCTIONS =================
+    const t = {
+        fr: {
+            title: '🔗 CONNEXION ÉTABLIE: EAGLE COMMUNITY',
+            welcome: (user, count) => `Bienvenue dans le Réseau, **${user}**! 🎉\nTu es le Membre Officiel **#${count}**.`,
+            securityCheck: '🔒 VÉRIFICATION DE SÉCURITÉ',
+            accountCreated: 'Compte Créé',
+            daysAgo: (days) => `${days} jour${days > 1 ? 's' : ''}`,
+            newAccountWarning: '⚠️ COMPTE RÉCENT - SURVEILLANCE ACTIVE',
+            initialization: '📡 PROTOCOLE D\'INITIALISATION',
+            reviewRules: '📜 Consultez le Règlement',
+            mainDiscussion: '💬 Discussion Générale',
+            aiAssistant: '🤖 Assistance IA (Lydia)',
+            securityFooter: 'SÉCURITÉ NEURALE ACTIVE • BAMAKO-223',
+            welcomeFooter: 'Eagle Community • Souveraineté Numérique',
+            quickLinks: '🔗 ACCÈS RAPIDE',
+            memberSince: 'Membre depuis',
+            serverInfo: 'INFORMATIONS SERVEUR',
+            owner: 'Propriétaire',
+            boostLevel: 'Niveau Boost',
+            verificationLevel: 'Vérification',
+            notConfigured: '⚠️ Non configuré'
+        },
+        en: {
+            title: '🔗 CONNECTION ESTABLISHED: EAGLE COMMUNITY',
+            welcome: (user, count) => `Welcome to the Network, **${user}**! 🎉\nYou are Official Member **#${count}**.`,
+            securityCheck: '🔒 SECURITY CHECK',
+            accountCreated: 'Account Created',
+            daysAgo: (days) => `${days} day${days > 1 ? 's' : ''} ago`,
+            newAccountWarning: '⚠️ NEW ACCOUNT - ACTIVE SURVEILLANCE',
+            initialization: '📡 INITIALIZATION PROTOCOL',
+            reviewRules: '📜 Review Guidelines',
+            mainDiscussion: '💬 Main Discussion',
+            aiAssistant: '🤖 AI Assistant (Lydia)',
+            securityFooter: 'NEURAL SECURITY ACTIVE • BAMAKO-223',
+            welcomeFooter: 'Eagle Community • Digital Sovereignty',
+            quickLinks: '🔗 QUICK ACCESS',
+            memberSince: 'Member Since',
+            serverInfo: 'SERVER INFORMATION',
+            owner: 'Owner',
+            boostLevel: 'Boost Level',
+            verificationLevel: 'Verification',
+            notConfigured: '⚠️ Not configured'
+        }
+    }[lang];
+    
+    // ================= EMBED PRINCIPAL =================
+    const welcomeEmbed = new EmbedBuilder()
+        .setColor(isNewAccount ? '#e74c3c' : '#2ecc71')
+        .setAuthor({ 
+            name: t.title, 
+            iconURL: member.guild.iconURL({ dynamic: true }) 
+        })
+        .setDescription(
+            `\`\`\`ansi\n` +
+            `\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n` +
+            `\u001b[1;32m║\u001b[0m \u001b[1;36m${t.welcome(member.user.username, memberCount).split('\n')[0]}\u001b[0m \u001b[1;32m║\u001b[0m\n` +
+            `\u001b[1;32m║\u001b[0m \u001b[1;33m${t.welcome(member.user.username, memberCount).split('\n')[1]}\u001b[0m \u001b[1;32m║\u001b[0m\n` +
+            `\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n` +
+            `\`\`\``
+        )
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
+        .addFields(
+            {
+                name: t.securityCheck,
+                value: `\`\`\`yaml\n${t.accountCreated}: ${t.daysAgo(accountAgeDays)}\nID: ${member.user.id}\n\`\`\``,
+                inline: true
+            },
+            {
+                name: '📊 ' + t.serverInfo,
+                value: `\`\`\`yaml\n${t.owner}: ${(await member.guild.fetchOwner()).user.username}\n${t.boostLevel}: Tier ${member.guild.premiumTier}\n${t.verificationLevel}: ${member.guild.verificationLevel}\n\`\`\``,
+                inline: true
+            }
+        );
+    
+    if (isNewAccount) {
+        welcomeEmbed.addFields({
+            name: t.newAccountWarning,
+            value: `\`\`\`fix\n⚠️ ${lang === 'fr' ? `Compte créé il y a ${accountAgeDays} jours - Surveillance active activée.` : `Account created ${accountAgeDays} days ago - Active surveillance enabled.`}\`\`\``,
+            inline: false
+        });
+    }
+    
+    // ================= Initialization Protocol W Fallback =================
+    let initValue = '';
+    if (RULES_CHANNEL_ID) initValue += `• <#${RULES_CHANNEL_ID}> - ${t.reviewRules}\n`;
+    if (GENERAL_CHANNEL_ID) initValue += `• <#${GENERAL_CHANNEL_ID}> - ${t.mainDiscussion}\n`;
+    initValue += `• @Lydia - ${t.aiAssistant}`;
+    
+    if (!RULES_CHANNEL_ID && !GENERAL_CHANNEL_ID) {
+        initValue = t.notConfigured;
+    }
+    
+    welcomeEmbed.addFields({
+        name: t.initialization,
+        value: `\`\`\`yaml\n${initValue}\`\`\``,
+        inline: false
+    });
+    
+    welcomeEmbed.setFooter({ 
+        text: `${member.guild.name} • ${t.securityFooter} • v${client.version}`,
+        iconURL: member.guild.iconURL({ dynamic: true })
+    })
+    .setTimestamp();
+    
+    // ================= BOUTONS D'ACCÈS RAPIDE =================
+    const buttons = [];
+    
+    if (RULES_CHANNEL_ID) {
+        buttons.push(
+            new ButtonBuilder()
+                .setLabel(lang === 'fr' ? '📜 Règles' : '📜 Rules')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://discord.com/channels/${member.guild.id}/${RULES_CHANNEL_ID}`)
+        );
+    }
+    
+    if (GENERAL_CHANNEL_ID) {
+        buttons.push(
+            new ButtonBuilder()
+                .setLabel(lang === 'fr' ? '💬 Général' : '💬 General')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://discord.com/channels/${member.guild.id}/${GENERAL_CHANNEL_ID}`)
+        );
+    }
+    
+    buttons.push(
+        new ButtonBuilder()
+            .setLabel(lang === 'fr' ? '🤖 Commander' : '🤖 Commands')
+            .setStyle(ButtonStyle.Secondary)
+            .setCustomId('welcome_help')
+    );
+    
+    const buttonRow = new ActionRowBuilder().addComponents(buttons);
+    
+    // ================= Envoyer le message de bienvenue =================
+    if (welcomeChannel) {
+        await welcomeChannel.send({ 
+            content: `🎉 **${member.user}** ${lang === 'fr' ? 'vient de rejoindre le serveur !' : 'just joined the server!'}`,
+            embeds: [welcomeEmbed], 
+            components: buttons.length > 0 ? [buttonRow] : [] 
+        }).catch(() => {});
+    } else {
+        console.log(`${yellow}[WELCOME]${reset} Welcome channel not configured for ${member.guild.name}`);
+    }
+    
+    // ================= LOG DE SÉCURITÉ (Channel Logs) =================
+    if (logChannel) {
+        const logEmbed = new EmbedBuilder()
+            .setColor(isNewAccount ? '#e74c3c' : '#3498db')
+            .setAuthor({ name: '📋 JOURNAL DE SÉCURITÉ - NOUVEAU MEMBRE', iconURL: member.user.displayAvatarURL() })
+            .setDescription(`**${member.user.tag}** a rejoint le serveur.`)
+            .addFields(
+                { name: '🆔 ID Utilisateur', value: member.user.id, inline: true },
+                { name: '📅 Compte Créé', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
+                { name: '👥 Rang Membre', value: `#${memberCount}`, inline: true },
+                { name: '🛡️ Niveau de Vérification', value: `${member.guild.verificationLevel}`, inline: true },
+                { name: '🤖 Est un Bot', value: member.user.bot ? '✅ Oui' : '❌ Non', inline: true },
+                { name: '🎭 Rôle Attribué', value: MEMBER_ROLE_ID ? `<@&${MEMBER_ROLE_ID}>` : t.notConfigured, inline: true }
+            )
+            .setFooter({ text: `Eagle Community • Système de Sécurité Neurale • v${client.version}` })
+            .setTimestamp();
+        
+        if (isNewAccount) {
+            logEmbed.addFields({
+                name: '⚠️ ALERTE SÉCURITÉ',
+                value: `Compte récent (${accountAgeDays} jours) - Surveillance recommandée.`,
+                inline: false
+            });
+        }
+        
+        await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+    }
+    
+    console.log(`[WELCOME] ${member.user.tag} joined ${member.guild.name} | Member #${memberCount} | Account age: ${accountAgeDays} days`);
 });
 
 // ================= GRACEFUL SHUTDOWN =================
