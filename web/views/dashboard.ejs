@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARCHITECT CG-223 | Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon" type="image/png" href="https://cdn.discordapp.com/emojis/1274083642106257499.png">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="logo">
+                <h2>🦅 ARCHITECT</h2>
+                <p>CG-223</p>
+            </div>
+            <ul>
+                <li><a href="/dashboard" class="active">📊 Dashboard</a></li>
+                <% if (isOwner) { %>
+                <li><a href="/dashboard/admin">👑 Admin Panel</a></li>
+                <% } %>
+                <li><a href="/logout">🚪 Logout</a></li>
+            </ul>
+            <div class="user-info">
+                <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="Avatar">
+                <span><%= user.username %></span>
+                <% if (isOwner) { %>
+                <span class="owner-badge">OWNER</span>
+                <% } %>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content">
+            <header>
+                <h1>Welcome back, <span class="highlight"><%= user.username %></span>!</h1>
+                <p class="subtitle">Neural Engine v1.6.1 • BAMAKO_223 🇲🇱</p>
+            </header>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <h3>Total Users</h3>
+                        <p><%= stats.totalUsers.toLocaleString() %></p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-info">
+                        <h3>Total Credits</h3>
+                        <p><%= stats.totalCredits %></p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-info">
+                        <h3>Total XP</h3>
+                        <p><%= stats.totalXP %></p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-info">
+                        <h3>Uptime</h3>
+                        <p><%= stats.uptime %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Telemetry -->
+            <div class="telemetry-panel">
+                <h2>📡 System Telemetry</h2>
+                <div class="telemetry-bars">
+                    <div class="bar-item">
+                        <span>Memory</span>
+                        <div class="progress-bar">
+                            <div class="progress" style="width: <%= stats.memory %>%; background: #2ecc71;"></div>
+                        </div>
+                        <span><%= stats.memory %> MB / 2 GB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Users -->
+            <div class="top-users">
+                <h2>🏆 Top Agents</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Agent</th>
+                            <th>Level</th>
+                            <th>XP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% stats.topUsers.forEach((user, index) => { %>
+                        <tr>
+                            <td><%= index + 1 %></td>
+                            <td><%= user.username %></td>
+                            <td><%= user.level %></td>
+                            <td><%= user.xp.toLocaleString() %></td>
+                        </tr>
+                        <% }); %>
+                        <% if (stats.topUsers.length === 0) { %>
+                        <tr><td colspan="4" style="text-align: center;">No data available</td></tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Live refresh every 30 seconds
+        setInterval(() => {
+            fetch('/api/stats')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update stats dynamically
+                        console.log('Stats updated:', data.data);
+                    }
+                });
+        }, 30000);
+    </script>
+</body>
+</html>
