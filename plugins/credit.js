@@ -129,12 +129,10 @@ module.exports = {
         const target = message.mentions.users.first() || message.author;
         const isSelf = target.id === message.author.id;
         
-        // 🔥 CORRECTION: db.prepare (pas db.pycrc !)
-        const userData = db.prepare(`
-            SELECT credits, xp, total_winnings, games_played, games_won 
-            FROM users 
-            WHERE id = ?
-        `).get(target.id);
+        // 🔥 RAM-FIRST CACHE
+        let userData = client.getUserData 
+            ? client.getUserData(target.id) 
+            : db.prepare(`SELECT credits, xp, total_winnings, games_played, games_won FROM users WHERE id = ?`).get(target.id);
 
         if (!userData) {
             const errorEmbed = new EmbedBuilder()
@@ -274,10 +272,10 @@ module.exports = {
                     break;
                     
                 case 'credits_refresh':
-                    const freshData = db.prepare(`
-                        SELECT credits, xp, total_winnings, games_played, games_won 
-                        FROM users WHERE id = ?
-                    `).get(message.author.id);
+                    // 🔥 CORRECTION CRITIQUE : Lire depuis le CACHE RAM, pas la DB !
+                    const freshData = client.getUserData 
+                        ? client.getUserData(message.author.id) 
+                        : db.prepare(`SELECT credits, xp, total_winnings, games_played, games_won FROM users WHERE id = ?`).get(message.author.id);
                     
                     if (freshData) {
                         const freshCredits = freshData.credits || 0;
