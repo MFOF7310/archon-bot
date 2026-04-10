@@ -1,22 +1,63 @@
-## [v1.5.0] - NEURAL SYNC UPDATE - 2024
+# 🏗️ ARCHITECT CG-223 - CHANGELOG
 
-### 🆕 NEW
-- `.trivia` - 6 categories, 4 difficulties, streak bonuses
-- `.claim` - Separated claim action from dashboard
-- `.shop` - Neural Marketplace with inventory system
+## [v1.6.0] - NEURAL BRIDGE UPDATE - 2026-04-10
 
-### ⚡ ENHANCED
-- `.daily` - Power Rankings, reminder integration, dynamic buttons
-- `.wrg` - 4 difficulties, bilingual word database
-- `.lydia` - Group awareness, real-time data, optimized API calls
-- `.help` - Interactive select menus, real-time stats
+### 🆕 NEW FEATURES
 
-### 🔧 FIXED
-- Unified level formula across all modules
-- `last_daily` column sync
-- Markdown-preserving message chunking
-- City detection in weather queries
+#### 🧠 Neural Language Bridge
+- **Auto-Detection System**: Commands automatically respond in French or English based on alias used
+- **Pattern-Based Detection**: Accents, word endings, and 15+ French keywords trigger French mode
+- **Universal Language Persistence**: Language choice maintained across all button interactions
 
-### 🌐 LOCALIZATION
-- Full EN/FR bilingual support
-- System time synced to Africa/Bamako
+#### 📡 Broadcast System (`.broadcast` / `.diffusion`)
+- Global announcements to all servers with confirmation system
+- Intelligent channel targeting (General, System, Announcements, First Available)
+- @everyone / @here mention control
+- Image attachment support
+- Scheduled broadcasts with `10s`, `5m`, `2h`, `1d` format
+- Real-time transmission progress tracking
+
+#### 📞 Contact System (`.contact` / `.contacter`)
+- Direct message bridge to Architect (Owner)
+- Confirmation system before sending
+- Reply button for quick response
+- Full user/server context included
+
+#### 🧹 Enhanced Purge System (`.clear` / `.nettoyer`)
+- Professional embed confirmation
+- Target user filtering
+- Auto-delete confirmations
+- Full bilingual support
+
+#### 💰 Enhanced Credits System (`.credits` / `.solde`)
+- Wealth Tier progression tracking (7 tiers)
+- Estimated daily earnings based on activity
+- Win rate and games played statistics
+- Low credits warning system
+- Refresh button for real-time updates
+
+#### 📦 Enhanced Inventory System (`.inventory` / `.inv`)
+- Lightning-fast button interactions
+- Use item system with instant effects
+- Expiration tracking with countdown timers
+- Total value and most valuable item statistics
+- Category filtering (Consumables, Roles, Badges, Boosts)
+
+#### 🛒 Enhanced Shop System (`.shop` / `.boutique`)
+- Batch transaction processing (30-second window)
+- Instant inventory updates after purchase
+- Level requirement validation
+- Owned item tracking
+- Bonus effects display
+
+### ⚡ ENHANCEMENTS
+
+#### Core Architecture
+- **Global Proxy System**: Server settings passed to ALL commands automatically
+- **Global Identity Rule**: Every embed footer dynamically displays server name
+- **Dynamic Versioning**: All modules read from `version.txt` - no hardcoded versions!
+- **Auto-Repair Protocol**: Missing tables/columns created automatically on boot
+- **WAL Database Mode**: High-performance SQLite with 30-second sync delay
+- **Batch Update System**: User data updates queued for 30 seconds, reducing DB writes
+
+#### Boot Display (Enhanced)
