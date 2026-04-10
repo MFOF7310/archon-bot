@@ -72,7 +72,7 @@ module.exports = {
             facebook: 'https://www.facebook.com/share/17KysmJrtm/',
             instagram: 'https://www.instagram.com/mfof7310',
             whatsapp: 'https://wa.me/15485200518',
-            discord: 'https://discord.gg/eaglecommunity',
+            discord: 'https://discord.gg/NFSMFJajp9',
             github: 'https://github.com/MFOF7310'
         };
         
