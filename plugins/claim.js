@@ -33,7 +33,8 @@ const claimTranslations = {
         accessDenied: '❌ These controls are locked to your session.',
         channelRestricted: (channelId) => `📊 The claim protocol is restricted to <#${channelId}>.`,
         dashboardOpened: '📊 Dashboard displayed above!',
-        profileOpened: '👤 Profile displayed above!'
+        profileOpened: '👤 Profile displayed above!',
+        tip: '💡 TIP'
     },
     fr: {
         title: '⚡ PROTOCOLE DE RÉCLAMATION NEURALE',
@@ -61,7 +62,8 @@ const claimTranslations = {
         accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
         channelRestricted: (channelId) => `📊 Le protocole est restreint au canal <#${channelId}>.`,
         dashboardOpened: '📊 Tableau de bord affiché !',
-        profileOpened: '👤 Profil affiché !'
+        profileOpened: '👤 Profil affiché !',
+        tip: '💡 ASTUCE'
     }
 };
 
@@ -85,22 +87,24 @@ module.exports = {
     category: 'ECONOMY',
     usage: '.claim',
     cooldown: 3000,
+    examples: ['.claim'],
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, database, serverSettings, usedCommand) => {
+        
         try {
-            // 🔥 ALIAS-BASED LANGUAGE DETECTION
+            // ✅ LANGUAGE DETECTION
             const lang = client.detectLanguage 
                 ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
-                : serverSettings?.language || 'en';
+                : (serverSettings?.language || 'en');
             const t = claimTranslations[lang];
             
-            const version = client.version || '1.6.0';
+            const version = client.version || '1.5.0';
             const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
             
-            // Channel restriction
+            // ✅ CHANNEL RESTRICTION
             if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
-                return message.reply({ content: t.channelRestricted(serverSettings.dailyChannel) });
+                return message.reply({ content: t.channelRestricted(serverSettings.dailyChannel), ephemeral: true });
             }
             
             const userId = message.author.id;
@@ -111,15 +115,20 @@ module.exports = {
             const baseCredits = 100;
             const oneDay = 24 * 60 * 60 * 1000;
             
-            // Get user data
-            let userData = client.getUserData 
-                ? client.getUserData(userId) 
-                : db.prepare(`SELECT last_daily, xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
+            // ✅ USE client.getUser (EXISTS in index.js!)
+            let userData = client.getUser 
+                ? client.getUser(userId) 
+                : database.prepare(`SELECT last_daily, xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
             
+            // ✅ ENSURE USER EXISTS
             if (!userData) {
-                db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
-                    VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
-                userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
+                if (client.initializeUser) {
+                    userData = client.initializeUser(userId, userName);
+                } else {
+                    database.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
+                        VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
+                    userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
+                }
             }
             
             const lastClaim = parseInt(userData.last_daily || 0);
@@ -127,7 +136,7 @@ module.exports = {
             const timePassed = now - lastClaim;
             const canClaim = timePassed >= oneDay || lastClaim === 0;
             
-            // Cooldown handling
+            // ✅ COOLDOWN HANDLING
             if (!canClaim) {
                 const timeLeft = oneDay - timePassed;
                 const hours = Math.floor(timeLeft / (1000 * 60 * 60));
@@ -138,8 +147,10 @@ module.exports = {
                 const cooldownEmbed = new EmbedBuilder()
                     .setColor('#ff4444')
                     .setAuthor({ name: t.cooldownTitle, iconURL: avatarURL })
+                    .setTitle('🔒 NEURAL CYCLE INCOMPLETE')
                     .setDescription(t.cooldownDesc(userName, timeString))
-                    .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
+                    .addFields({ name: t.tip, value: lang === 'fr' ? 'Utilisez `.daily` pour voir votre tableau de bord.' : 'Use `.daily` to view your dashboard.', inline: false })
+                    .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
                 const row = new ActionRowBuilder()
@@ -161,20 +172,16 @@ module.exports = {
                     if (i.customId === 'goto_daily') {
                         const dailyCmd = client.commands.get('daily');
                         if (dailyCmd) {
-                            await dailyCmd.run(client, message, [], db, serverSettings, usedCommand);
-                            // 🔥 FIXED: Check if already deferred
-                            if (i.deferred) {
-                                await i.followUp({ content: t.dashboardOpened, ephemeral: true });
-                            } else {
-                                await i.reply({ content: t.dashboardOpened, ephemeral: true });
-                            }
+                            await dailyCmd.run(client, message, [], database, serverSettings, usedCommand);
+                            await i.reply({ content: t.dashboardOpened, ephemeral: true });
                         }
                     }
                 });
+                
                 return;
             }
             
-            // Streak calculation
+            // ✅ STREAK CALCULATION
             let streak = 1;
             let streakBonusXP = 25;
             let streakBonusCredits = 10;
@@ -191,40 +198,31 @@ module.exports = {
             const totalXP = baseXP + streakBonusXP;
             const totalCredits = baseCredits + streakBonusCredits;
             
-            // 🔥 USE BATCH WRITE SYSTEM
-            const currentUserData = client.getUserData 
-                ? client.getUserData(userId) 
-                : db.prepare(`SELECT xp, credits FROM users WHERE id = ?`).get(userId);
-            
+            // ✅ PROCESS CLAIM
             const nowTimestamp = Date.now();
             
-            if (client.queueUserUpdate && currentUserData) {
-                client.queueUserUpdate(userId, {
-                    ...currentUserData,
-                    username: userName,
-                    xp: (currentUserData.xp || 0) + totalXP,
-                    credits: (currentUserData.credits || 0) + totalCredits,
-                    streak_days: streak,
-                    last_daily: nowTimestamp
-                });
-            } else {
-                db.prepare(`UPDATE users SET xp = COALESCE(xp, 0) + ?, credits = COALESCE(credits, 0) + ?, streak_days = ?, last_daily = ? WHERE id = ?`)
-                    .run(totalXP, totalCredits, streak, nowTimestamp, userId);
-            }
+            database.prepare(`
+                UPDATE users 
+                SET xp = COALESCE(xp, 0) + ?,
+                    credits = COALESCE(credits, 0) + ?,
+                    streak_days = ?,
+                    last_daily = ?
+                WHERE id = ?
+            `).run(totalXP, totalCredits, streak, nowTimestamp, userId);
             
-            // Get updated stats
-            const updatedUser = client.getUserData 
-                ? client.getUserData(userId) 
-                : db.prepare(`SELECT xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
+            console.log(`[CLAIM] ${message.author.tag} claimed: +${totalXP} XP, +${totalCredits} credits, streak: ${streak}`);
             
+            // ✅ GET UPDATED STATS
+            const updatedUser = database.prepare(`SELECT xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
             const currentXP = updatedUser.xp;
             const currentCredits = updatedUser.credits;
-            const currentLevel = updatedUser.level || calculateLevel(currentXP);
+            const currentLevel = calculateLevel(currentXP);
             
-            // Success embed
+            // ✅ SUCCESS EMBED
             const successEmbed = new EmbedBuilder()
                 .setColor('#00fbff')
                 .setAuthor({ name: t.successTitle, iconURL: avatarURL })
+                .setTitle('⚡ NEURAL SYNC COMPLETE')
                 .setDescription(t.successDesc(totalCredits, totalXP, streak))
                 .addFields(
                     { name: t.nextClaim, value: `<t:${Math.floor((now + oneDay) / 1000)}:R>`, inline: true },
@@ -240,7 +238,7 @@ module.exports = {
             }
             
             successEmbed
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
+                .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version} • ${lang === 'fr' ? 'Réclamez demain!' : 'Claim tomorrow!'}`, iconURL: guildIcon })
                 .setTimestamp();
             
             const actionRow = new ActionRowBuilder()
@@ -259,7 +257,7 @@ module.exports = {
             
             const reply = await message.reply({ embeds: [successEmbed], components: [actionRow] });
             
-            // 🔥 FIXED: Button collector with proper reply/followUp handling
+            // ✅ BUTTON COLLECTOR
             const buttonCollector = reply.createMessageComponentCollector({ time: 60000 });
             
             buttonCollector.on('collect', async (i) => {
@@ -267,37 +265,24 @@ module.exports = {
                     return i.reply({ content: t.accessDenied, ephemeral: true });
                 }
                 
-                const alreadyDeferred = i.deferred;
-                
                 if (i.customId === 'view_daily') {
                     const dailyCmd = client.commands.get('daily');
                     if (dailyCmd) {
-                        await dailyCmd.run(client, message, [], db, serverSettings, usedCommand);
-                        if (alreadyDeferred) {
-                            await i.followUp({ content: t.dashboardOpened, ephemeral: true });
-                        } else {
-                            await i.reply({ content: t.dashboardOpened, ephemeral: true });
-                        }
+                        await dailyCmd.run(client, message, [], database, serverSettings, usedCommand);
+                        await i.reply({ content: t.dashboardOpened, ephemeral: true });
                     }
                 } else if (i.customId === 'view_profile') {
                     const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                     if (rankCmd) {
-                        await rankCmd.run(client, message, [], db, serverSettings, usedCommand);
-                        if (alreadyDeferred) {
-                            await i.followUp({ content: t.profileOpened, ephemeral: true });
-                        } else {
-                            await i.reply({ content: t.profileOpened, ephemeral: true });
-                        }
+                        await rankCmd.run(client, message, [], database, serverSettings, usedCommand);
+                        await i.reply({ content: t.profileOpened, ephemeral: true });
                     }
                 }
             });
             
         } catch (error) {
             console.error(`[CLAIM] FATAL ERROR:`, error);
-            const lang = client.detectLanguage 
-                ? client.detectLanguage(usedCommand, 'en')
-                : 'en';
-            return message.reply({ content: claimTranslations[lang].error });
+            return message.reply({ content: '❌ An error occurred during claim processing.' });
         }
     }
 };
