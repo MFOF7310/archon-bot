@@ -33,8 +33,7 @@ const claimTranslations = {
         accessDenied: '❌ These controls are locked to your session.',
         channelRestricted: (channelId) => `📊 The claim protocol is restricted to <#${channelId}>.`,
         dashboardOpened: '📊 Dashboard displayed above!',
-        profileOpened: '👤 Profile displayed above!',
-        tip: '💡 TIP'
+        profileOpened: '👤 Profile displayed above!'
     },
     fr: {
         title: '⚡ PROTOCOLE DE RÉCLAMATION NEURALE',
@@ -62,10 +61,22 @@ const claimTranslations = {
         accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
         channelRestricted: (channelId) => `📊 Le protocole est restreint au canal <#${channelId}>.`,
         dashboardOpened: '📊 Tableau de bord affiché !',
-        profileOpened: '👤 Profil affiché !',
-        tip: '💡 ASTUCE'
+        profileOpened: '👤 Profil affiché !'
     }
 };
+
+// ================= RANK TITLES =================
+const AGENT_RANKS = [
+    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
+    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
+    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
+    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
+];
+
+function getRank(level) { 
+    return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1]; 
+}
 
 module.exports = {
     name: 'claim',
@@ -74,25 +85,22 @@ module.exports = {
     category: 'ECONOMY',
     usage: '.claim',
     cooldown: 3000,
-    examples: ['.claim'],
 
-    run: async (client, message, args, database, serverSettings, usedCommand) => {
-        
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
-            // ✅ LANGUAGE DETECTION
+            // 🔥 ALIAS-BASED LANGUAGE DETECTION
             const lang = client.detectLanguage 
                 ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
-                : (serverSettings?.language || 'en');
+                : serverSettings?.language || 'en';
             const t = claimTranslations[lang];
             
-            // ✅ DYNAMIC VERSION from client.version (reads from version.txt)
-            const version = client.version || '1.5.0';
+            const version = client.version || '1.6.0';
             const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
             
-            // ✅ CHANNEL RESTRICTION
+            // Channel restriction
             if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
-                return message.reply({ content: t.channelRestricted(serverSettings.dailyChannel), ephemeral: true });
+                return message.reply({ content: t.channelRestricted(serverSettings.dailyChannel) });
             }
             
             const userId = message.author.id;
@@ -103,19 +111,15 @@ module.exports = {
             const baseCredits = 100;
             const oneDay = 24 * 60 * 60 * 1000;
             
-            // ✅ GET USER DATA
-            let userData = client.getUser 
-                ? client.getUser(userId) 
-                : database.prepare(`SELECT last_daily, xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
+            // 🔥 RAM-FIRST CACHE
+            let userData = client.getUserData 
+                ? client.getUserData(userId) 
+                : db.prepare(`SELECT last_daily, xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
             
             if (!userData) {
-                if (client.initializeUser) {
-                    userData = client.initializeUser(userId, userName);
-                } else {
-                    database.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
-                        VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
-                    userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
-                }
+                db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
+                    VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
+                userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
             }
             
             const lastClaim = parseInt(userData.last_daily || 0);
@@ -123,7 +127,7 @@ module.exports = {
             const timePassed = now - lastClaim;
             const canClaim = timePassed >= oneDay || lastClaim === 0;
             
-            // ✅ COOLDOWN HANDLING
+            // Cooldown handling
             if (!canClaim) {
                 const timeLeft = oneDay - timePassed;
                 const hours = Math.floor(timeLeft / (1000 * 60 * 60));
@@ -134,16 +138,14 @@ module.exports = {
                 const cooldownEmbed = new EmbedBuilder()
                     .setColor('#ff4444')
                     .setAuthor({ name: t.cooldownTitle, iconURL: avatarURL })
-                    .setTitle('🔒 NEURAL CYCLE INCOMPLETE')
                     .setDescription(t.cooldownDesc(userName, timeString))
-                    .addFields({ name: t.tip, value: lang === 'fr' ? 'Utilisez `.daily` pour voir votre tableau de bord.' : 'Use `.daily` to view your dashboard.', inline: false })
-                    .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version}`, iconURL: guildIcon })
+                    .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
                 const row = new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder()
-                            .setCustomId('goto_daily')
+                            .setCustomId('claim_goto_daily')
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Primary)
                             .setEmoji('📊')
@@ -154,21 +156,24 @@ module.exports = {
                 const collector = reply.createMessageComponentCollector({ time: 30000 });
                 collector.on('collect', async (i) => {
                     if (i.user.id !== userId) {
-                        return i.reply({ content: t.accessDenied, ephemeral: true });
+                        return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
                     }
-                    if (i.customId === 'goto_daily') {
+                    
+                    // 🛡️ LA LIGNE CRITIQUE
+                    await i.deferUpdate().catch(() => {});
+                    
+                    if (i.customId === 'claim_goto_daily') {
                         const dailyCmd = client.commands.get('daily');
                         if (dailyCmd) {
-                            await dailyCmd.run(client, message, [], database, serverSettings, usedCommand);
-                            await i.reply({ content: t.dashboardOpened, ephemeral: true });
+                            await dailyCmd.run(client, message, [], db, serverSettings, usedCommand);
+                            await i.followUp({ content: t.dashboardOpened, ephemeral: true }).catch(() => {});
                         }
                     }
                 });
-                
                 return;
             }
             
-            // ✅ STREAK CALCULATION
+            // Streak calculation
             let streak = 1;
             let streakBonusXP = 25;
             let streakBonusCredits = 10;
@@ -185,31 +190,40 @@ module.exports = {
             const totalXP = baseXP + streakBonusXP;
             const totalCredits = baseCredits + streakBonusCredits;
             
-            // ✅ PROCESS CLAIM
+            // 🔥 BATCH WRITE SYSTEM
+            const currentUserData = client.getUserData 
+                ? client.getUserData(userId) 
+                : db.prepare(`SELECT xp, credits FROM users WHERE id = ?`).get(userId);
+            
             const nowTimestamp = Date.now();
             
-            database.prepare(`
-                UPDATE users 
-                SET xp = COALESCE(xp, 0) + ?,
-                    credits = COALESCE(credits, 0) + ?,
-                    streak_days = ?,
-                    last_daily = ?
-                WHERE id = ?
-            `).run(totalXP, totalCredits, streak, nowTimestamp, userId);
+            if (client.queueUserUpdate && currentUserData) {
+                client.queueUserUpdate(userId, {
+                    ...currentUserData,
+                    username: userName,
+                    xp: (currentUserData.xp || 0) + totalXP,
+                    credits: (currentUserData.credits || 0) + totalCredits,
+                    streak_days: streak,
+                    last_daily: nowTimestamp
+                });
+            } else {
+                db.prepare(`UPDATE users SET xp = COALESCE(xp, 0) + ?, credits = COALESCE(credits, 0) + ?, streak_days = ?, last_daily = ? WHERE id = ?`)
+                    .run(totalXP, totalCredits, streak, nowTimestamp, userId);
+            }
             
-            console.log(`[CLAIM] ${message.author.tag} claimed: +${totalXP} XP, +${totalCredits} credits, streak: ${streak}`);
+            // Get updated stats
+            const updatedUser = client.getUserData 
+                ? client.getUserData(userId) 
+                : db.prepare(`SELECT xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
             
-            // ✅ GET UPDATED STATS
-            const updatedUser = database.prepare(`SELECT xp, credits, streak_days, level FROM users WHERE id = ?`).get(userId);
             const currentXP = updatedUser.xp;
             const currentCredits = updatedUser.credits;
-            const currentLevel = calculateLevel(currentXP);
+            const currentLevel = updatedUser.level || calculateLevel(currentXP);
             
-            // ✅ SUCCESS EMBED
+            // Success embed
             const successEmbed = new EmbedBuilder()
                 .setColor('#00fbff')
                 .setAuthor({ name: t.successTitle, iconURL: avatarURL })
-                .setTitle('⚡ NEURAL SYNC COMPLETE')
                 .setDescription(t.successDesc(totalCredits, totalXP, streak))
                 .addFields(
                     { name: t.nextClaim, value: `<t:${Math.floor((now + oneDay) / 1000)}:R>`, inline: true },
@@ -225,18 +239,18 @@ module.exports = {
             }
             
             successEmbed
-                .setFooter({ text: `${guildName} • ARCHITECT CG-223 • v${version} • ${lang === 'fr' ? 'Réclamez demain!' : 'Claim tomorrow!'}`, iconURL: guildIcon })
+                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             
             const actionRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId('view_daily')
+                        .setCustomId('claim_view_daily')
                         .setLabel(t.viewDashboard)
                         .setStyle(ButtonStyle.Secondary)
                         .setEmoji('📊'),
                     new ButtonBuilder()
-                        .setCustomId('view_profile')
+                        .setCustomId('claim_view_profile')
                         .setLabel(t.myProfile)
                         .setStyle(ButtonStyle.Primary)
                         .setEmoji('👤')
@@ -244,32 +258,38 @@ module.exports = {
             
             const reply = await message.reply({ embeds: [successEmbed], components: [actionRow] });
             
-            // ✅ BUTTON COLLECTOR
+            // 🔥 BUTTON COLLECTOR CORRIGÉ
             const buttonCollector = reply.createMessageComponentCollector({ time: 60000 });
             
             buttonCollector.on('collect', async (i) => {
                 if (i.user.id !== userId) {
-                    return i.reply({ content: t.accessDenied, ephemeral: true });
+                    return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
                 }
                 
-                if (i.customId === 'view_daily') {
+                // 🛡️ LA LIGNE CRITIQUE
+                await i.deferUpdate().catch(() => {});
+                
+                if (i.customId === 'claim_view_daily') {
                     const dailyCmd = client.commands.get('daily');
                     if (dailyCmd) {
-                        await dailyCmd.run(client, message, [], database, serverSettings, usedCommand);
-                        await i.reply({ content: t.dashboardOpened, ephemeral: true });
+                        await dailyCmd.run(client, message, [], db, serverSettings, usedCommand);
+                        await i.followUp({ content: t.dashboardOpened, ephemeral: true }).catch(() => {});
                     }
-                } else if (i.customId === 'view_profile') {
+                } else if (i.customId === 'claim_view_profile') {
                     const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                     if (rankCmd) {
-                        await rankCmd.run(client, message, [], database, serverSettings, usedCommand);
-                        await i.reply({ content: t.profileOpened, ephemeral: true });
+                        await rankCmd.run(client, message, [], db, serverSettings, usedCommand);
+                        await i.followUp({ content: t.profileOpened, ephemeral: true }).catch(() => {});
                     }
                 }
             });
             
         } catch (error) {
             console.error(`[CLAIM] FATAL ERROR:`, error);
-            return message.reply({ content: '❌ An error occurred during claim processing.' });
+            const lang = client.detectLanguage 
+                ? client.detectLanguage(usedCommand, 'en')
+                : 'en';
+            return message.reply({ content: claimTranslations[lang].error }).catch(() => {});
         }
     }
 };
