@@ -76,7 +76,6 @@
 ### 🚀 COMING IN v1.7.0
 - [ ] Voice Channel Integration for Lydia (TTS)
 - [ ] Web Dashboard for Server Management
-- [ ] Marriage/Relationship System
 - [ ] Advanced Analytics & Heatmaps
 - [ ] Mobile App Notifications
 
