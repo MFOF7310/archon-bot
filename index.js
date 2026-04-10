@@ -727,7 +727,7 @@ client.once(Events.ClientReady, async () => {
     } catch (err) {}
 });
 
-// ================= 🔥 FIXED MESSAGE PROCESSING (COMMAND PRIORITY + AFK) =================
+// ================= 🔥 FIXED MESSAGE PROCESSING (COMMAND PRIORITY + AFK CORRIGÉ) =================
 client.on(Events.MessageCreate, async (message) => {
     if (!message || message.author?.bot || message.webhookId) return;
 
@@ -739,15 +739,20 @@ client.on(Events.MessageCreate, async (message) => {
         cacheUserData(userId, userData);
     }
 
-    // ================= 💤 AFK SYSTEM - MENTION CHECK =================
+    // ================= 💤 AFK SYSTEM - MENTION CHECK (CORRIGÉ) =================
     if (message.mentions.users.size > 0) {
+        // 🔥 CORRECTION: Utiliser serverSettings pour la langue (plus fiable)
+        const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
+        const lang = serverSettings?.language || 'en';
+        
         for (const [mentionedId, user] of message.mentions.users) {
             if (afkUsers.has(mentionedId)) {
                 const afkData = afkUsers.get(mentionedId);
                 const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
-                const timeText = minutes === 0 ? 'just now' : `${minutes} min`;
+                const timeText = minutes === 0 
+                    ? (lang === 'fr' ? 'à l\'instant' : 'just now')
+                    : `${minutes} min`;
                 
-                const lang = detectLanguage(message.content.split(' ')[0] || '');
                 const mentionMsg = lang === 'fr'
                     ? `💤 **${user.username}** est AFK (${timeText}): *${afkData.reason}*`
                     : `💤 **${user.username}** is AFK (${timeText}): *${afkData.reason}*`;
@@ -758,20 +763,23 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // ================= 💤 AFK SYSTEM - RETURN CHECK =================
+    // ================= 💤 AFK SYSTEM - RETURN CHECK (CORRIGÉ) =================
     if (afkUsers.has(message.author.id)) {
         const afkData = afkUsers.get(message.author.id);
         const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
         
         afkUsers.delete(message.author.id);
         
-        const lang = detectLanguage(message.content.split(' ')[0] || '');
+        // 🔥 CORRECTION: Utiliser serverSettings au lieu de detectLanguage sur le contenu
+        const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
+        const lang = serverSettings?.language || 'en';
+        
         const welcomeMsg = lang === 'fr'
             ? `👋 Bon retour **${message.author.username}**! AFK retiré (${minutes} min).`
             : `👋 Welcome back **${message.author.username}**! AFK removed (${minutes} min).`;
         
         await message.reply({ content: welcomeMsg }).catch(() => {});
-        console.log(`[AFK] ${message.author.tag} returned after ${minutes} min`);
+        console.log(`[AFK] ${message.author.tag} returned after ${minutes} min (Lang: ${lang})`);
     }
 
     const now = Date.now();
