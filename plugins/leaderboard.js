@@ -103,10 +103,8 @@ module.exports = {
     cooldown: 5000,
     examples: ['.leaderboard', '.leaderboard games', '.leaderboard winnings'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, 'en')
             : 'en';
@@ -257,7 +255,7 @@ module.exports = {
 
         if (!lbMsg) return;
 
-        // Collector
+        // ================= 🔥 COLLECTOR CORRIGÉ =================
         const collector = lbMsg.createMessageComponentCollector({
             componentType: ComponentType.Button,
             filter: i => i.user.id === message.author.id,
@@ -265,10 +263,13 @@ module.exports = {
         });
 
         collector.on('collect', async (i) => {
+            // 🛡️ LA LIGNE CRITIQUE
+            await i.deferUpdate().catch(() => {});
+            
             if (i.customId === 'lb_prev') currentPage--;
             if (i.customId === 'lb_next') currentPage++;
             
-            await i.update({
+            await i.editReply({
                 embeds: [generateEmbed(currentPage)],
                 components: [generateButtons(currentPage)]
             }).catch(() => {});
