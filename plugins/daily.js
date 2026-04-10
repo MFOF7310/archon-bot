@@ -96,27 +96,32 @@ module.exports = {
     cooldown: 3000,
     examples: ['.daily'],
 
+    // ✅ FIXED: Added usedCommand as 6th parameter
     run: async (client, message, args, database, serverSettings, usedCommand) => {
         
         try {
-            // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
+            // ✅ FIXED: Use the database parameter correctly
+            const db = database;
+            
+            // ✅ NEURAL BRIDGE: Priority on alias, fallback to server default
             const lang = client.detectLanguage 
-                ? client.detectLanguage(usedCommand, 'en')
-                : 'en';
+                ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
+                : (serverSettings?.language || 'en');
                 
             const t = dailyTranslations[lang];
             
-            // Channel Restriction Check
+            // ✅ DYNAMIC VERSION from client.version (reads from version.txt)
+            const version = client.version || '1.5.0';
+            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+            
+            // ✅ Channel Restriction Check
             if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
                 return message.reply({ 
                     content: t.channelRestricted(serverSettings.dailyChannel), 
                     ephemeral: true 
                 });
             }
-            
-            const version = client.version || '1.6.0';
-            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
             
             const userId = message.author.id;
             const userName = message.author.username;
@@ -127,9 +132,9 @@ module.exports = {
             const oneDay = 24 * 60 * 60 * 1000;
             const now = Date.now();
             
-            // ================= ENSURE REMINDERS TABLE EXISTS =================
+            // --- ENSURE REMINDERS TABLE EXISTS ---
             try {
-                database.prepare(`
+                db.prepare(`
                     CREATE TABLE IF NOT EXISTS reminders (
                         id TEXT PRIMARY KEY,
                         user_id TEXT NOT NULL,
@@ -137,37 +142,28 @@ module.exports = {
                         message TEXT NOT NULL,
                         execute_at INTEGER NOT NULL,
                         status TEXT DEFAULT 'pending',
-                        created_at INTEGER DEFAULT (strftime('%s', 'now'))
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
                 `).run();
             } catch (e) {
                 console.log(`[DAILY] Reminders table check: ${e.message}`);
             }
             
-            // 🔥 HIGH-SPEED DATA BRIDGE - RAM-first cache!
-            let userData = client.getUserData ? client.getUserData(userId) : null;
-            
-            if (!userData) {
-                // Only hit DB if cache miss (rare with your optimized index.js)
-                userData = database.prepare(`
+            // --- GET USER DATA ---
+            let userData = null;
+            try {
+                userData = db.prepare(`
                     SELECT last_daily, xp, credits, streak_days, level 
                     FROM users WHERE id = ?
                 `).get(userId);
-                
-                if (userData && client.cacheUserData) {
-                    client.cacheUserData(userId, userData);
-                }
+            } catch (err) {
+                console.error(`[DAILY] Fetch error: ${err.message}`);
             }
             
-            // Initialize user if doesn't exist
             if (!userData) {
-                database.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
+                db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
                     VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
                 userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
-                
-                if (client.cacheUserData) {
-                    client.cacheUserData(userId, userData);
-                }
             }
             
             // --- CALCULATE COOLDOWN STATUS ---
@@ -195,7 +191,7 @@ module.exports = {
             }
             
             // --- CHECK FOR ACTIVE REMINDER ---
-            const reminder = database.prepare(`
+            const reminder = db.prepare(`
                 SELECT execute_at FROM reminders 
                 WHERE user_id = ? AND status = 'pending' AND message LIKE '%reward%'
             `).get(userId);
@@ -260,6 +256,7 @@ module.exports = {
             // --- BUILD DYNAMIC BUTTON ROW ---
             const row = new ActionRowBuilder();
             
+            // Always show Profile and Leaderboard
             row.addComponents(
                 new ButtonBuilder()
                     .setCustomId('view_profile')
@@ -273,6 +270,7 @@ module.exports = {
                     .setEmoji('🏆')
             );
             
+            // Dynamic third button based on state
             if (canClaim) {
                 row.addComponents(
                     new ButtonBuilder()
@@ -302,7 +300,7 @@ module.exports = {
             
             const reply = await message.reply({ embeds: [dashboardEmbed], components: [row] });
             
-            // --- BUTTON COLLECTOR ---
+            // --- BUTTON COLLECTOR (FIXED - NO DOUBLE REPLY) ---
             const collector = reply.createMessageComponentCollector({ time: 120000 });
             
             collector.on('collect', async (i) => {
@@ -310,40 +308,43 @@ module.exports = {
                     return i.reply({ content: t.accessDenied, ephemeral: true });
                 }
                 
+                // ✅ Defer first to prevent "InteractionAlreadyReplied" errors
+                await i.deferUpdate();
+                
                 switch (i.customId) {
                     case 'view_profile':
                         const rankCmd = client.commands.get('rank') || client.commands.get('profile');
                         if (rankCmd) {
-                            await rankCmd.run(client, message, [], database, serverSettings, usedCommand);
-                            await i.reply({ content: t.profileOpened, ephemeral: true });
+                            await rankCmd.run(client, message, [], db, serverSettings, usedCommand);
+                            await i.followUp({ content: t.profileOpened, ephemeral: true });
                         } else {
-                            await i.reply({ content: t.profileNotFound, ephemeral: true });
+                            await i.followUp({ content: t.profileNotFound, ephemeral: true });
                         }
                         break;
                         
                     case 'view_leaderboard':
                         const lbCmd = client.commands.get('lb') || client.commands.get('leaderboard');
                         if (lbCmd) {
-                            await lbCmd.run(client, message, [], database, serverSettings, usedCommand);
-                            await i.reply({ content: t.leaderboardOpened, ephemeral: true });
+                            await lbCmd.run(client, message, [], db, serverSettings, usedCommand);
+                            await i.followUp({ content: t.leaderboardOpened, ephemeral: true });
                         } else {
-                            await i.reply({ content: t.leaderboardNotFound, ephemeral: true });
+                            await i.followUp({ content: t.leaderboardNotFound, ephemeral: true });
                         }
                         break;
                         
                     case 'go_claim':
                         const claimCmd = client.commands.get('claim');
                         if (claimCmd) {
-                            await claimCmd.run(client, message, [], database, serverSettings, usedCommand);
-                            await i.reply({ content: t.claimProcessed, ephemeral: true });
+                            await claimCmd.run(client, message, [], db, serverSettings, usedCommand);
+                            await i.followUp({ content: t.claimProcessed, ephemeral: true });
                         } else {
-                            await i.reply({ content: t.claimNotFound, ephemeral: true });
+                            await i.followUp({ content: t.claimNotFound, ephemeral: true });
                         }
                         break;
                         
                     case 'remind_me':
-                        // Check for existing reminder
-                        const existing = database.prepare(`
+                        // Double-check no reminder exists
+                        const existing = db.prepare(`
                             SELECT execute_at FROM reminders 
                             WHERE user_id = ? AND status = 'pending' AND message LIKE '%reward%'
                         `).get(userId);
@@ -352,10 +353,10 @@ module.exports = {
                             const timeLeft = (existing.execute_at * 1000) - Date.now();
                             const h = Math.floor(timeLeft / 3600000);
                             const m = Math.floor((timeLeft % 3600000) / 60000);
-                            return i.reply({ content: t.reminderAlreadyActive(h, m), ephemeral: true });
+                            return i.followUp({ content: t.reminderAlreadyActive(h, m), ephemeral: true });
                         }
                         
-                        // Calculate next claim time
+                        // Create reminder
                         const nextClaimTime = new Date(lastClaim + oneDay);
                         const timeUntilHours = Math.floor((nextClaimTime - now) / 1000 / 60 / 60);
                         const executeAt = Math.floor(nextClaimTime.getTime() / 1000);
@@ -365,16 +366,15 @@ module.exports = {
                             : `**Agent ${userName}**, your daily reward is ready! Use \`.claim\` to collect it.`;
                         
                         try {
-                            database.prepare(`
+                            db.prepare(`
                                 INSERT INTO reminders (id, user_id, channel_id, message, execute_at, status) 
                                 VALUES (?, ?, ?, ?, ?, 'pending')
                             `).run(reminderId, userId, i.channelId, reminderMsg, executeAt);
                             
-                            await i.reply({ content: t.reminderSuccess(timeUntilHours), ephemeral: true });
-                            console.log(`[DAILY] Reminder set for ${message.author.tag} in ${timeUntilHours}h`);
+                            await i.followUp({ content: t.reminderSuccess(timeUntilHours), ephemeral: true });
+                            console.log(`[DAILY] Reminder set for ${message.author.tag}`);
                         } catch (e) {
-                            console.error(`[DAILY] Reminder error:`, e);
-                            await i.reply({ content: t.error, ephemeral: true });
+                            await i.followUp({ content: t.error, ephemeral: true });
                         }
                         break;
                 }
@@ -382,8 +382,7 @@ module.exports = {
             
         } catch (error) {
             console.error(`[DAILY] FATAL ERROR:`, error);
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
-            return message.reply({ content: dailyTranslations[lang].error });
+            return message.reply({ content: '❌ An error occurred.' });
         }
     }
 };
