@@ -681,13 +681,6 @@ client.once(Events.ClientReady, async () => {
     startReminderHeartbeat();
     startCacheJanitor();
     
-    // ================= 🔮 v1.7.0 TELEGRAM BRIDGE INIT (COMMENTÉ - PRÊT À ACTIVER) =================
-    /*
-    console.log(`${cyan}[TELEGRAM]${reset} Initializing Telegram Bridge...`);
-    await setupTelegramBridge(client, db);
-    console.log(`${green}[TELEGRAM]${reset} Bridge active - Discord ↔ Telegram synchronized`);
-    */
-    
     const boxWidth = 64;
     const drawBoxLine = (label, value) => {
         const lineContent = `║  ${label.padEnd(12)} : ${value}`;
@@ -706,7 +699,6 @@ client.once(Events.ClientReady, async () => {
     console.log(`${blue}${bold}${drawBoxLine(`${green}💾 DB BATCH`, `${WRITE_STRATEGY.MAX_WAIT_MS/1000}s delay`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🔔 REMINDERS`, `30s heartbeat`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}💤 AFK SYSTEM`, `ACTIVE`)}${reset}`);
-    // console.log(`${blue}${bold}${drawBoxLine(`${green}📡 TELEGRAM`, `BRIDGE READY`)}${reset}`); // v1.7.0
     console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
 
     if (client.userTimeouts) {
@@ -714,17 +706,56 @@ client.once(Events.ClientReady, async () => {
         client.userTimeouts.clear();
     }
 
+    // 🔥 LE DM STYLÉ COMME DANS L'IMAGE
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
-        await owner.send({ 
-            embeds: [new EmbedBuilder()
-                .setColor('#2ecc71')
-                .setTitle('🦅 ARCHITECT CG-223 // ONLINE')
-                .setDescription(`System reboot complete. **${client.commands.size}** modules synced.\n\n**Database:** WAL Mode (High Performance)\n**AFK System:** Active`)
-                .setTimestamp()
-            ] 
-        });
-    } catch (err) {}
+        
+        console.log(`${cyan}[DM]${reset} Attempting to send boot DM to ${owner.tag}...`);
+        
+        const bootEmbed = new EmbedBuilder()
+            .setColor('#2ecc71')
+            .setAuthor({ 
+                name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', 
+                iconURL: client.user.displayAvatarURL() 
+            })
+            .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
+            .setDescription(
+                `**System reboot complete.**\n` +
+                `**Modules:** ${client.commands.size} plugins synced\n` +
+                `**Version:** v${client.version}\n` +
+                `**Node:** BAMAKO_223 🇲🇱\n` +
+                `**Listeners:** ${client.listenerCount('messageCreate')} active\n` +
+                `**Database:** WAL Mode (High Performance)`
+            )
+            .addFields(
+                { 
+                    name: '🔗 Repository', 
+                    value: '[github.com/MFOF7310](https://github.com/MFOF7310)', 
+                    inline: true 
+                },
+                { 
+                    name: '🏗️ Architect', 
+                    value: 'Moussa Fofana', 
+                    inline: true 
+                },
+                { 
+                    name: '🕐 Boot Time', 
+                    value: `<t:${Math.floor(Date.now() / 1000)}:F>`, 
+                    inline: false 
+                }
+            )
+            .setFooter({ 
+                text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, 
+                iconURL: client.user.displayAvatarURL() 
+            })
+            .setTimestamp();
+
+        await owner.send({ embeds: [bootEmbed] });
+        console.log(`${green}[DM]${reset} ✅ Boot DM sent successfully to ${owner.tag}`);
+        
+    } catch (err) {
+        console.log(`${yellow}[DM]${reset} ❌ Could not send boot DM: ${err.message}`);
+    }
 });
 
 // ================= 🔥 FIXED MESSAGE PROCESSING (COMMAND PRIORITY + AFK CORRIGÉ) =================
@@ -741,7 +772,6 @@ client.on(Events.MessageCreate, async (message) => {
 
     // ================= 💤 AFK SYSTEM - MENTION CHECK (CORRIGÉ) =================
     if (message.mentions.users.size > 0) {
-        // 🔥 CORRECTION: Utiliser serverSettings pour la langue (plus fiable)
         const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
         const lang = serverSettings?.language || 'en';
         
@@ -770,7 +800,6 @@ client.on(Events.MessageCreate, async (message) => {
         
         afkUsers.delete(message.author.id);
         
-        // 🔥 CORRECTION: Utiliser serverSettings au lieu de detectLanguage sur le contenu
         const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
         const lang = serverSettings?.language || 'en';
         
