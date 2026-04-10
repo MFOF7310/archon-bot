@@ -49,7 +49,9 @@ const translations = {
         viewGiveaway: 'View Giveaway',
         prizeAmount: 'Prize Amount',
         credited: 'Credited',
-        toWinners: 'to winner(s)'
+        toWinners: 'to winner(s)',
+        refund: '💰 Refund',
+        refundDesc: 'Entry fee returned to both players.'
     },
     fr: {
         title: '🎁 CONCOURS NEURAL',
@@ -98,7 +100,9 @@ const translations = {
         viewGiveaway: 'Voir le Concours',
         prizeAmount: 'Montant du Prix',
         credited: 'Crédité',
-        toWinners: 'au(x) gagnant(s)'
+        toWinners: 'au(x) gagnant(s)',
+        refund: '💰 Remboursement',
+        refundDesc: 'Frais d\'entrée retournés aux deux joueurs.'
     }
 };
 
@@ -206,10 +210,8 @@ module.exports = {
     usage: '.giveaway [time] [winners] [prize]',
     examples: ['.giveaway 1h 2 1000 Credits', '.giveaway 30m 1 Legendary Pack', '.concours 2h 3 5000 Crédits'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, 'en')
             : 'en';
@@ -325,7 +327,7 @@ module.exports = {
         giveaway.messageId = giveawayMessage.id;
         activeGiveaways.set(giveawayId, giveaway);
         
-        // ================= BUTTON COLLECTOR =================
+        // ================= 🔥 BUTTON COLLECTOR CORRIGÉ =================
         const collector = giveawayMessage.createMessageComponentCollector({ 
             componentType: ComponentType.Button
         });
@@ -334,21 +336,24 @@ module.exports = {
             const currentGiveaway = activeGiveaways.get(giveawayId);
             if (!currentGiveaway) return;
             
+            // 🛡️ LA LIGNE CRITIQUE
+            await i.deferUpdate().catch(() => {});
+            
             // Handle Enter
             if (i.customId === 'gw_enter') {
                 if (i.user.id === currentGiveaway.hostId) {
-                    return i.reply({ content: t.cannotEnter, ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.cannotEnter, ephemeral: true }).catch(() => {});
                 }
                 
                 if (currentGiveaway.entries.includes(i.user.id)) {
-                    return i.reply({ content: t.alreadyEntered, ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.alreadyEntered, ephemeral: true }).catch(() => {});
                 }
                 
                 currentGiveaway.entries.push(i.user.id);
                 activeGiveaways.set(giveawayId, currentGiveaway);
                 
                 const updatedEmbed = createGiveawayEmbed(currentGiveaway, 'active', lang, message.guild, client);
-                await i.update({ embeds: [updatedEmbed], components: [row] }).catch(() => {});
+                await i.editReply({ embeds: [updatedEmbed], components: [row] }).catch(() => {});
                 
                 return i.followUp({ content: t.enterSuccess, ephemeral: true }).catch(() => {});
             }
@@ -357,14 +362,14 @@ module.exports = {
             if (i.customId === 'gw_leave') {
                 const index = currentGiveaway.entries.indexOf(i.user.id);
                 if (index === -1) {
-                    return i.reply({ content: t.notEntered, ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.notEntered, ephemeral: true }).catch(() => {});
                 }
                 
                 currentGiveaway.entries.splice(index, 1);
                 activeGiveaways.set(giveawayId, currentGiveaway);
                 
                 const updatedEmbed = createGiveawayEmbed(currentGiveaway, 'active', lang, message.guild, client);
-                await i.update({ embeds: [updatedEmbed], components: [row] }).catch(() => {});
+                await i.editReply({ embeds: [updatedEmbed], components: [row] }).catch(() => {});
                 
                 return i.followUp({ content: t.leaveSuccess, ephemeral: true }).catch(() => {});
             }
@@ -372,18 +377,18 @@ module.exports = {
             // Handle Reroll (Host/Admin Only)
             if (i.customId === 'gw_reroll') {
                 if (i.user.id !== currentGiveaway.hostId && !i.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                    return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.accessDenied, ephemeral: true }).catch(() => {});
                 }
                 
                 const newWinners = selectWinners(currentGiveaway.entries, currentGiveaway.winners);
                 
                 if (newWinners.length === 0) {
-                    return i.reply({ content: t.noEntries, ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.noEntries, ephemeral: true }).catch(() => {});
                 }
                 
                 currentGiveaway.winnersList = newWinners;
                 const rerollEmbed = createGiveawayEmbed(currentGiveaway, 'ended', lang, message.guild, client);
-                await i.update({ embeds: [rerollEmbed], components: [createButtonRow('ended', lang)] }).catch(() => {});
+                await i.editReply({ embeds: [rerollEmbed], components: [createButtonRow('ended', lang)] }).catch(() => {});
                 
                 const winnerAnnouncement = new EmbedBuilder()
                     .setColor('#FEE75C')
@@ -419,13 +424,13 @@ module.exports = {
             // Handle Delete (Host/Admin Only)
             if (i.customId === 'gw_delete') {
                 if (i.user.id !== currentGiveaway.hostId && !i.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                    return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.accessDenied, ephemeral: true }).catch(() => {});
                 }
                 
                 activeGiveaways.delete(giveawayId);
                 collector.stop();
                 
-                await i.update({ content: t.deleteSuccess, embeds: [], components: [] }).catch(() => {});
+                await i.editReply({ content: t.deleteSuccess, embeds: [], components: [] }).catch(() => {});
             }
         });
         
