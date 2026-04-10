@@ -706,63 +706,61 @@ client.once(Events.ClientReady, async () => {
         client.userTimeouts.clear();
     }
 
-    // 🔥 LE DM ULTRA-STYLÉ AVEC ANSI COLORS
-    try {
-        const owner = await client.users.fetch(process.env.OWNER_ID);
-        
-        console.log(`${cyan}[DM]${reset} Attempting to send boot DM to ${owner.tag}...`);
-        
-        const bootEmbed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setAuthor({ 
-                name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', 
-                iconURL: client.user.displayAvatarURL() 
-            })
-            .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
-            .setDescription(
-                `\`\`\`ansi\n` +
-                `\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n` +
-                `\u001b[1;32m║\u001b[0m \u001b[1;36m🦅 ARCHITECT CG-223 // NEURAL ENGINE\u001b[0m \u001b[1;32m║\u001b[0m\n` +
-                `\u001b[1;32m╠═══════════════════════════════════════╣\u001b[0m\n` +
-                `\u001b[1;32m║\u001b[0m \u001b[1;33mSystem:\u001b[0m reboot complete                \u001b[1;32m║\u001b[0m\n` +
-                `\u001b[1;32m║\u001b[0m \u001b[1;36mModules:\u001b[0m ${String(client.commands.size).padStart(2, ' ')} plugins synced              \u001b[1;32m║\u001b[0m\n` +
-                `\u001b[1;32m║\u001b[0m \u001b[1;35mVersion:\u001b[0m v${client.version}                       \u001b[1;32m║\u001b[0m\n` +
-                `\u001b[1;32m║\u001b[0m \u001b[1;34mNode:\u001b[0m BAMAKO_223 🇲🇱                      \u001b[1;32m║\u001b[0m\n` +
-                `\u001b[1;32m║\u001b[0m \u001b[1;36mListeners:\u001b[0m ${client.listenerCount('messageCreate')} active                          \u001b[1;32m║\u001b[0m\n` +
-                `\u001b[1;32m║\u001b[0m \u001b[1;32mDatabase:\u001b[0m WAL Mode (High Performance)  \u001b[1;32m║\u001b[0m\n` +
-                `\u001b[1;32m║\u001b[0m \u001b[1;35mAFK System:\u001b[0m ACTIVE                     \u001b[1;32m║\u001b[0m\n` +
-                `\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n` +
-                `\`\`\``
-            )
-            .addFields(
-                { 
-                    name: '🔗 Repository', 
-                    value: '```ansi\n\u001b[1;36mgithub.com/MFOF7310\u001b[0m\n```', 
-                    inline: true 
-                },
-                { 
-                    name: '🏗️ Architect', 
-                    value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', 
-                    inline: true 
-                },
-                { 
-                    name: '🕐 Boot Time', 
-                    value: `<t:${Math.floor(Date.now() / 1000)}:F>`, 
-                    inline: false 
-                }
-            )
-            .setFooter({ 
-                text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, 
-                iconURL: client.user.displayAvatarURL() 
-            })
-            .setTimestamp();
+    // 🔥 LE DM STYLÉ AVEC ANSI COLORS (OPTION 4)
+try {
+    const owner = await client.users.fetch(process.env.OWNER_ID);
+    
+    console.log(`${cyan}[DM]${reset} Attempting to send boot DM to ${owner.tag}...`);
+    
+    const bootEmbed = new EmbedBuilder()
+        .setColor('#2ecc71')
+        .setAuthor({ 
+            name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', 
+            iconURL: client.user.displayAvatarURL() 
+        })
+        .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
+        .setDescription(
+            `\`\`\`ansi\n` +
+            `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
+            `\u001b[1;36mSystem:\u001b[0m reboot complete\n` +
+            `\u001b[1;34mModules:\u001b[0m ${client.commands.size} plugins synced\n` +
+            `\u001b[1;35mVersion:\u001b[0m v${client.version}\n` +
+            `\u001b[1;33mNode:\u001b[0m BAMAKO_223 🇲🇱\n` +
+            `\u001b[1;36mListeners:\u001b[0m ${client.listenerCount('messageCreate')} active\n` +
+            `\u001b[1;32mDatabase:\u001b[0m WAL Mode (High Performance)\n` +
+            `\u001b[1;35mAFK System:\u001b[0m ACTIVE\n` +
+            `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
+            `\`\`\``
+        )
+        .addFields(
+            { 
+                name: '🔗 Repository', 
+                value: '```ansi\n\u001b[1;36mgithub.com/MFOF7310\u001b[0m\n```', 
+                inline: true 
+            },
+            { 
+                name: '🏗️ Architect', 
+                value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', 
+                inline: true 
+            },
+            { 
+                name: '🕐 Boot Time', 
+                value: `<t:${Math.floor(Date.now() / 1000)}:F>`, 
+                inline: false 
+            }
+        )
+        .setFooter({ 
+            text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, 
+            iconURL: client.user.displayAvatarURL() 
+        })
+        .setTimestamp();
 
-        await owner.send({ embeds: [bootEmbed] });
-        console.log(`${green}[DM]${reset} ✅ Boot DM sent successfully to ${owner.tag}`);
-        
-    } catch (err) {
-        console.log(`${yellow}[DM]${reset} ❌ Could not send boot DM: ${err.message}`);
-    }
+    await owner.send({ embeds: [bootEmbed] });
+    console.log(`${green}[DM]${reset} ✅ Boot DM sent successfully to ${owner.tag}`);
+    
+} catch (err) {
+    console.log(`${yellow}[DM]${reset} ❌ Could not send boot DM: ${err.message}`);
+}
 });
 
 // ================= 🔥 FIXED MESSAGE PROCESSING (COMMAND PRIORITY + AFK CORRIGÉ) =================
