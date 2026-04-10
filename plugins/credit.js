@@ -115,26 +115,22 @@ module.exports = {
     cooldown: 3000,
     examples: ['.credits', '.credits @user'],
 
-    // ✅ FIXED: Added serverSettings and usedCommand parameters
-    run: async (client, message, args, database, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
         
-        // ✅ NEURAL LANGUAGE BRIDGE
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
             : (serverSettings?.language || 'en');
         const t = walletTranslations[lang];
         
-        // ✅ DYNAMIC VERSION from client.version (reads from version.txt)
-        const version = client.version || '1.5.0';
+        const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
-        // --- TARGET USER (self or mentioned) ---
         const target = message.mentions.users.first() || message.author;
         const isSelf = target.id === message.author.id;
         
-        // --- FETCH DATA FROM UNIFIED DATABASE ---
-        const userData = database.prepare(`
+        // 🔥 CORRECTION: db.prepare (pas db.pycrc !)
+        const userData = db.prepare(`
             SELECT credits, xp, total_winnings, games_played, games_won 
             FROM users 
             WHERE id = ?
@@ -146,7 +142,7 @@ module.exports = {
                 .setDescription(t.noUser)
                 .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
-            return message.reply({ embeds: [errorEmbed] });
+            return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
 
         const credits = userData.credits || 0;
@@ -155,21 +151,13 @@ module.exports = {
         const gamesPlayed = userData.games_played || 0;
         const gamesWon = userData.games_won || 0;
         
-        // Calculate level and AGENT rank (XP-based)
         const level = calculateLevel(xp);
         const agentRank = getAgentRank(level);
-        
-        // Calculate WEALTH tier (Credit-based - separate system)
         const wealthTier = getWealthTier(credits);
         const nextWealthTier = getNextWealthTier(credits);
-        
-        // Calculate win rate
         const winRate = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
-        
-        // Calculate estimated daily earnings
         const estimatedDailyEarnings = Math.min(Math.floor(gamesPlayed * 0.5) * 100, 5000);
         
-        // Calculate wealth tier progress
         let progressToNextTier = 0;
         let creditsToNextTier = 0;
         
@@ -181,13 +169,11 @@ module.exports = {
             progressToNextTier = Math.min(100, Math.max(0, (creditsInRange / tierRange) * 100));
         }
         
-        // Create progress bar for wealth tier
         const progressBarLength = 15;
         const filledBars = Math.floor(progressToNextTier / (100 / progressBarLength));
         const emptyBars = progressBarLength - filledBars;
         const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
         
-        // --- BUILD WALLET EMBED ---
         const walletEmbed = new EmbedBuilder()
             .setColor(agentRank.color)
             .setAuthor({ 
@@ -198,31 +184,12 @@ module.exports = {
             .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 512 }))
             .setDescription(`\`\`\`yaml\n${t.vaultStatus}\nNode: BAMAKO-223\nCore: Groq LPU™\n\`\`\``)
             .addFields(
-                { 
-                    name: `💰 ${t.balance}`, 
-                    value: `**${credits.toLocaleString()}** 🪙`, 
-                    inline: true 
-                },
-                { 
-                    name: `🏆 ${t.totalGains}`, 
-                    value: `**${winnings.toLocaleString()}** 🪙`, 
-                    inline: true 
-                },
-                { 
-                    name: `📈 ${t.agentRank}`, 
-                    value: `${agentRank.emoji} **${agentRank.title[lang]}**\n${t.level}: ${level}`, 
-                    inline: true 
-                }
+                { name: `💰 ${t.balance}`, value: `**${credits.toLocaleString()}** 🪙`, inline: true },
+                { name: `🏆 ${t.totalGains}`, value: `**${winnings.toLocaleString()}** 🪙`, inline: true },
+                { name: `📈 ${t.agentRank}`, value: `${agentRank.emoji} **${agentRank.title[lang]}**\n${t.level}: ${level}`, inline: true },
+                { name: `💎 ${t.wealthTier}`, value: `${wealthTier.emoji} **${wealthTier.title[lang]}**`, inline: true }
             );
         
-        // Add Wealth Tier (separate from agent rank)
-        walletEmbed.addFields({
-            name: `💎 ${t.wealthTier}`,
-            value: `${wealthTier.emoji} **${wealthTier.title[lang]}**`,
-            inline: true
-        });
-        
-        // Add wealth tier progress if not at max
         if (nextWealthTier) {
             walletEmbed.addFields({
                 name: `🎯 ${t.nextTier}: ${nextWealthTier.emoji} ${nextWealthTier.title[lang]}`,
@@ -237,7 +204,6 @@ module.exports = {
             });
         }
         
-        // Add game stats if available
         if (gamesPlayed > 0) {
             walletEmbed.addFields({
                 name: `🎮 ${t.gamesPlayed}`,
@@ -246,7 +212,6 @@ module.exports = {
             });
         }
         
-        // Add daily earning estimate
         if (estimatedDailyEarnings > 0) {
             walletEmbed.addFields({
                 name: `⚡ ${t.creditsPerDay}`,
@@ -259,7 +224,6 @@ module.exports = {
             .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         
-        // --- ADD WARNING FOR LOW CREDITS (only for self) ---
         if (credits < 100 && isSelf) {
             walletEmbed.addFields({
                 name: t.lowCredits,
@@ -268,144 +232,125 @@ module.exports = {
             });
         }
         
-        // --- NAVIGATION BUTTONS (Only for the message author) ---
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('go_shop')
-                .setLabel(t.shopBtn)
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('🏪'),
-            new ButtonBuilder()
-                .setCustomId('go_daily')
-                .setLabel(t.dailyBtn)
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('⚡'),
-            new ButtonBuilder()
-                .setCustomId('refresh_balance')
-                .setLabel(t.refreshBtn)
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('🔄')
+            new ButtonBuilder().setCustomId('credits_shop').setLabel(t.shopBtn).setStyle(ButtonStyle.Primary).setEmoji('🏪'),
+            new ButtonBuilder().setCustomId('credits_daily').setLabel(t.dailyBtn).setStyle(ButtonStyle.Success).setEmoji('⚡'),
+            new ButtonBuilder().setCustomId('credits_refresh').setLabel(t.refreshBtn).setStyle(ButtonStyle.Secondary).setEmoji('🔄')
         );
         
         const reply = await message.reply({ 
             embeds: [walletEmbed], 
             components: isSelf ? [row] : [] 
+        }).catch(() => {});
+        
+        if (!reply || !isSelf) return;
+        
+        const collector = reply.createMessageComponentCollector({ time: 60000 });
+        
+        collector.on('collect', async (i) => {
+            if (i.user.id !== message.author.id) {
+                return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+            }
+            
+            await i.deferUpdate().catch(() => {});
+            
+            switch (i.customId) {
+                case 'credits_shop':
+                    const shopCmd = client.commands.get('shop');
+                    if (shopCmd) {
+                        await shopCmd.run(client, message, [], db, serverSettings, usedCommand);
+                    } else {
+                        await i.followUp({ content: t.shopNotFound, ephemeral: true }).catch(() => {});
+                    }
+                    break;
+                    
+                case 'credits_daily':
+                    const dailyCmd = client.commands.get('daily');
+                    if (dailyCmd) {
+                        await dailyCmd.run(client, message, [], db, serverSettings, usedCommand);
+                    } else {
+                        await i.followUp({ content: t.dailyNotFound, ephemeral: true }).catch(() => {});
+                    }
+                    break;
+                    
+                case 'credits_refresh':
+                    const freshData = db.prepare(`
+                        SELECT credits, xp, total_winnings, games_played, games_won 
+                        FROM users WHERE id = ?
+                    `).get(message.author.id);
+                    
+                    if (freshData) {
+                        const freshCredits = freshData.credits || 0;
+                        const freshLevel = calculateLevel(freshData.xp || 0);
+                        const freshAgentRank = getAgentRank(freshLevel);
+                        const freshWealthTier = getWealthTier(freshCredits);
+                        const freshNextWealthTier = getNextWealthTier(freshCredits);
+                        
+                        let freshProgress = 0;
+                        let freshCreditsToNext = 0;
+                        if (freshNextWealthTier) {
+                            freshCreditsToNext = freshNextWealthTier.minCredits - freshCredits;
+                            const prevTierMin = WEALTH_TIERS[WEALTH_TIERS.indexOf(freshNextWealthTier) - 1]?.minCredits || 0;
+                            const tierRange = freshNextWealthTier.minCredits - prevTierMin;
+                            const creditsInRange = freshCredits - prevTierMin;
+                            freshProgress = Math.min(100, Math.max(0, (creditsInRange / tierRange) * 100));
+                        }
+                        
+                        const freshFilledBars = Math.floor(freshProgress / (100 / progressBarLength));
+                        const freshProgressBar = '█'.repeat(freshFilledBars) + '░'.repeat(progressBarLength - freshFilledBars);
+                        
+                        const refreshedEmbed = new EmbedBuilder()
+                            .setColor(freshAgentRank.color)
+                            .setAuthor({ 
+                                name: t.ownWallet(message.author.username), 
+                                iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }) 
+                            })
+                            .setTitle(t.title)
+                            .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
+                            .setDescription(`\`\`\`yaml\n${t.vaultStatus}\nNode: BAMAKO-223\nCore: Groq LPU™\n\`\`\``)
+                            .addFields(
+                                { name: `💰 ${t.balance}`, value: `**${freshCredits.toLocaleString()}** 🪙`, inline: true },
+                                { name: `🏆 ${t.totalGains}`, value: `**${(freshData.total_winnings || 0).toLocaleString()}** 🪙`, inline: true },
+                                { name: `📈 ${t.agentRank}`, value: `${freshAgentRank.emoji} **${freshAgentRank.title[lang]}**\n${t.level}: ${freshLevel}`, inline: true },
+                                { name: `💎 ${t.wealthTier}`, value: `${freshWealthTier.emoji} **${freshWealthTier.title[lang]}**`, inline: true }
+                            );
+                        
+                        if (freshNextWealthTier) {
+                            refreshedEmbed.addFields({
+                                name: `🎯 ${t.nextTier}: ${freshNextWealthTier.emoji} ${freshNextWealthTier.title[lang]}`,
+                                value: `\`${freshProgressBar}\` **${freshProgress.toFixed(1)}%**\n└─ ${freshCreditsToNext.toLocaleString()} 🪙 ${t.required}`,
+                                inline: false
+                            });
+                        } else {
+                            refreshedEmbed.addFields({
+                                name: `🏆 ${t.maxTier}`,
+                                value: t.maxTierMsg,
+                                inline: false
+                            });
+                        }
+                        
+                        if (freshCredits < 100) {
+                            refreshedEmbed.addFields({
+                                name: t.lowCredits,
+                                value: t.lowCreditsMsg,
+                                inline: false
+                            });
+                        }
+                        
+                        refreshedEmbed
+                            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                            .setTimestamp();
+                        
+                        await i.editReply({ embeds: [refreshedEmbed] }).catch(() => {});
+                    }
+                    break;
+            }
         });
         
-        // --- INTERACTIVE NAVIGATION COLLECTOR ---
-        if (isSelf) {
-            const collector = reply.createMessageComponentCollector({ time: 60000 });
-            
-            collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) {
-                    return i.reply({ content: t.accessDenied, ephemeral: true });
-                }
-                
-                await i.deferUpdate();
-                
-                switch (i.customId) {
-                    case 'go_shop':
-                        const shopCmd = client.commands.get('shop');
-                        if (shopCmd) {
-                            // ✅ PASS usedCommand to maintain language!
-                            await shopCmd.run(client, message, [], database, serverSettings, usedCommand);
-                        } else {
-                            await i.followUp({ content: t.shopNotFound, ephemeral: true });
-                        }
-                        break;
-                        
-                    case 'go_daily':
-                        const dailyCmd = client.commands.get('daily');
-                        if (dailyCmd) {
-                            // ✅ PASS usedCommand to maintain language!
-                            await dailyCmd.run(client, message, [], database, serverSettings, usedCommand);
-                        } else {
-                            await i.followUp({ content: t.dailyNotFound, ephemeral: true });
-                        }
-                        break;
-                        
-                    case 'refresh_balance':
-                        // Refresh the balance display
-                        const freshData = database.prepare(`
-                            SELECT credits, xp, total_winnings, games_played, games_won 
-                            FROM users WHERE id = ?
-                        `).get(message.author.id);
-                        
-                        if (freshData) {
-                            const freshCredits = freshData.credits || 0;
-                            const freshLevel = calculateLevel(freshData.xp || 0);
-                            const freshAgentRank = getAgentRank(freshLevel);
-                            const freshWealthTier = getWealthTier(freshCredits);
-                            const freshNextWealthTier = getNextWealthTier(freshCredits);
-                            
-                            // Recalculate progress
-                            let freshProgress = 0;
-                            let freshCreditsToNext = 0;
-                            if (freshNextWealthTier) {
-                                freshCreditsToNext = freshNextWealthTier.minCredits - freshCredits;
-                                const prevTierMin = WEALTH_TIERS[WEALTH_TIERS.indexOf(freshNextWealthTier) - 1]?.minCredits || 0;
-                                const tierRange = freshNextWealthTier.minCredits - prevTierMin;
-                                const creditsInRange = freshCredits - prevTierMin;
-                                freshProgress = Math.min(100, Math.max(0, (creditsInRange / tierRange) * 100));
-                            }
-                            
-                            const freshFilledBars = Math.floor(freshProgress / (100 / progressBarLength));
-                            const freshProgressBar = '█'.repeat(freshFilledBars) + '░'.repeat(progressBarLength - freshFilledBars);
-                            
-                            const refreshedEmbed = new EmbedBuilder()
-                                .setColor(freshAgentRank.color)
-                                .setAuthor({ 
-                                    name: t.ownWallet(message.author.username), 
-                                    iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }) 
-                                })
-                                .setTitle(t.title)
-                                .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
-                                .setDescription(`\`\`\`yaml\n${t.vaultStatus}\nNode: BAMAKO-223\nCore: Groq LPU™\n\`\`\``)
-                                .addFields(
-                                    { name: `💰 ${t.balance}`, value: `**${freshCredits.toLocaleString()}** 🪙`, inline: true },
-                                    { name: `🏆 ${t.totalGains}`, value: `**${(freshData.total_winnings || 0).toLocaleString()}** 🪙`, inline: true },
-                                    { name: `📈 ${t.agentRank}`, value: `${freshAgentRank.emoji} **${freshAgentRank.title[lang]}**\n${t.level}: ${freshLevel}`, inline: true },
-                                    { name: `💎 ${t.wealthTier}`, value: `${freshWealthTier.emoji} **${freshWealthTier.title[lang]}**`, inline: true }
-                                );
-                            
-                            if (freshNextWealthTier) {
-                                refreshedEmbed.addFields({
-                                    name: `🎯 ${t.nextTier}: ${freshNextWealthTier.emoji} ${freshNextWealthTier.title[lang]}`,
-                                    value: `\`${freshProgressBar}\` **${freshProgress.toFixed(1)}%**\n└─ ${freshCreditsToNext.toLocaleString()} 🪙 ${t.required}`,
-                                    inline: false
-                                });
-                            } else {
-                                refreshedEmbed.addFields({
-                                    name: `🏆 ${t.maxTier}`,
-                                    value: t.maxTierMsg,
-                                    inline: false
-                                });
-                            }
-                            
-                            if (freshCredits < 100) {
-                                refreshedEmbed.addFields({
-                                    name: t.lowCredits,
-                                    value: t.lowCreditsMsg,
-                                    inline: false
-                                });
-                            }
-                            
-                            refreshedEmbed
-                                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                                .setTimestamp();
-                            
-                            await i.editReply({ embeds: [refreshedEmbed] });
-                        }
-                        break;
-                }
-            });
-            
-            collector.on('end', () => {
-                reply.edit({ components: [] }).catch(() => {});
-            });
-        }
+        collector.on('end', () => {
+            reply.edit({ components: [] }).catch(() => {});
+        });
         
-        // --- LOG THE COMMAND ---
-        console.log(`[CREDITS] ${message.author.tag} checked ${isSelf ? 'their own' : `${target.tag}'s`} balance: ${credits} credits | Wealth: ${wealthTier.title.en} | Lang: ${lang}`);
+        console.log(`[CREDITS] ${message.author.tag} checked balance: ${credits} credits | Lang: ${lang}`);
     }
 };
