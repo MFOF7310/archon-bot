@@ -157,6 +157,10 @@ const colorMap = {
     ECONOMY: '#F1C40F', FUN: '#3498DB'
 };
 
+// Terminal colors for logging
+const red = "\x1b[31m", reset = "\x1b[0m";
+
+// ================= HELPER FUNCTIONS =================
 function getRandomTip(t, prefix) {
     const tips = t.tips;
     const randomTip = tips[Math.floor(Math.random() * tips.length)];
@@ -179,7 +183,16 @@ function getTopCategories(stats, limit = 3) {
         .map(([cat, count]) => ({ cat, count }));
 }
 
-// 🔥 FIXED: This function now only creates the embed, doesn't handle interactions
+function getCategoryDescription(cat, t, lang) {
+    const upperCat = cat.toUpperCase();
+    if (t.categoryDescriptions && t.categoryDescriptions[upperCat]) {
+        return t.categoryDescriptions[upperCat];
+    }
+    return lang === 'fr' 
+        ? `Commandes pour le module ${cat}`
+        : `Commands for the ${cat} module`;
+}
+
 function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version) {
     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
     const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
@@ -214,6 +227,7 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
         .setTimestamp();
 }
 
+// ================= MAIN EXPORT =================
 module.exports = {
     name: 'help',
     aliases: ['h', 'menu', 'docs', 'aide', 'commandes', 'commands'],
@@ -223,7 +237,6 @@ module.exports = {
 
     run: async (client, message, args, database, serverSettings, usedCommand) => {
         
-        // 🔥 SAFE LANGUAGE DETECTION
         let lang = 'en';
         if (client.detectLanguage && usedCommand) {
             lang = client.detectLanguage(usedCommand, 'en');
@@ -284,7 +297,7 @@ module.exports = {
                     .setTitle(`◈ ${t.module}: ${cmd.name.toUpperCase()} ◈`)
                     .setDescription(`\`\`\`yaml\n${cmd.description || t.noDescription}\`\`\``)
                     .addFields(
-                        { name: `📂 ${t.category}`, value: `\`${category}\` ${t.categoryDescriptions?.[category] ? `• ${t.categoryDescriptions[category]}` : ''}`, inline: false },
+                        { name: `📂 ${t.category}`, value: `\`${category}\` ${getCategoryDescription(category, t, lang) ? `• ${getCategoryDescription(category, t, lang)}` : ''}`, inline: false },
                         { name: `🔧 ${t.usage}`, value: `\`${effectivePrefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
                         { name: `🔀 ${t.aliases}`, value: cmd.aliases?.length ? `\`${cmd.aliases.join(', ')}\`` : `\`${t.none}\``, inline: true }
                     );
@@ -392,7 +405,7 @@ module.exports = {
             .addOptions(categories.map(cat => ({
                 label: cat.toUpperCase().substring(0, 100),
                 value: cat,
-                description: `${t.categoryDescriptions?.[cat] || t.viewAll.replace('{category}', cat.toLowerCase())}`.substring(0, 100),
+                description: getCategoryDescription(cat, t, lang).substring(0, 100),
                 emoji: emojiMap[cat.toUpperCase()] || '📁'
             })));
 
@@ -413,124 +426,142 @@ module.exports = {
         
         if (!response) return;
 
-        let currentCategory = null;
-        
         const collector = response.createMessageComponentCollector({ time: 300000 });
         
+        // 🔥 CRITICAL FIX: Use editReply() exclusively since index.js already deferred
         collector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) {
                 return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
             }
 
-            // 🔥 FIXED: Handle back to main
-            if (i.customId === 'help_back') {
-                currentCategory = null;
+            try {
+                // 🔥 NEURAL BRIDGE: Always use editReply to resolve the deferred interaction
+                if (i.customId === 'help_back') {
+                    const freshUptimeSec = process.uptime();
+                    const freshDays = Math.floor(freshUptimeSec / 86400);
+                    const freshHours = Math.floor((freshUptimeSec % 86400) / 3600);
+                    const freshMinutes = Math.floor((freshUptimeSec % 3600) / 60);
+                    const freshTotalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+                    const freshTotalGuilds = client.guilds.cache.size;
+                    
+                    let freshUptimeString = '';
+                    if (freshDays > 0) freshUptimeString += `${freshDays}${lang === 'fr' ? 'j' : 'd'} `;
+                    if (freshHours > 0) freshUptimeString += `${freshHours}${lang === 'fr' ? 'h' : 'h'} `;
+                    if (freshMinutes > 0) freshUptimeString += `${freshMinutes}${lang === 'fr' ? 'm' : 'm'} `;
+                    if (freshDays === 0 && freshHours === 0 && freshMinutes === 0) freshUptimeString += `${Math.floor(freshUptimeSec)}s`;
+                    else if (freshUptimeSec % 60 > 0 && freshDays === 0 && freshHours === 0) freshUptimeString += `${Math.floor(freshUptimeSec % 60)}s`;
+                    freshUptimeString = freshUptimeString.trim() || '0s';
+                    
+                    const freshMainEmbed = new EmbedBuilder()
+                        .setColor('#00fbff')
+                        .setAuthor({ 
+                            name: t.directoryTitle, 
+                            iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) 
+                        })
+                        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
+                        .setDescription(
+                            `\`\`\`yaml\n` +
+                            `${t.systemStatus}: 🟢 ${t.online}\n` +
+                            `${t.node}: BAMAKO-223\n` +
+                            `${t.core}: Groq LPU™ + Brave Search\n` +
+                            `${t.uptime}: ${freshUptimeString}\n` +
+                            `${t.version}: v${version}\`\`\``
+                        )
+                        .addFields(
+                            { 
+                                name: t.moduleStats, 
+                                value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, 
+                                inline: true 
+                            },
+                            { 
+                                name: `🏆 TOP CATEGORIES`, 
+                                value: topCategoriesDisplay || 'No data available', 
+                                inline: true 
+                            },
+                            { 
+                                name: t.quickAccess, 
+                                value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
+                                inline: false 
+                            },
+                            { 
+                                name: t.aiAssistant, 
+                                value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
+                                inline: true 
+                            },
+                            { 
+                                name: t.tip, 
+                                value: getRandomTip(t, effectivePrefix), 
+                                inline: true 
+                            }
+                        )
+                        .setFooter({ 
+                            text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, 
+                            iconURL: guildIcon
+                        })
+                        .setTimestamp();
+                    
+                    const disabledRow2 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('help_back')
+                            .setLabel(t.mainMenu)
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(true)
+                    );
+                    
+                    // ✅ THIS RESOLVES THE "THINKING" STATE
+                    await i.editReply({ embeds: [freshMainEmbed], components: [row1, disabledRow2] });
+                    return;
+                }
                 
-                const freshUptimeSec = process.uptime();
-                const freshDays = Math.floor(freshUptimeSec / 86400);
-                const freshHours = Math.floor((freshUptimeSec % 86400) / 3600);
-                const freshMinutes = Math.floor((freshUptimeSec % 3600) / 60);
-                const freshTotalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
-                const freshTotalGuilds = client.guilds.cache.size;
-                
-                let freshUptimeString = '';
-                if (freshDays > 0) freshUptimeString += `${freshDays}${lang === 'fr' ? 'j' : 'd'} `;
-                if (freshHours > 0) freshUptimeString += `${freshHours}${lang === 'fr' ? 'h' : 'h'} `;
-                if (freshMinutes > 0) freshUptimeString += `${freshMinutes}${lang === 'fr' ? 'm' : 'm'} `;
-                if (freshDays === 0 && freshHours === 0 && freshMinutes === 0) freshUptimeString += `${Math.floor(freshUptimeSec)}s`;
-                else if (freshUptimeSec % 60 > 0 && freshDays === 0 && freshHours === 0) freshUptimeString += `${Math.floor(freshUptimeSec % 60)}s`;
-                freshUptimeString = freshUptimeString.trim() || '0s';
-                
-                const freshMainEmbed = new EmbedBuilder()
-                    .setColor('#00fbff')
-                    .setAuthor({ 
-                        name: t.directoryTitle, 
-                        iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) 
-                    })
-                    .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
-                    .setDescription(
-                        `\`\`\`yaml\n` +
-                        `${t.systemStatus}: 🟢 ${t.online}\n` +
-                        `${t.node}: BAMAKO-223\n` +
-                        `${t.core}: Groq LPU™ + Brave Search\n` +
-                        `${t.uptime}: ${freshUptimeString}\n` +
-                        `${t.version}: v${version}\`\`\``
-                    )
-                    .addFields(
-                        { 
-                            name: t.moduleStats, 
-                            value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, 
-                            inline: true 
-                        },
-                        { 
-                            name: `🏆 TOP CATEGORIES`, 
-                            value: topCategoriesDisplay || 'No data available', 
-                            inline: true 
-                        },
-                        { 
-                            name: t.quickAccess, 
-                            value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
-                            inline: false 
-                        },
-                        { 
-                            name: t.aiAssistant, 
-                            value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
-                            inline: true 
-                        },
-                        { 
-                            name: t.tip, 
-                            value: getRandomTip(t, effectivePrefix), 
-                            inline: true 
-                        }
-                    )
-                    .setFooter({ 
-                        text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, 
-                        iconURL: guildIcon
-                    })
-                    .setTimestamp();
-                
-                const disabledRow2 = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('help_back')
-                        .setLabel(t.mainMenu)
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true)
-                );
-                
-                await i.update({ embeds: [freshMainEmbed], components: [row1, disabledRow2] }).catch(() => {});
-                return;
-            }
-            
-            // 🔥 FIXED: Handle category selection
-            if (i.isStringSelectMenu() && i.customId === 'help_select') {
-                const category = i.values[0];
-                currentCategory = category;
-                
-                const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version);
-                
-                const updatedRow2 = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('help_back')
-                        .setLabel(t.backToMain)
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(false)
-                );
-                
-                await i.update({ embeds: [categoryEmbed], components: [row1, updatedRow2] }).catch(() => {});
+                if (i.isStringSelectMenu() && i.customId === 'help_select') {
+                    const category = i.values[0];
+                    const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version);
+                    
+                    const updatedRow2 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('help_back')
+                            .setLabel(t.backToMain)
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(false)
+                    );
+                    
+                    // ✅ THIS KILLS THE "THINKING..." ANIMATION
+                    await i.editReply({ embeds: [categoryEmbed], components: [row1, updatedRow2] });
+                }
+            } catch (err) {
+                console.error(`${red}[HELP ERROR]${reset} Interaction failed:`, err.message);
+                // Attempt to recover with an error message
+                try {
+                    await i.editReply({ 
+                        content: lang === 'fr' 
+                            ? '❌ Une erreur est survenue. Veuillez réessayer.' 
+                            : '❌ An error occurred. Please try again.',
+                        embeds: [], 
+                        components: [] 
+                    });
+                } catch (e) {
+                    // Silent fail - interaction may have expired
+                }
             }
         });
 
-        collector.on('end', () => {
-            const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
-            const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
-            const disabledButton = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('help_back')
-                    .setLabel(t.mainMenu)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true)
-            );
-            response.edit({ components: [disabledRow, disabledButton] }).catch(() => {});
+        collector.on('end', async () => {
+            if (response && response.editable) {
+                try {
+                    const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
+                    const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
+                    const disabledButton = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('help_back')
+                            .setLabel(t.mainMenu)
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(true)
+                    );
+                    await response.edit({ components: [disabledRow, disabledButton] });
+                } catch (err) {
+                    // Message may have been deleted - silent fail
+                }
+            }
         });
     }
 };
