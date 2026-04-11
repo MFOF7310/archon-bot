@@ -1,4 +1,3 @@
-const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -11,6 +10,7 @@ let isLydiaInitialized = false;
 const messageProcessingLocks = new Set();
 const userCooldowns = new Map();
 const COOLDOWN_TIME = 3000; // 3 seconds between messages per user
+const LOCK_CLEANUP_DELAY = 10000; // 🔥 FIXED: 10 seconds for Starlink jitter
 
 // ================= SEARCH CACHE (5 min TTL) =================
 const searchCache = new Map();
@@ -19,7 +19,10 @@ const CACHE_TTL = 300000; // 5 minutes
 // ================= SCAN DYNAMIQUE DU DOSSIER PLUGINS =================
 function getGlobalModuleCount() {
     try {
-        const pluginsPath = path.join(__dirname, './');
+        // 🔥 FIXED: Go up one level to the main directory where index.js and plugins folder live
+        const mainPath = path.join(__dirname, '..');
+        const pluginsPath = path.join(mainPath, 'plugins');
+        
         if (fs.existsSync(pluginsPath)) {
             const files = fs.readdirSync(pluginsPath);
             return files.filter(file => file.endsWith('.js')).length;
@@ -672,7 +675,11 @@ async function handleLydiaMessage(message, client, database) {
         const agentKey = client.lydiaAgents?.[message.channel.id] || 'default';
         const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.1;
         
-        if (!addressed && !isProactive) return;
+        if (!addressed && !isProactive) {
+            // 🔥 FIXED: Clean up lock immediately if not processing
+            messageProcessingLocks.delete(messageKey);
+            return;
+        }
 
         await message.channel.sendTyping();
         console.log(`${cyan}[LYDIA]${reset} Processing message from ${userName} in ${message.channel.name} (${lang})`);
@@ -694,7 +701,10 @@ async function handleLydiaMessage(message, client, database) {
         }
         if (isProactive && !userPrompt) userPrompt = "Observe the current conversation and provide a relevant, helpful comment.";
         if (!userPrompt.trim()) {
-            if (addressed) return message.reply(`👋 You mentioned **${currentIdentity}**! Ask me anything, or use \`.help\` to see commands.`);
+            if (addressed) {
+                await message.reply(`👋 You mentioned **${currentIdentity}**! Ask me anything, or use \`.help\` to see commands.`);
+            }
+            messageProcessingLocks.delete(messageKey);
             return;
         }
 
@@ -885,13 +895,28 @@ async function handleLydiaMessage(message, client, database) {
         }
         
         console.log(`${green}[LYDIA]${reset} Responded to ${userName} in ${message.channel.name} (${reply.length} chars${reply.length > 2000 ? ', chunked' : ''})`);
+        
+        // 🔥 FIXED: Delete lock immediately after successful reply
+        messageProcessingLocks.delete(messageKey);
+        
     } catch (err) {
         console.error(`${red}[LYDIA ERROR]${reset}`, err);
         message.reply("❌ An error occurred.").catch(()=>{});
-    } finally {
-        setTimeout(() => {
-            messageProcessingLocks.delete(messageKey);
-        }, 5000);
+        // 🔥 FIXED: Delete lock on error too
+        messageProcessingLocks.delete(messageKey);
+    }
+}
+
+// ================= PRUNE OLD CONVERSATIONS =================
+function pruneOldConversations(database) {
+    try {
+        const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 86400);
+        const result = database.prepare(`DELETE FROM lydia_conversations WHERE timestamp < ?`).run(sevenDaysAgo);
+        if (result.changes > 0) {
+            console.log(`${green}[LYDIA PRUNE]${reset} Removed ${result.changes} old conversation messages`);
+        }
+    } catch (err) {
+        console.log(`${yellow}[LYDIA PRUNE]${reset} Failed: ${err.message}`);
     }
 }
 
@@ -915,15 +940,12 @@ function setupLydia(client, database) {
     if (!client.userIntroductions) client.userIntroductions = new Map();
 
     try {
+        // 🔥 REMOVED: user_name column addition - handled by index.js COLUMN GUARD
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_memory (user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER, PRIMARY KEY (user_id, memory_key))`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (channel_id TEXT, user_id TEXT, user_name TEXT, role TEXT, content TEXT, timestamp INTEGER)`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER)`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_introductions (user_id TEXT, channel_id TEXT, introduced_at INTEGER, PRIMARY KEY (user_id, channel_id))`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, user_id TEXT, channel_id TEXT, message TEXT, execute_at INTEGER, status TEXT DEFAULT 'pending')`).run();
-
-        try {
-            database.prepare(`ALTER TABLE lydia_conversations ADD COLUMN user_name TEXT`).run();
-        } catch(e) { }
 
         const activeChannels = database.prepare(`SELECT channel_id, agent_key FROM lydia_agents WHERE is_active = 1`).all();
         for (const ch of activeChannels) {
@@ -931,6 +953,12 @@ function setupLydia(client, database) {
             client.lydiaAgents[ch.channel_id] = ch.agent_key;
             console.log(`${cyan}[LYDIA RESTORE]${reset} Channel ${ch.channel_id} restored (${ch.agent_key})`);
         }
+        
+        // Prune old conversations on startup
+        pruneOldConversations(database);
+        
+        // Set up daily prune interval
+        setInterval(() => pruneOldConversations(database), 86400000); // Every 24 hours
         
         console.log(`${green}[LYDIA]${reset} Tables ready. ${activeChannels.length} active channels restored.`);
         console.log(`${green}[SCAN]${reset} Found ${getGlobalModuleCount()} plugins in the modules folder.`);
@@ -940,7 +968,7 @@ function setupLydia(client, database) {
         return;
     }
 
-    // ✅ SIMPLE EVENT LISTENER - No removal of existing listeners
+    // ✅ SIMPLE EVENT LISTENER
     client.on('messageCreate', async (message) => {
         if (!message || message.author?.bot) return;
         await handleLydiaMessage(message, client, database);
@@ -951,16 +979,12 @@ function setupLydia(client, database) {
 }
 
 // ================= COMMAND .lydia =================
-// 🔥 FIXED: Added serverSettings parameter
 async function runLydiaCommand(client, message, args, database, serverSettings, usedCommand) {
     if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
     
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
     
-    // 🔥 USE NEW LANGUAGE DETECTION
     const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
-    
-    // 🔥 FIXED: Use passed serverSettings instead of fetching again
     const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
     
     const version = client.version || '1.6.0';
@@ -1128,7 +1152,6 @@ module.exports = {
     category: 'SYSTEM',
     cooldown: 5000,
     
-    // 🔥 FIXED: Added serverSettings parameter to match index.js
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         return runLydiaCommand(client, message, args, db, serverSettings, usedCommand);
     },
