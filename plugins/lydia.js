@@ -1,3 +1,9 @@
+// ================= 🧠 LYDIA NEURAL PROCESSOR v2.7.0 =================
+// ARCHITECT CG-223 | Trigger-Based Multi-Agent AI Assistant
+// Optimized for Starlink Latency & SQLite Performance
+
+// 🔥 FIXED: Added PermissionsBitField to destructuring
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -10,7 +16,6 @@ let isLydiaInitialized = false;
 const messageProcessingLocks = new Set();
 const userCooldowns = new Map();
 const COOLDOWN_TIME = 3000; // 3 seconds between messages per user
-const LOCK_CLEANUP_DELAY = 10000; // 🔥 FIXED: 10 seconds for Starlink jitter
 
 // ================= SEARCH CACHE (5 min TTL) =================
 const searchCache = new Map();
@@ -19,7 +24,7 @@ const CACHE_TTL = 300000; // 5 minutes
 // ================= SCAN DYNAMIQUE DU DOSSIER PLUGINS =================
 function getGlobalModuleCount() {
     try {
-        // 🔥 FIXED: Go up one level to the main directory where index.js and plugins folder live
+        // Go up one level to the main directory where index.js and plugins folder live
         const mainPath = path.join(__dirname, '..');
         const pluginsPath = path.join(mainPath, 'plugins');
         
@@ -676,7 +681,6 @@ async function handleLydiaMessage(message, client, database) {
         const isProactive = (agentKey === 'tactical' || agentKey === 'creative') && Math.random() < 0.1;
         
         if (!addressed && !isProactive) {
-            // 🔥 FIXED: Clean up lock immediately if not processing
             messageProcessingLocks.delete(messageKey);
             return;
         }
@@ -731,6 +735,7 @@ async function handleLydiaMessage(message, client, database) {
                         database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
         
         const member = message.guild.members.cache.get(message.author.id);
+        // 🔥 FIXED: PermissionsBitField is now properly imported
         const isAdmin = member?.permissions.has(PermissionsBitField.Flags.Administrator) || false;
         const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
         const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -896,13 +901,11 @@ async function handleLydiaMessage(message, client, database) {
         
         console.log(`${green}[LYDIA]${reset} Responded to ${userName} in ${message.channel.name} (${reply.length} chars${reply.length > 2000 ? ', chunked' : ''})`);
         
-        // 🔥 FIXED: Delete lock immediately after successful reply
         messageProcessingLocks.delete(messageKey);
         
     } catch (err) {
         console.error(`${red}[LYDIA ERROR]${reset}`, err);
         message.reply("❌ An error occurred.").catch(()=>{});
-        // 🔥 FIXED: Delete lock on error too
         messageProcessingLocks.delete(messageKey);
     }
 }
@@ -940,7 +943,6 @@ function setupLydia(client, database) {
     if (!client.userIntroductions) client.userIntroductions = new Map();
 
     try {
-        // 🔥 REMOVED: user_name column addition - handled by index.js COLUMN GUARD
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_memory (user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER, PRIMARY KEY (user_id, memory_key))`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_conversations (channel_id TEXT, user_id TEXT, user_name TEXT, role TEXT, content TEXT, timestamp INTEGER)`).run();
         database.prepare(`CREATE TABLE IF NOT EXISTS lydia_agents (channel_id TEXT PRIMARY KEY, agent_key TEXT, is_active INTEGER DEFAULT 0, updated_at INTEGER)`).run();
@@ -954,11 +956,8 @@ function setupLydia(client, database) {
             console.log(`${cyan}[LYDIA RESTORE]${reset} Channel ${ch.channel_id} restored (${ch.agent_key})`);
         }
         
-        // Prune old conversations on startup
         pruneOldConversations(database);
-        
-        // Set up daily prune interval
-        setInterval(() => pruneOldConversations(database), 86400000); // Every 24 hours
+        setInterval(() => pruneOldConversations(database), 86400000);
         
         console.log(`${green}[LYDIA]${reset} Tables ready. ${activeChannels.length} active channels restored.`);
         console.log(`${green}[SCAN]${reset} Found ${getGlobalModuleCount()} plugins in the modules folder.`);
@@ -968,7 +967,6 @@ function setupLydia(client, database) {
         return;
     }
 
-    // ✅ SIMPLE EVENT LISTENER
     client.on('messageCreate', async (message) => {
         if (!message || message.author?.bot) return;
         await handleLydiaMessage(message, client, database);
@@ -983,16 +981,15 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
     if (!message.guild || !message.member) return message.reply("❌ This command can only be used in a server.");
     
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
-    
     const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
     const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-    
     const version = client.version || '1.6.0';
     const guildName = message.guild.name.toUpperCase();
     const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
     
     const sub = args[0]?.toLowerCase();
 
+    // 🔥 FIXED: PermissionsBitField is now properly imported
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         const errorMsg = lang === 'fr' 
             ? '⛔ **ACCÈS REFUSÉ**\nAutorisation d\'administrateur requise.'
