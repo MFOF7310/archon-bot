@@ -1,4 +1,5 @@
-require('dotenv').config(); 
+// ================= CORRECTED INDEX.JS =================
+require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
@@ -10,15 +11,6 @@ const { setupLydia } = require('./plugins/lydia.js');
 // ================= 🔥 AFK SYSTEM IMPORT =================
 const { afkUsers } = require('./plugins/afk.js');
 
-// ================= 🔮 v1.7.0 PREPARATION (TELEGRAM BRIDGE) =================
-// Décommentez ces lignes quand vous serez prêt pour la v1.7.0 !
-/*
-const { setupTelegramBridge } = require('./telegram/telegram-bot.js');
-const sharedDB = require('./shared/database.js');
-const sharedCache = require('./shared/cache.js');
-const sharedLanguage = require('./shared/language.js');
-*/
-
 // ================= SELF-HEALING PROTOCOL =================
 process.on('unhandledRejection', (reason, promise) => {
     console.error('\x1b[31m[ANTI-CRASH]\x1b[0m Unhandled Rejection:', reason);
@@ -26,7 +18,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 process.on('uncaughtException', (err, origin) => {
     console.error('\x1b[31m[ANTI-CRASH]\x1b[0m Uncaught Exception:', err.message);
-    console.error(err.stack); 
+    console.error(err.stack);
 });
 
 // ================= TERMINAL COLORS =================
@@ -67,7 +59,7 @@ function getVersion() {
 
 client.version = getVersion();
 
-// --- LYDIA GLOBALS ---
+// --- LYDIA GLOBALS (Will be populated by setupLydia) ---
 client.lydiaChannels = {};
 client.lydiaAgents = {};
 client.lastLydiaCall = {};
@@ -267,89 +259,6 @@ for (const [tableName, createSQL] of Object.entries(requiredTables)) {
     }
 }
 
-// ================= 🔥 PILLAR 1: COLUMN-SPECIFIC SCHEMA GUARD =================
-const tableColumns = {
-    users: [
-        { name: 'games_played', type: 'INTEGER DEFAULT 0' },
-        { name: 'games_won', type: 'INTEGER DEFAULT 0' },
-        { name: 'total_winnings', type: 'INTEGER DEFAULT 0' },
-        { name: 'last_daily', type: 'INTEGER DEFAULT 0' },
-        { name: 'streak_days', type: 'INTEGER DEFAULT 0' },
-        { name: 'credits', type: 'INTEGER DEFAULT 0' },
-        { name: 'total_messages', type: 'INTEGER DEFAULT 0' },
-        { name: 'last_xp_gain', type: 'INTEGER DEFAULT 0' },
-        { name: 'gaming', type: "TEXT DEFAULT '{\"game\":\"CODM\",\"rank\":\"Unranked\"}'" }
-    ],
-    lydia_conversations: [
-        { name: 'user_name', type: 'TEXT' }
-    ],
-    server_settings: [
-        { name: 'daily_channel', type: 'TEXT' },
-        { name: 'shop_channel', type: 'TEXT' }
-    ]
-};
-
-console.log(`${cyan}[COLUMN GUARD]${reset} Scanning for missing columns...`);
-let columnsAdded = 0;
-
-for (const [table, columns] of Object.entries(tableColumns)) {
-    try {
-        const existingColumns = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
-        for (const col of columns) {
-            if (!existingColumns.includes(col.name)) {
-                console.log(`${yellow}[REPAIR]${reset} Injecting missing column: ${cyan}${col.name}${reset} into ${table}`);
-                db.exec(`ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.type}`);
-                columnsAdded++;
-            }
-        }
-    } catch (err) {
-        console.error(`${red}[COLUMN ERROR]${reset} ${table}:`, err.message);
-    }
-}
-
-if (columnsAdded > 0) {
-    console.log(`${green}[COLUMN GUARD]${reset} Added ${columnsAdded} missing columns`);
-} else {
-    console.log(`${green}[COLUMN GUARD]${reset} All columns verified - Schema is complete`);
-}
-
-// ================= 🔥 PILLAR 2: ATOMIC MIGRATION (TRANSACTION PROTECTED) =================
-try {
-    const tableInfo = db.prepare(`PRAGMA table_info(server_settings)`).all();
-    const languageColumn = tableInfo.find(col => col.name === 'language');
-    
-    if (languageColumn) {
-        console.log(`${yellow}[MIGRATION]${reset} Initiating atomic table rebuild...`);
-        
-        db.transaction(() => {
-            db.exec(`
-                CREATE TABLE server_settings_new (
-                    guild_id TEXT PRIMARY KEY,
-                    prefix TEXT DEFAULT '.',
-                    welcome_channel TEXT,
-                    log_channel TEXT,
-                    daily_channel TEXT,
-                    shop_channel TEXT,
-                    updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-                );
-                
-                INSERT INTO server_settings_new 
-                SELECT guild_id, prefix, welcome_channel, log_channel, daily_channel, shop_channel, updated_at 
-                FROM server_settings;
-                
-                DROP TABLE server_settings;
-                ALTER TABLE server_settings_new RENAME TO server_settings;
-            `);
-        })();
-        
-        console.log(`${green}[MIGRATION]${reset} Atomic rebuild successful - 'language' column removed safely`);
-    }
-} catch (err) {
-    console.error(`${red}[MIGRATION ERROR]${reset}`, err.message);
-}
-
-console.log(`${green}[REPAIR COMPLETE]${reset} All tables verified, columns synchronized, migrations applied`);
-
 // ================= SERVER SETTINGS UTILITY =================
 const DEFAULT_SETTINGS = { prefix: PREFIX, welcomeChannel: null, logChannel: null, dailyChannel: null, shopChannel: null };
 
@@ -404,19 +313,6 @@ const initializeUser = (userId, username) => {
     return getUser(userId);
 };
 
-const loadAgentPreferences = () => {
-    try {
-        const savedAgents = db.prepare("SELECT * FROM lydia_agents WHERE is_active = 1").all();
-        savedAgents.forEach(agent => {
-            if (agent.channel_id) {
-                client.lydiaChannels[agent.channel_id] = true;
-                client.lydiaAgents[agent.channel_id] = agent.agent_key || 'default';
-            }
-        });
-        if (savedAgents.length) console.log(`${green}[AGENT]${reset} Restored ${savedAgents.length} active agents.`);
-    } catch (err) {}
-};
-
 client.getUser = getUser;
 client.initializeUser = initializeUser;
 client.db = db;
@@ -429,11 +325,23 @@ client.cacheJanitorInterval = null;
 client.reminderHeartbeatInterval = null;
 client.lastBatchWrite = Date.now();
 
+// Circuit breaker state
+client.dbHealth = {
+    consecutiveFailures: 0,
+    circuitOpen: false,
+    lastFailure: 0,
+    cooldownUntil: 0
+};
+
 const WRITE_STRATEGY = {
     BATCH_SIZE: 50,
     MAX_WAIT_MS: 30000,
     RETRY_ATTEMPTS: 3,
-    USE_TRANSACTIONS: true
+    USE_TRANSACTIONS: true,
+    BACKOFF_MULTIPLIER: 1.5,
+    MIN_RETRY_DELAY: 1000,
+    MAX_RETRY_DELAY: 30000,
+    CIRCUIT_BREAKER_THRESHOLD: 5
 };
 
 const CACHE_CONFIG = {
@@ -486,12 +394,32 @@ function queueUserUpdate(userId, updateData) {
     cacheUserData(userId, mergedData);
     
     if (client.pendingUserUpdates.size >= WRITE_STRATEGY.BATCH_SIZE) {
-        flushUserUpdates();
+        flushUserUpdates(0);
     }
 }
 
-async function flushUserUpdates() {
-    if (client.pendingUserUpdates.size === 0) return;
+async function flushUserUpdates(retryCount = 0, retryId = null) {
+    if (client.dbHealth.circuitOpen) {
+        if (Date.now() < client.dbHealth.cooldownUntil) {
+            console.log(`${yellow}[DB CIRCUIT]${reset} Circuit open - writes paused`);
+            return;
+        } else {
+            console.log(`${cyan}[DB CIRCUIT]${reset} Testing connection - circuit half-open`);
+            client.dbHealth.circuitOpen = false;
+        }
+    }
+    
+    const operationId = retryId || `${Date.now()}-${Math.random()}`;
+    if (client._activeFlush === operationId) {
+        console.log(`${yellow}[DB BATCH]${reset} Preventing duplicate flush operation`);
+        return;
+    }
+    client._activeFlush = operationId;
+    
+    if (client.pendingUserUpdates.size === 0) {
+        client._activeFlush = null;
+        return;
+    }
     
     const updates = Array.from(client.pendingUserUpdates.entries());
     client.pendingUserUpdates.clear();
@@ -507,6 +435,13 @@ async function flushUserUpdates() {
             
             db.transaction(() => {
                 for (const [userId, userData] of updates) {
+                    let gamingValue = userData.gaming;
+                    if (typeof gamingValue === 'object' && gamingValue !== null) {
+                        gamingValue = JSON.stringify(gamingValue);
+                    } else if (!gamingValue) {
+                        gamingValue = '{"game":"CODM","rank":"Unranked"}';
+                    }
+                    
                     updateStmt.run(
                         userId,
                         userData.username || 'Unknown',
@@ -517,7 +452,7 @@ async function flushUserUpdates() {
                         userData.games_played ?? 0,
                         userData.games_won ?? 0,
                         userData.total_winnings ?? 0,
-                        userData.gaming || '{"game":"CODM","rank":"Unranked"}',
+                        gamingValue,
                         userData.credits ?? 0,
                         userData.streak_days ?? 0,
                         userData.last_daily ?? 0
@@ -526,15 +461,63 @@ async function flushUserUpdates() {
             })();
         }
         
+        client.dbHealth.consecutiveFailures = 0;
+        client.dbHealth.circuitOpen = false;
         client.lastBatchWrite = Date.now();
+        client._activeFlush = null;
+        
         console.log(`${green}[DB BATCH]${reset} Flushed ${updates.length} user updates`);
         
     } catch (err) {
+        client._activeFlush = null;
+        client.dbHealth.consecutiveFailures++;
+        client.dbHealth.lastFailure = Date.now();
+        
         console.error(`${red}[DB BATCH ERROR]${reset}`, err.message);
-        for (const [userId, userData] of updates) {
-            const retryCount = (userData._retryCount || 0) + 1;
-            if (retryCount <= WRITE_STRATEGY.RETRY_ATTEMPTS) {
-                client.pendingUserUpdates.set(userId, { ...userData, _retryCount: retryCount });
+        
+        if (client.dbHealth.consecutiveFailures >= WRITE_STRATEGY.CIRCUIT_BREAKER_THRESHOLD) {
+            client.dbHealth.circuitOpen = true;
+            client.dbHealth.cooldownUntil = Date.now() + 60000;
+            console.error(`${red}[DB CIRCUIT]${reset} BREAKER TRIPPED - Pausing all writes for 60s`);
+        }
+        
+        if (retryCount < WRITE_STRATEGY.RETRY_ATTEMPTS && !client.dbHealth.circuitOpen) {
+            const delay = Math.min(
+                WRITE_STRATEGY.MIN_RETRY_DELAY * Math.pow(WRITE_STRATEGY.BACKOFF_MULTIPLIER, retryCount),
+                WRITE_STRATEGY.MAX_RETRY_DELAY
+            );
+            
+            console.log(`${yellow}[DB BATCH]${reset} Retrying in ${delay}ms (attempt ${retryCount + 1}/${WRITE_STRATEGY.RETRY_ATTEMPTS})`);
+            
+            for (const [userId, userData] of updates) {
+                if (!client.pendingUserUpdates.has(userId)) {
+                    client.pendingUserUpdates.set(userId, { ...userData, _retryCount: retryCount + 1 });
+                }
+            }
+            
+            const timeoutId = setTimeout(() => {
+                flushUserUpdates(retryCount + 1, operationId);
+            }, delay);
+            
+            if (!client._retryTimeouts) client._retryTimeouts = new Set();
+            client._retryTimeouts.add(timeoutId);
+            setTimeout(() => client._retryTimeouts.delete(timeoutId), delay + 1000);
+            
+        } else {
+            console.error(`${red}[DB BATCH]${reset} Max retries exceeded. ${updates.length} updates moved to dead letter queue.`);
+            
+            if (!client._deadLetterQueue) client._deadLetterQueue = [];
+            updates.forEach(([userId, userData]) => {
+                client._deadLetterQueue.push({
+                    userId,
+                    data: userData,
+                    failedAt: Date.now(),
+                    attempts: retryCount + 1
+                });
+            });
+            
+            if (client._deadLetterQueue.length > 1000) {
+                client._deadLetterQueue = client._deadLetterQueue.slice(-1000);
             }
         }
     }
@@ -543,7 +526,9 @@ async function flushUserUpdates() {
 function startBatchWriteInterval() {
     if (client.batchWriteInterval) clearInterval(client.batchWriteInterval);
     client.batchWriteInterval = setInterval(() => {
-        if (client.pendingUserUpdates.size > 0) flushUserUpdates();
+        if (client.pendingUserUpdates.size > 0) {
+            flushUserUpdates(0);
+        }
     }, WRITE_STRATEGY.MAX_WAIT_MS);
 }
 
@@ -558,7 +543,7 @@ function startReminderHeartbeat() {
             try {
                 const channel = await client.channels.fetch(r.channel_id).catch(() => null);
                 if (channel) {
-                    await channel.send(`<@${r.user_id}> ${r.message}`);
+                    await channel.send(`⏰ **REMINDER** <@${r.user_id}> : ${r.message}`);
                     console.log(`${green}[REMINDER]${reset} Sent to ${r.user_id}`);
                 }
                 db.prepare(`UPDATE reminders SET status = 'sent' WHERE id = ?`).run(r.id);
@@ -663,6 +648,7 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     const funcStr = runFunc.toString();
     const params = funcStr.slice(funcStr.indexOf('(') + 1, funcStr.indexOf(')')).split(',').map(p => p.trim());
     
+    // 🔥 FIXED: Get server settings
     const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
     
     const argsMap = { client, message, args, db, usedCommand, serverSettings };
@@ -675,7 +661,9 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 client.once(Events.ClientReady, async () => {
     console.clear();
     await client.loadPlugins();
-    loadAgentPreferences();
+    
+    // 🔥 FIXED: Let setupLydia handle its own globals
+    // No need to manually set lydia globals - setupLydia does it
     
     startBatchWriteInterval();
     startReminderHeartbeat();
@@ -699,6 +687,8 @@ client.once(Events.ClientReady, async () => {
     console.log(`${blue}${bold}${drawBoxLine(`${green}💾 DB BATCH`, `${WRITE_STRATEGY.MAX_WAIT_MS/1000}s delay`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🔔 REMINDERS`, `30s heartbeat`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}💤 AFK SYSTEM`, `ACTIVE`)}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}🛡️ CIRCUIT BREAKER`, `READY`)}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}🧠 LYDIA`, `MULTI-AGENT AI`)}${reset}`);
     console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
 
     if (client.userTimeouts) {
@@ -706,61 +696,49 @@ client.once(Events.ClientReady, async () => {
         client.userTimeouts.clear();
     }
 
-    // ================= 🔥 LE DM STYLÉ AVEC ANSI COLORS =================
-try {
-    const owner = await client.users.fetch(process.env.OWNER_ID);
-    
-    console.log(`${cyan}[DM]${reset} Attempting to send boot DM to ${owner.tag}...`);
-    
-    const bootEmbed = new EmbedBuilder()
-        .setColor('#2ecc71')
-        .setAuthor({ 
-            name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', 
-            iconURL: client.user.displayAvatarURL() 
-        })
-        .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
-        .setDescription(
-            `\`\`\`ansi\n` +
-            `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
-            `\u001b[1;36mSystem:\u001b[0m reboot complete\n` +
-            `\u001b[1;34mModules:\u001b[0m ${client.commands.size} plugins synced\n` +
-            `\u001b[1;35mVersion:\u001b[0m v${client.version}\n` +
-            `\u001b[1;33mNode:\u001b[0m BAMAKO_223 🇲🇱\n` +
-            `\u001b[1;36mListeners:\u001b[0m ${client.listenerCount('messageCreate')} active\n` +
-            `\u001b[1;32mDatabase:\u001b[0m WAL Mode (High Performance)\n` +
-            `\u001b[1;35mAFK System:\u001b[0m ACTIVE\n` +
-            `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
-            `\`\`\``
-        )
-        .addFields(
-            { 
-                name: '🔗 Repository', 
-                value: '```ansi\n\u001b[1;36mgithub.com/MFOF7310\u001b[0m\n```', 
-                inline: true 
-            },
-            { 
-                name: '🏗️ Architect', 
-                value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', 
-                inline: true 
-            },
-            { 
-                name: '🕐 Boot Time', 
-                value: `<t:${Math.floor(Date.now() / 1000)}:F>`, 
-                inline: false 
-            }
-        )
-        .setFooter({ 
-            text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, 
-            iconURL: client.user.displayAvatarURL() 
-        })
-        .setTimestamp();
+    // ================= BOOT DM =================
+    try {
+        const owner = await client.users.fetch(process.env.OWNER_ID);
+        
+        const bootEmbed = new EmbedBuilder()
+            .setColor('#2ecc71')
+            .setAuthor({ 
+                name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', 
+                iconURL: client.user.displayAvatarURL() 
+            })
+            .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
+            .setDescription(
+                `\`\`\`ansi\n` +
+                `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
+                `\u001b[1;36mSystem:\u001b[0m reboot complete\n` +
+                `\u001b[1;34mModules:\u001b[0m ${client.commands.size} plugins synced\n` +
+                `\u001b[1;35mVersion:\u001b[0m v${client.version}\n` +
+                `\u001b[1;33mNode:\u001b[0m BAMAKO_223 🇲🇱\n` +
+                `\u001b[1;36mListeners:\u001b[0m ${client.listenerCount('messageCreate')} active\n` +
+                `\u001b[1;32mDatabase:\u001b[0m WAL Mode (High Performance)\n` +
+                `\u001b[1;35mAFK System:\u001b[0m ACTIVE\n` +
+                `\u001b[1;33mCircuit Breaker:\u001b[0m READY\n` +
+                `\u001b[1;36mLydia AI:\u001b[0m MULTI-AGENT ACTIVE\n` +
+                `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
+                `\`\`\``
+            )
+            .addFields(
+                { name: '🔗 Repository', value: '```ansi\n\u001b[1;36mgithub.com/MFOF7310\u001b[0m\n```', inline: true },
+                { name: '🏗️ Architect', value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', inline: true },
+                { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+            )
+            .setFooter({ 
+                text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, 
+                iconURL: client.user.displayAvatarURL() 
+            })
+            .setTimestamp();
 
-    await owner.send({ embeds: [bootEmbed] });
-    console.log(`${green}[DM]${reset} ✅ Boot DM sent successfully to ${owner.tag}`);
-    
-} catch (err) {
-    console.log(`${yellow}[DM]${reset} ❌ Could not send boot DM: ${err.message}`);
-}
+        await owner.send({ embeds: [bootEmbed] });
+        console.log(`${green}[DM]${reset} ✅ Boot DM sent successfully to ${owner.tag}`);
+        
+    } catch (err) {
+        console.log(`${yellow}[DM]${reset} ❌ Could not send boot DM: ${err.message}`);
+    }
 });
 
 // ================= 🔥 FIXED MESSAGE PROCESSING =================
@@ -777,8 +755,8 @@ client.on(Events.MessageCreate, async (message) => {
 
     // ================= 💤 AFK SYSTEM - MENTION =================
     if (message.mentions.users.size > 0) {
-        const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
-        const lang = serverSettings?.language || 'en';
+        const messageContent = message.content || '';
+        const lang = detectLanguage(messageContent);
         
         for (const [mentionedId, user] of message.mentions.users) {
             if (afkUsers.has(mentionedId)) {
@@ -792,21 +770,24 @@ client.on(Events.MessageCreate, async (message) => {
                     ? `💤 **${user.username}** est AFK (${timeText}): *${afkData.reason}*`
                     : `💤 **${user.username}** is AFK (${timeText}): *${afkData.reason}*`;
                 
-                await message.reply({ content: mentionMsg, allowedMentions: { repliedUser: true } }).catch(() => {});
+                await message.reply({ 
+                    content: mentionMsg, 
+                    allowedMentions: { repliedUser: true } 
+                }).catch(() => {});
                 break;
             }
         }
     }
 
-    // ================= 💤 AFK SYSTEM =================
+    // ================= 💤 AFK SYSTEM - RETURN =================
     if (afkUsers.has(message.author.id)) {
         const afkData = afkUsers.get(message.author.id);
         const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
         
         afkUsers.delete(message.author.id);
         
-        const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
-        const lang = serverSettings?.language || 'en';
+        const messageContent = message.content || '';
+        const lang = detectLanguage(messageContent);
         
         const welcomeMsg = lang === 'fr'
             ? `👋 Bon retour **${message.author.username}**! AFK retiré (${minutes} min).`
@@ -858,10 +839,11 @@ client.on(Events.MessageCreate, async (message) => {
         
         let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
         
-        // ================= Lydia command =================
+        // ================= 🔥 FIXED: Lydia command with serverSettings =================
         if (!command && (cmdName === 'lydia' || cmdName === 'ai' || cmdName === 'neural' || cmdName === 'ia')) {
             try {
                 const lydiaModule = require('./plugins/lydia.js');
+                // 🔥 Pass serverSettings as 5th parameter
                 await lydiaModule.run(client, message, args, db, serverSettings, usedCommand);
                 return;
             } catch (e) {
@@ -876,7 +858,7 @@ client.on(Events.MessageCreate, async (message) => {
                 return;
             } catch (e) { 
                 console.error(`${red}[COMMAND ERROR]${reset} ${cmdName}:`, e);
-                const lang = detectLanguage(usedCommand);
+                const lang = detectLanguage(usedCommand || cmdName);
                 const errorMsg = lang === 'fr' 
                     ? "⚠️ **Échec de l'exécution de la commande.**" 
                     : "⚠️ **Command execution failed.**";
@@ -884,19 +866,101 @@ client.on(Events.MessageCreate, async (message) => {
             }
         }
     }
+    
+    // 🔥 IMPORTANT: Lydia auto-response is handled by its own messageCreate listener
+    // DO NOT call it here - setupLydia already registered the listener
 });
 
-// ================= INTERACTION HANDLER =================
+// ================= ENHANCED INTERACTION HANDLER =================
 client.on(Events.InteractionCreate, async (interaction) => {
+    if (interaction.isChatInputCommand()) {
+        console.log(`${cyan}[SLASH]${reset} ${interaction.commandName} from ${interaction.user.tag}`);
+        return;
+    }
+    
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
         console.log(`${cyan}[INTERACTION]${reset} ${interaction.customId} from ${interaction.user.tag}`);
         
+        const needsNewMessage = interaction.customId.startsWith('help_') || 
+                                interaction.customId.startsWith('info_') ||
+                                interaction.customId.startsWith('menu_') ||
+                                interaction.customId === 'welcome_help';
+        
+        const needsEphemeral = interaction.customId.includes('private') || 
+                               interaction.customId.includes('secret') ||
+                               interaction.customId === 'welcome_help';
+        
         if (!interaction.deferred && !interaction.replied) {
             try {
-                await interaction.deferUpdate();
-                console.log(`${green}[INTERACTION]${reset} Deferred ${interaction.customId}`);
-            } catch (err) {}
+                if (needsNewMessage) {
+                    await interaction.deferReply({ ephemeral: needsEphemeral });
+                    console.log(`${green}[INTERACTION]${reset} Deferred reply for ${interaction.customId}`);
+                } else {
+                    await interaction.deferUpdate();
+                    console.log(`${green}[INTERACTION]${reset} Deferred update for ${interaction.customId}`);
+                }
+            } catch (err) {
+                console.error(`${red}[INTERACTION ERROR]${reset} Failed to defer:`, err.message);
+                return;
+            }
         }
+        
+        if (interaction.customId === 'welcome_help') {
+            const lang = interaction.guild?.preferredLocale === 'fr' ? 'fr' : 'en';
+            
+            const helpEmbed = new EmbedBuilder()
+                .setColor('#3498db')
+                .setTitle(lang === 'fr' ? '🤖 Aide - Commandes Disponibles' : '🤖 Help - Available Commands')
+                .setDescription(lang === 'fr' 
+                    ? 'Voici les commandes essentielles pour débuter:'
+                    : 'Here are the essential commands to get started:')
+                .addFields(
+                    {
+                        name: '📌 ' + (lang === 'fr' ? 'Commandes Générales' : 'General Commands'),
+                        value: lang === 'fr'
+                            ? '`.help` - Affiche cette aide\n`.profile` - Voir ton profil\n`.daily` - Réclamer ta récompense quotidienne'
+                            : '`.help` - Show this help\n`.profile` - View your profile\n`.daily` - Claim daily reward',
+                        inline: false
+                    },
+                    {
+                        name: '🤖 ' + (lang === 'fr' ? 'Assistant IA (Lydia)' : 'AI Assistant (Lydia)'),
+                        value: lang === 'fr'
+                            ? '`.lydia [message]` - Parler à Lydia\n`.ia [message]` - Alias\n`.lydia activate` - Activer dans ce salon'
+                            : '`.lydia [message]` - Talk to Lydia\n`.ai [message]` - Alias\n`.lydia activate` - Activate in this channel',
+                        inline: false
+                    },
+                    {
+                        name: '🎮 ' + (lang === 'fr' ? 'Jeux & Économie' : 'Games & Economy'),
+                        value: lang === 'fr'
+                            ? '`.shop` - Boutique d\'objets\n`.balance` - Voir tes crédits\n`.gaming set [jeu]` - Définir ton jeu'
+                            : '`.shop` - Item shop\n`.balance` - Check credits\n`.gaming set [game]` - Set your game',
+                        inline: false
+                    }
+                )
+                .setFooter({ 
+                    text: lang === 'fr' ? 'Eagle Community • Tape .help pour plus' : 'Eagle Community • Type .help for more',
+                    iconURL: client.user.displayAvatarURL()
+                });
+            
+            await interaction.editReply({ embeds: [helpEmbed] });
+            console.log(`${green}[INTERACTION]${reset} Sent welcome help to ${interaction.user.tag}`);
+            return;
+        }
+    }
+    
+    if (interaction.isModalSubmit()) {
+        console.log(`${cyan}[MODAL]${reset} ${interaction.customId} submitted by ${interaction.user.tag}`);
+        
+        if (!interaction.deferred && !interaction.replied) {
+            try {
+                await interaction.deferReply({ ephemeral: true });
+            } catch (err) {
+                console.error(`${red}[MODAL ERROR]${reset} Failed to defer:`, err.message);
+                return;
+            }
+        }
+        
+        await interaction.editReply({ content: '✅ Modal submitted successfully!' });
     }
 });
 
@@ -908,24 +972,20 @@ client.on(Events.GuildMemberAdd, async (member) => {
     const welcomeChannel = member.guild.channels.cache.get(settings.welcomeChannel || process.env.WELCOME_CHANNEL_ID);
     const logChannel = member.guild.channels.cache.get(settings.logChannel || process.env.LOG_CHANNEL_ID);
     
-    // 🔒 SÉCURITÉ : From .env file credentials =================
     const RULES_CHANNEL_ID = process.env.RULES_CHANNEL_ID;
     const GENERAL_CHANNEL_ID = process.env.GENERAL_CHANNEL_ID;
     const MEMBER_ROLE_ID = process.env.MEMBER_ROLE;
     
-    // ================= If logs not configured W Fallback =================
     if (!RULES_CHANNEL_ID) console.log(`${yellow}[WELCOME]${reset} RULES_CHANNEL_ID not configured in .env`);
     if (!GENERAL_CHANNEL_ID) console.log(`${yellow}[WELCOME]${reset} GENERAL_CHANNEL_ID not configured in .env`);
     if (!MEMBER_ROLE_ID) console.log(`${yellow}[WELCOME]${reset} MEMBER_ROLE not configured in .env`);
     
-    // ================= Calculs =================
     const memberCount = member.guild.memberCount;
     const accountAge = Date.now() - member.user.createdTimestamp;
     const accountAgeDays = Math.floor(accountAge / (1000 * 60 * 60 * 24));
     const isNewAccount = accountAgeDays < 7;
     const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
     
-    // ================= Ajouter le rôle membre automatiquement =================
     if (MEMBER_ROLE_ID) {
         try {
             const memberRole = member.guild.roles.cache.get(MEMBER_ROLE_ID);
@@ -935,7 +995,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
         }
     }
     
-    // ================= TRADUCTIONS =================
     const t = {
         fr: {
             title: '🔗 CONNEXION ÉTABLIE: EAGLE COMMUNITY',
@@ -981,12 +1040,11 @@ client.on(Events.GuildMemberAdd, async (member) => {
         }
     }[lang];
     
-    // ================= EMBED PRINCIPAL =================
     const welcomeEmbed = new EmbedBuilder()
         .setColor(isNewAccount ? '#e74c3c' : '#2ecc71')
         .setAuthor({ 
             name: t.title, 
-            iconURL: member.guild.iconURL({ dynamic: true }) 
+            iconURL: member.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL()
         })
         .setDescription(
             `\`\`\`ansi\n` +
@@ -1018,7 +1076,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
         });
     }
     
-    // ================= Initialization Protocol W Fallback =================
     let initValue = '';
     if (RULES_CHANNEL_ID) initValue += `• <#${RULES_CHANNEL_ID}> - ${t.reviewRules}\n`;
     if (GENERAL_CHANNEL_ID) initValue += `• <#${GENERAL_CHANNEL_ID}> - ${t.mainDiscussion}\n`;
@@ -1036,11 +1093,10 @@ client.on(Events.GuildMemberAdd, async (member) => {
     
     welcomeEmbed.setFooter({ 
         text: `${member.guild.name} • ${t.securityFooter} • v${client.version}`,
-        iconURL: member.guild.iconURL({ dynamic: true })
+        iconURL: member.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL()
     })
     .setTimestamp();
     
-    // ================= BOUTONS D'ACCÈS RAPIDE =================
     const buttons = [];
     
     if (RULES_CHANNEL_ID) {
@@ -1063,14 +1119,13 @@ client.on(Events.GuildMemberAdd, async (member) => {
     
     buttons.push(
         new ButtonBuilder()
-            .setLabel(lang === 'fr' ? '🤖 Commander' : '🤖 Commands')
-            .setStyle(ButtonStyle.Secondary)
+            .setLabel(lang === 'fr' ? '🤖 Aide' : '🤖 Help')
+            .setStyle(ButtonStyle.Primary)
             .setCustomId('welcome_help')
     );
     
     const buttonRow = new ActionRowBuilder().addComponents(buttons);
     
-    // ================= Envoyer le message de bienvenue =================
     if (welcomeChannel) {
         await welcomeChannel.send({ 
             content: `🎉 **${member.user}** ${lang === 'fr' ? 'vient de rejoindre le serveur !' : 'just joined the server!'}`,
@@ -1081,7 +1136,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
         console.log(`${yellow}[WELCOME]${reset} Welcome channel not configured for ${member.guild.name}`);
     }
     
-    // ================= LOG DE SÉCURITÉ (Channel Logs) =================
     if (logChannel) {
         const logEmbed = new EmbedBuilder()
             .setColor(isNewAccount ? '#e74c3c' : '#3498db')
@@ -1118,13 +1172,60 @@ async function gracefulShutdown(signal) {
     
     if (client.cacheJanitorInterval) clearInterval(client.cacheJanitorInterval);
     if (client.reminderHeartbeatInterval) clearInterval(client.reminderHeartbeatInterval);
+    if (client.batchWriteInterval) clearInterval(client.batchWriteInterval);
+    
+    if (client._retryTimeouts) {
+        for (const timeoutId of client._retryTimeouts) {
+            clearTimeout(timeoutId);
+        }
+        client._retryTimeouts.clear();
+    }
     
     if (client.pendingUserUpdates && client.pendingUserUpdates.size > 0) {
         console.log(`${cyan}[SHUTDOWN]${reset} Flushing ${client.pendingUserUpdates.size} pending updates...`);
-        await flushUserUpdates();
+        try {
+            const updates = Array.from(client.pendingUserUpdates.entries());
+            const updateStmt = db.prepare(`
+                INSERT OR REPLACE INTO users (
+                    id, username, xp, level, total_messages, last_xp_gain, 
+                    games_played, games_won, total_winnings, gaming, credits, streak_days, last_daily
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            
+            for (const [userId, userData] of updates) {
+                let gamingValue = userData.gaming;
+                if (typeof gamingValue === 'object' && gamingValue !== null) {
+                    gamingValue = JSON.stringify(gamingValue);
+                } else if (!gamingValue) {
+                    gamingValue = '{"game":"CODM","rank":"Unranked"}';
+                }
+                
+                updateStmt.run(
+                    userId,
+                    userData.username || 'Unknown',
+                    userData.xp ?? 0,
+                    userData.level ?? 1,
+                    userData.total_messages ?? 0,
+                    userData.last_xp_gain ?? 0,
+                    userData.games_played ?? 0,
+                    userData.games_won ?? 0,
+                    userData.total_winnings ?? 0,
+                    gamingValue,
+                    userData.credits ?? 0,
+                    userData.streak_days ?? 0,
+                    userData.last_daily ?? 0
+                );
+            }
+            console.log(`${green}[SHUTDOWN]${reset} Final flush complete: ${updates.length} records saved`);
+        } catch (err) {
+            console.error(`${red}[SHUTDOWN]${reset} Final flush failed:`, err.message);
+            if (client._deadLetterQueue && client._deadLetterQueue.length > 0) {
+                fs.writeFileSync('./dead_letter_queue.json', JSON.stringify(client._deadLetterQueue, null, 2));
+                console.log(`${yellow}[SHUTDOWN]${reset} Dead letter queue saved to disk`);
+            }
+        }
     }
     
-    if (client.batchWriteInterval) clearInterval(client.batchWriteInterval);
     if (client.userTimeouts) {
         for (const [id, timeout] of client.userTimeouts) clearTimeout(timeout);
         client.userTimeouts.clear();
@@ -1132,6 +1233,7 @@ async function gracefulShutdown(signal) {
     
     client.userDataCache.clear();
     client.settings.clear();
+    client.pendingUserUpdates.clear();
     
     try {
         db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
@@ -1148,17 +1250,9 @@ async function gracefulShutdown(signal) {
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
-// ================= INITIALIZE LYDIA =================
+// ================= 🔥 INITIALIZE LYDIA (After all setup) =================
 setupLydia(client, db);
-console.log(`${green}[INIT]${reset} Lydia setup completed`);
+console.log(`${green}[INIT]${reset} Lydia Multi-Agent AI initialized`);
 
 // ================= LOGIN =================
 client.login(process.env.TOKEN);
-
-// ================= DÉMARRER LE DASHBOARD WEB =================
-try {
-    const { startDashboard } = require('./web/server.js');
-    startDashboard(client);
-} catch (err) {
-    console.log(`${yellow}[DASHBOARD]${reset} Web dashboard not available: ${err.message}`);
-}
