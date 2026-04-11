@@ -166,16 +166,25 @@ module.exports = {
     usage: '.dashboard',
     examples: ['.dashboard', '.dash', '.tableau'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+    // 🔥 OPTIMIZED: 6-parameter signature with usedCommand for language detection
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, 'en')
-            : 'en';
+        // 🔥 REFINED: Neural language bridge with alias-based detection
+        let lang = 'en';
+        if (client.detectLanguage && usedCommand) {
+            lang = client.detectLanguage(usedCommand, 'en');
+        } else if (usedCommand) {
+            // Fallback detection based on French aliases
+            const cmd = usedCommand.toLowerCase();
+            if (cmd === 'tableau') lang = 'fr';
+            else if (cmd === 'dashboard' || cmd === 'dash' || cmd === 'db') lang = 'en';
+        }
         
         const t = translations[lang];
+        
+        // 🔥 REFINED: Accurate version from client (synced with version.txt)
         const version = client.version || '1.6.0';
+        
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
@@ -211,9 +220,14 @@ module.exports = {
             });
             
             // ================= DATABASE STATS =================
-            const dbUserCount = db.prepare("SELECT COUNT(*) as count FROM users").get().count;
-            const totalXP = db.prepare("SELECT SUM(xp) as total FROM users").get().total || 0;
-            const avgLevel = db.prepare("SELECT AVG(level) as avg FROM users").get().avg || 0;
+            let dbUserCount = 0, totalXP = 0, avgLevel = 0;
+            try {
+                dbUserCount = db.prepare("SELECT COUNT(*) as count FROM users").get().count || 0;
+                totalXP = db.prepare("SELECT SUM(xp) as total FROM users").get().total || 0;
+                avgLevel = db.prepare("SELECT AVG(level) as avg FROM users").get().avg || 0;
+            } catch (dbErr) {
+                console.error('[DASHBOARD] DB Error:', dbErr.message);
+            }
             
             // ================= DISCORD STATS =================
             const serverCount = client.guilds.cache.size;
@@ -233,7 +247,7 @@ module.exports = {
             // ================= PERFORMANCE =================
             const apiLatency = Math.round(client.ws.ping);
             const responseTime = Date.now() - startTime;
-            const ramBar = createProgressBar(ramPercentage);
+            const ramBar = createProgressBar(parseFloat(ramPercentage));
             
             // ================= POWER LEVEL =================
             const commandPower = totalCommands * 20;
@@ -311,11 +325,11 @@ module.exports = {
             // ================= SYSTEM STATUS =================
             const randomTip = t.tips[Math.floor(Math.random() * t.tips.length)];
             const statusEmojis = { online: '🟢', idle: '🟡', dnd: '🔴', offline: '⚫' };
-            const botStatus = statusEmojis[client.presence?.status] || '🟢';
+            const botStatus = statusEmojis[client.user?.presence?.status] || '🟢';
             
             dashboardEmbed.addFields({
                 name: t.systemStatus,
-                value: `\`\`\`yaml\n${randomTip}\n\n${t.botStatus}: ${botStatus} ${client.presence?.status?.toUpperCase() || 'ONLINE'}\n${t.powerLevel}: ${powerLevel}/9999 [${powerRank}]\n${t.progress}: ${powerBar} ${progressToNext}%\n${t.engine}: ${t.optimized}\`\`\``,
+                value: `\`\`\`yaml\n${randomTip}\n\n${t.botStatus}: ${botStatus} ${client.user?.presence?.status?.toUpperCase() || 'ONLINE'}\n${t.powerLevel}: ${powerLevel}/9999 [${powerRank}]\n${t.progress}: ${powerBar} ${progressToNext}%\n${t.engine}: ${t.optimized}\`\`\``,
                 inline: false
             });
             
@@ -324,6 +338,7 @@ module.exports = {
                 iconURL: message.author.displayAvatarURL()
             }).setTimestamp();
             
+            // 🔥 REFINED: Dynamic color based on performance
             const performanceScore = (100 - parseFloat(ramPercentage)) + (100 - (apiLatency / 10));
             if (performanceScore > 150) dashboardEmbed.setColor('#2ecc71');
             else if (performanceScore > 100) dashboardEmbed.setColor('#f39c12');
@@ -331,7 +346,7 @@ module.exports = {
             
             await message.reply({ embeds: [dashboardEmbed] }).catch(() => {});
             
-            console.log(`[DASHBOARD] ${message.author.tag} | v${version} | Users: ${dbUserCount} | Cmds: ${totalCommands} | Lang: ${lang}`);
+            console.log(`[DASHBOARD] ${message.author.tag} | v${version} | Users: ${dbUserCount} | Cmds: ${totalCommands} | Lang: ${lang} | Power: ${powerLevel}`);
             
         } catch (error) {
             console.error('[DASHBOARD] Error:', error);
