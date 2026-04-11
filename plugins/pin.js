@@ -1,0 +1,550 @@
+const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+
+// ================= VERSION FROM version.txt =================
+function getVersion() {
+    try {
+        const versionPath = path.join(__dirname, '..', 'version.txt');
+        if (fs.existsSync(versionPath)) {
+            return fs.readFileSync(versionPath, 'utf8').trim();
+        }
+        return '1.6.0';
+    } catch (err) {
+        return '1.6.0';
+    }
+}
+
+// ================= BILINGUAL TRANSLATIONS =================
+const translations = {
+    en: {
+        noPermission: '❌ Manage Messages permission required.',
+        noTarget: '❓ **Reply** to a message or provide a message ID to pin.',
+        messageNotFound: '❌ Message not found. It may have been deleted.',
+        pinLimitReached: '❌ This channel has reached the 50 pin limit.',
+        alreadyPinned: '⚠️ This message is already pinned.',
+        pinned: '✅ Message pinned successfully!',
+        pinnedAndArchived: '✅ Message pinned and archived to the Neural Gallery!',
+        archiveTitle: '📌 NEURAL ARCHIVE ENTRY',
+        archivedBy: 'Archived by',
+        origin: '📍 Origin',
+        jumpToMessage: '🔗 Jump to Message',
+        messageId: '🆔 Message ID',
+        author: '👤 Author',
+        pinnedAt: '📅 Pinned At',
+        attachments: '📎 Attachments',
+        content: '💬 Content',
+        noContent: '*[No text content]*',
+        jumpButton: '🔗 Jump to Original',
+        unpinButton: '📌 Unpin',
+        unpinned: '✅ Message unpinned.',
+        pinCount: '📊 Pin Count',
+        neuralArchive: 'NEURAL ARCHIVE SYSTEM',
+        noPins: '📌 No pinned messages in this channel.',
+        unpinFailed: '❌ Failed to unpin.',
+        fetchFailed: '❌ Could not fetch pinned messages.',
+        unpinPrompt: '**Reply** to a pinned message or provide an ID to unpin.',
+        notPinned: '⚠️ This message is not pinned.',
+        replyTip: '💡 **Tip:** Reply to a message and type `.pin` to pin it!',
+        cleanupTip: '🧹 **Tip:** Reply to a pinned message and type `.unpin` to remove it!'
+    },
+    fr: {
+        noPermission: '❌ Autorisation de gérer les messages requise.',
+        noTarget: '❓ **Répondez** à un message ou fournissez un ID à épingler.',
+        messageNotFound: '❌ Message introuvable. Il a peut-être été supprimé.',
+        pinLimitReached: '❌ Ce salon a atteint la limite de 50 messages épinglés.',
+        alreadyPinned: '⚠️ Ce message est déjà épinglé.',
+        pinned: '✅ Message épinglé avec succès!',
+        pinnedAndArchived: '✅ Message épinglé et archivé dans la Galerie Neurale!',
+        archiveTitle: '📌 ENTRÉE D\'ARCHIVE NEURALE',
+        archivedBy: 'Archivé par',
+        origin: '📍 Origine',
+        jumpToMessage: '🔗 Aller au Message',
+        messageId: '🆔 ID du Message',
+        author: '👤 Auteur',
+        pinnedAt: '📅 Épinglé le',
+        attachments: '📎 Pièces jointes',
+        content: '💬 Contenu',
+        noContent: '*[Aucun contenu texte]*',
+        jumpButton: '🔗 Aller à l\'original',
+        unpinButton: '📌 Désépingler',
+        unpinned: '✅ Message désépinglé.',
+        pinCount: '📊 Nombre d\'épingles',
+        neuralArchive: 'SYSTÈME D\'ARCHIVE NEURALE',
+        noPins: '📌 Aucun message épinglé dans ce salon.',
+        unpinFailed: '❌ Échec du désépinglage.',
+        fetchFailed: '❌ Impossible de récupérer les messages épinglés.',
+        unpinPrompt: '**Répondez** à un message épinglé ou fournissez un ID à désépingler.',
+        notPinned: '⚠️ Ce message n\'est pas épinglé.',
+        replyTip: '💡 **Astuce:** Répondez à un message et tapez `.pin` pour l\'épingler!',
+        cleanupTip: '🧹 **Astuce:** Répondez à un message épinglé et tapez `.unpin` pour le retirer!'
+    }
+};
+
+// ================= HELPER FUNCTIONS =================
+function truncateText(text, maxLength = 1000) {
+    if (!text) return null;
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength - 3) + '...';
+}
+
+function formatContent(content, attachments) {
+    if (!content && attachments.size === 0) return '*[Empty Message]*';
+    if (!content) return `*[${attachments.size} attachment(s)]*`;
+    return content;
+}
+
+function ensurePinTable(db) {
+    try {
+        db.prepare(`
+            CREATE TABLE IF NOT EXISTS pinned_messages (
+                message_id TEXT PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                channel_id TEXT NOT NULL,
+                author_id TEXT NOT NULL,
+                author_tag TEXT,
+                content TEXT,
+                pinned_by TEXT NOT NULL,
+                pinned_at INTEGER DEFAULT (strftime('%s', 'now')),
+                attachment_urls TEXT,
+                jump_url TEXT
+            )
+        `).run();
+        return true;
+    } catch (err) {
+        console.error('[PIN TABLE] Failed to create table:', err.message);
+        return false;
+    }
+}
+
+function savePinToDatabase(db, message, pinnedBy) {
+    try {
+        ensurePinTable(db);
+        
+        const attachmentUrls = message.attachments.size > 0 
+            ? JSON.stringify([...message.attachments.values()].map(a => a.url))
+            : null;
+        
+        db.prepare(`
+            INSERT OR REPLACE INTO pinned_messages 
+            (message_id, guild_id, channel_id, author_id, author_tag, content, pinned_by, attachment_urls, jump_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            message.id,
+            message.guild.id,
+            message.channel.id,
+            message.author.id,
+            message.author.tag,
+            truncateText(message.content, 2000),
+            pinnedBy.id,
+            attachmentUrls,
+            message.url
+        );
+        
+        return true;
+    } catch (err) {
+        console.error('[PIN DB] Failed to save pin:', err.message);
+        return false;
+    }
+}
+
+function deletePinFromDatabase(db, messageId) {
+    try {
+        db.prepare(`DELETE FROM pinned_messages WHERE message_id = ?`).run(messageId);
+        return true;
+    } catch (err) {
+        console.error('[PIN DB] Failed to delete pin:', err.message);
+        return false;
+    }
+}
+
+function getPinStats(db, guildId) {
+    try {
+        const result = db.prepare(
+            `SELECT COUNT(*) as count FROM pinned_messages WHERE guild_id = ?`
+        ).get(guildId);
+        return result?.count || 0;
+    } catch (err) {
+        return 0;
+    }
+}
+
+async function createArchiveChannel(guild) {
+    try {
+        let archiveCategory = guild.channels.cache.find(
+            c => c.type === 4 && c.name === '📂 NEURAL ARCHIVES'
+        );
+        
+        if (!archiveCategory) {
+            archiveCategory = await guild.channels.create({
+                name: '📂 NEURAL ARCHIVES',
+                type: 4,
+                permissionOverwrites: [
+                    {
+                        id: guild.id,
+                        deny: [PermissionsBitField.Flags.SendMessages]
+                    }
+                ]
+            });
+        }
+        
+        const archiveChannel = await guild.channels.create({
+            name: '📌-neural-archives',
+            type: 0,
+            parent: archiveCategory.id,
+            topic: '📂 Neural Archive Gallery - Reply to any message with .pin to save it here!',
+            permissionOverwrites: [
+                {
+                    id: guild.id,
+                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ReadMessageHistory],
+                    deny: [PermissionsBitField.Flags.SendMessages]
+                }
+            ]
+        });
+        
+        return archiveChannel;
+    } catch (err) {
+        console.error('[ARCHIVE] Failed to create archive channel:', err.message);
+        return null;
+    }
+}
+
+// ================= MAIN EXPORT =================
+module.exports = {
+    name: 'pin',
+    aliases: ['fix', 'archive', 'save', 'unpin', 'pins', 'archives'],
+    description: '📌 Reply to a message with .pin to save it to the Neural Gallery.',
+    category: 'UTILITY',
+    usage: '.pin (reply to a message) or .unpin (reply to a pinned message)',
+    examples: ['.pin', '.unpin', '.pins'],
+    cooldown: 3000,
+
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
+        
+        // ================= LANGUAGE DETECTION =================
+        let lang = 'en';
+        if (client.detectLanguage && usedCommand) {
+            lang = client.detectLanguage(usedCommand, 'en');
+        }
+        const t = translations[lang];
+        
+        // ================= PERMISSION CHECK =================
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+            return message.reply({ 
+                content: t.noPermission,
+                ephemeral: true 
+            }).catch(() => {});
+        }
+        
+        // ================= HANDLE SUBCOMMANDS =================
+        const subCommand = usedCommand?.toLowerCase();
+        
+        // Handle .unpin
+        if (subCommand === 'unpin') {
+            return handleUnpin(client, message, args, db, t, lang);
+        }
+        
+        // Handle .pins
+        if (subCommand === 'pins' || subCommand === 'archives') {
+            return handlePinsList(client, message, t, lang);
+        }
+        
+        // Handle .pin
+        return handlePin(client, message, args, db, serverSettings, t, lang);
+    }
+};
+
+// ================= HANDLE PIN =================
+async function handlePin(client, message, args, db, serverSettings, t, lang) {
+    let targetMessage;
+    const version = getVersion();
+    
+    // 🔥 FIXED: message.channel.messages.fetch (not message.channels)
+    if (message.reference?.messageId) {
+        try {
+            targetMessage = await message.channel.messages.fetch(message.reference.messageId);
+        } catch (err) {
+            // Message might be in another channel
+            try {
+                const channels = message.guild.channels.cache.filter(c => c.isTextBased());
+                for (const channel of channels.values()) {
+                    try {
+                        targetMessage = await channel.messages.fetch(message.reference.messageId);
+                        if (targetMessage) break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+            } catch (e) {}
+        }
+    }
+    
+    // Fallback: Check for message ID in args
+    if (!targetMessage && args[0]) {
+        try {
+            targetMessage = await message.channel.messages.fetch(args[0]);
+        } catch (err) {
+            const channels = message.guild.channels.cache.filter(c => c.isTextBased());
+            for (const channel of channels.values()) {
+                try {
+                    targetMessage = await channel.messages.fetch(args[0]);
+                    if (targetMessage) break;
+                } catch (e) {
+                    continue;
+                }
+            }
+        }
+    }
+    
+    // No target found - prompt user to use reply feature
+    if (!targetMessage) {
+        const tipEmbed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setDescription(`**${t.noTarget}**\n\n${t.replyTip}`)
+            .setFooter({ text: `${t.neuralArchive} • v${version}` });
+        
+        return message.reply({ 
+            embeds: [tipEmbed],
+            ephemeral: true 
+        }).catch(() => {});
+    }
+    
+    // Check if already pinned
+    const channelPins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
+    if (channelPins.has(targetMessage.id)) {
+        return message.reply({ 
+            content: t.alreadyPinned,
+            ephemeral: true 
+        }).catch(() => {});
+    }
+    
+    // Pin the message
+    try {
+        await targetMessage.pin();
+    } catch (error) {
+        if (error.code === 30003) {
+            return message.reply({ 
+                content: t.pinLimitReached,
+                ephemeral: true 
+            }).catch(() => {});
+        }
+        throw error;
+    }
+    
+    // Save to database
+    savePinToDatabase(db, targetMessage, message.author);
+    
+    // Get or create archive channel
+    let archiveChannelId = serverSettings?.logChannel;
+    let archiveChannel = archiveChannelId 
+        ? message.guild.channels.cache.get(archiveChannelId) 
+        : null;
+    
+    if (!archiveChannel) {
+        archiveChannel = await createArchiveChannel(message.guild);
+        if (archiveChannel && client.updateServerSetting) {
+            client.updateServerSetting(message.guild.id, 'log', archiveChannel.id);
+        }
+    }
+    
+    // Build archive embed
+    const archiveEmbed = new EmbedBuilder()
+        .setColor('#00fbff')
+        .setAuthor({ 
+            name: t.archiveTitle, 
+            iconURL: client.user.displayAvatarURL() 
+        })
+        .setDescription(formatContent(targetMessage.content, targetMessage.attachments))
+        .addFields(
+            { name: t.author, value: `${targetMessage.author.tag}`, inline: true },
+            { name: t.origin, value: `<#${targetMessage.channel.id}>`, inline: true },
+            { name: t.archivedBy, value: `${message.author.tag}`, inline: true },
+            { name: t.pinnedAt, value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
+            { name: t.jumpToMessage, value: `[${lang === 'fr' ? 'Cliquez ici' : 'Click here'}](${targetMessage.url})`, inline: true }
+        );
+    
+    // Add attachment preview
+    if (targetMessage.attachments.size > 0) {
+        const firstAttachment = targetMessage.attachments.first();
+        if (firstAttachment.contentType?.startsWith('image/')) {
+            archiveEmbed.setImage(firstAttachment.url);
+        }
+        
+        const attachmentList = [...targetMessage.attachments.values()]
+            .map((a, i) => `[${lang === 'fr' ? 'Pièce' : 'File'} ${i + 1}](${a.url})`)
+            .join(' • ');
+        
+        archiveEmbed.addFields({
+            name: t.attachments,
+            value: truncateText(attachmentList, 1024) || 'N/A',
+            inline: false
+        });
+    }
+    
+    archiveEmbed
+        .setFooter({ 
+            text: `${message.guild.name} • ${t.neuralArchive} • v${version}`, 
+            iconURL: message.guild.iconURL() || client.user.displayAvatarURL() 
+        })
+        .setTimestamp();
+    
+    // Action row with buttons
+    const actionRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setLabel(t.jumpButton)
+            .setStyle(ButtonStyle.Link)
+            .setURL(targetMessage.url),
+        new ButtonBuilder()
+            .setCustomId(`unpin_${targetMessage.id}`)
+            .setLabel(t.unpinButton)
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('📌')
+    );
+    
+    // Send to archive
+    if (archiveChannel) {
+        try {
+            await archiveChannel.send({ 
+                embeds: [archiveEmbed],
+                components: [actionRow]
+            });
+        } catch (err) {
+            console.error('[ARCHIVE] Failed to send:', err.message);
+        }
+    }
+    
+    // Success response
+    const pinCount = channelPins.size + 1;
+    const totalArchived = getPinStats(db, message.guild.id);
+    
+    const successEmbed = new EmbedBuilder()
+        .setColor('#00fbff')
+        .setDescription(
+            `✅ **${archiveChannel ? t.pinnedAndArchived : t.pinned}**\n\n` +
+            `📊 **${t.pinCount}:** ${pinCount}/50\n` +
+            `📂 **Total Archived:** ${totalArchived} messages\n\n` +
+            `${t.cleanupTip}`
+        )
+        .setFooter({ 
+            text: `${message.author.tag} • ${t.neuralArchive} • v${version}`,
+            iconURL: message.author.displayAvatarURL()
+        })
+        .setTimestamp();
+    
+    await message.reply({ 
+        embeds: [successEmbed],
+        ephemeral: false
+    }).catch(() => {});
+    
+    console.log(`[PIN] ${message.author.tag} pinned message from ${targetMessage.author.tag} | Archived: ${!!archiveChannel}`);
+}
+
+// ================= HANDLE UNPIN =================
+async function handleUnpin(client, message, args, db, t, lang) {
+    let targetMessage;
+    const version = getVersion();
+    
+    // 🔥 FIXED: message.channel.messages.fetch (not message.channels)
+    if (message.reference?.messageId) {
+        try {
+            targetMessage = await message.channel.messages.fetch(message.reference.messageId);
+        } catch (err) {}
+    }
+    
+    // Fallback: Check for message ID
+    if (!targetMessage && args[0]) {
+        try {
+            targetMessage = await message.channel.messages.fetch(args[0]);
+        } catch (err) {}
+    }
+    
+    if (!targetMessage) {
+        const tipEmbed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setDescription(`**${t.unpinPrompt}**\n\n${t.cleanupTip}`)
+            .setFooter({ text: `${t.neuralArchive} • v${version}` });
+        
+        return message.reply({ 
+            embeds: [tipEmbed],
+            ephemeral: true 
+        }).catch(() => {});
+    }
+    
+    // Check if actually pinned
+    const pins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
+    if (!pins.has(targetMessage.id)) {
+        return message.reply({ 
+            content: t.notPinned,
+            ephemeral: true 
+        }).catch(() => {});
+    }
+    
+    try {
+        await targetMessage.unpin();
+        deletePinFromDatabase(db, targetMessage.id);
+        
+        const successEmbed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setDescription(`✅ **${t.unpinned}**`)
+            .setFooter({ text: `${t.neuralArchive} • v${version}` });
+        
+        await message.reply({ 
+            embeds: [successEmbed],
+            ephemeral: true 
+        }).catch(() => {});
+        
+        console.log(`[UNPIN] ${message.author.tag} unpinned message ${targetMessage.id}`);
+    } catch (err) {
+        return message.reply({ 
+            content: t.unpinFailed,
+            ephemeral: true 
+        }).catch(() => {});
+    }
+}
+
+// ================= HANDLE PINS LIST =================
+async function handlePinsList(client, message, t, lang) {
+    const version = getVersion();
+    
+    try {
+        const pins = await message.channel.messages.fetchPinned();
+        
+        if (pins.size === 0) {
+            const tipEmbed = new EmbedBuilder()
+                .setColor('#00fbff')
+                .setDescription(`**${t.noPins}**\n\n${t.replyTip}`)
+                .setFooter({ text: `${t.neuralArchive} • v${version}` });
+            
+            return message.reply({ 
+                embeds: [tipEmbed],
+                ephemeral: true 
+            }).catch(() => {});
+        }
+        
+        const pinsList = [...pins.values()]
+            .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
+            .slice(0, 10)
+            .map((msg, i) => {
+                const content = truncateText(msg.content, 50) || '*[No text]*';
+                return `${i + 1}. **${msg.author.tag}**: ${content}\n   └ [Jump](${msg.url}) • \`${msg.id}\``;
+            })
+            .join('\n\n');
+        
+        const embed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setTitle(`📌 ${lang === 'fr' ? 'Messages Épinglés' : 'Pinned Messages'}`)
+            .setDescription(pinsList + `\n\n${t.cleanupTip}`)
+            .setFooter({ 
+                text: `${pins.size}/50 ${lang === 'fr' ? 'messages épinglés' : 'pinned messages'} • ${message.channel.name} • v${version}` 
+            });
+        
+        await message.reply({ embeds: [embed] }).catch(() => {});
+        
+    } catch (err) {
+        console.error('[PINS LIST] Error:', err.message);
+        return message.reply({ 
+            content: t.fetchFailed,
+            ephemeral: true 
+        }).catch(() => {});
+    }
+}
