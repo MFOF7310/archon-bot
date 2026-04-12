@@ -21,7 +21,7 @@ process.on('uncaughtException', (err, origin) => {
 });
 
 // ================= TERMINAL COLORS =================
-const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m", bold = "\x1b[1m";
+const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", magenta = "\x1b[35m", reset = "\x1b[0m", bold = "\x1b[1m";
 
 const client = new Client({
     intents: [
@@ -588,37 +588,202 @@ client.flushUserUpdates = flushUserUpdates;
 client.getUserData = getUserData;
 client.cacheUserData = cacheUserData;
 
-// ================= GLOBAL ITEM DEFINITIONS =================
+// ================= EXPANDED SHOP ITEMS =================
 client.shopItems = [
-    { id: 'starter_pack', price: 500, emoji: '📦', type: 'consumable', effect: { xp: 100, credits: 50 },
-      en: { name: 'New Recruit Pack', desc: 'A small boost for new agents.', perk: '+100 XP & +50 Credits' },
-      fr: { name: 'Pack Nouvelle Recrue', desc: 'Un petit boost pour les nouveaux agents.', perk: '+100 XP & +50 Crédits' } },
-    { id: 'xp_boost', price: 2000, emoji: '⚡', type: 'consumable', effect: { xp: 1000 },
-      en: { name: 'Quantum XP Overdrive', desc: 'A one-time massive XP injection.', perk: '+1000 XP instantly' },
-      fr: { name: 'Overdrive XP Quantique', desc: 'Une injection massive d\'XP unique.', perk: '+1000 XP instantanément' } },
-    { id: 'credit_boost', price: 1500, emoji: '💰', type: 'consumable', effect: { credits: 500 },
-      en: { name: 'Credit Surge', desc: 'Instant credit injection.', perk: '+500 Credits' },
-      fr: { name: 'Afflux de Crédits', desc: 'Injection de crédits instantanée.', perk: '+500 Crédits' } }
+    // ================= CONSUMABLES =================
+    { 
+        id: 'starter_pack', 
+        price: 500, 
+        emoji: '📦', 
+        type: 'consumable', 
+        effect: { xp: 100, credits: 50 },
+        en: { name: 'New Recruit Pack', desc: 'A small boost for new agents.', perk: '+100 XP & +50 Credits' },
+        fr: { name: 'Pack Nouvelle Recrue', desc: 'Un petit boost pour les nouveaux agents.', perk: '+100 XP & +50 Crédits' } 
+    },
+    { 
+        id: 'xp_boost_small', 
+        price: 500, 
+        emoji: '⚡', 
+        type: 'consumable', 
+        effect: { xp: 250 },
+        en: { name: 'XP Boost (Small)', desc: 'Quick neural enhancement.', perk: '+250 XP' },
+        fr: { name: 'Boost XP (Petit)', desc: 'Amélioration neurale rapide.', perk: '+250 XP' } 
+    },
+    { 
+        id: 'xp_boost_large', 
+        price: 2000, 
+        emoji: '⚡⚡', 
+        type: 'consumable', 
+        effect: { xp: 1000 },
+        en: { name: 'Quantum XP Overdrive', desc: 'Massive XP injection.', perk: '+1000 XP instantly' },
+        fr: { name: 'Overdrive XP Quantique', desc: 'Injection massive d\'XP.', perk: '+1000 XP instantanément' } 
+    },
+    { 
+        id: 'credit_boost_small', 
+        price: 300, 
+        emoji: '🪙', 
+        type: 'consumable', 
+        effect: { credits: 200 },
+        en: { name: 'Credit Injection', desc: 'Small credit boost.', perk: '+200 Credits' },
+        fr: { name: 'Injection de Crédits', desc: 'Petit boost de crédits.', perk: '+200 Crédits' } 
+    },
+    { 
+        id: 'credit_boost_large', 
+        price: 1500, 
+        emoji: '💰', 
+        type: 'consumable', 
+        effect: { credits: 1000 },
+        en: { name: 'Credit Surge', desc: 'Major credit injection.', perk: '+1000 Credits' },
+        fr: { name: 'Afflux de Crédits', desc: 'Injection majeure de crédits.', perk: '+1000 Crédits' } 
+    },
+    // ================= ROLES =================
+    { 
+        id: 'vip_role', 
+        price: 10000, 
+        emoji: '💎', 
+        type: 'role',
+        roleId: process.env.VIP_ROLE_ID,
+        requirement: { level: 25 },
+        en: { name: 'VIP Status', desc: 'Exclusive VIP role and perks.', perk: 'VIP Role + Special Channel Access' },
+        fr: { name: 'Statut VIP', desc: 'Rôle VIP exclusif et avantages.', perk: 'Rôle VIP + Accès Salon Spécial' } 
+    },
+    { 
+        id: 'verified_role', 
+        price: 5000, 
+        emoji: '✅', 
+        type: 'role',
+        roleId: process.env.VERIFIED_ROLE_ID,
+        requirement: { level: 10 },
+        en: { name: 'Verified Agent', desc: 'Verified status in the community.', perk: 'Verified Role + Trust Badge' },
+        fr: { name: 'Agent Vérifié', desc: 'Statut vérifié dans la communauté.', perk: 'Rôle Vérifié + Badge de Confiance' } 
+    },
+    // ================= BADGES =================
+    { 
+        id: 'badge_pioneer', 
+        price: 8000, 
+        emoji: '🏅', 
+        type: 'badge',
+        requirement: { level: 5 },
+        en: { name: 'Pioneer Badge', desc: 'Shows on your profile.', perk: '🏅 Pioneer Badge' },
+        fr: { name: 'Badge Pionnier', desc: 'Affiché sur votre profil.', perk: '🏅 Badge Pionnier' } 
+    },
+    { 
+        id: 'badge_bamako', 
+        price: 10000, 
+        emoji: '🇲🇱', 
+        type: 'badge',
+        requirement: { level: 15 },
+        en: { name: 'Bamako Pride Badge', desc: 'Mali heritage badge.', perk: '🇲🇱 Bamako Pride Badge' },
+        fr: { name: 'Badge Fierté Bamako', desc: 'Badge héritage malien.', perk: '🇲🇱 Badge Fierté Bamako' } 
+    },
+    // ================= MYSTERY BOXES =================
+    { 
+        id: 'mystery_box_bronze', 
+        price: 1000, 
+        emoji: '🎁', 
+        type: 'consumable',
+        effect: { 
+            random: [
+                { xp: 100 }, { xp: 200 }, { credits: 100 }, 
+                { credits: 200 }, { xp: 50, credits: 50 }
+            ] 
+        },
+        en: { name: 'Bronze Mystery Box', desc: 'Contains random rewards!', perk: 'Random XP or Credits' },
+        fr: { name: 'Boîte Mystère Bronze', desc: 'Contient des récompenses aléatoires !', perk: 'XP ou Crédits Aléatoires' } 
+    },
+    // ================= UTILITY =================
+    { 
+        id: 'daily_streak_shield', 
+        price: 2000, 
+        emoji: '🛡️', 
+        type: 'consumable',
+        effect: { streak_protection: true },
+        en: { name: 'Streak Shield', desc: 'Protects your daily streak if missed.', perk: '1x Streak Protection' },
+        fr: { name: 'Bouclier de Série', desc: 'Protège votre série quotidienne.', perk: '1x Protection de Série' } 
+    }
 ];
 
 client.getItem = (itemId) => client.shopItems.find(item => item.id === itemId);
 
-// ================= PLUGIN LOADER =================
+// ================= CATEGORY EMOJI HELPER =================
+function getCategoryEmoji(category) {
+    const emojiMap = {
+        'SYSTEM': '⚙️', 'GAMING': '🎮', 'AI': '🧠', 'PROFILE': '👤',
+        'OWNER': '👑', 'GENERAL': '📁', 'UTILITY': '🛠️', 'MODERATION': '🛡️',
+        'ECONOMY': '💰', 'FUN': '🎉'
+    };
+    return emojiMap[category.toUpperCase()] || '📦';
+}
+
+// ================= TELEGRAM BRIDGE v1.7.0 (DORMANT - AWAITING ACTIVATION) =================
+client.telegramBridge = {
+    enabled: false,
+    token: process.env.TELEGRAM_BOT_TOKEN || null,
+    chatId: process.env.TELEGRAM_CHAT_ID || null,
+    
+    // Bridge status
+    status: () => ({
+        configured: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
+        enabled: client.telegramBridge?.enabled || false,
+        version: '1.7.0'
+    }),
+    
+    // Send message to Telegram (when enabled)
+    send: async (content, options = {}) => {
+        if (!client.telegramBridge.enabled) return { success: false, error: 'Bridge disabled' };
+        // Implementation ready for future activation
+        return { success: false, error: 'Module dormant' };
+    },
+    
+    // Activate bridge
+    activate: () => {
+        if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
+            console.log(`${yellow}[TELEGRAM]${reset} Cannot activate - missing credentials in .env`);
+            return false;
+        }
+        client.telegramBridge.enabled = true;
+        console.log(`${green}[TELEGRAM]${reset} Bridge v1.7.0 activated - BAMAKO_223 🇲🇱 connected`);
+        return true;
+    },
+    
+    // Deactivate bridge
+    deactivate: () => {
+        client.telegramBridge.enabled = false;
+        console.log(`${yellow}[TELEGRAM]${reset} Bridge deactivated`);
+        return true;
+    }
+};
+
+// Log bridge status on boot
+if (client.telegramBridge.status().configured) {
+    console.log(`${cyan}[TELEGRAM]${reset} Bridge v1.7.0 configured - Use .telegram activate to enable`);
+} else {
+    console.log(`${yellow}[TELEGRAM]${reset} Bridge not configured - Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to .env`);
+}
+
+// ================= PLUGIN LOADER - NEURAL GRID EDITION =================
 client.loadPlugins = async () => {
     client.commands.clear();
     client.aliases.clear();
-    console.log(`\n${blue}${bold}==============================================${reset}`);
-    console.log(`${cyan}🛰️  ARCHITECT CG-223 | MODULE SYNCHRONIZATION${reset}`);
-    console.log(`${blue}${bold}==============================================${reset}`);
-
+    
     const pluginPath = path.join(__dirname, 'plugins');
     if (!fs.existsSync(pluginPath)) fs.mkdirSync(pluginPath);
 
     const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js') && file !== 'lydia.js');
     
+    // ================= HEADER =================
+    console.log(`\n${cyan}${bold}╔══════════════════════════════════════════════════════════════════╗${reset}`);
+    console.log(`${cyan}${bold}║${reset}  ${yellow}🦅 ARCHITECT CG-223 NEURAL SYNAPSE // MODULE SYNCHRONIZATION${reset}  ${cyan}${bold}║${reset}`);
+    console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
+    console.log(`${cyan}${bold}║${reset}  ${green}📡 Establishing neural links to command modules...${reset}          ${cyan}${bold}║${reset}`);
+    console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
+    
+    const loadedCommands = [];
+    const failedCommands = [];
+    
     for (const file of pluginFiles) {
         try {
-            await sleep(100);
+            await sleep(80);
             const filePath = path.join(pluginPath, file);
             delete require.cache[require.resolve(filePath)];
             const command = require(filePath);
@@ -628,17 +793,82 @@ client.loadPlugins = async () => {
                 if (command.aliases && Array.isArray(command.aliases)) {
                     command.aliases.forEach(a => client.aliases.set(a, command.name));
                 }
-                console.log(`${green}[VERIFIED]${reset} Linked: ${cyan}${command.name.toUpperCase()}${reset}`);
+                
+                const category = command.category || 'GENERAL';
+                const aliasesCount = command.aliases?.length || 0;
+                loadedCommands.push({ 
+                    name: command.name, 
+                    category, 
+                    aliases: aliasesCount,
+                    emoji: getCategoryEmoji(category)
+                });
             }
         } catch (error) { 
-            console.log(`${red}[ERROR]${reset} Failed ${file}: ${error.message}`); 
+            failedCommands.push({ file, error: error.message });
         }
     }
     
-    await sleep(200);
-    console.log(`${blue}${bold}==============================================${reset}`);
-    console.log(`${green}🚀 ENGINE READY | ${client.commands.size} CORE MODULES ONLINE${reset}`);
-    console.log(`${blue}${bold}==============================================${reset}\n`);
+    // ================= GRID DISPLAY =================
+    const itemsPerRow = 3;
+    
+    loadedCommands.sort((a, b) => {
+        if (a.category !== b.category) return a.category.localeCompare(b.category);
+        return a.name.localeCompare(b.name);
+    });
+    
+    for (let i = 0; i < loadedCommands.length; i += itemsPerRow) {
+        const row = loadedCommands.slice(i, i + itemsPerRow);
+        let rowText = `${cyan}${bold}║${reset}  `;
+        
+        row.forEach(cmd => {
+            const displayName = cmd.name.length > 12 ? cmd.name.substring(0, 10) + '..' : cmd.name.padEnd(12);
+            const aliasInfo = cmd.aliases > 0 ? `${cmd.aliases}` : '—';
+            rowText += `${cmd.emoji} ${green}${displayName}${reset} ${yellow}[${aliasInfo}]${reset}`.padEnd(26);
+        });
+        
+        const emptySlots = itemsPerRow - row.length;
+        if (emptySlots > 0) {
+            rowText += ' '.repeat(emptySlots * 26);
+        }
+        
+        console.log(`${rowText} ${cyan}${bold}║${reset}`);
+    }
+    
+    // ================= FOOTER WITH STATISTICS =================
+    console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
+    
+    const totalAliases = client.aliases.size;
+    const categories = [...new Set(loadedCommands.map(c => c.category))];
+    
+    console.log(`${cyan}${bold}║${reset}  ${green}✅ VERIFIED:${reset} ${loadedCommands.length} modules ${yellow}│${reset} ${blue}🔀 Aliases:${reset} ${totalAliases} ${yellow}│${reset} ${magenta}📂 Categories:${reset} ${categories.length}      ${cyan}${bold}║${reset}`);
+    console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
+    
+    // ================= CATEGORY SUMMARY =================
+    const categoryCount = {};
+    loadedCommands.forEach(c => categoryCount[c.category] = (categoryCount[c.category] || 0) + 1);
+    
+    let categoryLine = `${cyan}${bold}║${reset}  `;
+    const categoryEntries = Object.entries(categoryCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    
+    categoryEntries.forEach(([cat, count]) => {
+        const emoji = getCategoryEmoji(cat);
+        categoryLine += `${emoji} ${cat.substring(0, 6)}:${count}  `;
+    });
+    
+    console.log(`${categoryLine}${' '.repeat(Math.max(0, 64 - categoryLine.length + 10))}${cyan}${bold}║${reset}`);
+    
+    // ================= FAILED MODULES =================
+    if (failedCommands.length > 0) {
+        console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
+        failedCommands.forEach(f => {
+            console.log(`${cyan}${bold}║${reset}  ${red}❌ FAILED:${reset} ${f.file} ${yellow}→${reset} ${f.error.substring(0, 40)}${' '.repeat(Math.max(0, 40 - f.error.length))} ${cyan}${bold}║${reset}`);
+        });
+    }
+    
+    // ================= BAMAKO NODE SIGNATURE =================
+    console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
+    console.log(`${cyan}${bold}║${reset}  ${yellow}📍 NODE:${reset} BAMAKO_223 🇲🇱 ${' '.repeat(28)}${green}🚀 ENGINE READY${reset}  ${cyan}${bold}║${reset}`);
+    console.log(`${cyan}${bold}╚══════════════════════════════════════════════════════════════════╝${reset}\n`);
 };
 
 // ================= SMART PLUGIN EXECUTION WRAPPER =================
@@ -647,7 +877,6 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     const funcStr = runFunc.toString();
     const params = funcStr.slice(funcStr.indexOf('(') + 1, funcStr.indexOf(')')).split(',').map(p => p.trim());
     
-    // 🔥 FIXED: Get server settings
     const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
     
     const argsMap = { client, message, args, db, usedCommand, serverSettings };
@@ -660,9 +889,6 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 client.once(Events.ClientReady, async () => {
     console.clear();
     await client.loadPlugins();
-    
-    // 🔥 FIXED: Let setupLydia handle its own globals
-    // No need to manually set lydia globals - setupLydia does it
     
     startBatchWriteInterval();
     startReminderHeartbeat();
@@ -838,11 +1064,9 @@ client.on(Events.MessageCreate, async (message) => {
         
         let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
         
-        // ================= 🔥 FIXED: Lydia command with serverSettings =================
         if (!command && (cmdName === 'lydia' || cmdName === 'ai' || cmdName === 'neural' || cmdName === 'ia')) {
             try {
                 const lydiaModule = require('./plugins/lydia.js');
-                // 🔥 Pass serverSettings as 5th parameter
                 await lydiaModule.run(client, message, args, db, serverSettings, usedCommand);
                 return;
             } catch (e) {
@@ -865,9 +1089,6 @@ client.on(Events.MessageCreate, async (message) => {
             }
         }
     }
-    
-    // 🔥 IMPORTANT: Lydia auto-response is handled by its own messageCreate listener
-    // DO NOT call it here - setupLydia already registered the listener
 });
 
 // ================= ENHANCED INTERACTION HANDLER =================
@@ -880,8 +1101,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
         console.log(`${cyan}[INTERACTION]${reset} ${interaction.customId} from ${interaction.user.tag}`);
         
-        // 🛡️ THE ARCHITECT'S FIX: Only defer if NO ONE else has touched it
-        // AND if it's not a custom command that needs special handling
         const needsNewMessage = interaction.customId.startsWith('help_') || 
                                 interaction.customId.startsWith('info_') ||
                                 interaction.customId.startsWith('menu_') ||
@@ -891,19 +1110,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
                                interaction.customId.includes('secret') ||
                                interaction.customId === 'welcome_help';
         
-        // 🔥 CRITICAL: Check if already handled before deferring
         if (!interaction.deferred && !interaction.replied) {
             try {
                 if (needsNewMessage) {
                     await interaction.deferReply({ ephemeral: needsEphemeral });
                     console.log(`${green}[INTERACTION]${reset} Deferred reply for ${interaction.customId}`);
                 } else {
-                    // Only deferUpdate for non-special interactions
                     await interaction.deferUpdate();
                     console.log(`${green}[INTERACTION]${reset} Deferred update for ${interaction.customId}`);
                 }
             } catch (err) {
-                // Ignore "already deferred" errors - that means plugin handled it first
                 if (!err.message.includes('already been acknowledged')) {
                     console.error(`${red}[INTERACTION ERROR]${reset} Failed to defer:`, err.message);
                 }
@@ -911,7 +1127,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             }
         }
         
-        // Handle welcome help (only one we handle in index)
         if (interaction.customId === 'welcome_help') {
             const lang = interaction.guild?.preferredLocale === 'fr' ? 'fr' : 'en';
             
