@@ -34,7 +34,8 @@ const shopTranslations = {
         purchaseError: '❌ An error occurred during purchase. Please try again.',
         footer: 'ARCHITECT CG-223 • Neural Marketplace',
         purchaseComplete: '✅ PURCHASE COMPLETE',
-        processing: '⚡ Processing transaction...'
+        processing: '⚡ Processing transaction...',
+        loadingInventory: '⚡ Loading inventory...'
     },
     fr: {
         title: '═ MARCHÉ NEURAL ARCHON ═',
@@ -63,7 +64,8 @@ const shopTranslations = {
         purchaseError: '❌ Une erreur est survenue lors de l\'achat. Veuillez réessayer.',
         footer: 'ARCHITECT CG-223 • Marché Neural',
         purchaseComplete: '✅ ACHAT RÉUSSI',
-        processing: '⚡ Transaction en cours...'
+        processing: '⚡ Transaction en cours...',
+        loadingInventory: '⚡ Chargement de l\'inventaire...'
     }
 };
 
@@ -202,17 +204,30 @@ module.exports = {
                 return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
             }
             
-            // 🛡️ LA LIGNE CRITIQUE
-            await i.deferUpdate().catch(() => {});
+            // 🛡️ THE ARCHITECT'S GATEKEEPER
+            if (!i.deferred && !i.replied) {
+                await i.deferUpdate().catch((err) => {
+                    if (!err.message.includes('already been acknowledged')) {
+                        console.error('Shop defer error:', err.message);
+                    }
+                });
+            }
             
-            // Handle Inventory Button
+            // Handle Inventory Button - Bridge to Inventory Command
             if (i.customId === 'shop_inventory') {
                 collector.stop();
-                await reply.delete().catch(() => {});
+                
+                await i.editReply({ 
+                    content: t.loadingInventory,
+                    embeds: [], 
+                    components: [] 
+                }).catch(() => {});
+                
+                setTimeout(() => i.deleteReply().catch(() => {}), 500);
                 
                 const invCmd = client.commands.get('inventory');
                 if (invCmd) {
-                    return await invCmd.run(client, message, [], db, serverSettings, usedCommand);
+                    return await invCmd.run(client, message, [], db, serverSettings, 'inventory');
                 }
                 return;
             }
