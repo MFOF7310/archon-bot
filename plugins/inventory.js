@@ -34,7 +34,6 @@ const inventoryTranslations = {
         cannotUse: 'Cannot be used',
         shop: '🛒 Shop',
         refresh: '🔄 Refresh',
-        back: '◀ Back',
         category: 'Category',
         quantity: 'Qty',
         expires: 'Expires',
@@ -52,9 +51,9 @@ const inventoryTranslations = {
         },
         stats: '📊 STATISTICS',
         totalValue: 'Total Value',
-        estimatedValue: 'Estimated Value',
         mostValuable: 'Most Valuable',
-        none: 'None'
+        none: 'None',
+        loadingShop: '⚡ Loading shop...'
     },
     fr: {
         title: '═ INVENTAIRE NEURAL ═',
@@ -70,7 +69,6 @@ const inventoryTranslations = {
         cannotUse: 'Non utilisable',
         shop: '🛒 Boutique',
         refresh: '🔄 Actualiser',
-        back: '◀ Retour',
         category: 'Catégorie',
         quantity: 'Qté',
         expires: 'Expire',
@@ -88,9 +86,9 @@ const inventoryTranslations = {
         },
         stats: '📊 STATISTIQUES',
         totalValue: 'Valeur Totale',
-        estimatedValue: 'Valeur Estimée',
         mostValuable: 'Le Plus Précieux',
-        none: 'Aucun'
+        none: 'Aucun',
+        loadingShop: '⚡ Chargement de la boutique...'
     }
 };
 
@@ -296,7 +294,7 @@ module.exports = {
         const reply = await message.reply({ embeds: [inventoryEmbed], components: components }).catch(() => {});
         if (!reply) return;
         
-        // ================= 🔥 COLLECTOR CORRIGÉ =================
+        // ================= COLLECTOR WITH PROPER DEFERRAL HANDLING =================
         const collector = reply.createMessageComponentCollector({ time: 120000 });
         
         collector.on('collect', async (i) => {
@@ -304,17 +302,30 @@ module.exports = {
                 return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
             }
             
-            // 🛡️ LA LIGNE CRITIQUE
-            await i.deferUpdate().catch(() => {});
+            // 🛡️ THE ARCHITECT'S GATEKEEPER
+            if (!i.deferred && !i.replied) {
+                await i.deferUpdate().catch((err) => {
+                    if (!err.message.includes('already been acknowledged')) {
+                        console.error('Inventory defer error:', err.message);
+                    }
+                });
+            }
             
             // Handle Shop Button
             if (i.customId === 'inv_shop') {
                 collector.stop();
-                await reply.delete().catch(() => {});
+                
+                await i.editReply({ 
+                    content: t.loadingShop,
+                    embeds: [], 
+                    components: [] 
+                }).catch(() => {});
+                
+                setTimeout(() => i.deleteReply().catch(() => {}), 500);
                 
                 const shopCmd = client.commands.get('shop');
                 if (shopCmd) {
-                    return await shopCmd.run(client, message, [], db, serverSettings, usedCommand);
+                    return await shopCmd.run(client, message, [], db, serverSettings, 'shop');
                 }
                 return;
             }
