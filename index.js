@@ -1,4 +1,3 @@
-// ================= CORRECTED INDEX.JS =================
 require('dotenv').config();
 
 const fs = require('fs');
@@ -881,6 +880,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
         console.log(`${cyan}[INTERACTION]${reset} ${interaction.customId} from ${interaction.user.tag}`);
         
+        // 🛡️ THE ARCHITECT'S FIX: Only defer if NO ONE else has touched it
+        // AND if it's not a custom command that needs special handling
         const needsNewMessage = interaction.customId.startsWith('help_') || 
                                 interaction.customId.startsWith('info_') ||
                                 interaction.customId.startsWith('menu_') ||
@@ -890,21 +891,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
                                interaction.customId.includes('secret') ||
                                interaction.customId === 'welcome_help';
         
+        // 🔥 CRITICAL: Check if already handled before deferring
         if (!interaction.deferred && !interaction.replied) {
             try {
                 if (needsNewMessage) {
                     await interaction.deferReply({ ephemeral: needsEphemeral });
                     console.log(`${green}[INTERACTION]${reset} Deferred reply for ${interaction.customId}`);
                 } else {
+                    // Only deferUpdate for non-special interactions
                     await interaction.deferUpdate();
                     console.log(`${green}[INTERACTION]${reset} Deferred update for ${interaction.customId}`);
                 }
             } catch (err) {
-                console.error(`${red}[INTERACTION ERROR]${reset} Failed to defer:`, err.message);
+                // Ignore "already deferred" errors - that means plugin handled it first
+                if (!err.message.includes('already been acknowledged')) {
+                    console.error(`${red}[INTERACTION ERROR]${reset} Failed to defer:`, err.message);
+                }
                 return;
             }
         }
         
+        // Handle welcome help (only one we handle in index)
         if (interaction.customId === 'welcome_help') {
             const lang = interaction.guild?.preferredLocale === 'fr' ? 'fr' : 'en';
             
@@ -955,7 +962,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
             try {
                 await interaction.deferReply({ ephemeral: true });
             } catch (err) {
-                console.error(`${red}[MODAL ERROR]${reset} Failed to defer:`, err.message);
+                if (!err.message.includes('already been acknowledged')) {
+                    console.error(`${red}[MODAL ERROR]${reset} Failed to defer:`, err.message);
+                }
                 return;
             }
         }
