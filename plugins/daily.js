@@ -1,387 +1,205 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-
-// ================= UNIFIED LEVEL CALCULATION =================
-function calculateLevel(xp) { 
-    return Math.floor(0.1 * Math.sqrt(xp)) + 1; 
-}
+const { EmbedBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const dailyTranslations = {
     en: {
-        title: '📊 NEURAL DASHBOARD',
-        statusActive: '🟢 READY TO CLAIM',
-        statusCooldown: '🔴 NEURAL CYCLE ACTIVE',
-        countdown: '⏳ COUNTDOWN',
-        readyMessage: '✨ **System Ready!** Use `.claim` or click the button below to inject your resources!',
-        cooldownMessage: (time) => `⏳ **Cooldown Active:** \`${time}\` remaining until next claim.`,
-        reminderStatus: '🔔 REMINDER STATUS',
-        reminderActive: (time) => `✅ **Active!** You'll be notified <t:${time}:R>`,
-        reminderInactive: '❌ No active reminder',
-        streakInfo: '🔥 CURRENT STREAK',
-        streakValue: (streak) => `${streak} day${streak > 1 ? 's' : ''}`,
-        nextReward: '🎁 NEXT REWARD',
-        baseReward: 'Base: 250 XP + 100 Credits',
-        bonusReward: (xp, credits) => `Bonus: +${xp} XP +${credits} Credits`,
-        stats: '📊 YOUR STATS',
-        claimNow: '⚡ Claim Now',
-        remindMe: '⏰ Remind Me',
-        reminderSet: '✅ Reminder Set',
-        myProfile: '👤 My Profile',
-        leaderboard: '🏆 Leaderboard',
-        tip: '💡 TIP',
-        tipText: 'Claim daily to build your streak and earn bonus rewards!',
-        accessDenied: '❌ These controls are locked to your session.',
-        reminderSuccess: (hours) => `🔔 **Reminder Set!** I'll notify you in ${hours} hours. Then use \`.claim\` to collect your rewards!`,
-        reminderAlreadyActive: (h, m) => `⚠️ **Protocol already active!** Your reminder triggers in \`${h}h ${m}m\`.`,
-        footer: 'ARCHITECT CG-223 • v{version} • Use .claim to collect rewards',
-        channelRestricted: (channelId) => `📊 The dashboard is restricted to the <#${channelId}> channel.`,
-        claimNotFound: '❌ Claim command not found.',
-        profileNotFound: '❌ Profile command not found.',
-        leaderboardNotFound: '❌ Leaderboard command not found.',
-        error: '❌ An error occurred.',
-        profileOpened: '👤 Profile displayed above!',
-        leaderboardOpened: '🏆 Leaderboard displayed above!',
-        claimProcessed: '⚡ Claim processed!'
+        title: '📅 DAILY REWARD',
+        claimed: '✅ DAILY REWARD CLAIMED!',
+        alreadyClaimed: '⏰ ALREADY CLAIMED',
+        comeBack: 'Come back in',
+        hours: 'hours',
+        minutes: 'minutes',
+        baseReward: 'Base Reward',
+        streakBonus: 'Streak Bonus',
+        totalEarned: 'Total Earned',
+        xpEarned: 'XP Earned',
+        newBalance: 'New Balance',
+        currentStreak: 'Current Streak',
+        days: 'days',
+        day: 'day',
+        verifyWith: 'Verify with',
+        checkBalance: 'Check your balance anytime with `.bal` or `.credits`',
+        footer: 'NEURAL DAILY • CLAIM EVERY 24H',
+        streakMilestone: '🔥 STREAK MILESTONE!',
+        bonusAdded: 'Bonus added',
+        levelUp: '🎉 LEVEL UP!',
+        reachedLevel: 'You reached level'
     },
     fr: {
-        title: '📊 TABLEAU DE BORD NEURAL',
-        statusActive: '🟢 PRÊT À RÉCLAMER',
-        statusCooldown: '🔴 CYCLE NEURAL ACTIF',
-        countdown: '⏳ COMPTE À REBOURS',
-        readyMessage: '✨ **Système Prêt!** Utilisez `.claim` ou cliquez sur le bouton ci-dessous pour injecter vos ressources!',
-        cooldownMessage: (time) => `⏳ **Refroidissement Actif:** \`${time}\` restant avant la prochaine réclamation.`,
-        reminderStatus: '🔔 ÉTAT DU RAPPEL',
-        reminderActive: (time) => `✅ **Actif!** Vous serez notifié <t:${time}:R>`,
-        reminderInactive: '❌ Aucun rappel actif',
-        streakInfo: '🔥 SÉRIE ACTUELLE',
-        streakValue: (streak) => `${streak} jour${streak > 1 ? 's' : ''}`,
-        nextReward: '🎁 PROCHAINE RÉCOMPENSE',
-        baseReward: 'Base: 250 XP + 100 Crédits',
-        bonusReward: (xp, credits) => `Bonus: +${xp} XP +${credits} Crédits`,
-        stats: '📊 VOS STATISTIQUES',
-        claimNow: '⚡ Réclamer',
-        remindMe: '⏰ Rappeler',
-        reminderSet: '✅ Rappel Défini',
-        myProfile: '👤 Mon Profil',
-        leaderboard: '🏆 Classement',
-        tip: '💡 ASTUCE',
-        tipText: 'Réclamez quotidiennement pour augmenter votre série et gagner des bonus!',
-        accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
-        reminderSuccess: (hours) => `🔔 **Rappel Défini!** Je vous notifierai dans ${hours} heures. Utilisez ensuite \`.claim\` pour réclamer vos récompenses!`,
-        reminderAlreadyActive: (h, m) => `⚠️ **Protocole déjà actif!** Votre rappel se déclenche dans \`${h}h ${m}m\`.`,
-        footer: 'ARCHITECT CG-223 • v{version} • Utilisez .claim pour réclamer',
-        channelRestricted: (channelId) => `📊 Le tableau de bord est restreint au canal <#${channelId}>.`,
-        claimNotFound: '❌ Commande de réclamation introuvable.',
-        profileNotFound: '❌ Commande de profil introuvable.',
-        leaderboardNotFound: '❌ Commande de classement introuvable.',
-        error: '❌ Une erreur est survenue.',
-        profileOpened: '👤 Profil affiché ci-dessus !',
-        leaderboardOpened: '🏆 Classement affiché ci-dessus !',
-        claimProcessed: '⚡ Réclamation effectuée !'
+        title: '📅 RÉCOMPENSE QUOTIDIENNE',
+        claimed: '✅ RÉCOMPENSE QUOTIDIENNE RÉCLAMÉE !',
+        alreadyClaimed: '⏰ DÉJÀ RÉCLAMÉ',
+        comeBack: 'Revenez dans',
+        hours: 'heures',
+        minutes: 'minutes',
+        baseReward: 'Récompense de Base',
+        streakBonus: 'Bonus de Série',
+        totalEarned: 'Total Gagné',
+        xpEarned: 'XP Gagnés',
+        newBalance: 'Nouveau Solde',
+        currentStreak: 'Série Actuelle',
+        days: 'jours',
+        day: 'jour',
+        verifyWith: 'Vérifiez avec',
+        checkBalance: 'Vérifiez votre solde avec `.bal` ou `.credits`',
+        footer: 'NEURAL DAILY • RÉCLAMEZ TOUTES LES 24H',
+        streakMilestone: '🔥 JALON DE SÉRIE !',
+        bonusAdded: 'Bonus ajouté',
+        levelUp: '🎉 NIVEAU SUPÉRIEUR !',
+        reachedLevel: 'Vous avez atteint le niveau'
     }
 };
 
-function createProgressBar(percentage, length = 15) {
-    const filled = Math.round((percentage / 100) * length);
-    const empty = length - filled;
-    return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty));
-}
-
 module.exports = {
     name: 'daily',
-    aliases: ['dashboard', 'tableau', 'quotidien', 'journalier'],
-    description: '📊 View your daily claim dashboard with countdown and reminder status.',
+    aliases: ['claim', 'reward', 'dailyreward', 'quotidien', 'reclamer'],
+    description: '📅 Claim your daily neural credits reward.',
     category: 'ECONOMY',
+    cooldown: 5000,
     usage: '.daily',
-    cooldown: 3000,
-    examples: ['.daily'],
+    examples: ['.daily', '.claim'],
 
-    // ✅ SIGNATURE CORRECTE: 6 paramètres
     run: async (client, message, args, db, serverSettings, usedCommand) => {
+        const lang = client.detectLanguage 
+            ? client.detectLanguage(usedCommand, 'en')
+            : 'en';
+        const t = dailyTranslations[lang];
         
-        try {
-            // ✅ NEURAL BRIDGE: Priority on alias, fallback to server default
-            const lang = client.detectLanguage 
-                ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
-                : (serverSettings?.language || 'en');
-                
-            const t = dailyTranslations[lang];
+        const version = client.version || '1.7.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+        const userId = message.author.id;
+        const username = message.author.username;
+        const now = Math.floor(Date.now() / 1000);
+        const oneDay = 86400;
+
+        // Get user data - FORCE FRESH READ
+        try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
+        if (client.userDataCache) client.userDataCache.delete(userId);
+        
+        let userData = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+
+        if (!userData) {
+            db.prepare("INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) VALUES (?, ?, 0, 1, 0, 0, 0)").run(userId, username);
+            userData = { credits: 0, xp: 0, level: 1, streak_days: 0, last_daily: 0 };
+        }
+
+        const lastDaily = userData.last_daily || 0;
+        const streakDays = userData.streak_days || 0;
+        const oldBalance = userData.credits || 0;
+        const oldXP = userData.xp || 0;
+        const oldLevel = userData.level || 1;
+
+        // 🔥 FIXED: Only check if actually claimed today (not first time)
+        if (lastDaily > 0 && (now - lastDaily) < oneDay) {
+            const timeLeft = oneDay - (now - lastDaily);
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
             
-            // ✅ DYNAMIC VERSION
-            const version = client.version || '1.6.0';
-            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-            
-            // ✅ Channel Restriction Check
-            if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
-                return message.reply({ 
-                    content: t.channelRestricted(serverSettings.dailyChannel), 
-                    ephemeral: true 
-                });
-            }
-            
-            const userId = message.author.id;
-            const userName = message.author.username;
-            const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
-            
-            // ================= 🔥 PILLAR 1: RAM-FIRST CACHE =================
-            let userData = client.getUserData ? client.getUserData(userId) : null;
-            
-            if (!userData) {
-                // Fallback de sécurité si l'utilisateur n'est pas encore en RAM
-                userData = db.prepare(`
-                    SELECT last_daily, xp, credits, streak_days, level 
-                    FROM users WHERE id = ?
-                `).get(userId);
-                
-                if (!userData) {
-                    db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily) 
-                        VALUES (?, ?, 0, 1, 0, 0, 0)`).run(userId, userName);
-                    userData = { last_daily: 0, xp: 0, credits: 0, streak_days: 0, level: 1 };
-                }
-                
-                // Mettre en cache pour la prochaine fois
-                if (client.cacheUserData) {
-                    client.cacheUserData(userId, userData);
-                }
-            }
-            
-            const baseXP = 250;
-            const baseCredits = 100;
-            const oneDay = 24 * 60 * 60 * 1000;
-            const now = Date.now();
-            
-            // --- ENSURE REMINDERS TABLE EXISTS ---
-            try {
-                db.prepare(`
-                    CREATE TABLE IF NOT EXISTS reminders (
-                        id TEXT PRIMARY KEY,
-                        user_id TEXT NOT NULL,
-                        channel_id TEXT NOT NULL,
-                        message TEXT NOT NULL,
-                        execute_at INTEGER NOT NULL,
-                        status TEXT DEFAULT 'pending',
-                        created_at INTEGER DEFAULT (strftime('%s', 'now'))
-                    )
-                `).run();
-            } catch (e) {
-                console.log(`[DAILY] Reminders table check: ${e.message}`);
-            }
-            
-            // --- CALCULATE COOLDOWN STATUS ---
-            const lastClaim = parseInt(userData.last_daily || 0);
-            const timePassed = now - lastClaim;
-            const canClaim = timePassed >= oneDay || lastClaim === 0;
-            
-            let countdownText = '';
-            let statusText = '';
-            let statusEmoji = '';
-            
-            if (canClaim) {
-                statusText = t.statusActive;
-                statusEmoji = '🟢';
-                countdownText = t.readyMessage;
-            } else {
-                statusText = t.statusCooldown;
-                statusEmoji = '🔴';
-                const timeLeft = oneDay - timePassed;
-                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-                const timeString = `${hours}h ${minutes}m ${seconds}s`;
-                countdownText = t.cooldownMessage(timeString);
-            }
-            
-            // --- CHECK FOR ACTIVE REMINDER ---
-            const reminder = db.prepare(`
-                SELECT execute_at FROM reminders 
-                WHERE user_id = ? AND status = 'pending' AND message LIKE '%reward%'
-            `).get(userId);
-            
-            let reminderStatusText = t.reminderInactive;
-            let reminderActive = false;
-            
-            if (reminder) {
-                reminderActive = true;
-                reminderStatusText = t.reminderActive(reminder.execute_at);
-            }
-            
-            // --- CALCULATE STREAK & BONUSES ---
-            let streak = userData.streak_days || 0;
-            if (!canClaim && lastClaim > 0) {
-                const daysPassed = Math.floor(timePassed / oneDay);
-                if (daysPassed === 1) {
-                    streak = streak + 1;
-                } else if (daysPassed > 1) {
-                    streak = 1;
-                }
-            } else if (canClaim && lastClaim > 0) {
-                const daysPassed = Math.floor(timePassed / oneDay);
-                if (daysPassed === 1) {
-                    streak = streak + 1;
-                } else if (daysPassed > 1) {
-                    streak = 1;
-                }
-            }
-            
-            const streakBonusXP = Math.min(streak * 25, 250);
-            const streakBonusCredits = Math.min(streak * 10, 100);
-            const totalXP = baseXP + streakBonusXP;
-            const totalCredits = baseCredits + streakBonusCredits;
-            
-            // --- CURRENT STATS ---
-            const currentXP = userData.xp || 0;
-            const currentCredits = userData.credits || 0;
-            const currentLevel = calculateLevel(currentXP);
-            const nextLevelXP = Math.pow(currentLevel / 0.1, 2);
-            const currentLevelStartXP = Math.pow((currentLevel - 1) / 0.1, 2);
-            const progressPercent = Math.min(100, Math.max(0, ((currentXP - currentLevelStartXP) / (nextLevelXP - currentLevelStartXP)) * 100));
-            const progressBar = createProgressBar(progressPercent, 12);
-            
-            // --- BUILD DASHBOARD EMBED ---
-            const dashboardEmbed = new EmbedBuilder()
-                .setColor(canClaim ? '#2ecc71' : '#e74c3c')
-                .setAuthor({ name: `${statusEmoji} ${t.title}`, iconURL: avatarURL })
-                .setTitle(`${userName}'s Neural Interface`)
-                .setDescription(`**${statusText}**\n\n${countdownText}`)
-                .addFields(
-                    { name: t.countdown, value: canClaim ? '`00h 00m 00s`' : countdownText.match(/`[^`]+`/)?.[0] || '`--`', inline: true },
-                    { name: t.reminderStatus, value: reminderStatusText, inline: true },
-                    { name: t.streakInfo, value: `\`${t.streakValue(streak)}\`\n└─ Bonus: +${streakBonusXP} XP | +${streakBonusCredits} Credits`, inline: true },
-                    { name: t.nextReward, value: `┌─ ${t.baseReward}\n└─ ${t.bonusReward(streakBonusXP, streakBonusCredits)}`, inline: false },
-                    { name: t.stats, value: `\`\`\`yaml\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${currentLevel}\n${lang === 'fr' ? 'XP' : 'XP'}: ${currentXP.toLocaleString()} / ${Math.ceil(nextLevelXP).toLocaleString()}\n${lang === 'fr' ? 'Crédits' : 'Credits'}: ${currentCredits.toLocaleString()}\n\`\`\`\n\`${progressBar}\` ${progressPercent.toFixed(1)}%`, inline: false },
-                    { name: t.tip, value: t.tipText, inline: false }
+            const embed = new EmbedBuilder()
+                .setColor('#e74c3c')
+                .setAuthor({ name: t.alreadyClaimed, iconURL: message.author.displayAvatarURL() })
+                .setDescription(
+                    `⏰ **${t.comeBack} ${hours} ${t.hours} ${minutes} ${t.minutes}**\n\n` +
+                    `🔥 **${t.currentStreak}:** ${streakDays} ${streakDays === 1 ? t.day : t.days}\n` +
+                    `💰 **${t.newBalance}:** ${oldBalance.toLocaleString()} 🪙\n\n` +
+                    `💡 *${t.checkBalance}*`
                 )
-                .setFooter({ text: `${guildName} • ${t.footer.replace('{version}', version)}`, iconURL: guildIcon })
+                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             
-            // --- BUILD DYNAMIC BUTTON ROW ---
-            const row = new ActionRowBuilder();
-            
-            row.addComponents(
-                new ButtonBuilder()
-                    .setCustomId('daily_profile')
-                    .setLabel(t.myProfile)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('👤'),
-                new ButtonBuilder()
-                    .setCustomId('daily_leaderboard')
-                    .setLabel(t.leaderboard)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('🏆')
-            );
-            
-            if (canClaim) {
-                row.addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('daily_claim')
-                        .setLabel(t.claimNow)
-                        .setStyle(ButtonStyle.Success)
-                        .setEmoji('⚡')
-                );
-            } else if (!reminderActive) {
-                row.addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('daily_remind')
-                        .setLabel(t.remindMe)
-                        .setStyle(ButtonStyle.Primary)
-                        .setEmoji('⏰')
-                );
-            } else {
-                row.addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('daily_reminder_active')
-                        .setLabel(t.reminderSet)
-                        .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('✅')
-                        .setDisabled(true)
-                );
-            }
-            
-            const reply = await message.reply({ embeds: [dashboardEmbed], components: [row] }).catch(() => {});
-            if (!reply) return;
-            
-            // ================= 🔥 PILLAR 2: COLLECTOR CORRIGÉ =================
-            const collector = reply.createMessageComponentCollector({ time: 120000 });
-            
-            collector.on('collect', async (i) => {
-                if (i.user.id !== userId) {
-                    return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
-                }
-                
-                // 🛡️ LA LIGNE CRITIQUE : Avertit Discord que le bot traite l'appui sur le bouton
-                await i.deferUpdate().catch(() => {});
-                
-                switch (i.customId) {
-                    case 'daily_profile':
-                        const rankCmd = client.commands.get('rank') || client.commands.get('profile');
-                        if (rankCmd) {
-                            await rankCmd.run(client, message, [], db, serverSettings, usedCommand);
-                            await i.followUp({ content: t.profileOpened, ephemeral: true }).catch(() => {});
-                        } else {
-                            await i.followUp({ content: t.profileNotFound, ephemeral: true }).catch(() => {});
-                        }
-                        break;
-                        
-                    case 'daily_leaderboard':
-                        const lbCmd = client.commands.get('lb') || client.commands.get('leaderboard');
-                        if (lbCmd) {
-                            await lbCmd.run(client, message, [], db, serverSettings, usedCommand);
-                            await i.followUp({ content: t.leaderboardOpened, ephemeral: true }).catch(() => {});
-                        } else {
-                            await i.followUp({ content: t.leaderboardNotFound, ephemeral: true }).catch(() => {});
-                        }
-                        break;
-                        
-                    case 'daily_claim':
-                        const claimCmd = client.commands.get('claim');
-                        if (claimCmd) {
-                            await claimCmd.run(client, message, [], db, serverSettings, usedCommand);
-                            await i.followUp({ content: t.claimProcessed, ephemeral: true }).catch(() => {});
-                        } else {
-                            await i.followUp({ content: t.claimNotFound, ephemeral: true }).catch(() => {});
-                        }
-                        break;
-                        
-                    case 'daily_remind':
-                        const existing = db.prepare(`
-                            SELECT execute_at FROM reminders 
-                            WHERE user_id = ? AND status = 'pending' AND message LIKE '%reward%'
-                        `).get(userId);
-                        
-                        if (existing) {
-                            const timeLeft = (existing.execute_at * 1000) - Date.now();
-                            const h = Math.floor(timeLeft / 3600000);
-                            const m = Math.floor((timeLeft % 3600000) / 60000);
-                            return i.followUp({ content: t.reminderAlreadyActive(h, m), ephemeral: true }).catch(() => {});
-                        }
-                        
-                        const nextClaimTime = new Date(lastClaim + oneDay);
-                        const timeUntilHours = Math.floor((nextClaimTime - now) / 1000 / 60 / 60);
-                        const executeAt = Math.floor(nextClaimTime.getTime() / 1000);
-                        const reminderId = `daily_${userId}_${executeAt}`;
-                        const reminderMsg = lang === 'fr' 
-                            ? `**Agent ${userName}**, votre récompense quotidienne est prête! Utilisez \`.claim\` pour la réclamer.`
-                            : `**Agent ${userName}**, your daily reward is ready! Use \`.claim\` to collect it.`;
-                        
-                        try {
-                            db.prepare(`
-                                INSERT INTO reminders (id, user_id, channel_id, message, execute_at, status) 
-                                VALUES (?, ?, ?, ?, ?, 'pending')
-                            `).run(reminderId, userId, i.channelId, reminderMsg, executeAt);
-                            
-                            await i.followUp({ content: t.reminderSuccess(timeUntilHours), ephemeral: true }).catch(() => {});
-                            console.log(`[DAILY] Reminder set for ${message.author.tag} in ${timeUntilHours}h`);
-                        } catch (e) {
-                            await i.followUp({ content: t.error, ephemeral: true }).catch(() => {});
-                        }
-                        break;
-                }
-            });
-            
-        } catch (error) {
-            console.error(`[DAILY] FATAL ERROR:`, error);
-            return message.reply({ content: '❌ An error occurred.' }).catch(() => {});
+            return message.reply({ embeds: [embed] }).catch(() => {});
         }
+
+        // Calculate rewards
+        let newStreak = streakDays + 1;
+        if (lastDaily === 0) {
+            newStreak = 1; // First time claiming
+        } else if (now - lastDaily > oneDay * 2) {
+            newStreak = 1; // Streak broken
+        }
+
+        const baseReward = 100;
+        const streakBonus = Math.min(newStreak * 10, 200);
+        const totalReward = baseReward + streakBonus;
+        const xpReward = 50 + (newStreak * 5);
+
+        // Apply rewards
+        const newCredits = oldBalance + totalReward;
+        const newXP = oldXP + xpReward;
+        const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
+
+        // Update database
+        if (client.queueUserUpdate) {
+            client.queueUserUpdate(userId, {
+                ...userData,
+                credits: newCredits,
+                xp: newXP,
+                level: newLevel,
+                streak_days: newStreak,
+                last_daily: now,
+                username: username
+            });
+        } else {
+            db.prepare("UPDATE users SET credits = ?, xp = ?, level = ?, streak_days = ?, last_daily = ? WHERE id = ?")
+                .run(newCredits, newXP, newLevel, newStreak, now, userId);
+        }
+
+        // 🔥 FORCE WAL SYNC + CACHE INVALIDATION
+        try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
+        if (client.userDataCache) client.userDataCache.delete(userId);
+
+        // Check for streak milestones
+        let bonusAdded = 0;
+        let finalCredits = newCredits;
+        
+        if (newStreak === 7) {
+            bonusAdded = 500;
+            finalCredits = newCredits + bonusAdded;
+            db.prepare("UPDATE users SET credits = ? WHERE id = ?").run(finalCredits, userId);
+        } else if (newStreak === 30) {
+            bonusAdded = 2000;
+            finalCredits = newCredits + bonusAdded;
+            db.prepare("UPDATE users SET credits = ? WHERE id = ?").run(finalCredits, userId);
+        }
+
+        // Build success embed
+        const embed = new EmbedBuilder()
+            .setColor('#2ecc71')
+            .setAuthor({ name: t.claimed, iconURL: message.author.displayAvatarURL() })
+            .setDescription(
+                `\`\`\`yaml\n` +
+                `${t.baseReward}: ${baseReward} 🪙\n` +
+                `${t.streakBonus}: +${streakBonus} 🪙\n` +
+                `${t.xpEarned}: +${xpReward} XP\n` +
+                (bonusAdded > 0 ? `🎁 ${t.streakMilestone}: +${bonusAdded} 🪙\n` : '') +
+                `\`\`\`\n` +
+                `## 💰 **${t.totalEarned}: ${totalReward + bonusAdded} 🪙**\n` +
+                `## 📊 **${t.newBalance}: ${finalCredits.toLocaleString()} 🪙**\n` +
+                `## 🔥 **${t.currentStreak}: ${newStreak} ${newStreak === 1 ? t.day : t.days}**\n\n` +
+                `---\n` +
+                `💡 **${t.verifyWith} \`.bal\` or \`.credits\`**`
+            )
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+            .setTimestamp();
+
+        if (newLevel > oldLevel) {
+            embed.addFields({
+                name: t.levelUp,
+                value: `🎉 ${t.reachedLevel} **${newLevel}**!`,
+                inline: false
+            });
+        }
+
+        await message.reply({ embeds: [embed] }).catch(() => {});
+
+        // Level up announcement
+        if (newLevel > oldLevel) {
+            await message.channel.send({ 
+                content: `🎉 **LEVEL UP!** <@${userId}> ${t.reachedLevel} **${newLevel}**!` 
+            }).catch(() => {});
+        }
+
+        console.log(`[DAILY] ${username} claimed daily: +${totalReward} credits, streak: ${newStreak} | Lang: ${lang}`);
     }
 };
