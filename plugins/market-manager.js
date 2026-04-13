@@ -1,6 +1,6 @@
 // ================= BAMAKO MARKET CONTROL (BILINGUAL) =================
 const { EmbedBuilder } = require('discord.js');
-const { getMarketState, updateMarketTrend, getTimeUntilUpdate, TRENDS } = require('../market-manager');
+const { getMarketState, updateMarketTrend, getTimeUntilUpdate, TRENDS } = require('./market-manager');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const t = {
