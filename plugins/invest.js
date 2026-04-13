@@ -1,6 +1,6 @@
 // ================= BAMAKO INVESTMENT SYSTEM (BILINGUAL) =================
 const { EmbedBuilder } = require('discord.js');
-const { getMarketState, getTimeUntilUpdate, processInvestment, TRENDS } = require('../market-manager');
+const { getMarketState, getTimeUntilUpdate, processInvestment, TRENDS } = require('./market-manager'); 
 
 // ================= BILINGUAL TRANSLATIONS =================
 const t = {
