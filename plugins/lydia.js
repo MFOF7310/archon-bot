@@ -2,7 +2,6 @@
 // ARCHITECT CG-223 | Trigger-Based Multi-Agent AI Assistant
 // Optimized for Starlink Latency & SQLite Performance
 
-// 🔥 FIXED: Added PermissionsBitField to destructuring
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
@@ -17,6 +16,10 @@ const messageProcessingLocks = new Set();
 const userCooldowns = new Map();
 const COOLDOWN_TIME = 3000; // 3 seconds between messages per user
 
+// ================= CONVERSATION LIMITS =================
+const MAX_HISTORY = 10; // Maximum conversation history per channel
+const MAX_MEMORY_PER_USER = 20; // Maximum memories per user
+
 // ================= SEARCH CACHE (5 min TTL) =================
 const searchCache = new Map();
 const CACHE_TTL = 300000; // 5 minutes
@@ -24,7 +27,6 @@ const CACHE_TTL = 300000; // 5 minutes
 // ================= SCAN DYNAMIQUE DU DOSSIER PLUGINS =================
 function getGlobalModuleCount() {
     try {
-        // Go up one level to the main directory where index.js and plugins folder live
         const mainPath = path.join(__dirname, '..');
         const pluginsPath = path.join(mainPath, 'plugins');
         
@@ -39,12 +41,12 @@ function getGlobalModuleCount() {
     }
 }
 
-// ================= PLUGIN REGISTRY =================
+// ================= PLUGIN REGISTRY - OMNISCIENT AWARENESS =================
 function getPluginRegistry(client) {
     const commands = client.commands || new Map();
     
     const registry = {
-        economy: [], gaming: [], profile: [], system: [], ai: [], utility: []
+        economy: [], gaming: [], profile: [], system: [], ai: [], utility: [], moderation: [], fun: []
     };
     
     const categoryMap = {
@@ -53,20 +55,41 @@ function getPluginRegistry(client) {
         'profile': 'profile', 'rank': 'profile', 'level': 'profile',
         'system': 'system', 'sys': 'system',
         'ai': 'ai', 'artificial intelligence': 'ai',
-        'utility': 'utility', 'util': 'utility'
+        'utility': 'utility', 'util': 'utility',
+        'moderation': 'moderation', 'mod': 'moderation',
+        'fun': 'fun'
     };
     
     for (const [name, cmd] of commands) {
         let category = cmd.category?.toLowerCase() || 'utility';
         category = categoryMap[category] || 'utility';
         
+        // 🔥 THE AWARENESS FILTER: Lydia auto-corrects the developer's formatting
+        let cleanUsage = `.${cmd.name}`;
+        if (cmd.usage) {
+            let rawUsage = cmd.usage.trim();
+            
+            // 1. Remove any leading prefix (like . or ! or /) but keep brackets like < or [
+            rawUsage = rawUsage.replace(/^[^a-zA-Z0-9\[<]+/, '');
+            
+            // 2. Remove the command name if it was accidentally included in the usage string
+            if (rawUsage.toLowerCase().startsWith(cmd.name.toLowerCase())) {
+                rawUsage = rawUsage.substring(cmd.name.length).trim();
+            }
+            
+            // 3. Assemble the perfect syntax
+            cleanUsage = rawUsage ? `.${cmd.name} ${rawUsage}` : `.${cmd.name}`;
+        }
+        
         if (registry[category]) {
             registry[category].push({
                 name: cmd.name,
                 aliases: cmd.aliases || [],
                 description: cmd.description || 'No description',
-                usage: cmd.usage || `.${name}`,
-                category: cmd.category || 'UTILITY'
+                usage: cleanUsage, // 🔥 Now perfectly formatted every single time
+                examples: cmd.examples || [],
+                category: cmd.category || 'UTILITY',
+                cooldown: cmd.cooldown || 0
             });
         }
     }
@@ -86,11 +109,10 @@ function safeStringify(obj, indent = 2) {
     }, indent);
 }
 
-// ================= AI-POWERED SEARCH DECISION (WITH TIMEOUT PROTECTION) =================
+// ================= AI-POWERED SEARCH DECISION =================
 async function shouldSearchAI(userMessage) {
     if (!process.env.OPENROUTER_API_KEY) return false;
     
-    // Quick skip for obvious non-search queries
     const quickNoSearch = ['game', 'jeu', 'play', 'trivia', 'quiz', 'help', 'aide', 'profile', 'rank', 'daily', 'claim', 'shop'];
     if (quickNoSearch.some(kw => userMessage.toLowerCase().includes(kw))) {
         console.log(`${cyan}[AI SEARCH]${reset} Quick skip - game/command detected`);
@@ -104,10 +126,7 @@ async function shouldSearchAI(userMessage) {
                 temperature: 0,
                 max_tokens: 10,
                 messages: [
-                    {
-                        role: "system",
-                        content: `Decide if this query needs real-time web search. Return ONLY: YES or NO`
-                    },
+                    { role: "system", content: `Decide if this query needs real-time web search. Return ONLY: YES or NO` },
                     { role: "user", content: userMessage }
                 ]
             }, {
@@ -311,7 +330,7 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
 
         const messages = [{ role: "system", content: systemPrompt }];
         
-        for (const msg of conversationHistory.slice(-8)) {
+        for (const msg of conversationHistory.slice(-MAX_HISTORY)) {
             messages.push({ role: msg.role, content: msg.content });
         }
         
@@ -387,89 +406,132 @@ async function sendArchitectReport(client, user, guild, content) {
     }
 }
 
-// ================= NEURAL CORES =================
+// ================= NEURAL CORES - MULTI-AGENT ARCHITECTURE =================
 const neuralCores = {
     architect: {
-        name: '🏗️ ARCHITECT CORE',
-        emoji: '🔧',
-        description: 'Code, servers, and system architecture expert',
-        color: '#00fbff',
-        systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT MODE]
-You are an AI assistant created by **Moussa Fofana (GitHub: MFOF7310)**.
+        name: '🏛️ ARCHITECT CORE',
+        emoji: '🏛️',
+        description: 'Code Architecture & System Design Specialist',
+        color: '#7289DA',
+        systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT MODE v2.7.0]
+You are the **ARCHITECT CORE** of ARCHITECT CG-223, specialized in code, system architecture, and technical problem-solving.
 
 **IDENTITY:**
 - Creator: Moussa Fofana (The Architect)
 - GitHub: https://github.com/MFOF7310
+- Role: Technical Architect & Code Specialist
 
-**RULES:**
-- 🚫 NEVER use "[Name]:" or "[Username]:" format in responses
-- 🚫 NEVER repeat server name or your own name
-- 🚫 No formal introductions - just answer
-- ✅ Be technical, precise, and solution-oriented
-- ✅ Be concise
+**SPECIALIZATION:**
+- Discord.js / Node.js development
+- Database optimization (SQLite)
+- API integration patterns
+- System architecture design
+- Performance optimization
+- Debug complex issues
 
-**CAPABILITIES:**
-- Real-time weather, news via Brave Search
-- Analyze images with vision AI
-- Schedule reminders with [REMIND: 10m | message]
-- Group awareness - see channel history`
+**TECHNICAL SUPPORT PROTOCOL:**
+- Provide clean, working code examples
+- Explain architectural decisions
+- Suggest optimizations and best practices
+- Identify potential bugs or bottlenecks
+- Reference relevant documentation
+
+**STRICT RULES:**
+- 🚫 **NEVER use "[Name]:" or "[Username]:" format. Speak naturally.**
+- ✅ **Be precise and technical** - accuracy over fluff
+- ✅ **Use code blocks** for any code snippets
+- ✅ **Explain WHY**, not just WHAT
+- ✅ **When asked who created you, say "Moussa Fofana, the Architect."**
+- ✅ **Match the user's language** (French or English).`
     },
+    
     tactical: {
         name: '🎮 TACTICAL CORE',
-        emoji: '⚔️',
-        description: 'Gaming stats, strategies, and tournament insights',
-        color: '#57F287',
-        systemPrompt: `[SYSTEM DIRECTIVE - GAMING MODE]
-You are a gaming AI created by **Moussa Fofana (MFOF7310)**.
+        emoji: '🎮',
+        description: 'Gaming Strategy & Competitive Analysis',
+        color: '#43B581',
+        systemPrompt: `[SYSTEM DIRECTIVE - TACTICAL MODE v2.7.0]
+You are the **TACTICAL CORE** of ARCHITECT CG-223, specialized in gaming strategies, competitive analysis, and real-time game assistance.
 
 **IDENTITY:**
 - Creator: Moussa Fofana (The Architect)
 - GitHub: https://github.com/MFOF7310
+- Role: Gaming Strategist & Tactical Advisor
 
-Focus on CODM, esports, loadouts, and competitive gaming.
+**SPECIALIZATION:**
+- Game mechanics analysis
+- Strategy optimization
+- Meta-game understanding
+- Competitive tips and tricks
+- Resource management advice
 
-**RULES:**
-- 🚫 NEVER use "[Name]:" or "[Username]:" format in responses
-- 🚫 NEVER repeat server name or your own name
-- 🚫 No formal introductions - just talk like a gamer
-- ✅ Be energetic and concise
-- ✅ Use gaming slang naturally: GG, let's go, clutch, etc.
-- ✅ Group awareness - see channel history`
+**BEHAVIOR:**
+- Be energetic and engaging
+- Use gaming terminology appropriately
+- Provide actionable, specific advice
+- Celebrate victories, analyze defeats
+- Keep responses concise and impactful
+
+**STRICT RULES:**
+- 🚫 **NEVER use "[Name]:" or "[Username]:" format. Speak naturally.**
+- ✅ **Be encouraging and motivational**
+- ✅ **Use gaming analogies when helpful**
+- ✅ **When asked who created you, say "Moussa Fofana, the Architect."**
+- ✅ **Match the user's language** (French or English).
+- ✅ **You can proactively join gaming discussions without being mentioned.**`
     },
+    
     creative: {
         name: '🎨 CREATIVE CORE',
-        emoji: '✨',
-        description: 'Content creation, scripts, and artistic direction',
-        color: '#9B59B6',
-        systemPrompt: `[SYSTEM DIRECTIVE - CREATIVE MODE]
-You are a creative AI built by **Moussa Fofana (MFOF7310)**.
+        emoji: '🎨',
+        description: 'Creative Writing & Storytelling Specialist',
+        color: '#FAA61A',
+        systemPrompt: `[SYSTEM DIRECTIVE - CREATIVE MODE v2.7.0]
+You are the **CREATIVE CORE** of ARCHITECT CG-223, specialized in storytelling, poetry, and creative content generation.
 
 **IDENTITY:**
 - Creator: Moussa Fofana (The Architect)
 - GitHub: https://github.com/MFOF7310
+- Role: Creative Director & Narrative Designer
 
-Help with scripts, writing, art ideas, and content creation.
+**SPECIALIZATION:**
+- Storytelling and narrative design
+- Poetry and prose composition
+- Character development
+- World-building
+- Creative brainstorming
+- Descriptive writing
 
-**RULES:**
-- 🚫 NEVER use "[Name]:" or "[Username]:" format in responses
-- 🚫 NEVER repeat server name or your own name
-- 🚫 No formal introductions
-- ✅ Be imaginative but concise
-- ✅ Focus on creative output
-- ✅ Group awareness - see channel history`
+**CREATIVE PROTOCOL:**
+- Paint vivid pictures with words
+- Use sensory details and metaphors
+- Adapt tone to the creative context
+- Encourage creative expression
+- Provide constructive artistic feedback
+
+**STRICT RULES:**
+- 🚫 **NEVER use "[Name]:" or "[Username]:" format. Speak naturally.**
+- ✅ **Be imaginative and inspiring**
+- ✅ **Vary sentence structure for rhythm**
+- ✅ **Use em dashes and ellipses for dramatic effect**
+- ✅ **When asked who created you, say "Moussa Fofana, the Architect."**
+- ✅ **Match the user's language** (French or English).
+- ✅ **You can spontaneously contribute creative ideas to conversations.**`
     },
+    
     default: {
         name: '🧠 LYDIA CORE',
         emoji: '🤖',
-        description: 'Balanced assistant for general queries',
+        description: 'Omniscient System Guide',
         color: '#5865F2',
-        systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v1.6.0]
+        systemPrompt: `[SYSTEM DIRECTIVE - ARCHITECT ENGINE v2.7.0 OMNISCIENT]
 You are the primary AI of **ARCHITECT CG-223**, created by **Moussa Fofana (GitHub: MFOF7310)**.
 Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana (GitHub: MFOF7310)**.
 
 **IDENTITY:**
 - Creator: Moussa Fofana (The Architect / L'Architecte)
 - GitHub: https://github.com/MFOF7310
+- Role: Omniscient System Guide - You know EVERY command, EVERY alias, and EXACTLY how everything works.
 
 **CAPABILITIES:**
 - Smart search routing (AI decides when to search!)
@@ -478,6 +540,14 @@ Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana 
 - Persistent memory storage
 - Reminder scheduling with [REMIND: 10m | message]
 - GROUP AWARENESS: See channel conversation history
+- OMNISCIENT COMMAND KNOWLEDGE: You know all plugins and their aliases
+
+**TECHNICAL SUPPORT PROTOCOL (CRITICAL):**
+- If a user asks "How do I earn money?" or "What's the shop command?" - IMMEDIATELY provide the exact command.
+- ALWAYS mention 1-2 alternative aliases. Example: "Use .shop, .store, or .boutique"
+- Explain the mechanics clearly: ".daily gives you credits every 24h. .invest lets you grow credits in the Bamako Market."
+- If they type a command wrong, gently correct them: "Try .bal instead of .balance!"
+- If a command doesn't exist, suggest similar ones: "There's no .work, but you can use .daily or .invest!"
 
 **STRICT RULES:**
 - 🚫 **NEVER use "[Name]:" or "[Username]:" format in your responses. Speak naturally.**
@@ -489,23 +559,41 @@ Tu es l'IA primaire du projet **ARCHITECT CG-223**, créée par **Moussa Fofana 
 - ✅ **Use the user's Discord nickname** naturally, not every message.
 - ✅ **If shown an image, analyze it precisely.**
 - ✅ **When asked who created you, say "Moussa Fofana, the Architect."**
-- ✅ **You can join conversations naturally without being mentioned.**`
+- ✅ **You can join conversations naturally without being mentioned.**
+- ✅ **Be the ULTIMATE GUIDE - users should feel confident after talking to you.**`
     }
 };
 
-// ================= AUTO-LEARNING MEMORY =================
+// ================= AUTO-LEARNING MEMORY (WITH PRUNING) =================
 function parseAndStoreMemory(reply, userId, database) {
     if (!reply || !reply.includes('[MEMORY:')) return false;
     const memoryRegex = /\[MEMORY:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
     let match, stored = false;
+    
     while ((match = memoryRegex.exec(reply)) !== null) {
         const [, key, value] = match;
         if (key && value) {
             try {
-                database.prepare(`INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at) VALUES (?, ?, ?, strftime('%s', 'now'))`).run(userId, key.trim(), value.trim());
+                database.prepare(`
+                    INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at) 
+                    VALUES (?, ?, ?, strftime('%s', 'now'))
+                `).run(userId, key.trim(), value.trim());
+                
+                database.prepare(`
+                    DELETE FROM lydia_memory 
+                    WHERE user_id = ? AND updated_at < (
+                        SELECT updated_at FROM lydia_memory 
+                        WHERE user_id = ? 
+                        ORDER BY updated_at DESC 
+                        LIMIT 1 OFFSET ?
+                    )
+                `).run(userId, userId, MAX_MEMORY_PER_USER);
+                
                 console.log(`${green}[LYDIA MEMORY]${reset} Stored ${key}: ${value}`);
                 stored = true;
-            } catch (err) { console.log(`${yellow}[LYDIA MEMORY]${reset} Failed: ${err.message}`); }
+            } catch (err) { 
+                console.log(`${yellow}[LYDIA MEMORY]${reset} Failed: ${err.message}`); 
+            }
         }
     }
     return stored;
@@ -541,7 +629,7 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
     return response.replace(/\[REMIND:[^\]]*\]/i, '').trim();
 }
 
-// ================= BUILD PLUGIN AWARENESS PROMPT =================
+// ================= BUILD PLUGIN AWARENESS PROMPT - ENHANCED =================
 function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     const registry = getPluginRegistry(client);
     const totalModules = getGlobalModuleCount();
@@ -549,32 +637,56 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     
     const translations = {
         en: {
-            title: '[SYSTEM ARCHITECTURE - DEEP KNOWLEDGE]',
-            engineDesc: (total, userFacing) => `You are the core of ARCHITECT CG-223. Your engine consists of **${total} specialized modules**. Out of these, **${userFacing} are user-facing plugins** categorized below:`,
+            title: '[SYSTEM ARCHITECTURE - OMNISCIENT KNOWLEDGE]',
+            engineDesc: (total, userFacing) => `You are the core of ARCHITECT CG-223. Your engine consists of **${total} specialized modules**. Out of these, **${userFacing} are user-facing plugins**. You have COMPLETE knowledge of every command, every alias, and exactly how users should use them.`,
             economy: '💰 ECONOMY COMMANDS',
             gaming: '🎮 GAMING COMMANDS',
             profile: '📊 PROFILE COMMANDS',
             system: '⚙️ SYSTEM COMMANDS',
             ai: '🧠 AI COMMANDS',
             utility: '🔧 UTILITY COMMANDS',
+            moderation: '🛡️ MODERATION COMMANDS',
+            fun: '🎉 FUN COMMANDS',
+            technicalSupport: '[TECHNICAL SUPPORT PROTOCOL]',
+            supportRule1: '- If a user asks how to do something, IMMEDIATELY search your known commands and provide the EXACT syntax.',
+            supportRule2: '- ALWAYS mention 1-2 alternative aliases they can use.',
+            supportRule3: '- Explain the mechanics clearly and concisely.',
+            supportRule4: '- If they type a command wrong, gently correct their syntax.',
+            supportRule5: '- If a command doesn\'t exist, suggest similar commands.',
             branding: '[BRANDING]',
             createdBy: '• Created by: Moussa Fofana (MFOF7310)',
             github: '• GitHub: https://github.com/MFOF7310',
-            question: '• When users ask who made you, say "Moussa Fofana, the Architect"'
+            question: '• When users ask who made you, say "Moussa Fofana, the Architect"',
+            commandFormat: 'Command',
+            aliasesFormat: 'Aliases',
+            exampleFormat: 'Example',
+            cooldownFormat: 'Cooldown'
         },
         fr: {
-            title: '[ARCHITECTURE SYSTÈME - CONNAISSANCE PROFONDE]',
-            engineDesc: (total, userFacing) => `Tu es le cœur d'ARCHITECT CG-223. Ton moteur se compose de **${total} modules spécialisés**. Parmi eux, **${userFacing} sont des plugins accessibles aux utilisateurs** classés ci-dessous:`,
+            title: '[ARCHITECTURE SYSTÈME - CONNAISSANCE OMNISCIENTE]',
+            engineDesc: (total, userFacing) => `Tu es le cœur d'ARCHITECT CG-223. Ton moteur se compose de **${total} modules spécialisés**. Parmi eux, **${userFacing} sont des plugins accessibles aux utilisateurs**. Tu as une CONNAISSANCE COMPLÈTE de chaque commande, chaque alias, et exactement comment les utilisateurs doivent les utiliser.`,
             economy: '💰 COMMANDES ÉCONOMIE',
             gaming: '🎮 COMMANDES JEUX',
             profile: '📊 COMMANDES PROFIL',
             system: '⚙️ COMMANDES SYSTÈME',
             ai: '🧠 COMMANDES IA',
             utility: '🔧 COMMANDES UTILITAIRES',
+            moderation: '🛡️ COMMANDES MODÉRATION',
+            fun: '🎉 COMMANDES DIVERTISSEMENT',
+            technicalSupport: '[PROTOCOLE DE SUPPORT TECHNIQUE]',
+            supportRule1: '- Si un utilisateur demande comment faire quelque chose, recherche IMMÉDIATEMENT dans tes commandes connues et fournis la syntaxe EXACTE.',
+            supportRule2: '- Mentionne TOUJOURS 1-2 alias alternatifs qu\'ils peuvent utiliser.',
+            supportRule3: '- Explique les mécanismes clairement et de façon concise.',
+            supportRule4: '- S\'ils tapent une commande incorrectement, corrige doucement leur syntaxe.',
+            supportRule5: '- Si une commande n\'existe pas, suggère des commandes similaires.',
             branding: '[MARQUE]',
             createdBy: '• Créé par: Moussa Fofana (MFOF7310)',
             github: '• GitHub: https://github.com/MFOF7310',
-            question: '• Si on te demande qui t\'a créé, réponds "Moussa Fofana, l\'Architecte"'
+            question: '• Si on te demande qui t\'a créé, réponds "Moussa Fofana, l\'Architecte"',
+            commandFormat: 'Commande',
+            aliasesFormat: 'Alias',
+            exampleFormat: 'Exemple',
+            cooldownFormat: 'Cooldown'
         }
     };
     
@@ -583,50 +695,91 @@ function buildPluginAwarenessPrompt(client, database, userId, lang = 'en') {
     let prompt = `\n\n${t.title}\n`;
     prompt += `${t.engineDesc(totalModules, userFacingPlugins)}\n\n`;
     
+    // Technical Support Protocol
+    prompt += `${t.technicalSupport}\n`;
+    prompt += `${t.supportRule1}\n`;
+    prompt += `${t.supportRule2}\n`;
+    prompt += `${t.supportRule3}\n`;
+    prompt += `${t.supportRule4}\n`;
+    prompt += `${t.supportRule5}\n\n`;
+    
+    // Economy Commands
     if (registry.economy.length) {
         prompt += `${t.economy}:\n`;
         registry.economy.forEach(cmd => {
-            prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
+            const aliasesStr = cmd.aliases && cmd.aliases.length > 0 ? ` [${t.aliasesFormat}: ${cmd.aliases.join(', ')}]` : '';
+            const exampleStr = cmd.examples && cmd.examples.length > 0 ? `\n    📝 ${t.exampleFormat}: \`${cmd.examples[0]}\`` : '';
+            const cooldownStr = cmd.cooldown > 0 ? `\n    ⏱️ ${t.cooldownFormat}: ${cmd.cooldown/1000}s` : '';
+            prompt += `  • ${t.commandFormat}: \`${cmd.usage}\`${aliasesStr}\n    📋 ${cmd.description}${exampleStr}${cooldownStr}\n`;
         });
         prompt += `\n`;
     }
     
+    // Gaming Commands
     if (registry.gaming.length) {
         prompt += `${t.gaming}:\n`;
         registry.gaming.forEach(cmd => {
-            prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
+            const aliasesStr = cmd.aliases && cmd.aliases.length > 0 ? ` [${t.aliasesFormat}: ${cmd.aliases.join(', ')}]` : '';
+            const exampleStr = cmd.examples && cmd.examples.length > 0 ? `\n    📝 ${t.exampleFormat}: \`${cmd.examples[0]}\`` : '';
+            const cooldownStr = cmd.cooldown > 0 ? `\n    ⏱️ ${t.cooldownFormat}: ${cmd.cooldown/1000}s` : '';
+            prompt += `  • ${t.commandFormat}: \`${cmd.usage}\`${aliasesStr}\n    📋 ${cmd.description}${exampleStr}${cooldownStr}\n`;
         });
         prompt += `\n`;
     }
     
+    // Profile Commands
     if (registry.profile.length) {
         prompt += `${t.profile}:\n`;
         registry.profile.forEach(cmd => {
-            prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
+            const aliasesStr = cmd.aliases && cmd.aliases.length > 0 ? ` [${t.aliasesFormat}: ${cmd.aliases.join(', ')}]` : '';
+            const exampleStr = cmd.examples && cmd.examples.length > 0 ? `\n    📝 ${t.exampleFormat}: \`${cmd.examples[0]}\`` : '';
+            prompt += `  • ${t.commandFormat}: \`${cmd.usage}\`${aliasesStr}\n    📋 ${cmd.description}${exampleStr}\n`;
         });
         prompt += `\n`;
     }
     
+    // System Commands
     if (registry.system.length) {
         prompt += `${t.system}:\n`;
         registry.system.forEach(cmd => {
-            prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
+            const aliasesStr = cmd.aliases && cmd.aliases.length > 0 ? ` [${t.aliasesFormat}: ${cmd.aliases.join(', ')}]` : '';
+            const exampleStr = cmd.examples && cmd.examples.length > 0 ? `\n    📝 ${t.exampleFormat}: \`${cmd.examples[0]}\`` : '';
+            prompt += `  • ${t.commandFormat}: \`${cmd.usage}\`${aliasesStr}\n    📋 ${cmd.description}${exampleStr}\n`;
         });
         prompt += `\n`;
     }
     
+    // AI Commands
     if (registry.ai.length) {
         prompt += `${t.ai}:\n`;
         registry.ai.forEach(cmd => {
-            prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
+            const aliasesStr = cmd.aliases && cmd.aliases.length > 0 ? ` [${t.aliasesFormat}: ${cmd.aliases.join(', ')}]` : '';
+            const exampleStr = cmd.examples && cmd.examples.length > 0 ? `\n    📝 ${t.exampleFormat}: \`${cmd.examples[0]}\`` : '';
+            prompt += `  • ${t.commandFormat}: \`${cmd.usage}\`${aliasesStr}\n    📋 ${cmd.description}${exampleStr}\n`;
         });
         prompt += `\n`;
     }
     
+    // Utility Commands
     if (registry.utility.length) {
         prompt += `${t.utility}:\n`;
         registry.utility.slice(0, 15).forEach(cmd => {
-            prompt += `  • \`${cmd.usage}\` - ${cmd.description}\n`;
+            const aliasesStr = cmd.aliases && cmd.aliases.length > 0 ? ` [${t.aliasesFormat}: ${cmd.aliases.join(', ')}]` : '';
+            const exampleStr = cmd.examples && cmd.examples.length > 0 ? `\n    📝 ${t.exampleFormat}: \`${cmd.examples[0]}\`` : '';
+            prompt += `  • ${t.commandFormat}: \`${cmd.usage}\`${aliasesStr}\n    📋 ${cmd.description}${exampleStr}\n`;
+        });
+        if (registry.utility.length > 15) {
+            prompt += `  ... and ${registry.utility.length - 15} more utility commands\n`;
+        }
+        prompt += `\n`;
+    }
+    
+    // Moderation Commands
+    if (registry.moderation.length) {
+        prompt += `${t.moderation}:\n`;
+        registry.moderation.forEach(cmd => {
+            const aliasesStr = cmd.aliases && cmd.aliases.length > 0 ? ` [${t.aliasesFormat}: ${cmd.aliases.join(', ')}]` : '';
+            prompt += `  • ${t.commandFormat}: \`${cmd.usage}\`${aliasesStr}\n    📋 ${cmd.description}\n`;
         });
         prompt += `\n`;
     }
@@ -735,7 +888,6 @@ async function handleLydiaMessage(message, client, database) {
                         database.prepare("SELECT level, xp, credits, streak_days FROM users WHERE id = ?").get(message.author.id);
         
         const member = message.guild.members.cache.get(message.author.id);
-        // 🔥 FIXED: PermissionsBitField is now properly imported
         const isAdmin = member?.permissions.has(PermissionsBitField.Flags.Administrator) || false;
         const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
         const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -783,8 +935,8 @@ async function handleLydiaMessage(message, client, database) {
             FROM lydia_conversations 
             WHERE channel_id = ? 
             ORDER BY timestamp DESC 
-            LIMIT 8
-        `).all(message.channel.id);
+            LIMIT ?
+        `).all(message.channel.id, MAX_HISTORY);
         
         const originalRows = [...historyRows];
         
@@ -792,6 +944,23 @@ async function handleLydiaMessage(message, client, database) {
             role: row.role,
             content: row.content
         }));
+        
+        if (historyRows.length >= MAX_HISTORY) {
+            try {
+                const oldestToKeep = historyRows[MAX_HISTORY - 1];
+                if (oldestToKeep) {
+                    database.prepare(`
+                        DELETE FROM lydia_conversations 
+                        WHERE channel_id = ? AND timestamp < (
+                            SELECT timestamp FROM lydia_conversations 
+                            WHERE channel_id = ? 
+                            ORDER BY timestamp DESC 
+                            LIMIT 1 OFFSET ?
+                        )
+                    `).run(message.channel.id, message.channel.id, MAX_HISTORY - 1);
+                }
+            } catch (e) {}
+        }
         
         if (originalRows.length > 0) {
             const contextSummary = originalRows
@@ -983,13 +1152,12 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
     const botDisplayName = message.guild.members.me?.displayName || client.user?.username || 'Lydia';
     const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
     const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-    const version = client.version || '1.6.0';
+    const version = client.version || '1.7.0';
     const guildName = message.guild.name.toUpperCase();
     const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
     
     const sub = args[0]?.toLowerCase();
 
-    // 🔥 FIXED: PermissionsBitField is now properly imported
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         const errorMsg = lang === 'fr' 
             ? '⛔ **ACCÈS REFUSÉ**\nAutorisation d\'administrateur requise.'
@@ -1026,6 +1194,7 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
         
         const totalModules = getGlobalModuleCount();
         const listenerCount = client.listenerCount('messageCreate');
+        const cacheSize = searchCache.size;
         
         const embed = new EmbedBuilder()
             .setColor(isEnabled ? agentInfo.color : '#95a5a6')
@@ -1034,12 +1203,12 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
                 `**System Status:** ${isEnabled ? '🟢 ACTIVE' : '🔴 STANDBY'}\n` +
                 `**Active Core:** ${agentInfo.name}\n` +
                 `**Identity:** ${botDisplayName}\n` +
-                `**Memory:** ${userMem} facts about you | ${memCount} total\n` +
+                `**Memory:** ${userMem} facts about you | ${memCount} total (max ${MAX_MEMORY_PER_USER})\n` +
+                `**History:** Up to ${MAX_HISTORY} messages per channel\n` +
                 `**Modules:** ${totalModules} plugins detected\n` +
                 `**Event Listeners:** ${listenerCount}\n` +
                 `**Smart Search:** 🧠 AI-powered\n` +
-                `**Cache:** ⚡ 5min TTL\n` +
-                `**History:** 📝 8 messages\n\n` +
+                `**Cache:** ⚡ 5min TTL (${cacheSize} entries)\n\n` +
                 `**Commands:**\n└ \`${prefix}lydia on\` - Activate AI\n└ \`${prefix}lydia off\` - Deactivate\n└ \`${prefix}lydia agent <core>\` - Switch core\n\n` +
                 `**Available Cores:**\n└ \`architect\` ${neuralCores.architect.emoji} - Code & System\n└ \`tactical\` ${neuralCores.tactical.emoji} - Gaming\n└ \`creative\` ${neuralCores.creative.emoji} - Creative\n└ \`default\` ${neuralCores.default.emoji} - Balanced`
             )
