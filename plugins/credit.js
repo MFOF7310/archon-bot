@@ -14,6 +14,9 @@ const walletTranslations = {
         footer: 'Mali Node • Archon Neural Ledger',
         shopBtn: 'Marketplace',
         dailyBtn: 'Daily Claim',
+        transferBtn: 'Transfer',
+        investBtn: 'Invest',
+        leaderboardBtn: 'Leaderboard',
         refreshBtn: 'Refresh',
         loading: '🔄 Synchronizing with Neural Ledger...',
         noUser: '❌ Subject not found in database.',
@@ -30,9 +33,20 @@ const walletTranslations = {
         maxTierMsg: 'You have reached the highest wealth tier possible. Impressive!',
         shopNotFound: '❌ Shop command not found.',
         dailyNotFound: '❌ Daily command not found.',
+        transferNotFound: '❌ Transfer command not found.',
+        investNotFound: '❌ Invest command not found.',
+        leaderboardNotFound: '❌ Leaderboard command not found.',
         accessDenied: '❌ These controls are locked to your session.',
         required: 'required',
-        basedOnActivity: 'Based on your activity'
+        basedOnActivity: 'Based on your activity',
+        recentActivity: '📊 RECENT ACTIVITY',
+        noTransactions: 'No recent transactions.',
+        transferred: 'Transferred',
+        received: 'Received',
+        invested: 'Invested',
+        claimed: 'Claimed',
+        to: 'to',
+        from: 'from'
     },
     fr: {
         title: '◈ PORTEFEUILLE NEURAL : ACTIFS ◈',
@@ -46,6 +60,9 @@ const walletTranslations = {
         footer: 'Nœud Mali • Archon Registre Neural',
         shopBtn: 'Marché',
         dailyBtn: 'Quotidien',
+        transferBtn: 'Transférer',
+        investBtn: 'Investir',
+        leaderboardBtn: 'Classement',
         refreshBtn: 'Actualiser',
         loading: '🔄 Synchronisation avec le Registre Neural...',
         noUser: '❌ Sujet introuvable dans la base de données.',
@@ -62,9 +79,20 @@ const walletTranslations = {
         maxTierMsg: 'Vous avez atteint le plus haut niveau de richesse possible. Impressionnant!',
         shopNotFound: '❌ Commande de boutique introuvable.',
         dailyNotFound: '❌ Commande quotidienne introuvable.',
+        transferNotFound: '❌ Commande de transfert introuvable.',
+        investNotFound: '❌ Commande d\'investissement introuvable.',
+        leaderboardNotFound: '❌ Commande de classement introuvable.',
         accessDenied: '❌ Ces contrôles sont verrouillés à votre session.',
         required: 'requis',
-        basedOnActivity: 'Basé sur votre activité'
+        basedOnActivity: 'Basé sur votre activité',
+        recentActivity: '📊 ACTIVITÉ RÉCENTE',
+        noTransactions: 'Aucune transaction récente.',
+        transferred: 'Transféré',
+        received: 'Reçu',
+        invested: 'Investi',
+        claimed: 'Réclamé',
+        to: 'à',
+        from: 'de'
     }
 };
 
@@ -106,6 +134,73 @@ function getNextWealthTier(credits) {
     return WEALTH_TIERS.find(t => t.minCredits > credits);
 }
 
+// Get recent transactions
+function getRecentTransactions(db, userId, lang) {
+    const t = walletTranslations[lang];
+    const transactions = [];
+    
+    // Get recent transfers (sent)
+    const sent = db.prepare(`
+        SELECT 'sent' as type, amount, timestamp, receiver_id as other_id 
+        FROM transfers WHERE sender_id = ? 
+        ORDER BY timestamp DESC LIMIT 3
+    `).all(userId);
+    
+    sent.forEach(tx => {
+        transactions.push({
+            type: 'sent',
+            amount: tx.amount,
+            timestamp: tx.timestamp,
+            otherId: tx.other_id
+        });
+    });
+    
+    // Get recent transfers (received)
+    const received = db.prepare(`
+        SELECT 'received' as type, amount, timestamp, sender_id as other_id 
+        FROM transfers WHERE receiver_id = ? 
+        ORDER BY timestamp DESC LIMIT 3
+    `).all(userId);
+    
+    received.forEach(tx => {
+        transactions.push({
+            type: 'received',
+            amount: tx.amount,
+            timestamp: tx.timestamp,
+            otherId: tx.other_id
+        });
+    });
+    
+    // Get recent investments
+    const investments = db.prepare(`
+        SELECT 'invested' as type, amount, invested_at as timestamp 
+        FROM investments WHERE user_id = ? 
+        ORDER BY invested_at DESC LIMIT 3
+    `).all(userId);
+    
+    investments.forEach(tx => {
+        transactions.push({
+            type: 'invested',
+            amount: tx.amount,
+            timestamp: tx.timestamp,
+            otherId: null
+        });
+    });
+    
+    // Sort by timestamp and take latest 5
+    return transactions
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 5)
+        .map(tx => {
+            const date = new Date(tx.timestamp).toLocaleDateString();
+            if (tx.type === 'sent') return `📤 ${t.transferred} ${tx.amount} 🪙 ${t.to} <@${tx.otherId}> • ${date}`;
+            if (tx.type === 'received') return `📥 ${t.received} ${tx.amount} 🪙 ${t.from} <@${tx.otherId}> • ${date}`;
+            if (tx.type === 'invested') return `📈 ${t.invested} ${tx.amount} 🪙 • ${date}`;
+            return '';
+        })
+        .filter(t => t);
+}
+
 module.exports = {
     name: 'credits',
     aliases: ['bal', 'balance', 'money', 'argent', 'solde', 'wallet', 'credit'],
@@ -122,7 +217,7 @@ module.exports = {
             : (serverSettings?.language || 'en');
         const t = walletTranslations[lang];
         
-        const version = client.version || '1.6.0';
+        const version = client.version || '1.7.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
@@ -172,6 +267,9 @@ module.exports = {
         const emptyBars = progressBarLength - filledBars;
         const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
         
+        // Get recent transactions
+        const recentTransactions = isSelf ? getRecentTransactions(db, message.author.id, lang) : [];
+        
         const walletEmbed = new EmbedBuilder()
             .setColor(agentRank.color)
             .setAuthor({ 
@@ -180,7 +278,7 @@ module.exports = {
             })
             .setTitle(t.title)
             .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 512 }))
-            .setDescription(`\`\`\`yaml\n${t.vaultStatus}\nNode: BAMAKO-223\nCore: Groq LPU™\n\`\`\``)
+            .setDescription(`\`\`\`yaml\n${t.vaultStatus}\nNode: BAMAKO-223\nCore: OpenRouter + Brave\n\`\`\``)
             .addFields(
                 { name: `💰 ${t.balance}`, value: `**${credits.toLocaleString()}** 🪙`, inline: true },
                 { name: `🏆 ${t.totalGains}`, value: `**${winnings.toLocaleString()}** 🪙`, inline: true },
@@ -218,6 +316,15 @@ module.exports = {
             });
         }
         
+        // Add recent transactions
+        if (recentTransactions.length > 0) {
+            walletEmbed.addFields({
+                name: t.recentActivity,
+                value: recentTransactions.join('\n'),
+                inline: false
+            });
+        }
+        
         walletEmbed
             .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
@@ -230,32 +337,52 @@ module.exports = {
             });
         }
         
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('credits_shop').setLabel(t.shopBtn).setStyle(ButtonStyle.Primary).setEmoji('🏪'),
-            new ButtonBuilder().setCustomId('credits_daily').setLabel(t.dailyBtn).setStyle(ButtonStyle.Success).setEmoji('⚡'),
-            new ButtonBuilder().setCustomId('credits_refresh').setLabel(t.refreshBtn).setStyle(ButtonStyle.Secondary).setEmoji('🔄')
-        );
+        // Build button rows
+        const components = [];
+        
+        if (isSelf) {
+            const row1 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('credits_shop').setLabel(t.shopBtn).setStyle(ButtonStyle.Primary).setEmoji('🏪'),
+                new ButtonBuilder().setCustomId('credits_daily').setLabel(t.dailyBtn).setStyle(ButtonStyle.Success).setEmoji('⚡'),
+                new ButtonBuilder().setCustomId('credits_transfer').setLabel(t.transferBtn).setStyle(ButtonStyle.Secondary).setEmoji('💸')
+            );
+            
+            const row2 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('credits_invest').setLabel(t.investBtn).setStyle(ButtonStyle.Secondary).setEmoji('📈'),
+                new ButtonBuilder().setCustomId('credits_leaderboard').setLabel(t.leaderboardBtn).setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
+                new ButtonBuilder().setCustomId('credits_refresh').setLabel(t.refreshBtn).setStyle(ButtonStyle.Secondary).setEmoji('🔄')
+            );
+            
+            components.push(row1, row2);
+        }
         
         const reply = await message.reply({ 
             embeds: [walletEmbed], 
-            components: isSelf ? [row] : [] 
+            components: components 
         }).catch(() => {});
         
         if (!reply || !isSelf) return;
         
-        const collector = reply.createMessageComponentCollector({ time: 60000 });
+        const collector = reply.createMessageComponentCollector({ time: 120000 });
         
         collector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) {
                 return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
             }
             
-            await i.deferUpdate().catch(() => {});
+            // 🛡️ NEURAL GATEKEEPER
+            if (!i.deferred && !i.replied) {
+                try {
+                    await i.deferUpdate();
+                } catch (e) {}
+            }
             
             switch (i.customId) {
                 case 'credits_shop':
                     const shopCmd = client.commands.get('shop');
                     if (shopCmd) {
+                        collector.stop();
+                        await reply.delete().catch(() => {});
                         await shopCmd.run(client, message, [], db, serverSettings, usedCommand);
                     } else {
                         await i.followUp({ content: t.shopNotFound, ephemeral: true }).catch(() => {});
@@ -265,14 +392,48 @@ module.exports = {
                 case 'credits_daily':
                     const dailyCmd = client.commands.get('daily');
                     if (dailyCmd) {
+                        collector.stop();
+                        await reply.delete().catch(() => {});
                         await dailyCmd.run(client, message, [], db, serverSettings, usedCommand);
                     } else {
                         await i.followUp({ content: t.dailyNotFound, ephemeral: true }).catch(() => {});
                     }
                     break;
                     
+                case 'credits_transfer':
+                    const transferCmd = client.commands.get('transfer');
+                    if (transferCmd) {
+                        collector.stop();
+                        await reply.delete().catch(() => {});
+                        await transferCmd.run(client, message, [], db, serverSettings, usedCommand);
+                    } else {
+                        await i.followUp({ content: t.transferNotFound, ephemeral: true }).catch(() => {});
+                    }
+                    break;
+                    
+                case 'credits_invest':
+                    const investCmd = client.commands.get('invest');
+                    if (investCmd) {
+                        collector.stop();
+                        await reply.delete().catch(() => {});
+                        await investCmd.run(client, message, [], db, serverSettings, usedCommand);
+                    } else {
+                        await i.followUp({ content: t.investNotFound, ephemeral: true }).catch(() => {});
+                    }
+                    break;
+                    
+                case 'credits_leaderboard':
+                    const lbCmd = client.commands.get('leaderboard');
+                    if (lbCmd) {
+                        collector.stop();
+                        await reply.delete().catch(() => {});
+                        await lbCmd.run(client, message, [], db, serverSettings, usedCommand);
+                    } else {
+                        await i.followUp({ content: t.leaderboardNotFound, ephemeral: true }).catch(() => {});
+                    }
+                    break;
+                    
                 case 'credits_refresh':
-                    // 🔥 CORRECTION CRITIQUE : Lire depuis le CACHE RAM, pas la DB !
                     const freshData = client.getUserData 
                         ? client.getUserData(message.author.id) 
                         : db.prepare(`SELECT credits, xp, total_winnings, games_played, games_won FROM users WHERE id = ?`).get(message.author.id);
@@ -297,6 +458,8 @@ module.exports = {
                         const freshFilledBars = Math.floor(freshProgress / (100 / progressBarLength));
                         const freshProgressBar = '█'.repeat(freshFilledBars) + '░'.repeat(progressBarLength - freshFilledBars);
                         
+                        const freshTransactions = getRecentTransactions(db, message.author.id, lang);
+                        
                         const refreshedEmbed = new EmbedBuilder()
                             .setColor(freshAgentRank.color)
                             .setAuthor({ 
@@ -305,7 +468,7 @@ module.exports = {
                             })
                             .setTitle(t.title)
                             .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
-                            .setDescription(`\`\`\`yaml\n${t.vaultStatus}\nNode: BAMAKO-223\nCore: Groq LPU™\n\`\`\``)
+                            .setDescription(`\`\`\`yaml\n${t.vaultStatus}\nNode: BAMAKO-223\nCore: OpenRouter + Brave\n\`\`\``)
                             .addFields(
                                 { name: `💰 ${t.balance}`, value: `**${freshCredits.toLocaleString()}** 🪙`, inline: true },
                                 { name: `🏆 ${t.totalGains}`, value: `**${(freshData.total_winnings || 0).toLocaleString()}** 🪙`, inline: true },
@@ -323,6 +486,14 @@ module.exports = {
                             refreshedEmbed.addFields({
                                 name: `🏆 ${t.maxTier}`,
                                 value: t.maxTierMsg,
+                                inline: false
+                            });
+                        }
+                        
+                        if (freshTransactions.length > 0) {
+                            refreshedEmbed.addFields({
+                                name: t.recentActivity,
+                                value: freshTransactions.join('\n'),
                                 inline: false
                             });
                         }
@@ -345,8 +516,17 @@ module.exports = {
             }
         });
         
-        collector.on('end', () => {
-            reply.edit({ components: [] }).catch(() => {});
+        collector.on('end', async () => {
+            try {
+                const disabledRows = components.map(row => {
+                    const newRow = new ActionRowBuilder();
+                    row.components.forEach(btn => {
+                        newRow.addComponents(ButtonBuilder.from(btn).setDisabled(true));
+                    });
+                    return newRow;
+                });
+                await reply.edit({ components: disabledRows }).catch(() => {});
+            } catch (e) {}
         });
         
         console.log(`[CREDITS] ${message.author.tag} checked balance: ${credits} credits | Lang: ${lang}`);
