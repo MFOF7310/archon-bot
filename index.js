@@ -1,3 +1,4 @@
+// ================= CORRECTED INDEX.JS v1.7.0 - BAMAKO NODE PRO =================
 require('dotenv').config();
 
 const fs = require('fs');
@@ -9,6 +10,36 @@ const { setupLydia } = require('./plugins/lydia.js');
 
 // ================= 🔥 AFK SYSTEM IMPORT =================
 const { afkUsers } = require('./plugins/afk.js');
+
+// ================= 🔥 BAMAKO MARKET MANAGER (SAFE FALLBACK) =================
+let getMarketState, updateMarketTrend, TRENDS;
+
+try {
+    const MarketManager = require('./plugins/market-manager.js');
+    getMarketState = MarketManager.getMarketState;
+    updateMarketTrend = MarketManager.updateMarketTrend;
+    TRENDS = MarketManager.TRENDS;
+    console.log(`\x1b[32m[MARKET]\x1b[0m Manager loaded successfully`);
+} catch (err) {
+    console.log(`\x1b[33m[MARKET]\x1b[0m Manager not found - using fallback`);
+    
+    TRENDS = {
+        STEADY: { name: 'Steady Market', emoji: '📊', color: '#f1c40f', multiplier: [0.98, 1.08] },
+        BULL: { name: 'Bull Market', emoji: '📈', color: '#2ecc71', multiplier: [1.05, 1.20] },
+        BEAR: { name: 'Bear Market', emoji: '📉', color: '#e74c3c', multiplier: [0.85, 0.98] },
+        VOLATILE: { name: 'Volatile Market', emoji: '🌪️', color: '#9b59b6', multiplier: [0.70, 1.40] }
+    };
+    
+    getMarketState = () => ({
+        trend: 'STEADY',
+        multiplier: 1.0,
+        lastUpdate: Date.now(),
+        nextUpdate: Date.now() + (6 * 60 * 60 * 1000),
+        history: []
+    });
+    
+    updateMarketTrend = () => getMarketState();
+}
 
 // ================= SELF-HEALING PROTOCOL =================
 process.on('unhandledRejection', (reason, promise) => {
@@ -48,11 +79,11 @@ function getVersion() {
             const version = fs.readFileSync(versionPath, 'utf8').trim();
             return version;
         } else {
-            fs.writeFileSync(versionPath, '1.6.0', 'utf8');
-            return '1.6.0';
+            fs.writeFileSync(versionPath, '1.7.0', 'utf8');
+            return '1.7.0';
         }
     } catch (err) {
-        return '1.6.0';
+        return '1.7.0';
     }
 }
 
@@ -143,14 +174,45 @@ console.log(`${green}[LANGUAGE]${reset} Universal pattern-based detection initia
 
 // --- SQLITE DATABASE ---
 const Database = require('better-sqlite3');
-const db = new Database('database.sqlite');
+const db = new Database('database.sqlite', {
+    timeout: 10000,
+    readonly: false,
+    fileMustExist: false
+});
 
 // ================= 🔥 PILLAR 3: HIGH-PERFORMANCE PRAGMA =================
 db.exec("PRAGMA journal_mode = WAL;");
 db.exec("PRAGMA synchronous = NORMAL;");
 db.exec("PRAGMA cache_size = -64000;");
 db.exec("PRAGMA temp_store = MEMORY;");
-console.log(`${green}[PRAGMA]${reset} WAL mode enabled - High-performance concurrent mode`);
+db.exec("PRAGMA busy_timeout = 10000;");
+db.exec("PRAGMA wal_autocheckpoint = 1000;");
+console.log(`${green}[PRAGMA]${reset} WAL mode enabled - Lock protection active`);
+
+// ================= SAFE DATABASE WRITE (NO LOCKS!) =================
+function safeDbWrite(operation, maxRetries = 3) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return operation();
+        } catch (error) {
+            lastError = error;
+            
+            if (error.code === 'SQLITE_BUSY' || error.message.includes('database is locked')) {
+                console.log(`${yellow}[DB]${reset} Lock detected, retry ${attempt}/${maxRetries}...`);
+                const waitTime = attempt * 500;
+                const start = Date.now();
+                while (Date.now() - start < waitTime) {}
+            } else {
+                throw error;
+            }
+        }
+    }
+    throw lastError;
+}
+
+client.safeDbWrite = safeDbWrite;
 
 // ================= GLOBAL AUTO-REPAIR PROTOCOL =================
 console.log(`${cyan}[REPAIR]${reset} Initiating Global Neural Schema Repair...`);
@@ -209,6 +271,7 @@ const requiredTables = {
     )`,
     
     lydia_conversations: `CREATE TABLE IF NOT EXISTS lydia_conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         channel_id TEXT, user_id TEXT, user_name TEXT, 
         role TEXT, content TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now'))
     )`,
@@ -247,6 +310,32 @@ const requiredTables = {
     auto_backup_settings: `CREATE TABLE IF NOT EXISTS auto_backup_settings (
         guild_id TEXT PRIMARY KEY, enabled INTEGER DEFAULT 0, 
         last_backup INTEGER, channel_id TEXT
+    )`,
+    
+    user_links: `CREATE TABLE IF NOT EXISTS user_links (
+        telegram_id TEXT PRIMARY KEY,
+        discord_id TEXT UNIQUE,
+        linked_at INTEGER,
+        UNIQUE(telegram_id, discord_id)
+    )`,
+    
+    investments: `CREATE TABLE IF NOT EXISTS investments (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        invested_at INTEGER NOT NULL,
+        claimed INTEGER DEFAULT 0,
+        total_profit INTEGER DEFAULT 0,
+        platform TEXT DEFAULT 'discord'
+    )`,
+    
+    transfers: `CREATE TABLE IF NOT EXISTS transfers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id TEXT NOT NULL,
+        receiver_id TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        timestamp INTEGER NOT NULL,
+        platform TEXT DEFAULT 'discord'
     )`
 };
 
@@ -324,7 +413,6 @@ client.cacheJanitorInterval = null;
 client.reminderHeartbeatInterval = null;
 client.lastBatchWrite = Date.now();
 
-// Circuit breaker state
 client.dbHealth = {
     consecutiveFailures: 0,
     circuitOpen: false,
@@ -425,39 +513,43 @@ async function flushUserUpdates(retryCount = 0, retryId = null) {
     
     try {
         if (WRITE_STRATEGY.USE_TRANSACTIONS) {
-            const updateStmt = db.prepare(`
-                INSERT OR REPLACE INTO users (
-                    id, username, xp, level, total_messages, last_xp_gain, 
-                    games_played, games_won, total_winnings, gaming, credits, streak_days, last_daily
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            
-            db.transaction(() => {
-                for (const [userId, userData] of updates) {
-                    let gamingValue = userData.gaming;
-                    if (typeof gamingValue === 'object' && gamingValue !== null) {
-                        gamingValue = JSON.stringify(gamingValue);
-                    } else if (!gamingValue) {
-                        gamingValue = '{"game":"CODM","rank":"Unranked"}';
+            client.safeDbWrite(() => {
+                const updateStmt = db.prepare(`
+                    INSERT OR REPLACE INTO users (
+                        id, username, xp, level, total_messages, last_xp_gain, 
+                        games_played, games_won, total_winnings, gaming, credits, streak_days, last_daily
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `);
+                
+                db.transaction(() => {
+                    for (const [userId, userData] of updates) {
+                        let gamingValue = userData.gaming;
+                        if (typeof gamingValue === 'object' && gamingValue !== null) {
+                            gamingValue = JSON.stringify(gamingValue);
+                        } else if (!gamingValue) {
+                            gamingValue = '{"game":"CODM","rank":"Unranked"}';
+                        }
+                        
+                        updateStmt.run(
+                            userId,
+                            userData.username || 'Unknown',
+                            userData.xp ?? 0,
+                            userData.level ?? 1,
+                            userData.total_messages ?? 0,
+                            userData.last_xp_gain ?? 0,
+                            userData.games_played ?? 0,
+                            userData.games_won ?? 0,
+                            userData.total_winnings ?? 0,
+                            gamingValue,
+                            userData.credits ?? 0,
+                            userData.streak_days ?? 0,
+                            userData.last_daily ?? 0
+                        );
                     }
-                    
-                    updateStmt.run(
-                        userId,
-                        userData.username || 'Unknown',
-                        userData.xp ?? 0,
-                        userData.level ?? 1,
-                        userData.total_messages ?? 0,
-                        userData.last_xp_gain ?? 0,
-                        userData.games_played ?? 0,
-                        userData.games_won ?? 0,
-                        userData.total_winnings ?? 0,
-                        gamingValue,
-                        userData.credits ?? 0,
-                        userData.streak_days ?? 0,
-                        userData.last_daily ?? 0
-                    );
-                }
-            })();
+                })();
+                
+                return true;
+            });
         }
         
         client.dbHealth.consecutiveFailures = 0;
@@ -590,7 +682,6 @@ client.cacheUserData = cacheUserData;
 
 // ================= EXPANDED SHOP ITEMS =================
 client.shopItems = [
-    // ================= CONSUMABLES =================
     { 
         id: 'starter_pack', 
         price: 500, 
@@ -636,7 +727,6 @@ client.shopItems = [
         en: { name: 'Credit Surge', desc: 'Major credit injection.', perk: '+1000 Credits' },
         fr: { name: 'Afflux de Crédits', desc: 'Injection majeure de crédits.', perk: '+1000 Crédits' } 
     },
-    // ================= ROLES =================
     { 
         id: 'vip_role', 
         price: 10000, 
@@ -657,7 +747,6 @@ client.shopItems = [
         en: { name: 'Verified Agent', desc: 'Verified status in the community.', perk: 'Verified Role + Trust Badge' },
         fr: { name: 'Agent Vérifié', desc: 'Statut vérifié dans la communauté.', perk: 'Rôle Vérifié + Badge de Confiance' } 
     },
-    // ================= BADGES =================
     { 
         id: 'badge_pioneer', 
         price: 8000, 
@@ -676,7 +765,6 @@ client.shopItems = [
         en: { name: 'Bamako Pride Badge', desc: 'Mali heritage badge.', perk: '🇲🇱 Bamako Pride Badge' },
         fr: { name: 'Badge Fierté Bamako', desc: 'Badge héritage malien.', perk: '🇲🇱 Badge Fierté Bamako' } 
     },
-    // ================= MYSTERY BOXES =================
     { 
         id: 'mystery_box_bronze', 
         price: 1000, 
@@ -691,7 +779,6 @@ client.shopItems = [
         en: { name: 'Bronze Mystery Box', desc: 'Contains random rewards!', perk: 'Random XP or Credits' },
         fr: { name: 'Boîte Mystère Bronze', desc: 'Contient des récompenses aléatoires !', perk: 'XP ou Crédits Aléatoires' } 
     },
-    // ================= UTILITY =================
     { 
         id: 'daily_streak_shield', 
         price: 2000, 
@@ -715,48 +802,18 @@ function getCategoryEmoji(category) {
     return emojiMap[category.toUpperCase()] || '📦';
 }
 
-// ================= TELEGRAM BRIDGE v1.7.0 (DORMANT - AWAITING ACTIVATION) =================
-client.telegramBridge = {
-    enabled: false,
-    token: process.env.TELEGRAM_BOT_TOKEN || null,
-    chatId: process.env.TELEGRAM_CHAT_ID || null,
-    
-    // Bridge status
-    status: () => ({
-        configured: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
-        enabled: client.telegramBridge?.enabled || false,
-        version: '1.7.0'
-    }),
-    
-    // Send message to Telegram (when enabled)
-    send: async (content, options = {}) => {
-        if (!client.telegramBridge.enabled) return { success: false, error: 'Bridge disabled' };
-        // Implementation ready for future activation
-        return { success: false, error: 'Module dormant' };
-    },
-    
-    // Activate bridge
-    activate: () => {
-        if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
-            console.log(`${yellow}[TELEGRAM]${reset} Cannot activate - missing credentials in .env`);
-            return false;
-        }
-        client.telegramBridge.enabled = true;
-        console.log(`${green}[TELEGRAM]${reset} Bridge v1.7.0 activated - BAMAKO_223 🇲🇱 connected`);
-        return true;
-    },
-    
-    // Deactivate bridge
-    deactivate: () => {
-        client.telegramBridge.enabled = false;
-        console.log(`${yellow}[TELEGRAM]${reset} Bridge deactivated`);
-        return true;
-    }
-};
+// ================= TELEGRAM BRIDGE v1.7.0 =================
+// The outgoing bridge (Core) - Discord → Telegram
+const telegramBridge = require('./telegram/bridge.js');
+client.telegramBridge = telegramBridge.initialize(client);
 
-// Log bridge status on boot
-if (client.telegramBridge.status().configured) {
-    console.log(`${cyan}[TELEGRAM]${reset} Bridge v1.7.0 configured - Use .telegram activate to enable`);
+// The incoming listener (Bot) - Telegram → Discord
+const telegramBot = require('./telegram/bot.js');
+telegramBot.initialize(client);
+
+const bridgeStatus = client.telegramBridge.status();
+if (bridgeStatus.configured) {
+    console.log(`${cyan}[TELEGRAM]${reset} Bridge v1.7.0 configured - Auto-activating on boot`);
 } else {
     console.log(`${yellow}[TELEGRAM]${reset} Bridge not configured - Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to .env`);
 }
@@ -771,7 +828,6 @@ client.loadPlugins = async () => {
 
     const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js') && file !== 'lydia.js');
     
-    // ================= HEADER =================
     console.log(`\n${cyan}${bold}╔══════════════════════════════════════════════════════════════════╗${reset}`);
     console.log(`${cyan}${bold}║${reset}  ${yellow}🦅 ARCHITECT CG-223 NEURAL SYNAPSE // MODULE SYNCHRONIZATION${reset}  ${cyan}${bold}║${reset}`);
     console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
@@ -781,6 +837,7 @@ client.loadPlugins = async () => {
     const loadedCommands = [];
     const failedCommands = [];
     
+    // Load Discord plugins
     for (const file of pluginFiles) {
         try {
             await sleep(80);
@@ -808,7 +865,40 @@ client.loadPlugins = async () => {
         }
     }
     
-    // ================= GRID DISPLAY =================
+    // Load Telegram plugins
+    const telegramPath = path.join(__dirname, 'telegram');
+    if (fs.existsSync(telegramPath)) {
+        const telegramFiles = fs.readdirSync(telegramPath).filter(file => file.endsWith('.js') && file !== 'bridge.js' && file !== 'bot.js');
+        
+        for (const file of telegramFiles) {
+            try {
+                await sleep(80);
+                const filePath = path.join(telegramPath, file);
+                delete require.cache[require.resolve(filePath)];
+                const command = require(filePath);
+
+                if (command.name && command.run) {
+                    client.commands.set(command.name, command);
+                    if (command.aliases && Array.isArray(command.aliases)) {
+                        command.aliases.forEach(a => client.aliases.set(a, command.name));
+                    }
+                    
+                    const category = command.category || 'SYSTEM';
+                    const aliasesCount = command.aliases?.length || 0;
+                    loadedCommands.push({ 
+                        name: command.name, 
+                        category, 
+                        aliases: aliasesCount,
+                        emoji: getCategoryEmoji(category)
+                    });
+                }
+            } catch (error) { 
+                failedCommands.push({ file: `telegram/${file}`, error: error.message });
+            }
+        }
+    }
+    
+    // Grid Display
     const itemsPerRow = 3;
     
     loadedCommands.sort((a, b) => {
@@ -827,14 +917,11 @@ client.loadPlugins = async () => {
         });
         
         const emptySlots = itemsPerRow - row.length;
-        if (emptySlots > 0) {
-            rowText += ' '.repeat(emptySlots * 26);
-        }
+        if (emptySlots > 0) rowText += ' '.repeat(emptySlots * 26);
         
         console.log(`${rowText} ${cyan}${bold}║${reset}`);
     }
     
-    // ================= FOOTER WITH STATISTICS =================
     console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
     
     const totalAliases = client.aliases.size;
@@ -843,7 +930,6 @@ client.loadPlugins = async () => {
     console.log(`${cyan}${bold}║${reset}  ${green}✅ VERIFIED:${reset} ${loadedCommands.length} modules ${yellow}│${reset} ${blue}🔀 Aliases:${reset} ${totalAliases} ${yellow}│${reset} ${magenta}📂 Categories:${reset} ${categories.length}      ${cyan}${bold}║${reset}`);
     console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
     
-    // ================= CATEGORY SUMMARY =================
     const categoryCount = {};
     loadedCommands.forEach(c => categoryCount[c.category] = (categoryCount[c.category] || 0) + 1);
     
@@ -857,7 +943,6 @@ client.loadPlugins = async () => {
     
     console.log(`${categoryLine}${' '.repeat(Math.max(0, 64 - categoryLine.length + 10))}${cyan}${bold}║${reset}`);
     
-    // ================= FAILED MODULES =================
     if (failedCommands.length > 0) {
         console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
         failedCommands.forEach(f => {
@@ -865,7 +950,6 @@ client.loadPlugins = async () => {
         });
     }
     
-    // ================= BAMAKO NODE SIGNATURE =================
     console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
     console.log(`${cyan}${bold}║${reset}  ${yellow}📍 NODE:${reset} BAMAKO_223 🇲🇱 ${' '.repeat(28)}${green}🚀 ENGINE READY${reset}  ${cyan}${bold}║${reset}`);
     console.log(`${cyan}${bold}╚══════════════════════════════════════════════════════════════════╝${reset}\n`);
@@ -894,6 +978,29 @@ client.once(Events.ClientReady, async () => {
     startReminderHeartbeat();
     startCacheJanitor();
     
+    // 🔥 AUTO-ACTIVATE TELEGRAM BRIDGE ON BOOT
+    if (client.telegramBridge && client.telegramBridge.status) {
+        const status = client.telegramBridge.status();
+        if (status.configured) {
+            const result = client.telegramBridge.activate();
+            if (result.success) {
+                console.log(`${green}[TELEGRAM]${reset} Bridge auto-activated on boot - BAMAKO_223 🇲🇱 connected`);
+            } else {
+                console.log(`${yellow}[TELEGRAM]${reset} Bridge activation failed: ${result.error}`);
+            }
+        }
+    }
+    
+    // 🔥 DISPLAY CURRENT MARKET TREND ON BOOT (SAFE VERSION)
+    try {
+        const marketState = getMarketState();
+        const trend = TRENDS[marketState.trend] || TRENDS.STEADY;
+        console.log(`${green}[MARKET]${reset} Current trend: ${trend.emoji} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)`);
+    } catch (err) {
+        console.log(`${yellow}[MARKET]${reset} Could not display market trend - using default`);
+        console.log(`${green}[MARKET]${reset} Current trend: 📊 Steady Market (100.0%)`);
+    }
+    
     const boxWidth = 64;
     const drawBoxLine = (label, value) => {
         const lineContent = `║  ${label.padEnd(12)} : ${value}`;
@@ -914,6 +1021,16 @@ client.once(Events.ClientReady, async () => {
     console.log(`${blue}${bold}${drawBoxLine(`${green}💤 AFK SYSTEM`, `ACTIVE`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🛡️ CIRCUIT BREAKER`, `READY`)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🧠 LYDIA`, `MULTI-AGENT AI`)}${reset}`);
+    console.log(`${blue}${bold}${drawBoxLine(`${green}🌉 TELEGRAM`, client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY')}${reset}`);
+    
+    try {
+        const marketState = getMarketState();
+        const trend = TRENDS[marketState.trend] || TRENDS.STEADY;
+        console.log(`${blue}${bold}${drawBoxLine(`${green}📊 MARKET`, `${trend.emoji} ${trend.name}`)}${reset}`);
+    } catch (err) {
+        console.log(`${blue}${bold}${drawBoxLine(`${green}📊 MARKET`, `📊 Steady Market`)}${reset}`);
+    }
+    
     console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
 
     if (client.userTimeouts) {
@@ -921,16 +1038,19 @@ client.once(Events.ClientReady, async () => {
         client.userTimeouts.clear();
     }
 
-    // ================= BOOT DM =================
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID);
         
+        let trend = TRENDS.STEADY;
+        let marketState = { trend: 'STEADY', multiplier: 1.0 };
+        try {
+            marketState = getMarketState();
+            trend = TRENDS[marketState.trend] || TRENDS.STEADY;
+        } catch (err) {}
+        
         const bootEmbed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setAuthor({ 
-                name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', 
-                iconURL: client.user.displayAvatarURL() 
-            })
+            .setColor(trend.color || '#2ecc71')
+            .setAuthor({ name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', iconURL: client.user.displayAvatarURL() })
             .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
             .setDescription(
                 `\`\`\`ansi\n` +
@@ -944,6 +1064,8 @@ client.once(Events.ClientReady, async () => {
                 `\u001b[1;35mAFK System:\u001b[0m ACTIVE\n` +
                 `\u001b[1;33mCircuit Breaker:\u001b[0m READY\n` +
                 `\u001b[1;36mLydia AI:\u001b[0m MULTI-AGENT ACTIVE\n` +
+                `\u001b[1;36mTelegram:\u001b[0m ${client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY'}\n` +
+                `\u001b[1;33mMarket:\u001b[0m ${trend.emoji} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)\n` +
                 `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
                 `\`\`\``
             )
@@ -952,21 +1074,17 @@ client.once(Events.ClientReady, async () => {
                 { name: '🏗️ Architect', value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', inline: true },
                 { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
             )
-            .setFooter({ 
-                text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, 
-                iconURL: client.user.displayAvatarURL() 
-            })
+            .setFooter({ text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, iconURL: client.user.displayAvatarURL() })
             .setTimestamp();
 
         await owner.send({ embeds: [bootEmbed] });
         console.log(`${green}[DM]${reset} ✅ Boot DM sent successfully to ${owner.tag}`);
-        
     } catch (err) {
         console.log(`${yellow}[DM]${reset} ❌ Could not send boot DM: ${err.message}`);
     }
 });
 
-// ================= 🔥 FIXED MESSAGE PROCESSING =================
+// ================= MESSAGE PROCESSING =================
 client.on(Events.MessageCreate, async (message) => {
     if (!message || message.author?.bot || message.webhookId) return;
 
@@ -978,7 +1096,6 @@ client.on(Events.MessageCreate, async (message) => {
         cacheUserData(userId, userData);
     }
 
-    // ================= 💤 AFK SYSTEM - MENTION =================
     if (message.mentions.users.size > 0) {
         const messageContent = message.content || '';
         const lang = detectLanguage(messageContent);
@@ -987,24 +1104,18 @@ client.on(Events.MessageCreate, async (message) => {
             if (afkUsers.has(mentionedId)) {
                 const afkData = afkUsers.get(mentionedId);
                 const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
-                const timeText = minutes === 0 
-                    ? (lang === 'fr' ? 'à l\'instant' : 'just now')
-                    : `${minutes} min`;
+                const timeText = minutes === 0 ? (lang === 'fr' ? 'à l\'instant' : 'just now') : `${minutes} min`;
                 
                 const mentionMsg = lang === 'fr'
                     ? `💤 **${user.username}** est AFK (${timeText}): *${afkData.reason}*`
                     : `💤 **${user.username}** is AFK (${timeText}): *${afkData.reason}*`;
                 
-                await message.reply({ 
-                    content: mentionMsg, 
-                    allowedMentions: { repliedUser: true } 
-                }).catch(() => {});
+                await message.reply({ content: mentionMsg, allowedMentions: { repliedUser: true } }).catch(() => {});
                 break;
             }
         }
     }
 
-    // ================= 💤 AFK SYSTEM - RETURN =================
     if (afkUsers.has(message.author.id)) {
         const afkData = afkUsers.get(message.author.id);
         const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
@@ -1019,13 +1130,12 @@ client.on(Events.MessageCreate, async (message) => {
             : `👋 Welcome back **${message.author.username}**! AFK removed (${minutes} min).`;
         
         await message.reply({ content: welcomeMsg }).catch(() => {});
-        console.log(`[AFK] ${message.author.tag} returned after ${minutes} min (Lang: ${lang})`);
+        console.log(`[AFK] ${message.author.tag} returned after ${minutes} min`);
     }
 
     const now = Date.now();
     const cooldown = 60000;
 
-    // XP Gain
     if (now - (userData.last_xp_gain || 0) > cooldown) {
         const xpGain = Math.floor(Math.random() * 21) + 15;
         const newXP = (userData.xp || 0) + xpGain;
@@ -1047,16 +1157,13 @@ client.on(Events.MessageCreate, async (message) => {
         });
 
         if (newLevel > (userData.level || 1)) {
-            await message.channel.send({ 
-                content: `🎉 **LEVEL UP!** <@${userId}> reached Level ${newLevel}!` 
-            });
+            await message.channel.send({ content: `🎉 **LEVEL UP!** <@${userId}> reached Level ${newLevel}!` });
         }
     }
 
     const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
     const effectivePrefix = serverSettings.prefix || PREFIX;
     
-    // ================= Command handling =================
     if (message.content.startsWith(effectivePrefix)) {
         const args = message.content.slice(effectivePrefix.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
@@ -1082,16 +1189,14 @@ client.on(Events.MessageCreate, async (message) => {
             } catch (e) { 
                 console.error(`${red}[COMMAND ERROR]${reset} ${cmdName}:`, e);
                 const lang = detectLanguage(usedCommand || cmdName);
-                const errorMsg = lang === 'fr' 
-                    ? "⚠️ **Échec de l'exécution de la commande.**" 
-                    : "⚠️ **Command execution failed.**";
+                const errorMsg = lang === 'fr' ? "⚠️ **Échec de l'exécution de la commande.**" : "⚠️ **Command execution failed.**";
                 return message.reply(errorMsg).catch(() => {});
             }
         }
     }
 });
 
-// ================= ENHANCED INTERACTION HANDLER =================
+// ================= INTERACTION HANDLER =================
 client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand()) {
         console.log(`${cyan}[SLASH]${reset} ${interaction.commandName} from ${interaction.user.tag}`);
@@ -1133,36 +1238,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
             const helpEmbed = new EmbedBuilder()
                 .setColor('#3498db')
                 .setTitle(lang === 'fr' ? '🤖 Aide - Commandes Disponibles' : '🤖 Help - Available Commands')
-                .setDescription(lang === 'fr' 
-                    ? 'Voici les commandes essentielles pour débuter:'
-                    : 'Here are the essential commands to get started:')
+                .setDescription(lang === 'fr' ? 'Voici les commandes essentielles pour débuter:' : 'Here are the essential commands to get started:')
                 .addFields(
-                    {
-                        name: '📌 ' + (lang === 'fr' ? 'Commandes Générales' : 'General Commands'),
-                        value: lang === 'fr'
-                            ? '`.help` - Affiche cette aide\n`.profile` - Voir ton profil\n`.daily` - Réclamer ta récompense quotidienne'
-                            : '`.help` - Show this help\n`.profile` - View your profile\n`.daily` - Claim daily reward',
-                        inline: false
-                    },
-                    {
-                        name: '🤖 ' + (lang === 'fr' ? 'Assistant IA (Lydia)' : 'AI Assistant (Lydia)'),
-                        value: lang === 'fr'
-                            ? '`.lydia [message]` - Parler à Lydia\n`.ia [message]` - Alias\n`.lydia activate` - Activer dans ce salon'
-                            : '`.lydia [message]` - Talk to Lydia\n`.ai [message]` - Alias\n`.lydia activate` - Activate in this channel',
-                        inline: false
-                    },
-                    {
-                        name: '🎮 ' + (lang === 'fr' ? 'Jeux & Économie' : 'Games & Economy'),
-                        value: lang === 'fr'
-                            ? '`.shop` - Boutique d\'objets\n`.balance` - Voir tes crédits\n`.gaming set [jeu]` - Définir ton jeu'
-                            : '`.shop` - Item shop\n`.balance` - Check credits\n`.gaming set [game]` - Set your game',
-                        inline: false
-                    }
+                    { name: '📌 ' + (lang === 'fr' ? 'Commandes Générales' : 'General Commands'), value: lang === 'fr' ? '`.help` - Affiche cette aide\n`.profile` - Voir ton profil\n`.daily` - Réclamer ta récompense quotidienne' : '`.help` - Show this help\n`.profile` - View your profile\n`.daily` - Claim daily reward', inline: false },
+                    { name: '🤖 ' + (lang === 'fr' ? 'Assistant IA (Lydia)' : 'AI Assistant (Lydia)'), value: lang === 'fr' ? '`.lydia [message]` - Parler à Lydia\n`.ia [message]` - Alias\n`.lydia activate` - Activer dans ce salon' : '`.lydia [message]` - Talk to Lydia\n`.ai [message]` - Alias\n`.lydia activate` - Activate in this channel', inline: false },
+                    { name: '🎮 ' + (lang === 'fr' ? 'Jeux & Économie' : 'Games & Economy'), value: lang === 'fr' ? '`.shop` - Boutique d\'objets\n`.balance` - Voir tes crédits\n`.gaming set [jeu]` - Définir ton jeu' : '`.shop` - Item shop\n`.balance` - Check credits\n`.gaming set [game]` - Set your game', inline: false },
+                    { name: '🌉 ' + (lang === 'fr' ? 'Pont Telegram' : 'Telegram Bridge'), value: lang === 'fr' ? '`.telegram status` - État du pont\n`.telegram activate` - Activer\n`.telegram send <msg>` - Envoyer message' : '`.telegram status` - Bridge status\n`.telegram activate` - Activate\n`.telegram send <msg>` - Send message', inline: false }
                 )
-                .setFooter({ 
-                    text: lang === 'fr' ? 'Eagle Community • Tape .help pour plus' : 'Eagle Community • Type .help for more',
-                    iconURL: client.user.displayAvatarURL()
-                });
+                .setFooter({ text: lang === 'fr' ? 'Eagle Community • Tape .help pour plus' : 'Eagle Community • Type .help for more', iconURL: client.user.displayAvatarURL() });
             
             await interaction.editReply({ embeds: [helpEmbed] });
             console.log(`${green}[INTERACTION]${reset} Sent welcome help to ${interaction.user.tag}`);
@@ -1188,7 +1271,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 });
 
-// =================🔥 ULTRA PROFESSIONAL WELCOME SYSTEM =================
+// ================= WELCOME SYSTEM =================
 client.on(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     
@@ -1200,153 +1283,35 @@ client.on(Events.GuildMemberAdd, async (member) => {
     const GENERAL_CHANNEL_ID = process.env.GENERAL_CHANNEL_ID;
     const MEMBER_ROLE_ID = process.env.MEMBER_ROLE;
     
-    if (!RULES_CHANNEL_ID) console.log(`${yellow}[WELCOME]${reset} RULES_CHANNEL_ID not configured in .env`);
-    if (!GENERAL_CHANNEL_ID) console.log(`${yellow}[WELCOME]${reset} GENERAL_CHANNEL_ID not configured in .env`);
-    if (!MEMBER_ROLE_ID) console.log(`${yellow}[WELCOME]${reset} MEMBER_ROLE not configured in .env`);
-    
-    const memberCount = member.guild.memberCount;
-    const accountAge = Date.now() - member.user.createdTimestamp;
-    const accountAgeDays = Math.floor(accountAge / (1000 * 60 * 60 * 24));
-    const isNewAccount = accountAgeDays < 7;
-    const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
-    
     if (MEMBER_ROLE_ID) {
         try {
             const memberRole = member.guild.roles.cache.get(MEMBER_ROLE_ID);
             if (memberRole) await member.roles.add(memberRole);
-        } catch (err) {
-            console.log(`${yellow}[WELCOME]${reset} Could not add member role: ${err.message}`);
-        }
+        } catch (err) {}
     }
     
+    const memberCount = member.guild.memberCount;
+    const accountAgeDays = Math.floor((Date.now() - member.user.createdTimestamp) / (1000 * 60 * 60 * 24));
+    const isNewAccount = accountAgeDays < 7;
+    const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
+    
     const t = {
-        fr: {
-            title: '🔗 CONNEXION ÉTABLIE: EAGLE COMMUNITY',
-            welcome: (user, count) => `Bienvenue dans le Réseau, **${user}**! 🎉\nTu es le Membre Officiel **#${count}**.`,
-            securityCheck: '🔒 VÉRIFICATION DE SÉCURITÉ',
-            accountCreated: 'Compte Créé',
-            daysAgo: (days) => `${days} jour${days > 1 ? 's' : ''}`,
-            newAccountWarning: '⚠️ COMPTE RÉCENT - SURVEILLANCE ACTIVE',
-            initialization: '📡 PROTOCOLE D\'INITIALISATION',
-            reviewRules: '📜 Consultez le Règlement',
-            mainDiscussion: '💬 Discussion Générale',
-            aiAssistant: '🤖 Assistance IA (Lydia)',
-            securityFooter: 'SÉCURITÉ NEURALE ACTIVE • BAMAKO-223',
-            welcomeFooter: 'Eagle Community • Souveraineté Numérique',
-            quickLinks: '🔗 ACCÈS RAPIDE',
-            memberSince: 'Membre depuis',
-            serverInfo: 'INFORMATIONS SERVEUR',
-            owner: 'Propriétaire',
-            boostLevel: 'Niveau Boost',
-            verificationLevel: 'Vérification',
-            notConfigured: '⚠️ Non configuré'
-        },
-        en: {
-            title: '🔗 CONNECTION ESTABLISHED: EAGLE COMMUNITY',
-            welcome: (user, count) => `Welcome to the Network, **${user}**! 🎉\nYou are Official Member **#${count}**.`,
-            securityCheck: '🔒 SECURITY CHECK',
-            accountCreated: 'Account Created',
-            daysAgo: (days) => `${days} day${days > 1 ? 's' : ''} ago`,
-            newAccountWarning: '⚠️ NEW ACCOUNT - ACTIVE SURVEILLANCE',
-            initialization: '📡 INITIALIZATION PROTOCOL',
-            reviewRules: '📜 Review Guidelines',
-            mainDiscussion: '💬 Main Discussion',
-            aiAssistant: '🤖 AI Assistant (Lydia)',
-            securityFooter: 'NEURAL SECURITY ACTIVE • BAMAKO-223',
-            welcomeFooter: 'Eagle Community • Digital Sovereignty',
-            quickLinks: '🔗 QUICK ACCESS',
-            memberSince: 'Member Since',
-            serverInfo: 'SERVER INFORMATION',
-            owner: 'Owner',
-            boostLevel: 'Boost Level',
-            verificationLevel: 'Verification',
-            notConfigured: '⚠️ Not configured'
-        }
+        fr: { title: '🔗 CONNEXION ÉTABLIE: EAGLE COMMUNITY', welcome: (user, count) => `Bienvenue dans le Réseau, **${user}**! 🎉\nTu es le Membre Officiel **#${count}**.` },
+        en: { title: '🔗 CONNECTION ESTABLISHED: EAGLE COMMUNITY', welcome: (user, count) => `Welcome to the Network, **${user}**! 🎉\nYou are Official Member **#${count}**.` }
     }[lang];
     
     const welcomeEmbed = new EmbedBuilder()
         .setColor(isNewAccount ? '#e74c3c' : '#2ecc71')
-        .setAuthor({ 
-            name: t.title, 
-            iconURL: member.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL()
-        })
-        .setDescription(
-            `\`\`\`ansi\n` +
-            `\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n` +
-            `\u001b[1;32m║\u001b[0m \u001b[1;36m${t.welcome(member.user.username, memberCount).split('\n')[0]}\u001b[0m \u001b[1;32m║\u001b[0m\n` +
-            `\u001b[1;32m║\u001b[0m \u001b[1;33m${t.welcome(member.user.username, memberCount).split('\n')[1]}\u001b[0m \u001b[1;32m║\u001b[0m\n` +
-            `\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n` +
-            `\`\`\``
-        )
+        .setAuthor({ name: t.title, iconURL: member.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL() })
+        .setDescription(`\`\`\`ansi\n\u001b[1;32m${t.welcome(member.user.username, memberCount)}\u001b[0m\n\`\`\``)
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
-        .addFields(
-            {
-                name: t.securityCheck,
-                value: `\`\`\`yaml\n${t.accountCreated}: ${t.daysAgo(accountAgeDays)}\nID: ${member.user.id}\n\`\`\``,
-                inline: true
-            },
-            {
-                name: '📊 ' + t.serverInfo,
-                value: `\`\`\`yaml\n${t.owner}: ${(await member.guild.fetchOwner()).user.username}\n${t.boostLevel}: Tier ${member.guild.premiumTier}\n${t.verificationLevel}: ${member.guild.verificationLevel}\n\`\`\``,
-                inline: true
-            }
-        );
-    
-    if (isNewAccount) {
-        welcomeEmbed.addFields({
-            name: t.newAccountWarning,
-            value: `\`\`\`fix\n⚠️ ${lang === 'fr' ? `Compte créé il y a ${accountAgeDays} jours - Surveillance active activée.` : `Account created ${accountAgeDays} days ago - Active surveillance enabled.`}\`\`\``,
-            inline: false
-        });
-    }
-    
-    let initValue = '';
-    if (RULES_CHANNEL_ID) initValue += `• <#${RULES_CHANNEL_ID}> - ${t.reviewRules}\n`;
-    if (GENERAL_CHANNEL_ID) initValue += `• <#${GENERAL_CHANNEL_ID}> - ${t.mainDiscussion}\n`;
-    initValue += `• @Lydia - ${t.aiAssistant}`;
-    
-    if (!RULES_CHANNEL_ID && !GENERAL_CHANNEL_ID) {
-        initValue = t.notConfigured;
-    }
-    
-    welcomeEmbed.addFields({
-        name: t.initialization,
-        value: `\`\`\`yaml\n${initValue}\`\`\``,
-        inline: false
-    });
-    
-    welcomeEmbed.setFooter({ 
-        text: `${member.guild.name} • ${t.securityFooter} • v${client.version}`,
-        iconURL: member.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL()
-    })
-    .setTimestamp();
+        .setFooter({ text: `${member.guild.name} • BAMAKO-223 • v${client.version}`, iconURL: member.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL() })
+        .setTimestamp();
     
     const buttons = [];
-    
-    if (RULES_CHANNEL_ID) {
-        buttons.push(
-            new ButtonBuilder()
-                .setLabel(lang === 'fr' ? '📜 Règles' : '📜 Rules')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://discord.com/channels/${member.guild.id}/${RULES_CHANNEL_ID}`)
-        );
-    }
-    
-    if (GENERAL_CHANNEL_ID) {
-        buttons.push(
-            new ButtonBuilder()
-                .setLabel(lang === 'fr' ? '💬 Général' : '💬 General')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://discord.com/channels/${member.guild.id}/${GENERAL_CHANNEL_ID}`)
-        );
-    }
-    
-    buttons.push(
-        new ButtonBuilder()
-            .setLabel(lang === 'fr' ? '🤖 Aide' : '🤖 Help')
-            .setStyle(ButtonStyle.Primary)
-            .setCustomId('welcome_help')
-    );
+    if (RULES_CHANNEL_ID) buttons.push(new ButtonBuilder().setLabel(lang === 'fr' ? '📜 Règles' : '📜 Rules').setStyle(ButtonStyle.Link).setURL(`https://discord.com/channels/${member.guild.id}/${RULES_CHANNEL_ID}`));
+    if (GENERAL_CHANNEL_ID) buttons.push(new ButtonBuilder().setLabel(lang === 'fr' ? '💬 Général' : '💬 General').setStyle(ButtonStyle.Link).setURL(`https://discord.com/channels/${member.guild.id}/${GENERAL_CHANNEL_ID}`));
+    buttons.push(new ButtonBuilder().setLabel(lang === 'fr' ? '🤖 Aide' : '🤖 Help').setStyle(ButtonStyle.Primary).setCustomId('welcome_help'));
     
     const buttonRow = new ActionRowBuilder().addComponents(buttons);
     
@@ -1354,40 +1319,22 @@ client.on(Events.GuildMemberAdd, async (member) => {
         await welcomeChannel.send({ 
             content: `🎉 **${member.user}** ${lang === 'fr' ? 'vient de rejoindre le serveur !' : 'just joined the server!'}`,
             embeds: [welcomeEmbed], 
-            components: buttons.length > 0 ? [buttonRow] : [] 
+            components: [buttonRow] 
         }).catch(() => {});
-    } else {
-        console.log(`${yellow}[WELCOME]${reset} Welcome channel not configured for ${member.guild.name}`);
     }
     
     if (logChannel) {
         const logEmbed = new EmbedBuilder()
             .setColor(isNewAccount ? '#e74c3c' : '#3498db')
-            .setAuthor({ name: '📋 JOURNAL DE SÉCURITÉ - NOUVEAU MEMBRE', iconURL: member.user.displayAvatarURL() })
-            .setDescription(`**${member.user.tag}** a rejoint le serveur.`)
-            .addFields(
-                { name: '🆔 ID Utilisateur', value: member.user.id, inline: true },
-                { name: '📅 Compte Créé', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
-                { name: '👥 Rang Membre', value: `#${memberCount}`, inline: true },
-                { name: '🛡️ Niveau de Vérification', value: `${member.guild.verificationLevel}`, inline: true },
-                { name: '🤖 Est un Bot', value: member.user.bot ? '✅ Oui' : '❌ Non', inline: true },
-                { name: '🎭 Rôle Attribué', value: MEMBER_ROLE_ID ? `<@&${MEMBER_ROLE_ID}>` : t.notConfigured, inline: true }
-            )
-            .setFooter({ text: `Eagle Community • Système de Sécurité Neurale • v${client.version}` })
+            .setAuthor({ name: '📋 JOURNAL DE SÉCURITÉ', iconURL: member.user.displayAvatarURL() })
+            .setDescription(`**${member.user.tag}** a rejoint.`)
+            .addFields({ name: '🆔 ID', value: member.user.id, inline: true }, { name: '📅 Compte', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true }, { name: '👥 Rang', value: `#${memberCount}`, inline: true })
+            .setFooter({ text: `Eagle Community • v${client.version}` })
             .setTimestamp();
-        
-        if (isNewAccount) {
-            logEmbed.addFields({
-                name: '⚠️ ALERTE SÉCURITÉ',
-                value: `Compte récent (${accountAgeDays} jours) - Surveillance recommandée.`,
-                inline: false
-            });
-        }
-        
         await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
     }
     
-    console.log(`[WELCOME] ${member.user.tag} joined ${member.guild.name} | Member #${memberCount} | Account age: ${accountAgeDays} days`);
+    console.log(`[WELCOME] ${member.user.tag} joined ${member.guild.name} | Member #${memberCount}`);
 });
 
 // ================= GRACEFUL SHUTDOWN =================
@@ -1397,75 +1344,25 @@ async function gracefulShutdown(signal) {
     if (client.cacheJanitorInterval) clearInterval(client.cacheJanitorInterval);
     if (client.reminderHeartbeatInterval) clearInterval(client.reminderHeartbeatInterval);
     if (client.batchWriteInterval) clearInterval(client.batchWriteInterval);
+    if (client._retryTimeouts) { for (const id of client._retryTimeouts) clearTimeout(id); client._retryTimeouts.clear(); }
     
-    if (client._retryTimeouts) {
-        for (const timeoutId of client._retryTimeouts) {
-            clearTimeout(timeoutId);
-        }
-        client._retryTimeouts.clear();
-    }
-    
-    if (client.pendingUserUpdates && client.pendingUserUpdates.size > 0) {
+    if (client.pendingUserUpdates?.size > 0) {
         console.log(`${cyan}[SHUTDOWN]${reset} Flushing ${client.pendingUserUpdates.size} pending updates...`);
         try {
             const updates = Array.from(client.pendingUserUpdates.entries());
-            const updateStmt = db.prepare(`
-                INSERT OR REPLACE INTO users (
-                    id, username, xp, level, total_messages, last_xp_gain, 
-                    games_played, games_won, total_winnings, gaming, credits, streak_days, last_daily
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            
+            const updateStmt = db.prepare(`INSERT OR REPLACE INTO users (id, username, xp, level, total_messages, last_xp_gain, games_played, games_won, total_winnings, gaming, credits, streak_days, last_daily) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
             for (const [userId, userData] of updates) {
-                let gamingValue = userData.gaming;
-                if (typeof gamingValue === 'object' && gamingValue !== null) {
-                    gamingValue = JSON.stringify(gamingValue);
-                } else if (!gamingValue) {
-                    gamingValue = '{"game":"CODM","rank":"Unranked"}';
-                }
-                
-                updateStmt.run(
-                    userId,
-                    userData.username || 'Unknown',
-                    userData.xp ?? 0,
-                    userData.level ?? 1,
-                    userData.total_messages ?? 0,
-                    userData.last_xp_gain ?? 0,
-                    userData.games_played ?? 0,
-                    userData.games_won ?? 0,
-                    userData.total_winnings ?? 0,
-                    gamingValue,
-                    userData.credits ?? 0,
-                    userData.streak_days ?? 0,
-                    userData.last_daily ?? 0
-                );
+                let gamingValue = typeof userData.gaming === 'object' ? JSON.stringify(userData.gaming) : (userData.gaming || '{"game":"CODM","rank":"Unranked"}');
+                updateStmt.run(userId, userData.username || 'Unknown', userData.xp ?? 0, userData.level ?? 1, userData.total_messages ?? 0, userData.last_xp_gain ?? 0, userData.games_played ?? 0, userData.games_won ?? 0, userData.total_winnings ?? 0, gamingValue, userData.credits ?? 0, userData.streak_days ?? 0, userData.last_daily ?? 0);
             }
             console.log(`${green}[SHUTDOWN]${reset} Final flush complete: ${updates.length} records saved`);
-        } catch (err) {
-            console.error(`${red}[SHUTDOWN]${reset} Final flush failed:`, err.message);
-            if (client._deadLetterQueue && client._deadLetterQueue.length > 0) {
-                fs.writeFileSync('./dead_letter_queue.json', JSON.stringify(client._deadLetterQueue, null, 2));
-                console.log(`${yellow}[SHUTDOWN]${reset} Dead letter queue saved to disk`);
-            }
-        }
+        } catch (err) { console.error(`${red}[SHUTDOWN]${reset} Final flush failed:`, err.message); }
     }
     
-    if (client.userTimeouts) {
-        for (const [id, timeout] of client.userTimeouts) clearTimeout(timeout);
-        client.userTimeouts.clear();
-    }
+    if (client.userTimeouts) { for (const [id, timeout] of client.userTimeouts) clearTimeout(timeout); client.userTimeouts.clear(); }
+    client.userDataCache.clear(); client.settings.clear(); client.pendingUserUpdates.clear();
     
-    client.userDataCache.clear();
-    client.settings.clear();
-    client.pendingUserUpdates.clear();
-    
-    try {
-        db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
-        db.close();
-        console.log(`${green}[SHUTDOWN]${reset} Database closed successfully (WAL cleaned)`);
-    } catch (err) {
-        console.error(`${red}[SHUTDOWN]${reset} Database close error:`, err.message);
-    }
+    try { db.exec("PRAGMA wal_checkpoint(TRUNCATE);"); db.close(); console.log(`${green}[SHUTDOWN]${reset} Database closed`); } catch (err) {}
     
     console.log(`${green}[SHUTDOWN]${reset} ✅ All data saved. Exiting...`);
     process.exit(0);
@@ -1474,7 +1371,7 @@ async function gracefulShutdown(signal) {
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
-// ================= 🔥 INITIALIZE LYDIA (After all setup) =================
+// ================= INITIALIZE LYDIA =================
 setupLydia(client, db);
 console.log(`${green}[INIT]${reset} Lydia Multi-Agent AI initialized`);
 
