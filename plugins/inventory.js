@@ -106,13 +106,8 @@ module.exports = {
         
         // 🔥 FORCE WAL SYNC before reading
         try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
+        if (client.userDataCache) client.userDataCache.delete(userId);
         
-        // 🔥 Invalidate cache to force fresh read
-        if (client.userDataCache) {
-            client.userDataCache.delete(userId);
-        }
-        
-        // 🔥 Read FRESH from database (not cache)
         const userData = db.prepare(`SELECT credits, xp, level FROM users WHERE id = ?`).get(userId);
         
         if (!userData) {
@@ -139,7 +134,6 @@ module.exports = {
         const userLevel = userData.level || calculateLevel(userData.xp || 0);
         const userRank = getRank(userLevel);
         
-        // 🔥 Read inventory FRESH from database
         const inventory = db.prepare(`
             SELECT item_id, quantity, purchased_at, expires_at, active 
             FROM user_inventory 
@@ -200,8 +194,7 @@ module.exports = {
                 description += `*...and ${totalItems - 10} more items*\n\n`;
             }
             
-            description += `---\n`;
-            description += `💡 **${t.verifyBalance}**\n`;
+            description += `---\n💡 **${t.verifyBalance}**\n`;
             
             inventoryEmbed.setDescription(description)
                 .addFields(
@@ -247,18 +240,12 @@ module.exports = {
             }
             
             if (i.customId === 'inv_refresh') {
-                // 🔥 Show refreshing message
                 await i.editReply({ content: t.refreshing, embeds: [], components: [] }).catch(() => {});
                 
-                // 🔥 FORCE WAL SYNC
+                // 🔥 FORCE WAL SYNC + CACHE INVALIDATION
                 try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
+                if (client.userDataCache) client.userDataCache.delete(userId);
                 
-                // 🔥 Invalidate cache
-                if (client.userDataCache) {
-                    client.userDataCache.delete(userId);
-                }
-                
-                // 🔥 Read FRESH data
                 const freshUserData = db.prepare(`SELECT credits, xp, level FROM users WHERE id = ?`).get(userId);
                 const freshInventory = db.prepare(`
                     SELECT item_id, quantity, purchased_at, expires_at, active 
@@ -317,12 +304,8 @@ module.exports = {
                         description += `└─ ${t.expires}: ${expiresText}\n\n`;
                     });
                     
-                    if (freshTotal > 10) {
-                        description += `*...and ${freshTotal - 10} more items*\n\n`;
-                    }
-                    
-                    description += `---\n`;
-                    description += `💡 **${t.verifyBalance}**\n`;
+                    if (freshTotal > 10) description += `*...and ${freshTotal - 10} more items*\n\n`;
+                    description += `---\n💡 **${t.verifyBalance}**\n`;
                     
                     refreshedEmbed.setDescription(description)
                         .addFields(
@@ -338,7 +321,6 @@ module.exports = {
                 }
                 
                 refreshedEmbed.setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon }).setTimestamp();
-                
                 await i.editReply({ content: null, embeds: [refreshedEmbed], components: [actionRow] }).catch(() => {});
                 return;
             }
