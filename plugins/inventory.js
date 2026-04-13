@@ -22,13 +22,12 @@ function getRank(level) {
 const inventoryTranslations = {
     en: {
         title: '═ NEURAL INVENTORY ═',
-        empty: '📭 Your neural inventory is empty.',
+        emptyTitle: '📭 EMPTY INVENTORY',
+        emptyDesc: 'Your neural storage contains no active items.',
         emptyHint: 'Visit the shop to acquire upgrades!',
         balance: 'Balance',
         level: 'Level',
         items: 'Items',
-        emptyTitle: '📭 EMPTY INVENTORY',
-        emptyDesc: 'Your neural storage contains no active items.',
         itemCount: (count) => `📦 **${count}** Item${count !== 1 ? 's' : ''} in Storage`,
         useItem: 'Use Item',
         cannotUse: 'Cannot be used',
@@ -42,28 +41,23 @@ const inventoryTranslations = {
         useError: '❌ Could not use this item.',
         accessDenied: '❌ This inventory is not yours.',
         footer: 'ARCHITECT CG-223 • Neural Storage',
-        types: {
-            consumable: 'Consumable',
-            role: 'Role',
-            badge: 'Badge',
-            boost: 'Boost',
-            permanent: 'Permanent'
-        },
+        loadingShop: '⚡ Loading shop...',
+        types: { consumable: 'Consumable', role: 'Role', badge: 'Badge', boost: 'Boost', permanent: 'Permanent' },
         stats: '📊 STATISTICS',
         totalValue: 'Total Value',
         mostValuable: 'Most Valuable',
         none: 'None',
-        loadingShop: '⚡ Loading shop...'
+        refreshing: '🔄 Syncing with Neural Ledger...',
+        verifyBalance: 'Verify with .bal or .credits'
     },
     fr: {
         title: '═ INVENTAIRE NEURAL ═',
-        empty: '📭 Votre inventaire neural est vide.',
+        emptyTitle: '📭 INVENTAIRE VIDE',
+        emptyDesc: 'Votre stockage neural ne contient aucun article actif.',
         emptyHint: 'Visitez la boutique pour acquérir des améliorations !',
         balance: 'Solde',
         level: 'Niveau',
         items: 'Articles',
-        emptyTitle: '📭 INVENTAIRE VIDE',
-        emptyDesc: 'Votre stockage neural ne contient aucun article actif.',
         itemCount: (count) => `📦 **${count}** Article${count !== 1 ? 's' : ''} en Stock`,
         useItem: 'Utiliser',
         cannotUse: 'Non utilisable',
@@ -77,108 +71,97 @@ const inventoryTranslations = {
         useError: '❌ Impossible d\'utiliser cet article.',
         accessDenied: '❌ Cet inventaire ne vous appartient pas.',
         footer: 'ARCHITECT CG-223 • Stockage Neural',
-        types: {
-            consumable: 'Consommable',
-            role: 'Rôle',
-            badge: 'Badge',
-            boost: 'Boost',
-            permanent: 'Permanent'
-        },
+        loadingShop: '⚡ Chargement de la boutique...',
+        types: { consumable: 'Consommable', role: 'Rôle', badge: 'Badge', boost: 'Boost', permanent: 'Permanent' },
         stats: '📊 STATISTIQUES',
         totalValue: 'Valeur Totale',
         mostValuable: 'Le Plus Précieux',
         none: 'Aucun',
-        loadingShop: '⚡ Chargement de la boutique...'
+        refreshing: '🔄 Synchronisation avec le Registre Neural...',
+        verifyBalance: 'Vérifiez avec .bal ou .credits'
     }
 };
 
 module.exports = {
     name: 'inventory',
-    aliases: ['inv', 'items', 'storage', 'stockage'],
+    aliases: ['inv', 'items', 'storage', 'stockage', 'backpack'],
     description: '📦 View and manage your neural inventory items.',
     category: 'ECONOMY',
-    usage: '.inventory [page]',
+    usage: '.inventory',
     cooldown: 2000,
-    examples: ['.inventory', '.inv 2'],
+    examples: ['.inventory'],
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, 'en')
-            : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
         const t = inventoryTranslations[lang];
-        
-        const version = client.version || '1.6.0';
+        const version = client.version || '1.7.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        
         const userId = message.author.id;
         const userName = message.author.username;
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
         
-        const page = parseInt(args[0]) || 1;
-        const itemsPerPage = 5;
-        
-        // ================= DATABASE CLEANUP =================
         const now = Math.floor(Date.now() / 1000);
-        db.prepare(`
-            UPDATE user_inventory 
-            SET active = 0 
-            WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1
-        `).run(now);
+        db.prepare(`UPDATE user_inventory SET active = 0 WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1`).run(now);
         
-        // 🔥 RAM-FIRST CACHE
-        let userData = client.getUserData 
-            ? client.getUserData(userId) 
-            : db.prepare(`SELECT credits, xp, level FROM users WHERE id = ?`).get(userId);
+        // 🔥 FORCE WAL SYNC before reading
+        try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
+        
+        // 🔥 Invalidate cache to force fresh read
+        if (client.userDataCache) {
+            client.userDataCache.delete(userId);
+        }
+        
+        // 🔥 Read FRESH from database (not cache)
+        const userData = db.prepare(`SELECT credits, xp, level FROM users WHERE id = ?`).get(userId);
         
         if (!userData) {
-            db.prepare(`INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, 0)`)
-                .run(userId, userName);
-            userData = { credits: 0, xp: 0, level: 1 };
+            db.prepare(`INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, 0)`).run(userId, userName);
+            const emptyEmbed = new EmbedBuilder()
+                .setColor('#95a5a6')
+                .setAuthor({ name: `${userName}'s Inventory`, iconURL: avatarURL })
+                .setTitle(t.emptyTitle)
+                .setDescription(`${t.emptyDesc}\n\n💡 *${t.emptyHint}*`)
+                .addFields(
+                    { name: `💰 ${t.balance}`, value: `\`0\` Credits`, inline: true },
+                    { name: `📊 ${t.level}`, value: `\`1\` (🌱 NEURAL RECRUIT)`, inline: true }
+                )
+                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                .setTimestamp();
             
-            if (client.cacheUserData) {
-                client.cacheUserData(userId, userData);
-            }
+            const actionRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('inv_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setEmoji('🛒')
+            );
+            return message.reply({ embeds: [emptyEmbed], components: [actionRow] }).catch(() => {});
         }
         
         const balance = userData.credits || 0;
         const userLevel = userData.level || calculateLevel(userData.xp || 0);
         const userRank = getRank(userLevel);
         
-        // ================= GET INVENTORY =================
+        // 🔥 Read inventory FRESH from database
         const inventory = db.prepare(`
-            SELECT 
-                item_id, 
-                quantity, 
-                purchased_at, 
-                expires_at,
-                active
+            SELECT item_id, quantity, purchased_at, expires_at, active 
             FROM user_inventory 
             WHERE user_id = ? AND active = 1
-            ORDER BY 
-                CASE WHEN expires_at IS NULL THEN 1 ELSE 0 END,
-                expires_at ASC,
-                purchased_at DESC
+            ORDER BY purchased_at DESC
         `).all(userId);
         
         const shopItems = client.shopItems || [];
         const itemsMap = new Map(shopItems.map(item => [item.id, item]));
         
         const enrichedInventory = inventory.map(invItem => {
-            const itemDetails = itemsMap.get(invItem.item_id) || {
-                emoji: '📦',
-                en: { name: invItem.item_id, desc: 'Unknown item' },
-                fr: { name: invItem.item_id, desc: 'Article inconnu' },
-                type: 'consumable',
-                price: 0
+            const itemDetails = itemsMap.get(invItem.item_id) || { 
+                emoji: '📦', 
+                en: { name: invItem.item_id }, 
+                fr: { name: invItem.item_id }, 
+                type: 'consumable', 
+                price: 0 
             };
-            
             return {
                 ...invItem,
                 emoji: itemDetails.emoji,
                 name: itemDetails[lang]?.name || itemDetails.en.name,
-                desc: itemDetails[lang]?.desc || itemDetails.en.desc,
                 type: itemDetails.type,
                 price: itemDetails.price,
                 usable: itemDetails.type === 'consumable' || itemDetails.type === 'boost'
@@ -186,20 +169,11 @@ module.exports = {
         });
         
         const totalItems = enrichedInventory.length;
-        const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-        const currentPage = Math.min(page, totalPages);
-        
-        const pageItems = enrichedInventory.slice(
-            (currentPage - 1) * itemsPerPage, 
-            currentPage * itemsPerPage
-        );
-        
         const totalValue = enrichedInventory.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const mostValuable = enrichedInventory.length > 0 
             ? enrichedInventory.reduce((max, item) => item.price > max.price ? item : max, enrichedInventory[0])
             : null;
         
-        // ================= BUILD EMBED =================
         const inventoryEmbed = new EmbedBuilder()
             .setColor(userRank.color)
             .setAuthor({ name: `${userRank.emoji} ${userName}'s Inventory`, iconURL: avatarURL })
@@ -207,8 +181,7 @@ module.exports = {
             .setThumbnail(avatarURL);
         
         if (totalItems === 0) {
-            inventoryEmbed
-                .setDescription(`**${t.emptyTitle}**\n\n${t.emptyDesc}\n\n💡 *${t.emptyHint}*`)
+            inventoryEmbed.setDescription(`**${t.emptyTitle}**\n\n${t.emptyDesc}\n\n💡 *${t.emptyHint}*`)
                 .addFields(
                     { name: `💰 ${t.balance}`, value: `\`${balance.toLocaleString()}\` Credits`, inline: true },
                     { name: `📊 ${t.level}`, value: `\`${userLevel}\` (${userRank.title[lang]})`, inline: true }
@@ -216,85 +189,43 @@ module.exports = {
         } else {
             let description = t.itemCount(totalItems) + '\n\n';
             
-            pageItems.forEach((item, index) => {
-                const itemNumber = (currentPage - 1) * itemsPerPage + index + 1;
-                const expiresText = item.expires_at 
-                    ? `<t:${item.expires_at}:R>`
-                    : t.permanent;
-                
-                description += `**${itemNumber}. ${item.emoji} ${item.name}**\n`;
+            enrichedInventory.slice(0, 10).forEach((item, index) => {
+                const expiresText = item.expires_at ? `<t:${item.expires_at}:R>` : t.permanent;
+                description += `**${index + 1}. ${item.emoji} ${item.name}**\n`;
                 description += `└─ ${t.quantity}: **${item.quantity}** | ${t.category}: **${t.types[item.type] || item.type}**\n`;
-                description += `└─ ${t.expires}: ${expiresText}\n`;
-                if (item.usable) {
-                    description += `└─ 💎 ${t.useItem}: ✅ Available\n`;
-                }
-                description += `\n`;
+                description += `└─ ${t.expires}: ${expiresText}\n\n`;
             });
             
-            if (totalItems > itemsPerPage) {
-                description += `\n📄 **Page ${currentPage}/${totalPages}**`;
+            if (totalItems > 10) {
+                description += `*...and ${totalItems - 10} more items*\n\n`;
             }
             
-            inventoryEmbed.setDescription(description);
+            description += `---\n`;
+            description += `💡 **${t.verifyBalance}**\n`;
             
-            inventoryEmbed.addFields(
-                { name: `💰 ${t.balance}`, value: `\`${balance.toLocaleString()}\` Credits`, inline: true },
-                { name: `📊 ${t.level}`, value: `\`${userLevel}\` (${userRank.title[lang]})`, inline: true },
-                { name: `📦 ${t.items}`, value: `\`${totalItems}\` Total`, inline: true },
-                { 
-                    name: `💎 ${t.stats}`, 
-                    value: `\`\`\`yaml\n${t.totalValue}: ${totalValue.toLocaleString()} 🪙\n${t.mostValuable}: ${mostValuable?.name || t.none}\n\`\`\``, 
-                    inline: false 
-                }
-            );
+            inventoryEmbed.setDescription(description)
+                .addFields(
+                    { name: `💰 ${t.balance}`, value: `\`${balance.toLocaleString()}\` Credits`, inline: true },
+                    { name: `📊 ${t.level}`, value: `\`${userLevel}\` (${userRank.title[lang]})`, inline: true },
+                    { name: `📦 ${t.items}`, value: `\`${totalItems}\` Total`, inline: true },
+                    { 
+                        name: `💎 ${t.stats}`, 
+                        value: `\`\`\`yaml\n${t.totalValue}: ${totalValue.toLocaleString()} 🪙\n${t.mostValuable}: ${mostValuable?.name || t.none}\n\`\`\``, 
+                        inline: false 
+                    }
+                );
         }
         
-        inventoryEmbed
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
-        
-        // ================= BUILD COMPONENTS =================
-        const components = [];
-        
-        if (pageItems.length > 0) {
-            const usableItems = pageItems.filter(item => item.usable);
-            
-            if (usableItems.length > 0) {
-                const itemOptions = usableItems.map((item) => ({
-                    label: `${item.emoji} ${item.name}`.substring(0, 100),
-                    description: `${t.quantity}: ${item.quantity} | ${item.desc}`.substring(0, 100),
-                    value: `use_${item.item_id}`
-                }));
-                
-                const useMenu = new StringSelectMenuBuilder()
-                    .setCustomId('inventory_use')
-                    .setPlaceholder(t.useItem + '...')
-                    .addOptions(itemOptions.slice(0, 25));
-                
-                components.push(new ActionRowBuilder().addComponents(useMenu));
-            }
-        }
-        
-        const navRow = new ActionRowBuilder();
-        if (totalPages > 1) {
-            navRow.addComponents(
-                new ButtonBuilder().setCustomId('inv_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 1),
-                new ButtonBuilder().setCustomId('inv_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                new ButtonBuilder().setCustomId('inv_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages)
-            );
-        }
-        components.push(navRow);
+        inventoryEmbed.setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon }).setTimestamp();
         
         const actionRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('inv_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setEmoji('🛒'),
             new ButtonBuilder().setCustomId('inv_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Primary).setEmoji('🔄')
         );
-        components.push(actionRow);
         
-        const reply = await message.reply({ embeds: [inventoryEmbed], components: components }).catch(() => {});
+        const reply = await message.reply({ embeds: [inventoryEmbed], components: [actionRow] }).catch(() => {});
         if (!reply) return;
         
-        // ================= COLLECTOR WITH PROPER DEFERRAL HANDLING =================
         const collector = reply.createMessageComponentCollector({ time: 120000 });
         
         collector.on('collect', async (i) => {
@@ -302,56 +233,52 @@ module.exports = {
                 return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
             }
             
-            // 🛡️ THE ARCHITECT'S GATEKEEPER
             if (!i.deferred && !i.replied) {
-                await i.deferUpdate().catch((err) => {
-                    if (!err.message.includes('already been acknowledged')) {
-                        console.error('Inventory defer error:', err.message);
-                    }
-                });
+                try { await i.deferUpdate(); } catch (e) {}
             }
             
-            // Handle Shop Button
             if (i.customId === 'inv_shop') {
                 collector.stop();
-                
-                await i.editReply({ 
-                    content: t.loadingShop,
-                    embeds: [], 
-                    components: [] 
-                }).catch(() => {});
-                
+                await i.editReply({ content: t.loadingShop, embeds: [], components: [] }).catch(() => {});
                 setTimeout(() => i.deleteReply().catch(() => {}), 500);
-                
                 const shopCmd = client.commands.get('shop');
-                if (shopCmd) {
-                    return await shopCmd.run(client, message, [], db, serverSettings, 'shop');
-                }
+                if (shopCmd) return await shopCmd.run(client, message, [], db, serverSettings, 'shop');
                 return;
             }
             
-            // Handle Refresh Button
             if (i.customId === 'inv_refresh') {
-                const freshUserData = client.getUserData 
-                    ? client.getUserData(userId) 
-                    : db.prepare(`SELECT credits, xp, level FROM users WHERE id = ?`).get(userId);
+                // 🔥 Show refreshing message
+                await i.editReply({ content: t.refreshing, embeds: [], components: [] }).catch(() => {});
                 
+                // 🔥 FORCE WAL SYNC
+                try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
+                
+                // 🔥 Invalidate cache
+                if (client.userDataCache) {
+                    client.userDataCache.delete(userId);
+                }
+                
+                // 🔥 Read FRESH data
+                const freshUserData = db.prepare(`SELECT credits, xp, level FROM users WHERE id = ?`).get(userId);
                 const freshInventory = db.prepare(`
-                    SELECT item_id, quantity, purchased_at, expires_at, active
+                    SELECT item_id, quantity, purchased_at, expires_at, active 
                     FROM user_inventory 
                     WHERE user_id = ? AND active = 1
                     ORDER BY purchased_at DESC
                 `).all(userId);
                 
+                const freshBalance = freshUserData?.credits || 0;
+                const freshLevel = freshUserData?.level || calculateLevel(freshUserData?.xp || 0);
+                const freshRank = getRank(freshLevel);
+                
                 const freshEnriched = freshInventory.map(invItem => {
-                    const itemDetails = itemsMap.get(invItem.item_id) || {
-                        emoji: '📦',
-                        en: { name: invItem.item_id },
-                        fr: { name: invItem.item_id },
-                        type: 'consumable',
-                        price: 0
+                    const itemDetails = itemsMap.get(invItem.item_id) || { 
+                        emoji: '📦', 
+                        en: { name: invItem.item_id }, 
+                        fr: { name: invItem.item_id }, 
+                        type: 'consumable', 
+                        price: 0 
                     };
-                    
                     return {
                         ...invItem,
                         emoji: itemDetails.emoji,
@@ -368,8 +295,6 @@ module.exports = {
                     ? freshEnriched.reduce((max, item) => item.price > max.price ? item : max, freshEnriched[0])
                     : null;
                 
-                const freshRank = getRank(freshUserData?.level || calculateLevel(freshUserData?.xp || 0));
-                
                 const refreshedEmbed = new EmbedBuilder()
                     .setColor(freshRank.color)
                     .setAuthor({ name: `${freshRank.emoji} ${userName}'s Inventory`, iconURL: avatarURL })
@@ -377,195 +302,54 @@ module.exports = {
                     .setThumbnail(avatarURL);
                 
                 if (freshTotal === 0) {
-                    refreshedEmbed
-                        .setDescription(`**${t.emptyTitle}**\n\n${t.emptyDesc}\n\n💡 *${t.emptyHint}*`)
+                    refreshedEmbed.setDescription(`**${t.emptyTitle}**\n\n${t.emptyDesc}\n\n💡 *${t.emptyHint}*`)
                         .addFields(
-                            { name: `💰 ${t.balance}`, value: `\`${(freshUserData?.credits || 0).toLocaleString()}\` Credits`, inline: true },
-                            { name: `📊 ${t.level}`, value: `\`${freshUserData?.level || 1}\` (${freshRank.title[lang]})`, inline: true }
+                            { name: `💰 ${t.balance}`, value: `\`${freshBalance.toLocaleString()}\` Credits`, inline: true },
+                            { name: `📊 ${t.level}`, value: `\`${freshLevel}\` (${freshRank.title[lang]})`, inline: true }
                         );
                 } else {
-                    let desc = t.itemCount(freshTotal) + '\n\n';
+                    let description = t.itemCount(freshTotal) + '\n\n';
                     
-                    freshEnriched.slice(0, 5).forEach((item, index) => {
+                    freshEnriched.slice(0, 10).forEach((item, index) => {
                         const expiresText = item.expires_at ? `<t:${item.expires_at}:R>` : t.permanent;
-                        desc += `**${index + 1}. ${item.emoji} ${item.name}**\n`;
-                        desc += `└─ ${t.quantity}: **${item.quantity}** | ${t.category}: **${t.types[item.type] || item.type}**\n`;
-                        desc += `└─ ${t.expires}: ${expiresText}\n\n`;
+                        description += `**${index + 1}. ${item.emoji} ${item.name}**\n`;
+                        description += `└─ ${t.quantity}: **${item.quantity}** | ${t.category}: **${t.types[item.type] || item.type}**\n`;
+                        description += `└─ ${t.expires}: ${expiresText}\n\n`;
                     });
                     
-                    refreshedEmbed.setDescription(desc);
-                    refreshedEmbed.addFields(
-                        { name: `💰 ${t.balance}`, value: `\`${(freshUserData?.credits || 0).toLocaleString()}\` Credits`, inline: true },
-                        { name: `📊 ${t.level}`, value: `\`${freshUserData?.level || 1}\` (${freshRank.title[lang]})`, inline: true },
-                        { name: `📦 ${t.items}`, value: `\`${freshTotal}\` Total`, inline: true },
-                        { 
-                            name: `💎 ${t.stats}`, 
-                            value: `\`\`\`yaml\n${t.totalValue}: ${freshValue.toLocaleString()} 🪙\n${t.mostValuable}: ${freshMostValuable?.name || t.none}\n\`\`\``, 
-                            inline: false 
-                        }
-                    );
+                    if (freshTotal > 10) {
+                        description += `*...and ${freshTotal - 10} more items*\n\n`;
+                    }
+                    
+                    description += `---\n`;
+                    description += `💡 **${t.verifyBalance}**\n`;
+                    
+                    refreshedEmbed.setDescription(description)
+                        .addFields(
+                            { name: `💰 ${t.balance}`, value: `\`${freshBalance.toLocaleString()}\` Credits`, inline: true },
+                            { name: `📊 ${t.level}`, value: `\`${freshLevel}\` (${freshRank.title[lang]})`, inline: true },
+                            { name: `📦 ${t.items}`, value: `\`${freshTotal}\` Total`, inline: true },
+                            { 
+                                name: `💎 ${t.stats}`, 
+                                value: `\`\`\`yaml\n${t.totalValue}: ${freshValue.toLocaleString()} 🪙\n${t.mostValuable}: ${freshMostValuable?.name || t.none}\n\`\`\``, 
+                                inline: false 
+                            }
+                        );
                 }
                 
-                refreshedEmbed
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                    .setTimestamp();
+                refreshedEmbed.setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon }).setTimestamp();
                 
-                await i.editReply({ embeds: [refreshedEmbed] }).catch(() => {});
+                await i.editReply({ content: null, embeds: [refreshedEmbed], components: [actionRow] }).catch(() => {});
                 return;
-            }
-            
-            // Handle pagination
-            if (i.customId === 'inv_prev' || i.customId === 'inv_next') {
-                const newPage = i.customId === 'inv_prev' ? currentPage - 1 : currentPage + 1;
-                
-                const navPageItems = enrichedInventory.slice(
-                    (newPage - 1) * itemsPerPage, 
-                    newPage * itemsPerPage
-                );
-                
-                let navDescription = t.itemCount(totalItems) + '\n\n';
-                
-                navPageItems.forEach((item, index) => {
-                    const itemNumber = (newPage - 1) * itemsPerPage + index + 1;
-                    const expiresText = item.expires_at ? `<t:${item.expires_at}:R>` : t.permanent;
-                    
-                    navDescription += `**${itemNumber}. ${item.emoji} ${item.name}**\n`;
-                    navDescription += `└─ ${t.quantity}: **${item.quantity}** | ${t.category}: **${t.types[item.type] || item.type}**\n`;
-                    navDescription += `└─ ${t.expires}: ${expiresText}\n`;
-                    if (item.usable) {
-                        navDescription += `└─ 💎 ${t.useItem}: ✅ Available\n`;
-                    }
-                    navDescription += `\n`;
-                });
-                
-                navDescription += `\n📄 **Page ${newPage}/${totalPages}**`;
-                
-                const navEmbed = new EmbedBuilder()
-                    .setColor(userRank.color)
-                    .setAuthor({ name: `${userRank.emoji} ${userName}'s Inventory`, iconURL: avatarURL })
-                    .setTitle(t.title)
-                    .setDescription(navDescription)
-                    .setThumbnail(avatarURL)
-                    .addFields(
-                        { name: `💰 ${t.balance}`, value: `\`${balance.toLocaleString()}\` Credits`, inline: true },
-                        { name: `📊 ${t.level}`, value: `\`${userLevel}\` (${userRank.title[lang]})`, inline: true },
-                        { name: `📦 ${t.items}`, value: `\`${totalItems}\` Total`, inline: true },
-                        { 
-                            name: `💎 ${t.stats}`, 
-                            value: `\`\`\`yaml\n${t.totalValue}: ${totalValue.toLocaleString()} 🪙\n${t.mostValuable}: ${mostValuable?.name || t.none}\n\`\`\``, 
-                            inline: false 
-                        }
-                    )
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                    .setTimestamp();
-                
-                const newComponents = [];
-                
-                const newUsableItems = navPageItems.filter(item => item.usable);
-                if (newUsableItems.length > 0) {
-                    const newItemOptions = newUsableItems.map((item) => ({
-                        label: `${item.emoji} ${item.name}`.substring(0, 100),
-                        description: `${t.quantity}: ${item.quantity} | ${item.desc}`.substring(0, 100),
-                        value: `use_${item.item_id}`
-                    }));
-                    
-                    const newUseMenu = new StringSelectMenuBuilder()
-                        .setCustomId('inventory_use')
-                        .setPlaceholder(t.useItem + '...')
-                        .addOptions(newItemOptions.slice(0, 25));
-                    
-                    newComponents.push(new ActionRowBuilder().addComponents(newUseMenu));
-                }
-                
-                const newNavRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('inv_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(newPage === 1),
-                    new ButtonBuilder().setCustomId('inv_page').setLabel(`${newPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                    new ButtonBuilder().setCustomId('inv_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(newPage === totalPages)
-                );
-                newComponents.push(newNavRow);
-                
-                const newActionRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('inv_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setEmoji('🛒'),
-                    new ButtonBuilder().setCustomId('inv_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Primary).setEmoji('🔄')
-                );
-                newComponents.push(newActionRow);
-                
-                await i.editReply({ embeds: [navEmbed], components: newComponents }).catch(() => {});
-                return;
-            }
-            
-            // Handle Use Item
-            if (i.isStringSelectMenu() && i.customId === 'inventory_use') {
-                const selectedValue = i.values[0];
-                const itemId = selectedValue.replace('use_', '');
-                
-                const itemToUse = enrichedInventory.find(item => item.item_id === itemId);
-                
-                if (!itemToUse || !itemToUse.usable) {
-                    return i.followUp({ content: t.cannotUse, ephemeral: true }).catch(() => {});
-                }
-                
-                const itemDetails = itemsMap.get(itemId);
-                
-                if (itemDetails?.effect) {
-                    const currentData = client.getUserData 
-                        ? client.getUserData(userId) 
-                        : db.prepare(`SELECT credits, xp FROM users WHERE id = ?`).get(userId);
-                    
-                    const bonusXP = itemDetails.effect.xp || 0;
-                    const bonusCredits = itemDetails.effect.credits || 0;
-                    
-                    if (client.queueUserUpdate) {
-                        client.queueUserUpdate(userId, {
-                            ...currentData,
-                            credits: (currentData?.credits || 0) + bonusCredits,
-                            xp: (currentData?.xp || 0) + bonusXP,
-                            username: userName
-                        });
-                    } else {
-                        db.prepare(`UPDATE users SET credits = credits + ?, xp = xp + ? WHERE id = ?`)
-                            .run(bonusCredits, bonusXP, userId);
-                    }
-                    
-                    if (itemToUse.quantity > 1) {
-                        db.prepare(`UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?`)
-                            .run(userId, itemId);
-                    } else {
-                        db.prepare(`UPDATE user_inventory SET active = 0 WHERE user_id = ? AND item_id = ?`)
-                            .run(userId, itemId);
-                    }
-                    
-                    const successMsg = t.useSuccess.replace('{item}', itemToUse.name);
-                    await i.followUp({ 
-                        content: `${successMsg}\n${bonusXP > 0 ? `✨ +${bonusXP} XP\n` : ''}${bonusCredits > 0 ? `💰 +${bonusCredits} Credits` : ''}`, 
-                        ephemeral: true 
-                    }).catch(() => {});
-                    
-                    setTimeout(async () => {
-                        const invCmd = client.commands.get('inventory');
-                        if (invCmd) {
-                            await reply.delete().catch(() => {});
-                            await invCmd.run(client, message, [], db, serverSettings, usedCommand);
-                        }
-                    }, 1000);
-                }
             }
         });
         
         collector.on('end', async () => {
-            const disabledComponents = components.map(row => {
-                const newRow = new ActionRowBuilder();
-                row.components.forEach(comp => {
-                    if (comp instanceof ButtonBuilder) {
-                        newRow.addComponents(ButtonBuilder.from(comp).setDisabled(true));
-                    } else if (comp instanceof StringSelectMenuBuilder) {
-                        newRow.addComponents(StringSelectMenuBuilder.from(comp).setDisabled(true));
-                    }
-                });
-                return newRow;
-            });
-            
-            await reply.edit({ components: disabledComponents }).catch(() => {});
+            const disabledRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('inv_shop').setLabel(t.shop).setStyle(ButtonStyle.Success).setDisabled(true).setEmoji('🛒'),
+                new ButtonBuilder().setCustomId('inv_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Primary).setDisabled(true).setEmoji('🔄')
+            );
+            await reply.edit({ components: [disabledRow] }).catch(() => {});
         });
     }
 };
