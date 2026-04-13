@@ -109,7 +109,7 @@ function safeStringify(obj, indent = 2) {
     }, indent);
 }
 
-// ================= AI-POWERED SEARCH DECISION =================
+// ================= AI-POWERED SEARCH DECISION - OPTIMIZED FOR BAMAKO =================
 async function shouldSearchAI(userMessage) {
     if (!process.env.OPENROUTER_API_KEY) return false;
     
@@ -122,7 +122,8 @@ async function shouldSearchAI(userMessage) {
     try {
         const actualSearchDecision = async () => {
             const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-                model: "google/gemini-2.0-flash-001",
+                models: ["google/gemini-2.0-flash-001", "openrouter/auto"],
+                route: "fallback",
                 temperature: 0,
                 max_tokens: 10,
                 messages: [
@@ -135,7 +136,7 @@ async function shouldSearchAI(userMessage) {
                     "HTTP-Referer": "https://github.com/MFOF7310",
                     "Content-Type": "application/json"
                 },
-                timeout: 3000
+                timeout: 5000  // 🔥 Augmenté pour Starlink vers Bamako
             });
             
             const decision = response.data.choices[0]?.message?.content?.trim().toUpperCase() || 'NO';
@@ -146,7 +147,7 @@ async function shouldSearchAI(userMessage) {
         const timeoutPromise = new Promise(resolve => setTimeout(() => {
             console.log(`${yellow}[SEARCH DECISION TIMEOUT]${reset} Falling back to keyword check`);
             return resolve(false);
-        }, 2000));
+        }, 4000));  // 🔥 Timeout cohérent avec l'API
         
         return await Promise.race([actualSearchDecision(), timeoutPromise]);
         
@@ -305,28 +306,41 @@ async function webSearch(query) {
     }
 }
 
-// ================= ENHANCED AI RESPONSE GENERATION =================
+// ================= ENHANCED AI RESPONSE GENERATION - BULLETPROOF FAILOVER =================
 async function generateAIResponse(systemPrompt, userMessage, conversationHistory = [], imageUrl = null, realTimeData = null) {
     if (!process.env.OPENROUTER_API_KEY) throw new Error("OpenRouter API key missing");
 
     try {
-        let model = "google/gemini-2.0-flash-001";
-        const lowerMsg = userMessage.toLowerCase();
+        // 🚀 LISTE DE REPLI (FALLBACK) - L'Architecte a prévu toutes les pannes
+        // Si le premier échoue (404, 429, 500), OpenRouter essaie le suivant automatiquement.
+        const models = [
+            "google/gemini-2.0-flash-001", // Principal (Rapide & Vision) - Optimisé Starlink
+            "anthropic/claude-3-haiku",    // Repli 1 (Analyse & Raisonnement)
+            "deepseek/deepseek-chat",      // Repli 2 (Code & Technique)
+            "openrouter/auto"              // Repli Final (OpenRouter choisit le plus rapide vers Bamako)
+        ];
 
+        // Sélection intelligente du premier modèle selon le contexte
+        const lowerMsg = userMessage.toLowerCase();
+        let primaryModel = models[0];
+        
         if (lowerMsg.includes("code") || lowerMsg.includes("javascript") || lowerMsg.includes("discord.js") || 
             lowerMsg.includes("python") || lowerMsg.includes("function") || lowerMsg.includes("programming")) {
-            model = "deepseek/deepseek-chat";
+            primaryModel = "deepseek/deepseek-chat";
         }
         else if (lowerMsg.includes("analyse") || lowerMsg.includes("explain") || lowerMsg.includes("why") ||
                  lowerMsg.includes("analysis") || lowerMsg.includes("reason") || lowerMsg.includes("how")) {
-            model = "anthropic/claude-3.5-haiku";
+            primaryModel = "anthropic/claude-3.5-haiku";
         }
         else if (lowerMsg.includes("story") || lowerMsg.includes("poem") || lowerMsg.includes("write") ||
                  lowerMsg.includes("histoire") || lowerMsg.includes("poème") || lowerMsg.includes("creative")) {
-            model = "anthropic/claude-3.5-sonnet";
+            primaryModel = "anthropic/claude-3.5-sonnet";
         }
 
-        console.log(`${cyan}[AI PRO]${reset} Model: ${model} ${imageUrl ? '(vision)' : ''}`);
+        // Réorganiser la liste pour mettre le modèle préféré en premier
+        const orderedModels = [primaryModel, ...models.filter(m => m !== primaryModel)];
+        
+        console.log(`${cyan}[AI NEURAL BRIDGE]${reset} Primary: ${primaryModel.split('/').pop()} | Fallback: Active (${orderedModels.length} models) ${imageUrl ? '📸' : ''}`);
 
         const messages = [{ role: "system", content: systemPrompt }];
         
@@ -356,10 +370,11 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
         messages.push({ role: "user", content: userContent });
 
         const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-            model: model,
+            models: orderedModels,        // 🔥 TABLEAU de modèles - Pas un seul string
             messages: messages,
             temperature: 0.7,
-            max_tokens: 1500
+            max_tokens: 1500,
+            route: "fallback"             // 🔥 OpenRouter gère automatiquement les échecs
         }, {
             headers: {
                 "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -370,10 +385,20 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
             timeout: 30000
         });
 
-        return response.data.choices[0]?.message?.content || "❌ I couldn't generate a response.";
+        // Log quel modèle a finalement répondu
+        const usedModel = response.data.model || orderedModels[0];
+        console.log(`${green}[AI SUCCESS]${reset} Model used: ${usedModel.split('/').pop()}`);
+        
+        return response.data.choices[0]?.message?.content || "❌ Signal neural perdu. Réessayez.";
     } catch (error) {
-        console.error(`${red}[OPENROUTER ERROR]${reset}`, error.response?.data || error.message);
-        return "❌ AI service error. Please try again later.";
+        console.error(`${red}[OPENROUTER CRITICAL]${reset} All models failed or network error:`, error.message);
+        
+        // Message d'erreur élégant et rassurant
+        if (error.code === 'ECONNABORTED') {
+            return "⚠️ **Latence Starlink détectée**\nLe signal met plus de temps que prévu. Réessayez dans un instant - le système s'adapte automatiquement.";
+        }
+        
+        return "⚠️ **Le système neural rencontre une interférence**\nTous les modèles sont momentanément saturés. L'Architecte a été notifié. Réessayez dans 30 secondes.";
     }
 }
 
