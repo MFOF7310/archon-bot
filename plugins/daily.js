@@ -70,8 +70,10 @@ module.exports = {
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         const userId = message.author.id;
         const username = message.author.username;
-        const now = Math.floor(Date.now() / 1000);
-        const oneDay = 86400;
+        
+        // 🔥 ALL IN MILLISECONDS - NO MORE SECONDS!
+        const now = Date.now();
+        const oneDay = 24 * 60 * 60 * 1000; // 86,400,000 ms
 
         // Get user data - FORCE FRESH READ
         try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
@@ -84,17 +86,24 @@ module.exports = {
             userData = { credits: 0, xp: 0, level: 1, streak_days: 0, last_daily: 0 };
         }
 
-        const lastDaily = userData.last_daily || 0;
-        const streakDays = userData.streak_days || 0;
-        const oldBalance = userData.credits || 0;
-        const oldXP = userData.xp || 0;
-        const oldLevel = userData.level || 1;
+        // 🔥 CRITICAL FIX: Parse and normalize timestamp (handle mixed seconds/ms)
+        let lastDaily = parseInt(userData.last_daily) || 0;
+        
+        // If lastDaily is in seconds (10 digits), convert to milliseconds (13 digits)
+        if (lastDaily > 0 && lastDaily < 10000000000) {
+            lastDaily = lastDaily * 1000;
+        }
+        
+        const streakDays = parseInt(userData.streak_days) || 0;
+        const oldBalance = parseInt(userData.credits) || 0;
+        const oldXP = parseInt(userData.xp) || 0;
+        const oldLevel = parseInt(userData.level) || 1;
 
-        // 🔥 FIXED: Only check if actually claimed today (not first time)
+        // Check if already claimed (using milliseconds)
         if (lastDaily > 0 && (now - lastDaily) < oneDay) {
             const timeLeft = oneDay - (now - lastDaily);
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const hours = Math.floor(timeLeft / (60 * 60 * 1000));
+            const minutes = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
             
             const embed = new EmbedBuilder()
                 .setColor('#e74c3c')
@@ -111,14 +120,14 @@ module.exports = {
             return message.reply({ embeds: [embed] }).catch(() => {});
         }
 
-        // Calculate rewards
+        // Calculate streak (using milliseconds)
         let newStreak = streakDays + 1;
         if (lastDaily === 0) {
             newStreak = 1; // First time claiming
         } else if (now - lastDaily > oneDay * 2) {
-            newStreak = 1; // Streak broken
+            newStreak = 1; // Streak broken (more than 48h without claim)
         }
-
+        
         const baseReward = 100;
         const streakBonus = Math.min(newStreak * 10, 200);
         const totalReward = baseReward + streakBonus;
@@ -129,7 +138,7 @@ module.exports = {
         const newXP = oldXP + xpReward;
         const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
 
-        // Update database
+        // Update database - store in MILLISECONDS!
         if (client.queueUserUpdate) {
             client.queueUserUpdate(userId, {
                 ...userData,
@@ -137,12 +146,12 @@ module.exports = {
                 xp: newXP,
                 level: newLevel,
                 streak_days: newStreak,
-                last_daily: now,
+                last_daily: now, // 🔥 Store in milliseconds!
                 username: username
             });
         } else {
             db.prepare("UPDATE users SET credits = ?, xp = ?, level = ?, streak_days = ?, last_daily = ? WHERE id = ?")
-                .run(newCredits, newXP, newLevel, newStreak, now, userId);
+                .run(newCredits, newXP, newLevel, newStreak, now, userId); // 🔥 Store in milliseconds!
         }
 
         // 🔥 FORCE WAL SYNC + CACHE INVALIDATION
