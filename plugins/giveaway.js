@@ -51,7 +51,20 @@ const translations = {
         credited: 'Credited',
         toWinners: 'to winner(s)',
         refund: '💰 Refund',
-        refundDesc: 'Entry fee returned to both players.'
+        refundDesc: 'Entry fee returned to both players.',
+        prizeClaimed: '🎁 PRIZE CLAIMED',
+        prizeSent: 'Prize Sent To',
+        claimInGiftChannel: 'Claim in',
+        giftChannelAnnouncement: '🎉 **GIVEAWAY WINNERS!** 🎉',
+        creditsAdded: '💰 **{amount} Credits** added to your balance!',
+        checkBalance: 'Check with `.balance`',
+        eachWinnerGets: 'Each winner gets',
+        totalPrizePool: 'Total Prize Pool',
+        mentionEveryone: '📢 Mention @everyone',
+        mentionHere: '📢 Mention @here',
+        noMention: '🔕 No mention',
+        giveawayStarting: '🎉 **GIVEAWAY STARTING!** 🎉',
+        clickToEnter: 'Click the 🎉 button below to enter!'
     },
     fr: {
         title: '🎁 CONCOURS NEURAL',
@@ -102,7 +115,20 @@ const translations = {
         credited: 'Crédité',
         toWinners: 'au(x) gagnant(s)',
         refund: '💰 Remboursement',
-        refundDesc: 'Frais d\'entrée retournés aux deux joueurs.'
+        refundDesc: 'Frais d\'entrée retournés aux deux joueurs.',
+        prizeClaimed: '🎁 PRIX RÉCLAMÉ',
+        prizeSent: 'Prix Envoyé À',
+        claimInGiftChannel: 'Réclamez dans',
+        giftChannelAnnouncement: '🎉 **GAGNANTS DU CONCOURS !** 🎉',
+        creditsAdded: '💰 **{amount} Crédits** ajoutés à votre solde !',
+        checkBalance: 'Vérifiez avec `.balance`',
+        eachWinnerGets: 'Chaque gagnant reçoit',
+        totalPrizePool: 'Cagnotte Totale',
+        mentionEveryone: '📢 Mention @everyone',
+        mentionHere: '📢 Mention @here',
+        noMention: '🔕 Pas de mention',
+        giveawayStarting: '🎉 **CONCOURS LANCÉ !** 🎉',
+        clickToEnter: 'Cliquez sur le bouton 🎉 ci-dessous pour participer !'
     }
 };
 
@@ -131,9 +157,14 @@ function parseTime(timeStr, lang) {
 // ================= CREATE GIVEAWAY EMBED =================
 function createGiveawayEmbed(giveaway, status, lang, guild, client) {
     const t = translations[lang];
-    const version = client.version || '1.6.0';
+    const version = client.version || '1.7.0';
     const color = status === 'active' ? '#2ecc71' : '#e74c3c';
     const title = status === 'active' ? `${t.title} • ${t.active}` : `${t.title} • ${t.ended}`;
+    
+    // Extract credit amount
+    const creditMatch = giveaway.prize.match(/(\d+)/);
+    const amount = creditMatch ? parseInt(creditMatch[0]) : 0;
+    const totalPool = amount * giveaway.winners;
     
     const embed = new EmbedBuilder()
         .setColor(color)
@@ -142,8 +173,10 @@ function createGiveawayEmbed(giveaway, status, lang, guild, client) {
         .setDescription(
             `\`\`\`yaml\n` +
             `${t.hostedBy}: ${giveaway.hostName}\n` +
-            `${t.winners}: ${giveaway.winners}\n` +
+            `${t.winners}: ${giveaway.winners} ${t.winnersList.toLowerCase()}\n` +
             `${t.entries}: ${giveaway.entries.length}\n` +
+            `${t.eachWinnerGets}: ${amount.toLocaleString()} 🪙\n` +
+            `${t.totalPrizePool}: ${totalPool.toLocaleString()} 🪙\n` +
             `\`\`\``
         )
         .addFields(
@@ -159,9 +192,10 @@ function createGiveawayEmbed(giveaway, status, lang, guild, client) {
         .setTimestamp();
     
     if (status === 'ended' && giveaway.winnersList?.length > 0) {
+        const winnerDetails = giveaway.winnersList.map(w => `<@${w}> (+${amount.toLocaleString()} 🪙)`).join('\n');
         embed.addFields({
             name: `🏆 ${t.winnersList}`,
-            value: giveaway.winnersList.map(w => `<@${w}>`).join('\n'),
+            value: winnerDetails,
             inline: false
         });
     }
@@ -199,6 +233,116 @@ function selectWinners(entries, winnerCount) {
     return [...new Set(shuffled)].slice(0, Math.min(winnerCount, entries.length));
 }
 
+// ================= CREDIT WINNERS =================
+async function creditWinners(client, db, winnersList, amount, guildName) {
+    let credited = 0;
+    
+    for (const winnerId of winnersList) {
+        try {
+            let userData = null;
+            
+            if (client.getUserData) {
+                userData = client.getUserData(winnerId);
+            }
+            
+            if (!userData) {
+                userData = db.prepare("SELECT * FROM users WHERE id = ?").get(winnerId);
+            }
+            
+            if (!userData) {
+                db.prepare("INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, ?)").run(winnerId, 'Unknown', amount);
+                console.log(`[GIVEAWAY] Initialized new user ${winnerId} with ${amount} credits`);
+                credited++;
+                continue;
+            }
+            
+            const newCredits = (userData.credits || 0) + amount;
+            
+            if (client.queueUserUpdate) {
+                client.queueUserUpdate(winnerId, { 
+                    ...userData, 
+                    credits: newCredits,
+                    username: userData.username || 'Unknown'
+                });
+                console.log(`[GIVEAWAY] Queued ${amount} credits for ${winnerId} (new balance: ${newCredits})`);
+            } else {
+                db.prepare("UPDATE users SET credits = ? WHERE id = ?").run(newCredits, winnerId);
+                console.log(`[GIVEAWAY] Updated ${winnerId} credits to ${newCredits}`);
+            }
+            
+            if (client.userDataCache) {
+                client.userDataCache.delete(winnerId);
+            }
+            
+            credited++;
+            
+            try {
+                const user = await client.users.fetch(winnerId).catch(() => null);
+                if (user) {
+                    const dmEmbed = new EmbedBuilder()
+                        .setColor('#2ecc71')
+                        .setTitle('🎁 Giveaway Winnings!')
+                        .setDescription(`You won **${amount.toLocaleString()} Credits** in a giveaway!\n\nCheck your balance with \`.balance\``)
+                        .setFooter({ text: guildName })
+                        .setTimestamp();
+                    await user.send({ embeds: [dmEmbed] }).catch(() => {});
+                }
+            } catch (e) {}
+            
+        } catch (err) {
+            console.error(`[GIVEAWAY] Failed to credit ${winnerId}:`, err.message);
+        }
+    }
+    
+    console.log(`[GIVEAWAY] Successfully credited ${credited}/${winnersList.length} winners`);
+    return credited;
+}
+
+// ================= ANNOUNCE IN GIFT CHANNEL =================
+async function announceInGiftChannel(client, guildId, winnersList, prize, hostName, amount, lang, version, guildName) {
+    const t = translations[lang];
+    const GIFT_CHANNEL_ID = process.env.GIFT_CHANNEL_ID;
+    
+    if (!GIFT_CHANNEL_ID) {
+        console.log('[GIVEAWAY] ⚠️ No GIFT_CHANNEL_ID in .env');
+        return false;
+    }
+    
+    try {
+        const giftChannel = await client.channels.fetch(GIFT_CHANNEL_ID).catch(() => null);
+        if (!giftChannel) return false;
+        
+        const giftEmbed = new EmbedBuilder()
+            .setColor('#FEE75C')
+            .setAuthor({ name: `🎁 ${t.prizeClaimed}`, iconURL: client.user.displayAvatarURL() })
+            .setTitle(prize)
+            .setDescription(
+                `\`\`\`yaml\n` +
+                `${t.hostedBy}: ${hostName}\n` +
+                `${t.prize}: ${prize}\n` +
+                `${t.winnersList}: ${winnersList.length}\n` +
+                `${t.eachWinnerGets}: ${amount.toLocaleString()} 🪙\n` +
+                `\`\`\`\n` +
+                `🎉 **${t.congratulations}** ${winnersList.map(w => `<@${w}>`).join(', ')}!\n\n` +
+                `✅ ${t.prizeSent} ${winnersList.length} ${t.toWinners}`
+            )
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version}` })
+            .setTimestamp();
+        
+        await giftChannel.send({ 
+            content: `${t.giftChannelAnnouncement} ${winnersList.map(w => `<@${w}>`).join(' ')}`,
+            embeds: [giftEmbed] 
+        });
+        
+        console.log(`[GIVEAWAY] ✅ Announced in gift channel`);
+        return true;
+        
+    } catch (err) {
+        console.error('[GIVEAWAY] Failed to announce in gift channel:', err.message);
+        return false;
+    }
+}
+
 // ================= MAIN COMMAND =================
 module.exports = {
     name: 'giveaway',
@@ -207,8 +351,12 @@ module.exports = {
     category: 'ECONOMY',
     cooldown: 5000,
     userPermissions: ['ManageGuild'],
-    usage: '.giveaway [time] [winners] [prize]',
-    examples: ['.giveaway 1h 2 1000 Credits', '.giveaway 30m 1 Legendary Pack', '.concours 2h 3 5000 Crédits'],
+    usage: '.giveaway [time] [winners] [prize] [--everyone|--here]',
+    examples: [
+        '.giveaway 1h 2 1000 Credits',
+        '.giveaway 30m 1 Legendary Pack --everyone',
+        '.concours 2h 3 5000 Crédits --here'
+    ],
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
@@ -218,7 +366,7 @@ module.exports = {
         
         const t = translations[lang];
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-        const version = client.version || '1.6.0';
+        const version = client.version || '1.7.0';
         const guildName = message.guild.name.toUpperCase();
         const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
         
@@ -228,7 +376,7 @@ module.exports = {
                 .setColor('#ED4245')
                 .setDescription(t.noPermission)
                 .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-            return message.reply({ embeds: [errorEmbed], ephemeral: true }).catch(() => {});
+            return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
         
         // ================= SHOW ACTIVE GIVEAWAYS =================
@@ -264,10 +412,24 @@ module.exports = {
             return message.reply({ embeds: [embed] }).catch(() => {});
         }
         
+        // ================= PARSE MENTION FLAGS =================
+        let mentionType = 'none';
+        const cleanArgs = args.filter(arg => {
+            if (arg === '--everyone') {
+                mentionType = 'everyone';
+                return false;
+            }
+            if (arg === '--here') {
+                mentionType = 'here';
+                return false;
+            }
+            return true;
+        });
+        
         // ================= CREATE GIVEAWAY =================
-        const timeStr = args[0];
-        const winnersStr = args[1];
-        const prize = args.slice(2).join(' ');
+        const timeStr = cleanArgs[0];
+        const winnersStr = cleanArgs[1];
+        const prize = cleanArgs.slice(2).join(' ');
         
         if (!timeStr || !winnersStr || !prize) {
             const embed = new EmbedBuilder()
@@ -275,7 +437,10 @@ module.exports = {
                 .setTitle('❌ ' + t.missingArguments)
                 .setDescription(
                     `**${t.usage}**\n**${t.example}**\n\n` +
-                    `**${t.timeFormats}** \`10s\`, \`5m\`, \`2h\`, \`1d\``
+                    `**${t.timeFormats}** \`10s\`, \`5m\`, \`2h\`, \`1d\`\n\n` +
+                    `**Mention Options:**\n` +
+                    `\`--everyone\` - Ping @everyone\n` +
+                    `\`--here\` - Ping @here`
                 )
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
             
@@ -284,13 +449,18 @@ module.exports = {
         
         const timeData = parseTime(timeStr, lang);
         if (!timeData) {
-            return message.reply({ content: t.invalidTime, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.invalidTime }).catch(() => {});
         }
         
         const winners = parseInt(winnersStr);
         if (isNaN(winners) || winners < 1 || winners > 20) {
-            return message.reply({ content: t.invalidWinners, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.invalidWinners }).catch(() => {});
         }
+        
+        // Extract credit amount for display
+        const creditMatch = prize.match(/(\d+)/);
+        const amount = creditMatch ? parseInt(creditMatch[0]) : 0;
+        const totalPool = amount * winners;
         
         // Create giveaway object
         const giveawayId = `${message.id}_${Date.now()}`;
@@ -309,17 +479,44 @@ module.exports = {
             entries: [],
             endTimestamp: endTimestamp,
             displayTime: timeData.text,
-            ended: false
+            ended: false,
+            amount: amount,
+            totalPool: totalPool
         };
         
         // Create embed and buttons
         const embed = createGiveawayEmbed(giveaway, 'active', lang, message.guild, client);
         const row = createButtonRow('active', lang);
         
+        // Build announcement message
+        let announcementContent = `🎉 **${t.giveawayStarting}** 🎉\n\n`;
+        announcementContent += `🎁 **${prize}**\n`;
+        announcementContent += `👑 ${t.hostedBy}: ${message.author.username}\n`;
+        announcementContent += `🏆 ${t.winners}: **${winners}** ${t.winnersList.toLowerCase()}\n`;
+        announcementContent += `💰 ${t.eachWinnerGets}: **${amount.toLocaleString()} 🪙**\n`;
+        announcementContent += `📊 ${t.totalPrizePool}: **${totalPool.toLocaleString()} 🪙**\n`;
+        announcementContent += `⏰ ${t.timeRemaining}: **${timeData.text}**\n\n`;
+        announcementContent += `👇 **${t.clickToEnter}**`;
+        
+        // Add mention if requested
+        let mentionText = '';
+        if (mentionType === 'everyone') {
+            mentionText = '@everyone';
+        } else if (mentionType === 'here') {
+            mentionText = '@here';
+        }
+        
         const giveawayMessage = await message.channel.send({ 
-            content: `🎉 **${t.title.toUpperCase()}!** 🎉`,
-            embeds: [embed], 
-            components: [row] 
+            content: mentionText || undefined,
+            embeds: [
+                new EmbedBuilder()
+                    .setColor('#FEE75C')
+                    .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
+                    .setDescription(announcementContent)
+                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+            ],
+            components: [row],
+            allowedMentions: mentionType === 'everyone' ? { parse: ['everyone'] } : (mentionType === 'here' ? { parse: ['here'] } : undefined)
         }).catch(() => {});
         
         if (!giveawayMessage) return;
@@ -327,7 +524,13 @@ module.exports = {
         giveaway.messageId = giveawayMessage.id;
         activeGiveaways.set(giveawayId, giveaway);
         
-        // ================= 🔥 BUTTON COLLECTOR CORRIGÉ =================
+        // Update to full embed after 1 second
+        setTimeout(async () => {
+            const fullEmbed = createGiveawayEmbed(giveaway, 'active', lang, message.guild, client);
+            await giveawayMessage.edit({ embeds: [fullEmbed] }).catch(() => {});
+        }, 1000);
+        
+        // ================= 🔥 NEURAL GATEKEEPER - BUTTON COLLECTOR =================
         const collector = giveawayMessage.createMessageComponentCollector({ 
             componentType: ComponentType.Button
         });
@@ -336,10 +539,12 @@ module.exports = {
             const currentGiveaway = activeGiveaways.get(giveawayId);
             if (!currentGiveaway) return;
             
-            // 🛡️ LA LIGNE CRITIQUE
-            await i.deferUpdate().catch(() => {});
+            if (!i.deferred && !i.replied) {
+                try {
+                    await i.deferUpdate();
+                } catch (e) {}
+            }
             
-            // Handle Enter
             if (i.customId === 'gw_enter') {
                 if (i.user.id === currentGiveaway.hostId) {
                     return i.followUp({ content: t.cannotEnter, ephemeral: true }).catch(() => {});
@@ -358,7 +563,6 @@ module.exports = {
                 return i.followUp({ content: t.enterSuccess, ephemeral: true }).catch(() => {});
             }
             
-            // Handle Leave
             if (i.customId === 'gw_leave') {
                 const index = currentGiveaway.entries.indexOf(i.user.id);
                 if (index === -1) {
@@ -374,7 +578,6 @@ module.exports = {
                 return i.followUp({ content: t.leaveSuccess, ephemeral: true }).catch(() => {});
             }
             
-            // Handle Reroll (Host/Admin Only)
             if (i.customId === 'gw_reroll') {
                 if (i.user.id !== currentGiveaway.hostId && !i.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
                     return i.followUp({ content: t.accessDenied, ephemeral: true }).catch(() => {});
@@ -395,7 +598,8 @@ module.exports = {
                     .setTitle(`🎊 ${t.giveawayEnded}`)
                     .setDescription(
                         `**${t.prize}:** ${currentGiveaway.prize}\n` +
-                        `**${t.winnersList}:** ${newWinners.map(w => `<@${w}>`).join(', ')}\n\n` +
+                        `**${t.eachWinnerGets}:** ${currentGiveaway.amount.toLocaleString()} 🪙\n` +
+                        `**${t.winnersList}:** ${newWinners.map(w => `<@${w}> (+${currentGiveaway.amount.toLocaleString()} 🪙)`).join(', ')}\n\n` +
                         `🎉 **${t.congratulations}!**`
                     )
                     .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
@@ -403,25 +607,15 @@ module.exports = {
                 
                 await i.channel.send({ content: newWinners.map(w => `<@${w}>`).join(' '), embeds: [winnerAnnouncement] }).catch(() => {});
                 
-                // Credit if prize contains numbers
-                const creditMatch = currentGiveaway.prize.match(/(\d+)/);
-                if (creditMatch && (currentGiveaway.prize.toLowerCase().includes('credit') || currentGiveaway.prize.toLowerCase().includes('crédit'))) {
-                    const amount = parseInt(creditMatch[0]);
-                    for (const winnerId of newWinners) {
-                        const winnerData = client.getUserData ? client.getUserData(winnerId) : null;
-                        if (client.queueUserUpdate && winnerData) {
-                            client.queueUserUpdate(winnerId, { ...winnerData, credits: (winnerData.credits || 0) + amount });
-                        } else {
-                            db.prepare(`UPDATE users SET credits = COALESCE(credits, 0) + ? WHERE id = ?`).run(amount, winnerId);
-                        }
-                    }
-                    console.log(`[GIVEAWAY] Credited ${amount} to ${newWinners.length} winner(s)`);
+                if (currentGiveaway.amount > 0) {
+                    await creditWinners(client, db, newWinners, currentGiveaway.amount, guildName);
                 }
+                
+                await announceInGiftChannel(client, message.guild.id, newWinners, currentGiveaway.prize, currentGiveaway.hostName, currentGiveaway.amount, lang, version, guildName);
                 
                 return i.followUp({ content: t.rerollSuccess, ephemeral: true }).catch(() => {});
             }
             
-            // Handle Delete (Host/Admin Only)
             if (i.customId === 'gw_delete') {
                 if (i.user.id !== currentGiveaway.hostId && !i.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
                     return i.followUp({ content: t.accessDenied, ephemeral: true }).catch(() => {});
@@ -460,29 +654,22 @@ module.exports = {
                         .setDescription(
                             `\`\`\`yaml\n` +
                             `${t.prize}: ${currentGiveaway.prize}\n` +
+                            `${t.eachWinnerGets}: ${currentGiveaway.amount.toLocaleString()} 🪙\n` +
                             `${t.winnersList}: ${winnersList.length}\n` +
                             `\`\`\`\n` +
-                            `🎉 **${t.congratulations}** ${winnersList.map(w => `<@${w}>`).join(', ')}!`
+                            `🎉 **${t.congratulations}** ${winnersList.map(w => `<@${w}> (+${currentGiveaway.amount.toLocaleString()} 🪙)`).join(', ')}!`
                         )
                         .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                     
                     await message.channel.send({ content: winnersList.map(w => `<@${w}>`).join(' '), embeds: [winnerAnnouncement] }).catch(() => {});
                     
-                    // Credit winners
-                    const creditMatch = currentGiveaway.prize.match(/(\d+)/);
-                    if (creditMatch && (currentGiveaway.prize.toLowerCase().includes('credit') || currentGiveaway.prize.toLowerCase().includes('crédit'))) {
-                        const amount = parseInt(creditMatch[0]);
-                        for (const winnerId of winnersList) {
-                            const winnerData = client.getUserData ? client.getUserData(winnerId) : null;
-                            if (client.queueUserUpdate && winnerData) {
-                                client.queueUserUpdate(winnerId, { ...winnerData, credits: (winnerData.credits || 0) + amount });
-                            } else {
-                                db.prepare(`UPDATE users SET credits = COALESCE(credits, 0) + ? WHERE id = ?`).run(amount, winnerId);
-                            }
-                        }
-                        console.log(`[GIVEAWAY] Ended - Credited ${amount} to ${winnersList.length} winner(s)`);
+                    if (currentGiveaway.amount > 0) {
+                        await creditWinners(client, db, winnersList, currentGiveaway.amount, guildName);
                     }
+                    
+                    await announceInGiftChannel(client, message.guild.id, winnersList, currentGiveaway.prize, currentGiveaway.hostName, currentGiveaway.amount, lang, version, guildName);
+                    
                 } else {
                     await message.channel.send({ content: `😢 ${t.noEntries}` }).catch(() => {});
                 }
@@ -502,7 +689,10 @@ module.exports = {
                 `\`\`\`yaml\n` +
                 `${t.prize}: ${prize}\n` +
                 `${t.winners}: ${winners}\n` +
+                `${t.eachWinnerGets}: ${amount.toLocaleString()} 🪙\n` +
+                `${t.totalPrizePool}: ${totalPool.toLocaleString()} 🪙\n` +
                 `${t.timeRemaining}: ${timeData.text}\n` +
+                (mentionType !== 'none' ? `Mention: ${mentionType === 'everyone' ? '@everyone' : '@here'}\n` : '') +
                 `\`\`\`\n` +
                 `✅ ${t.createdSuccess}`
             )
