@@ -1001,15 +1001,20 @@ client.once(Events.ClientReady, async () => {
         console.log(`${green}[MARKET]${reset} Current trend: 📊 Steady Market (100.0%)`);
     }
     
-    const boxWidth = 64;
-    const drawBoxLine = (label, value) => {
-        const lineContent = `║  ${label.padEnd(12)} : ${value}`;
-        return `${lineContent}${' '.repeat(Math.max(0, boxWidth - lineContent.length - 1))}║`;
-    };
+ // 🔥 CONFIGURATION RESPONSIVE (PC & MOBILE)
+const boxWidth = 48; // Réduit de 64 à 48 pour ne pas casser sur Phone
+const drawBoxLine = (label, value) => {
+    const lineContent = `║  ${label.padEnd(12)} : ${value}`;
+    // Calcul dynamique pour que la ligne ║ de droite soit toujours alignée
+    const spacing = Math.max(0, boxWidth - lineContent.length - 1);
+    return `${lineContent}${' '.repeat(spacing)}║`;
+};
 
     console.log(`\n${blue}${bold}╔${'═'.repeat(boxWidth - 2)}╗${reset}`);
-    console.log(`${blue}${bold}║${' '.repeat(Math.floor((boxWidth - 44) / 2))}${cyan}🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE${reset}${' '.repeat(Math.max(0, boxWidth - 44 - Math.floor((boxWidth - 44) / 2) - 2))}║${reset}`);
-    console.log(`${blue}${bold}╠${'═'.repeat(boxWidth - 2)}╣${reset}`);
+const title = "🦅 ARCHITECT CG-223 // NEURAL ENGINE";
+const padding = Math.max(0, Math.floor((boxWidth - title.length - 2) / 2));
+console.log(`${blue}${bold}║${' '.repeat(padding)}${cyan}${title}${reset}${' '.repeat(boxWidth - title.length - padding - 2)}║${reset}`);
+console.log(`${blue}${bold}╠${'═'.repeat(boxWidth - 2)}╣${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}🤖 CLIENT`, client.user.tag)}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}📍 NODE`, 'BAMAKO_223 🇲🇱')}${reset}`);
     console.log(`${blue}${bold}${drawBoxLine(`${green}📦 VERSION`, `v${client.version}`)}${reset}`);
@@ -1054,7 +1059,7 @@ client.once(Events.ClientReady, async () => {
             .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
             .setDescription(
                 `\`\`\`ansi\n` +
-                `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
+                `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
                 `\u001b[1;36mSystem:\u001b[0m reboot complete\n` +
                 `\u001b[1;34mModules:\u001b[0m ${client.commands.size} plugins synced\n` +
                 `\u001b[1;35mVersion:\u001b[0m v${client.version}\n` +
@@ -1066,7 +1071,7 @@ client.once(Events.ClientReady, async () => {
                 `\u001b[1;36mLydia AI:\u001b[0m MULTI-AGENT ACTIVE\n` +
                 `\u001b[1;36mTelegram:\u001b[0m ${client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY'}\n` +
                 `\u001b[1;33mMarket:\u001b[0m ${trend.emoji} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)\n` +
-                `\u001b[1;32m═══════════════════════════════════════\u001b[0m\n` +
+                `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
                 `\`\`\``
             )
             .addFields(
