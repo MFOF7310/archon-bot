@@ -46,7 +46,7 @@ module.exports = {
                 embed.setColor('#ED4245').setTitle('⛔ ACCESS DENIED').setDescription(lang === 'fr' ? 'Seul l\'Architecte peut désactiver le pont.' : 'Only the Architect can deactivate the bridge.');
                 return message.reply({ embeds: [embed] });
             }
-            client.telegramBridge.deactivate();
+            const result = client.telegramBridge.deactivate();
             embed.setColor('#f1c40f').setTitle('🔴 BRIDGE DEACTIVATED').setDescription(lang === 'fr' ? 'Le pont Telegram est maintenant INACTIF.' : 'Telegram Bridge is now INACTIVE.');
             return message.reply({ embeds: [embed] });
         }
@@ -59,7 +59,13 @@ module.exports = {
                     .setDescription(lang === 'fr' ? 'Usage: `.telegram send <message>`' : 'Usage: `.telegram send <message>`');
                 return message.reply({ embeds: [embed] });
             }
-            const result = await client.telegramBridge.send(`[Discord] ${message.author.username}: ${content}`);
+
+            // Indiquer que le bot travaille (réseau)
+            await message.channel.sendTyping();
+
+            // On envoie en HTML pour le formatage, le bridge gère l'échappement automatiquement
+            const result = await client.telegramBridge.send(`<b>[Discord]</b> ${message.author.username}: ${content}`, { parse_mode: 'HTML' });
+            
             embed.setColor(result.success ? '#2ecc71' : '#ED4245')
                 .setTitle(result.success ? '✅ MESSAGE SENT' : '❌ SEND FAILED')
                 .setDescription(result.success ? (lang === 'fr' ? 'Message envoyé à Telegram.' : 'Message delivered to Telegram.') : result.error);
