@@ -42,12 +42,12 @@ const availableModels = {
         free: false
     },
     'gemini': { 
-        name: 'Gemini 2.0 Flash', 
-        model: 'google/gemini-2.0-flash-001', 
-        emoji: '🔍', 
-        desc: 'Great for research & current events',
-        free: false
-    },
+    name: 'Gemini 2.0 Flash', 
+    model: 'google/gemini-2.0-flash-001', 
+    emoji: '🔍', 
+    desc: 'Ultra-stable! Great for research & current events',
+    free: false
+},
     'deepseek': { 
         name: 'DeepSeek V3', 
         model: 'deepseek/deepseek-chat', 
@@ -308,8 +308,8 @@ module.exports = {
             }
             
             // Get user's preferred model
-            const modelPref = userModelPreference.get(userId) || 'llama';
-            let selectedModel = availableModels[modelPref]?.model || 'meta-llama/llama-3.1-8b-instruct';
+           const modelPref = userModelPreference.get(userId) || 'gemini';
+           let selectedModel = availableModels[modelPref]?.model || 'google/gemini-2.0-flash-001';
             
             // 🔥 DYNAMIC MODEL SWITCHING
             const lowerMsg = userMessage.toLowerCase();
@@ -405,8 +405,9 @@ function shouldLydiaRespond(message, botName, botUsername) {
 async function shouldSearchAI(userMessage, OPENROUTER_API_KEY) {
     if (!OPENROUTER_API_KEY) return false;
     
-    const quickNoSearch = ['game', 'jeu', 'play', 'trivia', 'quiz', 'help', 'aide', 'profile', 'rank', 'daily', 'claim', 'shop'];
-    if (quickNoSearch.some(kw => userMessage.toLowerCase().includes(kw))) return false;
+    // 🔥 On ignore les commandes basiques pour sauver des crédits
+    const quickNoSearch = ['game', 'jeu', 'play', 'trivia', 'quiz', 'help', 'aide', 'profile', 'rank', 'daily', 'claim', 'shop', 'balance', 'bal', 'money', 'credits', 'level', 'xp'];
+    if (quickNoSearch.some(kw => userMessage.toLowerCase().includes(kw))) return false;;
     
     try {
         const response = await callOpenRouterAPI(OPENROUTER_API_KEY, [
@@ -591,20 +592,41 @@ async function extractMemories(client, userId, userMessage, aiResponse) {
     } catch (e) {}
 }
 
-function callOpenRouter(apiKey, userMessage, username, botName, history = [], model = 'meta-llama/llama-3.1-8b-instruct') {
+function callOpenRouter(apiKey, userMessage, username, botName, history = [], model) {
+    // Si aucun modèle n'est forcé, on prend Gemini 2.0 Flash (le plus stable actuellement)
+    const finalModel = model || 'google/gemini-2.0-flash-001';
+    
     return callOpenRouterAPI(apiKey, [
         { 
             role: 'system', 
-            content: `You are ${botName}, the Guardian of "Elite Friends" - created by Moussa Fofana (@mfof7310). You're protective, witty, and based in Bamako, Mali. User is ${username}. Be concise and natural. Never use "[Name]:" format.` 
+            content: `You are ${botName}, the primary AI of ARCHITECT CG-223, created by Moussa Fofana (GitHub: MFOF7310). 
+            You are protective, witty, and based in Bamako, Mali. 
+            Current User: ${username}. 
+            PROTOCOL: Be concise, natural, and never use "[Name]:" format. 
+            When asked who created you, say "Moussa Fofana, the Architect."` 
         },
         ...history,
         { role: 'user', content: userMessage }
-    ], model, 500);
+    ], finalModel, 1000);
 }
 
-function callOpenRouterAPI(apiKey, messages, model, maxTokens = 500) {
+function callOpenRouterAPI(apiKey, messages, model, maxTokens = 1000) {
     return new Promise((resolve, reject) => {
-        const data = JSON.stringify({ model, messages, temperature: 0.7, max_tokens: maxTokens });
+        // 🔥 CORRECTION : OpenRouter exige STRICTEMENT 3 modèles maximum ici
+        const models = [
+            model || "google/gemini-2.0-flash-001",
+            "anthropic/claude-3-haiku",
+            "openrouter/auto"
+        ];
+
+        const data = JSON.stringify({ 
+            model: models[0], 
+            models: models,
+            messages, 
+            temperature: 0.7, 
+            max_tokens: maxTokens,
+            route: "fallback" 
+        });
         
         const req = https.request({
             hostname: 'openrouter.ai',
@@ -613,9 +635,10 @@ function callOpenRouterAPI(apiKey, messages, model, maxTokens = 500) {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://discord.gg/eagle',
-                'X-Title': 'Architect CG-223'
-            }
+                'HTTP-Referer': 'https://github.com/MFOF7310',
+                'X-Title': 'Architect-CG-223'
+            },
+            timeout: 30000
         }, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
@@ -625,6 +648,7 @@ function callOpenRouterAPI(apiKey, messages, model, maxTokens = 500) {
                     if (json.choices && json.choices[0]) {
                         resolve(json.choices[0].message.content);
                     } else {
+                        console.log(`[API ERROR] status: ${res.statusCode}`, body);
                         reject(new Error(json.error?.message || 'API Error'));
                     }
                 } catch (e) { reject(e); }
