@@ -121,23 +121,27 @@ async function shouldSearchAI(userMessage) {
     
     try {
         const actualSearchDecision = async () => {
-            const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-                models: ["google/gemini-2.0-flash-001", "openrouter/auto"],
-                route: "fallback",
-                temperature: 0,
-                max_tokens: 10,
-                messages: [
-                    { role: "system", content: `Decide if this query needs real-time web search. Return ONLY: YES or NO` },
-                    { role: "user", content: userMessage }
-                ]
-            }, {
-                headers: {
-                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                    "HTTP-Referer": "https://github.com/MFOF7310",
-                    "Content-Type": "application/json"
-                },
-                timeout: 5000  // 🔥 Augmenté pour Starlink vers Bamako
-            });
+const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+    model: "google/gemini-2.0-flash-001",
+    messages: [
+        { role: "system", content: `Decide if this query needs real-time web search. Return ONLY: YES or NO` },
+        { role: "user", content: userMessage }
+    ],
+    temperature: 0,
+    max_tokens: 10,
+    provider: {
+        order: ["Google"],
+        allow_fallbacks: false
+    }
+}, {
+    headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://github.com/MFOF7310",
+        "X-Title": "Architect-CG-223",
+        "Content-Type": "application/json"
+    },
+    timeout: 5000
+});
             
             const decision = response.data.choices[0]?.message?.content?.trim().toUpperCase() || 'NO';
             console.log(`${cyan}[AI SEARCH DECISION]${reset} "${userMessage.substring(0, 50)}..." → ${decision}`);
@@ -313,12 +317,13 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
     try {
         // 🚀 LISTE DE REPLI (FALLBACK) - L'Architecte a prévu toutes les pannes
         // Si le premier échoue (404, 429, 500), OpenRouter essaie le suivant automatiquement.
-        const models = [
-            "google/gemini-2.0-flash-001", // Principal (Rapide & Vision) - Optimisé Starlink
-            "anthropic/claude-3-haiku",    // Repli 1 (Analyse & Raisonnement)
-            "deepseek/deepseek-chat",      // Repli 2 (Code & Technique)
-            "openrouter/auto"              // Repli Final (OpenRouter choisit le plus rapide vers Bamako)
-        ];
+const models = [
+    "google/gemini-2.0-flash-001",
+    "google/gemini-2.0-flash-exp:free",  // 🔥 MODÈLE GRATUIT pour tests
+    "anthropic/claude-3-haiku",
+    "deepseek/deepseek-chat",
+    "openrouter/auto"
+];
 
         // Sélection intelligente du premier modèle selon le contexte
         const lowerMsg = userMessage.toLowerCase();
@@ -369,25 +374,38 @@ async function generateAIResponse(systemPrompt, userMessage, conversationHistory
         }
         messages.push({ role: "user", content: userContent });
 
-        const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-            models: orderedModels,        // 🔥 TABLEAU de modèles - Pas un seul string
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 1500,
-            route: "fallback"             // 🔥 OpenRouter gère automatiquement les échecs
-        }, {
-            headers: {
-                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                "HTTP-Referer": "https://github.com/MFOF7310",
-                "X-Title": "Architect CG-223",
-                "Content-Type": "application/json"
-            },
-            timeout: 30000
-        });
+const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+    model: "google/gemini-2.0-flash-001", // 🔥 Modèle ultra-stable post-maintenance
+    messages: messages,
+    temperature: 0.7,
+    max_tokens: 1000,
+    // 🔥 AJOUT CRITIQUE - Certains modèles l'exigent maintenant
+    provider: {
+        order: ["Google", "Anthropic"],
+        allow_fallbacks: true
+    }
+}, {
+    headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://github.com/MFOF7310", // ✅ Obligatoire anti-400
+        "X-Title": "Architect-CG-223",                 // ✅ Obligatoire anti-400
+        "Content-Type": "application/json"
+    },
+    // 🔥 Empêche axios de crasher avant d'avoir lu l'erreur
+    validateStatus: function (status) {
+        return status >= 200 && status < 500;
+    },
+    timeout: 30000
+});
 
-        // Log quel modèle a finalement répondu
-        const usedModel = response.data.model || orderedModels[0];
-        console.log(`${green}[AI SUCCESS]${reset} Model used: ${usedModel.split('/').pop()}`);
+// 🔥 Diagnostic après l'appel
+if (response.status === 400) {
+    console.log(`${red}[OPENROUTER 400]${reset} Détails:`, JSON.stringify(response.data?.error || response.data));
+}
+
+// Log quel modèle a finalement répondu
+const usedModel = response.data?.model || "unknown";
+console.log(`${green}[AI SUCCESS]${reset} Model used: ${usedModel.split('/').pop()}`);
         
         return response.data.choices[0]?.message?.content || "❌ Signal neural perdu. Réessayez.";
     } catch (error) {
