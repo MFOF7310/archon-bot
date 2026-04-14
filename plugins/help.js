@@ -58,12 +58,9 @@ const translations = {
         notFoundDesc: (arg, prefix) => `\`\`\`diff\n- Command or category "${arg}" not found in neural database\n- Use ${prefix}help to view all available modules\`\`\``,
         checkSpelling: 'ARCHITECT CG-223 • Check your spelling and try again',
         accessDenied: '⛔ Access Denied. This directory is locked to the requesting agent.',
-        loading: '🔍 Initializing Neural Directory handshake...',
-        accessing: (guilds) => `Accessing command database across ${guilds} sectors...`,
         footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY',
         bamakoNode: 'Bamako Node',
         modulesOnline: 'modules online',
-        page: 'Page',
         tip: '💡 TIP',
         tips: [
             'Use {prefix}help <command> for detailed information',
@@ -129,12 +126,9 @@ const translations = {
         notFoundDesc: (arg, prefix) => `\`\`\`diff\n- La commande ou catégorie "${arg}" est introuvable dans la base neurale\n- Utilisez ${prefix}help pour voir tous les modules\`\`\``,
         checkSpelling: 'ARCHITECT CG-223 • Vérifiez votre orthographe et réessayez',
         accessDenied: '⛔ Accès Refusé. Ce répertoire est verrouillé pour l\'agent demandeur.',
-        loading: '🔍 Initialisation de la poignée de main du répertoire neural...',
-        accessing: (guilds) => `Accès à la base de données de commandes sur ${guilds} secteurs...`,
         footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE',
         bamakoNode: 'Nœud Bamako',
         modulesOnline: 'modules en ligne',
-        page: 'Page',
         tip: '💡 ASTUCE',
         tips: [
             'Utilisez {prefix}help <commande> pour plus de détails',
@@ -157,14 +151,12 @@ const colorMap = {
     ECONOMY: '#F1C40F', FUN: '#3498DB'
 };
 
-// Terminal colors for logging
 const red = "\x1b[31m", reset = "\x1b[0m";
 
 // ================= HELPER FUNCTIONS =================
 function getRandomTip(t, prefix) {
     const tips = t.tips;
-    const randomTip = tips[Math.floor(Math.random() * tips.length)];
-    return randomTip.replace(/{prefix}/g, prefix);
+    return tips[Math.floor(Math.random() * tips.length)].replace(/{prefix}/g, prefix);
 }
 
 function getCategoryStats(client) {
@@ -185,12 +177,8 @@ function getTopCategories(stats, limit = 3) {
 
 function getCategoryDescription(cat, t, lang) {
     const upperCat = cat.toUpperCase();
-    if (t.categoryDescriptions && t.categoryDescriptions[upperCat]) {
-        return t.categoryDescriptions[upperCat];
-    }
-    return lang === 'fr' 
-        ? `Commandes pour le module ${cat}`
-        : `Commands for the ${cat} module`;
+    if (t.categoryDescriptions?.[upperCat]) return t.categoryDescriptions[upperCat];
+    return lang === 'fr' ? `Commandes pour le module ${cat}` : `Commands for the ${cat} module`;
 }
 
 function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version) {
@@ -207,19 +195,14 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
     
     return new EmbedBuilder()
         .setColor(categoryColor)
-        .setAuthor({ 
-            name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}`, 
-            iconURL: client.user.displayAvatarURL() 
-        })
+        .setAuthor({ name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}`, iconURL: client.user.displayAvatarURL() })
         .setTitle(`═ ${t.modulesTitle} ═`)
         .setDescription(commandList || (lang === 'fr' ? 'Aucune commande trouvée dans cette catégorie.' : 'No commands found in this category.'))
-        .addFields(
-            { 
-                name: t.moduleStatsTitle, 
-                value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\`\`\``, 
-                inline: false 
-            }
-        )
+        .addFields({ 
+            name: t.moduleStatsTitle, 
+            value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\`\`\``, 
+            inline: false 
+        })
         .setFooter({ 
             text: `${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${version}`,
             iconURL: guildIcon
@@ -237,6 +220,7 @@ module.exports = {
 
     run: async (client, message, args, database, serverSettings, usedCommand) => {
         
+        // ================= LANGUAGE DETECTION =================
         let lang = 'en';
         if (client.detectLanguage && usedCommand) {
             lang = client.detectLanguage(usedCommand, 'en');
@@ -248,7 +232,7 @@ module.exports = {
         
         const t = translations[lang];
         const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
-        const version = client.version || '1.6.0';
+        const version = client.version || '1.7.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
@@ -257,9 +241,8 @@ module.exports = {
         const days = Math.floor(uptimeSec / 86400);
         const hours = Math.floor((uptimeSec % 86400) / 3600);
         const minutes = Math.floor((uptimeSec % 3600) / 60);
-        
-        const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
-        const totalGuilds = client.guilds.cache.size;
+        const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
+        const totalGuilds = client.guilds.cache.size || 0;
         
         let uptimeString = '';
         if (days > 0) uptimeString += `${days}${lang === 'fr' ? 'j' : 'd'} `;
@@ -280,8 +263,7 @@ module.exports = {
             }
             
             const cmdLower = args[0].toLowerCase();
-            const cmd = client.commands.get(cmdLower) || 
-                        client.commands.find(c => c.aliases && c.aliases.includes(cmdLower));
+            const cmd = client.commands.get(cmdLower) || client.commands.find(c => c.aliases && c.aliases.includes(cmdLower));
             
             if (cmd) {
                 const category = cmd.category || 'GENERAL';
@@ -290,10 +272,7 @@ module.exports = {
 
                 const detailEmbed = new EmbedBuilder()
                     .setColor(categoryColor)
-                    .setAuthor({ 
-                        name: `${categoryEmoji} ${t.commandExtract}`, 
-                        iconURL: client.user.displayAvatarURL() 
-                    })
+                    .setAuthor({ name: `${categoryEmoji} ${t.commandExtract}`, iconURL: client.user.displayAvatarURL() })
                     .setTitle(`◈ ${t.module}: ${cmd.name.toUpperCase()} ◈`)
                     .setDescription(`\`\`\`yaml\n${cmd.description || t.noDescription}\`\`\``)
                     .addFields(
@@ -353,50 +332,24 @@ module.exports = {
         
         const mainEmbed = new EmbedBuilder()
             .setColor('#00fbff')
-            .setAuthor({ 
-                name: t.directoryTitle, 
-                iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) 
-            })
+            .setAuthor({ name: t.directoryTitle, iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) })
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
             .setDescription(
                 `\`\`\`yaml\n` +
                 `${t.systemStatus}: 🟢 ${t.online}\n` +
                 `${t.node}: BAMAKO-223\n` +
-                `${t.core}: Groq LPU™ + Brave Search\n` +
+                `${t.core}: OpenRouter + Brave Search\n` +
                 `${t.uptime}: ${uptimeString}\n` +
                 `${t.version}: v${version}\`\`\``
             )
             .addFields(
-                { 
-                    name: t.moduleStats, 
-                    value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${totalMembers.toLocaleString()}\n${t.guilds}: ${totalGuilds}\`\`\``, 
-                    inline: true 
-                },
-                { 
-                    name: `🏆 TOP CATEGORIES`, 
-                    value: topCategoriesDisplay || 'No data available', 
-                    inline: true 
-                },
-                { 
-                    name: t.quickAccess, 
-                    value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
-                    inline: false 
-                },
-                { 
-                    name: t.aiAssistant, 
-                    value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
-                    inline: true 
-                },
-                { 
-                    name: t.tip, 
-                    value: getRandomTip(t, effectivePrefix), 
-                    inline: true 
-                }
+                { name: t.moduleStats, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${totalMembers.toLocaleString()}\n${t.guilds}: ${totalGuilds}\`\`\``, inline: true },
+                { name: `🏆 TOP CATEGORIES`, value: topCategoriesDisplay || 'No data available', inline: true },
+                { name: t.quickAccess, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
+                { name: t.aiAssistant, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
+                { name: t.tip, value: getRandomTip(t, effectivePrefix), inline: true }
             )
-            .setFooter({ 
-                text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, 
-                iconURL: guildIcon
-            })
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, iconURL: guildIcon })
             .setTimestamp();
 
         const menu = new StringSelectMenuBuilder()
@@ -411,15 +364,11 @@ module.exports = {
 
         const row1 = new ActionRowBuilder().addComponents(menu);
         const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('help_back')
-                .setLabel(t.mainMenu)
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(true)
+            new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
         );
 
+        // 🔥 ZERO LATENCY - No loading text!
         const response = await message.reply({
-            content: `> **${t.loading}**\n> *${t.accessing(totalGuilds)}*`,
             embeds: [mainEmbed],
             components: [row1, row2]
         }).catch(() => null);
@@ -428,21 +377,30 @@ module.exports = {
 
         const collector = response.createMessageComponentCollector({ time: 300000 });
         
-        // 🔥 CRITICAL FIX: Use editReply() exclusively since index.js already deferred
         collector.on('collect', async (i) => {
-            if (i.user.id !== message.author.id) {
-                return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
-            }
+    // 1. Répondre IMMÉDIATEMENT (priorité absolue)
+    try {
+        if (!i.deferred && !i.replied) {
+            await i.deferUpdate().catch(() => {}); 
+        }
+    } catch (e) {
+        return; // Si l'interaction est déjà morte, on arrête tout de suite
+    }
+
+    // 2. Vérification de l'utilisateur
+    if (i.user.id !== message.author.id) {
+        return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+    }
 
             try {
-                // 🔥 NEURAL BRIDGE: Always use editReply to resolve the deferred interaction
+                // Handle Back to Main Button
                 if (i.customId === 'help_back') {
                     const freshUptimeSec = process.uptime();
                     const freshDays = Math.floor(freshUptimeSec / 86400);
                     const freshHours = Math.floor((freshUptimeSec % 86400) / 3600);
                     const freshMinutes = Math.floor((freshUptimeSec % 3600) / 60);
-                    const freshTotalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
-                    const freshTotalGuilds = client.guilds.cache.size;
+                    const freshTotalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
+                    const freshTotalGuilds = client.guilds.cache.size || 0;
                     
                     let freshUptimeString = '';
                     if (freshDays > 0) freshUptimeString += `${freshDays}${lang === 'fr' ? 'j' : 'd'} `;
@@ -454,113 +412,72 @@ module.exports = {
                     
                     const freshMainEmbed = new EmbedBuilder()
                         .setColor('#00fbff')
-                        .setAuthor({ 
-                            name: t.directoryTitle, 
-                            iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) 
-                        })
+                        .setAuthor({ name: t.directoryTitle, iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) })
                         .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
                         .setDescription(
                             `\`\`\`yaml\n` +
                             `${t.systemStatus}: 🟢 ${t.online}\n` +
                             `${t.node}: BAMAKO-223\n` +
-                            `${t.core}: Groq LPU™ + Brave Search\n` +
+                            `${t.core}: OpenRouter + Brave Search\n` +
                             `${t.uptime}: ${freshUptimeString}\n` +
                             `${t.version}: v${version}\`\`\``
                         )
                         .addFields(
-                            { 
-                                name: t.moduleStats, 
-                                value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, 
-                                inline: true 
-                            },
-                            { 
-                                name: `🏆 TOP CATEGORIES`, 
-                                value: topCategoriesDisplay || 'No data available', 
-                                inline: true 
-                            },
-                            { 
-                                name: t.quickAccess, 
-                                value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, 
-                                inline: false 
-                            },
-                            { 
-                                name: t.aiAssistant, 
-                                value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, 
-                                inline: true 
-                            },
-                            { 
-                                name: t.tip, 
-                                value: getRandomTip(t, effectivePrefix), 
-                                inline: true 
-                            }
+                            { name: t.moduleStats, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, inline: true },
+                            { name: `🏆 TOP CATEGORIES`, value: topCategoriesDisplay || 'No data available', inline: true },
+                            { name: t.quickAccess, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
+                            { name: t.aiAssistant, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
+                            { name: t.tip, value: getRandomTip(t, effectivePrefix), inline: true }
                         )
-                        .setFooter({ 
-                            text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, 
-                            iconURL: guildIcon
-                        })
+                        .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, iconURL: guildIcon })
                         .setTimestamp();
                     
                     const disabledRow2 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('help_back')
-                            .setLabel(t.mainMenu)
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(true)
+                        new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
                     );
                     
-                    // ✅ THIS RESOLVES THE "THINKING" STATE
-                    await i.editReply({ embeds: [freshMainEmbed], components: [row1, disabledRow2] });
+                    await i.editReply({ content: null, embeds: [freshMainEmbed], components: [row1, disabledRow2] }).catch(() => {});
                     return;
                 }
                 
+                // Handle Category Selection
                 if (i.isStringSelectMenu() && i.customId === 'help_select') {
                     const category = i.values[0];
                     const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version);
                     
                     const updatedRow2 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('help_back')
-                            .setLabel(t.backToMain)
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(false)
+                        new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false)
                     );
                     
-                    // ✅ THIS KILLS THE "THINKING..." ANIMATION
-                    await i.editReply({ embeds: [categoryEmbed], components: [row1, updatedRow2] });
+                    await i.editReply({ content: null, embeds: [categoryEmbed], components: [row1, updatedRow2] }).catch((err) => {
+                        console.error(`${red}[HELP ERROR]${reset} Failed to edit:`, err.message);
+                    });
+                    return;
                 }
             } catch (err) {
                 console.error(`${red}[HELP ERROR]${reset} Interaction failed:`, err.message);
-                // Attempt to recover with an error message
                 try {
                     await i.editReply({ 
-                        content: lang === 'fr' 
-                            ? '❌ Une erreur est survenue. Veuillez réessayer.' 
-                            : '❌ An error occurred. Please try again.',
+                        content: lang === 'fr' ? '❌ Une erreur est survenue. Veuillez réessayer.' : '❌ An error occurred. Please try again.',
                         embeds: [], 
                         components: [] 
-                    });
+                    }).catch(() => {});
                 } catch (e) {
-                    // Silent fail - interaction may have expired
+                    // Silent fail
                 }
             }
         });
 
         collector.on('end', async () => {
-            if (response && response.editable) {
-                try {
-                    const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
-                    const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
-                    const disabledButton = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('help_back')
-                            .setLabel(t.mainMenu)
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(true)
-                    );
-                    await response.edit({ components: [disabledRow, disabledButton] });
-                } catch (err) {
-                    // Message may have been deleted - silent fail
-                }
+            try {
+                const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
+                const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
+                const disabledButton = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
+                );
+                await response.edit({ components: [disabledRow, disabledButton] }).catch(() => {});
+            } catch (err) {
+                // Message may have been deleted
             }
         });
     }
