@@ -1206,8 +1206,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
         console.log(`${cyan}[INTERACTION]${reset} ${interaction.customId} from ${interaction.user.tag}`);
         
-        const needsNewMessage = interaction.customId.startsWith('help_') || 
-                                interaction.customId.startsWith('info_') ||
+        // 🛑 BYPASS : On laisse help.js gérer ses propres interactions sans "Thinking"
+        if (interaction.customId.startsWith('help_')) return;
+
+        const needsNewMessage = interaction.customId.startsWith('info_') || 
                                 interaction.customId.startsWith('menu_') ||
                                 interaction.customId === 'welcome_help';
         
