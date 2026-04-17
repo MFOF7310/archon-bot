@@ -4,7 +4,17 @@
   "description": "Digital Engine for Cloud Gaming Community - Mali 🇲🇱",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "pm2 start ecosystem.config.js",
+    "stop": "pm2 stop Architect-CG223",
+    "restart": "pm2 restart Architect-CG223",
+    "logs": "pm2 logs Architect-CG223",
+    "deploy": "node deploy-commands.js",
+    "dev": "node index.js",
+    "status": "pm2 status",
+    "monit": "pm2 monit",
+    "backup": "node backup.js",
+    "check": "node check-connection.js",
+    "update": "npm install && npm run deploy && pm2 restart Architect-CG223"
   },
   "dependencies": {
     "discord.js": "^14.16.3",
@@ -12,7 +22,9 @@
     "google-translate-api-x": "^10.7.1",
     "google-tts-api": "^2.0.2",
     "dotenv": "^16.4.5",
-    "better-sqlite3": "^11.5.0"
+    "node-fetch": "^2.7.0",
+    "better-sqlite3": "^11.5.0",
+    "pm2": "^5.4.3"
   },
   "engines": {
     "node": ">=18.x"
