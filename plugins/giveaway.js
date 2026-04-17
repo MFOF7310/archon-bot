@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionsBitField, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -404,12 +404,44 @@ module.exports = {
     userPermissions: ['ManageGuild'],
     usage: '.giveaway [time] [winners] [prize] [--everyone|--here]',
     examples: [
-        '.giveaway 1h 2 1000 Credits',
-        '.giveaway 30m 1 Legendary Pack --everyone',
-        '.concours 2h 3 5000 Crédits --here'
-    ],
+    '.giveaway 1h 2 1000 Credits',
+    '.giveaway 30m 1 Legendary Pack --everyone',
+    '.concours 2h 3 5000 Crédits --here'
+],
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('giveaway')
+    .setDescription('🎁 Create credit giveaways for community engagement')
+    .addStringOption(option =>
+        option.setName('time')
+            .setDescription('Duration (e.g., 10s, 5m, 2h, 1d)')
+            .setRequired(true)
+    )
+    .addIntegerOption(option =>
+        option.setName('winners')
+            .setDescription('Number of winners (1-20)')
+            .setRequired(true)
+            .setMinValue(1)
+            .setMaxValue(20)
+    )
+    .addStringOption(option =>
+        option.setName('prize')
+            .setDescription('Prize description (include credit amount)')
+            .setRequired(true)
+    )
+    .addStringOption(option =>
+        option.setName('mention')
+            .setDescription('Mention type')
+            .setRequired(false)
+            .addChoices(
+                { name: '@everyone', value: 'everyone' },
+                { name: '@here', value: 'here' },
+                { name: 'None', value: 'none' }
+            )
+    ),
+
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, 'en')
@@ -816,6 +848,63 @@ module.exports = {
             .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         
-        return message.reply({ embeds: [confirmEmbed] }).catch(() => {});
+                return message.reply({ embeds: [confirmEmbed] }).catch(() => {});
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+    // 🔥 DYNAMIC SECTOR CHECK - PROFESSIONAL DM FALLBACK
+    if (!interaction.guild) {
+        const lang = client.detectLanguage ? client.detectLanguage('giveaway', 'en') : 'en';
+        const fallbackEmbed = new EmbedBuilder()
+            .setColor('#ED4245')
+            .setAuthor({ name: '🦅 SYSTEM ACCESS RESTRICTED', iconURL: client.user.displayAvatarURL() })
+            .setTitle('⛔ COMMAND NOT AVAILABLE IN DMs')
+            .setDescription(
+                `\`\`\`ansi\n` +
+                `\u001b[1;31m⚠️ SECURITY PROTOCOL ACTIVE\u001b[0m\n\n` +
+                `The \u001b[1;33m/giveaway\u001b[0m command is a \u001b[1;36mServer-Side Event System\u001b[0m.\n` +
+                `It cannot be executed within Direct Messages.\n\n` +
+                `\u001b[1;37m┌─────────────────────────────────────┐\u001b[0m\n` +
+                `\u001b[1;37m│\u001b[0m  📍 \u001b[1;33mACTION REQUIRED\u001b[0m                      \u001b[1;37m│\u001b[0m\n` +
+                `\u001b[1;37m│\u001b[0m  Please use this command in a       \u001b[1;37m│\u001b[0m\n` +
+                `\u001b[1;37m│\u001b[0m  server where you have \`Manage Guild\`\u001b[1;37m│\u001b[0m\n` +
+                `\u001b[1;37m│\u001b[0m  permission to create giveaways.     \u001b[1;37m│\u001b[0m\n` +
+                `\u001b[1;37m└─────────────────────────────────────┘\u001b[0m\n` +
+                `\`\`\``
+            )
+            .setFooter({ text: 'BAMAKO-223 NODE • Neural Security Protocol' })
+            .setTimestamp();
+        
+        return interaction.reply({ embeds: [fallbackEmbed], ephemeral: true });
+    }
+    
+    const time = interaction.options.getString('time');
+    const winners = interaction.options.getInteger('winners');
+    const prize = interaction.options.getString('prize');
+    const mention = interaction.options.getString('mention') || 'none';
+        
+        // Build args array for run function
+        const args = [time, winners.toString(), prize];
+        if (mention !== 'none') {
+            args.push(`--${mention}`);
+        }
+        
+        // Simulate message object
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            member: interaction.member,
+            reply: async (options) => {
+                if (interaction.deferred) return interaction.editReply(options);
+                return interaction.reply(options);
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'giveaway');
     }
 };
