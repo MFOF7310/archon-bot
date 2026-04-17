@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // --- BILINGUAL TRANSLATIONS ---
 const walletTranslations = {
@@ -208,9 +208,19 @@ module.exports = {
     category: 'ECONOMY',
     usage: '.credits [@user]',
     cooldown: 3000,
-    examples: ['.credits', '.credits @user'],
+examples: ['.credits', '.credits @user'],
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('credits')
+    .setDescription('💰 Check your Archon Credits and financial status')
+    .addUserOption(option =>
+        option.setName('agent')
+            .setDescription('Agent to inspect (leave empty for your own wallet)')
+            .setRequired(false)
+    ),
+
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
@@ -530,5 +540,29 @@ module.exports = {
         });
         
         console.log(`[CREDITS] ${message.author.tag} checked balance: ${credits} credits | Lang: ${lang}`);
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        const targetUser = interaction.options.getUser('agent') || interaction.user;
+        const args = targetUser.id !== interaction.user.id ? [targetUser.id] : [];
+        
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            mentions: {
+                users: targetUser.id !== interaction.user.id ? new Map([[targetUser.id, targetUser]]) : new Map()
+            },
+            reply: async (options) => {
+                if (interaction.deferred) return interaction.editReply(options);
+                return interaction.reply(options);
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'credits');
     }
 };
