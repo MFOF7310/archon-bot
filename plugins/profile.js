@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+ const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // --- UNIFIED CONFIGURATION (Matches games.js & rank.js) ---
 const AGENT_RANKS = [
@@ -43,22 +43,36 @@ function createProgressBar(percentage, length = 12) {
 
 module.exports = {
     name: 'profile',
-    aliases: ['p', 'id', 'userinfo', 'agent', 'profil'],
+    aliases: ['p', 'identifiant', 'userinfo', 'agent', 'profil'],
     description: '📊 Complete Agent Dossier with unified neural statistics.',
     category: 'PROFILE',
     usage: '.profile [@user]',
     cooldown: 3000,
     examples: ['.profile', '.profile @user'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+    // ================= SLASH COMMAND DATA =================
+    data: new SlashCommandBuilder()
+        .setName('profile')
+        .setDescription('📊 Complete Agent Dossier with unified neural statistics')
+        .addUserOption(option =>
+            option.setName('agent')
+                .setDescription('Agent to inspect (leave empty for your own profile)')
+                .setRequired(false)
+        ),
+
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
-            const target = message.mentions.users.first() || message.author;
-            const version = client.version || '1.6.0';
-            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+            // 🔥 SELF-HEALING TARGET DETECTION
+let target;
+if (args[0] && message.mentions?.users) {
+    target = message.mentions.users.first() || message.author;
+} else if (args[0]) {
+    // Pour les slash commands, args[0] contient l'ID
+    target = message.guild?.members.cache.get(args[0])?.user || message.author;
+} else {
+    target = message.author;
+}
 
-            // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
             const lang = client.detectLanguage 
                 ? client.detectLanguage(usedCommand, 'en')
                 : 'en';
@@ -130,14 +144,21 @@ module.exports = {
                 }
             }[lang];
 
-            // 🔥 USE RAM-FIRST CACHE
-            let userData = client.getUserData 
-                ? client.getUserData(target.id) 
-                : db.prepare(`
-                    SELECT id, xp, credits, streak_days, total_messages, 
-                           games_played, games_won, total_winnings, gaming, level
-                    FROM users WHERE id = ?
-                `).get(target.id);
+// 🔥 VERSION ET GUILD INFO
+const version = client.version || '1.7.0';
+const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+
+// 🔥 SELF-HEALING DATABASE FETCH
+let userData = null;
+try {
+    userData = client.getUserData 
+        ? client.getUserData(target.id) 
+        : db.prepare(`SELECT * FROM users WHERE id = ?`).get(target.id);
+} catch (err) {
+    console.log(`[PROFILE] DB fetch failed, using fallback: ${err.message}`);
+    userData = null;
+}
 
             if (!userData) {
                 const errorEmbed = new EmbedBuilder()
@@ -148,160 +169,187 @@ module.exports = {
                 return message.reply({ embeds: [errorEmbed] }).catch(() => {});
             }
 
-            const xp = userData.xp || 0;
-            const credits = userData.credits || 0;
-            const streakDays = userData.streak_days || 0;
-            const totalMessages = userData.total_messages || 0;
-            
-            const level = userData.level || calculateLevel(xp);
-            const agentRank = getAgentRank(level);
-            const wealthTier = getWealthTier(credits);
-            const nextWealthTier = getNextWealthTier(credits);
-            
-            const gamesPlayed = userData.games_played || 0;
-            const gamesWon = userData.games_won || 0;
-            const totalWinnings = userData.total_winnings || 0;
-            const winRate = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
-            
-            const rankData = db.prepare("SELECT COUNT(*) as rank FROM users WHERE xp > ?").get(xp);
-            const globalRank = (rankData?.rank || 0) + 1;
-            const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get()?.count || 1;
-            
-            const currentLevelXP = Math.pow((level - 1) / 0.1, 2);
-            const nextLevelXP = Math.pow(level / 0.1, 2);
-            const xpForCurrentLevel = xp - currentLevelXP;
-            const xpNeededForNext = nextLevelXP - currentLevelXP;
-            const progressPercent = Math.min(100, Math.max(0, (xpForCurrentLevel / xpNeededForNext) * 100));
-            const xpRemaining = Math.ceil(nextLevelXP - xp);
-            
-            let wealthProgress = 0;
-            let creditsToNextTier = 0;
-            if (nextWealthTier) {
-                creditsToNextTier = nextWealthTier.minCredits - credits;
-                const prevTierMin = WEALTH_TIERS[WEALTH_TIERS.indexOf(nextWealthTier) - 1]?.minCredits || 0;
-                const tierRange = nextWealthTier.minCredits - prevTierMin;
-                const creditsInRange = credits - prevTierMin;
-                wealthProgress = Math.min(100, Math.max(0, (creditsInRange / tierRange) * 100));
-            }
-            
-            const levelProgressBar = createProgressBar(progressPercent, 15);
-            const wealthProgressBar = createProgressBar(wealthProgress, 15);
-            
-            let gamingData = { game: "CODM", rank: "Unranked", mode: "Standard" };
-            if (userData.gaming) {
-                try { 
-                    gamingData = JSON.parse(userData.gaming); 
-                } catch (e) { }
-            }
-            
-            const member = message.guild?.members.cache.get(target.id);
-            const highestRole = member?.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
-            const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
-            const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
-            
-            const embed = new EmbedBuilder()
-                .setColor(agentRank.color)
-                .setAuthor({ 
-                    name: t.title(target.username), 
-                    iconURL: target.displayAvatarURL({ dynamic: true }) 
-                })
-                .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 1024 }))
-                .setDescription(
-                    `\`\`\`prolog\n` +
-                    `${t.node}: BKO-223 • ${t.core}: Groq LPU™ 70B\n` +
-                    `${t.rank}: ${agentRank.emoji} ${agentRank.title[lang]} • ${t.level} ${level}\`\`\``
-                )
-                .addFields(
-                    { 
-                        name: t.statsTelemetry, 
-                        value: `\`\`\`yaml\n` +
-                               `${t.xp}: ${xp.toLocaleString()}\n` +
-                               `${t.credits}: ${credits.toLocaleString()} 🪙\n` +
-                               `${t.wealth}: ${wealthTier.emoji} ${wealthTier.title[lang]}\n` +
-                               `${t.globalRank}: #${globalRank}/${totalUsers}\n` +
-                               `${t.messages}: ${totalMessages.toLocaleString()}\`\`\``, 
-                        inline: true 
-                    },
-                    { 
-                        name: t.progress, 
-                        value: `\`\`\`\n${levelProgressBar} ${progressPercent.toFixed(1)}%\n` +
-                               `└─ ${t.next}: ${xpRemaining.toLocaleString()} ${t.xp}\`\`\``, 
-                        inline: true 
-                    }
-                );
-            
-            if (nextWealthTier) {
-                embed.addFields({
-                    name: `💎 ${t.wealthProgress}`,
-                    value: `\`${wealthProgressBar}\` **${wealthProgress.toFixed(1)}%**\n└─ ${creditsToNextTier.toLocaleString()} 🪙 ${t.required}`,
-                    inline: false
-                });
-            } else {
-                embed.addFields({
-                    name: `🏆 ${t.wealth}`,
-                    value: `**MAXIMUM ${t.wealth.toUpperCase()} ACHIEVED!**\n└─ ${credits.toLocaleString()} 🪙`,
-                    inline:0
-                });
-            }
-            
-            embed.addFields(
-                { 
-                    name: t.combatMatrix, 
-                    value: `\`\`\`prolog\n` +
-                           `${t.sector}: ${gamingData.game}\n` +
-                           `Mode: ${gamingData.mode}\n` +
-                           `Rank: ${gamingData.rank}\n` +
-                           `${t.played}: ${gamesPlayed.toLocaleString()} • ${t.won}: ${gamesWon} (${winRate}%)\n` +
-                           `${t.totalWinnings}: ${totalWinnings.toLocaleString()} 🪙\`\`\``, 
-                    inline: false 
-                },
-                { 
-                    name: `🔥 ${t.dailyStreak}`, 
-                    value: `**${streakDays}** ${t.days}`, 
-                    inline: true 
-                },
-                { 
-                    name: `🎮 ${t.gamesPlayed}`, 
-                    value: `**${gamesPlayed.toLocaleString()}**`, 
-                    inline: true 
-                },
-                { 
-                    name: `🏆 ${t.totalWinnings}`, 
-                    value: `**${totalWinnings.toLocaleString()}** 🪙`, 
-                    inline: true 
-                },
-                { 
-                    name: `🕹️ DISCORD`, 
-                    value: `**Role:** ${highestRole}\n**Member:** ${memberDays} ${t.days}\n**ID:** \`${target.id.slice(0, 8)}...\``, 
-                    inline: false 
-                }
-            )
-            .setFooter({ 
-                text: `${guildName} • ${t.footer} • v${version}`, 
-                iconURL: guildIcon
-            })
-            .setTimestamp();
+        // 🔥 SELF-HEALING VALUES (avec ?? pour gérer null/undefined)
+        const xp = userData?.xp ?? 0;
+        const credits = userData?.credits ?? 0;
+        const streakDays = userData?.streak_days ?? 0;
+        const totalMessages = userData?.total_messages ?? 0;
+        const gamesPlayed = userData?.games_played ?? 0;
+        const gamesWon = userData?.games_won ?? 0;
+        const totalWinnings = userData?.total_winnings ?? 0;
 
-            const ARCHITECT_ID = process.env.OWNER_ID;
-            if (target.id === ARCHITECT_ID) {
-                embed.addFields({
-                    name: t.architectRecognition,
-                    value: t.architectDesc,
-                    inline: false
-                });
-            }
-
-            await message.reply({ embeds: [embed] }).catch(() => {});
-
-        } catch (error) {
-            console.error("[PROFILE ERROR]:", error);
-            const lang = client.detectLanguage 
-                ? client.detectLanguage(usedCommand || 'profile', 'en')
-                : 'en';
-            const errorMsg = lang === 'fr' 
-                ? "⚠️ **Erreur de Liaison Neurale:** Incohérence de base de données détectée. Contactez l'Architecte."
-                : "⚠️ **Neural Link Error:** Database mismatch detected. Please contact the Architect.";
-            message.reply(errorMsg).catch(() => {});
+        const level = userData?.level ?? calculateLevel(xp);
+        const agentRank = getAgentRank(level);
+        const wealthTier = getWealthTier(credits);
+        const nextWealthTier = getNextWealthTier(credits);
+        const winRate = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
+        
+        const rankData = db.prepare("SELECT COUNT(*) as rank FROM users WHERE xp > ?").get(xp);
+        const globalRank = (rankData?.rank || 0) + 1;
+        const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get()?.count || 1;
+        
+        const currentLevelXP = Math.pow((level - 1) / 0.1, 2);
+        const nextLevelXP = Math.pow(level / 0.1, 2);
+        const xpForCurrentLevel = xp - currentLevelXP;
+        const xpNeededForNext = nextLevelXP - currentLevelXP;
+        const progressPercent = Math.min(100, Math.max(0, (xpForCurrentLevel / xpNeededForNext) * 100));
+        const xpRemaining = Math.ceil(nextLevelXP - xp);
+        
+        let wealthProgress = 0;
+        let creditsToNextTier = 0;
+        if (nextWealthTier) {
+            creditsToNextTier = nextWealthTier.minCredits - credits;
+            const prevTierMin = WEALTH_TIERS[WEALTH_TIERS.indexOf(nextWealthTier) - 1]?.minCredits || 0;
+            const tierRange = nextWealthTier.minCredits - prevTierMin;
+            const creditsInRange = credits - prevTierMin;
+            wealthProgress = Math.min(100, Math.max(0, (creditsInRange / tierRange) * 100));
         }
+        
+        const levelProgressBar = createProgressBar(progressPercent, 15);
+        const wealthProgressBar = createProgressBar(wealthProgress, 15);
+        
+        let gamingData = { game: "CODM", rank: "Unranked", mode: "Standard" };
+        if (userData?.gaming) {
+            try { 
+                gamingData = JSON.parse(userData.gaming); 
+            } catch (e) { }
+        }
+        
+        const member = message.guild?.members.cache.get(target.id);
+        const highestRole = member?.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
+        const joinedAt = member?.joinedAt ? new Date(member.joinedAt) : new Date();
+        const memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
+        
+        const embed = new EmbedBuilder()
+            .setColor(agentRank.color)
+            .setAuthor({ 
+                name: t.title(target.username), 
+                iconURL: target.displayAvatarURL({ dynamic: true }) 
+            })
+            .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 1024 }))
+            .setDescription(
+                `\`\`\`prolog\n` +
+                `${t.node}: BKO-223 • ${t.core}: Groq LPU™ 70B\n` +
+                `${t.rank}: ${agentRank.emoji} ${agentRank.title[lang]} • ${t.level} ${level}\`\`\``
+            )
+            .addFields(
+                { 
+                    name: t.statsTelemetry, 
+                    value: `\`\`\`yaml\n` +
+                           `${t.xp}: ${xp.toLocaleString()}\n` +
+                           `${t.credits}: ${credits.toLocaleString()} 🪙\n` +
+                           `${t.wealth}: ${wealthTier.emoji} ${wealthTier.title[lang]}\n` +
+                           `${t.globalRank}: #${globalRank}/${totalUsers}\n` +
+                           `${t.messages}: ${totalMessages.toLocaleString()}\`\`\``, 
+                    inline: true 
+                },
+                { 
+                    name: t.progress, 
+                    value: `\`\`\`\n${levelProgressBar} ${progressPercent.toFixed(1)}%\n` +
+                           `└─ ${t.next}: ${xpRemaining.toLocaleString()} ${t.xp}\`\`\``, 
+                    inline: true 
+                }
+            );
+        
+        if (nextWealthTier) {
+            embed.addFields({
+                name: `💎 ${t.wealthProgress}`,
+                value: `\`${wealthProgressBar}\` **${wealthProgress.toFixed(1)}%**\n└─ ${creditsToNextTier.toLocaleString()} 🪙 ${t.required}`,
+                inline: false
+            });
+        } else {
+            embed.addFields({
+                name: `🏆 ${t.wealth}`,
+                value: `**MAXIMUM ${t.wealth.toUpperCase()} ACHIEVED!**\n└─ ${credits.toLocaleString()} 🪙`,
+                inline: false
+            });
+        }
+        
+        embed.addFields(
+            { 
+                name: t.combatMatrix, 
+                value: `\`\`\`prolog\n` +
+                       `${t.sector}: ${gamingData.game}\n` +
+                       `Mode: ${gamingData.mode}\n` +
+                       `Rank: ${gamingData.rank}\n` +
+                       `${t.played}: ${gamesPlayed.toLocaleString()} • ${t.won}: ${gamesWon} (${winRate}%)\n` +
+                       `${t.totalWinnings}: ${totalWinnings.toLocaleString()} 🪙\`\`\``, 
+                inline: false 
+            },
+            { 
+                name: `🔥 ${t.dailyStreak}`, 
+                value: `**${streakDays}** ${t.days}`, 
+                inline: true 
+            },
+            { 
+                name: `🎮 ${t.gamesPlayed}`, 
+                value: `**${gamesPlayed.toLocaleString()}**`, 
+                inline: true 
+            },
+            { 
+                name: `🏆 ${t.totalWinnings}`, 
+                value: `**${totalWinnings.toLocaleString()}** 🪙`, 
+                inline: true 
+            },
+            { 
+                name: `🕹️ DISCORD`, 
+                value: `**Role:** ${highestRole}\n**Member:** ${memberDays} ${t.days}\n**ID:** \`${target.id.slice(0, 8)}...\``, 
+                inline: false 
+            }
+        )
+        .setFooter({ 
+            text: `${guildName} • ${t.footer} • v${version}`, 
+            iconURL: guildIcon
+        })
+        .setTimestamp();
+
+        const ARCHITECT_ID = process.env.OWNER_ID;
+        if (target.id === ARCHITECT_ID) {
+            embed.addFields({
+                name: t.architectRecognition,
+                value: t.architectDesc,
+                inline: false
+            });
+        }
+
+        await message.reply({ embeds: [embed] }).catch(() => {});
+
+    } catch (error) {
+        console.error("[PROFILE ERROR]:", error);
+        const lang = client.detectLanguage 
+            ? client.detectLanguage(usedCommand || 'profile', 'en')
+            : 'en';
+        const errorMsg = lang === 'fr' 
+            ? "⚠️ **Erreur de Liaison Neurale:** Incohérence de base de données détectée. Contactez l'Architecte."
+            : "⚠️ **Neural Link Error:** Database mismatch detected. Please contact the Architect.";
+        message.reply(errorMsg).catch(() => {});
+    }
+},
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        const targetUser = interaction.options.getUser('agent') || interaction.user;
+        const args = targetUser.id !== interaction.user.id ? [targetUser.id] : [];
+        
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            mentions: {
+                users: targetUser.id !== interaction.user.id ? new Map([[targetUser.id, targetUser]]) : new Map()
+            },
+            reply: async (options) => {
+                if (interaction.deferred) {
+                    return interaction.editReply(options);
+                } else {
+                    return interaction.reply(options);
+                }
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'profile');
     }
 };
