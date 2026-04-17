@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= UNIFIED LEVEL CALCULATION =================
 function calculateLevel(xp) {
@@ -323,7 +323,12 @@ module.exports = {
     usage: '.trivia',
     cooldown: 3000,
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('trivia')
+    .setDescription('🧠 Test your knowledge with the Neural Trivia System!'),
+
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
             const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
             const t = texts[lang];
@@ -532,7 +537,25 @@ module.exports = {
             });
         } catch (error) {
             console.error(`[TRIVIA FATAL ERROR]`, error);
-            return message.reply({ content: "❌ An error occurred." }).catch(() => {});
+                        return message.reply({ content: "❌ An error occurred." }).catch(() => {});
         }
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            reply: async (options) => {
+                if (interaction.deferred) return interaction.editReply(options);
+                return interaction.reply(options);
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, [], client.db, serverSettings, 'trivia');
     }
 };
