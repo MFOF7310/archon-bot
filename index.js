@@ -1,9 +1,7 @@
-// ================= CORRECTED INDEX.JS v1.7.0 - BAMAKO NODE PRO =================
 require('dotenv').config();
-
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes } = require('discord.js');
 
 // ================= IMPORT LYDIA SETUP FUNCTION =================
 const { setupLydia } = require('./plugins/lydia.js');
@@ -54,13 +52,43 @@ process.on('uncaughtException', (err, origin) => {
 // ================= TERMINAL COLORS =================
 const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", magenta = "\x1b[35m", reset = "\x1b[0m", bold = "\x1b[1m";
 
+// ================= PM2 LEVANTER STYLE DISPLAY =================
+function displayPM2Banner() {
+    const isPM2 = process.env.pm_id !== undefined || process.env.name === 'Architect-CG223';
+    
+    if (isPM2) {
+        const banner = `
+\x1b[36m╔════════════════════════════════════════════════════════════════════════════════╗
+\x1b[36m║\x1b[0m  \x1b[33m🦅 ARCHITECT CG-223 // PM2 LEVANTER EDITION\x1b[0m                                    \x1b[36m║
+\x1b[36m╠════════════════════════════════════════════════════════════════════════════════╣
+\x1b[36m║\x1b[0m  \x1b[32m📍 NODE:\x1b[0m BAMAKO_223 🇲🇱                          \x1b[35m🏗️ ARCHITECT:\x1b[0m MOUSSA FOFANA      \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[32m📦 VERSION:\x1b[0m v${client.version || '2.6.0'}                          \x1b[35m🔧 PM2:\x1b[0m v5.4.3           \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[32m🆔 PROCESS:\x1b[0m ${process.env.pm_id || '0'}                           \x1b[35m📊 STATUS:\x1b[0m \x1b[32m● ONLINE\x1b[0m          \x1b[36m║
+\x1b[36m╠════════════════════════════════════════════════════════════════════════════════╣
+\x1b[36m║\x1b[0m  \x1b[34m💾 DATABASE:\x1b[0m WAL Mode • High Performance                              \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[34m🧠 LYDIA AI:\x1b[0m Multi-Agent • Neural Network Active                      \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[34m🌉 TELEGRAM:\x1b[0m Bridge \x1b[32mACTIVE\x1b[0m                                              \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[34m🔔 REMINDERS:\x1b[0m 30s Heartbeat • \x1b[32mACTIVE\x1b[0m                                  \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[34m🛡️ CIRCUIT:\x1b[0m Breaker • \x1b[32mREADY\x1b[0m                                          \x1b[36m║
+\x1b[36m╠════════════════════════════════════════════════════════════════════════════════╣
+\x1b[36m║\x1b[0m  \x1b[33m⚡ COMMANDS:\x1b[0m                                                              \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[37mpm2 logs Architect-CG223\x1b[0m     → \x1b[36mView real-time logs\x1b[0m                      \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[37mpm2 restart Architect-CG223\x1b[0m  → \x1b[36mRestart the engine\x1b[0m                       \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[37mpm2 stop Architect-CG223\x1b[0m     → \x1b[36mStop the engine\x1b[0m                          \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[37mpm2 monit\x1b[0m                    → \x1b[36mReal-time monitoring dashboard\x1b[0m            \x1b[36m║
+\x1b[36m╚════════════════════════════════════════════════════════════════════════════════╝\x1b[0m
+`;
+        console.log(banner);
+    }
+}
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.DirectMessages
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildVoiceStates
     ],
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
@@ -179,6 +207,9 @@ const db = new Database('database.sqlite', {
     readonly: false,
     fileMustExist: false
 });
+
+client.db = db; 
+
 
 // ================= 🔥 PILLAR 3: HIGH-PERFORMANCE PRAGMA =================
 db.exec("PRAGMA journal_mode = WAL;");
@@ -968,122 +999,129 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     
     return await runFunc(...filteredArgs);
 }
-
 // ================= BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
-    console.clear();
+    const isPM2 = process.env.pm_id !== undefined || process.env.name === 'Architect-CG223';
+    
+    if (!isPM2) {
+        console.clear();
+    }
+    
     await client.loadPlugins();
     
+    // ================= 🎂 BIRTHDAY SYSTEM =================
+    const birthdayModule = require('./plugins/birthday.js');
+    if (birthdayModule.initialize) {
+        birthdayModule.initialize(client);
+    }
+    console.log(`${green}[BIRTHDAY]${reset} Birthday reminder system active`);
+
+    // ================= REGISTER SLASH COMMANDS =================
+    const commands = [];
+client.commands.forEach(command => {
+    if (command.data) {
+        commands.push(command.data.toJSON());
+    }
+});
+
+// 🔥 ATTENDRE QUE LE CLIENT SOIT COMPLÈTEMENT PRÊT
+const botToken = process.env.DISCORD_TOKEN;
+const clientId = process.env.CLIENT_ID;
+
+if (!botToken) {
+    console.error(`${red}[SLASH ERROR]${reset} DISCORD_TOKEN is missing in .env file!`);
+} else if (!clientId) {
+    console.error(`${red}[SLASH ERROR]${reset} CLIENT_ID is missing in .env file!`);
+} else {
+    const rest = new REST({ version: '10' }).setToken(botToken);
+
+    try {
+        if (commands.length > 0) {
+            console.log(`${cyan}[SLASH]${reset} Syncing ${commands.length} commands with Discord...`);
+            console.log(`${cyan}[SLASH]${reset} Using Client ID: ${clientId}`);
+
+            await rest.put(
+                Routes.applicationCommands(clientId),  // ← UTILISE clientId DU .ENV !
+                { body: commands },
+            );
+
+            console.log(`${green}[SLASH]${reset} Successfully registered all commands.`);
+        } else {
+            console.log(`${yellow}[SLASH]${reset} No slash data found in modules. Skipping sync.`);
+        }
+    } catch (error) {
+        console.error(`${red}[SLASH ERROR]${reset}`, error);
+        if (error.message.includes('token')) {
+            console.error(`${red}[SLASH ERROR]${reset} Invalid token! Check your .env file.`);
+        } else if (error.message.includes('Unknown application')) {
+            console.error(`${red}[SLASH ERROR]${reset} Invalid CLIENT_ID! Check your .env file.`);
+        }
+    }
+}
+
     startBatchWriteInterval();
     startReminderHeartbeat();
     startCacheJanitor();
     
-    // 🔥 AUTO-ACTIVATE TELEGRAM BRIDGE ON BOOT
     if (client.telegramBridge && client.telegramBridge.status) {
         const status = client.telegramBridge.status();
         if (status.configured) {
             const result = client.telegramBridge.activate();
             if (result.success) {
-                console.log(`${green}[TELEGRAM]${reset} Bridge auto-activated on boot - BAMAKO_223 🇲🇱 connected`);
+                if (!isPM2) console.log(`${green}[TELEGRAM]${reset} Bridge auto-activated on boot - BAMAKO_223 🇲🇱 connected`);
             } else {
-                console.log(`${yellow}[TELEGRAM]${reset} Bridge activation failed: ${result.error}`);
+                if (!isPM2) console.log(`${yellow}[TELEGRAM]${reset} Bridge activation failed: ${result.error}`);
             }
         }
     }
     
-    // 🔥 DISPLAY CURRENT MARKET TREND ON BOOT (SAFE VERSION)
-    try {
-        const marketState = getMarketState();
-        const trend = TRENDS[marketState.trend] || TRENDS.STEADY;
-        console.log(`${green}[MARKET]${reset} Current trend: ${trend.emoji} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)`);
-    } catch (err) {
-        console.log(`${yellow}[MARKET]${reset} Could not display market trend - using default`);
-        console.log(`${green}[MARKET]${reset} Current trend: 📊 Steady Market (100.0%)`);
-    }
+        displayPM2Banner();
     
- // 🔥 CONFIGURATION RESPONSIVE (PC & MOBILE)
-const boxWidth = 48; // Réduit de 64 à 48 pour ne pas casser sur Phone
-const drawBoxLine = (label, value) => {
-    const lineContent = `║  ${label.padEnd(12)} : ${value}`;
-    // Calcul dynamique pour que la ligne ║ de droite soit toujours alignée
-    const spacing = Math.max(0, boxWidth - lineContent.length - 1);
-    return `${lineContent}${' '.repeat(spacing)}║`;
-};
-
-    console.log(`\n${blue}${bold}╔${'═'.repeat(boxWidth - 2)}╗${reset}`);
-const title = "🦅 ARCHITECT CG-223 // NEURAL ENGINE";
-const padding = Math.max(0, Math.floor((boxWidth - title.length - 2) / 2));
-console.log(`${blue}${bold}║${' '.repeat(padding)}${cyan}${title}${reset}${' '.repeat(boxWidth - title.length - padding - 2)}║${reset}`);
-console.log(`${blue}${bold}╠${'═'.repeat(boxWidth - 2)}╣${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}🤖 CLIENT`, client.user.tag)}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}📍 NODE`, 'BAMAKO_223 🇲🇱')}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}📦 VERSION`, `v${client.version}`)}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}🔗 REPOSITORY`, 'github.com/MFOF7310')}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}🏗️ ARCHITECT`, 'MOUSSA FOFANA')}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}💾 DB MODE`, 'WAL • High Performance')}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}💾 DB BATCH`, `${WRITE_STRATEGY.MAX_WAIT_MS/1000}s delay`)}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}🔔 REMINDERS`, `30s heartbeat`)}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}💤 AFK SYSTEM`, `ACTIVE`)}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}🛡️ CIRCUIT BREAKER`, `READY`)}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}🧠 LYDIA`, `MULTI-AGENT AI`)}${reset}`);
-    console.log(`${blue}${bold}${drawBoxLine(`${green}🌉 TELEGRAM`, client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY')}${reset}`);
-    
+    // ================= SEND BOOT DM TO OWNER =================
     try {
-        const marketState = getMarketState();
-        const trend = TRENDS[marketState.trend] || TRENDS.STEADY;
-        console.log(`${blue}${bold}${drawBoxLine(`${green}📊 MARKET`, `${trend.emoji} ${trend.name}`)}${reset}`);
-    } catch (err) {
-        console.log(`${blue}${bold}${drawBoxLine(`${green}📊 MARKET`, `📊 Steady Market`)}${reset}`);
-    }
-    
-    console.log(`${blue}${bold}╚${'═'.repeat(boxWidth - 2)}╝${reset}\n`);
+        const owner = await client.users.fetch(process.env.OWNER_ID).catch(() => null);
+        if (owner) {
+            let trend = TRENDS?.STEADY || { name: 'Steady Market', emoji: '📊', color: '#f1c40f' };
+            let marketState = { trend: 'STEADY', multiplier: 1.0 };
+            try {
+                if (getMarketState) {
+                    marketState = getMarketState();
+                    trend = TRENDS[marketState.trend] || TRENDS.STEADY;
+                }
+            } catch (err) {}
+            
+            const bootEmbed = new EmbedBuilder()
+                .setColor(trend.color || '#2ecc71')
+                .setAuthor({ name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', iconURL: client.user.displayAvatarURL() })
+                .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
+                .setDescription(
+                    `\`\`\`ansi\n` +
+                    `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
+                    `\u001b[1;36mSystem:\u001b[0m reboot complete\n` +
+                    `\u001b[1;34mModules:\u001b[0m ${client.commands.size} plugins synced\n` +
+                    `\u001b[1;35mVersion:\u001b[0m v${client.version}\n` +
+                    `\u001b[1;33mNode:\u001b[0m BAMAKO_223 🇲🇱\n` +
+                    `\u001b[1;36mListeners:\u001b[0m ${client.listenerCount('messageCreate')} active\n` +
+                    `\u001b[1;32mDatabase:\u001b[0m WAL Mode (High Performance)\n` +
+                    `\u001b[1;35mAFK System:\u001b[0m ACTIVE\n` +
+                    `\u001b[1;33mCircuit Breaker:\u001b[0m READY\n` +
+                    `\u001b[1;36mLydia AI:\u001b[0m MULTI-AGENT ACTIVE\n` +
+                    `\u001b[1;36mTelegram:\u001b[0m ${client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY'}\n` +
+                    `\u001b[1;33mMarket:\u001b[0m ${trend.emoji} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)\n` +
+                    `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
+                    `\`\`\``
+                )
+                .addFields(
+                    { name: '🔗 Repository', value: '```ansi\n\u001b[1;36mgithub.com/MFOF7310\u001b[0m\n```', inline: true },
+                    { name: '🏗️ Architect', value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', inline: true },
+                    { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                )
+                .setFooter({ text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, iconURL: client.user.displayAvatarURL() })
+                .setTimestamp();
 
-    if (client.userTimeouts) {
-        for (const [id, timeout] of client.userTimeouts) clearTimeout(timeout);
-        client.userTimeouts.clear();
-    }
-
-    try {
-        const owner = await client.users.fetch(process.env.OWNER_ID);
-        
-        let trend = TRENDS.STEADY;
-        let marketState = { trend: 'STEADY', multiplier: 1.0 };
-        try {
-            marketState = getMarketState();
-            trend = TRENDS[marketState.trend] || TRENDS.STEADY;
-        } catch (err) {}
-        
-        const bootEmbed = new EmbedBuilder()
-            .setColor(trend.color || '#2ecc71')
-            .setAuthor({ name: '🦅 ARCHITECT CG-223 // NEURAL ENGINE ONLINE', iconURL: client.user.displayAvatarURL() })
-            .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
-            .setDescription(
-                `\`\`\`ansi\n` +
-                `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
-                `\u001b[1;36mSystem:\u001b[0m reboot complete\n` +
-                `\u001b[1;34mModules:\u001b[0m ${client.commands.size} plugins synced\n` +
-                `\u001b[1;35mVersion:\u001b[0m v${client.version}\n` +
-                `\u001b[1;33mNode:\u001b[0m BAMAKO_223 🇲🇱\n` +
-                `\u001b[1;36mListeners:\u001b[0m ${client.listenerCount('messageCreate')} active\n` +
-                `\u001b[1;32mDatabase:\u001b[0m WAL Mode (High Performance)\n` +
-                `\u001b[1;35mAFK System:\u001b[0m ACTIVE\n` +
-                `\u001b[1;33mCircuit Breaker:\u001b[0m READY\n` +
-                `\u001b[1;36mLydia AI:\u001b[0m MULTI-AGENT ACTIVE\n` +
-                `\u001b[1;36mTelegram:\u001b[0m ${client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY'}\n` +
-                `\u001b[1;33mMarket:\u001b[0m ${trend.emoji} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)\n` +
-                `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
-                `\`\`\``
-            )
-            .addFields(
-                { name: '🔗 Repository', value: '```ansi\n\u001b[1;36mgithub.com/MFOF7310\u001b[0m\n```', inline: true },
-                { name: '🏗️ Architect', value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', inline: true },
-                { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
-            )
-            .setFooter({ text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, iconURL: client.user.displayAvatarURL() })
-            .setTimestamp();
-
-        await owner.send({ embeds: [bootEmbed] });
-        console.log(`${green}[DM]${reset} ✅ Boot DM sent successfully to ${owner.tag}`);
+            await owner.send({ embeds: [bootEmbed] }).catch(() => {});
+            console.log(`${green}[DM]${reset} ✅ Boot DM sent successfully to ${owner.tag}`);
+        }
     } catch (err) {
         console.log(`${yellow}[DM]${reset} ❌ Could not send boot DM: ${err.message}`);
     }
@@ -1203,78 +1241,84 @@ client.on(Events.MessageCreate, async (message) => {
 
 // ================= INTERACTION HANDLER =================
 client.on(Events.InteractionCreate, async (interaction) => {
+    // 🔥 SLASH COMMAND EXECUTION
     if (interaction.isChatInputCommand()) {
-        console.log(`${cyan}[SLASH]${reset} ${interaction.commandName} from ${interaction.user.tag}`);
+        const command = client.commands.get(interaction.commandName);
+
+        if (!command) {
+            console.log(`${yellow}[SLASH]${reset} Unknown command: ${interaction.commandName}`);
+            return interaction.reply({ content: '❌ Command not found.', ephemeral: true }).catch(() => {});
+        }
+
+        // 🔥 DYNAMIC SECTOR CHECK (SERVER VS DM)
+        const restrictedCommands = ['profile', 'daily', 'shop', 'credits', 'balance', 'rank', 'leaderboard'];
+        const restrictedCategories = ['ECONOMY', 'MODERATION', 'PROFILE', 'GAMING'];
+        
+        if (restrictedCommands.includes(command.name) || restrictedCategories.includes(command.category)) {
+            if (!interaction.guild) {
+                const fallbackEmbed = new EmbedBuilder()
+                    .setColor('#f1c40f')
+                    .setAuthor({ name: '🦅 SYSTEM ACCESS RESTRICTED', iconURL: client.user.displayAvatarURL() })
+                    .setDescription(
+                        `\`\`\`ansi\n` +
+                        `\u001b[1;33m⚠️ SECTOR MISMATCH DETECTED\u001b[0m\n\n` +
+                        `This command requires \u001b[1;36mServer-Side Neural Links\u001b[0m to access guild-specific data.\n` +
+                        `\`\`\``
+                    )
+                    .addFields({ 
+                        name: '📍 Action Required', 
+                        value: 'Please execute this command within the **Eagle Community** or any authorized server.' 
+                    })
+                    .setFooter({ text: 'BAMAKO-223 NODE • Neural Security Protocol' });
+
+                return interaction.reply({ embeds: [fallbackEmbed], ephemeral: true });
+            }
+        }
+
+        try {
+            console.log(`${cyan}[SLASH]${reset} Executing /${interaction.commandName} for ${interaction.user.tag}`);
+            
+            if (command.execute) {
+                await command.execute(interaction, client);
+            } else {
+                await interaction.reply({ 
+                    content: '❌ This command does not support slash execution yet.', 
+                    ephemeral: true 
+                }).catch(() => {});
+            }
+        } catch (error) {
+            console.error(`${red}[SLASH ERROR]${reset} ${interaction.commandName}:`, error);
+            const errorMsg = { content: '❌ There was an error executing this command!', ephemeral: true };
+            
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp(errorMsg).catch(() => {});
+            } else {
+                await interaction.reply(errorMsg).catch(() => {});
+            }
+        }
         return;
     }
     
-    if (interaction.isButton() || interaction.isStringSelectMenu()) {
-        console.log(`${cyan}[INTERACTION]${reset} ${interaction.customId} from ${interaction.user.tag}`);
+    // ================= 🎮 WELCOME BUTTON HANDLER =================
+    if (interaction.isButton() && interaction.customId === 'welcome_help') {
+        const helpEmbed = new EmbedBuilder()
+            .setColor('#2ecc71')
+            .setTitle('🦅 GUARDIAN ASSISTANCE')
+            .setDescription(
+                `\`\`\`ansi\n` +
+                `\u001b[1;36mBienvenue dans l'Eagle Community!\u001b[0m\n\n` +
+                `\u001b[1;33mCommandes essentielles:\u001b[0m\n` +
+                `\u001b[1;32m.help\u001b[0m - Voir toutes les commandes\n` +
+                `\u001b[1;32m.profile\u001b[0m - Votre profil\n` +
+                `\u001b[1;32m.daily\u001b[0m - Récompense quotidienne\n` +
+                `\u001b[1;32m.shop\u001b[0m - Boutique\n` +
+                `\u001b[1;32m.lydia [message]\u001b[0m - Parler à l'IA\n` +
+                `\`\`\``
+            )
+            .setFooter({ text: 'Eagle Community • BAMAKO-223 NODE' });
         
-        // 🛑 BYPASS : On laisse help.js gérer ses propres interactions sans "Thinking"
-        if (interaction.customId.startsWith('help_')) return;
-
-        const needsNewMessage = interaction.customId.startsWith('info_') || 
-                                interaction.customId.startsWith('menu_') ||
-                                interaction.customId === 'welcome_help';
-        
-        const needsEphemeral = interaction.customId.includes('private') || 
-                               interaction.customId.includes('secret') ||
-                               interaction.customId === 'welcome_help';
-        
-        if (!interaction.deferred && !interaction.replied) {
-            try {
-                if (needsNewMessage) {
-                    await interaction.deferReply({ ephemeral: needsEphemeral });
-                    console.log(`${green}[INTERACTION]${reset} Deferred reply for ${interaction.customId}`);
-                } else {
-                    await interaction.deferUpdate();
-                    console.log(`${green}[INTERACTION]${reset} Deferred update for ${interaction.customId}`);
-                }
-            } catch (err) {
-                if (!err.message.includes('already been acknowledged')) {
-                    console.error(`${red}[INTERACTION ERROR]${reset} Failed to defer:`, err.message);
-                }
-                return;
-            }
-        }
-        
-        if (interaction.customId === 'welcome_help') {
-            const lang = interaction.guild?.preferredLocale === 'fr' ? 'fr' : 'en';
-            
-            const helpEmbed = new EmbedBuilder()
-                .setColor('#3498db')
-                .setTitle(lang === 'fr' ? '🤖 Aide - Commandes Disponibles' : '🤖 Help - Available Commands')
-                .setDescription(lang === 'fr' ? 'Voici les commandes essentielles pour débuter:' : 'Here are the essential commands to get started:')
-                .addFields(
-                    { name: '📌 ' + (lang === 'fr' ? 'Commandes Générales' : 'General Commands'), value: lang === 'fr' ? '`.help` - Affiche cette aide\n`.profile` - Voir ton profil\n`.daily` - Réclamer ta récompense quotidienne' : '`.help` - Show this help\n`.profile` - View your profile\n`.daily` - Claim daily reward', inline: false },
-                    { name: '🤖 ' + (lang === 'fr' ? 'Assistant IA (Lydia)' : 'AI Assistant (Lydia)'), value: lang === 'fr' ? '`.lydia [message]` - Parler à Lydia\n`.ia [message]` - Alias\n`.lydia activate` - Activer dans ce salon' : '`.lydia [message]` - Talk to Lydia\n`.ai [message]` - Alias\n`.lydia activate` - Activate in this channel', inline: false },
-                    { name: '🎮 ' + (lang === 'fr' ? 'Jeux & Économie' : 'Games & Economy'), value: lang === 'fr' ? '`.shop` - Boutique d\'objets\n`.balance` - Voir tes crédits\n`.gaming set [jeu]` - Définir ton jeu' : '`.shop` - Item shop\n`.balance` - Check credits\n`.gaming set [game]` - Set your game', inline: false },
-                    { name: '🌉 ' + (lang === 'fr' ? 'Pont Telegram' : 'Telegram Bridge'), value: lang === 'fr' ? '`.telegram status` - État du pont\n`.telegram activate` - Activer\n`.telegram send <msg>` - Envoyer message' : '`.telegram status` - Bridge status\n`.telegram activate` - Activate\n`.telegram send <msg>` - Send message', inline: false }
-                )
-                .setFooter({ text: lang === 'fr' ? 'Eagle Community • Tape .help pour plus' : 'Eagle Community • Type .help for more', iconURL: client.user.displayAvatarURL() });
-            
-            await interaction.editReply({ embeds: [helpEmbed] });
-            console.log(`${green}[INTERACTION]${reset} Sent welcome help to ${interaction.user.tag}`);
-            return;
-        }
-    }
-    
-    if (interaction.isModalSubmit()) {
-        console.log(`${cyan}[MODAL]${reset} ${interaction.customId} submitted by ${interaction.user.tag}`);
-        
-        if (!interaction.deferred && !interaction.replied) {
-            try {
-                await interaction.deferReply({ ephemeral: true });
-            } catch (err) {
-                if (!err.message.includes('already been acknowledged')) {
-                    console.error(`${red}[MODAL ERROR]${reset} Failed to defer:`, err.message);
-                }
-                return;
-            }
-        }
-        
-        await interaction.editReply({ content: '✅ Modal submitted successfully!' });
+        await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
+        return;
     }
 });
 
@@ -1532,7 +1576,6 @@ async function gracefulShutdown(signal) {
     console.log(`${green}[SHUTDOWN]${reset} ✅ All data saved. Exiting...`);
     process.exit(0);
 }
-
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
@@ -1540,5 +1583,11 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 setupLydia(client, db);
 console.log(`${green}[INIT]${reset} Lydia Multi-Agent AI initialized`);
 
+// ================= PM2 READY SIGNAL =================
+if (process.send) {
+    process.send('ready');
+    console.log(`\x1b[32m[PM2]\x1b[0m Ready signal sent to PM2`);
+}
+
 // ================= LOGIN =================
-client.login(process.env.TOKEN);
+client.login(process.env.DISCORD_TOKEN); 
