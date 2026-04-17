@@ -1,4 +1,4 @@
-const { EmbedBuilder, version: discordVersion } = require('discord.js');
+const { EmbedBuilder, version: discordVersion, SlashCommandBuilder } = require('discord.js');
 const os = require('os');
 
 // ================= BILINGUAL TRANSLATIONS =================
@@ -88,8 +88,13 @@ module.exports = {
     cooldown: 3000,
     examples: ['.alive', '.ping', '.status', '.enligne'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('alive')
+    .setDescription('📡 Check if the bot is alive and get system statistics'),
+
+// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         const startTime = Date.now();
         
@@ -210,6 +215,26 @@ module.exports = {
         
         await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
         
-        console.log(`[ALIVE] ${message.author.tag} | Servers: ${serverCount} | Ping: ${wsPing}ms | Cache: ${cacheSize} | Lang: ${lang}`);
+                console.log(`[ALIVE] ${message.author.tag} | Servers: ${serverCount} | Ping: ${wsPing}ms | Cache: ${cacheSize} | Lang: ${lang}`);
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        // Simulate message object
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            createdTimestamp: interaction.createdTimestamp,
+            reply: async (options) => {
+                if (interaction.deferred) return interaction.editReply(options);
+                return interaction.reply(options);
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, [], client.db, serverSettings, 'alive');
     }
 };
