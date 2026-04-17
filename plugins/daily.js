@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const dailyTranslations = {
@@ -59,21 +59,28 @@ module.exports = {
     usage: '.daily',
     examples: ['.daily', '.claim'],
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, 'en')
-            : 'en';
-        const t = dailyTranslations[lang];
-        
-        const version = client.version || '1.7.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        const userId = message.author.id;
-        const username = message.author.username;
-        
-        // 🔥 ALL IN MILLISECONDS - NO MORE SECONDS!
-        const now = Date.now();
-        const oneDay = 24 * 60 * 60 * 1000; // 86,400,000 ms
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('daily')
+    .setDescription('📅 Claim your daily neural credits reward'),
+
+run: async (client, message, args, db, serverSettings, usedCommand) => {
+    
+    // ================= LANGUAGE DETECTION =================
+    const lang = client.detectLanguage 
+        ? client.detectLanguage(usedCommand, 'en')
+        : 'en';
+    const t = dailyTranslations[lang];
+    
+    const version = client.version || '1.7.0';
+    const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+    const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+    const userId = message.author.id;
+    const username = message.author.username;
+    
+// 🔥 ALL IN MILLISECONDS - NO MORE SECONDS!
+const now = Date.now();
+const oneDay = 24 * 60 * 60 * 1000;
 
         // Get user data - FORCE FRESH READ
         try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
@@ -199,16 +206,37 @@ module.exports = {
                 inline: false
             });
         }
+    await message.reply({ embeds: [embed] }).catch(() => {});
 
-        await message.reply({ embeds: [embed] }).catch(() => {});
+    // Level up announcement
+    if (newLevel > oldLevel) {
+        await message.channel.send({ 
+            content: `🎉 **LEVEL UP!** <@${userId}> ${t.reachedLevel} **${newLevel}**!` 
+        }).catch(() => {});
+    }
 
-        // Level up announcement
-        if (newLevel > oldLevel) {
-            await message.channel.send({ 
-                content: `🎉 **LEVEL UP!** <@${userId}> ${t.reachedLevel} **${newLevel}**!` 
-            }).catch(() => {});
-        }
+    console.log(`[DAILY] ${username} claimed daily: +${totalReward} credits, streak: ${newStreak} | Lang: ${lang}`);
+},
 
-        console.log(`[DAILY] ${username} claimed daily: +${totalReward} credits, streak: ${newStreak} | Lang: ${lang}`);
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        // Simuler un message pour réutiliser la fonction run
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            reply: async (options) => {
+                if (interaction.deferred) {
+                    return interaction.editReply(options);
+                } else {
+                    return interaction.reply(options);
+                }
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, [], client.db, serverSettings, 'daily');
     }
 };
