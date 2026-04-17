@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // ================= UNIFIED LEVEL CALCULATION =================
 function calculateLevel(xp) { 
@@ -86,7 +86,12 @@ module.exports = {
     usage: '.claim',
     cooldown: 3000,
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('claim')
+    .setDescription('⚡ Claim your daily rewards when the neural cycle is complete'),
+
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
             // 🔥 ALIAS-BASED LANGUAGE DETECTION
             const lang = client.detectLanguage 
@@ -289,7 +294,26 @@ module.exports = {
             const lang = client.detectLanguage 
                 ? client.detectLanguage(usedCommand, 'en')
                 : 'en';
-            return message.reply({ content: claimTranslations[lang].error }).catch(() => {});
+                        return message.reply({ content: claimTranslations[lang].error }).catch(() => {});
         }
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        // Simulate message object
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            reply: async (options) => {
+                if (interaction.deferred) return interaction.editReply(options);
+                return interaction.reply(options);
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, [], client.db, serverSettings, 'claim');
     }
 };
