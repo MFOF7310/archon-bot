@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= UNIFIED AGENT RANKS =================
 const AGENT_RANKS = [
@@ -119,8 +119,18 @@ module.exports = {
     cooldown: 3000,
     examples: ['.rank', '.rank @user'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('rank')
+    .setDescription('📊 Display neural synchronization level and agent dossier')
+    .addUserOption(option =>
+        option.setName('agent')
+            .setDescription('Agent to inspect (leave empty for your own dossier)')
+            .setRequired(false)
+    ),
+
+// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+run: async (client, message, args, db, serverSettings, usedCommand) => {
 
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
@@ -260,6 +270,30 @@ module.exports = {
             });
         }
 
-        return message.reply({ embeds: [dossierEmbed] }).catch(() => {});
+                return message.reply({ embeds: [dossierEmbed] }).catch(() => {});
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        const targetUser = interaction.options.getUser('agent') || interaction.user;
+        const args = targetUser.id !== interaction.user.id ? [targetUser.id] : [];
+        
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            mentions: {
+                users: targetUser.id !== interaction.user.id ? new Map([[targetUser.id, targetUser]]) : new Map()
+            },
+            reply: async (options) => {
+                if (interaction.deferred) return interaction.editReply(options);
+                return interaction.reply(options);
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'rank');
     }
 };
