@@ -1,0 +1,58 @@
+{
+  "trend": "BULL",
+  "multiplier": 1.1383,
+  "lastUpdate": 1776439510184,
+  "nextUpdate": 1776461110184,
+  "history": [
+    {
+      "trend": "VOLATILE",
+      "multiplier": 0.7728,
+      "timestamp": 1776277156291
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 0.9857,
+      "timestamp": 1776277159327
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 0.9835,
+      "timestamp": 1776298756298
+    },
+    {
+      "trend": "VOLATILE",
+      "multiplier": 1.3161,
+      "timestamp": 1776298759327
+    },
+    {
+      "trend": "VOLATILE",
+      "multiplier": 1.0813,
+      "timestamp": 1776320356300
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1188,
+      "timestamp": 1776320359328
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 0.9959,
+      "timestamp": 1776341956307
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1997,
+      "timestamp": 1776341959329
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0797,
+      "timestamp": 1776439507005
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1383,
+      "timestamp": 1776439510184
+    }
+  ]
+}
