@@ -1,5 +1,5 @@
 const googleTTS = require('google-tts-api');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -48,8 +48,18 @@ module.exports = {
     usage: '.tts [text] or reply to a message with .tts',
     examples: ['.tts Bonjour tout le monde', '.tts Hello world'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('tts')
+    .setDescription('🎙️ Convert text to speech with automatic French/English detection')
+    .addStringOption(option =>
+        option.setName('text')
+            .setDescription('Text to convert to speech')
+            .setRequired(true)
+    ),
+
+// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
@@ -199,5 +209,26 @@ module.exports = {
                 await message.reply({ embeds: [errorEmbed] }).catch(() => {});
             }
         }
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        const text = interaction.options.getString('text');
+        const args = text.split(' ');
+        
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            reply: async (options) => {
+                if (interaction.deferred) return interaction.editReply(options);
+                return interaction.reply(options);
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'tts');
     }
 };
