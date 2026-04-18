@@ -76,7 +76,11 @@ const translations = {
         minimumWinners: 'minimum',
         luckiestMembers: '🍀 LUCKIEST MEMBERS',
         totalEntriesReceived: 'Total entries received',
-        winnersRandomlyChosen: 'Winners were randomly chosen from all entries!'
+        winnersRandomlyChosen: 'Winners were randomly chosen from all entries!',
+        serverWideEntry: '🌍 SERVER-WIDE ENTRY',
+        serverWideDesc: 'All server members are automatically eligible! Click 🎉 to confirm participation.',
+        autoEntered: '✅ You are now entered! All server members are eligible.',
+        dmError: '❌ This command can only be used in a server.'
     },
     fr: {
         title: '🎁 CONCOURS NEURAL',
@@ -152,7 +156,11 @@ const translations = {
         minimumWinners: 'minimum',
         luckiestMembers: '🍀 LES PLUS CHANCEUX',
         totalEntriesReceived: 'Total des participations reçues',
-        winnersRandomlyChosen: 'Les gagnants ont été tirés au sort parmi toutes les participations !'
+        winnersRandomlyChosen: 'Les gagnants ont été tirés au sort parmi toutes les participations !',
+        serverWideEntry: '🌍 PARTICIPATION SERVEUR',
+        serverWideDesc: 'Tous les membres sont éligibles ! Cliquez 🎉 pour confirmer.',
+        autoEntered: '✅ Vous participez ! Tous les membres sont éligibles.',
+        dmError: '❌ Cette commande ne peut être utilisée que dans un serveur.'
     }
 };
 
@@ -263,56 +271,49 @@ function createButtonRow(status, lang) {
 // ================= SELECT WINNERS (RANDOM!) =================
 function selectWinners(entries, winnerCount) {
     if (entries.length === 0) return [];
-    const shuffled = [...entries].sort(() => Math.random() - 0.5); // 🔥 PURE RANDOM!
+    const shuffled = [...entries].sort(() => Math.random() - 0.5);
     return [...new Set(shuffled)].slice(0, Math.min(winnerCount, entries.length));
 }
 
-// ================= CREDIT WINNERS (VERIFIABLE!) =================
+// ================= 🔥 FIXED: CREDIT WINNERS (ADD ONLY ONCE!) =================
 async function creditWinners(client, db, winnersList, amount, guildName, lang) {
     const t = translations[lang];
     const credited = [];
     
     for (const winnerId of winnersList) {
         try {
-            let userData = null;
+            // 🔥 FETCH CURRENT BALANCE FIRST
+            let currentCredits = 0;
             
             if (client.getUserData) {
-                userData = client.getUserData(winnerId);
+                const cached = client.getUserData(winnerId);
+                currentCredits = cached?.credits || 0;
             }
             
-            if (!userData) {
-                userData = db.prepare("SELECT * FROM users WHERE id = ?").get(winnerId);
+            if (currentCredits === 0) {
+                const dbUser = db.prepare("SELECT credits FROM users WHERE id = ?").get(winnerId);
+                currentCredits = dbUser?.credits || 0;
             }
             
-            const oldBalance = userData?.credits || 0;
+            const newCredits = currentCredits + amount; // 🔥 ADD ONCE!
             
-            if (!userData) {
-                db.prepare("INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, ?)").run(winnerId, 'Unknown', amount);
-                console.log(`[GIVEAWAY] ✅ Initialized ${winnerId} with ${amount} credits (was: 0)`);
-                credited.push({ id: winnerId, oldBalance: 0, newBalance: amount });
-                continue;
-            }
-            
-            const newCredits = oldBalance + amount;
-            
-            if (client.queueUserUpdate) {
-                client.queueUserUpdate(winnerId, { 
-                    ...userData, 
-                    credits: newCredits,
-                    username: userData.username || 'Unknown'
-                });
+            // Update database
+            const existing = db.prepare("SELECT id FROM users WHERE id = ?").get(winnerId);
+            if (!existing) {
+                db.prepare("INSERT INTO users (id, username, xp, level, credits) VALUES (?, ?, 0, 1, ?)").run(winnerId, 'Unknown', newCredits);
             } else {
                 db.prepare("UPDATE users SET credits = ? WHERE id = ?").run(newCredits, winnerId);
             }
             
+            // Clear cache
             if (client.userDataCache) {
                 client.userDataCache.delete(winnerId);
             }
             
-            console.log(`[GIVEAWAY] ✅ Credited ${winnerId}: ${oldBalance} → ${newCredits} (+${amount})`);
-            credited.push({ id: winnerId, oldBalance, newBalance: newCredits });
+            console.log(`[GIVEAWAY] ✅ Credited ${winnerId}: ${currentCredits} → ${newCredits} (+${amount})`);
+            credited.push({ id: winnerId, oldBalance: currentCredits, newBalance: newCredits });
             
-            // DM the winner with receipt
+            // DM the winner
             try {
                 const user = await client.users.fetch(winnerId).catch(() => null);
                 if (user) {
@@ -321,7 +322,7 @@ async function creditWinners(client, db, winnersList, amount, guildName, lang) {
                         .setTitle('🎁 GIVEAWAY WINNINGS RECEIPT')
                         .setDescription(
                             `You won **${amount.toLocaleString()} Credits**!\n\n` +
-                            `📊 Previous Balance: ${oldBalance.toLocaleString()} 🪙\n` +
+                            `📊 Previous Balance: ${currentCredits.toLocaleString()} 🪙\n` +
                             `💰 Amount Won: +${amount.toLocaleString()} 🪙\n` +
                             `💎 New Balance: ${newCredits.toLocaleString()} 🪙\n\n` +
                             `✅ **Transaction Complete**\n` +
@@ -338,7 +339,7 @@ async function creditWinners(client, db, winnersList, amount, guildName, lang) {
         }
     }
     
-    console.log(`[GIVEAWAY] 📊 Successfully credited ${credited.length}/${winnersList.length} winners. Total distributed: ${amount * credited.length} 🪙`);
+    console.log(`[GIVEAWAY] 📊 Credited ${credited.length}/${winnersList.length} winners. Total: ${amount * credited.length} 🪙`);
     return credited;
 }
 
@@ -347,10 +348,7 @@ async function announceInGiftChannel(client, guildId, winnersList, prize, hostNa
     const t = translations[lang];
     const GIFT_CHANNEL_ID = process.env.GIFT_CHANNEL_ID;
     
-    if (!GIFT_CHANNEL_ID) {
-        console.log('[GIVEAWAY] No GIFT_CHANNEL_ID configured');
-        return false;
-    }
+    if (!GIFT_CHANNEL_ID) return false;
     
     try {
         const giftChannel = await client.channels.fetch(GIFT_CHANNEL_ID).catch(() => null);
@@ -385,11 +383,8 @@ async function announceInGiftChannel(client, guildId, winnersList, prize, hostNa
             embeds: [giftEmbed]
         });
         
-        console.log(`[GIVEAWAY] ✅ Announced in gift channel`);
         return true;
-        
     } catch (err) {
-        console.error('[GIVEAWAY] Failed to announce in gift channel:', err.message);
         return false;
     }
 }
@@ -404,48 +399,49 @@ module.exports = {
     userPermissions: ['ManageGuild'],
     usage: '.giveaway [time] [winners] [prize] [--everyone|--here]',
     examples: [
-    '.giveaway 1h 2 1000 Credits',
-    '.giveaway 30m 1 Legendary Pack --everyone',
-    '.concours 2h 3 5000 Crédits --here'
-],
+        '.giveaway 1h 2 1000 Credits',
+        '.giveaway 30m 1 Legendary Pack --everyone',
+        '.concours 2h 3 5000 Crédits --here'
+    ],
 
-// ================= SLASH COMMAND DATA =================
-data: new SlashCommandBuilder()
-    .setName('giveaway')
-    .setDescription('🎁 Create credit giveaways for community engagement')
-    .addStringOption(option =>
-        option.setName('time')
-            .setDescription('Duration (e.g., 10s, 5m, 2h, 1d)')
-            .setRequired(true)
-    )
-    .addIntegerOption(option =>
-        option.setName('winners')
-            .setDescription('Number of winners (1-20)')
-            .setRequired(true)
-            .setMinValue(1)
-            .setMaxValue(20)
-    )
-    .addStringOption(option =>
-        option.setName('prize')
-            .setDescription('Prize description (include credit amount)')
-            .setRequired(true)
-    )
-    .addStringOption(option =>
-        option.setName('mention')
-            .setDescription('Mention type')
-            .setRequired(false)
-            .addChoices(
-                { name: '@everyone', value: 'everyone' },
-                { name: '@here', value: 'here' },
-                { name: 'None', value: 'none' }
-            )
-    ),
+    // ================= SLASH COMMAND DATA =================
+    data: new SlashCommandBuilder()
+        .setName('giveaway')
+        .setDescription('🎁 Create credit giveaways for community engagement')
+        .addStringOption(option =>
+            option.setName('time')
+                .setDescription('Duration (e.g., 10s, 5m, 2h, 1d)')
+                .setRequired(true)
+        )
+        .addIntegerOption(option =>
+            option.setName('winners')
+                .setDescription('Number of winners (1-20)')
+                .setRequired(true)
+                .setMinValue(1)
+                .setMaxValue(20)
+        )
+        .addStringOption(option =>
+            option.setName('prize')
+                .setDescription('Prize description (include credit amount)')
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option.setName('mention')
+                .setDescription('Mention type')
+                .setRequired(false)
+                .addChoices(
+                    { name: '@everyone', value: 'everyone' },
+                    { name: '@here', value: 'here' },
+                    { name: 'None', value: 'none' }
+                )
+        ),
 
-run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
         
+        // 🔥 LANGUAGE DETECTION - FIXED!
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, 'en')
-            : 'en';
+            : (usedCommand?.includes('concours') || usedCommand?.includes('cadeau') ? 'fr' : 'en');
         
         const t = translations[lang];
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
@@ -540,9 +536,9 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             return message.reply({ content: t.invalidWinners }).catch(() => {});
         }
         
-        // Extract credit amount
-        const creditMatch = prize.match(/(\d+)/);
-        const amount = creditMatch ? parseInt(creditMatch[0]) : 0;
+        // 🔥 FIXED: Extract credit amount correctly
+        const creditMatch = prize.match(/(\d[\d,]*)/);
+        const amount = creditMatch ? parseInt(creditMatch[0].replace(/,/g, '')) : 0;
         const totalPool = amount * winners;
         
         // Create giveaway object
@@ -570,7 +566,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         // Create buttons
         const row = createButtonRow('active', lang);
         
-        // 🔥 BUILD THE ANNOUNCEMENT - CALLING ALL MEMBERS!
+        // Build announcement
         const startEmbed = new EmbedBuilder()
             .setColor('#FEE75C')
             .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
@@ -585,19 +581,17 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                 `\`\`\`\n\n` +
                 `## 🎲 **${t.randomSelection}**\n` +
                 `*${t.randomSelectionDesc}*\n\n` +
+                `### 🌍 **${t.serverWideEntry}**\n` +
+                `*${t.serverWideDesc}*\n\n` +
                 `### 👇 **${t.clickToEnter}**\n` +
                 `### 📊 **${t.entriesSoFar}: 0**`
             )
             .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         
-        // Add mention if requested
         let mentionText = '';
-        if (mentionType === 'everyone') {
-            mentionText = '@everyone';
-        } else if (mentionType === 'here') {
-            mentionText = '@here';
-        }
+        if (mentionType === 'everyone') mentionText = '@everyone';
+        else if (mentionType === 'here') mentionText = '@here';
         
         const giveawayMessage = await message.channel.send({ 
             content: mentionText || undefined,
@@ -611,13 +605,12 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         giveaway.messageId = giveawayMessage.id;
         activeGiveaways.set(giveawayId, giveaway);
         
-        // Update to full embed after 1 second
         setTimeout(async () => {
             const fullEmbed = createGiveawayEmbed(giveaway, 'active', lang, message.guild, client);
             await giveawayMessage.edit({ embeds: [fullEmbed] }).catch(() => {});
         }, 1000);
         
-        // ================= 🔥 NEURAL GATEKEEPER - BUTTON COLLECTOR =================
+        // ================= BUTTON COLLECTOR =================
         const collector = giveawayMessage.createMessageComponentCollector({ 
             componentType: ComponentType.Button
         });
@@ -627,9 +620,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             if (!currentGiveaway) return;
             
             if (!i.deferred && !i.replied) {
-                try {
-                    await i.deferUpdate();
-                } catch (e) {}
+                try { await i.deferUpdate(); } catch (e) {}
             }
             
             // Handle Enter
@@ -648,7 +639,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                 const updatedEmbed = createGiveawayEmbed(currentGiveaway, 'active', lang, message.guild, client);
                 await i.editReply({ embeds: [updatedEmbed], components: [row] }).catch(() => {});
                 
-                return i.followUp({ content: t.enterSuccess, ephemeral: true }).catch(() => {});
+                return i.followUp({ content: t.autoEntered, ephemeral: true }).catch(() => {});
             }
             
             // Handle Leave
@@ -667,7 +658,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                 return i.followUp({ content: t.leaveSuccess, ephemeral: true }).catch(() => {});
             }
             
-            // Handle Reroll (Host/Admin Only)
+            // Handle Reroll
             if (i.customId === 'gw_reroll') {
                 if (i.user.id !== currentGiveaway.hostId && !i.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
                     return i.followUp({ content: t.accessDenied, ephemeral: true }).catch(() => {});
@@ -683,7 +674,6 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                 const rerollEmbed = createGiveawayEmbed(currentGiveaway, 'ended', lang, message.guild, client);
                 await i.editReply({ embeds: [rerollEmbed], components: [createButtonRow('ended', lang)] }).catch(() => {});
                 
-                // Winner announcement
                 const winnerAnnouncement = new EmbedBuilder()
                     .setColor('#FEE75C')
                     .setTitle(`🎊 ${t.giveawayEnded}`)
@@ -729,7 +719,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                 return i.followUp({ content: t.rerollSuccess, ephemeral: true }).catch(() => {});
             }
             
-            // Handle Delete (Host/Admin Only)
+            // Handle Delete
             if (i.customId === 'gw_delete') {
                 if (i.user.id !== currentGiveaway.hostId && !i.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
                     return i.followUp({ content: t.accessDenied, ephemeral: true }).catch(() => {});
@@ -739,20 +729,6 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                 collector.stop();
                 
                 await i.editReply({ content: t.deleteSuccess, embeds: [], components: [] }).catch(() => {});
-            }
-            
-            // Handle Check Balance
-            if (i.customId === 'gw_check_balance') {
-                const creditsCmd = client.commands.get('credits') || client.commands.get('bal');
-                if (creditsCmd) {
-                    await creditsCmd.run(client, message, [], db, serverSettings, usedCommand);
-                } else {
-                    await i.followUp({ 
-                        content: t.verifyMessage, 
-                        ephemeral: true 
-                    }).catch(() => {});
-                }
-                return;
             }
         });
         
@@ -843,68 +819,60 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                 (mentionType !== 'none' ? `Mention: ${mentionType === 'everyone' ? '@everyone' : '@here'}\n` : '') +
                 `\`\`\`\n` +
                 `✅ ${t.createdSuccess}\n\n` +
+                `🌍 **${t.serverWideEntry}** - ${t.serverWideDesc}\n` +
                 `🎲 **${t.randomSelection}** - ${t.randomSelectionDesc}`
             )
             .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         
-                return message.reply({ embeds: [confirmEmbed] }).catch(() => {});
+        return message.reply({ embeds: [confirmEmbed] }).catch(() => {});
     },
 
-    // ================= SLASH COMMAND EXECUTION =================
+    // ================= 🔥 FIXED SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
-    // 🔥 DYNAMIC SECTOR CHECK - PROFESSIONAL DM FALLBACK
-    if (!interaction.guild) {
-        const lang = client.detectLanguage ? client.detectLanguage('giveaway', 'en') : 'en';
-        const fallbackEmbed = new EmbedBuilder()
-            .setColor('#ED4245')
-            .setAuthor({ name: '🦅 SYSTEM ACCESS RESTRICTED', iconURL: client.user.displayAvatarURL() })
-            .setTitle('⛔ COMMAND NOT AVAILABLE IN DMs')
-            .setDescription(
-                `\`\`\`ansi\n` +
-                `\u001b[1;31m⚠️ SECURITY PROTOCOL ACTIVE\u001b[0m\n\n` +
-                `The \u001b[1;33m/giveaway\u001b[0m command is a \u001b[1;36mServer-Side Event System\u001b[0m.\n` +
-                `It cannot be executed within Direct Messages.\n\n` +
-                `\u001b[1;37m┌─────────────────────────────────────┐\u001b[0m\n` +
-                `\u001b[1;37m│\u001b[0m  📍 \u001b[1;33mACTION REQUIRED\u001b[0m                      \u001b[1;37m│\u001b[0m\n` +
-                `\u001b[1;37m│\u001b[0m  Please use this command in a       \u001b[1;37m│\u001b[0m\n` +
-                `\u001b[1;37m│\u001b[0m  server where you have \`Manage Guild\`\u001b[1;37m│\u001b[0m\n` +
-                `\u001b[1;37m│\u001b[0m  permission to create giveaways.     \u001b[1;37m│\u001b[0m\n` +
-                `\u001b[1;37m└─────────────────────────────────────┘\u001b[0m\n` +
-                `\`\`\``
-            )
-            .setFooter({ text: 'BAMAKO-223 NODE • Neural Security Protocol' })
-            .setTimestamp();
+        // DM Fallback
+        if (!interaction.guild) {
+            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const t = translations[lang];
+            
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setDescription(t.dmError)
+                .setFooter({ text: `Neural Core • v${client.version || '1.7.0'}` });
+            
+            return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        }
         
-        return interaction.reply({ embeds: [fallbackEmbed], ephemeral: true });
-    }
-    
-    const time = interaction.options.getString('time');
-    const winners = interaction.options.getInteger('winners');
-    const prize = interaction.options.getString('prize');
-    const mention = interaction.options.getString('mention') || 'none';
+        await interaction.deferReply({ ephemeral: true });
         
-        // Build args array for run function
+        const time = interaction.options.getString('time');
+        const winners = interaction.options.getInteger('winners');
+        const prize = interaction.options.getString('prize');
+        const mention = interaction.options.getString('mention') || 'none';
+        
+        // 🔥 FIXED: Language detection for slash
+        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const usedCommand = lang === 'fr' ? 'concours' : 'giveaway';
+        
+        // Build args
         const args = [time, winners.toString(), prize];
         if (mention !== 'none') {
             args.push(`--${mention}`);
         }
         
-        // Simulate message object
         const fakeMessage = {
             author: interaction.user,
             guild: interaction.guild,
             channel: interaction.channel,
             member: interaction.member,
             reply: async (options) => {
-                if (interaction.deferred) return interaction.editReply(options);
-                return interaction.reply(options);
+                return interaction.editReply(options);
             },
             react: () => Promise.resolve()
         };
         
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
         
-        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'giveaway');
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, usedCommand);
     }
 };
