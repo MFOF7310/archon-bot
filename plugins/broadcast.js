@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType, ComponentType, StringSelectMenuBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType, ComponentType, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -280,7 +280,7 @@ function createChannelStrategyMenu(lang) {
 async function executeBroadcast(client, settings, lang, statusMsg) {
     const t = translations[lang];
     // ✅ DYNAMIC VERSION from client.version
-    const version = client.version || '1.5.0';
+    const version = client.version || '1.8.0';
     const startTime = Date.now();
     
     let success = 0;
@@ -357,31 +357,66 @@ module.exports = {
     usage: '.broadcast [message] [image URL]',
     examples: ['.broadcast Server update!', '.broadcast New features! https://imgur.com/example.png'],
 
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('broadcast')
+    .setDescription('📢 Send a global announcement to all servers (Architect only)')
+    .addStringOption(option =>
+        option.setName('message')
+            .setDescription('The announcement message to broadcast')
+            .setRequired(true)
+    )
+    .addStringOption(option =>
+        option.setName('image')
+            .setDescription('Image URL to attach (optional)')
+            .setRequired(false)
+    )
+    .addStringOption(option =>
+        option.setName('mention')
+            .setDescription('Mention type')
+            .setRequired(false)
+            .addChoices(
+                { name: '@everyone', value: 'everyone' },
+                { name: '@here', value: 'here' },
+                { name: 'None', value: 'none' }
+            )
+    )
+    .addStringOption(option =>
+        option.setName('channel')
+            .setDescription('Channel strategy')
+            .setRequired(false)
+            .addChoices(
+                { name: '💬 General Chat (Recommended)', value: 'general' },
+                { name: '⚙️ System Channel', value: 'system' },
+                { name: '📢 Announcements', value: 'announcements' },
+                { name: '📝 First Available', value: 'first' }
+            )
+    ),
+
     run: async (client, message, args, database, serverSettings, usedCommand) => {
-        
+
         // ================= PERMISSION CHECK =================
-        if (message.author.id !== process.env.OWNER_ID) {
-            const lang = serverSettings?.language || 'en';
-            const t = translations[lang];
-            return message.reply({ content: t.restricted, ephemeral: true });
-        }
-        
-        // ================= LANGUAGE SETUP =================
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
-            : (serverSettings?.language || 'en');
-        const t = translations[lang];
-        const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
+// ================= PERMISSION CHECK =================
+if (message.author.id !== process.env.OWNER_ID) {
+    const lang = client.detectLanguage 
+        ? client.detectLanguage(usedCommand, 'en')
+        : (usedCommand?.includes('diffusion') || usedCommand?.includes('annonce') ? 'fr' : 'en');
+    const t = translations[lang];
+    return message.reply({ content: t.restricted });
+}
+
+// ================= LANGUAGE SETUP =================
+const lang = client.detectLanguage 
+    ? client.detectLanguage(usedCommand, 'en')
+    : (usedCommand?.includes('diffusion') || usedCommand?.includes('annonce') ? 'fr' : 'en');
+const t = translations[lang];
+const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         
         const fullText = args.join(' ');
-        
-        if (!fullText) {
-            return message.reply({ content: t.usage(prefix), ephemeral: true });
-        }
-        
+
         // Check if any servers available
         if (client.guilds.cache.size === 0) {
-            return message.reply({ content: t.noServers, ephemeral: true });
+            return message.reply({ content: t.noServers });
         }
         
         // Extract URL and message
@@ -552,16 +587,64 @@ module.exports = {
             }
         });
         
-        collector.on('end', async (collected, reason) => {
+                collector.on('end', async (collected, reason) => {
             if (reason === 'timeout') {
                 const timeoutEmbed = new EmbedBuilder()
                     .setColor('#95a5a6')
                     .setAuthor({ name: t.cancelled, iconURL: client.user.displayAvatarURL() })
                     .setDescription('Broadcast session timed out.')
-                    .setFooter({ text: `${t.footer} • v${client.version || '1.5.0'}` })
+                    .setFooter({ text: `${t.footer} • v${client.version || '1.8.0'}` })
                     .setTimestamp();
                 await reply.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => {});
             }
         });
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        
+        // DM Fallback
+        if (!interaction.guild) {
+            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const t = translations[lang];
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setDescription('❌ Broadcast commands can only be used in a server channel.')
+                .setFooter({ text: `Neural Core • v${client.version || '1.8.0'}` });
+            return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        }
+        
+        // Permission check
+        if (interaction.user.id !== process.env.OWNER_ID) {
+            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const t = translations[lang];
+            return interaction.reply({ content: t.restricted, ephemeral: true });
+        }
+        
+        await interaction.deferReply();
+        
+        const messageText = interaction.options.getString('message');
+        const imageUrl = interaction.options.getString('image');
+        const mention = interaction.options.getString('mention') || 'none';
+        const channelStrategy = interaction.options.getString('channel') || 'general';
+        
+        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const usedCommand = lang === 'fr' ? 'diffusion' : 'broadcast';
+        
+        const fullArgs = imageUrl ? `${messageText} ${imageUrl}` : messageText;
+        const args = fullArgs.split(' ');
+        
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            member: interaction.member,
+            reply: async (options) => interaction.editReply(options),
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = { prefix: '.', language: lang };
+        
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, usedCommand);
     }
 };
