@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // ================= CONFIGURATION LEVELING =================
 const RANKS = [
@@ -173,8 +173,38 @@ module.exports = {
     aliases: ['play', 'minigame', 'arcade', 'jeu', 'jeux'],
     description: '🎮 Launch neural arcade games.',
     category: 'GAMING',
-    
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+
+data: new SlashCommandBuilder()
+    .setName('game')
+    .setDescription('🎮 Launch neural arcade games / Lancer les jeux d\'arcade neurale')
+    .addSubcommand(sub => sub.setName('menu').setDescription('Open game menu / Ouvrir le menu des jeux'))
+    .addSubcommand(sub => sub
+        .setName('dice')
+        .setDescription('Roll the dice / Lancer le dé')
+        .addIntegerOption(opt => opt.setName('guess').setDescription('Number 1-6 / Nombre 1-6').setRequired(true).setMinValue(1).setMaxValue(6)))
+    .addSubcommand(sub => sub
+        .setName('coinflip')
+        .setDescription('Heads or Tails / Pile ou Face')
+        .addStringOption(opt => opt.setName('choice').setDescription('heads/tails or pile/face').setRequired(true)
+            .addChoices({ name: 'Heads / Pile', value: 'heads' }, { name: 'Tails / Face', value: 'tails' })))
+    .addSubcommand(sub => sub.setName('slots').setDescription('Spin the slot machine / Machine à sous'))
+    .addSubcommand(sub => sub.setName('blackjack').setDescription('Play Blackjack / Jouer au Blackjack'))
+    .addSubcommand(sub => sub
+        .setName('rps')
+        .setDescription('Rock Paper Scissors / Pierre Feuille Ciseaux')
+        .addStringOption(opt => opt.setName('choice').setDescription('Your move').setRequired(true)
+            .addChoices({ name: 'Rock / Pierre', value: 'rock' }, { name: 'Paper / Feuille', value: 'paper' }, { name: 'Scissors / Ciseaux', value: 'scissors' })))
+    .addSubcommand(sub => sub.setName('guess').setDescription('Guess the number / Devine le nombre'))
+    .addSubcommand(sub => sub.setName('hangman').setDescription('Play Hangman / Jouer au Pendu'))
+    .addSubcommand(sub => sub.setName('stats').setDescription('View game statistics / Voir les statistiques'))
+    .addSubcommand(sub => sub.setName('rank').setDescription('View agent profile / Voir le profil d\'agent'))
+    .addSubcommand(sub => sub
+        .setName('leaderboard')
+        .setDescription('View leaderboard / Voir le classement')
+        .addStringOption(opt => opt.setName('type').setDescription('Leaderboard type').setRequired(false)
+            .addChoices({ name: 'Wins / Victoires', value: 'wins' }, { name: 'Winnings / Gains', value: 'winnings' }))),
+
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, 'en')
             : 'en';
@@ -1131,3 +1161,56 @@ function calculateHand(hand) {
     }
     return sum;
 }
+// ================= SLASH COMMAND EXECUTE =================
+module.exports.execute = async (interaction, client) => {
+    const db = client.db;
+    const subcommand = interaction.options.getSubcommand();
+    const lang = interaction.locale === 'fr' ? 'fr' : 'en';
+    
+    // Create a fake message object for compatibility
+    const fakeMessage = {
+        author: interaction.user,
+        guild: interaction.guild,
+        channel: interaction.channel,
+        reply: async (options) => {
+            if (interaction.replied || interaction.deferred) {
+                return interaction.followUp(options);
+            }
+            return interaction.reply(options);
+        },
+        member: interaction.member
+    };
+    
+    await interaction.deferReply().catch(() => {});
+    
+    switch(subcommand) {
+        case 'menu':
+            return showGameMenu(client, fakeMessage, lang, null, 'game', db);
+        case 'dice':
+            const diceGuess = interaction.options.getInteger('guess');
+            return playDiceGame(client, fakeMessage, diceGuess.toString(), lang, db);
+        case 'coinflip':
+            const cfChoice = interaction.options.getString('choice');
+            return playCoinFlip(client, fakeMessage, cfChoice, lang, db);
+        case 'slots':
+            return playSlots(client, fakeMessage, lang, db);
+        case 'blackjack':
+            return playBlackjack(client, fakeMessage, lang, db);
+        case 'rps':
+            const rpsChoice = interaction.options.getString('choice');
+            return playRPS(client, fakeMessage, rpsChoice, lang, db);
+        case 'guess':
+            return playNumberGuess(client, fakeMessage, lang, db);
+        case 'hangman':
+            return playHangman(client, fakeMessage, lang, db);
+        case 'stats':
+            return showGameStats(client, fakeMessage, lang, db);
+        case 'rank':
+            return showAgentProfile(client, fakeMessage, lang, db);
+        case 'leaderboard':
+            const lbType = interaction.options.getString('type') || 'wins';
+            return showGameLeaderboard(client, fakeMessage, lbType, lang, db);
+        default:
+            return showGameMenu(client, fakeMessage, lang, null, 'game', db);
+    }
+};
