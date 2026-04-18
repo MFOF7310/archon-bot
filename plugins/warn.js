@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionsBitField, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -189,7 +189,32 @@ module.exports = {
     userPermissions: ['ModerateMembers'],
     usage: '.warn [@user] [reason] | .warnings [@user] | .clearwarn [@user] | .modlogs [@user]',
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+data: new SlashCommandBuilder()
+    .setName('warn')
+    .setDescription('🛡️ Neural Moderation System / Système de Modération Neurale')
+    .addSubcommand(sub => sub
+        .setName('add')
+        .setDescription('Warn a user / Avertir un utilisateur')
+        .addUserOption(opt => opt.setName('target').setDescription('User to warn').setRequired(true))
+        .addStringOption(opt => opt.setName('reason').setDescription('Reason').setRequired(false)))
+    .addSubcommand(sub => sub
+        .setName('list')
+        .setDescription('View warnings / Voir les avertissements')
+        .addUserOption(opt => opt.setName('target').setDescription('User to check').setRequired(false)))
+    .addSubcommand(sub => sub
+        .setName('clear')
+        .setDescription('Clear all warnings / Effacer tous les avertissements')
+        .addUserOption(opt => opt.setName('target').setDescription('User to clear').setRequired(true)))
+    .addSubcommand(sub => sub
+        .setName('remove')
+        .setDescription('Remove a specific warning / Supprimer un avertissement')
+        .addStringOption(opt => opt.setName('id').setDescription('Warning ID').setRequired(true)))
+    .addSubcommand(sub => sub
+        .setName('modlogs')
+        .setDescription('View moderation history / Voir l\'historique')
+        .addUserOption(opt => opt.setName('target').setDescription('User to check').setRequired(false))),
+
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
         const t = translations[lang];
@@ -410,6 +435,119 @@ module.exports = {
         }
         
         const successEmbed = new EmbedBuilder().setColor('#FEE75C').setAuthor({ name: t.warnTitle, iconURL: target.displayAvatarURL() }).setDescription(t.warnSuccess(target.username, warningCount)).addFields({ name: t.warningId, value: `\`${warningId}\``, inline: true }, { name: t.reason, value: reason, inline: true }).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon }).setTimestamp();
-        return message.reply({ embeds: [successEmbed] }).catch(() => {});
+                return message.reply({ embeds: [successEmbed] }).catch(() => {});
+    },
+
+    execute: async (interaction, client) => {
+        const db = client.db;
+        const subcommand = interaction.options.getSubcommand();
+        const lang = interaction.locale === 'fr' ? 'fr' : 'en';
+        const t = translations[lang];
+        const version = client.version || '1.6.0';
+        const guildId = interaction.guild.id;
+        const guildName = interaction.guild.name;
+        const guildIcon = interaction.guild.iconURL() || client.user.displayAvatarURL();
+        
+        // Ensure tables
+        try {
+            db.prepare(`CREATE TABLE IF NOT EXISTS warnings (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER DEFAULT (strftime('%s', 'now')), expires_at INTEGER, active BOOLEAN DEFAULT 1)`).run();
+            db.prepare(`CREATE TABLE IF NOT EXISTS moderation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, warning_id TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`).run();
+        } catch (err) {
+            return interaction.reply({ content: '❌ Database error.', ephemeral: true });
+        }
+        
+        await interaction.deferReply().catch(() => {});
+        
+        // ================= ADD WARNING =================
+        if (subcommand === 'add') {
+            const target = interaction.options.getUser('target');
+            const reason = interaction.options.getString('reason') || t.noReason;
+            
+            if (target.id === interaction.user.id) return interaction.editReply({ content: t.cannotWarnSelf });
+            if (target.bot) return interaction.editReply({ content: t.cannotWarnBot });
+            
+            const targetMember = interaction.guild.members.cache.get(target.id);
+            if (targetMember && interaction.member.roles.highest.position <= targetMember.roles.highest.position) {
+                return interaction.editReply({ content: t.cannotWarnHigher });
+            }
+            
+            const warningId = generateWarningId();
+            const expiresAt = Math.floor(Date.now() / 1000) + (30 * 86400);
+            
+            db.prepare(`INSERT INTO warnings (id, guild_id, user_id, moderator_id, reason, expires_at, active) VALUES (?, ?, ?, ?, ?, ?, 1)`).run(warningId, guildId, target.id, interaction.user.id, reason, expiresAt);
+            logModAction(db, guildId, target.id, interaction.user.id, 'warn', reason, warningId);
+            
+            const warningCount = db.prepare(`SELECT COUNT(*) as count FROM warnings WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > strftime('%s', 'now'))`).get(guildId, target.id).count;
+            
+            // DM
+            try {
+                const dmEmbed = new EmbedBuilder().setColor('#e74c3c').setAuthor({ name: t.dmTitle, iconURL: interaction.guild.iconURL() }).setDescription(t.dmDescription(interaction.guild.name, reason)).addFields({ name: t.warningId, value: `\`${warningId}\``, inline: true }, { name: t.warningCount, value: `\`${warningCount}\``, inline: true }).setFooter({ text: t.footer }).setTimestamp();
+                await target.send({ embeds: [dmEmbed] }).catch(() => {});
+            } catch (err) {}
+            
+            const successEmbed = new EmbedBuilder().setColor('#FEE75C').setAuthor({ name: t.warnTitle, iconURL: target.displayAvatarURL() }).setDescription(t.warnSuccess(target.username, warningCount)).addFields({ name: t.warningId, value: `\`${warningId}\``, inline: true }, { name: t.reason, value: reason, inline: true }).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon }).setTimestamp();
+            return interaction.editReply({ embeds: [successEmbed] });
+        }
+        
+        // ================= LIST WARNINGS =================
+        if (subcommand === 'list') {
+            const target = interaction.options.getUser('target') || interaction.user;
+            const warnings = getUserWarnings(db, guildId, target.id);
+            
+            if (warnings.length === 0) {
+                const embed = new EmbedBuilder().setColor('#2ecc71').setAuthor({ name: t.warningsTitle(target.username), iconURL: target.displayAvatarURL() }).setDescription(t.noWarnings(target.username)).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
+                return interaction.editReply({ embeds: [embed] });
+            }
+            
+            const embed = createWarningsEmbed(target, warnings, 0, 1, lang, client, interaction.guild, version);
+            return interaction.editReply({ embeds: [embed] });
+        }
+        
+        // ================= CLEAR WARNINGS =================
+        if (subcommand === 'clear') {
+            const target = interaction.options.getUser('target');
+            const warnings = getUserWarnings(db, guildId, target.id);
+            const now = Math.floor(Date.now() / 1000);
+            const activeWarnings = warnings.filter(w => !w.expires_at || w.expires_at > now);
+            
+            if (activeWarnings.length === 0) {
+                return interaction.editReply({ content: t.noWarnings(target.username) });
+            }
+            
+            db.prepare(`UPDATE warnings SET active = 0 WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?)`).run(guildId, target.id, now);
+            logModAction(db, guildId, target.id, interaction.user.id, 'clear', `Cleared ${activeWarnings.length} warnings`);
+            
+            const embed = new EmbedBuilder().setColor('#2ecc71').setDescription(t.clearSuccess(target.username, activeWarnings.length)).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
+            return interaction.editReply({ embeds: [embed] });
+        }
+        
+        // ================= REMOVE WARNING =================
+        if (subcommand === 'remove') {
+            const warningId = interaction.options.getString('id');
+            
+            const warning = db.prepare(`SELECT * FROM warnings WHERE id = ? AND guild_id = ?`).get(warningId, guildId);
+            if (!warning) return interaction.editReply({ content: t.removeNotFound });
+            
+            db.prepare(`UPDATE warnings SET active = 0 WHERE id = ?`).run(warningId);
+            logModAction(db, guildId, warning.user_id, interaction.user.id, 'remove', `Removed ${warningId}`, warningId);
+            
+            const embed = new EmbedBuilder().setColor('#2ecc71').setDescription(t.removeSuccess(warningId)).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
+            return interaction.editReply({ embeds: [embed] });
+        }
+        
+        // ================= MODLOGS =================
+        if (subcommand === 'modlogs') {
+            const target = interaction.options.getUser('target') || interaction.user;
+            
+            const logs = db.prepare(`SELECT * FROM moderation_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT 50`).all(guildId, target.id);
+            
+            if (logs.length === 0) {
+                const embed = new EmbedBuilder().setColor('#95a5a6').setAuthor({ name: t.modlogsTitle(target.username), iconURL: target.displayAvatarURL() }).setDescription(t.noModlogs(target.username)).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
+                return interaction.editReply({ embeds: [embed] });
+            }
+            
+            const embed = createModlogsEmbed(target, logs, 0, 1, lang, client, interaction.guild, version);
+            return interaction.editReply({ embeds: [embed] });
+        }
     }
 };
