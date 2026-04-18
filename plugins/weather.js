@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -139,7 +139,40 @@ module.exports = {
     aliases: ['climate', 'forecast', 'temp', 'meteo', 'climat', 'temperature'],
     cooldown: 5000,
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+    // ================= SLASH COMMAND DATA =================
+    data: new SlashCommandBuilder()
+        .setName('weather')
+        .setDescription('🌤️ Get current weather for any city with detailed conditions')
+        .addStringOption(option =>
+            option.setName('city')
+                .setDescription('City name (e.g., Paris, Tokyo, Bamako)')
+                .setRequired(false)
+        ),
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+    const city = interaction.options.getString('city') || 'Bamako';
+    
+    // Auto-detect French from Discord locale
+    const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+    const usedCommand = lang === 'fr' ? 'meteo' : 'weather';
+    
+    await interaction.deferReply();
+    
+    const fakeMessage = {
+        author: interaction.user,
+        guild: interaction.guild,
+        channel: interaction.channel,
+        reply: async (options) => interaction.editReply(options),
+        react: () => Promise.resolve()
+    };
+    
+    const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+    
+    await module.exports.run(client, fakeMessage, [city], client.db, serverSettings, usedCommand);
+},
+
+    // 🔥 PREFIX COMMAND EXECUTION
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
@@ -191,54 +224,90 @@ module.exports = {
             const sunsetTimestamp = data.sys.sunset + timezoneOffset;
             
             // ================= SMART FALLBACK SYSTEM FOR IMAGES =================
-            let cityImage = null;
-            
-            // Try Unsplash
-            if (unsplashAccessKey && !cityImage) {
-                try {
-                    const searchQueries = [`${data.name} ${data.sys.country} city`, `${data.name} landmark`];
-                    for (const query of searchQueries) {
-                        const imageResponse = await axios.get(
-                            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
-                            { headers: { 'Authorization': `Client-ID ${unsplashAccessKey}` }, timeout: 3000 }
-                        );
-                        if (imageResponse.data.results?.length > 0) {
-                            cityImage = imageResponse.data.results[0].urls.regular;
-                            break;
-                        }
-                    }
-                } catch (e) {}
+let cityImage = null;
+
+// 🔥 FIX: Use exact coordinates + city name for precise results
+const exactLocation = `${data.name} ${data.sys.country}`;
+const lat = data.coord.lat;
+const lon = data.coord.lon;
+
+// Try Unsplash with EXACT location (if API key exists)
+if (unsplashAccessKey && !cityImage) {
+    try {
+        const searchQueries = [
+            exactLocation,  // "Bamako ML"
+            `${data.name} city skyline`,  // "Bamako city skyline"
+            `${data.name} downtown`  // "Bamako downtown"
+        ];
+        for (const query of searchQueries) {
+            const imageResponse = await axios.get(
+                `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`,
+                { headers: { 'Authorization': `Client-ID ${unsplashAccessKey}` }, timeout: 5000 }
+            );
+            if (imageResponse.data.results?.length > 0) {
+                cityImage = imageResponse.data.results[0].urls.regular;
+                break;
             }
-            
-            // Try Pexels
-            if (!cityImage && process.env.PEXELS_API_KEY) {
-                try {
-                    const imageResponse = await axios.get(
-                        `https://api.pexels.com/v1/search?query=${encodeURIComponent(data.name)}&per_page=1&orientation=landscape`,
-                        { headers: { 'Authorization': process.env.PEXELS_API_KEY }, timeout: 3000 }
-                    );
-                    if (imageResponse.data.photos?.length > 0) {
-                        cityImage = imageResponse.data.photos[0].src.large2x;
-                    }
-                } catch (e) {}
+        }
+    } catch (e) {
+        console.log('[WEATHER] Unsplash fallback failed:', e.message);
+    }
+}
+
+// Try Wikipedia with EXACT page match (FREE - no API key needed!)
+if (!cityImage) {
+    try {
+        // First try exact city page
+        const wikiResponse = await axios.get(
+            `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(data.name)}&pithumbsize=1024&origin=*`,
+            { timeout: 5000 }
+        );
+        const pages = wikiResponse.data.query.pages;
+        const pageId = Object.keys(pages)[0];
+        if (pageId !== '-1' && pages[pageId].thumbnail) {
+            cityImage = pages[pageId].thumbnail.source;
+        } else {
+            // Try with country suffix: "Bamako, Mali"
+            const wikiResponse2 = await axios.get(
+                `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(data.name + ',_' + data.sys.country)}&pithumbsize=1024&origin=*`,
+                { timeout: 5000 }
+            );
+            const pages2 = wikiResponse2.data.query.pages;
+            const pageId2 = Object.keys(pages2)[0];
+            if (pageId2 !== '-1' && pages2[pageId2].thumbnail) {
+                cityImage = pages2[pageId2].thumbnail.source;
             }
-            
-            // Try Wikipedia
-            if (!cityImage) {
-                try {
-                    const wikiResponse = await axios.get(
-                        `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(data.name)}&pithumbsize=1024&origin=*`
-                    );
-                    const pages = wikiResponse.data.query.pages;
-                    const pageId = Object.keys(pages)[0];
-                    if (pages[pageId].thumbnail) cityImage = pages[pageId].thumbnail.source;
-                } catch (e) {}
+        }
+    } catch (e) {
+        console.log('[WEATHER] Wikipedia fallback failed:', e.message);
+    }
+}
+
+// Try Wikimedia Commons for city images (FREE - no API key needed!)
+if (!cityImage) {
+    try {
+        const commonsResponse = await axios.get(
+            `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrsearch=${encodeURIComponent(data.name + ' ' + data.sys.country)}&gsrnamespace=6&prop=imageinfo&iiprop=url&iiurlwidth=1024&origin=*`,
+            { timeout: 5000 }
+        );
+        const pages = commonsResponse.data.query?.pages;
+        if (pages) {
+            for (const page of Object.values(pages)) {
+                if (page.imageinfo?.[0]?.thumburl) {
+                    cityImage = page.imageinfo[0].thumburl;
+                    break;
+                }
             }
-            
-            // Fallback: OpenStreetMap
-            if (!cityImage) {
-                cityImage = `https://staticmap.openstreetmap.de/staticmap.php?center=${data.coord.lat},${data.coord.lon}&zoom=12&size=1024x256&maptype=mapnik&markers=${data.coord.lat},${data.coord.lon},red-pushpin`;
-            }
+        }
+    } catch (e) {
+        console.log('[WEATHER] Wikimedia fallback failed:', e.message);
+    }
+}
+
+// FINAL FALLBACK: OpenStreetMap static map (FREE - always works!)
+if (!cityImage) {
+    cityImage = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lon}&zoom=12&size=1024x512&maptype=mapnik&markers=${lat},${lon},red-pushpin`;
+}
             
             // ================= BUILD EMBED =================
             const embed = new EmbedBuilder()
