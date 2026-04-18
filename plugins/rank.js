@@ -41,6 +41,7 @@ function createProgressBar(percent, length = 15) {
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     fr: {
+        dmError: "❌ **ERREUR:** Cette commande ne peut être utilisée qu'en serveur. Les dossiers d'agents sont classifiés.",
         title: (name) => `📜 DOSSIER AGENT: ${name.toUpperCase()}`,
         node: 'Nœud',
         status: 'Statut',
@@ -75,6 +76,7 @@ const translations = {
         winLoss: 'Victoires/Défaites'
     },
     en: {
+        dmError: "❌ **ERROR:** This command can only be used in a server. Agent dossiers are classified.",
         title: (name) => `📜 AGENT DOSSIER: ${name.toUpperCase()}`,
         node: 'Node',
         status: 'Status',
@@ -119,18 +121,35 @@ module.exports = {
     cooldown: 3000,
     examples: ['.rank', '.rank @user'],
 
-// ================= SLASH COMMAND DATA =================
-data: new SlashCommandBuilder()
-    .setName('rank')
-    .setDescription('📊 Display neural synchronization level and agent dossier')
-    .addUserOption(option =>
-        option.setName('agent')
-            .setDescription('Agent to inspect (leave empty for your own dossier)')
-            .setRequired(false)
-    ),
+    // ================= SLASH COMMAND DATA =================
+    data: new SlashCommandBuilder()
+        .setName('rank')
+        .setDescription('📊 Display neural synchronization level and agent dossier')
+        .addUserOption(option =>
+            option.setName('agent')
+                .setDescription('Agent to inspect (leave empty for your own dossier)')
+                .setRequired(false)
+        ),
 
-// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-run: async (client, message, args, db, serverSettings, usedCommand) => {
+    // 🔥 PREFIX COMMAND EXECUTION
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
+
+        // ===== DM FALLBACK PROTECTION =====
+        if (!message.guild) {
+            const lang = client.detectLanguage 
+                ? client.detectLanguage(usedCommand, 'en')
+                : 'en';
+            const t = translations[lang];
+            
+            const dmErrorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setTitle('🏰 SERVER ONLY')
+                .setDescription(t.dmError)
+                .setFooter({ text: `Neural Core • v${client.version || '1.6.0'}`, iconURL: client.user.displayAvatarURL() })
+                .setTimestamp();
+            
+            return message.reply({ embeds: [dmErrorEmbed] }).catch(() => {});
+        }
 
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
@@ -270,30 +289,55 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             });
         }
 
-                return message.reply({ embeds: [dossierEmbed] }).catch(() => {});
+        return message.reply({ embeds: [dossierEmbed] }).catch(() => {});
     },
 
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
-        const targetUser = interaction.options.getUser('agent') || interaction.user;
-        const args = targetUser.id !== interaction.user.id ? [targetUser.id] : [];
         
+        // ===== DM FALLBACK PROTECTION =====
+        if (!interaction.guild) {
+            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const t = translations[lang];
+            
+            const dmErrorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setTitle('🏰 SERVER ONLY')
+                .setDescription(t.dmError)
+                .setFooter({ text: `Neural Core • v${client.version || '1.6.0'}`, iconURL: client.user.displayAvatarURL() })
+                .setTimestamp();
+            
+            return interaction.reply({ embeds: [dmErrorEmbed], ephemeral: true });
+        }
+        
+        await interaction.deferReply();
+        
+        const targetUser = interaction.options.getUser('agent') || interaction.user;
+        
+        // Auto-detect French from Discord locale
+        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const usedCommand = lang === 'fr' ? 'rang' : 'rank';
+        
+        // Create fake message with proper mentions structure
         const fakeMessage = {
             author: interaction.user,
             guild: interaction.guild,
             channel: interaction.channel,
             mentions: {
-                users: targetUser.id !== interaction.user.id ? new Map([[targetUser.id, targetUser]]) : new Map()
+                users: {
+                    first: () => targetUser.id !== interaction.user.id ? targetUser : null,
+                    ...(targetUser.id !== interaction.user.id ? { get: (id) => id === targetUser.id ? targetUser : null } : {})
+                }
             },
             reply: async (options) => {
-                if (interaction.deferred) return interaction.editReply(options);
-                return interaction.reply(options);
+                return interaction.editReply(options);
             },
             react: () => Promise.resolve()
         };
         
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        const args = targetUser.id !== interaction.user.id ? [`<@${targetUser.id}>`] : [];
         
-        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'rank');
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, usedCommand);
     }
 };
