@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -104,8 +104,16 @@ module.exports = {
     usage: '.whois [@user]',
     examples: ['.whois', '.whois @user', '.scan', '.dossier'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+data: new SlashCommandBuilder()
+    .setName('whois')
+    .setDescription('🔍 Scan an agent and decrypt their metadata / Scanner un agent et décrypter ses métadonnées')
+    .addUserOption(opt => opt
+        .setName('target')
+        .setDescription('Agent to scan / Agent à scanner')
+        .setRequired(false)),
+
+// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
@@ -229,6 +237,132 @@ module.exports = {
             embeds: [whoisEmbed] 
         }).catch(() => {});
         
-        console.log(`[WHOIS] ${message.author.tag} scanned ${user.tag} | Lang: ${lang}`);
+                console.log(`[WHOIS] ${message.author.tag} scanned ${user.tag} | Lang: ${lang}`);
+    },
+
+    execute: async (interaction, client) => {
+        const db = client.db;
+        const lang = interaction.locale === 'fr' ? 'fr' : 'en';
+        const t = translations[lang];
+        const version = client.version || '1.6.0';
+        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
+        
+        const targetUser = interaction.options.getUser('target') || interaction.user;
+        const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+        
+        if (!member) {
+            return interaction.reply({ content: '❌ Agent not found in this node.', ephemeral: true });
+        }
+        
+        // Get user data
+        let userData = client.getUserData 
+            ? client.getUserData(targetUser.id) 
+            : db.prepare("SELECT * FROM users WHERE id = ?").get(targetUser.id);
+        
+        if (!userData) {
+            userData = { xp: 0, level: 1, credits: 0, total_messages: 0, streak_days: 0, games_played: 0, games_won: 0, total_winnings: 0, gaming: null };
+        }
+        
+        const level = userData.level || calculateLevel(userData.xp || 0);
+        const agentRank = getAgentRank(level);
+        const gameData = userData.gaming ? JSON.parse(userData.gaming) : null;
+        
+        // Clearance level
+        let clearance = t.clearanceLevels.agent;
+        if (targetUser.id === process.env.OWNER_ID) clearance = t.clearanceLevels.owner;
+        else if (member.permissions.has('Administrator')) clearance = t.clearanceLevels.admin;
+        else if (member.permissions.has('ManageMessages')) clearance = t.clearanceLevels.moderator;
+        
+        // Roles
+        const roles = member.roles.cache
+            .filter(r => r.id !== interaction.guild.id)
+            .sort((a, b) => b.position - a.position)
+            .map(r => r.name)
+            .join(', ') || t.noRoles;
+        
+        // Build embed
+        const whoisEmbed = new EmbedBuilder()
+            .setColor(member.displayHexColor || agentRank.color)
+            .setAuthor({ 
+                name: t.neuralScan(targetUser.username), 
+                iconURL: targetUser.displayAvatarURL({ dynamic: true }) 
+            })
+            .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 512 }))
+            .setDescription(
+                `\`\`\`yaml\n` +
+                `${t.nodeIdentification}: ${targetUser.id}\n` +
+                `${t.clearance}: ${clearance}\n` +
+                `${agentRank.emoji} ${agentRank.title[lang]}\`\`\``
+            )
+            .addFields(
+                { 
+                    name: t.syncTelemetry, 
+                    value: `\`\`\`yaml\n` +
+                           `${t.level}: ${level}\n` +
+                           `${t.xp}: ${(userData.xp || 0).toLocaleString()}\n` +
+                           `${t.messages}: ${(userData.total_messages || 0).toLocaleString()}\n` +
+                           `${t.credits}: ${(userData.credits || 0).toLocaleString()} 🪙\n` +
+                           `${t.streak}: ${userData.streak_days || 0} ${lang === 'fr' ? 'jours' : 'days'}\`\`\``, 
+                    inline: true 
+                },
+                { 
+                    name: t.temporalLogs, 
+                    value: `\`\`\`yaml\n` +
+                           `${t.arrival}: <t:${Math.floor(member.joinedTimestamp / 1000)}:R>\n` +
+                           `${t.account}: <t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>\`\`\``, 
+                    inline: true 
+                }
+            );
+        
+        // Combat Matrix
+        if (gameData && gameData.game) {
+            whoisEmbed.addFields({ 
+                name: t.combatMatrix, 
+                value: `\`\`\`yaml\n` +
+                       `${t.sector}: ${gameData.game}\n` +
+                       `${t.mode}: ${gameData.mode || 'N/A'}\n` +
+                       `${t.rank}: ${gameData.rank || 'UNRANKED'}\n` +
+                       `${t.gamesPlayed}: ${userData.games_played || 0}\n` +
+                       `${t.winRate}: ${userData.games_played > 0 ? Math.round((userData.games_won / userData.games_played) * 100) : 0}%\`\`\``, 
+                inline: false 
+            });
+        } else {
+            whoisEmbed.addFields({ 
+                name: t.combatMatrix, 
+                value: `\`\`\`yaml\n${t.noData}\n${t.setGameHint}\`\`\``, 
+                inline: false 
+            });
+        }
+        
+        whoisEmbed.addFields({ 
+            name: t.authorizations, 
+            value: `\`\`\`\n${roles.length > 100 ? roles.substring(0, 100) + '...' : roles}\`\`\``, 
+            inline: false 
+        });
+        
+        // Owner Telemetry
+        if (interaction.user.id === process.env.OWNER_ID) {
+            const flags = targetUser.flags?.toArray().join(', ') || t.none;
+            whoisEmbed.addFields({ 
+                name: t.ownerTelemetry, 
+                value: `\`\`\`yaml\n${t.flags}: ${flags}\n${t.bot}: ${targetUser.bot ? '✅' : '❌'}\`\`\``,
+                inline: false
+            });
+        }
+        
+        whoisEmbed
+            .setFooter({ 
+                text: `${guildName} • ${t.footer} • v${version}`, 
+                iconURL: guildIcon 
+            })
+            .setTimestamp();
+
+        await interaction.reply({ 
+            content: t.scanning(targetUser.username),
+            embeds: [whoisEmbed] 
+        });
+        
+        console.log(`[WHOIS] ${interaction.user.tag} scanned ${targetUser.tag} | Lang: ${lang}`);
     }
 };
