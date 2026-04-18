@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, SlashCommandBuilder } = require('discord.js');
 
 // ================= SYNCED HELPERS =================
 
@@ -19,13 +19,43 @@ function createProgressBar(percent, length = 12) {
     return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
-function getRankIcon(rank) {
-    if (rank === 1) return '🥇';
-    if (rank === 2) return '🥈';
-    if (rank === 3) return '🥉';
-    if (rank <= 10) return '🔹';
-    if (rank <= 50) return '▪️';
-    return '▫️';
+function getRankIcon(rank, useAnimated = true) {
+    // ===== CUSTOM ANIMATED EMOJIS (Replace with your IDs later) =====
+    const ANIMATED = {
+        1: '<a:gold1:000000000000000000>',      // Will fallback to 🥇
+        2: '<a:silver2:000000000000000000>',    // Will fallback to 🥈
+        3: '<a:bronze3:000000000000000000>',    // Will fallback to 🥉
+        top10: '<a:elite:000000000000000000>',  // Will fallback to 💠
+        top50: '<a:veteran:000000000000000000>', // Will fallback to 🔹
+        default: '<a:agent:000000000000000000>'  // Will fallback to ▪️
+    };
+    
+    // ===== UNICODE FALLBACKS (Always works) =====
+    const UNICODE = {
+        1: '🥇',
+        2: '🥈', 
+        3: '🥉',
+        top10: '💠',
+        top50: '🔹',
+        default: '▪️'
+    };
+    
+    // Smart selection with fallback detection
+    const getEmoji = (key) => {
+        const animated = ANIMATED[key];
+        // If emoji ID is all zeros (placeholder), use unicode
+        if (!useAnimated || animated.includes('000000000000000000')) {
+            return UNICODE[key];
+        }
+        return animated;
+    };
+    
+    if (rank === 1) return getEmoji(1);
+    if (rank === 2) return getEmoji(2);
+    if (rank === 3) return getEmoji(3);
+    if (rank <= 10) return getEmoji('top10');
+    if (rank <= 50) return getEmoji('top50');
+    return getEmoji('default');
 }
 
 // ================= AGENT RANKS (For display consistency) =================
@@ -45,6 +75,7 @@ function getAgentRank(level) {
 
 const LANG = {
     fr: {
+        dmError: "❌ **ERREUR:** Cette commande ne peut être utilisée qu'en serveur. Les classements sont liés à la synergie collective.",
         scanning: "🔍 Analyse des fréquences neurales... classement acquis.",
         totalAgents: "AGENTS TOTAUX",
         syncStatus: "STATUT SYNC",
@@ -68,6 +99,7 @@ const LANG = {
         progress: "Progression"
     },
     en: {
+        dmError: "❌ **ERROR:** This command can only be used in a server. Leaderboards are tied to collective synergy.",
         scanning: "🔍 Scanning neural frequencies... standings acquired.",
         totalAgents: "TOTAL AGENTS",
         syncStatus: "SYNC STATUS",
@@ -92,6 +124,117 @@ const LANG = {
     }
 };
 
+// ================= GAMING LEADERBOARD FUNCTION =================
+
+async function showGameLeaderboard(client, message, type, db, lang, t, guildName, guildIcon, version) {
+    
+    let orderBy = 'games_won DESC';
+    let title = lang === 'fr' ? '═ CLASSEMENT DES VICTOIRES ═' : '═ WINS LEADERBOARD ═';
+    let icon = '🏆';
+    
+    if (['winnings', 'gains', 'argent'].includes(type)) {
+        orderBy = 'total_winnings DESC';
+        title = lang === 'fr' ? '═ CLASSEMENT DES GAINS ═' : '═ WINNINGS LEADERBOARD ═';
+        icon = '💰';
+    } else if (['wr', 'taux', 'winrate'].includes(type)) {
+        title = lang === 'fr' ? '═ CLASSEMENT DU TAUX DE VICTOIRE ═' : '═ WIN RATE LEADERBOARD ═';
+        icon = '📈';
+    }
+
+    let players;
+    
+    // ===== WIN RATE LEADERBOARD =====
+    if (type === 'wr' || type === 'taux' || type === 'winrate') {
+        players = db.prepare(`
+            SELECT username, games_played, games_won, total_winnings, xp
+            FROM users
+            WHERE games_played > 0
+        `).all();
+        
+        if (players.length === 0) {
+            const emptyEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setDescription(t.noData)
+                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
+                .setTimestamp();
+            return message.reply({ embeds: [emptyEmbed] }).catch(() => {});
+        }
+        
+        players = players.map(p => ({
+            ...p,
+            winRate: Math.round((p.games_won / p.games_played) * 100)
+        })).sort((a, b) => b.winRate - a.winRate).slice(0, 10);
+        
+        const list = players.map((p, i) => {
+            const rank = i + 1;
+            const medal = getRankIcon(rank);
+            const spacing = rank === 1 ? '  ' : rank <= 3 ? ' ' : '';
+            const usernameDisplay = rank === 1 ? `**${p.username || 'Unknown'}**` : p.username || 'Unknown';
+            const level = calculateLevel(p.xp || 0);
+            const rankObj = getAgentRank(level);
+            
+            return `${medal}${spacing}${usernameDisplay} ${rankObj.emoji} • 📊 ${p.winRate}% WR (${p.games_won}/${p.games_played})`;
+        }).join('\n');
+        
+        const embed = new EmbedBuilder()
+            .setColor('#9b59b6')
+            .setTitle(title)
+            .setDescription(`\`\`\`yaml\n${list || 'No data available'}\`\`\``)
+            .setFooter({ 
+                text: `${guildName} • ${icon} ${t.bestWinRates} • v${version}`,
+                iconURL: guildIcon
+            })
+            .setTimestamp();
+        
+        return message.reply({ embeds: [embed] }).catch(() => {});
+    }
+    
+    // ===== WINS & WINNINGS LEADERBOARD =====
+    players = db.prepare(`
+        SELECT username, games_played, games_won, total_winnings, xp
+        FROM users
+        WHERE games_played > 0
+        ORDER BY ${orderBy}
+        LIMIT 10
+    `).all();
+
+    if (players.length === 0) {
+        const emptyEmbed = new EmbedBuilder()
+            .setColor('#ED4245')
+            .setDescription(t.noData)
+            .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
+            .setTimestamp();
+        return message.reply({ embeds: [emptyEmbed] }).catch(() => {});
+    }
+
+    const list = players.map((p, i) => {
+        const rank = i + 1;
+        const medal = getRankIcon(rank);
+        const spacing = rank === 1 ? '  ' : rank <= 3 ? ' ' : '';
+        const usernameDisplay = rank === 1 ? `**${p.username || 'Unknown'}**` : p.username || 'Unknown';
+        const level = calculateLevel(p.xp || 0);
+        const rankObj = getAgentRank(level);
+        const winRate = p.games_played > 0 ? Math.round((p.games_won / p.games_played) * 100) : 0;
+        
+        if (type === 'winnings' || type === 'gains' || type === 'argent') {
+            return `${medal}${spacing}${usernameDisplay} ${rankObj.emoji} • 💰 ${(p.total_winnings || 0).toLocaleString()} 🪙`;
+        }
+        return `${medal}${spacing}${usernameDisplay} ${rankObj.emoji} • 🏆 ${p.games_won} ${t.wins} • 📊 ${winRate}% WR`;
+    }).join('\n');
+
+    const embed = new EmbedBuilder()
+        .setColor('#FEE75C')
+        .setTitle(title)
+        .setDescription(`\`\`\`yaml\n${list}\`\`\``)
+        .setFooter({ 
+            text: `${guildName} • ${icon} ${t.top10Agents} • v${version}`,
+            iconURL: guildIcon
+        })
+        .setTimestamp();
+
+    return message.reply({ embeds: [embed] }).catch(() => {});
+}
+
 // ================= MAIN COMMAND =================
 
 module.exports = {
@@ -103,7 +246,40 @@ module.exports = {
     cooldown: 5000,
     examples: ['.leaderboard', '.leaderboard games', '.leaderboard winnings'],
 
+    // ================= SLASH COMMAND DATA =================
+    data: new SlashCommandBuilder()
+        .setName('leaderboard')
+        .setDescription('📊 Display neural synchronization leaderboard with gaming stats')
+        .addStringOption(option =>
+            option.setName('type')
+                .setDescription('Type of leaderboard')
+                .setRequired(false)
+                .addChoices(
+                    { name: '🏆 XP (Default)', value: 'xp' },
+                    { name: '🎮 Games Won', value: 'wins' },
+                    { name: '💰 Winnings', value: 'winnings' },
+                    { name: '📈 Win Rate', value: 'wr' }
+                )
+        ),
+
     run: async (client, message, args, db, serverSettings, usedCommand) => {
+        
+        // ===== DM FALLBACK PROTECTION =====
+        if (!message.guild) {
+            const lang = client.detectLanguage 
+                ? client.detectLanguage(usedCommand, 'en')
+                : 'en';
+            const t = LANG[lang];
+            
+            const dmErrorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setTitle('🏰 SERVER ONLY')
+                .setDescription(t.dmError)
+                .setFooter({ text: `Neural Core • v${client.version || '1.6.0'}`, iconURL: client.user.displayAvatarURL() })
+                .setTimestamp();
+            
+            return message.reply({ embeds: [dmErrorEmbed] }).catch(() => {});
+        }
         
         const lang = client.detectLanguage 
             ? client.detectLanguage(usedCommand, 'en')
@@ -198,7 +374,22 @@ module.exports = {
                 const bar = createProgressBar(percent, 10);
                 const rankObj = getAgentRank(level);
 
-                desc += `${icon} **${user.username || 'Unknown'}** ${rankObj.emoji}\n`;
+                // Enhanced rank display with proper spacing
+                let rankDisplay;
+                if (globalRank === 1) {
+                    rankDisplay = `${icon}  `;  // Double space for gold
+                } else if (globalRank <= 3) {
+                    rankDisplay = `${icon} `;    // Single space for silver/bronze
+                } else {
+                    rankDisplay = `\`#${globalRank.toString().padStart(2, '0')}\` ${icon}`;
+                }
+                
+                // Bold only the #1 spot for extra emphasis
+                const usernameDisplay = globalRank === 1 
+                    ? `**${user.username || 'Unknown'}**` 
+                    : user.username || 'Unknown';
+
+                desc += `${rankDisplay}${usernameDisplay} ${rankObj.emoji}\n`;
                 desc += `╰ \`${t.level} ${level}\` • \`${user.xp.toLocaleString()} ${t.xp}\`\n`;
                 desc += `╰ \`[${bar}]\` **${percent}%**\n\n`;
             });
@@ -255,7 +446,7 @@ module.exports = {
 
         if (!lbMsg) return;
 
-        // ================= 🔥 COLLECTOR CORRIGÉ =================
+        // ================= COLLECTOR =================
         const collector = lbMsg.createMessageComponentCollector({
             componentType: ComponentType.Button,
             filter: i => i.user.id === message.author.id,
@@ -263,7 +454,6 @@ module.exports = {
         });
 
         collector.on('collect', async (i) => {
-            // 🛡️ LA LIGNE CRITIQUE
             await i.deferUpdate().catch(() => {});
             
             if (i.customId === 'lb_prev') currentPage--;
@@ -283,96 +473,53 @@ module.exports = {
             );
             lbMsg.edit({ components: [disabledRow] }).catch(() => {});
         });
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        
+        // ===== DM FALLBACK PROTECTION FOR SLASH =====
+        if (!interaction.guild) {
+            const lang = client.detectLanguage 
+                ? client.detectLanguage('leaderboard', 'en')
+                : 'en';
+            const t = LANG[lang];
+            
+            const dmErrorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setTitle('🏰 SERVER ONLY')
+                .setDescription(t.dmError)
+                .setFooter({ text: `Neural Core • v${client.version || '1.6.0'}`, iconURL: client.user.displayAvatarURL() })
+                .setTimestamp();
+            
+            return interaction.reply({ embeds: [dmErrorEmbed], ephemeral: true }).catch(() => {});
+        }
+        
+        await interaction.deferReply().catch(() => {});
+        
+        const type = interaction.options.getString('type') || 'xp';
+        
+        // Map type to args
+        let args = [];
+        if (type === 'wins') args = ['wins'];
+        else if (type === 'winnings') args = ['winnings'];
+        else if (type === 'wr') args = ['wr'];
+        else args = [];
+        
+        // Simulate message object for run function
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            reply: async (options) => {
+                if (interaction.deferred) return interaction.editReply(options);
+                return interaction.reply(options);
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'leaderboard');
     }
 };
-
-// ================= GAMING LEADERBOARD =================
-
-async function showGameLeaderboard(client, message, type, db, lang, t, guildName, guildIcon, version) {
-    
-    let orderBy = 'games_won DESC';
-    let title = lang === 'fr' ? '═ CLASSEMENT DES VICTOIRES ═' : '═ WINS LEADERBOARD ═';
-    let icon = '🏆';
-    
-    if (['winnings', 'gains', 'argent'].includes(type)) {
-        orderBy = 'total_winnings DESC';
-        title = lang === 'fr' ? '═ CLASSEMENT DES GAINS ═' : '═ WINNINGS LEADERBOARD ═';
-        icon = '💰';
-    } else if (['wr', 'taux', 'winrate'].includes(type)) {
-        title = lang === 'fr' ? '═ CLASSEMENT DU TAUX DE VICTOIRE ═' : '═ WIN RATE LEADERBOARD ═';
-        icon = '📈';
-    }
-
-    let players;
-    
-    if (type === 'wr' || type === 'taux' || type === 'winrate') {
-        players = db.prepare(`
-            SELECT username, games_played, games_won, total_winnings
-            FROM users
-            WHERE games_played > 0
-        `).all();
-        
-        players = players.map(p => ({
-            ...p,
-            winRate: Math.round((p.games_won / p.games_played) * 100)
-        })).sort((a, b) => b.winRate - a.winRate).slice(0, 10);
-        
-        const list = players.map((p, i) => {
-            const medal = getRankIcon(i + 1);
-            return `${medal} **${p.username || 'Unknown'}** • 📊 ${p.winRate}% WR (${p.games_won}/${p.games_played})`;
-        }).join('\n');
-        
-        const embed = new EmbedBuilder()
-            .setColor('#9b59b6')
-            .setTitle(title)
-            .setDescription(`\`\`\`yaml\n${list || 'No data available'}\`\`\``)
-            .setFooter({ 
-                text: `${guildName} • ${icon} ${t.bestWinRates} • v${version}`,
-                iconURL: guildIcon
-            })
-            .setTimestamp();
-        
-        return message.reply({ embeds: [embed] }).catch(() => {});
-    }
-    
-    players = db.prepare(`
-        SELECT username, games_played, games_won, total_winnings, xp
-        FROM users
-        WHERE games_played > 0
-        ORDER BY ${orderBy}
-        LIMIT 10
-    `).all();
-
-    if (players.length === 0) {
-        const emptyEmbed = new EmbedBuilder()
-            .setColor('#ED4245')
-            .setDescription(t.noData)
-            .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
-        return message.reply({ embeds: [emptyEmbed] }).catch(() => {});
-    }
-
-    const list = players.map((p, i) => {
-        const medal = getRankIcon(i + 1);
-        const level = calculateLevel(p.xp || 0);
-        const rankObj = getAgentRank(level);
-        const winRate = p.games_played > 0 ? Math.round((p.games_won / p.games_played) * 100) : 0;
-        
-        if (type === 'winnings' || type === 'gains' || type === 'argent') {
-            return `${medal} **${p.username || 'Unknown'}** ${rankObj.emoji} • 💰 ${(p.total_winnings || 0).toLocaleString()} 🪙`;
-        }
-        return `${medal} **${p.username || 'Unknown'}** ${rankObj.emoji} • 🏆 ${p.games_won} ${t.wins} • 📊 ${winRate}% WR`;
-    }).join('\n');
-
-    const embed = new EmbedBuilder()
-        .setColor('#FEE75C')
-        .setTitle(title)
-        .setDescription(`\`\`\`yaml\n${list}\`\`\``)
-        .setFooter({ 
-            text: `${guildName} • ${icon} ${t.top10Agents} • v${version}`,
-            iconURL: guildIcon
-        })
-        .setTimestamp();
-
-    return message.reply({ embeds: [embed] }).catch(() => {});
-}
