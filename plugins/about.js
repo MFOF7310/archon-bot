@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const aboutTranslations = {
@@ -95,8 +95,13 @@ module.exports = {
     usage: '.about',
     examples: ['.about', '.info', '.apropos'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('about')
+    .setDescription('📖 Display system authorization and architect information / Afficher les informations système'),
+
+// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
@@ -274,8 +279,7 @@ module.exports = {
         
         // ================= BUTTON COLLECTOR =================
         const collector = reply.createMessageComponentCollector({ time: 60000 });
-        
-        collector.on('collect', async (interaction) => {
+                collector.on('collect', async (interaction) => {
             if (interaction.user.id !== message.author.id) {
                 return interaction.reply({ 
                     content: t.accessLocked, 
@@ -317,5 +321,230 @@ module.exports = {
         });
         
         console.log(`[ABOUT] ${message.author.tag} | v${version} | Groq: ${groqStatus} | Brave: ${braveStatus} | Lang: ${lang}`);
+    },  // ← THIS COMMA IS CRITICAL - IT CLOSES run() AND ALLOWS execute TO BE ADDED
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        
+        // DM Fallback (optional - about can work in DMs!)
+        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const t = aboutTranslations[lang];
+        
+        await interaction.deferReply();
+        
+        const ARCHITECT_ID = process.env.OWNER_ID;
+        const version = client.version || '1.8.0';
+        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
+        
+        // ================= API STATUS =================
+        const groqStatus = (process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY) ? '✅' : '❌';
+        const braveStatus = process.env.BRAVE_API_KEY ? '✅' : '❌';
+        
+        // ================= SYSTEM STATISTICS =================
+        const uptimeSec = process.uptime();
+        const days = Math.floor(uptimeSec / 86400);
+        const hours = Math.floor((uptimeSec % 86400) / 3600);
+        const minutes = Math.floor((uptimeSec % 3600) / 60);
+        const seconds = Math.floor(uptimeSec % 60);
+        
+        let uptimeString = '';
+        if (days > 0) uptimeString += `${days}j `;
+        if (hours > 0) uptimeString += `${hours}h `;
+        if (minutes > 0) uptimeString += `${minutes}m `;
+        if (days === 0 && hours === 0 && minutes === 0) uptimeString += `${seconds}s`;
+        uptimeString = uptimeString.trim() || '0s';
+        
+        const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+        const totalGuilds = client.guilds.cache.size;
+        const totalCommands = client.commands?.size || 0;
+        const memoryUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
+        const ping = Math.round(client.ws.ping);
+        const cacheSize = client.userDataCache?.size || 0;
+        
+        // ================= CHECK ARCHITECT =================
+        const isArchitect = interaction.user.id === ARCHITECT_ID;
+        
+        // ================= BUILD EMBED =================
+        const aboutEmbed = new EmbedBuilder()
+            .setColor('#2ecc71')
+            .setAuthor({ 
+                name: `⚙️ ${t.systemStatus}`, 
+                iconURL: client.user.displayAvatarURL({ dynamic: true }) 
+            })
+            .setTitle(t.title)
+            .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
+            .setDescription(t.desc(ARCHITECT_ID))
+            .addFields(
+                { 
+                    name: `${t.inference} ${groqStatus}`,
+                    value: `\`\`\`yaml\n${t.inferenceModel}\n${t.inferenceDesc}\`\`\``,
+                    inline: true 
+                },
+                { 
+                    name: `${t.search} ${braveStatus}`,
+                    value: `\`\`\`yaml\n${t.searchModel}\n${t.searchDesc}\`\`\``,
+                    inline: true 
+                },
+                { 
+                    name: t.region,
+                    value: `\`\`\`yaml\n${t.nodeLocation}\n${t.nodeDesc}\`\`\``,
+                    inline: true 
+                },
+                { 
+                    name: t.neuralCore,
+                    value: `\`\`\`yaml\nLYDIA_70B\n${t.online} | Cache: ${cacheSize}\`\`\``,
+                    inline: false 
+                },
+                { 
+                    name: t.version,
+                    value: `\`v${version}\``,
+                    inline: true 
+                },
+                { 
+                    name: t.uptime,
+                    value: `\`${uptimeString}\``,
+                    inline: true 
+                },
+                { 
+                    name: t.commands,
+                    value: `\`${totalCommands}\` ${t.activeModules}`,
+                    inline: true 
+                },
+                { 
+                    name: t.servers,
+                    value: `\`${totalGuilds}\` ${lang === 'fr' ? 'serveurs' : 'servers'}`,
+                    inline: true 
+                },
+                { 
+                    name: t.users,
+                    value: `\`${totalMembers.toLocaleString()}\` ${t.agents}`,
+                    inline: true 
+                },
+                { 
+                    name: t.memory,
+                    value: `\`${memoryUsage} MB\``,
+                    inline: true 
+                },
+                { 
+                    name: t.latency,
+                    value: `\`${ping}ms\``,
+                    inline: true 
+                },
+                { 
+                    name: t.apiStatus,
+                    value: `\`\`\`yaml\nGroq LPU™: ${groqStatus}\nBrave Search: ${braveStatus}\nDiscord: ${ping}ms\`\`\``,
+                    inline: false 
+                }
+            );
+        
+        // ================= ARCHITECT MESSAGE =================
+        if (isArchitect) {
+            aboutEmbed.addFields({
+                name: t.architectAccess,
+                value: t.architectWelcome,
+                inline: false
+            });
+        }
+        
+        aboutEmbed
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+            .setTimestamp();
+        
+        // ================= BUTTON ROWS =================
+        const row1 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setLabel(t.buttonFacebook)
+                .setURL('https://www.facebook.com/share/17KysmJrtm/')
+                .setStyle(ButtonStyle.Link)
+                .setEmoji('📘'),
+            new ButtonBuilder()
+                .setLabel(t.buttonTikTok)
+                .setURL('https://www.tiktok.com/@cloudgaming223')
+                .setStyle(ButtonStyle.Link)
+                .setEmoji('🎵'),
+            new ButtonBuilder()
+                .setLabel(t.buttonGitHub)
+                .setURL('https://github.com/MFOF7310')
+                .setStyle(ButtonStyle.Link)
+                .setEmoji('💻')
+        );
+        
+        const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('about_invite_slash')
+                .setLabel(t.buttonInvite)
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('🔗'),
+            new ButtonBuilder()
+                .setCustomId('about_support_slash')
+                .setLabel(t.buttonSupport)
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('🆘'),
+            new ButtonBuilder()
+                .setCustomId('about_vote_slash')
+                .setLabel(t.buttonVote)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('⭐'),
+            new ButtonBuilder()
+                .setCustomId('about_status_slash')
+                .setLabel(t.buttonStatus)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('📊')
+        );
+        
+        const reply = await interaction.editReply({ 
+            embeds: [aboutEmbed], 
+            components: [row1, row2] 
+        }).catch(() => {});
+        
+        if (!reply) return;
+        
+        // ================= BUTTON COLLECTOR =================
+        const collector = reply.createMessageComponentCollector({ time: 60000 });
+        
+        collector.on('collect', async (btnInteraction) => {
+            if (btnInteraction.user.id !== interaction.user.id) {
+                return btnInteraction.reply({ 
+                    content: t.accessLocked, 
+                    ephemeral: true 
+                }).catch(() => {});
+            }
+            
+            switch (btnInteraction.customId) {
+                case 'about_invite_slash':
+                    await btnInteraction.reply({ 
+                        content: t.inviteUrl(client.user.id),
+                        ephemeral: true 
+                    }).catch(() => {});
+                    break;
+                    
+                case 'about_support_slash':
+                    await btnInteraction.reply({ 
+                        content: t.supportComing,
+                        ephemeral: true 
+                    }).catch(() => {});
+                    break;
+                    
+                case 'about_vote_slash':
+                    await btnInteraction.reply({ 
+                        content: t.voteComing,
+                        ephemeral: true 
+                    }).catch(() => {});
+                    break;
+                    
+                case 'about_status_slash':
+                    const freshPing = Math.round(client.ws.ping);
+                    const freshMemory = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
+                    await btnInteraction.reply({ 
+                        content: t.liveStatus(freshPing, freshMemory, groqStatus, braveStatus),
+                        ephemeral: true 
+                    }).catch(() => {});
+                    break;
+            }
+        });
+        
+        console.log(`[ABOUT] ${interaction.user.tag} | v${version} | Groq: ${groqStatus} | Brave: ${braveStatus} | Lang: ${lang}`);
     }
+
 };
