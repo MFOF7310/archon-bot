@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -218,8 +218,18 @@ module.exports = {
     category: 'SYSTEM',
     cooldown: 3000,
 
+    // ================= SLASH COMMAND DATA =================
+    data: new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('Access the ARCHITECT Neural Directory and command database')
+        .addStringOption(option =>
+            option.setName('query')
+                .setDescription('Command or category to view')
+                .setRequired(false)
+        ),
+
     run: async (client, message, args, database, serverSettings, usedCommand) => {
-        
+       
         // ================= LANGUAGE DETECTION =================
         let lang = 'en';
         if (client.detectLanguage && usedCommand) {
@@ -232,7 +242,7 @@ module.exports = {
         
         const t = translations[lang];
         const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
-        const version = client.version || '1.7.0';
+        const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
@@ -367,7 +377,6 @@ module.exports = {
             new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
         );
 
-        // 🔥 ZERO LATENCY - No loading text!
         const response = await message.reply({
             embeds: [mainEmbed],
             components: [row1, row2]
@@ -378,22 +387,19 @@ module.exports = {
         const collector = response.createMessageComponentCollector({ time: 300000 });
         
         collector.on('collect', async (i) => {
-    // 1. Répondre IMMÉDIATEMENT (priorité absolue)
-    try {
-        if (!i.deferred && !i.replied) {
-            await i.deferUpdate().catch(() => {}); 
-        }
-    } catch (e) {
-        return; // Si l'interaction est déjà morte, on arrête tout de suite
-    }
+            try {
+                if (!i.deferred && !i.replied) {
+                    await i.deferUpdate().catch(() => {}); 
+                }
+            } catch (e) {
+                return;
+            }
 
-    // 2. Vérification de l'utilisateur
-    if (i.user.id !== message.author.id) {
-        return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
-    }
+            if (i.user.id !== message.author.id) {
+                return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+            }
 
             try {
-                // Handle Back to Main Button
                 if (i.customId === 'help_back') {
                     const freshUptimeSec = process.uptime();
                     const freshDays = Math.floor(freshUptimeSec / 86400);
@@ -440,7 +446,6 @@ module.exports = {
                     return;
                 }
                 
-                // Handle Category Selection
                 if (i.isStringSelectMenu() && i.customId === 'help_select') {
                     const category = i.values[0];
                     const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version);
@@ -462,9 +467,7 @@ module.exports = {
                         embeds: [], 
                         components: [] 
                     }).catch(() => {});
-                } catch (e) {
-                    // Silent fail
-                }
+                } catch (e) {}
             }
         });
 
@@ -476,9 +479,33 @@ module.exports = {
                     new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
                 );
                 await response.edit({ components: [disabledRow, disabledButton] }).catch(() => {});
-            } catch (err) {
-                // Message may have been deleted
-            }
+            } catch (err) {}
         });
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+    const query = interaction.options.getString('query');
+    const args = query ? [query] : [];
+    
+    await interaction.deferReply({ ephemeral: true });
+    
+    const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            reply: async (options) => {
+                if (interaction.deferred) {
+                    return interaction.editReply(options);
+                } else {
+                    return interaction.reply(options);
+                }
+            },
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, args, null, serverSettings, 'help');
     }
 };
