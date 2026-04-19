@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -97,8 +97,13 @@ module.exports = {
     usage: '.server',
     examples: ['.server', '.serveur', '.sector'],
 
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+// ================= SLASH COMMAND DATA =================
+data: new SlashCommandBuilder()
+    .setName('server')
+    .setDescription('📊 Execute a deep-scan of the current Sector intelligence / Analyser le secteur actuel'),
+
+// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
@@ -214,14 +219,52 @@ module.exports = {
             })
             .setTimestamp();
 
-        // ================= SEND RESPONSE =================
-        const content = isAnniversary 
-            ? t.anniversaryAlert(sectorAge)
-            : t.scanning;
+    // ================= SEND RESPONSE =================
+    const content = isAnniversary 
+        ? t.anniversaryAlert(sectorAge)
+        : t.scanning;
 
-        await message.reply({ 
-            content: content,
-            embeds: [serverEmbed] 
-        }).catch(() => {});
+    await message.reply({ 
+        content: content,
+        embeds: [serverEmbed] 
+    }).catch(() => {});
+    
+    console.log(`[SERVER] ${message.author.tag} scanned ${guild.name} | Lang: ${lang}`);
+},  // ← THIS COMMA IS CRITICAL!
+
+// ================= SLASH COMMAND EXECUTION =================
+execute: async (interaction, client) => {
+        
+        // DM Fallback
+        if (!interaction.guild) {
+            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const t = translations[lang];
+            return interaction.reply({ 
+                content: lang === 'fr' 
+                    ? '❌ Cette commande ne peut être utilisée que dans un serveur.' 
+                    : '❌ This command can only be used in a server.', 
+                ephemeral: true 
+            });
+        }
+        
+        await interaction.deferReply();
+        
+        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const usedCommand = lang === 'fr' ? 'serveur' : 'server';
+        
+        const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            reply: async (options) => interaction.editReply(options),
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+                await module.exports.run(client, fakeMessage, [], null, serverSettings, usedCommand);
+        
+        console.log(`[SERVER] ${interaction.user.tag} scanned ${interaction.guild.name} | Lang: ${lang}`);
     }
+
 };
