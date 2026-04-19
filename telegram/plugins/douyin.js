@@ -1,6 +1,8 @@
-// ================= DOUYIN / TIKTOK UNIFIED DOWNLOADER v1.7.0 =================
-// ELITE NEURAL GRID EDITION - Clean URLs, POST support, proxy masking!
+// ================= DOUYIN / TIKTOK UNIFIED DOWNLOADER v1.8.0 =================
+// ELITE NEURAL GRID EDITION - HD Video Support, Clean URLs, POST support, proxy masking!
 const https = require('https');
+// 🔥 NEUTRALISE LA DÉFENSE SSL DE BYTEDANCE
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 module.exports = {
     name: 'douyin',
@@ -13,7 +15,7 @@ module.exports = {
         // 🔥 NEW: Clean URL (remove tracking parameters)
         const rawUrl = args[0];
         const url = cleanUrl(rawUrl);
-        const version = ctx.client?.version || '1.7.0';
+        const version = ctx.client?.version || '1.8.0';
         const botName = ctx.client?.user?.username || 'Architect CG-223';
         const token = ctx.token;
         const chatId = ctx.chatId;
@@ -42,10 +44,25 @@ module.exports = {
         
         await sendTypingIndicator(token, chatId);
         const processingMsg = await ctx.replyWithHTML(`🎬 <i>Downloading ${platform} video...</i>`);
-        
+
+        // 🔥 NEW CRITICAL FIX: Expand Douyin URLs BEFORE hitting any API
+        let targetUrl = url;
+        if (platform === 'Douyin' && url.includes('v.douyin.com')) {
+            targetUrl = await expandUrl(url);
+            console.log(`[Douyin] URL Expanded to: ${targetUrl.substring(0, 50)}...`);
+            
+            // Vérification de sécurité : si l'expansion a échoué à trouver l'ID,
+            // on utilise quand même le lien court en espérant que le Neural Grid gère la redirection en interne.
+            const testId = extractDouyinId(targetUrl);
+            if (!testId) {
+                console.log(`[Douyin Warning] Expansion didn't yield a numeric ID. Reverting to original URL for API attempts.`);
+                targetUrl = url; 
+            }
+        }
+
         try {
-            // 🔥 PRIMARY: TikWM API (Fast, reliable)
-            const videoInfo = await getVideoWithTikWM(url);
+            // 🔥 PRIMARY: TikWM API (Fast, reliable) - NOW USING targetUrl
+            const videoInfo = await getVideoWithTikWM(targetUrl);
             
             if (videoInfo && videoInfo.url) {
                 await deleteMessage(token, chatId, processingMsg.result.message_id);
@@ -53,38 +70,66 @@ module.exports = {
                 const fileSize = videoInfo.filesize || 0;
                 const sizeMB = (fileSize / 1024 / 1024).toFixed(1);
                 
-                let message = `✅ <b>${platform} Video Ready!</b>\n\n`;
-                if (videoInfo.title) message += `🎬 <b>Title:</b> ${escapeHTML(videoInfo.title.substring(0, 100))}\n`;
-                if (videoInfo.uploader) message += `👤 <b>Author:</b> @${escapeHTML(videoInfo.uploader)}\n`;
-                if (videoInfo.duration) message += `⏱️ <b>Duration:</b> ${videoInfo.duration}s\n`;
-                if (fileSize > 0) message += `📦 <b>Size:</b> ${sizeMB} MB\n`;
+                let caption = `✅ <b>${platform} Video Ready!</b>\n\n`;
+                if (videoInfo.title) caption += `🎬 <b>Title:</b> ${escapeHTML(videoInfo.title.substring(0, 100))}\n`;
+                if (videoInfo.uploader) caption += `👤 <b>Author:</b> @${escapeHTML(videoInfo.uploader)}\n`;
+                if (videoInfo.duration) caption += `⏱️ <b>Duration:</b> ${videoInfo.duration}s\n`;
+                if (fileSize > 0) caption += `📦 <b>Size:</b> ${sizeMB} MB\n`;
+                caption += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                caption += `🛡️ ${botName} • v${version}`;
                 
-                message += `\n📥 <a href="${videoInfo.url}">Click here to Download (No Watermark)</a>\n\n`;
-                message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-                message += `🛡️ ${botName} • v${version}`;
+                let videoUrl = videoInfo.url;
                 
-                await ctx.replyWithHTML(message);
-                console.log(`[${platform}] ✅ Downloaded via TikWM API`);
+                // 🔥 FIX: Try video first, fallback to document
+                try {
+                    await ctx.replyWithVideo(videoUrl, {
+                        caption: caption,
+                        parse_mode: 'HTML',
+                        supports_streaming: true
+                    });
+                    console.log(`[${platform}] ✅ Sent as video with HD quality`);
+                } catch (videoError) {
+                    console.log(`[${platform}] Video send failed, trying document...`);
+                    try {
+                        await ctx.replyWithDocument(videoUrl, {
+                            caption: caption + `\n\n📁 <i>Download to watch (Telegram player limitation)</i>`,
+                            parse_mode: 'HTML',
+                            filename: `${platform}_${Date.now()}.mp4`
+                        });
+                        console.log(`[${platform}] ✅ Sent as document`);
+                    } catch (docError) {
+                        caption += `\n\n📥 <a href="${videoUrl}">Click here to Download</a>`;
+                        await ctx.replyWithHTML(caption);
+                        console.log(`[${platform}] ⚠️ Sent link only`);
+                    }
+                }
                 return;
             }
         } catch (error) {
             console.error(`[${platform}] TikWM error:`, error.message);
         }
-        
-        // 🔥 FALLBACK 1: Douyin Mobile API (for Douyin only)
+
+        // 🔥 FALLBACK 1: Douyin Mobile API (for Douyin only) - NOW USING targetUrl
         if (platform === 'Douyin') {
             try {
                 console.log(`[Douyin] Trying Mobile API fallback...`);
-                const fallbackData = await douyinMobileAPI(url);
+                const fallbackData = await douyinMobileAPI(targetUrl);
                 
                 if (fallbackData && fallbackData.videoUrl) {
                     await deleteMessage(token, chatId, processingMsg.result.message_id);
-                    await ctx.replyWithHTML(
-                        `✅ <b>Douyin Video Downloaded!</b> (Mobile API)\n\n` +
-                        `📥 <a href="${fallbackData.videoUrl}">Click here to download</a>\n\n` +
-                        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                        `🛡️ ${botName} • v${version}`
-                    );
+                    
+                    await ctx.replyWithVideo(fallbackData.videoUrl, {
+                        caption: `✅ <b>Douyin Video Downloaded!</b> (Mobile API)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ ${botName} • v${version}`,
+                        parse_mode: 'HTML',
+                        supports_streaming: true
+                    }).catch(async () => {
+                        await ctx.replyWithDocument(fallbackData.videoUrl, {
+                            caption: `✅ <b>Douyin Video Downloaded!</b> (Mobile API)\n\n📁 <i>Download to watch</i>\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ ${botName} • v${version}`,
+                            parse_mode: 'HTML',
+                            filename: `Douyin_${Date.now()}.mp4`
+                        });
+                    });
+                    
                     console.log(`[Douyin] ✅ Downloaded via Mobile API`);
                     return;
                 }
@@ -92,20 +137,27 @@ module.exports = {
                 console.error(`[Douyin] Mobile API failed:`, e.message);
             }
         }
-        
-        // 🔥 FALLBACK 2: NEURAL GRID - Multiple endpoints with proxy masking
+
+        // 🔥 FALLBACK 2: NEURAL GRID - NOW USING targetUrl
         try {
             console.log(`[${platform}] Activating Neural Grid fallback...`);
-            const fallbackData = await neuralGridFallback(url, platform);
+            const fallbackData = await neuralGridFallback(targetUrl, platform);
             
             if (fallbackData && fallbackData.videoUrl) {
                 await deleteMessage(token, chatId, processingMsg.result.message_id);
-                await ctx.replyWithHTML(
-                    `✅ <b>${platform} Video Downloaded!</b> (Neural Grid)\n\n` +
-                    `📥 <a href="${fallbackData.videoUrl}">Click here to download</a>\n\n` +
-                    `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                    `🛡️ ${botName} • v${version}`
-                );
+                
+                await ctx.replyWithVideo(fallbackData.videoUrl, {
+                    caption: `✅ <b>${platform} Video Downloaded!</b> (Neural Grid)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ ${botName} • v${version}`,
+                    parse_mode: 'HTML',
+                    supports_streaming: true
+                }).catch(async () => {
+                    await ctx.replyWithDocument(fallbackData.videoUrl, {
+                        caption: `✅ <b>${platform} Video Downloaded!</b> (Neural Grid)\n\n📁 <i>Download to watch</i>\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ ${botName} • v${version}`,
+                        parse_mode: 'HTML',
+                        filename: `${platform}_${Date.now()}.mp4`
+                    });
+                });
+                
                 console.log(`[${platform}] ✅ Downloaded via Neural Grid`);
                 return;
             }
@@ -127,34 +179,49 @@ module.exports = {
     }
 };
 
-// 🔥 PRIMARY API: TikWM (Fast, reliable)
+// 🔥 PRIMARY API: TikWM (Fast, reliable, HD quality)
 async function getVideoWithTikWM(url) {
     try {
-        const data = await fetchWithTimeout(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
+        // Request HD quality explicitly
+        const data = await fetchWithTimeout(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=2`);
         if (data && data.code === 0 && data.data) {
             return {
-                url: data.data.play || data.data.wmplay,
+                // 🔥 THE FIX: Prioritize HD play first!
+                url: data.data.hdplay || data.data.play || data.data.wmplay,
                 title: data.data.title,
                 uploader: data.data.author?.nickname || data.data.author || 'Creator',
                 duration: data.data.duration,
-                filesize: data.data.size
+                filesize: data.data.hd_size || data.data.size
             };
         }
-    } catch (e) {}
+    } catch (e) {
+        console.log(`[TikWM] Error: ${e.message}`);
+    }
     return null;
 }
 
-// 🔥 Douyin Mobile API (iPhone user-agent)
+// 🔥 Douyin Mobile API (Fixed with URL Expansion)
 async function douyinMobileAPI(url) {
-    const videoId = extractDouyinId(url);
-    if (!videoId) return null;
+    // 1. Expand the URL if it's a shortlink
+    let fullUrl = url;
+    if (url.includes('v.douyin.com')) {
+        fullUrl = await expandUrl(url);
+    }
+    
+    // 2. Now extract the real numeric ID
+    const videoId = extractDouyinId(fullUrl);
+    if (!videoId || isNaN(videoId)) {
+        console.log(`[Douyin] Failed to extract numeric ID from: ${fullUrl}`);
+        return null; 
+    }
     
     try {
         const data = await fetchWithTimeout(
             `https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids=${videoId}`,
             {
                 'Referer': 'https://www.douyin.com/',
-                'Accept-Language': 'zh-CN,zh;q=0.9'
+                'Accept-Language': 'zh-CN,zh;q=0.9',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15'
             }
         );
         
@@ -178,7 +245,7 @@ async function neuralGridFallback(url, platform) {
     // Multiple endpoints to try
     const endpoints = [
         {
-            url: `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`,
+            url: `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=2`,
             method: 'GET'
         },
         {
@@ -191,7 +258,7 @@ async function neuralGridFallback(url, platform) {
         },
         // Proxy layer via AllOrigins (bypasses IP blocks!)
         {
-            url: `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`)}`,
+            url: `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=2`)}`,
             method: 'GET'
         }
     ];
@@ -229,7 +296,7 @@ async function neuralGridFallback(url, platform) {
                 let videoUrl = null;
                 
                 if (data.code === 0 && data.data) {
-                    videoUrl = data.data.play || data.data.wmplay || data.data.video_url;
+                    videoUrl = data.data.hdplay || data.data.play || data.data.wmplay || data.data.video_url;
                 } else if (data.code === 200 && data.data) {
                     videoUrl = data.data.video_data?.nwm_video_url || data.data.video_url || data.data.url;
                 } else if (data.video_url) {
@@ -343,21 +410,54 @@ function cleanUrl(url) {
     return url.split('?')[0];
 }
 
-// Helper: Extract Douyin Video ID
+// Helper: Extract Douyin Video ID (The 19-Digit Sniper)
 function extractDouyinId(url) {
-    const clean = cleanUrl(url);
-    const patterns = [
-        /video\/(\d+)/,
-        /v\.douyin\.com\/(\w+)/,
-        /douyin\.com\/video\/(\d+)/,
-        /iesdouyin\.com\/share\/video\/(\d+)/
-    ];
-    
-    for (const pattern of patterns) {
-        const match = clean.match(pattern);
-        if (match) return match[1];
+    // Si l'URL a été déroulée, l'ID Douyin est TOUJOURS une suite de 19 chiffres.
+    // On ignore tout le reste de l'URL pour éviter les pièges.
+    const match = url.match(/\d{18,21}/);
+    if (match) {
+        return match[0];
     }
     return null;
+}
+
+// 🔥 THE GHOST PROTOCOL - L'Ultime Faille
+// On délègue le "clic" à un serveur externe pour contourner le blocage IP de Bot-Hosting.
+function expandUrl(shortUrl) {
+    return new Promise((resolve) => {
+        console.log(`[Ghost Protocol] Initiating external unshorten for: ${shortUrl}`);
+        
+        // On utilise l'API publique d'Unshorten.me. C'est LEUR IP qui affronte Douyin.
+        const unshortenApi = `https://unshorten.me/s/${encodeURIComponent(shortUrl)}`;
+        
+        const req = https.get(unshortenApi, (res) => {
+            let longUrl = '';
+            
+            res.on('data', chunk => longUrl += chunk);
+            res.on('end', () => {
+                longUrl = longUrl.trim();
+                
+                // Si le serveur externe a réussi à arracher le lien Douyin
+                if (longUrl && longUrl.includes('douyin')) {
+                    console.log(`[Ghost Protocol] Success! Unshortened to: ${longUrl.substring(0, 50)}...`);
+                    resolve(longUrl);
+                } else {
+                    console.log(`[Ghost Protocol] Proxy failed to pierce the shield. Returned: ${longUrl}`);
+                    resolve(shortUrl); 
+                }
+            });
+        });
+        
+        req.on('error', (e) => {
+            console.log(`[Ghost Protocol] API Error: ${e.message}`);
+            resolve(shortUrl);
+        });
+        
+        req.setTimeout(8000, () => {
+            req.destroy();
+            resolve(shortUrl);
+        });
+    });
 }
 
 // Helper: Extract TikTok Video ID
