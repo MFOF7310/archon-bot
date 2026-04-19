@@ -121,7 +121,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             : 'en';
         
         const t = translations[lang];
-        const version = client.version || '1.6.0';
+        const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
@@ -163,32 +163,31 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             })
             .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 }))
             .setDescription(
-                `\`\`\`yaml\n` +
-                `${t.nodeIdentification}: ${user.id}\n` +
-                `${t.clearance}: ${clearance}\n` +
-                `${agentRank.emoji} ${agentRank.title[lang]}\`\`\``
-            )
-            .addFields(
-                { 
-                    name: t.syncTelemetry, 
-                    value: `\`\`\`yaml\n` +
-                           `${t.level}: ${level}\n` +
-                           `${t.xp}: ${(userData.xp || 0).toLocaleString()}\n` +
-                           `${t.messages}: ${(userData.total_messages || 0).toLocaleString()}\n` +
-                           `${t.credits}: ${(userData.credits || 0).toLocaleString()} 🪙\n` +
-                           `${t.streak}: ${userData.streak_days || 0} ${lang === 'fr' ? 'jours' : 'days'}\`\`\``, 
-                    inline: true 
-                },
-                { 
-                    name: t.temporalLogs, 
-                    value: `\`\`\`yaml\n` +
-                           `${t.arrival}: <t:${Math.floor(member.joinedTimestamp / 1000)}:R>\n` +
-                           `${t.account}: <t:${Math.floor(user.createdTimestamp / 1000)}:R>\`\`\``, 
-                    inline: true 
-                }
-            );
-        
-        // ================= COMBAT MATRIX =================
+    `\`\`\`yaml\n` +
+    `${t.nodeIdentification}: ${user.id}\n` +
+    `${t.clearance}: ${clearance}\n` +
+    `${agentRank.emoji} ${agentRank.title[lang]}\`\`\``
+)
+.addFields(
+    { 
+        name: t.syncTelemetry, 
+        value: `\`\`\`yaml\n` +
+               `${t.level}: ${level}\n` +
+               `${t.xp}: ${(userData.xp || 0).toLocaleString()}\n` +
+               `${t.messages}: ${(userData.total_messages || 0).toLocaleString()}\n` +
+               `${t.credits}: ${(userData.credits || 0).toLocaleString()} 🪙\n` +
+               `${t.streak}: ${userData.streak_days || 0} ${lang === 'fr' ? 'jours' : 'days'}\`\`\``, 
+        inline: true 
+    },
+    { 
+    name: t.temporalLogs, 
+    value: `${t.arrival}: <t:${Math.floor(member.joinedTimestamp / 1000)}:f>\n` +
+           `${t.account}: <t:${Math.floor(user.createdTimestamp / 1000)}:F>`, 
+    inline: true 
+}
+);
+
+// ================= COMBAT MATRIX =================
         if (gameData && gameData.game) {
             whoisEmbed.addFields({ 
                 name: t.combatMatrix, 
@@ -241,18 +240,20 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
     },
 
     execute: async (interaction, client) => {
-        const db = client.db;
-        const lang = interaction.locale === 'fr' ? 'fr' : 'en';
-        const t = translations[lang];
-        const version = client.version || '1.6.0';
-        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
-        
-        const targetUser = interaction.options.getUser('target') || interaction.user;
+    const db = client.db;
+    const lang = interaction.locale === 'fr' ? 'fr' : 'en';
+    const t = translations[lang];
+    const version = client.version || '1.8.0';
+    const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+    const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
+    
+    await interaction.deferReply();
+    
+    const targetUser = interaction.options.getUser('target') || interaction.user;
         const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
         
         if (!member) {
-            return interaction.reply({ content: '❌ Agent not found in this node.', ephemeral: true });
+    return interaction.editReply({ content: '❌ Agent not found in this node.' });
         }
         
         // Get user data
@@ -306,13 +307,12 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                            `${t.streak}: ${userData.streak_days || 0} ${lang === 'fr' ? 'jours' : 'days'}\`\`\``, 
                     inline: true 
                 },
-                { 
-                    name: t.temporalLogs, 
-                    value: `\`\`\`yaml\n` +
-                           `${t.arrival}: <t:${Math.floor(member.joinedTimestamp / 1000)}:R>\n` +
-                           `${t.account}: <t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>\`\`\``, 
-                    inline: true 
-                }
+               { 
+    name: t.temporalLogs, 
+    value: `${t.arrival}: <t:${Math.floor(member.joinedTimestamp / 1000)}:f>\n` +
+           `${t.account}: <t:${Math.floor(targetUser.createdTimestamp / 1000)}:F>`, 
+    inline: true 
+}
             );
         
         // Combat Matrix
@@ -358,10 +358,10 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             })
             .setTimestamp();
 
-        await interaction.reply({ 
-            content: t.scanning(targetUser.username),
-            embeds: [whoisEmbed] 
-        });
+        await interaction.editReply({ 
+    content: t.scanning(targetUser.username),
+    embeds: [whoisEmbed] 
+});
         
         console.log(`[WHOIS] ${interaction.user.tag} scanned ${targetUser.tag} | Lang: ${lang}`);
     }
