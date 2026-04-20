@@ -507,47 +507,7 @@ async function handlePinsList(client, message, t, lang) {
     }
 }
 
-// ================= SLASH HANDLERS =================
-async function handleSlashPin(interaction, client, db, t, lang) {
-    await interaction.deferReply({ ephemeral: true });
-    const version = getVersion();
-    const messageId = interaction.options.getString('message_id');
-    
-    let targetMessage;
-    
-    if (messageId) {
-        try { targetMessage = await interaction.channel.messages.fetch(messageId); } catch (err) {}
-    }
-    
-    if (!targetMessage && interaction.message?.reference) {
-        try { targetMessage = await interaction.channel.messages.fetch(interaction.message.reference.messageId); } catch (err) {}
-    }
-    
-    if (!targetMessage) {
-        return interaction.editReply({ content: t.noTarget });
-    }
-    
-    const channelPins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
-    if (channelPins.has(targetMessage.id)) {
-        return interaction.editReply({ content: t.alreadyPinned });
-    }
-    
-    try { await targetMessage.pin(); } catch (error) {
-        if (error.code === 30003) return interaction.editReply({ content: t.pinLimitReached });
-        throw error;
-    }
-    
-    savePinToDatabase(db, targetMessage, interaction.user);
-    
-    const successEmbed = new EmbedBuilder()
-        .setColor('#00fbff')
-        .setDescription(`✅ ${t.pinned}\n\n${t.cleanupTip}`)
-        .setFooter({ text: `${t.neuralArchive} • v${version}` });
-    
-    await interaction.editReply({ embeds: [successEmbed] });
-    console.log(`[SLASH PIN] ${interaction.user.tag} pinned message ${targetMessage.id}`);
-}
-
+// ================= SLASH UNPIN HANDLER =================
 async function handleSlashUnpin(interaction, client, db, t, lang) {
     await interaction.deferReply({ ephemeral: true });
     const version = getVersion();
@@ -556,18 +516,27 @@ async function handleSlashUnpin(interaction, client, db, t, lang) {
     let targetMessage;
     
     if (messageId) {
-        try { targetMessage = await interaction.channel.messages.fetch(messageId); } catch (err) {}
+        try { 
+            targetMessage = await interaction.channel.messages.fetch(messageId); 
+        } catch (err) {}
     }
     
     if (!targetMessage && interaction.message?.reference) {
-        try { targetMessage = await interaction.channel.messages.fetch(interaction.message.reference.messageId); } catch (err) {}
+        try { 
+            targetMessage = await interaction.channel.messages.fetch(interaction.message.reference.messageId); 
+        } catch (err) {}
     }
     
     if (!targetMessage) {
-        return interaction.editReply({ content: t.unpinPrompt });
+        return interaction.editReply({ content: t.noTarget });
+    }
+    
+    if (!targetMessage.channel) {
+        return interaction.editReply({ content: '❌ Message channel not found.' });
     }
     
     const pins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
+    
     if (!pins.has(targetMessage.id)) {
         return interaction.editReply({ content: t.notPinned });
     }
@@ -575,13 +544,18 @@ async function handleSlashUnpin(interaction, client, db, t, lang) {
     try {
         await targetMessage.unpin();
         deletePinFromDatabase(db, targetMessage.id);
-        await interaction.editReply({ content: t.unpinned });
+        const successEmbed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setDescription(`✅ ${t.unpinned}`)
+            .setFooter({ text: `${t.neuralArchive} • v${version}` });
+        await interaction.editReply({ embeds: [successEmbed] });
         console.log(`[SLASH UNPIN] ${interaction.user.tag} unpinned message ${targetMessage.id}`);
     } catch (err) {
-        await interaction.editReply({ content: t.unpinFailed });
+        return interaction.editReply({ content: t.unpinFailed });
     }
 }
 
+// ================= SLASH PINS LIST HANDLER =================
 async function handleSlashPinsList(interaction, t, lang) {
     await interaction.deferReply({ ephemeral: false });
     const version = getVersion();
@@ -606,6 +580,6 @@ async function handleSlashPinsList(interaction, t, lang) {
         
         await interaction.editReply({ embeds: [embed] });
     } catch (err) {
-        await interaction.editReply({ content: t.fetchFailed });
+        return interaction.editReply({ content: t.fetchFailed });
     }
 }
