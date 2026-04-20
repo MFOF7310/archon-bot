@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -9,9 +9,9 @@ function getVersion() {
         if (fs.existsSync(versionPath)) {
             return fs.readFileSync(versionPath, 'utf8').trim();
         }
-        return '1.6.0';
+        return '1.8.0';
     } catch (err) {
-        return '1.6.0';
+        return '1.8.0';
     }
 }
 
@@ -46,7 +46,17 @@ const translations = {
         unpinPrompt: '**Reply** to a pinned message or provide an ID to unpin.',
         notPinned: '⚠️ This message is not pinned.',
         replyTip: '💡 **Tip:** Reply to a message and type `.pin` to pin it!',
-        cleanupTip: '🧹 **Tip:** Reply to a pinned message and type `.unpin` to remove it!'
+        cleanupTip: '🧹 **Tip:** Reply to a pinned message and type `.unpin` to remove it!',
+        slashDescription: '📌 Pin a message to the Neural Gallery',
+        slashUnpinDesc: '📌 Unpin a message from the channel',
+        slashListDesc: '📌 View all pinned messages in this channel',
+        optionMessageId: 'message_id',
+        optionMessageDesc: 'ID of the message to pin/unpin (optional if replying)',
+        noPinsInChannel: '📌 No pinned messages in this channel.',
+        pinsListTitle: '📌 PINNED MESSAGES',
+        archivedCount: 'Total Archived',
+        channelLimit: 'Channel Limit',
+        viewArchives: '📂 View Archives'
     },
     fr: {
         noPermission: '❌ Autorisation de gérer les messages requise.',
@@ -77,7 +87,17 @@ const translations = {
         unpinPrompt: '**Répondez** à un message épinglé ou fournissez un ID à désépingler.',
         notPinned: '⚠️ Ce message n\'est pas épinglé.',
         replyTip: '💡 **Astuce:** Répondez à un message et tapez `.pin` pour l\'épingler!',
-        cleanupTip: '🧹 **Astuce:** Répondez à un message épinglé et tapez `.unpin` pour le retirer!'
+        cleanupTip: '🧹 **Astuce:** Répondez à un message épinglé et tapez `.unpin` pour le retirer!',
+        slashDescription: '📌 Épingler un message dans la Galerie Neurale',
+        slashUnpinDesc: '📌 Désépingler un message du salon',
+        slashListDesc: '📌 Voir tous les messages épinglés dans ce salon',
+        optionMessageId: 'message_id',
+        optionMessageDesc: 'ID du message à épingler/désépingler (optionnel si vous répondez)',
+        noPinsInChannel: '📌 Aucun message épinglé dans ce salon.',
+        pinsListTitle: '📌 MESSAGES ÉPINGLÉS',
+        archivedCount: 'Total Archivé',
+        channelLimit: 'Limite du Salon',
+        viewArchives: '📂 Voir les Archives'
     }
 };
 
@@ -219,6 +239,31 @@ module.exports = {
     examples: ['.pin', '.unpin', '.pins'],
     cooldown: 3000,
 
+    // ================= SLASH COMMAND DATA =================
+    data: new SlashCommandBuilder()
+        .setName('pin')
+        .setDescription('📌 Pin a message to the Neural Gallery')
+        .addSubcommand(sub => sub
+            .setName('pin')
+            .setDescription('Pin a message')
+            .addStringOption(option => option
+                .setName('message_id')
+                .setDescription('ID of the message to pin (optional if replying)')
+                .setRequired(false))
+        )
+        .addSubcommand(sub => sub
+            .setName('unpin')
+            .setDescription('Unpin a message')
+            .addStringOption(option => option
+                .setName('message_id')
+                .setDescription('ID of the message to unpin')
+                .setRequired(false))
+        )
+        .addSubcommand(sub => sub
+            .setName('list')
+            .setDescription('View all pinned messages in this channel')
+        ),
+
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         // ================= LANGUAGE DETECTION =================
@@ -244,13 +289,35 @@ module.exports = {
             return handleUnpin(client, message, args, db, t, lang);
         }
         
-        // Handle .pins
-        if (subCommand === 'pins' || subCommand === 'archives') {
+        // Handle .pins / .list
+        if (subCommand === 'pins' || subCommand === 'archives' || subCommand === 'list') {
             return handlePinsList(client, message, t, lang);
         }
         
         // Handle .pin
         return handlePin(client, message, args, db, serverSettings, t, lang);
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const t = translations[lang];
+        const db = client.db;
+        
+        // Check permissions
+        if (!interaction.memberPermissions.has(PermissionsBitField.Flags.ManageMessages)) {
+            return interaction.reply({ content: t.noPermission, ephemeral: true });
+        }
+        
+        const subcommand = interaction.options.getSubcommand();
+        
+        if (subcommand === 'pin') {
+            await handleSlashPin(interaction, client, db, t, lang);
+        } else if (subcommand === 'unpin') {
+            await handleSlashUnpin(interaction, client, db, t, lang);
+        } else if (subcommand === 'list') {
+            await handleSlashPinsList(interaction, t, lang);
+        }
     }
 };
 
@@ -259,27 +326,22 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
     let targetMessage;
     const version = getVersion();
     
-    // 🔥 FIXED: message.channel.messages.fetch (not message.channels)
     if (message.reference?.messageId) {
         try {
             targetMessage = await message.channel.messages.fetch(message.reference.messageId);
         } catch (err) {
-            // Message might be in another channel
             try {
                 const channels = message.guild.channels.cache.filter(c => c.isTextBased());
                 for (const channel of channels.values()) {
                     try {
                         targetMessage = await channel.messages.fetch(message.reference.messageId);
                         if (targetMessage) break;
-                    } catch (e) {
-                        continue;
-                    }
+                    } catch (e) { continue; }
                 }
             } catch (e) {}
         }
     }
     
-    // Fallback: Check for message ID in args
     if (!targetMessage && args[0]) {
         try {
             targetMessage = await message.channel.messages.fetch(args[0]);
@@ -289,56 +351,38 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
                 try {
                     targetMessage = await channel.messages.fetch(args[0]);
                     if (targetMessage) break;
-                } catch (e) {
-                    continue;
-                }
+                } catch (e) { continue; }
             }
         }
     }
     
-    // No target found - prompt user to use reply feature
     if (!targetMessage) {
         const tipEmbed = new EmbedBuilder()
             .setColor('#00fbff')
             .setDescription(`**${t.noTarget}**\n\n${t.replyTip}`)
             .setFooter({ text: `${t.neuralArchive} • v${version}` });
         
-        return message.reply({ 
-            embeds: [tipEmbed],
-            ephemeral: true 
-        }).catch(() => {});
+        return message.reply({ embeds: [tipEmbed], ephemeral: true }).catch(() => {});
     }
     
-    // Check if already pinned
     const channelPins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
     if (channelPins.has(targetMessage.id)) {
-        return message.reply({ 
-            content: t.alreadyPinned,
-            ephemeral: true 
-        }).catch(() => {});
+        return message.reply({ content: t.alreadyPinned, ephemeral: true }).catch(() => {});
     }
     
-    // Pin the message
     try {
         await targetMessage.pin();
     } catch (error) {
         if (error.code === 30003) {
-            return message.reply({ 
-                content: t.pinLimitReached,
-                ephemeral: true 
-            }).catch(() => {});
+            return message.reply({ content: t.pinLimitReached, ephemeral: true }).catch(() => {});
         }
         throw error;
     }
     
-    // Save to database
     savePinToDatabase(db, targetMessage, message.author);
     
-    // Get or create archive channel
     let archiveChannelId = serverSettings?.logChannel;
-    let archiveChannel = archiveChannelId 
-        ? message.guild.channels.cache.get(archiveChannelId) 
-        : null;
+    let archiveChannel = archiveChannelId ? message.guild.channels.cache.get(archiveChannelId) : null;
     
     if (!archiveChannel) {
         archiveChannel = await createArchiveChannel(message.guild);
@@ -347,13 +391,9 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
         }
     }
     
-    // Build archive embed
     const archiveEmbed = new EmbedBuilder()
         .setColor('#00fbff')
-        .setAuthor({ 
-            name: t.archiveTitle, 
-            iconURL: client.user.displayAvatarURL() 
-        })
+        .setAuthor({ name: t.archiveTitle, iconURL: client.user.displayAvatarURL() })
         .setDescription(formatContent(targetMessage.content, targetMessage.attachments))
         .addFields(
             { name: t.author, value: `${targetMessage.author.tag}`, inline: true },
@@ -363,80 +403,37 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
             { name: t.jumpToMessage, value: `[${lang === 'fr' ? 'Cliquez ici' : 'Click here'}](${targetMessage.url})`, inline: true }
         );
     
-    // Add attachment preview
     if (targetMessage.attachments.size > 0) {
         const firstAttachment = targetMessage.attachments.first();
         if (firstAttachment.contentType?.startsWith('image/')) {
             archiveEmbed.setImage(firstAttachment.url);
         }
-        
-        const attachmentList = [...targetMessage.attachments.values()]
-            .map((a, i) => `[${lang === 'fr' ? 'Pièce' : 'File'} ${i + 1}](${a.url})`)
-            .join(' • ');
-        
-        archiveEmbed.addFields({
-            name: t.attachments,
-            value: truncateText(attachmentList, 1024) || 'N/A',
-            inline: false
-        });
+        const attachmentList = [...targetMessage.attachments.values()].map((a, i) => `[${lang === 'fr' ? 'Pièce' : 'File'} ${i + 1}](${a.url})`).join(' • ');
+        archiveEmbed.addFields({ name: t.attachments, value: truncateText(attachmentList, 1024) || 'N/A', inline: false });
     }
     
-    archiveEmbed
-        .setFooter({ 
-            text: `${message.guild.name} • ${t.neuralArchive} • v${version}`, 
-            iconURL: message.guild.iconURL() || client.user.displayAvatarURL() 
-        })
-        .setTimestamp();
+    archiveEmbed.setFooter({ text: `${message.guild.name} • ${t.neuralArchive} • v${version}`, iconURL: message.guild.iconURL() || client.user.displayAvatarURL() }).setTimestamp();
     
-    // Action row with buttons
     const actionRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setLabel(t.jumpButton)
-            .setStyle(ButtonStyle.Link)
-            .setURL(targetMessage.url),
-        new ButtonBuilder()
-            .setCustomId(`unpin_${targetMessage.id}`)
-            .setLabel(t.unpinButton)
-            .setStyle(ButtonStyle.Danger)
-            .setEmoji('📌')
+        new ButtonBuilder().setLabel(t.jumpButton).setStyle(ButtonStyle.Link).setURL(targetMessage.url),
+        new ButtonBuilder().setCustomId(`unpin_${targetMessage.id}`).setLabel(t.unpinButton).setStyle(ButtonStyle.Danger).setEmoji('📌')
     );
     
-    // Send to archive
     if (archiveChannel) {
-        try {
-            await archiveChannel.send({ 
-                embeds: [archiveEmbed],
-                components: [actionRow]
-            });
-        } catch (err) {
-            console.error('[ARCHIVE] Failed to send:', err.message);
-        }
+        try { await archiveChannel.send({ embeds: [archiveEmbed], components: [actionRow] }); } catch (err) {}
     }
     
-    // Success response
     const pinCount = channelPins.size + 1;
     const totalArchived = getPinStats(db, message.guild.id);
     
     const successEmbed = new EmbedBuilder()
         .setColor('#00fbff')
-        .setDescription(
-            `✅ **${archiveChannel ? t.pinnedAndArchived : t.pinned}**\n\n` +
-            `📊 **${t.pinCount}:** ${pinCount}/50\n` +
-            `📂 **Total Archived:** ${totalArchived} messages\n\n` +
-            `${t.cleanupTip}`
-        )
-        .setFooter({ 
-            text: `${message.author.tag} • ${t.neuralArchive} • v${version}`,
-            iconURL: message.author.displayAvatarURL()
-        })
+        .setDescription(`✅ **${archiveChannel ? t.pinnedAndArchived : t.pinned}**\n\n📊 **${t.pinCount}:** ${pinCount}/50\n📂 **${t.archivedCount}:** ${totalArchived} messages\n\n${t.cleanupTip}`)
+        .setFooter({ text: `${message.author.tag} • ${t.neuralArchive} • v${version}`, iconURL: message.author.displayAvatarURL() })
         .setTimestamp();
     
-    await message.reply({ 
-        embeds: [successEmbed],
-        ephemeral: false
-    }).catch(() => {});
-    
-    console.log(`[PIN] ${message.author.tag} pinned message from ${targetMessage.author.tag} | Archived: ${!!archiveChannel}`);
+    await message.reply({ embeds: [successEmbed], ephemeral: false }).catch(() => {});
+    console.log(`[PIN] ${message.author.tag} pinned message from ${targetMessage.author.tag}`);
 }
 
 // ================= HANDLE UNPIN =================
@@ -444,18 +441,12 @@ async function handleUnpin(client, message, args, db, t, lang) {
     let targetMessage;
     const version = getVersion();
     
-    // 🔥 FIXED: message.channel.messages.fetch (not message.channels)
     if (message.reference?.messageId) {
-        try {
-            targetMessage = await message.channel.messages.fetch(message.reference.messageId);
-        } catch (err) {}
+        try { targetMessage = await message.channel.messages.fetch(message.reference.messageId); } catch (err) {}
     }
     
-    // Fallback: Check for message ID
     if (!targetMessage && args[0]) {
-        try {
-            targetMessage = await message.channel.messages.fetch(args[0]);
-        } catch (err) {}
+        try { targetMessage = await message.channel.messages.fetch(args[0]); } catch (err) {}
     }
     
     if (!targetMessage) {
@@ -463,88 +454,158 @@ async function handleUnpin(client, message, args, db, t, lang) {
             .setColor('#00fbff')
             .setDescription(`**${t.unpinPrompt}**\n\n${t.cleanupTip}`)
             .setFooter({ text: `${t.neuralArchive} • v${version}` });
-        
-        return message.reply({ 
-            embeds: [tipEmbed],
-            ephemeral: true 
-        }).catch(() => {});
+        return message.reply({ embeds: [tipEmbed], ephemeral: true }).catch(() => {});
     }
     
-    // Check if actually pinned
     const pins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
     if (!pins.has(targetMessage.id)) {
-        return message.reply({ 
-            content: t.notPinned,
-            ephemeral: true 
-        }).catch(() => {});
+        return message.reply({ content: t.notPinned, ephemeral: true }).catch(() => {});
     }
     
     try {
         await targetMessage.unpin();
         deletePinFromDatabase(db, targetMessage.id);
-        
         const successEmbed = new EmbedBuilder()
             .setColor('#00fbff')
             .setDescription(`✅ **${t.unpinned}**`)
             .setFooter({ text: `${t.neuralArchive} • v${version}` });
-        
-        await message.reply({ 
-            embeds: [successEmbed],
-            ephemeral: true 
-        }).catch(() => {});
-        
+        await message.reply({ embeds: [successEmbed], ephemeral: true }).catch(() => {});
         console.log(`[UNPIN] ${message.author.tag} unpinned message ${targetMessage.id}`);
     } catch (err) {
-        return message.reply({ 
-            content: t.unpinFailed,
-            ephemeral: true 
-        }).catch(() => {});
+        return message.reply({ content: t.unpinFailed, ephemeral: true }).catch(() => {});
     }
 }
 
 // ================= HANDLE PINS LIST =================
 async function handlePinsList(client, message, t, lang) {
     const version = getVersion();
-    
     try {
         const pins = await message.channel.messages.fetchPinned();
-        
         if (pins.size === 0) {
             const tipEmbed = new EmbedBuilder()
                 .setColor('#00fbff')
-                .setDescription(`**${t.noPins}**\n\n${t.replyTip}`)
+                .setDescription(`**${t.noPinsInChannel}**\n\n${t.replyTip}`)
                 .setFooter({ text: `${t.neuralArchive} • v${version}` });
-            
-            return message.reply({ 
-                embeds: [tipEmbed],
-                ephemeral: true 
-            }).catch(() => {});
+            return message.reply({ embeds: [tipEmbed], ephemeral: true }).catch(() => {});
         }
         
-        const pinsList = [...pins.values()]
-            .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
-            .slice(0, 10)
+        const pinsList = [...pins.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp).slice(0, 10)
             .map((msg, i) => {
                 const content = truncateText(msg.content, 50) || '*[No text]*';
                 return `${i + 1}. **${msg.author.tag}**: ${content}\n   └ [Jump](${msg.url}) • \`${msg.id}\``;
-            })
-            .join('\n\n');
+            }).join('\n\n');
         
         const embed = new EmbedBuilder()
             .setColor('#00fbff')
-            .setTitle(`📌 ${lang === 'fr' ? 'Messages Épinglés' : 'Pinned Messages'}`)
+            .setTitle(`📌 ${t.pinsListTitle}`)
             .setDescription(pinsList + `\n\n${t.cleanupTip}`)
-            .setFooter({ 
-                text: `${pins.size}/50 ${lang === 'fr' ? 'messages épinglés' : 'pinned messages'} • ${message.channel.name} • v${version}` 
-            });
+            .setFooter({ text: `${pins.size}/50 • ${message.channel.name} • v${version}` });
         
         await message.reply({ embeds: [embed] }).catch(() => {});
-        
     } catch (err) {
-        console.error('[PINS LIST] Error:', err.message);
-        return message.reply({ 
-            content: t.fetchFailed,
-            ephemeral: true 
-        }).catch(() => {});
+        return message.reply({ content: t.fetchFailed, ephemeral: true }).catch(() => {});
+    }
+}
+
+// ================= SLASH HANDLERS =================
+async function handleSlashPin(interaction, client, db, t, lang) {
+    await interaction.deferReply({ ephemeral: true });
+    const version = getVersion();
+    const messageId = interaction.options.getString('message_id');
+    
+    let targetMessage;
+    
+    if (messageId) {
+        try { targetMessage = await interaction.channel.messages.fetch(messageId); } catch (err) {}
+    }
+    
+    if (!targetMessage && interaction.message?.reference) {
+        try { targetMessage = await interaction.channel.messages.fetch(interaction.message.reference.messageId); } catch (err) {}
+    }
+    
+    if (!targetMessage) {
+        return interaction.editReply({ content: t.noTarget });
+    }
+    
+    const channelPins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
+    if (channelPins.has(targetMessage.id)) {
+        return interaction.editReply({ content: t.alreadyPinned });
+    }
+    
+    try { await targetMessage.pin(); } catch (error) {
+        if (error.code === 30003) return interaction.editReply({ content: t.pinLimitReached });
+        throw error;
+    }
+    
+    savePinToDatabase(db, targetMessage, interaction.user);
+    
+    const successEmbed = new EmbedBuilder()
+        .setColor('#00fbff')
+        .setDescription(`✅ ${t.pinned}\n\n${t.cleanupTip}`)
+        .setFooter({ text: `${t.neuralArchive} • v${version}` });
+    
+    await interaction.editReply({ embeds: [successEmbed] });
+    console.log(`[SLASH PIN] ${interaction.user.tag} pinned message ${targetMessage.id}`);
+}
+
+async function handleSlashUnpin(interaction, client, db, t, lang) {
+    await interaction.deferReply({ ephemeral: true });
+    const version = getVersion();
+    const messageId = interaction.options.getString('message_id');
+    
+    let targetMessage;
+    
+    if (messageId) {
+        try { targetMessage = await interaction.channel.messages.fetch(messageId); } catch (err) {}
+    }
+    
+    if (!targetMessage && interaction.message?.reference) {
+        try { targetMessage = await interaction.channel.messages.fetch(interaction.message.reference.messageId); } catch (err) {}
+    }
+    
+    if (!targetMessage) {
+        return interaction.editReply({ content: t.unpinPrompt });
+    }
+    
+    const pins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
+    if (!pins.has(targetMessage.id)) {
+        return interaction.editReply({ content: t.notPinned });
+    }
+    
+    try {
+        await targetMessage.unpin();
+        deletePinFromDatabase(db, targetMessage.id);
+        await interaction.editReply({ content: t.unpinned });
+        console.log(`[SLASH UNPIN] ${interaction.user.tag} unpinned message ${targetMessage.id}`);
+    } catch (err) {
+        await interaction.editReply({ content: t.unpinFailed });
+    }
+}
+
+async function handleSlashPinsList(interaction, t, lang) {
+    await interaction.deferReply({ ephemeral: false });
+    const version = getVersion();
+    
+    try {
+        const pins = await interaction.channel.messages.fetchPinned();
+        if (pins.size === 0) {
+            return interaction.editReply({ content: t.noPinsInChannel });
+        }
+        
+        const pinsList = [...pins.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp).slice(0, 10)
+            .map((msg, i) => {
+                const content = truncateText(msg.content, 50) || '*[No text]*';
+                return `${i + 1}. **${msg.author.tag}**: ${content}\n   └ [Jump](${msg.url}) • \`${msg.id}\``;
+            }).join('\n\n');
+        
+        const embed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setTitle(`📌 ${t.pinsListTitle}`)
+            .setDescription(pinsList)
+            .setFooter({ text: `${pins.size}/50 • ${interaction.channel.name} • v${version}` });
+        
+        await interaction.editReply({ embeds: [embed] });
+    } catch (err) {
+        await interaction.editReply({ content: t.fetchFailed });
     }
 }
