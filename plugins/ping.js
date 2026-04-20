@@ -38,7 +38,8 @@ const translations = {
         recommendation: 'Recommendation',
         recExcellent: 'System operating at peak performance',
         recGood: 'Consider moving bot closer to Discord API region',
-        recPoor: '⚠️ Check hosting provider or upgrade server'
+        recPoor: '⚠️ Check hosting provider or upgrade server',
+        accessDenied: '❌ This menu is not for you.'
     },
     fr: {
         author: '⚡ ARCHITECT CG-223 | LATENCE NEURALE',
@@ -75,7 +76,8 @@ const translations = {
         recommendation: 'Recommandation',
         recExcellent: 'Système fonctionne à performance maximale',
         recGood: 'Envisagez de rapprocher le bot de la région API Discord',
-        recPoor: '⚠️ Vérifiez votre hébergeur ou upgradez le serveur'
+        recPoor: '⚠️ Vérifiez votre hébergeur ou upgradez le serveur',
+        accessDenied: '❌ Ce menu n\'est pas pour vous.'
     }
 };
 
@@ -405,7 +407,7 @@ async function handleCollector(msg, client, originalMsg, db, t, lang, guildName,
     
     collector.on('collect', async (i) => {
         if (i.user.id !== originalMsg.author.id) {
-            return i.reply({ content: t.accessDenied || '❌ This menu is not for you.', ephemeral: true }).catch(() => {});
+            return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
         }
         
         await i.deferUpdate().catch(() => {});
