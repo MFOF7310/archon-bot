@@ -101,6 +101,298 @@ function isDMCompatible(command) {
     return true;
 }
 
+// ================= HELPER: Show All Commands (Prefix) =================
+async function showAllCommands(interaction, client, commands, t, lang, isDM, version, guildName) {
+    const itemsPerPage = 10;
+    let currentPage = 0;
+    const totalPages = Math.ceil(commands.length / itemsPerPage);
+    
+    const buildEmbed = (page) => {
+        const start = page * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageCommands = commands.slice(start, end);
+        
+        let description = '```yaml\n';
+        for (const cmd of pageCommands) {
+            const dmStatus = isDMCompatible(cmd) ? '✅' : '❌';
+            description += `${dmStatus} /${cmd.name}\n`;
+            description += `   └─ ${cmd.description?.substring(0, 50) || 'No description'}\n`;
+        }
+        description += '```';
+        
+        const embed = new EmbedBuilder()
+            .setColor('#9b59b6')
+            .setTitle('📜 ALL ARCANE SPELLS')
+            .setDescription(description)
+            .addFields(
+                { name: '📊 STATISTICS', value: `Total: ${commands.length} | Page ${page + 1}/${totalPages}`, inline: true },
+                { name: '✅ DM Compatible', value: 'Commands marked with ✅ work in DMs', inline: true },
+                { name: '❌ Server Only', value: 'Commands marked with ❌ require a server', inline: true }
+            )
+            .setFooter({ text: t.footer.replace('{version}', version) })
+            .setTimestamp();
+        
+        return embed;
+    };
+    
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('prev_all').setLabel('◀ Previous').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
+        new ButtonBuilder().setCustomId('next_all').setLabel('Next ▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages - 1),
+        new ButtonBuilder().setCustomId('back_all').setLabel(t.backToList).setStyle(ButtonStyle.Primary).setEmoji('📚')
+    );
+    
+    await interaction.editReply({ embeds: [buildEmbed(currentPage)], components: [row] }).catch(() => {});
+    
+    const collector = interaction.channel?.createMessageComponentCollector({ 
+        filter: i => i.user.id === interaction.user.id,
+        time: 60000
+    });
+    
+    if (!collector) return;
+    
+    collector.on('collect', async (btnInteraction) => {
+        // 🔥 FIXED: Safe defer with expiry handling
+        try {
+            await btnInteraction.deferUpdate();
+        } catch (error) {
+            if (error.code === 10062) {
+                console.log('[SLASH] Button interaction expired (showAllCommands)');
+                collector.stop();
+                return;
+            }
+            throw error;
+        }
+        
+        if (btnInteraction.customId === 'prev_all' && currentPage > 0) {
+            currentPage--;
+            const newRow = ActionRowBuilder.from(row);
+            newRow.components[0].setDisabled(currentPage === 0);
+            newRow.components[1].setDisabled(currentPage === totalPages - 1);
+            await btnInteraction.editReply({ embeds: [buildEmbed(currentPage)], components: [newRow] }).catch(() => {});
+        } else if (btnInteraction.customId === 'next_all' && currentPage < totalPages - 1) {
+            currentPage++;
+            const newRow = ActionRowBuilder.from(row);
+            newRow.components[0].setDisabled(currentPage === 0);
+            newRow.components[1].setDisabled(currentPage === totalPages - 1);
+            await btnInteraction.editReply({ embeds: [buildEmbed(currentPage)], components: [newRow] }).catch(() => {});
+        } else if (btnInteraction.customId === 'back_all') {
+            collector.stop();
+            // Re-run the main command
+            const mockMessage = {
+                author: interaction.user,
+                guild: interaction.guild,
+                channel: interaction.channel,
+                reply: async () => {}
+            };
+            await module.exports.run(client, mockMessage, [], client.db, null, 'slash');
+        }
+    });
+    
+    collector.on('end', () => {
+        // Cleanup
+    });
+}
+
+// ================= HELPER: Show Category Commands (Prefix) =================
+async function showCategoryCommands(interaction, client, commands, category, t, lang, isDM, version, guildName) {
+    const embed = new EmbedBuilder()
+        .setColor('#9b59b6')
+        .setTitle(`${categoryEmojis[category] || '📦'} ${category} SPELLS`)
+        .setDescription(`\`\`\`yaml\n${commands.length} command${commands.length !== 1 ? 's' : ''} in this category\n\`\`\``)
+        .setFooter({ text: t.footer.replace('{version}', version) })
+        .setTimestamp();
+    
+    for (const cmd of commands.slice(0, 15)) {
+        const dmStatus = isDMCompatible(cmd) ? '✅ DM OK' : '❌ Server Only';
+        embed.addFields({
+            name: `/${cmd.name}`,
+            value: `└─ ${cmd.description?.substring(0, 80) || 'No description'}\n└─ ${dmStatus} | ${t.cooldown}: ${cmd.cooldown || 3000}ms`,
+            inline: false
+        });
+    }
+    
+    if (commands.length > 15) {
+        embed.addFields({ name: '📜 AND MORE...', value: `*${commands.length - 15} additional spells not shown*`, inline: false });
+    }
+    
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('back_cat').setLabel(t.backToList).setStyle(ButtonStyle.Primary).setEmoji('📚')
+    );
+    
+    await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+    
+    const collector = interaction.channel?.createMessageComponentCollector({ 
+        filter: i => i.user.id === interaction.user.id,
+        time: 60000,
+        max: 1
+    });
+    
+    if (!collector) return;
+    
+    collector.on('collect', async (btnInteraction) => {
+        // 🔥 FIXED: Safe defer with expiry handling
+        try {
+            await btnInteraction.deferUpdate();
+        } catch (error) {
+            if (error.code === 10062) {
+                console.log('[SLASH] Button interaction expired (showCategoryCommands)');
+                collector.stop();
+                return;
+            }
+            throw error;
+        }
+        
+        if (btnInteraction.customId === 'back_cat') {
+            const mockMessage = {
+                author: interaction.user,
+                guild: interaction.guild,
+                channel: interaction.channel,
+                reply: async () => {}
+            };
+            await module.exports.run(client, mockMessage, [], client.db, null, 'slash');
+        }
+    });
+}
+
+// ================= HELPER: Show All Commands (Slash) =================
+async function showAllCommandsSlash(interaction, client, commands, t, lang, isDM, version, guildName) {
+    const itemsPerPage = 10;
+    let currentPage = 0;
+    const totalPages = Math.ceil(commands.length / itemsPerPage);
+    
+    const buildEmbed = (page) => {
+        const start = page * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageCommands = commands.slice(start, end);
+        
+        let description = '```yaml\n';
+        for (const cmd of pageCommands) {
+            const dmStatus = isDMCompatible(cmd) ? '✅' : '❌';
+            description += `${dmStatus} /${cmd.name}\n`;
+            description += `   └─ ${cmd.description?.substring(0, 50) || 'No description'}\n`;
+        }
+        description += '```';
+        
+        return new EmbedBuilder()
+            .setColor('#9b59b6')
+            .setTitle('📜 ALL ARCANE SPELLS')
+            .setDescription(description)
+            .addFields(
+                { name: '📊 STATISTICS', value: `Total: ${commands.length} | Page ${page + 1}/${totalPages}`, inline: true },
+                { name: '✅ DM Compatible', value: 'Commands marked with ✅ work in DMs', inline: true },
+                { name: '❌ Server Only', value: 'Commands marked with ❌ require a server', inline: true }
+            )
+            .setFooter({ text: t.footer.replace('{version}', version) })
+            .setTimestamp();
+    };
+    
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('prev_all_s').setLabel('◀ Previous').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
+        new ButtonBuilder().setCustomId('next_all_s').setLabel('Next ▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages - 1),
+        new ButtonBuilder().setCustomId('back_all_s').setLabel(t.backToList).setStyle(ButtonStyle.Primary).setEmoji('📚')
+    );
+    
+    await interaction.editReply({ embeds: [buildEmbed(currentPage)], components: [row] }).catch(() => {});
+    
+    const collector = interaction.channel?.createMessageComponentCollector({ 
+        filter: i => i.user.id === interaction.user.id,
+        time: 60000
+    });
+    
+    if (!collector) return;
+    
+    collector.on('collect', async (btnInteraction) => {
+        // 🔥 FIXED: Safe defer with expiry handling
+        try {
+            await btnInteraction.deferUpdate();
+        } catch (error) {
+            if (error.code === 10062) {
+                console.log('[SLASH] Button interaction expired (showAllCommandsSlash)');
+                collector.stop();
+                return;
+            }
+            throw error;
+        }
+        
+        if (btnInteraction.customId === 'prev_all_s' && currentPage > 0) {
+            currentPage--;
+            const newRow = ActionRowBuilder.from(row);
+            newRow.components[0].setDisabled(currentPage === 0);
+            newRow.components[1].setDisabled(currentPage === totalPages - 1);
+            await btnInteraction.editReply({ embeds: [buildEmbed(currentPage)], components: [newRow] }).catch(() => {});
+        } else if (btnInteraction.customId === 'next_all_s' && currentPage < totalPages - 1) {
+            currentPage++;
+            const newRow = ActionRowBuilder.from(row);
+            newRow.components[0].setDisabled(currentPage === 0);
+            newRow.components[1].setDisabled(currentPage === totalPages - 1);
+            await btnInteraction.editReply({ embeds: [buildEmbed(currentPage)], components: [newRow] }).catch(() => {});
+        } else if (btnInteraction.customId === 'back_all_s') {
+            collector.stop();
+            await module.exports.execute(interaction, client);
+        }
+    });
+    
+    collector.on('end', () => {
+        // Cleanup
+    });
+}
+
+// ================= HELPER: Show Category Commands (Slash) =================
+async function showCategoryCommandsSlash(interaction, client, commands, category, t, lang, isDM, version, guildName) {
+    const embed = new EmbedBuilder()
+        .setColor('#9b59b6')
+        .setTitle(`${categoryEmojis[category] || '📦'} ${category} SPELLS`)
+        .setDescription(`\`\`\`yaml\n${commands.length} command${commands.length !== 1 ? 's' : ''} in this category\n\`\`\``)
+        .setFooter({ text: t.footer.replace('{version}', version) })
+        .setTimestamp();
+    
+    for (const cmd of commands.slice(0, 15)) {
+        const dmStatus = isDMCompatible(cmd) ? '✅ DM OK' : '❌ Server Only';
+        embed.addFields({
+            name: `/${cmd.name}`,
+            value: `└─ ${cmd.description?.substring(0, 80) || 'No description'}\n└─ ${dmStatus} | ${t.cooldown}: ${cmd.cooldown || 3000}ms`,
+            inline: false
+        });
+    }
+    
+    if (commands.length > 15) {
+        embed.addFields({ name: '📜 AND MORE...', value: `*${commands.length - 15} additional spells not shown*`, inline: false });
+    }
+    
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('back_cat_s').setLabel(t.backToList).setStyle(ButtonStyle.Primary).setEmoji('📚')
+    );
+    
+    await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+    
+    const collector = interaction.channel?.createMessageComponentCollector({ 
+        filter: i => i.user.id === interaction.user.id,
+        time: 60000,
+        max: 1
+    });
+    
+    if (!collector) return;
+    
+    collector.on('collect', async (btnInteraction) => {
+        // 🔥 FIXED: Safe defer with expiry handling
+        try {
+            await btnInteraction.deferUpdate();
+        } catch (error) {
+            if (error.code === 10062) {
+                console.log('[SLASH] Button interaction expired (showCategoryCommandsSlash)');
+                collector.stop();
+                return;
+            }
+            throw error;
+        }
+        
+        if (btnInteraction.customId === 'back_cat_s') {
+            await module.exports.execute(interaction, client);
+        }
+    });
+}
+
+// ================= MAIN MODULE EXPORTS =================
 module.exports = {
     name: 'slash',
     aliases: ['cmdlist', 'spells', 'grimoire'],
@@ -120,8 +412,24 @@ module.exports = {
                 .setRequired(false)
         ),
 
+    // ================= PREFIX COMMAND RUN =================
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        // 🔥 FIXED: Safe language detection without relying on i18n.getString
+        let lang = 'en';
+        if (client.detectLanguage) {
+            try {
+                lang = client.detectLanguage(usedCommand, 'en');
+            } catch (e) {
+                // Fallback to checking usedCommand directly
+                if (usedCommand?.toLowerCase() === 'grimoire') lang = 'fr';
+                else lang = 'en';
+            }
+        } else if (usedCommand) {
+            const cmd = usedCommand.toLowerCase();
+            if (cmd === 'grimoire') lang = 'fr';
+            else if (cmd === 'slash' || cmd === 'cmdlist' || cmd === 'spells') lang = 'en';
+        }
+        
         const t = translations[lang];
         const version = client.version || '1.8.0';
         const isDM = !message.guild;
@@ -211,20 +519,30 @@ module.exports = {
         
         collector.on('collect', async (interaction) => {
             if (interaction.user.id !== message.author.id) {
-                return interaction.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                return interaction.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
             }
             
-            await interaction.deferUpdate().catch(() => {});
+            // 🔥 FIXED: Safe defer with expiry handling
+            try {
+                await interaction.deferUpdate();
+            } catch (error) {
+                if (error.code === 10062) {
+                    console.log('[SLASH] Interaction expired (main collector)');
+                    collector.stop();
+                    return;
+                }
+                throw error;
+            }
             
             if (interaction.customId === 'slash_close') {
                 await reply.delete().catch(() => {});
+                collector.stop();
                 return;
             }
             
             if (interaction.customId === 'slash_refresh') {
-                // Re-run the command to refresh
-                await module.exports.run(client, message, args, db, serverSettings, usedCommand);
                 await reply.delete().catch(() => {});
+                await module.exports.run(client, message, args, db, serverSettings, usedCommand);
                 return;
             }
             
@@ -232,18 +550,27 @@ module.exports = {
                 const selectedCategory = interaction.values[0];
                 
                 if (selectedCategory === 'all') {
-                    // Show all commands (paginated)
                     await showAllCommands(interaction, client, slashCommands, t, lang, isDM, version, message.guild?.name);
                 } else {
-                    // Show category commands
                     await showCategoryCommands(interaction, client, categories[selectedCategory] || [], selectedCategory, t, lang, isDM, version, message.guild?.name);
                 }
             }
         });
+        
+        collector.on('end', () => {
+            // Cleanup - remove components after timeout
+            reply.edit({ components: [] }).catch(() => {});
+        });
     },
 
+    // ================= SLASH COMMAND EXECUTE =================
     execute: async (interaction, client) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        // 🔥 FIXED: Safe language detection
+        let lang = 'en';
+        if (interaction.locale?.startsWith('fr')) {
+            lang = 'fr';
+        }
+        
         const t = translations[lang];
         const version = client.version || '1.8.0';
         const isDM = !interaction.guild;
@@ -278,7 +605,7 @@ module.exports = {
                 .setTitle('🔍 NO SPELLS FOUND')
                 .setDescription(t.noCommands)
                 .setFooter({ text: t.footer.replace('{version}', version) });
-            return interaction.reply({ embeds: [noCmdEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [noCmdEmbed], flags: 64 });
         }
         
         // Build category options
@@ -317,16 +644,19 @@ module.exports = {
             .setFooter({ text: t.footer.replace('{version}', version), iconURL: interaction.guild?.iconURL() || client.user.displayAvatarURL() })
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed], components: [row, refreshRow], ephemeral: true });
+        await interaction.reply({ embeds: [embed], components: [row, refreshRow], flags: 64 });
         
-        const collector = interaction.channel.createMessageComponentCollector({ 
+        const collector = interaction.channel?.createMessageComponentCollector({ 
             filter: i => i.user.id === interaction.user.id,
             time: 120000
         });
         
+        if (!collector) return;
+        
         collector.on('collect', async (btnInteraction) => {
             if (btnInteraction.customId === 'slash_close_slash') {
                 await interaction.deleteReply().catch(() => {});
+                collector.stop();
                 return;
             }
             
@@ -337,7 +667,18 @@ module.exports = {
             }
             
             if (btnInteraction.customId === 'slash_category_slash') {
-                await btnInteraction.deferUpdate();
+                // 🔥 FIXED: Safe defer with expiry handling
+                try {
+                    await btnInteraction.deferUpdate();
+                } catch (error) {
+                    if (error.code === 10062) {
+                        console.log('[SLASH] Select menu interaction expired');
+                        collector.stop();
+                        return;
+                    }
+                    throw error;
+                }
+                
                 const selectedCategory = btnInteraction.values[0];
                 
                 if (selectedCategory === 'all') {
@@ -347,219 +688,10 @@ module.exports = {
                 }
             }
         });
+        
+        collector.on('end', async () => {
+            // Remove components after timeout
+            await interaction.editReply({ components: [] }).catch(() => {});
+        });
     }
 };
-
-// ================= HELPER: Show All Commands (Prefix) =================
-async function showAllCommands(interaction, client, commands, t, lang, isDM, version, guildName) {
-    const itemsPerPage = 10;
-    let currentPage = 0;
-    const totalPages = Math.ceil(commands.length / itemsPerPage);
-    
-    const buildEmbed = (page) => {
-        const start = page * itemsPerPage;
-        const end = start + itemsPerPage;
-        const pageCommands = commands.slice(start, end);
-        
-        let description = '```yaml\n';
-        for (const cmd of pageCommands) {
-            const dmStatus = isDMCompatible(cmd) ? '✅' : '❌';
-            description += `${dmStatus} /${cmd.name}\n`;
-            description += `   └─ ${cmd.description?.substring(0, 50) || 'No description'}\n`;
-        }
-        description += '```';
-        
-        const embed = new EmbedBuilder()
-            .setColor('#9b59b6')
-            .setTitle('📜 ALL ARCANE SPELLS')
-            .setDescription(description)
-            .addFields(
-                { name: '📊 STATISTICS', value: `Total: ${commands.length} | Page ${page + 1}/${totalPages}`, inline: true },
-                { name: '✅ DM Compatible', value: 'Commands marked with ✅ work in DMs', inline: true },
-                { name: '❌ Server Only', value: 'Commands marked with ❌ require a server', inline: true }
-            )
-            .setFooter({ text: t.footer.replace('{version}', version) })
-            .setTimestamp();
-        
-        return embed;
-    };
-    
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('prev_all').setLabel('◀ Previous').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
-        new ButtonBuilder().setCustomId('next_all').setLabel('Next ▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages - 1),
-        new ButtonBuilder().setCustomId('back_all').setLabel(t.backToList).setStyle(ButtonStyle.Primary).setEmoji('📚')
-    );
-    
-    await interaction.editReply({ embeds: [buildEmbed(currentPage)], components: [row] });
-    
-    const collector = interaction.channel.createMessageComponentCollector({ 
-        filter: i => i.user.id === interaction.user.id,
-        time: 60000
-    });
-    
-    collector.on('collect', async (btnInteraction) => {
-        if (btnInteraction.customId === 'prev_all' && currentPage > 0) {
-            currentPage--;
-            const newRow = ActionRowBuilder.from(row);
-            newRow.components[0].setDisabled(currentPage === 0);
-            newRow.components[1].setDisabled(currentPage === totalPages - 1);
-            await btnInteraction.update({ embeds: [buildEmbed(currentPage)], components: [newRow] });
-        } else if (btnInteraction.customId === 'next_all' && currentPage < totalPages - 1) {
-            currentPage++;
-            const newRow = ActionRowBuilder.from(row);
-            newRow.components[0].setDisabled(currentPage === 0);
-            newRow.components[1].setDisabled(currentPage === totalPages - 1);
-            await btnInteraction.update({ embeds: [buildEmbed(currentPage)], components: [newRow] });
-        } else if (btnInteraction.customId === 'back_all') {
-            collector.stop();
-            await module.exports.run(client, { author: interaction.user, guild: interaction.guild, channel: interaction.channel, reply: async (msg) => {} }, [], client.db, null, 'slash');
-        }
-    });
-}
-
-// ================= HELPER: Show Category Commands (Prefix) =================
-async function showCategoryCommands(interaction, client, commands, category, t, lang, isDM, version, guildName) {
-    const embed = new EmbedBuilder()
-        .setColor('#9b59b6')
-        .setTitle(`${categoryEmojis[category] || '📦'} ${category} SPELLS`)
-        .setDescription(`\`\`\`yaml\n${commands.length} command${commands.length !== 1 ? 's' : ''} in this category\n\`\`\``)
-        .setFooter({ text: t.footer.replace('{version}', version) })
-        .setTimestamp();
-    
-    for (const cmd of commands.slice(0, 15)) {
-        const dmStatus = isDMCompatible(cmd) ? '✅ DM OK' : '❌ Server Only';
-        embed.addFields({
-            name: `/${cmd.name}`,
-            value: `└─ ${cmd.description?.substring(0, 80) || 'No description'}\n└─ ${dmStatus} | ${t.cooldown}: ${cmd.cooldown || 3000}ms`,
-            inline: false
-        });
-    }
-    
-    if (commands.length > 15) {
-        embed.addFields({ name: '📜 AND MORE...', value: `*${commands.length - 15} additional spells not shown*`, inline: false });
-    }
-    
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('back_cat').setLabel(t.backToList).setStyle(ButtonStyle.Primary).setEmoji('📚')
-    );
-    
-    await interaction.editReply({ embeds: [embed], components: [row] });
-    
-    const collector = interaction.channel.createMessageComponentCollector({ 
-        filter: i => i.user.id === interaction.user.id,
-        time: 60000,
-        max: 1
-    });
-    
-    collector.on('collect', async (btnInteraction) => {
-        if (btnInteraction.customId === 'back_cat') {
-            await module.exports.run(client, { author: interaction.user, guild: interaction.guild, channel: interaction.channel, reply: async (msg) => {} }, [], client.db, null, 'slash');
-        }
-    });
-}
-
-// ================= HELPER: Show All Commands (Slash) =================
-async function showAllCommandsSlash(interaction, client, commands, t, lang, isDM, version, guildName) {
-    const itemsPerPage = 10;
-    let currentPage = 0;
-    const totalPages = Math.ceil(commands.length / itemsPerPage);
-    
-    const buildEmbed = (page) => {
-        const start = page * itemsPerPage;
-        const end = start + itemsPerPage;
-        const pageCommands = commands.slice(start, end);
-        
-        let description = '```yaml\n';
-        for (const cmd of pageCommands) {
-            const dmStatus = isDMCompatible(cmd) ? '✅' : '❌';
-            description += `${dmStatus} /${cmd.name}\n`;
-            description += `   └─ ${cmd.description?.substring(0, 50) || 'No description'}\n`;
-        }
-        description += '```';
-        
-        return new EmbedBuilder()
-            .setColor('#9b59b6')
-            .setTitle('📜 ALL ARCANE SPELLS')
-            .setDescription(description)
-            .addFields(
-                { name: '📊 STATISTICS', value: `Total: ${commands.length} | Page ${page + 1}/${totalPages}`, inline: true },
-                { name: '✅ DM Compatible', value: 'Commands marked with ✅ work in DMs', inline: true },
-                { name: '❌ Server Only', value: 'Commands marked with ❌ require a server', inline: true }
-            )
-            .setFooter({ text: t.footer.replace('{version}', version) })
-            .setTimestamp();
-    };
-    
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('prev_all_s').setLabel('◀ Previous').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
-        new ButtonBuilder().setCustomId('next_all_s').setLabel('Next ▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages - 1),
-        new ButtonBuilder().setCustomId('back_all_s').setLabel(t.backToList).setStyle(ButtonStyle.Primary).setEmoji('📚')
-    );
-    
-    await interaction.editReply({ embeds: [buildEmbed(currentPage)], components: [row] });
-    
-    const collector = interaction.channel.createMessageComponentCollector({ 
-        filter: i => i.user.id === interaction.user.id,
-        time: 60000
-    });
-    
-    collector.on('collect', async (btnInteraction) => {
-        if (btnInteraction.customId === 'prev_all_s' && currentPage > 0) {
-            currentPage--;
-            const newRow = ActionRowBuilder.from(row);
-            newRow.components[0].setDisabled(currentPage === 0);
-            newRow.components[1].setDisabled(currentPage === totalPages - 1);
-            await btnInteraction.update({ embeds: [buildEmbed(currentPage)], components: [newRow] });
-        } else if (btnInteraction.customId === 'next_all_s' && currentPage < totalPages - 1) {
-            currentPage++;
-            const newRow = ActionRowBuilder.from(row);
-            newRow.components[0].setDisabled(currentPage === 0);
-            newRow.components[1].setDisabled(currentPage === totalPages - 1);
-            await btnInteraction.update({ embeds: [buildEmbed(currentPage)], components: [newRow] });
-        } else if (btnInteraction.customId === 'back_all_s') {
-            collector.stop();
-            await module.exports.execute(interaction, client);
-        }
-    });
-}
-
-// ================= HELPER: Show Category Commands (Slash) =================
-async function showCategoryCommandsSlash(interaction, client, commands, category, t, lang, isDM, version, guildName) {
-    const embed = new EmbedBuilder()
-        .setColor('#9b59b6')
-        .setTitle(`${categoryEmojis[category] || '📦'} ${category} SPELLS`)
-        .setDescription(`\`\`\`yaml\n${commands.length} command${commands.length !== 1 ? 's' : ''} in this category\n\`\`\``)
-        .setFooter({ text: t.footer.replace('{version}', version) })
-        .setTimestamp();
-    
-    for (const cmd of commands.slice(0, 15)) {
-        const dmStatus = isDMCompatible(cmd) ? '✅ DM OK' : '❌ Server Only';
-        embed.addFields({
-            name: `/${cmd.name}`,
-            value: `└─ ${cmd.description?.substring(0, 80) || 'No description'}\n└─ ${dmStatus} | ${t.cooldown}: ${cmd.cooldown || 3000}ms`,
-            inline: false
-        });
-    }
-    
-    if (commands.length > 15) {
-        embed.addFields({ name: '📜 AND MORE...', value: `*${commands.length - 15} additional spells not shown*`, inline: false });
-    }
-    
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('back_cat_s').setLabel(t.backToList).setStyle(ButtonStyle.Primary).setEmoji('📚')
-    );
-    
-    await interaction.editReply({ embeds: [embed], components: [row] });
-    
-    const collector = interaction.channel.createMessageComponentCollector({ 
-        filter: i => i.user.id === interaction.user.id,
-        time: 60000,
-        max: 1
-    });
-    
-    collector.on('collect', async (btnInteraction) => {
-        if (btnInteraction.customId === 'back_cat_s') {
-            await module.exports.execute(interaction, client);
-        }
-    });
-}
