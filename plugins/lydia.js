@@ -1,7 +1,3 @@
-// ================= 🧠 LYDIA NEURAL PROCESSOR v2.7.0 =================
-// ARCHITECT CG-223 | Trigger-Based Multi-Agent AI Assistant
-// Optimized for Starlink Latency & SQLite Performance
-
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
@@ -121,27 +117,27 @@ async function shouldSearchAI(userMessage) {
     
     try {
         const actualSearchDecision = async () => {
-const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-    model: "google/gemini-2.0-flash-001",
-    messages: [
-        { role: "system", content: `Decide if this query needs real-time web search. Return ONLY: YES or NO` },
-        { role: "user", content: userMessage }
-    ],
-    temperature: 0,
-    max_tokens: 10,
-    provider: {
-        order: ["Google"],
-        allow_fallbacks: false
-    }
-}, {
-    headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://github.com/MFOF7310",
-        "X-Title": "Architect-CG-223",
-        "Content-Type": "application/json"
-    },
-    timeout: 5000
-});
+            const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+                model: "deepseek/deepseek-chat",
+                messages: [
+                    { role: "system", content: `Decide if this query needs real-time web search. Return ONLY: YES or NO` },
+                    { role: "user", content: userMessage }
+                ],
+                temperature: 0,
+                max_tokens: 10,
+                provider: {
+                    order: ["Google"],
+                    allow_fallbacks: false
+                }
+            }, {
+                headers: {
+                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                    "HTTP-Referer": "https://github.com/MFOF7310",
+                    "X-Title": "Architect-CG-223",
+                    "Content-Type": "application/json"
+                },
+                timeout: 5000
+            });
             
             const decision = response.data.choices[0]?.message?.content?.trim().toUpperCase() || 'NO';
             console.log(`${cyan}[AI SEARCH DECISION]${reset} "${userMessage.substring(0, 50)}..." → ${decision}`);
@@ -151,7 +147,7 @@ const response = await axios.post("https://openrouter.ai/api/v1/chat/completions
         const timeoutPromise = new Promise(resolve => setTimeout(() => {
             console.log(`${yellow}[SEARCH DECISION TIMEOUT]${reset} Falling back to keyword check`);
             return resolve(false);
-        }, 4000));  // 🔥 Timeout cohérent avec l'API
+        }, 4000));
         
         return await Promise.race([actualSearchDecision(), timeoutPromise]);
         
@@ -310,43 +306,51 @@ async function webSearch(query) {
     }
 }
 
-// ================= ENHANCED AI RESPONSE GENERATION - BULLETPROOF FAILOVER =================
+// ================= ENHANCED AI RESPONSE GENERATION - FIXED =================
 async function generateAIResponse(systemPrompt, userMessage, conversationHistory = [], imageUrl = null, realTimeData = null) {
     if (!process.env.OPENROUTER_API_KEY) throw new Error("OpenRouter API key missing");
 
     try {
-        // 🚀 LISTE DE REPLI (FALLBACK) - L'Architecte a prévu toutes les pannes
-        // Si le premier échoue (404, 429, 500), OpenRouter essaie le suivant automatiquement.
-const models = [
-    "google/gemini-2.0-flash-001",
-    "google/gemini-2.0-flash-exp:free",  // 🔥 MODÈLE GRATUIT pour tests
-    "anthropic/claude-3-haiku",
-    "deepseek/deepseek-chat",
-    "openrouter/auto"
-];
+        // 🚀 FALLBACK LIST - Architect predicted all failures
+        const models = [
+            "deepseek/deepseek-chat",
+            "deepseek/deepseek-r1:free",
+            "anthropic/claude-3-haiku",
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "openrouter/auto"
+        ];
 
-        // Sélection intelligente du premier modèle selon le contexte
+        // 🌐 VISION-AWARE MODEL SELECTION
         const lowerMsg = userMessage.toLowerCase();
         let primaryModel = models[0];
         
-        if (lowerMsg.includes("code") || lowerMsg.includes("javascript") || lowerMsg.includes("discord.js") || 
+        // Force vision-capable model if image is attached
+        if (imageUrl) {
+            primaryModel = "google/gemini-flash-1.5";
+            console.log(`${cyan}[AI VISION]${reset} Image detected - switching to vision model`);
+        }
+        // Code & Technical queries
+        else if (lowerMsg.includes("code") || lowerMsg.includes("javascript") || lowerMsg.includes("discord.js") || 
             lowerMsg.includes("python") || lowerMsg.includes("function") || lowerMsg.includes("programming")) {
             primaryModel = "deepseek/deepseek-chat";
         }
+        // Analysis & Reasoning
         else if (lowerMsg.includes("analyse") || lowerMsg.includes("explain") || lowerMsg.includes("why") ||
                  lowerMsg.includes("analysis") || lowerMsg.includes("reason") || lowerMsg.includes("how")) {
-            primaryModel = "anthropic/claude-3.5-haiku";
+            primaryModel = "anthropic/claude-3-haiku";
         }
+        // Creative & Writing
         else if (lowerMsg.includes("story") || lowerMsg.includes("poem") || lowerMsg.includes("write") ||
                  lowerMsg.includes("histoire") || lowerMsg.includes("poème") || lowerMsg.includes("creative")) {
-            primaryModel = "anthropic/claude-3.5-sonnet";
+            primaryModel = "anthropic/claude-3-haiku";
         }
 
-        // Réorganiser la liste pour mettre le modèle préféré en premier
+        // Reorder list to put preferred model first
         const orderedModels = [primaryModel, ...models.filter(m => m !== primaryModel)];
         
         console.log(`${cyan}[AI NEURAL BRIDGE]${reset} Primary: ${primaryModel.split('/').pop()} | Fallback: Active (${orderedModels.length} models) ${imageUrl ? '📸' : ''}`);
 
+        // Build messages array
         const messages = [{ role: "system", content: systemPrompt }];
         
         for (const msg of conversationHistory.slice(-MAX_HISTORY)) {
@@ -374,49 +378,64 @@ const models = [
         }
         messages.push({ role: "user", content: userContent });
 
-const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-    model: "google/gemini-2.0-flash-001", // 🔥 Modèle ultra-stable post-maintenance
-    messages: messages,
-    temperature: 0.7,
-    max_tokens: 1000,
-    // 🔥 AJOUT CRITIQUE - Certains modèles l'exigent maintenant
-    provider: {
-        order: ["Google", "Anthropic"],
-        allow_fallbacks: true
-    }
-}, {
-    headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://github.com/MFOF7310", // ✅ Obligatoire anti-400
-        "X-Title": "Architect-CG-223",                 // ✅ Obligatoire anti-400
-        "Content-Type": "application/json"
-    },
-    // 🔥 Empêche axios de crasher avant d'avoir lu l'erreur
-    validateStatus: function (status) {
-        return status >= 200 && status < 500;
-    },
-    timeout: 30000
-});
-
-// 🔥 Diagnostic après l'appel
-if (response.status === 400) {
-    console.log(`${red}[OPENROUTER 400]${reset} Détails:`, JSON.stringify(response.data?.error || response.data));
-}
-
-// Log quel modèle a finalement répondu
-const usedModel = response.data?.model || "unknown";
-console.log(`${green}[AI SUCCESS]${reset} Model used: ${usedModel.split('/').pop()}`);
+        // 🔥 SMART FALLBACK — Try each model until one works
+        let response;
+        let lastError;
         
-        return response.data.choices[0]?.message?.content || "❌ Signal neural perdu. Réessayez.";
-    } catch (error) {
-        console.error(`${red}[OPENROUTER CRITICAL]${reset} All models failed or network error:`, error.message);
-        
-        // Message d'erreur élégant et rassurant
-        if (error.code === 'ECONNABORTED') {
-            return "⚠️ **Latence Starlink détectée**\nLe signal met plus de temps que prévu. Réessayez dans un instant - le système s'adapte automatiquement.";
+        for (const model of orderedModels) {
+            try {
+                console.log(`${cyan}[AI TRY]${reset} Attempting: ${model.split('/').pop()}...`);
+                
+                response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+                    model: model,
+                    messages: messages,
+                    temperature: 0.7,
+                    max_tokens: 1000
+                }, {
+                    headers: {
+                        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                        "HTTP-Referer": "https://github.com/MFOF7310",
+                        "X-Title": "Architect-CG-223",
+                        "Content-Type": "application/json"
+                    },
+                    timeout: 25000
+                });
+                
+                // Success! Break out of the loop
+                const usedModel = response.data?.model || model;
+                console.log(`${green}[AI SUCCESS]${reset} Model used: ${usedModel.split('/').pop()}`);
+                break;
+                
+            } catch (error) {
+                lastError = error;
+                const status = error.response?.status;
+                console.log(`${yellow}[AI FAIL]${reset} ${model.split('/').pop()} → Status ${status || error.message}`);
+                
+                // If it's not a rate limit or server error, stop trying
+                if (status === 401 || status === 402 || status === 403) break;
+                // Otherwise continue to next model
+            }
         }
+
+        // Check if any model succeeded
+        if (!response || !response.data?.choices?.[0]?.message?.content) {
+            console.error(`${red}[AI ALL FAILED]${reset} All models exhausted. Last error: ${lastError?.message}`);
+            
+            if (lastError?.code === 'ECONNABORTED') {
+                return "⚠️ **Latence Starlink détectée**\nLe signal met plus de temps que prévu. Réessayez dans un instant.";
+            }
+            
+            return "⚠️ **Le système neural rencontre une interférence**\nTous les modèles sont momentanément saturés. Réessayez dans 30 secondes.";
+        }
+
+        return response.data.choices[0].message.content;
         
-        return "⚠️ **Le système neural rencontre une interférence**\nTous les modèles sont momentanément saturés. L'Architecte a été notifié. Réessayez dans 30 secondes.";
+    } catch (error) {
+        console.error(`${red}[OPENROUTER CRITICAL]${reset}`, error.message);
+        if (error.code === 'ECONNABORTED') {
+            return "⚠️ **Timeout - Réessayez dans un instant.**";
+        }
+        return "⚠️ **Erreur du moteur neural.**";
     }
 }
 
@@ -661,10 +680,10 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
             .run(reminderId, userId, channelId, reminderMsg, executeAt);
 
         setTimeout(async () => {
-            const channel = await client.channels.fetch(channelId).catch(() => null);
-            if (channel) channel.send(`⏰ **REMINDER** for <@${userId}> :\n> ${reminderMsg}`);
-            database.prepare(`UPDATE reminders SET status = 'completed' WHERE id = ?`).run(reminderId);
-        }, ms);
+    const channel = await client.channels.fetch(channelId).catch(() => null);
+    if (channel) channel.send(`⏰ **REMINDER** for <@${userId}> :\n> ${reminderMsg}`);
+    database.prepare(`UPDATE reminders SET status = 'completed' WHERE id = ?`).run(reminderId);
+}, ms);
 
         console.log(`${green}[REMINDER]${reset} Scheduled for ${userId} in ${amount}${unit}`);
     } catch (e) { console.log(`${red}[REMINDER ERROR]${reset} ${e.message}`); }
@@ -973,47 +992,37 @@ async function handleLydiaMessage(message, client, database) {
             systemPrompt += `\n\n[USER MEMORY]\n` + memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n');
         }
 
-        const historyRows = database.prepare(`
-            SELECT role, content, user_name 
-            FROM lydia_conversations 
-            WHERE channel_id = ? 
-            ORDER BY timestamp DESC 
-            LIMIT ?
-        `).all(message.channel.id, MAX_HISTORY);
-        
-        const originalRows = [...historyRows];
-        
-        const conversationHistory = historyRows.reverse().map(row => ({
-            role: row.role,
-            content: row.content
-        }));
-        
-        if (historyRows.length >= MAX_HISTORY) {
-            try {
-                const oldestToKeep = historyRows[MAX_HISTORY - 1];
-                if (oldestToKeep) {
-                    database.prepare(`
-                        DELETE FROM lydia_conversations 
-                        WHERE channel_id = ? AND timestamp < (
-                            SELECT timestamp FROM lydia_conversations 
-                            WHERE channel_id = ? 
-                            ORDER BY timestamp DESC 
-                            LIMIT 1 OFFSET ?
-                        )
-                    `).run(message.channel.id, message.channel.id, MAX_HISTORY - 1);
-                }
-            } catch (e) {}
-        }
-        
-        if (originalRows.length > 0) {
-            const contextSummary = originalRows
-                .slice(0, 3)
-                .map(r => `${r.role === 'user' ? r.user_name : 'You'}: ${r.content?.substring(0, 80) || ''}`)
-                .join(' | ');
-            
-            systemPrompt += `\n\n[CONTEXT - Last messages: ${contextSummary}]\n`;
-            systemPrompt += `[IMPORTANT: Never use "[Name]:" format in your responses. Just speak naturally.]`;
-        }
+        // ✅ FIXED: Conversation history with proper reversal handling
+const historyRows = database.prepare(`
+    SELECT role, content, user_name, timestamp
+    FROM lydia_conversations 
+    WHERE channel_id = ? 
+    ORDER BY timestamp DESC 
+    LIMIT ?
+`).all(message.channel.id, MAX_HISTORY);
+
+if (historyRows.length > 0) {
+    const contextSummary = historyRows.slice(0, 3)
+        .map(r => `${r.role === 'user' ? r.user_name : 'You'}: ${r.content?.substring(0, 80) || ''}`)
+        .join(' | ');
+    systemPrompt += `\n\n[CONTEXT - Last messages: ${contextSummary}]\n`;
+    systemPrompt += `[IMPORTANT: Never use "[Name]:" format in your responses. Just speak naturally.]`;
+}
+
+if (historyRows.length >= MAX_HISTORY) {
+    const oldestToKeep = historyRows[historyRows.length - 1];
+    if (oldestToKeep) {
+        database.prepare(`
+            DELETE FROM lydia_conversations 
+            WHERE channel_id = ? AND timestamp < ?
+        `).run(message.channel.id, oldestToKeep.timestamp);
+    }
+}
+
+const conversationHistory = historyRows.reverse().map(row => ({
+    role: row.role,
+    content: row.content
+}));
         
         try {
             database.prepare(`INSERT INTO lydia_conversations (channel_id, user_id, user_name, role, content, timestamp) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))`)
@@ -1167,7 +1176,24 @@ function setupLydia(client, database) {
             client.lydiaAgents[ch.channel_id] = ch.agent_key;
             console.log(`${cyan}[LYDIA RESTORE]${reset} Channel ${ch.channel_id} restored (${ch.agent_key})`);
         }
+         // 🔥 PERFORMANCE INDEXES - Critical for Bamako latency
+    try {
+        // Memory lookup optimization
+        database.prepare(`CREATE INDEX IF NOT EXISTS idx_lydia_memory_user ON lydia_memory(user_id)`).run();
         
+        // Conversation history by channel (most frequent query)
+        database.prepare(`CREATE INDEX IF NOT EXISTS idx_lydia_conv_channel ON lydia_conversations(channel_id, timestamp DESC)`).run();
+        
+        // Reminder execution lookup
+        database.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status, execute_at)`).run();
+        
+        // Agent channel lookup
+        database.prepare(`CREATE INDEX IF NOT EXISTS idx_lydia_agents_active ON lydia_agents(is_active)`).run();
+        
+        console.log(`${green}[LYDIA INDEXES]${reset} Performance indexes created`);
+    } catch (err) {
+        console.log(`${yellow}[LYDIA INDEXES]${reset} Some indexes may already exist: ${err.message}`);
+    }
         pruneOldConversations(database);
         setInterval(() => pruneOldConversations(database), 86400000);
         
