@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -44,7 +44,28 @@ module.exports = {
     cooldown: 5000,
     usage: '.clear [amount] [@user]',
     examples: ['.clear 10', '.clear 50 @user', '.clear all'],
+    
+    // ================= SLASH COMMAND BUILDER =================
+    data: new SlashCommandBuilder()
+        .setName('clear')
+        .setDescription('Bulk delete messages in the current channel')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+        .addIntegerOption(option =>
+            option.setName('amount')
+                .setDescription('Number of messages to delete (1-100)')
+                .setRequired(true)
+                .setMinValue(1)
+                .setMaxValue(100))
+        .addUserOption(option =>
+            option.setName('target')
+                .setDescription('Only delete messages from this user (optional)')
+                .setRequired(false))
+        .addStringOption(option =>
+            option.setName('reason')
+                .setDescription('Reason for the purge')
+                .setRequired(false)),
 
+    // ================= PREFIX COMMAND =================
     run: async (client, message, args, database, serverSettings, usedCommand) => {
         
         // ================= PERMISSION CHECK =================
@@ -62,11 +83,6 @@ module.exports = {
             ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
             : (serverSettings?.language || 'en');
         const t = translations[lang];
-        
-        // ✅ DYNAMIC VERSION
-        const version = client.version || '1.5.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
         // Delete command message immediately
         await message.delete().catch(() => null);
@@ -74,7 +90,7 @@ module.exports = {
         // Parse arguments
         const targetUser = message.mentions.users.first();
         const amountArg = targetUser ? args[1] : args[0];
-        const maxAmount = 100; // Discord limit
+        const maxAmount = 100;
         
         let amount;
         if (amountArg?.toLowerCase() === 'all') {
@@ -89,78 +105,114 @@ module.exports = {
             }
         }
 
+        await performPurge(message.channel, message.author, amount, targetUser, t, client, message.guild);
+    },
+    
+    // ================= SLASH COMMAND =================
+    execute: async (interaction) => {
+        await interaction.deferReply({ ephemeral: true });
+        
+        const amount = interaction.options.getInteger('amount');
+        const targetUser = interaction.options.getUser('target');
+        const reason = interaction.options.getString('reason') || 'No reason provided';
+        
+        const lang = interaction.client.detectLanguage 
+            ? interaction.client.detectLanguage('/clear', interaction.guild?.language || 'en')
+            : 'en';
+        const t = translations[lang];
+        
         try {
-            // Fetch messages
-            const fetched = await message.channel.messages.fetch({ limit: amount });
+            await performPurge(interaction.channel, interaction.user, amount, targetUser, t, interaction.client, interaction.guild);
             
-            // Filter messages
-            const messagesToDelete = fetched.filter(m => {
-                const notPinned = !m.pinned;
-                const recent = (Date.now() - m.createdTimestamp) < 1209600000; // 14 days
-                const matchesTarget = targetUser ? m.author.id === targetUser.id : true;
-                return notPinned && recent && matchesTarget;
+            await interaction.editReply({ 
+                content: `✅ **${amount}** messages purged successfully.${targetUser ? ` Target: **${targetUser.tag}**` : ''}\n📝 Reason: ${reason}`,
+                ephemeral: true 
             });
-
-            if (messagesToDelete.size === 0) {
-                const noFound = await message.channel.send({ 
-                    embeds: [
-                        new EmbedBuilder()
-                            .setColor('#FEE75C')
-                            .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-                            .setDescription(t.noMessages)
-                            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                            .setTimestamp()
-                    ]
-                });
-                setTimeout(() => noFound.delete().catch(() => null), 5000);
-                return;
-            }
-
-            // Bulk delete
-            const deleted = await message.channel.bulkDelete(messagesToDelete, true);
-            
-            // Create success embed
-            const successEmbed = new EmbedBuilder()
-                .setColor('#2ecc71')
-                .setAuthor({ name: `${t.title} • ${t.complete}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`🧹 ${t.sanitizing}`)
-                .setDescription(
-                    targetUser 
-                        ? `**${deleted.size}** ${t.packetsRemoved} ${t.fromNode} **${targetUser.username}**.\n` +
-                          `\`\`\`yaml\n${t.targetUser}: ${targetUser.tag}\n${t.amount}: ${deleted.size} messages\n\`\`\``
-                        : `**${deleted.size}** ${t.packetsRemoved} ${t.fromNode}.\n` +
-                          `\`\`\`yaml\n${t.amount}: ${deleted.size} messages\n\`\`\``
-                )
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            
-            // Add moderator info
-            successEmbed.addFields({
-                name: '🛡️ Moderator',
-                value: `${message.author.tag}`,
-                inline: true
-            });
-            
-            const reply = await message.channel.send({ embeds: [successEmbed] });
-            
-            // Auto-delete confirmation after 5 seconds
-            setTimeout(() => reply.delete().catch(() => null), 5000);
-            
-            // Log the action
-            console.log(`[CLEAR] ${message.author.tag} purged ${deleted.size} messages in #${message.channel.name} | Target: ${targetUser?.tag || 'All'} | Lang: ${lang}`);
-            
         } catch (err) {
-            console.error("[CLEAR] Purge Error:", err);
-            
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#ED4245')
-                .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-                .setDescription(t.error)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            
-            const errorMsg = await message.channel.send({ embeds: [errorEmbed] });
-            setTimeout(() => errorMsg.delete().catch(() => null), 5000);
+            console.error('Slash clear error:', err.message);
+            await interaction.editReply({ 
+                content: t.error,
+                ephemeral: true 
+            });
         }
     }
 };
+
+// ================= SHARED PURGE FUNCTION =================
+async function performPurge(channel, moderator, amount, targetUser, t, client, guild) {
+    const version = client.version || '1.5.0';
+    const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
+    const guildIcon = guild?.iconURL() || client.user.displayAvatarURL();
+    
+    try {
+        // Fetch messages
+        const fetched = await channel.messages.fetch({ limit: amount });
+        
+        // Filter messages
+        const messagesToDelete = fetched.filter(m => {
+            const notPinned = !m.pinned;
+            const recent = (Date.now() - m.createdTimestamp) < 1209600000; // 14 days
+            const matchesTarget = targetUser ? m.author.id === targetUser.id : true;
+            return notPinned && recent && matchesTarget;
+        });
+
+        if (messagesToDelete.size === 0) {
+            const noFound = await channel.send({ 
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor('#FEE75C')
+                        .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
+                        .setDescription(t.noMessages)
+                        .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                        .setTimestamp()
+                ]
+            });
+            setTimeout(() => noFound.delete().catch(() => null), 5000);
+            return;
+        }
+
+        // Bulk delete
+        const deleted = await channel.bulkDelete(messagesToDelete, true);
+        
+        // Create success embed
+        const successEmbed = new EmbedBuilder()
+            .setColor('#2ecc71')
+            .setAuthor({ name: `${t.title} • ${t.complete}`, iconURL: client.user.displayAvatarURL() })
+            .setTitle(`🧹 ${t.sanitizing}`)
+            .setDescription(
+                targetUser 
+                    ? `**${deleted.size}** ${t.packetsRemoved} ${t.fromNode} **${targetUser.username}**.\n` +
+                      `\`\`\`yaml\n${t.targetUser}: ${targetUser.tag}\n${t.amount}: ${deleted.size} messages\n\`\`\``
+                    : `**${deleted.size}** ${t.packetsRemoved} ${t.fromNode}.\n` +
+                      `\`\`\`yaml\n${t.amount}: ${deleted.size} messages\n\`\`\``
+            )
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+            .setTimestamp()
+            .addFields({
+                name: '🛡️ Moderator',
+                value: `${moderator.tag}`,
+                inline: true
+            });
+        
+        const reply = await channel.send({ embeds: [successEmbed] });
+        
+        // Auto-delete confirmation after 5 seconds
+        setTimeout(() => reply.delete().catch(() => null), 5000);
+        
+        // Log the action
+        console.log(`[CLEAR] ${moderator.tag} purged ${deleted.size} messages in #${channel.name} | Target: ${targetUser?.tag || 'All'}`);
+        
+    } catch (err) {
+        console.error("[CLEAR] Purge Error:", err);
+        
+        const errorEmbed = new EmbedBuilder()
+            .setColor('#ED4245')
+            .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
+            .setDescription(t.error)
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+            .setTimestamp();
+        
+        const errorMsg = await channel.send({ embeds: [errorEmbed] });
+        setTimeout(() => errorMsg.delete().catch(() => null), 5000);
+    }
+}
