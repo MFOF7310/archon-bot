@@ -260,22 +260,32 @@ async function searchYouTube(query, maxResults = 5) {
         });
 
         const results = detailsResponse.data.items.map(video => ({
-            id: video.id,
-            title: video.snippet.title,
-            channelName: video.snippet.channelTitle,
-            publishedAt: formatDate(video.snippet.publishedAt),
-            duration: formatDuration(video.contentDetails.duration),
-            views: formatViews(video.statistics.viewCount),
-            thumbnail: video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
-            url: `https://youtube.com/watch?v=${video.id}`
-        }));
+    id: video.id,
+    title: video.snippet.title,
+    channelName: video.snippet.channelTitle,
+    publishedAt: formatDate(video.snippet.publishedAt),
+    duration: formatDuration(video.contentDetails.duration),
+    views: formatViews(video.statistics.viewCount),
+    thumbnail: video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
+    url: `https://youtube.com/watch?v=${video.id}`
+}));
 
-        // Cache results
-        searchCache.set(cacheKey, results);
-        setTimeout(() => searchCache.delete(cacheKey), CACHE_TTL);
+// 🔒 SFW Title Filter — Top.gg Approved
+const blockedWords = [
+    'nsfw', '18+', 'explicit', 'adult', 'xxx', 'porn', 'sex',
+    'adult content', 'onlyfans', 'nsfw content', 'sexual'
+];
+const safeResults = results.filter(video => {
+    const lowerTitle = (video.title || '').toLowerCase();
+    return !blockedWords.some(word => lowerTitle.includes(word));
+});
 
-        console.log(`${green}[YT SEARCH]${reset} Found ${results.length} results for: "${query}"`);
-        return results;
+// Cache results
+searchCache.set(cacheKey, safeResults);
+setTimeout(() => searchCache.delete(cacheKey), CACHE_TTL);
+
+console.log(`${green}[YT SEARCH]${reset} Found ${safeResults.length} results for: "${query}" (${results.length - safeResults.length} filtered)`);
+return safeResults;
     } catch (error) {
         console.error(`${red}[YT SEARCH ERROR]${reset}`, error.message);
         return null;
@@ -285,7 +295,7 @@ async function searchYouTube(query, maxResults = 5) {
 // ================= FALLBACK: WEB SCRAPE (NO API KEY) =================
 async function scrapeYouTubeSearch(query, maxResults = 5) {
     try {
-        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=en&gl=US`;
         const response = await axios.get(searchUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -333,72 +343,143 @@ return safeResults.length > 0 ? safeResults : null;
     }
 }
 
-// ================= HANDLE VIDEO INFO =================
+// ================= HANDLE VIDEO INFO - PROFESSIONAL EDITION =================
 async function handleVideoInfo(context, input, isSlash) {
     const videoId = extractVideoId(input);
     if (!videoId) {
-        const msg = '❌ **Invalid YouTube URL or ID**\nPlease provide a valid YouTube link (e.g., `https://youtube.com/watch?v=...`)';
+        const msg = '❌ **Invalid YouTube URL or ID**\nPlease provide a valid YouTube link.\nExample: `https://youtube.com/watch?v=dQw4w9WgXcQ`';
         return isSlash ? context.editReply(msg) : context.reply(msg);
     }
 
-    const sendTyping = !isSlash && context.channel ? context.channel.sendTyping() : Promise.resolve();
-    await sendTyping;
+    // Show typing indicator for prefix commands
+    if (!isSlash && context.channel) {
+        await context.channel.sendTyping().catch(() => {});
+    }
 
     const video = await fetchVideoDetails(videoId);
     if (!video) {
-        const msg = '❌ **Video not found**\nThe video may be private, deleted, or the API quota has been exceeded.';
+        const msg = '❌ **Video Not Found**\nThe video may be private, deleted, or the API quota has been exhausted.\nTry again later or use a different link.';
         return isSlash ? context.editReply(msg) : context.reply(msg);
     }
 
-    // Generate color from title for visual variety
-    const colorSeed = video.title.charCodeAt(0) * 16777215;
-    const dynamicColor = Math.floor(Math.abs(Math.sin(colorSeed) * 16777215)) % 16777215;
+    // ================= INTELLIGENT COLOR GENERATION =================
+    // Generate a visually appealing color from the video title
+    let hash = 0;
+    for (let i = 0; i < video.title.length; i++) {
+        hash = video.title.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const dynamicColor = Math.abs(hash) % 0xFFFFFF;
+    
+    // Ensure the color is vibrant enough (not too dark or too gray)
+    const r = (dynamicColor >> 16) & 255;
+    const g = (dynamicColor >> 8) & 255;
+    const b = dynamicColor & 255;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
+    const finalColor = luminance < 80 ? dynamicColor + 0x444444 : dynamicColor;
 
+    // ================= INTELLIGENT DESCRIPTION FORMATTING =================
+    let description = video.description || '';
+    
+    // Clean up the description
+    if (description.length > 500) {
+        // Find the last complete sentence within 500 chars
+        const truncated = description.substring(0, 500);
+        const lastPeriod = truncated.lastIndexOf('. ');
+        const lastNewline = truncated.lastIndexOf('\n');
+        const cutPoint = Math.max(lastPeriod, lastNewline);
+        
+        if (cutPoint > 300) {
+            description = truncated.substring(0, cutPoint + 1) + '\n\n*... View on YouTube for full description*';
+        } else {
+            description = truncated + '...\n\n*View on YouTube for full description*';
+        }
+    }
+    
+    // Remove excessive newlines
+    description = description.replace(/\n{4,}/g, '\n\n\n');
+    
+    // Add subtle formatting for links in description
+    description = description.replace(/(https?:\/\/[^\s]+)/g, '[$1]($1)');
+
+    // ================= ENGAGEMENT METER =================
+    const viewsNum = parseInt(video.views?.replace(/[^0-9.]/g, '')) || 0;
+    const likesNum = parseInt(video.likes?.replace(/[^0-9.]/g, '')) || 0;
+    
+    let engagementRating = '';
+    let engagementEmoji = '';
+    if (likesNum > 0 && viewsNum > 0) {
+        const engagementRate = (likesNum / viewsNum) * 100;
+        if (engagementRate > 10) {
+            engagementRating = '🔥 Viral';
+            engagementEmoji = '🦅';
+        } else if (engagementRate > 5) {
+            engagementRating = '⭐ Excellent';
+            engagementEmoji = '💎';
+        } else if (engagementRate > 2) {
+            engagementRating = '👍 Great';
+            engagementEmoji = '✨';
+        } else {
+            engagementRating = '📈 Standard';
+            engagementEmoji = '📊';
+        }
+    }
+
+    // ================= BUILD PROFESSIONAL EMBED =================
     const embed = new EmbedBuilder()
-        .setColor(dynamicColor || '#FF0000')
+        .setColor(finalColor)
         .setAuthor({ 
-            name: `📹 ${video.title}`, 
-            iconURL: 'https://www.youtube.com/favicon.ico',
-            url: video.url 
+            name: `📹 ${video.title}`,
+            iconURL: 'https://www.youtube.com/s/desktop/12d6b690/img/favicon_144x144.png',
+            url: video.url
         })
-        .setDescription(video.description || '*No description available*')
-        .setThumbnail(video.thumbnails?.high?.url || video.thumbnails?.medium?.url)
+        .setDescription(description || '*No description provided by creator*')
+        .setThumbnail(video.thumbnails?.maxres?.url || video.thumbnails?.high?.url || video.thumbnails?.medium?.url)
+        .setImage(video.thumbnails?.maxres?.url || null) // Full-width thumbnail for dramatic effect
         .addFields(
             { 
-                name: '📊 **Statistics**', 
+                name: '📊 **Video Statistics**',
                 value: [
-                    `👁️ **Views:** \`${video.views}\``,
-                    `👍 **Likes:** \`${video.likes || 'Hidden'}\``,
-                    `💬 **Comments:** \`${video.comments || 'Hidden'}\``,
-                    `⏱️ **Duration:** \`${video.duration}\``
+                    `👁️ **Views** ─ \`${video.views}\``,
+                    `👍 **Likes** ─ \`${video.likes || 'Hidden'}\``,
+                    `💬 **Comments** ─ \`${video.comments || 'Hidden'}\``,
+                    `⏱️ **Duration** ─ \`${video.duration}\``
                 ].join('\n'),
-                inline: true 
+                inline: true
             },
             { 
-                name: '📡 **Channel**', 
+                name: '📡 **Channel Information**',
                 value: [
-                    `📺 **${video.channelName}**`,
-                    `📅 **Published:** ${formatDate(video.publishedAt)}`,
-                    `🔗 [View Channel](${video.channelUrl})`
-                ].join('\n'),
-                inline: true 
+                    `📺 **Channel** ─ [${video.channelName}](${video.channelUrl})`,
+                    `📅 **Published** ─ ${formatDate(video.publishedAt)}`,
+                    `🏷️ **Video ID** ─ \`${video.id}\``,
+                    engagementEmoji ? `${engagementEmoji} **Rating** ─ ${engagementRating}` : ''
+                ].filter(line => line).join('\n'),
+                inline: true
             }
         )
+        .addFields({
+            name: '🔗 **Quick Actions**',
+            value: [
+                `🎬 **[Watch on YouTube](${video.url})**`,
+                `📺 **[Visit Channel](${video.channelUrl})**`,
+                `🔗 **Share:** \`${video.url}\``
+            ].join('  •  '),
+            inline: false
+        })
         .setFooter({ 
-            text: 'ARCHITECT CG-223 • YouTube Neural Parser', 
+            text: 'ARCHITECT CG-223 • YouTube Neural Parser • Real-time Data',
             iconURL: context.client?.user?.displayAvatarURL?.() || '' 
         })
         .setTimestamp();
 
-    // Add the URL as a separate field
-    embed.addFields({
-        name: '🔗 **Direct Link**',
-        value: `[Click to Watch](${video.url})`,
-        inline: false
-    });
-
+    // ================= SEND RESPONSE =================
     const reply = { embeds: [embed] };
-    return isSlash ? context.editReply(reply) : context.reply(reply);
+    
+    if (isSlash) {
+        return context.editReply(reply).catch(() => context.followUp(reply));
+    } else {
+        return context.reply(reply).catch(() => context.channel.send(reply));
+    }
 }
 
 // ================= HANDLE YOUTUBE SEARCH =================
