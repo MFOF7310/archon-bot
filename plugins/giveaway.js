@@ -194,7 +194,8 @@ function createGiveawayEmbed(giveaway, status, lang, guild, client) {
     const title = status === 'active' ? `${t.title} • ${t.active}` : `${t.title} • ${t.ended}`;
     
     const amount = giveaway.amount || 0;
-    const totalPool = amount * giveaway.winners;
+const winners = giveaway.winners || 1;
+const totalPool = giveaway.originalAmount || (amount * winners);
     
     const embed = new EmbedBuilder()
         .setColor(color)
@@ -346,7 +347,8 @@ async function creditWinners(client, db, winnersList, amount, guildName, lang) {
 // ================= ANNOUNCE IN GIFT CHANNEL =================
 async function announceInGiftChannel(client, guildId, winnersList, prize, hostName, amount, lang, version, guildName) {
     const t = translations[lang];
-    const GIFT_CHANNEL_ID = process.env.GIFT_CHANNEL_ID;
+    const serverSettings = client.getServerSettings ? client.getServerSettings(guildId) : null;
+const GIFT_CHANNEL_ID = serverSettings?.giftChannel || process.env.GIFT_CHANNEL_ID;
     
     if (!GIFT_CHANNEL_ID) return false;
     
@@ -536,10 +538,29 @@ module.exports = {
             return message.reply({ content: t.invalidWinners }).catch(() => {});
         }
         
-        // 🔥 FIXED: Extract credit amount correctly
-        const creditMatch = prize.match(/(\d[\d,]*)/);
-        const amount = creditMatch ? parseInt(creditMatch[0].replace(/,/g, '')) : 0;
-        const totalPool = amount * winners;
+        // 🔥 FIXED: Extract credit amount - smarter pattern
+let amount = 0;
+const creditPattern = /(\d[\d,]*)\s*(?:credits?|crédits?|🪙|coins?)/i;
+const creditMatch = prize.match(creditPattern);
+
+if (creditMatch) {
+    amount = parseInt(creditMatch[1].replace(/,/g, ''));
+} else {
+    const allNumbers = prize.match(/\d[\d,]*/g);
+    if (allNumbers) {
+        amount = parseInt(allNumbers[allNumbers.length - 1].replace(/,/g, ''));
+    }
+}
+
+if (amount <= 0) {
+    const embed = new EmbedBuilder()
+        .setColor('#ED4245')
+        .setDescription(lang === 'fr' ? '❌ Montant de crédits invalide.' : '❌ Invalid credit amount.')
+        .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
+    return message.reply({ embeds: [embed] }).catch(() => {});
+}
+
+const totalPool = amount;
         
         // Create giveaway object
         const giveawayId = `${message.id}_${Date.now()}`;
@@ -559,8 +580,10 @@ module.exports = {
             endTimestamp: endTimestamp,
             displayTime: timeData.text,
             ended: false,
-            amount: amount,
-            totalPool: totalPool
+            
+amount: Math.floor(amount / winners),
+totalPool: totalPool,
+originalAmount: amount
         };
         
         // Create buttons
