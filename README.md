@@ -40,9 +40,10 @@ ARCHITECT CG-223 is an enterprise-grade, multi-server Discord bot with advanced 
 
 ## bash
 # 1. Clone the repository
-```git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
-cd cloud-gaming-223-digital-engine```
 
+```git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+cd cloud-gaming-223-digital-engine
+```
 # 2. Install dependencies
 ```npm install```
 
