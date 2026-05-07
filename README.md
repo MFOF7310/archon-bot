@@ -18,6 +18,16 @@ ARCHITECT CG-223 is an enterprise-grade, multi-server Discord bot with advanced 
 
 ---
 
+## 📛 NAMING CLARIFICATION
+
+| Name | What It Refers To |
+|------|-------------------|
+| `cloud-gaming-223-digital-engine` | **GitHub Repository** |
+| `ARCHITECT CG-223` | **Bot Display Name** (in Discord) |
+| `BAMAKO_223` | **Node Name** (in logs & PM2) |
+| `Cloud Gaming-223` | **Community/Server Name** |
+
+
 ## ✨ SUPREME FEATURE MATRIX
 
 Category Feature Description
@@ -68,8 +78,8 @@ Category Feature Description
 
 ## bash
 # 1. Clone the repository
-```git clone https://github.com/MFOF7310/architect-cg223.git
-cd architect-cg223
+```git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+cd cloud-gaming-223-digital-engine
 ```
 
 # 2. Install dependencies
@@ -110,20 +120,24 @@ MEMBER_ROLE=role_id
 VIP_ROLE_ID=role_id
 VERIFIED_ROLE_ID=role_id
 
-## Start the Bot
+## 🚀 Start the Bot
 
-# bash
-# Production
-```npm start
-```
+```bash
+# Production (run once)
+npm start
 
-# Development with auto-restart
+# Development with auto-restart on file changes
 ```npx nodemon index.js
 ```
 
-# With PM2 (recommended for 24/7)
+# With PM2 (recommended for 24/7 production)
+```npm install -g pm2
+```
 ```pm2 start index.js --name "Architect-CG223"
-pm2 save
+```
+```pm2 save
+```
+```pm2 startup
 ```
 
 ---
@@ -285,43 +299,79 @@ Tables:
 
 # Option 1: Bot-Hosting.net (FREE) ✅
 
-1. Create ZIP with: index.js, ```package.json, plugins/, .env
-2. Upload to Bot-Hosting.net
-3. Set start command: node index.js
-4. Click Start
-```
+# 1. Create ZIP with: index.js, package.json, plugins/, .env
+# 2. Upload to Bot-Hosting.net
+# 3. Set start command: node index.js
+# 4. Click Start
+
 Free Tier: 24/7 Uptime, 100MB RAM, 500MB Storage
 
-Option 2: PM2 on VPS (Recommended)
+### Option 2: PM2 on VPS (Recommended)
 
-bash
-# SSH into VPS
-```ssh user@your-server
+> **You'll need:** A VPS (Virtual Private Server) from providers like:
+> - [DigitalOcean](https://digitalocean.com) ($6/month)
+> - [Hetzner](https://hetzner.com) (~$4/month)
+> - [Vultr](https://vultr.com) ($6/month)
+> - [OVHcloud](https://ovhcloud.com)
+
+## bash
+# 1. SSH into your VPS
+# Replace 'user' with your VPS username and 'your-server-ip' with your server IP
+# Example: ssh root@192.168.1.100
+```ssh user@your-server-ip
 ```
-# Install Node.js 18+
+
+# 2. Update system packages
+```sudo apt update && sudo apt upgrade -y
+```
+
+# 3. Install Node.js 18+
 ```curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
-# Clone & setup
-```git clone https://github.com/MFOF7310/architect-cg223.git
-cd architect-cg223
+
+# 4. Verify installation
+```node --version
+npm --version
+```
+
+# 5. Clone repository & setup
+```git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+cd cloud-gaming-223-digital-engine
 npm install
-nano .env  # Add your tokens
 ```
-# Start with PM2
+
+# 6. Configure environment variables
+```nano .env
+```
+
+# Paste your tokens, then CTRL+X → Y → ENTER to save
+
+# 7. Install PM2 globally
 ```npm install -g pm2
-pm2 start index.js --name "Architect-CG223"
-pm2 save
-pm2 startup
 ```
+
+# 8. Start the bot with PM2
+```pm2 start index.js --name "Architect-CG223"
+```
+
+# 9. Save PM2 process list (auto-restart on reboot)
+```pm2 save
+```
+
+# 10. Enable PM2 startup on system boot
+```pm2 startup
+```
+
+# Copy and run the command it outputs
+
 
 ## Option 3: Render / Heroku
 
-```bash
+# bash
 # Add environment variables in dashboard
 # Build: npm install
 # Start: node index.js
-```
 
 ---
 
