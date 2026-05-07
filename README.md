@@ -141,16 +141,26 @@ pm2 startup
 
 ---
 
-📁 PROJECT STRUCTURE
+## 📁 PROJECT STRUCTURE
 
 ```
 cloud-gaming-223-digital-engine/
 ├── index.js                    # 🧠 Main neural engine (3300+ lines)
 ├── package.json                # Dependencies
-├── .env                        # Environment variables
+├── ecosystem.config.js         # PM2 configuration
+├── .env                        # Environment variables (not committed)
+├── .gitignore                  # Git ignore rules
+├── LICENSE                     # MIT License
+├── README.md                   # This file
+├── SECURITY.md                 # Security policy
 ├── version.txt                 # Dynamic versioning
 │
-├── plugins/                    # Command modules
+├── scripts/                    # 🛠️ Utility scripts
+│   ├── start.sh               # Auto-restart launcher
+│   ├── deploy-commands.js     # Slash command deployer
+│   └── backup.js              # Backup utility
+│
+├── plugins/                    # 🧩 Command modules
 │   ├── lydia.js               # 🧠 Lydia AI (multi-agent)
 │   ├── gemini.js              # 📸 Gemini Vision analysis
 │   ├── market-manager.js      # 📊 Market trends engine
@@ -160,16 +170,25 @@ cloud-gaming-223-digital-engine/
 │   ├── serversettings.js      # ⚙️ Per-server configuration
 │   └── ...                    # 20+ more commands
 │
-├── telegram/                   # Telegram bridge
-│   ├── bridge.js              # 🌉 Discord → Telegram
-│   └── bot.js                 # 🤖 Telegram → Discord
+├── telegram/                   # 🌉 Telegram bridge
+│   ├── bridge.js              # Discord → Telegram
+│   └── bot.js                 # Telegram → Discord
 │
-├── data/                       # Auto-generated
-│   ├── database.sqlite        # 💾 SQLite database
-│   ├── changelog.md           # 📋 Auto-generated registry
-│   └── .bot_state.json        # 📊 State tracking
+├── utils/                      # 🔧 Helper utilities
+│   └── ...
 │
-└── README.md                   # This file
+├── data/                       # 💾 Auto-generated (gitignored)
+│   ├── database.sqlite        # SQLite database
+│   ├── changelog.md           # Auto-generated registry
+│   └── .bot_state.json        # State tracking
+│
+├── logs/                       # 📋 Auto-generated (gitignored)
+│   ├── error.log              # PM2 error logs
+│   ├── output.log             # PM2 output logs
+│   └── combined.log           # PM2 combined logs
+│
+└── backups/                    # 📦 Auto-generated (gitignored)
+    └── backup-*.json           # Server backups
 ```
 
 ---
