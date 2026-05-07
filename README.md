@@ -1,4 +1,6 @@
-## 🦅 ARCHITECT CG-223 — THE SUPREME NEURAL GRID
+---
+
+# 🦅 ARCHITECT CG-223 — THE SUPREME NEURAL GRID
 
 <div align="center">
   <img src="https://img.shields.io/badge/ARCHITECT-CG--223-gold?style=for-the-badge" alt="ARCHITECT CG-223">
@@ -14,7 +16,7 @@
 
 ## 📋 OVERVIEW
 
-ARCHITECT CG-223 is an enterprise-grade, multi-server Discord bot with advanced per-server configuration, bilingual support (English/French), real-time threat intelligence, neural leveling, AI-powered conversations, and a competitive marketplace. Built for the Cloud Gaming-223 community in Bamako, Mali.
+**ARCHITECT CG-223** is an enterprise-grade, multi-server Discord bot with advanced per-server configuration, bilingual support (English/French), real-time threat intelligence, neural leveling, AI-powered conversations, and a competitive marketplace. Built for the **Cloud Gaming-223** community in Bamako, Mali.
 
 ---
 
@@ -27,36 +29,73 @@ ARCHITECT CG-223 is an enterprise-grade, multi-server Discord bot with advanced 
 | `BAMAKO_223` | **Node Name** (in logs & PM2) |
 | `Cloud Gaming-223` | **Community/Server Name** |
 
+---
+
+## ✨ SUPREME FEATURE MATRIX
+
+| Category | Feature | Description |
+|----------|---------|-------------|
+| 🧠 **AI** | Lydia Multi-Agent AI | Gaming expert (CODM), general knowledge, channel-aware |
+| | Gemini Vision | Analyze images, screenshots, and pictures |
+| | Auto-Mod AI | Real-time message filtering and violation detection |
+| 🛡️ **Security** | OSINT Threat Engine | 6-vector threat analysis on member join (0-100 scoring) |
+| | Raid Detection | Join velocity monitoring with auto-quarantine |
+| | Impersonation Detection | Flags admin/mod/staff usernames |
+| | Circuit Breaker | Database write protection with dead letter queue |
+| 📈 **Leveling** | Per-Server Dynamic XP | Configurable cooldown, min/max gain, multiplier per server |
+| | Tiered Level-Up Cards | Milestone-based announcements (1-5, 6-10, 11-20, 21+) |
+| | Neural Titles | Knight, Synapse Lord, Digital Sovereign, Supreme Architect |
+| 👋 **Welcome/Goodbye** | Supreme Welcome Matrix v4.0 | Tier-based cards (FOUNDER→LEGEND) with ANSI art |
+| | Supreme Departure Matrix v4.0 | Audit log detection (Kick/Ban vs Leave) |
+| | Interactive Buttons | Rules, General, AI Assistant, Profile buttons |
+| ⚙️ **Per-Server** | 47 Configurable Settings | Prefix, channels, roles, XP, economy, moderation |
+| | Feature Toggles | Enable/disable Welcome, Goodbye, AFK, Market, AI, AutoMod |
+| | Command Control | Disable commands/categories per server |
+| 💰 **Economy** | Shop System | 11 items with bilingual descriptions |
+| | Market Manager | Real-time trends (STEADY, BULL, BEAR, VOLATILE) |
+| | Daily Rewards | Streak tracking with protection shields |
+| 💤 **AFK** | Real-time Status | Mention detection with reason display |
+| | Reminder Buttons | Interactive AFK reminders |
+| | Bilingual Messages | English/French AFK responses |
+| 🌉 **Telegram** | Bridge v1.7.0 | Bidirectional Discord ↔ Telegram message relay |
+| 🎂 **Birthday** | Daily Check | Celebration buttons, gift interactions |
+| 💾 **Database** | SQLite WAL Mode | High-performance with batch writes |
+| | Auto-Repair | Self-healing schema with migrations |
+| | Weekly Purge | Automatic cleanup + VACUUM |
+| 📊 **Monitoring** | Memory Tracker | 100-sample history with averages |
+| | Database Health | Fragmentation detection, WAL size |
+| | Auto-Changelog | v3.5 neural registry on every restart |
+| 🔒 **Self-Healing** | Anti-Crash Protocol | unhandledRejection + uncaughtException handlers |
+| | Graceful Shutdown | SIGINT/SIGTERM with data flush |
+
+---
 
 ## 🚀 QUICK START
 
-# Prerequisites
+### Prerequisites
 
-· Node.js v18 or higher
-· Discord Bot Token (Developer Portal)
-· API Keys: OpenRouter/Groq, Google Gemini, Brave Search (optional)
+- **Node.js** v18 or higher
+- **Discord Bot Token** ([Developer Portal](https://discord.com/developers/applications))
+- **API Keys:** OpenRouter/Groq, Google Gemini, Brave Search (optional)
 
-## Installation
+### Installation
 
-## bash
+```bash
 # 1. Clone the repository
-
-```git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
 cd cloud-gaming-223-digital-engine
-```
+
 # 2. Install dependencies
-```npm install
-```
+npm install
 
 # 3. Configure environment
 cp .env.example .env
-
-```nano .env
+nano .env
 ```
 
-## Environment Variables
+Environment Variables
 
-# env
+```env
 # ================= REQUIRED =================
 DISCORD_TOKEN=your_discord_bot_token_here
 CLIENT_ID=your_application_client_id
@@ -82,39 +121,30 @@ GENERAL_CHANNEL_ID=channel_id
 MEMBER_ROLE=role_id
 VIP_ROLE_ID=role_id
 VERIFIED_ROLE_ID=role_id
-
-## 🚀 Start the Bot
-
-# bash
-# Production (run once)
-
-```npm start
 ```
+
+Start the Bot
+
+```bash
+# Production (run once)
+npm start
 
 # Development with auto-restart on file changes
-
-```npx nodemon index.js
-```
+npx nodemon index.js
 
 # With PM2 (recommended for 24/7 production)
-
-```npm install -g pm2
-```
-
-```pm2 start index.js --name "Architect-CG223"
-```
-
-```pm2 save
-```
-
-```pm2 startup
+npm install -g pm2
+pm2 start index.js --name "Architect-CG223"
+pm2 save
+pm2 startup
 ```
 
 ---
 
-## 📁 PROJECT STRUCTURE
+📁 PROJECT STRUCTURE
 
-architect-cg223/
+```
+cloud-gaming-223-digital-engine/
 ├── index.js                    # 🧠 Main neural engine (3300+ lines)
 ├── package.json                # Dependencies
 ├── .env                        # Environment variables
@@ -140,12 +170,13 @@ architect-cg223/
 │   └── .bot_state.json        # 📊 State tracking
 │
 └── README.md                   # This file
+```
 
 ---
 
-## 🎮 COMMANDS
+🎮 COMMANDS
 
-## 🧠 AI Commands
+🧠 AI Commands
 
 Command Description
 .lydia [message] Ask Lydia AI anything
@@ -153,7 +184,7 @@ Command Description
 .gemini [question] Analyze with Gemini Vision
 .gemini + image Analyze attached image
 
-## ⚙️ Admin Commands
+⚙️ Admin Commands
 
 Command Description
 .serversettings View/Edit per-server configuration
@@ -163,7 +194,7 @@ Command Description
 .serversettings export Export config as JSON
 .lydia on/off Toggle Lydia AI per channel
 
-## 👤 User Commands
+👤 User Commands
 
 Command Description
 .help View available commands
@@ -175,15 +206,15 @@ Command Description
 .afk [reason] Set AFK status
 .credits / .balance Check your credits
 
-## 🎮 Gaming Commands
+🎮 Gaming Commands
 
 Command Description
 .gaming set <game> <rank> Set your gaming profile
 .gaming profile View gaming stats
 
-## 💰 Economy Commands
+💰 Economy Commands
 
-# Command Description
+Command Description
 .shop buy <item> Purchase shop items
 .shop inventory View your inventory
 .transfer <@user> <amount> Transfer credits
@@ -192,11 +223,11 @@ Command Description
 
 ---
 
-## 🛡️ SECURITY INTELLIGENCE SYSTEM
+🛡️ SECURITY INTELLIGENCE SYSTEM
 
 The GUARDIAN OSINT v3.0 engine analyzes every new member across 6 threat vectors:
 
-## Vector Detection
+Vector Detection
 🔴 Account Age <24h (40pts), <3d (30pts), <7d (20pts)
 ⚠️ Default Avatar Possible bot/troll (15pts)
 🔢 Username Patterns Numeric-only, suspicious keywords, impersonation
@@ -204,7 +235,7 @@ The GUARDIAN OSINT v3.0 engine analyzes every new member across 6 threat vectors
 🎯 Server Targeting New account targeting old server (10pts)
 🤖 Unverified Bot Bot without verification (20pts)
 
-## Risk Classification
+Risk Classification
 
 Score Level Action
 0-14 🟢 LOW Routine processing
@@ -215,11 +246,11 @@ Score Level Action
 
 ---
 
-## ⚙️ PER-SERVER CONFIGURATION (47 SETTINGS)
+⚙️ PER-SERVER CONFIGURATION (47 SETTINGS)
 
-# Each server can customize:
+Each server can customize:
 
-## Category Settings
+Category Settings
 🏠 General Prefix, Language, Timezone
 👋 Welcome Channel, Message, Enable/Disable
 👋 Goodbye Channel, Message, Enable/Disable
@@ -232,7 +263,7 @@ Score Level Action
 
 ---
 
-## 💾 DATABASE ARCHITECTURE
+💾 DATABASE ARCHITECTURE
 
 ```
 📊 SQLite (WAL Mode)
@@ -265,97 +296,83 @@ Tables:
 
 ---
 
-## 🚀 DEPLOYMENT OPTIONS
+🚀 DEPLOYMENT OPTIONS
 
-# Option 1: Bot-Hosting.net (FREE) ✅
+Option 1: Bot-Hosting.net (FREE) ✅
 
-# 1. Create ZIP with: index.js, package.json, plugins/, .env
-# 2. Upload to Bot-Hosting.net
-# 3. Set start command: node index.js
-# 4. Click Start
+1. Create ZIP with: index.js, package.json, plugins/, .env
+2. Upload to Bot-Hosting.net
+3. Set start command: node index.js
+4. Click Start
 
-Free Tier: 24/7 Uptime, 100MB RAM, 500MB Storage
-
-### Option 2: PM2 on VPS (Recommended)
-
-> **You'll need:** A VPS (Virtual Private Server) from providers like:
-> - [DigitalOcean](https://digitalocean.com) ($6/month)
-> - [Hetzner](https://hetzner.com) (~$4/month)
-> - [Vultr](https://vultr.com) ($6/month)
-> - [OVHcloud](https://ovhcloud.com)
-
-## bash
-# 1. SSH into your VPS
-# Replace 'user' with your VPS username and 'your-server-ip' with your server IP
-# Example: ssh root@192.168.1.100
-
-```ssh user@your-server-ip
-```
-
-# 2. Update system packages
-
-```sudo apt update && sudo apt upgrade -y
-```
-
-# 3. Install Node.js 18+
-
-```curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-```
-
-# 4. Verify installation
-
-```node --version
-npm --version
-```
-
-# 5. Clone repository & setup
-
-```git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
-cd cloud-gaming-223-digital-engine
-npm install
-```
-
-# 6. Configure environment variables
-
-```nano .env
-```
-
-# Paste your tokens, then CTRL+X → Y → ENTER to save
-
-# 7. Install PM2 globally
-
-```npm install -g pm2
-```
-
-# 8. Start the bot with PM2
-
-```pm2 start index.js --name "Architect-CG223"
-```
-
-# 9. Save PM2 process list (auto-restart on reboot)
-
-```pm2 save
-```
-
-# 10. Enable PM2 startup on system boot
-
-```pm2 startup
-```
-
-# Copy and run the command it outputs
-
-
-## Option 3: Render / Heroku
-
-# bash
-# Add environment variables in dashboard
-# Build: npm install
-# Start: node index.js
+Free Tier: 24/7 Uptime • 100MB RAM • 500MB Storage
 
 ---
 
-## ⚙️ ENVIRONMENT VARIABLES REFERENCE
+Option 2: PM2 on VPS (Recommended)
+
+You'll need a VPS from: DigitalOcean, Hetzner, Vultr, or OVHcloud
+
+```bash
+# 1. SSH into your VPS (replace with your actual IP)
+ssh root@your-server-ip
+
+# 2. Update system packages
+sudo apt update && sudo apt upgrade -y
+
+# 3. Install Node.js 18+
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 4. Verify installation
+node --version
+npm --version
+
+# 5. Clone repository & setup
+git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+cd cloud-gaming-223-digital-engine
+npm install
+
+# 6. Configure environment variables
+nano .env
+# Paste your tokens, then CTRL+X → Y → ENTER to save
+
+# 7. Install PM2 globally
+npm install -g pm2
+
+# 8. Start the bot with PM2
+pm2 start index.js --name "Architect-CG223"
+
+# 9. Save PM2 process list (auto-restart on reboot)
+pm2 save
+
+# 10. Enable PM2 startup on system boot
+pm2 startup
+# (Copy and run the command it outputs)
+```
+
+PM2 Management Commands
+
+```bash
+pm2 status              # View all processes
+pm2 logs Architect-CG223 # View real-time logs
+pm2 restart Architect-CG223  # Restart bot
+pm2 stop Architect-CG223     # Stop bot
+pm2 monit               # Monitor CPU/RAM usage
+```
+
+---
+
+Option 3: Render / Heroku
+
+1. Push code to GitHub
+2. Connect repository in dashboard
+3. Add environment variables
+4. Build: npm install | Start: node index.js
+
+---
+
+⚙️ ENVIRONMENT VARIABLES REFERENCE
 
 Variable Required Default Description
 DISCORD_TOKEN ✅ - Discord bot token
@@ -375,19 +392,19 @@ MEMBER_ROLE ❌ - Auto-assign role
 
 ---
 
-## 🔧 TROUBLESHOOTING
+🔧 TROUBLESHOOTING
 
 Issue Solution
 "Neural link interrupted" Check OPENROUTER_API_KEY in .env
 Bot won't start Verify DISCORD_TOKEN and CLIENT_ID are set
-Commands not responding Bot needs MESSAGE CONTENT INTENT enabled
+Commands not responding Enable MESSAGE CONTENT INTENT in Discord Developer Portal
 Database locked errors Circuit breaker activates; wait 60 seconds
 Welcome messages not sending Set welcome_channel in server settings
-Memory usage high Cache janitor runs every 30min; reduce CACHE_CONFIG.MAX_AGE_MS
+Memory usage high Cache janitor runs every 30min
 
 ---
 
-## 📱 CONNECT WITH THE ARCHITECT
+📱 CONNECT WITH THE ARCHITECT
 
 Platform Link
 🔵 Facebook Official Page
@@ -398,13 +415,13 @@ Platform Link
 
 ---
 
-## 📜 LICENSE
+📜 LICENSE
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-## 🙏 CREDITS
+🙏 CREDITS
 
 · Architect: Moussa Fofana (CG-223)
 · Community: Cloud Gaming-223 🇲🇱
@@ -421,3 +438,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   <br><br>
   <i>"The grid adapts. The grid survives. The grid prevails."</i>
 </div>
+```
+
+---
