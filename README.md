@@ -45,11 +45,14 @@ ARCHITECT CG-223 is an enterprise-grade, multi-server Discord bot with advanced 
 cd cloud-gaming-223-digital-engine
 ```
 # 2. Install dependencies
-```npm install```
+```npm install
+```
 
 # 3. Configure environment
 cp .env.example .env
-```nano .env```
+
+```nano .env
+```
 
 ## Environment Variables
 
@@ -82,21 +85,28 @@ VERIFIED_ROLE_ID=role_id
 
 ## 🚀 Start the Bot
 
-```bash
+# bash
 # Production (run once)
-npm start
+
+```npm start
+```
 
 # Development with auto-restart on file changes
+
 ```npx nodemon index.js
 ```
 
 # With PM2 (recommended for 24/7 production)
+
 ```npm install -g pm2
 ```
+
 ```pm2 start index.js --name "Architect-CG223"
 ```
+
 ```pm2 save
 ```
+
 ```pm2 startup
 ```
 
@@ -278,48 +288,58 @@ Free Tier: 24/7 Uptime, 100MB RAM, 500MB Storage
 # 1. SSH into your VPS
 # Replace 'user' with your VPS username and 'your-server-ip' with your server IP
 # Example: ssh root@192.168.1.100
+
 ```ssh user@your-server-ip
 ```
 
 # 2. Update system packages
+
 ```sudo apt update && sudo apt upgrade -y
 ```
 
 # 3. Install Node.js 18+
+
 ```curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
 # 4. Verify installation
+
 ```node --version
 npm --version
 ```
 
 # 5. Clone repository & setup
+
 ```git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
 cd cloud-gaming-223-digital-engine
 npm install
 ```
 
 # 6. Configure environment variables
+
 ```nano .env
 ```
 
 # Paste your tokens, then CTRL+X → Y → ENTER to save
 
 # 7. Install PM2 globally
+
 ```npm install -g pm2
 ```
 
 # 8. Start the bot with PM2
+
 ```pm2 start index.js --name "Architect-CG223"
 ```
 
 # 9. Save PM2 process list (auto-restart on reboot)
+
 ```pm2 save
 ```
 
 # 10. Enable PM2 startup on system boot
+
 ```pm2 startup
 ```
 
@@ -401,4 +421,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   <br><br>
   <i>"The grid adapts. The grid survives. The grid prevails."</i>
 </div>
-```
