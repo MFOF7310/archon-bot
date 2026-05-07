@@ -438,6 +438,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   <br><br>
   <i>"The grid adapts. The grid survives. The grid prevails."</i>
 </div>
-```
 
 ---
