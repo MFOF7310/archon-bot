@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Privacy Policy — ARCHITECT CG-223</title>
+
+    <style>
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+            background: #0a0a0a;
+
+            color: #e0e0e0;
+
+            line-height: 1.6;
+
+            max-width: 800px;
+
+            margin: 0 auto;
+
+            padding: 40px 20px;
+
+        }
+
+        h1 { color: #ffd700; margin-bottom: 10px; }
+
+        .date { color: #888; margin-bottom: 30px; }
+
+        h2 { color: #ffd700; margin: 30px 0 15px; font-size: 1.3em; border-bottom: 1px solid #333; padding-bottom: 10px; }
+
+        h3 { color: #ccc; margin: 20px 0 10px; }
+
+        p { margin-bottom: 15px; }
+
+        ul { margin-left: 20px; margin-bottom: 15px; }
+
+        li { margin-bottom: 8px; }
+
+        a { color: #ffd700; }
+
+        .back { display: inline-block; margin-bottom: 30px; color: #888; text-decoration: none; }
+
+        .back:hover { color: #ffd700; }
+
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+
+        th { color: #ffd700; }
+
+        hr { border: none; border-top: 1px solid #333; margin: 30px 0; }
+
+    </style>
+
+</head>
+
+<body>
+
+    <a class="back" href="index.html">← Back to Legal</a>
+
+    <h1>Privacy Policy</h1>
+
+    <p class="date">Last updated: May 17, 2026</p>
+
+    <h2>1. Introduction</h2>
+
+    <p>This Privacy Policy explains how <strong>ARCHITECT CG-223</strong> ("the Bot", "we", "our") collects, uses, stores, and protects your data. By using this bot, you consent to the practices described in this policy.</p>
+
+    <p><strong>Developer:</strong> Moussa Fofana (MFOF7310)<br>
+
+    <strong>Community:</strong> Cloud Gaming-223 (Bamako, Mali 🇲🇱)<br>
+
+    <strong>Data Controller:</strong> Bot owner via Bot-Hosting.net infrastructure</p>
+
+    <h2>2. What Data We Collect</h2>
+
+    <h3>2.1 Discord Identifiers</h3>
+
+    <ul>
+
+        <li><strong>Discord User ID</strong> — unique identifier for tracking XP, economy, settings</li>
+
+        <li><strong>Discord Username</strong> — displayed in leaderboards, profiles, welcome messages</li>
+
+        <li><strong>Discord Avatar URL</strong> — for profile cards and embeds</li>
+
+        <li><strong>Server (Guild) ID</strong> — for per-server configuration and data isolation</li>
+
+        <li><strong>Channel IDs</strong> — for configured channels (welcome, log, ticket, etc.)</li>
+
+        <li><strong>Role IDs</strong> — for auto-role and permission systems</li>
+
+    </ul>
+
+    <h3>2.2 Activity Data</h3>
+
+    <ul>
+
+        <li><strong>XP and Level</strong> — progress in the leveling system</li>
+
+        <li><strong>Credits and Economy</strong> — virtual currency balances and transactions</li>
+
+        <li><strong>Command Usage</strong> — which commands are used (for statistics)</li>
+
+        <li><strong>Vote Records</strong> — Top.gg vote tracking with timestamps</li>
+
+        <li><strong>Ticket History</strong> — support ticket transcripts (stored per-server)</li>
+
+        <li><strong>Security Logs</strong> — threat analysis for moderation purposes</li>
+
+    </ul>
+
+    <h3>2.3 Message Data (Limited)</h3>
+
+    <ul>
+
+        <li><strong>Message Content</strong> — temporarily processed for:
+
+            <ul>
+
+                <li>AI responses (Lydia) — NOT permanently stored</li>
+
+                <li>Auto-moderation scanning — flagged content logged, normal content discarded</li>
+
+                <li>XP tracking — message counts only, content not retained</li>
+
+            </ul>
+
+        </li>
+
+        <li><strong>Message Timestamps</strong> — for cooldown tracking and rate limiting</li>
+
+    </ul>
+
+    <h3>2.4 Image Data</h3>
+
+    <ul>
+
+        <li><strong>User Avatars</strong> — cached URLs from Discord's CDN (not stored locally)</li>
+
+        <li><strong>Uploaded Images</strong> — only if explicitly used with AI analysis commands (not permanently stored)</li>
+
+    </ul>
+
+    <h2>3. How We Use Data</h2>
+
+    <table>
+
+        <tr><th>Data</th><th>Purpose</th><th>Retention</th></tr>
+
+        <tr><td>User IDs</td><td>Identify users across features</td><td>Until bot removal or data deletion request</td></tr>
+
+        <tr><td>XP/Levels</td><td>Track server engagement</td><td>Same as above</td></tr>
+
+        <tr><td>Economy Data</td><td>Virtual currency system</td><td>Same as above</td></tr>
+
+        <tr><td>Server Settings</td><td>Per-server configuration</td><td>Until bot removed from server</td></tr>
+
+        <tr><td>Security Logs</td><td>Threat detection and moderation</td><td>90 days</td></tr>
+
+        <tr><td>Ticket Transcripts</td><td>Support reference</td><td>Configurable (default: 180 days)</td></tr>
+
+        <tr><td>AI Conversations</td><td>Context for Lydia AI</td><td>24 hours (rolling window)</td></tr>
+
+        <tr><td>Command Logs</td><td>Debugging and usage stats</td><td>30 days</td></tr>
+
+    </table>
+
+    <h2>4. Data Storage & Security</h2>
+
+    <ul>
+
+        <li><strong>Database:</strong> SQLite (WAL mode) stored on Bot-Hosting.net servers</li>
+
+        <li><strong>Encryption:</strong> Not currently encrypted at rest (Discord data is non-sensitive by design)</li>
+
+        <li><strong>Access:</strong> Only the bot owner has direct database access</li>
+
+        <li><strong>Backups:</strong> Weekly automated backups with 4-week retention</li>
+
+    </ul>
+
+    <h2>5. Data Sharing</h2>
+
+    <p>We do <strong>NOT</strong> sell, trade, or share your data with third parties for commercial purposes.</p>
+
+    <p>Data is shared only with:</p>
+
+    <ul>
+
+        <li><strong>Discord API</strong> — required for bot functionality</li>
+
+        <li><strong>OpenRouter / Google Gemini</strong> — for AI responses (message content sent temporarily)</li>
+
+        <li><strong>Top.gg</strong> — for vote verification (user IDs only)</li>
+
+        <li><strong>Telegram</strong> — only if Telegram bridge is explicitly enabled by server owner</li>
+
+    </ul>
+
+    <h2>6. User Rights</h2>
+
+    <p>You have the right to:</p>
+
+    <ul>
+
+        <li><strong>Request Data Deletion</strong> — contact the developer to remove your data</li>
+
+        <li><strong>Opt Out</strong> — stop using the bot or leave servers using it</li>
+
+        <li><strong>Data Export</strong> — request a copy of your stored data</li>
+
+    </ul>
+
+    <p>To exercise these rights, contact the developer through the official Discord server.</p>
+
+    <h2>7. Children's Privacy</h2>
+
+    <p>ARCHITECT CG-223 is not intended for users under 13. We do not knowingly collect data from children under 13. If discovered, such data will be deleted immediately.</p>
+
+    <h2>8. International Data Transfers</h2>
+
+    <p>The bot operates on servers located in the European Union (Bot-Hosting.net / Netherlands). By using the bot, you consent to data processing in this jurisdiction.</p>
+
+    <h2>9. Changes to This Policy</h2>
+
+    <p>We may update this policy. Significant changes will be announced through:</p>
+
+    <ul>
+
+        <li>The bot's official Discord server</li>
+
+        <li>A changelog entry in the bot</li>
+
+        <li>Direct message to server owners (if configured)</li>
+
+    </ul>
+
+    <h2>10. Contact Information</h2>
+
+    <p>For privacy-related questions or data deletion requests:</p>
+
+    <ul>
+
+        <li><strong>Discord Server:</strong> Cloud Gaming-223</li>
+
+        <li><strong>Developer:</strong> Moussa Fofana (Discord: mfof7559)</li>
+
+        <li><strong>Location:</strong> Bamako, Mali 🇲🇱</li>
+
+    </ul>
+
+    <h2>11. Compliance</h2>
+
+    <p>This bot operates in compliance with:</p>
+
+    <ul>
+
+        <li>Discord's Developer Terms of Service</li>
+
+        <li>Discord's Developer Policy</li>
+
+        <li>General data protection best practices</li>
+
+    </ul>
+
+    <hr>
+
+    <p><em>By using ARCHITECT CG-223, you acknowledge that you have read and understood this Privacy Policy.</em></p>
+
+    <p style="text-align: center; margin-top: 40px;"><a href="index.html" style="color: #888; text-decoration: none;">← Back to Legal</a></p>
+
+</body>
+
+</html>
+
