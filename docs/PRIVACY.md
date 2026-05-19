@@ -140,7 +140,7 @@ We may update this policy. Significant changes will be announced through:
 
 For privacy-related questions or data deletion requests:
 
-- **Discord Server:** Eagle Community
+- **Discord Server:** [Eagle Community](https://discord.gg/NFSMFJajp9)
 
 - **Developer:** Moussa Fofana (Discord: mfof7559)
 
