@@ -114,7 +114,7 @@ We may update these terms. Significant changes will be announced through the bot
 
 For questions or concerns:
 
-- Discord Server: Eagle Community
+- Discord Server: [Eagle Community](https://discord.gg/NFSMFJajp9)
 
 - Developer: Moussa Fofana (MFOF7310)
 
