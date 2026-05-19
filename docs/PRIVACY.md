@@ -1,6 +1,6 @@
 # Privacy Policy — ARCHITECT CG-223
 
-*Last updated: May 17, 2026*
+*Last updated: May 19, 2026*
 
 ## 1. Introduction
 
