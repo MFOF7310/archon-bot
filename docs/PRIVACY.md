@@ -140,7 +140,7 @@ We may update this policy. Significant changes will be announced through:
 
 For privacy-related questions or data deletion requests:
 
-- **Discord Server:** Cloud Gaming-223
+- **Discord Server:** Eagle Community
 
 - **Developer:** Moussa Fofana (Discord: mfof7559)
 
