@@ -1,6 +1,6 @@
 # Terms of Service — ARCHITECT CG-223
 
-*Last updated: May 17, 2026*
+*Last updated: May 19, 2026*
 
 ## 1. Introduction
 
@@ -114,7 +114,7 @@ We may update these terms. Significant changes will be announced through the bot
 
 For questions or concerns:
 
-- Discord Server: Cloud Gaming-223
+- Discord Server: Eagle Community
 
 - Developer: Moussa Fofana (MFOF7310)
 
