@@ -1,286 +1,417 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Privacy Policy — ARCHITECT CG-223</title>
-
-    <style>
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-            background: #0a0a0a;
-
-            color: #e0e0e0;
-
-            line-height: 1.6;
-
-            max-width: 800px;
-
-            margin: 0 auto;
-
-            padding: 40px 20px;
-
-        }
-
-        h1 { color: #ffd700; margin-bottom: 10px; }
-
-        .date { color: #888; margin-bottom: 30px; }
-
-        h2 { color: #ffd700; margin: 30px 0 15px; font-size: 1.3em; border-bottom: 1px solid #333; padding-bottom: 10px; }
-
-        h3 { color: #ccc; margin: 20px 0 10px; }
-
-        p { margin-bottom: 15px; }
-
-        ul { margin-left: 20px; margin-bottom: 15px; }
-
-        li { margin-bottom: 8px; }
-
-        a { color: #ffd700; }
-
-        .back { display: inline-block; margin-bottom: 30px; color: #888; text-decoration: none; }
-
-        .back:hover { color: #ffd700; }
-
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
-
-        th { color: #ffd700; }
-
-        hr { border: none; border-top: 1px solid #333; margin: 30px 0; }
-
-    </style>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Privacy Policy • ARCHITECT CG-223</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      background: radial-gradient(circle at 20% 30%, #0f172a, #020617);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .glow-pulse {
+      text-shadow: 0 0 12px #06b6d4, 0 0 30px #7c3aed;
+      animation: pulseGlow 2.5s infinite alternate;
+    }
+    @keyframes pulseGlow {
+      0% { text-shadow: 0 0 10px #06b6d4, 0 0 25px #7c3aed; }
+      100% { text-shadow: 0 0 20px #22d3ee, 0 0 45px #a855f7; }
+    }
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(6, 182, 212, 0.3);
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      transition: all 0.3s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(168, 85, 247, 0.7);
+      box-shadow: 0 0 30px rgba(6, 182, 212, 0.4);
+      transform: translateY(-2px);
+    }
+    .divider-glow {
+      height: 2px;
+      background: linear-gradient(90deg, #06b6d4, #7c3aed, #06b6d4);
+      box-shadow: 0 0 18px #7c3aed;
+      margin: 2.5rem 0;
+    }
+    .bullet-custom {
+      list-style: none;
+      padding-left: 1.8rem;
+    }
+    .bullet-custom li::before {
+      content: "▹";
+      color: #06b6d4;
+      font-weight: bold;
+      display: inline-block;
+      width: 1.3em;
+      margin-left: -1.3em;
+      text-shadow: 0 0 8px #7c3aed;
+    }
+    .scroll-top-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: rgba(6, 182, 212, 0.2);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid #7c3aed;
+      color: #e2e8f0;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 50;
+      box-shadow: 0 0 15px #7c3aed;
+    }
+    .scroll-top-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .scroll-top-btn:hover {
+      transform: scale(1.1);
+      background: rgba(124, 58, 237, 0.4);
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th {
+      color: #22d3ee;
+      text-shadow: 0 0 6px #7c3aed;
+      text-align: left;
+      padding: 0.75rem 0.5rem;
+    }
+    td {
+      padding: 0.75rem 0.5rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    }
+    .hover-glow-link:hover {
+      color: #a855f7;
+      text-shadow: 0 0 8px #06b6d4;
+      transition: 0.2s;
+    }
+  </style>
 </head>
+<body class="text-slate-200 antialiased">
 
-<body>
+  <!-- Sticky Glass Navigation -->
+  <nav class="glass-nav sticky top-0 z-40 px-4 py-3 flex flex-wrap items-center justify-between shadow-lg">
+    <div class="flex items-center space-x-2">
+      <i class="fas fa-cloud-moon text-cyan-400 text-2xl"></i>
+      <span class="text-xl font-bold tracking-wide bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">ARCHITECT CG-223</span>
+    </div>
+    <div class="flex space-x-5 text-sm md:text-base font-medium mt-2 sm:mt-0">
+      <a href="index.html" class="text-slate-300 hover:text-cyan-400 transition flex items-center gap-1"><i class="fas fa-home"></i> Home</a>
+      <a href="TOS.html" class="text-slate-300 hover:text-cyan-400 transition flex items-center gap-1"><i class="fas fa-file-contract"></i> ToS</a>
+      <a href="PRIVACY.html" class="text-cyan-300 hover:text-purple-400 transition flex items-center gap-1"><i class="fas fa-shield-alt"></i> Privacy</a>
+    </div>
+  </nav>
 
-    <a class="back" href="index.html">← Back to Legal</a>
+  <!-- Main Content -->
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+    
+    <!-- Back to Legal Hub -->
+    <a href="index.html" class="inline-flex items-center gap-1 text-cyan-400 hover:text-purple-400 transition mb-8 text-sm font-medium">
+      <i class="fas fa-arrow-left"></i> Back to Legal Hub
+    </a>
 
-    <h1>Privacy Policy</h1>
+    <!-- Glowing Header -->
+    <h1 class="text-5xl md:text-6xl font-extrabold glow-pulse text-white mb-4 flex items-center gap-3">
+      <i class="fas fa-shield-halved text-cyan-400"></i> Privacy Policy
+    </h1>
+    <p class="text-purple-300/80 text-lg mb-10">Last updated: May 17, 2026</p>
 
-    <p class="date">Last updated: May 19, 2026</p>
+    <!-- Glass Content Card -->
+    <div class="glass-card rounded-2xl p-6 md:p-8 space-y-8 shadow-2xl">
+      
+      <!-- 1. Introduction -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-circle-info"></i> 1. Introduction
+        </h2>
+        <p class="mt-3 text-slate-300">
+          This Privacy Policy explains how <strong class="text-purple-400">ARCHITECT CG-223</strong> ("the Bot", "we", "our") collects, uses, stores, and protects your data. 
+          By using this bot, you consent to the practices described in this policy.
+        </p>
+        <p class="mt-2 text-slate-400">
+          <strong>Developer:</strong> Moussa Fofana (MFOF7310)<br>
+          <strong>Community:</strong> Cloud Gaming-223 (Bamako, Mali 🇲🇱)<br>
+          <strong>Data Controller:</strong> Bot owner via Bot-Hosting.net infrastructure
+        </p>
+      </section>
+      
+      <div class="divider-glow"></div>
 
-    <h2>1. Introduction</h2>
-
-    <p>This Privacy Policy explains how <strong>ARCHITECT CG-223</strong> ("the Bot", "we", "our") collects, uses, stores, and protects your data. By using this bot, you consent to the practices described in this policy.</p>
-
-    <p><strong>Developer:</strong> Moussa Fofana (MFOF7310)<br>
-
-    <strong>Community:</strong> Cloud Gaming-223 (Bamako, Mali 🇲🇱)<br>
-
-    <strong>Data Controller:</strong> Bot owner via Bot-Hosting.net infrastructure</p>
-
-    <h2>2. What Data We Collect</h2>
-
-    <h3>2.1 Discord Identifiers</h3>
-
-    <ul>
-
-        <li><strong>Discord User ID</strong> — unique identifier for tracking XP, economy, settings</li>
-
-        <li><strong>Discord Username</strong> — displayed in leaderboards, profiles, welcome messages</li>
-
-        <li><strong>Discord Avatar URL</strong> — for profile cards and embeds</li>
-
-        <li><strong>Server (Guild) ID</strong> — for per-server configuration and data isolation</li>
-
-        <li><strong>Channel IDs</strong> — for configured channels (welcome, log, ticket, etc.)</li>
-
-        <li><strong>Role IDs</strong> — for auto-role and permission systems</li>
-
-    </ul>
-
-    <h3>2.2 Activity Data</h3>
-
-    <ul>
-
-        <li><strong>XP and Level</strong> — progress in the leveling system</li>
-
-        <li><strong>Credits and Economy</strong> — virtual currency balances and transactions</li>
-
-        <li><strong>Command Usage</strong> — which commands are used (for statistics)</li>
-
-        <li><strong>Vote Records</strong> — Top.gg vote tracking with timestamps</li>
-
-        <li><strong>Ticket History</strong> — support ticket transcripts (stored per-server)</li>
-
-        <li><strong>Security Logs</strong> — threat analysis for moderation purposes</li>
-
-    </ul>
-
-    <h3>2.3 Message Data (Limited)</h3>
-
-    <ul>
-
-        <li><strong>Message Content</strong> — temporarily processed for:
-
-            <ul>
-
-                <li>AI responses (Lydia) — NOT permanently stored</li>
-
-                <li>Auto-moderation scanning — flagged content logged, normal content discarded</li>
-
-                <li>XP tracking — message counts only, content not retained</li>
-
+      <!-- 2. What Data We Collect -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-database"></i> 2. What Data We Collect
+        </h2>
+        <div class="grid md:grid-cols-2 gap-6 mt-4">
+          <div>
+            <h3 class="text-purple-400 font-semibold flex items-center gap-2"><i class="fas fa-id-card"></i> Discord Identifiers</h3>
+            <ul class="bullet-custom mt-2 space-y-1">
+              <li>Discord User ID</li>
+              <li>Discord Username</li>
+              <li>Avatar URL</li>
+              <li>Server & Channel IDs</li>
+              <li>Role IDs</li>
             </ul>
-
-        </li>
-
-        <li><strong>Message Timestamps</strong> — for cooldown tracking and rate limiting</li>
-
-    </ul>
-
-    <h3>2.4 Image Data</h3>
-
-    <ul>
-
-        <li><strong>User Avatars</strong> — cached URLs from Discord's CDN (not stored locally)</li>
-
-        <li><strong>Uploaded Images</strong> — only if explicitly used with AI analysis commands (not permanently stored)</li>
-
-    </ul>
-
-    <h2>3. How We Use Data</h2>
-
-    <table>
-
-        <tr><th>Data</th><th>Purpose</th><th>Retention</th></tr>
-
-        <tr><td>User IDs</td><td>Identify users across features</td><td>Until bot removal or data deletion request</td></tr>
-
-        <tr><td>XP/Levels</td><td>Track server engagement</td><td>Same as above</td></tr>
-
-        <tr><td>Economy Data</td><td>Virtual currency system</td><td>Same as above</td></tr>
-
-        <tr><td>Server Settings</td><td>Per-server configuration</td><td>Until bot removed from server</td></tr>
-
-        <tr><td>Security Logs</td><td>Threat detection and moderation</td><td>90 days</td></tr>
-
-        <tr><td>Ticket Transcripts</td><td>Support reference</td><td>Configurable (default: 180 days)</td></tr>
-
-        <tr><td>AI Conversations</td><td>Context for Lydia AI</td><td>24 hours (rolling window)</td></tr>
-
-        <tr><td>Command Logs</td><td>Debugging and usage stats</td><td>30 days</td></tr>
-
-    </table>
-
-    <h2>4. Data Storage & Security</h2>
-
-    <ul>
-
-        <li><strong>Database:</strong> SQLite (WAL mode) stored on Bot-Hosting.net servers</li>
-
-        <li><strong>Encryption:</strong> Not currently encrypted at rest (Discord data is non-sensitive by design)</li>
-
-        <li><strong>Access:</strong> Only the bot owner has direct database access</li>
-
-        <li><strong>Backups:</strong> Weekly automated backups with 4-week retention</li>
-
-    </ul>
-
-    <h2>5. Data Sharing</h2>
-
-    <p>We do <strong>NOT</strong> sell, trade, or share your data with third parties for commercial purposes.</p>
-
-    <p>Data is shared only with:</p>
-
-    <ul>
-
-        <li><strong>Discord API</strong> — required for bot functionality</li>
-
-        <li><strong>OpenRouter / Google Gemini</strong> — for AI responses (message content sent temporarily)</li>
-
-        <li><strong>Top.gg</strong> — for vote verification (user IDs only)</li>
-
-        <li><strong>Telegram</strong> — only if Telegram bridge is explicitly enabled by server owner</li>
-
-    </ul>
-
-    <h2>6. User Rights</h2>
-
-    <p>You have the right to:</p>
-
-    <ul>
-
-        <li><strong>Request Data Deletion</strong> — contact the developer to remove your data</li>
-
-        <li><strong>Opt Out</strong> — stop using the bot or leave servers using it</li>
-
-        <li><strong>Data Export</strong> — request a copy of your stored data</li>
-
-    </ul>
-
-    <p>To exercise these rights, contact the developer through the official Discord server.</p>
-
-    <h2>7. Children's Privacy</h2>
-
-    <p>ARCHITECT CG-223 is not intended for users under 13. We do not knowingly collect data from children under 13. If discovered, such data will be deleted immediately.</p>
-
-    <h2>8. International Data Transfers</h2>
-
-    <p>The bot operates on servers located in the European Union (Bot-Hosting.net / Netherlands). By using the bot, you consent to data processing in this jurisdiction.</p>
-
-    <h2>9. Changes to This Policy</h2>
-
-    <p>We may update this policy. Significant changes will be announced through:</p>
-
-    <ul>
-
-        <li>The bot's official Discord server</li>
-
-        <li>A changelog entry in the bot</li>
-
-        <li>Direct message to server owners (if configured)</li>
-
-    </ul>
-
-    <h2>10. Contact Information</h2>
-
-    <p>For privacy-related questions or data deletion requests:</p>
-
-    <ul>
-
-        <li><strong>Discord Server:</strong> <a href="https://discord.gg/NFSMFJajp9">Eagle Community</a></li>
-
-        <li><strong>Developer:</strong> Moussa Fofana (Discord: mfof7559)</li>
-
-        <li><strong>Location:</strong> Bamako, Mali 🇲🇱</li>
-
-    </ul>
-
-    <h2>11. Compliance</h2>
-
-    <p>This bot operates in compliance with:</p>
-
-    <ul>
-
-        <li>Discord's Developer Terms of Service</li>
-
-        <li>Discord's Developer Policy</li>
-
-        <li>General data protection best practices</li>
-
-    </ul>
-
-    <hr>
-
-    <p><em>By using ARCHITECT CG-223, you acknowledge that you have read and understood this Privacy Policy.</em></p>
-
-    <p style="text-align: center; margin-top: 40px;"><a href="index.html" style="color: #888; text-decoration: none;">← Back to Legal</a></p>
-
+          </div>
+          <div>
+            <h3 class="text-purple-400 font-semibold flex items-center gap-2"><i class="fas fa-chart-line"></i> Activity Data</h3>
+            <ul class="bullet-custom mt-2 space-y-1">
+              <li>XP and Level</li>
+              <li>Credits & Economy</li>
+              <li>Command Usage</li>
+              <li>Vote Records</li>
+              <li>Ticket History</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="text-purple-400 font-semibold flex items-center gap-2"><i class="fas fa-message"></i> Message Data</h3>
+            <ul class="bullet-custom mt-2 space-y-1">
+              <li>Content (temporary AI/mod)</li>
+              <li>Timestamps for cooldowns</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="text-purple-400 font-semibold flex items-center gap-2"><i class="fas fa-image"></i> Image Data</h3>
+            <ul class="bullet-custom mt-2 space-y-1">
+              <li>Avatars (cached from CDN)</li>
+              <li>Uploaded images (not stored permanently)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 3. How We Use Data -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-microchip"></i> 3. How We Use Data
+        </h2>
+        <div class="overflow-x-auto mt-3 rounded-lg">
+          <table class="w-full text-left">
+            <thead class="bg-slate-800/50">
+              <tr>
+                <th class="px-4 py-3">Data</th>
+                <th class="px-4 py-3">Purpose</th>
+                <th class="px-4 py-3">Retention</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700/50">
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">User IDs</td>
+                <td class="px-4 py-3">Identify users across features</td>
+                <td class="px-4 py-3">Until deletion request</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">XP/Levels</td>
+                <td class="px-4 py-3">Track server engagement</td>
+                <td class="px-4 py-3">Same as above</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">Economy Data</td>
+                <td class="px-4 py-3">Virtual currency system</td>
+                <td class="px-4 py-3">Same as above</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">Server Settings</td>
+                <td class="px-4 py-3">Per-server configuration</td>
+                <td class="px-4 py-3">Until bot removed</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">Security Logs</td>
+                <td class="px-4 py-3">Threat detection & moderation</td>
+                <td class="px-4 py-3">90 days</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">Ticket Transcripts</td>
+                <td class="px-4 py-3">Support reference</td>
+                <td class="px-4 py-3">180 days (configurable)</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">AI Conversations</td>
+                <td class="px-4 py-3">Context for Lydia AI</td>
+                <td class="px-4 py-3">24 hours rolling</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">Command Logs</td>
+                <td class="px-4 py-3">Debugging & usage stats</td>
+                <td class="px-4 py-3">30 days</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 4. Data Storage & Security -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-lock"></i> 4. Data Storage & Security
+        </h2>
+        <ul class="bullet-custom mt-3 space-y-2">
+          <li><strong>Database:</strong> SQLite (WAL mode) on Bot-Hosting.net servers</li>
+          <li><strong>Encryption:</strong> Not currently encrypted at rest (non-sensitive Discord data)</li>
+          <li><strong>Access:</strong> Only the bot owner has direct database access</li>
+          <li><strong>Backups:</strong> Weekly automated backups with 4-week retention</li>
+        </ul>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 5. Data Sharing -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-share-nodes"></i> 5. Data Sharing
+        </h2>
+        <p class="mt-2">We do <strong class="text-red-400">NOT</strong> sell, trade, or share your data with third parties for commercial purposes.</p>
+        <p class="mt-2">Data is shared only with:</p>
+        <ul class="bullet-custom mt-2 space-y-1">
+          <li><strong>Discord API</strong> — required for bot functionality</li>
+          <li><strong>OpenRouter / Google Gemini</strong> — for AI responses (temporary)</li>
+          <li><strong>Top.gg</strong> — for vote verification (user IDs only)</li>
+          <li><strong>Telegram</strong> — only if bridge enabled by server owner</li>
+        </ul>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 6. User Rights -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-user-shield"></i> 6. User Rights
+        </h2>
+        <p class="mt-2">You have the right to:</p>
+        <ul class="bullet-custom mt-2 space-y-1">
+          <li><strong>Request Data Deletion</strong> — contact the developer to remove your data</li>
+          <li><strong>Opt Out</strong> — stop using the bot or leave servers using it</li>
+          <li><strong>Data Export</strong> — request a copy of your stored data</li>
+        </ul>
+        <p class="mt-2 text-slate-400">To exercise these rights, contact the developer through the official Discord server.</p>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 7. Children's Privacy -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-child"></i> 7. Children's Privacy
+        </h2>
+        <p class="mt-2">ARCHITECT CG-223 is not intended for users under 13. We do not knowingly collect data from children under 13. If discovered, such data will be deleted immediately.</p>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 8. International Data Transfers -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-globe"></i> 8. International Data Transfers
+        </h2>
+        <p class="mt-2">The bot operates on servers located in the European Union (Bot-Hosting.net / Netherlands). By using the bot, you consent to data processing in this jurisdiction.</p>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 9. Changes to This Policy -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-rotate"></i> 9. Changes to This Policy
+        </h2>
+        <p class="mt-2">We may update this policy. Significant changes will be announced through:</p>
+        <ul class="bullet-custom mt-2 space-y-1">
+          <li>The bot's official Discord server</li>
+          <li>A changelog entry in the bot</li>
+          <li>Direct message to server owners (if configured)</li>
+        </ul>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 10. Contact Information -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-envelope"></i> 10. Contact Information
+        </h2>
+        <p class="mt-2">For privacy-related questions or data deletion requests:</p>
+        <ul class="bullet-custom mt-2 space-y-1">
+          <li><strong>Discord Server:</strong> Cloud Gaming-223</li>
+          <li><strong>Developer:</strong> Moussa Fofana (Discord: mfof7559)</li>
+          <li><strong>Location:</strong> Bamako, Mali 🇲🇱</li>
+        </ul>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- 11. Compliance -->
+      <section>
+        <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-check-circle"></i> 11. Compliance
+        </h2>
+        <p class="mt-2">This bot operates in compliance with:</p>
+        <ul class="bullet-custom mt-2 space-y-1">
+          <li>Discord's Developer Terms of Service</li>
+          <li>Discord's Developer Policy</li>
+          <li>General data protection best practices</li>
+        </ul>
+      </section>
+      
+      <div class="divider-glow"></div>
+
+      <!-- Acknowledgment -->
+      <p class="italic text-purple-200 text-center text-lg">
+        <i class="fas fa-check-circle text-cyan-400"></i> By using ARCHITECT CG-223, you acknowledge that you have read and understood this Privacy Policy.
+      </p>
+    </div>
+    
+    <!-- Footer back link -->
+    <div class="text-center mt-10">
+      <a href="index.html" class="inline-flex items-center gap-2 text-cyan-400 hover:text-purple-400 transition font-medium">
+        <i class="fas fa-arrow-left"></i> Back to Legal Hub
+      </a>
+    </div>
+  </main>
+
+  <!-- Scroll to Top Button -->
+  <div id="scrollToTopBtn" class="scroll-top-btn" title="Back to top">
+    <i class="fas fa-chevron-up text-xl"></i>
+  </div>
+
+  <script>
+    (function() {
+      const btn = document.getElementById('scrollToTopBtn');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 400) {
+          btn.classList.add('visible');
+        } else {
+          btn.classList.remove('visible');
+        }
+      });
+      btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    })();
+  </script>
 </body>
-
 </html>
-
