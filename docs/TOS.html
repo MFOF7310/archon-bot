@@ -10,6 +10,8 @@
     body {
       background: radial-gradient(circle at 20% 20%, #0f172a, #020617);
       font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
     }
     .glow-pulse {
       text-shadow: 0 0 12px #06b6d4, 0 0 30px #7c3aed;
@@ -28,8 +30,9 @@
     .glass-card {
       background: rgba(15, 23, 42, 0.55);
       backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border: 1px solid rgba(6, 182, 212, 0.2);
-      transition: 0.3s;
+      transition: all 0.3s ease;
     }
     .glass-card:hover {
       border-color: rgba(168, 85, 247, 0.7);
@@ -79,16 +82,16 @@
       opacity: 1;
       pointer-events: auto;
     }
+    .scroll-top-btn:hover {
+      transform: scale(1.1);
+      background: rgba(124, 58, 237, 0.4);
+    }
     table th {
       color: #22d3ee;
     }
-    .hover-glow-link:hover {
-      color: #7c3aed;
-      text-shadow: 0 0 8px #06b6d4;
-    }
   </style>
 </head>
-<body class="text-slate-200">
+<body class="text-slate-200 antialiased">
 
   <!-- Sticky Nav -->
   <nav class="glass-nav sticky top-0 z-40 px-4 py-3 flex flex-wrap items-center justify-between shadow-lg">
@@ -96,16 +99,17 @@
       <i class="fas fa-cloud-moon text-cyan-400 text-2xl"></i>
       <span class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">ARCHITECT CG-223</span>
     </div>
-    <div class="flex space-x-5 text-sm md:text-base font-medium mt-2 sm:mt-0">
+    <div class="flex items-center space-x-5 text-sm md:text-base font-medium mt-2 sm:mt-0">
       <a href="index.html" class="text-slate-300 hover:text-cyan-400 transition flex items-center gap-1"><i class="fas fa-home"></i> Home</a>
       <a href="TOS.html" class="text-cyan-300 hover:text-purple-400 transition flex items-center gap-1"><i class="fas fa-file-contract"></i> ToS</a>
       <a href="PRIVACY.html" class="text-slate-300 hover:text-cyan-400 transition flex items-center gap-1"><i class="fas fa-shield-alt"></i> Privacy</a>
+      <a href="https://discord.gg/NFSMFJajp9" target="_blank" rel="noopener noreferrer" class="text-[#5865F2] hover:text-[#7289da] transition transform hover:scale-110" title="Join Cloud Gaming-223"><i class="fab fa-discord text-xl"></i></a>
+      <a href="https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=564739616241782&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-purple-400 transition transform hover:scale-110" title="Invite Bot"><i class="fas fa-robot text-xl"></i></a>
     </div>
   </nav>
 
   <main class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
-    <!-- Back link -->
-    <a href="index.html" class="inline-flex items-center gap-1 text-cyan-400 hover:text-purple-400 transition mb-8 text-sm">
+    <a href="index.html" class="inline-flex items-center gap-1 text-cyan-400 hover:text-purple-400 transition mb-8 text-sm font-medium">
       <i class="fas fa-arrow-left"></i> Back to Legal Hub
     </a>
 
@@ -114,90 +118,122 @@
     </h1>
     <p class="text-purple-300/80 text-lg mb-10">Last updated: May 17, 2026</p>
 
-    <!-- Glass content card -->
     <div class="glass-card rounded-2xl p-6 md:p-8 space-y-8">
       
       <section>
         <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2"><i class="fas fa-circle-info"></i> 1. Introduction</h2>
-        <p class="mt-3">Welcome to <strong class="text-purple-400">ARCHITECT CG-223</strong>, a Discord bot developed by Moussa Fofana for the Cloud Gaming-223 community. By using this bot, you agree to these Terms.</p>
+        <p class="mt-3">Welcome to <strong class="text-purple-400">ARCHITECT CG-223</strong> ("the Bot", "we", "our"), a Discord bot developed by Moussa Fofana for the Cloud Gaming-223 community. By using this bot, you agree to these Terms of Service. If you do not agree, please remove the bot from your server.</p>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400 flex items-center gap-2"><i class="fas fa-cogs"></i> 2. Service Description</h2>
+        <p class="mt-2">ARCHITECT CG-223 provides Discord server management tools including:</p>
         <ul class="bullet-custom mt-3 space-y-2">
-          <li>AI-powered chat (Lydia)</li><li>Moderation & auto-mod</li><li>Leveling & XP</li>
-          <li>Economy (credits, shop)</li><li>Ticket support</li><li>Welcome messages</li>
-          <li>Security intelligence</li><li>Telegram bridge</li>
+          <li>AI-powered chat assistance (Lydia)</li>
+          <li>Server moderation and auto-moderation</li>
+          <li>Leveling and XP system</li>
+          <li>Economy system (credits, shop, market)</li>
+          <li>Ticket support system</li>
+          <li>Welcome/goodbye messages</li>
+          <li>Security intelligence (OSINT threat detection)</li>
+          <li>Telegram bridge integration</li>
+          <li>Top.gg voting integration</li>
         </ul>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400"><i class="fas fa-user-check"></i> 3. Eligibility</h2>
-        <ul class="bullet-custom mt-3"><li>At least 13 years old</li><li>Valid Discord account</li><li>Permission to add bots</li></ul>
+        <p class="mt-2">You must:</p>
+        <ul class="bullet-custom mt-2 space-y-1">
+          <li>Be at least 13 years old (or the minimum age in your jurisdiction)</li>
+          <li>Have a valid Discord account in good standing</li>
+          <li>Have permission to add bots to your Discord server</li>
+        </ul>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400"><i class="fas fa-ban"></i> 4. Acceptable Use</h2>
-        <ul class="bullet-custom mt-3"><li>No illegal activities</li><li>No abuse/exploits</li><li>No spam or harmful AI content</li></ul>
+        <p class="mt-2">You agree NOT to:</p>
+        <ul class="bullet-custom mt-2 space-y-1">
+          <li>Use the bot for illegal activities</li>
+          <li>Abuse, exploit, or attempt to break the bot</li>
+          <li>Spam commands or intentionally trigger rate limits</li>
+          <li>Use the AI system to generate harmful, hateful, or NSFW content</li>
+          <li>Attempt to access or modify bot data without authorization</li>
+          <li>Sell, trade, or exploit in-bot currency outside the intended systems</li>
+          <li>Harass other users through bot features</li>
+        </ul>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400">5. Server Owner Responsibilities</h2>
-        <p class="mt-2">Owners must configure appropriately and manage alerts.</p>
+        <p class="mt-2">Server owners and administrators are responsible for:</p>
+        <ul class="bullet-custom mt-2 space-y-1">
+          <li>Configuring the bot appropriately for their community</li>
+          <li>Ensuring the bot's features comply with their server's rules</li>
+          <li>Managing user data collected through normal bot operation</li>
+          <li>Responding to bot-generated moderation alerts</li>
+        </ul>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400">6. Data Collection</h2>
-        <p>User IDs, server settings, message content (temporary). See our <a href="PRIVACY.html" class="text-purple-400 underline hover:text-cyan-300">Privacy Policy</a>.</p>
+        <p class="mt-2">The bot collects and stores user IDs, server settings, message content (temporary). See our <a href="PRIVACY.html" class="text-purple-400 underline hover:text-cyan-300">Privacy Policy</a> for full details.</p>
       </section>
       <div class="divider-glow"></div>
 
       <section>
-        <h2 class="text-2xl font-bold text-cyan-400">7. AI Disclaimer</h2>
-        <p>AI responses via OpenRouter/Gemini; no guarantee of accuracy.</p>
+        <h2 class="text-2xl font-bold text-cyan-400">7. AI Content Disclaimer</h2>
+        <p class="mt-2">The AI system (Lydia) uses third-party APIs (OpenRouter, Google Gemini). We do not guarantee the accuracy, appropriateness, or reliability of AI-generated content.</p>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400">8. Limitation of Liability</h2>
-        <p>Service provided "as is". Not liable for disruptions or third-party outages.</p>
+        <p class="mt-2">ARCHITECT CG-223 is provided "as is" without warranties. We are not liable for server disruptions, data loss, AI content, or third-party outages.</p>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400">9. Termination</h2>
-        <p>We reserve right to remove bot from violating servers.</p>
+        <p class="mt-2">We reserve the right to remove the bot from any server violating these terms or Discord's Terms of Service. Users may stop using the bot at any time.</p>
       </section>
       <div class="divider-glow"></div>
 
       <section>
-        <h2 class="text-2xl font-bold text-cyan-400">10. Changes</h2>
-        <p>Updates announced via official channels.</p>
+        <h2 class="text-2xl font-bold text-cyan-400">10. Changes to Terms</h2>
+        <p class="mt-2">We may update these terms. Significant changes will be announced through the bot's official channels. Continued use after changes constitutes acceptance.</p>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400">11. Contact</h2>
-        <p><i class="fas fa-server text-purple-400"></i> Discord: Cloud Gaming-223 • Dev: Moussa Fofana</p>
+        <p class="mt-2 flex items-center gap-2"><i class="fas fa-server text-purple-400"></i> Discord Server: Cloud Gaming-223 | Developer: Moussa Fofana (MFOF7310)</p>
       </section>
       <div class="divider-glow"></div>
 
       <section>
         <h2 class="text-2xl font-bold text-cyan-400">12. Governing Law</h2>
-        <p>Republic of Mali.</p>
+        <p class="mt-2">These terms are governed by the laws of the Republic of Mali, without regard to conflict of law principles.</p>
       </section>
       
       <div class="divider-glow"></div>
-      <p class="italic text-purple-200 text-center">By using ARCHITECT CG-223, you agree to these Terms of Service.</p>
+      <p class="italic text-purple-200 text-center"><i class="fas fa-check-circle text-cyan-400"></i> By using ARCHITECT CG-223, you acknowledge that you have read, understood, and agree to these Terms of Service.</p>
+    </div>
+    
+    <div class="text-center mt-10">
+      <a href="index.html" class="inline-flex items-center gap-2 text-cyan-400 hover:text-purple-400 transition font-medium">
+        <i class="fas fa-arrow-left"></i> Back to Legal Hub
+      </a>
     </div>
   </main>
 
-  <div id="scrollToTopBtn" class="scroll-top-btn"><i class="fas fa-chevron-up"></i></div>
+  <div id="scrollToTopBtn" class="scroll-top-btn"><i class="fas fa-chevron-up text-xl"></i></div>
   <script>
     const btn = document.getElementById('scrollToTopBtn');
     window.addEventListener('scroll', () => btn.classList.toggle('visible', window.scrollY > 400));
