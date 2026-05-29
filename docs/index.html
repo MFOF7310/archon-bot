@@ -1,184 +1,183 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>ARCHITECT CG-223 — Legal</title>
-
-    <style>
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-            background: #0a0a0a;
-
-            color: #e0e0e0;
-
-            line-height: 1.6;
-
-            max-width: 800px;
-
-            margin: 0 auto;
-
-            padding: 40px 20px;
-
-        }
-
-        .header {
-
-            text-align: center;
-
-            padding: 40px 0;
-
-            border-bottom: 2px solid #ffd700;
-
-            margin-bottom: 40px;
-
-        }
-
-        .header h1 {
-
-            font-size: 2em;
-
-            color: #ffd700;
-
-            margin-bottom: 10px;
-
-        }
-
-        .header p {
-
-            color: #888;
-
-        }
-
-        .links {
-
-            display: flex;
-
-            gap: 20px;
-
-            justify-content: center;
-
-            margin-bottom: 40px;
-
-        }
-
-        .card {
-
-            background: #1a1a1a;
-
-            border: 1px solid #333;
-
-            border-radius: 12px;
-
-            padding: 30px;
-
-            width: 100%;
-
-            max-width: 350px;
-
-            text-align: center;
-
-            transition: border-color 0.3s;
-
-        }
-
-        .card:hover { border-color: #ffd700; }
-
-        .card h2 { color: #ffd700; margin-bottom: 10px; }
-
-        .card p { color: #888; font-size: 0.9em; margin-bottom: 20px; }
-
-        .btn {
-
-            display: inline-block;
-
-            background: #ffd700;
-
-            color: #0a0a0a;
-
-            padding: 12px 24px;
-
-            border-radius: 8px;
-
-            text-decoration: none;
-
-            font-weight: bold;
-
-            transition: transform 0.2s;
-
-        }
-
-        .btn:hover { transform: scale(1.05); }
-
-        .footer {
-
-            text-align: center;
-
-            margin-top: 60px;
-
-            color: #555;
-
-            font-size: 0.85em;
-
-        }
-
-    </style>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>ARCHITECT CG-223 • Legal Hub</title>
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      background: radial-gradient(circle at 20% 10%, #0f172a, #020617);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    /* custom pulse glow for h1 */
+    .glow-pulse {
+      text-shadow: 0 0 12px #06b6d4, 0 0 30px #7c3aed;
+      animation: pulseGlow 2.5s infinite alternate;
+    }
+    @keyframes pulseGlow {
+      0% { text-shadow: 0 0 10px #06b6d4, 0 0 25px #7c3aed; }
+      100% { text-shadow: 0 0 20px #22d3ee, 0 0 45px #a855f7; }
+    }
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(6, 182, 212, 0.3);
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      transition: all 0.3s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(168, 85, 247, 0.7);
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+      transform: translateY(-4px);
+    }
+    .hover-glow:hover {
+      color: #22d3ee;
+      text-shadow: 0 0 12px #7c3aed;
+      transition: 0.2s;
+    }
+    .divider-glow {
+      height: 2px;
+      background: linear-gradient(90deg, #06b6d4, #7c3aed, #06b6d4);
+      box-shadow: 0 0 15px #7c3aed;
+      margin: 2rem 0;
+    }
+    .bullet-custom {
+      list-style: none;
+      padding-left: 1.5rem;
+    }
+    .bullet-custom li::before {
+      content: "▹";
+      color: #06b6d4;
+      font-weight: bold;
+      display: inline-block;
+      width: 1.2em;
+      margin-left: -1.2em;
+      text-shadow: 0 0 8px #7c3aed;
+    }
+    .scroll-top-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: rgba(6, 182, 212, 0.2);
+      backdrop-filter: blur(12px);
+      border: 1px solid #7c3aed;
+      color: #e2e8f0;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 50;
+      box-shadow: 0 0 15px #7c3aed;
+    }
+    .scroll-top-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .scroll-top-btn:hover {
+      transform: scale(1.1);
+      background: rgba(124, 58, 237, 0.4);
+    }
+    table {
+      border-collapse: collapse;
+    }
+    th {
+      color: #22d3ee;
+      text-shadow: 0 0 6px #7c3aed;
+    }
+  </style>
 </head>
+<body class="text-slate-200 antialiased">
 
-<body>
+  <!-- Glass Navigation -->
+  <nav class="glass-nav sticky top-0 z-40 px-4 py-3 flex flex-wrap items-center justify-between shadow-lg">
+    <div class="flex items-center space-x-2">
+      <i class="fas fa-cloud-moon text-cyan-400 text-2xl"></i>
+      <span class="text-xl font-bold tracking-wide bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">ARCHITECT CG-223</span>
+    </div>
+    <div class="flex space-x-5 text-sm md:text-base font-medium mt-2 sm:mt-0">
+      <a href="index.html" class="text-cyan-300 hover:text-purple-400 transition flex items-center gap-1"><i class="fas fa-home"></i> Home</a>
+      <a href="TOS.html" class="text-slate-300 hover:text-cyan-400 transition flex items-center gap-1"><i class="fas fa-file-contract"></i> ToS</a>
+      <a href="PRIVACY.html" class="text-slate-300 hover:text-cyan-400 transition flex items-center gap-1"><i class="fas fa-shield-alt"></i> Privacy</a>
+    </div>
+  </nav>
 
-    <div class="header">
-
-        <h1>🦅 ARCHITECT CG-223</h1>
-
-        <p>Legal Documents — Cloud Gaming-223</p>
-
+  <!-- Main Content -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+    <div class="text-center mb-16">
+      <h1 class="text-5xl md:text-7xl font-extrabold glow-pulse text-white mb-4">
+        <i class="fas fa-gamepad text-cyan-400"></i> CLOUD GAMING-223
+      </h1>
+      <p class="text-lg text-purple-300/80 max-w-2xl mx-auto">Premium architecture for the next generation of Discord experiences.</p>
     </div>
 
-    <div class="links">
-
-        <div class="card">
-
-            <h2>📜 Terms of Service</h2>
-
-            <p>Rules and guidelines for using the bot across all Discord servers.</p>
-
-            <a class="btn" href="TOS.html">View ToS</a>
-
-        </div>
-
-        <div class="card">
-
-            <h2>🔒 Privacy Policy</h2>
-
-            <p>How we collect, use, and protect your data.</p>
-
-            <a class="btn" href="PRIVACY.html">View Privacy</a>
-
-        </div>
-
+    <!-- Cards Grid -->
+    <div class="grid md:grid-cols-2 gap-8 mb-16">
+      <!-- Terms Card -->
+      <div class="glass-card rounded-2xl p-8 text-center flex flex-col items-center">
+        <i class="fas fa-gavel text-5xl text-cyan-400 mb-4"></i>
+        <h2 class="text-3xl font-bold text-white mb-2">Terms of Service</h2>
+        <p class="text-slate-400 mb-6">Rules, responsibilities, and acceptable use for all servers.</p>
+        <a href="TOS.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg hover:shadow-cyan-500/40 transition transform hover:scale-105">
+          <i class="fas fa-arrow-right"></i> View ToS
+        </a>
+      </div>
+      <!-- Privacy Card -->
+      <div class="glass-card rounded-2xl p-8 text-center flex flex-col items-center">
+        <i class="fas fa-lock text-5xl text-purple-400 mb-4"></i>
+        <h2 class="text-3xl font-bold text-white mb-2">Privacy Policy</h2>
+        <p class="text-slate-400 mb-6">How we collect, use, and safeguard your data.</p>
+        <a href="PRIVACY.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-semibold py-3 px-8 rounded-full shadow-lg hover:shadow-purple-500/40 transition transform hover:scale-105">
+          <i class="fas fa-arrow-right"></i> View Privacy
+        </a>
+      </div>
     </div>
 
-    <div class="footer">
-
-        <p>© 2026 Moussa Fofana — Cloud Gaming-223 🇲🇱</p>
-
-        <p>Bamako, Mali</p>
-
+    <!-- Quick brand footer inside card -->
+    <div class="glass-card rounded-2xl p-6 text-center">
+      <p class="text-slate-400 text-sm flex items-center justify-center gap-2">
+        <i class="fas fa-map-pin text-cyan-400"></i> 
+        <span>© 2026 Moussa Fofana — Cloud Gaming-223 🇲🇱 Bamako, Mali</span>
+      </p>
     </div>
+  </main>
 
+  <!-- Scroll to Top Button -->
+  <div id="scrollToTopBtn" class="scroll-top-btn" title="Back to top">
+    <i class="fas fa-chevron-up text-xl"></i>
+  </div>
+
+  <script>
+    (function() {
+      const btn = document.getElementById('scrollToTopBtn');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 400) {
+          btn.classList.add('visible');
+        } else {
+          btn.classList.remove('visible');
+        }
+      });
+      btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    })();
+  </script>
 </body>
-
 </html>
-
