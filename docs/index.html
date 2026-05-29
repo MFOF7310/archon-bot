@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>ARCHITECT CG-223 • Legal Hub</title>
-  <!-- Tailwind via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome 6 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     body {
@@ -15,7 +13,6 @@
       margin: 0;
       padding: 0;
     }
-    /* custom pulse glow for h1 */
     .glow-pulse {
       text-shadow: 0 0 12px #06b6d4, 0 0 30px #7c3aed;
       animation: pulseGlow 2.5s infinite alternate;
@@ -53,19 +50,6 @@
       box-shadow: 0 0 15px #7c3aed;
       margin: 2rem 0;
     }
-    .bullet-custom {
-      list-style: none;
-      padding-left: 1.5rem;
-    }
-    .bullet-custom li::before {
-      content: "▹";
-      color: #06b6d4;
-      font-weight: bold;
-      display: inline-block;
-      width: 1.2em;
-      margin-left: -1.2em;
-      text-shadow: 0 0 8px #7c3aed;
-    }
     .scroll-top-btn {
       position: fixed;
       bottom: 2rem;
@@ -95,12 +79,19 @@
       transform: scale(1.1);
       background: rgba(124, 58, 237, 0.4);
     }
-    table {
-      border-collapse: collapse;
+    .discord-pulse {
+      animation: discordGlow 2s infinite alternate;
     }
-    th {
-      color: #22d3ee;
-      text-shadow: 0 0 6px #7c3aed;
+    @keyframes discordGlow {
+      0% { box-shadow: 0 0 8px #5865F2, 0 0 16px #7c3aed; }
+      100% { box-shadow: 0 0 16px #5865F2, 0 0 32px #7c3aed; }
+    }
+    .bot-pulse {
+      animation: botGlow 2s infinite alternate;
+    }
+    @keyframes botGlow {
+      0% { box-shadow: 0 0 8px #06b6d4, 0 0 16px #7c3aed; }
+      100% { box-shadow: 0 0 16px #22d3ee, 0 0 32px #a855f7; }
     }
   </style>
 </head>
@@ -112,24 +103,55 @@
       <i class="fas fa-cloud-moon text-cyan-400 text-2xl"></i>
       <span class="text-xl font-bold tracking-wide bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">ARCHITECT CG-223</span>
     </div>
-    <div class="flex space-x-5 text-sm md:text-base font-medium mt-2 sm:mt-0">
+    <div class="flex items-center space-x-5 text-sm md:text-base font-medium mt-2 sm:mt-0">
       <a href="index.html" class="text-cyan-300 hover:text-purple-400 transition flex items-center gap-1"><i class="fas fa-home"></i> Home</a>
       <a href="TOS.html" class="text-slate-300 hover:text-cyan-400 transition flex items-center gap-1"><i class="fas fa-file-contract"></i> ToS</a>
       <a href="PRIVACY.html" class="text-slate-300 hover:text-cyan-400 transition flex items-center gap-1"><i class="fas fa-shield-alt"></i> Privacy</a>
+      <!-- Discord Server Link -->
+      <a href="https://discord.gg/NFSMFJajp9" target="_blank" rel="noopener noreferrer" 
+         class="text-[#5865F2] hover:text-[#7289da] transition transform hover:scale-110" 
+         title="Join Cloud Gaming-223 on Discord">
+        <i class="fab fa-discord text-xl"></i>
+      </a>
+      <!-- Bot Invite Link -->
+      <a href="https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=564739616241782&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer" 
+         class="text-cyan-400 hover:text-purple-400 transition transform hover:scale-110" 
+         title="Invite ARCHITECT CG-223 to your server">
+        <i class="fas fa-robot text-xl"></i>
+      </a>
     </div>
   </nav>
 
   <!-- Main Content -->
   <main class="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+    
+    <!-- Hero Section -->
     <div class="text-center mb-16">
       <h1 class="text-5xl md:text-7xl font-extrabold glow-pulse text-white mb-4">
         <i class="fas fa-gamepad text-cyan-400"></i> CLOUD GAMING-223
       </h1>
-      <p class="text-lg text-purple-300/80 max-w-2xl mx-auto">Premium architecture for the next generation of Discord experiences.</p>
+      <p class="text-lg text-purple-300/80 max-w-2xl mx-auto mb-8">
+        Premium architecture for the next generation of Discord experiences.
+      </p>
+      
+      <!-- Hero CTA Buttons -->
+      <div class="flex flex-wrap justify-center gap-4">
+        <!-- Bot Invite Button -->
+        <a href="https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=564739616241782&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer"
+           class="bot-pulse inline-flex items-center gap-3 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-4 px-10 rounded-full text-lg transition-all duration-300 hover:scale-105 shadow-xl">
+          <i class="fas fa-robot text-2xl"></i> Invite Bot
+        </a>
+        <!-- Discord Join Button -->
+        <a href="https://discord.gg/NFSMFJajp9" target="_blank" rel="noopener noreferrer"
+           class="discord-pulse inline-flex items-center gap-3 bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold py-4 px-10 rounded-full text-lg transition-all duration-300 hover:scale-105 shadow-xl">
+          <i class="fab fa-discord text-2xl"></i> Join Server
+        </a>
+      </div>
     </div>
 
     <!-- Cards Grid -->
-    <div class="grid md:grid-cols-2 gap-8 mb-16">
+    <div class="grid md:grid-cols-3 gap-8 mb-16">
+      
       <!-- Terms Card -->
       <div class="glass-card rounded-2xl p-8 text-center flex flex-col items-center">
         <i class="fas fa-gavel text-5xl text-cyan-400 mb-4"></i>
@@ -139,6 +161,7 @@
           <i class="fas fa-arrow-right"></i> View ToS
         </a>
       </div>
+      
       <!-- Privacy Card -->
       <div class="glass-card rounded-2xl p-8 text-center flex flex-col items-center">
         <i class="fas fa-lock text-5xl text-purple-400 mb-4"></i>
@@ -148,13 +171,34 @@
           <i class="fas fa-arrow-right"></i> View Privacy
         </a>
       </div>
+
+      <!-- Invite Bot Card -->
+      <div class="glass-card rounded-2xl p-8 text-center flex flex-col items-center border-cyan-400/40 hover:border-cyan-400">
+        <i class="fas fa-robot text-5xl text-cyan-400 mb-4"></i>
+        <h2 class="text-3xl font-bold text-white mb-2">Add to Server</h2>
+        <p class="text-slate-400 mb-6">Invite ARCHITECT CG-223 to your Discord server in one click.</p>
+        <a href="https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=564739616241782&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg hover:shadow-cyan-500/40 transition transform hover:scale-105">
+          <i class="fas fa-plus"></i> Invite Bot
+        </a>
+      </div>
     </div>
 
-    <!-- Quick brand footer inside card -->
+    <!-- Quick brand footer -->
     <div class="glass-card rounded-2xl p-6 text-center">
-      <p class="text-slate-400 text-sm flex items-center justify-center gap-2">
+      <p class="text-slate-400 text-sm flex items-center justify-center gap-2 flex-wrap">
         <i class="fas fa-map-pin text-cyan-400"></i> 
         <span>© 2026 Moussa Fofana — Cloud Gaming-223 🇲🇱 Bamako, Mali</span>
+        <span class="mx-2 text-slate-600">|</span>
+        <a href="https://discord.gg/NFSMFJajp9" target="_blank" rel="noopener noreferrer" 
+           class="text-[#5865F2] hover:text-[#7289da] transition flex items-center gap-1">
+          <i class="fab fa-discord"></i> discord.gg/NFSMFJajp9
+        </a>
+        <span class="mx-2 text-slate-600">|</span>
+        <a href="https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=564739616241782&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer" 
+           class="text-cyan-400 hover:text-purple-400 transition flex items-center gap-1">
+          <i class="fas fa-robot"></i> Invite Bot
+        </a>
       </p>
     </div>
   </main>
