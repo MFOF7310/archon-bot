@@ -1,0 +1,19 @@
+{
+  "lastVersion": "3.0.5",
+  "lastBroadcastTime": 1779966656719,
+  "lastStats": {
+    "success": 18,
+    "fail": 0,
+    "total": 18
+  },
+  "lastChanges": {
+    "new": [],
+    "fixed": [
+      "ban"
+    ],
+    "improved": [
+      "automod",
+      "lydia"
+    ]
+  }
+}
