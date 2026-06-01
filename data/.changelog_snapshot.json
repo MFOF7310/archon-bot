@@ -1,0 +1,546 @@
+{
+  "files": {
+    "8ball.js": {
+      "hash": "737e74c8d737b9e7eae1f5707d79bfb8",
+      "size": 2377,
+      "lines": 77
+    },
+    "about.js": {
+      "hash": "380736872530371cf426b2c02ff5ac99",
+      "size": 19911,
+      "lines": 358
+    },
+    "afk.js": {
+      "hash": "beec30996ca07c2785693d6a87b5c009",
+      "size": 15840,
+      "lines": 386
+    },
+    "alive.js": {
+      "hash": "4b8b52a239f38ff3e5eb08f10a269cff",
+      "size": 9827,
+      "lines": 240
+    },
+    "anime.js": {
+      "hash": "10e4feb4338e13c56999a065bda7df79",
+      "size": 12708,
+      "lines": 320
+    },
+    "asset-cache.js": {
+      "hash": "481e9ee6b148ac4a1e938aec7abbbc4e",
+      "size": 1443,
+      "lines": 54
+    },
+    "auto-broadcast.js": {
+      "hash": "f6f16454380bf8f8ac84c48f02f0f457",
+      "size": 22472,
+      "lines": 577
+    },
+    "automod.js": {
+      "hash": "bab1225e45eff7bf84151a9d97b70788",
+      "size": 54446,
+      "lines": 899
+    },
+    "avatar.js": {
+      "hash": "9f4487cef1a7a9f9b7994337d0932b39",
+      "size": 3477,
+      "lines": 82
+    },
+    "ban.js": {
+      "hash": "0b0e7e2777dfada3eccb527b40dbb5fb",
+      "size": 31101,
+      "lines": 617
+    },
+    "banner.js": {
+      "hash": "a0c414adfcd735576e58e714dafa75f3",
+      "size": 2071,
+      "lines": 49
+    },
+    "birthday.js": {
+      "hash": "c9db58375e37fd3b0805b8a204bde936",
+      "size": 32760,
+      "lines": 591
+    },
+    "boosters.js": {
+      "hash": "e9c467354bd0f1128dbf83cd906e8cc3",
+      "size": 2988,
+      "lines": 78
+    },
+    "bot-stats.js": {
+      "hash": "528df7d84df7c6cfe9227e3f93f118f3",
+      "size": 10964,
+      "lines": 285
+    },
+    "broadcast.js": {
+      "hash": "4b79820a6f9ec99a653e2ad0db6837dd",
+      "size": 29601,
+      "lines": 652
+    },
+    "calc.js": {
+      "hash": "0694290f81ac9c9d9505c431c5500de7",
+      "size": 4759,
+      "lines": 71
+    },
+    "car.js": {
+      "hash": "eec5c62a23709f492579a35a337f5a90",
+      "size": 10100,
+      "lines": 262
+    },
+    "cat.js": {
+      "hash": "c0e4d67527295915a5062a516955d6d7",
+      "size": 10308,
+      "lines": 272
+    },
+    "changelog.js": {
+      "hash": "69191f41ed4868bdebdef0404e2e1f15",
+      "size": 13113,
+      "lines": 366
+    },
+    "claim.js": {
+      "hash": "8f0677e178287479698494fda78ee16d",
+      "size": 41515,
+      "lines": 846
+    },
+    "clear.js": {
+      "hash": "f5085a20b941d6973f690c4d49e307cf",
+      "size": 9714,
+      "lines": 218
+    },
+    "coinflip.js": {
+      "hash": "ac1dfc8c12e7325043b1572e277b0cf6",
+      "size": 1200,
+      "lines": 39
+    },
+    "contact.js": {
+      "hash": "e5ddf9b2bffe84edd8f7d06a836eac6a",
+      "size": 13005,
+      "lines": 286
+    },
+    "countdown.js": {
+      "hash": "6a39285bbe304af4b8502f8b822d525d",
+      "size": 9154,
+      "lines": 215
+    },
+    "credit.js": {
+      "hash": "04063cd2e0a6e56cb403e5a601f869a9",
+      "size": 22267,
+      "lines": 414
+    },
+    "cross-economy.js": {
+      "hash": "723bf43afe8e31f61e399dfed454861d",
+      "size": 35883,
+      "lines": 823
+    },
+    "customrole.js": {
+      "hash": "069689f063b43609ebf04d3b11c28683",
+      "size": 7666,
+      "lines": 92
+    },
+    "dadjoke.js": {
+      "hash": "9cc64cec171302613dcafa98ea67fbd4",
+      "size": 1725,
+      "lines": 57
+    },
+    "daily.js": {
+      "hash": "d9f8701d54e09c4d8806d88c62d412a0",
+      "size": 12214,
+      "lines": 279
+    },
+    "dashboard.js": {
+      "hash": "863fea515b1c74b7308ee53887fce2d4",
+      "size": 21673,
+      "lines": 513
+    },
+    "define.js": {
+      "hash": "6de3c6f1777c58483e6c418efecbc3e1",
+      "size": 4344,
+      "lines": 63
+    },
+    "delete.js": {
+      "hash": "fea752dd93aeadd9211c6733f9001620",
+      "size": 12669,
+      "lines": 282
+    },
+    "dog.js": {
+      "hash": "9161293751531a9d7aa5621631691645",
+      "size": 9884,
+      "lines": 256
+    },
+    "emoji.js": {
+      "hash": "a640a76da662de76b9081ce6f73a74e9",
+      "size": 8513,
+      "lines": 255
+    },
+    "fact.js": {
+      "hash": "b4f749a1e1b0c1956f5d111a5988677b",
+      "size": 1690,
+      "lines": 53
+    },
+    "game.js": {
+      "hash": "82dfd86a0ed29e428bd973d3dc866b36",
+      "size": 35718,
+      "lines": 493
+    },
+    "giveaway.js": {
+      "hash": "b691bd742714fea6501d9ed73bf8ba80",
+      "size": 46233,
+      "lines": 993
+    },
+    "heap-guardian.js": {
+      "hash": "fbb94b8ef9e838cf26ca6d2df9ebc9b2",
+      "size": 3773,
+      "lines": 98
+    },
+    "help.js": {
+      "hash": "5b8e5e54a8d51c8e6105e12079bcd050",
+      "size": 34370,
+      "lines": 680
+    },
+    "image.js": {
+      "hash": "0a48e8b8ec67c12ec1abd9c32bfa2b44",
+      "size": 22042,
+      "lines": 537
+    },
+    "inventory.js": {
+      "hash": "7f49c565ce485119a33651d65d3817b3",
+      "size": 24330,
+      "lines": 364
+    },
+    "invest.js": {
+      "hash": "66a5bf777956933a4e258c917039d635",
+      "size": 14136,
+      "lines": 231
+    },
+    "invite.js": {
+      "hash": "27b1fe6438baf7bbcb13b7a97b33b4db",
+      "size": 16364,
+      "lines": 331
+    },
+    "kick.js": {
+      "hash": "6fc37fe307ab9dfe3d25639a1d37febf",
+      "size": 10341,
+      "lines": 218
+    },
+    "leaderboard.js": {
+      "hash": "ae92ac3643bb76c57d4be5a9b24ef9af",
+      "size": 11983,
+      "lines": 178
+    },
+    "level.js": {
+      "hash": "9a1c74b11e5de44d307f460fc45beeb1",
+      "size": 5778,
+      "lines": 72
+    },
+    "list.js": {
+      "hash": "b221f9527abb1873f9af5fa1d571087a",
+      "size": 43424,
+      "lines": 869
+    },
+    "loadout.js": {
+      "hash": "c51c40cf95a67afeee2f4846022d644b",
+      "size": 19051,
+      "lines": 392
+    },
+    "lydia-voice.js": {
+      "hash": "9eb6a864cb6eaacf9464c40b7927c4bb",
+      "size": 1759,
+      "lines": 44
+    },
+    "lydia.js": {
+      "hash": "cb5ce932e46065199528ab691cac2d9c",
+      "size": 24193,
+      "lines": 483
+    },
+    "market-manager.js": {
+      "hash": "bd27c74debfce24644c364e35ff12884",
+      "size": 23907,
+      "lines": 505
+    },
+    "market.js": {
+      "hash": "a81545190de864613842283c005b6cfb",
+      "size": 19888,
+      "lines": 394
+    },
+    "membercount.js": {
+      "hash": "bb1518829b4e2ba68d31b6ea6cd1336c",
+      "size": 3260,
+      "lines": 84
+    },
+    "meme.js": {
+      "hash": "b2f39ff174eaaaabf4ac0c6d410fb9d6",
+      "size": 14924,
+      "lines": 361
+    },
+    "mute.js": {
+      "hash": "e37108be9f529f2c5620a27f90c00dd0",
+      "size": 9517,
+      "lines": 223
+    },
+    "myroles.js": {
+      "hash": "b956c242eac1d75776fcf19aae017600",
+      "size": 10823,
+      "lines": 239
+    },
+    "oldest.js": {
+      "hash": "19a980bbb76113888ef94c8300bbbcfe",
+      "size": 2466,
+      "lines": 65
+    },
+    "owner.js": {
+      "hash": "e1b3e39ec007461548d7ad58a703d7cb",
+      "size": 9459,
+      "lines": 240
+    },
+    "pin.js": {
+      "hash": "fcb42d5f28accd3256ae9a564b0a67b9",
+      "size": 23867,
+      "lines": 585
+    },
+    "ping.js": {
+      "hash": "912505b3709022a2d295525eefee0083",
+      "size": 24092,
+      "lines": 502
+    },
+    "poll.js": {
+      "hash": "8bf6908157c2083f48a016811633e086",
+      "size": 6568,
+      "lines": 181
+    },
+    "premium.js": {
+      "hash": "740ab9b9e4a8d7a52ef45c2943973fd0",
+      "size": 15362,
+      "lines": 381
+    },
+    "profile.js": {
+      "hash": "55dce566d1e86d90b877fd51aa647663",
+      "size": 17229,
+      "lines": 320
+    },
+    "qr.js": {
+      "hash": "c7789ac01af21d0d4811d155419f9072",
+      "size": 3228,
+      "lines": 39
+    },
+    "quiz-mali-food.js": {
+      "hash": "9cafba3ed933539b5f9e4ee291524c7d",
+      "size": 15505,
+      "lines": 315
+    },
+    "quote.js": {
+      "hash": "c33acb166e74be8925153935802e16f2",
+      "size": 23450,
+      "lines": 330
+    },
+    "randommeta.js": {
+      "hash": "e68317ef1b9c43e7b2bf82cf689582bd",
+      "size": 15231,
+      "lines": 359
+    },
+    "rank.js": {
+      "hash": "a6c370b8031a2c67ea4732052657c992",
+      "size": 15738,
+      "lines": 274
+    },
+    "reboot.js": {
+      "hash": "debfc1f7371e55a726527ee2a0a420fb",
+      "size": 7996,
+      "lines": 186
+    },
+    "refresh.js": {
+      "hash": "dce73f76437db3296ef6c5eb127369bd",
+      "size": 25883,
+      "lines": 516
+    },
+    "reminder.js": {
+      "hash": "a5dd949c4069f44a4d5274b83f06ba14",
+      "size": 12193,
+      "lines": 310
+    },
+    "rename.js": {
+      "hash": "477b052054945f4292dc5cf87bd3782a",
+      "size": 7102,
+      "lines": 162
+    },
+    "roleinfo.js": {
+      "hash": "22d95749b1a0f341c7f5e8aab32a9a10",
+      "size": 4617,
+      "lines": 106
+    },
+    "roll.js": {
+      "hash": "df8cd7816c1be5bfd668db19d75df623",
+      "size": 2229,
+      "lines": 75
+    },
+    "server.js": {
+      "hash": "1a2e3f3622a8f7194a53ae2fa36ace60",
+      "size": 10893,
+      "lines": 270
+    },
+    "serverbanner.js": {
+      "hash": "7676b2c3227976453be7bab045e96570",
+      "size": 1934,
+      "lines": 52
+    },
+    "servericon.js": {
+      "hash": "55be2c90bdb93c7bd4b0050a47bbca06",
+      "size": 2136,
+      "lines": 56
+    },
+    "serversettings.js": {
+      "hash": "2a7f8e1b221ee730e1d3a4581237af78",
+      "size": 37164,
+      "lines": 764
+    },
+    "setgame.js": {
+      "hash": "d6f80822d99693f8f5b335df72c78540",
+      "size": 18620,
+      "lines": 330
+    },
+    "setprefix.js": {
+      "hash": "5560533318ad94acb6f478c8130faf19",
+      "size": 7592,
+      "lines": 170
+    },
+    "setup.js": {
+      "hash": "5cdd0daf83e1fead274457e37ec6819d",
+      "size": 17814,
+      "lines": 384
+    },
+    "shop.js": {
+      "hash": "ce868515aadd35531da7b09ed6913972",
+      "size": 21404,
+      "lines": 364
+    },
+    "slap.js": {
+      "hash": "2eb32e7e93e125abccd9b0855fc86d01",
+      "size": 6877,
+      "lines": 175
+    },
+    "slash.js": {
+      "hash": "78cf13b5af3835ab9f25c160d47e10e9",
+      "size": 30308,
+      "lines": 711
+    },
+    "slowmode.js": {
+      "hash": "8af79396b31edf29637c665aa89dbf64",
+      "size": 14335,
+      "lines": 345
+    },
+    "socials.js": {
+      "hash": "1b8fb08fde5ba674b5507e6d61f1a532",
+      "size": 17212,
+      "lines": 379
+    },
+    "stats.js": {
+      "hash": "65fdb621290420529eff731393a801ec",
+      "size": 20664,
+      "lines": 491
+    },
+    "status.js": {
+      "hash": "ff49540ee6087b588824764ab17062a8",
+      "size": 8517,
+      "lines": 213
+    },
+    "ticket.js": {
+      "hash": "90040f5071c432e02f8468be9be23602",
+      "size": 46658,
+      "lines": 998
+    },
+    "tictactoe.js": {
+      "hash": "a09a33428d51e2fa83de93403dc23291",
+      "size": 24104,
+      "lines": 482
+    },
+    "tiktok.js": {
+      "hash": "c8a39127e58f5ca023b1b5cf3212b0c6",
+      "size": 48056,
+      "lines": 1039
+    },
+    "timer.js": {
+      "hash": "8c393ab31e68d69aed8b27b7e3a8365e",
+      "size": 6703,
+      "lines": 115
+    },
+    "transfer.js": {
+      "hash": "821f988b2f6372adcacb16df14ece9e0",
+      "size": 15550,
+      "lines": 344
+    },
+    "trivia.js": {
+      "hash": "ec1a89fb0116cb1e541d2a6d9ab9cfee",
+      "size": 61687,
+      "lines": 613
+    },
+    "trt.js": {
+      "hash": "83a3a97fa59b24c24dcb415a8ded9433",
+      "size": 6972,
+      "lines": 86
+    },
+    "tts.js": {
+      "hash": "fca86fdcde8a5ee109248c80e7284db4",
+      "size": 10261,
+      "lines": 234
+    },
+    "update.js": {
+      "hash": "d71de4fb5024adbbf924054c71cb53c4",
+      "size": 7207,
+      "lines": 145
+    },
+    "url.js": {
+      "hash": "d034543b310daee17825d32decdc9ec1",
+      "size": 10561,
+      "lines": 273
+    },
+    "use.js": {
+      "hash": "3fc986aaa599e6154a101a46075be642",
+      "size": 26223,
+      "lines": 572
+    },
+    "vote.js": {
+      "hash": "b42892d75a3d5d1e2035461c4455b060",
+      "size": 32239,
+      "lines": 484
+    },
+    "votesync.js": {
+      "hash": "98483b17544da481029d3edd3eac955e",
+      "size": 17341,
+      "lines": 325
+    },
+    "warn.js": {
+      "hash": "10f1ad0f052152a8371e99d5d786f912",
+      "size": 33834,
+      "lines": 553
+    },
+    "weather.js": {
+      "hash": "6b8373c38049dd98b22696c78fd3592c",
+      "size": 22658,
+      "lines": 437
+    },
+    "welcome.js": {
+      "hash": "937ae9d679250634dfc6c448d492ab9b",
+      "size": 5512,
+      "lines": 116
+    },
+    "whois.js": {
+      "hash": "197bec3780f524c4f73ff0279017297b",
+      "size": 27953,
+      "lines": 601
+    },
+    "wrg.js": {
+      "hash": "548fcd27a35190ee775ee0c22589a611",
+      "size": 20685,
+      "lines": 416
+    },
+    "youtube.js": {
+      "hash": "9089ae9126db2eb797a7ac17b8851f89",
+      "size": 20791,
+      "lines": 535
+    },
+    "index.js": {
+      "hash": "5d15bd14ab829a80aaff43c65fd1202f",
+      "size": 214560,
+      "lines": 4426,
+      "isCore": true
+    }
+  },
+  "timestamp": 1780154508158
+}
