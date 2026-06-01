@@ -1,80 +1,89 @@
-const { EmbedBuilder } = require('discord.js');
+// ═══════════════════════════════════════════
+//  ARCHON CG-223 — TELEGRAM ENTRY POINT
+//  Located at: telegram/telegram.js
+//  Loaded by root telegram.js via: require('./telegram/telegram')
+// ═══════════════════════════════════════════
+
+console.log('[TELEGRAM] Loading telegram/telegram.js...');
+
+var bridge, bot;
+
+try {
+    bridge = require('./bridge');
+    console.log('[TELEGRAM] bridge.js loaded OK');
+} catch (e) {
+    console.error('[TELEGRAM] FAILED to load bridge.js:', e.message);
+    throw e;
+}
+
+try {
+    bot = require('./bot');
+    console.log('[TELEGRAM] bot.js loaded OK');
+} catch (e) {
+    console.error('[TELEGRAM] FAILED to load bot.js:', e.message);
+    throw e;
+}
+
+const green = "\x1b[32m", yellow = "\x1b[33m", red = "\x1b[31m", cyan = "\x1b[36m", reset = "\x1b[0m";
+
+let _initialized = false;
+let _bridge = null;
 
 module.exports = {
-    name: 'telegram',
-    aliases: ['tg', 'bridge'],
-    description: '🌉 Control the Telegram Bridge v1.7.0',
-    category: 'SYSTEM',
-    usage: '<status|activate|deactivate|send>',
-    cooldown: 2000,
+    async initialize(client) {
+        if (_initialized) {
+            console.log(yellow + '[TELEGRAM]' + reset + ' Already initialized');
+            return _bridge;
+        }
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
-        const action = args[0]?.toLowerCase();
-        const isOwner = message.author.id === process.env.OWNER_ID;
-        
-        const embed = new EmbedBuilder()
-            .setColor('#00fbff')
-            .setFooter({ text: `ARCHITECT CG-223 • BAMAKO_223 🇲🇱` })
-            .setTimestamp();
-        
-        // Status Command
-        if (!action || action === 'status') {
-            const status = client.telegramBridge.status();
-            const info = client.telegramBridge.info();
-            embed.setTitle('🌉 TELEGRAM BRIDGE STATUS')
-                .setDescription(`\`\`\`yaml\nConfigured: ${status.configured ? '✅ Yes' : '❌ No'}\nEnabled: ${status.enabled ? '✅ Yes' : '❌ No'}\nVersion: ${status.version}\nChat ID: ${info.chatId}\`\`\``);
-            return message.reply({ embeds: [embed] });
-        }
-        
-        // Activate Command (Owner Only)
-        if (action === 'activate') {
-            if (!isOwner) {
-                embed.setColor('#ED4245').setTitle('⛔ ACCESS DENIED').setDescription(lang === 'fr' ? 'Seul l\'Architecte peut activer le pont.' : 'Only the Architect can activate the bridge.');
-                return message.reply({ embeds: [embed] });
-            }
-            const result = client.telegramBridge.activate();
-            embed.setColor(result.success ? '#2ecc71' : '#ED4245')
-                .setTitle(result.success ? '✅ BRIDGE ACTIVATED' : '❌ ACTIVATION FAILED')
-                .setDescription(result.success ? (lang === 'fr' ? 'Le pont Telegram est maintenant ACTIF.' : 'Telegram Bridge is now ACTIVE.') : result.error);
-            return message.reply({ embeds: [embed] });
-        }
-        
-        // Deactivate Command (Owner Only)
-        if (action === 'deactivate') {
-            if (!isOwner) {
-                embed.setColor('#ED4245').setTitle('⛔ ACCESS DENIED').setDescription(lang === 'fr' ? 'Seul l\'Architecte peut désactiver le pont.' : 'Only the Architect can deactivate the bridge.');
-                return message.reply({ embeds: [embed] });
-            }
-            const result = client.telegramBridge.deactivate();
-            embed.setColor('#f1c40f').setTitle('🔴 BRIDGE DEACTIVATED').setDescription(lang === 'fr' ? 'Le pont Telegram est maintenant INACTIF.' : 'Telegram Bridge is now INACTIVE.');
-            return message.reply({ embeds: [embed] });
-        }
-        
-        // Send Test Message
-        if (action === 'send' || action === 'test') {
-            const content = args.slice(1).join(' ');
-            if (!content) {
-                embed.setColor('#ED4245').setTitle('❌ ' + (lang === 'fr' ? 'Message manquant' : 'Missing message'))
-                    .setDescription(lang === 'fr' ? 'Usage: `.telegram send <message>`' : 'Usage: `.telegram send <message>`');
-                return message.reply({ embeds: [embed] });
+        console.log(cyan + '[TELEGRAM]' + reset + ' ════════════════════════════════════════');
+        console.log(cyan + '[TELEGRAM]' + reset + '  ARCHON CG-223 TELEGRAM BRIDGE v3.0');
+        console.log(cyan + '[TELEGRAM]' + reset + '  by @mfof7310');
+        console.log(cyan + '[TELEGRAM]' + reset + ' ════════════════════════════════════════');
+
+        try {
+            // Step 1: Create bridge
+            console.log('[TELEGRAM] Step 1: Initialize bridge...');
+            _bridge = bridge.initialize(client);
+            console.log(`[TELEGRAM] Bridge created. Commands: ${_bridge.commands.size}`);
+
+            // Step 2: Activate
+            console.log('[TELEGRAM] Step 2: Activate bridge...');
+            const act = _bridge.activate();
+            console.log(`[TELEGRAM] Bridge activated: ${act.success}`);
+
+            // Step 3: Init bot engine (loads plugins + starts polling)
+            console.log('[TELEGRAM] Step 3: Initialize bot engine...');
+            if (bot && typeof bot.initialize === 'function') {
+                await bot.initialize(client);
+                console.log(`[TELEGRAM] Bot engine init done. Commands: ${_bridge.commands.size}`);
+            } else {
+                console.error(red + '[TELEGRAM]' + reset + ' bot.initialize is not a function!');
+                console.error('[TELEGRAM] bot exports:', Object.keys(bot || {}));
             }
 
-            // Indiquer que le bot travaille (réseau)
-            await message.channel.sendTyping();
+            _initialized = true;
+            // Sync Telegram command count to client for Discord dashboard display
+            client.telegramCommands = _bridge.commands;
+            client.telegramAliases = _bridge.aliases;
+            client.telegramCommandCount = _bridge.commands.size;
+            console.log(green + '[TELEGRAM]' + reset + ` System ready! Commands: ${_bridge.commands.size}`);
 
-            // On envoie en HTML pour le formatage, le bridge gère l'échappement automatiquement
-            const result = await client.telegramBridge.send(`<b>[Discord]</b> ${message.author.username}: ${content}`, { parse_mode: 'HTML' });
-            
-            embed.setColor(result.success ? '#2ecc71' : '#ED4245')
-                .setTitle(result.success ? '✅ MESSAGE SENT' : '❌ SEND FAILED')
-                .setDescription(result.success ? (lang === 'fr' ? 'Message envoyé à Telegram.' : 'Message delivered to Telegram.') : result.error);
-            return message.reply({ embeds: [embed] });
+        } catch (err) {
+            console.error(red + '[TELEGRAM]' + reset + ' Init error:', err.message);
+            console.error(red + '[TELEGRAM]' + reset + ' Stack:', err.stack);
         }
-        
-        // Unknown action
-        embed.setColor('#ED4245').setTitle('❓ ' + (lang === 'fr' ? 'Action inconnue' : 'Unknown action'))
-            .setDescription(lang === 'fr' ? 'Actions: `status`, `activate`, `deactivate`, `send`' : 'Actions: `status`, `activate`, `deactivate`, `send`');
-        return message.reply({ embeds: [embed] });
+
+        return _bridge;
+    },
+
+    getBridge() { return _bridge; },
+    isInitialized() { return _initialized; },
+    status() {
+        return {
+            initialized: _initialized,
+            bridge: _bridge ? _bridge.status() : null,
+            info: _bridge ? _bridge.info() : null,
+        };
     }
 };
