@@ -1,0 +1,680 @@
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+
+// ================= BILINGUAL TRANSLATIONS =================
+const translations = {
+    en: {
+        directoryTitle: '⚙️ ARCHITECT CG-223 | NEURAL DIRECTORY',
+        commandExtract: 'COMMAND DATA_EXTRACT',
+        module: 'MODULE',
+        category: 'CATEGORY',
+        usage: 'USAGE',
+        aliases: 'ALIASES',
+        examples: 'EXAMPLES',
+        cooldown: 'COOLDOWN',
+        seconds: 'seconds',
+        noDescription: 'No description encrypted. Use .help for module list.',
+        noExamples: 'No examples available',
+        none: 'NONE',
+        systemStatus: 'SYSTEM STATUS',
+        online: 'ONLINE',
+        node: 'NODE',
+        core: 'CORE',
+        uptime: 'UPTIME',
+        version: 'VERSION',
+        moduleStats: '📊 MODULE STATISTICS',
+        commands: 'Commands',
+        aliasesStat: 'Aliases',
+        categories: 'Categories',
+        agents: 'Agents',
+        guilds: 'Guilds',
+        quickAccess: '🎮 QUICK ACCESS',
+        aiAssistant: '🤖 AI ASSISTANT',
+        aiDesc: 'Mention @Lydia or use {prefix}ask\nReal-time web search enabled',
+        selectPlaceholder: '🔍 Select a System Module to Decrypt...',
+        viewAll: 'View all {category} commands and utilities',
+        mainMenu: '🏠 MAIN MENU',
+        backToMain: '🏠 MAIN MENU',
+        modulesTitle: 'NEURAL COMMAND DATABASE',
+        moduleStatsTitle: '📊 MODULE STATS',
+        totalCommands: 'Total Commands',
+        aliasesRegistered: 'Aliases Registered',
+        commandsAvailable: 'commands available',
+        useHelpForDetails: 'Use {prefix}help <command> for details',
+        selectModuleBelow: 'Select a module below',
+        categoryDescriptions: {
+            SYSTEM: 'Core system commands and utilities',
+            GAMING: 'Games, arcade, and entertainment',
+            ECONOMY: 'Credits, shop, and daily rewards',
+            PROFILE: 'Rank, stats, and leaderboards',
+            AI: 'Lydia AI and neural assistance',
+            MODERATION: 'Server management and moderation',
+            UTILITY: 'Useful tools and information',
+            FUN: 'Fun commands and interactions',
+            OWNER: 'Bot owner exclusive commands',
+            GENERAL: 'General purpose commands'
+        },
+        signalLost: '❌ SIGNAL LOST',
+        commandNotFound: 'Command Not Found',
+        notFoundDesc: (arg, prefix) => `\`\`\`diff\n- Command or category "${arg}" not found in neural database\n- Use ${prefix}help to view all available modules\`\`\``,
+        checkSpelling: 'ARCHITECT CG-223 • Check your spelling and try again',
+        accessDenied: '⛔ Access Denied. This directory is locked to the requesting agent.',
+        footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY',
+        bamakoNode: 'Bamako Node',
+        modulesOnline: 'modules online',
+        tip: '💡 TIP',
+        tips: [
+            'Use {prefix}help <command> for detailed information',
+            'Type {prefix}game menu to access the Neural Arcade',
+            'Claim daily rewards with {prefix}daily',
+            'Check your rank with {prefix}rank',
+            'Visit the shop with {prefix}shop'
+        ]
+    },
+    fr: {
+        directoryTitle: '⚙️ ARCHITECT CG-223 | RÉPERTOIRE NEURAL',
+        commandExtract: 'EXTRAIT DE COMMANDE',
+        module: 'MODULE',
+        category: 'CATÉGORIE',
+        usage: 'UTILISATION',
+        aliases: 'ALIAS',
+        examples: 'EXEMPLES',
+        cooldown: 'REFRAGEMENT',
+        seconds: 'secondes',
+        noDescription: 'Aucune description cryptée. Utilisez .help pour la liste des modules.',
+        noExamples: 'Aucun exemple disponible',
+        none: 'AUCUN',
+        systemStatus: 'ÉTAT DU SYSTÈME',
+        online: 'EN LIGNE',
+        node: 'NŒUD',
+        core: 'CŒUR',
+        uptime: 'DISPONIBILITÉ',
+        version: 'VERSION',
+        moduleStats: '📊 STATISTIQUES DES MODULES',
+        commands: 'Commandes',
+        aliasesStat: 'Alias',
+        categories: 'Catégories',
+        agents: 'Agents',
+        guilds: 'Serveurs',
+        quickAccess: '🎮 ACCÈS RAPIDE',
+        aiAssistant: '🤖 ASSISTANT IA',
+        aiDesc: 'Mentionnez @Lydia ou utilisez {prefix}ask\nRecherche web en temps réel activée',
+        selectPlaceholder: '🔍 Sélectionnez un Module Système à Décrypter...',
+        viewAll: 'Voir toutes les commandes {category}',
+        mainMenu: '🏠 MENU PRINCIPAL',
+        backToMain: '🏠 MENU PRINCIPAL',
+        modulesTitle: 'BASE DE DONNÉES DE COMMANDES NEURALES',
+        moduleStatsTitle: '📊 STATS DU MODULE',
+        totalCommands: 'Total Commandes',
+        aliasesRegistered: 'Alias Enregistrés',
+        commandsAvailable: 'commandes disponibles',
+        useHelpForDetails: 'Utilisez {prefix}help <commande> pour plus de détails',
+        selectModuleBelow: 'Sélectionnez un module ci-dessous',
+        categoryDescriptions: {
+            SYSTEM: 'Commandes système principales',
+            GAMING: 'Jeux, arcade et divertissement',
+            ECONOMY: 'Crédits, boutique et récompenses',
+            PROFILE: 'Rang, statistiques et classements',
+            AI: 'Lydia IA et assistance neurale',
+            MODERATION: 'Gestion et modération du serveur',
+            UTILITY: 'Outils et informations utiles',
+            FUN: 'Commandes amusantes',
+            OWNER: 'Commandes exclusives du propriétaire',
+            GENERAL: 'Commandes générales'
+        },
+        signalLost: '❌ SIGNAL PERDU',
+        commandNotFound: 'Commande Introuvable',
+        notFoundDesc: (arg, prefix) => `\`\`\`diff\n- La commande ou catégorie "${arg}" est introuvable dans la base neurale\n- Utilisez ${prefix}help pour voir tous les modules\`\`\``,
+        checkSpelling: 'ARCHITECT CG-223 • Vérifiez votre orthographe et réessayez',
+        accessDenied: '⛔ Accès Refusé. Ce répertoire est verrouillé pour l\'agent demandeur.',
+        footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE',
+        bamakoNode: 'Nœud Bamako',
+        modulesOnline: 'modules en ligne',
+        tip: '💡 ASTUCE',
+        tips: [
+            'Utilisez {prefix}help <commande> pour plus de détails',
+            'Tapez {prefix}game menu pour accéder à l\'Arcade Neurale',
+            'Réclamez vos récompenses avec {prefix}daily',
+            'Vérifiez votre rang avec {prefix}rank',
+            'Visitez la boutique avec {prefix}shop'
+        ]
+    }
+};
+
+const emojiMap = {
+    SYSTEM: '⚙️', GAMING: '🎮', AI: '🧠', PROFILE: '👤', OWNER: '👑',
+    GENERAL: '📁', UTILITY: '🛠️', MODERATION: '🛡️', ECONOMY: '💰', FUN: '🎉'
+};
+
+const colorMap = {
+    SYSTEM: '#00fbff', GAMING: '#57F287', AI: '#9B59B6', PROFILE: '#FEE75C',
+    OWNER: '#ED4245', GENERAL: '#5865F2', UTILITY: '#EB459E', MODERATION: '#E67E22',
+    ECONOMY: '#F1C40F', FUN: '#3498DB'
+};
+
+const red = "\x1b[31m", reset = "\x1b[0m";
+
+// ================= HELPER FUNCTIONS =================
+function getRandomTip(t, prefix) {
+    const tips = t.tips;
+    return tips[Math.floor(Math.random() * tips.length)].replace(/{prefix}/g, prefix);
+}
+
+function formatUptime(lang) {
+    const uptimeSec = process.uptime();
+    const days = Math.floor(uptimeSec / 86400);
+    const hours = Math.floor((uptimeSec % 86400) / 3600);
+    const minutes = Math.floor((uptimeSec % 3600) / 60);
+    const seconds = Math.floor(uptimeSec % 60);
+    
+    const parts = [];
+    if (days > 0) parts.push(`${days}${lang === 'fr' ? 'j' : 'd'}`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (seconds > 0 && days === 0) parts.push(`${seconds}s`);
+    
+    return parts.join(' ') || '0s';
+}
+
+// ================= SERVER PLUGIN DETECTION =================
+function getServerPlugins(client, guildId) {
+    if (!guildId) return null;
+    
+    // Try to get server settings from your database
+    const settings = client.getServerSettings?.(guildId) || {};
+    
+    return {
+        ECONOMY: settings.economy_enabled !== false,
+        GAMING: settings.gaming_enabled !== false,
+        AI: settings.ai_enabled !== false,
+        PROFILE: settings.profile_enabled !== false,
+        MODERATION: settings.moderation_enabled !== false,
+        FUN: true,
+        UTILITY: true,
+        SYSTEM: true,
+        OWNER: false,
+        GENERAL: true,
+    };
+}
+
+function getCategoryStats(client) {
+    const stats = {};
+    for (const [name, cmd] of client.commands) {
+        const category = cmd.category || 'GENERAL';
+        stats[category] = (stats[category] || 0) + 1;
+    }
+    return stats;
+}
+
+function getTopCategories(stats, limit = 3) {
+    return Object.entries(stats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([cat, count]) => ({ cat, count }));
+}
+
+function getCategoryDescription(cat, t, lang) {
+    const upperCat = cat.toUpperCase();
+    if (t.categoryDescriptions?.[upperCat]) return t.categoryDescriptions[upperCat];
+    return lang === 'fr' ? `Commandes pour le module ${cat}` : `Commands for the ${cat} module`;
+}
+
+function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, guildId) {
+    const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
+    
+    // ✅ SERVER PLUGIN CHECK
+    const plugins = getServerPlugins(client, guildId);
+    if (plugins && category.toUpperCase() !== 'SYSTEM' && plugins[category.toUpperCase()] === false) {
+        return new EmbedBuilder()
+            .setColor('#ED4245')
+            .setAuthor({ name: `${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} MODULE`, iconURL: client.user.displayAvatarURL() })
+            .setTitle('🔒 MODULE DISABLED')
+            .setDescription(
+                lang === 'fr' 
+                    ? `Ce module n'est pas activé sur ce serveur.\n\n🔧 Contactez un administrateur pour l'activer.`
+                    : `This module is not enabled on this server.\n\n🔧 Contact an admin to enable it.`
+            )
+            .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
+            .setTimestamp();
+    }
+    
+    const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
+    const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
+    const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
+    
+    const commandList = sortedCmds.map(cmd => {
+        const aliasesText = cmd.aliases?.length ? ` (${cmd.aliases.slice(0, 3).join(', ')})` : '';
+        const examples = cmd.examples?.length ? `\n└─ 📝 ${lang === 'fr' ? 'Exemple' : 'Example'}: \`${prefix}${cmd.name} ${cmd.examples[0]}\`` : '';
+        return `**\`${prefix}${cmd.name}\`**${aliasesText}\n└─ *${cmd.description || t.noDescription}*${examples}`;
+    }).join('\n\n');
+    
+    return new EmbedBuilder()
+        .setColor(categoryColor)
+        .setAuthor({ name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}`, iconURL: client.user.displayAvatarURL() })
+        .setTitle(`═ ${t.modulesTitle} ═`)
+        .setDescription(commandList || (lang === 'fr' ? 'Aucune commande trouvée dans cette catégorie.' : 'No commands found in this category.'))
+        .addFields({ 
+            name: t.moduleStatsTitle, 
+            value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\`\`\``, 
+            inline: false 
+        })
+        .setFooter({ 
+            text: `${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${version}`,
+            iconURL: guildIcon
+        })
+        .setTimestamp();
+}
+
+// ================= MAIN EXPORT =================
+module.exports = {
+    name: 'help',
+    aliases: ['h', 'menu', 'docs', 'aide', 'commandes', 'commands'],
+    description: 'Access the ARCHITECT Neural Directory and command database with advanced navigation.',
+    category: 'SYSTEM',
+    cooldown: 3000,
+
+    // ================= SLASH COMMAND DATA =================
+    data: new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('Access the ARCHITECT Neural Directory and command database')
+        .addStringOption(option =>
+            option.setName('query')
+                .setDescription('Command or category to view')
+                .setRequired(false)
+                .setAutocomplete(true)
+        ),
+
+    // ✅ AUTOCOMPLETE
+    async autocomplete(interaction) {
+        const focusedValue = interaction.options.getFocused();
+        const choices = [...interaction.client.commands.keys()].filter(cmd => 
+            cmd.startsWith(focusedValue.toLowerCase())
+        ).slice(0, 25);
+        
+        await interaction.respond(
+            choices.map(choice => ({ name: choice, value: choice }))
+        );
+    },
+
+    run: async (client, message, args, database, serverSettings, usedCommand) => {
+        // ================= LANGUAGE DETECTION =================
+        let lang = 'en';
+        if (client.detectLanguage && usedCommand) {
+            lang = client.detectLanguage(usedCommand, 'en');
+        } else if (usedCommand) {
+            const cmd = usedCommand.toLowerCase();
+            if (cmd === 'aide' || cmd === 'commandes') lang = 'fr';
+            else if (cmd === 'help' || cmd === 'commands') lang = 'en';
+        }
+        
+        const t = translations[lang];
+        const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
+        const version = client.version || '1.8.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+        
+        // ================= UPTIME CALCULATION =================
+        const uptimeSec = process.uptime();
+        const days = Math.floor(uptimeSec / 86400);
+        const hours = Math.floor((uptimeSec % 86400) / 3600);
+        const minutes = Math.floor((uptimeSec % 3600) / 60);
+        const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
+        const totalGuilds = client.guilds.cache.size || 0;
+        
+        let uptimeString = '';
+        if (days > 0) uptimeString += `${days}${lang === 'fr' ? 'j' : 'd'} `;
+        if (hours > 0) uptimeString += `${hours}${lang === 'fr' ? 'h' : 'h'} `;
+        if (minutes > 0) uptimeString += `${minutes}${lang === 'fr' ? 'm' : 'm'} `;
+        if (days === 0 && hours === 0 && minutes === 0) uptimeString += `${Math.floor(uptimeSec)}s`;
+        else if (uptimeSec % 60 > 0 && days === 0 && hours === 0) uptimeString += `${Math.floor(uptimeSec % 60)}s`;
+        uptimeString = uptimeString.trim() || '0s';
+        
+        // ================= SUB-COMMAND HANDLING =================
+        if (args[0]) {
+            const searchTerm = args[0].toUpperCase();
+            const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))];
+            
+            if (categories.includes(searchTerm)) {
+                const embed = createCategoryEmbed(client, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id);
+                return message.reply({ embeds: [embed] }).catch(() => {});
+            }
+            
+            const cmdLower = args[0].toLowerCase();
+            const cmd = client.commands.get(cmdLower) || client.commands.find(c => c.aliases && c.aliases.includes(cmdLower));
+            
+            if (cmd) {
+                const category = cmd.category || 'GENERAL';
+                const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
+                const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
+
+                const detailEmbed = new EmbedBuilder()
+                    .setColor(categoryColor)
+                    .setAuthor({ name: `${categoryEmoji} ${t.commandExtract}`, iconURL: client.user.displayAvatarURL() })
+                    .setTitle(`◈ ${t.module}: ${cmd.name.toUpperCase()} ◈`)
+                    .setDescription(`\`\`\`yaml\n${cmd.description || t.noDescription}\`\`\``)
+                    .addFields(
+                        { name: `📂 ${t.category}`, value: `\`${category}\` ${getCategoryDescription(category, t, lang) ? `• ${getCategoryDescription(category, t, lang)}` : ''}`, inline: false },
+                        { name: `🔧 ${t.usage}`, value: `\`${effectivePrefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
+                        { name: `🔀 ${t.aliases}`, value: cmd.aliases?.length ? `\`${cmd.aliases.join(', ')}\`` : `\`${t.none}\``, inline: true }
+                    );
+                
+                if (cmd.examples?.length) {
+                    detailEmbed.addFields({
+                        name: `🎯 ${t.examples}`,
+                        value: `\`${cmd.examples.map(ex => `${effectivePrefix}${cmd.name} ${ex}`).join('`\n`')}\``,
+                        inline: false
+                    });
+                }
+
+                if (cmd.cooldown) {
+                    detailEmbed.addFields({ 
+                        name: `⏱️ ${t.cooldown}`, 
+                        value: `\`${cmd.cooldown/1000} ${t.seconds}\``, 
+                        inline: true 
+                    });
+                }
+                
+                detailEmbed
+                    .setFooter({ 
+                        text: `${guildName} • ${t.bamakoNode} • ${client.commands.size} ${t.modulesOnline} • v${version}`,
+                        iconURL: guildIcon
+                    })
+                    .setTimestamp();
+
+                return message.reply({ embeds: [detailEmbed] }).catch(() => {});
+            }
+
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setAuthor({ name: t.signalLost, iconURL: client.user.displayAvatarURL() })
+                .setTitle(t.commandNotFound)
+                .setDescription(t.notFoundDesc(args[0], effectivePrefix))
+                .setFooter({ text: `${guildName} • ${t.checkSpelling}`, iconURL: guildIcon })
+                .setTimestamp();
+            return message.reply({ embeds: [errorEmbed] }).catch(() => {});
+        }
+
+        // ================= MAIN DIRECTORY =================
+        // Normalize categories to uppercase to prevent duplicates (e.g. 'FUN' vs 'Fun')
+        const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))].sort();
+        const categoryStats = getCategoryStats(client);
+        const topCategories = getTopCategories(categoryStats);
+        
+        const totalCommands = client.commands.size;
+        const totalAliases = client.aliases?.size || 0;
+        const categoriesCount = categories.length;
+        
+        const topCategoriesDisplay = topCategories.map((c, i) => 
+            `${['🥇', '🥈', '🥉'][i]} **${c.cat}**: \`${c.count}\` ${t.commands.toLowerCase()}`
+        ).join('\n');
+        
+        const mainEmbed = new EmbedBuilder()
+            .setColor('#00fbff')
+            .setAuthor({ name: t.directoryTitle, iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) })
+            .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
+            .setDescription(
+                `\`\`\`yaml\n` +
+                `${t.systemStatus}: 🟢 ${t.online}\n` +
+                `${t.node}: BAMAKO-223\n` +
+                `${t.core}: OpenRouter + Brave Search\n` +
+                `${t.uptime}: ${uptimeString}\n` +
+                `${t.version}: v${version}\`\`\``
+            )
+            .addFields(
+                { name: t.moduleStats, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${totalMembers.toLocaleString()}\n${t.guilds}: ${totalGuilds}\`\`\``, inline: true },
+                { name: `🏆 TOP CATEGORIES`, value: topCategoriesDisplay || 'No data available', inline: true },
+                { name: t.quickAccess, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
+                { name: t.aiAssistant, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
+                { name: t.tip, value: getRandomTip(t, effectivePrefix), inline: true }
+            )
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, iconURL: guildIcon })
+            .setTimestamp();
+
+        const menu = new StringSelectMenuBuilder()
+            .setCustomId('help_select')
+            .setPlaceholder(t.selectPlaceholder)
+            .addOptions(categories.map(cat => ({
+                label: cat.toUpperCase().substring(0, 100),
+                value: cat,
+                description: getCategoryDescription(cat, t, lang).substring(0, 100),
+                emoji: emojiMap[cat.toUpperCase()] || '📁'
+            })));
+
+        const row1 = new ActionRowBuilder().addComponents(menu);
+        const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
+        );
+
+        const response = await message.reply({
+            embeds: [mainEmbed],
+            components: [row1, row2]
+        }).catch(() => null);
+        
+        if (!response) return;
+
+        const collector = response.createMessageComponentCollector({ time: 300000 });
+        
+        collector.on('collect', async (i) => {
+            try {
+                if (!i.deferred && !i.replied) {
+                    await i.deferUpdate().catch(() => {}); 
+                }
+            } catch (e) {
+                return;
+            }
+
+            if (i.user.id !== message.author.id) {
+                return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+            }
+
+            try {
+                if (i.customId === 'help_back') {
+                    const freshUptimeSec = process.uptime();
+                    const freshDays = Math.floor(freshUptimeSec / 86400);
+                    const freshHours = Math.floor((freshUptimeSec % 86400) / 3600);
+                    const freshMinutes = Math.floor((freshUptimeSec % 3600) / 60);
+                    const freshTotalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
+                    const freshTotalGuilds = client.guilds.cache.size || 0;
+                    
+                    let freshUptimeString = '';
+                    if (freshDays > 0) freshUptimeString += `${freshDays}${lang === 'fr' ? 'j' : 'd'} `;
+                    if (freshHours > 0) freshUptimeString += `${freshHours}${lang === 'fr' ? 'h' : 'h'} `;
+                    if (freshMinutes > 0) freshUptimeString += `${freshMinutes}${lang === 'fr' ? 'm' : 'm'} `;
+                    if (freshDays === 0 && freshHours === 0 && freshMinutes === 0) freshUptimeString += `${Math.floor(freshUptimeSec)}s`;
+                    else if (freshUptimeSec % 60 > 0 && freshDays === 0 && freshHours === 0) freshUptimeString += `${Math.floor(freshUptimeSec % 60)}s`;
+                    freshUptimeString = freshUptimeString.trim() || '0s';
+                    
+                    const freshMainEmbed = new EmbedBuilder()
+                        .setColor('#00fbff')
+                        .setAuthor({ name: t.directoryTitle, iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) })
+                        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
+                        .setDescription(
+                            `\`\`\`yaml\n` +
+                            `${t.systemStatus}: 🟢 ${t.online}\n` +
+                            `${t.node}: BAMAKO-223\n` +
+                            `${t.core}: OpenRouter + Brave Search\n` +
+                            `${t.uptime}: ${freshUptimeString}\n` +
+                            `${t.version}: v${version}\`\`\``
+                        )
+                        .addFields(
+                            { name: t.moduleStats, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, inline: true },
+                            { name: `🏆 TOP CATEGORIES`, value: topCategoriesDisplay || 'No data available', inline: true },
+                            { name: t.quickAccess, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
+                            { name: t.aiAssistant, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
+                            { name: t.tip, value: getRandomTip(t, effectivePrefix), inline: true }
+                        )
+                        .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, iconURL: guildIcon })
+                        .setTimestamp();
+                    
+                    const disabledRow2 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
+                    );
+                    
+                    await i.editReply({ content: null, embeds: [freshMainEmbed], components: [row1, disabledRow2] }).catch(() => {});
+                    return;
+                }
+                
+                if (i.isStringSelectMenu() && i.customId === 'help_select') {
+                    const category = i.values[0];
+                    const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id);
+                    
+                    const updatedRow2 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false)
+                    );
+                    
+                    await i.editReply({ content: null, embeds: [categoryEmbed], components: [row1, updatedRow2] }).catch((err) => {
+                        console.error(`${red}[HELP ERROR]${reset} Failed to edit:`, err.message);
+                    });
+                    return;
+                }
+            } catch (err) {
+                console.error(`${red}[HELP ERROR]${reset} Interaction failed:`, err.message);
+                try {
+                    await i.editReply({ 
+                        content: lang === 'fr' ? '❌ Une erreur est survenue. Veuillez réessayer.' : '❌ An error occurred. Please try again.',
+                        embeds: [], 
+                        components: [] 
+                    }).catch(() => {});
+                } catch (e) {}
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
+                const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
+                const disabledButton = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
+                );
+                await response.edit({ components: [disabledRow, disabledButton] }).catch(() => {});
+            } catch (err) {}
+        });
+    },
+
+    // ================= SLASH COMMAND EXECUTION =================
+    execute: async (interaction, client) => {
+        const query = interaction.options.getString('query');
+        const args = query ? [query] : [];
+        
+        // 🔥 LEGENDARY DM FALLBACK
+        if (!interaction.guild) {
+            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const t = translations[lang];
+            
+            const dmEmbed = new EmbedBuilder()
+                .setColor('#00fbff')
+                .setAuthor({ 
+                    name: lang === 'fr' ? '📡 TRANSMISSION NEURALE DIRECTE' : '📡 DIRECT NEURAL TRANSMISSION', 
+                    iconURL: client.user.displayAvatarURL() 
+                })
+                .setTitle(lang === 'fr' ? '🦅 ARCHITECT CG-223 // MODE DM' : '🦅 ARCHITECT CG-223 // DM MODE')
+                .setDescription(
+                    lang === 'fr' 
+                        ? `*Connexion neurale directe établie.*\n\n**Commandes disponibles en DM :**\n\n` +
+                          `⚙️ **/help** - Ce menu d'aide\n` +
+                          `📊 **/stats** - Statistiques du système\n` +
+                          `📖 **/about** - Informations sur l'Architecte\n` +
+                          `🎮 **/wrg** - Jeu de devinettes\n` +
+                          `🔍 **/whois** - Scanner un agent\n\n` +
+                          `🌐 **Commandes serveur uniquement :**\n` +
+                          `*Les commandes d'économie, de modération et de profil nécessitent d'être dans un serveur.*\n\n` +
+                          `✨ *Utilisez le menu déroulant ci-dessous pour explorer les commandes serveur !*`
+                        : `*Direct neural connection established.*\n\n**Available in DMs:**\n\n` +
+                          `⚙️ **/help** - This help menu\n` +
+                          `📊 **/stats** - System statistics\n` +
+                          `📖 **/about** - Architect information\n` +
+                          `🎮 **/wrg** - Word guessing game\n` +
+                          `🔍 **/whois** - Scan an agent\n\n` +
+                          `🌐 **Server-Only Commands:**\n` +
+                          `*Economy, moderation, and profile commands require being in a server.*\n\n` +
+                          `✨ *Use the dropdown below to explore server commands!*`
+                )
+                .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
+                .setFooter({ 
+                    text: lang === 'fr' ? 'NŒUD BAMAKO-223 • TRANSMISSION SÉCURISÉE' : 'BAMAKO-223 NODE • SECURE TRANSMISSION',
+                    iconURL: client.user.displayAvatarURL()
+                })
+                .setTimestamp();
+            
+            // Build simplified category menu for DM
+            const categories = [...new Set(client.commands.map(cmd => cmd.category || 'GENERAL'))].sort();
+            const categoryOptions = categories.slice(0, 25).map(cat => ({
+                label: cat.toUpperCase().substring(0, 100),
+                value: cat,
+                description: `${lang === 'fr' ? 'Voir les commandes' : 'View commands'}`.substring(0, 100),
+                emoji: '📁'
+            }));
+            
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('help_dm_category')
+                .setPlaceholder(lang === 'fr' ? '📋 Explorer les commandes serveur...' : '📋 Explore server commands...')
+                .addOptions(categoryOptions);
+            
+            const row = new ActionRowBuilder().addComponents(selectMenu);
+            
+            const reply = await interaction.reply({ 
+    embeds: [dmEmbed], 
+    components: [row],
+    flags: 64
+}).catch(() => {});
+            
+            if (!reply) return;
+            
+            // Collector for DM category selection
+            const collector = reply.createMessageComponentCollector({ time: 120000 });
+            
+            collector.on('collect', async (i) => {
+                if (i.user.id !== interaction.user.id) {
+    return i.reply({ 
+        content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', 
+        ephemeral: true  // ✅ CORRECT SYNTAX
+    });
+}
+                
+                if (i.customId === 'help_dm_category') {
+                    await i.deferUpdate();
+                    
+                    const category = i.values[0];
+                    const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
+                    const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    const categoryEmbed = new EmbedBuilder()
+                        .setColor('#00fbff')
+                        .setAuthor({ 
+                            name: `📁 ${category.toUpperCase()} ${lang === 'fr' ? 'Commandes' : 'Commands'}`, 
+                            iconURL: client.user.displayAvatarURL() 
+                        })
+                        .setDescription(
+                            sortedCmds.map(cmd => {
+                                const aliasesStr = cmd.aliases?.length ? ` *(${cmd.aliases.slice(0, 3).join(', ')})*` : '';
+                                return `**\`/${cmd.name}\`**${aliasesStr}\n└─ *${cmd.description || (lang === 'fr' ? 'Aucune description' : 'No description')}*`;
+                            }).join('\n\n') || (lang === 'fr' ? 'Aucune commande trouvée.' : 'No commands found.')
+                        )
+                        .setFooter({ 
+                            text: lang === 'fr' ? '🌐 Ces commandes nécessitent un serveur' : '🌐 These commands require a server',
+                            iconURL: client.user.displayAvatarURL()
+                        })
+                        .setTimestamp();
+                    
+                    await i.editReply({ embeds: [categoryEmbed], components: [] });
+                }
+            });
+            
+            return;
+        }
+        
+        // ===== SERVER EXECUTION =====
+await interaction.deferReply({ ephemeral: true });  // ✅ CORRECT SYNTAX FOR DISCORD.JS v14+
+
+const fakeMessage = {
+            author: interaction.user,
+            guild: interaction.guild,
+            channel: interaction.channel,
+            reply: async (options) => interaction.editReply(options),
+            react: () => Promise.resolve()
+        };
+        
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
+        
+        await module.exports.run(client, fakeMessage, args, null, serverSettings, 'help');
+    }
+};
