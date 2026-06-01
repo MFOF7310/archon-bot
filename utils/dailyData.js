@@ -1,0 +1,82 @@
+const DAILY_CONFIG = {
+    baseReward: 100,
+    maxStreakBonus: 200,
+    streakMultiplier: 10,
+    xpBase: 50,
+    xpStreakBonus: 5,
+    milestones: {
+        7: { bonus: 500, name: 'Weekly Warrior' },
+        30: { bonus: 2000, name: 'Monthly Master' },
+        90: { bonus: 7500, name: 'Quarterly Champion' },
+        180: { bonus: 20000, name: 'Semi-Annual Legend' },
+        365: { bonus: 50000, name: 'Yearly Deity' }
+    },
+    cooldownMs: 24 * 60 * 60 * 1000,
+    streakResetThreshold: 48 * 60 * 60 * 1000,
+    protectionLossChance: 0.1
+};
+
+const DAILY_TRANSLATIONS = {
+    en: {
+        titleClaimed: '✅ DAILY REWARD CLAIMED!',
+        titleAlreadyClaimed: '⏰ ALREADY CLAIMED',
+        titleStats: '👏 Daily Stats',
+        titleStreakMilestone: '🔥 STREAK MILESTONE!',
+        comeBack: 'Come back in',
+        hours: 'hours',
+        minutes: 'minutes',
+        baseReward: 'Base Reward',
+        streakBonus: 'Streak Bonus',
+        totalEarned: 'Total Earned',
+        xpEarned: 'XP Earned',
+        newBalance: 'New Balance',
+        currentStreak: 'Current Streak',
+        highestStreak: 'Highest Streak',
+        totalDailies: 'Total Dailies',
+        streakProtections: 'Streak Protections',
+        lastDaily: 'Last Daily',
+        days: 'days',
+        day: 'day',
+        neverClaimed: 'Never',
+        statsHeader: (username) => `👏 Bon Clay: @${username}, here are your daily stats:`,
+        footerClaim: 'NEURAL DAILY • CLAIM EVERY 24H',
+        footerBalance: (prefix) => `Check your balance anytime with ${prefix}bal or ${prefix}credits`,
+        milestoneBonus: 'Bonus added',
+        milestoneTitle: (name) => `🎁 ${name}!`,
+        levelUp: '🎉 LEVEL UP!',
+        reachedLevel: 'You reached level',
+        noAccount: '❌ No data found. Use /daily to start claiming!'
+    },
+    fr: {
+        titleClaimed: '✅ RÉCOMPENSE QUOTIDIENNE RÉCLAMÉE !',
+        titleAlreadyClaimed: '⏰ DÉJÀ RÉCLAMÉ',
+        titleStats: '👏 Statistiques Quotidiennes',
+        titleStreakMilestone: '🔥 JALON DE SÉRIE !',
+        comeBack: 'Revenez dans',
+        hours: 'heures',
+        minutes: 'minutes',
+        baseReward: 'Récompense de Base',
+        streakBonus: 'Bonus de Série',
+        totalEarned: 'Total Gagné',
+        xpEarned: 'XP Gagnés',
+        newBalance: 'Nouveau Solde',
+        currentStreak: 'Série Actuelle',
+        highestStreak: 'Meilleure Série',
+        totalDailies: 'Total des Réclamations',
+        streakProtections: 'Protections de Série',
+        lastDaily: 'Dernière Réclamation',
+        days: 'jours',
+        day: 'jour',
+        neverClaimed: 'Jamais',
+        statsHeader: (username) => `👏 Bon Clay: @${username}, voici vos statistiques quotidiennes:`,
+        footerClaim: 'NEURAL DAILY • RÉCLAMEZ TOUTES LES 24H',
+        footerBalance: (prefix) => `Vérifiez votre solde avec ${prefix}bal ou ${prefix}credits`,
+        milestoneBonus: 'Bonus ajouté',
+        milestoneTitle: (name) => `🎁 ${name}!`,
+        levelUp: '🎉 NIVEAU SUPÉRIEUR !',
+        reachedLevel: 'Vous avez atteint le niveau',
+        noAccount: '❌ Aucune donnée trouvée. Utilisez /daily pour commencer !'
+    }
+};
+
+module.exports = { DAILY_CONFIG, DAILY_TRANSLATIONS };
