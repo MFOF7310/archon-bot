@@ -1,333 +1,417 @@
-// webhook.js — Archon Billing Gateway v4 (Production Hardened)
+// webhook.js — Archon Billing Gateway (Production v1.2.0)
 // ============================================================
-// ENVIRONMENT VALIDATION — Runs before anything else
+// FIXED: syntax error + payment.succeeded now GRANTS premium
 // ============================================================
 
-// Safely load dotenv — silently skip if not installed
 try {
     require('dotenv').config();
-} catch (e) {
-    // dotenv is optional; production uses real environment variables
-}
+} catch (e) {}
 
-const REQUIRED_ENV_VARS = ['DODO_WEBHOOK_SECRET', 'DODO_API_KEY'];
-const MISSING_VARS = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
+const REQUIRED_VARS = ['DODO_WEBHOOK_SECRET'];
+const MISSING_VARS = REQUIRED_VARS.filter(v => !process.env[v]);
 
 if (MISSING_VARS.length > 0) {
     console.error(
         `[WEBHOOK] 🚨 FATAL: Missing critical environment variables: ${MISSING_VARS.join(', ')}.\n` +
-        `The billing gateway cannot verify payment signatures without these.\n` +
-        `Set them in your .env file or system environment before starting this service.`
-    );
-    // Don't process.exit() here — let the developer see the error and fix it.
-    // The server will still start but webhook verification will fail safely.
-}
-
-const MISSING_OPTIONAL = [];
-if (!process.env.DB_PATH) MISSING_OPTIONAL.push('DB_PATH');
-if (!process.env.WEBHOOK_PORT) MISSING_OPTIONAL.push('WEBHOOK_PORT');
-
-if (MISSING_OPTIONAL.length > 0) {
-    console.warn(
-        `[WEBHOOK] ⚠️ Missing optional environment variables: ${MISSING_OPTIONAL.join(', ')}. ` +
-        `Using safe defaults.`
+        `The billing gateway cannot verify payment signatures without these.`
     );
 }
 
-// ============================================================
-// IMPORTS
-// ============================================================
+const DODO_WEBHOOK_SECRET = process.env.DODO_WEBHOOK_SECRET || '';
+const DB_PATH = process.env.DB_PATH || './data/database.sqlite';
+const DEDUP_TTL_SECONDS = parseInt(process.env.DEDUP_TTL_SECONDS, 10) || 3600;
+const MAX_PAYLOAD_SIZE = process.env.MAX_PAYLOAD_SIZE || '64kb';
+const WEBHOOK_RATE_LIMIT = parseInt(process.env.WEBHOOK_RATE_LIMIT, 10) || 100;
+const WEBHOOK_RATE_WINDOW = parseInt(process.env.WEBHOOK_RATE_WINDOW, 10) || 60000;
+
+console.log('[WEBHOOK] 📋 Configuration:');
+console.log(`  → DB_PATH: ${DB_PATH}`);
+console.log(`  → DEDUP_TTL_SECONDS: ${DEDUP_TTL_SECONDS}`);
+console.log(`  → MAX_PAYLOAD_SIZE: ${MAX_PAYLOAD_SIZE}`);
+console.log(`  → WEBHOOK_RATE_LIMIT: ${WEBHOOK_RATE_LIMIT}/${WEBHOOK_RATE_WINDOW}ms`);
+console.log(`  → DODO_WEBHOOK_SECRET: ${DODO_WEBHOOK_SECRET ? '✅ Set' : '❌ MISSING'}`);
+
 const express = require('express');
 const crypto = require('crypto');
-const Database = require('better-sqlite3');
 const path = require('path');
-
-const app = express();
-
-// ============================================================
-// CONFIGURATION WITH FALLBACKS
-// ============================================================
-const DODO_WEBHOOK_SECRET = process.env.DODO_WEBHOOK_SECRET || '';
-const DODO_API_KEY = process.env.DODO_API_KEY || '';
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'database.sqlite');
-const WEBHOOK_PORT = parseInt(process.env.WEBHOOK_PORT, 10) || 3000;
-const DEDUP_TTL_SECONDS = parseInt(process.env.DEDUP_TTL_SECONDS, 10) || 3600;
-
-console.log('[WEBHOOK] 📋 Configuration loaded:');
-console.log(`  → DB_PATH: ${DB_PATH}`);
-console.log(`  → WEBHOOK_PORT: ${WEBHOOK_PORT}`);
-console.log(`  → DEDUP_TTL_SECONDS: ${DEDUP_TTL_SECONDS}`);
-console.log(`  → DODO_WEBHOOK_SECRET: ${DODO_WEBHOOK_SECRET ? '✅ Set' : '❌ MISSING'}`);
-console.log(`  → DODO_API_KEY: ${DODO_API_KEY ? '✅ Set' : '❌ MISSING'}`);
+const fs = require('fs');
 
 // ============================================================
-// RAW BODY PARSING (required for signature verification)
-// ============================================================
-app.use(express.json({
-    verify: (req, res, buf) => {
-        req.rawBody = buf.toString();
-    }
-}));
-
-// ============================================================
-// DATABASE BRIDGE — Opens dedicated connection with PRAGMAs
+// DATABASE: Shared connection or self-initialize
 // ============================================================
 let db;
-try {
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('synchronous = NORMAL');
-    db.pragma('cache_size = -64000');
-    db.pragma('temp_store = MEMORY');
-    db.pragma('busy_timeout = 5000');
-    console.log('[WEBHOOK] 🗄️ Database connection established.');
-} catch (err) {
-    console.error('[WEBHOOK] ❌ FATAL: Could not open database:', err.message);
-    console.error(`[WEBHOOK] Path attempted: ${DB_PATH}`);
-    process.exit(1); // Cannot function without database
+let premiumHelpers;
+
+function initializeDatabase(sharedDb = null) {
+    if (sharedDb) {
+        db = sharedDb;
+        console.log('[WEBHOOK] ✅ Using shared database connection (injected)');
+    } else {
+        const Database = require('better-sqlite3');
+        const dataDir = path.dirname(DB_PATH);
+        if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+        db = new Database(DB_PATH);
+        db.pragma('journal_mode = WAL');
+        db.pragma('synchronous = NORMAL');
+        db.pragma('busy_timeout = 5000');
+        console.log('[WEBHOOK] ✅ Self-initialized database connection (standalone mode)');
+    }
+
+    // Initialize schema
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS user_premium (
+            user_id TEXT PRIMARY KEY,
+            premium_active INTEGER DEFAULT 0,
+            premium_since INTEGER,
+            premium_expires INTEGER,
+            tier TEXT DEFAULT 'premium_tier_1',
+            cancelled_at INTEGER,
+            updated_at INTEGER,
+            notified INTEGER DEFAULT 0
+        )
+    `);
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS webhook_dedup (
+            event_id TEXT PRIMARY KEY,
+            processed_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL
+        )
+    `);
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS webhook_delivery_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            user_id TEXT,
+            status TEXT NOT NULL,
+            status_code INTEGER,
+            error_message TEXT,
+            payload TEXT,
+            processed_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    `);
+
+    try {
+        const premiumModule = require('./db/premium.js');
+        premiumHelpers = premiumModule(db);
+        console.log('[WEBHOOK] ✅ Premium helpers loaded from db/premium.js');
+    } catch (err) {
+        console.warn('[WEBHOOK] ⚠️ Could not load db/premium.js, using inline fallback:', err.message);
+        premiumHelpers = createInlinePremiumHelpers(db);
+    }
+
+    return db;
 }
 
-// ============================================================
-// PREMIUM HELPERS — Wired to this webhook's DB connection
-// ============================================================
-let premium;
-try {
-    premium = require('./db/premium')(db);
-    console.log('[WEBHOOK] 🧩 Premium helpers initialized.');
-} catch (err) {
-    console.error('[WEBHOOK] ❌ FATAL: Could not initialize premium helpers:', err.message);
-    process.exit(1);
-}
-
-// ============================================================
-// DEDUPLICATION LAYER — Database-backed (survives restarts)
-// ============================================================
-const dedup = {
-    _ensureTable() {
-        try {
-            db.exec(`
-                CREATE TABLE IF NOT EXISTS webhook_dedup (
-                    event_id TEXT PRIMARY KEY,
-                    processed_at INTEGER NOT NULL,
-                    expires_at INTEGER NOT NULL
-                )
-            `);
-            // Purge expired entries on startup
-            const deleted = db.prepare(
-                'DELETE FROM webhook_dedup WHERE expires_at < ?'
-            ).run(Math.floor(Date.now() / 1000));
-            if (deleted.changes > 0) {
-                console.log(`[WEBHOOK] 🧹 Cleaned ${deleted.changes} expired dedup entries.`);
-            }
-            console.log('[WEBHOOK] 🛡️ Deduplication table verified.');
-        } catch (err) {
-            console.error('[WEBHOOK] ❌ Failed to initialize dedup table:', err.message);
-            throw err;
-        }
-    },
-
-    isDuplicate(eventId) {
-        try {
+function createInlinePremiumHelpers(db) {
+    return {
+        grantPremium(userId, tier = 'premium_tier_1', durationDays = 30) {
             const now = Math.floor(Date.now() / 1000);
-            const expiresAt = now + DEDUP_TTL_SECONDS;
+            const expires = durationDays ? now + (durationDays * 86400) : null;
+            const result = db.prepare(`
+                INSERT INTO user_premium (user_id, premium_active, premium_since, premium_expires, tier, updated_at, notified)
+                VALUES (?, 1, ?, ?, ?, ?, 0)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    premium_active = 1,
+                    premium_since = COALESCE(user_premium.premium_since, ?),
+                    premium_expires = ?,
+                    tier = ?,
+                    cancelled_at = NULL,
+                    updated_at = ?,
+                    notified = 0
+            `).run(userId, now, expires, tier, now, now, expires, tier, now);
+            return result;
+        },
+        revokePremium(userId) {
+            const now = Math.floor(Date.now() / 1000);
+            return db.prepare(`
+                UPDATE user_premium SET premium_active = 0, cancelled_at = ?, updated_at = ? WHERE user_id = ?
+            `).run(now, now, userId);
+        },
+        extendPremium(userId, newExpiryTimestamp) {
+            const now = Math.floor(Date.now() / 1000);
+            return db.prepare(`
+                UPDATE user_premium SET premium_active = 1, premium_expires = ?, updated_at = ? WHERE user_id = ?
+            `).run(newExpiryTimestamp, now, userId);
+        }
+    };
+}
 
-            db.prepare(
-                'INSERT INTO webhook_dedup (event_id, processed_at, expires_at) VALUES (?, ?, ?)'
-            ).run(eventId, now, expiresAt);
+// ============================================================
+// RATE LIMITER
+// ============================================================
+const rateLimitStore = new Map();
 
-            return false; // Insert succeeded — not a duplicate
-        } catch (err) {
-            if (err.code === 'SQLITE_CONSTRAINT_PRIMARYKEY') {
-                return true; // Already processed
-            }
-            console.error('[WEBHOOK] ❌ Dedup check error:', err.message);
-            throw err;
+function checkRateLimit(clientIp) {
+    const now = Date.now();
+    const windowStart = now - WEBHOOK_RATE_WINDOW;
+    let requests = rateLimitStore.get(clientIp) || [];
+    requests = requests.filter(timestamp => timestamp > windowStart);
+
+    if (requests.length >= WEBHOOK_RATE_LIMIT) {
+        const oldestRequest = Math.min(...requests);
+        const retryAfter = Math.ceil((oldestRequest + WEBHOOK_RATE_WINDOW - now) / 1000);
+        return { allowed: false, retryAfter: Math.max(1, retryAfter) };
+    }
+
+    requests.push(now);
+    rateLimitStore.set(clientIp, requests);
+
+    if (Math.random() < 0.01) {
+        for (const [ip, timestamps] of rateLimitStore.entries()) {
+            const recent = timestamps.filter(t => t > windowStart);
+            if (recent.length === 0) rateLimitStore.delete(ip);
+            else rateLimitStore.set(ip, recent);
+        }
+    }
+
+    return { allowed: true, retryAfter: 0 };
+}
+
+function logDelivery(eventId, eventType, userId, status, statusCode, errorMessage = null, payload = null) {
+    try {
+        db.prepare(`
+            INSERT INTO webhook_delivery_log 
+            (event_id, event_type, user_id, status, status_code, error_message, payload)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(eventId, eventType, userId, status, statusCode, errorMessage, payload ? JSON.stringify(payload) : null);
+    } catch (err) {
+        console.error('[WEBHOOK] Failed to log delivery:', err.message);
+    }
+}
+
+const dedup = {
+    isDuplicate(eventId) {
+        const now = Math.floor(Date.now() / 1000);
+        const expiresAt = now + DEDUP_TTL_SECONDS;
+        try {
+            db.prepare('INSERT INTO webhook_dedup (event_id, processed_at, expires_at) VALUES (?, ?, ?)').run(eventId, now, expiresAt);
+            return false;
+        } catch (e) {
+            if (e.code === 'SQLITE_CONSTRAINT_PRIMARYKEY') return true;
+            throw e;
         }
     },
-
     clear(eventId) {
         try {
             db.prepare('DELETE FROM webhook_dedup WHERE event_id = ?').run(eventId);
-        } catch (err) {
-            console.error('[WEBHOOK] ⚠️ Failed to clear dedup entry:', err.message);
-            // Non-fatal — entry will expire naturally via TTL
+        } catch (e) {
+            console.error('[WEBHOOK] ⚠️ Failed to clear dedup entry:', e.message);
         }
     }
 };
 
-// Initialize dedup table
-try {
-    dedup._ensureTable();
-} catch (err) {
-    console.error('[WEBHOOK] ❌ FATAL: Dedup initialization failed:', err.message);
-    process.exit(1);
+function verifySignature(rawBody, signature) {
+    if (!DODO_WEBHOOK_SECRET) {
+        console.error('[WEBHOOK] 🚨 Cannot verify: DODO_WEBHOOK_SECRET is not set.');
+        return false;
+    }
+    if (!signature) {
+        console.error('[WEBHOOK] 🚨 Missing signature header.');
+        return false;
+    }
+    try {
+        const hmac = crypto.createHmac('sha256', DODO_WEBHOOK_SECRET);
+        const computed = hmac.update(rawBody).digest('hex');
+        if (signature.length !== computed.length) return false;
+        return crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(computed, 'hex'));
+    } catch (err) {
+        console.error('[WEBHOOK] ❌ Signature verification error:', err.message);
+        return false;
+    }
 }
 
 // ============================================================
-// EVENT HANDLER REGISTRY
+// EVENT HANDLERS (CORRECTED)
 // ============================================================
 const eventHandlers = {
     'payment.succeeded': async (data) => {
-        const userId = data.metadata?.discord_user_id;
-        const tier = data.metadata?.tier || 'premium_tier_1';
+        console.log('[WEBHOOK] 🔍 Full payment.succeeded data:', JSON.stringify(data, null, 2));
+        console.log('[WEBHOOK] 🔍 metadata:', JSON.stringify(data?.metadata, null, 2));
+
+        const userId = data?.metadata?.discord_user_id;
+        const tier = data?.metadata?.tier || 'premium_tier_1';
 
         if (!userId) {
-            console.warn('[WEBHOOK] ⚠️ payment.succeeded missing discord_user_id in metadata.');
-            return;
+            console.warn('[WEBHOOK] ⚠️ No discord_user_id in metadata.');
+            return { success: false, reason: 'missing_user_id' };
         }
 
-        console.log(
-            `[WEBHOOK] ⚡ PREMIUM LIVE — User: ${userId} | ` +
-            `Amount: ${data.total_amount} ${data.currency} | Tier: ${tier}`
-        );
+        console.log(`[WEBHOOK] ⚡ PREMIUM LIVE — User: ${userId} | Amount: ${data?.total_amount} ${data?.currency}`);
 
-        premium.grantPremium(userId, tier);
+        const result = premiumHelpers.grantPremium(userId, tier, 30);
+
+        try {
+            db.prepare('UPDATE user_premium SET notified = 0 WHERE user_id = ?').run(userId);
+        } catch (e) {}
+
+        return { success: true, changes: result.changes };
     },
 
     'subscription.cancelled': async (data) => {
-        const userId = data.metadata?.discord_user_id;
-        if (!userId) {
-            console.warn('[WEBHOOK] ⚠️ subscription.cancelled missing discord_user_id.');
-            return;
-        }
+        const userId = data?.metadata?.discord_user_id;
+        if (!userId) return { success: false, reason: 'missing_user_id' };
 
-        console.log(`[WEBHOOK] 🔻 EXPIRED — Revoking premium for User ${userId}`);
-        premium.revokePremium(userId);
+        console.log(`[WEBHOOK] 🔻 EXPIRED — Revoking premium for ${userId}`);
+        const result = premiumHelpers.revokePremium(userId);
+        return { success: true, changes: result.changes };
     },
 
     'subscription.renewed': async (data) => {
-        const userId = data.metadata?.discord_user_id;
-        if (!userId) {
-            console.warn('[WEBHOOK] ⚠️ subscription.renewed missing discord_user_id.');
-            return;
+        const userId = data?.metadata?.discord_user_id;
+        if (!userId) return { success: false, reason: 'missing_user_id' };
+
+        console.log(`[WEBHOOK] 🔄 RENEWED — User ${userId}`);
+
+        if (data?.next_billing_date) {
+            const result = premiumHelpers.extendPremium(userId, data.next_billing_date);
+            return { success: true, changes: result.changes };
         }
 
-        console.log(
-            `[WEBHOOK] 🔄 RENEWED — User ${userId} | Next billing: ` +
-            `${data.next_billing_date ? new Date(data.next_billing_date * 1000).toISOString() : 'N/A'}`
-        );
+        const result = premiumHelpers.grantPremium(userId, data?.metadata?.tier || 'premium_tier_1', 30);
+        return { success: true, changes: result.changes };
+    },
 
-        if (data.next_billing_date) {
-            premium.extendPremium(userId, data.next_billing_date);
+    'subscription.updated': async (data) => {
+        const userId = data?.metadata?.discord_user_id;
+        const tier = data?.metadata?.tier;
+        if (!userId) return { success: false, reason: 'missing_user_id' };
+
+        console.log(`[WEBHOOK] 📝 UPDATED — User ${userId}, Tier: ${tier}`);
+        const current = db.prepare('SELECT premium_active FROM user_premium WHERE user_id = ?').get(userId);
+
+        if (current?.premium_active) {
+            const result = premiumHelpers.grantPremium(userId, tier, 30);
+            return { success: true, changes: result.changes };
         }
+        return { success: false, reason: 'user_not_active' };
     }
 };
 
 // ============================================================
-// SIGNATURE VERIFICATION HELPER
+// EXPRESS ROUTER
 // ============================================================
-function verifySignature(rawBody, signature) {
-    // If webhook secret was never configured, reject all requests safely
-    if (!DODO_WEBHOOK_SECRET) {
-        console.error('[WEBHOOK] 🚨 Cannot verify signature: DODO_WEBHOOK_SECRET is not set.');
-        return false;
+const router = express.Router();
+
+router.use(express.json({
+    limit: MAX_PAYLOAD_SIZE,
+    verify: (req, res, buf) => { req.rawBody = buf.toString(); }
+}));
+
+router.post('/api/v1/billing/webhook', async (req, res) => {
+    const clientIp = req.ip || req.connection?.remoteAddress || 'unknown';
+    const event = req.body;
+    const eventId = event?.id || `${event?.type}_${event?.created_at || Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const eventType = event?.type || 'unknown';
+    const userId = event?.data?.metadata?.discord_user_id || null;
+
+    const rateCheck = checkRateLimit(clientIp);
+    if (!rateCheck.allowed) {
+        logDelivery(eventId, eventType, userId, 'rate_limited', 429, `Retry after ${rateCheck.retryAfter}s`);
+        return res.status(429).set('Retry-After', String(rateCheck.retryAfter)).json({ error: 'Rate limit exceeded', retry_after: rateCheck.retryAfter });
     }
 
-    try {
-        const hmac = crypto.createHmac('sha256', DODO_WEBHOOK_SECRET);
-        const computedSignature = hmac.update(rawBody).digest('hex');
-
-        // Use timing-safe comparison to prevent timing attacks
-        if (
-            signature.length !== computedSignature.length ||
-            !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(computedSignature))
-        ) {
-            return false;
-        }
-
-        return true;
-    } catch (err) {
-        console.error('[WEBHOOK] ❌ Signature verification threw an error:', err.message);
-        return false;
-    }
-}
-
-// ============================================================
-// 🔐 WEBHOOK ENDPOINT
-// ============================================================
-app.post('/api/v1/billing/webhook', async (req, res) => {
-    // 1. Validate signature header presence
     const signature = req.headers['x-dodo-signature'];
     if (!signature) {
-        console.warn('[WEBHOOK] 🚫 Rejected: Missing x-dodo-signature header.');
+        logDelivery(eventId, eventType, userId, 'missing_signature', 401);
         return res.status(401).json({ error: 'Missing signature header' });
     }
 
-    // 2. Verify cryptographic signature
     if (!verifySignature(req.rawBody, signature)) {
-        console.warn('[WEBHOOK] 🚫 Rejected: Signature verification failed.');
+        logDelivery(eventId, eventType, userId, 'invalid_signature', 403);
         return res.status(403).json({ error: 'Invalid signature' });
     }
 
-    // 3. Parse event payload
-    const event = req.body;
-    const eventId = event.id || `${event.type}_${Date.now()}`;
-
-    console.log(`[WEBHOOK] 📥 Received: ${event.type} | ID: ${eventId}`);
-
-    // 4. Deduplication check
     try {
         if (dedup.isDuplicate(eventId)) {
-            console.log(`[WEBHOOK] 📌 Duplicate event ${eventId} — acknowledged, not reprocessed.`);
+            logDelivery(eventId, eventType, userId, 'deduplicated', 200);
             return res.status(200).json({ received: true, deduplicated: true });
         }
     } catch (err) {
-        console.error('[WEBHOOK] ❌ Dedup check failed:', err.message);
-        return res.status(500).json({ error: 'Internal deduplication error' });
+        logDelivery(eventId, eventType, userId, 'dedup_error', 500, err.message);
+        return res.status(500).json({ error: 'Deduplication error' });
     }
 
-    // 5. Route to handler
     try {
-        const handler = eventHandlers[event.type];
-
-        if (handler) {
-            await handler(event.data);
-            console.log(`[WEBHOOK] ✅ Successfully processed: ${event.type}`);
-        } else {
-            console.log(`[WEBHOOK] ℹ️ Unhandled event type: ${event.type} — acknowledged for audit.`);
+        const handler = eventHandlers[eventType];
+        if (!handler) {
+            console.warn(`[WEBHOOK] ⚠️ Unhandled event type: ${eventType}`);
+            logDelivery(eventId, eventType, userId, 'unhandled_type', 200);
+            return res.status(200).json({ received: true, handled: false, note: 'Event type not handled' });
         }
 
-        return res.status(200).json({ received: true });
+        const result = await handler(event.data);
+
+        if (result && result.success) {
+            logDelivery(eventId, eventType, userId, 'success', 200, null, event.data);
+            return res.status(200).json({ received: true, processed: true, changes: result.changes });
+        } else {
+            const reason = result?.reason || 'handler_rejected';
+            logDelivery(eventId, eventType, userId, 'handler_rejected', 200, reason, event.data);
+            return res.status(200).json({ received: true, processed: false, reason: reason });
+        }
     } catch (err) {
-        console.error(`[WEBHOOK] 💥 Handler crash for ${event.type}:`, err.message);
-        console.error('[WEBHOOK] Stack trace:', err.stack);
-
-        // Clear dedup entry so Dodo can retry
+        console.error('[WEBHOOK] 💥 Handler crash:', err.message);
         dedup.clear(eventId);
-
-        return res.status(500).json({ error: 'Internal processing error' });
+        logDelivery(eventId, eventType, userId, 'handler_crash', 500, err.message, event.data);
+        return res.status(500).json({ error: 'Internal processing error', message: err.message });
     }
 });
 
-// ============================================================
-// 🩺 HEALTH CHECK ENDPOINT
-// ============================================================
-app.get('/api/v1/billing/health', (req, res) => {
-    let dbStatus = 'unknown';
+router.get('/api/v1/billing/health', (req, res) => {
+    let dbStatus = 'disconnected';
     try {
-        dbStatus = db.open ? 'connected' : 'disconnected';
-    } catch (e) {
+        db.prepare('SELECT 1').get();
+        dbStatus = 'connected';
+    } catch (err) {
         dbStatus = 'error';
     }
 
     res.status(200).json({
         status: 'operational',
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
+        version: '1.2.0',
+        timestamp: Math.floor(Date.now() / 1000),
         config: {
-            db_path: DB_PATH,
             webhook_secret_configured: !!DODO_WEBHOOK_SECRET,
-            api_key_configured: !!DODO_API_KEY
+            rate_limit: `${WEBHOOK_RATE_LIMIT}/${WEBHOOK_RATE_WINDOW}ms`,
+            dedup_ttl: DEDUP_TTL_SECONDS
         },
-        database: dbStatus
+        database: { status: dbStatus, path: DB_PATH, shared_mode: !!db }
     });
 });
 
-// ============================================================
-// 🚀 SERVER LAUNCH
-// ============================================================
-app.listen(WEBHOOK_PORT, () => {
-    console.log(`[WEBHOOK] 🦅 Archon Billing Gateway live on port ${WEBHOOK_PORT}`);
-    console.log(`[WEBHOOK] 🩺 Health check: http://localhost:${WEBHOOK_PORT}/api/v1/billing/health`);
-    console.log(`[WEBHOOK] 📡 Webhook endpoint: http://localhost:${WEBHOOK_PORT}/api/v1/billing/webhook`);
+router.get('/', (req, res) => {
+    res.status(200).json({
+        service: 'Archon Billing Gateway',
+        status: 'operational',
+        version: '1.2.0',
+        endpoints: [
+            'POST /api/v1/billing/webhook',
+            'GET /api/v1/billing/health',
+            'GET /health'
+        ]
+    });
 });
+
+function gracefulShutdown(signal) {
+    console.log(`\n[WEBHOOK] 🛑 ${signal} received.`);
+    process.exit(0);
+}
+
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+process.on('uncaughtException', (err) => {
+    console.error('[WEBHOOK] 💥 Uncaught Exception:', err.message);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[WEBHOOK] 💥 Unhandled Rejection:', reason);
+});
+
+module.exports = router;
+module.exports.initializeDatabase = initializeDatabase;
+module.exports.getRouter = () => router;
