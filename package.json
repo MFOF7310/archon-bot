@@ -1,6 +1,6 @@
 {
   "name": "cloud-gaming-223-engine",
-  "version": "3.0.0",
+  "version": "3.0.5",
   "description": "ARCHITECT CG-223 — The Supreme Neural Grid. Enterprise-grade Discord bot for Cloud Gaming-223.",
   "main": "index.js",
   "scripts": {
