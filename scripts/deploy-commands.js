@@ -33,7 +33,7 @@ for (const file of commandFiles) {
     }
 }
 
-const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 // Fonction retry pour les connexions Starlink instables
 async function deployWithRetry(maxRetries = 3) {
@@ -42,7 +42,7 @@ async function deployWithRetry(maxRetries = 3) {
             console.log(`\x1b[36m[STARLINK]\x1b[0m Tentative de déploiement ${i + 1}/${maxRetries}...`);
             
             await rest.put(
-                Routes.applicationCommands(process.env.CLIENT_ID),
+                Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
                 { body: commands },
             );
             
