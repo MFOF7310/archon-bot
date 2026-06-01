@@ -13,6 +13,13 @@ mkdir -p data logs backups
 echo "🧹 Cleaning logs older than 7 days..."
 find ./logs -name "*.log" -mtime +7 -delete 2>/dev/null
 
+# ==================== START LOCALTUNNEL ====================
+echo "🌐 Starting secure tunnel on port 20582..."
+lt --port 20582 --subdomain archon-engine-api > /dev/null 2>&1 &
+TUNNEL_PID=$!
+echo "✅ Tunnel PID: ${TUNNEL_PID}"
+sleep 2
+
 # ==================== DISPLAY SYSTEM INFO ====================
 echo ""
 echo "╔══════════════════════════════════════════════╗"
@@ -22,6 +29,7 @@ echo "╚═══════════════════════�
 echo ""
 echo "📦 Node.js: $(node --version)"
 echo "📁 Project: $(pwd)"
+echo "🌐 Dashboard: https://archon-engine-api.loca.lt"
 echo "🕐 Started: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 
@@ -30,16 +38,13 @@ restart_count=0
 
 while true
 do
-    # Increment restart counter
     restart_count=$((restart_count + 1))
     
     echo "🛰️ [START] Neural Engine v1.8.0 | Restart #${restart_count}"
     echo "──────────────────────────────────────────────"
     
-    # Run the bot
     node index.js
     
-    # Capture exit code
     exit_code=$?
     
     echo ""
@@ -48,7 +53,6 @@ do
     echo "🔄 Restarting in 5 seconds..."
     sleep 5
     
-    # If crashed too many times, increase wait
     if [ $restart_count -gt 10 ]; then
         echo "🔴 Multiple crashes detected (${restart_count})"
         echo "⏳ Extended cooldown: 30 seconds..."
