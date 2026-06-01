@@ -11,7 +11,7 @@ if (!fs.existsSync(backupDir)) {
 }
 
 // Backup de la base de données SQLite
-const dbPath = path.join(__dirname, 'data.db');
+const dbPath = path.join(__dirname, 'data', 'database.sqlite');
 if (fs.existsSync(dbPath)) {
     try {
         const db = new Database(dbPath);
