@@ -95,11 +95,11 @@ function initializeDatabase(sharedDb = null) {
     `);
 
     try {
-        const premiumModule = require('./db/premium.js');
+        const premiumModule = require('./db/premium-db.js');
         premiumHelpers = premiumModule(db);
         console.log('[WEBHOOK] ✅ Premium helpers loaded from db/premium.js');
     } catch (err) {
-        console.warn('[WEBHOOK] ⚠️ Could not load db/premium.js, using inline fallback:', err.message);
+        console.warn('[WEBHOOK] ⚠️ Could not load db/premium-db.js, using inline fallback:', err.message);
         premiumHelpers = createInlinePremiumHelpers(db);
     }
 
