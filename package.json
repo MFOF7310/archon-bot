@@ -40,7 +40,8 @@
   "ejs": "^3.1.9",
   "cookie-parser": "^1.4.6",
   "jsonwebtoken": "^9.0.2",
-  "node-fetch": "^2.7.0"
+  "node-fetch": "^2.7.0",
+  "engines": { "node": "22.x" }
 },
   "devDependencies": {
     "nodemon": "^3.0.2"
