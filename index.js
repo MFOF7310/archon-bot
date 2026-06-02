@@ -260,6 +260,12 @@ const requiredTables = {
     // ================= PER-SERVER PARTITIONED USERS TABLE =================
     // Composite primary key (id, guild_id) ensures complete data isolation
     // per server. Each user has a separate record per guild they participate in.
+    bot_state: `CREATE TABLE IF NOT EXISTS bot_state (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )`,
+
     users: `CREATE TABLE IF NOT EXISTS users (
         id TEXT NOT NULL, 
         guild_id TEXT NOT NULL,
@@ -622,6 +628,10 @@ console.log(`${cyan}[AUTO-REPAIR]${reset} Scanning all tables for missing column
 
 // Define expected columns for each table (name, type, default)
 const TABLE_SCHEMAS = {
+    bot_state: [
+        { name: 'value', type: 'TEXT', default: 'NULL' },
+        { name: 'updated_at', type: 'INTEGER', default: "(strftime('%s', 'now'))" }
+    ],
     users: [
         { name: 'last_reminder', type: 'INTEGER', default: '0' },
         { name: 'streak_protections', type: 'INTEGER', default: '0' },
