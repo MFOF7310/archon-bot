@@ -1,3 +1,4 @@
+/*
 // plugins/premium.js — Archon Engine Premium Tier Provisioner (Production v3.1.0)
 // ============================================================
 // FIXES in v3.1:
@@ -378,3 +379,4 @@ async function handleUpgrade(interaction, client) {
         }).catch(function() {});
     }
 }
+*/
