@@ -1,0 +1,95 @@
+{
+  "trend": "STEADY",
+  "multiplier": 0.7302,
+  "lastUpdate": 1778482706171,
+  "nextUpdate": 1778504306171,
+  "history": [
+    {
+      "trend": "BULL",
+      "multiplier": 1.1673,
+      "event": null,
+      "timestamp": 1777849187453
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0497,
+      "event": null,
+      "timestamp": 1777870787453
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0496,
+      "event": null,
+      "timestamp": 1777931049867
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.6336,
+      "event": "Trade Embargo",
+      "timestamp": 1777952649866
+    },
+    {
+      "trend": "VOLATILE",
+      "multiplier": 1.2621,
+      "event": null,
+      "timestamp": 1777974249867
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0604,
+      "event": null,
+      "timestamp": 1778010055723
+    },
+    {
+      "trend": "VOLATILE",
+      "multiplier": 1.1151,
+      "event": null,
+      "timestamp": 1778134589836
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9126,
+      "event": null,
+      "timestamp": 1778268445497
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0173,
+      "event": null,
+      "timestamp": 1778290045498
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.7835,
+      "event": "Niger River Flood",
+      "timestamp": 1778311645497
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.174,
+      "event": "Tech Innovation",
+      "timestamp": 1778379605035
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0216,
+      "event": null,
+      "timestamp": 1778424516323
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 0.7302,
+      "event": "Trade Embargo",
+      "timestamp": 1778482706171
+    }
+  ],
+  "activeEvent": {
+    "name": "Trade Embargo",
+    "emoji": "🚫",
+    "effect": -0.25,
+    "msg": "International embargo hits! Market crashes!",
+    "timestamp": 1778482706171
+  },
+  "lastAlertTrend": "VOLATILE",
+  "lastAlertCheck": 1777974250594
+}

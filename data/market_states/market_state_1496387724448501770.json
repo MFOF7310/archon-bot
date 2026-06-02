@@ -1,0 +1,101 @@
+{
+  "trend": "BULL",
+  "multiplier": 1.0975,
+  "lastUpdate": 1778482706171,
+  "nextUpdate": 1778504306171,
+  "history": [
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0789,
+      "event": null,
+      "timestamp": 1777849187453
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.8683,
+      "event": null,
+      "timestamp": 1777870787453
+    },
+    {
+      "trend": "VOLATILE",
+      "multiplier": 0.9146,
+      "event": "Gold Discovery",
+      "timestamp": 1777931049867
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.0653,
+      "event": null,
+      "timestamp": 1777952649867
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9456,
+      "event": null,
+      "timestamp": 1777974249867
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0559,
+      "event": null,
+      "timestamp": 1778010055723
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1168,
+      "event": null,
+      "timestamp": 1778134589836
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0302,
+      "event": null,
+      "timestamp": 1778256972508
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0034,
+      "event": null,
+      "timestamp": 1778268445497
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.3351,
+      "event": "Solar Flare",
+      "timestamp": 1778290045498
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.175,
+      "event": null,
+      "timestamp": 1778311645497
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0657,
+      "event": null,
+      "timestamp": 1778355010078
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0403,
+      "event": null,
+      "timestamp": 1778379605035
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9503,
+      "event": null,
+      "timestamp": 1778424516323
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.0975,
+      "event": null,
+      "timestamp": 1778482706171
+    }
+  ],
+  "activeEvent": null,
+  "lastAlertTrend": "BEAR",
+  "lastAlertCheck": 1777974250888
+}
