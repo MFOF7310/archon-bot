@@ -150,61 +150,46 @@ const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",
 // ================= SAFE UNIVERSAL LANGUAGE DETECTION =================
 function detectLanguage(usedCommand) {
     if (!usedCommand || typeof usedCommand !== 'string') return 'en';
-    
     const cmd = usedCommand.toLowerCase().trim();
-    if (!cmd || cmd.length === 0) return 'en';
+    if (!cmd) return 'en';
     
-    if (/[àâäéèêëîïôöùûüÿçœæ]/i.test(cmd)) return 'fr';
+    // 1. French-specific characters -> strong indicator
+    const hasFrenchAccent = /[àâäéèêëîïôöùûüÿçœæ]/i.test(cmd);
+    if (hasFrenchAccent) return 'fr';
     
-    const frenchSpecificPatterns = [
-        /œ/i, /æ/i, /[aeiou]û/i, /[aeiou]ê/i, /ç[aeiou]/i, /ge[ao]$/i, /e[au]r?$/i, /[aeiou]i[td]?$/i
+    // 2. French stop words (very short, high precision)
+    const frenchStopWords = /^(le|la|les|un|une|des|du|de|je|tu|il|elle|on|nous|vous|ils|elles|ce|cet|cette|ces|mon|ton|son|ma|ta|sa|mes|tes|ses|notre|votre|leur|nos|vos|leurs|ceci|cela|ça|y|en|dans|pour|par|avec|sans|sous|sur|entre|chez|vers|pendant|depuis|avant|après|contre|malgré|selon|voici|voilà)$/i;
+    if (frenchStopWords.test(cmd)) return 'fr';
+    
+    // 3. French common suffixes (only if word length >= 5 to avoid short false positives)
+    const frenchSuffixes = /(?:ation|ition|tion|sion|ment|age|té|tude|ette|ique|eur|euse|able|ible|al|el|if|ive|eau|eux|erie|ise|ade|ude)$/i;
+    if (cmd.length >= 5 && frenchSuffixes.test(cmd)) return 'fr';
+    
+    // 4. French verb endings (only if length >= 4)
+    const frenchVerbEndings = /(?:er|ir|oir|re|ais|ait|ions|iez|aient|ai|as|a|ons|ez|ent|is|it|îmes|îtes|irent|us|ut|ûmes|ûtes|urent)$/i;
+    if (cmd.length >= 4 && frenchVerbEndings.test(cmd) && !/^(get|set|put|run|let|hit|sit|fit|bit|kit)$/i.test(cmd)) return 'fr';
+    
+    // 5. Very common English short words (manually curated but short, <10 entries)
+    const englishCore = /^(help|daily|profile|rank|level|xp|shop|buy|game|coin|fight|duel|ping|stats|uptime|vote|remind|ticket|report|whois|userinfo)$/i;
+    if (englishCore.test(cmd)) return 'en';
+    
+    // 6. English patterns (low weight, only if no French patterns matched)
+    const englishIndicators = [
+        /^(the|a|an|i|you|he|she|it|we|they|my|your|his|her|our|their)\b/i,
+        /(ing|ed|'s|'ve|'re|'ll|'d)$/i,
+        /^(what|where|when|why|how|which|who|whom)\b/i
     ];
-    if (frenchSpecificPatterns.some(pattern => pattern.test(cmd))) return 'fr';
-    
-    const frenchVerbPatterns = [
-        /^(je|tu|il|elle|on|nous|vous|ils|elles)\s+/i,
-        /(er|ir|oir|re)ai[st]?$/i, /(er|ir|oir|re)ais$/i, /(er|ir|oir|re)ez$/i,
-        /(er|ir|oir|re)ons$/i, /(er|ir|oir|re)ent$/i, /[aeiou]ss(ai|ez|ons|ent)$/i,
-        /[aeiou]ss?ions$/i, /[aeiou](ai|ait|aient|ais|iez)$/i
-    ];
-    if (frenchVerbPatterns.some(pattern => pattern.test(cmd))) return 'fr';
-    
-    const frenchNounPatterns = [
-        /^(le|la|les|l'|un|une|des|du|de la|au|aux)\s+/i,
-        /(eau|x|s)$/i, /(ier|ière|eur|euse|teur|trice)$/i,
-        /(ment|tion|sion|aison|isme|age|té|tude)$/i,
-        /(able|ible|eux|euse|ique|al|el|if|ive)$/i,
-        /(ette|eau|elle|et|ot|on)$/i, /(ance|ence|esse|erie|ise|ade|ude)$/i
-    ];
-    if (frenchNounPatterns.some(pattern => pattern.test(cmd))) return 'fr';
-    
-    const frenchSilentPatterns = [/ent$/i, /[aeiou]s$/i, /[aeiou]t$/i, /[aeiou]x$/i, /[aeiou]d$/i];
-    if (frenchSilentPatterns.some(pattern => pattern.test(cmd))) return 'fr';
-    
-    const frenchQuestionWords = /^(qui|que|quoi|où|quand|comment|pourquoi|combien|lequel|laquelle|lesquels|lesquelles)\b/i;
-    if (frenchQuestionWords.test(cmd)) return 'fr';
-    
-    const frenchPrepositions = /^(dans|sur|sous|avec|sans|pour|par|vers|chez|entre|parmi|pendant|depuis|avant|après|contre|malgré|selon|voici|voilà)\b/i;
-    if (frenchPrepositions.test(cmd)) return 'fr';
-    
-    const vowelRatio = (cmd.match(/[aeiouyàâäéèêëîïôöùûüÿ]/gi) || []).length / cmd.length;
-    const hasFrenchVowelCluster = /[aeiouy]{3,}/i.test(cmd);
-    const hasNasalPattern = /[aeiou][nm](?![aeiou])/i.test(cmd);
-    
-    if (vowelRatio > 0.6 && cmd.length > 3) return 'fr';
-    if (hasFrenchVowelCluster) return 'fr';
-    if (hasNasalPattern && /[àâäéèêëîïôöùûüÿ]/.test(cmd) === false) return 'fr';
-    
-    const englishSpecificPatterns = [
-        /^(the|a|an)\s+/i, /^(i|you|he|she|it|we|they)\s+/i,
-        /(ing|ed|'s|'ve|'re|'ll|'d)$/i, /th(?:is|at|ese|ose|ere)/i, /(?:wh|gh|ph|sh|ch|th)/i
-    ];
-    
-    if (englishSpecificPatterns.some(pattern => pattern.test(cmd))) {
-        const hasFrenchIndicators = /[àâäéèêëîïôöùûüÿçœæ]/i.test(cmd) || /(ez|ons|ent|eau|tion)$/i.test(cmd);
-        if (!hasFrenchIndicators) return 'en';
+    for (const pattern of englishIndicators) {
+        if (pattern.test(cmd)) return 'en';
     }
     
+    // 7. Fallback: vowel ratio but with higher threshold and length penalty
+    const vowels = (cmd.match(/[aeiouy]/gi) || []).length;
+    const ratio = vowels / cmd.length;
+    const threshold = cmd.length <= 4 ? 0.75 : 0.6;
+    if (ratio > threshold && cmd.length > 2) return 'fr';
+    
+    // 8. Default English
     return 'en';
 }
 
@@ -232,7 +217,8 @@ const db = new Database(path.join(dataDir, 'database.sqlite'), {
     fileMustExist: false
 });
 
-client.db = db; 
+client.db = db;
+global.client = client;
 
 // ================= PILLAR 3: HIGH-PERFORMANCE PRAGMA =================
 db.exec("PRAGMA journal_mode = WAL;");
@@ -630,6 +616,89 @@ try {
     }
     if (fixed > 0) console.log(`${green}[REPAIR XP]${reset} Repaired ${fixed} invalid XP multipliers`);
 } catch(e) {}
+
+// ================= UNIVERSAL AUTO-REPAIR: Auto-add missing columns to ALL tables =================
+console.log(`${cyan}[AUTO-REPAIR]${reset} Scanning all tables for missing columns...`);
+
+// Define expected columns for each table (name, type, default)
+const TABLE_SCHEMAS = {
+    users: [
+        { name: 'last_reminder', type: 'INTEGER', default: '0' },
+        { name: 'streak_protections', type: 'INTEGER', default: '0' },
+        { name: 'highest_streak', type: 'INTEGER', default: '0' },
+        { name: 'total_dailies', type: 'INTEGER', default: '0' },
+        { name: 'last_daily', type: 'INTEGER', default: '0' },
+        { name: 'gaming', type: 'TEXT', default: "'{\"game\":\"CODM\",\"rank\":\"Unranked\"}'" },
+        { name: 'credits', type: 'INTEGER', default: '0' },
+        { name: 'streak_days', type: 'INTEGER', default: '0' },
+        { name: 'total_messages', type: 'INTEGER', default: '0' },
+        { name: 'last_xp_gain', type: 'INTEGER', default: '0' }
+    ],
+    server_settings: [
+        { name: 'prefix', type: 'TEXT', default: "'.'" },
+        { name: 'language', type: 'TEXT', default: "'auto'" },
+        { name: 'timezone', type: 'TEXT', default: "'UTC'" },
+        { name: 'welcome_enabled', type: 'INTEGER', default: '1' },
+        { name: 'goodbye_enabled', type: 'INTEGER', default: '1' },
+        { name: 'xp_multiplier', type: 'REAL', default: '1.0' },
+        { name: 'xp_cooldown', type: 'INTEGER', default: '60' },
+        { name: 'xp_min_gain', type: 'INTEGER', default: '15' },
+        { name: 'xp_max_gain', type: 'INTEGER', default: '35' },
+        { name: 'starting_balance', type: 'INTEGER', default: '0' },
+        { name: 'max_daily_streak', type: 'INTEGER', default: '365' },
+        { name: 'automod_enabled', type: 'INTEGER', default: '0' },
+        { name: 'automod_sensitivity', type: 'TEXT', default: "'medium'" },
+        { name: 'spam_threshold', type: 'INTEGER', default: '5' },
+        { name: 'spam_window', type: 'INTEGER', default: '5' },
+        { name: 'mention_limit', type: 'INTEGER', default: '10' },
+        { name: 'max_warnings', type: 'INTEGER', default: '3' },
+        { name: 'warning_action', type: 'TEXT', default: "'mute'" }
+    ],
+    lydia_conversations: [
+        { name: 'guild_id', type: 'TEXT', default: 'NULL' }
+    ],
+    reminders: [
+        { name: 'status', type: 'TEXT', default: "'pending'" },
+        { name: 'delivered', type: 'INTEGER', default: '0' }
+    ],
+    user_premium: [
+        { name: 'notified', type: 'INTEGER', default: '0' }
+    ]
+    // Add more tables as needed
+};
+
+function ensureTableColumns(db, tableName, expectedColumns) {
+    try {
+        // Get existing columns
+        const existing = db.prepare(`PRAGMA table_info(${tableName})`).all().map(c => c.name);
+        let added = 0;
+        
+        for (const col of expectedColumns) {
+            if (!existing.includes(col.name)) {
+                const defaultClause = col.default !== undefined ? ` DEFAULT ${col.default}` : '';
+                const alterSQL = `ALTER TABLE ${tableName} ADD COLUMN ${col.name} ${col.type}${defaultClause}`;
+                db.exec(alterSQL);
+                console.log(`${green}[AUTO-REPAIR]${reset} Added ${tableName}.${col.name}${defaultClause ? ` (default: ${col.default})` : ''}`);
+                added++;
+            }
+        }
+        return added;
+    } catch (err) {
+        console.log(`${yellow}[AUTO-REPAIR]${reset} Failed on ${tableName}: ${err.message}`);
+        return 0;
+    }
+}
+
+let totalAdded = 0;
+for (const [tableName, columns] of Object.entries(TABLE_SCHEMAS)) {
+    totalAdded += ensureTableColumns(db, tableName, columns);
+}
+
+if (totalAdded > 0) {
+    console.log(`${green}[AUTO-REPAIR]${reset} Added ${totalAdded} missing columns across ${Object.keys(TABLE_SCHEMAS).length} tables`);
+} else {
+    console.log(`${green}[AUTO-REPAIR]${reset} All schemas are up to date – no columns missing`);
+}
 
 // ================= SERVER SETTINGS UTILITY =================
 const DEFAULT_SETTINGS = { prefix: PREFIX, welcomeChannel: null, logChannel: null, dailyChannel: null, shopChannel: null };
@@ -3208,25 +3277,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const restrictedCategories = ['ECONOMY', 'MODERATION', 'PROFILE', 'GAMING'];
         
         if (restrictedCommands.includes(command.name) || restrictedCategories.includes(command.category)) {
-            if (!interaction.guild) {
-                const fallbackEmbed = new EmbedBuilder()
-                    .setColor('#f1c40f')
-                    .setAuthor({ name: '🦅 SYSTEM ACCESS RESTRICTED', iconURL: client.user.displayAvatarURL() })
-                    .setDescription(
-                        `\`\`\`ansi\n` +
-                        `\u001b[1;33m⚠️ SECTOR MISMATCH DETECTED\u001b[0m\n\n` +
-                        `This command requires \u001b[1;36mServer-Side Neural Links\u001b[0m to access guild-specific data.\n` +
-                        `\`\`\``
-                    )
-                    .addFields({ 
-                        name: '📍 Action Required', 
-                        value: `Please execute this command within the **${message.guild?.name || 'authorized server'}** or any authorized server.` 
-                    })
-                    .setFooter({ text: 'BAMAKO-223 NODE • Neural Security Protocol' });
+    if (!interaction.guild) {
+        // Get user's preferred language from locale or fallback
+        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        
+        const title = lang === 'fr' ? '🦅 ACCÈS RESTREINT — COMMANDE SERVEUR UNIQUEMENT' : '🦅 RESTRICTED ACCESS — SERVER-ONLY COMMAND';
+        const description = lang === 'fr'
+            ? `\`\`\`ansi\n\u001b[1;33m⚠️ ZONE DE COMMANDE INVALIDE\u001b[0m\n\nCette commande nécessite un \u001b[1;36mcontexte serveur\u001b[0m pour accéder aux données du guilde.\n\`\`\``
+            : `\`\`\`ansi\n\u001b[1;33m⚠️ INVALID COMMAND ZONE\u001b[0m\n\nThis command requires a \u001b[1;36mserver context\u001b[0m to access guild-specific data.\n\`\`\``;
+        
+        const actionRequired = lang === 'fr'
+            ? `**Exécutez \`/${command.name}\` dans n'importe quel canal serveur où ${client.user.username} est présent.**\n\n🔹 *Les commandes de profil, économie et modération ne fonctionnent pas en messages privés.*`
+            : `**Run \`/${command.name}\` in any server channel where ${client.user.username} is present.**\n\n🔹 *Profile, economy, and moderation commands do not work in DMs.*`;
+        
+        const suggestion = lang === 'fr'
+            ? `💡 **Alternative :** Utilisez \`/help\` pour voir les commandes disponibles en DM.`
+            : `💡 **Alternative:** Use \`/help\` to see commands available in DMs.`;
+        
+        const fallbackEmbed = new EmbedBuilder()
+            .setColor('#f1c40f')
+            .setAuthor({ name: title, iconURL: client.user.displayAvatarURL() })
+            .setDescription(description)
+            .addFields(
+                { name: lang === 'fr' ? '📍 ACTION REQUISE' : '📍 ACTION REQUIRED', value: actionRequired, inline: false },
+                { name: lang === 'fr' ? '💡 SUGGESTION' : '💡 SUGGESTION', value: suggestion, inline: false }
+            )
+            .setFooter({ text: `BAMAKO-223 NODE • ${client.user.username} v${client.version}`, iconURL: interaction.user.displayAvatarURL() })
+            .setTimestamp();
 
-                return interaction.reply({ embeds: [fallbackEmbed], ephemeral: true });
-            }
-        }
+        return interaction.reply({ embeds: [fallbackEmbed], ephemeral: true });
+    }
+}
 
         try {
             console.log(`${cyan}[SLASH]${reset} Executing /${interaction.commandName} for ${interaction.user.tag}`);
@@ -4290,6 +4371,17 @@ try {
     console.error('\x1b[33m[INDEX]\x1b[0m ⚠️ Billing gateway offline — payments will not be processed!');
 }
 
+// ============================================================
+// ARCHON DASHBOARD API — Dashboard Mount
+// ============================================================
+try {
+    const dashboardApp = require('./server');
+    app.use(dashboardApp);
+    console.log('\x1b[32m[INDEX]\x1b[0m ✅ Dashboard API mounted on web server');
+} catch (err) {
+    console.error('\x1b[31m[INDEX]\x1b[0m ❌ Failed to mount dashboard API:', err.message);
+}
+
     // ── Health Check Endpoint (Direct) ──
     app.get('/health', (req, res) => {
         res.status(200).json({
@@ -4458,17 +4550,73 @@ client.once('ready', () => {
 });
 
 // ============================================================
-// 🌐 WEB DASHBOARD BACKEND INTEGRATION
+// 📊 LIVE STATS SYNC — Pushes bot stats to Render every 30 seconds
 // ============================================================
-const expressApp = require('./server'); // Import the server.js file
+const STATS_SYNC_URL = process.env.STATS_SYNC_URL || 'https://archon-engine-api.onrender.com/api/stats/sync';
+const STATS_SYNC_SECRET = process.env.JWT_SECRET;
 
-// Bind the active client globally so server.js can see the live cache stats
-global.client = client; 
+let syncCount = 0;
+let lastLogTime = Date.now();
 
-const BACKEND_PORT = process.env.PORT || 3000;
-expressApp.listen(BACKEND_PORT, () => {
-    console.log(`\x1b[32m[DASHBOARD]\x1b[0m Web API engine actively running on port ${BACKEND_PORT}`);
-});
+async function pushLiveStats() {
+    try {
+        const https = require('https');
+        const stats = JSON.stringify({
+            servers: global.client.guilds.cache.size.toLocaleString(),
+            users: global.client.guilds.cache.reduce((total, guild) => total + guild.memberCount, 0).toLocaleString(),
+            ping: Math.round(global.client.ws.ping),
+            secret: STATS_SYNC_SECRET
+        });
+
+        const url = new URL(STATS_SYNC_URL);
+        const options = {
+            hostname: url.hostname,
+            port: 443,
+            path: url.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(stats)
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            syncCount++;
+            // Remove the logging – no more spam
+        });
+
+        req.on('error', (err) => {
+            // Only log errors (and only once per minute to avoid error spam)
+            const now = Date.now();
+            if (now - lastLogTime >= 60000) {
+                console.error(`\x1b[31m[STATS SYNC ERROR]\x1b[0m ${err.message}`);
+                lastLogTime = now;
+            }
+        });
+
+        req.write(stats);
+        req.end();
+    } catch (err) {
+        // Silent fail – no console noise
+    }
+}
+
+// Push immediately, then every 30 seconds
+pushLiveStats();
+setInterval(pushLiveStats, 30 * 1000);
+
+// ============================================================
+// 🔄 RENDER KEEP-ALIVE — Prevents free Render instance from sleeping
+// ============================================================
+const KEEPALIVE_URL = 'https://archon-engine-api.onrender.com/health';
+const KEEPALIVE_INTERVAL = 14 * 60 * 1000; // 14 minutes
+
+setInterval(() => {
+    const https = require('https');
+    https.get(KEEPALIVE_URL, (res) => {}).on('error', () => {});
+}, KEEPALIVE_INTERVAL);
+
+console.log('\x1b[36m[KEEPALIVE]\x1b[0m Render ping scheduled every 14 minutes');
 
 // ── Discord Login ──
 client.login(process.env.DISCORD_TOKEN).catch(err => {
