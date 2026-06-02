@@ -1,3 +1,4 @@
+/*
 // webhook.js — Archon Billing Gateway (Production v1.2.0)
 // ============================================================
 // FIXED: syntax error + payment.succeeded now GRANTS premium
@@ -415,3 +416,4 @@ process.on('unhandledRejection', (reason, promise) => {
 module.exports = router;
 module.exports.initializeDatabase = initializeDatabase;
 module.exports.getRouter = () => router;
+*/
