@@ -4375,6 +4375,8 @@ try {
 // ============================================================
 // ARCHON DASHBOARD API — Dashboard Mount
 // ============================================================
+
+/*
 try {
     const dashboardApp = require('./server');
     app.use(dashboardApp);
@@ -4382,6 +4384,7 @@ try {
 } catch (err) {
     console.error('\x1b[31m[INDEX]\x1b[0m ❌ Failed to mount dashboard API:', err.message);
 }
+*/
 
     // ── Health Check Endpoint (Direct) ──
     app.get('/health', (req, res) => {
