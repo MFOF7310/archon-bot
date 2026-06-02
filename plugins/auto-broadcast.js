@@ -12,7 +12,7 @@ const LOG_FILE = path.join(DATA_DIR, '.broadcast_log.json');
 function getVersion(client) {
     if (client?.version) return client.version;
     try {
-        const vFile = path.join(process.cwd(), 'data', 'version.txt');
+        const vFile = path.join(process.cwd(), 'version.txt');
         if (fs.existsSync(vFile)) return fs.readFileSync(vFile, 'utf8').trim();
     } catch (e) {}
     try {
@@ -33,8 +33,7 @@ function takeSnapshot() {
             const stat = fs.statSync(fp);
             const content = fs.readFileSync(fp, 'utf8');
             const hash = crypto.createHash('md5').update(content).digest('hex');
-            snapshot.files[file] = { size: stat.size, mtime: stat.mtimeMs, hash, lines: content.split("
-").length };
+            snapshot.files[file] = { size: stat.size, mtime: stat.mtimeMs, hash, lines: content.split('\n').length };
         } catch (e) { snapshot.files[file] = { size: 0, mtime: 0, hash: '', lines: 0 }; }
     }
     try {
@@ -43,8 +42,7 @@ function takeSnapshot() {
             const stat = fs.statSync(idxPath);
             const content = fs.readFileSync(idxPath, 'utf8');
             const hash = crypto.createHash('md5').update(content).digest('hex');
-            snapshot.files['index.js'] = { size: stat.size, mtime: stat.mtimeMs, hash, lines: content.split("
-").length, isCore: true };
+            snapshot.files['index.js'] = { size: stat.size, mtime: stat.mtimeMs, hash, lines: content.split('\n').length, isCore: true };
         }
     } catch (e) {}
     return snapshot;
@@ -129,27 +127,25 @@ function extractDesc(content, name) {
 
 function humanName(file) { return file.replace('.js', '').replace(/-/g, ' ').replace(/_/g, ' '); }
 
-// ================= FIND BEST CHANNEL (FIXED PERMISSIONS) =================
+// ================= FIND BEST CHANNEL =================
 async function findBestChannel(guild, client) {
     if (!guild) return null;
     let botMember = guild.members.me;
     if (!botMember && client?.user) botMember = guild.members.cache.get(client.user.id);
     if (!botMember && client?.user) {
-        try { botMember = await guild.members.fetch(client.user.id); } catch (e) { console.log(`[AUTO-BROADCAST] ${guild.name}: Failed to fetch bot member — ${e.message}`); return null; }
+        try { botMember = await guild.members.fetch(client.user.id); } catch (e) { return null; }
     }
-    if (!botMember) { console.log(`[AUTO-BROADCAST] ${guild.name}: Bot member not found`); return null; }
+    if (!botMember) return null;
 
     const canSend = (c) => {
         try {
             const perms = c.permissionsFor(botMember);
-            return perms && perms.has(PermissionsBitField.Flags.ViewChannel) 
-                && perms.has(PermissionsBitField.Flags.SendMessages) 
-                && perms.has(PermissionsBitField.Flags.EmbedLinks);
+            return perms && perms.has(PermissionsBitField.Flags.ViewChannel) && perms.has(PermissionsBitField.Flags.SendMessages) && perms.has(PermissionsBitField.Flags.EmbedLinks);
         } catch (e) { return false; }
     };
 
     const textChannels = guild.channels.cache.filter(c => c.type === 0 && canSend(c));
-    if (textChannels.size === 0) { console.log(`[AUTO-BROADCAST] ${guild.name}: No text channels with SendMessages+EmbedLinks permission`); return null; }
+    if (textChannels.size === 0) return null;
 
     const named = textChannels.find(c => /^(general|général|main|chat|discussion|talk|updates|news|bot|cmd|command)/i.test(c.name));
     if (named) return named;
@@ -162,32 +158,55 @@ async function findBestChannel(guild, client) {
 // ================= TRANSLATIONS =================
 const T = {
     en: {
-        newPlugin: (n, d) => `**${n}** — ${d}`, fixedPlugin: (n, d) => `**${n}** — ${d}`, improvedPlugin: (n, d) => `**${n}** — ${d}`, updatedPlugin: (n, d) => `**${n}** — ${d}`, removedPlugin: (n) => `**${n}** — Removed`,
-        newHeader: '🆕 New', fixedHeader: '🔧 Fixed', improvedHeader: '⚡ Improved', updatedHeader: '📝 Updated', removedHeader: '🗑️ Removed',
-        greeting: (g) => `Hey **${g}**! 👋`, intro: (v) => `Just updated to **v${v}** — here's what changed:`,
-        noChanges: (v) => `Updated to **v${v}**. All systems running smooth. 🎯`, closing: ["That's the update. Happy to be here! 🚀", "All caught up. Let me know if anything feels off! 🎯", "That's everything. Thanks for having me around! 🦅"],
-        footer: (v) => `Architect CG-223 v${v} • .changelog for details`, dmTitle: '📬 Broadcast Complete', dmBody: (s, f, t) => `Sent to **${s}**/${t} servers.${f > 0 ? `\n⚠️ ${f} failed (missing permissions).` : ''}`, coreChange: 'Core engine updated',
+        newPlugin: (n, d) => `**${n}** — ${d}`,
+        fixedPlugin: (n, d) => `**${n}** — ${d}`,
+        improvedPlugin: (n, d) => `**${n}** — ${d}`,
+        updatedPlugin: (n, d) => `**${n}** — ${d}`,
+        removedPlugin: (n) => `**${n}** — Removed`,
+        newHeader: '🆕 New',
+        fixedHeader: '🔧 Fixed',
+        improvedHeader: '⚡ Improved',
+        updatedHeader: '📝 Updated',
+        removedHeader: '🗑️ Removed',
+        greeting: (g) => `Hey **${g}**! 👋`,
+        intro: (v) => `Just updated to **v${v}** — here's what changed:\n`,
+        noChanges: (v) => `Updated to **v${v}**. All systems running smooth. 🎯`,
+        closing: ["That's the update. Happy to be here! 🚀", "All caught up. Let me know if anything feels off! 🎯", "That's everything. Thanks for having me around! 🦅"],
+        footer: (v) => `Architect CG-223 v${v} • .changelog for details`,
+        dmTitle: '📬 Broadcast Complete',
+        dmBody: (s, f, t) => `Sent to **${s}**/${t} servers.${f > 0 ? `\n⚠️ ${f} failed (missing permissions).` : ''}`,
+        coreChange: 'Core engine updated',
     },
     fr: {
-        newPlugin: (n, d) => `**${n}** — ${d}`, fixedPlugin: (n, d) => `**${n}** — ${d}`, improvedPlugin: (n, d) => `**${n}** — ${d}`, updatedPlugin: (n, d) => `**${n}** — ${d}`, removedPlugin: (n) => `**${n}** — Supprimé`,
-        newHeader: '🆕 Nouveautés', fixedHeader: '🔧 Corrections', improvedHeader: '⚡ Améliorations', updatedHeader: '📝 Mises à jour', removedHeader: '🗑️ Suppressions',
-        greeting: (g) => `Salut **${g}**! 👋`, intro: (v) => `Mis à jour en **v${v}** — voici les changements :`,
-        noChanges: (v) => `Mis à jour en **v${v}**. Tout fonctionne correctement. 🎯`, closing: ["C'est tout pour cette mise à jour. Content d'être là! 🚀", "À jour. Dites-moi si quelque chose ne va pas! 🎯", "C'est tout. Merci de m'avoir à vos côtés! 🦅"],
-        footer: (v) => `Architect CG-223 v${v} • .changelog pour les détails`, dmTitle: '📬 Diffusion Terminée', dmBody: (s, f, t) => `Envoyé à **${s}**/${t} servers.${f > 0 ? `\n⚠️ ${f} échec (permissions manquantes).` : ''}`, coreChange: 'Moteur principal mis à jour',
+        newPlugin: (n, d) => `**${n}** — ${d}`,
+        fixedPlugin: (n, d) => `**${n}** — ${d}`,
+        improvedPlugin: (n, d) => `**${n}** — ${d}`,
+        updatedPlugin: (n, d) => `**${n}** — ${d}`,
+        removedPlugin: (n) => `**${n}** — Supprimé`,
+        newHeader: '🆕 Nouveautés',
+        fixedHeader: '🔧 Corrections',
+        improvedHeader: '⚡ Améliorations',
+        updatedHeader: '📝 Mises à jour',
+        removedHeader: '🗑️ Suppressions',
+        greeting: (g) => `Salut **${g}**! 👋`,
+        intro: (v) => `Mis à jour en **v${v}** — voici les changements :\n`,
+        noChanges: (v) => `Mis à jour en **v${v}**. Tout fonctionne correctement. 🎯`,
+        closing: ["C'est tout pour cette mise à jour. Content d'être là! 🚀", "À jour. Dites-moi si quelque chose ne va pas! 🎯", "C'est tout. Merci de m'avoir à vos côtés! 🦅"],
+        footer: (v) => `Architect CG-223 v${v} • .changelog pour les détails`,
+        dmTitle: '📬 Diffusion Terminée',
+        dmBody: (s, f, t) => `Envoyé à **${s}**/${t} serveurs.${f > 0 ? `\n⚠️ ${f} échec (permissions manquantes).` : ''}`,
+        coreChange: 'Moteur principal mis à jour',
     }
 };
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-// ================= BUILD EMBED (FIXED: proper newlines, length limits) =================
+// ================= BUILD EMBED =================
 function buildEmbed(changes, lang, guild, version) {
     const t = T[lang];
     const lines = [];
     const hasChanges = changes.new.length + changes.fixed.length + changes.improved.length + changes.updated.length + changes.removed.length > 0;
-
-    lines.push(t.greeting(guild.name));
-    lines.push(t.intro(version));
-
+    lines.push(`${t.greeting(guild.name)}\n${t.intro(version)}`);
     if (!hasChanges) {
         lines.push(t.noChanges(version));
     } else {
@@ -218,52 +237,16 @@ function buildEmbed(changes, lang, guild, version) {
         }
     }
     lines.push(pick(t.closing));
-
     const color = changes.new.length > 0 ? '#00fbff' : changes.fixed.length > 0 ? '#2ecc71' : changes.improved.length > 0 ? '#e67e22' : '#95a5a6';
-
-    // FIXED: Use actual newlines, not escaped backslash-n
-    const description = lines.join("
-");
-
-    // Safety: truncate if over 4000 chars (Discord limit is 4096)
-    const safeDesc = description.length > 4000 ? description.substring(0, 3990) + '...' : description;
-
-    return new EmbedBuilder()
-        .setColor(color)
-        .setAuthor({ name: `🦅 Architect CG-223 • v${version}`, iconURL: guild.client?.user?.displayAvatarURL() || undefined })
-        .setDescription(safeDesc)
-        .setFooter({ text: t.footer(version) })
-        .setTimestamp();
+    return new EmbedBuilder().setColor(color).setAuthor({ name: `🦅 Architect CG-223 • v${version}`, iconURL: guild.client?.user?.displayAvatarURL() || undefined }).setDescription(lines.join('\n')).setFooter({ text: t.footer(version) }).setTimestamp();
 }
 
-// ================= MAIN BROADCAST (FIXED: detailed error logging + fallback) =================
+// ================= MAIN BROADCAST =================
 async function autoBroadcast(client) {
     try {
         const version = getVersion(client);
         const log = loadLog();
-
-        // FIXED: Use database-stored version if available (for Render persistence)
-        let dbVersion = null;
-        try {
-            if (client.db) {
-                // Safety: ensure bot_state table exists (in case auto-repair hasn't run yet)
-                client.db.exec(`CREATE TABLE IF NOT EXISTS bot_state (
-                    key TEXT PRIMARY KEY,
-                    value TEXT,
-                    updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-                )`);
-                const dbRow = client.db.prepare("SELECT value FROM bot_state WHERE key = 'last_broadcast_version'").get();
-                if (dbRow) dbVersion = dbRow.value;
-            }
-        } catch (e) {
-            console.log(`[AUTO-BROADCAST] ⚠️ DB version check failed: ${e.message}`);
-        }
-
-        if (log.lastVersion === version && dbVersion === version) {
-            console.log(`[AUTO-BROADCAST] v${version} already broadcast — skipping`);
-            return;
-        }
-
+        if (log.lastVersion === version) { console.log(`[AUTO-BROADCAST] v${version} already broadcast — skipping`); return; }
         const previous = loadSnapshot();
         const current = takeSnapshot();
         const changes = detectRealChanges(current, previous);
@@ -288,23 +271,8 @@ async function autoBroadcast(client) {
                 console.log(`[AUTO-BROADCAST] 📡 ${guild.name} → #${channel.name}`);
 
                 const embed = buildEmbed(changes, lang, guild, version);
-
-                // FIXED: Try embed first, fallback to plain text if it fails
-                try {
-                    await channel.send({ embeds: [embed] });
-                    success++;
-                } catch (embedErr) {
-                    console.error(`[AUTO-BROADCAST] ⚠️ ${guild.name}: Embed failed — ${embedErr.message}. Trying plain text...`);
-                    try {
-                        const t = T[lang];
-                        await channel.send(`🦅 **Architect CG-223 v${version}**\n${t.intro(version)}\n${t.noChanges(version)}`);
-                        success++;
-                        console.log(`[AUTO-BROADCAST] ✅ ${guild.name}: Plain text fallback sent`);
-                    } catch (textErr) {
-                        console.error(`[AUTO-BROADCAST] ❌ ${guild.name}: Plain text also failed — ${textErr.message}`);
-                        fail++;
-                    }
-                }
+                await channel.send({ embeds: [embed] });
+                success++;
 
                 if ((i + 1) % 10 === 0 || i === guilds.length - 1) console.log(`[AUTO-BROADCAST] Progress: ${i + 1}/${guilds.length} (${success} ok, ${fail} fail)`);
                 await new Promise(r => setTimeout(r, 300));
@@ -321,21 +289,6 @@ async function autoBroadcast(client) {
         log.lastStats = { success, fail, total: guilds.length };
         log.lastChanges = { new: changes.new.map(c => humanName(c.file)), fixed: changes.fixed.map(c => humanName(c.file)), improved: changes.improved.map(c => humanName(c.file)) };
         saveLog(log);
-
-        // FIXED: Also save to database for Render persistence
-        try {
-            if (client.db) {
-                // Ensure table exists before writing
-                client.db.exec(`CREATE TABLE IF NOT EXISTS bot_state (
-                    key TEXT PRIMARY KEY,
-                    value TEXT,
-                    updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-                )`);
-                client.db.prepare(`INSERT OR REPLACE INTO bot_state (key, value, updated_at) VALUES (?, ?, strftime('%s', 'now'))`).run('last_broadcast_version', version);
-            }
-        } catch (e) {
-            console.log(`[AUTO-BROADCAST] ⚠️ Could not save version to DB: ${e.message}`);
-        }
 
         console.log(`[AUTO-BROADCAST] ✅ Complete: ${success} sent, ${fail} failed`);
 
