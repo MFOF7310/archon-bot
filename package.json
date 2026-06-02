@@ -24,8 +24,8 @@
     "url": "https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git"
   },
   "engines": {
-    "node": ">=18.0.0"
-  },
+  "node": "22.x"
+},
   "dependencies": {
   "discord.js": "^14.16.3",
   "google-tts-api": "^2.0.2",
@@ -40,8 +40,7 @@
   "ejs": "^3.1.9",
   "cookie-parser": "^1.4.6",
   "jsonwebtoken": "^9.0.2",
-  "node-fetch": "^2.7.0",
-  "engines": { "node": "22.x" }
+  "node-fetch": "^2.7.0"
 },
   "devDependencies": {
     "nodemon": "^3.0.2"
