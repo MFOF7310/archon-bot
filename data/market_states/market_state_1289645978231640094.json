@@ -1,0 +1,120 @@
+{
+  "trend": "BEAR",
+  "multiplier": 1.1303,
+  "lastUpdate": 1778505025281,
+  "nextUpdate": 1778587200000,
+  "history": [
+    {
+      "trend": "BULL",
+      "multiplier": 1.1575,
+      "event": null,
+      "timestamp": 1777849187451
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.8155,
+      "event": "Sandstorm",
+      "timestamp": 1777870787451
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0029,
+      "event": null,
+      "timestamp": 1777931049866
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0609,
+      "event": null,
+      "timestamp": 1777952649866
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.0951,
+      "event": null,
+      "timestamp": 1777974249866
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1067,
+      "event": null,
+      "timestamp": 1778010055723
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0348,
+      "event": null,
+      "timestamp": 1778134589836
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.2375,
+      "event": "Solar Flare",
+      "timestamp": 1778246170475
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9032,
+      "event": null,
+      "timestamp": 1778268445497
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0751,
+      "event": null,
+      "timestamp": 1778290045497
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1762,
+      "event": null,
+      "timestamp": 1778311645497
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.0833,
+      "event": null,
+      "timestamp": 1778351368917
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 0.9667,
+      "event": "Sandstorm",
+      "timestamp": 1778379605035
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 0.8584,
+      "event": "Niger River Flood",
+      "timestamp": 1778424516322
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0649,
+      "event": null,
+      "timestamp": 1778450687699
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9532,
+      "event": null,
+      "timestamp": 1778482706170
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 1.1303,
+      "event": "Gold Discovery",
+      "timestamp": 1778505025281
+    }
+  ],
+  "activeEvent": {
+    "name": "Gold Discovery",
+    "emoji": "💎",
+    "effect": 0.2,
+    "msg": "New gold deposits found near Bamako! Market surges!",
+    "timestamp": 1778505025281
+  },
+  "lastAlertTrend": "BEAR",
+  "lastAlertCheck": 1778566949132,
+  "lastAlertEvent": "Gold Discovery"
+}

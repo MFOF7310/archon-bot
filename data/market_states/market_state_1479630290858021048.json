@@ -1,0 +1,95 @@
+{
+  "trend": "BULL",
+  "multiplier": 1.0519,
+  "lastUpdate": 1778482706170,
+  "nextUpdate": 1778504306170,
+  "history": [
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9767,
+      "event": null,
+      "timestamp": 1777849187452
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.009,
+      "event": null,
+      "timestamp": 1777870787452
+    },
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0399,
+      "event": null,
+      "timestamp": 1777931049866
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.0791,
+      "event": null,
+      "timestamp": 1777952649866
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.889,
+      "event": null,
+      "timestamp": 1777974249867
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9211,
+      "event": null,
+      "timestamp": 1778010055723
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.0815,
+      "event": null,
+      "timestamp": 1778134589836
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1203,
+      "event": null,
+      "timestamp": 1778261423067
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1178,
+      "event": null,
+      "timestamp": 1778268445497
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9041,
+      "event": null,
+      "timestamp": 1778290045498
+    },
+    {
+      "trend": "BEAR",
+      "multiplier": 0.941,
+      "event": null,
+      "timestamp": 1778311645497
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.1402,
+      "event": null,
+      "timestamp": 1778379605035
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.0975,
+      "event": null,
+      "timestamp": 1778424516322
+    },
+    {
+      "trend": "BULL",
+      "multiplier": 1.0519,
+      "event": null,
+      "timestamp": 1778482706170
+    }
+  ],
+  "activeEvent": null,
+  "lastAlertTrend": "BEAR",
+  "lastAlertCheck": 1777974250288
+}
