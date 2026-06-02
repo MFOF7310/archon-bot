@@ -1,3 +1,4 @@
+/*
 module.exports = {
     name: 'debugpremium',
     ownerOnly: true,
@@ -7,3 +8,4 @@ module.exports = {
         message.reply({ content: '```json\n' + JSON.stringify(row, null, 2) + '\n```', ephemeral: true });
     }
 };
+*/
