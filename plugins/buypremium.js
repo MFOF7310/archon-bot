@@ -1,3 +1,4 @@
+=*
 // plugins/buypremium.js
 // Archon Premium Gateway - Legendary Edition (env-ready)
 
@@ -76,3 +77,4 @@ module.exports = {
         return message.reply({ embeds: [welcomeEmbed], components: [actionRow] });
     }
 };
+*/
