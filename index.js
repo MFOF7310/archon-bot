@@ -4338,7 +4338,7 @@ if (!process.env.DISCORD_TOKEN) {
 // 2. We must not miss payment callbacks during bot restart
 // 3. The webhook router handles its own database & business logic
 // ============================================================
-
+/*
 function startWebServer(startPort = 3000, maxAttempts = 10) {
     const express = require('express');
     const app = express();
@@ -4370,7 +4370,7 @@ try {
     console.error('\x1b[31m[INDEX]\x1b[0m ❌ Failed to mount webhook router:', err.message);
     console.error('\x1b[33m[INDEX]\x1b[0m ⚠️ Billing gateway offline — payments will not be processed!');
 }
-
+*/
 // ============================================================
 // ARCHON DASHBOARD API — Dashboard Mount
 // ============================================================
@@ -4525,7 +4525,7 @@ async function pollPremiumNotifications(db) {
         console.error('[PREMIUM NOTIFY] ❌ Polling error:', err.message);
     }
 }
-
+/*
 // Start the polling loop once the bot is ready
 client.once('ready', () => {
     console.log('[PREMIUM NOTIFY] 📬 Notification worker armed — polling every 5s.');
@@ -4548,7 +4548,7 @@ client.once('ready', () => {
     // Start the interval
     setInterval(() => pollPremiumNotifications(client.db), NOTIFICATION_POLL_INTERVAL);
 });
-
+*/
 // ============================================================
 // 📊 LIVE STATS SYNC — Pushes bot stats to Render every 30 seconds
 // ============================================================
