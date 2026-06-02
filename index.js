@@ -4371,6 +4371,7 @@ try {
     console.error('\x1b[33m[INDEX]\x1b[0m ⚠️ Billing gateway offline — payments will not be processed!');
 }
 */
+
 // ============================================================
 // ARCHON DASHBOARD API — Dashboard Mount
 // ============================================================
