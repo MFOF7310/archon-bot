@@ -4423,10 +4423,10 @@ try {
 
     const serverInstance = tryListen();
     return { app, server: serverInstance, port: currentPort };
+/*
 }
 
 // ── Boot Web Server (non-blocking, before Discord login) ──
-/*
 const webServer = startWebServer(process.env.WEB_PORT ? parseInt(process.env.WEB_PORT, 10) : 3000);
 
 // Attach server handle to client for tracking by global gracefulShutdown protocol
@@ -4434,6 +4434,7 @@ if (webServer && webServer.server) {
     client.webServerInstance = webServer.server;
 }
 */
+
 // ============================================================
 // 📬 PREMIUM NOTIFICATION WORKER — Polls user_premium table
 //    Detects newly granted premium users and sends celebratory DM
