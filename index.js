@@ -4331,109 +4331,66 @@ if (!process.env.DISCORD_TOKEN) {
 }
 
 // ============================================================
-// WEB SERVER — Dodo Payments Billing Gateway
-// ============================================================
-// The webhook server starts BEFORE Discord login because:
-// 1. Dodo Payments webhooks are standalone (no Discord client needed)
-// 2. We must not miss payment callbacks during bot restart
-// 3. The webhook router handles its own database & business logic
+// WEB SERVER — Dodo Payments Billing Gateway (DISABLED)
 // ============================================================
 /*
 function startWebServer(startPort = 3000, maxAttempts = 10) {
     const express = require('express');
     const app = express();
 
-    // ── Trust Proxy (Production-grade) ──
-    // Moved from webhook.js to app instance where it belongs
     app.set('trust proxy', 1);
-
-    // ── Security Middleware ──
     app.use(express.json({ limit: '64kb' }));
     app.use(express.urlencoded({ extended: true, limit: '64kb' }));
-
-    // ── View Configurations ──
     app.set('views', path.join(__dirname, 'views'));
     app.set('view engine', 'ejs');
 
-// ============================================================
-// DODO PAYMENTS WEBHOOK — Billing Gateway Mount
-// ============================================================
-try {
-    const webhookModule = require('./webhook.js');
-    if (webhookModule.initializeDatabase) {
-        webhookModule.initializeDatabase(db); // <-- injects the SAME db
-        console.log('\x1b[32m[INDEX]\x1b[0m ✅ Webhook using shared database.');
+    try {
+        const webhookModule = require('./webhook.js');
+        if (webhookModule.initializeDatabase) {
+            webhookModule.initializeDatabase(db);
+            console.log('[INDEX] ✅ Webhook using shared database.');
+        }
+        app.use('/', webhookModule);
+        console.log('[INDEX] ✅ Dodo webhook router mounted at /api/v1/billing/webhook');
+    } catch (err) {
+        console.error('[INDEX] ❌ Failed to mount webhook router:', err.message);
     }
-    app.use('/', webhookModule);
-    console.log('\x1b[32m[INDEX]\x1b[0m ✅ Dodo webhook router mounted smoothly at /api/v1/billing/webhook');
-} catch (err) {
-    console.error('\x1b[31m[INDEX]\x1b[0m ❌ Failed to mount webhook router:', err.message);
-    console.error('\x1b[33m[INDEX]\x1b[0m ⚠️ Billing gateway offline — payments will not be processed!');
-}
-*/
 
-// ============================================================
-// ARCHON DASHBOARD API — Dashboard Mount
-// ============================================================
-
-/*
-try {
-    const dashboardApp = require('./server');
-    app.use(dashboardApp);
-    console.log('\x1b[32m[INDEX]\x1b[0m ✅ Dashboard API mounted on web server');
-} catch (err) {
-    console.error('\x1b[31m[INDEX]\x1b[0m ❌ Failed to mount dashboard API:', err.message);
-}
-*/
-
-    // ── Health Check Endpoint (Direct) ──
     app.get('/health', (req, res) => {
-        res.status(200).json({
-            status: 'operational',
-            service: 'archon-billing-gateway',
-            timestamp: Math.floor(Date.now() / 1000)
-        });
+        res.status(200).json({ status: 'operational', service: 'archon-billing-gateway', timestamp: Math.floor(Date.now() / 1000) });
     });
 
-    // ── Auto-Allocating Port Loop ──
     let currentPort = startPort;
     let attempts = 0;
 
     function tryListen() {
         if (attempts >= maxAttempts) {
-            console.error(`\x1b[31m[WEB]\x1b[0m ❌ Failed to start web server after ${maxAttempts} port attempts (tried ${startPort}–${currentPort - 1}).`);
-            console.error(`\x1b[31m[WEB]\x1b[0m 💀 Billing gateway is DOWN. No payment webhooks will be received.`);
+            console.error(`[WEB] ❌ Failed to start web server after ${maxAttempts} attempts`);
             return null;
         }
-
         const server = app.listen(currentPort, () => {
-            console.log(`\x1b[32m[WEB]\x1b[0m 🌐 Server bound to port ${currentPort} — Dodo webhook live.`);
+            console.log(`[WEB] 🌐 Server bound to port ${currentPort} — Dodo webhook live.`);
         });
-
         server.on('error', (err) => {
             if (err.code === 'EADDRINUSE') {
-                console.log(`\x1b[33m[WEB]\x1b[0m ⚠️ Port ${currentPort} occupied, escalating to ${currentPort + 1}...`);
+                console.log(`[WEB] ⚠️ Port ${currentPort} occupied, trying ${currentPort + 1}...`);
                 currentPort++;
                 attempts++;
                 server.close();
                 tryListen();
             } else {
-                console.error(`\x1b[31m[WEB]\x1b[0m ❌ Fatal server error:`, err.message);
+                console.error(`[WEB] ❌ Fatal server error:`, err.message);
             }
         });
-
         return server;
     }
 
     const serverInstance = tryListen();
     return { app, server: serverInstance, port: currentPort };
-/*
 }
 
 // ── Boot Web Server (non-blocking, before Discord login) ──
 const webServer = startWebServer(process.env.WEB_PORT ? parseInt(process.env.WEB_PORT, 10) : 3000);
-
-// Attach server handle to client for tracking by global gracefulShutdown protocol
 if (webServer && webServer.server) {
     client.webServerInstance = webServer.server;
 }
@@ -4556,6 +4513,7 @@ client.once('ready', () => {
     setInterval(() => pollPremiumNotifications(client.db), NOTIFICATION_POLL_INTERVAL);
 });
 */
+
 // ============================================================
 // 📊 LIVE STATS SYNC — Pushes bot stats to Render every 30 seconds
 // ============================================================
