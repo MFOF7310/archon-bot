@@ -4426,13 +4426,14 @@ try {
 }
 
 // ── Boot Web Server (non-blocking, before Discord login) ──
+/*
 const webServer = startWebServer(process.env.WEB_PORT ? parseInt(process.env.WEB_PORT, 10) : 3000);
 
 // Attach server handle to client for tracking by global gracefulShutdown protocol
 if (webServer && webServer.server) {
     client.webServerInstance = webServer.server;
 }
-
+*/
 // ============================================================
 // 📬 PREMIUM NOTIFICATION WORKER — Polls user_premium table
 //    Detects newly granted premium users and sends celebratory DM
@@ -4525,8 +4526,9 @@ async function pollPremiumNotifications(db) {
         console.error('[PREMIUM NOTIFY] ❌ Polling error:', err.message);
     }
 }
-/*
+
 // Start the polling loop once the bot is ready
+/*
 client.once('ready', () => {
     console.log('[PREMIUM NOTIFY] 📬 Notification worker armed — polling every 5s.');
 
