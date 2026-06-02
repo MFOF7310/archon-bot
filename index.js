@@ -2356,7 +2356,14 @@ buildAliasLanguageMap();
     }
 
     // ================= AUTO-BROADCAST PROTOCOL v2.0 =================
+    // Singleton guard — prevents double execution if plugin has internal timers
+    client._autoBroadcastRan = false;
     setTimeout(async () => {
+        if (client._autoBroadcastRan) {
+            console.log(`${yellow}[AUTO-BROADCAST]${reset} Already ran — skipping duplicate`);
+            return;
+        }
+        client._autoBroadcastRan = true;
         try {
             const { autoBroadcast } = require('./plugins/auto-broadcast.js');
             await autoBroadcast(client);
@@ -4323,6 +4330,30 @@ if (process.send) {
 
 // ================= INSTANT PM2 SPLASH =================
 displayPM2Banner(0);
+
+// ================= RENDER HEALTH SERVER (keeps free tier awake) =================
+const http = require('http');
+const renderPort = process.env.PORT || process.env.WEB_PORT || 3000;
+const healthServer = http.createServer((req, res) => {
+    if (req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            status: 'online',
+            service: 'architect-cg223',
+            version: client.version || '2.0.0',
+            servers: client.guilds?.cache?.size || 0,
+            uptime: process.uptime()
+        }));
+    } else {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('ARCHITECT CG-223 // BAMAKO_223 🇲🇱');
+    }
+});
+healthServer.listen(renderPort, () => {
+    console.log(`${green}[RENDER]${reset} Health server bound to port ${renderPort}`);
+}).on('error', (err) => {
+    console.log(`${yellow}[RENDER]${reset} Health server port ${renderPort} unavailable: ${err.message}`);
+});
 
 // ================= LOGIN =================
 if (!process.env.DISCORD_TOKEN) {
