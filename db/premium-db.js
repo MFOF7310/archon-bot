@@ -1,3 +1,4 @@
+/*
 // db/premium-db.js — Archon Premium State Layer (Fixed for SQLite)
 module.exports = (db) => {
     if (!db) {
@@ -95,3 +96,4 @@ module.exports = (db) => {
         }
     };
 };
+*/
