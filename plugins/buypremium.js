@@ -1,4 +1,4 @@
-=*
+/*
 // plugins/buypremium.js
 // Archon Premium Gateway - Legendary Edition (env-ready)
 
