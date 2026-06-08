@@ -425,12 +425,11 @@ Memory usage high Cache janitor runs every 30min
 
 📱 CONNECT WITH THE ARCHITECT
 
-Platform Link
-🔵 ([Facebook Official Page](https://www.facebook.com/share/1bQAoqjri9/))
-📱 ([TikTok](@cloudgaming223))
-📸 ([Instagram](@mfof7310))
-💬 ([WhatsApp](+1 548 520 0518))
-🐙 ([GitHub](cloud-gaming-223-digital-engine))
+🔵 [Facebook Official Page](https://www.facebook.com/share/1bQAoqjri9/)
+📱 [TikTok](https://www.tiktok.com/@cloudgaming223)
+📸 [Instagram](https://instagram.com/mfof7310)
+💬 [WhatsApp](https://wa.me/15485200518)
+🐙 [GitHub](https://github.com/cloud-gaming-223-digital-engine)
 
 ---
 
