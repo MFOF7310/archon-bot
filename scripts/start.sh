@@ -13,15 +13,14 @@ mkdir -p data logs backups
 echo "🧹 Cleaning logs older than 7 days..."
 find ./logs -name "*.log" -mtime +7 -delete 2>/dev/null
 
-# ==================== START LOCALTUNNEL ====================
-echo "🌐 Starting secure tunnel on port 20582..."
-lt --port 20582 --subdomain archon-engine-api > /dev/null 2>&1 &
-TUNNEL_PID=$!
-echo "✅ Tunnel PID: ${TUNNEL_PID}"
-sleep 2
+# ==================== START TUNNEL ON PORT 3000 ====================
+echo "🌐 Starting tunnel on port 3000..."
+npx localtunnel --port 3000 2>&1 &
+sleep 3
+echo "🌐 Look above for: your url is: https://xxxx.loca.lt"
+echo ""
 
 # ==================== DISPLAY SYSTEM INFO ====================
-echo ""
 echo "╔══════════════════════════════════════════════╗"
 echo "║     🦅 ARCHITECT CG-223 • NEURAL ENGINE      ║"
 echo "║         📍 NODE: BAMAKO_223 🇲🇱                ║"
@@ -29,7 +28,6 @@ echo "╚═══════════════════════�
 echo ""
 echo "📦 Node.js: $(node --version)"
 echo "📁 Project: $(pwd)"
-echo "🌐 Dashboard: https://archon-engine-api.loca.lt"
 echo "🕐 Started: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 
@@ -43,7 +41,7 @@ do
     echo "🛰️ [START] Neural Engine v1.8.0 | Restart #${restart_count}"
     echo "──────────────────────────────────────────────"
     
-    node index.js
+    node index.js 2>&1 | tee -a logs/bot-$(date '+%Y-%m-%d').log
     
     exit_code=$?
     
