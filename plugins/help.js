@@ -78,7 +78,7 @@ const translations = {
         usage: 'UTILISATION',
         aliases: 'ALIAS',
         examples: 'EXEMPLES',
-        cooldown: 'REFRAGEMENT',
+        cooldown: 'REFROIDISSEMENT',
         seconds: 'secondes',
         noDescription: 'Aucune description cryptée. Utilisez .help pour la liste des modules.',
         noExamples: 'Aucun exemple disponible',
@@ -151,7 +151,31 @@ const colorMap = {
     ECONOMY: '#F1C40F', FUN: '#3498DB'
 };
 
+// 🎨 POLICE/INTEL STYLE COLORS
+const INTEL_COLORS = ['#1a1a2e', '#16213e', '#00d9ff', '#f5a623', '#e94560', '#00b894', '#636e72'];
+function getIntelColor() { return INTEL_COLORS[Math.floor(Math.random() * INTEL_COLORS.length)]; }
+
 const red = "\x1b[31m", reset = "\x1b[0m";
+
+// ================= SMART EXAMPLE FORMATTER =================
+function formatExample(ex, prefix, cmdName, aliases = []) {
+    // Slash command — keep as-is
+    if (ex.startsWith('/')) return ex;
+    
+    // Already has prefix + command name (full command) — keep as-is
+    if (ex.startsWith(prefix + cmdName)) return ex;
+    
+    // Is just the command name or an alias (no args) — add prefix only
+    if (!ex.includes(' ') && (ex === cmdName || aliases.includes(ex))) {
+        return `${prefix}${ex}`;
+    }
+    
+    // Already starts with prefix but different command — keep as-is (cross-ref)
+    if (ex.startsWith(prefix)) return ex;
+    
+    // Otherwise it's an argument — add prefix + command name + space
+    return `${prefix}${cmdName} ${ex}`;
+}
 
 // ================= HELPER FUNCTIONS =================
 function getRandomTip(t, prefix) {
@@ -165,34 +189,27 @@ function formatUptime(lang) {
     const hours = Math.floor((uptimeSec % 86400) / 3600);
     const minutes = Math.floor((uptimeSec % 3600) / 60);
     const seconds = Math.floor(uptimeSec % 60);
-    
+
     const parts = [];
     if (days > 0) parts.push(`${days}${lang === 'fr' ? 'j' : 'd'}`);
     if (hours > 0) parts.push(`${hours}h`);
     if (minutes > 0) parts.push(`${minutes}m`);
     if (seconds > 0 && days === 0) parts.push(`${seconds}s`);
-    
+
     return parts.join(' ') || '0s';
 }
 
 // ================= SERVER PLUGIN DETECTION =================
 function getServerPlugins(client, guildId) {
     if (!guildId) return null;
-    
-    // Try to get server settings from your database
     const settings = client.getServerSettings?.(guildId) || {};
-    
     return {
         ECONOMY: settings.economy_enabled !== false,
         GAMING: settings.gaming_enabled !== false,
         AI: settings.ai_enabled !== false,
         PROFILE: settings.profile_enabled !== false,
         MODERATION: settings.moderation_enabled !== false,
-        FUN: true,
-        UTILITY: true,
-        SYSTEM: true,
-        OWNER: false,
-        GENERAL: true,
+        FUN: true, UTILITY: true, SYSTEM: true, OWNER: false, GENERAL: true,
     };
 }
 
@@ -218,47 +235,47 @@ function getCategoryDescription(cat, t, lang) {
     return lang === 'fr' ? `Commandes pour le module ${cat}` : `Commands for the ${cat} module`;
 }
 
+// 🛡️ POLICE-STYLE CATEGORY EMBED
 function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, guildId) {
     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
-    
-    // ✅ SERVER PLUGIN CHECK
+
     const plugins = getServerPlugins(client, guildId);
     if (plugins && category.toUpperCase() !== 'SYSTEM' && plugins[category.toUpperCase()] === false) {
         return new EmbedBuilder()
-            .setColor('#ED4245')
+            .setColor('#e94560')
             .setAuthor({ name: `${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} MODULE`, iconURL: client.user.displayAvatarURL() })
-            .setTitle('🔒 MODULE DISABLED')
+            .setTitle('`[ LOCKED ]`')
             .setDescription(
                 lang === 'fr' 
-                    ? `Ce module n'est pas activé sur ce serveur.\n\n🔧 Contactez un administrateur pour l'activer.`
-                    : `This module is not enabled on this server.\n\n🔧 Contact an admin to enable it.`
+                    ? `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\n**MODULE DÉSACTIVÉ**\n> Ce module n'est pas activé sur ce serveur.\n> Contactez un administrateur pour l'activer.\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
+                    : `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\n**MODULE DISABLED**\n> This module is not enabled on this server.\n> Contact an admin to enable it.\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
             )
-            .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
+            .setFooter({ text: `${guildName} • v${version} • UNCLASSIFIED`, iconURL: guildIcon })
             .setTimestamp();
     }
-    
-    const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
+
+    const intelColor = getIntelColor();
     const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
     const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
-    
+
     const commandList = sortedCmds.map(cmd => {
-        const aliasesText = cmd.aliases?.length ? ` (${cmd.aliases.slice(0, 3).join(', ')})` : '';
-        const examples = cmd.examples?.length ? `\n└─ 📝 ${lang === 'fr' ? 'Exemple' : 'Example'}: \`${prefix}${cmd.name} ${cmd.examples[0]}\`` : '';
-        return `**\`${prefix}${cmd.name}\`**${aliasesText}\n└─ *${cmd.description || t.noDescription}*${examples}`;
+        const aliasesText = cmd.aliases?.length ? ` \`(${cmd.aliases.slice(0, 3).join(', ')})\`` : '';
+        const examples = cmd.examples?.length ? `\n> 📝 ${lang === 'fr' ? 'Ex' : 'Ex'}: \`${cmd.examples.map(ex => formatExample(ex, prefix, cmd.name, cmd.aliases)).join('`, `')}\`` : '';
+        return `\`▸ ${prefix}${cmd.name}\`${aliasesText}\n> ${cmd.description || t.noDescription}${examples}`;
     }).join('\n\n');
-    
+
     return new EmbedBuilder()
-        .setColor(categoryColor)
+        .setColor(intelColor)
         .setAuthor({ name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}`, iconURL: client.user.displayAvatarURL() })
-        .setTitle(`═ ${t.modulesTitle} ═`)
-        .setDescription(commandList || (lang === 'fr' ? 'Aucune commande trouvée dans cette catégorie.' : 'No commands found in this category.'))
+        .setTitle(`\`[ ${t.modulesTitle} ]\``)
+        .setDescription(commandList || (lang === 'fr' ? 'Aucune commande trouvée.' : 'No commands found.'))
         .addFields({ 
-            name: t.moduleStatsTitle, 
-            value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\`\`\``, 
+            name: `\` ${t.moduleStatsTitle} \``, 
+            value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\n\`STATUS: ONLINE\`\`\`\``, 
             inline: false 
         })
         .setFooter({ 
-            text: `${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${version}`,
+            text: `${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${version} • UNCLASSIFIED`,
             iconURL: guildIcon
         })
         .setTimestamp();
@@ -272,7 +289,6 @@ module.exports = {
     category: 'SYSTEM',
     cooldown: 3000,
 
-    // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('help')
         .setDescription('Access the ARCHITECT Neural Directory and command database')
@@ -283,20 +299,15 @@ module.exports = {
                 .setAutocomplete(true)
         ),
 
-    // ✅ AUTOCOMPLETE
     async autocomplete(interaction) {
         const focusedValue = interaction.options.getFocused();
         const choices = [...interaction.client.commands.keys()].filter(cmd => 
             cmd.startsWith(focusedValue.toLowerCase())
         ).slice(0, 25);
-        
-        await interaction.respond(
-            choices.map(choice => ({ name: choice, value: choice }))
-        );
+        await interaction.respond(choices.map(choice => ({ name: choice, value: choice })));
     },
 
     run: async (client, message, args, database, serverSettings, usedCommand) => {
-        // ================= LANGUAGE DETECTION =================
         let lang = 'en';
         if (client.detectLanguage && usedCommand) {
             lang = client.detectLanguage(usedCommand, 'en');
@@ -305,21 +316,20 @@ module.exports = {
             if (cmd === 'aide' || cmd === 'commandes') lang = 'fr';
             else if (cmd === 'help' || cmd === 'commands') lang = 'en';
         }
-        
+
         const t = translations[lang];
         const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        
-        // ================= UPTIME CALCULATION =================
+
         const uptimeSec = process.uptime();
         const days = Math.floor(uptimeSec / 86400);
         const hours = Math.floor((uptimeSec % 86400) / 3600);
         const minutes = Math.floor((uptimeSec % 3600) / 60);
         const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
         const totalGuilds = client.guilds.cache.size || 0;
-        
+
         let uptimeString = '';
         if (days > 0) uptimeString += `${days}${lang === 'fr' ? 'j' : 'd'} `;
         if (hours > 0) uptimeString += `${hours}${lang === 'fr' ? 'h' : 'h'} `;
@@ -327,55 +337,54 @@ module.exports = {
         if (days === 0 && hours === 0 && minutes === 0) uptimeString += `${Math.floor(uptimeSec)}s`;
         else if (uptimeSec % 60 > 0 && days === 0 && hours === 0) uptimeString += `${Math.floor(uptimeSec % 60)}s`;
         uptimeString = uptimeString.trim() || '0s';
-        
+
         // ================= SUB-COMMAND HANDLING =================
         if (args[0]) {
             const searchTerm = args[0].toUpperCase();
             const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))];
-            
+
             if (categories.includes(searchTerm)) {
                 const embed = createCategoryEmbed(client, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id);
                 return message.reply({ embeds: [embed] }).catch(() => {});
             }
-            
+
             const cmdLower = args[0].toLowerCase();
             const cmd = client.commands.get(cmdLower) || client.commands.find(c => c.aliases && c.aliases.includes(cmdLower));
-            
+
             if (cmd) {
                 const category = cmd.category || 'GENERAL';
-                const categoryColor = colorMap[category.toUpperCase()] || '#5865F2';
                 const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
 
                 const detailEmbed = new EmbedBuilder()
-                    .setColor(categoryColor)
+                    .setColor(getIntelColor())
                     .setAuthor({ name: `${categoryEmoji} ${t.commandExtract}`, iconURL: client.user.displayAvatarURL() })
-                    .setTitle(`◈ ${t.module}: ${cmd.name.toUpperCase()} ◈`)
+                    .setTitle(`\`[ ${t.module}: ${cmd.name.toUpperCase()} ]\``)
                     .setDescription(`\`\`\`yaml\n${cmd.description || t.noDescription}\`\`\``)
                     .addFields(
-                        { name: `📂 ${t.category}`, value: `\`${category}\` ${getCategoryDescription(category, t, lang) ? `• ${getCategoryDescription(category, t, lang)}` : ''}`, inline: false },
-                        { name: `🔧 ${t.usage}`, value: `\`${effectivePrefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
-                        { name: `🔀 ${t.aliases}`, value: cmd.aliases?.length ? `\`${cmd.aliases.join(', ')}\`` : `\`${t.none}\``, inline: true }
+                        { name: `\` 📂 ${t.category} \``, value: `\`${category}\` ${getCategoryDescription(category, t, lang) ? `• ${getCategoryDescription(category, t, lang)}` : ''}`, inline: false },
+                        { name: `\` 🔧 ${t.usage} \``, value: `\`${effectivePrefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
+                        { name: `\` 🔀 ${t.aliases} \``, value: cmd.aliases?.length ? `\`${cmd.aliases.join(', ')}\`` : `\`${t.none}\``, inline: true }
                     );
-                
+
                 if (cmd.examples?.length) {
-                    detailEmbed.addFields({
-                        name: `🎯 ${t.examples}`,
-                        value: `\`${cmd.examples.map(ex => `${effectivePrefix}${cmd.name} ${ex}`).join('`\n`')}\``,
-                        inline: false
-                    });
-                }
+    detailEmbed.addFields({
+        name: `\` 🎯 ${t.examples} \``,
+        value: `\`${cmd.examples.map(ex => formatExample(ex, effectivePrefix, cmd.name, cmd.aliases)).join('`\n`')}\``,
+        inline: false
+    });
+}
 
                 if (cmd.cooldown) {
                     detailEmbed.addFields({ 
-                        name: `⏱️ ${t.cooldown}`, 
+                        name: `\` ⏱️ ${t.cooldown} \``, 
                         value: `\`${cmd.cooldown/1000} ${t.seconds}\``, 
                         inline: true 
                     });
                 }
-                
+
                 detailEmbed
                     .setFooter({ 
-                        text: `${guildName} • ${t.bamakoNode} • ${client.commands.size} ${t.modulesOnline} • v${version}`,
+                        text: `${guildName} • ${t.bamakoNode} • ${client.commands.size} ${t.modulesOnline} • v${version} • UNCLASSIFIED`,
                         iconURL: guildIcon
                     })
                     .setTimestamp();
@@ -384,31 +393,30 @@ module.exports = {
             }
 
             const errorEmbed = new EmbedBuilder()
-                .setColor('#ED4245')
+                .setColor('#e94560')
                 .setAuthor({ name: t.signalLost, iconURL: client.user.displayAvatarURL() })
-                .setTitle(t.commandNotFound)
+                .setTitle(`\`[ ${t.commandNotFound} ]\``)
                 .setDescription(t.notFoundDesc(args[0], effectivePrefix))
-                .setFooter({ text: `${guildName} • ${t.checkSpelling}`, iconURL: guildIcon })
+                .setFooter({ text: `${guildName} • ${t.checkSpelling} • UNCLASSIFIED`, iconURL: guildIcon })
                 .setTimestamp();
             return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
 
         // ================= MAIN DIRECTORY =================
-        // Normalize categories to uppercase to prevent duplicates (e.g. 'FUN' vs 'Fun')
         const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))].sort();
         const categoryStats = getCategoryStats(client);
         const topCategories = getTopCategories(categoryStats);
-        
+
         const totalCommands = client.commands.size;
         const totalAliases = client.aliases?.size || 0;
         const categoriesCount = categories.length;
-        
+
         const topCategoriesDisplay = topCategories.map((c, i) => 
             `${['🥇', '🥈', '🥉'][i]} **${c.cat}**: \`${c.count}\` ${t.commands.toLowerCase()}`
         ).join('\n');
-        
+
         const mainEmbed = new EmbedBuilder()
-            .setColor('#00fbff')
+            .setColor(getIntelColor())
             .setAuthor({ name: t.directoryTitle, iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) })
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
             .setDescription(
@@ -420,13 +428,13 @@ module.exports = {
                 `${t.version}: v${version}\`\`\``
             )
             .addFields(
-                { name: t.moduleStats, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${totalMembers.toLocaleString()}\n${t.guilds}: ${totalGuilds}\`\`\``, inline: true },
-                { name: `🏆 TOP CATEGORIES`, value: topCategoriesDisplay || 'No data available', inline: true },
-                { name: t.quickAccess, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
-                { name: t.aiAssistant, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
-                { name: t.tip, value: getRandomTip(t, effectivePrefix), inline: true }
+                { name: `\` ${t.moduleStats} \``, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${totalMembers.toLocaleString()}\n${t.guilds}: ${totalGuilds}\`\`\``, inline: true },
+                { name: `\` 🏆 TOP CATEGORIES \``, value: topCategoriesDisplay || 'No data available', inline: true },
+                { name: `\` ${t.quickAccess} \``, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
+                { name: `\` ${t.aiAssistant} \``, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
+                { name: `\` ${t.tip} \``, value: getRandomTip(t, effectivePrefix), inline: true }
             )
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, iconURL: guildIcon })
+            .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow} • UNCLASSIFIED`, iconURL: guildIcon })
             .setTimestamp();
 
         const menu = new StringSelectMenuBuilder()
@@ -448,33 +456,31 @@ module.exports = {
             embeds: [mainEmbed],
             components: [row1, row2]
         }).catch(() => null);
-        
+
         if (!response) return;
 
         const collector = response.createMessageComponentCollector({ time: 300000 });
-        
-        collector.on('collect', async (i) => {
-            try {
-                if (!i.deferred && !i.replied) {
-                    await i.deferUpdate().catch(() => {}); 
-                }
-            } catch (e) {
-                return;
-            }
 
+        collector.on('collect', async (i) => {
+            // 🔒 SECURITY CHECK FIRST
             if (i.user.id !== message.author.id) {
                 return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
             }
 
             try {
                 if (i.customId === 'help_back') {
+                    // ✅ SAFE DEFER + EDIT
+                    if (!i.deferred && !i.replied) {
+                        await i.deferUpdate().catch(() => {});
+                    }
+
                     const freshUptimeSec = process.uptime();
                     const freshDays = Math.floor(freshUptimeSec / 86400);
                     const freshHours = Math.floor((freshUptimeSec % 86400) / 3600);
                     const freshMinutes = Math.floor((freshUptimeSec % 3600) / 60);
                     const freshTotalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
                     const freshTotalGuilds = client.guilds.cache.size || 0;
-                    
+
                     let freshUptimeString = '';
                     if (freshDays > 0) freshUptimeString += `${freshDays}${lang === 'fr' ? 'j' : 'd'} `;
                     if (freshHours > 0) freshUptimeString += `${freshHours}${lang === 'fr' ? 'h' : 'h'} `;
@@ -482,9 +488,9 @@ module.exports = {
                     if (freshDays === 0 && freshHours === 0 && freshMinutes === 0) freshUptimeString += `${Math.floor(freshUptimeSec)}s`;
                     else if (freshUptimeSec % 60 > 0 && freshDays === 0 && freshHours === 0) freshUptimeString += `${Math.floor(freshUptimeSec % 60)}s`;
                     freshUptimeString = freshUptimeString.trim() || '0s';
-                    
+
                     const freshMainEmbed = new EmbedBuilder()
-                        .setColor('#00fbff')
+                        .setColor(getIntelColor())
                         .setAuthor({ name: t.directoryTitle, iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) })
                         .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
                         .setDescription(
@@ -496,31 +502,36 @@ module.exports = {
                             `${t.version}: v${version}\`\`\``
                         )
                         .addFields(
-                            { name: t.moduleStats, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, inline: true },
-                            { name: `🏆 TOP CATEGORIES`, value: topCategoriesDisplay || 'No data available', inline: true },
-                            { name: t.quickAccess, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
-                            { name: t.aiAssistant, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
-                            { name: t.tip, value: getRandomTip(t, effectivePrefix), inline: true }
+                            { name: `\` ${t.moduleStats} \``, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, inline: true },
+                            { name: `\` 🏆 TOP CATEGORIES \``, value: topCategoriesDisplay || 'No data available', inline: true },
+                            { name: `\` ${t.quickAccess} \``, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
+                            { name: `\` ${t.aiAssistant} \``, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
+                            { name: `\` ${t.tip} \``, value: getRandomTip(t, effectivePrefix), inline: true }
                         )
-                        .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow}`, iconURL: guildIcon })
+                        .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow} • UNCLASSIFIED`, iconURL: guildIcon })
                         .setTimestamp();
-                    
+
                     const disabledRow2 = new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
                     );
-                    
+
                     await i.editReply({ content: null, embeds: [freshMainEmbed], components: [row1, disabledRow2] }).catch(() => {});
                     return;
                 }
-                
+
                 if (i.isStringSelectMenu() && i.customId === 'help_select') {
+                    // ✅ SAFE DEFER + EDIT
+                    if (!i.deferred && !i.replied) {
+                        await i.deferUpdate().catch(() => {});
+                    }
+
                     const category = i.values[0];
                     const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id);
-                    
+
                     const updatedRow2 = new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false)
                     );
-                    
+
                     await i.editReply({ content: null, embeds: [categoryEmbed], components: [row1, updatedRow2] }).catch((err) => {
                         console.error(`${red}[HELP ERROR]${reset} Failed to edit:`, err.message);
                     });
@@ -529,11 +540,12 @@ module.exports = {
             } catch (err) {
                 console.error(`${red}[HELP ERROR]${reset} Interaction failed:`, err.message);
                 try {
-                    await i.editReply({ 
-                        content: lang === 'fr' ? '❌ Une erreur est survenue. Veuillez réessayer.' : '❌ An error occurred. Please try again.',
-                        embeds: [], 
-                        components: [] 
-                    }).catch(() => {});
+                    if (!i.replied && !i.deferred) {
+                        await i.reply({ 
+                            content: lang === 'fr' ? '❌ Une erreur est survenue. Veuillez réessayer.' : '❌ An error occurred. Please try again.',
+                            ephemeral: true
+                        }).catch(() => {});
+                    }
                 } catch (e) {}
             }
         });
@@ -554,14 +566,14 @@ module.exports = {
     execute: async (interaction, client) => {
         const query = interaction.options.getString('query');
         const args = query ? [query] : [];
-        
-        // 🔥 LEGENDARY DM FALLBACK
+
+        // 🔥 DM FALLBACK
         if (!interaction.guild) {
             const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
             const t = translations[lang];
-            
+
             const dmEmbed = new EmbedBuilder()
-                .setColor('#00fbff')
+                .setColor(getIntelColor())
                 .setAuthor({ 
                     name: lang === 'fr' ? '📡 TRANSMISSION NEURALE DIRECTE' : '📡 DIRECT NEURAL TRANSMISSION', 
                     iconURL: client.user.displayAvatarURL() 
@@ -590,12 +602,11 @@ module.exports = {
                 )
                 .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
                 .setFooter({ 
-                    text: lang === 'fr' ? 'NŒUD BAMAKO-223 • TRANSMISSION SÉCURISÉE' : 'BAMAKO-223 NODE • SECURE TRANSMISSION',
+                    text: lang === 'fr' ? 'NŒUD BAMAKO-223 • TRANSMISSION SÉCURISÉE • UNCLASSIFIED' : 'BAMAKO-223 NODE • SECURE TRANSMISSION • UNCLASSIFIED',
                     iconURL: client.user.displayAvatarURL()
                 })
                 .setTimestamp();
-            
-            // Build simplified category menu for DM
+
             const categories = [...new Set(client.commands.map(cmd => cmd.category || 'GENERAL'))].sort();
             const categoryOptions = categories.slice(0, 25).map(cat => ({
                 label: cat.toUpperCase().substring(0, 100),
@@ -603,78 +614,77 @@ module.exports = {
                 description: `${lang === 'fr' ? 'Voir les commandes' : 'View commands'}`.substring(0, 100),
                 emoji: '📁'
             }));
-            
+
             const selectMenu = new StringSelectMenuBuilder()
                 .setCustomId('help_dm_category')
                 .setPlaceholder(lang === 'fr' ? '📋 Explorer les commandes serveur...' : '📋 Explore server commands...')
                 .addOptions(categoryOptions);
-            
+
             const row = new ActionRowBuilder().addComponents(selectMenu);
-            
+
             const reply = await interaction.reply({ 
-    embeds: [dmEmbed], 
-    components: [row],
-    flags: 64
-}).catch(() => {});
-            
+                embeds: [dmEmbed], 
+                components: [row],
+                flags: 64
+            }).catch(() => {});
+
             if (!reply) return;
-            
-            // Collector for DM category selection
+
             const collector = reply.createMessageComponentCollector({ time: 120000 });
-            
+
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {
-    return i.reply({ 
-        content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', 
-        ephemeral: true  // ✅ CORRECT SYNTAX
-    });
-}
-                
+                    return i.reply({ 
+                        content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', 
+                        ephemeral: true
+                    }).catch(() => {});
+                }
+
                 if (i.customId === 'help_dm_category') {
-                    await i.deferUpdate();
-                    
+                    await i.deferUpdate().catch(() => {});
+
                     const category = i.values[0];
                     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
                     const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
-                    
+
                     const categoryEmbed = new EmbedBuilder()
-                        .setColor('#00fbff')
+                        .setColor(getIntelColor())
                         .setAuthor({ 
                             name: `📁 ${category.toUpperCase()} ${lang === 'fr' ? 'Commandes' : 'Commands'}`, 
                             iconURL: client.user.displayAvatarURL() 
                         })
                         .setDescription(
                             sortedCmds.map(cmd => {
-                                const aliasesStr = cmd.aliases?.length ? ` *(${cmd.aliases.slice(0, 3).join(', ')})*` : '';
-                                return `**\`/${cmd.name}\`**${aliasesStr}\n└─ *${cmd.description || (lang === 'fr' ? 'Aucune description' : 'No description')}*`;
+                                const aliasesStr = cmd.aliases?.length ? ` \`(${cmd.aliases.slice(0, 3).join(', ')})\`` : '';
+                                return `\`▸ /${cmd.name}\`${aliasesStr}\n> ${cmd.description || (lang === 'fr' ? 'Aucune description' : 'No description')}`;
                             }).join('\n\n') || (lang === 'fr' ? 'Aucune commande trouvée.' : 'No commands found.')
                         )
                         .setFooter({ 
-                            text: lang === 'fr' ? '🌐 Ces commandes nécessitent un serveur' : '🌐 These commands require a server',
+                            text: lang === 'fr' ? '🌐 Ces commandes nécessitent un serveur • UNCLASSIFIED' : '🌐 These commands require a server • UNCLASSIFIED',
                             iconURL: client.user.displayAvatarURL()
                         })
                         .setTimestamp();
-                    
-                    await i.editReply({ embeds: [categoryEmbed], components: [] });
+
+                    await i.editReply({ embeds: [categoryEmbed], components: [] }).catch(() => {});
                 }
             });
-            
+
             return;
         }
-        
-        // ===== SERVER EXECUTION =====
-await interaction.deferReply({ ephemeral: true });  // ✅ CORRECT SYNTAX FOR DISCORD.JS v14+
 
-const fakeMessage = {
+        // ===== SERVER EXECUTION =====
+        await interaction.deferReply({ ephemeral: true });
+
+        const fakeMessage = {
             author: interaction.user,
             guild: interaction.guild,
             channel: interaction.channel,
             reply: async (options) => interaction.editReply(options),
             react: () => Promise.resolve()
         };
-        
+
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-        
+
         await module.exports.run(client, fakeMessage, args, null, serverSettings, 'help');
     }
 };
