@@ -63,6 +63,34 @@ process.on('uncaughtException', (err, origin) => {
 // ================= TERMINAL COLORS =================
 const green = "\x1b[32m", blue = "\x1b[34m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", magenta = "\x1b[35m", reset = "\x1b[0m", bold = "\x1b[1m";
 
+// ================= SAFE ERROR LOGGING (FIX #9) =================
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+function safeLogError(context, err, includeStack = false) {
+    if (IS_PRODUCTION) {
+        console.error(`[ERROR] ${context}: ${err.message?.substring(0, 100) || 'Unknown'}`);
+    } else {
+        console.error(`${red}[${context}]${reset}`, err.message);
+        if (includeStack && err.stack) console.error(err.stack);
+    }
+}
+
+// ================= ENV STATUS CHECKER (FIX #13) =================
+function checkEnvStatus(key) {
+    const value = process.env[key];
+    if (!value) return '  MISSING';
+    if (key.includes('TOKEN') || key.includes('SECRET') || key.includes('KEY') || key.includes('PASSWORD')) {
+        return '  CONFIGURED';
+    }
+    return '  CONFIGURED';
+}
+
+// ================= SNOWFLAKE VALIDATOR (FIX #17) =================
+function validateSnowflake(id) {
+    if (!id || typeof id !== 'string') return false;
+    return /^[0-9]{17,20}$/.test(id);
+}
+
 // ================= PM2 STYLE DISPLAY =================
 function displayPM2Banner(serverCount = 0) {
     const isPM2 = process.env.pm_id !== undefined || process.env.name === 'Architect-CG223';
@@ -90,11 +118,7 @@ function displayPM2Banner(serverCount = 0) {
 \x1b[36m╚══════════════════════════════════════════════════════════════════╝\x1b[0m
 `;
 
-    if (isPM2) {
         console.log(banner);
-    } else {
-        console.log(`\x1b[32m[SYSTEM]\x1b[0m Running Architect-CG223 locally...`);
-    }
 }
 
 const client = new Client({
@@ -108,6 +132,18 @@ const client = new Client({
     ],
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
+
+// ================= SECURE EVENT LISTENER DEDUPLICATION (FIX #15) =================
+const REGISTERED_LISTENERS = new Set();
+
+function safeOn(event, handler) {
+    if (REGISTERED_LISTENERS.has(event)) {
+        console.log(`${yellow}[LISTENER]${reset} ${event} already registered, skipping duplicate`);
+        return;
+    }
+    REGISTERED_LISTENERS.add(event);
+    client.on(event, handler);
+}
 
 // ================= SYSTEM GLOBALS =================
 client.commands = new Collection();
@@ -136,7 +172,6 @@ function getVersion() {
 client.version = getVersion();
 
 // --- LYDIA GLOBALS (Will be populated by setupLydia) ---
-client.lydiaChannels = {};
 client.lydiaAgents = {};
 client.lastLydiaCall = {};
 client.userIntroductions = new Map();
@@ -207,6 +242,32 @@ console.log(`${green}[LANGUAGE]${reset} Universal pattern-based detection initia
 const Database = require('better-sqlite3');
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+// ================= SECURE FILE WRITE UTILITY (FIX #8) =================
+const safeDataDir = (() => {
+    const resolved = path.resolve(__dirname, 'data');
+    const root = path.resolve(__dirname);
+    if (!resolved.startsWith(root)) {
+        console.error(`[SECURITY] dataDir path traversal detected`);
+        process.exit(1);
+    }
+    return resolved;
+})();
+
+function safeWriteFile(filename, data) {
+    const targetPath = path.resolve(safeDataDir, filename);
+    const resolvedDataDir = path.resolve(safeDataDir);
+    if (!targetPath.startsWith(resolvedDataDir)) {
+        console.error(`[SECURITY] Path traversal blocked: ${filename}`);
+        return false;
+    }
+    if (filename.includes('..') || path.isAbsolute(filename)) {
+        console.error(`[SECURITY] Invalid filename: ${filename}`);
+        return false;
+    }
+    fs.writeFileSync(targetPath, data);
+    return true;
+}
 
 const logsDir = path.join(__dirname, 'logs');
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
@@ -329,16 +390,19 @@ const requiredTables = {
         updated_at INTEGER DEFAULT (strftime('%s', 'now'))
     )`,
     
-    lydia_memory: `CREATE TABLE IF NOT EXISTS lydia_memory (
-        user_id TEXT, memory_key TEXT, memory_value TEXT, 
-        updated_at INTEGER DEFAULT (strftime('%s', 'now')), 
-        PRIMARY KEY (user_id, memory_key)
-    )`,
+    // ✅ FIXED
+   lydia_memory: `CREATE TABLE IF NOT EXISTS lydia_memory (
+    user_id TEXT, memory_key TEXT, memory_value TEXT, 
+    updated_at INTEGER DEFAULT 0, 
+    PRIMARY KEY (user_id, memory_key)
+)`,
     
-    lydia_agents: `CREATE TABLE IF NOT EXISTS lydia_agents (
-        channel_id TEXT PRIMARY KEY, agent_key TEXT, 
-        is_active INTEGER DEFAULT 0, updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-    )`,
+   lydia_agents: `CREATE TABLE IF NOT EXISTS lydia_agents (
+    channel_id TEXT PRIMARY KEY, 
+    agent_key TEXT, 
+    is_active INTEGER DEFAULT 0, 
+    updated_at INTEGER DEFAULT 0
+)`,
     
     user_inventory: `CREATE TABLE IF NOT EXISTS user_inventory (
         user_id TEXT, item_id TEXT, quantity INTEGER DEFAULT 1, 
@@ -347,19 +411,22 @@ const requiredTables = {
         PRIMARY KEY (user_id, item_id)
     )`,
     
-    lydia_introductions: `CREATE TABLE IF NOT EXISTS lydia_introductions (
-        user_id TEXT, channel_id TEXT, 
-        introduced_at INTEGER DEFAULT (strftime('%s', 'now')), 
-        PRIMARY KEY (user_id, channel_id)
-    )`,
+    // ✅ FIXED
+lydia_introductions: `CREATE TABLE IF NOT EXISTS lydia_introductions (
+    user_id TEXT, channel_id TEXT, 
+    introduced_at INTEGER DEFAULT 0, 
+    PRIMARY KEY (user_id, channel_id)
+)`,
     
-    lydia_conversations: `CREATE TABLE IF NOT EXISTS lydia_conversations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        channel_id TEXT, guild_id TEXT, user_id TEXT, user_name TEXT, 
-        role TEXT, content TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now'))
-    )`,
+    // ✅ FIXED
+lydia_conversations: `CREATE TABLE IF NOT EXISTS lydia_conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel_id TEXT, guild_id TEXT, user_id TEXT, user_name TEXT, 
+    role TEXT, content TEXT, timestamp INTEGER DEFAULT 0
+)`,
     
-    reminders: `CREATE TABLE IF NOT EXISTS reminders (
+    // ✅ FIXED
+reminders: `CREATE TABLE IF NOT EXISTS reminders (
     id TEXT PRIMARY KEY, 
     user_id TEXT NOT NULL, 
     channel_id TEXT NOT NULL, 
@@ -367,7 +434,7 @@ const requiredTables = {
     execute_at INTEGER NOT NULL, 
     status TEXT DEFAULT 'pending',
     delivered INTEGER DEFAULT 0,
-    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+    created_at INTEGER DEFAULT 0
 )`,
     
     tiktok_notifications: `CREATE TABLE IF NOT EXISTS tiktok_notifications (
@@ -572,6 +639,7 @@ try {
         { name: 'ticket_auto_close_hours', type: 'INTEGER DEFAULT 24' },
         { name: 'ticket_categories_config', type: 'TEXT' },
         { name: 'ticket_limit_per_user', type: 'INTEGER DEFAULT 1' },
+        { name: 'ticket_panel_message_id', type: 'TEXT' },
     ];
     
     let addedCount = 0;
@@ -677,15 +745,49 @@ const TABLE_SCHEMAS = {
     // Add more tables as needed
 };
 
+// ✅ SECURE: Whitelist of allowed table names
+const ALLOWED_TABLES = ['bot_state', 'users', 'shop_items', 'server_settings', 
+    'lydia_memory', 'lydia_agents', 'user_inventory', 'lydia_introductions',
+    'lydia_conversations', 'reminders', 'tiktok_notifications', 'warnings',
+    'moderation_logs', 'server_backups', 'auto_backup_settings', 'user_links',
+    'investments', 'birthdays', 'transfers', 'server_command_settings',
+    'server_economy_settings', 'bot_roles', 'user_premium'];
+
 function ensureTableColumns(db, tableName, expectedColumns) {
+    // ✅ SECURE: Validate table name against whitelist
+    if (!ALLOWED_TABLES.includes(tableName)) {
+        console.error(`[AUTO-REPAIR] Rejected invalid table: ${tableName}`);
+        return 0;
+    }
+    
+    // ✅ SECURE: Validate table name format (defense in depth)
+    if (!/^[a-z_][a-z0-9_]*$/.test(tableName)) {
+        console.error(`[AUTO-REPAIR] Invalid table name pattern: ${tableName}`);
+        return 0;
+    }
+    
     try {
-        // Get existing columns
         const existing = db.prepare(`PRAGMA table_info(${tableName})`).all().map(c => c.name);
         let added = 0;
         
         for (const col of expectedColumns) {
+            // ✅ SECURE: Validate column name format
+            if (!col.name || !/^[a-z_][a-z0-9_]*$/.test(col.name)) {
+                console.error(`[AUTO-REPAIR] Invalid column name: ${col.name}`);
+                continue;
+            }
+            
+            // ✅ SECURE: Validate column type (whitelist common SQLite types)
+            const ALLOWED_TYPES = ['TEXT', 'INTEGER', 'REAL', 'BLOB', 'NUMERIC', 'BOOLEAN', 'DATETIME', 'JSON'];
+            const baseType = col.type.split(' ')[0].toUpperCase();
+            if (!ALLOWED_TYPES.includes(baseType)) {
+                console.error(`[AUTO-REPAIR] Invalid column type: ${col.type}`);
+                continue;
+            }
+            
             if (!existing.includes(col.name)) {
                 const defaultClause = col.default !== undefined ? ` DEFAULT ${col.default}` : '';
+                // ✅ SECURE: All identifiers validated before interpolation
                 const alterSQL = `ALTER TABLE ${tableName} ADD COLUMN ${col.name} ${col.type}${defaultClause}`;
                 db.exec(alterSQL);
                 console.log(`${green}[AUTO-REPAIR]${reset} Added ${tableName}.${col.name}${defaultClause ? ` (default: ${col.default})` : ''}`);
@@ -823,10 +925,25 @@ function getServerSettings(guildId) {
     }
 }
 
-// Helper function
 function parseJSONSafe(str, fallback) {
+    // ✅ SECURE: Length check to prevent memory exhaustion
+    const MAX_JSON_LENGTH = 100000; // 100KB max
+    
+    if (!str) return fallback;
+    if (typeof str !== 'string') return fallback;
+    if (str.length > MAX_JSON_LENGTH) {
+        console.error(`[SECURITY] JSON string too long: ${str.length} chars (max ${MAX_JSON_LENGTH})`);
+        return fallback;
+    }
+    
+    // ✅ SECURE: Check for prototype pollution patterns
+    if (str.includes('__proto__') || str.includes('constructor') || str.includes('prototype')) {
+        console.error(`[SECURITY] Blocked JSON with prototype pollution pattern`);
+        return fallback;
+    }
+    
     try {
-        return str ? JSON.parse(str) : fallback;
+        return JSON.parse(str);
     } catch (e) {
         return fallback;
     }
@@ -904,8 +1021,19 @@ function updateServerSetting(guildId, setting, value) {
         ticketlimit: 'ticket_limit_per_user',
     };
     
+    // ✅ SECURE: Strict whitelist validation
+    if (!columnMap.hasOwnProperty(setting)) {
+        console.error(`[SETTINGS] Rejected invalid setting: ${setting}`);
+        return false;
+    }
+    
     const column = columnMap[setting];
-    if (!column) return false;
+    
+    // ✅ SECURE: Additional column name sanitization (defense in depth)
+    if (!/^[a-z_][a-z0-9_]*$/.test(column)) {
+        console.error(`[SETTINGS] Invalid column name pattern: ${column}`);
+        return false;
+    }
     
     try {
         db.prepare(`UPDATE server_settings SET ${column} = ?, updated_at = strftime('%s', 'now') WHERE guild_id = ?`).run(value, guildId);
@@ -940,6 +1068,19 @@ function getServerCommandSettings(guildId, commandName) {
 
 function updateServerCommandSetting(guildId, commandName, setting, value) {
     try {
+        // ✅ SECURE: Strict whitelist for setting columns
+        const ALLOWED_SETTINGS = ['enabled', 'allowed_roles', 'allowed_channels', 'cooldown_seconds'];
+        if (!ALLOWED_SETTINGS.includes(setting)) {
+            console.error(`[CMD SETTINGS] Rejected invalid setting: ${setting}`);
+            return false;
+        }
+        
+        // ✅ SECURE: Validate commandName (prevent injection via command name)
+        if (!commandName || typeof commandName !== 'string' || commandName.length > 50 || !/^[a-z0-9_-]+$/.test(commandName)) {
+            console.error(`[CMD SETTINGS] Invalid command name: ${commandName}`);
+            return false;
+        }
+        
         const existing = db.prepare(
             'SELECT * FROM server_command_settings WHERE guild_id = ? AND command_name = ?'
         ).get(guildId, commandName);
@@ -950,12 +1091,14 @@ function updateServerCommandSetting(guildId, commandName, setting, value) {
             ).run(guildId, commandName);
         }
         
+        // ✅ SECURE: Whitelisted column, still parameterized value
         db.prepare(
             `UPDATE server_command_settings SET ${setting} = ? WHERE guild_id = ? AND command_name = ?`
         ).run(value, guildId, commandName);
         
         return true;
     } catch (err) {
+        console.error(`[CMD SETTINGS] Error:`, err.message);
         return false;
     }
 }
@@ -982,6 +1125,21 @@ function checkCooldown(userId, commandName, cooldownMs = 3000) {
 }
 
 client.checkCooldown = checkCooldown;
+
+// ================= TIERED COOLDOWN SYSTEM (FIX #11) =================
+const COMMAND_COOLDOWN_TIERS = {
+    fast: { commands: ['ping', 'help', 'stats', 'whois', 'profile'], cooldown: 2000 },
+    normal: { commands: ['daily', 'shop', 'buy', 'credits', 'balance', 'rank', 'leaderboard', 'game', 'trivia'], cooldown: 5000 },
+    heavy: { commands: ['backup', 'restore', 'purge', 'massban', 'settings', 'serversettings'], cooldown: 30000 },
+    owner: { commands: ['system', 'owner', 'eval', 'exec', 'dbhealth'], cooldown: 1000 }
+};
+
+function getCommandCooldown(cmdName) {
+    for (const [tier, config] of Object.entries(COMMAND_COOLDOWN_TIERS)) {
+        if (config.commands.includes(cmdName)) return config.cooldown;
+    }
+    return 5000;
+}
 
 // ================= DATABASE HEALTH MONITOR =================
 function getDatabaseHealth() {
@@ -1332,7 +1490,6 @@ function getUserData(userId, guildId) {
     return dbUser;
 }
 
-// Queue a user update for batch writing, keyed by ${userId}:${guildId}
 function queueUserUpdate(userId, guildId, updateData) {
     const compositeKey = `${userId}:${guildId}`;
     let fullUserData = client.userDataCache.get(compositeKey);
@@ -1345,21 +1502,30 @@ function queueUserUpdate(userId, guildId, updateData) {
         cacheUserData(userId, guildId, fullUserData);
     }
     
-    const mergedData = {
-        ...fullUserData,
-        ...updateData,
+    // ✅ SECURE: Prevent prototype pollution - sanitize keys
+    const safeUpdateData = {};
+    for (const key of Object.keys(updateData)) {
+        // Reject prototype-polluting keys
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+            console.error(`[SECURITY] Blocked prototype pollution attempt: ${key}`);
+            continue;
+        }
+        safeUpdateData[key] = updateData[key];
+    }
+    
+    // ✅ SECURE: Use Object.assign with null prototype for safety
+    const mergedData = Object.assign(Object.create(null), fullUserData, safeUpdateData, {
         _queuedAt: Date.now(),
         _lastAccess: Date.now()
-    };
+    });
     
-    client.pendingUserUpdates.set(compositeKey, mergedData);
+        client.pendingUserUpdates.set(compositeKey, mergedData);
     cacheUserData(userId, guildId, mergedData);
     
     if (client.pendingUserUpdates.size >= WRITE_STRATEGY.BATCH_SIZE) {
         flushUserUpdates(0);
     }
 }
-
 // Flush pending user updates to database using INSERT OR REPLACE
 // Composite key (id, guild_id) is destructured from the Map key
 async function flushUserUpdates(retryCount = 0, retryId = null) {
@@ -1703,8 +1869,7 @@ if (bridgeStatus.configured) {
     console.log(`${yellow}[TELEGRAM]${reset} Bridge not configured - Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to .env`);
 }
 
-
-// ================= PLUGIN LOADER - NEURAL GRID EDITION v2.0 =================
+// ================= PLUGIN LOADER — SUPREME NEURAL GRID v3.0 =================
 client.loadPlugins = async () => {
     client.commands.clear();
     client.aliases.clear();
@@ -1712,17 +1877,26 @@ client.loadPlugins = async () => {
     const pluginPath = path.join(__dirname, 'plugins');
     if (!fs.existsSync(pluginPath)) fs.mkdirSync(pluginPath);
 
-    const pluginFiles = fs.readdirSync(pluginPath).filter(file => file.endsWith('.js') && file !== 'lydia.js' && file !== 'market-manager.js');
+    const pluginFiles = fs.readdirSync(pluginPath).filter(file => 
+        file.endsWith('.js') && file !== 'lydia.js' && file !== 'market-manager.js'
+    );
     
-    console.log(`\n${cyan}${bold}╔══════════════════════════════════════════════════════════════════╗${reset}`);
-    console.log(`${cyan}${bold}║${reset}  ${yellow} ARCHITECT CG-223 NEURAL SYNAPSE // MODULE SYNCHRONIZATION${reset}  ${cyan}${bold}║${reset}`);
-    console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
-    console.log(`${cyan}${bold}║${reset}  ${green} Establishing neural links to command modules...${reset}          ${cyan}${bold}║${reset}`);
-    console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
-    
+    // ═══════════════════════════════════════════════════════════════════
+    //  NEURAL GRID BOOT SEQUENCE — MODULE SYNCHRONIZATION
+    // ═══════════════════════════════════════════════════════════════════
+    const banner = `
+\x1b[38;5;39m    ╔══════════════════════════════════════════════════════════════════════╗
+\x1b[38;5;45m    ║  \x1b[1;33mARCHITECT CG-223\x1b[0m  \x1b[38;5;45m║  \x1b[1;32mNEURAL SYNAPSE // MODULE SYNCHRONIZATION\x1b[0m  \x1b[38;5;45m║
+\x1b[38;5;51m    ╠══════════════════════════════════════════════════════════════════════╣
+\x1b[38;5;51m    ║  \x1b[36mEstablishing neural links to command modules...\x1b[0m                      \x1b[38;5;51m║
+\x1b[38;5;45m    ╚══════════════════════════════════════════════════════════════════════╝\x1b[0m`;
+    console.log(banner);
+
     const loadedCommands = [];
     const failedCommands = [];
+    const moduleStats = { discord: 0, telegram: 0, total: 0, aliases: 0, slash: 0 };
     
+    // ── DISCORD MODULES ──
     for (const file of pluginFiles) {
         try {
             await sleep(50);
@@ -1741,18 +1915,26 @@ client.loadPlugins = async () => {
                     name: command.name, 
                     category, 
                     aliases: command.aliases?.length || 0,
-                    emoji: getCategoryEmoji(category),
-                    source: 'DISCORD'
+                    hasSlash: !!command.data,
+                    source: 'DISCORD',
+                    file
                 });
+                moduleStats.discord++;
+                moduleStats.total++;
+                moduleStats.aliases += command.aliases?.length || 0;
+                if (command.data) moduleStats.slash++;
             }
         } catch (error) { 
             failedCommands.push({ file, error: error.message, source: 'DISCORD' });
         }
     }
     
+    // ── TELEGRAM BRIDGE MODULES ──
     const telegramPath = path.join(__dirname, 'telegram');
     if (fs.existsSync(telegramPath)) {
-        const telegramFiles = fs.readdirSync(telegramPath).filter(file => file.endsWith('.js') && file !== 'bridge.js' && file !== 'bot.js');
+        const telegramFiles = fs.readdirSync(telegramPath).filter(file => 
+            file.endsWith('.js') && file !== 'bridge.js' && file !== 'bot.js'
+        );
         
         for (const file of telegramFiles) {
             try {
@@ -1772,9 +1954,14 @@ client.loadPlugins = async () => {
                         name: command.name, 
                         category, 
                         aliases: command.aliases?.length || 0,
-                        emoji: getCategoryEmoji(category),
-                        source: 'TELEGRAM'
+                        hasSlash: !!command.data,
+                        source: 'TELEGRAM',
+                        file: `telegram/${file}`
                     });
+                    moduleStats.telegram++;
+                    moduleStats.total++;
+                    moduleStats.aliases += command.aliases?.length || 0;
+                    if (command.data) moduleStats.slash++;
                 }
             } catch (error) { 
                 failedCommands.push({ file: `telegram/${file}`, error: error.message, source: 'TELEGRAM' });
@@ -1782,12 +1969,18 @@ client.loadPlugins = async () => {
         }
     }
     
+    // ═══════════════════════════════════════════════════════════════════
+    //  NEURAL GRID DISPLAY — CATEGORY MATRIX
+    // ═══════════════════════════════════════════════════════════════════
     loadedCommands.sort((a, b) => {
         if (a.category !== b.category) return a.category.localeCompare(b.category);
         return a.name.localeCompare(b.name);
     });
     
     const categories = [...new Set(loadedCommands.map(c => c.category))].sort();
+    
+    // Header separator
+    console.log(`\x1b[38;5;39m    ╔══════════════════════════════════════════════════════════════════════╗\x1b[0m`);
     
     for (const category of categories) {
         const categoryCommands = loadedCommands.filter(c => c.category === category);
@@ -1797,79 +1990,117 @@ client.loadPlugins = async () => {
         const catEmoji = getCategoryEmoji(category);
         const totalCmds = categoryCommands.length;
         const aliasCount = categoryCommands.reduce((sum, c) => sum + c.aliases, 0);
+        const slashCount = categoryCommands.filter(c => c.hasSlash).length;
         
-        console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
-        console.log(`${cyan}${bold}║${reset}  ${catEmoji} ${yellow}${category.padEnd(12)}${reset} ${green}${String(totalCmds).padStart(2)} commands${reset} ${blue}${String(aliasCount).padStart(2)} aliases${reset}                        ${cyan}${bold}║${reset}`);
-        console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
+        // Category header
+        console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
+        console.log(`\x1b[38;5;39m    ║\x1b[0m  ${catEmoji} \x1b[1;33m${category.padEnd(12)}\x1b[0m  \x1b[32m${String(totalCmds).padStart(2)} CMDS\x1b[0m  \x1b[34m${String(aliasCount).padStart(2)} ALIAS\x1b[0m  \x1b[35m${String(slashCount).padStart(2)} SLASH\x1b[0m  ${discordCmds.length > 0 ? '\x1b[36m💬\x1b[0m' : '  '} ${telegramCmds.length > 0 ? '\x1b[36m🌉\x1b[0m' : '  '}                    \x1b[38;5;39m║\x1b[0m`);
+        console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
         
+        // Discord modules
         if (discordCmds.length > 0) {
             const itemsPerRow = 3;
             for (let i = 0; i < discordCmds.length; i += itemsPerRow) {
                 const row = discordCmds.slice(i, i + itemsPerRow);
-                let rowText = `${cyan}${bold}║${reset}  ${magenta} 💬${reset} `;
+                let rowText = `\x1b[38;5;39m    ║\x1b[0m  \x1b[36m💬\x1b[0m `;
                 
                 row.forEach(cmd => {
                     const displayName = cmd.name.length > 11 ? cmd.name.substring(0, 9) + '..' : cmd.name.padEnd(11);
-                    const aliasInfo = cmd.aliases > 0 ? `${cmd.aliases}` : ' ';
-                    rowText += `${green}${displayName}${reset}${yellow}[${aliasInfo}]${reset} `.padEnd(23);
+                    const aliasInfo = cmd.aliases > 0 ? `\x1b[33m[${cmd.aliases}]\x1b[0m` : '   ';
+                    const slashBadge = cmd.hasSlash ? '\x1b[32m/\x1b[0m' : ' ';
+                    rowText += `\x1b[32m${displayName}\x1b[0m${aliasInfo}${slashBadge} `.padEnd(26);
                 });
                 
                 const emptySlots = itemsPerRow - row.length;
-                if (emptySlots > 0) rowText += ' '.repeat(emptySlots * 23);
+                if (emptySlots > 0) rowText += ' '.repeat(emptySlots * 26);
                 
-                console.log(`${rowText}${cyan}${bold}║${reset}`);
+                console.log(`${rowText}\x1b[38;5;39m║\x1b[0m`);
             }
         }
         
+        // Telegram modules
         if (telegramCmds.length > 0) {
             const itemsPerRow = 3;
             for (let i = 0; i < telegramCmds.length; i += itemsPerRow) {
                 const row = telegramCmds.slice(i, i + itemsPerRow);
-                let rowText = `${cyan}${bold}║${reset}  ${blue} 🌉${reset} `;
+                let rowText = `\x1b[38;5;39m    ║\x1b[0m  \x1b[36m🌉\x1b[0m `;
                 
                 row.forEach(cmd => {
                     const displayName = cmd.name.length > 11 ? cmd.name.substring(0, 9) + '..' : cmd.name.padEnd(11);
-                    const aliasInfo = cmd.aliases > 0 ? `${cmd.aliases}` : ' ';
-                    rowText += `${cyan}${displayName}${reset}${yellow}[${aliasInfo}]${reset} `.padEnd(23);
+                    const aliasInfo = cmd.aliases > 0 ? `\x1b[33m[${cmd.aliases}]\x1b[0m` : '   ';
+                    const slashBadge = cmd.hasSlash ? '\x1b[32m/\x1b[0m' : ' ';
+                    rowText += `\x1b[36m${displayName}\x1b[0m${aliasInfo}${slashBadge} `.padEnd(26);
                 });
                 
                 const emptySlots = itemsPerRow - row.length;
-                if (emptySlots > 0) rowText += ' '.repeat(emptySlots * 23);
+                if (emptySlots > 0) rowText += ' '.repeat(emptySlots * 26);
                 
-                console.log(`${rowText}${cyan}${bold}║${reset}`);
+                console.log(`${rowText}\x1b[38;5;39m║\x1b[0m`);
             }
         }
     }
     
-    console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
-    
-    const totalDiscord = loadedCommands.filter(c => c.source === 'DISCORD').length;
-    const totalTelegram = loadedCommands.filter(c => c.source === 'TELEGRAM').length;
-    const totalAliases = client.aliases.size;
-    
-    console.log(`${cyan}${bold}║${reset}  ${green}  DISCORD:${reset} ${totalDiscord}  ${blue} 🌉 TELEGRAM:${reset} ${totalTelegram}  ${yellow}  ALIASES:${reset} ${totalAliases}  ${magenta}  CATS:${reset} ${categories.length}  ${green}  SRVS:${reset} ${client.guilds.cache.size}  ${cyan}${bold}║${reset}`);
+    // ═══════════════════════════════════════════════════════════════════
+    //  NEURAL GRID FOOTER — STATISTICS MATRIX
+    // ═══════════════════════════════════════════════════════════════════
+    console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
+    console.log(`\x1b[38;5;39m    ║\x1b[0m  \x1b[32m💬 DISCORD:\x1b[0m ${String(moduleStats.discord).padEnd(4)}  \x1b[36m🌉 TELEGRAM:\x1b[0m ${String(moduleStats.telegram).padEnd(4)}  \x1b[33m🔗 ALIASES:\x1b[0m ${String(moduleStats.aliases).padEnd(4)}  \x1b[35m📊 CATEGORIES:\x1b[0m ${String(categories.length).padEnd(3)}  \x1b[32m⚡ SLASH:\x1b[0m ${String(moduleStats.slash).padEnd(3)}  \x1b[38;5;39m║\x1b[0m`);
+    console.log(`\x1b[38;5;39m    ║\x1b[0m  \x1b[32m✅ LOADED:\x1b[0m ${String(moduleStats.total).padEnd(5)}  \x1b[31m❌ FAILED:\x1b[0m ${String(failedCommands.length).padEnd(5)}  \x1b[34m📡 SERVERS:\x1b[0m ${String(client.guilds.cache.size).padEnd(5)}  \x1b[33m🧠 STATUS:\x1b[0m \x1b[5;32mONLINE\x1b[0m                    \x1b[38;5;39m║\x1b[0m`);
     
     if (failedCommands.length > 0) {
-        console.log(`${cyan}${bold}╠══════════════════════════════════════════════════════════════════╣${reset}`);
+        console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
         failedCommands.forEach(f => {
-            const sourceTag = f.source === 'TELEGRAM' ? `${blue} 🌉` : `${magenta} 💬`;
-            console.log(`${cyan}${bold}║${reset}  ${red} ❌ ${sourceTag} ${f.file}${reset} ${yellow}→${reset} ${f.error.substring(0, 35).padEnd(35)} ${cyan}${bold}║${reset}`);
+            const sourceTag = f.source === 'TELEGRAM' ? '\x1b[36m🌉' : '\x1b[32m💬';
+            const errTrunc = f.error.substring(0, 40).padEnd(40);
+            console.log(`\x1b[38;5;39m    ║\x1b[0m  \x1b[31m❌\x1b[0m ${sourceTag} ${f.file}\x1b[0m \x1b[33m→\x1b[0m ${errTrunc} \x1b[38;5;39m║\x1b[0m`);
         });
     }
     
-    console.log(`${cyan}${bold}╚══════════════════════════════════════════════════════════════════╝${reset}\n`);
+    console.log(`\x1b[38;5;39m    ╚══════════════════════════════════════════════════════════════════════╝\x1b[0m\n`);
+    
+    // Final status line
+    const statusColor = failedCommands.length === 0 ? '\x1b[32m' : '\x1b[33m';
+    console.log(`${statusColor}[NEURAL GRID]\x1b[0m ${moduleStats.total} modules synchronized • ${moduleStats.slash} slash-enabled • ${failedCommands.length > 0 ? failedCommands.length + ' failures' : 'All systems nominal'}`);
 };
 
 // ================= SMART PLUGIN EXECUTION WRAPPER =================
+const COMMAND_PARAM_MAP = {
+    'client': 'client',
+    'message': 'message', 
+    'msg': 'message',
+    'args': 'args',
+    'arg': 'args',
+    'db': 'db',
+    'database': 'db',
+    'usedCommand': 'usedCommand',
+    'cmd': 'usedCommand',
+    'command': 'usedCommand',
+    'serverSettings': 'serverSettings',
+    'settings': 'serverSettings',
+    'lang': 'lang',
+    'language': 'lang',
+    'guild': 'message.guild',
+    'interaction': 'interaction'
+};
+
 async function executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, lang = 'en') {
-    const runFunc = command.run;
-    const funcStr = runFunc.toString();
-    const params = funcStr.slice(funcStr.indexOf('(') + 1, funcStr.indexOf(')')).split(',').map(p => p.trim());
-    
+    // ✅ SECURE: Static parameter mapping instead of function string parsing
     const argsMap = { client, message, args, db, usedCommand, serverSettings, lang };
-    const filteredArgs = params.map(param => argsMap[param]).filter(arg => arg !== undefined);
     
-    return await runFunc(...filteredArgs);
+    // If command defines explicit param order, use it; otherwise use default
+    let paramOrder;
+    if (command.params && Array.isArray(command.params)) {
+        paramOrder = command.params;
+    } else if (command.run.length > 0) {
+        // Use Function.length as safe hint (no string parsing)
+        const defaultParams = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
+        paramOrder = defaultParams.slice(0, command.run.length);
+    } else {
+        paramOrder = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
+    }
+    
+    const filteredArgs = paramOrder.map(param => argsMap[param]).filter(arg => arg !== undefined);
+    return await command.run(...filteredArgs);
 }
 
 // ================= BOOT SEQUENCE =================
@@ -2326,13 +2557,13 @@ buildAliasLanguageMap();
         md += `### 6.4 Environment Configuration\n\n`;
         md += `| Variable | Status |\n`;
         md += `|----------|--------|\n`;
-        md += `| DISCORD_TOKEN | ${process.env.DISCORD_TOKEN ? '  CONFIGURED' : '  MISSING'} |\n`;
-        md += `| CLIENT_ID | ${process.env.CLIENT_ID ? '  CONFIGURED' : '  MISSING'} |\n`;
-        md += `| OWNER_ID | ${process.env.OWNER_ID ? '  CONFIGURED' : '  MISSING'} |\n`;
-        md += `| WELCOME_CHANNEL_ID | ${process.env.WELCOME_CHANNEL_ID ? '  CONFIGURED' : '  OPTIONAL'} |\n`;
-        md += `| OPENROUTER_API_KEY | ${process.env.OPENROUTER_API_KEY ? '  CONFIGURED' : '  OPTIONAL'} |\n`;
-        md += `| BRAVE_API_KEY | ${process.env.BRAVE_API_KEY ? '  CONFIGURED' : '  OPTIONAL'} |\n`;
-        md += `| TELEGRAM_BOT_TOKEN | ${process.env.TELEGRAM_BOT_TOKEN ? '  CONFIGURED' : '  OPTIONAL'} |\n\n`;
+        md += `| DISCORD_TOKEN | ${checkEnvStatus('DISCORD_TOKEN')} |\n`;
+        md += `| CLIENT_ID | ${checkEnvStatus('CLIENT_ID')} |\n`;
+        md += `| OWNER_ID | ${checkEnvStatus('OWNER_ID')} |\n`;
+        md += `| WELCOME_CHANNEL_ID | ${checkEnvStatus('WELCOME_CHANNEL_ID')} |\n`;
+        md += `| OPENROUTER_API_KEY | ${checkEnvStatus('OPENROUTER_API_KEY')} |\n`;
+        md += `| BRAVE_API_KEY | ${checkEnvStatus('BRAVE_API_KEY')} |\n`;
+        md += `| TELEGRAM_BOT_TOKEN | ${checkEnvStatus('TELEGRAM_BOT_TOKEN')} |\n\n`;
 
         // ================= FOOTER =================
         md += `## 7. ARCHITECT'S NOTES\n\n`;
@@ -2351,7 +2582,7 @@ buildAliasLanguageMap();
         md += `**Last System Boot:** ${dateStr} | **Report ID:** ${timestamp}\n`;
         md += `*ARCHITECT CG-223 Neural Changelog Engine v4.0 — 100% Automated*\n`;
         
-        fs.writeFileSync(path.join(dataDir, 'changelog.md'), md);
+        safeWriteFile('changelog.md', md);
         
         console.log(`${green}[CHANGELOG]${reset}   Registry v4.0 generated: ${totalCommands} commands, ${totalGuilds} servers, ${totalUsers.toLocaleString()} users`);
         console.log(`${green}[CHANGELOG]${reset}   Report saved to ./changelog.md (${((md.length / 1024).toFixed(1))} KB)`);
@@ -2426,7 +2657,7 @@ buildAliasLanguageMap();
         const rest = new REST({ version: '10' }).setToken(botToken);
 
         if (commands.length > 0) {
-            console.log(`${cyan}[SLASH]${reset} Syncing ${commands.length} commands with Discord...`);
+                        console.log(`${cyan}[SLASH]${reset} Syncing ${commands.length} commands with Discord...`);
             console.log(`${cyan}[SLASH]${reset} Using Client ID: ${clientId}`);
 
             const originalLog = console.log;
@@ -2441,12 +2672,44 @@ buildAliasLanguageMap();
             };
 
             try {
+// ================= GHOST COMMAND FILTER ENGAGED =================
+const cleanCommands = commands.filter(cmd => {
+    // Handle both raw JSON objects and Discord.js builders
+    let name, description;
+    
+    if (cmd && typeof cmd === 'object') {
+        // If it's already a plain JSON object (from .toJSON() or manual)
+        if (cmd.name && (cmd.description || cmd.type)) {
+            name = cmd.name;
+            description = cmd.description;
+        }
+        // If it's a SlashCommandBuilder or similar with .toJSON method
+        else if (typeof cmd.toJSON === 'function') {
+            try {
+                const json = cmd.toJSON();
+                name = json.name;
+                description = json.description;
+            } catch (e) {
+                return false;
+            }
+        }
+    }
+    
+    const isValid = !!name && (!!description || cmd.type === 1); // type 1 = CHAT_INPUT
+    if (!isValid) {
+        console.log(`\x1b[33m[SLASH FILTER]\x1b[0m ⚠️ Filtered out malformed command: ${name || 'Unknown Name'}`);
+    }
+    return isValid;
+});
+
                 await rest.put(
                     Routes.applicationCommands(clientId),
-                    { body: commands },
+                    { body: cleanCommands }, // Pushing verified payload only
                 );
+                // ================================================================
+                
                 console.log = originalLog;
-                console.log(`${green}[SLASH]${reset} Successfully registered ${commands.length} slash commands.`);
+                console.log(`${green}[SLASH]${reset} Successfully registered ${cleanCommands.length} global slash commands.`);
             } catch (error) {
                 console.log = originalLog;
                 console.error(`${red}[SLASH ERROR]${reset}`, error.message);
@@ -2493,31 +2756,23 @@ buildAliasLanguageMap();
         client.dailyReminderStats.lastReset = Date.now();
     }, 86400000);
 
-    // ================= DM REMINDER HEARTBEAT v4.0 (ANTI-SPAM + PER-USER SAFETY) =================
-    // Logic:
-    //   1. User claims daily → last_daily = now
-    //   2. 24h later (cooldown expires) → daily becomes available
-    //   3. If NOT claimed within 6h of becoming available → send DM reminder
-    //   4. Then remind every 6h max (not more than 4 reminders per 24h window)
-    //   5. One failed DM per user NEVER crashes the entire heartbeat cycle
-    //
-    // Anti-spam guards:
-    //   - 6-hour minimum gap between reminders (last_reminder < now - 21600)
-    //   - 15-user batch limit per tick (45s interval = max ~960 users/hour)
-    //   - 1.5s staggered delay between sends to avoid rate limits
-    //   - Per-user try/catch: one blocked DM skips to next user instantly
+// ================= DM REMINDER HEARTBEAT v4.0 (FIX #10 - WITH SEMAPHORE) =================
+let dmHeartbeatRunning = false;
 
-    setInterval(async () => {
+setInterval(async () => {
+    if (dmHeartbeatRunning) {
+        console.log(`${yellow}[DM HEARTBEAT]${reset} Previous tick still running, skipping`);
+        return;
+    }
+    
+    dmHeartbeatRunning = true;
+    const startTime = Date.now();
+    
+    try {
         const now = Math.floor(Date.now() / 1000);
-        const sixHoursAgo = now - (6 * 3600);   // 6-hour anti-spam window
-        const reminderCutoff = now - 86400;      // Must have claimed within last 48h to qualify
+        const sixHoursAgo = now - (6 * 3600);
+        const reminderCutoff = now - 86400;
 
-        // STRICT QUERY: Only remind users who:
-        //   (a) Have claimed at least once (last_daily > 0)
-        //   (b) Cooldown has expired (last_daily + 86400 <= now)
-        //   (c) Not reminded in the last 6 hours (last_reminder IS NULL OR < sixHoursAgo)
-        //   (d) Claimed recently enough to care (last_daily > reminderCutoff)
-        //   (e) Ordered by oldest daily first (most likely to forget)
         let dueUsers = [];
         try {
             dueUsers = db.prepare(`
@@ -2542,24 +2797,20 @@ buildAliasLanguageMap();
         for (const user of dueUsers) {
             processed++;
 
-            // === PER-USER SAFETY NET: one user failure never kills the cycle ===
             try {
                 const discordUser = await client.users.fetch(user.id).catch(() => null);
                 if (!discordUser) {
-                    // Ghost user — mark reminded so we don't retry indefinitely
                     db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?')
                       .run(now, user.id, user.guild_id);
                     continue;
                 }
 
-                // Resolve guild context for per-server settings
                 const guild = user.guild_id ? client.guilds.cache.get(user.guild_id) : null;
                 const settings = guild ? client.getServerSettings(user.guild_id) : null;
                 const prefix = settings?.prefix || '.';
                 const guildName = guild?.name || 'Neural Network';
                 const guildIcon = guild?.iconURL({ size: 128 }) || client.user.displayAvatarURL();
 
-                // Market state (per-server)
                 let marketMultiplier = 1.0, marketTrend = 'STEADY', trendEmoji = '📊';
                 try {
                     if (typeof getMarketState === 'function') {
@@ -2571,14 +2822,12 @@ buildAliasLanguageMap();
                     }
                 } catch (e) {}
 
-                // Reward calculation
                 const baseReward = 200;
                 const streakDays = user.streak_days || 0;
                 const streakBonus = Math.min(streakDays * 10, 500);
                 const levelBonus = Math.floor((user.level || 1) * 5);
                 const estimatedReward = Math.floor((baseReward + streakBonus + levelBonus) * marketMultiplier);
 
-                // Streak tier styling
                 let streakStatus, streakEmoji, streakColor;
                 if (streakDays >= 365)       { streakStatus = '  LEGENDARY'; streakEmoji = '👑'; streakColor = '#ffd700'; }
                 else if (streakDays >= 100)  { streakStatus = '  MYTHIC';    streakEmoji = '💎'; streakColor = '#e91e63'; }
@@ -2587,7 +2836,6 @@ buildAliasLanguageMap();
                 else if (streakDays >= 3)    { streakStatus = '  ACTIVE';    streakEmoji = '🔥'; streakColor = '#2ecc71'; }
                 else                         { streakStatus = '  INITIATE';  streakEmoji = '🌱'; streakColor = '#95a5a6'; }
 
-                // Time-based greeting
                 const bamakoHour = new Date().getUTCHours();
                 let greeting, greetingEmoji;
                 if (bamakoHour < 6)       { greeting = 'Good Night';   greetingEmoji = '🌙'; }
@@ -2596,7 +2844,6 @@ buildAliasLanguageMap();
                 else if (bamakoHour < 20) { greeting = 'Good Evening';  greetingEmoji = '🌆'; }
                 else                      { greeting = 'Good Night';     greetingEmoji = '🌙'; }
 
-                // How long has the daily been available?
                 const dailyReadyAt = user.last_daily + 86400;
                 const secondsSinceReady = now - dailyReadyAt;
                 const hoursSinceReady = Math.floor(secondsSinceReady / 3600);
@@ -2611,120 +2858,36 @@ buildAliasLanguageMap();
 
                 const supremeEmbed = new EmbedBuilder()
                     .setColor(streakColor)
-                    .setAuthor({
-                        name: `  ARCHITECT CG-223 • DAILY INJECTION READY`,
-                        iconURL: client.user.displayAvatarURL(),
-                        url: 'https://discord.com'
-                    })
+                    .setAuthor({ name: `  ARCHITECT CG-223 • DAILY INJECTION READY`, iconURL: client.user.displayAvatarURL() })
                     .setTitle(`${greetingEmoji} ${greeting}, ${discordUser.username}!`)
-                    .setDescription(
-                        `Your neural receptors have been replenished and are ready for a new injection.\n\n` +
-                        `> *Claim your daily rewards before the next reset cycle begins.*`
-                    )
+                    .setDescription(`Your neural receptors have been replenished and are ready for a new injection.\n\n> *Claim your daily rewards before the next reset cycle begins.*`)
                     .addFields(
-                        {
-                            name: '💰 **ESTIMATED REWARD**',
-                            value: [
-                                `\`\`\``,
-                                `Base Reward:    ${baseReward} 🪙`,
-                                `Streak Bonus:   +${streakBonus} 🪙`,
-                                `Level Bonus:    +${levelBonus} 🪙`,
-                                `Market (${trendEmoji}):  x${marketMultiplier.toFixed(2)}`,
-                                `━━━━━━━━━━━━━━━━━━━━`,
-                                `TOTAL:          ${estimatedReward} 🪙`,
-                                `\`\`\``
-                            ].join('\n'),
-                            inline: false
-                        },
-                        {
-                            name: `${streakEmoji} **STREAK: ${streakStatus}**`,
-                            value: [
-                                `📊 **Current Streak:** ${streakDays} day${streakDays !== 1 ? 's' : ''}`,
-                                `🏆 **Best Streak:** ${user.highest_streak || 0} days`,
-                                `🛡️ **Protections:** ${user.streak_protections || 0}`,
-                                `📅 **Total Claims:** ${user.total_dailies || 0}`
-                            ].join('\n'),
-                            inline: true
-                        },
-                        {
-                            name: '🎯 **YOUR PROFILE**',
-                            value: [
-                                `⭐ **Level:** ${user.level || 1}`,
-                                `💰 **Balance:** ${(user.credits || 0).toLocaleString()} 🪙`,
-                                `💬 **Messages:** ${(user.total_messages || 0).toLocaleString()}`
-                            ].join('\n'),
-                            inline: true
-                        },
-                        {
-                            name: '⏰ **STATUS**',
-                            value: [
-                                availabilityStatus,
-                                `\n📌 **Claim Command:**`,
-                                `\`${prefix}daily\``
-                            ].join('\n'),
-                            inline: false
-                        },
-                        {
-                            name: '🏛️ **WHERE TO CLAIM**',
-                            value: guild
-                                ? `**${guildName}**\nUse \`${prefix}daily\` in any channel!`
-                                : `Use \`${prefix}daily\` in any server!`,
-                            inline: false
-                        },
-                        {
-                            name: '💡 **STREAK MASTERY TIPS**',
-                            value: [
-                                `🛡️ **Shield:** \`${prefix}shop\` → Buy Streak Shield (2,000 🪙)`,
-                                `🔥 **7 Days:** Unlock +50% bonus credits`,
-                                `🛡️ **30 Days:** Exclusive Elite role`,
-                                `💎 **100 Days:** Premium rewards tier`,
-                                `👑 **365 Days:** Legendary status + custom role`
-                            ].join('\n'),
-                            inline: false
-                        }
+                        { name: '💰 **ESTIMATED REWARD**', value: `\`\`\`\nBase Reward:    ${baseReward} 🪙\nStreak Bonus:   +${streakBonus} 🪙\nLevel Bonus:    +${levelBonus} 🪙\nMarket (${trendEmoji}):  x${marketMultiplier.toFixed(2)}\n━━━━━━━━━━━━━━━━━━━━\nTOTAL:          ${estimatedReward} 🪙\n\`\`\``, inline: false },
+                        { name: `${streakEmoji} **STREAK: ${streakStatus}**`, value: `📊 **Current Streak:** ${streakDays} day${streakDays !== 1 ? 's' : ''}\n🏆 **Best Streak:** ${user.highest_streak || 0} days\n🛡️ **Protections:** ${user.streak_protections || 0}\n📅 **Total Claims:** ${user.total_dailies || 0}`, inline: true },
+                        { name: '🎯 **YOUR PROFILE**', value: `⭐ **Level:** ${user.level || 1}\n💰 **Balance:** ${(user.credits || 0).toLocaleString()} 🪙\n💬 **Messages:** ${(user.total_messages || 0).toLocaleString()}`, inline: true },
+                        { name: '⏰ **STATUS**', value: `${availabilityStatus}\n\n📌 **Claim Command:**\n\`${prefix}daily\``, inline: false },
+                        { name: '🏛️ **WHERE TO CLAIM**', value: guild ? `**${guildName}**\nUse \`${prefix}daily\` in any channel!` : `Use \`${prefix}daily\` in any server!`, inline: false },
+                        { name: '💡 **STREAK MASTERY TIPS**', value: `🛡️ **Shield:** \`${prefix}shop\` → Buy Streak Shield (2,000 🪙)\n🔥 **7 Days:** Unlock +50% bonus credits\n🛡️ **30 Days:** Exclusive Elite role\n💎 **100 Days:** Premium rewards tier\n👑 **365 Days:** Legendary status + custom role`, inline: false }
                     )
                     .setThumbnail(discordUser.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setFooter({
-                        text: `ARCHITECT CG-223 • Node: BAMAKO_223 🇲🇱 • ${guildName}`,
-                        iconURL: guildIcon
-                    })
+                    .setFooter({ text: `ARCHITECT CG-223 • Node: BAMAKO_223 🇲🇱 • ${guildName}`, iconURL: guildIcon })
                     .setTimestamp();
 
                 const actionRow = new ActionRowBuilder()
                     .addComponents(
-                        new ButtonBuilder()
-                            .setLabel(`Claim in ${guildName.substring(0, 20)}`)
-                            .setStyle(ButtonStyle.Link)
-                            .setURL(guild
-                                ? `https://discord.com/channels/${guild.id}/${settings?.dailyChannel || guild.systemChannelId || guild.id}`
-                                : 'https://discord.com')
-                            .setEmoji('🏛️'),
-                        new ButtonBuilder()
-                            .setCustomId(`dm_streak_info_${user.id}`)
-                            .setLabel('Streak Rewards')
-                            .setStyle(ButtonStyle.Primary)
-                            .setEmoji('🔥'),
-                        new ButtonBuilder()
-                            .setCustomId(`dm_shop_${user.id}`)
-                            .setLabel('Buy Shield')
-                            .setStyle(ButtonStyle.Success)
-                            .setEmoji('🛡️')
+                        new ButtonBuilder().setLabel(`Claim in ${guildName.substring(0, 20)}`).setStyle(ButtonStyle.Link).setURL(guild ? `https://discord.com/channels/${guild.id}/${settings?.dailyChannel || guild.systemChannelId || guild.id}` : 'https://discord.com').setEmoji('🏛️'),
+                        new ButtonBuilder().setCustomId(`dm_streak_info_${user.id}`).setLabel('Streak Rewards').setStyle(ButtonStyle.Primary).setEmoji('🔥'),
+                        new ButtonBuilder().setCustomId(`dm_shop_${user.id}`).setLabel('Buy Shield').setStyle(ButtonStyle.Success).setEmoji('🛡️')
                     );
 
-                // === ATTEMPT DM SEND (with isolated error handling) ===
-                let dmSent = false;
                 try {
                     await discordUser.send({ embeds: [supremeEmbed], components: [actionRow] });
-                    dmSent = true;
                     sent++;
-                    db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?')
-                      .run(now, user.id, user.guild_id);
+                    db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?').run(now, user.id, user.guild_id);
                     console.log(`${green}[DM REMINDER]${reset}   ${discordUser.username} @ ${guildName} • Streak: ${streakDays}d • +${estimatedReward} 🪙`);
                 } catch (dmErr) {
                     blocked++;
                     console.log(`${yellow}[DM BLOCKED]${reset} ${discordUser.username} — DMs disabled`);
-
-                    // === FALLBACK: post in server's daily/general channel ===
                     try {
                         const fallbackChannelId = settings?.dailyChannel || settings?.generalChannel || settings?.welcomeChannel;
                         if (fallbackChannelId && guild) {
@@ -2733,58 +2896,45 @@ buildAliasLanguageMap();
                                 const fallbackEmbed = new EmbedBuilder()
                                     .setColor('#f39c12')
                                     .setAuthor({ name: '🔔 DAILY REWARD AVAILABLE', iconURL: client.user.displayAvatarURL() })
-                                    .setDescription(
-                                        `<@${user.id}>, your daily injection is ready!\n\n` +
-                                        `> 💰 **Estimated Reward:** ${estimatedReward} 🪙\n` +
-                                        `> 🔥 **Streak:** ${streakDays} day${streakDays !== 1 ? 's' : ''}\n` +
-                                        `> 📊 **Market:** ${trendEmoji} ${marketTrend}\n\n` +
-                                        `📌 Use \`${prefix}daily\` to claim!\n\n` +
-                                        `⚠️ *Enable Direct Messages to receive premium reminders with detailed stats & quick-action buttons!*`
-                                    )
+                                    .setDescription(`<@${user.id}>, your daily injection is ready!\n\n> 💰 **Estimated Reward:** ${estimatedReward} 🪙\n> 🔥 **Streak:** ${streakDays} day${streakDays !== 1 ? 's' : ''}\n> 📊 **Market:** ${trendEmoji} ${marketTrend}\n\n📌 Use \`${prefix}daily\` to claim!\n\n⚠️ *Enable Direct Messages to receive premium reminders with detailed stats & quick-action buttons!*`)
                                     .setThumbnail(discordUser.displayAvatarURL({ dynamic: true, size: 128 }))
                                     .setFooter({ text: `${guildName} • Enable DMs for better experience` });
-
                                 await fallbackChannel.send({ content: `<@${user.id}>`, embeds: [fallbackEmbed] });
                                 fallback++;
-                                db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?')
-                                  .run(now, user.id, user.guild_id);
+                                db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?').run(now, user.id, user.guild_id);
                                 console.log(`${green}[FALLBACK]${reset}   Posted in #${fallbackChannel.name} for ${discordUser.username}`);
                             }
                         }
                     } catch (fallbackErr) {
-                        // Even fallback failed — still mark as reminded to prevent retry loops
-                        db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?')
-                          .run(now, user.id, user.guild_id);
+                        db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?').run(now, user.id, user.guild_id);
                     }
                 }
 
-                // Rate-limit friendly stagger (1.5s between users)
                 await new Promise(r => setTimeout(r, 1500));
 
             } catch (userErr) {
-                // === PER-USER SAFETY NET ===
-                // One user's data error / network hiccup NEVER crashes the heartbeat
                 errored++;
                 console.error(`${red}[DM REMINDER]${reset} Skipped user ${user.id} @ ${user.guild_id}: ${userErr.message}`);
                 try {
-                    db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?')
-                      .run(now, user.id, user.guild_id);
-                } catch (dbErr) {
-                    // Absolute last-resort: if even the DB update fails, log and move on
-                    console.error(`${red}[DM REMINDER]${reset} DB mark-failed for ${user.id}: ${dbErr.message}`);
-                }
+                    db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?').run(now, user.id, user.guild_id);
+                } catch (dbErr) {}
+            }
+            
+            // ✅ SECURE: Max execution time guard
+            if (Date.now() - startTime > 30000) {
+                console.log(`${yellow}[DM HEARTBEAT]${reset} Execution exceeded 30s, aborting`);
+                break;
             }
         }
 
-        // Tick summary
-        console.log(
-            `${cyan}[DM HEARTBEAT]${reset} Tick complete: ` +
-            `${processed} checked • ${green}${sent} DM sent${reset} • ` +
-            `${yellow}${blocked} blocked${reset} • ${green}${fallback} fallback${reset} • ` +
-            `${errored > 0 ? red : ''}${errored} errors${reset}`
-        );
+        console.log(`${cyan}[DM HEARTBEAT]${reset} Tick complete: ${processed} checked • ${green}${sent} DM sent${reset} • ${yellow}${blocked} blocked${reset} • ${green}${fallback} fallback${reset} • ${errored > 0 ? red : ''}${errored} errors${reset}`);
 
-    }, 45000);
+    } catch (err) {
+        console.error(`${red}[DM HEARTBEAT]${reset} Fatal error:`, err.message);
+    } finally {
+        dmHeartbeatRunning = false;
+    }
+}, 45000);
 
     console.log(`${green}[SUPREME DM]${reset} Neural Reminder Heartbeat v4.0 active (45s) • 6h anti-spam • Per-user safety • Fallback ready`);
 
@@ -2899,8 +3049,13 @@ buildAliasLanguageMap();
 });
 
 // ================= MESSAGE PROCESSING (PER-SERVER PARTITIONED) =================
-client.on(Events.MessageCreate, async (message) => {
+safeOn(Events.MessageCreate, async (message) => {
     if (!message || message.author?.bot || message.webhookId) return;
+    // ✅ SECURE: Message size limit (FIX #16)
+if (message.content && message.content.length > 4000) {
+    console.log(`${yellow}[MESSAGE]${reset} Blocked oversized message from ${message.author.tag}: ${message.content.length} chars`);
+    return;
+}
 
     // ================= ARCHITECT SHIELD v2.0 =================
     if (message.content.startsWith('.system') || message.content.startsWith('.owner')) {
@@ -3020,185 +3175,190 @@ client.on(Events.MessageCreate, async (message) => {
 
         // ================= LEVEL UP DETECTED =================
         if (newLevel > oldLevel) {
-    // Get the user's preferred language from the last command they typed
-    const userLang = client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
-    const isDM = !message.guild;
-    const guildName = isDM ? 'NEURAL NETWORK' : message.guild.name;
-    const guildIcon = isDM ? client.user.displayAvatarURL() : message.guild.iconURL();
+            const userLang = client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
+            const isDM = !message.guild;
+            const guildName = isDM ? 'NEURAL NETWORK' : message.guild.name;
+            const guildIcon = isDM ? client.user.displayAvatarURL() : message.guild.iconURL();
 
-    // ================= LEVEL BANNER SYSTEM (Milestone Images) =================
-    function getLevelBanner(level) {
-        const banners = {
-            5:  process.env.LEVEL_5_BANNER  || process.env.LEVEL5_BANNER  || null,
-            10: process.env.LEVEL_10_BANNER || process.env.LEVEL10_BANNER || null,
-            15: process.env.LEVEL_15_BANNER || process.env.LEVEL15_BANNER || null,
-            20: process.env.LEVEL_20_BANNER || process.env.LEVEL20_BANNER || null,
-            25: process.env.LEVEL_25_BANNER || process.env.LEVEL25_BANNER || null,
-            30: process.env.LEVEL_30_BANNER || process.env.LEVEL30_BANNER || null,
-            35: process.env.LEVEL_35_BANNER || process.env.LEVEL35_BANNER || null,
-        };
-        if (banners[level]) return banners[level].split('?')[0];
-        if (level > 35 && banners[35]) return banners[35].split('?')[0];
-        return null;
-    }
-    const levelBannerUrl = getLevelBanner(newLevel);
+            // ================= LEVEL BANNER SYSTEM (Milestone Images) =================
+            function getLevelBanner(level) {
+                const banners = {
+                    5:  process.env.LEVEL_5_BANNER  || process.env.LEVEL5_BANNER  || null,
+                    10: process.env.LEVEL_10_BANNER || process.env.LEVEL10_BANNER || null,
+                    15: process.env.LEVEL_15_BANNER || process.env.LEVEL15_BANNER || null,
+                    20: process.env.LEVEL_20_BANNER || process.env.LEVEL20_BANNER || null,
+                    25: process.env.LEVEL_25_BANNER || process.env.LEVEL25_BANNER || null,
+                    30: process.env.LEVEL_30_BANNER || process.env.LEVEL30_BANNER || null,
+                    35: process.env.LEVEL_35_BANNER || process.env.LEVEL35_BANNER || null,
+                };
+                if (banners[level]) return banners[level].split('?')[0];
+                if (level > 35 && banners[35]) return banners[35].split('?')[0];
+                return null;
+            }
+            const levelBannerUrl = getLevelBanner(newLevel);
 
-    // Determine tier name
-    let levelTier, levelTierColor;
-    if (newLevel <= 5)      { levelTier = userLang === 'fr' ? 'Initié Neural' : 'Neural Initiate'; levelTierColor = '#95a5a6'; }
-    else if (newLevel <= 10) { levelTier = userLang === 'fr' ? 'Chevalier Neural' : 'Neural Knight'; levelTierColor = '#9b59b6'; }
-    else if (newLevel <= 20) { levelTier = userLang === 'fr' ? 'Seigneur Synapse' : 'Synapse Lord'; levelTierColor = '#ffd700'; }
-    else                     { levelTier = userLang === 'fr' ? 'Architecte Suprême' : 'Supreme Architect'; levelTierColor = '#e74c3c'; }
+            // Determine tier name & color
+            let levelTier, levelTierColor, tierEmoji;
+            if (newLevel <= 5) {
+                levelTier = userLang === 'fr' ? 'Initié Neural' : 'Neural Initiate';
+                levelTierColor = '#95a5a6';
+                tierEmoji = '🌱';
+            } else if (newLevel <= 10) {
+                levelTier = userLang === 'fr' ? 'Chevalier Neural' : 'Neural Knight';
+                levelTierColor = '#9b59b6';
+                tierEmoji = '⚔️';
+            } else if (newLevel <= 20) {
+                levelTier = userLang === 'fr' ? 'Seigneur Synapse' : 'Synapse Lord';
+                levelTierColor = '#ffd700';
+                tierEmoji = '👑';
+            } else {
+                levelTier = userLang === 'fr' ? 'Architecte Suprême' : 'Supreme Architect';
+                levelTierColor = '#e74c3c';
+                tierEmoji = '🌟';
+            }
 
-    // UNIFIED TIER ASCENSION
-    if (message.guild) {
-        const result = await client.assignRole(
-            message.guild,
-            message.author.id,
-            `Tier: ${levelTier}`,
-            levelTierColor,
-            client.ROLE_SOURCES.LEVELING,
-            `Level ${newLevel} reached`
-        );
-        if (!result.ok) console.log(`[ROLE] Failed: ${result.why}`);
-    }
+            // UNIFIED TIER ASCENSION
+            let roleResult = null;
+            if (message.guild) {
+                roleResult = await client.assignRole(
+                    message.guild,
+                    message.author.id,
+                    `Tier: ${levelTier}`,
+                    levelTierColor,
+                    client.ROLE_SOURCES.LEVELING,
+                    `Level ${newLevel} reached`
+                );
+                if (!roleResult.ok) console.log(`[ROLE] Failed: ${roleResult.why}`);
+            }
 
-    // ================= RESPECT levelup_channel SETTING =================
-    const levelupChannelId = serverSettings.levelupChannel;
-    let targetChannel = message.channel;
-    if (levelupChannelId && message.guild) {
-        const configured = message.guild.channels.cache.get(levelupChannelId);
-        if (configured) targetChannel = configured;
-    }
+            // ================= RESPECT levelup_channel SETTING =================
+            const levelupChannelId = serverSettings.levelupChannel;
+            let targetChannel = message.channel;
+            if (levelupChannelId && message.guild) {
+                const configured = message.guild.channels.cache.get(levelupChannelId);
+                if (configured) targetChannel = configured;
+            }
 
-    // ================= CUSTOM levelup_message TEMPLATE =================
-    const customTemplate = serverSettings.levelupMessage;
-    if (customTemplate && customTemplate.trim()) {
-        const filled = customTemplate
-            .replace(/{user}/gi, `<@${userId}>`)
-            .replace(/{username}/gi, message.author.username)
-            .replace(/{level}/gi, String(newLevel))
-            .replace(/{xp}/gi, newXP.toLocaleString())
-            .replace(/{server}/gi, guildName)
-            .replace(/{tier}/gi, levelTier);
-        await targetChannel.send({ content: filled });
-    } else {
-        // No custom message — use tiered default system
-        if (newLevel <= 5) {
-            if (newLevel === 5 && levelBannerUrl) {
-                const embed = new EmbedBuilder()
+            // ================= CUSTOM levelup_message TEMPLATE =================
+            const customTemplate = serverSettings.levelupMessage;
+            if (customTemplate && customTemplate.trim()) {
+                const filled = customTemplate
+                    .replace(/{user}/gi, `<@${userId}>`)
+                    .replace(/{username}/gi, message.author.username)
+                    .replace(/{level}/gi, String(newLevel))
+                    .replace(/{xp}/gi, newXP.toLocaleString())
+                    .replace(/{server}/gi, guildName)
+                    .replace(/{tier}/gi, levelTier);
+                await targetChannel.send({ content: filled });
+            } else {
+                // ================= UNIFIED RICH LEVEL-UP EMBED =================
+                // XP progress calculation (square-root formula)
+                const currentLevelXP = Math.pow((newLevel - 1) / 0.1, 2);
+                const nextLevelXP = Math.pow(newLevel / 0.1, 2);
+                const xpProgress = newXP - currentLevelXP;
+                const xpNeeded = nextLevelXP - currentLevelXP;
+                const progressPercent = Math.min(100, Math.max(0, Math.floor((xpProgress / xpNeeded) * 100)));
+
+                // Visual progress bar (10 blocks)
+                const barLength = 10;
+                const filledBars = Math.floor((progressPercent / 100) * barLength);
+                const emptyBars = barLength - filledBars;
+                const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+
+                // Achievement badge
+                const achievementText = roleResult?.role?.name
+                    ? `${tierEmoji} **${roleResult.role.name}** ${userLang === 'fr' ? 'DÉBLOQUÉ !' : 'UNLOCKED!'}`
+                    : `${tierEmoji} **${levelTier.toUpperCase()}** ${userLang === 'fr' ? 'ATTEINT !' : 'REACHED!'}`;
+
+                // Next milestone
+                const milestones = [5, 10, 15, 20, 25, 30, 35, 50, 75, 100];
+                const nextMilestone = milestones.find(m => m > newLevel) || 100;
+                const milestoneText = userLang === 'fr'
+                    ? `🎯 Prochain jalon: **${nextMilestone}** — Continuez !`
+                    : `🎯 Next milestone: **${nextMilestone}** — Keep going!`;
+
+                // Build unified embed
+                const levelUpEmbed = new EmbedBuilder()
                     .setColor(levelTierColor)
-                    .setAuthor({ name: `🦅 ${levelTier.toUpperCase()}`, iconURL: message.author.displayAvatarURL() })
-                    .setTitle(userLang === 'fr' ? `🎉 NIVEAU ${newLevel} ATTEINT !` : `🎉 LEVEL ${newLevel} REACHED!`)
-                    .setImage(levelBannerUrl)
+                    .setAuthor({
+                        name: userLang === 'fr'
+                            ? `🎉 NIVEAU ${newLevel} ATTEINT !`
+                            : `🎉 LEVEL ${newLevel} REACHED!`,
+                        iconURL: message.author.displayAvatarURL()
+                    })
                     .setDescription(
-                        userLang === 'fr'
-                            ? `<@${userId}> a atteint le **Niveau ${newLevel}** !\n\n*Le lien neural se renforce...*`
-                            : `<@${userId}> reached **Level ${newLevel}**!\n\n*The neural link strengthens...*`
+                        `### ${achievementText}\n` +
+                        (userLang === 'fr'
+                            ? `**${message.author.username}** progresse légendairement !\nMonte au **Niveau ${newLevel}** ! 👑`
+                            : `**${message.author.username}**'s legendary progression!\nAscends to **Level ${newLevel}**! 👑`
+                        )
                     )
                     .addFields(
-                        { name: userLang === 'fr' ? '🏛️ Serveur' : '🏛️ Server', value: guildName, inline: true },
-                        { name: '📊 XP', value: `${newXP.toLocaleString()}`, inline: true },
-                        { name: userLang === 'fr' ? '💎 Titre' : '💎 Title', value: levelTier, inline: true }
+                        {
+                            name: userLang === 'fr' ? '📊 PROGRESSION' : '📊 PROGRESSION',
+                            value: [
+                                `\`\`\`ansi`,
+                                `\u001b[1;33mLEVEL ${newLevel - 1} → ${newLevel}\u001b[0m`,
+                                `${progressBar}`,
+                                `${progressPercent}%`,
+                                `XP: ${newXP.toLocaleString()}/${Math.floor(nextLevelXP).toLocaleString()}`,
+                                `\`\`\``
+                            ].join('\n'),
+                            inline: false
+                        },
+                        {
+                            name: userLang === 'fr' ? '🏆 RÉCOMPENSE' : '🏆 REWARD',
+                            value: milestoneText,
+                            inline: false
+                        },
+                        {
+                            name: userLang === 'fr' ? '🏛️ SERVEUR' : '🏛️ SERVER',
+                            value: guildName,
+                            inline: true
+                        },
+                        {
+                            name: '⚡ XP',
+                            value: `${newXP.toLocaleString()}`,
+                            inline: true
+                        },
+                        {
+                            name: userLang === 'fr' ? '💎 TITRE' : '💎 TITLE',
+                            value: levelTier,
+                            inline: true
+                        }
                     )
-                    .setFooter({ text: `${guildName} • v${client.version || '2.0'}`, iconURL: guildIcon })
+                    .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
+                    .setFooter({
+                        text: `${guildName} • Architect Engine v${client.version || '2.0'}`,
+                        iconURL: guildIcon
+                    })
                     .setTimestamp();
-                await targetChannel.send({ embeds: [embed] });
-            } else {
-                const messages = {
-                    en: [
-                        `🎉 **LEVEL UP!** <@${userId}> reached **Level ${newLevel}**! The neural link strengthens...`,
-                        `⚡ **ASCENSION!** <@${userId}> is now **Level ${newLevel}**! Keep forging those synapses!`,
-                        `🦅 **EAGLE RISING!** <@${userId}> ascended to **Level ${newLevel}** in ${guildName}!`
-                    ],
-                    fr: [
-                        `🎉 **NIVEAU SUPERIEUR !** <@${userId}> a atteint le **Niveau ${newLevel}** ! Le lien neural se renforce...`,
-                        `⚡ **ASCENSION !** <@${userId}> est maintenant **Niveau ${newLevel}** ! Continue de forger ces synapses !`,
-                        `🦅 **L'AIGLE S'ELEVE !** <@${userId}> a atteint le **Niveau ${newLevel}** dans ${guildName} !`
-                    ]
-                };
-                const msgList = messages[userLang] || messages.en;
-                await targetChannel.send({ content: msgList[Math.floor(Math.random() * msgList.length)] });
-            }
-        } else if (newLevel <= 10) {
-            const embed = new EmbedBuilder()
-                .setColor(levelTierColor)
-                .setAuthor({ name: userLang === 'fr' ? `🌟 ${levelTier.toUpperCase()}` : `🌟 ${levelTier.toUpperCase()}`, iconURL: message.author.displayAvatarURL() })
-                .setDescription(
-                    userLang === 'fr'
-                        ? `<@${userId}> a atteint le **Niveau ${newLevel}** !\n\n*Le reseau neuronal reconnait votre devouement.*`
-                        : `<@${userId}> reached **Level ${newLevel}**!\n\n*The neural network acknowledges your dedication.*`
-                )
-                .addFields(
-                    { name: userLang === 'fr' ? '🏛️ Serveur' : '🏛️ Server', value: guildName, inline: true },
-                    { name: '📊 XP', value: `${newXP.toLocaleString()}`, inline: true },
-                    { name: userLang === 'fr' ? '💎 TITRE' : '💎 TITLE', value: levelTier, inline: true }
-                )
-                .setFooter({ text: `${guildName} • v${client.version || '2.0'}`, iconURL: guildIcon })
-                .setTimestamp();
-            if (levelBannerUrl) embed.setImage(levelBannerUrl);
-            await targetChannel.send({ embeds: [embed] });
-        } else if (newLevel <= 20) {
-            const tierNames = {
-                en: ['Neural Knight', 'Synapse Lord', 'Digital Sovereign'],
-                fr: ['Chevalier Neural', 'Seigneur Synapse', 'Souverain Numerique']
-            };
-            const tier = tierNames[userLang][Math.floor(Math.random() * tierNames[userLang].length)];
-            const embed = new EmbedBuilder()
-                .setColor('#ffd700')
-                .setAuthor({ name: userLang === 'fr' ? '👑 ASCENSION LEGENDAIRE' : '👑 LEGENDARY ASCENSION', iconURL: message.author.displayAvatarURL() })
-                .setTitle(`**${message.author.username}** — ${tier}`)
-                .setDescription(
-                    `\`\`\`ansi\n` +
-                    `\u001b[1;33m${userLang === 'fr' ? `Niveau ${newLevel} atteint dans ${guildName}` : `Level ${newLevel} achieved in ${guildName}`}\u001b[0m\n\n` +
-                    `\u001b[1;36m${userLang === 'fr' ? 'Les circuits neuronaux vibrent de votre puissance.' : 'The neural circuits hum with your power.'}\u001b[0m\n` +
-                    `\`\`\``
-                )
-                .addFields(
-                    { name: userLang === 'fr' ? '⚡ PUISSANCE' : '⚡ POWER', value: `${newXP.toLocaleString()} XP`, inline: true },
-                    { name: userLang === 'fr' ? '🏛️ ROYAUME' : '🏛️ REALM', value: guildName, inline: true },
-                    { name: userLang === 'fr' ? '💎 TITRE' : '💎 TITLE', value: tier, inline: true }
-                )
-                .setFooter({ text: `${guildName} • v${client.version || '2.0'}`, iconURL: guildIcon })
-                .setTimestamp();
-            if (levelBannerUrl) embed.setImage(levelBannerUrl);
-            await targetChannel.send({ embeds: [embed] });
-        } else {
-            const embed = new EmbedBuilder()
-                .setColor('#e74c3c')
-                .setAuthor({ name: userLang === 'fr' ? '🌟 ASCENSION MYTHIQUE' : '🌟 MYTHIC ASCENSION', iconURL: message.author.displayAvatarURL() })
-                .setTitle(userLang === 'fr' ? `🏆 ${message.author.username} — L'ARCHITECTE SUPREME` : `🏆 ${message.author.username} — THE SUPREME ARCHITECT`)
-                .setDescription(
-                    `\`\`\`ansi\n` +
-                    `\u001b[1;35m${"═".repeat(40)}\u001b[0m\n` +
-                    `\u001b[1;33m${userLang === 'fr' ? `NIVEAU ${newLevel} !!!` : `LEVEL ${newLevel} !!!`}\u001b[0m\n` +
-                    `\u001b[1;35m${"═".repeat(40)}\u001b[0m\n\n` +
-                    `\u001b[1;36m${userLang === 'fr' ? 'Les legendes parlent de cet agent depuis des generations.' : 'Legends speak of this agent across generations.'}\u001b[0m\n` +
-                    `\u001b[1;36m${userLang === 'fr' ? `Le noud BAMAKO_223 reconnait ${message.author.username} comme veritable pilier du reseau.` : `The BAMAKO_223 node recognizes ${message.author.username} as a true pillar of the network.`}\u001b[0m\n` +
-                    `\`\`\``
-                )
-                .addFields(
-                    { name: userLang === 'fr' ? '👑 RANG MYTHIQUE' : '👑 MYTHIC RANK', value: levelTier, inline: true },
-                    { name: '⚡ XP', value: `${newXP.toLocaleString()}`, inline: true },
-                    { name: userLang === 'fr' ? '🏛️ ROYAUME' : '🏛️ REALM', value: guildName, inline: true }
-                )
-                .setFooter({ text: `${guildName} • v${client.version || '2.0'}`, iconURL: guildIcon })
-                .setTimestamp();
-            if (levelBannerUrl) embed.setImage(levelBannerUrl);
-            await targetChannel.send({ embeds: [embed] });
-        }
-    }
 
-    // ================= SYNC TO GLOBAL ECONOMY =================
-    try {
-        const crossEconomy = require('./plugins/cross-economy.js');
-        crossEconomy.setupDB(db);
-        crossEconomy.syncLevelUp(db, userId, message.author.username, newLevel, newXP);
-        crossEconomy.syncServerStats(db, guildId, guildName, message.guild?.memberCount || 0, 0);
-        if (client.botStats) crossEconomy.addGlobalCredits(db, userId, message.author.username, 50, 'levelup', guildId, guildName);
-    } catch (e) { /* global economy optional */ }
-       console.log(`[LEVEL UP] ${message.author.tag} → Level ${newLevel} | XP: ${newXP} | Server: ${guildName} | Channel: ${targetChannel.name || 'DM'}`);
-      }
+                // Apply milestone banner if env URL exists
+                if (levelBannerUrl) {
+                    levelUpEmbed.setImage(levelBannerUrl);
+                }
+
+                // SEND WITH PING + EMBED
+                await targetChannel.send({
+                    content: userLang === 'fr'
+                        ? `🎉 **NIVEAU SUPÉRIEUR !** <@${message.author.id}>`
+                        : `🎉 **LEVEL UP!** <@${message.author.id}>`,
+                    embeds: [levelUpEmbed]
+                });
+            }
+
+            // ================= SYNC TO GLOBAL ECONOMY =================
+            try {
+                const crossEconomy = require('./plugins/cross-economy.js');
+                crossEconomy.setupDB(db);
+                crossEconomy.syncLevelUp(db, userId, message.author.username, newLevel, newXP);
+                crossEconomy.syncServerStats(db, guildId, guildName, message.guild?.memberCount || 0, 0);
+                if (client.botStats) crossEconomy.addGlobalCredits(db, userId, message.author.username, 50, 'levelup', guildId, guildName);
+            } catch (e) { /* global economy optional */ }
+
+            console.log(`[LEVEL UP] ${message.author.tag} → Level ${newLevel} | XP: ${newXP} | Server: ${guildName} | Channel: ${targetChannel.name || 'DM'}`);
+        }
     }
 
     const effectivePrefix = serverSettings.prefix || PREFIX;
@@ -3256,10 +3416,15 @@ client.on(Events.MessageCreate, async (message) => {
     if (!client.userLastLang) client.userLastLang = new Map();
     client.userLastLang.set(message.author.id, commandLang);
 
-    const cooldownCheck = checkCooldown(message.author.id, cmdName, 2000);
-    if (cooldownCheck.blocked) {
-        return message.reply(`⏳ Slow down! Try again in ${cooldownCheck.remaining}s`).catch(() => {});
-    }
+    const cooldownMs = getCommandCooldown(cmdName);
+const cooldownCheck = checkCooldown(message.author.id, cmdName, cooldownMs);
+if (cooldownCheck.blocked) {
+    const lang = commandLang || 'en';
+    const msg = lang === 'fr' 
+        ? `⏳ Ralentissez ! Réessayez dans ${cooldownCheck.remaining}s`
+        : `⏳ Slow down! Try again in ${cooldownCheck.remaining}s`;
+    return message.reply(msg).catch(() => {});
+}
     
     try {
         await executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, commandLang);
@@ -3280,7 +3445,7 @@ client.on(Events.MessageCreate, async (message) => {
 });
 
 // ================= INTERACTION HANDLER =================
-client.on(Events.InteractionCreate, async (interaction) => {
+safeOn(Events.InteractionCreate, async (interaction) => {
     // SLASH COMMAND EXECUTION
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -3639,9 +3804,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
-    // ================= TICKET SYSTEM COMPONENTS (Select Menu + Buttons) =================
-    const isTicketComponent = (interaction.isButton() && interaction.customId.startsWith('ticket_')) ||
-        (interaction.isStringSelectMenu() && interaction.customId === 'ticket_create_select');
+    // ================= GAME CENTER HUB BUTTONS =================
+    if (interaction.isButton() && interaction.customId.startsWith('game_')) {
+        try {
+            const gameModule = require('./plugins/game.js');
+            if (gameModule.handleComponent) {
+                const handled = await gameModule.handleComponent(interaction, client);
+                if (handled) return;
+            }
+        } catch (err) {
+            console.error(`[GAME HUB BUTTON]`, err.message);
+        }
+        return;
+    }
+
+// ================= TICKET SYSTEM COMPONENTS (Select Menu + Buttons + Modals) =================
+const isTicketComponent = (interaction.isButton() && interaction.customId.startsWith('ticket_')) ||
+(interaction.isStringSelectMenu() && (
+    interaction.customId === 'ticket_lang_select' || 
+    interaction.customId === 'ticket_category_select'
+)) || 
+(interaction.isModalSubmit() && interaction.customId.startsWith('ticket_issue_modal_'));
 
     if (isTicketComponent) {
         try {
@@ -3731,59 +3914,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         return;
     }
-
-    // ================= PREMIUM UPGRADE BUTTON (from status embed) =================
-    if (interaction.isButton() && interaction.customId === 'premium_upgrade_btn') {
-        try {
-            await interaction.deferReply({ ephemeral: true });
-            const userId = interaction.user.id;
-            const username = interaction.user.username;
-            const avatarURL = interaction.user.displayAvatarURL({ dynamic: true });
-
-            const premiumData = client.db.prepare('SELECT premium_active FROM user_premium WHERE user_id = ?').get(userId);
-            if (premiumData?.premium_active === 1) {
-                return interaction.editReply({ content: '✅ You are already a premium member! Use `/premium status` to view your subscription.', ephemeral: true });
-            }
-
-            const DODO_PRODUCT_URL = process.env.DODO_PRODUCT_URL || 'https://app.dodopayments.com/buy/p_mock12345';
-            const checkoutUrl = DODO_PRODUCT_URL + '?metadata[discord_user_id]=' + userId;
-
-            const upgradeEmbed = new EmbedBuilder()
-                .setColor('#5865f2')
-                .setAuthor({ name: `${username} • Upgrade to Premium`, iconURL: avatarURL })
-                .setTitle('🦅 ARCHITECT CG-223 • Premium')
-                .setDescription('**Unlock the full power of Archon Engine.**\nOne subscription. Every server you manage. Instant activation.')
-                .addFields(
-                    { name: '🧠 Uncapped Lydia AI', value: 'Continuous memory matrices. Your AI remembers everything.', inline: false },
-                    { name: '📡 Global Log Syncing', value: 'Block a threat in one server — defenses deploy instantly across **all** your servers.', inline: false },
-                    { name: '📊 HTML Transcripts', value: 'Auto-compiled ticket archives saved to your domain.', inline: false },
-                    { name: '⚡ Priority Processing', value: 'Your commands jump the queue. Zero latency.', inline: false },
-                    { name: '🏷️ Premium Badge', value: 'Exclusive recognition across every server.', inline: false },
-                    { name: '🔒 Secure Checkout', value: 'Powered by **Dodo Payments**. Enterprise encryption.', inline: false }
-                )
-                .setFooter({ text: 'Archon Engine CG-223 • Dodo Payments', iconURL: client.user?.displayAvatarURL() || null })
-                .setTimestamp();
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setLabel('Unlock Premium')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(checkoutUrl)
-                    .setEmoji('💎')
-            );
-
-            await interaction.editReply({ embeds: [upgradeEmbed], components: [row] });
-        } catch (err) {
-            console.error('[PREMIUM BUTTON ERROR]', err);
-            await interaction.editReply({ content: '❌ Something went wrong. Please use `/premium upgrade` instead.', ephemeral: true });
-        }
-        return;
-    }
-
 });
 
 // ================= SUPREME NEURAL WELCOME MATRIX v5.0 =================
-client.on(Events.GuildMemberAdd, async (member) => {
+safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     
     if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
@@ -3949,14 +4083,14 @@ client.on(Events.GuildMemberAdd, async (member) => {
     
     const buttons = [];
 
-    if (rulesChannelId) {
-        buttons.push(
-            new ButtonBuilder()
-                .setLabel(lang === 'fr' ? '📜 REGLES' : '📜 RULES')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://discord.com/channels/${member.guild.id}/${rulesChannelId}`)
-        );
-    }
+    if (rulesChannelId && validateSnowflake(rulesChannelId)) {
+    buttons.push(
+        new ButtonBuilder()
+            .setLabel(lang === 'fr' ? '📜 REGLES' : '📜 RULES')
+            .setStyle(ButtonStyle.Link)
+            .setURL(`https://discord.com/channels/${member.guild.id}/${rulesChannelId}`)
+    );
+}
 
     if (generalChannelId) {
         buttons.push(
@@ -4114,7 +4248,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
 });
 
 // ================= SUPREME NEURAL DEPARTURE MATRIX v4.0 =================
-client.on(Events.GuildMemberRemove, async (member) => {
+safeOn(Events.GuildMemberRemove, async (member) => {
     if (member.user.bot) return;
     
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
@@ -4341,30 +4475,6 @@ if (process.send) {
 // ================= INSTANT PM2 SPLASH =================
 displayPM2Banner(0);
 
-// ================= RENDER HEALTH SERVER (keeps free tier awake) =================
-const http = require('http');
-const renderPort = process.env.PORT || process.env.WEB_PORT || 3000;
-const healthServer = http.createServer((req, res) => {
-    if (req.url === '/health') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-            status: 'online',
-            service: 'architect-cg223',
-            version: client.version || '2.0.0',
-            servers: client.guilds?.cache?.size || 0,
-            uptime: process.uptime()
-        }));
-    } else {
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('ARCHITECT CG-223 // BAMAKO_223 🇲🇱');
-    }
-});
-healthServer.listen(renderPort, () => {
-    console.log(`${green}[RENDER]${reset} Health server bound to port ${renderPort}`);
-}).on('error', (err) => {
-    console.log(`${yellow}[RENDER]${reset} Health server port ${renderPort} unavailable: ${err.message}`);
-});
-
 // ================= LOGIN =================
 if (!process.env.DISCORD_TOKEN) {
     console.error('\x1b[31m[FATAL]\x1b[0m No Discord token provided! Check your .env file.');
@@ -4372,257 +4482,77 @@ if (!process.env.DISCORD_TOKEN) {
 }
 
 // ============================================================
-// WEB SERVER — Dodo Payments Billing Gateway (DISABLED)
-// ============================================================
-/*
-function startWebServer(startPort = 3000, maxAttempts = 10) {
-    const express = require('express');
-    const app = express();
+// 📊 LIVE STATS SYNC ============================================================
+// Only sync if explicitly configured (avoids unnecessary network calls on Bot-Hosting.net)
+if (process.env.STATS_SYNC_URL) {
+    const STATS_SYNC_URL = process.env.STATS_SYNC_URL;
+    const STATS_SYNC_SECRET = process.env.JWT_SECRET;
 
-    app.set('trust proxy', 1);
-    app.use(express.json({ limit: '64kb' }));
-    app.use(express.urlencoded({ extended: true, limit: '64kb' }));
-    app.set('views', path.join(__dirname, 'views'));
-    app.set('view engine', 'ejs');
+    let syncCount = 0;
+    let lastLogTime = Date.now();
 
-    try {
-        const webhookModule = require('./webhook.js');
-        if (webhookModule.initializeDatabase) {
-            webhookModule.initializeDatabase(db);
-            console.log('[INDEX] ✅ Webhook using shared database.');
-        }
-        app.use('/', webhookModule);
-        console.log('[INDEX] ✅ Dodo webhook router mounted at /api/v1/billing/webhook');
-    } catch (err) {
-        console.error('[INDEX] ❌ Failed to mount webhook router:', err.message);
-    }
+    async function pushLiveStats() {
+        try {
+            const https = require('https');
+            const stats = JSON.stringify({
+                servers: global.client.guilds.cache.size.toLocaleString(),
+                users: global.client.guilds.cache.reduce((total, guild) => total + guild.memberCount, 0).toLocaleString(),
+                ping: Math.round(global.client.ws.ping),
+                secret: STATS_SYNC_SECRET
+            });
 
-    app.get('/health', (req, res) => {
-        res.status(200).json({ status: 'operational', service: 'archon-billing-gateway', timestamp: Math.floor(Date.now() / 1000) });
-    });
-
-    let currentPort = startPort;
-    let attempts = 0;
-
-    function tryListen() {
-        if (attempts >= maxAttempts) {
-            console.error(`[WEB] ❌ Failed to start web server after ${maxAttempts} attempts`);
-            return null;
-        }
-        const server = app.listen(currentPort, () => {
-            console.log(`[WEB] 🌐 Server bound to port ${currentPort} — Dodo webhook live.`);
-        });
-        server.on('error', (err) => {
-            if (err.code === 'EADDRINUSE') {
-                console.log(`[WEB] ⚠️ Port ${currentPort} occupied, trying ${currentPort + 1}...`);
-                currentPort++;
-                attempts++;
-                server.close();
-                tryListen();
-            } else {
-                console.error(`[WEB] ❌ Fatal server error:`, err.message);
-            }
-        });
-        return server;
-    }
-
-    const serverInstance = tryListen();
-    return { app, server: serverInstance, port: currentPort };
-}
-
-// ── Boot Web Server (non-blocking, before Discord login) ──
-const webServer = startWebServer(process.env.WEB_PORT ? parseInt(process.env.WEB_PORT, 10) : 3000);
-if (webServer && webServer.server) {
-    client.webServerInstance = webServer.server;
-}
-*/
-
-// ============================================================
-// 📬 PREMIUM NOTIFICATION WORKER — Polls user_premium table
-//    Detects newly granted premium users and sends celebratory DM
-// ============================================================
-const NOTIFICATION_POLL_INTERVAL = 5000; // 5 seconds — near-instant to users
-
-// Track which users we've already notified to prevent duplicate DMs
-const notifiedUsers = new Set();
-
-async function pollPremiumNotifications(db) {
-    try {
-        // Fetch all active premium users who haven't been flagged as notified
-        const newPremiumUsers = db.prepare(`
-            SELECT user_id, premium_since, tier
-            FROM user_premium
-            WHERE premium_active = 1
-              AND notified = 0
-            LIMIT 10
-        `).all();
-
-        for (const row of newPremiumUsers) {
-            const { user_id, premium_since, tier } = row;
-
-            // Skip if we've already queued this user in the current session
-            if (notifiedUsers.has(user_id)) continue;
-            notifiedUsers.add(user_id);
-
-            try {
-                // Fetch the Discord user
-                const user = await client.users.fetch(user_id).catch(() => null);
-                if (!user) {
-                    console.warn(`[PREMIUM NOTIFY] ⚠️ Could not fetch user ${user_id} — they may not share a server with the bot.`);
-                    // Still mark as notified so we don't retry forever
-                    db.prepare('UPDATE user_premium SET notified = 1 WHERE user_id = ?').run(user_id);
-                    continue;
+            const url = new URL(STATS_SYNC_URL);
+            const options = {
+                hostname: url.hostname,
+                port: 443,
+                path: url.pathname,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(stats)
                 }
+            };
 
-                // Build the celebratory embed
-                const activationDate = new Date(premium_since * 1000).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
+            const req = https.request(options, (res) => {
+                syncCount++;
+            });
 
-                const premiumEmbed = {
-                    color: 0x00fbff,
-                    title: '🦅 Welcome to Archon Premium!',
-                    description: `**${user.username}**, your premium tier is now **active** across every server you manage.\n\nAll advanced modules have been unlocked and are ready for deployment.`,
-                    fields: [
-                        {
-                            name: '📅 Activated',
-                            value: activationDate,
-                            inline: true
-                        },
-                        {
-                            name: '💎 Tier',
-                            value: tier.replace(/_/g, ' ').toUpperCase(),
-                            inline: true
-                        },
-                        {
-                            name: '🧠 Unlocked Modules',
-                            value:
-                                '• Uncapped Lydia AI Memory\n' +
-                                '• Global Multi-Server Log Syncing\n' +
-                                '• HTML Ticket Transcript Mirrors\n' +
-                                '• Priority Processing Threads',
-                            inline: false
-                        }
-                    ],
-                    footer: {
-                        text: 'Archon Engine CG-223 • Thank you for your support!'
-                    },
-                    timestamp: new Date().toISOString()
-                };
+            req.on('error', (err) => {
+                const now = Date.now();
+                if (now - lastLogTime >= 60000) {
+                    console.error(`\x1b[31m[STATS SYNC ERROR]\x1b[0m ${err.message}`);
+                    lastLogTime = now;
+                }
+            });
 
-                // Send the DM
-                await user.send({ embeds: [premiumEmbed] }).catch(err => {
-                    console.warn(`[PREMIUM NOTIFY] ⚠️ Could not DM user ${user_id} — DMs may be closed.`);
-                });
-
-                // Mark as notified in database
-                db.prepare('UPDATE user_premium SET notified = 1 WHERE user_id = ?').run(user_id);
-
-                console.log(`[PREMIUM NOTIFY] 🎉 Welcome DM sent to ${user.username} (${user_id}) — Tier: ${tier}`);
-            } catch (err) {
-                console.error(`[PREMIUM NOTIFY] ❌ Error processing user ${user_id}:`, err.message);
-            }
-        }
-    } catch (err) {
-        console.error('[PREMIUM NOTIFY] ❌ Polling error:', err.message);
+            req.write(stats);
+            req.end();
+        } catch (err) {}
     }
+
+    pushLiveStats();
+    setInterval(pushLiveStats, 30 * 1000);
+    console.log('\x1b[36m[STATS SYNC]\x1b[0m Live stats sync active');
+} else {
+    console.log('\x1b[33m[STATS SYNC]\x1b[0m Skipped — add STATS_SYNC_URL to .env to enable');
 }
 
-// Start the polling loop once the bot is ready
-/*
-client.once('ready', () => {
-    console.log('[PREMIUM NOTIFY] 📬 Notification worker armed — polling every 5s.');
-
-    // Ensure the notified column exists (self-healing)
-    try {
-        const columnCheck = client.db.prepare(
-            `SELECT COUNT(*) AS count FROM pragma_table_info('user_premium') WHERE name = 'notified'`
-        ).get();
-        if (columnCheck && columnCheck.count === 0) {
-            client.db.exec('ALTER TABLE user_premium ADD COLUMN notified INTEGER DEFAULT 0');
-            console.log('[PREMIUM NOTIFY] ✅ Added "notified" column to user_premium.');
-        }
-    } catch (err) {
-        if (!err.message.includes('duplicate column')) {
-            console.warn('[PREMIUM NOTIFY] ⚠️ Could not verify/add notified column:', err.message);
-        }
-    }
-
-    // Start the interval
-    setInterval(() => pollPremiumNotifications(client.db), NOTIFICATION_POLL_INTERVAL);
-});
-*/
-
 // ============================================================
-// 📊 LIVE STATS SYNC — Pushes bot stats to Render every 30 seconds
+// 🔄 KEEP-ALIVE — Only active if KEEPALIVE_URL is set (prevents unnecessary pings on Bot-Hosting.net)
 // ============================================================
-const STATS_SYNC_URL = process.env.STATS_SYNC_URL || 'https://archon-engine-api.onrender.com/api/stats/sync';
-const STATS_SYNC_SECRET = process.env.JWT_SECRET;
+if (process.env.KEEPALIVE_URL) {
+    const KEEPALIVE_URL = process.env.KEEPALIVE_URL;
+    const KEEPALIVE_INTERVAL = 14 * 60 * 1000; // 14 minutes
 
-let syncCount = 0;
-let lastLogTime = Date.now();
-
-async function pushLiveStats() {
-    try {
+    setInterval(() => {
         const https = require('https');
-        const stats = JSON.stringify({
-            servers: global.client.guilds.cache.size.toLocaleString(),
-            users: global.client.guilds.cache.reduce((total, guild) => total + guild.memberCount, 0).toLocaleString(),
-            ping: Math.round(global.client.ws.ping),
-            secret: STATS_SYNC_SECRET
-        });
+        https.get(KEEPALIVE_URL, (res) => {}).on('error', () => {});
+    }, KEEPALIVE_INTERVAL);
 
-        const url = new URL(STATS_SYNC_URL);
-        const options = {
-            hostname: url.hostname,
-            port: 443,
-            path: url.pathname,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(stats)
-            }
-        };
-
-        const req = https.request(options, (res) => {
-            syncCount++;
-            // Remove the logging – no more spam
-        });
-
-        req.on('error', (err) => {
-            // Only log errors (and only once per minute to avoid error spam)
-            const now = Date.now();
-            if (now - lastLogTime >= 60000) {
-                console.error(`\x1b[31m[STATS SYNC ERROR]\x1b[0m ${err.message}`);
-                lastLogTime = now;
-            }
-        });
-
-        req.write(stats);
-        req.end();
-    } catch (err) {
-        // Silent fail – no console noise
-    }
+    console.log('\x1b[36m[KEEPALIVE]\x1b[0m Ping scheduled every 14 minutes');
+} else {
+    console.log('\x1b[33m[KEEPALIVE]\x1b[0m Skipped — add KEEPALIVE_URL to .env to enable');
 }
-
-// Push immediately, then every 30 seconds
-pushLiveStats();
-setInterval(pushLiveStats, 30 * 1000);
-
-// ============================================================
-// 🔄 RENDER KEEP-ALIVE — Prevents free Render instance from sleeping
-// ============================================================
-const KEEPALIVE_URL = 'https://archon-engine-api.onrender.com/health';
-const KEEPALIVE_INTERVAL = 14 * 60 * 1000; // 14 minutes
-
-setInterval(() => {
-    const https = require('https');
-    https.get(KEEPALIVE_URL, (res) => {}).on('error', () => {});
-}, KEEPALIVE_INTERVAL);
-
-console.log('\x1b[36m[KEEPALIVE]\x1b[0m Render ping scheduled every 14 minutes');
 
 // ── Discord Login ──
 client.login(process.env.DISCORD_TOKEN).catch(err => {
