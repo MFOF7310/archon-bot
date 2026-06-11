@@ -12,6 +12,17 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
 const app = express();
+console.log('[SERVER.JS] File loaded successfully');
+// ============================================================
+// DATABASE CONNECTION — Uses bot's existing connection
+// ============================================================
+function getDB() {
+    // Always use the bot's existing database connection
+    if (global.client && global.client.db) {
+        return global.client.db;
+    }
+    throw new Error('Database not initialized yet. Bot must be running first.');
+}
 
 // ============================================================
 // 1. CORS — Only allow your GitHub Pages frontend
@@ -22,6 +33,7 @@ app.use(cors({
 }));
 
 app.use(cookieParser());
+app.use(express.json());
 
 // ============================================================
 // 2. LOCALTUNNEL BYPASS — Allows API calls without password page
@@ -210,10 +222,139 @@ app.get('/api/auth/logout', (req, res) => {
 });
 
 // ============================================================
-// 8. HEALTH CHECK
+// 8. GUILD LIST — Returns guilds the user and bot share
+// ============================================================
+app.get('/api/auth/guilds', async (req, res) => {
+    const sessionToken = req.cookies.session;
+    if (!sessionToken) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        jwt.verify(sessionToken, process.env.JWT_SECRET);
+        
+        const botGuilds = global.client.guilds.cache.map(g => ({
+            id: g.id,
+            name: g.name,
+            icon: g.icon
+        }));
+
+        res.json(botGuilds);
+    } catch (error) {
+        res.status(401).json({ error: 'Invalid session' });
+    }
+});
+
+// ============================================================
+// 9. HEALTH CHECK
 // ============================================================
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'operational', timestamp: Date.now() });
+});
+
+// ============================================================
+// GUILD SETTINGS — Get settings for a specific guild
+// ============================================================
+app.get('/api/guilds/:guildId/settings', async (req, res) => {
+    const sessionToken = req.cookies.session;
+    if (!sessionToken) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        const userData = jwt.verify(sessionToken, process.env.JWT_SECRET);
+        const { guildId } = req.params;
+
+        const guild = global.client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ error: 'Guild not found' });
+
+        const member = await guild.members.fetch(userData.id).catch(() => null);
+        if (!member || !member.permissions.has('ManageGuild')) {
+            return res.status(403).json({ error: 'You need Manage Server permission' });
+        }
+
+        const db = getDB();
+        let settings = db.prepare('SELECT * FROM guild_settings WHERE guild_id = ?').get(guildId);
+
+        if (!settings) {
+            db.prepare(`INSERT INTO guild_settings (guild_id) VALUES (?)`).run(guildId);
+            settings = {
+                guild_id: guildId,
+                prefix: '!',
+                welcome_channel_id: null,
+                welcome_message: 'Welcome to the server, {user}!',
+                auto_role_id: null
+            };
+        }
+
+        const channels = guild.channels.cache
+            .filter(c => c.type === 0)
+            .map(c => ({ id: c.id, name: c.name }));
+
+        const roles = guild.roles.cache
+            .filter(r => r.name !== '@everyone' && !r.managed)
+            .map(r => ({ id: r.id, name: r.name }));
+
+        res.json({
+            settings,
+            channels,
+            roles,
+            guildName: guild.name,
+            guildIcon: guild.icon
+        });
+
+    } catch (error) {
+        console.error('[API] Guild settings error:', error);
+        res.status(500).json({ error: 'Failed to fetch settings' });
+    }
+});
+
+// ============================================================
+// GUILD SETTINGS — Save settings for a specific guild
+// ============================================================
+app.post('/api/guilds/:guildId/settings', async (req, res) => {
+    const sessionToken = req.cookies.session;
+    if (!sessionToken) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        const userData = jwt.verify(sessionToken, process.env.JWT_SECRET);
+        const { guildId } = req.params;
+        const { prefix, welcome_channel_id, welcome_message, auto_role_id } = req.body;
+
+        const guild = global.client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ error: 'Guild not found' });
+
+        const member = await guild.members.fetch(userData.id).catch(() => null);
+        if (!member || !member.permissions.has('ManageGuild')) {
+            return res.status(403).json({ error: 'You need Manage Server permission' });
+        }
+
+        if (prefix && prefix.length > 10) {
+            return res.status(400).json({ error: 'Prefix must be 10 characters or less' });
+        }
+        if (welcome_message && welcome_message.length > 500) {
+            return res.status(400).json({ error: 'Welcome message must be 500 characters or less' });
+        }
+
+        const db = getDB();
+        db.prepare(`
+            INSERT INTO guild_settings (guild_id, prefix, welcome_channel_id, welcome_message, auto_role_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(guild_id) DO UPDATE SET
+                prefix = COALESCE(?, prefix),
+                welcome_channel_id = COALESCE(?, welcome_channel_id),
+                welcome_message = COALESCE(?, welcome_message),
+                auto_role_id = COALESCE(?, auto_role_id),
+                updated_at = datetime('now')
+        `).run(
+            guildId,
+            prefix, welcome_channel_id, welcome_message, auto_role_id,
+            prefix, welcome_channel_id, welcome_message, auto_role_id
+        );
+
+        console.log(`[API] Settings updated for guild ${guild.name} (${guildId})`);
+        res.json({ success: true, message: 'Settings saved successfully' });
+
+    } catch (error) {
+        console.error('[API] Save settings error:', error);
+        res.status(500).json({ error: 'Failed to save settings' });
+    }
 });
 
 module.exports = app;
