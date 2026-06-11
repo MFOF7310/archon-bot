@@ -1,63 +1,63 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-// ================= STORAGE =================
-const birthdays = new Map(); // userId -> { day, month, year, timezone }
+// ================= BIRTHDAY INTELLIGENCE DIVISION =================
+const birthdays = new Map();
 
-// ================= TRANSLATIONS =================
+// ================= MULTILINGUAL BRIEFING =================
 const t = {
     en: {
-        setTitle: '🎂 Birthday Set',
-        setSuccess: (date) => `✅ Your birthday has been set to **${date}**!`,
-        setError: '❌ Invalid date format. Use: `/birthday set day:15 month:6 year:2000`',
-        removeTitle: '🎂 Birthday Removed',
-        removeSuccess: '✅ Your birthday has been removed.',
-        removeError: '❌ You don\'t have a birthday set.',
-        checkTitle: '🎂 Birthday Check',
-        checkUser: (user, date) => `🎉 **${user}**'s birthday is on **${date}**!`,
-        checkSelf: (date) => `🎂 Your birthday is set to **${date}**!`,
-        checkNone: '❌ No birthday set.',
-        listTitle: '📅 Upcoming Birthdays',
-        listEmpty: 'No upcoming birthdays in the next 30 days.',
-        listEntry: (user, date, days) => `• **${user}** - ${date} (in ${days} days)`,
-        todayEntry: (user, date) => `• **${user}** - ${date} 🎂 **TODAY!**`,
-        announcementTitle: '🎉 HAPPY BIRTHDAY! 🎉',
-        announcementDesc: (user, age) => `Everyone wish **${user}** a happy birthday!\n${age ? 'They turn **' + age + '** today!' : ''}`,
-        announcementFooter: '🎂 Drop a birthday wish in chat!',
-        months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-        noPermission: '❌ You cannot set birthdays for other users.',
+        setTitle: '🎂 BIRTHDAY REGISTERED',
+        setSuccess: (date) => `✅ Your birthday has been classified: **${date}**`,
+        setError: '❌ Invalid date format. Syntax: `/birthday set day:15 month:6 year:2000`',
+        removeTitle: '🎂 BIRTHDAY CLEARED',
+        removeSuccess: '✅ Your birthday record has been purged from the database.',
+        removeError: '❌ No birthday record found for your identity.',
+        checkTitle: '🎂 BIRTHDAY INTELLIGENCE',
+        checkUser: (user, date) => `🎉 **${user}**'s birthday is classified as **${date}**`,
+        checkSelf: (date) => `🎂 Your birthday is classified as **${date}**`,
+        checkNone: '❌ No birthday record found.',
+        listTitle: '📅 UPCOMING BIRTHDAYS',
+        listEmpty: 'No birthdays detected in the next 90 days.',
+        listEntry: (user, date, days) => `• **${user}** — ${date} (T-${days}d)`,
+        todayEntry: (user, date) => `• **${user}** — ${date} 🎂 **TODAY**`,
+        announcementTitle: '🎉 BIRTHDAY ALERT — ALL UNITS',
+        announcementDesc: (user, age) => `All personnel wish **${user}** a happy birthday!\n${age ? 'They turn **' + age + '** today.' : ''}`,
+        announcementFooter: '🎂 Drop a birthday wish in chat.',
+        months: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
+        noPermission: '❌ Insufficient clearance to modify other user records.',
         invalidDay: '❌ Day must be between 1 and 31.',
         invalidMonth: '❌ Month must be between 1 and 12.',
         invalidYear: '❌ Year must be between 1900 and 2020.',
-        invalidDate: '❌ That date doesn\'t exist.'
+        invalidDate: '❌ That date does not exist in the Gregorian calendar.'
     },
     fr: {
-        setTitle: '🎂 Anniversaire Défini',
-        setSuccess: (date) => `✅ Votre anniversaire a été défini au **${date}** !`,
-        setError: '❌ Format de date invalide. Utilisez : `/birthday set jour:15 mois:6 annee:2000`',
-        removeTitle: '🎂 Anniversaire Supprimé',
-        removeSuccess: '✅ Votre anniversaire a été supprimé.',
-        removeError: '❌ Vous n\'avez pas d\'anniversaire défini.',
-        checkTitle: '🎂 Vérification d\'Anniversaire',
-        checkUser: (user, date) => `🎉 L'anniversaire de **${user}** est le **${date}** !`,
-        checkSelf: (date) => `🎂 Votre anniversaire est défini au **${date}** !`,
-        checkNone: '❌ Aucun anniversaire défini.',
-        listTitle: '📅 Anniversaires à Venir',
-        listEmpty: 'Aucun anniversaire dans les 30 prochains jours.',
-        listEntry: (user, date, days) => `• **${user}** - ${date} (dans ${days} jours)`,
-        todayEntry: (user, date) => `• **${user}** - ${date} 🎂 **AUJOURD'HUI !**`,
-        announcementTitle: '🎉 JOYEUX ANNIVERSAIRE ! 🎉',
-        announcementDesc: (user, age) => `Souhaitez un joyeux anniversaire à **${user}** !\n${age ? 'Iel a **' + age + '** ans aujourd\'hui !' : ''}`,
+        setTitle: '🎂 ANNIVERSAIRE ENREGISTRE',
+        setSuccess: (date) => `✅ Votre anniversaire a ete classifie : **${date}**`,
+        setError: '❌ Format de date invalide. Syntaxe : `/birthday set jour:15 mois:6 annee:2000`',
+        removeTitle: '🎂 ANNIVERSAIRE SUPPRIME',
+        removeSuccess: '✅ Votre dossier anniversaire a ete purge de la base de donnees.',
+        removeError: '❌ Aucun dossier anniversaire trouve pour votre identite.',
+        checkTitle: '🎂 RENSEIGNEMENTS ANNIVERSAIRE',
+        checkUser: (user, date) => `🎉 L'anniversaire de **${user}** est classifie le **${date}**`,
+        checkSelf: (date) => `🎂 Votre anniversaire est classifie le **${date}**`,
+        checkNone: '❌ Aucun dossier anniversaire trouve.',
+        listTitle: '📅 ANNIVERSAIRES A VENIR',
+        listEmpty: 'Aucun anniversaire detecte dans les 90 prochains jours.',
+        listEntry: (user, date, days) => `• **${user}** — ${date} (T-${days}j)`,
+        todayEntry: (user, date) => `• **${user}** — ${date} 🎂 **AUJOURD\'HUI**`,
+        announcementTitle: '🎉 ALERTE ANNIVERSAIRE — TOUTES LES UNITES',
+        announcementDesc: (user, age) => `Tout le personnel souhaite un joyeux anniversaire a **${user}** !\n${age ? 'Iel a **' + age + '** ans aujourd\'hui !' : ''}`,
         announcementFooter: '🎂 Laissez un message d\'anniversaire !',
-        months: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
-        noPermission: '❌ Vous ne pouvez pas définir l\'anniversaire des autres.',
-        invalidDay: '❌ Le jour doit être entre 1 et 31.',
-        invalidMonth: '❌ Le mois doit être entre 1 et 12.',
-        invalidYear: '❌ L\'année doit être entre 1900 et 2020.',
-        invalidDate: '❌ Cette date n\'existe pas.'
+        months: ['JAN', 'FEV', 'MAR', 'AVR', 'MAI', 'JUN', 'JUL', 'AOU', 'SEP', 'OCT', 'NOV', 'DEC'],
+        noPermission: '❌ Autorisation insuffisante pour modifier les dossiers d\'autres utilisateurs.',
+        invalidDay: '❌ Le jour doit etre entre 1 et 31.',
+        invalidMonth: '❌ Le mois doit etre entre 1 et 12.',
+        invalidYear: '❌ L\'annee doit etre entre 1900 et 2020.',
+        invalidDate: '❌ Cette date n\'existe pas dans le calendrier gregorien.'
     }
 };
 
-// ================= HELPER FUNCTIONS =================
+// ================= VALIDATION PROTOCOLS =================
 function isValidDate(day, month, year) {
     const date = new Date(year, month - 1, day);
     return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
@@ -72,8 +72,9 @@ function calculateAge(birthYear) {
 
 function formatDate(day, month, year, lang) {
     const months = t[lang].months;
-    if (year) return `${day} ${months[month - 1]} ${year}`;
-    return `${day} ${months[month - 1]}`;
+    const m = months[month - 1];
+    if (year) return `${day} ${m} ${year}`;
+    return `${day} ${m}`;
 }
 
 function getDaysUntil(day, month) {
@@ -81,24 +82,27 @@ function getDaysUntil(day, month) {
     const currentYear = today.getFullYear();
     let birthday = new Date(currentYear, month - 1, day);
     if (birthday < today) birthday = new Date(currentYear + 1, month - 1, day);
-    const diffTime = birthday - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.ceil((birthday - today) / (1000 * 60 * 60 * 24));
 }
 
-// ================= ZODIAC SIGN HELPER =================
+// ================= ZODIAC INTELLIGENCE =================
 function getZodiacSign(day, month) {
-    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return '♈';
-    if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return '♉';
-    if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return '♊';
-    if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return '♋';
-    if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return '♌';
-    if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return '♍';
-    if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return '♎';
-    if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return '♏';
-    if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return '♐';
-    if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return '♑';
-    if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return '♒';
-    return '♓';
+    const signs = [
+        { name: 'Capricorn', emoji: '♑', start: [12, 22] }, { name: 'Aquarius', emoji: '♒', start: [1, 20] },
+        { name: 'Pisces', emoji: '♓', start: [2, 19] }, { name: 'Aries', emoji: '♈', start: [3, 21] },
+        { name: 'Taurus', emoji: '♉', start: [4, 20] }, { name: 'Gemini', emoji: '♊', start: [5, 21] },
+        { name: 'Cancer', emoji: '♋', start: [6, 21] }, { name: 'Leo', emoji: '♌', start: [7, 23] },
+        { name: 'Virgo', emoji: '♍', start: [8, 23] }, { name: 'Libra', emoji: '♎', start: [9, 23] },
+        { name: 'Scorpio', emoji: '♏', start: [10, 23] }, { name: 'Sagittarius', emoji: '♐', start: [11, 22] },
+        { name: 'Capricorn', emoji: '♑', start: [12, 22] }
+    ];
+    for (let i = 0; i < signs.length - 1; i++) {
+        const curr = signs[i], next = signs[i + 1];
+        if ((month === curr.start[0] && day >= curr.start[1]) || (month === next.start[0] && day < next.start[1])) {
+            return `${curr.emoji} ${curr.name}`;
+        }
+    }
+    return '♑ Capricorn';
 }
 
 // ================= DATABASE OPERATIONS =================
@@ -127,7 +131,7 @@ function loadAllBirthdays(db) {
     return rows;
 }
 
-function getUpcomingBirthdays(daysAhead = 30) {
+function getUpcomingBirthdays(daysAhead = 90) {
     const upcoming = [];
     const today = new Date();
     for (const [userId, bday] of birthdays) {
@@ -140,7 +144,40 @@ function getUpcomingBirthdays(daysAhead = 30) {
     return upcoming.sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
-// ================= ANNOUNCEMENT FUNCTION - ENHANCED UI =================
+// ================= MILESTONE INTELLIGENCE =================
+function getMilestoneData(age) {
+    if (!age) return { color: '#FFD700', badge: '', title: '' };
+    const milestones = {
+        18: { color: '#00FFCC', badge: '🎓', title: 'ADULT' },
+        21: { color: '#9B59B6', badge: '🥂', title: 'LEGAL' },
+        30: { color: '#E74C3C', badge: '🔥', title: 'DIRTY 30' },
+        40: { color: '#E67E22', badge: '👑', title: 'FAB 40' },
+        50: { color: '#F1C40F', badge: '💛', title: 'GOLDEN' },
+        60: { color: '#3498DB', badge: '💎', title: 'DIAMOND' },
+        70: { color: '#1ABC9C', badge: '👴', title: 'PLATINUM' },
+        80: { color: '#E91E63', badge: '👑', title: 'IMMORTAL' },
+        100: { color: '#FFD700', badge: '⭐', title: 'CENTENARIAN' }
+    };
+    if (milestones[age]) return milestones[age];
+    if (age % 10 === 0) return { color: '#3498DB', badge: '🎯', title: `DECADE ${age}` };
+    if (age % 5 === 0) return { color: '#9B59B6', badge: '🔮', title: `HALF-DECADE ${age}` };
+    return { color: '#FFD700', badge: '', title: '' };
+}
+
+function getAgeCategory(age) {
+    if (!age) return { msg: '🎁 Another trip around the sun!', color: '#FFD700' };
+    if (age < 13) return { msg: `🎈 Turning **${age}** — Happy Birthday, young star!`, color: '#FF69B4' };
+    if (age < 20) return { msg: `🎓 Turning **${age}** — Welcome to your teenage years!`, color: '#9B59B6' };
+    if (age < 30) return { msg: `🌟 Turning **${age}** — Living your best twenties!`, color: '#3498DB' };
+    if (age < 40) return { msg: `💪 Turning **${age}** — Thriving in your thirties!`, color: '#2ECC71' };
+    if (age < 50) return { msg: `👑 Turning **${age}** — Fabulous forties!`, color: '#E67E22' };
+    if (age < 60) return { msg: `✨ Turning **${age}** — Golden fifties!`, color: '#F1C40F' };
+    if (age < 70) return { msg: `🏆 Turning **${age}** — Legendary status!`, color: '#E74C3C' };
+    if (age < 100) return { msg: `👴 Turning **${age}** — Immortal tier!`, color: '#1ABC9C' };
+    return { msg: `⭐ Turning **${age}** — CENTENARIAN!`, color: '#FFD700' };
+}
+
+// ================= ANNOUNCEMENT PROTOCOL — CLASSIFIED =================
 async function checkAndAnnounceBirthdays(client) {
     const today = new Date();
     const currentDay = today.getDate();
@@ -164,74 +201,53 @@ async function checkAndAnnounceBirthdays(client) {
                 const lang = guild.preferredLocale === 'fr' ? 'fr' : 'en';
                 const strings = t[lang];
                 const age = calculateAge(bday.year);
+                const milestone = getMilestoneData(age);
+                const ageCat = getAgeCategory(age);
                 
-                let color = '#FFD700';
-                let milestone = '';
-                if (age === 18) { color = '#00FFCC'; milestone = '🎓 **ADULT!**'; }
-                else if (age === 21) { color = '#9B59B6'; milestone = '🥂 **LEGAL!**'; }
-                else if (age === 30) { color = '#E74C3C'; milestone = '🔥 **DIRTY 30!**'; }
-                else if (age === 40) { color = '#E67E22'; milestone = '👑 **FAB 40!**'; }
-                else if (age === 50) { color = '#F1C40F'; milestone = '💛 **GOLDEN!**'; }
-                else if (age && age % 10 === 0) { color = '#3498DB'; milestone = `🎯 **DECADE!**`; }
-                
-                let ageMessage = '';
-                if (!age) ageMessage = '🎁 Another trip around the sun!';
-                else if (age < 13) ageMessage = `🎈 Turning **${age}** - Happy Birthday young star!`;
-                else if (age < 20) ageMessage = `🎓 Turning **${age}** - Welcome to your teenage years!`;
-                else if (age < 30) ageMessage = `🌟 Turning **${age}** - Living your best twenties!`;
-                else if (age < 40) ageMessage = `💪 Turning **${age}** - Thriving in your thirties!`;
-                else if (age < 50) ageMessage = `👑 Turning **${age}** - Fabulous forties!`;
-                else if (age < 60) ageMessage = `✨ Turning **${age}** - Golden fifties!`;
-                else ageMessage = `🏆 Turning **${age}** - Legendary status!`;
-                
-                const nextBirthday = new Date(currentYear, bday.month - 1, bday.day);
-                if (nextBirthday < today) nextBirthday.setFullYear(currentYear + 1);
-                const daysUntil = Math.ceil((nextBirthday - today) / (1000 * 60 * 60 * 24));
-                
+                // Year progress
                 const yearProgress = Math.floor((today - new Date(currentYear, 0, 1)) / (1000 * 60 * 60 * 24));
-                const yearTotal = 365;
-                const progressPercent = Math.floor((yearProgress / yearTotal) * 100);
+                const progressPercent = Math.floor((yearProgress / 365) * 100);
                 const progressBar = '█'.repeat(Math.floor(progressPercent / 10)) + '░'.repeat(10 - Math.floor(progressPercent / 10));
                 
+                // Zodiac
+                const zodiac = getZodiacSign(bday.day, bday.month);
+                
                 const embed = new EmbedBuilder()
-                    .setColor(color)
+                    .setColor(milestone.color || ageCat.color)
                     .setAuthor({ 
-                        name: `🎉 ${strings.announcementTitle}`, 
+                        name: `🚨 ${strings.announcementTitle}`, 
                         iconURL: 'https://cdn.discordapp.com/emojis/1120816625522311178.png' 
                     })
                     .setDescription(
-                        `# 🎂 HAPPY BIRTHDAY ${member.user.username.toUpperCase()}! 🎂\n\n` +
+                        `# 🎂 BIRTHDAY ALERT — ${member.user.username.toUpperCase()}\n\n` +
                         `### ${member.user}\n` +
-                        `Everyone wish them a fantastic day!\n\n` +
-                        `**${ageMessage}**\n` +
-                        `${milestone ? milestone + '\n' : ''}`
+                        `All units, celebrate this agent's special day!\n\n` +
+                        `**${ageCat.msg}**\n` +
+                        `${milestone.badge ? milestone.badge + ' **' + milestone.title + '**' : ''}`
                     )
                     .setThumbnail(member.user.displayAvatarURL({ size: 512, dynamic: true }))
                     .addFields(
                         { 
-                            name: '📊 Birthday Stats', 
-                            value: `\`\`\`yaml\n` +
-                                   `🎂 Age Today      : ${age || '??'}\n` +
-                                   `📅 Born           : ${bday.day} ${strings.months[bday.month-1]} ${bday.year || '????'}\n` +
-                                   `⏳ Next Birthday  : ${daysUntil} days\n` +
-                                   `🌍 Timezone       : ${bday.timezone || 'UTC'}\n` +
-                                   `\`\`\``,
-                            inline: false 
-                        },
-                        { 
-                            name: '📅 Year Progress', 
-                            value: `\`${progressBar}\` ${progressPercent}% of ${currentYear} complete`, 
+                            name: '📊 BIRTHDAY DOSSIER', 
+                            value: 
+                                '```yaml\n' +
+                                `🎂 Age Today      : ${age || 'CLASSIFIED'}\n` +
+                                `📅 Born           : ${bday.day} ${strings.months[bday.month-1]} ${bday.year || '????'}\n` +
+                                `♈ Zodiac         : ${zodiac}\n` +
+                                `🌍 Timezone       : ${bday.timezone || 'UTC'}\n` +
+                                `📊 Year Progress  : ${progressBar} ${progressPercent}%\n` +
+                                '```',
                             inline: false 
                         },
                         {
-                            name: '💝 Birthday Wishes',
-                            value: '*Drop a message below to celebrate!* 🎈',
+                            name: '💝 BIRTHDAY WISHES',
+                            value: '*Drop a message below to celebrate this agent!* 🎈',
                             inline: false
                         }
                     )
                     .setImage('https://i.imgur.com/JLbHZ5P.png')
                     .setFooter({ 
-                        text: `🎂 ${guild.name} • Birthday System • v${client.version || '1.7.0'}`, 
+                        text: `🎂 ${guild.name} • Birthday Intelligence Division • v${client.version || '2.0.0'}`, 
                         iconURL: guild.iconURL() 
                     })
                     .setTimestamp();
@@ -248,7 +264,7 @@ async function checkAndAnnounceBirthdays(client) {
                 );
                 
                 await channel.send({ 
-                    content: `🎉 **@everyone** It's ${member}'s BIRTHDAY! Let's celebrate! 🎂🎈`,
+                    content: `🚨 **@everyone** BIRTHDAY ALERT — ${member}'s special day! Let's celebrate! 🎂🎈`,
                     embeds: [embed],
                     components: [row]
                 }).catch(() => {});
@@ -273,51 +289,39 @@ function scheduleDailyCheck(client) {
 module.exports = {
     name: 'birthday',
     aliases: ['bday', 'anniversaire'],
-    description: '🎂 Set and check birthdays',
+    description: '🎂 Birthday intelligence system — set, check, and celebrate birthdays',
     category: 'UTILITY',
     cooldown: 3000,
 
     data: new SlashCommandBuilder()
         .setName('birthday')
-        .setDescription('🎂 Set and check birthdays / Définir et vérifier les anniversaires')
+        .setDescription('🎂 Birthday intelligence system — set, check, and celebrate birthdays')
         .addSubcommand(sub => sub
             .setName('set')
-            .setDescription('Set your birthday / Définir votre anniversaire')
-            .addIntegerOption(opt => opt.setName('day').setDescription('Day (1-31) / Jour (1-31)').setRequired(true).setMinValue(1).setMaxValue(31))
-            .addIntegerOption(opt => opt.setName('month').setDescription('Month (1-12) / Mois (1-12)').setRequired(true).setMinValue(1).setMaxValue(12))
-            .addIntegerOption(opt => opt.setName('year').setDescription('Year (optional) / Année (optionnel)').setRequired(false).setMinValue(1900).setMaxValue(2020))
-            .addStringOption(opt => opt.setName('timezone').setDescription('Your timezone (optional) / Votre fuseau horaire (optionnel)').setRequired(false)
+            .setDescription('Register your birthday in the intelligence database')
+            .addIntegerOption(opt => opt.setName('day').setDescription('Day of birth (1-31)').setRequired(true).setMinValue(1).setMaxValue(31))
+            .addIntegerOption(opt => opt.setName('month').setDescription('Month of birth (1-12)').setRequired(true).setMinValue(1).setMaxValue(12))
+            .addIntegerOption(opt => opt.setName('year').setDescription('Year of birth (optional)').setRequired(false).setMinValue(1900).setMaxValue(2020))
+            .addStringOption(opt => opt.setName('timezone').setDescription('Your timezone (optional)').setRequired(false)
                 .addChoices(
-                    { name: '🌍 UTC-11 (Midway Island)', value: 'UTC-11' },
-                    { name: '🌍 UTC-10 (Hawaii)', value: 'UTC-10' },
-                    { name: '🌍 UTC-9 (Alaska)', value: 'UTC-9' },
-                    { name: '🌎 UTC-8 (Pacific Time)', value: 'UTC-8' },
-                    { name: '🌎 UTC-7 (Mountain Time)', value: 'UTC-7' },
-                    { name: '🌎 UTC-6 (Central Time)', value: 'UTC-6' },
-                    { name: '🌎 UTC-5 (Eastern Time)', value: 'UTC-5' },
-                    { name: '🌎 UTC-4 (Atlantic Time)', value: 'UTC-4' },
-                    { name: '🌎 UTC-3 (Brazil)', value: 'UTC-3' },
-                    { name: '🌍 UTC-2 (Mid-Atlantic)', value: 'UTC-2' },
-                    { name: '🌍 UTC-1 (Azores)', value: 'UTC-1' },
-                    { name: '🌍 UTC+0 (London/Lisbon)', value: 'UTC+0' },
-                    { name: '🌍 UTC+1 (Paris/Berlin/Rome)', value: 'UTC+1' },
-                    { name: '🌍 UTC+2 (Athens/Cairo)', value: 'UTC+2' },
-                    { name: '🌍 UTC+3 (Moscow/Riyadh)', value: 'UTC+3' },
-                    { name: '🌍 UTC+4 (Dubai)', value: 'UTC+4' },
-                    { name: '🌍 UTC+5 (Karachi)', value: 'UTC+5' },
-                    { name: '🌍 UTC+6 (Dhaka)', value: 'UTC+6' },
-                    { name: '🌍 UTC+7 (Bangkok/Jakarta)', value: 'UTC+7' },
-                    { name: '🌍 UTC+8 (Beijing/Singapore/Manila)', value: 'UTC+8' },
-                    { name: '🌍 UTC+9 (Tokyo/Seoul)', value: 'UTC+9' },
-                    { name: '🌍 UTC+10 (Sydney)', value: 'UTC+10' },
-                    { name: '🌍 UTC+11 (Solomon Islands)', value: 'UTC+11' },
-                    { name: '🌍 UTC+12 (Auckland/Fiji)', value: 'UTC+12' },
-                    { name: '🌍 UTC+13 (Tonga)', value: 'UTC+13' }
+                    { name: '🌍 UTC-11', value: 'UTC-11' }, { name: '🌍 UTC-10', value: 'UTC-10' },
+                    { name: '🌍 UTC-9', value: 'UTC-9' }, { name: '🌎 UTC-8', value: 'UTC-8' },
+                    { name: '🌎 UTC-7', value: 'UTC-7' }, { name: '🌎 UTC-6', value: 'UTC-6' },
+                    { name: '🌎 UTC-5', value: 'UTC-5' }, { name: '🌎 UTC-4', value: 'UTC-4' },
+                    { name: '🌎 UTC-3', value: 'UTC-3' }, { name: '🌍 UTC-2', value: 'UTC-2' },
+                    { name: '🌍 UTC-1', value: 'UTC-1' }, { name: '🌍 UTC+0', value: 'UTC+0' },
+                    { name: '🌍 UTC+1', value: 'UTC+1' }, { name: '🌍 UTC+2', value: 'UTC+2' },
+                    { name: '🌍 UTC+3', value: 'UTC+3' }, { name: '🌍 UTC+4', value: 'UTC+4' },
+                    { name: '🌍 UTC+5', value: 'UTC+5' }, { name: '🌍 UTC+6', value: 'UTC+6' },
+                    { name: '🌍 UTC+7', value: 'UTC+7' }, { name: '🌍 UTC+8', value: 'UTC+8' },
+                    { name: '🌍 UTC+9', value: 'UTC+9' }, { name: '🌍 UTC+10', value: 'UTC+10' },
+                    { name: '🌍 UTC+11', value: 'UTC+11' }, { name: '🌍 UTC+12', value: 'UTC+12' },
+                    { name: '🌍 UTC+13', value: 'UTC+13' }
                 )))
-        .addSubcommand(sub => sub.setName('remove').setDescription('Remove your birthday / Supprimer votre anniversaire'))
-        .addSubcommand(sub => sub.setName('check').setDescription('Check someone\'s birthday / Vérifier l\'anniversaire de quelqu\'un')
-            .addUserOption(opt => opt.setName('user').setDescription('User to check / Utilisateur à vérifier').setRequired(false)))
-        .addSubcommand(sub => sub.setName('list').setDescription('List upcoming birthdays / Lister les anniversaires à venir')),
+        .addSubcommand(sub => sub.setName('remove').setDescription('Purge your birthday record from the database'))
+        .addSubcommand(sub => sub.setName('check').setDescription('Query birthday intelligence on a target')
+            .addUserOption(opt => opt.setName('user').setDescription('Target user to investigate').setRequired(false)))
+        .addSubcommand(sub => sub.setName('list').setDescription('Display upcoming birthdays intelligence')),
 
     run: async (client, message, args, db) => {
         const lang = message.content?.toLowerCase().includes('anniversaire') ? 'fr' : (client.detectLanguage ? client.detectLanguage('birthday') : 'en');
@@ -335,14 +339,30 @@ module.exports = {
             if (!isValidDate(day, month, year || 2000)) return message.reply(strings.invalidDate);
             saveBirthday(db, message.author.id, day, month, year);
             const dateStr = formatDate(day, month, year, lang);
-            return message.reply({ embeds: [new EmbedBuilder().setColor('#FF69B4').setTitle(strings.setTitle).setDescription(strings.setSuccess(dateStr))] });
+            return message.reply({ 
+                embeds: [new EmbedBuilder()
+                    .setColor('#FF69B4')
+                    .setAuthor({ name: strings.setTitle, iconURL: message.author.displayAvatarURL() })
+                    .setDescription(strings.setSuccess(dateStr))
+                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
+                    .setTimestamp()
+                ] 
+            });
         }
 
         if (subcommand === 'remove') {
             const exists = birthdays.get(message.author.id);
             if (!exists) return message.reply(strings.removeError);
             deleteBirthday(db, message.author.id);
-            return message.reply({ embeds: [new EmbedBuilder().setColor('#FF69B4').setTitle(strings.removeTitle).setDescription(strings.removeSuccess)] });
+            return message.reply({ 
+                embeds: [new EmbedBuilder()
+                    .setColor('#FF69B4')
+                    .setAuthor({ name: strings.removeTitle, iconURL: message.author.displayAvatarURL() })
+                    .setDescription(strings.removeSuccess)
+                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
+                    .setTimestamp()
+                ] 
+            });
         }
 
         if (subcommand === 'check') {
@@ -351,21 +371,67 @@ module.exports = {
             if (!bday) return message.reply(user.id === message.author.id ? strings.checkNone : strings.checkNone);
             const dateStr = formatDate(bday.day, bday.month, bday.year, lang);
             const msg = user.id === message.author.id ? strings.checkSelf(dateStr) : strings.checkUser(user.username, dateStr);
-            return message.reply({ embeds: [new EmbedBuilder().setColor('#FF69B4').setTitle(strings.checkTitle).setDescription(msg)] });
+            const daysUntil = getDaysUntil(bday.day, bday.month);
+            const zodiac = getZodiacSign(bday.day, bday.month);
+            const age = calculateAge(bday.year);
+            
+            return message.reply({ 
+                embeds: [new EmbedBuilder()
+                    .setColor('#FF69B4')
+                    .setAuthor({ name: strings.checkTitle, iconURL: user.displayAvatarURL() })
+                    .setDescription(msg)
+                    .addFields(
+                        { name: '📅 Date', value: dateStr, inline: true },
+                        { name: '♈ Zodiac', value: zodiac, inline: true },
+                        { name: '🎂 Age', value: age ? `${age} years` : 'Hidden', inline: true },
+                        { name: '⏳ Countdown', value: daysUntil === 0 ? '🎉 TODAY!' : `${daysUntil} days`, inline: true }
+                    )
+                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
+                    .setTimestamp()
+                ] 
+            });
         }
 
         if (subcommand === 'list') {
-            const upcoming = getUpcomingBirthdays(30);
-            if (upcoming.length === 0) return message.reply({ embeds: [new EmbedBuilder().setColor('#FF69B4').setTitle(strings.listTitle).setDescription(strings.listEmpty)] });
-            const embed = new EmbedBuilder().setColor('#FF69B4').setTitle(strings.listTitle).setDescription(upcoming.map(b => {
-                const user = client.users.cache.get(b.userId)?.username || 'Unknown';
-                const dateStr = `${b.day} ${strings.months[b.month - 1]}`;
-                return b.daysUntil === 0 ? strings.todayEntry(user, dateStr) : strings.listEntry(user, dateStr, b.daysUntil);
-            }).join('\n')).setFooter({ text: `🎂 ${upcoming.length} upcoming birthdays` });
+            const upcoming = getUpcomingBirthdays(90);
+            if (upcoming.length === 0) return message.reply({ 
+                embeds: [new EmbedBuilder()
+                    .setColor('#FF69B4')
+                    .setAuthor({ name: strings.listTitle, iconURL: client.user.displayAvatarURL() })
+                    .setDescription(strings.listEmpty)
+                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
+                ] 
+            });
+            const embed = new EmbedBuilder()
+                .setColor('#FF69B4')
+                .setAuthor({ name: strings.listTitle, iconURL: client.user.displayAvatarURL() })
+                .setDescription(upcoming.map(b => {
+                    const user = client.users.cache.get(b.userId)?.username || 'Unknown';
+                    const dateStr = `${b.day} ${strings.months[b.month - 1]}`;
+                    return b.daysUntil === 0 ? strings.todayEntry(user, dateStr) : strings.listEntry(user, dateStr, b.daysUntil);
+                }).join('\n'))
+                .setFooter({ text: `🎂 ${upcoming.length} upcoming birthdays • 90-day window` })
+                .setTimestamp();
             return message.reply({ embeds: [embed] });
         }
 
-        return message.reply({ embeds: [new EmbedBuilder().setColor('#FF69B4').setTitle('🎂 Birthday Commands').setDescription('`.birthday set <day> <month> [year]` - Set your birthday\n`.birthday remove` - Remove your birthday\n`.birthday check [@user]` - Check birthday\n`.birthday list` - Upcoming birthdays')] });
+        return message.reply({ 
+            embeds: [new EmbedBuilder()
+                .setColor('#FF69B4')
+                .setAuthor({ name: '🎂 Birthday Intelligence Division', iconURL: client.user.displayAvatarURL() })
+                .setDescription(
+                    '```\n' +
+                    'BIRTHDAY COMMAND SYNTAX\n' +
+                    '━━━━━━━━━━━━━━━━━━━━━━━\n' +
+                    '.birthday set <day> <month> [year]  — Register birthday\n' +
+                    '.birthday remove                    — Purge record\n' +
+                    '.birthday check [@user]             — Query intelligence\n' +
+                    '.birthday list                      — Upcoming birthdays\n' +
+                    '```'
+                )
+                .setFooter({ text: '🎂 Birthday Intelligence Division' })
+            ] 
+        });
     },
 
     execute: async (interaction, client) => {
@@ -387,15 +453,32 @@ module.exports = {
             if (!isValidDate(day, month, year || 2000)) return interaction.editReply(strings.invalidDate);
             saveBirthday(db, interaction.user.id, day, month, year, timezone);
             const dateStr = formatDate(day, month, year, lang);
-            const tzDisplay = timezone.replace('UTC', 'UTC±').replace('+', '+').replace('-', '-');
-            return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#FF69B4').setTitle(strings.setTitle).setDescription(strings.setSuccess(dateStr) + `\n🕐 Timezone: **${tzDisplay}**`)] });
+            const zodiac = getZodiacSign(day, month);
+            
+            return interaction.editReply({ 
+                embeds: [new EmbedBuilder()
+                    .setColor('#FF69B4')
+                    .setAuthor({ name: strings.setTitle, iconURL: interaction.user.displayAvatarURL() })
+                    .setDescription(strings.setSuccess(dateStr) + `\n\n♈ **Zodiac:** ${zodiac}\n🕐 **Timezone:** ${timezone}`)
+                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
+                    .setTimestamp()
+                ] 
+            });
         }
 
         if (subcommand === 'remove') {
             const exists = birthdays.get(interaction.user.id);
             if (!exists) return interaction.editReply(strings.removeError);
             deleteBirthday(db, interaction.user.id);
-            return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#FF69B4').setTitle(strings.removeTitle).setDescription(strings.removeSuccess)] });
+            return interaction.editReply({ 
+                embeds: [new EmbedBuilder()
+                    .setColor('#FF69B4')
+                    .setAuthor({ name: strings.removeTitle, iconURL: interaction.user.displayAvatarURL() })
+                    .setDescription(strings.removeSuccess)
+                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
+                    .setTimestamp()
+                ] 
+            });
         }
 
         if (subcommand === 'check') {
@@ -407,9 +490,9 @@ module.exports = {
                     .setColor('#95a5a6')
                     .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
                     .setDescription(user.id === interaction.user.id 
-                        ? (lang === 'fr' ? '❌ Vous n\'avez pas encore défini votre anniversaire!\nUtilisez `/birthday set` pour l\'ajouter.' : '❌ You haven\'t set your birthday yet!\nUse `/birthday set` to add it.')
-                        : (lang === 'fr' ? `❌ ${user.username} n'a pas défini son anniversaire.` : `❌ ${user.username} hasn't set their birthday.`))
-                    .setFooter({ text: '🎂 Birthday System' });
+                        ? (lang === 'fr' ? '❌ Aucun dossier anniversaire trouve.\nUtilisez `/birthday set` pour l\'ajouter.' : '❌ No birthday record found.\nUse `/birthday set` to register.')
+                        : (lang === 'fr' ? `❌ ${user.username} n'a pas de dossier anniversaire.` : `❌ ${user.username} has no birthday record.`))
+                    .setFooter({ text: '🎂 Birthday Intelligence Division' });
                 return interaction.editReply({ embeds: [noBdayEmbed] });
             }
             
@@ -417,75 +500,59 @@ module.exports = {
             const age = bday.year ? calculateAge(bday.year) : null;
             const nextAge = bday.year ? (daysUntil === 0 ? age : age + 1) : null;
             const zodiac = getZodiacSign(bday.day, bday.month);
+            const milestone = getMilestoneData(nextAge);
             
             let countdownText = '';
             let countdownEmoji = '';
             if (daysUntil === 0) {
-                countdownText = lang === 'fr' ? '🎉 **C\'EST AUJOURD\'HUI!** 🎉' : '🎉 **TODAY IS THE DAY!** 🎉';
+                countdownText = lang === 'fr' ? '🎉 **AUJOURD\'HUI !** 🎉' : '🎉 **TODAY!** 🎉';
                 countdownEmoji = '🎂';
             } else if (daysUntil === 1) {
-                countdownText = lang === 'fr' ? '⏰ **Demain!** Préparez-vous!' : '⏰ **Tomorrow!** Get ready!';
+                countdownText = lang === 'fr' ? '⏰ **DEMAIN !** Preparez-vous !' : '⏰ **Tomorrow!** Get ready!';
                 countdownEmoji = '⏰';
             } else if (daysUntil <= 7) {
-                countdownText = lang === 'fr' ? `🔜 **${daysUntil} jours** avant le grand jour!` : `🔜 **${daysUntil} days** until the big day!`;
+                countdownText = lang === 'fr' ? `🔜 **${daysUntil} jours** avant le grand jour !` : `🔜 **${daysUntil} days** until the big day!`;
                 countdownEmoji = '🔜';
             } else {
-                countdownText = lang === 'fr' ? `📅 **${daysUntil} jours** avant leur anniversaire!` : `📅 **${daysUntil} days** until their birthday!`;
+                countdownText = lang === 'fr' ? `📅 **${daysUntil} jours** restants` : `📅 **${daysUntil} days** remaining`;
                 countdownEmoji = '📅';
             }
             
-            const daysInYear = 365;
-            const progressPercent = Math.min(100, Math.max(0, Math.floor(((daysInYear - daysUntil) / daysInYear) * 100)));
+            const progressPercent = Math.min(100, Math.max(0, Math.floor(((365 - daysUntil) / 365) * 100)));
             const progressBar = '▓'.repeat(Math.floor(progressPercent / 10)) + '░'.repeat(10 - Math.floor(progressPercent / 10));
             
             const embed = new EmbedBuilder()
                 .setColor(daysUntil === 0 ? '#FFD700' : (daysUntil <= 7 ? '#FF69B4' : '#9B59B6'))
                 .setAuthor({ 
-                    name: `🎂 ${user.username}'s Birthday ${zodiac}`, 
+                    name: `🎂 ${user.username}'s Birthday Dossier ${zodiac}`, 
                     iconURL: user.displayAvatarURL() 
                 })
                 .setThumbnail(user.displayAvatarURL({ size: 256 }))
                 .addFields(
-                    {
-                        name: '📅 ' + (lang === 'fr' ? 'Date de Naissance' : 'Birth Date'),
-                        value: `**${formatDate(bday.day, bday.month, bday.year, lang)}**`,
-                        inline: true
-                    },
-                    {
-                        name: '🎂 ' + (lang === 'fr' ? 'Âge' : 'Age'),
-                        value: age ? `**${age}** ${lang === 'fr' ? 'ans' : 'years old'}` : '*(Hidden)*',
-                        inline: true
-                    },
-                    {
-                        name: '🌍 Timezone',
-                        value: `**${bday.timezone || 'UTC'}**`,
-                        inline: true
-                    },
-                    {
-                        name: countdownEmoji + ' ' + (daysUntil === 0 ? '🎉 TODAY!' : (lang === 'fr' ? 'Compte à Rebours' : 'Countdown')),
-                        value: `${countdownText}\n\`${progressBar}\` ${progressPercent}%`,
-                        inline: false
-                    }
+                    { name: '📅 ' + (lang === 'fr' ? 'Date de Naissance' : 'Birth Date'), value: `**${formatDate(bday.day, bday.month, bday.year, lang)}**`, inline: true },
+                    { name: '🎂 ' + (lang === 'fr' ? 'Age' : 'Age'), value: age ? `**${age}** ${lang === 'fr' ? 'ans' : 'years'}` : '*(Classified)*', inline: true },
+                    { name: '🌍 Timezone', value: `**${bday.timezone || 'UTC'}**`, inline: true },
+                    { name: countdownEmoji + ' ' + (daysUntil === 0 ? '🎉 TODAY!' : (lang === 'fr' ? 'Compte a Rebours' : 'Countdown')), value: `${countdownText}\n\`${progressBar}\` ${progressPercent}%`, inline: false }
                 )
                 .setFooter({ 
                     text: daysUntil === 0 
-                        ? (lang === 'fr' ? '🎂 Souhaitez-leur un joyeux anniversaire!' : '🎂 Wish them a happy birthday!') 
+                        ? (lang === 'fr' ? '🎂 Souhaitez un joyeux anniversaire !' : '🎂 Wish them a happy birthday!') 
                         : (lang === 'fr' ? `⏳ ${daysUntil} jours restants` : `⏳ ${daysUntil} days remaining`),
                     iconURL: client.user.displayAvatarURL() 
                 });
             
             if (nextAge && daysUntil > 0) {
                 embed.addFields({
-                    name: '🔮 ' + (lang === 'fr' ? 'Prochain Âge' : 'Turning'),
-                    value: lang === 'fr' ? `Aura **${nextAge}** ans!` : `Will be **${nextAge}** years old!`,
+                    name: '🔮 ' + (lang === 'fr' ? 'Prochain Age' : 'Turning'),
+                    value: milestone.badge ? `${milestone.badge} **${milestone.title}** — Will be **${nextAge}**!` : `Will be **${nextAge}** ${lang === 'fr' ? 'ans' : 'years old'}!`,
                     inline: true
                 });
             }
             
             if (daysUntil === 0) {
                 embed.addFields({
-                    name: '🎁 ' + (lang === 'fr' ? 'C\'est le moment!' : 'It\'s Time!'),
-                    value: lang === 'fr' ? 'Envoyez un message de joyeux anniversaire!' : 'Send them a birthday message!',
+                    name: '🎁 ' + (lang === 'fr' ? 'C\'est le Moment !' : 'It\'s Time!'),
+                    value: lang === 'fr' ? 'Envoyez un message de joyeux anniversaire !' : 'Send them a birthday message!',
                     inline: false
                 });
             }
@@ -495,17 +562,14 @@ module.exports = {
                 const row = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
                         .setCustomId(`bday_celebrate_${user.id}`)
-                        .setLabel(lang === 'fr' ? '🎉 Célébrer!' : '🎉 Celebrate!')
+                        .setLabel(lang === 'fr' ? '🎉 Celebrer !' : '🎉 Celebrate!')
                         .setStyle(ButtonStyle.Success)
                         .setEmoji('🎂')
                 );
                 components.push(row);
             }
             
-            return interaction.editReply({ 
-                embeds: [embed], 
-                components: components.length > 0 ? components : undefined 
-            });
+            return interaction.editReply({ embeds: [embed], components: components.length > 0 ? components : undefined });
         }
 
         if (subcommand === 'list') {
@@ -515,7 +579,7 @@ module.exports = {
                     .setColor('#95a5a6')
                     .setAuthor({ name: '📅 ' + strings.listTitle, iconURL: client.user.displayAvatarURL() })
                     .setDescription('✨ ' + strings.listEmpty)
-                    .setFooter({ text: '🎂 Set your birthday with /birthday set' });
+                    .setFooter({ text: '🎂 Use /birthday set to register your birthday' });
                 return interaction.editReply({ embeds: [emptyEmbed] });
             }
             
@@ -535,7 +599,7 @@ module.exports = {
                     iconURL: client.user.displayAvatarURL() 
                 })
                 .setThumbnail('https://cdn.discordapp.com/emojis/1120816625522311178.png')
-                .setDescription('*📅 Birthdays in the next 90 days*\n');
+                .setDescription('*📅 Birthdays in the next 90 days — Intelligence Briefing*\n');
             
             const sortedMonths = Object.keys(grouped).sort((a, b) => {
                 const mA = parseInt(a), mB = parseInt(b);
@@ -553,24 +617,24 @@ module.exports = {
                 
                 bdays.forEach(b => {
                     const user = client.users.cache.get(b.userId);
-                    const displayName = user?.username || 'Unknown User';
+                    const displayName = user?.username || 'Unknown Agent';
                     const zodiac = getZodiacSign(b.day, month);
                     
                     if (b.daysUntil === 0) fieldValue += `🎂 **${displayName}** — *TODAY!* ${zodiac}\n`;
                     else if (b.daysUntil === 1) fieldValue += `🎂 **${displayName}** — *Tomorrow!* ${zodiac}\n`;
-                    else if (b.daysUntil <= 7) fieldValue += `🎂 **${displayName}** — ${b.day} ${strings.months[month-1].slice(0, 3)} (🔜 ${b.daysUntil}d) ${zodiac}\n`;
-                    else fieldValue += `🎂 **${displayName}** — ${b.day} ${strings.months[month-1].slice(0, 3)} (${b.daysUntil}d) ${zodiac}\n`;
+                    else if (b.daysUntil <= 7) fieldValue += `🎂 **${displayName}** — ${b.day} ${strings.months[month-1]} (🔜 T-${b.daysUntil}d) ${zodiac}\n`;
+                    else fieldValue += `🎂 **${displayName}** — ${b.day} ${strings.months[month-1]} (T-${b.daysUntil}d) ${zodiac}\n`;
                 });
                 
                 embed.addFields({ 
                     name: `${monthEmojis[month-1]} ${strings.months[month-1]} ${month === currentMonth ? '👑 CURRENT' : ''}`, 
-                    value: fieldValue || '*No birthdays*', 
+                    value: fieldValue || '*No agents registered*', 
                     inline: false 
                 });
             }
             
             embed.setFooter({ 
-                text: `🎉 ${birthdays.size} total registered • Updated just now`, 
+                text: `🎉 ${birthdays.size} total registered • Birthday Intelligence Division • Updated just now`, 
                 iconURL: client.user.displayAvatarURL() 
             }).setTimestamp();
             
@@ -580,12 +644,10 @@ module.exports = {
 
     initialize: (client) => {
         const db = client.db;
-        try { 
-            db.exec(`ALTER TABLE birthday ADD COLUMN timezone TEXT DEFAULT 'UTC'`); 
-        } catch (e) {}
+        try { db.exec(`ALTER TABLE birthday ADD COLUMN timezone TEXT DEFAULT 'UTC'`); } catch (e) {}
         db.exec(`CREATE TABLE IF NOT EXISTS birthday (user_id TEXT PRIMARY KEY, day INTEGER NOT NULL, month INTEGER NOT NULL, year INTEGER, timezone TEXT DEFAULT 'UTC', created_at INTEGER)`);
         loadAllBirthdays(db);
         scheduleDailyCheck(client);
-        console.log(`[BIRTHDAY] System initialized with ${birthdays.size} birthdays`);
+        console.log(`\x1b[36m[BIRTHDAY]\x1b[0m Intelligence Division initialized — ${birthdays.size} agents registered`);
     }
 };
