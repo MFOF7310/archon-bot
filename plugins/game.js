@@ -701,7 +701,7 @@ async function handleComponent(interaction, client) {
 // ================= EXPORTS =================
 module.exports = {
     name: 'game',
-    aliases: ['play', 'jeu', 'jouer', 'codm', 'slots', 'slot', 'tictactoe', 'ttt', 'morpion', 'blackjack', 'bj', 'roulette'],
+    aliases: ['jeu', 'jouer', 'codm', 'slots', 'slot', 'tictactoe', 'ttt', 'morpion', 'blackjack', 'bj', 'roulette'],
     description: '🎮 Neural Game Center — CODM, Slots, Tic Tac Toe, Blackjack, Roulette + Trivia Bridge',
     category: 'GAMING',
     usage: '/game <subcommand>',
