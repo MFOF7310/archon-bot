@@ -2084,22 +2084,24 @@ const COMMAND_PARAM_MAP = {
 };
 
 async function executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, lang = 'en') {
-    // ✅ SECURE: Static parameter mapping instead of function string parsing
     const argsMap = { client, message, args, db, usedCommand, serverSettings, lang };
     
-    // If command defines explicit param order, use it; otherwise use default
     let paramOrder;
     if (command.params && Array.isArray(command.params)) {
         paramOrder = command.params;
-    } else if (command.run.length > 0) {
-        // Use Function.length as safe hint (no string parsing)
-        const defaultParams = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
-        paramOrder = defaultParams.slice(0, command.run.length);
-    } else {
+    } else if (command.run.length === 4) {
+        paramOrder = ['client', 'message', 'args', 'db'];
+    } else if (command.run.length === 5) {
+        paramOrder = ['client', 'message', 'args', 'db', 'usedCommand'];
+    } else if (command.run.length === 6) {
+        paramOrder = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings'];
+    } else if (command.run.length >= 7) {
         paramOrder = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
+    } else {
+        paramOrder = ['client', 'message', 'args', 'db'];
     }
     
-    const filteredArgs = paramOrder.map(param => argsMap[param]).filter(arg => arg !== undefined);
+    const filteredArgs = paramOrder.map(param => argsMap[param]);
     return await command.run(...filteredArgs);
 }
 
