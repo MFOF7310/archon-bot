@@ -743,10 +743,7 @@ module.exports = {
               .setDescription(track.error)
               .addFields({
                 name: '💡 Hetzner Workaround',
-                value: 'YouTube is blocked. Use:
-• Direct MP3 URLs
-• SoundCloud links
-• Upload files to your VPS'
+                value: 'YouTube is blocked. Use:\n• Direct MP3 URLs\n• SoundCloud links\n• Upload files to your VPS'
               })
             ]
           });
