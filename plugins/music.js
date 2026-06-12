@@ -1,3 +1,4 @@
+const { SlashCommandBuilder } = require('discord.js');
 require('dotenv').config();
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -215,11 +216,12 @@ async function resolveTrack(query, requester) {
     requester: requester?.tag || 'Unknown',
     requesterId: requester?.id || '0',
     addedAt: Date.now(),
-    streamUrl: null // Actual audio stream URL
+    streamUrl: null,
+    stream: null
   };
 
-  // Direct URL detection
-  if (query.match(/^https?:\/\/.*\.(mp3|wav|ogg|flac|m4a|aac)(\?.*)?$/i)) {
+  // ── 1. DIRECT AUDIO URL (Most reliable) ──
+  if (query.match(/^https?:\/\/.*\.(mp3|wav|ogg|flac|m4a|aac|webm)(\?.*)?$/i)) {
     track.title = path.basename(new URL(query).pathname) || 'Direct Audio';
     track.artist = 'Direct Stream';
     track.url = query;
@@ -228,30 +230,18 @@ async function resolveTrack(query, requester) {
     return track;
   }
 
-  // YouTube detection (may fail on Hetzner)
-  if (query.includes('youtube.com') || query.includes('youtu.be')) {
-    try {
-      const info = await ytdl.video_info(query);
-      track.title = info.video_details.title;
-      track.artist = info.video_details.channel?.name || 'YouTube';
-      track.duration = info.video_details.durationInSec * 1000;
-      track.url = query;
-      track.thumbnail = info.video_details.thumbnails?.[0]?.url;
-      track.source = 'youtube';
-
-      // Try to get stream — this may fail on Hetzner
-      const stream = await ytdl.stream(query);
-      track.streamUrl = stream.url || query;
-      track.stream = stream; // Pass stream object directly
-    } catch (err) {
-      console.log(`[AUDIO] YouTube blocked on Hetzner, trying fallback...`);
-      track.title = 'YouTube Track (Blocked)';
-      track.error = 'YouTube IP blocked on this server';
-    }
+  // ── 2. LOCAL FILE PATH (VPS-hosted) ──
+  if (fs.existsSync(query)) {
+    const stats = fs.statSync(query);
+    track.title = path.basename(query);
+    track.artist = 'Local File';
+    track.url = query;
+    track.streamUrl = query;
+    track.source = 'local';
     return track;
   }
 
-  // SoundCloud detection
+  // ── 3. SOUNDCLOUD ──
   if (query.includes('soundcloud.com')) {
     try {
       const soInfo = await ytdl.soundcloud(query);
@@ -262,13 +252,14 @@ async function resolveTrack(query, requester) {
       track.thumbnail = soInfo.thumbnail;
       track.source = 'soundcloud';
       track.streamUrl = soInfo.url;
+      return track;
     } catch (err) {
-      track.error = 'SoundCloud resolution failed';
+      track.error = 'SoundCloud resolution failed: ' + err.message;
+      return track;
     }
-    return track;
   }
 
-  // Spotify detection (metadata only — needs audio source)
+  // ── 4. SPOTIFY (Metadata only — warn user) ──
   if (query.includes('spotify.com') || query.includes('open.spotify.com')) {
     try {
       const spInfo = await ytdl.spotify(query);
@@ -278,38 +269,23 @@ async function resolveTrack(query, requester) {
       track.url = query;
       track.thumbnail = spInfo.thumbnail;
       track.source = 'spotify';
-      // Spotify needs a separate audio source — we'll use a placeholder
-      track.error = 'Spotify requires audio source. Use `.play <search>` or direct URL.';
+      track.error = 'Spotify has no audio stream. Use a direct MP3 URL or SoundCloud link instead.';
+      return track;
     } catch (err) {
-      track.error = 'Spotify resolution failed';
+      track.error = 'Spotify resolution failed: ' + err.message;
+      return track;
     }
+  }
+
+  // ── 5. YOUTUBE — BLOCKED ON HETZNER, SKIP IMMEDIATELY ──
+  if (query.includes('youtube.com') || query.includes('youtu.be') || !query.startsWith('http')) {
+    track.error = 'YouTube is blocked on Hetzner IPs. Use:\n• Direct MP3 URLs\n• SoundCloud links\n• Local files on your VPS\n• Spotify links (metadata only)';
+    track.title = query.includes('youtube') ? 'YouTube (Blocked)' : query;
     return track;
   }
 
-  // Search query — try YouTube search (may fail on Hetzner)
-  try {
-    const search = await ytdl.search(query, { limit: 1 });
-    if (search[0]) {
-      const video = search[0];
-      track.title = video.title;
-      track.artist = video.channel?.name || 'YouTube';
-      track.duration = video.durationInSec * 1000;
-      track.url = video.url;
-      track.thumbnail = video.thumbnails?.[0]?.url;
-      track.source = 'youtube';
-
-      try {
-        const stream = await ytdl.stream(video.url);
-        track.stream = stream;
-      } catch (e) {
-        track.error = 'Stream blocked on Hetzner';
-      }
-    }
-  } catch (err) {
-    track.title = query;
-    track.error = 'Search failed — YouTube may be blocked';
-  }
-
+  // Unknown URL type
+  track.error = 'Unsupported URL. Use direct MP3, SoundCloud, Spotify, or local file path.';
   return track;
 }
 
@@ -653,45 +629,42 @@ module.exports = {
   aliases: ['play', 'p', 'skip', 'queue', 'q', 'stop', 'disconnect', 'dc', 'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'stage'],
   category: 'UTILITY',
   description: 'Neural Audio Engine — Interactive music with Stage Channel support',
-
-  // Slash command data
-  data: {
-    name: 'music',
-    description: 'Neural Audio Engine — Interactive music control',
-    options: [
-      {
-        name: 'action',
-        type: 3, // STRING
-        description: 'What to do',
-        required: true,
-        choices: [
-          { name: 'play', value: 'play' },
-          { name: 'skip', value: 'skip' },
-          { name: 'stop', value: 'stop' },
-          { name: 'pause', value: 'pause' },
-          { name: 'resume', value: 'resume' },
-          { name: 'queue', value: 'queue' },
-          { name: 'volume', value: 'volume' },
-          { name: 'loop', value: 'loop' },
-          { name: 'nowplaying', value: 'nowplaying' },
-          { name: 'dashboard', value: 'dashboard' },
-          { name: 'disconnect', value: 'disconnect' }
-        ]
-      },
-      {
-        name: 'query',
-        type: 3, // STRING
-        description: 'Song URL or search query (for play)',
-        required: false
-      },
-      {
-        name: 'value',
-        type: 4, // INTEGER
-        description: 'Volume level 0-200 (for volume)',
-        required: false
-      }
-    ]
-  },
+  
+    // Slash command data — Discord.js v14+
+  data: new SlashCommandBuilder()
+    .setName('music')
+    .setDescription('Neural Audio Engine — Interactive music control')
+    .addStringOption(opt => opt
+      .setName('action')
+      .setDescription('What to do')
+      .setRequired(true)
+      .addChoices(
+        { name: 'play', value: 'play' },
+        { name: 'skip', value: 'skip' },
+        { name: 'stop', value: 'stop' },
+        { name: 'pause', value: 'pause' },
+        { name: 'resume', value: 'resume' },
+        { name: 'queue', value: 'queue' },
+        { name: 'volume', value: 'volume' },
+        { name: 'loop', value: 'loop' },
+        { name: 'nowplaying', value: 'nowplaying' },
+        { name: 'dashboard', value: 'dashboard' },
+        { name: 'disconnect', value: 'disconnect' }
+      )
+    )
+    .addStringOption(opt => opt
+      .setName('query')
+      .setDescription('Song URL or search query (for play)')
+      .setRequired(false)
+    )
+    .addIntegerOption(opt => opt
+      .setName('value')
+      .setDescription('Volume level 0-200 (for volume)')
+      .setRequired(false)
+      .setMinValue(0)
+      .setMaxValue(200)
+    )
+    .toJSON(),
 
   // Prefix command handler
   run: async (client, message, args, db, usedCommand, serverSettings, lang = 'en') => {
@@ -823,8 +796,7 @@ module.exports = {
         break;
       }
 
-      case 'resume':
-      case 'play': { // resume if already playing context
+            case 'resume': {
         if (!state.player) return message.reply('❌ Nothing playing!');
         state.player.unpause();
         state.paused = false;
@@ -1085,9 +1057,12 @@ module.exports = {
     const guildId = interaction.guild.id;
     const state = getAudioState(guildId);
 
-    // Extract action from customId: music_action_guildId
+    // Extract action from customId: music_action_guildId or music_action_extra_guildId
     const parts = customId.split('_');
+    // For select menus: music_loop_select_guildId_value → action=loop, mode=select
+    // For buttons: music_loop_guildId → action=loop
     const action = parts[1];
+    const guildIdFromId = parts[parts.length - 1]; // Always last element
 
     await interaction.deferUpdate().catch(() => {});
 
@@ -1131,15 +1106,29 @@ module.exports = {
       }
 
       case 'loop': {
-        const modes = ['off', 'track', 'queue'];
-        state.loop = modes[(modes.indexOf(state.loop) + 1) % 3];
+        // Check if this is from select menu: music_loop_select_guildId_value
+        if (parts.length >= 4 && parts[2] === 'select') {
+          const mode = parts[3]; // off, track, or queue
+          state.loop = mode;
+        } else {
+          // Button toggle
+          const modes = ['off', 'track', 'queue'];
+          state.loop = modes[(modes.indexOf(state.loop) + 1) % 3];
+        }
         break;
       }
 
       case 'vol': {
-        const dir = parts[2]; // up or down
-        const change = dir === 'up' ? 10 : -10;
-        state.volume = Math.max(0, Math.min(200, state.volume + change));
+        // Check if this is from select menu: music_vol_select_guildId_value
+        if (parts.length >= 4 && parts[2] === 'select') {
+          const vol = parseInt(parts[3]);
+          state.volume = Math.max(0, Math.min(200, vol));
+        } else {
+          // Button up/down: music_vol_up_guildId or music_vol_down_guildId
+          const dir = parts[2]; // up or down
+          const change = dir === 'up' ? 10 : -10;
+          state.volume = Math.max(0, Math.min(200, state.volume + change));
+        }
         break;
       }
 
@@ -1163,18 +1152,6 @@ module.exports = {
 
       case 'dashboard': {
         await sendDashboardPanel(guildId, interaction.channel);
-        break;
-      }
-
-      case 'loop': { // from select menu
-        const mode = parts[2];
-        state.loop = mode;
-        break;
-      }
-
-      case 'vol': { // from select menu
-        const vol = parts[2];
-        state.volume = parseInt(vol);
         break;
       }
 
@@ -1216,9 +1193,13 @@ module.exports = {
         state.dashboardMessage = null;
         return true;
       }
+
+      default: {
+        // Unknown action — ignore
+        break;
+      }
     }
 
-    // Update UI
     updateNowPlayingUI(guildId);
     if (state.dashboardMessage) {
       try {
@@ -1232,7 +1213,7 @@ module.exports = {
     return true;
   }
 };
-
+  
 // ================= UI SENDERS =================
 async function sendNowPlayingPanel(guildId, channel) {
   const state = getAudioState(guildId);
