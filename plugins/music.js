@@ -2,21 +2,16 @@ const { SlashCommandBuilder } = require('discord.js');
 require('dotenv').config();
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
-  PermissionsBitField, StageChannel, ChannelType, VoiceConnectionStatus,
+  StringSelectMenuBuilder, PermissionsBitField, ChannelType, VoiceConnectionStatus,
   entersState, joinVoiceChannel, createAudioPlayer, createAudioResource,
   AudioPlayerStatus, StreamType, NoSubscriberBehavior
 } = require('discord.js');
-const {
-  VoiceConnection,
-  getVoiceConnection
-} = require('@discordjs/voice');
 const ytdl = require('play-dl');
 const fs = require('fs');
 const path = require('path');
 
-// ================= ARCHITECT CG-223 // NEURAL AUDIO ENGINE v1.1 =================
-// Fixes: alias routing, SoundCloud search, voice join stability, stage speaker
+// ================= ARCHITECT CG-223 // NEURAL AUDIO ENGINE v1.2 =================
+// Fixes: hoisting, onGuildDelete export, memory leaks, interaction guards, timeouts, permissions
 
 const NEURAL_GREEN = '#00ff88';
 const NEURAL_DARK = '#0a0a0a';
@@ -62,11 +57,18 @@ function destroyAudioState(guildId) {
   const state = audioStates.get(guildId);
   if (!state) return;
 
-  if (state.connection) {
-    try { state.connection.destroy(); } catch (e) {}
-  }
+  // FIX 3: Remove all listeners to prevent memory leaks
   if (state.player) {
-    try { state.player.stop(); } catch (e) {}
+    try {
+      state.player.removeAllListeners();
+      state.player.stop();
+    } catch (e) {}
+  }
+  if (state.connection) {
+    try {
+      state.connection.removeAllListeners();
+      state.connection.destroy();
+    } catch (e) {}
   }
   if (state.stageInstance) {
     try { state.stageInstance.delete().catch(() => {}); } catch (e) {}
@@ -96,7 +98,7 @@ function createNeuralPlayer(guildId) {
     state.startTime = Date.now();
     state.paused = false;
     updateNowPlayingUI(guildId);
-    console.log(`[AUDIO] ${guildId} → PLAYING: ${state.current?.title?.substring(0, 40)}`);
+    console.log(`[AUDIO] ${guildId} -> PLAYING: ${state.current?.title?.substring(0, 40)}`);
   });
 
   player.on(AudioPlayerStatus.Paused, () => {
@@ -165,10 +167,16 @@ async function setupStageChannel(guildId, voiceChannel, topic = 'Neural Audio Br
       });
     }
 
-    // CRITICAL: Bot must request to speak in Stage Channel
+    // FIX 7: Check permission before requesting speaker
     const member = voiceChannel.guild.members.me;
     if (member && member.voice) {
-      await member.voice.setSuppressed(false).catch(() => {});
+      const canSpeak = voiceChannel.permissionsFor(member).has(PermissionsBitField.Flags.MuteMembers) ||
+                       voiceChannel.permissionsFor(member).has(PermissionsBitField.Flags.MoveMembers);
+      if (canSpeak) {
+        await member.voice.setSuppressed(false).catch(() => {});
+      } else {
+        console.log(`[STAGE] Bot lacks MuteMembers/MoveMembers, cannot auto-request speaker in ${guildId}`);
+      }
     }
 
     console.log(`[STAGE] Stage Instance created: "${topic}"`);
@@ -205,7 +213,7 @@ async function resolveTrack(query, requester) {
     stream: null
   };
 
-  // ── 1. DIRECT AUDIO URL ──
+  // 1. DIRECT AUDIO URL
   if (query.match(/^https?:\/\/.*\.(mp3|wav|ogg|flac|m4a|aac|webm)(\?.*)?$/i)) {
     track.title = path.basename(new URL(query).pathname) || 'Direct Audio';
     track.artist = 'Direct Stream';
@@ -215,7 +223,7 @@ async function resolveTrack(query, requester) {
     return track;
   }
 
-  // ── 2. LOCAL FILE PATH ──
+  // 2. LOCAL FILE PATH
   if (fs.existsSync(query)) {
     track.title = path.basename(query);
     track.artist = 'Local File';
@@ -225,7 +233,7 @@ async function resolveTrack(query, requester) {
     return track;
   }
 
-  // ── 3. SOUNDCLOUD URL ──
+  // 3. SOUNDCLOUD URL
   if (query.includes('soundcloud.com')) {
     try {
       const soInfo = await ytdl.soundcloud(query);
@@ -243,7 +251,7 @@ async function resolveTrack(query, requester) {
     }
   }
 
-  // ── 4. SPOTIFY (Metadata only) ──
+  // 4. SPOTIFY (Metadata only)
   if (query.includes('spotify.com') || query.includes('open.spotify.com')) {
     try {
       const spInfo = await ytdl.spotify(query);
@@ -261,20 +269,24 @@ async function resolveTrack(query, requester) {
     }
   }
 
-  // ── 5. YOUTUBE URL — BLOCKED ON HETZNER ──
+  // 5. YOUTUBE URL - BLOCKED ON HETZNER
   if (query.includes('youtube.com') || query.includes('youtu.be')) {
     track.error = 'YouTube is blocked on Hetzner IPs. Use:\n• Direct MP3 URLs\n• SoundCloud links\n• Local files on your VPS\n• Spotify links (metadata only)';
     track.title = 'YouTube (Blocked)';
     return track;
   }
 
-  // ── 6. SEARCH QUERY (Non-URL) — Try SoundCloud Search ──
-  // If query is not a URL, try to search SoundCloud
+  // 6. SEARCH QUERY (Non-URL) - Try SoundCloud Search with timeout
   if (!query.startsWith('http')) {
     try {
       console.log(`[AUDIO] Searching SoundCloud for: "${query}"`);
-      // play-dl soundcloud search
-      const searchResults = await ytdl.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
+
+      // FIX 5: Wrap search in Promise.race with 8s timeout to prevent hanging
+      const searchPromise = ytdl.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Search timeout (8s)')), 8000)
+      );
+      const searchResults = await Promise.race([searchPromise, timeoutPromise]);
 
       if (searchResults && searchResults.length > 0) {
         const result = searchResults[0];
@@ -284,7 +296,7 @@ async function resolveTrack(query, requester) {
         track.url = result.permalink || result.url || `https://soundcloud.com/search?q=${encodeURIComponent(query)}`;
         track.thumbnail = result.thumbnail;
         track.source = 'soundcloud';
-        track.streamUrl = result.url; // play-dl returns direct stream URL
+        track.streamUrl = result.url;
         console.log(`[AUDIO] SoundCloud search found: ${track.title}`);
         return track;
       } else {
@@ -387,7 +399,7 @@ function buildNowPlayingEmbed(guildId) {
         { name: '⏱️ Uptime', value: '0s', inline: true },
         { name: '🔊 Volume', value: `\`\`${state.volume}%\`\``, inline: true }
       )
-      .setFooter({ text: 'ARCHON CG-223 • Neural Audio v1.1 • BAMAKO_223 🇲🇱' })
+      .setFooter({ text: 'ARCHON CG-223 • Neural Audio v1.2 • BAMAKO_223 🇲🇱' })
       .setTimestamp();
   }
 
@@ -541,7 +553,7 @@ function buildDashboardEmbed(guildId) {
       { name: '🌙 Nightcore', value: state.nightcore ? '✅ On' : '❌ Off', inline: true },
       { name: '🤖 Autoplay', value: state.autoplay ? '✅ On' : '❌ Off', inline: true }
     )
-    .setFooter({ text: 'ARCHON CG-223 • Dashboard v1.1' })
+    .setFooter({ text: 'ARCHON CG-223 • Dashboard v1.2' })
     .setTimestamp();
 
   return embed;
@@ -626,7 +638,50 @@ function buildDashboardComponents(guildId) {
   return [row1, row2, row3];
 }
 
+// ================= UI SENDERS (FIXED: defined BEFORE module.exports) =================
+async function sendNowPlayingPanel(guildId, channel) {
+  const state = getAudioState(guildId);
+
+  // FIX 6: Clear old interval before creating new one to prevent duplicates
+  if (state._updateInterval) {
+    clearInterval(state._updateInterval);
+    state._updateInterval = null;
+  }
+
+  if (state.nowPlayingMessage) {
+    try { await state.nowPlayingMessage.delete(); } catch (e) {}
+  }
+
+  const embed = buildNowPlayingEmbed(guildId);
+  const buttons = buildNowPlayingButtons(guildId);
+
+  const msg = await channel.send({ embeds: [embed], components: buttons });
+  state.nowPlayingMessage = msg;
+
+  state._updateInterval = setInterval(() => {
+    const fresh = getAudioState(guildId);
+    if (fresh && fresh.neuralStatus === 'PLAYING') {
+      updateNowPlayingUI(guildId);
+    }
+  }, 10000);
+}
+
+async function sendDashboardPanel(guildId, channel) {
+  const state = getAudioState(guildId);
+
+  if (state.dashboardMessage) {
+    try { await state.dashboardMessage.delete(); } catch (e) {}
+  }
+
+  const embed = buildDashboardEmbed(guildId);
+  const components = buildDashboardComponents(guildId);
+
+  const msg = await channel.send({ embeds: [embed], components: components });
+  state.dashboardMessage = msg;
+}
+
 // ================= COMMAND DEFINITIONS =================
+// FIX 1 & 2: All helpers defined above, onGuildDelete inside module.exports
 module.exports = {
   name: 'music',
   aliases: ['play', 'p', 'skip', 'queue', 'q', 'stop', 'disconnect', 'dc', 'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'stage'],
@@ -670,7 +725,6 @@ module.exports = {
 
   // ================= PREFIX COMMAND HANDLER =================
   run: async (client, message, args, db, usedCommand, serverSettings, lang = 'en') => {
-    // ── COMMAND DETECTION ──
     let cmd, remainingArgs;
     if (usedCommand === 'music') {
       cmd = args[0]?.toLowerCase();
@@ -688,12 +742,10 @@ module.exports = {
     const member = message.member;
     const voiceChannel = member.voice.channel;
 
-    // ── FIX: .music with no args → show dashboard instead of error ──
     if (!cmd) {
       return sendDashboardPanel(guildId, message.channel);
     }
 
-    // Voice channel check (skip for queue/np/dashboard)
     if (!voiceChannel && !['queue', 'q', 'nowplaying', 'np', 'dashboard'].includes(cmd)) {
       return message.reply({
         embeds: [new EmbedBuilder()
@@ -707,7 +759,6 @@ module.exports = {
     const state = getAudioState(guildId);
     state.textChannel = message.channel;
 
-    // ── COMMAND ROUTER ──
     switch (cmd) {
       case 'play':
       case 'p': {
@@ -730,7 +781,6 @@ module.exports = {
           ]
         });
 
-        // Resolve track
         const track = await resolveTrack(query, message.author);
 
         if (track.error) {
@@ -743,7 +793,6 @@ module.exports = {
           });
         }
 
-        // ── ESTABLISH VOICE CONNECTION ──
         if (!state.connection) {
           try {
             const connection = joinVoiceChannel({
@@ -757,16 +806,13 @@ module.exports = {
             state.connection = connection;
             state.isStage = voiceChannel.type === ChannelType.GuildStageVoice;
 
-            // Handle connection lifecycle
-            connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
+            connection.on(VoiceConnectionStatus.Disconnected, async () => {
               try {
                 await Promise.race([
                   entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
                   entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
                 ]);
-                // Reconnecting — ignore
               } catch {
-                // Real disconnect — destroy
                 destroyAudioState(guildId);
               }
             });
@@ -775,16 +821,13 @@ module.exports = {
               destroyAudioState(guildId);
             });
 
-            // Stage setup
             if (state.isStage) {
               await setupStageChannel(guildId, voiceChannel, `🎵 ${track.title}`);
             }
 
-            // Create and subscribe player
             const player = createNeuralPlayer(guildId);
             connection.subscribe(player);
 
-            // Wait for ready
             await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
             console.log(`[AUDIO] Voice connection ready for guild ${guildId}`);
 
@@ -795,13 +838,12 @@ module.exports = {
               embeds: [new EmbedBuilder()
                 .setColor(NEURAL_ERROR)
                 .setTitle('❌ Connection Failed')
-                .setDescription(`Failed to join voice channel:\n${err.message}\n\n**Check:**\n• Bot has \"Connect\" permission\n• Bot has \"Speak\" permission\n• You're in a voice channel`)
+                .setDescription(`Failed to join voice channel:\n${err.message}\n\n**Check:**\n• Bot has "Connect" permission\n• Bot has "Speak" permission\n• You're in a voice channel`)
               ]
             });
           }
         }
 
-        // Add to queue or play
         if (state.current) {
           state.queue.push(track);
           message.channel.send({
@@ -869,7 +911,7 @@ module.exports = {
           });
         }
 
-        const queueList = state.queue.slice(0, 10).map((t, i) => 
+        const queueList = state.queue.slice(0, 10).map((t, i) =>
           `\`\`${i + 1}.\`\` [${t.title.substring(0, 40)}](${t.url}) — ${t.requester}`
         ).join('\n');
 
@@ -1092,7 +1134,7 @@ module.exports = {
         const embed = new EmbedBuilder()
           .setColor(NEURAL_ACCENT)
           .setTitle('📜 Queue')
-          .setDescription(state.current ? `▶️ [${state.current.title}](${state.current.url})\n\n` + 
+          .setDescription(state.current ? `▶️ [${state.current.title}](${state.current.url})\n\n` +
             state.queue.slice(0, 10).map((t, i) => `\`\`${i+1}.\`\` ${t.title}`).join('\n') : 'Empty');
         await interaction.editReply({ embeds: [embed] });
         break;
@@ -1148,11 +1190,13 @@ module.exports = {
 
     const guildId = interaction.guild.id;
     const state = getAudioState(guildId);
-
     const parts = customId.split('_');
     const action = parts[1];
 
-    await interaction.deferUpdate().catch(() => {});
+    // FIX 4: Guard against double-acknowledging interactions
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferUpdate().catch(() => {});
+    }
 
     switch (action) {
       case 'playpause': {
@@ -1194,12 +1238,10 @@ module.exports = {
       }
 
       case 'loop': {
-        // Select menu: music_loop_select_guildId → value in interaction.values[0]
         if (parts.length >= 3 && parts[2] === 'select') {
           const mode = interaction.values[0];
           if (mode) state.loop = mode;
         } else {
-          // Button toggle
           const modes = ['off', 'track', 'queue'];
           state.loop = modes[(modes.indexOf(state.loop) + 1) % 3];
         }
@@ -1207,17 +1249,14 @@ module.exports = {
       }
 
       case 'vol': {
-        // Select menu: music_vol_select_guildId → value in interaction.values[0]
         if (parts.length >= 3 && parts[2] === 'select') {
           const vol = parseInt(interaction.values[0]);
           if (!isNaN(vol)) state.volume = Math.max(0, Math.min(200, vol));
         } else {
-          // Button: music_vol_up_guildId or music_vol_down_guildId
           const dir = parts[2];
           const change = dir === 'up' ? 10 : -10;
           state.volume = Math.max(0, Math.min(200, state.volume + change));
         }
-        // Apply volume to current playback
         if (state.player && state.player.state.status === AudioPlayerStatus.Playing) {
           const resource = state.player.state.resource;
           if (resource && resource.volume) {
@@ -1305,50 +1344,12 @@ module.exports = {
     }
 
     return true;
+  },
+
+  // FIX 2: onGuildDelete inside module.exports so index.js loader can find it
+  onGuildDelete: (guildId) => {
+    destroyAudioState(guildId);
   }
 };
 
-// ================= UI SENDERS =================
-async function sendNowPlayingPanel(guildId, channel) {
-  const state = getAudioState(guildId);
-
-  if (state.nowPlayingMessage) {
-    try { await state.nowPlayingMessage.delete(); } catch (e) {}
-  }
-
-  const embed = buildNowPlayingEmbed(guildId);
-  const buttons = buildNowPlayingButtons(guildId);
-
-  const msg = await channel.send({ embeds: [embed], components: buttons });
-  state.nowPlayingMessage = msg;
-
-  if (!state._updateInterval) {
-    state._updateInterval = setInterval(() => {
-      const fresh = getAudioState(guildId);
-      if (fresh.neuralStatus === 'PLAYING') {
-        updateNowPlayingUI(guildId);
-      }
-    }, 10000);
-  }
-}
-
-async function sendDashboardPanel(guildId, channel) {
-  const state = getAudioState(guildId);
-
-  if (state.dashboardMessage) {
-    try { await state.dashboardMessage.delete(); } catch (e) {}
-  }
-
-  const embed = buildDashboardEmbed(guildId);
-  const components = buildDashboardComponents(guildId);
-
-  const msg = await channel.send({ embeds: [embed], components: components });
-  state.dashboardMessage = msg;
-}
-
-// ================= GUILD CLEANUP =================
-module.exports.onGuildDelete = (guildId) => {
-  destroyAudioState(guildId);
-};
-
-console.log('[MUSIC] Neural Audio Engine v1.1 loaded — Stage Channel ready');
+console.log('[MUSIC] Neural Audio Engine v1.2 loaded — Stage Channel ready');
