@@ -2058,9 +2058,17 @@ client.loadPlugins = async () => {
     
     console.log(`\x1b[38;5;39m    ╚══════════════════════════════════════════════════════════════════════╝\x1b[0m\n`);
     
-    // Final status line
+        // Final status line
     const statusColor = failedCommands.length === 0 ? '\x1b[32m' : '\x1b[33m';
     console.log(`${statusColor}[NEURAL GRID]\x1b[0m ${moduleStats.total} modules synchronized • ${moduleStats.slash} slash-enabled • ${failedCommands.length > 0 ? failedCommands.length + ' failures' : 'All systems nominal'}`);
+
+    // ✅ DEBUG: Check if music command loaded correctly
+    const musicCmd = client.commands.get('music');
+    console.log('[DEBUG] Music command loaded:', !!musicCmd);
+    console.log('[DEBUG] Music has data:', !!musicCmd?.data);
+    console.log('[DEBUG] Music data name:', musicCmd?.data?.name);
+    console.log('[DEBUG] Music data type:', typeof musicCmd?.data);
+    console.log('[DEBUG] Music data has toJSON:', typeof musicCmd?.data?.toJSON === 'function');
 };
 
 // ================= SMART PLUGIN EXECUTION WRAPPER =================
