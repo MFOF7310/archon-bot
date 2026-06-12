@@ -1878,8 +1878,8 @@ client.loadPlugins = async () => {
     if (!fs.existsSync(pluginPath)) fs.mkdirSync(pluginPath);
 
     const pluginFiles = fs.readdirSync(pluginPath).filter(file => 
-        file.endsWith('.js') && file !== 'lydia.js' && file !== 'market-manager.js'
-    );
+    file.endsWith('.js') && file !== 'lydia.js' && file !== 'market-manager.js' && file !== 'music.js'
+);
     
     // ═══════════════════════════════════════════════════════════════════
     //  NEURAL GRID BOOT SEQUENCE — MODULE SYNCHRONIZATION
@@ -2112,6 +2112,20 @@ client.once(Events.ClientReady, async () => {
     displayPM2Banner();
 
     await client.loadPlugins();
+
+// ================= LOAD MUSIC SYSTEM =================
+try {
+    const musicModule = require('./plugins/music.js');
+    if (musicModule.name && musicModule.run) {
+        client.commands.set(musicModule.name, musicModule);
+        if (musicModule.aliases && Array.isArray(musicModule.aliases)) {
+            musicModule.aliases.forEach(a => client.aliases.set(a, musicModule.name));
+        }
+        console.log(`${green}[MUSIC]${reset} Neural Audio Engine v1.0 loaded`);
+    }
+} catch (err) {
+    console.log(`${yellow}[MUSIC]${reset} Not loaded: ${err.message}`);
+}
 
 // ----- FULLY AUTOMATIC BILINGUAL ALIAS MAP -----
 function buildAliasLanguageMap() {
@@ -3837,6 +3851,36 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
         }
         return;
     }
+
+// ================= MUSIC SYSTEM BUTTONS =================
+if (interaction.isButton() && interaction.customId.startsWith('music_')) {
+    try {
+        const musicModule = require('./plugins/music.js');
+        if (musicModule.handleComponent) {
+            const handled = await musicModule.handleComponent(interaction, client);
+            if (handled) return;
+        }
+    } catch (err) {
+        console.error(`[MUSIC BUTTON]`, err.message);
+        await interaction.reply({ content: '❌ Music action failed.', ephemeral: true }).catch(() => {});
+    }
+    return;
+}
+
+// ================= MUSIC SELECT MENUS =================
+if (interaction.isStringSelectMenu() && interaction.customId === 'music_dashboard_select') {
+    try {
+        const musicModule = require('./plugins/music.js');
+        if (musicModule.handleSelectMenu) {
+            const handled = await musicModule.handleSelectMenu(interaction, client);
+            if (handled) return;
+        }
+    } catch (err) {
+        console.error(`[MUSIC SELECT]`, err.message);
+        await interaction.reply({ content: '❌ Dashboard action failed.', ephemeral: true }).catch(() => {});
+    }
+    return;
+}
 
     // ================= VOTE SYSTEM BUTTONS (slash command) =================
     if (interaction.isButton() && interaction.customId && interaction.customId.startsWith('vote_') && interaction.customId.endsWith('_slash')) {
