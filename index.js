@@ -2083,25 +2083,21 @@ const COMMAND_PARAM_MAP = {
     'interaction': 'interaction'
 };
 
+// VERSION ORIGINALE (avant notre modif)
 async function executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, lang = 'en') {
     const argsMap = { client, message, args, db, usedCommand, serverSettings, lang };
     
     let paramOrder;
     if (command.params && Array.isArray(command.params)) {
         paramOrder = command.params;
-    } else if (command.run.length === 4) {
-        paramOrder = ['client', 'message', 'args', 'db'];
-    } else if (command.run.length === 5) {
-        paramOrder = ['client', 'message', 'args', 'db', 'usedCommand'];
-    } else if (command.run.length === 6) {
-        paramOrder = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings'];
-    } else if (command.run.length >= 7) {
-        paramOrder = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
+    } else if (command.run.length > 0) {
+        const defaultParams = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
+        paramOrder = defaultParams.slice(0, command.run.length);
     } else {
-        paramOrder = ['client', 'message', 'args', 'db'];
+        paramOrder = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
     }
     
-    const filteredArgs = paramOrder.map(param => argsMap[param]);
+    const filteredArgs = paramOrder.map(param => argsMap[param]).filter(arg => arg !== undefined);
     return await command.run(...filteredArgs);
 }
 
