@@ -74,6 +74,11 @@ function destroyAudioState(guildId) {
   if (state.stageInstance) {
     try { state.stageInstance.delete().catch(() => {}); } catch (e) {}
   }
+  // Clear update interval
+  if (state._updateInterval) {
+    clearInterval(state._updateInterval);
+    state._updateInterval = null;
+  }
 
   audioStates.delete(guildId);
   console.log(`[AUDIO] Destroyed state for guild ${guildId}`);
@@ -93,6 +98,7 @@ function createNeuralPlayer(guildId) {
   player.on(AudioPlayerStatus.Playing, () => {
     state.neuralStatus = 'PLAYING';
     state.startTime = Date.now();
+    state.paused = false;
     updateNowPlayingUI(guildId);
     console.log(`[AUDIO] ${guildId} → PLAYING: ${state.current?.title?.substring(0, 40)}`);
   });
@@ -629,8 +635,8 @@ module.exports = {
   aliases: ['play', 'p', 'skip', 'queue', 'q', 'stop', 'disconnect', 'dc', 'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'stage'],
   category: 'UTILITY',
   description: 'Neural Audio Engine — Interactive music with Stage Channel support',
-  
-    // Slash command data — Discord.js v14+
+
+  // Slash command data — Discord.js v14+
   data: new SlashCommandBuilder()
     .setName('music')
     .setDescription('Neural Audio Engine — Interactive music control')
@@ -668,7 +674,23 @@ module.exports = {
 
   // Prefix command handler
   run: async (client, message, args, db, usedCommand, serverSettings, lang = 'en') => {
-    const cmd = args[0]?.toLowerCase() || usedCommand;
+    // ═══════════════════════════════════════════════════════════════
+    // FIX 1: Correct command detection based on how command was invoked
+    // ═══════════════════════════════════════════════════════════════
+    // .music <subcommand> <args>  → usedCommand='music', args[0]=subcommand
+    // .play <query>                → usedCommand='play', args[0]=query
+    // .skip                        → usedCommand='skip', args=[]
+    let cmd, remainingArgs;
+    if (usedCommand === 'music') {
+      // .music <subcommand> <args> format
+      cmd = args[0]?.toLowerCase();
+      remainingArgs = args.slice(1);
+    } else {
+      // Direct alias: .play, .skip, .pause, etc.
+      cmd = usedCommand?.toLowerCase();
+      remainingArgs = args;
+    }
+
     const guildId = message.guild?.id;
 
     if (!guildId) {
@@ -678,7 +700,7 @@ module.exports = {
     const member = message.member;
     const voiceChannel = member.voice.channel;
 
-    // Check voice channel
+    // Check voice channel (except for queue/np/dashboard which don't need VC)
     if (!voiceChannel && !['queue', 'q', 'nowplaying', 'np', 'dashboard'].includes(cmd)) {
       return message.reply({
         embeds: [new EmbedBuilder()
@@ -696,7 +718,23 @@ module.exports = {
     switch (cmd) {
       case 'play':
       case 'p': {
-        const query = args.slice(1).join(' ') || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+        // ═══════════════════════════════════════════════════════════════
+        // FIX 2: Correct query detection based on invocation method
+        // ═══════════════════════════════════════════════════════════════
+        // .play <query>  → usedCommand='play', remainingArgs=[query]
+        // .music play <query> → usedCommand='music', remainingArgs=[query]
+        const query = remainingArgs.join(' ');
+
+        // FIX 3: Remove YouTube default fallback (Hetzner blocked)
+        if (!query) {
+          return message.reply({
+            embeds: [new EmbedBuilder()
+              .setColor(NEURAL_WARNING)
+              .setTitle('⚠️ Missing Query')
+              .setDescription('Please provide a song URL or search query.\n\nSupported sources:\n• Direct MP3 URLs\n• SoundCloud links\n• Local file paths\n• Spotify links (metadata only)')
+            ]
+          });
+        }
 
         await message.reply({
           embeds: [new EmbedBuilder()
@@ -796,7 +834,7 @@ module.exports = {
         break;
       }
 
-            case 'resume': {
+      case 'resume': {
         if (!state.player) return message.reply('❌ Nothing playing!');
         state.player.unpause();
         state.paused = false;
@@ -834,12 +872,23 @@ module.exports = {
 
       case 'volume':
       case 'vol': {
-        const vol = parseInt(args[1]);
+        // ═══════════════════════════════════════════════════════════════
+        // FIX 4: Correct volume arg detection based on invocation method
+        // ═══════════════════════════════════════════════════════════════
+        // .vol 50       → usedCommand='vol', remainingArgs=['50']
+        // .music vol 50  → usedCommand='music', remainingArgs=['50']
+        const vol = parseInt(remainingArgs[0]);
         if (isNaN(vol) || vol < 0 || vol > 200) {
           return message.reply('❌ Volume must be 0-200!');
         }
         state.volume = vol;
         // Apply to current resource if possible
+        if (state.player && state.player.state.status === AudioPlayerStatus.Playing) {
+          const resource = state.player.state.resource;
+          if (resource && resource.volume) {
+            resource.volume.setVolume(vol / 100);
+          }
+        }
         message.reply(`🔊 **Volume set to ${vol}%**`);
         updateNowPlayingUI(guildId);
         break;
@@ -877,7 +926,13 @@ module.exports = {
         if (!voiceChannel || voiceChannel.type !== ChannelType.GuildStageVoice) {
           return message.reply('❌ Join a **Stage Channel** first!');
         }
-        await setupStageChannel(guildId, voiceChannel, args.slice(1).join(' ') || 'Neural Audio Broadcast');
+        // ═══════════════════════════════════════════════════════════════
+        // FIX 5: Correct stage topic arg detection
+        // ═══════════════════════════════════════════════════════════════
+        // .stage My Topic       → usedCommand='stage', remainingArgs=['My','Topic']
+        // .music stage My Topic → usedCommand='music', remainingArgs=['My','Topic']
+        const topic = remainingArgs.join(' ') || 'Neural Audio Broadcast';
+        await setupStageChannel(guildId, voiceChannel, topic);
         message.reply('🔴 **Stage Broadcast activated!**');
         break;
       }
@@ -915,7 +970,18 @@ module.exports = {
 
     switch (action) {
       case 'play': {
-        const searchQuery = query || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+        // FIX 6: Remove YouTube default fallback for slash commands too
+        const searchQuery = query;
+        if (!searchQuery) {
+          return interaction.editReply({
+            embeds: [new EmbedBuilder()
+              .setColor(NEURAL_WARNING)
+              .setTitle('⚠️ Missing Query')
+              .setDescription('Please provide a song URL or search query using the `query` option.\n\nSupported sources:\n• Direct MP3 URLs\n• SoundCloud links\n• Local file paths\n• Spotify links (metadata only)')
+            ]
+          });
+        }
+
         const track = await resolveTrack(searchQuery, interaction.user);
 
         if (track.error) {
@@ -1013,8 +1079,15 @@ module.exports = {
       }
 
       case 'volume': {
-        const vol = value || 100;
+        const vol = value !== null ? value : 100;
         state.volume = Math.max(0, Math.min(200, vol));
+        // Apply to current resource if possible
+        if (state.player && state.player.state.status === AudioPlayerStatus.Playing) {
+          const resource = state.player.state.resource;
+          if (resource && resource.volume) {
+            resource.volume.setVolume(vol / 100);
+          }
+        }
         await interaction.editReply(`🔊 **Volume: ${state.volume}%**`);
         updateNowPlayingUI(guildId);
         break;
@@ -1057,12 +1130,19 @@ module.exports = {
     const guildId = interaction.guild.id;
     const state = getAudioState(guildId);
 
-    // Extract action from customId: music_action_guildId or music_action_extra_guildId
+    // ═══════════════════════════════════════════════════════════════
+    // FIX 7: Robust customId parsing for all component types
+    // ═══════════════════════════════════════════════════════════════
+    // Format: music_action_guildId                    (buttons)
+    // Format: music_action_extra_guildId              (buttons with extra)
+    // Format: music_action_select_guildId_value       (select menus)
+    // Format: music_action_select_guildId             (select menus, value in interaction.values)
+
     const parts = customId.split('_');
-    // For select menus: music_loop_select_guildId_value → action=loop, mode=select
-    // For buttons: music_loop_guildId → action=loop
+    // guildId is always the last part for buttons, or second-to-last for select menus with value
+    // But we can also get it from interaction.guild.id which is more reliable
+
     const action = parts[1];
-    const guildIdFromId = parts[parts.length - 1]; // Always last element
 
     await interaction.deferUpdate().catch(() => {});
 
@@ -1106,10 +1186,11 @@ module.exports = {
       }
 
       case 'loop': {
-        // Check if this is from select menu: music_loop_select_guildId_value
-        if (parts.length >= 4 && parts[2] === 'select') {
-          const mode = parts[3]; // off, track, or queue
-          state.loop = mode;
+        // Check if this is from select menu: music_loop_select_guildId
+        // For select menus, the value comes from interaction.values[0]
+        if (parts.length >= 3 && parts[2] === 'select') {
+          const mode = interaction.values[0]; // off, track, or queue
+          if (mode) state.loop = mode;
         } else {
           // Button toggle
           const modes = ['off', 'track', 'queue'];
@@ -1119,15 +1200,22 @@ module.exports = {
       }
 
       case 'vol': {
-        // Check if this is from select menu: music_vol_select_guildId_value
-        if (parts.length >= 4 && parts[2] === 'select') {
-          const vol = parseInt(parts[3]);
-          state.volume = Math.max(0, Math.min(200, vol));
+        // Check if this is from select menu: music_vol_select_guildId
+        if (parts.length >= 3 && parts[2] === 'select') {
+          const vol = parseInt(interaction.values[0]);
+          if (!isNaN(vol)) state.volume = Math.max(0, Math.min(200, vol));
         } else {
           // Button up/down: music_vol_up_guildId or music_vol_down_guildId
           const dir = parts[2]; // up or down
           const change = dir === 'up' ? 10 : -10;
           state.volume = Math.max(0, Math.min(200, state.volume + change));
+        }
+        // Apply volume to current playback
+        if (state.player && state.player.state.status === AudioPlayerStatus.Playing) {
+          const resource = state.player.state.resource;
+          if (resource && resource.volume) {
+            resource.volume.setVolume(state.volume / 100);
+          }
         }
         break;
       }
@@ -1213,7 +1301,7 @@ module.exports = {
     return true;
   }
 };
-  
+
 // ================= UI SENDERS =================
 async function sendNowPlayingPanel(guildId, channel) {
   const state = getAudioState(guildId);
