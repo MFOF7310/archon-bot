@@ -1,5 +1,4 @@
 const { SlashCommandBuilder } = require('discord.js');
-require('dotenv').config();
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   StringSelectMenuBuilder, PermissionsBitField, ChannelType, VoiceConnectionStatus,
