@@ -422,7 +422,9 @@ async function createStreamResource(track) {
       '--quiet',
     ];
 
-    args.push(query);
+    // For text searches, add ytsearch prefix
+    const finalQuery = query.startsWith('http') ? query : 'ytsearch1:' + query;
+    args.push(finalQuery);
 
     console.log('[STREAM] Spawning yt-dlp for: ' + query.substring(0, 80));
     const ytdlp = spawn('yt-dlp', args, { timeout: CONFIG.YTDLP_TIMEOUT });
@@ -619,18 +621,18 @@ function buildNPButtons(guildId) {
   const s = getState(guildId);
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music_prev_' + guildId).setEmoji({ name: 'previous_track' }).setStyle(ButtonStyle.Secondary).setDisabled(s.history.length < 2),
-      new ButtonBuilder().setCustomId('music_pp_' + guildId).setEmoji({ name: s.paused ? 'arrow_forward' : 'pause_button' }).setStyle(s.paused ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('music_stop_' + guildId).setEmoji({ name: 'stop_button' }).setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('music_next_' + guildId).setEmoji({ name: 'next_track' }).setStyle(ButtonStyle.Secondary).setDisabled(s.queue.length === 0),
-      new ButtonBuilder().setCustomId('music_loop_' + guildId).setEmoji({ name: s.loop === 'off' ? 'repeat' : s.loop === 'track' ? 'repeat_one' : 'repeat' }).setStyle(s.loop === 'off' ? ButtonStyle.Secondary : ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('music_prev_' + guildId).setEmoji('\u23EE\uFE0F').setStyle(ButtonStyle.Secondary).setDisabled(s.history.length < 2),
+      new ButtonBuilder().setCustomId('music_pp_' + guildId).setEmoji(s.paused ? '\u25B6\uFE0F' : '\u23F8\uFE0F').setStyle(s.paused ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('music_stop_' + guildId).setEmoji('\u23F9\uFE0F').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('music_next_' + guildId).setEmoji('\u23ED\uFE0F').setStyle(ButtonStyle.Secondary).setDisabled(s.queue.length === 0),
+      new ButtonBuilder().setCustomId('music_loop_' + guildId).setEmoji(s.loop === 'off' ? '\uD83D\uDD01' : s.loop === 'track' ? '\uD83D\uDD02' : '\uD83D\uDD01').setStyle(s.loop === 'off' ? ButtonStyle.Secondary : ButtonStyle.Success),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music_vd_' + guildId).setEmoji({ name: 'speaker_low_volume' }).setStyle(ButtonStyle.Secondary).setDisabled(s.volume <= 0),
-      new ButtonBuilder().setCustomId('music_vu_' + guildId).setEmoji({ name: 'speaker_high_volume' }).setStyle(ButtonStyle.Secondary).setDisabled(s.volume >= 200),
-      new ButtonBuilder().setCustomId('music_shuf_' + guildId).setEmoji({ name: 'twisted_rightwards_arrows' }).setStyle(ButtonStyle.Secondary).setDisabled(s.queue.length < 2),
-      new ButtonBuilder().setCustomId('music_q_' + guildId).setEmoji({ name: 'scroll' }).setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('music_dash_' + guildId).setEmoji({ name: 'control_knobs' }).setLabel('Dashboard').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('music_vd_' + guildId).setEmoji('\uD83D\uDD09').setStyle(ButtonStyle.Secondary).setDisabled(s.volume <= 0),
+      new ButtonBuilder().setCustomId('music_vu_' + guildId).setEmoji('\uD83D\uDD0A').setStyle(ButtonStyle.Secondary).setDisabled(s.volume >= 200),
+      new ButtonBuilder().setCustomId('music_shuf_' + guildId).setEmoji('\uD83D\uDD00').setStyle(ButtonStyle.Secondary).setDisabled(s.queue.length < 2),
+      new ButtonBuilder().setCustomId('music_q_' + guildId).setEmoji('\uD83D\uDCDC').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('music_dash_' + guildId).setEmoji('\uD83C\uDF9B\uFE0F').setLabel('Dashboard').setStyle(ButtonStyle.Success),
     ),
   ];
 }
@@ -670,19 +672,19 @@ function buildDashComponents(guildId) {
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder().setCustomId('music_dashboard_select').setPlaceholder('Dashboard Options')
         .addOptions(
-          { label: 'Loop: Off', value: 'loop_off_' + guildId, emoji: { name: 'x' } },
-          { label: 'Loop: Track', value: 'loop_track_' + guildId, emoji: { name: 'repeat_one' } },
-          { label: 'Loop: Queue', value: 'loop_queue_' + guildId, emoji: { name: 'repeat' } },
-          { label: 'Volume: 25%', value: 'vol_25_' + guildId, emoji: { name: 'speaker' } },
-          { label: 'Volume: 50%', value: 'vol_50_' + guildId, emoji: { name: 'sound' } },
-          { label: 'Volume: 100%', value: 'vol_100_' + guildId, emoji: { name: 'loud_sound' } },
-          { label: 'Volume: 150%', value: 'vol_150_' + guildId, emoji: { name: 'loud_sound' } },
-          { label: 'Clear Queue', value: 'clear_' + guildId, emoji: { name: 'wastebasket' } },
+          { label: 'Loop: Off', value: 'loop_off_' + guildId, emoji: '\u274C' },
+          { label: 'Loop: Track', value: 'loop_track_' + guildId, emoji: '\uD83D\uDD02' },
+          { label: 'Loop: Queue', value: 'loop_queue_' + guildId, emoji: '\uD83D\uDD01' },
+          { label: 'Volume: 25%', value: 'vol_25_' + guildId, emoji: '\uD83D\uDD08' },
+          { label: 'Volume: 50%', value: 'vol_50_' + guildId, emoji: '\uD83D\uDD09' },
+          { label: 'Volume: 100%', value: 'vol_100_' + guildId, emoji: '\uD83D\uDD0A' },
+          { label: 'Volume: 150%', value: 'vol_150_' + guildId, emoji: '\uD83D\uDD0A' },
+          { label: 'Clear Queue', value: 'clear_' + guildId, emoji: '\uD83D\uDDD1\uFE0F' },
         ),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music_np_' + guildId).setEmoji({ name: 'musical_note' }).setLabel('Now Playing').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('music_close_' + guildId).setEmoji({ name: 'x' }).setLabel('Close').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('music_np_' + guildId).setEmoji('\uD83C\uDFB5').setLabel('Now Playing').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('music_close_' + guildId).setEmoji('\u274C').setLabel('Close').setStyle(ButtonStyle.Danger),
     ),
   ];
 }
@@ -743,7 +745,7 @@ async function sendSearchMenu(channel, query, requester, guildId) {
         searchQuery: r.searchQuery || (r.title + ' ' + r.artist),
         requester: requester.tag, requesterId: requester.id,
       }),
-      emoji: { name: 'musical_note' },
+      emoji: '\uD83C\uDFB5',
     })));
 
   const row = new ActionRowBuilder().addComponents(select);
