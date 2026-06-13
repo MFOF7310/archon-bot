@@ -4715,6 +4715,145 @@ apiApp.get('/api/commands', (req, res) => {
     }
 });
 
+// ─── LEADERBOARD ───────────────────────────────────────
+apiApp.get('/api/leaderboard/:guildId?', (req, res) => {
+    const { guildId } = req.params;
+    const { sortBy = 'xp' } = req.query;
+    
+    try {
+        let users;
+        if (guildId && validateSnowflake(guildId)) {
+            users = db.prepare(
+                `SELECT id, username, xp, level, credits, streak_days, total_messages, games_won
+                 FROM users WHERE guild_id = ? ORDER BY ${sortBy === 'credits' ? 'credits' : 'xp'} DESC LIMIT 50`
+            ).all(guildId);
+        } else {
+            users = db.prepare(
+                `SELECT id, username, SUM(xp) as xp, MAX(level) as level, SUM(credits) as credits
+                 FROM users GROUP BY id ORDER BY ${sortBy === 'credits' ? 'SUM(credits)' : 'SUM(xp)'} DESC LIMIT 50`
+            ).all();
+        }
+        res.json({ success: true, users, sortBy, scope: guildId ? 'guild' : 'global' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── WARNINGS ──────────────────────────────────────────
+apiApp.get('/api/warnings/:guildId?', (req, res) => {
+    const { guildId } = req.params;
+    try {
+        let warnings;
+        if (guildId && validateSnowflake(guildId)) {
+            warnings = db.prepare('SELECT * FROM warnings WHERE guild_id = ? ORDER BY created_at DESC').all(guildId);
+        } else {
+            warnings = db.prepare('SELECT * FROM warnings ORDER BY created_at DESC LIMIT 100').all();
+        }
+        res.json({ success: true, warnings, count: warnings.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+apiApp.post('/api/warnings/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    const { user_id, reason, moderator_id } = req.body;
+    if (!user_id || !reason) return res.status(400).json({ error: 'Missing fields' });
+    
+    try {
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        db.prepare('INSERT INTO warnings (id, guild_id, user_id, moderator_id, reason, created_at, active) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            .run(id, guildId, user_id, moderator_id || 'system', reason, Math.floor(Date.now()/1000), 1);
+        res.json({ success: true, warningId: id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── MODERATION LOGS ───────────────────────────────────
+apiApp.get('/api/moderation-logs/:guildId?', (req, res) => {
+    const { guildId } = req.params;
+    try {
+        let logs;
+        if (guildId && validateSnowflake(guildId)) {
+            logs = db.prepare('SELECT * FROM moderation_logs WHERE guild_id = ? ORDER BY timestamp DESC').all(guildId);
+        } else {
+            logs = db.prepare('SELECT * FROM moderation_logs ORDER BY timestamp DESC LIMIT 100').all();
+        }
+        res.json({ success: true, logs, count: logs.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── SETTINGS ──────────────────────────────────────────
+apiApp.get('/api/settings/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    if (!validateSnowflake(guildId)) return res.status(400).json({ error: 'Invalid guild ID' });
+    
+    try {
+        const settings = getServerSettings(guildId);
+        res.json({ success: true, guildId, settings });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── UPDATE CONFIG ─────────────────────────────────────
+apiApp.post('/api/update-config', (req, res) => {
+    const { guildId, settings } = req.body;
+    if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
+    
+    try {
+        let updated = 0;
+        for (const [key, value] of Object.entries(settings)) {
+            if (updateServerSetting(guildId, key, String(value))) updated++;
+        }
+        client.settings.delete(guildId);
+        res.json({ success: true, updated, guildId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── COMMANDS (par guild) ──────────────────────────────
+apiApp.get('/api/commands/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    try {
+        const allCmds = [];
+        for (const [name, cmd] of client.commands) {
+            const settings = getServerCommandSettings(guildId, name);
+            allCmds.push({
+                name, category: cmd.category || 'GENERAL', description: cmd.description || '',
+                aliases: cmd.aliases || [], hasSlash: !!cmd.data,
+                enabled: settings.enabled === 1, cooldown: settings.cooldown_seconds
+            });
+        }
+        res.json({ success: true, commands: allCmds });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── TICKETS ───────────────────────────────────────────
+apiApp.get('/api/tickets/:guildId?', (req, res) => {
+    res.json({ success: true, tickets: [], message: 'Ticket API placeholder' });
+});
+
+// ─── INTEGRATIONS ──────────────────────────────────────
+apiApp.get('/api/integrations', (req, res) => {
+    let marketState = null;
+    try { if (typeof getMarketState === 'function') marketState = getMarketState(null); } catch (e) {}
+    
+    res.json({
+        success: true,
+        discord: { connected: true, user: client.user?.tag, servers: client.guilds.cache.size },
+        telegram: { connected: client.telegramBridge?.enabled || false },
+        lydia: { connected: Object.keys(client.lydiaAgents || {}).length > 0 },
+        market: { connected: typeof getMarketState === 'function', currentTrend: marketState }
+    });
+});
+
 // ✅ Gestionnaire d'erreurs global — le bot ne crash pas si l'API plante
 apiApp.use((err, req, res, next) => {
     console.error(`[API ERROR] ${req.method} ${req.path}:`, err.stack || err.message);
@@ -4723,22 +4862,6 @@ apiApp.use((err, req, res, next) => {
         timestamp: Date.now(),
         path: req.path
     });
-});
-
-// ✅ Gestionnaire 404 propre
-apiApp.use((req, res) => {
-    res.status(404).json({ 
-        error: 'Route not found',
-        available: ['/api/stats', '/api/health', '/api/servers', '/api/commands', '/api/server/:guildId']
-    });
-});
-
-// ================= LANCEMENT API =================
-const API_PORT = process.env.API_PORT || 5000;
-apiApp.listen(API_PORT, '0.0.0.0', () => {
-    console.log(`\x1b[36m[API BRIDGE]\x1b[0m Active on port ${API_PORT}`);
-    console.log(`\x1b[36m[API BRIDGE]\x1b[0m CORS whitelist: ${allowedOrigins.length} origin(s) configured`);
-    console.log(`\x1b[36m[API BRIDGE]\x1b[0m Endpoints: /api/health, /api/stats, /api/servers, /api/commands, /api/server/:guildId`);
 });
 
 // ================= PM2 READY SIGNAL =================
