@@ -4952,6 +4952,11 @@ if (process.env.KEEPALIVE_URL) {
     console.log('\x1b[33m[KEEPALIVE]\x1b[0m Skipped — add KEEPALIVE_URL to .env to enable');
 }
 
+// ================= LANCEMENT DU SERVEUR API =================
+apiApp.listen(5000, '0.0.0.0', () => {
+    console.log('\x1b[32m[API]\x1b[0m Bridge active on port 5000 (0.0.0.0)');
+});
+
 // ── Discord Login ──
 client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error('\x1b[31m[LOGIN ERROR]\x1b[0m Failed to connect to Discord:', err.message);
