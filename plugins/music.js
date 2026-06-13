@@ -22,6 +22,11 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
+// play-dl for SoundCloud streaming (no cookies needed)
+let playdl = null;
+try { playdl = require('play-dl'); console.log('[MUSIC] play-dl loaded - SoundCloud support active'); }
+catch { console.log('[MUSIC] play-dl not installed. Run: npm install play-dl'); }
+
 // ============================================================================
 //  COLORS
 // ============================================================================
@@ -330,10 +335,24 @@ async function resolveTrack(query, requester) {
     return track;
   }
 
-  // 8. Search Query (text) - Try Spotify API first
+  // 8. Search Query (text) - Try Spotify API first for metadata
   const results = await searchSpotify(query, 1);
   if (results && results.length > 0) {
     const r = results[0];
+    // Try SoundCloud for actual audio (no cookies needed!)
+    const scResults = await searchSoundCloud(r.title + ' ' + r.artist, 1);
+    if (scResults && scResults.length > 0) {
+      const sc = scResults[0];
+      track.title = sc.title;
+      track.artist = sc.artist;
+      track.duration = sc.duration;
+      track.thumbnail = r.thumbnail; // Keep Spotify thumbnail
+      track.url = sc.url;
+      track.source = 'soundcloud';
+      track.searchQuery = sc.url;
+      return track;
+    }
+    // No SoundCloud result - use Spotify metadata + YouTube fallback
     track.title = r.title;
     track.artist = r.artist;
     track.duration = r.duration;
@@ -344,7 +363,21 @@ async function resolveTrack(query, requester) {
     return track;
   }
 
-  // Fallback: use query directly with yt-dlp search
+  // Fallback: try SoundCloud direct search
+  const scDirect = await searchSoundCloud(query, 1);
+  if (scDirect && scDirect.length > 0) {
+    const sc = scDirect[0];
+    track.title = sc.title;
+    track.artist = sc.artist;
+    track.duration = sc.duration;
+    track.thumbnail = sc.thumbnail;
+    track.url = sc.url;
+    track.source = 'soundcloud';
+    track.searchQuery = sc.url;
+    return track;
+  }
+
+  // Last resort: YouTube (requires cookies on Hetzner)
   track.title = query;
   track.artist = 'Search';
   track.source = 'youtube';
@@ -371,7 +404,11 @@ async function resolveSearchResults(query, limit) {
     }));
   }
 
-  // Fallback: Invidious search (Hetzner-safe YouTube proxy)
+  // Fallback: SoundCloud search (no cookies, Hetzner-safe!)
+  const scResults = await searchSoundCloud(query, limit || CONFIG.SEARCH_RESULTS);
+  if (scResults && scResults.length > 0) return scResults;
+
+  // Last resort: Invidious YouTube proxy
   try {
     for (let i = 0; i < Math.min(3, INVIDIOUS_HOSTS.length); i++) {
       const host = getInvidiousHost();
@@ -407,6 +444,43 @@ async function resolveSearchResults(query, limit) {
 // ============================================================================
 //  STREAM ENGINE -- yt-dlp stdout pipe (The Core)
 // ============================================================================
+
+// ============================================================================
+//  SOUNDCLOUD SEARCH via play-dl (no cookies needed, Hetzner-safe)
+// ============================================================================
+
+async function searchSoundCloud(query, limit) {
+  if (!playdl) return null;
+  try {
+    const results = await playdl.search(query, { source: { soundcloud: 'tracks' }, limit: limit || 1 });
+    if (!results || results.length === 0) return null;
+    return results.map((t, i) => ({
+      title: t.name || 'Unknown',
+      artist: t.user && t.user.name ? t.user.name : 'SoundCloud',
+      duration: t.durationInMs || 0,
+      thumbnail: t.thumbnail || null,
+      url: t.permalink || t.url,
+      source: 'soundcloud',
+      index: i + 1,
+      label: (t.name || 'Unknown').substring(0, 100),
+      description: (fmtTime(t.durationInMs || 0) + ' - ' + (t.user && t.user.name ? t.user.name : 'SoundCloud')).substring(0, 100),
+      searchQuery: t.permalink || t.url,
+    }));
+  } catch (err) { console.error('[SoundCloud] Search error:', err.message); return null; }
+}
+
+async function streamSoundCloud(url) {
+  if (!playdl) throw new Error('play-dl not installed');
+  try {
+    const stream = await playdl.stream(url, { quality: 2 }); // 2 = best audio
+    const resource = createAudioResource(stream.stream, {
+      inputType: stream.type,
+      inlineVolume: true,
+    });
+    resource.volume.setVolume(CONFIG.VOLUME_DEFAULT / 100);
+    return resource;
+  } catch (err) { throw new Error('SoundCloud stream failed: ' + err.message); }
+}
 
 // Invidious instances for Hetzner-safe YouTube search
 const INVIDIOUS_HOSTS = [
@@ -450,11 +524,28 @@ async function createStreamResource(track) {
   const query = track.searchQuery || track.url;
   if (!query) throw new Error('No query or URL for stream');
 
-  // Step 1: Resolve to direct YouTube URL (bypasses bot check on search)
-  const directUrl = await resolveYouTubeUrl(query);
+  // Step 1: Try SoundCloud via play-dl (no cookies, Hetzner-safe!)
+  if (track.source === 'soundcloud' && playdl) {
+    try {
+      console.log('[STREAM] Using play-dl SoundCloud for: ' + (track.title ? track.title.substring(0, 40) : 'track'));
+      const resource = await streamSoundCloud(query);
+      console.log('[STREAM] SoundCloud stream ready');
+      return resource;
+    } catch (err) {
+      console.log('[STREAM] SoundCloud failed: ' + err.message + ', trying YouTube...');
+    }
+  }
+
+  // Step 2: Resolve to direct YouTube URL
+  let directUrl;
+  try {
+    directUrl = await resolveYouTubeUrl(query);
+  } catch (err) {
+    throw new Error(err.message + '\n\nTip: Install play-dl for SoundCloud support (npm install play-dl) or add YouTube cookies (data/cookies.txt)');
+  }
   console.log('[STREAM] Resolved URL: ' + directUrl.substring(0, 80));
 
-  // Step 2: Stream from direct URL (Hetzner-safe)
+  // Step 3: Stream from direct URL with cookies if available
   return new Promise((resolve, reject) => {
     const args = [
       '-o', '-',
@@ -462,8 +553,16 @@ async function createStreamResource(track) {
       '--no-playlist',
       '--no-warnings',
       '--quiet',
-      directUrl,
     ];
+
+    // Add cookies if available (needed for Hetzner YouTube)
+    const cookiesPath = path.join(__dirname, '..', 'data', 'cookies.txt');
+    if (fs.existsSync(cookiesPath)) {
+      args.push('--cookies', cookiesPath);
+      console.log('[STREAM] Using cookies.txt for YouTube auth');
+    }
+
+    args.push(directUrl);
 
     console.log('[STREAM] Spawning yt-dlp pipe for: ' + (track.title ? track.title.substring(0, 40) : 'track'));
     const ytdlp = spawn('yt-dlp', args, { timeout: CONFIG.YTDLP_TIMEOUT });
