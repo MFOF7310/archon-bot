@@ -583,7 +583,7 @@ module.exports = {
         message.reply({ embeds: [e(C.GREEN, 'Stage Broadcast activated!')] });
         break;
       }
-      default: { message.reply({ embeds: [e(C.ACCENT, '**Commands:** `play`, `skip`, `stop`, `pause`, `resume`, `queue`, `volume`, `loop`, `nowplaying`, `dashboard`, `disconnect`, `stage`')] }] }); }
+      default: { message.reply({ embeds: [e(C.ACCENT, 'Commands: `play`, `skip`, `stop`, `pause`, `resume`, `queue`, `volume`, `loop`, `nowplaying`, `dashboard`, `disconnect`, `stage`')] }); }
     }
   },
 };
