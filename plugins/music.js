@@ -205,9 +205,12 @@ async function searchSpotify(query, limit) {
 //  HTTP HELPERS
 // ============================================================================
 
-function httpGet(host, path, headers) {
+const http = require('http');
+
+function httpGet(host, path, headers, allowHttp) {
   return new Promise((resolve, reject) => {
-    const req = https.request({ host, path, method: 'GET', headers, timeout: 10000 }, (res) => {
+    const client = allowHttp ? http : https;
+    const req = client.request({ host, path, method: 'GET', headers, timeout: 10000 }, (res) => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
@@ -368,76 +371,79 @@ async function resolveSearchResults(query, limit) {
     }));
   }
 
-  // Fallback: yt-dlp search
+  // Fallback: Invidious search (Hetzner-safe YouTube proxy)
   try {
-    const args = [
-      '--dump-json', '--no-playlist', '--flat-playlist',
-      '--no-warnings', '--quiet',
-      'ytsearch' + (limit || CONFIG.SEARCH_RESULTS) + ':' + query
-    ];
-
-    const result = await spawnAsync('yt-dlp', args, CONFIG.YTDLP_TIMEOUT);
-    const lines = result.stdout.split('\n').filter(l => l.trim());
-    const tracks = [];
-    for (const line of lines.slice(0, limit || CONFIG.SEARCH_RESULTS)) {
+    for (let i = 0; i < Math.min(3, INVIDIOUS_HOSTS.length); i++) {
+      const host = getInvidiousHost();
       try {
-        const data = JSON.parse(line);
-        const dur = (data.duration || 0) * 1000;
-        tracks.push({
-          title: data.title || 'Unknown',
-          artist: data.uploader || 'YouTube',
-          duration: dur,
-          thumbnail: data.thumbnail || null,
-          url: data.webpage_url || data.url || 'https://youtube.com/watch?v=' + data.id,
-          id: data.id,
-          source: 'youtube',
-          index: tracks.length + 1,
-          label: (data.title || 'Unknown').substring(0, 100),
-          description: (fmtTime(dur) + ' - ' + (data.uploader || 'YouTube')).substring(0, 100),
-          emoji: ':arrow_forward:',
-          searchQuery: data.webpage_url || 'https://youtube.com/watch?v=' + data.id,
-        });
-      } catch {}
+        const data = await httpGet(host, '/api/v1/search?q=' + encodeURIComponent(query) + '&type=video', {}, true);
+        if (Array.isArray(data) && data.length > 0) {
+          return data.slice(0, limit || CONFIG.SEARCH_RESULTS).map((v, idx) => {
+            const dur = (v.lengthSeconds || 0) * 1000;
+            return {
+              title: v.title || 'Unknown',
+              artist: v.author || 'YouTube',
+              duration: dur,
+              thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : null,
+              url: 'https://www.youtube.com/watch?v=' + v.videoId,
+              id: v.videoId,
+              source: 'youtube',
+              index: idx + 1,
+              label: (v.title || 'Unknown').substring(0, 100),
+              description: (fmtTime(dur) + ' - ' + (v.author || 'YouTube')).substring(0, 100),
+              emoji: '\u25B6\uFE0F',
+              searchQuery: 'https://www.youtube.com/watch?v=' + v.videoId,
+            };
+          });
+        }
+      } catch (err) { console.log('[Invidious] ' + host + ' search failed: ' + err.message); }
     }
-    return tracks.length > 0 ? tracks : null;
   } catch (err) {
-    console.error('[Search] yt-dlp search error:', err.message);
-    return null;
+    console.error('[Search] Invidious search error:', err.message);
   }
+  return null;
 }
 
 // ============================================================================
 //  STREAM ENGINE -- yt-dlp stdout pipe (The Core)
 // ============================================================================
 
+// Invidious instances for Hetzner-safe YouTube search
+const INVIDIOUS_HOSTS = [
+  'vid.puffyan.us', 'y.com.sb', 'iv.nboeck.de', 'iv.datura.network',
+  'yt.artemislena.eu', 'invidious.perennialte.ch', 'iv.nboeck.de',
+];
+let invidiousIndex = 0;
+
+function getInvidiousHost() {
+  const host = INVIDIOUS_HOSTS[invidiousIndex % INVIDIOUS_HOSTS.length];
+  invidiousIndex++;
+  return host;
+}
+
+async function invidiousSearch(query) {
+  // Try multiple Invidious instances
+  for (let i = 0; i < Math.min(3, INVIDIOUS_HOSTS.length); i++) {
+    const host = getInvidiousHost();
+    try {
+      const data = await httpGet(host, '/api/v1/search?q=' + encodeURIComponent(query) + '&type=video', {}, true);
+      if (Array.isArray(data) && data.length > 0 && data[0].videoId) {
+        return 'https://www.youtube.com/watch?v=' + data[0].videoId;
+      }
+    } catch (err) { console.log('[Invidious] ' + host + ' failed: ' + err.message); }
+  }
+  return null;
+}
+
 async function resolveYouTubeUrl(query) {
   // Direct URLs pass through unchanged
   if (query.startsWith('http')) return query;
 
-  // Try 1: ytsearch with android client (Hetzner-safe)
-  let result = await spawnAsync('yt-dlp', [
-    '--extractor-args', 'youtube:player_client=android',
-    '--print', 'webpage_url',
-    '--no-playlist', '--no-warnings', '--quiet',
-    'ytsearch1:' + query,
-  ], 30000);
+  // Use Invidious API for Hetzner-safe YouTube search
+  const url = await invidiousSearch(query);
+  if (url) return url;
 
-  if (result.code === 0 && result.stdout.trim()) {
-    return result.stdout.trim().split('\n')[0];
-  }
-
-  // Try 2: plain ytsearch (fallback)
-  result = await spawnAsync('yt-dlp', [
-    '--print', 'webpage_url',
-    '--no-playlist', '--no-warnings', '--quiet',
-    'ytsearch1:' + query,
-  ], 30000);
-
-  if (result.code === 0 && result.stdout.trim()) {
-    return result.stdout.trim().split('\n')[0];
-  }
-
-  throw new Error('YouTube search blocked. Try a direct audio URL or use /music search to pick from Spotify results.');
+  throw new Error('YouTube search unavailable. Try a direct audio URL.');
 }
 
 async function createStreamResource(track) {
