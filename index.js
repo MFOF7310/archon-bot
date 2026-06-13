@@ -2121,6 +2121,15 @@ client.once(Events.ClientReady, async () => {
 
     await client.loadPlugins();
 
+// ================= LAVALINK INITIALIZATION =================
+try {
+    const musicPlugin = require('./plugins/music');
+    musicPlugin.initLavalink(client);
+    console.log(`\x1b[32m[LAVALINK]\x1b[0m Connected to BAMAKO-NODE`);
+} catch (err) {
+    console.error(`\x1b[31m[LAVALINK]\x1b[0m Init failed:`, err.message);
+}
+
 // ----- FULLY AUTOMATIC BILINGUAL ALIAS MAP -----
 function buildAliasLanguageMap() {
     client.aliasLang.clear();
