@@ -142,7 +142,7 @@ const LANG_NAMES = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BOT_KNOWLEDGE = `
-You are the onboard AI expert monitor for ARCHITECT CG-223 (also called ARCHON CG-223), a Discord bot engineered by Moussa Fofana from Bamako, Mali 🇲🇱.
+You are Lydia, the onboard AI expert monitor for ARCHITECT CG-223 (also called ARCHON CG-223), a Discord bot engineered by Moussa Fofana from Bamako, Mali 🇲🇱.
 
 CORE ARCHITECTURE:
 - "Per-Server Partitioning": All user data (XP, credits, levels, stats, inventory) is strictly isolated per server via composite key (user ID + guild ID). No cross-server data leakage.
@@ -150,7 +150,7 @@ CORE ARCHITECTURE:
 - Plugin architecture: Modules load dynamically from /plugins and /telegram.
 - Command architecture: Dual-mode — Prefix commands (server-configurable) and Slash commands (global, always available).
 
-AI ASSISTANT — CAPABILITIES & IDENTITY:
+LYDIA AI — CAPABILITIES & IDENTITY:
 - Multi-agent system with persistent memory, live web search, reminders, and image analysis.
 - Auto-detect conversation themes: Tech, Intel/Research, Tactical, Medical, Academic, Police/Security.
 - Memory protocol: Users store facts via [MEMORY: key | value]. Reminders via [REMIND: X min/h | message].
@@ -188,7 +188,7 @@ SYSTEMS OVERVIEW — FUNCTIONAL DOMAINS:
 7. REMINDERS & BIRTHDAYS — Persistent per-user reminders with DM+channel fallback. Birthday tracking with daily celebration checks.
 8. TELEGRAM BRIDGE — Selective command sync to Telegram. Not a full mirror.
 9. TIKTOK NOTIFICATIONS — Automated video tracking and designated channel posting.
-10. AI ASSISTANT — Yourself (the onboard AI). Memory, search, analysis, and conversational assistance.
+10. LYDIA AI — Yourself. Memory, search, analysis, and conversational assistance.
 
 ANTI-HALLUCINATION PROTOCOL — CRITICAL:
 1. NEVER fabricate features, commands, or capabilities. If uncertain, say: "I don't have real-time access to that configuration. Try the command or contact the architect."
@@ -311,49 +311,6 @@ function getBotName(message) {
     || message.client?.user?.displayName
     || message.client?.user?.username
     || 'Lydia';
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  DISCORD RESPONSE FORMATTER — Clean, readable, mobile-friendly
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function formatDiscordResponse(text) {
-  if (!text || text.length < 200) return [{ description: text || '' }];
-
-  // Split by double newlines or section markers
-  const sections = text.split(/\n{2,}|(?=\*\*[^*]+\*\*\n)/).filter(s => s.trim());
-  if (sections.length <= 1) return [{ description: text }];
-
-  const embeds = [];
-  let currentDesc = '';
-
-  for (const section of sections) {
-    const trimmed = section.trim();
-    if (!trimmed) continue;
-
-    // Check if this is a header line
-    const isHeader = /^\*\*[^*]+\*\*$/.test(trimmed) || trimmed.length < 60 && !trimmed.includes('\n');
-
-    if (isHeader && currentDesc) {
-      // Save previous embed and start new one with this header
-      embeds.push({ description: currentDesc.trim() });
-      currentDesc = trimmed + '\n\n';
-    } else {
-      currentDesc += trimmed + '\n\n';
-    }
-
-    // If current section gets too long, split it
-    if (currentDesc.length > 3500) {
-      embeds.push({ description: currentDesc.trim() });
-      currentDesc = '';
-    }
-  }
-
-  if (currentDesc.trim()) {
-    embeds.push({ description: currentDesc.trim() });
-  }
-
-  return embeds.length > 0 ? embeds : [{ description: text }];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -597,9 +554,9 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
             await user.send({
               embeds: [new EmbedBuilder()
                 .setColor('#f1c40f')
-                .setAuthor({ name: '\uD83D\uDD14 Reminder', iconURL: client.user?.displayAvatarURL() })
+                .setAuthor({ name: '🔔 Reminder', iconURL: client.user?.displayAvatarURL() })
                 .setDescription(`**${msg.trim()}**`)
-                .setFooter({ text: `${client.user?.username || 'Lydia'} \u2022 Reminder` })
+                .setFooter({ text: 'Architect CG-223 • Reminder' })
                 .setTimestamp()
               ]
             }).catch(() => {});
@@ -655,9 +612,9 @@ function rehydrateReminders(client, database) {
               await user.send({
                 embeds: [new EmbedBuilder()
                   .setColor('#f1c40f')
-                  .setAuthor({ name: '\uD83D\uDD14 Reminder', iconURL: client.user?.displayAvatarURL() })
+                  .setAuthor({ name: '🔔 Reminder', iconURL: client.user?.displayAvatarURL() })
                   .setDescription(`**${r.message}**`)
-                  .setFooter({ text: `${client.user?.username || 'Lydia'} \u2022 Reminder` })
+                  .setFooter({ text: 'Architect CG-223 • Reminder' })
                   .setTimestamp()
                 ]
               }).catch(() => {});
@@ -708,28 +665,24 @@ function buildEmbed(reply, message, options = {}) {
   else if (themeKey === 'tactical') { classification = 'FIELD GUIDE'; badgeEmoji = '📋'; }
   else if (themeKey === 'academic') { classification = 'RESEARCH NOTE'; badgeEmoji = '📚'; }
 
-  const botName = getBotName(message) || 'Lydia';
-
   if (isThinking) {
     return new EmbedBuilder()
       .setColor('#f1c40f')
       .setAuthor({
-        name: `${badgeEmoji} ${classification}`,
+        name: `${badgeEmoji} ${classification} • ANALYZING...`,
         iconURL: message.author.displayAvatarURL({ dynamic: true, size: 32 })
       })
-      .setDescription(`🧠 Processing your request...`)
+      .setDescription(`\`\`\`ansi\n\u001b[1;33m[ ${theme.name.toUpperCase()} ] \u001b[0m\u001b[33mProcessing neural request...\u001b[0m\n\`\`\``)
       .setFooter({
-        text: `${botName} • ${message.guild?.name || 'DM'}`,
+        text: `ARCHITECT CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
         iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
       })
       .setTimestamp();
   }
 
   let formattedReply = reply;
-  if (!isError && reply) {
-    formattedReply = reply.replace(/^(#{1,3})\s+/gm, '**');
-    formattedReply = formattedReply.replace(/\n{3,}/g, '\n\n');
-    formattedReply = formattedReply.replace(/^\*\s+/gm, '\u2022 ');
+  if (!isError && reply && reply.length > 120 && !reply.includes('```')) {
+    formattedReply = reply.replace(/^(#{1,3})\s+/gm, '**').replace(/\n{3,}/g, '\n\n');
   }
 
   if (formattedReply.length > CFG.MAX_EMBED_DESC) {
@@ -744,7 +697,7 @@ function buildEmbed(reply, message, options = {}) {
     })
     .setDescription(formattedReply)
     .setFooter({
-      text: `${botName} \u2022 ${message.guild?.name || 'DM'}`,
+      text: `ARCHITECT CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
       iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
     })
     .setTimestamp();
@@ -754,8 +707,8 @@ function buildEmbed(reply, message, options = {}) {
   const mentionedCommand = reply ? botCommands.find(cmd => reply.toLowerCase().includes(cmd)) : null;
   if (mentionedCommand && !isError) {
     embed.addFields({
-      name: '\uD83D\uDCCB Command Tip',
-      value: `Try \`${mentionedCommand}\` in any server channel.`,
+      name: '📋 SYSTEM BRIEFING',
+      value: `\`> ${mentionedCommand}\` — Use this command in any server channel.`,
       inline: false
     });
   }
@@ -766,12 +719,13 @@ function buildEmbed(reply, message, options = {}) {
       const title = s.title.length > 80 ? s.title.substring(0, 80) + '...' : s.title;
       return `[[${i + 1}]](${s.url}) ${title}`;
     }).join('\n');
-    embed.addFields({ name: '\uD83D\uDD17 Sources', value: sourceLinks, inline: false });
+    embed.addFields({ name: '🔗 Real-Time Sources', value: sourceLinks, inline: false });
   }
 
+  // Model info footer for tech/intel themes
   if ((themeKey === 'tech' || themeKey === 'intel') && model && !isError) {
     embed.setFooter({
-      text: `${botName} \u2022 ${model.name} \u2022 ${latency}ms \u2022 ${message.guild?.name || 'DM'}`,
+      text: `ARCHITECT CG-223 // ${model.name} // ${latency}ms // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
       iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
     });
   }
@@ -809,24 +763,9 @@ LANGUAGE PROTOCOL — CRITICAL:
 - Example (English user): "To claim your daily rewards, use \`.daily\` or \`/daily\`."
 `;
 
-  // ─── DISCORD FORMATTING INSTRUCTION ───
-  const discordFormatInstruction = `
-DISCORD FORMATTING PROTOCOL — CRITICAL:
-- Format responses for Discord embeds. Keep paragraphs short (2-3 sentences max).
-- Use **bold headers** for sections: "**Overview**", "**Steps**", "**Key Points**".
-- Use bullet points with \u2022 for lists. Add blank lines between sections.
-- Use \`code blocks\` for commands, file names, or technical terms.
-- Keep responses scannable. Mobile users see this on small screens.
-- NEVER send walls of text. Break content into clear sections.
-- For step-by-step guides: number each step, one per line.
-- Keep the tone professional but conversational — not robotic.
-`;
-
   return `${BOT_KNOWLEDGE}
 
 ${languageInstruction}
-
-${discordFormatInstruction}
 
 You are ${botName}, the onboard AI expert monitor for ARCHITECT CG-223.
 
