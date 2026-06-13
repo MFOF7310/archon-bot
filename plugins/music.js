@@ -409,10 +409,35 @@ async function resolveSearchResults(query, limit) {
 //  STREAM ENGINE -- yt-dlp stdout pipe (The Core)
 // ============================================================================
 
+async function resolveYouTubeUrl(query) {
+  // Step 1: Resolve search query to direct YouTube URL
+  // Direct URLs pass through unchanged
+  if (query.startsWith('http')) return query;
+
+  const args = [
+    '--print', 'webpage_url',
+    '--no-playlist',
+    '--no-warnings',
+    '--quiet',
+    'ytsearch1:' + query,
+  ];
+
+  const result = await spawnAsync('yt-dlp', args, 30000);
+  if (result.code !== 0 || !result.stdout.trim()) {
+    throw new Error('Could not find YouTube video for: ' + query);
+  }
+  return result.stdout.trim().split('\n')[0];
+}
+
 async function createStreamResource(track) {
   const query = track.searchQuery || track.url;
   if (!query) throw new Error('No query or URL for stream');
 
+  // Step 1: Resolve to direct YouTube URL (bypasses bot check on search)
+  const directUrl = await resolveYouTubeUrl(query);
+  console.log('[STREAM] Resolved URL: ' + directUrl.substring(0, 80));
+
+  // Step 2: Stream from direct URL (Hetzner-safe)
   return new Promise((resolve, reject) => {
     const args = [
       '-o', '-',
@@ -420,13 +445,10 @@ async function createStreamResource(track) {
       '--no-playlist',
       '--no-warnings',
       '--quiet',
+      directUrl,
     ];
 
-    // For text searches, add ytsearch prefix
-    const finalQuery = query.startsWith('http') ? query : 'ytsearch1:' + query;
-    args.push(finalQuery);
-
-    console.log('[STREAM] Spawning yt-dlp for: ' + query.substring(0, 80));
+    console.log('[STREAM] Spawning yt-dlp pipe for: ' + (track.title ? track.title.substring(0, 40) : 'track'));
     const ytdlp = spawn('yt-dlp', args, { timeout: CONFIG.YTDLP_TIMEOUT });
     let stderr = '';
 
@@ -445,7 +467,7 @@ async function createStreamResource(track) {
     setTimeout(() => {
       demuxProbe(ytdlp.stdout)
         .then(({ stream, type }) => {
-          console.log('[STREAM] Detected format: ' + type + ' for ' + (track.title ? track.title.substring(0, 40) : 'track'));
+          console.log('[STREAM] Detected format: ' + type);
           const resource = createAudioResource(stream, {
             inputType: type,
             inlineVolume: true,
