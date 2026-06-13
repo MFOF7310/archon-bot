@@ -1,39 +1,47 @@
 /**
- *  ARCHITECT CG-223 // NEURAL AUDIO ENGINE v2.0
- *  Interactive music with Stage Channel support
- *  Hetzner-compatible: No YouTube dependency, multi-source audio
- *
- *  By: Moussa Fofana // Node BAMAKO_223
+ * ╔══════════════════════════════════════════════════════════════════════════════╗
+ * ║  ARCHITECT CG-223 // NEURAL AUDIO ENGINE v3.0 PRO                          ║
+ * ║  Professional Discord music streaming with Spotify search + yt-dlp pipe    ║
+ * ║  Hetzner-compatible: Cookies bypass IP block, stdout pipe streaming        ║
+ * ║                                                                              ║
+ * ║  By: Moussa Fofana // Node BAMAKO_223                                      ║
+ * ╚══════════════════════════════════════════════════════════════════════════════╝
  */
 
 'use strict';
 
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  StringSelectMenuBuilder, ChannelType
+  StringSelectMenuBuilder, ChannelType, SlashCommandBuilder
 } = require('discord.js');
 const {
   joinVoiceChannel, createAudioPlayer, createAudioResource,
   AudioPlayerStatus, VoiceConnectionStatus, entersState,
-  StreamType, NoSubscriberBehavior
+  StreamType, NoSubscriberBehavior, demuxProbe
 } = require('@discordjs/voice');
-let playdl = null;
-try { playdl = require('play-dl'); } catch { console.log('[MUSIC] play-dl not installed. SoundCloud/Spotify disabled. Run: npm install play-dl'); }
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const https = require('https');
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const C = {
-  GREEN:  '#00ff88',
-  DARK:   '#0a0a0a',
-  ACCENT: '#00d4ff',
-  WARN:   '#ff6b35',
-  RED:    '#e74c3c',
-  GOLD:   '#f1c40f',
+  GREEN:  0x00ff88,  DARK:   0x0a0a0a,  ACCENT: 0x00d4ff,
+  WARN:   0xff6b35,  RED:    0xe74c3c,   GOLD:   0xf1c40f,
+  SPOTIFY: 0x1DB954,
+};
+
+const CONFIG = {
+  YTDLP_TIMEOUT:  60000,
+  MAX_QUEUE:      100,
+  HISTORY_SIZE:   50,
+  IDLE_TIMEOUT:   300000,
+  NP_UPDATE_MS:   10000,
+  VOLUME_DEFAULT: 50,
+  SEARCH_RESULTS: 10,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -46,10 +54,12 @@ function getState(guildId) {
   if (!audioStates.has(guildId)) {
     audioStates.set(guildId, {
       guildId, queue: [], current: null, player: null, connection: null,
-      volume: 100, loop: 'off', paused: false, stageInstance: null,
-      nowPlayingMsg: null, dashboardMsg: null, textChannel: null,
-      requester: null, startTime: null, history: [], isStage: false,
-      bassBoost: 0, nightcore: false, status: 'IDLE', sessionId: Math.random().toString(36).slice(2, 10).toUpperCase(),
+      volume: CONFIG.VOLUME_DEFAULT, loop: 'off', paused: false,
+      stageInstance: null, nowPlayingMsg: null, dashboardMsg: null,
+      textChannel: null, requester: null, startTime: null,
+      history: [], isStage: false, status: 'IDLE',
+      sessionId: Math.random().toString(36).slice(2, 10).toUpperCase(),
+      _updateInterval: null, _ytdlpProcess: null,
     });
   }
   return audioStates.get(guildId);
@@ -58,11 +68,22 @@ function getState(guildId) {
 function destroyState(guildId) {
   const s = audioStates.get(guildId);
   if (!s) return;
+  killYtDlp(s);
   if (s._updateInterval) { clearInterval(s._updateInterval); s._updateInterval = null; }
   if (s.connection) try { s.connection.destroy(); } catch {}
   if (s.player) try { s.player.stop(); } catch {}
   if (s.stageInstance) try { s.stageInstance.delete().catch(() => {}); } catch {}
   audioStates.delete(guildId);
+}
+
+function killYtDlp(s) {
+  if (s._ytdlpProcess) {
+    try { s._ytdlpProcess.kill('SIGTERM'); } catch {}
+    setTimeout(() => {
+      try { if (s._ytdlpProcess && !s._ytdlpProcess.killed) s._ytdlpProcess.kill('SIGKILL'); } catch {}
+      s._ytdlpProcess = null;
+    }, 2000);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -85,7 +106,7 @@ function createPlayer(guildId) {
   });
 
   player.on(AudioPlayerStatus.Idle, async () => {
-    s.status = 'IDLE';
+    s.status = 'IDLE'; killYtDlp(s);
     if (s.loop === 'track' && s.current) {
       await playTrack(guildId, s.current);
     } else if (s.queue.length > 0) {
@@ -95,7 +116,7 @@ function createPlayer(guildId) {
       setTimeout(() => {
         const f = getState(guildId);
         if (f?.status === 'IDLE' && f.queue.length === 0) destroyState(guildId);
-      }, 300000);
+      }, CONFIG.IDLE_TIMEOUT);
     }
   });
 
@@ -133,7 +154,83 @@ async function updateStageTopic(guildId, topic) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  TRACK RESOLUTION -- HETZNER SAFE (No YouTube dependency)
+//  SPOTIFY API CLIENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let spotifyToken = null;
+let spotifyTokenExpiry = 0;
+
+async function getSpotifyToken() {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+  if (spotifyToken && Date.now() < spotifyTokenExpiry - 60000) return spotifyToken;
+  try {
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const data = await httpPost('accounts.spotify.com', '/api/token',
+      'grant_type=client_credentials',
+      { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' });
+    if (data.access_token) {
+      spotifyToken = data.access_token;
+      spotifyTokenExpiry = Date.now() + (data.expires_in * 1000);
+      return spotifyToken;
+    }
+  } catch (err) { console.error('[Spotify] Token error:', err.message); }
+  return null;
+}
+
+async function searchSpotify(query, limit = CONFIG.SEARCH_RESULTS) {
+  const token = await getSpotifyToken();
+  if (!token) return null;
+  try {
+    const encoded = encodeURIComponent(query);
+    const data = await httpGet('api.spotify.com', `/v1/search?q=${encoded}&type=track&limit=${limit}`,
+      { 'Authorization': `Bearer ${token}` });
+    return data.tracks?.items?.map(t => ({
+      title: t.name,
+      artist: t.artists?.map(a => a.name).join(', ') || 'Unknown',
+      duration: t.duration_ms,
+      thumbnail: t.album?.images?.[0]?.url || null,
+      url: t.external_urls?.spotify || `https://open.spotify.com/track/${t.id}`,
+      id: t.id,
+      source: 'spotify',
+    })) || null;
+  } catch (err) { console.error('[Spotify] Search error:', err.message); return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  HTTP HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function httpGet(host, path, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({ host, path, method: 'GET', headers, timeout: 10000 }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+    req.end();
+  });
+}
+
+function httpPost(host, path, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({ host, path, method: 'POST', headers, timeout: 10000 }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+    req.write(body);
+    req.end();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TRACK RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function resolveTrack(query, requester) {
@@ -142,7 +239,7 @@ async function resolveTrack(query, requester) {
     title: 'Unknown Track', artist: 'Unknown Artist',
     duration: 0, url: null, source: 'unknown', thumbnail: null,
     requester: requester?.tag || 'Unknown', requesterId: requester?.id || '0',
-    addedAt: Date.now(), streamUrl: null,
+    addedAt: Date.now(), searchQuery: null,
   };
 
   // ── 1. Direct Audio URL ──
@@ -150,7 +247,8 @@ async function resolveTrack(query, requester) {
     try {
       track.title = path.basename(new URL(query).pathname) || 'Direct Audio';
       track.artist = 'Direct Stream';
-      track.url = query; track.streamUrl = query; track.source = 'direct';
+      track.url = query; track.source = 'direct'; track.duration = 0;
+      track.searchQuery = query;
       return track;
     } catch {}
   }
@@ -159,7 +257,8 @@ async function resolveTrack(query, requester) {
   if (fs.existsSync(query)) {
     track.title = path.basename(query);
     track.artist = 'Local File';
-    track.url = query; track.streamUrl = query; track.source = 'local';
+    track.url = query; track.source = 'local'; track.duration = 0;
+    track.searchQuery = query;
     return track;
   }
 
@@ -167,101 +266,223 @@ async function resolveTrack(query, requester) {
   if (/^https?:\/\/.*:(\d+)/.test(query) || query.includes('.m3u') || query.includes('.pls')) {
     track.title = `Radio: ${query.split('/').pop() || query}`;
     track.artist = 'Live Stream';
-    track.url = query; track.streamUrl = query; track.source = 'radio';
-    track.duration = Infinity;
+    track.url = query; track.source = 'radio'; track.duration = Infinity;
+    track.searchQuery = query;
     return track;
   }
 
-  // ── 4. SoundCloud ──
-  if (query.includes('soundcloud.com') && playdl) {
-    try {
-      const info = await playdl.soundcloud(query);
-      track.title = info.name;
-      track.artist = info.user?.name || 'SoundCloud';
-      track.duration = info.durationInMs;
-      track.url = query; track.thumbnail = info.thumbnail;
-      track.source = 'soundcloud';
-      track.streamUrl = info.url;
-      return track;
-    } catch (err) { track.error = `SoundCloud: ${err.message}`; return track; }
+  // ── 4. YouTube URL ──
+  if (query.includes('youtube.com') || query.includes('youtu.be')) {
+    track.title = 'YouTube Track';
+    track.artist = 'YouTube';
+    track.url = query; track.source = 'youtube';
+    track.searchQuery = query;
+    return track;
   }
 
-  // ── 5. Spotify (Metadata only) ──
-  if ((query.includes('spotify.com') || query.includes('open.spotify.com')) && playdl) {
-    try {
-      if (playdl.isSpotify(query)) {
-        const info = await playdl.spotify(query);
-        track.title = info.name;
-        track.artist = info.artists?.map(a => a.name).join(', ') || 'Spotify';
-        track.duration = info.durationInMs;
-        track.url = query; track.thumbnail = info.thumbnail;
-        track.source = 'spotify';
-        track.error = 'Spotify links provide metadata only. Add a direct audio URL for playback.';
-      }
-      return track;
-    } catch (err) { track.error = `Spotify: ${err.message}`; return track; }
+  // ── 5. SoundCloud URL ──
+  if (query.includes('soundcloud.com')) {
+    track.title = 'SoundCloud Track';
+    track.artist = 'SoundCloud';
+    track.url = query; track.source = 'soundcloud';
+    track.searchQuery = query;
+    return track;
   }
 
-  // ── 6. YouTube (Hetzner blocked -- try with cookie workaround) ──
-  if (query.includes('youtube.com') || query.includes('youtu.be') || !query.startsWith('http')) {
-    const ytResult = await extractYouTubeWithCookies(query);
-    if (ytResult) {
-      track.title = ytResult.title;
-      track.artist = ytResult.artist || 'YouTube';
-      track.duration = ytResult.duration * 1000;
-      track.url = ytResult.url;
-      track.thumbnail = ytResult.thumbnail;
-      track.source = 'youtube';
-      track.streamUrl = ytResult.streamUrl;
-      return track;
+  // ── 6. Spotify URL ──
+  if (query.includes('spotify.com') || query.includes('open.spotify.com')) {
+    const token = await getSpotifyToken();
+    if (token) {
+      try {
+        const match = query.match(/track\/([a-zA-Z0-9]+)/);
+        if (match) {
+          const data = await httpGet('api.spotify.com', `/v1/tracks/${match[1]}`,
+            { 'Authorization': `Bearer ${token}` });
+          track.title = data.name || 'Spotify Track';
+          track.artist = data.artists?.map(a => a.name).join(', ') || 'Spotify';
+          track.duration = data.duration_ms;
+          track.thumbnail = data.album?.images?.[0]?.url || null;
+          track.url = data.external_urls?.spotify || query;
+          track.source = 'spotify';
+          track.searchQuery = `${track.title} ${track.artist}`;
+          return track;
+        }
+      } catch (err) { console.error('[Spotify] Track fetch error:', err.message); }
     }
-    track.error = query.startsWith('http') && (query.includes('youtube') || query.includes('youtu.be'))
-      ? '**YouTube is blocked on Hetzner IPs.**\n\n**Solutions:**\n1. Use direct MP3/OGG URLs\n2. Use SoundCloud links\n3. Upload files to your VPS\n4. Set up a YouTube cookie (see docs)'
-      : `**No playable source found for:** \`${query}\`\n\n**Supported sources:**\n• Direct MP3/OGG URLs\n• SoundCloud links\n• Spotify (metadata only)\n• Local file paths\n• Radio streams\n• YouTube (with cookie setup)`;
-    track.title = query.includes('youtube') || query.includes('youtu.be') ? 'YouTube (Blocked on Hetzner)' : query;
+    track.source = 'spotify';
+    track.searchQuery = query;
     return track;
   }
 
   // ── 7. Generic HTTP URL ──
   if (/^https?:\/\//.test(query)) {
-    track.title = `HTTP Stream: ${query.substring(0, 50)}`;
+    track.title = `Stream: ${query.substring(0, 50)}`;
     track.artist = 'Web Stream';
-    track.url = query; track.streamUrl = query; track.source = 'http';
+    track.url = query; track.source = 'http'; track.duration = 0;
+    track.searchQuery = query;
     return track;
   }
 
-  track.error = `Unsupported query: \`${query}\``;
+  // ── 8. Search Query (text) ──
+  // Try Spotify API first for rich metadata
+  const results = await searchSpotify(query, 1);
+  if (results && results.length > 0) {
+    const r = results[0];
+    track.title = r.title;
+    track.artist = r.artist;
+    track.duration = r.duration;
+    track.thumbnail = r.thumbnail;
+    track.url = r.url;
+    track.source = 'spotify';
+    track.searchQuery = `${r.title} ${r.artist}`;
+    return track;
+  }
+
+  // Fallback: use query directly with yt-dlp search
+  track.title = query;
+  track.artist = 'Search';
+  track.source = 'youtube';
+  track.searchQuery = query;
   return track;
 }
 
-// ─── YouTube Cookie Extraction ───
-async function extractYouTubeWithCookies(query) {
+async function resolveSearchResults(query, limit = CONFIG.SEARCH_RESULTS) {
+  // Try Spotify first
+  const spotifyResults = await searchSpotify(query, limit);
+  if (spotifyResults && spotifyResults.length > 0) {
+    return spotifyResults.map((r, i) => ({
+      ...r, index: i + 1,
+      label: `${r.title} — ${r.artist}`.substring(0, 100),
+      description: `${fmtTime(r.duration)} • Spotify`.substring(0, 100),
+      emoji: '🎵',
+    }));
+  }
+
+  // Fallback: yt-dlp search
   try {
     const cookiesPath = path.join(__dirname, '..', 'data', 'cookies.txt');
-    if (!fs.existsSync(cookiesPath)) return null;
+    const args = [
+      '--dump-json', '--no-playlist', '--flat-playlist',
+      '--no-warnings', '--quiet',
+      `ytsearch${limit}:${query}`
+    ];
+    if (fs.existsSync(cookiesPath)) args.push('--cookies', cookiesPath);
 
-    return new Promise((resolve) => {
-      const args = ['--cookies', cookiesPath, '-f', 'bestaudio', '--get-url', '--get-title', '--get-duration', '--get-thumbnail'];
-      if (!query.startsWith('http')) args.unshift(`ytsearch1:${query}`);
-      else args.push(query);
-
-      const ytdlp = spawn('yt-dlp', args, { timeout: 30000 });
-      let stdout = '';
-      ytdlp.stdout.on('data', (d) => { stdout += d.toString(); });
-      ytdlp.on('close', (code) => {
-        if (code !== 0) return resolve(null);
-        const lines = stdout.trim().split('\n').filter(Boolean);
-        if (lines.length < 2) return resolve(null);
-        resolve({
-          streamUrl: lines[0], title: lines[1] || 'YouTube Track',
-          artist: 'YouTube', duration: parseInt(lines[2]) || 0,
-          thumbnail: lines[3] || null,
-          url: query.startsWith('http') ? query : `https://youtube.com/results?search_query=${encodeURIComponent(query)}`,
+    const result = await spawnAsync('yt-dlp', args, CONFIG.YTDLP_TIMEOUT);
+    const lines = result.stdout.split('\n').filter(l => l.trim());
+    const tracks = [];
+    for (const line of lines.slice(0, limit)) {
+      try {
+        const data = JSON.parse(line);
+        const dur = (data.duration || 0) * 1000;
+        tracks.push({
+          title: data.title || 'Unknown',
+          artist: data.uploader || 'YouTube',
+          duration: dur,
+          thumbnail: data.thumbnail || null,
+          url: data.webpage_url || data.url || `https://youtube.com/watch?v=${data.id}`,
+          id: data.id,
+          source: 'youtube',
+          index: tracks.length + 1,
+          label: `${data.title || 'Unknown'}`.substring(0, 100),
+          description: `${fmtTime(dur)} • ${data.uploader || 'YouTube'}`.substring(0, 100),
+          emoji: '▶️',
+          searchQuery: data.webpage_url || `https://youtube.com/watch?v=${data.id}`,
         });
-      });
-      ytdlp.on('error', () => resolve(null));
+      } catch {}
+    }
+    return tracks.length > 0 ? tracks : null;
+  } catch (err) {
+    console.error('[Search] yt-dlp search error:', err.message);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  STREAM ENGINE -- yt-dlp stdout pipe (The Core)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function createStreamResource(track) {
+  const query = track.searchQuery || track.url;
+  if (!query) throw new Error('No query or URL for stream');
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-o', '-',                       // Output to stdout
+      '-f', 'bestaudio[ext=webm]/bestaudio/best',  // Best audio only
+      '--no-playlist',                 // No playlists
+      '--no-warnings',                 // No stderr warnings
+      '--quiet',                       // No progress
+      '--ignore-errors',               // Continue on errors
+      '--no-check-certificates',       // Skip cert checks
+    ];
+
+    // Add cookies for Hetzner YouTube bypass
+    const cookiesPath = path.join(__dirname, '..', 'data', 'cookies.txt');
+    if (fs.existsSync(cookiesPath)) {
+      args.push('--cookies', cookiesPath);
+    }
+
+    // Add user-agent to appear more legitimate
+    args.push('--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0');
+
+    args.push(query);
+
+    console.log(`[STREAM] Spawning yt-dlp for: ${query.substring(0, 80)}`);
+    const ytdlp = spawn('yt-dlp', args, { timeout: CONFIG.YTDLP_TIMEOUT });
+    let stderr = '';
+
+    ytdlp.on('error', (err) => {
+      reject(new Error(`yt-dlp spawn failed: ${err.message}. Is yt-dlp installed?`));
     });
-  } catch { return null; }
+
+    ytdlp.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    ytdlp.on('close', (code) => {
+      if (code !== 0 && code !== null) {
+        console.log(`[yt-dlp] exited ${code}: ${stderr.substring(0, 200)}`);
+      }
+    });
+
+    // Give yt-dlp a moment to start producing data
+    setTimeout(() => {
+      // Use demuxProbe to auto-detect stream format (WebM Opus, Ogg, etc.)
+      demuxProbe(ytdlp.stdout)
+        .then(({ stream, type }) => {
+          console.log(`[STREAM] Detected format: ${type} for ${track.title?.substring(0, 40)}`);
+          const resource = createAudioResource(stream, {
+            inputType: type,
+            inlineVolume: true,
+          });
+          resource.volume?.setVolume(CONFIG.VOLUME_DEFAULT / 100);
+          // Attach ytdlp process for cleanup
+          resource._ytdlp = ytdlp;
+          resolve(resource);
+        })
+        .catch((err) => {
+          killProcess(ytdlp);
+          reject(new Error(`Stream probe failed: ${err.message}`));
+        });
+    }, 500);
+  });
+}
+
+// ─── Spawn helper with timeout ───
+function spawnAsync(cmd, args, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(cmd, args, { timeout: timeoutMs });
+    let stdout = '', stderr = '';
+    proc.stdout.on('data', d => stdout += d.toString());
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => resolve({ stdout, stderr, code }));
+    proc.on('error', (err) => reject(err));
+  });
+}
+
+function killProcess(proc) {
+  if (!proc) return;
+  try { proc.kill('SIGTERM'); } catch {}
+  setTimeout(() => { try { if (!proc.killed) proc.kill('SIGKILL'); } catch {} }, 2000);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -270,23 +491,55 @@ async function extractYouTubeWithCookies(query) {
 
 async function playTrack(guildId, track) {
   const s = getState(guildId);
-  if (!track.streamUrl) {
-    if (s.queue.length > 0) return playNext(guildId);
-    return;
-  }
+  killYtDlp(s);
+
   try {
-    const resource = createAudioResource(track.streamUrl, {
-      inputType: StreamType.Arbitrary, inlineVolume: true,
-    });
-    if (resource.volume) resource.volume.setVolume(s.volume / 100);
+    // For local files, read directly
+    if (track.source === 'local' && fs.existsSync(track.url)) {
+      const { stream, type } = await demuxProbe(fs.createReadStream(track.url));
+      const resource = createAudioResource(stream, { inputType: type, inlineVolume: true });
+      resource.volume?.setVolume(s.volume / 100);
+      s.current = track;
+      s.player.play(resource);
+      if (s.isStage) await updateStageTopic(guildId, `${track.title} — ${track.artist}`);
+      s.history.push(track);
+      if (s.history.length > CONFIG.HISTORY_SIZE) s.history.shift();
+      return;
+    }
+
+    // For radio/direct HTTP streams
+    if (track.source === 'radio' || track.source === 'direct' || track.source === 'http') {
+      const resource = createAudioResource(track.url, {
+        inputType: StreamType.Arbitrary,
+        inlineVolume: true,
+      });
+      resource.volume?.setVolume(s.volume / 100);
+      s.current = track;
+      s.player.play(resource);
+      if (s.isStage) await updateStageTopic(guildId, `${track.title} — ${track.artist}`);
+      s.history.push(track);
+      if (s.history.length > CONFIG.HISTORY_SIZE) s.history.shift();
+      return;
+    }
+
+    // For everything else: use yt-dlp stream pipe
+    const resource = await createStreamResource(track);
+    s._ytdlpProcess = resource._ytdlp || null;
+    resource.volume?.setVolume(s.volume / 100);
 
     s.current = track;
     s.player.play(resource);
-    if (s.isStage) await updateStageTopic(guildId, `${track.title} -- ${track.artist}`);
+    if (s.isStage) await updateStageTopic(guildId, `${track.title} — ${track.artist}`);
     s.history.push(track);
-    if (s.history.length > 50) s.history.shift();
+    if (s.history.length > CONFIG.HISTORY_SIZE) s.history.shift();
+
   } catch (err) {
     console.error(`[PLAY ERR] ${guildId}: ${err.message}`);
+    s.textChannel?.send({
+      embeds: [new EmbedBuilder()
+        .setColor(C.RED)
+        .setDescription(`Failed to play **${track.title}**\n\`${err.message}\``)]
+    }).catch(() => {});
     s.current = null;
     if (s.queue.length > 0) playNext(guildId);
   }
@@ -305,7 +558,10 @@ async function playNext(guildId) {
 function fmtTime(ms) {
   if (!ms || ms === Infinity) return 'LIVE';
   const s = Math.floor(ms / 1000);
-  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}:${(m % 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+  return `${m}:${(s % 60).toString().padStart(2, '0')}`;
 }
 
 function buildNPEmbed(guildId) {
@@ -315,36 +571,41 @@ function buildNPEmbed(guildId) {
   if (!track) {
     return new EmbedBuilder()
       .setColor(C.DARK)
-      .setTitle('Neural Audio Engine -- IDLE')
-      .setDescription('Queue a track to begin playback.')
+      .setTitle('Neural Audio Engine — IDLE')
+      .setDescription('Queue a track to begin playback.\n\n**Tip:** Use `/music play query:song name` or `!play song name`')
       .addFields(
         { name: 'Session', value: `\`\`${s.sessionId}\`\``, inline: true },
         { name: 'Volume', value: `\`\`${s.volume}%\`\``, inline: true },
-        { name: 'Loop', value: s.loop === 'off' ? 'Off' : s.loop, inline: true },
+        { name: 'Loop', value: s.loop === 'off' ? '❌ Off' : s.loop === 'track' ? '🔂 Track' : '🔁 Queue', inline: true },
       )
-      .setFooter({ text: 'ARCHITECT CG-223 // Neural Audio v2.0' })
+      .setFooter({ text: 'ARCHITECT CG-223 // Neural Audio v3.0 PRO' })
       .setTimestamp();
   }
 
   const elapsed = s.startTime ? Date.now() - s.startTime : 0;
   const dur = track.duration || 0;
   const pct = dur > 0 ? Math.min(100, (elapsed / dur) * 100) : 0;
-  const filled = Math.floor((pct / 100) * 20);
-  const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(20 - filled);
+  const filled = Math.floor((pct / 100) * 18);
+  const bar = '█'.repeat(filled) + '░'.repeat(18 - filled);
+
+  const sourceEmoji = {
+    spotify: '<:spotify:0> ', youtube: '▶️ ', soundcloud: '☁️ ',
+    direct: '🔗 ', local: '📁 ', radio: '📻 ', http: '🌐 ',
+  }[track.source] || '🎵 ';
 
   return new EmbedBuilder()
-    .setColor(C.GREEN)
-    .setAuthor({ name: s.isStage ? 'LIVE STAGE BROADCAST' : 'NEURAL AUDIO ENGINE' })
-    .setTitle(track.title?.substring(0, 60) || 'Unknown')
+    .setColor(track.source === 'spotify' ? C.SPOTIFY : C.GREEN)
+    .setAuthor({ name: s.isStage ? '🔴 LIVE STAGE BROADCAST' : '🎵 NOW PLAYING', iconURL: track.thumbnail || undefined })
+    .setTitle(`${sourceEmoji}${track.title?.substring(0, 80) || 'Unknown'}`)
     .setURL(track.url || null)
-    .setDescription(`\`\`\`\n${bar} ${pct.toFixed(0)}%\n${fmtTime(elapsed)} / ${fmtTime(dur)}\nSource: ${track.source.toUpperCase()}\n\`\`\``)
+    .setDescription(`\`\`\`\n${bar} ${pct.toFixed(0)}%\n${fmtTime(elapsed)} / ${fmtTime(dur)}\nSource: ${track.source.toUpperCase()} | Engine: yt-dlp pipe\n\`\`\``)
     .addFields(
-      { name: 'Artist', value: track.artist?.substring(0, 30) || 'Unknown', inline: true },
-      { name: 'Requester', value: `<@${track.requesterId}>`, inline: true },
-      { name: 'Loop', value: s.loop === 'off' ? 'Off' : s.loop === 'track' ? 'Track' : 'Queue', inline: true },
-      { name: 'Volume', value: `\`\`${s.volume}%\`\``, inline: true },
-      { name: 'Queue', value: `\`\`${s.queue.length} tracks\`\``, inline: true },
-      { name: 'Session', value: `\`\`${s.sessionId}\`\``, inline: true },
+      { name: '👤 Artist', value: track.artist?.substring(0, 30) || 'Unknown', inline: true },
+      { name: '🎧 Requester', value: `<@${track.requesterId}>`, inline: true },
+      { name: '🔁 Loop', value: s.loop === 'off' ? '❌ Off' : s.loop === 'track' ? '🔂 Track' : '🔁 Queue', inline: true },
+      { name: '🔊 Volume', value: `\`\`${s.volume}%\`\``, inline: true },
+      { name: '📋 Queue', value: `\`\`${s.queue.length} tracks\`\``, inline: true },
+      { name: '⏱️ Session', value: `\`\`${s.sessionId}\`\``, inline: true },
     )
     .setThumbnail(track.thumbnail || null)
     .setFooter({ text: `ARCHITECT CG-223 // ${s.isStage ? 'Stage' : 'Voice'} // BAMAKO_223` })
@@ -353,6 +614,7 @@ function buildNPEmbed(guildId) {
 
 function buildNPButtons(guildId) {
   const s = getState(guildId);
+  const playing = s.status === 'PLAYING';
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`music_prev_${guildId}`).setEmoji('⏮️').setStyle(ButtonStyle.Secondary).setDisabled(s.history.length < 2),
@@ -383,19 +645,20 @@ async function updateNowPlaying(guildId) {
 
 function buildDashEmbed(guildId) {
   const s = getState(guildId);
+  const track = s.current;
   return new EmbedBuilder()
     .setColor(C.ACCENT)
     .setTitle('🎛️ Neural Audio Dashboard')
-    .setDescription(`Session \`\`${s.sessionId}\`\``)
+    .setDescription(`Session \`\`${s.sessionId}\`\`\n${track ? `**Now:** [${track.title}](${track.url})` : '*Idle*'}`)
     .addFields(
-      { name: 'Volume', value: `\`\`${s.volume}%\`\``, inline: true },
-      { name: 'Loop', value: s.loop, inline: true },
-      { name: 'Stage', value: s.isStage ? 'Active' : 'Off', inline: true },
-      { name: 'Queue', value: String(s.queue.length), inline: true },
-      { name: 'History', value: String(s.history.length), inline: true },
-      { name: 'Bass Boost', value: `+${s.bassBoost}dB`, inline: true },
+      { name: '🔊 Volume', value: `\`\`${s.volume}%\`\``, inline: true },
+      { name: '🔁 Loop', value: s.loop, inline: true },
+      { name: '🎭 Stage', value: s.isStage ? '🔴 Active' : '❌ Off', inline: true },
+      { name: '📋 Queue', value: String(s.queue.length), inline: true },
+      { name: '📜 History', value: String(s.history.length), inline: true },
+      { name: '⏱️ Uptime', value: s.startTime ? fmtTime(Date.now() - s.startTime) : '—', inline: true },
     )
-    .setFooter({ text: 'ARCHITECT CG-223 // Dashboard v2.0' })
+    .setFooter({ text: 'ARCHITECT CG-223 // Dashboard v3.0' })
     .setTimestamp();
 }
 
@@ -408,6 +671,7 @@ function buildDashComponents(guildId) {
           { label: 'Loop: Off', value: `loop_off_${guildId}`, emoji: '❌' },
           { label: 'Loop: Track', value: `loop_track_${guildId}`, emoji: '🔂' },
           { label: 'Loop: Queue', value: `loop_queue_${guildId}`, emoji: '🔁' },
+          { label: 'Volume: 25%', value: `vol_25_${guildId}`, emoji: '🔈' },
           { label: 'Volume: 50%', value: `vol_50_${guildId}`, emoji: '🔉' },
           { label: 'Volume: 100%', value: `vol_100_${guildId}`, emoji: '🔊' },
           { label: 'Volume: 150%', value: `vol_150_${guildId}`, emoji: '🔊' },
@@ -415,8 +679,6 @@ function buildDashComponents(guildId) {
         ),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`music_bu_${guildId}`).setEmoji('📈').setLabel('Bass +').setStyle(ButtonStyle.Secondary).setDisabled(s.bassBoost >= 20),
-      new ButtonBuilder().setCustomId(`music_bd_${guildId}`).setEmoji('📉').setLabel('Bass -').setStyle(ButtonStyle.Secondary).setDisabled(s.bassBoost <= 0),
       new ButtonBuilder().setCustomId(`music_np_${guildId}`).setEmoji('🎵').setLabel('Now Playing').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`music_close_${guildId}`).setEmoji('❌').setLabel('Close').setStyle(ButtonStyle.Danger),
     ),
@@ -431,7 +693,7 @@ async function sendNowPlaying(guildId, channel) {
     s._updateInterval = setInterval(() => {
       const f = getState(guildId);
       if (f?.status === 'PLAYING') updateNowPlaying(guildId);
-    }, 10000);
+    }, CONFIG.NP_UPDATE_MS);
   }
 }
 
@@ -442,7 +704,54 @@ async function sendDashboard(guildId, channel) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  COMPONENT HANDLER (for index.js interaction handler)
+//  SEARCH MENU UI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function sendSearchMenu(channel, query, requester, guildId) {
+  const loading = await channel.send({
+    embeds: [new EmbedBuilder().setColor(C.ACCENT).setDescription(`🔍 Searching Spotify for \`${query.substring(0, 60)}\`...`)]
+  });
+
+  const results = await resolveSearchResults(query);
+  if (!results || results.length === 0) {
+    await loading.edit({
+      embeds: [new EmbedBuilder().setColor(C.WARN).setDescription(
+        `❌ No results found for \`${query}\`\n\n**Tips:**\n• Check your spelling\n• Try a different query\n• Add Spotify credentials for better search`
+      )]
+    });
+    return null;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(C.SPOTIFY)
+    .setTitle(`🔍 Search Results: "${query.substring(0, 50)}"`)
+    .setDescription(`Found ${results.length} tracks. Select one to play:`)
+    .setFooter({ text: 'ARCHITECT CG-223 // Spotify Search' })
+    .setTimestamp();
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`music_search_${guildId}_${Date.now()}`)
+    .setPlaceholder('Select a track to play...')
+    .addOptions(results.map(r => ({
+      label: r.label.substring(0, 100),
+      description: r.description.substring(0, 100),
+      value: JSON.stringify({
+        title: r.title, artist: r.artist, duration: r.duration,
+        thumbnail: r.thumbnail, url: r.url, source: r.source,
+        searchQuery: r.searchQuery || `${r.title} ${r.artist}`,
+        requester: requester.tag, requesterId: requester.id,
+      }),
+      emoji: r.emoji,
+    })));
+
+  const row = new ActionRowBuilder().addComponents(select);
+
+  await loading.edit({ embeds: [embed], components: [row] });
+  return results;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  COMPONENT HANDLERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleComponent(interaction, client) {
@@ -454,25 +763,141 @@ async function handleComponent(interaction, client) {
   const parts = id.split('_');
   const action = parts[1];
 
+  // Handle search selection
+  if (action === 'search') {
+    return handleSearchSelection(interaction, gid);
+  }
+
   await interaction.deferUpdate().catch(() => {});
 
   switch (action) {
-    case 'pp': { s.paused ? s.player?.unpause() : s.player?.pause(); s.paused = !s.paused; break; }
-    case 'stop': { destroyState(gid); await interaction.editReply({ embeds: [new EmbedBuilder().setDescription('Stopped.').setColor(C.DARK)], components: [] }).catch(() => {}); return true; }
+    case 'pp': {
+      if (s.paused) { s.player?.unpause(); s.paused = false; }
+      else { s.player?.pause(); s.paused = true; }
+      break;
+    }
+    case 'stop': {
+      destroyState(gid);
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(C.DARK).setDescription('⏹️ **Neural Audio Engine stopped.**')],
+        components: []
+      }).catch(() => {});
+      return true;
+    }
     case 'next': { s.player?.stop(); break; }
-    case 'prev': { if (s.history.length >= 2) { s.queue.unshift(s.current); s.current = s.history[s.history.length - 2]; s.history = s.history.slice(0, -2); await playTrack(gid, s.current); } break; }
-    case 'loop': { const modes = ['off', 'track', 'queue']; s.loop = modes[(modes.indexOf(s.loop) + 1) % 3]; break; }
-    case 'vd': case 'vu': { s.volume = Math.max(0, Math.min(200, s.volume + (action === 'vu' ? 10 : -10))); if (s.player?.state?.resource?.volume) s.player.state.resource.volume.setVolume(s.volume / 100); break; }
-    case 'shuf': { for (let i = s.queue.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [s.queue[i], s.queue[j]] = [s.queue[j], s.queue[i]]; } break; }
+    case 'prev': {
+      if (s.history.length >= 2) {
+        s.queue.unshift(s.current);
+        s.current = s.history[s.history.length - 2];
+        s.history = s.history.slice(0, -2);
+        await playTrack(gid, s.current);
+      }
+      break;
+    }
+    case 'loop': {
+      const modes = ['off', 'track', 'queue'];
+      s.loop = modes[(modes.indexOf(s.loop) + 1) % 3];
+      break;
+    }
+    case 'vd': case 'vu': {
+      s.volume = Math.max(0, Math.min(200, s.volume + (action === 'vu' ? 10 : -10)));
+      if (s.player?.state?.resource?.volume) s.player.state.resource.volume.setVolume(s.volume / 100);
+      break;
+    }
+    case 'shuf': {
+      for (let i = s.queue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [s.queue[i], s.queue[j]] = [s.queue[j], s.queue[i]];
+      }
+      break;
+    }
     case 'q': { break; }
     case 'dash': { await sendDashboard(gid, interaction.channel); break; }
-    case 'bu': case 'bd': { s.bassBoost = Math.max(0, Math.min(20, s.bassBoost + (action === 'bu' ? 2 : -2))); break; }
-    case 'close': { await interaction.editReply({ embeds: [new EmbedBuilder().setDescription('Dashboard closed.')], components: [] }).catch(() => {}); s.dashboardMsg = null; return true; }
+    case 'close': {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setDescription('Dashboard closed.')],
+        components: []
+      }).catch(() => {});
+      s.dashboardMsg = null;
+      return true;
+    }
     case 'np': { await sendNowPlaying(gid, interaction.channel); break; }
   }
 
   updateNowPlaying(gid);
-  if (s.dashboardMsg) try { await s.dashboardMsg.edit({ embeds: [buildDashEmbed(gid)], components: buildDashComponents(gid) }); } catch {}
+  if (s.dashboardMsg) try {
+    await s.dashboardMsg.edit({ embeds: [buildDashEmbed(gid)], components: buildDashComponents(gid) });
+  } catch {}
+  return true;
+}
+
+async function handleSearchSelection(interaction, guildId) {
+  const s = getState(guildId);
+  const value = interaction.values[0];
+  let trackData;
+  try { trackData = JSON.parse(value); } catch { return false; }
+
+  await interaction.deferUpdate().catch(() => {});
+
+  const track = {
+    id: Math.random().toString(36).slice(2, 12),
+    title: trackData.title,
+    artist: trackData.artist,
+    duration: trackData.duration || 0,
+    url: trackData.url,
+    source: trackData.source || 'spotify',
+    thumbnail: trackData.thumbnail,
+    requester: trackData.requester || 'Unknown',
+    requesterId: trackData.requesterId || '0',
+    addedAt: Date.now(),
+    searchQuery: trackData.searchQuery || `${trackData.title} ${trackData.artist}`,
+  };
+
+  const vc = interaction.member.voice.channel;
+  if (!vc) {
+    await interaction.editReply({
+      embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('Join a voice channel first!')]
+    }).catch(() => {});
+    return true;
+  }
+
+  s.textChannel = interaction.channel;
+
+  // Connect if not connected
+  if (!s.connection) {
+    s.connection = joinVoiceChannel({
+      channelId: vc.id, guildId: vc.guild.id,
+      adapterCreator: vc.guild.voiceAdapterCreator,
+      selfDeaf: false, selfMute: false
+    });
+    s.isStage = vc.type === ChannelType.GuildStageVoice;
+    if (s.isStage) await setupStage(guildId, vc, track.title);
+    const player = createPlayer(guildId);
+    s.connection.subscribe(player);
+    try { await entersState(s.connection, VoiceConnectionStatus.Ready, 30000); }
+    catch {
+      await interaction.editReply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription('Failed to connect to voice channel.')] }).catch(() => {});
+      return true;
+    }
+  }
+
+  if (s.current) {
+    s.queue.push(track);
+    await interaction.editReply({
+      embeds: [new EmbedBuilder().setColor(C.SPOTIFY).setDescription(
+        `✅ **Added to queue:** [${track.title}](${track.url})\n👤 ${track.artist} • <@${track.requesterId}>`
+      ).setThumbnail(track.thumbnail)]
+    }).catch(() => {});
+  } else {
+    await playTrack(guildId, track);
+    await sendNowPlaying(guildId, interaction.channel);
+    await interaction.editReply({
+      embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(
+        `🎵 **Now Playing:** [${track.title}](${track.url})\n👤 ${track.artist} • <@${track.requesterId}>`
+      ).setThumbnail(track.thumbnail)]
+    }).catch(() => {});
+  }
+
   return true;
 }
 
@@ -493,7 +918,10 @@ async function handleSelectMenu(interaction, client) {
     case 'clear': { s.queue = []; break; }
   }
 
-  if (s.dashboardMsg) try { await s.dashboardMsg.edit({ embeds: [buildDashEmbed(gid)], components: buildDashComponents(gid) }); } catch {}
+  if (s.dashboardMsg) try {
+    await s.dashboardMsg.edit({ embeds: [buildDashEmbed(gid)], components: buildDashComponents(gid) });
+  } catch {}
+  updateNowPlaying(gid);
   return true;
 }
 
@@ -501,12 +929,10 @@ async function handleSelectMenu(interaction, client) {
 //  COMMAND DEFINITION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const { SlashCommandBuilder } = require('discord.js');
-
 const slashData = new SlashCommandBuilder()
-  .setName('music')
-  .setDescription('Neural Audio Engine -- Music control')
-  .addSubcommand(s => s.setName('play').setDescription('Play a track').addStringOption(o => o.setName('query').setDescription('URL or search query').setRequired(true)))
+  .setName('music').setDescription('Neural Audio Engine v3.0 PRO — Professional music streaming')
+  .addSubcommand(s => s.setName('play').setDescription('Play a track').addStringOption(o => o.setName('query').setDescription('Song name, URL, or search').setRequired(true).setAutocomplete(true)))
+  .addSubcommand(s => s.setName('search').setDescription('Search and select a track').addStringOption(o => o.setName('query').setDescription('What to search for').setRequired(true)))
   .addSubcommand(s => s.setName('skip').setDescription('Skip current track'))
   .addSubcommand(s => s.setName('stop').setDescription('Stop and disconnect'))
   .addSubcommand(s => s.setName('pause').setDescription('Pause playback'))
@@ -520,15 +946,18 @@ const slashData = new SlashCommandBuilder()
 module.exports = {
   name: 'music',
   aliases: ['play', 'p', 'skip', 's', 'queue', 'q', 'stop', 'disconnect', 'dc',
-    'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'stage'],
+    'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'stage', 'search'],
   category: 'MUSIC',
-  description: 'Neural Audio Engine -- Multi-source music with Stage Channels',
+  description: 'Neural Audio Engine v3.0 PRO — Spotify search + yt-dlp pipe streaming',
   data: slashData,
 
   handleComponent,
   handleSelectMenu,
 
-  // ─── Prefix Command Router ───
+  // ═══════════════════════════════════════════════════════════════════════════════
+  //  PREFIX COMMAND ROUTER
+  // ═══════════════════════════════════════════════════════════════════════════════
+
   run: async (client, message, args, db, usedCommand, settings, lang = 'en') => {
     let cmd, rest;
     if (usedCommand === 'music') { cmd = args[0]?.toLowerCase(); rest = args.slice(1); }
@@ -539,10 +968,10 @@ module.exports = {
 
     const member = message.member;
     const vc = member.voice.channel;
-    const noVcNeeded = ['queue', 'q', 'nowplaying', 'np', 'dashboard'];
+    const noVcNeeded = ['queue', 'q', 'nowplaying', 'np', 'dashboard', 'search'];
 
     if (!vc && !noVcNeeded.includes(cmd)) {
-      return message.reply({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('Join a voice or Stage channel first!')] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('🔇 Join a voice or Stage channel first!')] });
     }
 
     const s = getState(gid);
@@ -550,62 +979,164 @@ module.exports = {
     const e = (color, desc) => new EmbedBuilder().setColor(color).setDescription(desc);
 
     switch (cmd) {
+      // ─── PLAY ───
       case 'play': case 'p': {
         const query = rest.join(' ');
-        if (!query) return message.reply({ embeds: [e(C.WARN, '**Provide a song URL or search query.**\n\n**Supported:**\n• Direct MP3/OGG URLs\n• SoundCloud\n• Radio streams\n• Local files\n• YouTube (with cookie setup)')] });
+        if (!query) return message.reply({ embeds: [e(C.WARN,
+          '**Provide a song name, URL, or search query.**\n\n**Examples:**\n`!play never gonna give you up`\n`!play https://open.spotify.com/track/...`\n`!play https://soundcloud.com/...`\n`!play https://example.com/song.mp3`'
+        )] });
 
-        const loading = await message.reply({ embeds: [e(C.ACCENT, `Searching: \`${query.substring(0, 60)}\`...`)] });
+        const loading = await message.reply({ embeds: [e(C.ACCENT, `🔍 Resolving: \`${query.substring(0, 60)}\`...`)] });
         const track = await resolveTrack(query, message.author);
-        if (track.error) return loading.edit({ embeds: [e(C.WARN, track.error)] });
 
+        // Connect to voice
         if (!s.connection) {
           s.connection = joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
           s.isStage = vc.type === ChannelType.GuildStageVoice;
           if (s.isStage) await setupStage(gid, vc, track.title);
           const player = createPlayer(gid);
           s.connection.subscribe(player);
-          try { await entersState(s.connection, VoiceConnectionStatus.Ready, 30000); } catch { return loading.edit({ embeds: [e(C.RED, 'Failed to connect to voice channel.')] }); }
+          try { await entersState(s.connection, VoiceConnectionStatus.Ready, 30000); }
+          catch { return loading.edit({ embeds: [e(C.RED, '❌ Failed to connect to voice channel.')] }); }
         }
 
-        if (s.current) { s.queue.push(track); loading.edit({ embeds: [e(C.GREEN, `Added to queue: **${track.title}**`)] }); }
-        else { await playTrack(gid, track); loading.delete().catch(() => {}); await sendNowPlaying(gid, message.channel); }
+        if (s.current) {
+          s.queue.push(track);
+          loading.edit({ embeds: [e(C.SPOTIFY, `✅ **Added to queue:** [${track.title}](${track.url})\n👤 ${track.artist} • ${s.queue.length} in queue`)] });
+        } else {
+          await playTrack(gid, track);
+          loading.delete().catch(() => {});
+          await sendNowPlaying(gid, message.channel);
+        }
         break;
       }
-      case 'skip': case 's': { if (!s.current) return message.reply({ embeds: [e(C.WARN, 'Nothing playing!')] }); s.player?.stop(); message.reply({ embeds: [e(C.GREEN, 'Skipped!')] }); break; }
-      case 'stop': { destroyState(gid); message.reply({ embeds: [e(C.GREEN, 'Neural Audio Engine stopped.')] }); break; }
-      case 'pause': { if (!s.player) return message.reply({ embeds: [e(C.WARN, 'Nothing playing!')] }); s.player.pause(); s.paused = true; message.reply({ embeds: [e(C.GOLD, 'Paused')] }); break; }
-      case 'resume': { if (!s.player) return message.reply({ embeds: [e(C.WARN, 'Nothing playing!')] }); s.player.unpause(); s.paused = false; message.reply({ embeds: [e(C.GREEN, 'Resumed')] }); break; }
+
+      // ─── SEARCH (shows menu like Flavibot) ───
+      case 'search': {
+        const query = rest.join(' ');
+        if (!query) return message.reply({ embeds: [e(C.WARN, '**Provide a search query.**\nExample: `!search never gonna give you up`')] });
+        await sendSearchMenu(message.channel, query, message.author, gid);
+        break;
+      }
+
+      // ─── SKIP ───
+      case 'skip': case 's': {
+        if (!s.current) return message.reply({ embeds: [e(C.WARN, '❌ Nothing playing!')] });
+        s.player?.stop();
+        message.reply({ embeds: [e(C.GREEN, '⏭️ Skipped!')] });
+        break;
+      }
+
+      // ─── STOP ───
+      case 'stop': {
+        destroyState(gid);
+        message.reply({ embeds: [e(C.DARK, '⏹️ **Neural Audio Engine stopped.**')] });
+        break;
+      }
+
+      // ─── PAUSE ───
+      case 'pause': {
+        if (!s.player) return message.reply({ embeds: [e(C.WARN, '❌ Nothing playing!')] });
+        s.player.pause(); s.paused = true;
+        message.reply({ embeds: [e(C.GOLD, '⏸️ Paused')] });
+        break;
+      }
+
+      // ─── RESUME ───
+      case 'resume': {
+        if (!s.player) return message.reply({ embeds: [e(C.WARN, '❌ Nothing playing!')] });
+        s.player.unpause(); s.paused = false;
+        message.reply({ embeds: [e(C.GREEN, '▶️ Resumed')] });
+        break;
+      }
+
+      // ─── QUEUE ───
       case 'queue': case 'q': {
-        if (!s.current && s.queue.length === 0) return message.reply({ embeds: [e(C.WARN, 'Queue is empty!')] });
-        const em = new EmbedBuilder().setColor(C.ACCENT).setTitle(`Queue -- ${s.queue.length + (s.current ? 1 : 0)} tracks`);
-        if (s.current) em.addFields({ name: 'Now Playing', value: `[${s.current.title}](${s.current.url})` });
-        const list = s.queue.slice(0, 15).map((t, i) => `\`${i + 1}.\` ${t.title}`).join('\n');
-        if (list) em.addFields({ name: 'Up Next', value: list });
+        if (!s.current && s.queue.length === 0) return message.reply({ embeds: [e(C.WARN, '❌ Queue is empty!')] });
+        const em = new EmbedBuilder().setColor(C.ACCENT).setTitle(`📋 Queue — ${s.queue.length + (s.current ? 1 : 0)} tracks`);
+        if (s.current) em.addFields({ name: '🎵 Now Playing', value: `[${s.current.title}](${s.current.url}) • ${s.current.artist}` });
+        const list = s.queue.slice(0, 15).map((t, i) => `\`${i + 1}.\` [${t.title}](${t.url}) • ${t.artist}`).join('\n');
+        if (list) em.addFields({ name: 'Up Next', value: list.substring(0, 1024) });
+        if (s.queue.length > 15) em.addFields({ name: '...', value: `+${s.queue.length - 15} more` });
         message.reply({ embeds: [em] });
         break;
       }
+
+      // ─── VOLUME ───
       case 'volume': case 'vol': {
         const vol = parseInt(rest[0]);
-        if (isNaN(vol) || vol < 0 || vol > 200) return message.reply({ embeds: [e(C.WARN, 'Volume: 0-200')] });
-        s.volume = vol; if (s.player?.state?.resource?.volume) s.player.state.resource.volume.setVolume(vol / 100);
-        message.reply({ embeds: [e(C.GREEN, `Volume: ${vol}%`)] }); updateNowPlaying(gid);
+        if (isNaN(vol) || vol < 0 || vol > 200) return message.reply({ embeds: [e(C.WARN, '🔊 Volume: 0-200')] });
+        s.volume = vol;
+        if (s.player?.state?.resource?.volume) s.player.state.resource.volume.setVolume(vol / 100);
+        message.reply({ embeds: [e(C.GREEN, `🔊 Volume: ${vol}%`)] });
+        updateNowPlaying(gid);
         break;
       }
-      case 'loop': { const modes = ['off', 'track', 'queue']; s.loop = modes[(modes.indexOf(s.loop) + 1) % 3]; message.reply({ embeds: [e(C.GREEN, `Loop: ${s.loop}`)] }); updateNowPlaying(gid); break; }
-      case 'nowplaying': case 'np': { if (!s.current) return message.reply({ embeds: [e(C.WARN, 'Nothing playing!')] }); await sendNowPlaying(gid, message.channel); break; }
-      case 'dashboard': { await sendDashboard(gid, message.channel); break; }
-      case 'disconnect': case 'dc': { destroyState(gid); message.reply({ embeds: [e(C.GREEN, 'Disconnected.')] }); break; }
+
+      // ─── LOOP ───
+      case 'loop': {
+        const modes = ['off', 'track', 'queue'];
+        s.loop = modes[(modes.indexOf(s.loop) + 1) % 3];
+        message.reply({ embeds: [e(C.GREEN, `🔁 Loop: ${s.loop}`)] });
+        updateNowPlaying(gid);
+        break;
+      }
+
+      // ─── NOW PLAYING ───
+      case 'nowplaying': case 'np': {
+        if (!s.current) return message.reply({ embeds: [e(C.WARN, '❌ Nothing playing!')] });
+        await sendNowPlaying(gid, message.channel);
+        break;
+      }
+
+      // ─── DASHBOARD ───
+      case 'dashboard': {
+        await sendDashboard(gid, message.channel);
+        break;
+      }
+
+      // ─── DISCONNECT ───
+      case 'disconnect': case 'dc': {
+        destroyState(gid);
+        message.reply({ embeds: [e(C.GREEN, '👋 Disconnected.')] });
+        break;
+      }
+
+      // ─── STAGE ───
       case 'stage': {
-        if (!vc || vc.type !== ChannelType.GuildStageVoice) return message.reply({ embeds: [e(C.WARN, 'Join a Stage Channel first!')] });
+        if (!vc || vc.type !== ChannelType.GuildStageVoice)
+          return message.reply({ embeds: [e(C.WARN, '❌ Join a Stage Channel first!')] });
         await setupStage(gid, vc, rest.join(' ') || 'Neural Audio Broadcast');
-        message.reply({ embeds: [e(C.GREEN, 'Stage Broadcast activated!')] });
+        message.reply({ embeds: [e(C.GREEN, '🔴 Stage Broadcast activated!')] });
         break;
       }
-      default: { message.reply({ embeds: [e(C.ACCENT, 'Commands: `play`, `skip`, `stop`, `pause`, `resume`, `queue`, `volume`, `loop`, `nowplaying`, `dashboard`, `disconnect`, `stage`')] }); }
+
+      // ─── HELP ───
+      default: {
+        message.reply({ embeds: [e(C.ACCENT,
+          '**Neural Audio Engine v3.0**\n\n' +
+          '`play <query>` — Play a track\n' +
+          '`search <query>` — Search with selection menu\n' +
+          '`skip` — Skip current\n' +
+          '`stop` — Stop and clear\n' +
+          '`pause` / `resume` — Playback control\n' +
+          '`queue` — Show queue\n' +
+          '`volume <0-200>` — Set volume\n' +
+          '`loop` — Toggle loop mode\n' +
+          '`nowplaying` — Show player\n' +
+          '`dashboard` — Control panel\n' +
+          '`disconnect` — Leave voice\n' +
+          '`stage` — Stage broadcast\n\n' +
+          '**Supports:** Spotify, YouTube (cookies), SoundCloud, direct URLs, radio'
+        )] });
+      }
     }
   },
 
-  // ─── Slash Command Handler ───
+  // ═══════════════════════════════════════════════════════════════════════════════
+  //  SLASH COMMAND HANDLER
+  // ═══════════════════════════════════════════════════════════════════════════════
+
   execute: async (interaction, client) => {
     const action = interaction.options.getSubcommand();
     const gid = interaction.guild.id;
@@ -615,18 +1146,20 @@ module.exports = {
 
     const noVc = ['queue', 'nowplaying'];
     if (!vc && !noVc.includes(action)) {
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('Join a voice channel first!')], ephemeral: true });
+      return interaction.reply({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('🔇 Join a voice channel first!')], ephemeral: true });
     }
 
     await interaction.deferReply();
     const e = (color, desc) => new EmbedBuilder().setColor(color).setDescription(desc);
 
     switch (action) {
+      // ─── PLAY ───
       case 'play': {
         const query = interaction.options.getString('query');
-        if (!query) return interaction.editReply({ embeds: [e(C.WARN, 'Provide a query!')] });
+        if (!query) return interaction.editReply({ embeds: [e(C.WARN, '❌ Provide a query!')] });
+
+        await interaction.editReply({ embeds: [e(C.ACCENT, `🔍 Resolving: \`${query.substring(0, 60)}\`...`)] });
         const track = await resolveTrack(query, interaction.user);
-        if (track.error) return interaction.editReply({ embeds: [e(C.WARN, track.error)] });
 
         if (!s.connection) {
           s.connection = joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
@@ -634,30 +1167,112 @@ module.exports = {
           if (s.isStage) await setupStage(gid, vc, track.title);
           const player = createPlayer(gid);
           s.connection.subscribe(player);
-          try { await entersState(s.connection, VoiceConnectionStatus.Ready, 30000); } catch { return interaction.editReply('Connection failed.'); }
+          try { await entersState(s.connection, VoiceConnectionStatus.Ready, 30000); }
+          catch { return interaction.editReply({ embeds: [e(C.RED, '❌ Connection failed.')] }); }
         }
 
-        if (s.current) { s.queue.push(track); await interaction.editReply({ embeds: [e(C.GREEN, `Queued: **${track.title}**`)] }); }
-        else { await playTrack(gid, track); await sendNowPlaying(gid, interaction.channel); await interaction.editReply({ embeds: [e(C.GREEN, `Playing: **${track.title}**`)] }); }
+        if (s.current) {
+          s.queue.push(track);
+          await interaction.editReply({ embeds: [e(C.SPOTIFY,
+            `✅ **Added to queue:** [${track.title}](${track.url})\n👤 ${track.artist} • ${s.queue.length} in queue`
+          ).setThumbnail(track.thumbnail)] });
+        } else {
+          await playTrack(gid, track);
+          await sendNowPlaying(gid, interaction.channel);
+          await interaction.editReply({ embeds: [e(C.GREEN,
+            `🎵 **Now Playing:** [${track.title}](${track.url})\n👤 ${track.artist}`
+          ).setThumbnail(track.thumbnail)] });
+        }
         break;
       }
-      case 'skip': { if (!s.current) return interaction.editReply('Nothing playing!'); s.player?.stop(); await interaction.editReply({ embeds: [e(C.GREEN, 'Skipped!')] }); break; }
-      case 'stop': { destroyState(gid); await interaction.editReply({ embeds: [e(C.GREEN, 'Stopped!')] }); break; }
-      case 'pause': { s.player?.pause(); s.paused = true; await interaction.editReply({ embeds: [e(C.GOLD, 'Paused')] }); break; }
-      case 'resume': { s.player?.unpause(); s.paused = false; await interaction.editReply({ embeds: [e(C.GREEN, 'Resumed')] }); break; }
+
+      // ─── SEARCH (shows menu) ───
+      case 'search': {
+        const query = interaction.options.getString('query');
+        if (!query) return interaction.editReply({ embeds: [e(C.WARN, '❌ Provide a search query!')] });
+        await interaction.editReply({ embeds: [e(C.ACCENT, `🔍 Searching for \`${query}\`...`)] });
+        const results = await sendSearchMenu(interaction.channel, query, interaction.user, gid);
+        if (results) {
+          await interaction.editReply({ embeds: [e(C.GREEN, `🔍 Found ${results.length} tracks! Select one from the menu below.`)] });
+        } else {
+          await interaction.editReply({ embeds: [e(C.WARN, `❌ No results found for \`${query}\``)] });
+        }
+        break;
+      }
+
+      // ─── SKIP ───
+      case 'skip': {
+        if (!s.current) return interaction.editReply({ embeds: [e(C.WARN, '❌ Nothing playing!')] });
+        s.player?.stop();
+        await interaction.editReply({ embeds: [e(C.GREEN, '⏭️ Skipped!')] });
+        break;
+      }
+
+      // ─── STOP ───
+      case 'stop': {
+        destroyState(gid);
+        await interaction.editReply({ embeds: [e(C.DARK, '⏹️ **Neural Audio Engine stopped.**')] });
+        break;
+      }
+
+      // ─── PAUSE ───
+      case 'pause': {
+        s.player?.pause(); s.paused = true;
+        await interaction.editReply({ embeds: [e(C.GOLD, '⏸️ Paused')] });
+        break;
+      }
+
+      // ─── RESUME ───
+      case 'resume': {
+        s.player?.unpause(); s.paused = false;
+        await interaction.editReply({ embeds: [e(C.GREEN, '▶️ Resumed')] });
+        break;
+      }
+
+      // ─── QUEUE ───
       case 'queue': {
-        if (!s.current) return interaction.editReply({ embeds: [e(C.WARN, 'Queue empty!')] });
-        const em = new EmbedBuilder().setColor(C.ACCENT).setTitle('Queue')
-          .setDescription(s.current ? `**Now:** ${s.current.title}\n${s.queue.slice(0, 15).map((t, i) => `${i + 1}. ${t.title}`).join('\n')}` : 'Empty');
+        if (!s.current) return interaction.editReply({ embeds: [e(C.WARN, '❌ Queue empty!')] });
+        const em = new EmbedBuilder().setColor(C.ACCENT).setTitle('📋 Queue')
+          .setDescription(s.current ? `**Now:** [${s.current.title}](${s.current.url}) • ${s.current.artist}\n${s.queue.slice(0, 15).map((t, i) => `\`${i + 1}.\` [${t.title}](${t.url})`).join('\n')}` : 'Empty');
         await interaction.editReply({ embeds: [em] });
         break;
       }
-      case 'volume': { const vol = interaction.options.getInteger('level'); s.volume = vol; if (s.player?.state?.resource?.volume) s.player.state.resource.volume.setVolume(s.volume / 100); await interaction.editReply({ embeds: [e(C.GREEN, `Volume: ${vol}%`)] }); updateNowPlaying(gid); break; }
-      case 'loop': { const modes = ['off', 'track', 'queue']; s.loop = modes[(modes.indexOf(s.loop) + 1) % 3]; await interaction.editReply({ embeds: [e(C.GREEN, `Loop: ${s.loop}`)] }); updateNowPlaying(gid); break; }
-      case 'nowplaying': { if (!s.current) return interaction.editReply({ embeds: [e(C.WARN, 'Nothing playing!')] }); await sendNowPlaying(gid, interaction.channel); await interaction.editReply({ embeds: [e(C.GREEN, 'Now Playing updated!')] }); break; }
-      case 'disconnect': { destroyState(gid); await interaction.editReply({ embeds: [e(C.GREEN, 'Disconnected!')] }); break; }
+
+      // ─── VOLUME ───
+      case 'volume': {
+        const vol = interaction.options.getInteger('level');
+        s.volume = vol;
+        if (s.player?.state?.resource?.volume) s.player.state.resource.volume.setVolume(s.volume / 100);
+        await interaction.editReply({ embeds: [e(C.GREEN, `🔊 Volume: ${vol}%`)] });
+        updateNowPlaying(gid);
+        break;
+      }
+
+      // ─── LOOP ───
+      case 'loop': {
+        const modes = ['off', 'track', 'queue'];
+        s.loop = modes[(modes.indexOf(s.loop) + 1) % 3];
+        await interaction.editReply({ embeds: [e(C.GREEN, `🔁 Loop: ${s.loop}`)] });
+        updateNowPlaying(gid);
+        break;
+      }
+
+      // ─── NOW PLAYING ───
+      case 'nowplaying': {
+        if (!s.current) return interaction.editReply({ embeds: [e(C.WARN, '❌ Nothing playing!')] });
+        await sendNowPlaying(gid, interaction.channel);
+        await interaction.editReply({ embeds: [e(C.GREEN, '🎵 Now Playing updated!')] });
+        break;
+      }
+
+      // ─── DISCONNECT ───
+      case 'disconnect': {
+        destroyState(gid);
+        await interaction.editReply({ embeds: [e(C.GREEN, '👋 Disconnected!')] });
+        break;
+      }
     }
   },
 };
 
-console.log(`${C.GREEN}🎵 Neural Audio Engine v2.0 loaded -- Hetzner-safe multi-source${'\x1b[0m'}`);
+console.log('\x1b[32m🎵 Neural Audio Engine v3.0 PRO loaded — Spotify search + yt-dlp pipe\x1b[0m');
