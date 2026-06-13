@@ -910,21 +910,25 @@ async function handleSearchSelection(interaction, guildId) {
 
   s.textChannel = interaction.channel;
 
-  if (!s.connection) {
-    s.connection = joinVoiceChannel({
-      channelId: vc.id, guildId: vc.guild.id,
-      adapterCreator: vc.guild.voiceAdapterCreator,
-      selfDeaf: false, selfMute: false
-    });
-    s.isStage = vc.type === ChannelType.GuildStageVoice;
-    if (s.isStage) await setupStage(guildId, vc, track.title);
-    const player = createPlayer(guildId);
-    s.connection.subscribe(player);
-    try { await entersState(s.connection, VoiceConnectionStatus.Ready, 30000); }
-    catch {
-      await interaction.editReply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription('Failed to connect to voice channel.')] }).catch(() => {});
-      return true;
-    }
+  // Clean up broken connection and create fresh one
+  if (s.connection) {
+    try { s.connection.destroy(); } catch {}
+    s.connection = null;
+  }
+  s.connection = joinVoiceChannel({
+    channelId: vc.id, guildId: vc.guild.id,
+    adapterCreator: vc.guild.voiceAdapterCreator,
+    selfDeaf: false, selfMute: false
+  });
+  s.isStage = vc.type === ChannelType.GuildStageVoice;
+  if (s.isStage) await setupStage(guildId, vc, track.title);
+  const player = createPlayer(guildId);
+  s.connection.subscribe(player);
+  try { await entersState(s.connection, VoiceConnectionStatus.Ready, 60000); }
+  catch {
+    destroyState(guildId);
+    await interaction.editReply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription('Voice connection timed out. Please try again.')] }).catch(() => {});
+    return true;
   }
 
   if (s.current) {
@@ -1041,14 +1045,20 @@ module.exports = {
         const loading = await message.reply({ embeds: [e(C.ACCENT, 'Resolving: `' + query.substring(0, 60) + '`...')] });
         const track = await resolveTrack(query, message.author);
 
-        if (!s.connection) {
-          s.connection = joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
-          s.isStage = vc.type === ChannelType.GuildStageVoice;
-          if (s.isStage) await setupStage(gid, vc, track.title);
-          const player = createPlayer(gid);
-          s.connection.subscribe(player);
-          try { await entersState(s.connection, VoiceConnectionStatus.Ready, 30000); }
-          catch { return loading.edit({ embeds: [e(C.RED, 'Failed to connect to voice channel.')] }); }
+        // Clean up broken connection and create fresh one
+        if (s.connection) {
+          try { s.connection.destroy(); } catch {}
+          s.connection = null;
+        }
+        s.connection = joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
+        s.isStage = vc.type === ChannelType.GuildStageVoice;
+        if (s.isStage) await setupStage(gid, vc, track.title);
+        const player = createPlayer(gid);
+        s.connection.subscribe(player);
+        try { await entersState(s.connection, VoiceConnectionStatus.Ready, 60000); }
+        catch {
+          destroyState(gid);
+          return loading.edit({ embeds: [e(C.RED, 'Voice connection timed out. Please try again.')] });
         }
 
         if (s.current) {
@@ -1205,14 +1215,20 @@ module.exports = {
         await interaction.editReply({ embeds: [e(C.ACCENT, 'Resolving: `' + query.substring(0, 60) + '`...')] });
         const track = await resolveTrack(query, interaction.user);
 
-        if (!s.connection) {
-          s.connection = joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
-          s.isStage = vc.type === ChannelType.GuildStageVoice;
-          if (s.isStage) await setupStage(gid, vc, track.title);
-          const player = createPlayer(gid);
-          s.connection.subscribe(player);
-          try { await entersState(s.connection, VoiceConnectionStatus.Ready, 30000); }
-          catch { return interaction.editReply({ embeds: [e(C.RED, 'Connection failed.')] }); }
+        // Clean up broken connection and create fresh one
+        if (s.connection) {
+          try { s.connection.destroy(); } catch {}
+          s.connection = null;
+        }
+        s.connection = joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
+        s.isStage = vc.type === ChannelType.GuildStageVoice;
+        if (s.isStage) await setupStage(gid, vc, track.title);
+        const player = createPlayer(gid);
+        s.connection.subscribe(player);
+        try { await entersState(s.connection, VoiceConnectionStatus.Ready, 60000); }
+        catch {
+          destroyState(gid);
+          return interaction.editReply({ embeds: [e(C.RED, 'Voice connection timed out. Please try again.')] });
         }
 
         if (s.current) {
