@@ -51,6 +51,7 @@ const CONFIG = {
 // ============================================================================
 
 const audioStates = new Map();
+const searchCache = new Map(); // Short ID -> track data cache for select menus
 
 function getState(guildId) {
   if (!audioStates.has(guildId)) {
@@ -410,23 +411,33 @@ async function resolveSearchResults(query, limit) {
 // ============================================================================
 
 async function resolveYouTubeUrl(query) {
-  // Step 1: Resolve search query to direct YouTube URL
   // Direct URLs pass through unchanged
   if (query.startsWith('http')) return query;
 
-  const args = [
+  // Try 1: ytsearch with android client (Hetzner-safe)
+  let result = await spawnAsync('yt-dlp', [
+    '--extractor-args', 'youtube:player_client=android',
     '--print', 'webpage_url',
-    '--no-playlist',
-    '--no-warnings',
-    '--quiet',
+    '--no-playlist', '--no-warnings', '--quiet',
     'ytsearch1:' + query,
-  ];
+  ], 30000);
 
-  const result = await spawnAsync('yt-dlp', args, 30000);
-  if (result.code !== 0 || !result.stdout.trim()) {
-    throw new Error('Could not find YouTube video for: ' + query);
+  if (result.code === 0 && result.stdout.trim()) {
+    return result.stdout.trim().split('\n')[0];
   }
-  return result.stdout.trim().split('\n')[0];
+
+  // Try 2: plain ytsearch (fallback)
+  result = await spawnAsync('yt-dlp', [
+    '--print', 'webpage_url',
+    '--no-playlist', '--no-warnings', '--quiet',
+    'ytsearch1:' + query,
+  ], 30000);
+
+  if (result.code === 0 && result.stdout.trim()) {
+    return result.stdout.trim().split('\n')[0];
+  }
+
+  throw new Error('YouTube search blocked. Try a direct audio URL or use /music search to pick from Spotify results.');
 }
 
 async function createStreamResource(track) {
@@ -755,20 +766,27 @@ async function sendSearchMenu(channel, query, requester, guildId) {
     .setFooter({ text: 'ARCHITECT CG-223 // Spotify Search' })
     .setTimestamp();
 
+  // Store full track data in cache, use short 8-char IDs as select values
   const select = new StringSelectMenuBuilder()
     .setCustomId('music_search_' + guildId + '_' + Date.now())
     .setPlaceholder('Select a track to play...')
-    .addOptions(results.map(r => ({
-      label: r.label.substring(0, 100),
-      description: r.description.substring(0, 100),
-      value: JSON.stringify({
+    .addOptions(results.map(r => {
+      const cacheId = Math.random().toString(36).slice(2, 10);
+      searchCache.set(cacheId, {
         title: r.title, artist: r.artist, duration: r.duration,
         thumbnail: r.thumbnail, url: r.url, source: r.source,
         searchQuery: r.searchQuery || (r.title + ' ' + r.artist),
         requester: requester.tag, requesterId: requester.id,
-      }),
-      emoji: '\uD83C\uDFB5',
-    })));
+      });
+      // Clean cache after 5 minutes
+      setTimeout(() => searchCache.delete(cacheId), 300000);
+      return {
+        label: r.label.substring(0, 100),
+        description: r.description.substring(0, 100),
+        value: cacheId,  // Short 8-char ID, well under 100 char limit
+        emoji: '\uD83C\uDFB5',
+      };
+    }));
 
   const row = new ActionRowBuilder().addComponents(select);
 
@@ -858,9 +876,13 @@ async function handleComponent(interaction, client) {
 
 async function handleSearchSelection(interaction, guildId) {
   const s = getState(guildId);
-  const value = interaction.values[0];
-  let trackData;
-  try { trackData = JSON.parse(value); } catch { return false; }
+  const cacheId = interaction.values[0];
+  const trackData = searchCache.get(cacheId);
+  if (!trackData) {
+    await interaction.reply({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('Search expired. Please search again.')], ephemeral: true }).catch(() => {});
+    return true;
+  }
+  searchCache.delete(cacheId); // One-time use
 
   await interaction.deferUpdate().catch(() => {});
 
