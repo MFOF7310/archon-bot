@@ -4502,6 +4502,245 @@ async function gracefulShutdown(signal) {
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
+// ═══════════════════════════════════════════════════════════════════
+// 📡 ARCHON API BRIDGE v2.0 — Dashboard Communication
+// ═══════════════════════════════════════════════════════════════════
+
+const express = require('express');
+const cors = require('cors');
+const apiApp = express();
+
+// ✅ CORS — Parse allowed origins from .env (safe for repos!)
+const allowedOrigins = process.env.API_CORS_ORIGINS 
+    ? process.env.API_CORS_ORIGINS.split(',').map(o => o.trim())
+    : [];  // Empty = block all by default
+
+apiApp.use(cors({
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.length === 0) {
+            console.warn(`[API CORS] Blocked ${origin} — No origins configured in .env`);
+            return callback(new Error('Not allowed by CORS - configure API_CORS_ORIGINS in .env'), false);
+        }
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.warn(`[API CORS] Blocked ${origin} — Not in whitelist`);
+            callback(new Error('Not allowed by CORS'), false);
+        }
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
+}));
+
+apiApp.use(express.json());
+
+// ================= API ROUTES =================
+
+// Health check simple
+apiApp.get('/api/health', (req, res) => {
+    res.json({
+        status: 'online',
+        uptime: process.uptime(),
+        timestamp: Date.now(),
+        version: client.version || '2.0.0',
+        node: 'BAMAKO_223',
+        websocket_ping: client.ws?.ping || 0
+    });
+});
+
+// Statistiques en temps réel pour le dashboard
+apiApp.get('/api/stats', (req, res) => {
+    try {
+        const dbHealth = getDatabaseHealth();
+        
+        // Stats par serveur (limité à 10 pour performance)
+        const servers = [];
+        const guildCache = client.guilds.cache;
+        let count = 0;
+        for (const [id, guild] of guildCache) {
+            if (count >= 10) break;
+            try {
+                const userCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE guild_id = ?').get(id)?.count || 0;
+                servers.push({
+                    id: id,
+                    name: guild.name,
+                    members: guild.memberCount,
+                    icon: guild.iconURL({ size: 64 }),
+                    registeredUsers: userCount,
+                    boostTier: guild.premiumTier
+                });
+                count++;
+            } catch (e) {}
+        }
+
+        res.json({
+            status: 'online',
+            timestamp: Date.now(),
+            bot: {
+                username: client.user?.username || 'Architect-CG223',
+                tag: client.user?.tag || 'Unknown',
+                avatar: client.user?.displayAvatarURL(),
+                version: client.version || '2.0.0',
+                uptime: process.uptime(),
+                ping: Math.round(client.ws.ping),
+                commands: client.commands.size,
+                slashCommands: client.commands.filter(c => !!c.data).size,
+                servers: guildCache.size,
+                users: guildCache.reduce((acc, g) => acc + (g.memberCount || 0), 0)
+            },
+            servers: {
+                total: guildCache.size,
+                list: servers
+            },
+            database: {
+                size: dbHealth.size,
+                walSize: dbHealth.walSize,
+                fragmentation: dbHealth.fragmentation,
+                pendingWrites: client.pendingUserUpdates?.size || 0,
+                cachedUsers: client.userDataCache?.size || 0,
+                circuitBreaker: client.dbHealth?.circuitOpen ? 'OPEN' : 'CLOSED'
+            },
+            systems: {
+                lydia: Object.keys(client.lydiaAgents || {}).length > 0,
+                telegram: client.telegramBridge?.enabled || false,
+                market: typeof getMarketState === 'function',
+                afk: afkUsers?.size || 0,
+                reminders: (() => {
+                    try {
+                        return db.prepare("SELECT COUNT(*) as count FROM reminders WHERE status = 'pending'").get()?.count || 0;
+                    } catch (e) { return 0; }
+                })()
+            }
+        });
+    } catch (err) {
+        console.error('[API /api/stats]', err);
+        res.status(500).json({ error: 'Stats collection failed', message: err.message });
+    }
+});
+
+// Route pour les paramètres d'un serveur spécifique (dashboard admin)
+apiApp.get('/api/server/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    if (!validateSnowflake(guildId)) {
+        return res.status(400).json({ error: 'Invalid guild ID' });
+    }
+    
+    try {
+        const settings = getServerSettings(guildId);
+        const guild = client.guilds.cache.get(guildId);
+        
+        if (!guild) {
+            return res.status(404).json({ error: 'Guild not found or bot not member' });
+        }
+
+        // Récupérer les top utilisateurs du serveur
+        let topUsers = [];
+        try {
+            topUsers = db.prepare(`
+                SELECT id, username, xp, level, credits 
+                FROM users 
+                WHERE guild_id = ? 
+                ORDER BY xp DESC 
+                LIMIT 10
+            `).all(guildId);
+        } catch (e) {}
+
+        res.json({
+            success: true,
+            guild: {
+                id: guild.id,
+                name: guild.name,
+                memberCount: guild.memberCount,
+                icon: guild.iconURL(),
+                ownerId: guild.ownerId,
+                boostCount: guild.premiumSubscriptionCount || 0,
+                boostTier: guild.premiumTier
+            },
+            settings: {
+                prefix: settings.prefix,
+                language: settings.language,
+                welcomeEnabled: settings.welcomeEnabled,
+                goodbyeEnabled: settings.goodbyeEnabled,
+                xpMultiplier: settings.xpMultiplier,
+                afkEnabled: settings.afkEnabled,
+                marketEnabled: settings.marketEnabled,
+                aiEnabled: settings.aiEnabled,
+                autoModEnabled: settings.autoModEnabled,
+                welcomeChannel: settings.welcomeChannel,
+                logChannel: settings.logChannel,
+                modLogChannel: settings.modLogChannel
+            },
+            economy: {
+                currencyName: settings.currency_name || 'credits',
+                currencyEmoji: settings.currency_emoji || '🪙',
+                dailyBonus: settings.daily_bonus || 200,
+                transferTax: settings.transfer_tax || 0
+            },
+            topUsers: topUsers
+        });
+    } catch (err) {
+        console.error('[API /api/server]', err);
+        res.status(500).json({ error: 'Server fetch failed', message: err.message });
+    }
+});
+
+// Route pour les commandes du bot
+apiApp.get('/api/commands', (req, res) => {
+    try {
+        const commands = [];
+        for (const [name, cmd] of client.commands) {
+            commands.push({
+                name: name,
+                description: cmd.description || 'No description',
+                category: cmd.category || 'GENERAL',
+                aliases: cmd.aliases || [],
+                hasSlash: !!cmd.data,
+                usage: cmd.usage || null,
+                cooldown: cmd.cooldown || 0
+            });
+        }
+        commands.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+        
+        res.json({
+            success: true,
+            total: commands.length,
+            commands: commands
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ✅ Gestionnaire d'erreurs global — le bot ne crash pas si l'API plante
+apiApp.use((err, req, res, next) => {
+    console.error(`[API ERROR] ${req.method} ${req.path}:`, err.stack || err.message);
+    res.status(500).json({ 
+        error: 'Internal Bridge Failure',
+        timestamp: Date.now(),
+        path: req.path
+    });
+});
+
+// ✅ Gestionnaire 404 propre
+apiApp.use((req, res) => {
+    res.status(404).json({ 
+        error: 'Route not found',
+        available: ['/api/stats', '/api/health', '/api/servers', '/api/commands', '/api/server/:guildId']
+    });
+});
+
+// ================= LANCEMENT API =================
+const API_PORT = process.env.API_PORT || 5000;
+apiApp.listen(API_PORT, '0.0.0.0', () => {
+    console.log(`\x1b[36m[API BRIDGE]\x1b[0m Active on port ${API_PORT}`);
+    console.log(`\x1b[36m[API BRIDGE]\x1b[0m CORS whitelist: ${allowedOrigins.length} origin(s) configured`);
+    console.log(`\x1b[36m[API BRIDGE]\x1b[0m Endpoints: /api/health, /api/stats, /api/servers, /api/commands, /api/server/:guildId`);
+});
+
 // ================= PM2 READY SIGNAL =================
 if (process.send) {
     process.send('ready');
