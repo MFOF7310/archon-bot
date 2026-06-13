@@ -486,8 +486,8 @@ async function invidiousSearch(query) {
 }
 
 async function resolveYouTubeUrl(query) {
-  // Direct URLs pass through unchanged
-  if (query.startsWith('http')) return query;
+  // Direct URLs and yt-dlp native prefixes pass through unchanged
+  if (query.startsWith('http') || query.startsWith('scsearch:')) return query;
 
   // Use Invidious API for Hetzner-safe YouTube search
   const url = await invidiousSearch(query);
