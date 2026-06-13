@@ -486,8 +486,12 @@ async function invidiousSearch(query) {
 }
 
 async function resolveYouTubeUrl(query) {
+  console.log('[DEBUG] resolveYouTubeUrl input: ' + query.substring(0, 80));
   // Direct URLs and yt-dlp native prefixes pass through unchanged
-  if (query.startsWith('http') || query.startsWith('scsearch:')) return query;
+  if (query.startsWith('http') || query.startsWith('scsearch:')) {
+    console.log('[DEBUG] resolveYouTubeUrl: passing through directly');
+    return query;
+  }
 
   // Use Invidious API for Hetzner-safe YouTube search
   const url = await invidiousSearch(query);
@@ -498,6 +502,7 @@ async function resolveYouTubeUrl(query) {
 
 async function createStreamResource(track) {
   const query = track.searchQuery || track.url;
+  console.log('[DEBUG] createStreamResource: source=' + track.source + ' query=' + query.substring(0, 60));
   if (!query) throw new Error('No query or URL for stream');
 
   // Resolve to direct URL if it's a search query
