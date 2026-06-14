@@ -79,6 +79,17 @@ class GuildQueue {
       }
     });
 
+    // Log connection state changes for debugging
+    this.connection.on('stateChange', (oldState, newState) => {
+      console.log(`[VOICE] ${channel.guild.id}: ${oldState.status} → ${newState.status}`);
+      if (newState.status === VoiceConnectionStatus.Ready) {
+        console.log(`[VOICE] ${channel.guild.id}: Connected to ${channel.name}`);
+      }
+      if (newState.status === VoiceConnectionStatus.Destroyed) {
+        console.log(`[VOICE] ${channel.guild.id}: Connection destroyed`);
+      }
+    });
+
     this.player = createAudioPlayer();
     this.connection.subscribe(this.player);
 
@@ -436,10 +447,12 @@ const slashData = new SlashCommandBuilder()
 
 // ═════════════════════════════════════════════════════════════
 //  CRITICAL: runPrefix — handles !!play, !!skip, etc.
+//  NOTE: params: ['message','args','client','usedCommand']
+//        is defined in module.exports to match index.js loader
 // ═════════════════════════════════════════════════════════════
-async function runPrefix(message, args, client, prefix) {
-  const cmd = message.content.slice(prefix.length).trim().split(/\s+/)[0].toLowerCase();
-  const query = args.join(' ').trim();
+async function runPrefix(message, args, client, usedCommand) {
+  const cmd = (usedCommand || '').toLowerCase();
+  const query = (args || []).join(' ').trim();
 
   // ── !!play / !!p ─────────────────────────────────────────
   if (cmd === 'play' || cmd === 'p') {
@@ -467,20 +480,23 @@ async function runPrefix(message, args, client, prefix) {
     // Connect if not connected
     if (!q.connection || q.connection.state.status === VoiceConnectionStatus.Destroyed) {
       try {
-        await q.connect(voiceChannel);
+        await Promise.race([
+          q.connect(voiceChannel),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Voice connection timeout — run: npm install libsodium-wrappers')), 8000))
+        ]);
       } catch (err) {
-        return message.reply(`\u274C Voice connection failed: ${err.message}`);
+        return message.reply(`\u274C **Voice connection failed:** ${err.message}`);
       }
-    } else {
-      // Already in a different channel?
-      if (q.connection.joinConfig.channelId !== voiceChannel.id) {
-        q.destroy();
-        const fresh = getQueue(message.guild.id);
-        try {
-          await fresh.connect(voiceChannel);
-        } catch (err) {
-          return message.reply(`\u274C Voice connection failed: ${err.message}`);
-        }
+    } else if (q.connection.joinConfig.channelId !== voiceChannel.id) {
+      q.destroy();
+      const fresh = getQueue(message.guild.id);
+      try {
+        await Promise.race([
+          fresh.connect(voiceChannel),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Voice connection timeout — run: npm install libsodium-wrappers')), 8000))
+        ]);
+      } catch (err) {
+        return message.reply(`\u274C **Voice connection failed:** ${err.message}`);
       }
     }
 
@@ -676,12 +692,13 @@ async function executeSlash(interaction) {
     return interaction.reply({ embeds: [voteGuardEmbed()], flags: [MessageFlags.Ephemeral] });
   }
 
-  await interaction.deferReply();
-
+  // Quick permission check BEFORE deferring
   const perms = voiceChannel.permissionsFor(interaction.client.user);
   if (!perms?.has(PermissionFlagsBits.Connect) || !perms?.has(PermissionFlagsBits.Speak)) {
-    return interaction.editReply('\u274C I need **Connect** and **Speak** permissions!');
+    return interaction.reply({ content: '\u274C I need **Connect** and **Speak** permissions!', flags: [MessageFlags.Ephemeral] });
   }
+
+  await interaction.deferReply();
 
   const results = await YouTubeBypass.search(query, 1);
   if (!results.length) {
@@ -693,9 +710,13 @@ async function executeSlash(interaction) {
 
   if (!q.connection || q.connection.state.status === VoiceConnectionStatus.Destroyed) {
     try {
-      await q.connect(voiceChannel);
+      // Set a shorter timeout for voice connection to fail fast
+      await Promise.race([
+        q.connect(voiceChannel),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Voice connection timeout — libsodium-wrappers may not be installed')), 8000))
+      ]);
     } catch (err) {
-      return interaction.editReply(`\u274C Voice connection failed: ${err.message}\n\nIf you're on Hetzner, make sure **libsodium-wrappers** is installed and a YouTube proxy is configured.`);
+      return interaction.editReply(`\u274C **Voice connection failed:** ${err.message}\n\n**Fix:** Run \`npm install libsodium-wrappers --save\` on your VPS, then \`pm2 delete all && pm2 start index.js\``);
     }
   }
 
@@ -939,6 +960,7 @@ module.exports = {
   category: 'MUSIC',
   description: 'Play music from YouTube, SoundCloud, and Spotify',
   usage: '<prefix>play <query>',
+  params: ['message', 'args', 'client', 'usedCommand'],
   data: slashData,
   run: runPrefix,
   execute: executeSlash,
@@ -947,7 +969,34 @@ module.exports = {
   handleSelectMenu,
   // initLavalink is called by index.js at boot — no-op since we're native
   initLavalink() {
-    console.log('[MUSIC] v5.2 Native Engine ready — no Lavalink needed.');
+    console.log('[MUSIC] v5.3 Native Engine ready — no Lavalink needed.');
+
+    // ── Sodium Diagnostic (REQUIRED for voice) ──────────────
+    let sodiumOk = false;
+    try {
+      const sodium = require('sodium-native');
+      if (sodium.crypto_secretbox_easy && sodium.crypto_secretbox_open_easy) sodiumOk = true;
+      console.log('[MUSIC] sodium-native: OK (preferred)');
+    } catch {
+      try {
+        const libsodium = require('libsodium-wrappers');
+        if (libsodium.ready) libsodium.ready.then(() => {
+          console.log('[MUSIC] libsodium-wrappers: OK (fallback)');
+        }).catch(() => {
+          console.log('[MUSIC] libsodium-wrappers: FAILED to initialize');
+        });
+        else console.log('[MUSIC] libsodium-wrappers: OK (fallback)');
+        sodiumOk = true;
+      } catch {
+        console.log('[MUSIC] libsodium-wrappers: NOT FOUND');
+      }
+    }
+    if (!sodiumOk) {
+      console.log('\x1b[31m[MUSIC] FATAL: No sodium encryption library found!\x1b[0m');
+      console.log('\x1b[31m[MUSIC] Voice will NOT work. Run: npm install libsodium-wrappers --save\x1b[0m');
+      console.log('\x1b[31m[MUSIC] If that fails, try: npm install sodium-native --save\x1b[0m');
+    }
+
     // Validate proxy config
     if (YT_BYPASS === 'proxy' && YT_PROXY) {
       console.log('[MUSIC] YouTube proxy configured:', YT_PROXY.replace(/:\/\/[^:]+:[^@]+@/, '://***:***@'));
