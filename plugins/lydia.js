@@ -1,12 +1,3 @@
-/**
- * ARCHITECT CG-223 // LYDIA AI ENGINE v2.6
- * Multi-agent AI with persistent memory, web search, image analysis
- * Anti-hallucination | Universal language | Performance optimized
- * + Beautiful Discord formatting (multi-embed, paragraph splitting)
- *
- * By: Moussa Fofana // Node BAMAKO_223
- */
-
 'use strict';
 
 const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
