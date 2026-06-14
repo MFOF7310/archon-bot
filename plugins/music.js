@@ -79,17 +79,6 @@ class GuildQueue {
       }
     });
 
-    // Log connection state changes for debugging
-    this.connection.on('stateChange', (oldState, newState) => {
-      console.log(`[VOICE] ${channel.guild.id}: ${oldState.status} → ${newState.status}`);
-      if (newState.status === VoiceConnectionStatus.Ready) {
-        console.log(`[VOICE] ${channel.guild.id}: Connected to ${channel.name}`);
-      }
-      if (newState.status === VoiceConnectionStatus.Destroyed) {
-        console.log(`[VOICE] ${channel.guild.id}: Connection destroyed`);
-      }
-    });
-
     this.player = createAudioPlayer();
     this.connection.subscribe(this.player);
 
@@ -516,10 +505,7 @@ async function runPrefix(message, args, client, usedCommand) {
     // Connect if not connected
     if (!q.connection || q.connection.state.status === VoiceConnectionStatus.Destroyed) {
       try {
-        await Promise.race([
-          q.connect(voiceChannel),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Voice connection timeout — run: npm install libsodium-wrappers')), 8000))
-        ]);
+        await q.connect(voiceChannel);
       } catch (err) {
         return message.reply(`\u274C **Voice connection failed:** ${err.message}`);
       }
@@ -527,10 +513,7 @@ async function runPrefix(message, args, client, usedCommand) {
       q.destroy();
       const fresh = getQueue(message.guild.id);
       try {
-        await Promise.race([
-          fresh.connect(voiceChannel),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Voice connection timeout — run: npm install libsodium-wrappers')), 8000))
-        ]);
+        await fresh.connect(voiceChannel);
       } catch (err) {
         return message.reply(`\u274C **Voice connection failed:** ${err.message}`);
       }
@@ -746,13 +729,9 @@ async function executeSlash(interaction) {
 
   if (!q.connection || q.connection.state.status === VoiceConnectionStatus.Destroyed) {
     try {
-      // Set a shorter timeout for voice connection to fail fast
-      await Promise.race([
-        q.connect(voiceChannel),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Voice connection timeout — libsodium-wrappers may not be installed')), 8000))
-      ]);
+      await q.connect(voiceChannel);
     } catch (err) {
-      return interaction.editReply(`\u274C **Voice connection failed:** ${err.message}\n\n**Fix:** Run \`npm install libsodium-wrappers --save\` on your VPS, then \`pm2 delete all && pm2 start index.js\``);
+      return interaction.editReply(`\u274C **Voice connection failed:** ${err.message}\n\n**Fix:** \`cd ~/cloud-gaming-223-digital-engine && npm install libsodium-wrappers --save && pm2 delete all && pm2 start index.js --name architect\``);
     }
   }
 
