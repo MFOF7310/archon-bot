@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js",
+    "dev": "nodemon index.js",
     "deploy-commands": "node scripts/deploy-commands.js",
     "backup": "node scripts/backup.js"
   },
@@ -35,14 +35,12 @@
     "cors": "^2.8.5",
     "discord.js": "^14.18.0",
     "dotenv": "^16.5.0",
-    "ejs": "^3.1.10",
     "express": "^4.21.2",
     "form-data": "^4.0.2",
     "google-tts-api": "^2.0.2",
     "jsonwebtoken": "^9.0.2",
     "libsodium-wrappers": "^0.7.13",
     "node-cron": "^3.0.3",
-    "node-fetch": "^2.7.0",
     "play-dl": "^1.9.7",
     "pm2": "^6.0.5",
     "telegraf": "^4.16.3"
