@@ -1,29 +1,23 @@
 /**
- * ARCHITECT CG-223 // NEURAL AUDIO ENGINE v3.0 PRO
- * Spotify search + yt-dlp pipe streaming
- * Hetzner-compatible: yt-dlp 2026.06.09+
+ * ARCHITECT CG-223 // NEURAL AUDIO ENGINE v4.0
+ * Lavalink + shoukaku v4 - Full-featured music system
+ * Complete rewrite - Unicode-safe for GitHub mobile
  *
- * By: Moussa Fofana // Node BAMAKO_223
+ * Exports: initLavalink, handleComponent, handleSelectMenu
  */
 
 'use strict';
 
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  StringSelectMenuBuilder, ChannelType, SlashCommandBuilder
+  StringSelectMenuBuilder, SlashCommandBuilder
 } = require('discord.js');
-const {
-  joinVoiceChannel, createAudioPlayer, createAudioResource,
-  AudioPlayerStatus, VoiceConnectionStatus, entersState,
-  StreamType, NoSubscriberBehavior, demuxProbe
-} = require('@discordjs/voice');
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+
+const { Shoukaku, Connectors } = require('shoukaku');
 const https = require('https');
 
 // ============================================================================
-//  COLORS
+// CONSTANTS - All emojis as Unicode escapes (GitHub mobile safe)
 // ============================================================================
 
 const C = {
@@ -34,856 +28,582 @@ const C = {
   RED:    0xe74c3c,
   GOLD:   0xf1c40f,
   SPOTIFY: 0x1DB954,
+  BLURPLE: 0x5865F2,
 };
 
-const CONFIG = {
-  YTDLP_TIMEOUT:  60000,
-  MAX_QUEUE:      100,
-  HISTORY_SIZE:   50,
-  IDLE_TIMEOUT:   300000,
-  NP_UPDATE_MS:   10000,
-  VOLUME_DEFAULT: 50,
-  SEARCH_RESULTS: 10,
+const EMOJI = {
+  PLAY:    '\u{25B6}\u{FE0F}',
+  PAUSE:   '\u{23F8}\u{FE0F}',
+  STOP:    '\u{23F9}\u{FE0F}',
+  SKIP:    '\u{23ED}\u{FE0F}',
+  PREV:    '\u{23EE}\u{FE0F}',
+  LOOP:    '\u{1F501}',
+  LOOP1:   '\u{1F502}',
+  VOLUP:   '\u{1F50A}',
+  VOLDN:   '\u{1F509}',
+  VOLMUTE: '\u{1F508}',
+  SHUFFLE: '\u{1F500}',
+  QUEUE:   '\u{1F4DC}',
+  DASH:    '\u{1F39B}\u{FE0F}',
+  X:       '\u{274C}',
+  NOTE:    '\u{1F3B5}',
+  NOTES:   '\u{1F3B6}',
+  CD:      '\u{1F4BF}',
+  DISC:    '\u{1F4C0}',
+  MIC:     '\u{1F3A4}',
+  HEADPH:  '\u{1F3A7}',
+  CHECK:   '\u{2705}',
+  WARN:    '\u{26A0}\u{FE0F}',
+  RED:     '\u{1F534}',
+  GREEN:   '\u{1F7E2}',
+  YELLOW:  '\u{1F7E1}',
+  BLUE:    '\u{1F535}',
+  ROCKET:  '\u{1F680}',
+  CHART:   '\u{1F4CA}',
+  CLOCK:   '\u{1F550}',
+  USER:    '\u{1F464}',
+  BUILD:   '\u{1F3DB}\u{FE0F}',
+  FLAG:    '\u{1F1F2}\u{1F1F1}',
+  SEARCH:  '\u{1F50D}',
+  STAR:    '\u{2B50}',
+  FIRE:    '\u{1F525}',
+};
+
+const CFG = {
+  MAX_QUEUE: 100,
+  HISTORY: 50,
+  IDLE_MS: 300000,
+  NP_MS: 10000,
+  SEARCH_RES: 10,
+  VOL_DEF: 100,
 };
 
 // ============================================================================
-//  AUDIO STATE MANAGER (Per-Server Isolation)
+// STATE - Per-guild isolation
 // ============================================================================
 
-const audioStates = new Map();
-const searchCache = new Map(); // Short ID -> track data cache for select menus
+const states = new Map();
 
-function getState(guildId) {
-  if (!audioStates.has(guildId)) {
-    audioStates.set(guildId, {
-      guildId, queue: [], current: null, player: null, connection: null,
-      volume: CONFIG.VOLUME_DEFAULT, loop: 'off', paused: false,
-      stageInstance: null, nowPlayingMsg: null, dashboardMsg: null,
-      textChannel: null, requester: null, startTime: null,
-      history: [], isStage: false, status: 'IDLE',
-      sessionId: Math.random().toString(36).slice(2, 10).toUpperCase(),
-      _updateInterval: null, _ytdlpProcess: null,
+function getState(gid) {
+  if (!states.has(gid)) {
+    states.set(gid, {
+      gid, queue: [], current: null, player: null, conn: null,
+      vol: CFG.VOL_DEF, loop: 'off', paused: false,
+      npMsg: null, dashMsg: null, txtCh: null,
+      req: null, startT: null, history: [],
+      sess: Math.random().toString(36).slice(2, 10).toUpperCase(),
+      updInt: null,
     });
   }
-  return audioStates.get(guildId);
+  return states.get(gid);
 }
 
-function destroyState(guildId) {
-  const s = audioStates.get(guildId);
+function destroyState(gid) {
+  const s = states.get(gid);
   if (!s) return;
-  killYtDlp(s);
-  if (s._updateInterval) { clearInterval(s._updateInterval); s._updateInterval = null; }
-  if (s.connection) try { s.connection.destroy(); } catch {}
-  if (s.player) try { s.player.stop(); } catch {}
-  if (s.stageInstance) try { s.stageInstance.delete().catch(() => {}); } catch {}
-  audioStates.delete(guildId);
-}
-
-function killYtDlp(s) {
-  if (s._ytdlpProcess) {
-    try { s._ytdlpProcess.kill('SIGTERM'); } catch {}
-    setTimeout(() => {
-      try { if (s._ytdlpProcess && !s._ytdlpProcess.killed) s._ytdlpProcess.kill('SIGKILL'); } catch {}
-      s._ytdlpProcess = null;
-    }, 2000);
-  }
+  if (s.updInt) { clearInterval(s.updInt); s.updInt = null; }
+  if (s.conn) try { s.conn.disconnect(); } catch {}
+  if (s.player) try { s.player.stopTrack(); } catch {}
+  states.delete(gid);
 }
 
 // ============================================================================
-//  PLAYER FACTORY
+// LAVALINK INIT (exported)
 // ============================================================================
 
-function createPlayer(guildId) {
-  const s = getState(guildId);
-  const player = createAudioPlayer({
-    behaviors: { noSubscriber: NoSubscriberBehavior.Play, maxMissedFrames: 50 }
+function initLavalink(client) {
+  const host = process.env.LAVALINK_HOST || 'localhost';
+  const port = parseInt(process.env.LAVALINK_PORT || '2333');
+  const auth = process.env.LAVALINK_PASSWORD || 'archon-223-secure';
+
+  const nodes = [{ name: 'BAMAKO_223', url: `${host}:${port}`, auth }];
+  const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), nodes, {
+    moveOnDisconnect: false, resume: true, resumeByLibrary: true,
+    reconnectTries: 5, reconnectInterval: 5000, restTimeout: 10000,
   });
 
-  player.on(AudioPlayerStatus.Playing, () => {
-    s.status = 'PLAYING'; s.startTime = Date.now(); s.paused = false;
-    updateNowPlaying(guildId);
-  });
+  client.shoukaku = shoukaku;
 
-  player.on(AudioPlayerStatus.Paused, () => {
-    s.status = 'PAUSED'; s.paused = true; updateNowPlaying(guildId);
-  });
+  shoukaku.on('ready', (n) => console.log(`\x1b[32m[LAVALINK]\x1b[0m Node ${n} ready`));
+  shoukaku.on('error', (n, e) => console.error(`\x1b[31m[LAVALINK]\x1b[0m ${n}: ${e.message}`));
+  shoukaku.on('close', (n, c, r) => console.log(`\x1b[33m[LAVALINK]\x1b[0m ${n} closed: ${c} ${r}`));
+  shoukaku.on('disconnect', (n, c) => console.log(`\x1b[33m[LAVALINK]\x1b[0m ${n} disconnected`));
 
-  player.on(AudioPlayerStatus.Idle, async () => {
-    s.status = 'IDLE'; killYtDlp(s);
-    if (s.loop === 'track' && s.current) {
-      await playTrack(guildId, s.current);
-    } else if (s.queue.length > 0) {
-      await playNext(guildId);
-    } else {
-      s.current = null; updateNowPlaying(guildId);
-      setTimeout(() => {
-        const f = getState(guildId);
-        if (f && f.status === 'IDLE' && f.queue.length === 0) destroyState(guildId);
-      }, CONFIG.IDLE_TIMEOUT);
-    }
-  });
-
-  player.on('error', (err) => {
-    console.error(`[AUDIO ERR] ${guildId}: ${err.message}`);
-    s.status = 'ERROR';
-    if (s.queue.length > 0) playNext(guildId);
-  });
-
-  s.player = player;
-  return player;
+  console.log('\x1b[32m[LAVALINK]\x1b[0m Shoukaku v4 initialized');
 }
 
 // ============================================================================
-//  STAGE CHANNEL
+// SPOTIFY API (metadata only)
 // ============================================================================
 
-async function setupStage(guildId, voiceChannel, topic) {
-  const s = getState(guildId);
-  if (voiceChannel.type !== ChannelType.GuildStageVoice) { s.isStage = false; return false; }
-  s.isStage = true;
+let spotToken = null;
+let spotExpiry = 0;
+
+async function spotifyAuth() {
+  const id = process.env.SPOTIFY_CLIENT_ID;
+  const sec = process.env.SPOTIFY_CLIENT_SECRET;
+  if (!id || !sec) return null;
+  if (spotToken && Date.now() < spotExpiry - 60000) return spotToken;
   try {
-    const existing = voiceChannel.guild.stageInstances.cache.find(si => si.channelId === voiceChannel.id);
-    if (existing) { s.stageInstance = existing; await existing.edit({ topic }); }
-    else { s.stageInstance = await voiceChannel.createStageInstance({ topic, privacyLevel: 2, sendStartNotification: false }); }
-    const me = voiceChannel.guild.members.me;
-    if (me && me.voice) await me.voice.setSuppressed(false).catch(() => {});
-    return true;
-  } catch (err) { console.error(`[STAGE] ${guildId}: ${err.message}`); return false; }
-}
-
-async function updateStageTopic(guildId, topic) {
-  const s = getState(guildId);
-  if (s.stageInstance && s.stageInstance.edit) try { await s.stageInstance.edit({ topic }); } catch {}
-}
-
-// ============================================================================
-//  SPOTIFY API CLIENT
-// ============================================================================
-
-let spotifyToken = null;
-let spotifyTokenExpiry = 0;
-
-async function getSpotifyToken() {
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return null;
-  if (spotifyToken && Date.now() < spotifyTokenExpiry - 60000) return spotifyToken;
-  try {
-    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const data = await httpPost('accounts.spotify.com', '/api/token',
+    const buf = Buffer.from(`${id}:${sec}`).toString('base64');
+    const body = await post('accounts.spotify.com', '/api/token',
       'grant_type=client_credentials',
-      { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' });
-    if (data.access_token) {
-      spotifyToken = data.access_token;
-      spotifyTokenExpiry = Date.now() + (data.expires_in * 1000);
-      return spotifyToken;
-    }
-  } catch (err) { console.error('[Spotify] Token error:', err.message); }
+      { Authorization: `Basic ${buf}`, 'Content-Type': 'application/x-www-form-urlencoded' });
+    if (body.access_token) { spotToken = body.access_token; spotExpiry = Date.now() + body.expires_in * 1000; return spotToken; }
+  } catch (e) { console.error('[Spotify]', e.message); }
   return null;
 }
 
-async function searchSpotify(query, limit) {
-  const token = await getSpotifyToken();
-  if (!token) return null;
+async function spotifySearch(q, limit = CFG.SEARCH_RES) {
+  const t = await spotifyAuth();
+  if (!t) return null;
   try {
-    const encoded = encodeURIComponent(query);
-    const data = await httpGet('api.spotify.com', `/v1/search?q=${encoded}&type=track&limit=${limit}`,
-      { 'Authorization': `Bearer ${token}` });
-    return data.tracks && data.tracks.items ? data.tracks.items.map(t => ({
-      title: t.name,
-      artist: t.artists ? t.artists.map(a => a.name).join(', ') : 'Unknown',
-      duration: t.duration_ms,
-      thumbnail: t.album && t.album.images && t.album.images[0] ? t.album.images[0].url : null,
-      url: t.external_urls && t.external_urls.spotify ? t.external_urls.spotify : `https://open.spotify.com/track/${t.id}`,
-      id: t.id,
-      source: 'spotify',
-    })) : null;
-  } catch (err) { console.error('[Spotify] Search error:', err.message); return null; }
+    const d = await get('api.spotify.com', `/v1/search?q=${enc(q)}&type=track&limit=${limit}`,
+      { Authorization: `Bearer ${t}` });
+    if (!d.tracks?.items?.length) return null;
+    return d.tracks.items.map(tr => ({
+      title: tr.name,
+      artist: tr.artists?.map(a => a.name).join(', ') || 'Unknown',
+      duration: tr.duration_ms,
+      thumb: tr.album?.images?.[0]?.url || null,
+      uri: tr.external_urls?.spotify || `https://open.spotify.com/track/${tr.id}`,
+      id: tr.id,
+    }));
+  } catch (e) { return null; }
 }
 
 // ============================================================================
-//  HTTP HELPERS
+// HTTP HELPERS
 // ============================================================================
 
-const http = require('http');
-
-function httpGet(host, path, headers, allowHttp) {
-  return new Promise((resolve, reject) => {
-    const client = allowHttp ? http : https;
-    const req = client.request({ host, path, method: 'GET', headers, timeout: 10000 }, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
-    });
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
-    req.end();
+function get(h, p, hdr) {
+  return new Promise((res, rej) => {
+    https.get({ host: h, path: p, headers: hdr, timeout: 10000 }, (r) => {
+      let d = '';
+      r.on('data', c => d += c);
+      r.on('end', () => { try { res(JSON.parse(d)); } catch { res(d); } });
+    }).on('error', rej).on('timeout', function() { this.destroy(); rej(new Error('timeout')); });
   });
 }
 
-function httpPost(host, path, body, headers) {
-  return new Promise((resolve, reject) => {
-    const req = https.request({ host, path, method: 'POST', headers, timeout: 10000 }, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
+function post(h, p, b, hdr) {
+  return new Promise((res, rej) => {
+    const req = https.request({ host: h, path: p, method: 'POST', headers: hdr, timeout: 10000 }, (r) => {
+      let d = '';
+      r.on('data', c => d += c);
+      r.on('end', () => { try { res(JSON.parse(d)); } catch { res(d); } });
     });
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
-    req.write(body);
-    req.end();
+    req.on('error', rej).on('timeout', function() { this.destroy(); rej(new Error('timeout')); });
+    req.write(b); req.end();
   });
 }
 
+function enc(s) { return encodeURIComponent(s); }
+
 // ============================================================================
-//  TRACK RESOLUTION
+// TRACK RESOLUTION
 // ============================================================================
 
 async function resolveTrack(query, requester) {
-  const track = {
+  const tr = {
     id: Math.random().toString(36).slice(2, 12),
-    title: 'Unknown Track', artist: 'Unknown Artist',
-    duration: 0, url: null, source: 'unknown', thumbnail: null,
-    requester: requester ? requester.tag : 'Unknown',
-    requesterId: requester ? requester.id : '0',
-    addedAt: Date.now(), searchQuery: null,
+    title: 'Unknown', artist: 'Unknown', duration: 0,
+    uri: null, source: 'unknown', thumb: null,
+    requester: requester?.tag || 'Unknown', reqId: requester?.id || '0',
+    addedAt: Date.now(), searchQ: null, encoded: null,
   };
 
-  // 1. Direct Audio URL
+  // Direct file/URL
   if (/^https?:\/\/.*\.(mp3|wav|ogg|flac|m4a|aac|webm|opus)(\?.*)?$/i.test(query)) {
-    try {
-      track.title = path.basename(new URL(query).pathname) || 'Direct Audio';
-      track.artist = 'Direct Stream';
-      track.url = query; track.source = 'direct'; track.duration = 0;
-      track.searchQuery = query;
-      return track;
-    } catch {}
+    tr.title = query.split('/').pop().split('?')[0] || 'Direct Audio';
+    tr.artist = 'Direct Stream'; tr.uri = query; tr.source = 'direct';
+    tr.searchQ = query; return tr;
   }
-
-  // 2. Local File
-  if (fs.existsSync(query)) {
-    track.title = path.basename(query);
-    track.artist = 'Local File';
-    track.url = query; track.source = 'local'; track.duration = 0;
-    track.searchQuery = query;
-    return track;
+  // Radio stream
+  if (/^https?:\/\/.*:\d+/.test(query) || query.includes('.m3u') || query.includes('.pls')) {
+    tr.title = `Radio: ${query.split('/').pop() || query}`;
+    tr.artist = 'Live Stream'; tr.uri = query; tr.source = 'radio'; tr.duration = Infinity;
+    tr.searchQ = query; return tr;
   }
-
-  // 3. Radio Stream
-  if (/^https?:\/\/.*:(\d+)/.test(query) || query.includes('.m3u') || query.includes('.pls')) {
-    track.title = `Radio: ${query.split('/').pop() || query}`;
-    track.artist = 'Live Stream';
-    track.url = query; track.source = 'radio'; track.duration = Infinity;
-    track.searchQuery = query;
-    return track;
-  }
-
-  // 4. YouTube URL
-  if (query.includes('youtube.com') || query.includes('youtu.be')) {
-    track.title = 'YouTube Track';
-    track.artist = 'YouTube';
-    track.url = query; track.source = 'youtube';
-    track.searchQuery = query;
-    return track;
-  }
-
-  // 5. SoundCloud URL
-  if (query.includes('soundcloud.com')) {
-    track.title = 'SoundCloud Track';
-    track.artist = 'SoundCloud';
-    track.url = query; track.source = 'soundcloud';
-    track.searchQuery = query;
-    return track;
-  }
-
-  // 6. Spotify URL
-  if (query.includes('spotify.com') || query.includes('open.spotify.com')) {
-    const token = await getSpotifyToken();
-    if (token) {
-      try {
-        const match = query.match(/track\/([a-zA-Z0-9]+)/);
-        if (match) {
-          const data = await httpGet('api.spotify.com', `/v1/tracks/${match[1]}`,
-            { 'Authorization': `Bearer ${token}` });
-          track.title = data.name || 'Spotify Track';
-          track.artist = data.artists ? data.artists.map(a => a.name).join(', ') : 'Spotify';
-          track.duration = data.duration_ms;
-          track.thumbnail = data.album && data.album.images && data.album.images[0] ? data.album.images[0].url : null;
-          track.url = data.external_urls && data.external_urls.spotify ? data.external_urls.spotify : query;
-          track.source = 'spotify';
-          track.searchQuery = track.title + ' ' + track.artist;
-          return track;
-        }
-      } catch (err) { console.error('[Spotify] Track fetch error:', err.message); }
-    }
-    track.source = 'spotify';
-    track.searchQuery = query;
-    return track;
-  }
-
-  // 7. Generic HTTP URL
-  if (/^https?:\/\//.test(query)) {
-    track.title = `Stream: ${query.substring(0, 50)}`;
-    track.artist = 'Web Stream';
-    track.url = query; track.source = 'http'; track.duration = 0;
-    track.searchQuery = query;
-    return track;
-  }
-
-  // 8. Search Query (text) - Try Spotify API first for metadata
-  const results = await searchSpotify(query, 1);
-  if (results && results.length > 0) {
-    const r = results[0];
-    track.title = r.title;
-    track.artist = r.artist;
-    track.duration = r.duration;
-    track.thumbnail = r.thumbnail;
-    track.url = r.url;
-    track.source = 'spotify';
-    // Use scsearch: prefix for SoundCloud (works without cookies!)
-    track.searchQuery = 'scsearch:' + r.title + ' ' + r.artist;
-    return track;
-  }
-
-  // Fallback: SoundCloud search via yt-dlp (scsearch: works without cookies)
-  track.title = query;
-  track.artist = 'Search';
-  track.source = 'soundcloud';
-  track.searchQuery = 'scsearch:' + query;
-  return track;
-}
-
-async function resolveSearchResults(query, limit) {
-  // Try Spotify first
-  const spotifyResults = await searchSpotify(query, limit || CONFIG.SEARCH_RESULTS);
-  if (spotifyResults && spotifyResults.length > 0) {
-    return spotifyResults.map((r, i) => ({
-      title: r.title,
-      artist: r.artist,
-      duration: r.duration,
-      thumbnail: r.thumbnail,
-      url: r.url,
-      source: 'soundcloud', // Will use scsearch: for streaming
-      id: r.id,
-      index: i + 1,
-      label: (r.title + ' - ' + r.artist).substring(0, 100),
-      description: (fmtTime(r.duration) + ' - Spotify').substring(0, 100),
-      emoji: '\uD83C\uDFB5',
-      searchQuery: 'scsearch:' + r.title + ' ' + r.artist,
-    }));
-  }
-
-  // Fallback: SoundCloud search via yt-dlp scsearch: (no cookies needed!)
-  try {
-    const result = await spawnAsync('yt-dlp', ytDlpArgs([
-      '--dump-json', '--no-playlist', '--flat-playlist',
-      'scsearch' + (limit || CONFIG.SEARCH_RESULTS) + ':' + query,
-    ]), CONFIG.YTDLP_TIMEOUT);
-    const lines = result.stdout.split('\n').filter(l => l.trim());
-    const tracks = [];
-    for (const line of lines.slice(0, limit || CONFIG.SEARCH_RESULTS)) {
-      try {
-        const data = JSON.parse(line);
-        const dur = (data.duration || 0) * 1000;
-        tracks.push({
-          title: data.title || 'Unknown',
-          artist: data.uploader || 'SoundCloud',
-          duration: dur,
-          thumbnail: data.thumbnail || null,
-          url: data.webpage_url || data.url,
-          id: data.id,
-          source: 'soundcloud',
-          index: tracks.length + 1,
-          label: (data.title || 'Unknown').substring(0, 100),
-          description: (fmtTime(dur) + ' - ' + (data.uploader || 'SoundCloud')).substring(0, 100),
-          emoji: '\u266A',
-          searchQuery: 'scsearch:' + data.title,
-        });
+  // Spotify URL
+  if (query.includes('open.spotify.com/track/')) {
+    const m = query.match(/track\/([a-zA-Z0-9]+)/);
+    if (m) {
+      const t = await spotifyAuth();
+      if (t) try {
+        const d = await get('api.spotify.com', `/v1/tracks/${m[1]}`, { Authorization: `Bearer ${t}` });
+        tr.title = d.name || 'Spotify Track';
+        tr.artist = d.artists?.map(a => a.name).join(', ') || 'Spotify';
+        tr.duration = d.duration_ms; tr.thumb = d.album?.images?.[0]?.url || null;
+        tr.uri = d.external_urls?.spotify || query; tr.source = 'spotify';
+        tr.searchQ = `${tr.title} ${tr.artist}`; return tr;
       } catch {}
     }
-    if (tracks.length > 0) return tracks;
-  } catch (err) { console.log('[SoundCloud] scsearch failed: ' + err.message); }
-
-  // Last resort: Invidious YouTube proxy
-  try {
-    for (let i = 0; i < Math.min(3, INVIDIOUS_HOSTS.length); i++) {
-      const host = getInvidiousHost();
-      try {
-        const data = await httpGet(host, '/api/v1/search?q=' + encodeURIComponent(query) + '&type=video', {}, true);
-        if (Array.isArray(data) && data.length > 0) {
-          return data.slice(0, limit || CONFIG.SEARCH_RESULTS).map((v, idx) => {
-            const dur = (v.lengthSeconds || 0) * 1000;
-            return {
-              title: v.title || 'Unknown',
-              artist: v.author || 'YouTube',
-              duration: dur,
-              thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : null,
-              url: 'https://www.youtube.com/watch?v=' + v.videoId,
-              id: v.videoId,
-              source: 'youtube',
-              index: idx + 1,
-              label: (v.title || 'Unknown').substring(0, 100),
-              description: (fmtTime(dur) + ' - ' + (v.author || 'YouTube')).substring(0, 100),
-              emoji: '\u25B6\uFE0F',
-              searchQuery: 'https://www.youtube.com/watch?v=' + v.videoId,
-            };
-          });
-        }
-      } catch (err) { console.log('[Invidious] ' + host + ' search failed: ' + err.message); }
-    }
-  } catch (err) {
-    console.error('[Search] Invidious search error:', err.message);
+    tr.source = 'spotify'; tr.searchQ = query; return tr;
   }
-  return null;
+  // Generic URL (YouTube, SoundCloud, etc.)
+  if (/^https?:\/\//.test(query)) {
+    tr.title = 'URL Track'; tr.artist = 'Web';
+    tr.uri = query; tr.source = 'url'; tr.searchQ = query; return tr;
+  }
+
+  // Text search -> try Spotify first for metadata
+  const res = await spotifySearch(query, 1);
+  if (res && res[0]) {
+    tr.title = res[0].title; tr.artist = res[0].artist;
+    tr.duration = res[0].duration; tr.thumb = res[0].thumb;
+    tr.uri = res[0].uri; tr.source = 'spotify';
+    tr.searchQ = `ytsearch:${res[0].title} ${res[0].artist}`; return tr;
+  }
+
+  // Fallback: direct ytsearch
+  tr.title = query; tr.artist = 'YouTube';
+  tr.source = 'youtube'; tr.searchQ = `ytsearch:${query}`; return tr;
+}
+
+async function resolveSearch(q, limit = CFG.SEARCH_RES) {
+  const sp = await spotifySearch(q, limit);
+  if (sp && sp.length) {
+    return sp.map((t, i) => ({
+      title: t.title, artist: t.artist, duration: t.duration,
+      thumb: t.thumb, uri: t.uri, source: 'spotify',
+      label: `${t.title} - ${t.artist}`.slice(0, 100),
+      desc: `${fmtTime(t.duration)} - Spotify`.slice(0, 100),
+      searchQ: `ytsearch:${t.title} ${t.artist}`,
+      idx: i + 1,
+    }));
+  }
+  // Fallback: Lavalink search directly
+  return null; // Will be handled by caller doing Lavalink search
 }
 
 // ============================================================================
-//  STREAM ENGINE -- yt-dlp stdout pipe (The Core)
+// LAVALINK PLAYBACK
 // ============================================================================
 
-// ============================================================================
-//  COOKIE-AWARE yt-dlp HELPER (optional cookies.txt for YouTube on Hetzner)
-//  SoundCloud works WITHOUT cookies via scsearch: prefix
-// ============================================================================
+async function playNext(gid, client) {
+  const s = getState(gid);
+  if (!s.queue.length) { s.current = null; updateNP(gid); return; }
 
-function getCookiesPath() {
-  const p = path.join(__dirname, '..', 'data', 'cookies.txt');
-  return fs.existsSync(p) ? p : null;
-}
+  const track = s.queue.shift();
+  s.current = track;
 
-function ytDlpArgs(extra) {
-  const args = ['--no-warnings', '--quiet'];
-  const cookies = getCookiesPath();
-  if (cookies) args.push('--cookies', cookies);
-  return args.concat(extra);
-}
+  try {
+    const node = client.shoukaku.options.nodeResolver(client.shoukaku.nodes);
+    const targetNode = node || Array.from(client.shoukaku.nodes.values())[0];
+    if (!targetNode) throw new Error('No Lavalink node available');
 
-// Invidious instances for Hetzner-safe YouTube search
-const INVIDIOUS_HOSTS = [
-  'vid.puffyan.us', 'y.com.sb', 'iv.nboeck.de', 'iv.datura.network',
-  'yt.artemislena.eu', 'invidious.perennialte.ch', 'iv.nboeck.de',
-];
-let invidiousIndex = 0;
+    let toPlay = track;
 
-function getInvidiousHost() {
-  const host = INVIDIOUS_HOSTS[invidiousIndex % INVIDIOUS_HOSTS.length];
-  invidiousIndex++;
-  return host;
-}
-
-async function invidiousSearch(query) {
-  // Try multiple Invidious instances
-  for (let i = 0; i < Math.min(3, INVIDIOUS_HOSTS.length); i++) {
-    const host = getInvidiousHost();
-    try {
-      const data = await httpGet(host, '/api/v1/search?q=' + encodeURIComponent(query) + '&type=video', {}, true);
-      if (Array.isArray(data) && data.length > 0 && data[0].videoId) {
-        return 'https://www.youtube.com/watch?v=' + data[0].videoId;
+    // Resolve search query to actual track via Lavalink
+    if (track.searchQ && !track.encoded) {
+      const res = await targetNode.rest.resolve(track.searchQ);
+      if (res?.data?.length) {
+        const ld = Array.isArray(res.data) ? res.data[0] : res.data;
+        toPlay = { ...track, encoded: ld.encoded, uri: ld.info?.uri || track.uri, duration: ld.info?.length || track.duration, title: ld.info?.title || track.title, artist: ld.info?.author || track.artist };
+      } else if (res?.data?.encoded) {
+        const ld = res.data;
+        toPlay = { ...track, encoded: ld.encoded, uri: ld.info?.uri || track.uri, duration: ld.info?.length || track.duration, title: ld.info?.title || track.title, artist: ld.info?.author || track.artist };
+      } else {
+        throw new Error('Track resolution failed');
       }
-    } catch (err) { console.log('[Invidious] ' + host + ' failed: ' + err.message); }
+    }
+
+    s.current = toPlay;
+    await s.player.playTrack({ track: toPlay.encoded });
+    s.startT = Date.now(); s.paused = false;
+    s.history.push(toPlay);
+    if (s.history.length > CFG.HISTORY) s.history.shift();
+
+    updateNP(gid);
+  } catch (e) {
+    console.error(`[PLAY] ${gid}: ${e.message}`);
+    if (s.txtCh) s.txtCh.send({ embeds: [emb(C.RED, `${EMOJI.RED} Failed to play: ${track.title}\n${e.message}`)] }).catch(() => {});
+    if (s.queue.length) setTimeout(() => playNext(gid, client), 1000);
   }
-  return null;
 }
 
-async function resolveYouTubeUrl(query) {
-  console.log('[DEBUG] resolveYouTubeUrl input: ' + query.substring(0, 80));
-  // Direct URLs and yt-dlp native prefixes pass through unchanged
-  if (query.startsWith('http') || query.startsWith('scsearch:')) {
-    console.log('[DEBUG] resolveYouTubeUrl: passing through directly');
-    return query;
-  }
-
-  // Use Invidious API for Hetzner-safe YouTube search
-  const url = await invidiousSearch(query);
-  if (url) return url;
-
-  throw new Error('YouTube search unavailable. Try a direct audio URL.');
-}
-
-async function createStreamResource(track) {
-  const query = track.searchQuery || track.url;
-  console.log('[DEBUG] createStreamResource: source=' + track.source + ' query=' + query.substring(0, 60));
-  if (!query) throw new Error('No query or URL for stream');
-
-  // Resolve to direct URL if it's a search query
-  let directUrl = query;
-  if (!query.startsWith('http')) {
-    directUrl = await resolveYouTubeUrl(query);
-  }
-  console.log('[STREAM] URL: ' + directUrl.substring(0, 80));
-
-  // Stream with cookie-aware yt-dlp
-  return new Promise((resolve, reject) => {
-    const args = ytDlpArgs([
-      '-o', '-',
-      '-f', 'bestaudio',
-      '--no-playlist',
-      directUrl,
-    ]);
-
-    if (getCookiesPath()) console.log('[STREAM] Using cookies.txt');
-    console.log('[STREAM] Spawning yt-dlp for: ' + (track.title ? track.title.substring(0, 40) : 'track'));
-
-    const ytdlp = spawn('yt-dlp', args, { timeout: CONFIG.YTDLP_TIMEOUT });
-    let stderr = '';
-
-    ytdlp.on('error', (err) => reject(new Error('yt-dlp spawn failed: ' + err.message)));
-    ytdlp.stderr.on('data', (d) => { stderr += d.toString(); });
-    ytdlp.on('close', (code) => { if (code !== 0 && code !== null) console.log('[yt-dlp] exited ' + code + ': ' + stderr.substring(0, 200)); });
-
-    setTimeout(() => {
-      demuxProbe(ytdlp.stdout)
-        .then(({ stream, type }) => {
-          console.log('[STREAM] Format: ' + type);
-          const resource = createAudioResource(stream, { inputType: type, inlineVolume: true });
-          resource.volume.setVolume(CONFIG.VOLUME_DEFAULT / 100);
-          resource._ytdlp = ytdlp;
-          resolve(resource);
-        })
-        .catch((err) => { killProcess(ytdlp); reject(new Error('Stream probe failed: ' + err.message)); });
-    }, 500);
+function setupPlayerEvents(gid, client) {
+  const s = getState(gid);
+  s.player.on('start', () => {
+    s.startT = Date.now(); s.paused = false; updateNP(gid);
+  });
+  s.player.on('end', (d) => {
+    if (d.reason === 'replaced') return;
+    if (s.loop === 'track' && s.current) {
+      s.queue.unshift(s.current);
+    }
+    if (s.loop === 'queue' && s.current) {
+      s.queue.push(s.current);
+    }
+    if (s.queue.length) playNext(gid, client);
+    else { s.current = null; updateNP(gid); setTimeout(() => { const st = getState(gid); if (st && !st.current && !st.queue.length) destroyState(gid); }, CFG.IDLE_MS); }
+  });
+  s.player.on('exception', (e) => {
+    console.error(`[PLAYER] ${gid} exception:`, e);
+    if (s.queue.length) playNext(gid, client);
+  });
+  s.player.on('closed', () => {
+    destroyState(gid);
   });
 }
 
-function spawnAsync(cmd, args, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { timeout: timeoutMs || 30000 });
-    let stdout = '', stderr = '';
-    proc.stdout.on('data', d => stdout += d.toString());
-    proc.stderr.on('data', d => stderr += d.toString());
-    proc.on('close', (code) => resolve({ stdout, stderr, code }));
-    proc.on('error', (err) => reject(err));
-  });
-}
-
-function killProcess(proc) {
-  if (!proc) return;
-  try { proc.kill('SIGTERM'); } catch {}
-  setTimeout(() => { try { if (!proc.killed) proc.kill('SIGKILL'); } catch {} }, 2000);
-}
-
 // ============================================================================
-//  PLAYBACK ENGINE
+// UI BUILDERS
 // ============================================================================
 
-async function playTrack(guildId, track) {
-  const s = getState(guildId);
-  killYtDlp(s);
-
-  try {
-    // Local files
-    if (track.source === 'local' && fs.existsSync(track.url)) {
-      const { stream, type } = await demuxProbe(fs.createReadStream(track.url));
-      const resource = createAudioResource(stream, { inputType: type, inlineVolume: true });
-      resource.volume.setVolume(s.volume / 100);
-      s.current = track;
-      s.player.play(resource);
-      if (s.isStage) await updateStageTopic(guildId, track.title + ' - ' + track.artist);
-      s.history.push(track);
-      if (s.history.length > CONFIG.HISTORY_SIZE) s.history.shift();
-      return;
-    }
-
-    // Radio / direct HTTP streams
-    if (track.source === 'radio' || track.source === 'direct' || track.source === 'http') {
-      const resource = createAudioResource(track.url, {
-        inputType: StreamType.Arbitrary,
-        inlineVolume: true,
-      });
-      resource.volume.setVolume(s.volume / 100);
-      s.current = track;
-      s.player.play(resource);
-      if (s.isStage) await updateStageTopic(guildId, track.title + ' - ' + track.artist);
-      s.history.push(track);
-      if (s.history.length > CONFIG.HISTORY_SIZE) s.history.shift();
-      return;
-    }
-
-    // Everything else: yt-dlp stream pipe
-    const resource = await createStreamResource(track);
-    s._ytdlpProcess = resource._ytdlp || null;
-    resource.volume.setVolume(s.volume / 100);
-
-    s.current = track;
-    s.player.play(resource);
-    if (s.isStage) await updateStageTopic(guildId, track.title + ' - ' + track.artist);
-    s.history.push(track);
-    if (s.history.length > CONFIG.HISTORY_SIZE) s.history.shift();
-
-  } catch (err) {
-    console.error('[PLAY ERR] ' + guildId + ': ' + err.message);
-    if (s.textChannel) {
-      s.textChannel.send({
-        embeds: [new EmbedBuilder()
-          .setColor(C.RED)
-          .setDescription('Failed to play ' + track.title + '\n' + err.message)]
-      }).catch(() => {});
-    }
-    s.current = null;
-    if (s.queue.length > 0) playNext(guildId);
-  }
+function emb(color, desc) {
+  return new EmbedBuilder().setColor(color).setDescription(desc);
 }
-
-async function playNext(guildId) {
-  const s = getState(guildId);
-  if (s.queue.length === 0) { s.current = null; updateNowPlaying(guildId); return; }
-  await playTrack(guildId, s.queue.shift());
-}
-
-// ============================================================================
-//  TIME FORMATTER
-// ============================================================================
 
 function fmtTime(ms) {
   if (!ms || ms === Infinity) return 'LIVE';
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
   const h = Math.floor(m / 60);
-  if (h > 0) return h + ':' + (m % 60).toString().padStart(2, '0') + ':' + (s % 60).toString().padStart(2, '0');
-  return m + ':' + (s % 60).toString().padStart(2, '0');
+  const ss = (s % 60).toString().padStart(2, '0');
+  const mm = (m % 60).toString().padStart(2, '0');
+  if (h > 0) return `${h}:${mm}:${ss}`;
+  return `${m}:${ss}`;
 }
 
-// ============================================================================
-//  NOW PLAYING PANEL
-// ============================================================================
+function progressBar(elapsed, total, size = 18) {
+  if (!total) return '\u{25AC}'.repeat(size);
+  const pct = Math.min(1, Math.max(0, elapsed / total));
+  const filled = Math.floor(pct * size);
+  return '\u{25A0}'.repeat(filled) + '\u{25A1}'.repeat(size - filled);
+}
 
-function buildNPEmbed(guildId) {
-  const s = getState(guildId);
-  const track = s.current;
+function buildNPEmbed(gid, client) {
+  const s = getState(gid);
+  const t = s.current;
 
-  if (!track) {
+  if (!t) {
     return new EmbedBuilder()
       .setColor(C.DARK)
-      .setTitle('Neural Audio Engine - IDLE')
-      .setDescription('Queue a track to begin playback.\n\nTip: Use /music play query:song name or !play song name')
+      .setTitle(`Neural Audio Engine - IDLE`)
+      .setDescription(`Queue a track to begin playback.\n\nUse \`/music play\` or \`!play <song>\``)
       .addFields(
-        { name: 'Session', value: '`' + s.sessionId + '`', inline: true },
-        { name: 'Volume', value: '`' + s.volume + '%`', inline: true },
+        { name: 'Session', value: `\`${s.sess}\``, inline: true },
+        { name: 'Volume', value: `\`${s.vol}%\``, inline: true },
         { name: 'Loop', value: s.loop === 'off' ? 'Off' : s.loop, inline: true },
       )
-      .setFooter({ text: 'ARCHITECT CG-223 // Neural Audio v3.0 PRO' })
+      .setFooter({ text: `ARCHITECT CG-223 // Neural Audio v4.0 ${EMOJI.FLAG}` })
       .setTimestamp();
   }
 
-  const elapsed = s.startTime ? Date.now() - s.startTime : 0;
-  const dur = track.duration || 0;
-  const pct = dur > 0 ? Math.min(100, (elapsed / dur) * 100) : 0;
-  const filled = Math.floor((pct / 100) * 18);
-  const bar = String.fromCharCode(9608).repeat(filled) + String.fromCharCode(9617).repeat(18 - filled);
-
-  const sourceLabel = {
-    spotify: '[SPOTIFY] ',
-    youtube: '[YT] ',
-    soundcloud: '[SC] ',
-    direct: '[URL] ',
-    local: '[FILE] ',
-    radio: '[RADIO] ',
-    http: '[HTTP] ',
-  }[track.source] || '[MUSIC] ';
+  const elapsed = s.player?.position || 0;
+  const dur = t.duration || 0;
+  const bar = progressBar(elapsed, dur);
+  const srcLabel = { spotify: '[SPOTIFY]', youtube: '[YT]', soundcloud: '[SC]', direct: '[URL]', radio: '[RADIO]', url: '[URL]' }[t.source] || '[MUSIC]';
 
   return new EmbedBuilder()
-    .setColor(track.source === 'spotify' ? C.SPOTIFY : C.GREEN)
-    .setAuthor({ name: s.isStage ? 'LIVE STAGE BROADCAST' : 'NOW PLAYING', iconURL: track.thumbnail || undefined })
-    .setTitle(sourceLabel + (track.title ? track.title.substring(0, 80) : 'Unknown'))
-    .setURL(track.url || null)
-    .setDescription('```\n' + bar + ' ' + pct.toFixed(0) + '%\n' + fmtTime(elapsed) + ' / ' + fmtTime(dur) + '\nSource: ' + track.source.toUpperCase() + ' | Engine: yt-dlp pipe\n```')
+    .setColor(t.source === 'spotify' ? C.SPOTIFY : C.GREEN)
+    .setAuthor({ name: `${EMOJI.NOTE} NOW PLAYING`, iconURL: t.thumb || undefined })
+    .setTitle(`${srcLabel} ${t.title?.slice(0, 80) || 'Unknown'}`)
+    .setURL(t.uri || null)
+    .setDescription(`\`\`\`\n${bar} ${dur ? Math.floor((elapsed/dur)*100) : 0}%\n${fmtTime(elapsed)} / ${fmtTime(dur)}\nSource: ${t.source.toUpperCase()} | Engine: Lavalink\n\`\`\``)
     .addFields(
-      { name: 'Artist', value: track.artist ? track.artist.substring(0, 30) : 'Unknown', inline: true },
-      { name: 'Requester', value: '<@' + track.requesterId + '>', inline: true },
+      { name: 'Artist', value: t.artist?.slice(0, 30) || 'Unknown', inline: true },
+      { name: 'Requester', value: `<@${t.reqId}>`, inline: true },
       { name: 'Loop', value: s.loop === 'off' ? 'Off' : s.loop === 'track' ? 'Track' : 'Queue', inline: true },
-      { name: 'Volume', value: '`' + s.volume + '%`', inline: true },
-      { name: 'Queue', value: '`' + s.queue.length + ' tracks`', inline: true },
-      { name: 'Session', value: '`' + s.sessionId + '`', inline: true },
+      { name: 'Volume', value: `\`${s.vol}%\``, inline: true },
+      { name: 'Queue', value: `\`${s.queue.length} tracks\``, inline: true },
+      { name: 'Session', value: `\`${s.sess}\``, inline: true },
     )
-    .setThumbnail(track.thumbnail || null)
-    .setFooter({ text: 'ARCHITECT CG-223 // ' + (s.isStage ? 'Stage' : 'Voice') + ' // BAMAKO_223' })
+    .setThumbnail(t.thumb || null)
+    .setFooter({ text: `ARCHITECT CG-223 // Voice // BAMAKO_223 ${EMOJI.FLAG}` })
     .setTimestamp();
 }
 
-function buildNPButtons(guildId) {
-  const s = getState(guildId);
+function buildNPButtons(gid) {
+  const s = getState(gid);
+  const d = (id, emoji, style, disabled = false) =>
+    new ButtonBuilder().setCustomId(`music_${id}_${gid}`).setEmoji(emoji).setStyle(style).setDisabled(disabled);
+
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music_prev_' + guildId).setEmoji('\u23EE\uFE0F').setStyle(ButtonStyle.Secondary).setDisabled(s.history.length < 2),
-      new ButtonBuilder().setCustomId('music_pp_' + guildId).setEmoji(s.paused ? '\u25B6\uFE0F' : '\u23F8\uFE0F').setStyle(s.paused ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('music_stop_' + guildId).setEmoji('\u23F9\uFE0F').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('music_next_' + guildId).setEmoji('\u23ED\uFE0F').setStyle(ButtonStyle.Secondary).setDisabled(s.queue.length === 0),
-      new ButtonBuilder().setCustomId('music_loop_' + guildId).setEmoji(s.loop === 'off' ? '\uD83D\uDD01' : s.loop === 'track' ? '\uD83D\uDD02' : '\uD83D\uDD01').setStyle(s.loop === 'off' ? ButtonStyle.Secondary : ButtonStyle.Success),
+      d('prev', EMOJI.PREV, ButtonStyle.Secondary, s.history.length < 2),
+      d('pp', s.paused ? EMOJI.PLAY : EMOJI.PAUSE, s.paused ? ButtonStyle.Success : ButtonStyle.Primary),
+      d('stop', EMOJI.STOP, ButtonStyle.Danger),
+      d('skip', EMOJI.SKIP, ButtonStyle.Secondary, s.queue.length === 0),
+      d('loop', s.loop === 'off' ? EMOJI.LOOP : EMOJI.LOOP1, s.loop === 'off' ? ButtonStyle.Secondary : ButtonStyle.Success),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music_vd_' + guildId).setEmoji('\uD83D\uDD09').setStyle(ButtonStyle.Secondary).setDisabled(s.volume <= 0),
-      new ButtonBuilder().setCustomId('music_vu_' + guildId).setEmoji('\uD83D\uDD0A').setStyle(ButtonStyle.Secondary).setDisabled(s.volume >= 200),
-      new ButtonBuilder().setCustomId('music_shuf_' + guildId).setEmoji('\uD83D\uDD00').setStyle(ButtonStyle.Secondary).setDisabled(s.queue.length < 2),
-      new ButtonBuilder().setCustomId('music_q_' + guildId).setEmoji('\uD83D\uDCDC').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('music_dash_' + guildId).setEmoji('\uD83C\uDF9B\uFE0F').setLabel('Dashboard').setStyle(ButtonStyle.Success),
+      d('vd', EMOJI.VOLDN, ButtonStyle.Secondary, s.vol <= 0),
+      d('vu', EMOJI.VOLUP, ButtonStyle.Secondary, s.vol >= 200),
+      d('shuf', EMOJI.SHUFFLE, ButtonStyle.Secondary, s.queue.length < 2),
+      d('q', EMOJI.QUEUE, ButtonStyle.Primary),
+      d('dash', EMOJI.DASH, ButtonStyle.Success),
     ),
   ];
 }
 
-async function updateNowPlaying(guildId) {
-  const s = getState(guildId);
-  if (!s.nowPlayingMsg) return;
-  try { await s.nowPlayingMsg.edit({ embeds: [buildNPEmbed(guildId)], components: buildNPButtons(guildId) }); } catch {}
-}
-
-// ============================================================================
-//  DASHBOARD PANEL
-// ============================================================================
-
-function buildDashEmbed(guildId) {
-  const s = getState(guildId);
-  const track = s.current;
+function buildDashEmbed(gid, client) {
+  const s = getState(gid);
+  const t = s.current;
   return new EmbedBuilder()
     .setColor(C.ACCENT)
-    .setTitle('Neural Audio Dashboard')
-    .setDescription('Session `' + s.sessionId + '`\n' + (track ? 'Now: [' + track.title + '](' + track.url + ')' : '*Idle*'))
+    .setTitle(`${EMOJI.DASH} Neural Audio Dashboard`)
+    .setDescription(`Session \`${s.sess}\`\n${t ? `Now: [${t.title}](${t.uri})` : '*Idle*'}`)
     .addFields(
-      { name: 'Volume', value: '`' + s.volume + '%`', inline: true },
+      { name: 'Volume', value: `\`${s.vol}%\``, inline: true },
       { name: 'Loop', value: s.loop, inline: true },
-      { name: 'Stage', value: s.isStage ? 'Active' : 'Off', inline: true },
       { name: 'Queue', value: String(s.queue.length), inline: true },
       { name: 'History', value: String(s.history.length), inline: true },
-      { name: 'Uptime', value: s.startTime ? fmtTime(Date.now() - s.startTime) : '-', inline: true },
+      { name: 'Uptime', value: s.startT ? fmtTime(Date.now() - s.startT) : '-', inline: true },
+      { name: 'Status', value: s.paused ? 'Paused' : s.current ? 'Playing' : 'Idle', inline: true },
     )
-    .setFooter({ text: 'ARCHITECT CG-223 // Dashboard v3.0' })
+    .setFooter({ text: `ARCHITECT CG-223 // Dashboard v4.0 ${EMOJI.FLAG}` })
     .setTimestamp();
 }
 
-function buildDashComponents(guildId) {
-  const s = getState(guildId);
+function buildDashComponents(gid) {
+  const opts = [
+    { l: 'Loop: Off', v: `loop_off_${gid}`, e: EMOJI.X },
+    { l: 'Loop: Track', v: `loop_track_${gid}`, e: EMOJI.LOOP1 },
+    { l: 'Loop: Queue', v: `loop_queue_${gid}`, e: EMOJI.LOOP },
+    { l: 'Vol: 25%', v: `vol_25_${gid}`, e: EMOJI.VOLMUTE },
+    { l: 'Vol: 50%', v: `vol_50_${gid}`, e: EMOJI.VOLDN },
+    { l: 'Vol: 100%', v: `vol_100_${gid}`, e: EMOJI.VOLUP },
+    { l: 'Vol: 150%', v: `vol_150_${gid}`, e: EMOJI.VOLUP },
+    { l: 'Clear Queue', v: `clear_${gid}`, e: EMOJI.X },
+  ];
   return [
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder().setCustomId('music_dashboard_select').setPlaceholder('Dashboard Options')
-        .addOptions(
-          { label: 'Loop: Off', value: 'loop_off_' + guildId, emoji: '\u274C' },
-          { label: 'Loop: Track', value: 'loop_track_' + guildId, emoji: '\uD83D\uDD02' },
-          { label: 'Loop: Queue', value: 'loop_queue_' + guildId, emoji: '\uD83D\uDD01' },
-          { label: 'Volume: 25%', value: 'vol_25_' + guildId, emoji: '\uD83D\uDD08' },
-          { label: 'Volume: 50%', value: 'vol_50_' + guildId, emoji: '\uD83D\uDD09' },
-          { label: 'Volume: 100%', value: 'vol_100_' + guildId, emoji: '\uD83D\uDD0A' },
-          { label: 'Volume: 150%', value: 'vol_150_' + guildId, emoji: '\uD83D\uDD0A' },
-          { label: 'Clear Queue', value: 'clear_' + guildId, emoji: '\uD83D\uDDD1\uFE0F' },
-        ),
+        .addOptions(opts.map(o => ({ label: o.l, value: o.v, emoji: o.e })))
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music_np_' + guildId).setEmoji('\uD83C\uDFB5').setLabel('Now Playing').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('music_close_' + guildId).setEmoji('\u274C').setLabel('Close').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`music_np_${gid}`).setEmoji(EMOJI.NOTE).setLabel('Now Playing').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`music_close_${gid}`).setEmoji(EMOJI.X).setLabel('Close').setStyle(ButtonStyle.Danger),
     ),
   ];
 }
 
-async function sendNowPlaying(guildId, channel) {
-  const s = getState(guildId);
-  if (s.nowPlayingMsg) try { await s.nowPlayingMsg.delete(); } catch {}
-  s.nowPlayingMsg = await channel.send({ embeds: [buildNPEmbed(guildId)], components: buildNPButtons(guildId) });
-  if (!s._updateInterval) {
-    s._updateInterval = setInterval(() => {
-      const f = getState(guildId);
-      if (f && f.status === 'PLAYING') updateNowPlaying(guildId);
-    }, CONFIG.NP_UPDATE_MS);
+async function updateNP(gid) {
+  const s = getState(gid);
+  if (!s.npMsg) return;
+  try { await s.npMsg.edit({ embeds: [buildNPEmbed(gid)], components: buildNPButtons(gid) }); } catch {}
+}
+
+async function sendNP(gid, ch, client) {
+  const s = getState(gid);
+  if (s.npMsg) try { await s.npMsg.delete(); } catch {}
+  s.npMsg = await ch.send({ embeds: [buildNPEmbed(gid, client)], components: buildNPButtons(gid) });
+  if (!s.updInt) {
+    s.updInt = setInterval(() => { const st = getState(gid); if (st && st.current && !st.paused) updateNP(gid); }, CFG.NP_MS);
   }
 }
 
-async function sendDashboard(guildId, channel) {
-  const s = getState(guildId);
-  if (s.dashboardMsg) try { await s.dashboardMsg.delete(); } catch {}
-  s.dashboardMsg = await channel.send({ embeds: [buildDashEmbed(guildId)], components: buildDashComponents(guildId) });
+async function sendDashboard(gid, ch, client) {
+  const s = getState(gid);
+  if (s.dashMsg) try { await s.dashMsg.delete(); } catch {}
+  s.dashMsg = await ch.send({ embeds: [buildDashEmbed(gid, client)], components: buildDashComponents(gid) });
 }
 
 // ============================================================================
-//  SEARCH MENU UI
+// SEARCH MENU
 // ============================================================================
 
-async function sendSearchMenu(channel, query, requester, guildId) {
-  const loading = await channel.send({
-    embeds: [new EmbedBuilder().setColor(C.ACCENT).setDescription('Searching Spotify for `' + query.substring(0, 60) + '`...')]
-  });
+async function sendSearchMenu(ch, q, requester, gid, client) {
+  const loading = await ch.send({ embeds: [emb(C.ACCENT, `${EMOJI.SEARCH} Searching Spotify for \`${q.slice(0, 60)}\`...`)] });
+  const results = await resolveSearch(q);
 
-  const results = await resolveSearchResults(query);
-  if (!results || results.length === 0) {
-    await loading.edit({
-      embeds: [new EmbedBuilder().setColor(C.WARN).setDescription(
-        'No results found for `' + query + '`\n\nTips:\n- Check your spelling\n- Try a different query\n- Add Spotify credentials for better search'
-      )]
-    });
-    return null;
+  if (!results || !results.length) {
+    // Fallback: Lavalink direct search
+    try {
+      const node = client.shoukaku.options.nodeResolver(client.shoukaku.nodes);
+      const targetNode = node || Array.from(client.shoukaku.nodes.values())[0];
+      if (targetNode) {
+        const res = await targetNode.rest.resolve(`ytsearch:${q}`);
+        if (res?.data?.length) {
+          const tracks = (Array.isArray(res.data) ? res.data : [res.data]).slice(0, CFG.SEARCH_RES).map((t, i) => ({
+            title: t.info?.title || 'Unknown', artist: t.info?.author || 'YouTube',
+            duration: t.info?.length || 0, thumb: null, uri: t.info?.uri,
+            source: 'youtube', label: (t.info?.title || 'Unknown').slice(0, 100),
+            desc: `${fmtTime(t.info?.length)} - YouTube`.slice(0, 100),
+            searchQ: t.info?.uri, encoded: t.encoded, idx: i + 1,
+          }));
+          await renderSearchResults(loading, tracks, q, gid);
+          return;
+        }
+      }
+    } catch (e) {}
+    await loading.edit({ embeds: [emb(C.WARN, `${EMOJI.WARN} No results found for \`${q}\`\n\nTips:\n- Check spelling\n- Try a different query\n- Add Spotify credentials for better search`)] });
+    return;
   }
 
+  await renderSearchResults(loading, results, q, gid);
+}
+
+async function renderSearchResults(msg, results, q, gid) {
   const embed = new EmbedBuilder()
     .setColor(C.SPOTIFY)
-    .setTitle('Search Results: "' + query.substring(0, 50) + '"')
-    .setDescription('Found ' + results.length + ' tracks. Select one to play:')
-    .setFooter({ text: 'ARCHITECT CG-223 // Spotify Search' })
+    .setTitle(`${EMOJI.SEARCH} Results: "${q.slice(0, 50)}"`)
+    .setDescription(`Found ${results.length} tracks. Select one:`)
+    .setFooter({ text: `ARCHITECT CG-223 // Search` })
     .setTimestamp();
 
-  // Store full track data in cache, use short 8-char IDs as select values
-  const select = new StringSelectMenuBuilder()
-    .setCustomId('music_search_' + guildId + '_' + Date.now())
-    .setPlaceholder('Select a track to play...')
-    .addOptions(results.map(r => {
-      const cacheId = Math.random().toString(36).slice(2, 10);
-      searchCache.set(cacheId, {
-        title: r.title, artist: r.artist, duration: r.duration,
-        thumbnail: r.thumbnail, url: r.url, source: r.source,
-        searchQuery: r.searchQuery || (r.title + ' ' + r.artist),
-        requester: requester.tag, requesterId: requester.id,
-      });
-      // Clean cache after 5 minutes
-      setTimeout(() => searchCache.delete(cacheId), 300000);
-      return {
-        label: r.label.substring(0, 100),
-        description: r.description.substring(0, 100),
-        value: cacheId,  // Short 8-char ID, well under 100 char limit
-        emoji: '\uD83C\uDFB5',
-      };
-    }));
+  const opts = results.map(r => ({
+    label: r.label, description: r.desc, value: JSON.stringify({ g: gid, q: r.searchQ, t: r.title, a: r.artist, d: r.duration, u: r.uri, th: r.thumb, s: r.source, e: r.encoded || '' }),
+    emoji: EMOJI.NOTE,
+  }));
 
-  const row = new ActionRowBuilder().addComponents(select);
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`music_search_${gid}`).setPlaceholder('Select a track...').addOptions(opts)
+  );
 
-  await loading.edit({ embeds: [embed], components: [row] });
-  return results;
+  await msg.edit({ embeds: [embed], components: [row] });
 }
 
 // ============================================================================
-//  COMPONENT HANDLERS
+// COMPONENT HANDLERS (exported)
 // ============================================================================
 
 async function handleComponent(interaction, client) {
   const id = interaction.customId;
   if (!id.startsWith('music_')) return false;
 
-  const gid = interaction.guild.id;
-  const s = getState(gid);
   const parts = id.split('_');
   const action = parts[1];
+  const gid = parts[2];
+  if (!gid) return false;
 
+  const s = getState(gid);
+
+  // Search select menu
   if (action === 'search') {
-    return handleSearchSelection(interaction, gid);
+    return handleSearchSelect(interaction, client);
   }
 
   await interaction.deferUpdate().catch(() => {});
 
   switch (action) {
     case 'pp': {
-      if (s.paused) { s.player.unpause(); s.paused = false; }
-      else { s.player.pause(); s.paused = true; }
+      if (!s.player) break;
+      if (s.paused) { await s.player.resume(); s.paused = false; }
+      else { await s.player.pause(); s.paused = true; }
       break;
     }
     case 'stop': {
       destroyState(gid);
-      await interaction.editReply({
-        embeds: [new EmbedBuilder().setColor(C.DARK).setDescription('Stopped.')],
-        components: []
-      }).catch(() => {});
+      await interaction.editReply({ embeds: [emb(C.DARK, `${EMOJI.STOP} Stopped.`)], components: [] }).catch(() => {});
       return true;
     }
-    case 'next': { s.player.stop(); break; }
+    case 'skip': {
+      if (s.player) s.player.stopTrack();
+      break;
+    }
     case 'prev': {
       if (s.history.length >= 2) {
         s.queue.unshift(s.current);
         s.current = s.history[s.history.length - 2];
         s.history = s.history.slice(0, -2);
-        await playTrack(gid, s.current);
+        if (s.player && s.current) {
+          await s.player.playTrack({ track: s.current.encoded });
+          s.startT = Date.now(); s.paused = false;
+        }
       }
       break;
     }
@@ -894,10 +614,8 @@ async function handleComponent(interaction, client) {
     }
     case 'vd':
     case 'vu': {
-      s.volume = Math.max(0, Math.min(200, s.volume + (action === 'vu' ? 10 : -10)));
-      if (s.player && s.player.state && s.player.state.resource && s.player.state.resource.volume) {
-        s.player.state.resource.volume.setVolume(s.volume / 100);
-      }
+      s.vol = Math.max(0, Math.min(200, s.vol + (action === 'vu' ? 10 : -10)));
+      if (s.player) await s.player.setGlobalVolume(s.vol);
       break;
     }
     case 'shuf': {
@@ -907,105 +625,91 @@ async function handleComponent(interaction, client) {
       }
       break;
     }
-    case 'q': { break; }
-    case 'dash': { await sendDashboard(gid, interaction.channel); break; }
+    case 'q': break;
+    case 'dash': { await sendDashboard(gid, interaction.channel, client); break; }
     case 'close': {
-      await interaction.editReply({ embeds: [new EmbedBuilder().setDescription('Dashboard closed.')], components: [] }).catch(() => {});
-      s.dashboardMsg = null;
-      return true;
+      await interaction.editReply({ embeds: [emb(C.DARK, 'Dashboard closed.')], components: [] }).catch(() => {});
+      s.dashMsg = null; return true;
     }
-    case 'np': { await sendNowPlaying(gid, interaction.channel); break; }
+    case 'np': { await sendNP(gid, interaction.channel, client); break; }
   }
 
-  updateNowPlaying(gid);
-  if (s.dashboardMsg) try {
-    await s.dashboardMsg.edit({ embeds: [buildDashEmbed(gid)], components: buildDashComponents(gid) });
-  } catch {}
+  updateNP(gid);
+  if (s.dashMsg) try { await s.dashMsg.edit({ embeds: [buildDashEmbed(gid, client)], components: buildDashComponents(gid) }); } catch {}
   return true;
 }
 
-async function handleSearchSelection(interaction, guildId) {
-  const s = getState(guildId);
-  const cacheId = interaction.values[0];
-  const trackData = searchCache.get(cacheId);
-  if (!trackData) {
-    await interaction.reply({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('Search expired. Please search again.')], ephemeral: true }).catch(() => {});
-    return true;
-  }
-  searchCache.delete(cacheId); // One-time use
+async function handleSearchSelect(interaction, client) {
+  let data;
+  try { data = JSON.parse(interaction.values[0]); } catch { return false; }
+  const { g: gid, q, t, a, d, u, th, s: src, e } = data;
+  if (!gid || !q) return false;
 
   await interaction.deferUpdate().catch(() => {});
 
   const track = {
     id: Math.random().toString(36).slice(2, 12),
-    title: trackData.title,
-    artist: trackData.artist,
-    duration: trackData.duration || 0,
-    url: trackData.url,
-    source: trackData.source || 'spotify',
-    thumbnail: trackData.thumbnail,
-    requester: trackData.requester || 'Unknown',
-    requesterId: trackData.requesterId || '0',
+    title: t || 'Unknown', artist: a || 'Unknown',
+    duration: d || 0, uri: u, source: src || 'youtube',
+    thumb: th || null, searchQ: q, encoded: e || null,
+    requester: interaction.user.tag, reqId: interaction.user.id,
     addedAt: Date.now(),
-    searchQuery: trackData.searchQuery || (trackData.title + ' ' + trackData.artist),
   };
 
-  const vc = interaction.member.voice.channel;
+  const vc = interaction.member?.voice?.channel;
   if (!vc) {
-    await interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('Join a voice channel first!')]
-    }).catch(() => {});
+    await interaction.editReply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Join a voice channel first!`)] }).catch(() => {});
     return true;
   }
 
-  s.textChannel = interaction.channel;
+  const st = getState(gid);
+  st.txtCh = interaction.channel;
 
-  // Clean up broken connection and create fresh one
-  if (s.connection) {
-    try { s.connection.destroy(); } catch {}
-    s.connection = null;
-  }
-  s.connection = joinVoiceChannel({
-    channelId: vc.id, guildId: vc.guild.id,
-    adapterCreator: vc.guild.voiceAdapterCreator,
-    selfDeaf: false, selfMute: false
-  });
-  s.isStage = vc.type === ChannelType.GuildStageVoice;
-  if (s.isStage) await setupStage(guildId, vc, track.title);
-  const player = createPlayer(guildId);
-  s.connection.subscribe(player);
-  try { await entersState(s.connection, VoiceConnectionStatus.Ready, 60000); }
-  catch {
-    destroyState(guildId);
-    await interaction.editReply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription('Voice connection timed out. Please try again.')] }).catch(() => {});
-    return true;
-  }
+  try {
+    if (!st.conn || st.conn.state !== 1) {
+      if (st.conn) try { st.conn.disconnect(); } catch {}
+      st.conn = await client.shoukaku.joinVoiceChannel({ guildId: gid, channelId: vc.id, shardId: 0, deaf: true, mute: false });
+      st.player = st.conn;
+      setupPlayerEvents(gid, client);
+    }
 
-  if (s.current) {
-    s.queue.push(track);
-    await interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(C.SPOTIFY).setDescription(
-        'Added to queue: [' + track.title + '](' + track.url + ')\n' + track.artist + ' | <@' + track.requesterId + '>'
-      ).setThumbnail(track.thumbnail)]
-    }).catch(() => {});
-  } else {
-    await playTrack(guildId, track);
-    await sendNowPlaying(guildId, interaction.channel);
-    await interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(
-        'Now Playing: [' + track.title + '](' + track.url + ')\n' + track.artist + ' | <@' + track.requesterId + '>'
-      ).setThumbnail(track.thumbnail)]
-    }).catch(() => {});
+    if (st.current) {
+      st.queue.push(track);
+      await interaction.editReply({ embeds: [emb(C.SPOTIFY, `${EMOJI.CHECK} Added to queue: [${track.title}](${track.uri})\n${track.artist} | ${st.queue.length} in queue`)] }).catch(() => {});
+    } else {
+      await playNext(gid, client);
+      // Inject current track
+      st.current = track;
+      try {
+        const node = client.shoukaku.options.nodeResolver(client.shoukaku.nodes);
+        const targetNode = node || Array.from(client.shoukaku.nodes.values())[0];
+        if (targetNode) {
+          const res = await targetNode.rest.resolve(track.searchQ);
+          if (res?.data?.length) {
+            const ld = Array.isArray(res.data) ? res.data[0] : res.data;
+            st.current = { ...track, encoded: ld.encoded, uri: ld.info?.uri || track.uri, duration: ld.info?.length || track.duration, title: ld.info?.title || track.title, artist: ld.info?.author || track.artist };
+          }
+        }
+        if (st.current?.encoded) {
+          await st.player.playTrack({ track: st.current.encoded });
+          st.startT = Date.now(); st.paused = false;
+          st.history.push(st.current);
+        }
+      } catch (e) { console.error('[SEARCH PLAY]', e.message); }
+      await sendNP(gid, interaction.channel, client);
+      await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.PLAY} Now Playing: [${st.current?.title || track.title}](${st.current?.uri || track.uri})\n${st.current?.artist || track.artist}`)] }).catch(() => {});
+    }
+  } catch (e) {
+    console.error('[SEARCH VC]', e.message);
+    await interaction.editReply({ embeds: [emb(C.RED, `${EMOJI.RED} Voice connection failed: ${e.message}`)] }).catch(() => {});
   }
-
   return true;
 }
 
 async function handleSelectMenu(interaction, client) {
   if (interaction.customId !== 'music_dashboard_select') return false;
-
-  const value = interaction.values[0];
-  const parts = value.split('_');
+  const val = interaction.values[0];
+  const parts = val.split('_');
   const action = parts[0];
   const gid = parts[parts.length - 1];
   const s = getState(gid);
@@ -1015,30 +719,26 @@ async function handleSelectMenu(interaction, client) {
   switch (action) {
     case 'loop': { s.loop = parts[1]; break; }
     case 'vol': {
-      s.volume = parseInt(parts[1]);
-      if (s.player && s.player.state && s.player.state.resource && s.player.state.resource.volume) {
-        s.player.state.resource.volume.setVolume(s.volume / 100);
-      }
+      s.vol = parseInt(parts[1]);
+      if (s.player) await s.player.setGlobalVolume(s.vol);
       break;
     }
     case 'clear': { s.queue = []; break; }
   }
 
-  if (s.dashboardMsg) try {
-    await s.dashboardMsg.edit({ embeds: [buildDashEmbed(gid)], components: buildDashComponents(gid) });
-  } catch {}
-  updateNowPlaying(gid);
+  if (s.dashMsg) try { await s.dashMsg.edit({ embeds: [buildDashEmbed(gid, client)], components: buildDashComponents(gid) }); } catch {}
+  updateNP(gid);
   return true;
 }
 
 // ============================================================================
-//  COMMAND DEFINITION
+// SLASH DATA
 // ============================================================================
 
 const slashData = new SlashCommandBuilder()
-  .setName('music').setDescription('Neural Audio Engine v3.0 PRO - Music streaming')
+  .setName('music').setDescription('Neural Audio Engine v4.0 - Music streaming')
   .addSubcommand(s => s.setName('play').setDescription('Play a track').addStringOption(o => o.setName('query').setDescription('Song name or URL').setRequired(true)))
-  .addSubcommand(s => s.setName('search').setDescription('Search and select a track').addStringOption(o => o.setName('query').setDescription('What to search').setRequired(true)))
+  .addSubcommand(s => s.setName('search').setDescription('Search and select').addStringOption(o => o.setName('query').setDescription('What to search').setRequired(true)))
   .addSubcommand(s => s.setName('skip').setDescription('Skip current track'))
   .addSubcommand(s => s.setName('stop').setDescription('Stop and disconnect'))
   .addSubcommand(s => s.setName('pause').setDescription('Pause playback'))
@@ -1049,332 +749,329 @@ const slashData = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('nowplaying').setDescription('Show now playing'))
   .addSubcommand(s => s.setName('disconnect').setDescription('Disconnect from voice'));
 
+// ============================================================================
+// COMMAND ROUTER (prefix)
+// ============================================================================
+
+async function runPrefix(client, message, args, db, usedCommand, settings, lang) {
+  let cmd, rest;
+  if (usedCommand === 'music') { cmd = args[0]?.toLowerCase() || ''; rest = args.slice(1); }
+  else { cmd = usedCommand?.toLowerCase() || ''; rest = args; }
+
+  const gid = message.guild?.id;
+  if (!gid) return message.reply('Music commands work in servers only.');
+
+  const vc = message.member?.voice?.channel;
+  const noVc = ['queue', 'q', 'nowplaying', 'np', 'dashboard', 'search'];
+  if (!vc && !noVc.includes(cmd)) {
+    return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Join a voice channel first!`)] });
+  }
+
+  const s = getState(gid);
+  s.txtCh = message.channel;
+
+  switch (cmd) {
+    case 'play':
+    case 'p': {
+      const q = rest.join(' ');
+      if (!q) return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Provide a song name or URL.\n\nExamples:\n!play never gonna give you up\n!play https://open.spotify.com/track/...`)] });
+      const loading = await message.reply({ embeds: [emb(C.ACCENT, `${EMOJI.SEARCH} Resolving \`${q.slice(0, 60)}\`...`)] });
+      const track = await resolveTrack(q, message.author);
+
+      try {
+        if (!s.conn || s.conn.state !== 1) {
+          if (s.conn) try { s.conn.disconnect(); } catch {}
+          s.conn = await client.shoukaku.joinVoiceChannel({ guildId: gid, channelId: vc.id, shardId: 0, deaf: true, mute: false });
+          s.player = s.conn;
+          setupPlayerEvents(gid, client);
+        }
+
+        if (s.current) {
+          s.queue.push(track);
+          loading.edit({ embeds: [emb(C.SPOTIFY, `${EMOJI.CHECK} Added: [${track.title}](${track.uri})\n${track.artist} | ${s.queue.length} in queue`)] });
+        } else {
+          s.current = track;
+          if (track.searchQ && !track.encoded) {
+            const node = client.shoukaku.options.nodeResolver(client.shoukaku.nodes);
+            const targetNode = node || Array.from(client.shoukaku.nodes.values())[0];
+            if (targetNode) {
+              const res = await targetNode.rest.resolve(track.searchQ);
+              if (res?.data?.length) {
+                const ld = Array.isArray(res.data) ? res.data[0] : res.data;
+                s.current = { ...track, encoded: ld.encoded, uri: ld.info?.uri || track.uri, duration: ld.info?.length || track.duration, title: ld.info?.title || track.title, artist: ld.info?.author || track.artist };
+              }
+            }
+          }
+          if (s.current?.encoded) {
+            await s.player.playTrack({ track: s.current.encoded });
+            s.startT = Date.now(); s.paused = false;
+            s.history.push(s.current);
+          }
+          loading.delete().catch(() => {});
+          await sendNP(gid, message.channel, client);
+        }
+      } catch (e) {
+        loading.edit({ embeds: [emb(C.RED, `${EMOJI.RED} Connection failed: ${e.message}`)] });
+      }
+      break;
+    }
+
+    case 'search': {
+      const q = rest.join(' ');
+      if (!q) return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Provide a search query.\nExample: !search never gonna give you up`)] });
+      await sendSearchMenu(message.channel, q, message.author, gid, client);
+      break;
+    }
+
+    case 'skip':
+    case 's': {
+      if (!s.current) return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Nothing playing!`)] });
+      if (s.player) s.player.stopTrack();
+      message.reply({ embeds: [emb(C.GREEN, `${EMOJI.SKIP} Skipped!`)] });
+      break;
+    }
+
+    case 'stop': {
+      destroyState(gid);
+      message.reply({ embeds: [emb(C.DARK, `${EMOJI.STOP} Neural Audio Engine stopped.`)] });
+      break;
+    }
+
+    case 'pause': {
+      if (!s.player) return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Nothing playing!`)] });
+      await s.player.pause(); s.paused = true;
+      message.reply({ embeds: [emb(C.GOLD, `${EMOJI.PAUSE} Paused`)] });
+      break;
+    }
+
+    case 'resume': {
+      if (!s.player) return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Nothing playing!`)] });
+      await s.player.resume(); s.paused = false;
+      message.reply({ embeds: [emb(C.GREEN, `${EMOJI.PLAY} Resumed`)] });
+      break;
+    }
+
+    case 'queue':
+    case 'q': {
+      if (!s.current && !s.queue.length) return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Queue is empty!`)] });
+      const em = new EmbedBuilder().setColor(C.ACCENT).setTitle(`${EMOJI.QUEUE} Queue - ${s.queue.length + (s.current ? 1 : 0)} tracks`);
+      if (s.current) em.addFields({ name: 'Now Playing', value: `[${s.current.title}](${s.current.uri}) - ${s.current.artist}` });
+      const list = s.queue.slice(0, 15).map((t, i) => `\`${i + 1}.\` [${t.title}](${t.uri}) - ${t.artist}`).join('\n');
+      if (list) em.addFields({ name: 'Up Next', value: list.slice(0, 1024) });
+      if (s.queue.length > 15) em.addFields({ name: '...', value: `+${s.queue.length - 15} more` });
+      message.reply({ embeds: [em] });
+      break;
+    }
+
+    case 'volume':
+    case 'vol': {
+      const v = parseInt(rest[0]);
+      if (isNaN(v) || v < 0 || v > 200) return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Volume: 0-200`)] });
+      s.vol = v;
+      if (s.player) await s.player.setGlobalVolume(v);
+      message.reply({ embeds: [emb(C.GREEN, `${EMOJI.VOLUP} Volume: ${v}%`)] });
+      updateNP(gid);
+      break;
+    }
+
+    case 'loop': {
+      const modes = ['off', 'track', 'queue'];
+      s.loop = modes[(modes.indexOf(s.loop) + 1) % 3];
+      message.reply({ embeds: [emb(C.GREEN, `${EMOJI.LOOP} Loop: ${s.loop}`)] });
+      updateNP(gid);
+      break;
+    }
+
+    case 'nowplaying':
+    case 'np': {
+      if (!s.current) return message.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Nothing playing!`)] });
+      await sendNP(gid, message.channel, client);
+      break;
+    }
+
+    case 'dashboard': {
+      await sendDashboard(gid, message.channel, client);
+      break;
+    }
+
+    case 'disconnect':
+    case 'dc': {
+      destroyState(gid);
+      message.reply({ embeds: [emb(C.GREEN, `${EMOJI.CHECK} Disconnected.`)] });
+      break;
+    }
+
+    default: {
+      message.reply({ embeds: [emb(C.ACCENT,
+        `${EMOJI.NOTE} Neural Audio Engine v4.0\n\n` +
+        `\`!play <query>\` - Play a track\n` +
+        `\`!search <query>\` - Search with menu\n` +
+        `\`!skip\` - Skip current\n` +
+        `\`!stop\` - Stop and clear\n` +
+        `\`!pause / !resume\` - Playback control\n` +
+        `\`!queue\` - Show queue\n` +
+        `\`!volume <0-200>\` - Set volume\n` +
+        `\`!loop\` - Toggle loop\n` +
+        `\`!nowplaying\` - Show player\n` +
+        `\`!dashboard\` - Control panel\n` +
+        `\`!disconnect\` - Leave voice\n\n` +
+        `Supports: Spotify, YouTube, SoundCloud, URLs`
+      )] });
+    }
+  }
+}
+
+// ============================================================================
+// SLASH HANDLER
+// ============================================================================
+
+async function executeSlash(interaction, client) {
+  const action = interaction.options.getSubcommand();
+  const gid = interaction.guild.id;
+  const vc = interaction.member?.voice?.channel;
+  const s = getState(gid);
+  s.txtCh = interaction.channel;
+
+  const noVc = ['queue', 'nowplaying'];
+  if (!vc && !noVc.includes(action)) {
+    return interaction.reply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Join a voice channel first!`)], ephemeral: true });
+  }
+
+  await interaction.deferReply();
+
+  switch (action) {
+    case 'play': {
+      const q = interaction.options.getString('query');
+      await interaction.editReply({ embeds: [emb(C.ACCENT, `${EMOJI.SEARCH} Resolving \`${q?.slice(0, 60)}\`...`)] });
+      const track = await resolveTrack(q, interaction.user);
+
+      try {
+        if (!s.conn || s.conn.state !== 1) {
+          if (s.conn) try { s.conn.disconnect(); } catch {}
+          s.conn = await client.shoukaku.joinVoiceChannel({ guildId: gid, channelId: vc.id, shardId: 0, deaf: true, mute: false });
+          s.player = s.conn;
+          setupPlayerEvents(gid, client);
+        }
+
+        if (s.current) {
+          s.queue.push(track);
+          await interaction.editReply({ embeds: [emb(C.SPOTIFY, `${EMOJI.CHECK} Added: [${track.title}](${track.uri})\n${track.artist} | ${s.queue.length} in queue`)] });
+        } else {
+          s.current = track;
+          if (track.searchQ && !track.encoded) {
+            const node = client.shoukaku.options.nodeResolver(client.shoukaku.nodes);
+            const targetNode = node || Array.from(client.shoukaku.nodes.values())[0];
+            if (targetNode) {
+              const res = await targetNode.rest.resolve(track.searchQ);
+              if (res?.data?.length) {
+                const ld = Array.isArray(res.data) ? res.data[0] : res.data;
+                s.current = { ...track, encoded: ld.encoded, uri: ld.info?.uri || track.uri, duration: ld.info?.length || track.duration, title: ld.info?.title || track.title, artist: ld.info?.author || track.artist };
+              }
+            }
+          }
+          if (s.current?.encoded) {
+            await s.player.playTrack({ track: s.current.encoded });
+            s.startT = Date.now(); s.paused = false;
+            s.history.push(s.current);
+          }
+          await sendNP(gid, interaction.channel, client);
+          await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.PLAY} Now Playing: [${s.current?.title || track.title}](${s.current?.uri || track.uri})\n${s.current?.artist || track.artist}`)] });
+        }
+      } catch (e) {
+        await interaction.editReply({ embeds: [emb(C.RED, `${EMOJI.RED} Connection failed: ${e.message}`)] });
+      }
+      break;
+    }
+
+    case 'search': {
+      const q = interaction.options.getString('query');
+      await interaction.editReply({ embeds: [emb(C.ACCENT, `${EMOJI.SEARCH} Searching \`${q}\`...`)] });
+      await sendSearchMenu(interaction.channel, q, interaction.user, gid, client);
+      await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.CHECK} Search results sent below!`)] });
+      break;
+    }
+
+    case 'skip': {
+      if (!s.current) return interaction.editReply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Nothing playing!`)] });
+      if (s.player) s.player.stopTrack();
+      await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.SKIP} Skipped!`)] });
+      break;
+    }
+
+    case 'stop': {
+      destroyState(gid);
+      await interaction.editReply({ embeds: [emb(C.DARK, `${EMOJI.STOP} Stopped.`)] });
+      break;
+    }
+
+    case 'pause': {
+      await s.player.pause(); s.paused = true;
+      await interaction.editReply({ embeds: [emb(C.GOLD, `${EMOJI.PAUSE} Paused`)] });
+      break;
+    }
+
+    case 'resume': {
+      await s.player.resume(); s.paused = false;
+      await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.PLAY} Resumed`)] });
+      break;
+    }
+
+    case 'queue': {
+      if (!s.current) return interaction.editReply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Queue empty!`)] });
+      const em = new EmbedBuilder().setColor(C.ACCENT).setTitle(`${EMOJI.QUEUE} Queue`)
+        .setDescription(s.current ? `Now: [${s.current.title}](${s.current.uri}) - ${s.current.artist}\n` + s.queue.slice(0, 15).map((t, i) => `${i + 1}. [${t.title}](${t.uri})`).join('\n') : 'Empty');
+      await interaction.editReply({ embeds: [em] });
+      break;
+    }
+
+    case 'volume': {
+      const v = interaction.options.getInteger('level');
+      s.vol = v;
+      if (s.player) await s.player.setGlobalVolume(v);
+      await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.VOLUP} Volume: ${v}%`)] });
+      updateNP(gid);
+      break;
+    }
+
+    case 'loop': {
+      const modes = ['off', 'track', 'queue'];
+      s.loop = modes[(modes.indexOf(s.loop) + 1) % 3];
+      await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.LOOP} Loop: ${s.loop}`)] });
+      updateNP(gid);
+      break;
+    }
+
+    case 'nowplaying': {
+      if (!s.current) return interaction.editReply({ embeds: [emb(C.WARN, `${EMOJI.WARN} Nothing playing!`)] });
+      await sendNP(gid, interaction.channel, client);
+      await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.CHECK} Now Playing updated!`)] });
+      break;
+    }
+
+    case 'disconnect': {
+      destroyState(gid);
+      await interaction.editReply({ embeds: [emb(C.GREEN, `${EMOJI.CHECK} Disconnected!`)] });
+      break;
+    }
+  }
+}
+
+// ============================================================================
+// EXPORTS
+// ============================================================================
+
 module.exports = {
   name: 'music',
   aliases: ['play', 'p', 'skip', 's', 'queue', 'q', 'stop', 'disconnect', 'dc',
-    'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'stage', 'search'],
+    'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'search'],
   category: 'MUSIC',
-  description: 'Neural Audio Engine v3.0 PRO - Spotify search + yt-dlp pipe',
+  description: 'Neural Audio Engine v4.0 - Lavalink + shoukaku music system',
   data: slashData,
-
+  run: runPrefix,
+  execute: executeSlash,
   handleComponent,
   handleSelectMenu,
-
-  // ============================================================================
-  //  PREFIX COMMAND ROUTER
-  // ============================================================================
-
-  run: async (client, message, args, db, usedCommand, settings, lang) => {
-    let cmd, rest;
-    if (usedCommand === 'music') { cmd = args[0] ? args[0].toLowerCase() : ''; rest = args.slice(1); }
-    else { cmd = usedCommand ? usedCommand.toLowerCase() : ''; rest = args; }
-
-    const gid = message.guild ? message.guild.id : null;
-    if (!gid) return message.reply('Music commands work in servers only.');
-
-    const member = message.member;
-    const vc = member.voice.channel;
-    const noVcNeeded = ['queue', 'q', 'nowplaying', 'np', 'dashboard', 'search'];
-
-    if (!vc && !noVcNeeded.includes(cmd)) {
-      return message.reply({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('Join a voice or Stage channel first!')] });
-    }
-
-    const s = getState(gid);
-    s.textChannel = message.channel;
-    const e = (color, desc) => new EmbedBuilder().setColor(color).setDescription(desc);
-
-    switch (cmd) {
-      case 'play':
-      case 'p': {
-        const query = rest.join(' ');
-        if (!query) return message.reply({ embeds: [e(C.WARN,
-          'Provide a song name, URL, or search query.\n\nExamples:\n!play never gonna give you up\n!play https://open.spotify.com/track/...\n!play https://soundcloud.com/...\n!play https://example.com/song.mp3'
-        )] });
-
-        const loading = await message.reply({ embeds: [e(C.ACCENT, 'Resolving: `' + query.substring(0, 60) + '`...')] });
-        const track = await resolveTrack(query, message.author);
-
-        // Clean up broken connection and create fresh one
-        if (s.connection) {
-          try { s.connection.destroy(); } catch {}
-          s.connection = null;
-        }
-        s.connection = joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
-        s.isStage = vc.type === ChannelType.GuildStageVoice;
-        if (s.isStage) await setupStage(gid, vc, track.title);
-        const player = createPlayer(gid);
-        s.connection.subscribe(player);
-        try { await entersState(s.connection, VoiceConnectionStatus.Ready, 60000); }
-        catch {
-          destroyState(gid);
-          return loading.edit({ embeds: [e(C.RED, 'Voice connection timed out. Please try again.')] });
-        }
-
-        if (s.current) {
-          s.queue.push(track);
-          loading.edit({ embeds: [e(C.SPOTIFY, 'Added to queue: [' + track.title + '](' + track.url + ')\n' + track.artist + ' | ' + s.queue.length + ' in queue')] });
-        } else {
-          await playTrack(gid, track);
-          loading.delete().catch(() => {});
-          await sendNowPlaying(gid, message.channel);
-        }
-        break;
-      }
-
-      case 'search': {
-        const query = rest.join(' ');
-        if (!query) return message.reply({ embeds: [e(C.WARN, 'Provide a search query.\nExample: !search never gonna give you up')] });
-        await sendSearchMenu(message.channel, query, message.author, gid);
-        break;
-      }
-
-      case 'skip':
-      case 's': {
-        if (!s.current) return message.reply({ embeds: [e(C.WARN, 'Nothing playing!')] });
-        s.player.stop();
-        message.reply({ embeds: [e(C.GREEN, 'Skipped!')] });
-        break;
-      }
-
-      case 'stop': {
-        destroyState(gid);
-        message.reply({ embeds: [e(C.DARK, 'Neural Audio Engine stopped.')] });
-        break;
-      }
-
-      case 'pause': {
-        if (!s.player) return message.reply({ embeds: [e(C.WARN, 'Nothing playing!')] });
-        s.player.pause(); s.paused = true;
-        message.reply({ embeds: [e(C.GOLD, 'Paused')] });
-        break;
-      }
-
-      case 'resume': {
-        if (!s.player) return message.reply({ embeds: [e(C.WARN, 'Nothing playing!')] });
-        s.player.unpause(); s.paused = false;
-        message.reply({ embeds: [e(C.GREEN, 'Resumed')] });
-        break;
-      }
-
-      case 'queue':
-      case 'q': {
-        if (!s.current && s.queue.length === 0) return message.reply({ embeds: [e(C.WARN, 'Queue is empty!')] });
-        const em = new EmbedBuilder().setColor(C.ACCENT).setTitle('Queue - ' + (s.queue.length + (s.current ? 1 : 0)) + ' tracks');
-        if (s.current) em.addFields({ name: 'Now Playing', value: '[' + s.current.title + '](' + s.current.url + ') - ' + s.current.artist });
-        const list = s.queue.slice(0, 15).map((t, i) => '`' + (i + 1) + '.` [' + t.title + '](' + t.url + ') - ' + t.artist).join('\n');
-        if (list) em.addFields({ name: 'Up Next', value: list.substring(0, 1024) });
-        if (s.queue.length > 15) em.addFields({ name: '...', value: '+' + (s.queue.length - 15) + ' more' });
-        message.reply({ embeds: [em] });
-        break;
-      }
-
-      case 'volume':
-      case 'vol': {
-        const vol = parseInt(rest[0]);
-        if (isNaN(vol) || vol < 0 || vol > 200) return message.reply({ embeds: [e(C.WARN, 'Volume: 0-200')] });
-        s.volume = vol;
-        if (s.player && s.player.state && s.player.state.resource && s.player.state.resource.volume) {
-          s.player.state.resource.volume.setVolume(vol / 100);
-        }
-        message.reply({ embeds: [e(C.GREEN, 'Volume: ' + vol + '%')] });
-        updateNowPlaying(gid);
-        break;
-      }
-
-      case 'loop': {
-        const modes = ['off', 'track', 'queue'];
-        s.loop = modes[(modes.indexOf(s.loop) + 1) % 3];
-        message.reply({ embeds: [e(C.GREEN, 'Loop: ' + s.loop)] });
-        updateNowPlaying(gid);
-        break;
-      }
-
-      case 'nowplaying':
-      case 'np': {
-        if (!s.current) return message.reply({ embeds: [e(C.WARN, 'Nothing playing!')] });
-        await sendNowPlaying(gid, message.channel);
-        break;
-      }
-
-      case 'dashboard': {
-        await sendDashboard(gid, message.channel);
-        break;
-      }
-
-      case 'disconnect':
-      case 'dc': {
-        destroyState(gid);
-        message.reply({ embeds: [e(C.GREEN, 'Disconnected.')] });
-        break;
-      }
-
-      case 'stage': {
-        if (!vc || vc.type !== ChannelType.GuildStageVoice)
-          return message.reply({ embeds: [e(C.WARN, 'Join a Stage Channel first!')] });
-        await setupStage(gid, vc, rest.join(' ') || 'Neural Audio Broadcast');
-        message.reply({ embeds: [e(C.GREEN, 'Stage Broadcast activated!')] });
-        break;
-      }
-
-      default: {
-        message.reply({ embeds: [e(C.ACCENT,
-          'Neural Audio Engine v3.0\n\n' +
-          '!play <query> - Play a track\n' +
-          '!search <query> - Search with selection menu\n' +
-          '!skip - Skip current\n' +
-          '!stop - Stop and clear\n' +
-          '!pause / !resume - Playback control\n' +
-          '!queue - Show queue\n' +
-          '!volume <0-200> - Set volume\n' +
-          '!loop - Toggle loop mode\n' +
-          '!nowplaying - Show player\n' +
-          '!dashboard - Control panel\n' +
-          '!disconnect - Leave voice\n' +
-          '!stage - Stage broadcast\n\n' +
-          'Supports: Spotify, YouTube, SoundCloud, direct URLs, radio'
-        )] });
-      }
-    }
-  },
-
-  // ============================================================================
-  //  SLASH COMMAND HANDLER
-  // ============================================================================
-
-  execute: async (interaction, client) => {
-    const action = interaction.options.getSubcommand();
-    const gid = interaction.guild.id;
-    const vc = interaction.member.voice.channel;
-    const s = getState(gid);
-    s.textChannel = interaction.channel;
-
-    const noVc = ['queue', 'nowplaying'];
-    if (!vc && !noVc.includes(action)) {
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription('Join a voice channel first!')], ephemeral: true });
-    }
-
-    await interaction.deferReply();
-    const e = (color, desc) => new EmbedBuilder().setColor(color).setDescription(desc);
-
-    switch (action) {
-      case 'play': {
-        const query = interaction.options.getString('query');
-        if (!query) return interaction.editReply({ embeds: [e(C.WARN, 'Provide a query!')] });
-
-        await interaction.editReply({ embeds: [e(C.ACCENT, 'Resolving: `' + query.substring(0, 60) + '`...')] });
-        const track = await resolveTrack(query, interaction.user);
-
-        // Clean up broken connection and create fresh one
-        if (s.connection) {
-          try { s.connection.destroy(); } catch {}
-          s.connection = null;
-        }
-        s.connection = joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
-        s.isStage = vc.type === ChannelType.GuildStageVoice;
-        if (s.isStage) await setupStage(gid, vc, track.title);
-        const player = createPlayer(gid);
-        s.connection.subscribe(player);
-        try { await entersState(s.connection, VoiceConnectionStatus.Ready, 60000); }
-        catch {
-          destroyState(gid);
-          return interaction.editReply({ embeds: [e(C.RED, 'Voice connection timed out. Please try again.')] });
-        }
-
-        if (s.current) {
-          s.queue.push(track);
-          await interaction.editReply({ embeds: [e(C.SPOTIFY,
-            'Added to queue: [' + track.title + '](' + track.url + ')\n' + track.artist + ' | ' + s.queue.length + ' in queue'
-          ).setThumbnail(track.thumbnail)] });
-        } else {
-          await playTrack(gid, track);
-          await sendNowPlaying(gid, interaction.channel);
-          await interaction.editReply({ embeds: [e(C.GREEN,
-            'Now Playing: [' + track.title + '](' + track.url + ')\n' + track.artist
-          ).setThumbnail(track.thumbnail)] });
-        }
-        break;
-      }
-
-      case 'search': {
-        const query = interaction.options.getString('query');
-        if (!query) return interaction.editReply({ embeds: [e(C.WARN, 'Provide a search query!')] });
-        await interaction.editReply({ embeds: [e(C.ACCENT, 'Searching for `' + query + '`...')] });
-        const results = await sendSearchMenu(interaction.channel, query, interaction.user, gid);
-        if (results) {
-          await interaction.editReply({ embeds: [e(C.GREEN, 'Found ' + results.length + ' tracks! Select one from the menu below.')] });
-        } else {
-          await interaction.editReply({ embeds: [e(C.WARN, 'No results found for `' + query + '`')] });
-        }
-        break;
-      }
-
-      case 'skip': {
-        if (!s.current) return interaction.editReply({ embeds: [e(C.WARN, 'Nothing playing!')] });
-        s.player.stop();
-        await interaction.editReply({ embeds: [e(C.GREEN, 'Skipped!')] });
-        break;
-      }
-
-      case 'stop': {
-        destroyState(gid);
-        await interaction.editReply({ embeds: [e(C.DARK, 'Neural Audio Engine stopped.')] });
-        break;
-      }
-
-      case 'pause': {
-        s.player.pause(); s.paused = true;
-        await interaction.editReply({ embeds: [e(C.GOLD, 'Paused')] });
-        break;
-      }
-
-      case 'resume': {
-        s.player.unpause(); s.paused = false;
-        await interaction.editReply({ embeds: [e(C.GREEN, 'Resumed')] });
-        break;
-      }
-
-      case 'queue': {
-        if (!s.current) return interaction.editReply({ embeds: [e(C.WARN, 'Queue empty!')] });
-        const em = new EmbedBuilder().setColor(C.ACCENT).setTitle('Queue')
-          .setDescription(s.current ? 'Now: [' + s.current.title + '](' + s.current.url + ') - ' + s.current.artist + '\n' + s.queue.slice(0, 15).map((t, i) => '' + (i + 1) + '. [' + t.title + '](' + t.url + ')').join('\n') : 'Empty');
-        await interaction.editReply({ embeds: [em] });
-        break;
-      }
-
-      case 'volume': {
-        const vol = interaction.options.getInteger('level');
-        s.volume = vol;
-        if (s.player && s.player.state && s.player.state.resource && s.player.state.resource.volume) {
-          s.player.state.resource.volume.setVolume(s.volume / 100);
-        }
-        await interaction.editReply({ embeds: [e(C.GREEN, 'Volume: ' + vol + '%')] });
-        updateNowPlaying(gid);
-        break;
-      }
-
-      case 'loop': {
-        const modes = ['off', 'track', 'queue'];
-        s.loop = modes[(modes.indexOf(s.loop) + 1) % 3];
-        await interaction.editReply({ embeds: [e(C.GREEN, 'Loop: ' + s.loop)] });
-        updateNowPlaying(gid);
-        break;
-      }
-
-      case 'nowplaying': {
-        if (!s.current) return interaction.editReply({ embeds: [e(C.WARN, 'Nothing playing!')] });
-        await sendNowPlaying(gid, interaction.channel);
-        await interaction.editReply({ embeds: [e(C.GREEN, 'Now Playing updated!')] });
-        break;
-      }
-
-      case 'disconnect': {
-        destroyState(gid);
-        await interaction.editReply({ embeds: [e(C.GREEN, 'Disconnected!')] });
-        break;
-      }
-    }
-  },
+  initLavalink,
 };
 
-console.log('Neural Audio Engine v3.0 PRO loaded - Spotify + SoundCloud(scsearch) + yt-dlp pipe');
+console.log('Neural Audio Engine v4.0 loaded - shoukaku v4 + Lavalink');
