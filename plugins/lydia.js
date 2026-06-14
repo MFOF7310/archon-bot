@@ -1,9 +1,10 @@
 /**
- *  ARCHITECT CG-223 // LYDIA AI ENGINE v2.5
- *  Multi-agent AI with persistent memory, web search, image analysis
- *  Anti-hallucination | Universal language | Performance optimized
+ * ARCHITECT CG-223 // LYDIA AI ENGINE v2.6
+ * Multi-agent AI with persistent memory, web search, image analysis
+ * Anti-hallucination | Universal language | Performance optimized
+ * + Beautiful Discord formatting (multi-embed, paragraph splitting)
  *
- *  By: Moussa Fofana // Node BAMAKO_223
+ * By: Moussa Fofana // Node BAMAKO_223
  */
 
 'use strict';
@@ -12,31 +13,31 @@ const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField } = require('disc
 const axios = require('axios');
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  CONFIGURATION
+// CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const CFG = {
   COOLDOWN_TIME: 3000,
-  MAX_HISTORY: 8,              // Reduced from 12 — faster processing
+  MAX_HISTORY: 8,
   MAX_MEMORY_PER_USER: 25,
   CHANNEL_COOLDOWN: 1500,
-  MAX_EMBED_DESC: 4096,
-  MAX_TOKENS: 1024,
-  RESPONSE_TIMEOUT: 15000,     // Per-model timeout
-  CACHE_TTL_MS: 120000,        // 2min cache for repeated questions
-  MAX_CONCURRENT_MODELS: 3,    // Race top N models in parallel
+  MAX_EMBED_DESC: 3800,
+  MAX_TOKENS: 1200,
+  RESPONSE_TIMEOUT: 15000,
+  CACHE_TTL_MS: 120000,
+  MAX_CONCURRENT_MODELS: 3,
+  MAX_EMBEDS_PER_MSG: 4,
+  PARAGRAPH_MAX_LINES: 8,
 };
 
 let isLydiaInitialized = false;
 const userCooldowns = new Map();
 const channelCooldowns = new Map();
 const messageProcessingLocks = new Set();
-
-// ─── Response Cache (performance) ───
 const responseCache = new Map();
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  ANSI COLORS
+// ANSI COLORS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const C = {
@@ -45,7 +46,7 @@ const C = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  SENTIMENT COLOR ENGINE
+// SENTIMENT COLOR ENGINE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PALETTE = {
@@ -71,17 +72,17 @@ function getSentimentColor(themeKey, text = '') {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  THEME ENGINE
+// THEME ENGINE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const THEMES = {
-  default:  { name: 'Monitor',       emoji: '✨', tone: 'friendly, helpful, conversational' },
-  tech:     { name: 'Tech Analyst',  emoji: '💻', tone: 'expert developer, clear explanations, production-ready code' },
-  intel:    { name: 'Intel Officer', emoji: '🔍', tone: 'informative, well-sourced, factual, structured briefing' },
-  tactical: { name: 'Field Guide',   emoji: '📋', tone: 'clear, actionable, step-by-step, mission-oriented' },
-  medical:  { name: 'Health Advisor',emoji: '🏥', tone: 'caring, cautious, recommends professional help when needed' },
-  academic: { name: 'Scholar',       emoji: '📚', tone: 'patient, thorough, breaks down complex topics' },
-  police:   { name: 'System Monitor',emoji: '🛡️', tone: 'authoritative, precise, security-conscious, monitor-style' }
+  default:  { name: 'Monitor',        emoji: '\u2728', tone: 'friendly, helpful, conversational' },
+  tech:     { name: 'Tech Analyst',   emoji: '\u{1F4BB}', tone: 'expert developer, clear explanations, production-ready code' },
+  intel:    { name: 'Intel Officer',  emoji: '\u{1F50D}', tone: 'informative, well-sourced, factual, structured briefing' },
+  tactical: { name: 'Field Guide',    emoji: '\u{1F4CB}', tone: 'clear, actionable, step-by-step, mission-oriented' },
+  medical:  { name: 'Health Advisor', emoji: '\u{1F3E5}', tone: 'caring, cautious, recommends professional help when needed' },
+  academic: { name: 'Scholar',        emoji: '\u{1F4DA}', tone: 'patient, thorough, breaks down complex topics' },
+  police:   { name: 'System Monitor', emoji: '\u{1F6E1}\u{FE0F}', tone: 'authoritative, precise, security-conscious, monitor-style' }
 };
 
 function detectTheme(userPrompt) {
@@ -98,7 +99,7 @@ function detectTheme(userPrompt) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  UNIVERSAL LANGUAGE DETECTOR
+// UNIVERSAL LANGUAGE DETECTOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function detectUserLanguage(text) {
@@ -106,22 +107,15 @@ function detectUserLanguage(text) {
   const t = text.toLowerCase().trim();
   if (!t) return 'en';
 
-  // French indicators
-  if (/[àâäéèêëîïôöùûüÿçœæ]/i.test(t)) return 'fr';
-  const frWords = /\b(le|la|les|un|une|des|du|de|je|tu|il|elle|nous|vous|ils|elles|est|sont|été|faire|voir|aller|venir|parler|penser|très|bien|oui|non|merci|bonjour|salut|comment|quoi|où|quand|pourquoi|parce|donc|alors|aussi|encore|toujours|jamais|tout|rien|quelque|chaque|plus|moins|avec|sans|dans|sur|sous|entre|chez|vers)\b/i;
+  if (/[\u00E0\u00E2\u00E4\u00E9\u00E8\u00EA\u00EB\u00EE\u00EF\u00F4\u00F6\u00F9\u00FB\u00FC\u00FF\u00E7\u0153\u00E6]/i.test(t)) return 'fr';
+  const frWords = /\b(le|la|les|un|une|des|du|de|je|tu|il|elle|nous|vous|ils|elles|est|sont|\u00E9t\u00E9|faire|voir|aller|venir|parler|penser|tr\u00E8s|bien|oui|non|merci|bonjour|salut|comment|quoi|o\u00F9|quand|pourquoi|parce|donc|alors|aussi|encore|toujours|jamais|tout|rien|quelque|chaque|plus|moins|avec|sans|dans|sur|sous|entre|chez|vers)\b/i;
   if (frWords.test(t)) return 'fr';
 
-  // Spanish indicators
-  const esWords = /\b(el|la|los|las|un|una|yo|tú|él|ella|nosotros|vosotros|ellos|son|está|estar|hacer|ver|ir|venir|hablar|pensar|muy|bien|sí|no|gracias|hola|cómo|qué|dónde|cuándo|porqué|porque|entonces|también|siempre|nunca|todo|nada|cada|más|menos|con|sin|dentro|sobre|entre|hacia)\b/i;
+  const esWords = /\b(el|la|los|las|un|una|yo|t\u00FA|\u00E9l|ella|nosotros|vosotros|ellos|son|est\u00E1|estar|hacer|ver|ir|venir|hablar|pensar|muy|bien|s\u00ED|no|gracias|hola|c\u00F3mo|qu\u00E9|d\u00F3nde|cu\u00E1ndo|porqu\u00E9|porque|entonces|tambi\u00E9n|siempre|nunca|todo|nada|cada|m\u00E1s|menos|con|sin|dentro|sobre|entre|hacia)\b/i;
   if (esWords.test(t)) return 'es';
 
-  // Arabic indicators
   if (/[\u0600-\u06FF]/.test(t)) return 'ar';
-
-  // Chinese indicators
   if (/[\u4E00-\u9FFF]/.test(t)) return 'zh';
-
-  // Japanese indicators
   if (/[\u3040-\u309F\u30A0-\u30FF]/.test(t)) return 'ja';
 
   return 'en';
@@ -138,11 +132,11 @@ const LANG_NAMES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  BOT KNOWLEDGE BASE (NO ENV SECRETS)
+// BOT KNOWLEDGE BASE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BOT_KNOWLEDGE = `
-You are Lydia, the onboard AI expert monitor for ARCHITECT CG-223 (also called ARCHON CG-223), a Discord bot engineered by Moussa Fofana from Bamako, Mali 🇲🇱.
+You are Lydia, the onboard AI expert monitor for ARCHITECT CG-223 (also called ARCHON CG-223), a Discord bot engineered by Moussa Fofana from Bamako, Mali \u{1F1F2}\u{1F1F1}.
 
 CORE ARCHITECTURE:
 - "Per-Server Partitioning": All user data (XP, credits, levels, stats, inventory) is strictly isolated per server via composite key (user ID + guild ID). No cross-server data leakage.
@@ -180,7 +174,7 @@ When a user asks you to set a reminder (e.g., "remind me in 5 min to call mom"):
 
 SYSTEMS OVERVIEW — FUNCTIONAL DOMAINS:
 1. LEVELING & XP — Message-based progression with tiered roles (Neural Initiate → Supreme Architect). Formula: floor(0.1 * sqrt(XP)) + 1.
-2. ECONOMY — Credit system (🪙) with daily claims, streak bonuses (3d/7d/30d/100d/365d milestones), streak shields, and shop purchases.
+2. ECONOMY — Credit system (\u{1FA99}) with daily claims, streak bonuses (3d/7d/30d/100d/365d milestones), streak shields, and shop purchases.
 3. BAMAKO MARKET — 4-state virtual market (Steady/Bull/Bear/Volatile) updating every 6 hours. Investment mechanics with profit claiming.
 4. AUTO-MOD & SECURITY — Spam/link/invite filtering, mention limits, warning escalation (mute/kick/ban), and join-velocity threat scoring.
 5. WELCOME & GOODBYE — Cinematic embeds with tier assignment based on member count, auto-role assignment, and stay-duration analytics.
@@ -204,30 +198,25 @@ ANTI-HALLUCINATION PROTOCOL — CRITICAL:
 
 OWNER INFO:
 - Architect: Moussa Fofana (MFOF7310)
-- Origin: Bamako, Mali 🇲🇱
+- Origin: Bamako, Mali \u{1F1F2}\u{1F1F1}
 - Public Repository: github.com/MFOF7310
 `;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  CREDENTIAL SCRUBBER (Security — prevents env leak)
+// CREDENTIAL SCRUBBER
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const SECRET_PATTERNS = [
-  // API keys
   /[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/g,
   /sk-[a-zA-Z0-9]{20,}/gi,
   /Bearer\s+[a-zA-Z0-9_-]{20,}/gi,
-  // Discord tokens
   /[MN][A-Za-z\d]{23}\.[\w-]{6}\.[\w-]{27}/g,
   /mfa\.[\w-]{84}/g,
-  // Generic secrets
   /process\.env\.[A-Z_]+/gi,
   /__[A-Z_]+__/g,
-  // File paths
   /\/home\/[^\s]+/g,
   /\/root\/[^\s]+/g,
   /C:\\\\[^\s]+/g,
-  // Database URLs with credentials
   /(mysql|postgres|mongodb):\/\/[^:]+:[^@]+@/gi,
 ];
 
@@ -237,29 +226,24 @@ function scrubSecrets(text) {
   for (const pattern of SECRET_PATTERNS) {
     cleaned = cleaned.replace(pattern, '[REDACTED]');
   }
-  // Also catch explicit env var names that might slip through
   cleaned = cleaned.replace(/OPENROUTER_API_KEY|BRAVE_API_KEY|DISCORD_TOKEN|CLIENT_SECRET|MONGO_URI|DATABASE_URL|JWT_SECRET/gi, '[REDACTED]');
   return cleaned;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  ANTI-HALLUCINATION VALIDATOR
+// ANTI-HALLUCINATION VALIDATOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const HALLUCINATION_PATTERNS = [
-  // Claims about local ML
   /\b(tensorflow|pytorch|keras|opencv|scikit|huggingface transformers|local model|on-device|gpu cluster|cuda cores|nvidia|rtx| training data)\b/gi,
-  // Claims about features that don't exist
   /\b(nano banana|nano agent|self-aware|conscious|sentient|emotion engine|dream mode|hologram|quantum computing)\b/gi,
-  // Claims about access level
   /\b(i can see (the |your )?(source code|config|env|environment|token|password|secret))/gi,
   /\b(i have access to (the |your )?(server|database|file system|logs|config))/gi,
-  // File path leaks
   /\b(\/plugins\/|\/src\/|\/config\/|\/data\/database|\.env\b|\.json\b|\/telegram\/|\/node_modules\/)/gi,
 ];
 
 const HALLUCINATION_FALLBACKS = [
-  "I'm not certain about that. I can help you with the features I have access to — try asking about economy, leveling, moderation, or use `.help` to see available commands.",
+  "I'm not certain about that. I can help you with the features I have access to \u2014 try asking about economy, leveling, moderation, or use \`.help\` to see available commands.",
   "I don't have information about that specifically. Would you like me to search the web, or can I help with something related to the bot's features?",
   "That's outside my current knowledge base. I'm focused on helping with ARCHITECT CG-223's systems. What would you like to know about?",
 ];
@@ -278,19 +262,16 @@ function validateResponse(response) {
     }
   }
 
-  // Check for claims about having source code access
   if (/\b(my source code|the source code|source code of|i'm written in|i was built with|my code is|my architecture includes)\b/gi.test(response)) {
     score += 5;
     reasons.push('Source code claim');
   }
 
-  // Check for env var references
   if (/\b(process\.env|environment variable|env var|config file|\.env)\b/gi.test(response)) {
     score += 5;
     reasons.push('Config/env reference');
   }
 
-  // Scrub any secrets that slipped through
   const cleaned = scrubSecrets(response);
 
   if (score >= 3) {
@@ -303,7 +284,7 @@ function validateResponse(response) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  BOT NAME DETECTOR
+// BOT NAME DETECTOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function getBotName(message) {
@@ -314,7 +295,7 @@ function getBotName(message) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  WEB SEARCH
+// WEB SEARCH
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function webSearch(query) {
@@ -341,18 +322,17 @@ async function webSearch(query) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  MODEL POOL (Performance: parallel racing)
+// MODEL POOL (Parallel racing)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const MODEL_POOL = [
-  { id: 'meta-llama/llama-3.1-70b-instruct', emoji: '🧠', name: 'Llama 3.1', tier: 'fast' },
-  { id: 'google/gemini-2.0-flash-exp',       emoji: '✨', name: 'Gemini Flash', tier: 'fast' },
-  { id: 'mistralai/mistral-7b-instruct',      emoji: '⚡', name: 'Mistral 7B', tier: 'fast' },
-  { id: 'anthropic/claude-3-haiku',           emoji: '🎋', name: 'Claude Haiku', tier: 'reliable' },
-  { id: 'cohere/command-r-plus',              emoji: '🔮', name: 'Command R+', tier: 'deep' },
+  { id: 'meta-llama/llama-3.1-70b-instruct', emoji: '\u{1F9E0}', name: 'Llama 3.1', tier: 'fast' },
+  { id: 'google/gemini-2.0-flash-exp',       emoji: '\u2728', name: 'Gemini Flash', tier: 'fast' },
+  { id: 'mistralai/mistral-7b-instruct',      emoji: '\u26A1', name: 'Mistral 7B', tier: 'fast' },
+  { id: 'anthropic/claude-3-haiku',           emoji: '\u{1F38B}', name: 'Claude Haiku', tier: 'reliable' },
+  { id: 'cohere/command-r-plus',              emoji: '\u{1F52E}', name: 'Command R+', tier: 'deep' },
 ];
 
-// ─── Single model attempt with timeout ───
 async function tryModel(model, messages, timeoutMs) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return null;
@@ -401,14 +381,13 @@ async function tryModel(model, messages, timeoutMs) {
   });
 }
 
-// ─── Parallel model racing (performance improvement) ───
 async function generateAIResponse(systemPrompt, userMessage, history = [], imageUrl = null, theme = THEMES.default) {
   const messages = [{ role: 'system', content: systemPrompt }];
 
   if (Array.isArray(history) && history.length > 0) {
     messages.push({
       role: 'system',
-      content: `[CONVERSATION HISTORY — Contextual reference only. Respond to the LATEST message]`
+      content: `[CONVERSATION HISTORY \u2014 Contextual reference only. Respond to the LATEST message]`
     });
     messages.push(...history.slice(-CFG.MAX_HISTORY).map(h => ({ role: h.role, content: h.content })));
   }
@@ -425,32 +404,29 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
     messages.push({ role: 'user', content: userMessage });
   }
 
-  // ─── Performance: Race top models in parallel ───
   const topModels = MODEL_POOL.slice(0, CFG.MAX_CONCURRENT_MODELS);
   console.log(`${C.cyan}[AI]${C.reset} Racing ${topModels.length} models...`);
 
   const promises = topModels.map(m => tryModel(m, messages, CFG.RESPONSE_TIMEOUT));
 
-  // Wait for first successful response
   let winner = null;
   const results = await Promise.all(promises);
 
   for (let i = 0; i < results.length; i++) {
     if (results[i]) {
       winner = results[i];
-      winner.attempted = topModels.slice(0, i + 1).map(m => m.name).join(' → ');
+      winner.attempted = topModels.slice(0, i + 1).map(m => m.name).join(' \u2192 ');
       break;
     }
   }
 
-  // If parallel failed, try remaining models sequentially
   if (!winner) {
     const remaining = MODEL_POOL.slice(CFG.MAX_CONCURRENT_MODELS);
     for (const model of remaining) {
       const result = await tryModel(model, messages, CFG.RESPONSE_TIMEOUT);
       if (result) {
         winner = result;
-        winner.attempted = 'parallel-fail → ' + model.name;
+        winner.attempted = 'parallel-fail \u2192 ' + model.name;
         break;
       }
     }
@@ -466,7 +442,7 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  RESPONSE CACHE (Performance)
+// RESPONSE CACHE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function getCacheKey(userId, prompt) {
@@ -489,7 +465,6 @@ function getCachedResponse(userId, prompt) {
 function setCachedResponse(userId, prompt, data) {
   const key = getCacheKey(userId, prompt);
   responseCache.set(key, { ts: Date.now(), data });
-  // Prune old entries
   if (responseCache.size > 200) {
     const oldest = responseCache.keys().next().value;
     responseCache.delete(oldest);
@@ -497,7 +472,7 @@ function setCachedResponse(userId, prompt, data) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  MEMORY SYSTEM
+// MEMORY SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function parseAndStoreMemory(reply, userId, database) {
@@ -521,7 +496,7 @@ function parseAndStoreMemory(reply, userId, database) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  REMINDER SYSTEM
+// REMINDER SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function parseAndScheduleReminder(response, userId, channelId, client, database) {
@@ -554,9 +529,9 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
             await user.send({
               embeds: [new EmbedBuilder()
                 .setColor('#f1c40f')
-                .setAuthor({ name: '🔔 Reminder', iconURL: client.user?.displayAvatarURL() })
+                .setAuthor({ name: '\u{1F514} Reminder', iconURL: client.user?.displayAvatarURL() })
                 .setDescription(`**${msg.trim()}**`)
-                .setFooter({ text: 'Architect CG-223 • Reminder' })
+                .setFooter({ text: 'Architect CG-223 \u2022 Reminder' })
                 .setTimestamp()
               ]
             }).catch(() => {});
@@ -564,7 +539,7 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
           const ch = await client.channels.fetch(channelId).catch(() => null);
           if (ch?.isTextBased?.()) {
             await ch.send({
-              content: `🔔 <@${userId}> **Reminder:** ${msg.trim()}`,
+              content: `\u{1F514} <@${userId}> **Reminder:** ${msg.trim()}`,
               allowedMentions: { users: [userId] }
             }).catch(() => {});
           }
@@ -598,7 +573,7 @@ function rehydrateReminders(client, database) {
           .then(ch => {
             if (ch?.isTextBased?.()) {
               ch.send({
-                content: `🔔 **OVERDUE** <@${r.user_id}>: ${r.message}`,
+                content: `\u{1F514} **OVERDUE** <@${r.user_id}>: ${r.message}`,
                 allowedMentions: { users: [r.user_id] }
               }).catch(() => {});
             }
@@ -612,9 +587,9 @@ function rehydrateReminders(client, database) {
               await user.send({
                 embeds: [new EmbedBuilder()
                   .setColor('#f1c40f')
-                  .setAuthor({ name: '🔔 Reminder', iconURL: client.user?.displayAvatarURL() })
+                  .setAuthor({ name: '\u{1F514} Reminder', iconURL: client.user?.displayAvatarURL() })
                   .setDescription(`**${r.message}**`)
-                  .setFooter({ text: 'Architect CG-223 • Reminder' })
+                  .setFooter({ text: 'Architect CG-223 \u2022 Reminder' })
                   .setTimestamp()
                 ]
               }).catch(() => {});
@@ -622,7 +597,7 @@ function rehydrateReminders(client, database) {
             const ch = await client.channels.fetch(r.channel_id).catch(() => null);
             if (ch?.isTextBased?.()) {
               await ch.send({
-                content: `🔔 <@${r.user_id}> **Reminder:** ${r.message}`,
+                content: `\u{1F514} <@${r.user_id}> **Reminder:** ${r.message}`,
                 allowedMentions: { users: [r.user_id] }
               }).catch(() => {});
             }
@@ -641,7 +616,157 @@ function rehydrateReminders(client, database) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  EMBED BUILDER
+// DISCORD RESPONSE FORMATTER v3.0 — Beautiful multi-embed splitting
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Post-processes raw AI text into beautifully formatted Discord markdown.
+ * - Adds blank lines between paragraphs
+ * - Ensures headers are bold and spaced
+ * - Properly spaces numbered/bullet lists
+ * - Wraps code blocks
+ * - Keeps paragraphs short and readable
+ */
+function formatDiscordResponse(text) {
+  if (!text) return '';
+
+  // Strip <think> blocks
+  let formatted = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // Normalize line endings
+  formatted = formatted.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // Convert markdown headers (##, ###) to Discord bold with spacing
+  formatted = formatted.replace(/^#{2,3}\s+(.+)$/gm, '\n**$1**\n');
+
+  // Ensure numbered lists have spacing: "1. Item" -> proper format
+  formatted = formatted.replace(/^(\d+)\.\s*\*\*(.+?)\*\*/gm, '$1. **$2**');
+
+  // Add blank line before numbered lists if missing
+  formatted = formatted.replace(/([^\n])(\n\d+\.\s)/g, '$1\n$2');
+
+  // Add blank line before bullet lists if missing
+  formatted = formatted.replace(/([^\n])(\n[\-\*\u2022\u25CB])\s/g, '$1\n$2 ');
+
+  // Ensure paragraphs are separated by blank lines
+  formatted = formatted.replace(/\n{3,}/g, '\n\n');
+
+  // Split very long paragraphs (no newlines for 8+ lines)
+  formatted = splitLongParagraphs(formatted);
+
+  // Clean up excessive whitespace
+  formatted = formatted.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
+  formatted = formatted.replace(/\n{4,}/g, '\n\n\n');
+
+  return formatted.trim();
+}
+
+/**
+ * Splits very long paragraphs (no line break for N lines) into smaller chunks.
+ * This prevents walls of text in Discord.
+ */
+function splitLongParagraphs(text) {
+  const lines = text.split('\n');
+  const result = [];
+  let currentPara = [];
+
+  for (const line of lines) {
+    const isEmpty = !line.trim();
+    const isHeader = /^\*\*.+\*\*$/.test(line);
+    const isListItem = /^\s*(\d+\.|[\-\*\u2022\u25CB])\s/.test(line);
+    const isCodeBlock = /^```/.test(line);
+
+    if (isEmpty || isHeader || isListItem || isCodeBlock) {
+      // Flush current paragraph if it's getting long
+      if (currentPara.length >= CFG.PARAGRAPH_MAX_LINES) {
+        const mid = Math.floor(currentPara.length / 2);
+        result.push(...currentPara.slice(0, mid));
+        result.push('');
+        result.push(...currentPara.slice(mid));
+      } else if (currentPara.length > 0) {
+        result.push(...currentPara);
+      }
+      currentPara = [];
+      result.push(line);
+      continue;
+    }
+
+    currentPara.push(line);
+
+    // Flush if paragraph is getting too long
+    if (currentPara.length >= CFG.PARAGRAPH_MAX_LINES) {
+      result.push(...currentPara);
+      result.push('');
+      currentPara = [];
+    }
+  }
+
+  // Flush remaining
+  if (currentPara.length > 0) {
+    result.push(...currentPara);
+  }
+
+  return result.join('\n');
+}
+
+/**
+ * Splits formatted text into multiple embed-sized chunks.
+ * Returns array of { title, content } objects.
+ */
+function splitIntoEmbeds(text, options = {}) {
+  const { botName, themeName, isFirst = true } = options;
+  const maxLen = CFG.MAX_EMBED_DESC;
+
+  if (text.length <= maxLen) {
+    return isFirst
+      ? [{ title: null, content: text }]
+      : [{ title: null, content: text }];
+  }
+
+  const chunks = [];
+  // Split by double newlines first (paragraph boundaries)
+  const paragraphs = text.split(/\n\n/);
+  let current = '';
+
+  for (const para of paragraphs) {
+    const separator = current ? '\n\n' : '';
+    if ((current + separator + para).length > maxLen) {
+      if (current) {
+        chunks.push({ title: null, content: current.trim() });
+        current = para;
+      } else {
+        // Single paragraph too long — split by lines
+        const lines = para.split('\n');
+        for (const line of lines) {
+          const sep = current ? '\n' : '';
+          if ((current + sep + line).length > maxLen) {
+            chunks.push({ title: null, content: current.trim() });
+            current = line;
+          } else {
+            current = current + sep + line;
+          }
+        }
+      }
+    } else {
+      current = current + separator + para;
+    }
+  }
+
+  if (current) chunks.push({ title: null, content: current.trim() });
+
+  // Add titles to chunks
+  if (chunks.length > 1 && isFirst) {
+    chunks[0].title = botName || 'Response';
+    for (let i = 1; i < chunks.length; i++) {
+      chunks[i].title = `Continued (${i + 1}/${chunks.length})`;
+    }
+  }
+
+  return chunks;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EMBED BUILDER (Updated — multi-embed support, no truncation)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildEmbed(reply, message, options = {}) {
@@ -656,20 +781,20 @@ function buildEmbed(reply, message, options = {}) {
   const embedColor = isError ? '#ff4757' : getSentimentColor(themeKey, reply);
 
   let classification = 'UNCLASSIFIED';
-  let badgeEmoji = '🟢';
-  if (isError) { classification = 'SYSTEM ALERT'; badgeEmoji = '🔴'; }
-  else if (themeKey === 'police') { classification = 'SECURITY BRIEF'; badgeEmoji = '🛡️'; }
-  else if (themeKey === 'tech') { classification = 'TECHNICAL BRIEF'; badgeEmoji = '💻'; }
-  else if (themeKey === 'intel') { classification = 'INTEL REPORT'; badgeEmoji = '🔍'; }
-  else if (themeKey === 'medical') { classification = 'MEDICAL ADVISORY'; badgeEmoji = '🏥'; }
-  else if (themeKey === 'tactical') { classification = 'FIELD GUIDE'; badgeEmoji = '📋'; }
-  else if (themeKey === 'academic') { classification = 'RESEARCH NOTE'; badgeEmoji = '📚'; }
+  let badgeEmoji = '\u{1F7E2}';
+  if (isError) { classification = 'SYSTEM ALERT'; badgeEmoji = '\u{1F534}'; }
+  else if (themeKey === 'police') { classification = 'SECURITY BRIEF'; badgeEmoji = '\u{1F6E1}\u{FE0F}'; }
+  else if (themeKey === 'tech') { classification = 'TECHNICAL BRIEF'; badgeEmoji = '\u{1F4BB}'; }
+  else if (themeKey === 'intel') { classification = 'INTEL REPORT'; badgeEmoji = '\u{1F50D}'; }
+  else if (themeKey === 'medical') { classification = 'MEDICAL ADVISORY'; badgeEmoji = '\u{1F3E5}'; }
+  else if (themeKey === 'tactical') { classification = 'FIELD GUIDE'; badgeEmoji = '\u{1F4CB}'; }
+  else if (themeKey === 'academic') { classification = 'RESEARCH NOTE'; badgeEmoji = '\u{1F4DA}'; }
 
   if (isThinking) {
     return new EmbedBuilder()
       .setColor('#f1c40f')
       .setAuthor({
-        name: `${badgeEmoji} ${classification} • ANALYZING...`,
+        name: `${badgeEmoji} ${classification} \u2022 ANALYZING...`,
         iconURL: message.author.displayAvatarURL({ dynamic: true, size: 32 })
       })
       .setDescription(`\`\`\`ansi\n\u001b[1;33m[ ${theme.name.toUpperCase()} ] \u001b[0m\u001b[33mProcessing neural request...\u001b[0m\n\`\`\``)
@@ -680,61 +805,76 @@ function buildEmbed(reply, message, options = {}) {
       .setTimestamp();
   }
 
-  let formattedReply = reply;
-  if (!isError && reply && reply.length > 120 && !reply.includes('```')) {
-    formattedReply = reply.replace(/^(#{1,3})\s+/gm, '**').replace(/\n{3,}/g, '\n\n');
+  // Format the response for Discord (NEW — beautiful formatting)
+  const formattedReply = formatDiscordResponse(reply);
+
+  // Split into multiple embeds if too long (NEW — no more truncation)
+  const botName = message.client?.user?.username || 'Lydia';
+  const chunks = splitIntoEmbeds(formattedReply, { botName, themeName: theme.name, isFirst: true });
+
+  // Build embeds from chunks
+  const embeds = [];
+  for (let i = 0; i < chunks.length && i < CFG.MAX_EMBEDS_PER_MSG; i++) {
+    const { title, content } = chunks[i];
+
+    const embed = new EmbedBuilder()
+      .setColor(embedColor)
+      .setDescription(content);
+
+    if (i === 0) {
+      embed.setAuthor({
+        name: `${badgeEmoji} ${classification}`,
+        iconURL: message.author.displayAvatarURL({ dynamic: true, size: 32 })
+      });
+      if (title) embed.setTitle(title);
+    } else if (title) {
+      embed.setAuthor({ name: title, iconURL: message.client?.user?.displayAvatarURL() });
+    }
+
+    // Footer only on last embed
+    if (i === chunks.length - 1 || i === CFG.MAX_EMBEDS_PER_MSG - 1) {
+      const footerParts = [];
+      if (model) footerParts.push(`Model: ${model.name}`);
+      if (latency) footerParts.push(`${latency}ms`);
+      footerParts.push(`ARCHITECT CG-223`);
+      if (lang === 'fr') footerParts.push('FR');
+      else footerParts.push('EN');
+
+      embed.setFooter({
+        text: footerParts.join(' \u2022 '),
+        iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
+      });
+      embed.setTimestamp();
+
+      // Sources only on last embed
+      if (sources.length > 0 && !isError) {
+        const sourceLinks = sources.slice(0, 4).map((s, idx) => {
+          const t = s.title.length > 80 ? s.title.substring(0, 80) + '...' : s.title;
+          return `[[${idx + 1}]](${s.url}) ${t}`;
+        }).join('\n');
+        embed.addFields({ name: '\u{1F517} Real-Time Sources', value: sourceLinks, inline: false });
+      }
+
+      // Command mention field only on last embed
+      const botCommands = ['.daily', '.shop', '.profile', '.level', '.market', '.help', '.ticket', '.remind', '.afk', '.invest', '.claim', '.streak', '.rank', '.leaderboard', '.whois', '.mute', '.kick', '.ban', '.warn', '.automod'];
+      const mentionedCommand = reply ? botCommands.find(cmd => reply.toLowerCase().includes(cmd)) : null;
+      if (mentionedCommand && !isError) {
+        embed.addFields({
+          name: '\u{1F4CB} SYSTEM BRIEFING',
+          value: `\`> ${mentionedCommand}\` \u2014 Use this command in any server channel.`,
+          inline: false
+        });
+      }
+    }
+
+    embeds.push(embed);
   }
 
-  if (formattedReply.length > CFG.MAX_EMBED_DESC) {
-    formattedReply = formattedReply.substring(0, CFG.MAX_EMBED_DESC - 3) + '...';
-  }
-
-  const embed = new EmbedBuilder()
-    .setColor(embedColor)
-    .setAuthor({
-      name: `${badgeEmoji} ${classification}`,
-      iconURL: message.author.displayAvatarURL({ dynamic: true, size: 32 })
-    })
-    .setDescription(formattedReply)
-    .setFooter({
-      text: `ARCHITECT CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
-      iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
-    })
-    .setTimestamp();
-
-  // Command mention field
-  const botCommands = ['.daily', '.shop', '.profile', '.level', '.market', '.help', '.ticket', '.remind', '.afk', '.invest', '.claim', '.streak', '.rank', '.leaderboard', '.whois', '.mute', '.kick', '.ban', '.warn', '.automod'];
-  const mentionedCommand = reply ? botCommands.find(cmd => reply.toLowerCase().includes(cmd)) : null;
-  if (mentionedCommand && !isError) {
-    embed.addFields({
-      name: '📋 SYSTEM BRIEFING',
-      value: `\`> ${mentionedCommand}\` — Use this command in any server channel.`,
-      inline: false
-    });
-  }
-
-  // Sources field
-  if (sources.length > 0 && !isError && !isThinking) {
-    const sourceLinks = sources.slice(0, 4).map((s, i) => {
-      const title = s.title.length > 80 ? s.title.substring(0, 80) + '...' : s.title;
-      return `[[${i + 1}]](${s.url}) ${title}`;
-    }).join('\n');
-    embed.addFields({ name: '🔗 Real-Time Sources', value: sourceLinks, inline: false });
-  }
-
-  // Model info footer for tech/intel themes
-  if ((themeKey === 'tech' || themeKey === 'intel') && model && !isError) {
-    embed.setFooter({
-      text: `ARCHITECT CG-223 // ${model.name} // ${latency}ms // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
-      iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
-    });
-  }
-
-  return embed;
+  return embeds;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  SYSTEM PROMPT BUILDER (UNIVERSAL LANGUAGE — FIXED!)
+// SYSTEM PROMPT BUILDER (Updated — formatting instructions added)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.', lang = 'en') {
@@ -748,24 +888,37 @@ function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.
 
   const langName = LANG_NAMES[lang] || 'English';
 
-  // ─── UNIVERSAL LANGUAGE INSTRUCTION (NEW) ───
   const languageInstruction = `
-LANGUAGE PROTOCOL — CRITICAL:
+LANGUAGE PROTOCOL \u2014 CRITICAL:
 - Detected user language: ${langName} (code: ${lang})
 - You MUST respond in the SAME language as the user's message.
-- If the user writes in French, respond in French.
-- If the user writes in Spanish, respond in Spanish.
-- If the user writes in Arabic, respond in Arabic.
-- If the user writes in English, respond in English.
 - NEVER mix languages in the same response.
 - All commands and technical terms (like "daily", "shop", "profile") should be referenced as-is regardless of language, but explanations must be in the user's language.
-- Example (French user): "Pour réclamer vos récompenses quotidiennes, utilisez \`.daily\` ou \`/daily\`."
-- Example (English user): "To claim your daily rewards, use \`.daily\` or \`/daily\`."
+- Example (French user): "Pour r\u00E9clamer vos r\u00E9compenses quotidiennes, utilisez \`.daily\` ou \`/daily\`."
+`;
+
+  // NEW — formatting instructions for beautiful Discord output
+  const formattingInstruction = `
+FORMATTING PROTOCOL \u2014 CRITICAL:
+Your responses are displayed in Discord embeds. Follow these formatting rules STRICTLY:
+
+1. Use SHORT paragraphs (2-4 sentences max). Never write walls of text.
+2. Separate EVERY section with a blank line (double newline).
+3. Use **bold headers** for sections: "**Key Features:**" not "Key Features:"
+4. Use numbered lists with bold items: "1. **Origin** \u2014 description here"
+5. Use bullet points (\u2022 or -) for unordered lists.
+6. For code: use \`inline code\` or \`\`\`language\ncode block\n\`\`\`
+7. NEVER put everything in one dense paragraph. Break it up.
+8. Use Discord markdown: *italic*, **bold**, \`code\`, ~~strikethrough~~.
+9. End with a brief friendly closing if appropriate.
+10. Keep total response under 1200 tokens (concise but complete).
 `;
 
   return `${BOT_KNOWLEDGE}
 
 ${languageInstruction}
+
+${formattingInstruction}
 
 You are ${botName}, the onboard AI expert monitor for ARCHITECT CG-223.
 
@@ -780,17 +933,17 @@ OPERATIONAL CONTEXT:
 - User Language: ${langName}
 
 GUIDANCE STANDARDS:
-- Be professional, warm, and precise — like a senior technical consultant.
+- Be professional, warm, and precise \u2014 like a senior technical consultant.
 - Diagnose before prescribing. Ask one clarifying question if the user's intent is ambiguous.
 - When suggesting commands, always provide both prefix and slash variants.
 - If a user asks about something outside the bot's scope, offer web search or suggest they contact the architect.
 - Never dump exhaustive lists unless explicitly requested. Prioritize relevance.
 - Cite web sources using [1], [2] format when search data is provided.
-- RESPOND IN ${langName.toUpperCase()} — this is a strict requirement.`;
+- RESPOND IN ${langName.toUpperCase()} \u2014 this is a strict requirement.`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  MESSAGE HANDLER (CORE — WITH ALL FIXES)
+// MESSAGE HANDLER (Updated — uses new buildEmbed which returns array)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleLydiaMessage(message, client, database) {
@@ -817,7 +970,6 @@ async function handleLydiaMessage(message, client, database) {
     const userName = message.member?.displayName || message.author?.username || 'Unknown';
     const content = (message.content || '').toLowerCase();
 
-    // ─── UNIVERSAL LANGUAGE DETECTION (NEW) ───
     const rawContent = message.content || '';
     const detectedLang = detectUserLanguage(rawContent);
     const lang = detectedLang;
@@ -850,31 +1002,28 @@ async function handleLydiaMessage(message, client, database) {
     if (!userPrompt.trim()) {
       const greetings = {
         en: `Hey ${userName}! I'm here and ready to help. What would you like to know?`,
-        fr: `Salut ${userName}! Je suis là et prête à aider. Que souhaites-tu savoir?`,
-        es: `¡Hola ${userName}! Estoy aquí y lista para ayudar. ¿Qué te gustaría saber?`,
-        ar: `مرحباً ${userName}! أنا هنا ومستعدة للمساعدة. ماذا تود أن تعرف؟`,
-        zh: `嘿 ${userName}! 我在这里，随时准备帮忙。你想知道什么？`,
-        ja: `こんにちは ${userName}さん! お手伝いできることがあれば、お気軽にどうぞ。`,
-        de: `Hey ${userName}! Ich bin da und bereit zu helfen. Was möchtest du wissen?`,
-        pt: `Oi ${userName}! Estou aqui e pronta para ajudar. O que gostaria de saber?`,
+        fr: `Salut ${userName}! Je suis l\u00E0 et pr\u00EAt \u00E0 aider. Que souhaites-tu savoir?`,
+        es: `\u00A1Hola ${userName}! Estoy aqu\u00ED y lista para ayudar. \u00BFQu\u00E9 te gustar\u00EDa saber?`,
+        ar: `\u0645\u0631\u062D\u0628\u0627\u064B ${userName}! \u0623\u0646\u0627 \u0647\u0646\u0627 \u0648\u0645\u0633\u062A\u0639\u062F\u0629 \u0644\u0644\u0645\u0633\u0627\u0639\u062F\u0629. \u0645\u0627\u0630\u0627 \u062A\u0648\u062F \u0623\u0646 \u062A\u0639\u0631\u0641\u061F`,
+        zh: `\u55E8 ${userName}! \u6211\u5728\u8FD9\u91CC\uFF0C\u968F\u65F6\u51C6\u5907\u5E2E\u5FD9\u3002\u4F60\u60F3\u77E5\u9053\u4EC0\u4E48\uFF1F`,
+        ja: `\u3053\u3093\u306B\u3061\u306F ${userName}\u3055\u3093! \u304A\u624B\u4F1D\u3044\u3067\u304D\u308B\u3053\u3068\u304C\u3042\u308C\u3070\u3001\u304A\u6C17\u8EFD\u306B\u3069\u3046\u305E\u3002`,
       };
       const staticMsg = greetings[lang] || greetings.en;
-      const staticEmbed = buildEmbed(staticMsg, message, { isError: false, theme, lang });
-      if (thinkingMsg) await thinkingMsg.edit({ embeds: [staticEmbed] });
-      else await message.reply({ embeds: [staticEmbed] });
+      const staticEmbeds = buildEmbed(staticMsg, message, { isError: false, theme, lang });
+      if (thinkingMsg) await thinkingMsg.edit({ embeds: staticEmbeds });
+      else await message.reply({ embeds: staticEmbeds });
       messageProcessingLocks.delete(key);
       return;
     }
 
-    // ─── Response Cache Check (Performance) ───
     const cached = getCachedResponse(message.author.id, userPrompt);
     if (cached && !imageUrl) {
-      const cacheEmbed = buildEmbed(cached.content, message, {
+      const cacheEmbeds = buildEmbed(cached.content, message, {
         isError: false, theme, model: cached.model, latency: 0, tokens: cached.tokens,
         sources: cached.sources || [], lang
       });
-      if (thinkingMsg) await thinkingMsg.edit({ embeds: [cacheEmbed] });
-      else await message.reply({ embeds: [cacheEmbed] });
+      if (thinkingMsg) await thinkingMsg.edit({ embeds: cacheEmbeds });
+      else await message.reply({ embeds: cacheEmbeds });
       messageProcessingLocks.delete(key);
       return;
     }
@@ -897,11 +1046,10 @@ async function handleLydiaMessage(message, client, database) {
     const isOwner = ownerInfo && message.author.id === ownerInfo.id;
     const serverPrefix = client.getServerSettings?.(message.guild.id)?.prefix || process.env.PREFIX || '.';
 
-    // ─── Build system prompt WITH language (FIXED) ───
     const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang);
 
     const fullSystem = memories.length > 0
-      ? `${systemPrompt}\n\n[Your memories about this user]:\n${memories.map(m => `• ${m.memory_key}: ${m.memory_value}`).join('\n')}`
+      ? `${systemPrompt}\n\n[Your memories about this user]:\n${memories.map(m => `\u2022 ${m.memory_key}: ${m.memory_value}`).join('\n')}`
       : systemPrompt;
 
     let history = [];
@@ -948,7 +1096,7 @@ async function handleLydiaMessage(message, client, database) {
     }
 
     const finalPrompt = searchResults
-      ? `[Web search results — cite sources using [1], [2], etc. when referencing]:\n${searchResults}\n\n[User question]: ${userPrompt}`
+      ? `[Web search results \u2014 cite sources using [1], [2], etc. when referencing]:\n${searchResults}\n\n[User question]: ${userPrompt}`
       : userPrompt;
 
     const aiResult = await generateAIResponse(fullSystem, finalPrompt, history, imageUrl, theme);
@@ -956,29 +1104,27 @@ async function handleLydiaMessage(message, client, database) {
     if (!aiResult) {
       const errors = {
         en: !process.env.OPENROUTER_API_KEY
-          ? '⚠️ **OPENROUTER_API_KEY** not detected in environment variables'
-          : '⚠️ **AI temporarily unavailable.** Please try again in a moment.',
+          ? '\u26A0\uFE0F **OPENROUTER_API_KEY** not detected in environment variables'
+          : '\u26A0\uFE0F **AI temporarily unavailable.** Please try again in a moment.',
         fr: !process.env.OPENROUTER_API_KEY
-          ? '⚠️ **OPENROUTER_API_KEY** non détectée dans les variables d\'environnement'
-          : '⚠️ **IA temporairement indisponible.** Veuillez réessayer dans un moment.',
+          ? '\u26A0\uFE0F **OPENROUTER_API_KEY** non d\u00E9tect\u00E9e dans les variables d\u2019environnement'
+          : '\u26A0\uFE0F **IA temporairement indisponible.** Veuillez r\u00E9essayer dans un moment.',
       };
-      const errorEmbed = buildEmbed(errors[lang] || errors.en, message, { isError: true, theme, lang });
-      if (thinkingMsg) await thinkingMsg.edit({ embeds: [errorEmbed] });
-      else await message.reply({ embeds: [errorEmbed] });
+      const errorEmbeds = buildEmbed(errors[lang] || errors.en, message, { isError: true, theme, lang });
+      if (thinkingMsg) await thinkingMsg.edit({ embeds: errorEmbeds });
+      else await message.reply({ embeds: errorEmbeds });
       messageProcessingLocks.delete(key);
       return;
     }
 
     const { content: aiReply, model, latency, tokens } = aiResult;
 
-    // ─── ANTI-HALLUCINATION VALIDATION (NEW — replaces blunt filter) ───
     const validation = validateResponse(aiReply);
     let safeReply = validation.ok ? validation.cleaned : validation.cleaned;
     if (!validation.ok) {
       console.log(`${C.yellow}[HALLUCINATION REPLACED]${C.reset} Reason: ${validation.reason}`);
     }
 
-    // ─── Credential Scrub (Security — NEW) ───
     safeReply = scrubSecrets(safeReply);
 
     const cleanReply = safeReply
@@ -996,13 +1142,14 @@ async function handleLydiaMessage(message, client, database) {
     parseAndStoreMemory(safeReply, message.author.id, database);
     const finalReply = parseAndScheduleReminder(cleanReply, message.author.id, message.channel.id, client, database);
 
-    const finalEmbed = buildEmbed(finalReply, message, {
+    // NEW — buildEmbed now returns array of embeds (multi-embed support)
+    const finalEmbeds = buildEmbed(finalReply, message, {
       isError: false, theme, model, latency, tokens, sources: searchSources, lang
     });
-    if (thinkingMsg) await thinkingMsg.edit({ embeds: [finalEmbed] });
-    else await message.reply({ embeds: [finalEmbed] });
 
-    // ─── Cache successful response (Performance — NEW) ───
+    if (thinkingMsg) await thinkingMsg.edit({ embeds: finalEmbeds });
+    else await message.reply({ embeds: finalEmbeds });
+
     if (!imageUrl && finalReply.length > 20) {
       setCachedResponse(message.author.id, userPrompt, {
         content: finalReply, model, latency, tokens, sources: searchSources
@@ -1015,16 +1162,16 @@ async function handleLydiaMessage(message, client, database) {
 
   } catch (err) {
     console.error(`${C.red}[LYDIA]${C.reset} ${err.message}`);
-    const errorEmbed = buildEmbed('Something went wrong. Please try again!', message, { isError: true });
-    if (thinkingMsg) await thinkingMsg.edit({ embeds: [errorEmbed] }).catch(() => {});
-    else await message.reply({ embeds: [errorEmbed] }).catch(() => {});
+    const errorEmbeds = buildEmbed('Something went wrong. Please try again!', message, { isError: true });
+    if (thinkingMsg) await thinkingMsg.edit({ embeds: errorEmbeds }).catch(() => {});
+    else await message.reply({ embeds: errorEmbeds }).catch(() => {});
   } finally {
     messageProcessingLocks.delete(key);
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  OWNER HELPER
+// OWNER HELPER
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function getGuildOwner(client, guildId) {
@@ -1036,7 +1183,7 @@ async function getGuildOwner(client, guildId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  PRUNE
+// PRUNE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function pruneOldConversations(database) {
@@ -1049,7 +1196,7 @@ function pruneOldConversations(database) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  TOGGLE HANDLER
+// TOGGLE HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleLydiaToggle(client, channelId, guildId, userId, action, respondFn = null) {
@@ -1057,7 +1204,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel?.guild) {
-    if (respondFn) await respondFn({ content: '❌ Channel not found.', flags: 64 });
+    if (respondFn) await respondFn({ content: '\u274C Channel not found.', flags: 64 });
     return;
   }
 
@@ -1070,20 +1217,20 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
     const embed = new EmbedBuilder()
       .setColor(isEnabled ? '#2ecc71' : '#95a5a6')
       .setAuthor({
-        name: `${botName} • ${isEnabled ? 'ACTIVE' : 'STANDBY'}`,
+        name: `${botName} \u2022 ${isEnabled ? 'ACTIVE' : 'STANDBY'}`,
         iconURL: client.user.displayAvatarURL()
       })
       .setThumbnail(isEnabled ? client.user.displayAvatarURL() : null)
       .setDescription(
         isEnabled
           ? `\`\`\`ansi\n\u001b[1;32m[ SYSTEM MONITOR ]\u001b[0m\n\u001b[32m${botName} is active in #${channel.name}\u001b[0m\n\`\`\`\n` +
-            `**Chat methods:**\n‣ Mention @${botName}\n‣ Type \`${prefix}ai [message]\`\n‣ Say \`${botName} [message]\`\n\n` +
-            `🖼️ Image analysis supported.\n🌍 Universal language support.`
+            `**Chat methods:**\n\u2022 Mention @${botName}\n\u2022 Type \`${prefix}ai [message]\`\n\u2022 Say \`${botName} [message]\`\n\n` +
+            `\u{1F5BC}\u{FE0F} Image analysis supported.\n\u{1F310} Universal language support.`
           : `\`\`\`ansi\n\u001b[1;33m[ SYSTEM MONITOR ]\u001b[0m\n\u001b[33m${botName} is in standby mode\u001b[0m\n\`\`\`\n` +
-            `**Activate:** \`${prefix}lydia on\`\n\n📌 Memory, reminders, web search, and multilingual support available when active.`
+            `**Activate:** \`${prefix}lydia on\`\n\n\u{1F4CC} Memory, reminders, web search, and multilingual support available when active.`
       )
       .setFooter({
-        text: `#${channel.name} • ${new Date().toLocaleTimeString('en-US', { timeZone: 'Africa/Bamako' })}`,
+        text: `#${channel.name} \u2022 ${new Date().toLocaleTimeString('en-US', { timeZone: 'Africa/Bamako' })}`,
         iconURL: guild.iconURL()
       })
       .setTimestamp();
@@ -1093,7 +1240,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   if (action === 'on') {
     if (client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: `⚠️ ${botName} is already active here.`, flags: 64 });
+      if (respondFn) await respondFn({ content: `\u26A0\uFE0F ${botName} is already active here.`, flags: 64 });
       return;
     }
 
@@ -1107,14 +1254,14 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
     const embed = new EmbedBuilder()
       .setColor('#2ecc71')
-      .setAuthor({ name: `🟢 SYSTEM MONITOR • ONLINE`, iconURL: client.user.displayAvatarURL() })
+      .setAuthor({ name: `\u{1F7E2} SYSTEM MONITOR \u2022 ONLINE`, iconURL: client.user.displayAvatarURL() })
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
         `\`\`\`ansi\n\u001b[1;32m[ NEURAL LINK ESTABLISHED ]\u001b[0m\n\u001b[32m${botName} is now active in #${channel.name}\u001b[0m\n\`\`\`\n` +
-        `**Chat methods:**\n‣ Mention @${botName}\n‣ Type \`${prefix}ai [question]\`\n‣ Say \`${botName} [question]\`\n\n` +
-        `🧠 Memory: \`[MEMORY: key | value]\`\n⏰ Reminders: \`[REMIND: 5 min | message]\`\n🌍 Universal language auto-detection`
+        `**Chat methods:**\n\u2022 Mention @${botName}\n\u2022 Type \`${prefix}ai [question]\`\n\u2022 Say \`${botName} [question]\`\n\n` +
+        `\u{1F9E0} Memory: \`[MEMORY: key | value]\`\n\u{1F551} Reminders: \`[REMIND: 5 min | message]\`\n\u{1F310} Universal language auto-detection`
       )
-      .setFooter({ text: `#${channel.name} • Ready to help`, iconURL: guild.iconURL() })
+      .setFooter({ text: `#${channel.name} \u2022 Ready to help`, iconURL: guild.iconURL() })
       .setTimestamp();
     if (respondFn) await respondFn({ embeds: [embed] });
     return;
@@ -1122,7 +1269,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   if (action === 'off') {
     if (!client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: `⚠️ ${botName} is not active here.`, flags: 64 });
+      if (respondFn) await respondFn({ content: `\u26A0\uFE0F ${botName} is not active here.`, flags: 64 });
       return;
     }
 
@@ -1133,12 +1280,12 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
     const embed = new EmbedBuilder()
       .setColor('#e74c3c')
-      .setAuthor({ name: `🔴 SYSTEM MONITOR • OFFLINE`, iconURL: client.user.displayAvatarURL() })
+      .setAuthor({ name: `\u{1F534} SYSTEM MONITOR \u2022 OFFLINE`, iconURL: client.user.displayAvatarURL() })
       .setDescription(
         `\`\`\`ansi\n\u001b[1;31m[ NEURAL LINK TERMINATED ]\u001b[0m\n\u001b[31m${botName} has been deactivated in #${channel.name}\u001b[0m\n\`\`\`\n` +
-        `**Reactivate:** \`${prefix}lydia on\`\n\n💬 Available in other active channels.`
+        `**Reactivate:** \`${prefix}lydia on\`\n\n\u{1F4AC} Available in other active channels.`
       )
-      .setFooter({ text: `#${channel.name} • Sleep mode`, iconURL: guild.iconURL() })
+      .setFooter({ text: `#${channel.name} \u2022 Sleep mode`, iconURL: guild.iconURL() })
       .setTimestamp();
     if (respondFn) await respondFn({ embeds: [embed] });
     return;
@@ -1146,7 +1293,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  MEMORY SUBCOMMAND
+// MEMORY SUBCOMMAND
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleMemorySubcommand(interactionOrMessage, database, isSlash = false) {
@@ -1171,12 +1318,12 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
       const embed = new EmbedBuilder()
         .setColor('#f1c40f')
         .setAuthor({
-          name: `📭 MEMORY VAULT • ${username}`,
+          name: `\u{1F4ED} MEMORY VAULT \u2022 ${username}`,
           iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL()
         })
         .setDescription(
           `\`\`\`ansi\n\u001b[1;33m[ ARCHIVE EMPTY ]\u001b[0m\n\u001b[33mNo stored memories found.\u001b[0m\n\`\`\`\n` +
-          `**How to save:** While chatting, include:\n\`[MEMORY: key | value]\`\n\n**Example:**\n\`Remember my favorite color is blue\`\n→ Stores \`favorite_color: blue\``
+          `**How to save:** While chatting, include:\n\`[MEMORY: key | value]\`\n\n**Example:**\n\`Remember my favorite color is blue\`\n\u2192 Stores \`favorite_color: blue\``
         )
         .setFooter({ text: 'Memories persist across conversations' })
         .setTimestamp();
@@ -1186,13 +1333,13 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
 
     const memoryFields = memories.slice(0, 25).map(m => {
       const date = new Date(m.updated_at).toLocaleDateString();
-      return { name: `📌 ${m.memory_key}`, value: `${m.memory_value}\n*Stored: ${date}*`, inline: false };
+      return { name: `\u{1F4CC} ${m.memory_key}`, value: `${m.memory_value}\n*Stored: ${date}*`, inline: false };
     });
 
     const embed = new EmbedBuilder()
       .setColor('#2ecc71')
       .setAuthor({
-        name: `🧠 MEMORY ARCHIVE • ${username}`,
+        name: `\u{1F9E0} MEMORY ARCHIVE \u2022 ${username}`,
         iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL()
       })
       .setDescription(`\`\`\`ansi\n\u001b[1;32m[ ${memories.length} RECORD(S) FOUND ]\u001b[0m\n\`\`\``)
@@ -1205,15 +1352,15 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
     console.error(`${C.red}[LYDIA MEMORY]${C.reset} ${err.message}`);
     const errorEmbed = new EmbedBuilder()
       .setColor('#e74c3c')
-      .setAuthor({ name: '🔴 SYSTEM ALERT', iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL() })
-      .setDescription('❌ Could not retrieve memories. Please try again later.')
+      .setAuthor({ name: '\u{1F534} SYSTEM ALERT', iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL() })
+      .setDescription('\u274C Could not retrieve memories. Please try again later.')
       .setTimestamp();
     await respond({ embeds: [errorEmbed], ephemeral: true });
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  SETUP (RESTORED — CRITICAL!)
+// SETUP
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function setupLydia(client, database) {
@@ -1230,7 +1377,6 @@ function setupLydia(client, database) {
       )
     `).run();
 
-    // ─── Migration: handle old schema ───
     try {
       const cols = database.prepare('PRAGMA table_info(reminders)').all().map(c => c.name);
       if (!cols.includes('user_tag')) {
@@ -1250,7 +1396,7 @@ function setupLydia(client, database) {
         console.log(`${C.green}[MIGRATION]${C.reset} Added created_at to reminders`);
       }
       if (cols.includes('status') && !cols.includes('delivered')) {
-        console.log(`${C.yellow}[MIGRATION]${C.reset} Old reminders schema detected — migrating...`);
+        console.log(`${C.yellow}[MIGRATION]${C.reset} Old reminders schema detected \u2014 migrating...`);
         database.prepare('ALTER TABLE reminders RENAME TO reminders_old').run();
         database.prepare(`
           CREATE TABLE reminders (
@@ -1330,20 +1476,20 @@ function setupLydia(client, database) {
     try {
       await handleLydiaMessage(message, client, database);
     } catch (eventErr) {
-      console.error(`\x1b[31m[EVENT CRITICAL]\x1b[0m ${eventErr.message}`);
+      console.error(`\x1b[31m[EVENT CRITICAL]\x001b[0m ${eventErr.message}`);
     }
   });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  COMMAND HANDLERS
+// COMMAND HANDLERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function runLydiaCommand(client, message, args, database, serverSettings, usedCommand) {
   if (!message.guild) return;
   if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
     return message.reply({
-      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription('🔴 **ACCESS DENIED** — Administrator privileges required')]
+      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription('\u{1F534} **ACCESS DENIED** \u2014 Administrator privileges required')]
     }).catch(() => {});
   }
 
@@ -1355,17 +1501,17 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
 
 const slashCommand = new SlashCommandBuilder()
   .setName('lydia')
-  .setDescription('🧠 Manage Lydia AI')
-  .addSubcommand(s => s.setName('on').setDescription('🟢 Activate Lydia AI'))
-  .addSubcommand(s => s.setName('off').setDescription('🔴 Deactivate Lydia AI'))
-  .addSubcommand(s => s.setName('status').setDescription('📊 Show Lydia status'))
-  .addSubcommand(s => s.setName('memory').setDescription('🧠 View your stored memories'));
+  .setDescription('\u{1F9E0} Manage Lydia AI')
+  .addSubcommand(s => s.setName('on').setDescription('\u{1F7E2} Activate Lydia AI'))
+  .addSubcommand(s => s.setName('off').setDescription('\u{1F534} Deactivate Lydia AI'))
+  .addSubcommand(s => s.setName('status').setDescription('\u{1F4CA} Show Lydia status'))
+  .addSubcommand(s => s.setName('memory').setDescription('\u{1F9E0} View your stored memories'));
 
 async function executeSlashCommand(interaction, client) {
   if (!interaction.guild) return interaction.reply({ content: 'Server only.', flags: 64 });
   if (!interaction.member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription('🔴 **ACCESS DENIED** — Administrator privileges required')],
+      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription('\u{1F534} **ACCESS DENIED** \u2014 Administrator privileges required')],
       flags: 64
     });
   }
@@ -1385,13 +1531,13 @@ async function executeSlashCommand(interaction, client) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  EXPORTS
+// EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 module.exports = {
   name: 'lydia',
   aliases: ['ai', 'neural'],
-  description: '🧠 Friendly AI assistant — multilingual, remembers facts, web-enabled',
+  description: '\u{1F9E0} Friendly AI assistant \u2014 multilingual, remembers facts, web-enabled',
   category: 'SYSTEM',
   cooldown: 5000,
   run: runLydiaCommand,
@@ -1400,10 +1546,9 @@ module.exports = {
   setupLydia,
   webSearch,
   generateAIResponse,
-  // Export internals for testing
   detectUserLanguage,
   validateResponse,
   scrubSecrets,
 };
 
-console.log(`${C.green}[LYDIA]${C.reset} AI Engine v2.5 loaded — Anti-hallucination | ${Object.keys(LANG_NAMES).length} languages | Parallel models | Response cache`);
+console.log(`${C.green}[LYDIA]${C.reset} AI Engine v2.6 loaded \u2014 Beautiful formatting | Anti-hallucination | ${Object.keys(LANG_NAMES).length} languages | Parallel models | Response cache`);
