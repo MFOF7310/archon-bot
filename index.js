@@ -2062,15 +2062,6 @@ client.loadPlugins = async () => {
     const statusColor = failedCommands.length === 0 ? '\x1b[32m' : '\x1b[33m';
     console.log(`${statusColor}[NEURAL GRID]\x1b[0m ${moduleStats.total} modules synchronized • ${moduleStats.slash} slash-enabled • ${failedCommands.length > 0 ? failedCommands.length + ' failures' : 'All systems nominal'}`);
 
-    // ✅ DEBUG: Check if music command loaded correctly
-    const musicCmd = client.commands.get('music');
-    console.log('[DEBUG] Music command loaded:', !!musicCmd);
-    console.log('[DEBUG] Music has data:', !!musicCmd?.data);
-    console.log('[DEBUG] Music data name:', musicCmd?.data?.name);
-    console.log('[DEBUG] Music data type:', typeof musicCmd?.data);
-    console.log('[DEBUG] Music data has toJSON:', typeof musicCmd?.data?.toJSON === 'function');
-};
-
 // ================= SMART PLUGIN EXECUTION WRAPPER =================
 const COMMAND_PARAM_MAP = {
     'client': 'client',
@@ -2120,15 +2111,6 @@ client.once(Events.ClientReady, async () => {
     displayPM2Banner();
 
     await client.loadPlugins();
-
-// ================= LAVALINK INITIALIZATION =================
-try {
-    const musicPlugin = require('./plugins/music');
-    musicPlugin.initLavalink(client);
-    console.log(`\x1b[32m[LAVALINK]\x1b[0m Connected to BAMAKO-NODE`);
-} catch (err) {
-    console.error(`\x1b[31m[LAVALINK]\x1b[0m Init failed:`, err.message);
-}
 
 // ----- FULLY AUTOMATIC BILINGUAL ALIAS MAP -----
 function buildAliasLanguageMap() {
@@ -3854,36 +3836,6 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
         }
         return;
     }
-
-// ================= MUSIC SYSTEM BUTTONS =================
-if (interaction.isButton() && interaction.customId.startsWith('music_')) {
-    try {
-        const musicModule = require('./plugins/music.js');
-        if (musicModule.handleComponent) {
-            const handled = await musicModule.handleComponent(interaction, client);
-            if (handled) return;
-        }
-    } catch (err) {
-        console.error(`[MUSIC BUTTON]`, err.message);
-        await interaction.reply({ content: '❌ Music action failed.', ephemeral: true }).catch(() => {});
-    }
-    return;
-}
-
-// ================= MUSIC SELECT MENUS =================
-if (interaction.isStringSelectMenu() && interaction.customId === 'music_dashboard_select') {
-    try {
-        const musicModule = require('./plugins/music.js');
-        if (musicModule.handleSelectMenu) {
-            const handled = await musicModule.handleSelectMenu(interaction, client);
-            if (handled) return;
-        }
-    } catch (err) {
-        console.error(`[MUSIC SELECT]`, err.message);
-        await interaction.reply({ content: '❌ Dashboard action failed.', ephemeral: true }).catch(() => {});
-    }
-    return;
-}
 
     // ================= VOTE SYSTEM BUTTONS (slash command) =================
     if (interaction.isButton() && interaction.customId && interaction.customId.startsWith('vote_') && interaction.customId.endsWith('_slash')) {
