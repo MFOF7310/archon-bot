@@ -12,7 +12,7 @@ const {
 const {
   SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
   ButtonBuilder, ButtonStyle, StringSelectMenuBuilder,
-  PermissionFlagsBits, ComponentType
+  PermissionFlagsBits, ComponentType, MessageFlags
 } = require('discord.js');
 
 const play = require('play-dl');
@@ -669,11 +669,11 @@ async function executeSlash(interaction) {
   const voiceChannel = interaction.member?.voice?.channel;
 
   if (!voiceChannel) {
-    return interaction.reply({ content: '\u274C Join a voice channel first!', ephemeral: true });
+    return interaction.reply({ content: '\u274C Join a voice channel first!', flags: [MessageFlags.Ephemeral] });
   }
 
   if (!await checkVote(interaction.user.id)) {
-    return interaction.reply({ embeds: [voteGuardEmbed()], ephemeral: true });
+    return interaction.reply({ embeds: [voteGuardEmbed()], flags: [MessageFlags.Ephemeral] });
   }
 
   await interaction.deferReply();
@@ -766,14 +766,14 @@ async function handleButton(interaction) {
   const memberVC = interaction.member?.voice?.channel;
   if (q.connection && memberVC?.id !== q.connection.joinConfig.channelId) {
     if (!interaction.replied && !interaction.deferred) {
-      return interaction.reply({ content: '\u274C Join the bot\'s voice channel to use controls!', ephemeral: true });
+      return interaction.reply({ content: '\u274C Join the bot\'s voice channel to use controls!', flags: [MessageFlags.Ephemeral] });
     }
     return true;
   }
 
   switch (action) {
     case 'pp': { // play/pause
-      if (!q.player) return interaction.reply({ content: '\u274C Nothing playing!', ephemeral: true });
+      if (!q.player) return interaction.reply({ content: '\u274C Nothing playing!', flags: [MessageFlags.Ephemeral] });
       if (q.isPaused) {
         q.player.unpause();
         q.isPaused = false;
@@ -786,21 +786,21 @@ async function handleButton(interaction) {
     }
 
     case 'sk': { // skip
-      if (!q.player) return interaction.reply({ content: '\u274C Nothing playing!', ephemeral: true });
+      if (!q.player) return interaction.reply({ content: '\u274C Nothing playing!', flags: [MessageFlags.Ephemeral] });
       q.player.stop();
       return interaction.deferUpdate().catch(() => {});
     }
 
     case 'st': { // stop
       q.destroy();
-      return interaction.reply({ content: '\u23F9\uFE0F Stopped and cleared queue.', ephemeral: true });
+      return interaction.reply({ content: '\u23F9\uFE0F Stopped and cleared queue.', flags: [MessageFlags.Ephemeral] });
     }
 
     case 'lp': { // loop toggle
       q.loopMode = (q.loopMode + 1) % 3;
       const labels = ['Off', 'Track', 'Queue'];
       await q.updateNP(q.songs[0]);
-      return interaction.reply({ content: `\uD83D\uDD02 Loop: **${labels[q.loopMode]}**`, ephemeral: true });
+      return interaction.reply({ content: `\uD83D\uDD02 Loop: **${labels[q.loopMode]}**`, flags: [MessageFlags.Ephemeral] });
     }
 
     case 'volm': { // volume mute
@@ -832,14 +832,14 @@ async function handleButton(interaction) {
     }
 
     case 'shuf': { // shuffle
-      if (q.songs.length < 3) return interaction.reply({ content: '\u274C Need 3+ songs!', ephemeral: true });
+      if (q.songs.length < 3) return interaction.reply({ content: '\u274C Need 3+ songs!', flags: [MessageFlags.Ephemeral] });
       const current = q.songs.shift();
       for (let i = q.songs.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [q.songs[i], q.songs[j]] = [q.songs[j], q.songs[i]];
       }
       q.songs.unshift(current);
-      return interaction.reply({ content: '\uD83D\uDD00 Shuffled!', ephemeral: true });
+      return interaction.reply({ content: '\uD83D\uDD00 Shuffled!', flags: [MessageFlags.Ephemeral] });
     }
 
     case 'dash': { // open dashboard
@@ -856,11 +856,11 @@ async function handleButton(interaction) {
 
     case 'clear': { // clear queue
       if (q.songs.length > 1) q.songs.splice(1);
-      return interaction.reply({ content: '\uD83D\uDEBD Queue cleared (except current track).', ephemeral: true });
+      return interaction.reply({ content: '\uD83D\uDEBD Queue cleared (except current track).', flags: [MessageFlags.Ephemeral] });
     }
 
     case 'np': { // show now playing from dash
-      if (!q.songs.length) return interaction.reply({ content: '\u274C Nothing playing!', ephemeral: true });
+      if (!q.songs.length) return interaction.reply({ content: '\u274C Nothing playing!', flags: [MessageFlags.Ephemeral] });
       const { embed, row1, row2 } = buildNPEmbed(q.songs[0], q);
       const npMsg = await interaction.channel.send({ embeds: [embed], components: [row1, row2] });
       q.npMessage = npMsg;
@@ -884,15 +884,15 @@ async function handleSelectMenu(interaction) {
 
   const voiceChannel = interaction.member?.voice?.channel;
   if (!voiceChannel) {
-    return interaction.reply({ content: '\u274C Join a voice channel first!', ephemeral: true });
+    return interaction.reply({ content: '\u274C Join a voice channel first!', flags: [MessageFlags.Ephemeral] });
   }
 
   const results = interaction.client._musicSearch?.get(interaction.user.id);
-  if (!results) return interaction.reply({ content: '\u274C Search expired. Run !!search again.', ephemeral: true });
+  if (!results) return interaction.reply({ content: '\u274C Search expired. Run !!search again.', flags: [MessageFlags.Ephemeral] });
 
   const idx = parseInt(interaction.values[0]);
   const song = results[idx];
-  if (!song) return interaction.reply({ content: '\u274C Invalid selection.', ephemeral: true });
+  if (!song) return interaction.reply({ content: '\u274C Invalid selection.', flags: [MessageFlags.Ephemeral] });
 
   await interaction.deferUpdate().catch(() => {});
 
@@ -934,8 +934,8 @@ async function handleSelectMenu(interaction) {
 //  Exports — MUST have .run for index.js plugin loader
 // ═════════════════════════════════════════════════════════════
 module.exports = {
-  name: 'music',
-  aliases: ['play', 'p', 'skip', 's', 'queue', 'q', 'stop', 'disconnect', 'dc', 'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'search', 'shuffle'],
+  name: 'play',
+  aliases: ['music', 'p', 'skip', 's', 'queue', 'q', 'stop', 'disconnect', 'dc', 'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'search', 'shuffle'],
   category: 'MUSIC',
   description: 'Play music from YouTube, SoundCloud, and Spotify',
   usage: '<prefix>play <query>',
