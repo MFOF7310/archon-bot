@@ -460,15 +460,50 @@ function buildDashEmbed(q) {
 }
 
 // ── Slash Command Data ──────────────────────────────────────
-const slashData = new SlashCommandBuilder()
-  .setName('play')
-  .setDescription('Play a song from YouTube, SoundCloud, or Spotify')
-  .addStringOption(opt =>
-    opt.setName('query')
-      .setDescription('Song name or URL')
-      .setRequired(true)
-      .setAutocomplete(true)
-  );
+// Build slash command data with fallback for older discord.js versions
+let slashData;
+try {
+  slashData = new SlashCommandBuilder()
+    .setName('play')
+    .setDescription('Play a song from YouTube, SoundCloud, or Spotify')
+    .addStringOption(opt =>
+      opt.setName('query')
+        .setDescription('Song name or URL')
+        .setRequired(true)
+    );
+  // Try to enable autocomplete if supported (v14+)
+  try {
+    const opt = slashData.options?.[0];
+    if (opt && typeof opt.setAutocomplete === 'function') {
+      opt.setAutocomplete(true);
+    }
+  } catch {
+    /* autocomplete not supported in this discord.js version */
+  }
+} catch (err) {
+  console.error('[MUSIC] SlashCommandBuilder failed, using raw JSON fallback:', err.message);
+  slashData = {
+    name: 'play',
+    description: 'Play a song from YouTube, SoundCloud, or Spotify',
+    options: [{
+      name: 'query',
+      description: 'Song name or URL',
+      type: 3,
+      required: true
+    }],
+    toJSON() {
+      return {
+        name: this.name,
+        description: this.description,
+        type: 1,
+        options: this.options
+      };
+    }
+  };
+}
+
+// Verify slashData is valid for plugin loader
+console.log('[MUSIC] slashData type:', typeof slashData, '| has toJSON:', typeof slashData?.toJSON === 'function');
 
 // ═════════════════════════════════════════════════════════════
 //  CRITICAL: runPrefix — handles !!play, !!skip, etc.
