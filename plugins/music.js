@@ -37,8 +37,8 @@ const CFG = {
   MAX_QUEUE: 100, IDLE_TIMEOUT_MS: 300000, NP_UPDATE_MS: 8000,
   VOLUME_DEFAULT: 100, AUTOCOMPLETE_MAX: 10, SEARCH_TIMEOUT_MS: 8000,
   COOKIE_PATH: path.join(process.cwd(), 'data', 'cookies.txt'),
-  BYPASS_METHOD: process.env.YT_BYPASS || 'auto', // auto | cookies | proxy | fallback
-  PROXY_URL: process.env.YT_PROXY || null,        // socks5://user:pass@host:port
+  BYPASS_METHOD: process.env.YT_BYPASS || 'auto',
+  PROXY_URL: process.env.YT_PROXY || null,
 };
 
 const EMOJI = {
@@ -50,7 +50,7 @@ const EMOJI = {
   YELLOW:'\u{1F7E1}', STAR:'\u2B50', FIRE:'\u{1F525}', CROWN:'\u{1F451}',
   LOCK:'\u{1F512}', THUMBUP:'\u{1F44D}', THUMBDN:'\u{1F44E}', SPOTIFY_E:'\u{1F31A}',
   YOUTUBE_E:'\u{1F4FA}', TOOLS:'\u{1F6E0}\uFE0F', GLOBE:'\u{1F310}', REFRESH:'\u{1F504}',
-  FLAG:'\u{1F1F2}\u{1F1F1}', SHIELD:'\u{1F6E1}\uFE0F', COOKIE:'\u{1F36A}', ROBOT:'\u{1F916}',
+  FLAG:'\u{1F1F2}\u{1F1F1}', SHIELD:'\u{1F6E1}\uFE0F', COOKIE:'\u{1F36A}',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -69,15 +69,6 @@ function log(tag, msg) { console.log(`${LP[tag] || '[MUSIC]'} ${msg}`); }
 // YOUTUBE IP BLOCK BYPASS ENGINE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Hetzner/OVH/Contabo datacenter IPs are blocked by YouTube.
- * This module implements multiple bypass strategies:
- * 1. COOKIES: Export cookies from your browser, place in data/cookies.txt
- * 2. PROXY: Route yt-dlp through SOCKS5/HTTP proxy (residential)
- * 3. FALLBACK: Try SoundCloud when YouTube fails
- * 4. AUTO: Try cookies first, then proxy, then fallback
- */
-
 class YouTubeBypass {
   constructor() {
     this.cookies = this.loadCookies();
@@ -87,28 +78,24 @@ class YouTubeBypass {
     this.stats = { youtube: 0, soundcloud: 0, failures: 0 };
 
     if (this.datacenterDetected) {
-      log('BYPASS', `${EMOJI.SHIELD} Datacenter IP detected — activating bypass strategies`);
+      log('BYPASS', `${EMOJI.SHIELD} Datacenter IP detected — activating bypass`);
       if (!this.cookies && !this.proxy) {
-        log('WARN', `${EMOJI.WARN} No cookies or proxy configured — YouTube will likely fail. See BYPASS_SETUP below.`);
+        log('WARN', `${EMOJI.WARN} No cookies or proxy — YouTube may fail. See data/README_COOKIES.md`);
       }
     }
   }
 
-  // Detect if we're on a datacenter IP (simple heuristic)
   detectDatacenterIP() {
     const interfaces = require('os').networkInterfaces();
     for (const name of Object.keys(interfaces)) {
       for (const iface of interfaces[name]) {
         if (!iface.internal && iface.family === 'IPv4') {
           const ip = iface.address;
-          // Hetzner ranges: 138.199.x.x, 78.46.x.x, 88.99.x.x, 95.216.x.x, 116.202.x.x
-          // OVH ranges: 51.x.x.x, 54.37.x.x, 145.239.x.x, 151.80.x.x
-          // Contabo ranges: 144.91.x.x, 161.97.x.x, 173.212.x.x, 194.163.x.x
           const dcRanges = [
             /^138\.199\./, /^78\.46\./, /^88\.99\./, /^95\.216\./, /^116\.202\./,
             /^51\./, /^54\.37\./, /^145\.239\./, /^151\.80\./,
             /^144\.91\./, /^161\.97\./, /^173\.212\./, /^194\.163\./,
-            /^5\.(9|39|75|104|181|189)\./, /^159\.69\./, /^188\.34\./,
+            /^5\.(9|39|75,104,181,189)\./, /^159\.69\./, /^188\.34\./,
           ];
           if (dcRanges.some(r => r.test(ip))) return true;
         }
@@ -117,137 +104,90 @@ class YouTubeBypass {
     return false;
   }
 
-  // Load cookies from file or env
   loadCookies() {
-    // Method 1: File
     if (fs.existsSync(CFG.COOKIE_PATH)) {
       try {
         const raw = fs.readFileSync(CFG.COOKIE_PATH, 'utf8');
-        // Netscape or JSON format
         if (raw.trim().startsWith('[')) {
           const parsed = JSON.parse(raw);
-          log('BYPASS', `${EMOJI.COOKIE} Loaded ${parsed.length} cookies from JSON`);
+          log('BYPASS', `${EMOJI.COOKIE} Loaded ${parsed.length} cookies (JSON)`);
           return parsed;
         }
-        // Netscape format — convert
         const lines = raw.split('\n').filter(l => l.trim() && !l.startsWith('#'));
         const cookies = lines.map(l => {
           const parts = l.split('\t');
-          if (parts.length >= 7) {
-            return { domain: parts[0], path: parts[2], name: parts[5], value: parts[6] };
-          }
+          if (parts.length >= 7) return { domain: parts[0], path: parts[2], name: parts[5], value: parts[6] };
           return null;
         }).filter(Boolean);
-        log('BYPASS', `${EMOJI.COOKIE} Loaded ${cookies.length} cookies from Netscape format`);
+        log('BYPASS', `${EMOJI.COOKIE} Loaded ${cookies.length} cookies (Netscape)`);
         return cookies;
-      } catch (e) {
-        log('WARN', `Failed to load cookies: ${e.message}`);
-      }
+      } catch (e) { log('WARN', `Cookie load failed: ${e.message}`); }
     }
-
-    // Method 2: Env var (JSON string)
     if (process.env.YT_COOKIES) {
-      try {
-        const parsed = JSON.parse(process.env.YT_COOKIES);
-        log('BYPASS', `${EMOJI.COOKIE} Loaded ${parsed.length} cookies from env`);
-        return parsed;
-      } catch (e) {
-        log('WARN', `Failed to parse YT_COOKIES env: ${e.message}`);
-      }
+      try { return JSON.parse(process.env.YT_COOKIES); }
+      catch (e) { log('WARN', `YT_COOKIES parse failed: ${e.message}`); }
     }
-
     return null;
   }
 
-  // Build play-dl options with bypass
   getOptions() {
-    const opts = {};
-
-    if (this.cookies && this.cookies.length > 0) {
-      // Convert cookies to header format for play-dl
-      const cookieStr = this.cookies.map(c => `${c.name}=${c.value}`).join('; ');
-      opts.headers = { 'Cookie': cookieStr };
-      opts.cookieHeader = cookieStr;
+    const opts = { quality: 1, discordPlayerCompatibility: true };
+    if (this.cookies?.length > 0) {
+      opts.cookieHeader = this.cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-
-    if (this.proxy) {
-      opts.proxy = this.proxy;
-    }
-
-    // Request quality that works on datacenter
-    opts.quality = 1; // 1 = lowest (most reliable on blocked IPs)
-    opts.discordPlayerCompatibility = true;
-
+    if (this.proxy) opts.proxy = this.proxy;
     return opts;
   }
 
-  // Search with fallback
   async search(query, limit = 10) {
     const errors = [];
 
-    // Strategy 1: YouTube with bypass
     if (this.method === 'auto' || this.method === 'cookies') {
       try {
-        const results = await play.search(query, {
-          limit, source: { youtube: 'video' }
-        });
+        const results = await play.search(query, { limit, source: { youtube: 'video' } });
         if (results?.length) {
           this.stats.youtube++;
           log('BYPASS', `${EMOJI.YOUTUBE_E} YouTube search OK (${results.length} results)`);
           return results.map(r => ({
-            title: r.title, durationInSec: r.durationInSec || 0,
-            url: r.url, thumbnail: r.thumbnails?.[0] || null,
-            id: r.id, channel: r.channel, source: 'youtube'
+            title: r.title, durationInSec: r.durationInSec || 0, url: r.url,
+            thumbnail: r.thumbnails?.[0] || null, id: r.id,
+            channel: r.channel, source: 'youtube'
           }));
         }
-      } catch (e) {
-        errors.push(`YouTube: ${e.message}`);
-      }
+      } catch (e) { errors.push(`YT: ${e.message}`); }
     }
 
-    // Strategy 2: SoundCloud fallback
     if (this.method === 'auto' || this.method === 'fallback') {
       try {
-        const results = await play.search(query, {
-          limit, source: { soundcloud: 'tracks' }
-        });
+        const results = await play.search(query, { limit, source: { soundcloud: 'tracks' } });
         if (results?.length) {
           this.stats.soundcloud++;
-          log('BYPASS', `${EMOJI.SPOTIFY_E} SoundCloud fallback OK (${results.length} results)`);
+          log('BYPASS', `${EMOJI.SPOTIFY_E} SoundCloud fallback OK (${results.length})`);
           return results.map(r => ({
-            title: r.title, durationInSec: r.durationInSec || 0,
-            url: r.url, thumbnail: r.thumbnail || null,
-            id: r.id, channel: { name: r.uploader || 'SoundCloud' }, source: 'soundcloud'
+            title: r.title, durationInSec: r.durationInSec || 0, url: r.url,
+            thumbnail: r.thumbnail || null, id: r.id,
+            channel: { name: r.uploader || 'SoundCloud' }, source: 'soundcloud'
           }));
         }
-      } catch (e) {
-        errors.push(`SoundCloud: ${e.message}`);
-      }
+      } catch (e) { errors.push(`SC: ${e.message}`); }
     }
 
-    // All failed
     this.stats.failures++;
     throw new Error(`All sources failed: ${errors.join('; ')}`);
   }
 
-  // Stream with bypass
   async stream(url) {
     const errors = [];
 
-    // Strategy 1: YouTube direct with cookies/proxy
     if ((this.method === 'auto' || this.method === 'cookies') && play.yt_validate(url) === 'video') {
       try {
-        const opts = this.getOptions();
-        const stream = await play.stream(url, opts);
+        const stream = await play.stream(url, this.getOptions());
         this.stats.youtube++;
-        log('BYPASS', `${EMOJI.YOUTUBE_E} YouTube stream OK (quality: ${opts.quality})`);
+        log('BYPASS', `${EMOJI.YOUTUBE_E} YouTube stream OK`);
         return stream;
-      } catch (e) {
-        errors.push(`YouTube stream: ${e.message}`);
-      }
+      } catch (e) { errors.push(`YT stream: ${e.message}`); }
     }
 
-    // Strategy 2: SoundCloud direct
     if (this.method === 'auto' || this.method === 'fallback') {
       try {
         if (url.includes('soundcloud.com')) {
@@ -256,57 +196,37 @@ class YouTubeBypass {
           log('BYPASS', `${EMOJI.SPOTIFY_E} SoundCloud stream OK`);
           return stream;
         }
-        // If it's a YouTube URL that failed, search SoundCloud equivalent
         if (play.yt_validate(url) === 'video') {
           const info = await play.video_info(url).catch(() => null);
           if (info?.video_details?.title) {
-            const searchQ = `${info.video_details.title} ${info.video_details.channel?.name || ''}`;
-            const scResults = await play.search(searchQ, { limit: 1, source: { soundcloud: 'tracks' } });
+            const scResults = await play.search(
+              `${info.video_details.title} ${info.video_details.channel?.name || ''}`,
+              { limit: 1, source: { soundcloud: 'tracks' } }
+            );
             if (scResults?.[0]) {
               const stream = await play.stream(scResults[0].url, { quality: 1, discordPlayerCompatibility: true });
               this.stats.soundcloud++;
-              log('BYPASS', `${EMOJI.SPOTIFY_E} SoundCloud fallback stream OK`);
+              log('BYPASS', `${EMOJI.SPOTIFY_E} SC fallback stream OK`);
               return stream;
             }
           }
         }
-      } catch (e) {
-        errors.push(`SoundCloud: ${e.message}`);
-      }
-    }
-
-    // Strategy 3: Raw URL (direct audio file)
-    try {
-      if (/\.(mp3|ogg|wav|flac|m4a|aac)$/i.test(url)) {
-        const response = await fetch(url);
-        if (response.ok) {
-          const { Readable } = require('stream');
-          const readable = Readable.fromWeb(response.body);
-          return { stream: readable, type: require('@discordjs/voice').StreamType.Arbitrary };
-        }
-      }
-    } catch (e) {
-      errors.push(`Direct URL: ${e.message}`);
+      } catch (e) { errors.push(`SC: ${e.message}`); }
     }
 
     this.stats.failures++;
-    throw new Error(`Cannot stream from any source: ${errors.join('; ')}`);
+    throw new Error(`Cannot stream: ${errors.join('; ')}`);
   }
 
-  // Get video info with bypass
   async videoInfo(url) {
-    const opts = this.getOptions();
-    return await play.video_info(url, opts);
+    return await play.video_info(url, this.getOptions());
   }
 
-  // Spotify track → YouTube search bridge
   async spotifyToYouTube(trackName, artist) {
     try {
       const results = await this.search(`${trackName} ${artist}`, 1);
       return results[0]?.url || null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
   getStats() {
@@ -344,7 +264,7 @@ class VoteGuard {
       log('VOTE', `User ${userId}: ${voted ? 'VOTED ✓' : 'NOT VOTED ✗'}`);
       return voted;
     } catch (e) {
-      log('VOTE', `API error: ${e.message} — allowing`);
+      log('VOTE', `API error — allowing`);
       return true;
     }
   }
@@ -356,10 +276,9 @@ class VoteGuard {
       .setTitle(`${EMOJI.STAR} Support ${botName}`)
       .setDescription(
         `Vote for **${botName}** on **top.gg** to use music.\n\n` +
-        `${EMOJI.CHECK} Takes 10 seconds\n` +
-        `${EMOJI.STAR} Or get **Premium** to skip voting`
+        `${EMOJI.CHECK} Takes 10 seconds\n${EMOJI.STAR} Or get **Premium** to skip voting`
       )
-      .setFooter({ text: `${botName} • Vote Guard • BAMAKO_223 ${EMOJI.FLAG}` });
+      .setFooter({ text: `${botName} \u2022 Vote Guard \u2022 BAMAKO_223 ${EMOJI.FLAG}` });
   }
 
   buildVoteButtons(botId) {
@@ -450,16 +369,15 @@ async function resolveTrack(query, requester) {
   log('STREAM', `Resolving: "${query.substring(0, 60)}"`);
 
   try {
-    // Spotify URL
     if (query.includes('open.spotify.com')) {
       if (play.is_expired()) await play.refreshToken();
 
       if (query.includes('/track/')) {
         const data = await play.spotify(query);
-        // Find YouTube equivalent via bypass bridge
         const ytUrl = await bypass.spotifyToYouTube(data.name, data.artists?.[0]?.name);
         return new Track({
-          id: data.id, title: data.name, channel: { name: data.artists?.[0]?.name || 'Spotify' },
+          id: data.id, title: data.name,
+          channel: { name: data.artists?.[0]?.name || 'Spotify' },
           durationInSec: Math.floor(data.durationInSec || 0),
           url: ytUrl || data.url, thumbnail: { url: data.thumbnail?.url || '' },
           source: 'spotify'
@@ -474,7 +392,8 @@ async function resolveTrack(query, requester) {
           if (count++ >= 50) break;
           const ytUrl = await bypass.spotifyToYouTube(item.name, item.artists?.[0]?.name);
           tracks.push(new Track({
-            id: item.id, title: item.name, channel: { name: item.artists?.[0]?.name },
+            id: item.id, title: item.name,
+            channel: { name: item.artists?.[0]?.name },
             durationInSec: Math.floor(item.durationInSec || 0),
             url: ytUrl || item.url, thumbnail: { url: item.thumbnail?.url || '' },
             source: 'spotify'
@@ -484,7 +403,6 @@ async function resolveTrack(query, requester) {
       }
     }
 
-    // YouTube URL
     if (play.yt_validate(query) === 'video') {
       const info = await bypass.videoInfo(query);
       const basic = info.video_details;
@@ -495,7 +413,6 @@ async function resolveTrack(query, requester) {
       }, requester);
     }
 
-    // YouTube Playlist
     if (play.yt_validate(query) === 'playlist') {
       const plist = await play.playlist_info(query);
       const videos = await plist.all_videos();
@@ -507,11 +424,9 @@ async function resolveTrack(query, requester) {
       return { playlist: true, tracks, playlistName: plist.title };
     }
 
-    // Search query (uses bypass with fallback)
     const results = await bypass.search(query, 1);
     if (!results?.length) throw new Error('No results found');
-    const r = results[0];
-    return new Track(r, requester);
+    return new Track(results[0], requester);
 
   } catch (e) {
     log('AUDIO', `Resolution failed: ${e.message}`);
@@ -521,11 +436,9 @@ async function resolveTrack(query, requester) {
 
 async function createStream(track) {
   try {
-    // Use bypass engine for streaming
     const streamData = await bypass.stream(track.url);
     const resource = createAudioResource(streamData.stream, {
-      inputType: streamData.type,
-      inlineVolume: true
+      inputType: streamData.type, inlineVolume: true
     });
     resource.volume?.setVolume(CFG.VOLUME_DEFAULT / 100);
     return resource;
@@ -596,8 +509,8 @@ async function playTrack(queue, track) {
     if (queue.textChannel) {
       queue.textChannel.send({
         embeds: [new EmbedBuilder().setColor(C.RED).setDescription(
-          `${EMOJI.RED} Failed to play **${track.title}**\n${e.message}\n\n${EMOJI.SHIELD} *Tip: If on Hetzner/OVH, add YouTube cookies. See \`/music bypass\` for help.*`
-        )]
+          `${EMOJI.RED} Failed to play **${track.title}**\n${e.message}\n\n${EMOJI.SHIELD} *Tip: If on Hetzner, add YouTube cookies in data/cookies.txt*`)
+        ]
       }).catch(() => {});
     }
     if (queue.tracks.length > 0) {
@@ -644,15 +557,13 @@ async function connectVoice(channel, queue) {
 function startIdleTimer(queue) {
   if (queue._idleTimer) clearTimeout(queue._idleTimer);
   queue._idleTimer = setTimeout(() => {
-    if (!queue.current && queue.tracks.length === 0) {
-      destroyQueue(queue.guildId);
-    }
+    if (!queue.current && queue.tracks.length === 0) destroyQueue(queue.guildId);
   }, CFG.IDLE_TIMEOUT_MS);
 }
 function resetIdleTimer(queue) { if (queue._idleTimer) clearTimeout(queue._idleTimer); }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// NOW PLAYING UI (FlaviBot-style)
+// NOW PLAYING UI
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildProgressBar(elapsed, total, size = 18) {
@@ -693,26 +604,31 @@ function buildNPEmbed(queue) {
     .setTimestamp();
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// BUTTON CUSTOM IDs: music_<action>_<guildId>  (matches index.js handlers)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function buildNPButtons(queue) {
+  const g = queue.guildId;
   const isPaused = queue.paused;
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`mheart_${queue.guildId}`).setEmoji(EMOJI.HEART).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mpp_${queue.guildId}`).setEmoji(isPaused ? EMOJI.PLAY : EMOJI.PAUSE).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId(`mskip_${queue.guildId}`).setEmoji(EMOJI.SKIP).setStyle(ButtonStyle.Primary).setDisabled(queue.size === 0),
-      new ButtonBuilder().setCustomId(`mstop_${queue.guildId}`).setEmoji(EMOJI.STOP).setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId(`mloop_${queue.guildId}`).setEmoji(queue.loop === 'off' ? EMOJI.LOOP : EMOJI.LOOP1).setStyle(queue.loop === 'off' ? ButtonStyle.Secondary : ButtonStyle.Success)
+      new ButtonBuilder().setCustomId(`music_heart_${g}`).setEmoji(EMOJI.HEART).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_pp_${g}`).setEmoji(isPaused ? EMOJI.PLAY : EMOJI.PAUSE).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`music_skip_${g}`).setEmoji(EMOJI.SKIP).setStyle(ButtonStyle.Primary).setDisabled(queue.size === 0),
+      new ButtonBuilder().setCustomId(`music_stop_${g}`).setEmoji(EMOJI.STOP).setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`music_loop_${g}`).setEmoji(queue.loop === 'off' ? EMOJI.LOOP : EMOJI.LOOP1).setStyle(queue.loop === 'off' ? ButtonStyle.Secondary : ButtonStyle.Success)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`mvol50_${queue.guildId}`).setLabel('50%').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mvol100_${queue.guildId}`).setLabel('100%').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mvol150_${queue.guildId}`).setLabel('150%').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mauto_${queue.guildId}`).setLabel('AutoPlay').setEmoji(EMOJI.LOOP).setStyle(queue.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mdash_${queue.guildId}`).setLabel('Dashboard').setEmoji(EMOJI.DASH).setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId(`music_vol50_${g}`).setLabel('50%').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_vol100_${g}`).setLabel('100%').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_vol150_${g}`).setLabel('150%').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_auto_${g}`).setLabel('AutoPlay').setEmoji(EMOJI.LOOP).setStyle(queue.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_dash_${g}`).setLabel('Dashboard').setEmoji(EMOJI.DASH).setStyle(ButtonStyle.Primary)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`mlove_${queue.guildId}`).setEmoji(EMOJI.THUMBUP).setLabel('Love').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`mhate_${queue.guildId}`).setEmoji(EMOJI.THUMBDN).setLabel('Skip').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`music_love_${g}`).setEmoji(EMOJI.THUMBUP).setLabel('Love').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`music_hate_${g}`).setEmoji(EMOJI.THUMBDN).setLabel('Skip').setStyle(ButtonStyle.Danger)
     )
   ];
 }
@@ -732,28 +648,29 @@ function buildDashEmbed(queue) {
     )
     .setDescription(
       `${EMOJI.SHIELD} **Bypass**: ${stats.method} | YT: ${stats.youtube} | SC: ${stats.soundcloud}\n` +
-      `${EMOJI.COOKIE} Cookies: ${stats.cookies ? '✓' : '✗'} | Proxy: ${stats.proxy ? '✓' : '✗'}`
+      `${EMOJI.COOKIE} Cookies: ${stats.cookies ? '\u2705' : '\u274C'} | Proxy: ${stats.proxy ? '\u2705' : '\u274C'}`
     )
     .setFooter({ text: `ARCHON CG-223 ${EMOJI.FLAG}` });
 }
 
 function buildDashButtons(queue) {
+  const g = queue.guildId;
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`mprev_${queue.guildId}`).setEmoji(EMOJI.PREV).setLabel('Previous').setStyle(ButtonStyle.Secondary).setDisabled(queue.history.length === 0),
-      new ButtonBuilder().setCustomId(`mshuffle_${queue.guildId}`).setEmoji(EMOJI.SHUFFLE).setLabel('Shuffle').setStyle(queue.shuffle ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mnp_${queue.guildId}`).setEmoji(EMOJI.NOTE).setLabel('Now Playing').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId(`mclose_${queue.guildId}`).setEmoji(EMOJI.X).setLabel('Close').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`music_prev_${g}`).setEmoji(EMOJI.PREV).setLabel('Previous').setStyle(ButtonStyle.Secondary).setDisabled(queue.history.length === 0),
+      new ButtonBuilder().setCustomId(`music_shuffle_${g}`).setEmoji(EMOJI.SHUFFLE).setLabel('Shuffle').setStyle(queue.shuffle ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_np_${g}`).setEmoji(EMOJI.NOTE).setLabel('Now Playing').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`music_close_${g}`).setEmoji(EMOJI.X).setLabel('Close').setStyle(ButtonStyle.Danger)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`mvol70_${queue.guildId}`).setEmoji(EMOJI.VOLDN).setLabel('70%').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mvol100_${queue.guildId}`).setEmoji(EMOJI.VOLUP).setLabel('100%').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mvol130_${queue.guildId}`).setEmoji(EMOJI.VOLUP).setLabel('130%').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId(`music_vol70_${g}`).setEmoji(EMOJI.VOLDN).setLabel('70%').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_vol100_${g}`).setEmoji(EMOJI.VOLUP).setLabel('100%').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_vol130_${g}`).setEmoji(EMOJI.VOLUP).setLabel('130%').setStyle(ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`mfix_${queue.guildId}`).setEmoji(EMOJI.TOOLS).setLabel('Fix Audio').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mrecon_${queue.guildId}`).setEmoji(EMOJI.REFRESH).setLabel('Reconnect').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`mrecreate_${queue.guildId}`).setEmoji(EMOJI.FIRE).setLabel('Recreate Player').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`music_fix_${g}`).setEmoji(EMOJI.TOOLS).setLabel('Fix Audio').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_recon_${g}`).setEmoji(EMOJI.REFRESH).setLabel('Reconnect').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`music_recreate_${g}`).setEmoji(EMOJI.FIRE).setLabel('Recreate Player').setStyle(ButtonStyle.Danger)
     )
   ];
 }
@@ -797,73 +714,87 @@ async function handleAutocomplete(interaction) {
       value: r.url
     }));
     await interaction.respond(choices.slice(0, 25));
-  } catch (e) {
-    await interaction.respond([]);
-  }
+  } catch (e) { await interaction.respond([]); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// BUTTON HANDLER
+// BUTTON HANDLER (parses music_<action>_<guildId>)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleButton(interaction) {
   const id = interaction.customId;
-  if (!id.startsWith('m')) return false;
-  const guildId = interaction.guild?.id;
-  if (!guildId) return false;
+  if (!id.startsWith('music_')) return false;
+
+  // Parse: music_<action>_<guildId>
+  const parts = id.split('_');
+  if (parts.length < 3) return false;
+
+  const action = parts[1];
+  const guildId = parts[2];
   const queue = getQueue(guildId);
-  const action = id.split('_')[0];
 
   await interaction.deferUpdate().catch(() => {});
 
   switch (action) {
-    case 'mpp': {
+    case 'heart': { if (queue.current) queue.current.likes++; break; }
+
+    case 'pp': {
       if (!queue.player) break;
       if (queue.paused) { queue.player.unpause(); queue.paused = false; }
       else { queue.player.pause(); queue.paused = true; }
       if (queue.npMessage) await queue.npMessage.edit({ embeds: [buildNPEmbed(queue)], components: buildNPButtons(queue) }).catch(() => {});
       break;
     }
-    case 'mskip': { if (queue.player) queue.player.stop(); break; }
-    case 'mstop': {
+
+    case 'skip': { if (queue.player) queue.player.stop(); break; }
+
+    case 'stop': {
       destroyQueue(guildId);
       return true;
     }
-    case 'mloop': {
+
+    case 'loop': {
       queue.loop = ['off', 'track', 'queue'][(['off', 'track', 'queue'].indexOf(queue.loop) + 1) % 3];
       if (queue.npMessage) await queue.npMessage.edit({ embeds: [buildNPEmbed(queue)], components: buildNPButtons(queue) }).catch(() => {});
       break;
     }
-    case 'mvol50': case 'mvol70': case 'mvol100': case 'mvol130': case 'mvol150': {
-      queue.volume = parseInt(action.replace('mvol', ''));
+
+    case 'vol50': case 'vol70': case 'vol100': case 'vol130': case 'vol150': {
+      queue.volume = parseInt(action.replace('vol', ''));
       if (queue.player?.state?.resource?.volume) queue.player.state.resource.volume.setVolume(queue.volume / 100);
       if (queue.npMessage) await queue.npMessage.edit({ embeds: [buildNPEmbed(queue)], components: buildNPButtons(queue) }).catch(() => {});
       break;
     }
-    case 'mauto': {
+
+    case 'auto': {
       queue.autoplay = !queue.autoplay;
       if (queue.npMessage) await queue.npMessage.edit({ embeds: [buildNPEmbed(queue)], components: buildNPButtons(queue) }).catch(() => {});
       break;
     }
-    case 'mdash': {
+
+    case 'dash': {
       await interaction.channel?.send({
         embeds: [buildDashEmbed(queue)], components: buildDashButtons(queue)
       }).catch(() => {});
       break;
     }
-    case 'mclose': {
+
+    case 'close': {
       await interaction.editReply({ embeds: [new EmbedBuilder().setColor(C.DARK).setDescription(`${EMOJI.CHECK} Closed.`)], components: [] }).catch(() => {});
       break;
     }
-    case 'mnp': { await sendNowPlaying(queue); break; }
-    case 'mshuffle': {
+
+    case 'np': { await sendNowPlaying(queue); break; }
+
+    case 'shuffle': {
       queue.shuffle = !queue.shuffle;
       await interaction.channel?.send({
         embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`${EMOJI.SHUFFLE} Shuffle ${queue.shuffle ? 'enabled' : 'disabled'}.`)]
       }).catch(() => {});
       break;
     }
-    case 'mprev': {
+
+    case 'prev': {
       if (queue.history.length > 0) {
         const prev = queue.history.pop();
         if (queue.current) queue.tracks.unshift(queue.current);
@@ -871,23 +802,26 @@ async function handleButton(interaction) {
       }
       break;
     }
-    case 'mheart': { if (queue.current) queue.current.likes++; break; }
-    case 'mlove': {
+
+    case 'love': {
       if (queue.current) queue.current.likes++;
       await interaction.channel?.send({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`${EMOJI.THUMBUP} Glad you like it!`)] }).catch(() => {});
       break;
     }
-    case 'mhate': {
+
+    case 'hate': {
       if (queue.current) queue.current.dislikes++;
       await interaction.channel?.send({ embeds: [new EmbedBuilder().setColor(C.WARN).setDescription(`${EMOJI.THUMBDN} Skipping...`)] }).catch(() => {});
       if (queue.player) queue.player.stop();
       break;
     }
-    case 'mfix': {
+
+    case 'fix': {
       if (queue.current) await playTrack(queue, queue.current);
       break;
     }
-    case 'mrecon': {
+
+    case 'recon': {
       const vc = interaction.member?.voice?.channel;
       if (vc) {
         if (queue.connection) queue.connection.destroy();
@@ -896,7 +830,8 @@ async function handleButton(interaction) {
       }
       break;
     }
-    case 'mrecreate': {
+
+    case 'recreate': {
       setupPlayer(queue);
       if (queue.connection) queue.connection.subscribe(queue.player);
       if (queue.current) await playTrack(queue, queue.current);
@@ -935,7 +870,6 @@ async function executeSlash(interaction, client) {
     });
   }
 
-  // Vote guard
   const voted = await voteGuard.hasVoted(interaction.user.id);
   if (!voted) {
     return interaction.reply({
@@ -999,7 +933,7 @@ async function executeSlash(interaction, client) {
     log('AUDIO', `Play error: ${e.message}`);
     const isDcError = e.message.includes('403') || e.message.includes('429') || e.message.includes('sign in');
     const helpMsg = isDcError
-      ? `\n\n${EMOJI.SHIELD} **Datacenter IP detected!**\nAdd YouTube cookies: place \\\`cookies.txt\\\` in \\\`data/\\\` folder, then restart.`
+      ? `\n\n${EMOJI.SHIELD} **Datacenter IP detected!**\nAdd YouTube cookies: place \`cookies.txt\` in \`data/\` folder, then restart.`
       : '';
     await interaction.editReply({
       embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`${EMOJI.RED} ${e.message}${helpMsg}`)]
@@ -1008,24 +942,39 @@ async function executeSlash(interaction, client) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// EXPORTS
+// EXPORTS — name: 'music' to match index.js command map + all legacy aliases
 // ═══════════════════════════════════════════════════════════════════════════════
 
 module.exports = {
-  name: 'play',
-  aliases: ['p'],
+  name: 'music',
+  aliases: ['play', 'p', 'skip', 's', 'queue', 'q', 'stop', 'disconnect', 'dc',
+    'volume', 'vol', 'loop', 'pause', 'resume', 'np', 'nowplaying', 'dashboard', 'search'],
   category: 'MUSIC',
   description: 'Native Audio Engine v5.1 — play-dl + datacenter bypass',
   data: slashData,
-  async autocomplete(interaction) { await handleAutocomplete(interaction); },
-  async execute(interaction, client) { await executeSlash(interaction, client); },
-  async handleComponent(interaction) { return await handleButton(interaction); },
-  async handleSelectMenu() { return false; },
+
+  async autocomplete(interaction) {
+    await handleAutocomplete(interaction);
+  },
+
+  async execute(interaction, client) {
+    await executeSlash(interaction, client);
+  },
+
+  async handleComponent(interaction) {
+    return await handleButton(interaction);
+  },
+
+  async handleSelectMenu() {
+    // Dashboard select menu — not used in v5.1 (buttons only)
+    return false;
+  },
+
   initLavalink() {
     log('STREAM', 'Native Audio Engine v5.1 — No Lavalink needed');
     if (bypass.datacenterDetected) {
       log('BYPASS', `${EMOJI.SHIELD} Datacenter IP — strategies active`);
-      log('BYPASS', `Method: ${bypass.method} | Cookies: ${bypass.cookies ? 'YES' : 'NO'} | Proxy: ${bypass.proxy ? 'YES' : 'NO'}`);
+      log('BYPASS', `Method: ${bypass.method} | Cookies: ${bypass.cookies ? '\u2705' : '\u274C'} | Proxy: ${bypass.proxy ? '\u2705' : '\u274C'}`);
     }
   },
 };
