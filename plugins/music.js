@@ -101,6 +101,7 @@ class GuildQueue {
 
   async play(song) {
     try {
+      console.log(`[PLAY] Getting stream for: ${truncate(song.title, 50)}`);
       const stream = await YouTubeBypass.getStream(song.url, song.source);
       const resource = createAudioResource(stream, {
         inputType: StreamType.Arbitrary,
@@ -109,9 +110,17 @@ class GuildQueue {
       if (resource.volume) resource.volume.setVolume(this.volume / 100);
       this.player.play(resource);
       this.isPaused = false;
+      console.log(`[PLAY] Started playing: ${truncate(song.title, 50)}`);
       await this.updateNP(song);
     } catch (err) {
       console.error('[PLAY ERROR]', err.message);
+      // Notify the channel that playback failed
+      if (this.npMessage?.channel) {
+        const failEmbed = new EmbedBuilder()
+          .setDescription(`\u274C Failed to play **[${truncate(song.title, 60)}](${song.url})**\n\n**Error:** \`${err.message.slice(0, 200)}\`\n\n*Try again or use a different query. If this persists, your proxy may be blocked by YouTube.*`)
+          .setColor(0xFF3366);
+        this.npMessage.channel.send({ embeds: [failEmbed] }).catch(() => {});
+      }
       this.onTrackEnd(true);
     }
   }
@@ -257,25 +266,52 @@ class YouTubeBypass {
 
   static _ytDlpStream(url) {
     return new Promise((resolve, reject) => {
-      const ytdlp = spawn('yt-dlp', [
-        '-f', 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio/best',
+      const args = [
+        '-f', 'bestaudio[ext=webm]/bestaudio/best',
         '--no-playlist',
         '-o', '-',
-        url
-      ], { stdio: ['ignore', 'pipe', 'pipe'] });
+        '--quiet',
+        '--no-warnings',
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        '--extractor-args', 'youtube:player_client=web'
+      ];
 
-      ytdlp.on('error', reject);
-      ytdlp.stderr.on('data', d => console.log('[yt-dlp]', d.toString().slice(0, 200)));
+      // Pass proxy to yt-dlp if configured
+      if (YT_BYPASS === 'proxy' && YT_PROXY) {
+        args.push('--proxy', YT_PROXY);
+        args.push('--no-check-certificates'); // Some proxies have SSL issues
+        console.log('[YT] Passing proxy to yt-dlp:', YT_PROXY.replace(/:\/\/[^:]+:[^@]+@/, '://***:***@'));
+      }
 
-      // Give yt-dlp 15s to start producing data
+      args.push(url);
+
+      const ytdlp = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stderr = '';
+
+      ytdlp.on('error', (err) => reject(new Error(`yt-dlp spawn failed: ${err.message}`)));
+      ytdlp.stderr.on('data', d => {
+        const chunk = d.toString();
+        stderr += chunk;
+        console.log('[yt-dlp]', chunk.slice(0, 200));
+      });
+
+      // Give yt-dlp 20s to start producing data
       const timer = setTimeout(() => {
         ytdlp.kill();
-        reject(new Error('yt-dlp timeout'));
-      }, 15000);
+        reject(new Error(`yt-dlp timeout (20s). Stderr: ${stderr.slice(0, 300)}`));
+      }, 20000);
 
       ytdlp.stdout.once('data', () => {
         clearTimeout(timer);
+        console.log('[YT] yt-dlp started streaming audio');
         resolve(ytdlp.stdout);
+      });
+
+      ytdlp.on('exit', (code) => {
+        if (code !== 0 && code !== null) {
+          clearTimeout(timer);
+          reject(new Error(`yt-dlp exited with code ${code}. Stderr: ${stderr.slice(0, 300)}`));
+        }
       });
     });
   }
