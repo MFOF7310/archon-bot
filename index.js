@@ -2061,6 +2061,7 @@ client.loadPlugins = async () => {
         // Final status line
     const statusColor = failedCommands.length === 0 ? '\x1b[32m' : '\x1b[33m';
     console.log(`${statusColor}[NEURAL GRID]\x1b[0m ${moduleStats.total} modules synchronized • ${moduleStats.slash} slash-enabled • ${failedCommands.length > 0 ? failedCommands.length + ' failures' : 'All systems nominal'}`);
+};
 
 // ================= SMART PLUGIN EXECUTION WRAPPER =================
 const COMMAND_PARAM_MAP = {
@@ -2098,7 +2099,7 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     
     const filteredArgs = paramOrder.map(param => argsMap[param]).filter(arg => arg !== undefined);
     return await command.run(...filteredArgs);
-}
+} // 🌟
 
 // ================= BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
@@ -3490,24 +3491,114 @@ safeOn(Events.InteractionCreate, async (interaction) => {
 
         try {
             console.log(`${cyan}[SLASH]${reset} Executing /${interaction.commandName} for ${interaction.user.tag}`);
-            
+
+            // ================= SLASH-TO-PREFIX ADAPTER =================
+            // Plugins use command.run(client, message, args, ...) but
+            // slash commands provide an Interaction object, not a Message.
+            // This adapter bridges the gap by creating a message wrapper.
+
             if (command.execute) {
+                // Plugin has native slash support — use it directly
                 await command.execute(interaction, client);
-                
+
                 // Bot XP: earns XP when processing a slash command
                 if (client.botStats && interaction.guild && db) {
                     client.botStats.onCommandProcessed(db, interaction.guild.id, interaction.user.id, interaction.commandName, true);
                 }
+            } else if (command.run) {
+                // Plugin has prefix-style .run() — adapt interaction to message format
+
+                // Build args array from slash command options
+                const args = [];
+                if (interaction.options) {
+                    const subCmd = interaction.options.getSubcommand(false);
+                    const subCmdGroup = interaction.options.getSubcommandGroup(false);
+                    if (subCmdGroup) args.push(subCmdGroup);
+                    if (subCmd) args.push(subCmd);
+
+                    const opts = interaction.options.data;
+                    for (const opt of opts) {
+                        if (opt.value !== undefined && opt.value !== null) {
+                            args.push(String(opt.value));
+                        }
+                        if (opt.options) {
+                            for (const subOpt of opt.options) {
+                                if (subOpt.value !== undefined && subOpt.value !== null) {
+                                    args.push(String(subOpt.value));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                const guildId = interaction.guild?.id || 'DM';
+                const serverSettings = interaction.guild ? getServerSettings(interaction.guild.id) : DEFAULT_SETTINGS;
+                const usedCommand = interaction.commandName;
+                const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+
+                // Create a message-like object that wraps the interaction
+                const repliedSet = { value: false };
+                const interactionMessage = {
+                    author: interaction.user,
+                    member: interaction.member,
+                    guild: interaction.guild,
+                    channel: interaction.channel,
+                    channelId: interaction.channelId,
+                    guildId: interaction.guildId,
+                    id: interaction.id,
+                    client: interaction.client,
+                    createdTimestamp: interaction.createdTimestamp,
+                    content: `/${usedCommand} ${args.join(' ')}`,
+
+                    reply: async (options) => {
+                        if (repliedSet.value) return interaction.followUp(options).catch(() => {});
+                        repliedSet.value = true;
+                        return interaction.reply(options).catch(() => {});
+                    },
+                    edit: async (options) => {
+                        if (interaction.replied || interaction.deferred) {
+                            return interaction.editReply(options).catch(() => {});
+                        }
+                        return interaction.reply(options).catch(() => {});
+                    },
+                    deferReply: async (options) => {
+                        if (!repliedSet.value) {
+                            repliedSet.value = true;
+                            return interaction.deferReply(options).catch(() => {});
+                        }
+                    },
+                    send: async (options) => {
+                        if (interaction.channel) {
+                            return interaction.channel.send(options).catch(() => {});
+                        }
+                    },
+                    delete: async () => {
+                        if (interaction.replied) return interaction.deleteReply().catch(() => {});
+                    },
+                    _isSlashAdapter: true,
+                    _interaction: interaction,
+                    _replied: repliedSet
+                };
+
+                // Execute plugin's run() with adapted parameters
+                await executePluginCommand(command, client, interactionMessage, args, db, usedCommand, serverSettings, lang);
+
+                // If plugin never replied, send basic acknowledgment
+                if (!repliedSet.value && !interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ content: '\u2705 Command executed.', ephemeral: true }).catch(() => {});
+                }
+
+                // Bot XP tracking
+                if (client.botStats && interaction.guild && db) {
+                    client.botStats.onCommandProcessed(db, interaction.guild.id, interaction.user.id, interaction.commandName, true);
+                }
             } else {
-                await interaction.reply({ 
-                    content: '❌ This command does not support slash execution yet.', 
-                    ephemeral: true 
-                }).catch(() => {});
+                await interaction.reply({ content: '\u274c This command has no execution handler.', ephemeral: true }).catch(() => {});
             }
         } catch (error) {
             console.error(`${red}[SLASH ERROR]${reset} ${interaction.commandName}:`, error);
-            const errorMsg = { content: '❌ There was an error executing this command!', ephemeral: true };
-            
+            const errorMsg = { content: '\u274c There was an error executing this command!', ephemeral: true };
+
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp(errorMsg).catch(() => {});
             } else {
