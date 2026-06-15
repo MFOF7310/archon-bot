@@ -107,9 +107,9 @@ function displayPM2Banner(serverCount = 0) {
 \x1b[38;5;39m    ╚═╝     ╚═╝     ╚═╝╚══════╝\x1b[0m
 
 \x1b[36m╔══════════════════════════════════════════════════════════════════╗
-\x1b[36m║\x1b[0m  \x1b[1;33mARCHITECT CG-223\x1b[0m | \x1b[1;32mPER-SERVER PARTITIONING ENGINE\x1b[0m                   \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[1;33m  ARCHON CG-223\x1b[0m | \x1b[1;32mAI-POWERED SERVER ARCHITECT\x1b[0m                      \x1b[36m║
 \x1b[36m╠══════════════════════════════════════════════════════════════════╣
-\x1b[36m║\x1b[0m  \x1b[32mNODE:\x1b[0m BAMAKO_223 🇲🇱  \x1b[33mSERVERS:\x1b[0m ${String(serverCount).padEnd(6)}     \x1b[35mBY:\x1b[0m MOUSSA FOFANA    \x1b[36m║
+\x1b[36m║\x1b[0m  \x1b[32mNODE:\x1b[0m BAMAKO_223 🇲🇱  \x1b[33mSERVERS:\x1b[0m ${String(serverCount).padEnd(6)}     \x1b[35mBY:\x1b[0m MFOF7310         \x1b[36m║
 \x1b[36m║\x1b[0m  \x1b[32mVERSION:\x1b[0m v${version.padEnd(8)}        \x1b[35mPM2 ID:\x1b[0m ${(process.env.pm_id || '0').padEnd(8)}        \x1b[36m║
 \x1b[36m║\x1b[0m  \x1b[32mSTATUS:\x1b[0m \x1b[5;32m ONLINE\x1b[0m   \x1b[33mMEMORY:\x1b[0m ${memory.padEnd(5)} MB                \x1b[36m║
 \x1b[36m╠══════════════════════════════════════════════════════════════════╣
@@ -1886,7 +1886,7 @@ client.loadPlugins = async () => {
     // ═══════════════════════════════════════════════════════════════════
     const banner = `
 \x1b[38;5;39m    ╔══════════════════════════════════════════════════════════════════════╗
-\x1b[38;5;45m    ║  \x1b[1;33mARCHITECT CG-223\x1b[0m  \x1b[38;5;45m║  \x1b[1;32mNEURAL SYNAPSE // MODULE SYNCHRONIZATION\x1b[0m  \x1b[38;5;45m║
+\x1b[38;5;45m    ║  \x1b[1;33m  ARCHON CG-223\x1b[0m  \x1b[38;5;45m║  \x1b[1;32mNEURAL SYNAPSE // MODULE SYNCHRONIZATION\x1b[0m  \x1b[38;5;45m║
 \x1b[38;5;51m    ╠══════════════════════════════════════════════════════════════════════╣
 \x1b[38;5;51m    ║  \x1b[36mEstablishing neural links to command modules...\x1b[0m                      \x1b[38;5;51m║
 \x1b[38;5;45m    ╚══════════════════════════════════════════════════════════════════════╝\x1b[0m`;
@@ -2383,18 +2383,19 @@ buildAliasLanguageMap();
         const sortedCategories = Object.keys(categories).sort();
         
         // ================= BUILD PROFESSIONAL CHANGELOG.MD =================
-        let md = `# ARCHITECT CG-223 // SYSTEM REGISTRY v4.0\n\n`;
+        let md = `# 🦅 ARCHON CG-223 // SYSTEM REGISTRY v4.0\n\n`;
         
         md += `> **Report Generated:** ${dateStr} at ${timeStr} (Bamako Time, GMT+0)\n`;
         md += `> **Build Version:** v${botVersion} | **Node:** BAMAKO_223 🇲🇱\n`;
-        md += `> **Architect:** Moussa Fofana | **License:** Proprietary\n`;
+        md += `> **Architect:** MFOF7310 | **License:** Proprietary\n`;
+        md += `> **Dashboard:** [bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)\n`;
         md += `> **Architecture:** Per-Server Partitioning (Composite PK: id, guild_id)\n\n`;
         
         md += `---\n\n`;
         
         // ================= EXECUTIVE SUMMARY =================
         md += `## 1. EXECUTIVE SUMMARY\n\n`;
-        md += `The ARCHITECT CG-223 neural grid operates on a **per-server partitioning architecture**, `;
+        md += `The ARCHON CG-223 neural grid operates on a **per-server partitioning architecture**, `;
         md += `ensuring complete data isolation across **${totalGuilds} servers** serving `;
         md += `**${totalUsers.toLocaleString()} Discord users** via **${totalCommands} active plugins**.\n\n`;
         
@@ -2566,7 +2567,7 @@ buildAliasLanguageMap();
         // ================= FOOTER =================
         md += `## 7. ARCHITECT'S NOTES\n\n`;
         md += `This registry is **auto-generated** on every system restart and reflects the exact state `;
-        md += `of the ARCHITECT CG-223 neural grid at boot time. All metrics are captured in real-time `;
+        md += `of the ARCHON CG-223 neural grid at boot time. All metrics are captured in real-time `;
         md += `from the BAMAKO_223 node.\n\n`;
         md += `**v4.0 Changelog Engine Changes:**\n`;
         md += `- Per-server partitioning statistics now report both total partitions and unique users\n`;
@@ -2575,10 +2576,10 @@ buildAliasLanguageMap();
         md += `- Composite key metrics provide visibility into data distribution across guilds\n\n`;
         md += `> *"The grid adapts. The grid isolates. The grid prevails."*\n\n`;
         md += `---\n\n`;
-        md += `**Built by Moussa Fofana** | **Bamako, Mali 🇲🇱**\n`;
-        md += `**Repository:** [github.com/MFOF7310](https://github.com/MFOF7310)\n`;
+        md += `**Built by MFOF7310** | **Bamako, Mali 🇲🇱**\n`;
+        md += `**Dashboard:** [bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)\n`;
         md += `**Last System Boot:** ${dateStr} | **Report ID:** ${timestamp}\n`;
-        md += `*ARCHITECT CG-223 Neural Changelog Engine v4.0 — 100% Automated*\n`;
+        md += `*ARCHON CG-223 Neural Changelog Engine v4.0 — 100% Automated*\n`;
         
         safeWriteFile('changelog.md', md);
         
@@ -2856,7 +2857,7 @@ setInterval(async () => {
 
                 const supremeEmbed = new EmbedBuilder()
                     .setColor(streakColor)
-                    .setAuthor({ name: `  ARCHITECT CG-223 • DAILY INJECTION READY`, iconURL: client.user.displayAvatarURL() })
+                    .setAuthor({ name: `🦅 ARCHON CG-223 • DAILY REWARDS READY`, iconURL: client.user.displayAvatarURL() })
                     .setTitle(`${greetingEmoji} ${greeting}, ${discordUser.username}!`)
                     .setDescription(`Your neural receptors have been replenished and are ready for a new injection.\n\n> *Claim your daily rewards before the next reset cycle begins.*`)
                     .addFields(
@@ -2868,7 +2869,7 @@ setInterval(async () => {
                         { name: '💡 **STREAK MASTERY TIPS**', value: `🛡️ **Shield:** \`${prefix}shop\` → Buy Streak Shield (2,000 🪙)\n🔥 **7 Days:** Unlock +50% bonus credits\n🛡️ **30 Days:** Exclusive Elite role\n💎 **100 Days:** Premium rewards tier\n👑 **365 Days:** Legendary status + custom role`, inline: false }
                     )
                     .setThumbnail(discordUser.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setFooter({ text: `ARCHITECT CG-223 • Node: BAMAKO_223 🇲🇱 • ${guildName}`, iconURL: guildIcon })
+                    .setFooter({ text: `🦅 ARCHON CG-223 • bamako-steel-dev.xyz • ${guildName}`, iconURL: guildIcon })
                     .setTimestamp();
 
                 const actionRow = new ActionRowBuilder()
@@ -2974,7 +2975,7 @@ setInterval(async () => {
                                 '```\n.serversettings set market_channel #your-channel\n```\n\n' +
                                 '**Market updates every 6 hours automatically.**'
                             )
-                            .setFooter({ text: 'ARCHITECT CG-223 • Market Intelligence' })
+                            .setFooter({ text: '🦅 ARCHON CG-223 • Market Intelligence • bamako-steel-dev.xyz' })
                             .setTimestamp()
                         ]
                     }).catch(() => {});
@@ -3010,7 +3011,7 @@ setInterval(async () => {
             
             const bootEmbed = new EmbedBuilder()
                 .setColor(trend.color || '#2ecc71')
-                .setAuthor({ name: '  ARCHITECT CG-223 // NEURAL ENGINE ONLINE', iconURL: client.user.displayAvatarURL() })
+                .setAuthor({ name: '🦅 ARCHON CG-223 // NEURAL ENGINE ONLINE', iconURL: client.user.displayAvatarURL() })
                 .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
                 .setDescription(
                     `\`\`\`ansi\n` +
@@ -3030,12 +3031,12 @@ setInterval(async () => {
                     `\`\`\``
                 )
                 .addFields(
-                    { name: '🔗 Repository', value: '```ansi\n\u001b[1;36mgithub.com/MFOF7310\u001b[0m\n```', inline: true },
-                    { name: '🏗️ Architect', value: '```ansi\n\u001b[1;33mMoussa Fofana\u001b[0m\n```', inline: true },
+                    { name: '🌐 Dashboard', value: '```ansi\n\u001b[1;36mbamako-steel-dev.xyz\u001b[0m\n```', inline: true },
+                    { name: '🏗️ Architect', value: '```ansi\n\u001b[1;33mMFOF7310\u001b[0m\n```', inline: true },
                     { name: '⚡ Slash Commands', value: `\`\`\`ansi\n\u001b[1;32m${commands.length} commands registered\u001b[0m\n\`\`\``, inline: true },
                     { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
                 )
-                .setFooter({ text: `ARCHITECT CG-223 • Neural Engine v${client.version}`, iconURL: client.user.displayAvatarURL() })
+                .setFooter({ text: `🦅 ARCHON CG-223 • Neural Engine v${client.version} • bamako-steel-dev.xyz`, iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();
 
             await owner.send({ embeds: [bootEmbed] }).catch(() => {});
@@ -3397,7 +3398,7 @@ if (message.content && message.content.length > 4000) {
                     { name: '🛡️ Circuit Breaker', value: health.circuitBreaker, inline: true },
                     { name: '💀 Dead Letters', value: String(health.deadLetters), inline: true }
                 )
-                .setFooter({ text: 'ARCHITECT CG-223 • Database Health • BAMAKO_223 🇲🇱' })
+                .setFooter({ text: '🦅 ARCHON CG-223 • Database Health • bamako-steel-dev.xyz' })
                 .setTimestamp();
             
             return message.reply({ embeds: [embed] });
