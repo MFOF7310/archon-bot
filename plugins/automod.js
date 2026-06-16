@@ -140,7 +140,7 @@ async function takeAction(message, violations, client, db) {
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
 
-    // ================= MOD LOG (Discord-native AutoMod style) =================
+    // ================= MOD LOG — CHANNEL (SANITIZED, no content exposed) =================
     const settings = client.getServerSettings?.(gid) || {};
     const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog || settings.log;
     if (logId) {
@@ -148,6 +148,7 @@ async function takeAction(message, violations, client, db) {
         if (logCh?.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
             const bar = strikeBar(wc);
             const next = wc >= 4 ? 'None — maximum reached' : ['1 hour timeout', '1 day timeout', '7 day timeout', 'Ban'][wc];
+            // Sanitized log — no message content visible to channel viewers
             const log = new EmbedBuilder()
                 .setColor(actionColor)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -156,7 +157,7 @@ async function takeAction(message, violations, client, db) {
                     { name: 'Member', value: `${message.author} \`${uid}\``, inline: false },
                     { name: 'Rule', value: violations[0].type, inline: true },
                     { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
-                    { name: 'Content', value: message.content.substring(0, 500) || '(attachment)', inline: false }
+                    { name: 'Violation', value: violations[0].reason, inline: true }
                 )
                 .setFooter({ text: `${bar}  Strike ${wc} of 4  •  Next: ${next}` })
                 .setTimestamp();
@@ -164,6 +165,28 @@ async function takeAction(message, violations, client, db) {
             await logCh.send({ embeds: [log] }).catch(() => {});
         }
     }
+
+    // ================= PRIVATE ADMIN DM — Full details with message content =================
+    try {
+        const owner = await message.guild.fetchOwner().catch(() => null);
+        if (owner && !owner.user.bot) {
+            const privateEmbed = new EmbedBuilder()
+                .setColor(actionColor)
+                .setAuthor({ name: 'AutoMod — Private Report', iconURL: client.user.displayAvatarURL() })
+                .setTitle(actionText)
+                .setDescription(`**Server:** ${message.guild.name}\n**Privacy:** Only you see this (server owner)`)
+                .addFields(
+                    { name: 'Member', value: `${message.author} \`${uid}\``, inline: false },
+                    { name: 'Rule', value: violations[0].type, inline: true },
+                    { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
+                    { name: 'Strike', value: `${wc}/4`, inline: true },
+                    { name: 'Message Content', value: `\`\`\`${message.content.substring(0, 1800) || '(attachment)'}\`\`\``, inline: false }
+                )
+                .setFooter({ text: 'ARCHON CG-223 • Confidential' })
+                .setTimestamp();
+            await owner.send({ embeds: [privateEmbed] }).catch(() => {});
+        }
+    } catch (e) {}
 
     // DB log
     try { db.prepare(`INSERT INTO moderation_logs (guild_id,user_id,moderator_id,action,reason,timestamp) VALUES (?,?,?,?,?,?)`).run(gid, uid, client.user.id, action, `AutoMod: ${violations[0].reason}`, Date.now()); } catch (e) {}
