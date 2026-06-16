@@ -127,7 +127,7 @@ const LANG_NAMES = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BOT_KNOWLEDGE = `
-You are Lydia, the onboard AI expert monitor for ARCHITECT CG-223 (also called ARCHON CG-223), a Discord bot engineered by Moussa Fofana from Bamako, Mali \u{1F1F2}\u{1F1F1}.
+You are Lydia, the onboard AI expert monitor for ARCHON CG-223 (also called ARCHON CG-223), a Discord bot engineered by Moussa Fofana from Bamako, Mali \u{1F1F2}\u{1F1F1}.
 
 CORE ARCHITECTURE:
 - "Per-Server Partitioning": All user data (XP, credits, levels, stats, inventory) is strictly isolated per server via composite key (user ID + guild ID). No cross-server data leakage.
@@ -236,7 +236,7 @@ const HALLUCINATION_PATTERNS = [
 const HALLUCINATION_FALLBACKS = [
   "I'm not certain about that. I can help you with the features I have access to \u2014 try asking about economy, leveling, moderation, or use \`.help\` to see available commands.",
   "I don't have information about that specifically. Would you like me to search the web, or can I help with something related to the bot's features?",
-  "That's outside my current knowledge base. I'm focused on helping with ARCHITECT CG-223's systems. What would you like to know about?",
+  "That's outside my current knowledge base. I'm focused on helping with ARCHON CG-223's systems. What would you like to know about?",
 ];
 
 function validateResponse(response) {
@@ -627,8 +627,8 @@ function formatDiscordResponse(text) {
   // Normalize line endings
   formatted = formatted.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // Convert markdown headers (##, ###) to Discord bold with spacing
-  formatted = formatted.replace(/^#{2,3}\s+(.+)$/gm, '\n**$1**\n');
+  // Convert markdown headers (##, ###) to Discord bold with visual separator
+  formatted = formatted.replace(/^#{2,3}\s+(.+)$/gm, '\n\n**$1**\n');
 
   // Ensure numbered lists have spacing: "1. Item" -> proper format
   formatted = formatted.replace(/^(\d+)\.\s*\*\*(.+?)\*\*/gm, '$1. **$2**');
@@ -639,15 +639,21 @@ function formatDiscordResponse(text) {
   // Add blank line before bullet lists if missing
   formatted = formatted.replace(/([^\n])(\n[\-\*\u2022\u25CB])\s/g, '$1\n$2 ');
 
+  // Add visual separator between major bold-header sections
+  formatted = formatted.replace(/(\n\n\*\*[A-Z][^*]+\*\*\n)/g, '\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n$1');
+
   // Ensure paragraphs are separated by blank lines
   formatted = formatted.replace(/\n{3,}/g, '\n\n');
 
   // Split very long paragraphs (no newlines for 8+ lines)
   formatted = splitLongParagraphs(formatted);
 
+  // Add spacing between distinct ideas (detect short bold phrases as mini-headers)
+  formatted = formatted.replace(/(\n[A-Z][^\n]{5,50}?\n)(?=\n[A-Z])/g, '$1\n');
+
   // Clean up excessive whitespace
   formatted = formatted.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
-  formatted = formatted.replace(/\n{4,}/g, '\n\n\n');
+  formatted = formatted.replace(/\n{5,}/g, '\n\n\n\n');
 
   return formatted.trim();
 }
@@ -790,7 +796,7 @@ function buildEmbed(reply, message, options = {}) {
       })
       .setDescription(`\`\`\`ansi\n\u001b[1;33m[ ${theme.name.toUpperCase()} ] \u001b[0m\u001b[33mProcessing neural request...\u001b[0m\n\`\`\``)
       .setFooter({
-        text: `ARCHITECT CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
+        text: `ARCHON CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
         iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
       })
       .setTimestamp();
@@ -827,7 +833,7 @@ function buildEmbed(reply, message, options = {}) {
       const footerParts = [];
       if (model) footerParts.push(`Model: ${model.name}`);
       if (latency) footerParts.push(`${latency}ms`);
-      footerParts.push(`ARCHITECT CG-223`);
+      footerParts.push(`ARCHON CG-223`);
       if (lang === 'fr') footerParts.push('FR');
       else footerParts.push('EN');
 
@@ -896,13 +902,15 @@ Your responses are displayed in Discord embeds. Follow these formatting rules ST
 1. Use SHORT paragraphs (2-4 sentences max). Never write walls of text.
 2. Separate EVERY section with a blank line (double newline).
 3. Use **bold headers** for sections: "**Key Features:**" not "Key Features:"
-4. Use numbered lists with bold items: "1. **Origin** \u2014 description here"
-5. Use bullet points (\u2022 or -) for unordered lists.
-6. For code: use \`inline code\` or \`\`\`language\ncode block\n\`\`\`
-7. NEVER put everything in one dense paragraph. Break it up.
-8. Use Discord markdown: *italic*, **bold**, \`code\`, ~~strikethrough~~.
-9. End with a brief friendly closing if appropriate.
-10. Keep total response under 1200 tokens (concise but complete).
+4. Add visual separator lines between major sections: the system will add them automatically when you use **bold headers**.
+5. Use numbered lists with bold items: "1. **Origin** \u2014 description here"
+6. Use bullet points (\u2022 or -) for unordered lists.
+7. For code: use \`inline code\` or \`\`\`language\ncode block\n\`\`\`
+8. NEVER put everything in one dense paragraph. Break it up with blank lines.
+9. Use Discord markdown: *italic*, **bold**, \`code\`, ~~strikethrough~~.
+10. Between major topics, add a **bold header** — the system will render a visual separator line.
+11. End with a brief friendly closing if appropriate.
+12. Keep total response under 1200 tokens (concise but complete).
 `;
 
   return `${BOT_KNOWLEDGE}
@@ -911,7 +919,7 @@ ${languageInstruction}
 
 ${formattingInstruction}
 
-You are ${botName}, the onboard AI expert monitor for ARCHITECT CG-223.
+You are ${botName}, the onboard AI expert monitor for ARCHON CG-223.
 
 OPERATIONAL CONTEXT:
 - Server: ${guild.name}
@@ -1542,4 +1550,4 @@ module.exports = {
   scrubSecrets,
 };
 
-console.log(`${C.green}[LYDIA]${C.reset} AI Engine v2.6 loaded \u2014 Beautiful formatting | Anti-hallucination | ${Object.keys(LANG_NAMES).length} languages | Parallel models | Response cache`);
+console.log(`${C.green}[LYDIA]${C.reset} AI Engine v2.6 loaded — Beautiful formatting | Anti-hallucination | ${Object.keys(LANG_NAMES).length} languages | Parallel models | Response cache`);
