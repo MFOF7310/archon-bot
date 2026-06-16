@@ -1,939 +1,442 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
 
-// ================= DYNAMIC VERSIONING =================
-function getVersion() {
-    try {
-        const versionPath = path.join(__dirname, '..', 'version.txt');
-        if (fs.existsSync(versionPath)) {
-            return fs.readFileSync(versionPath, 'utf8').trim();
-        }
-    } catch (e) {}
-    return '2.1.0';
-}
-const VERSION = getVersion();
+// ================= THRESHOLDS =================
+const SPAM_THRESHOLD = 3;           // messages in window
+const SPAM_WINDOW = 5000;           // 5 seconds
+const CAPS_RATIO = 0.7;             // 70% uppercase
+const EMOJI_RATIO = 0.5;            // 50% emoji
+const MENTION_LIMIT = 4;            // @mentions
+const REPEAT_WINDOW = 15000;        // cross-channel repeat window
+const MAX_HISTORY = 100;            // per-user message cache
 
-// ================= CONFIGURATION =================
-const SPAM_THRESHOLD = 5;
-const SPAM_WINDOW = 5000;
-const CAPS_RATIO = 0.7;
-const EMOJI_RATIO = 0.5;
-const MENTION_LIMIT = 5;
+// ================= STATE =================
+const history = new Map();          // user:guild -> { messages: [], warns: 0 }
 
-// ================= CROSS-CHANNEL SPAM CONFIG =================
-const CROSS_CHANNEL_MSG_THRESHOLD = 4;
-const CROSS_CHANNEL_DUPE_THRESHOLD = 2;
-const CROSS_CHANNEL_WINDOW = 15000;
-const RAPID_FIRE_WINDOW = 5000;
-const ATTACHMENT_HASH_WINDOW = 15000;
-const SIMILARITY_THRESHOLD = 0.85;
-const MAX_HISTORY_PER_USER = 200;
-
-// ================= MALICIOUS LINK PATTERNS =================
-const MALICIOUS_PATTERNS = [
-    /discordg1ft/i, /free-nitro/i, /steamm-rewards/i, /steanm/i, /steamcommunity\.(?!com)/i,
-    /grabify\./i, /iplogger\./i, /bit\.ly\s*[-_]/i, /short\.link/i,
-    /free\s*tokens?/i, /giveaway\s*enter/i, /join\s*for\s*reward/i,
-    /dm\s*me\s*for/i, /dm\s*for\s*(nitro|reward|prize|free)/i,
-    /selfbot/i, /self-bot/i, /autotyper/i, /massdm/i,
-    /\.(ru|tk|ml|ga|cf)\//i,
-    /discord\.(?!com|gg|app)/i,
+// ================= MALICIOUS PATTERNS =================
+const MALICIOUS = [
+    /discordg1ft/i, /free-nitro/i, /steanm/i, /grabify\./i, /iplogger\./i,
+    /free\s*tokens?/i, /dm\s*(me|for)\s*(nitro|reward)/i, /self[-\s]?bot/i, /massdm/i,
+    /\.(ru|tk|ml|ga|cf)\//i, /discord\.(?!com|gg)/i,
     /(?:https?:\/\/)?(?:www\.)?discord(?:app)?\.(?:com|gg)\/gift\/[a-zA-Z0-9]{16,}/i,
     /t\.me\/\+?[a-zA-Z0-9_-]+/i,
-    /telegram\.me\/\+?[a-zA-Z0-9_-]+/i,
-    /(?:https?:\/\/)?(?:www\.)?t\.me/i,
 ];
+const INVITE_RE = /discord\.gg\/[a-zA-Z0-9_-]+/gi;
 
-const INVITE_PATTERNS = [
-    /discord\.gg\/[a-zA-Z0-9_-]+/i,
-    /discord\.com\/invite\/[a-zA-Z0-9_-]+/i,
-    /discordapp\.com\/invite\/[a-zA-Z0-9_-]+/i,
-];
-
-// ================= PER-SERVER USER MESSAGE TRACKING =================
-const userMessageHistory = new Map();
-const userWarnings = new Map();
-const MAX_TRACKED_USERS = 5000;
-
-function getTrackKey(userId, guildId) { return `${userId}:${guildId}`; }
+// ================= HELPERS =================
+function key(uid, gid) { return `${uid}:${gid}`; }
 
 setInterval(() => {
-    const now = Date.now();
-    const cutoff = now - (10 * 60 * 1000);
-    let cleaned = 0;
-    for (const [key, entry] of userMessageHistory) {
-        if (entry.lastActivity && entry.lastActivity < cutoff) {
-            userMessageHistory.delete(key);
-            userWarnings.delete(key);
-            cleaned++;
-        }
-    }
-    if (cleaned > 0) console.log(`[AUTOMOD] Cleaned ${cleaned} stale tracking entries`);
-}, 10 * 60 * 1000);
+    const cutoff = Date.now() - 600000;
+    for (const [k, v] of history) { if (v.last < cutoff) history.delete(k); }
+}, 600000);
 
-// ================= UNIFIED SETTINGS RESOLVER =================
-// getServerSettings() maps DB columns to camelCase. This helper checks
-// the exact property + common fallback names for robustness.
-function resolveSetting(settings, ...keys) {
-    for (const key of keys) {
-        if (settings[key] !== undefined && settings[key] !== null && settings[key] !== '') {
-            return settings[key];
-        }
-    }
-    return null;
-}
+function normalize(s) { return s.toLowerCase().replace(/\s+/g, ' ').trim(); }
 
-// ================= UNIFIED SETTINGS RESOLVER =================
-// serverSettings.js stores: log, modlog, muterole (lowercase)
-// Some code expects camelCase. This helper checks all variants.
-function resolveSetting(settings, ...keys) {
-    for (const key of keys) {
-        if (settings[key] !== undefined && settings[key] !== null && settings[key] !== '') {
-            return settings[key];
-        }
-    }
-    return null;
-}
-
-// ================= TEXT SIMILARITY =================
-function levenshteinDistance(a, b) {
-    if (a === b) return 0;
-    if (a.length === 0) return b.length;
-    if (b.length === 0) return a.length;
-    let v0 = Array(b.length + 1).fill(0).map((_, i) => i);
-    let v1 = Array(b.length + 1).fill(0);
-    for (let i = 0; i < a.length; i++) {
-        v1[0] = i + 1;
-        for (let j = 0; j < b.length; j++) {
-            v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + (a[i] === b[j] ? 0 : 1));
-        }
-        [v0, v1] = [v1, v0];
-    }
-    return v0[b.length];
-}
-
-function similarityScore(a, b) {
+function similarity(a, b) {
     if (!a || !b) return 0;
-    const longer = a.length > b.length ? a : b;
-    const shorter = a.length > b.length ? b : a;
-    if (longer.length === 0) return 1;
-    return (longer.length - levenshteinDistance(longer, shorter)) / longer.length;
+    const m = [], al = a.length, bl = b.length;
+    for (let i = 0; i <= al; i++) m[i] = [i];
+    for (let j = 0; j <= bl; j++) m[0][j] = j;
+    for (let i = 1; i <= al; i++) for (let j = 1; j <= bl; j++) m[i][j] = Math.min(m[i-1][j]+1, m[i][j-1]+1, m[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    const d = m[al][bl], l = Math.max(al, bl);
+    return l ? (l - d) / l : 1;
 }
 
-function normalizeContent(content) {
-    return content.toLowerCase().replace(/\s+/g, ' ').replace(/[<@!#&>]/g, '').trim();
-}
-
-// ================= ATTACHMENT FINGERPRINTING =================
-function getAttachmentFingerprint(attachment) {
-    const raw = `${attachment.name}:${attachment.size}:${attachment.contentType || 'unknown'}`;
-    return crypto.createHash('md5').update(raw).digest('hex').substring(0, 16);
-}
-
-function hasMaliciousLinks(content) {
-    return MALICIOUS_PATTERNS.some(p => p.test(content));
-}
-
-function hasUnauthorizedInvites(content, guildId) {
-    const matches = [];
-    for (const pattern of INVITE_PATTERNS) {
-        const found = content.match(pattern);
-        if (found) matches.push(found[0]);
-    }
-    return matches.length > 0 ? matches : null;
-}
-
-// ================= TOXICITY DETECTION =================
-async function checkToxicity(content) {
-    if (!process.env.OPENROUTER_API_KEY) return null;
-    if (content.length < 10) return null;
+async function checkToxicity(text) {
+    if (!process.env.OPENROUTER_API_KEY || text.length < 8) return null;
     try {
-        const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-            model: "meta-llama/llama-3.1-8b-instruct:free",
-            messages: [{
-                role: "system",
-                content: `Analyze this message for toxicity. Return ONLY a JSON object: {"toxic": true/false, "reason": "short reason", "type": "insult|hate|harassment|spam|none"}`
-            }, { role: "user", content: content }],
-            temperature: 0, max_tokens: 100
-        }, { headers: { "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" }, timeout: 8000 });
-        const result = response.data?.choices?.[0]?.message?.content;
-        if (result) {
-            try { return JSON.parse(result.replace(/```json|```/g, '').trim()); }
-            catch { return result.includes('true') ? { toxic: true, reason: 'AI detected', type: 'spam' } : null; }
-        }
-    } catch (e) { /* AI detection skipped — silent */ }
+        const r = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+            model: 'meta-llama/llama-3.1-8b-instruct:free',
+            messages: [{ role: 'system', content: 'Analyze for toxicity. Return ONLY: {"toxic":true/false,"reason":"brief","type":"insult|hate|harassment|spam|none"}' }, { role: 'user', content: text }],
+            temperature: 0, max_tokens: 60
+        }, { headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 5000 });
+        const c = r.data?.choices?.[0]?.message?.content;
+        if (c) { try { return JSON.parse(c.replace(/```json|```/g, '').trim()); } catch { return c.includes('true') ? { toxic: true, type: 'spam' } : null; } }
+    } catch (e) { /* silent */ }
     return null;
 }
 
-// ================= ESCALATION HELPER =================
-function getEscalationBar(warnCount) {
-    const filled = Math.min(warnCount, 5);
-    const empty = 5 - filled;
-    const bar = '🟥'.repeat(filled) + '⬛'.repeat(empty);
-    const nextActions = ['1-Hour Mute', '2-Day Timeout', '7-Day Timeout', 'Permanent Ban', 'MAXIMUM'];
-    const next = filled >= 5 ? 'MAXIMUM' : nextActions[filled];
-    return { bar, next };
-}
+// ================= ACTION ENGINE =================
+async function takeAction(message, violations, client, db) {
+    const uid = message.author.id, gid = message.guild.id;
+    const k = key(uid, gid);
+    const entry = history.get(k) || { messages: [], warns: 0, last: Date.now() };
+    entry.warns++;
+    history.set(k, entry);
+    const wc = entry.warns;
 
-function getActionEmoji(action) {
-    return { warn: '⚠️', mute: '⛓️', timeout: '⏱️', ban: '🔨' }[action] || '⚠️';
-}
+    // Determine action
+    const hasMalicious = violations.some(v => v.type.includes('malicious') || v.type.includes('phishing'));
+    let action = 'timeout', duration = 3600000; // default: 1h timeout
+    if (wc === 1) { action = 'timeout'; duration = 3600000; }        // 1h
+    else if (wc === 2) { action = 'timeout'; duration = 86400000; }   // 1d
+    else if (wc === 3) { action = 'timeout'; duration = 604800000; }  // 7d
+    else { action = 'ban'; duration = 0; }
+    if (hasMalicious && wc >= 2) { action = 'ban'; duration = 0; }
 
-function getActionTitle(action) {
-    return { warn: 'WARNING ISSUED', mute: 'MEMBER MUTED', timeout: 'TIMEOUT ENFORCED', ban: 'MEMBER BANNED' }[action] || 'VIOLATION DETECTED';
-}
+    // Delete message
+    await message.delete().catch(() => {});
 
-function formatTimestamp(date) {
-    const d = new Date(date);
-    const pad = n => n.toString().padStart(2, '0');
-    return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} • ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`;
-}
-
-// ================= GATEWAY AUTO-MOD RULES =================
-async function syncGatewayRule(guild, action = 'create', settings = {}) {
-    try {
-        if (!guild.members.me.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-            console.log(`[GATEWAY] Missing ManageGuild permission in ${guild.name}`);
-            return false;
-        }
-
-        const PREFIX = 'ARCHITECT CG-223 •';
-
-        let exemptRoles = [];
-        if (settings?.autoModWhitelist) {
-            exemptRoles = settings.autoModWhitelist.split(',').filter(Boolean);
-        }
-
-        const RULE_BLUEPRINTS = [
-            {
-                name: 'ARCHITECT CG-223 • Core Preset Shield',
-                eventType: 1, triggerType: 4,
-                triggerMetadata: { presets: [1, 2, 3], allowList: [] },
-                actions: [{ type: 1, metadata: { customMessage: '🛡️ Blocked by ARCHITECT: Content violation detected.' } }],
-                enabled: true, exemptRoles, exemptChannels: [],
-                reason: 'ARCHITECT multi-rule shield deployment — Preset Layer'
-            },
-            {
-                name: 'ARCHITECT CG-223 • Malicious Links',
-                eventType: 1, triggerType: 1,
-                triggerMetadata: { keywordFilter: ['discordg1ft', 'free-nitro', 'steamm-rewards'], allowList: [] },
-                actions: [{ type: 1, metadata: { customMessage: '🛡️ Blocked by ARCHITECT: Phishing/Scam link signature detected.' } }],
-                enabled: true, exemptRoles, exemptChannels: [],
-                reason: 'ARCHITECT multi-rule shield deployment — Link Layer'
-            },
-            {
-                name: 'ARCHITECT CG-223 • Link Spam Prevention',
-                eventType: 1, triggerType: 1,
-                triggerMetadata: { keywordFilter: ['discord.gg/', 'discord.com/invite/', 'discordapp.com/invite/'], allowList: [] },
-                actions: [{ type: 1, metadata: { customMessage: '🛡️ Blocked by ARCHITECT: Unsolicited invite link detected.' } }],
-                enabled: true, exemptRoles, exemptChannels: [],
-                reason: 'ARCHITECT multi-rule shield deployment — Invite Layer'
-            },
-            {
-                name: 'ARCHITECT CG-223 • Self-Bot Detection',
-                eventType: 1, triggerType: 1,
-                triggerMetadata: { keywordFilter: ['selfbot', 'self-bot', 'autotyper', 'massdm'], allowList: [] },
-                actions: [{ type: 1, metadata: { customMessage: '🛡️ Blocked by ARCHITECT: Automation tool signature detected.' } }],
-                enabled: true, exemptRoles, exemptChannels: [],
-                reason: 'ARCHITECT multi-rule shield deployment — Bot Detection Layer'
-            },
-            {
-                name: 'ARCHITECT CG-223 • Rogue Domain Block',
-                eventType: 1, triggerType: 1,
-                triggerMetadata: { keywordFilter: ['*.ru', 'grabify.*', 'iplogger.*', 'bit.ly-looks'], allowList: [] },
-                actions: [{ type: 1, metadata: { customMessage: '🛡️ Blocked by ARCHITECT: Unverified or malicious domain link.' } }],
-                enabled: true, exemptRoles, exemptChannels: [],
-                reason: 'ARCHITECT multi-rule shield deployment — Domain Security Layer'
-            },
-            {
-                name: 'ARCHITECT CG-223 • Promo Spam Shield',
-                eventType: 1, triggerType: 1,
-                triggerMetadata: { keywordFilter: ['dm me for', 'join for reward', 'free tokens', 'giveaway enter'], allowList: [] },
-                actions: [{ type: 1, metadata: { customMessage: '🛡️ Blocked by ARCHITECT: Promotional spam pattern detected.' } }],
-                enabled: true, exemptRoles, exemptChannels: [],
-                reason: 'ARCHITECT multi-rule shield deployment — Promo Protection Layer'
+    // Delete repeated messages across channels
+    const repeatV = violations.find(v => v.channels);
+    if (repeatV?.channels) {
+        for (const cid of repeatV.channels) {
+            if (cid === message.channel.id) continue;
+            const ch = message.guild.channels.cache.get(cid);
+            if (!ch) continue;
+            const matching = entry.messages.filter(m => m.channelId === cid && Date.now() - m.ts <= REPEAT_WINDOW);
+            for (const m of matching) {
+                try { const msg = await ch.messages.fetch(m.mid).catch(() => null); if (msg) await msg.delete().catch(() => {}); }
+                catch (e) {}
             }
+        }
+    }
+
+    // Execute action
+    const member = await message.guild.members.fetch(uid).catch(() => null);
+    let actionStatus = '⏳ Pending';
+    try {
+        if (action === 'timeout' && member?.moderatable) {
+            await member.timeout(duration, `AutoMod: ${violations[0].reason}`);
+            actionStatus = `⏱️ Timed out for ${duration >= 86400000 ? Math.round(duration/86400000) + 'd' : Math.round(duration/3600000) + 'h'}`;
+        } else if (action === 'ban' && member?.bannable) {
+            await member.ban({ reason: `AutoMod: ${violations[0].reason}`, deleteMessageSeconds: 86400 });
+            actionStatus = '🔨 Banned';
+        } else {
+            actionStatus = '⚠️ Warned (insufficient perms)';
+        }
+    } catch (e) { actionStatus = '❌ Failed: ' + e.message; }
+
+    // DM user
+    try {
+        const dmEmbed = new EmbedBuilder().setColor('#5865F2').setAuthor({ name: '🛡️ AutoMod', iconURL: 'https://cdn.discordapp.com/embed/avatars/0.png' })
+            .setTitle(action === 'ban' ? 'You were banned' : action === 'timeout' ? 'You were timed out' : 'Warning issued')
+            .setDescription(`Your message in **${message.guild.name}** was removed.\n\n**Reason:** ${violations[0].type}\n**Details:** ${violations[0].reason}\n**Action:** ${actionStatus}\n**Strike:** ${wc}/4`)
+            .setFooter({ text: 'ARCHON CG-223 AutoMod' }).setTimestamp();
+        await message.author.send({ embeds: [dmEmbed] }).catch(() => {});
+    } catch (e) {}
+
+    // Channel notification (10s)
+    try {
+        const notif = await message.channel.send({
+            embeds: [new EmbedBuilder().setColor(action === 'ban' ? '#ED4245' : '#F23F43').setDescription(`**${message.author.tag}** was ${action === 'ban' ? 'banned' : action === 'timeout' ? 'timed out' : 'warned'} by AutoMod\n**Reason:** ${violations[0].reason}`)]
+        }).catch(() => {});
+        if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
+    } catch (e) {}
+
+    // Log to mod channel
+    const settings = client.getServerSettings?.(gid) || {};
+    const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog || settings.log;
+    if (logId) {
+        const logCh = message.guild.channels.cache.get(logId);
+        if (logCh?.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
+            const bar = '🟥'.repeat(Math.min(wc, 4)) + '⬛'.repeat(Math.max(0, 4 - wc));
+            const next = ['1h Timeout', '1d Timeout', '7d Timeout', 'Ban'][Math.min(wc - 1, 3)] || 'MAX';
+            const embed = new EmbedBuilder().setColor('#ED4245').setAuthor({ name: '🛡️ AutoMod Action', iconURL: client.user.displayAvatarURL() })
+                .setDescription(`**Member:** ${message.author} \`${uid}\`\n**Action:** ${actionStatus}\n**Reason:** ${violations[0].type} — ${violations[0].reason}\n**Channel:** <#${message.channel.id}>\n**Strike:** ${wc}/4`)
+                .addFields({ name: 'Escalation', value: `${bar} Next: ${next}`, inline: false })
+                .setFooter({ text: `ARCHON CG-223 • Strike ${wc}/4` }).setTimestamp();
+            if (repeatV?.channels) embed.addFields({ name: 'Cross-channel', value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
+            await logCh.send({ embeds: [embed] }).catch(() => {});
+        }
+    }
+
+    // DB log
+    try { db.prepare(`INSERT INTO moderation_logs (guild_id,user_id,moderator_id,action,reason,timestamp) VALUES (?,?,?,?,?,?)`).run(gid, uid, client.user.id, action, `AutoMod: ${violations[0].reason}`, Date.now()); } catch (e) {}
+    try { db.prepare(`INSERT INTO warnings (id,guild_id,user_id,moderator_id,reason,expires_at,active) VALUES (?,?,?,?,?,?,1)`).run(`AM-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`, gid, uid, client.user.id, `AutoMod: ${violations[0].reason}`, Math.floor(Date.now()/1000)+2592000); } catch (e) {}
+
+    const cc = repeatV ? '[CROSS] ' : '';
+    console.log(`[AUTOMOD] ${cc}${action.toUpperCase()} | ${message.author.tag} | ${violations.map(v=>v.type).join(', ')} | Strike ${wc}/4`);
+}
+
+// ================= DETECTION ENGINE =================
+async function scanMessage(message, client, db) {
+    if (!message.guild || message.author.bot || message.webhookId) return false;
+    const ss = client.getServerSettings?.(message.guild.id);
+    if (!ss?.autoModEnabled) return false;
+    const member = message.member;
+    if (member?.permissions.has(PermissionsBitField.Flags.ManageMessages)) return false;
+    if (ss.autoModWhitelist) {
+        const wl = ss.autoModWhitelist.split(',');
+        if (wl.some(rid => member?.roles.cache.has(rid))) return false;
+    }
+
+    const uid = message.author.id, gid = message.guild.id;
+    const k = key(uid, gid), now = Date.now();
+    if (!history.has(k)) history.set(k, { messages: [], warns: 0, last: now });
+    const entry = history.get(k);
+    entry.last = now;
+
+    const record = { ts: now, content: message.content, channelId: message.channel.id, mid: message.id, hasLinks: /https?:\/\//i.test(message.content), norm: normalize(message.content) };
+    entry.messages.push(record);
+    const cutoff = now - 120000;
+    while (entry.messages.length && entry.messages[0].ts < cutoff) entry.messages.shift();
+    if (entry.messages.length > MAX_HISTORY) entry.messages = entry.messages.slice(-80);
+
+    const h = entry.messages;
+    const recent = h.filter(m => now - m.ts <= SPAM_WINDOW);
+    const violations = [];
+    const seen = new Set();
+
+    // 1. Message spam (same channel)
+    if (recent.filter(m => m.channelId === message.channel.id).length >= SPAM_THRESHOLD && !seen.has('spam')) {
+        violations.push({ type: 'message spam', reason: `${SPAM_THRESHOLD}+ messages in ${SPAM_WINDOW/1000}s`, source: 'spam' });
+        seen.add('spam');
+    }
+
+    // 2. Caps flood
+    if (message.content.length > 15) {
+        const letters = (message.content.match(/[A-Za-z]/g) || []).length;
+        const caps = (message.content.match(/[A-Z]/g) || []).length;
+        if (letters > 0 && caps / letters > CAPS_RATIO && !seen.has('caps')) {
+            violations.push({ type: 'caps flood', reason: `${Math.round(caps/letters*100)}% uppercase`, source: 'caps' });
+            seen.add('caps');
+        }
+    }
+
+    // 3. Emoji flood
+    if (message.content.length > 20) {
+        const emojis = (message.content.match(/[\p{Emoji}]/gu) || []).length;
+        if (emojis / message.content.length > EMOJI_RATIO && !seen.has('emoji')) {
+            violations.push({ type: 'emoji flood', reason: `${Math.round(emojis/message.content.length*100)}% emoji`, source: 'emoji' });
+            seen.add('emoji');
+        }
+    }
+
+    // 4. Mass mention
+    const mentions = message.mentions.users.size + message.mentions.roles.size + (message.content.match(/@here|@everyone/g) || []).length;
+    if (mentions > MENTION_LIMIT && !seen.has('mention')) {
+        violations.push({ type: 'mass mention', reason: `${mentions} mentions`, source: 'mention' });
+        seen.add('mention');
+    }
+
+    // 5. @here/@everyone + link
+    if ((message.content.includes('@here') || message.content.includes('@everyone')) && record.hasLinks && !seen.has('promo')) {
+        violations.push({ type: 'promotional spam', reason: '@here/@everyone + external link', source: 'promo', crossChannel: true });
+        seen.add('promo');
+    }
+
+    // 6. Malicious links
+    if (record.hasLinks) {
+        const mal = MALICIOUS.some(p => p.test(message.content));
+        const inv = message.content.match(INVITE_RE);
+        if (mal && !seen.has('malicious')) { violations.push({ type: 'malicious link', reason: 'Phishing/scam URL detected', source: 'malicious' }); seen.add('malicious'); }
+        else if (inv?.length && !seen.has('invite')) { violations.push({ type: 'unauthorized invite', reason: 'External Discord invite', source: 'invite' }); seen.add('invite'); }
+    }
+
+    // 7. Cross-channel duplicate
+    const crossRecent = h.filter(m => now - m.ts <= REPEAT_WINDOW);
+    if (!seen.has('repeat')) {
+        const contentMap = new Map();
+        for (const m of crossRecent) { if (m.norm.length < 5) continue; if (!contentMap.has(m.norm)) contentMap.set(m.norm, new Set()); contentMap.get(m.norm).add(m.channelId); }
+        for (const [norm, channels] of contentMap) {
+            if (channels.size >= 2) {
+                const hasLinks = /https?:\/\//i.test(norm);
+                const thresh = hasLinks ? 2 : 3;
+                if (channels.size >= thresh) { violations.push({ type: 'cross-channel spam', reason: `Same message in ${channels.size} channels${hasLinks ? ' (contains links)' : ''}`, source: 'repeat', crossChannel: true, channels: [...channels] }); seen.add('repeat'); break; }
+            }
+        }
+    }
+
+    // 8. Rapid fire across channels
+    if (!seen.has('rapid')) {
+        const rapid = h.filter(m => now - m.ts <= SPAM_WINDOW);
+        if (rapid.length >= 3) { const uc = new Set(rapid.map(m => m.channelId)); if (uc.size >= 2) { violations.push({ type: 'rapid fire', reason: `${rapid.length} messages across ${uc.size} channels in ${SPAM_WINDOW/1000}s`, source: 'rapid', crossChannel: true, channels: [...uc] }); seen.add('rapid'); } }
+    }
+
+    // 9. AI toxicity
+    if (violations.length === 0 && message.content.length > 10) {
+        const ai = await checkToxicity(message.content);
+        if (ai?.toxic) { violations.push({ type: ai.type || 'toxic content', reason: ai.reason || 'AI detected', source: 'ai' }); }
+    }
+
+    if (violations.length > 0) {
+        await takeAction(message, violations, client, db);
+        return true;
+    }
+    return false;
+}
+
+// ================= GATEWAY RULES =================
+async function syncRules(guild, action, settings) {
+    const PREFIX = 'ARCHON CG-223';
+    try {
+        if (!guild.members.me.permissions.has(PermissionsBitField.Flags.ManageGuild)) return false;
+        let existing; try { existing = await guild.autoModerationRules.fetch(); } catch { existing = null; }
+        const exemptRoles = settings?.autoModWhitelist ? settings.autoModWhitelist.split(',').filter(Boolean) : [];
+
+        const rules = [
+            { name: `${PREFIX} • Core Shield`, eventType: 1, triggerType: 4, triggerMetadata: { presets: [1, 2, 3] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Content violation detected.' } }], enabled: true, exemptRoles, reason: 'AutoMod Core Shield' },
+            { name: `${PREFIX} • Malicious Links`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['discordg1ft', 'free-nitro', 'steamm-rewards', 'grabify.', 'iplogger.'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Phishing link blocked.' } }], enabled: true, exemptRoles, reason: 'AutoMod Link Shield' },
+            { name: `${PREFIX} • Invite Spam`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['discord.gg/', 'discord.com/invite/'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Unauthorized invite blocked.' } }], enabled: true, exemptRoles, reason: 'AutoMod Invite Shield' },
+            { name: `${PREFIX} • Self-Bot`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['selfbot', 'self-bot', 'autotyper', 'massdm'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Automation tool detected.' } }], enabled: true, exemptRoles, reason: 'AutoMod Bot Shield' },
         ];
 
         if (action === 'create') {
-            let existingRules;
-            try { existingRules = await guild.autoModerationRules.fetch(); }
-            catch (fetchError) {
-                console.log(`[GATEWAY] Rule fetch failed in ${guild.name}: ${fetchError.message}`);
-                existingRules = null;
+            let created = 0, skipped = 0;
+            for (const r of rules) {
+                if (existing?.some?.(ex => ex.name === r.name)) { skipped++; continue; }
+                try { await guild.autoModerationRules.create(r); created++; } catch (e) { console.log(`[AUTOMOD GATEWAY] ${r.name}: ${e.message}`); }
             }
-
-            let deployedCount = 0, skippedCount = 0, failedCount = 0;
-
-            const creationPromises = RULE_BLUEPRINTS.map(async (blueprint) => {
-                const alreadyExists = existingRules?.some?.(r => r.name === blueprint.name) ?? false;
-                if (alreadyExists) return 'skipped';
-                try {
-                    await guild.autoModerationRules.create(blueprint);
-                    return 'created';
-                } catch (ruleError) {
-                    console.log(`[GATEWAY] ❌ Failed: "${blueprint.name}" in ${guild.name}: ${ruleError.message}`);
-                    return 'failed';
-                }
-            });
-
-            const results = await Promise.all(creationPromises);
-            deployedCount = results.filter(r => r === 'created').length;
-            skippedCount = results.filter(r => r === 'skipped').length;
-            failedCount = results.filter(r => r === 'failed').length;
-
-            console.log(`[GATEWAY] ${guild.name} deployment complete | ✅ ${deployedCount} created | ⏭️ ${skippedCount} skipped | ❌ ${failedCount} failed`);
-            return deployedCount > 0 || skippedCount > 0;
-        }
-
-        else if (action === 'delete') {
-            let existingRules;
-            try { existingRules = await guild.autoModerationRules.fetch(); }
-            catch (fetchError) {
-                console.log(`[GATEWAY] Rule fetch failed in ${guild.name}: ${fetchError.message}`);
-                return false;
-            }
-
-            if (!existingRules || existingRules.size === 0) {
-                console.log(`[GATEWAY] No rules to delete in ${guild.name}`);
-                return true;
-            }
-
-            let deletedCount = 0, failedCount = 0;
-            const targetRules = [...existingRules.values()].filter(r => r.name.startsWith(PREFIX));
-
-            if (targetRules.length === 0) {
-                console.log(`[GATEWAY] No ARCHITECT rules found to delete in ${guild.name}`);
-                return true;
-            }
-
-            for (const rule of targetRules) {
-                try { await rule.delete(`ARCHITECT auto-mod deactivated`); deletedCount++; }
-                catch (ruleError) { failedCount++; }
-            }
-
-            console.log(`[GATEWAY] ${guild.name} cleanup complete | 🗑️ ${deletedCount} deleted | ❌ ${failedCount} failed`);
+            console.log(`[AUTOMOD GATEWAY] ${guild.name}: ${created} created, ${skipped} skipped`);
+            return created > 0 || skipped > 0;
+        } else if (action === 'delete') {
+            const targets = [...(existing?.values() || [])].filter(r => r.name.startsWith(PREFIX));
+            for (const r of targets) { try { await r.delete('AutoMod deactivated'); } catch {} }
             return true;
         }
-    } catch (error) {
-        console.log(`[GATEWAY] Rule sync failed in ${guild.name}: ${error.message}`);
-        return false;
-    }
+    } catch (e) { console.log(`[AUTOMOD GATEWAY] ${e.message}`); return false; }
 }
 
+// ================= RESOLVER =================
+function resolveSetting(s, ...keys) { for (const k of keys) { if (s?.[k] != null && s[k] !== '') return s[k]; } return null; }
+
+// ================= MODULE =================
 module.exports = {
-    name: 'automod',
-    category: 'MODERATION',
-    aliases: ['am', 'modai', 'autofilter'],
-    description: '🛡️ AI-Powered Auto-Moderation System',
+    name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
+    description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, and escalation.',
     usage: '.automod [status|enable|disable|sensitivity|whitelist|log]',
     cooldown: 3000,
 
-    data: new SlashCommandBuilder()
-        .setName('automod')
-        .setDescription('🛡️ Configure AI-powered auto-moderation')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
-        .setDescriptionLocalizations({ fr: '🛡️ Configurer la modération automatique IA' })
-        .addSubcommand(sub => sub.setName('status').setDescription('📊 View auto-mod status and settings').setDescriptionLocalizations({ fr: '📊 Voir le statut et les paramètres' }))
-        .addSubcommand(sub => sub.setName('enable').setDescription('✅ Enable auto-mod').setDescriptionLocalizations({ fr: '✅ Activer l\'auto-mod' }))
-        .addSubcommand(sub => sub.setName('disable').setDescription('❌ Disable auto-mod').setDescriptionLocalizations({ fr: '❌ Désactiver l\'auto-mod' }))
-        .addSubcommand(sub => sub.setName('sensitivity').setDescription('🎯 Set toxicity sensitivity').setDescriptionLocalizations({ fr: '🎯 Définir la sensibilité à la toxicité' })
-            .addStringOption(opt => opt.setName('level').setDescription('Sensitivity level').setDescriptionLocalizations({ fr: 'Niveau de sensibilité' }).setRequired(true)
-                .addChoices({ name: '🟢 Low (fewer flags)', value: 'low' }, { name: '🟡 Medium (balanced)', value: 'medium' }, { name: '🔴 High (strict)', value: 'high' })))
-        .addSubcommand(sub => sub.setName('whitelist').setDescription('👑 Add/remove whitelisted role').setDescriptionLocalizations({ fr: '👑 Ajouter/supprimer un rôle whitelisté' })
-            .addRoleOption(opt => opt.setName('role').setDescription('Role to whitelist (skip to clear)').setDescriptionLocalizations({ fr: 'Rôle à whitelister (ignorer pour effacer)' }).setRequired(false)))
-        .addSubcommand(sub => sub.setName('log').setDescription('📋 Set auto-mod log channel').setDescriptionLocalizations({ fr: '📋 Définir le salon de logs auto-mod' })
-            .addChannelOption(opt => opt.setName('channel').setDescription('Channel for mod logs').setDescriptionLocalizations({ fr: 'Salon pour les logs de modération' }).setRequired(true))),
+    data: new SlashCommandBuilder().setName('automod').setDescription('🛡️ Configure AutoMod').
+        setDefaultMemberPermissions(Number(PermissionsBitField.Flags.Administrator)).
+        addSubcommand(s => s.setName('status').setDescription('View AutoMod status')).
+        addSubcommand(s => s.setName('enable').setDescription('Enable AutoMod')).
+        addSubcommand(s => s.setName('disable').setDescription('Disable AutoMod')).
+        addSubcommand(s => s.setName('sensitivity').setDescription('Set sensitivity').addStringOption(o => o.setName('level').setDescription('Level').setRequired(true).addChoices({name:'🟢 Low',value:'low'},{name:'🟡 Medium',value:'medium'},{name:'🔴 High',value:'high'}))).
+        addSubcommand(s => s.setName('whitelist').setDescription('Whitelist role').addRoleOption(o => o.setName('role').setDescription('Role (skip to clear)').setRequired(false))).
+        addSubcommand(s => s.setName('log').setDescription('Set log channel').addChannelOption(o => o.setName('channel').setDescription('Channel').setRequired(true))),
 
-    execute: async (interaction, client) => {
-        const isOwner = interaction.user.id === interaction.guild.ownerId;
-        const isAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!isOwner && !isAdmin) {
-            return interaction.reply({
-                content: interaction.locale?.startsWith('fr') ? '🔒 Seul le propriétaire ou les administrateurs peuvent configurer l\'auto-mod.' : '🔒 Only the owner or administrators can configure auto-mod.',
-                ephemeral: true
-            });
+    // ================= SLASH =================
+    execute: async (ix, client) => {
+        const adm = ix.member.permissions.has(PermissionsBitField.Flags.Administrator);
+        if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+        const sc = ix.options.getSubcommand();
+        const ss = client.getServerSettings(ix.guild.id);
+        const lang = ix.locale?.startsWith('fr') ? 'fr' : 'en';
+
+        if (sc === 'status') {
+            const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
+            const wl = ss?.autoModWhitelist;
+            const e = new EmbedBuilder().setColor(ss?.autoModEnabled ? '#2ecc71' : '#e74c3c').setAuthor({ name: '🛡️ AutoMod Status', iconURL: client.user.displayAvatarURL() }).
+                addFields({ name: 'Status', value: ss?.autoModEnabled ? '✅ Enabled' : '❌ Disabled', inline: true }, { name: 'Sensitivity', value: (ss?.autoModSensitivity || 'medium').toUpperCase(), inline: true }, { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not set', inline: true }, { name: 'Whitelist', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false }).
+                setFooter({ text: '🦅 ARCHON CG-223 • AutoMod' }).setTimestamp();
+            return ix.reply({ embeds: [e], flags: 1 << 6 });
         }
 
-        const subcommand = interaction.options.getSubcommand();
-        const settings = client.getServerSettings(interaction.guild.id);
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-
-        // ========== STATUS ==========
-                if (subcommand === 'status') {
-            const logChannelId = resolveSetting(settings, 'autoModLogChannel', 'automodlog', 'logChannel', 'log');
-            const muteRoleId = resolveSetting(settings, 'muteRoleId', 'muterole', 'muteRole');
-            const whitelistRoles = resolveSetting(settings, 'autoModWhitelist', 'automodwhitelist', 'whitelist');
-
-            const embed = new EmbedBuilder()
-                .setColor(settings.autoModEnabled ? '#2ecc71' : '#e74c3c')
-                .setAuthor({ name: '🛡️ AUTO-MOD AI STATUS', iconURL: client.user.displayAvatarURL() })
-                .addFields(
-                    { name: '⚡ Status', value: settings.autoModEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
-                    { name: '🎯 Sensitivity', value: (settings.autoModSensitivity || 'medium').toUpperCase(), inline: true },
-                    { name: '📋 Log Channel', value: logChannelId ? `<#${logChannelId}>` : '❌ Not set', inline: true },
-                    { name: '👑 Whitelist', value: whitelistRoles ? whitelistRoles.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
-                    { name: '⏱️ Auto-Mute', value: muteRoleId ? `<@&${muteRoleId}>` : '❌ No mute role set', inline: false }
-                )
-                .setFooter({ text: `ARCHITECT CG-223 • Auto-Mod AI • v${VERSION}` })
-                .setTimestamp();
-            return interaction.reply({ embeds: [embed], flags: 1 << 6 });
-        }
-
-        // ========== ENABLE / DISABLE ==========
-        if (subcommand === 'enable' || subcommand === 'disable') {
-            const enable = subcommand === 'enable';
-            const dbSettings = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(interaction.guild.id);
-            const currentlyEnabled = dbSettings?.automod_enabled !== 0;
-            if (enable === currentlyEnabled) {
-                return interaction.reply({ content: lang === 'fr' ? `⚠️ L'auto-mod est déjà **${enable ? 'ACTIVÉ' : 'DÉSACTIVÉ'}**.` : `⚠️ Auto-mod is already **${enable ? 'ENABLED' : 'DISABLED'}**.`, flags: 1 << 6 });
+        if (sc === 'enable' || sc === 'disable') {
+            const en = sc === 'enable';
+            const cur = ss?.autoModEnabled;
+            if (en === !!cur) return ix.reply({ content: `⚠️ Already ${en ? 'enabled' : 'disabled'}.`, flags: 1 << 6 });
+            if (en) {
+                const me = ix.guild.members.me;
+                const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter(p => !me.permissions.has(PermissionsBitField.Flags[p]));
+                if (missing.length) return ix.reply({ content: `🛡️ Missing: ${missing.map(p => '`' + p + '`').join(', ')}`, flags: 1 << 6 });
             }
-            if (enable) {
-                const botMember = interaction.guild.members.me;
-                const missingPerms = [];
-                if (!botMember.permissions.has(PermissionsBitField.Flags.ManageGuild)) missingPerms.push('`Manage Guild`');
-                if (!botMember.permissions.has(PermissionsBitField.Flags.ManageMessages)) missingPerms.push('`Manage Messages`');
-                if (!botMember.permissions.has(PermissionsBitField.Flags.ModerateMembers)) missingPerms.push('`Moderate Members`');
-                if (missingPerms.length > 0) {
-                    return interaction.reply({
-                        content: lang === 'fr' ? `🛡️ **Permissions insuffisantes**\n\n${botMember.user.username} a besoin de :\n${missingPerms.map(p => `• ${p}`).join('\n')}\n\n📋 Contactez le propriétaire du serveur.` : `🛡️ **Insufficient Permissions**\n\n${botMember.user.username} needs:\n${missingPerms.map(p => `• ${p}`).join('\n')}\n\n📋 Ask the server owner.`,
-                        flags: 1 << 6
-                    });
-                }
-            }
-            client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s', 'now') WHERE guild_id = ?").run(enable ? '1' : '0', interaction.guild.id);
-            client.settings.delete(interaction.guild.id);
-            await interaction.reply({ content: lang === 'fr' ? `✅ Auto-mod **${enable ? 'ACTIVÉ' : 'DÉSACTIVÉ'}** — règles en cours de déploiement...` : `✅ Auto-mod **${enable ? 'ENABLED' : 'DISABLED'}** — deploying rules...`, flags: 1 << 6 });
-            if (enable) { await syncGatewayRule(interaction.guild, 'create', settings); }
-            else { await syncGatewayRule(interaction.guild, 'delete'); }
+            client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s','now') WHERE guild_id = ?").run(en ? '1' : '0', ix.guild.id);
+            client.settings.delete(ix.guild.id);
+            await ix.reply({ content: `✅ AutoMod ${en ? 'enabled' : 'disabled'}...`, flags: 1 << 6 });
+            await syncRules(ix.guild, en ? 'create' : 'delete', ss);
             return;
         }
 
-        // ========== SENSITIVITY ==========
-        if (subcommand === 'sensitivity') {
-            const level = interaction.options.getString('level');
-            const currentLevel = settings.autoModSensitivity || 'medium';
-            if (level === currentLevel) return interaction.reply({ content: lang === 'fr' ? `⚠️ La sensibilité est déjà réglée sur **${level.toUpperCase()}**.` : `⚠️ Sensitivity is already set to **${level.toUpperCase()}**.`, flags: 1 << 6 });
-            client.updateServerSetting(interaction.guild.id, 'automodsensitivity', level);
-            client.settings.delete(interaction.guild.id);
-            return interaction.reply({ content: lang === 'fr' ? `✅ Sensibilité changée de **${currentLevel.toUpperCase()}** → **${level.toUpperCase()}**.` : `✅ Sensitivity changed from **${currentLevel.toUpperCase()}** → **${level.toUpperCase()}**.`, flags: 1 << 6 });
+        if (sc === 'sensitivity') {
+            const lv = ix.options.getString('level');
+            client.updateServerSetting(ix.guild.id, 'automodsensitivity', lv);
+            client.settings.delete(ix.guild.id);
+            return ix.reply({ content: `✅ Sensitivity → **${lv.toUpperCase()}**`, flags: 1 << 6 });
         }
-
-        // ========== WHITELIST ==========
-        if (subcommand === 'whitelist') {
-            const role = interaction.options.getRole('role');
-            const currentWhitelist = settings.autoModWhitelist || settings.automodwhitelist || settings.whitelist;
+        if (sc === 'whitelist') {
+            const role = ix.options.getRole('role');
+            const cur = ss?.autoModWhitelist;
             if (role) {
-                if (currentWhitelist === role.id || (currentWhitelist && currentWhitelist.split(',').includes(role.id))) {
-                    return interaction.reply({ content: lang === 'fr' ? `⚠️ Le rôle **${role.name}** est déjà whitelisté.` : `⚠️ Role **${role.name}** is already whitelisted.`, flags: 1 << 6 });
-                }
-                const newWhitelist = currentWhitelist ? `${currentWhitelist},${role.id}` : role.id;
-                client.updateServerSetting(interaction.guild.id, 'automodwhitelist', newWhitelist);
-                client.settings.delete(interaction.guild.id);
-
-                if (settings.autoModEnabled) {
-                    await syncGatewayRule(interaction.guild, 'delete');
-                    const updatedSettings = { ...settings, autoModWhitelist: newWhitelist };
-                    await syncGatewayRule(interaction.guild, 'create', updatedSettings);
-                }
-
-                return interaction.reply({ content: lang === 'fr' ? `✅ Rôle whitelisté: **${role.name}**` : `✅ Whitelisted role: **${role.name}**`, flags: 1 << 6 });
+                if (cur?.split(',').includes(role.id)) return ix.reply({ content: `⚠️ Already whitelisted.`, flags: 1 << 6 });
+                const nw = cur ? `${cur},${role.id}` : role.id;
+                client.updateServerSetting(ix.guild.id, 'automodwhitelist', nw); client.settings.delete(ix.guild.id);
+                if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: nw }); }
+                return ix.reply({ content: `✅ Whitelisted **${role.name}**`, flags: 1 << 6 });
             } else {
-                if (!currentWhitelist) return interaction.reply({ content: lang === 'fr' ? '⚠️ La whitelist est déjà vide.' : '⚠️ Whitelist is already empty.', flags: 1 << 6 });
-                client.updateServerSetting(interaction.guild.id, 'automodwhitelist', null);
-                client.settings.delete(interaction.guild.id);
-
-                if (settings.autoModEnabled) {
-                    await syncGatewayRule(interaction.guild, 'delete');
-                    const updatedSettings = { ...settings, autoModWhitelist: null };
-                    await syncGatewayRule(interaction.guild, 'create', updatedSettings);
-                }
-
-                return interaction.reply({ content: lang === 'fr' ? '✅ Whitelist effacée.' : '✅ Whitelist cleared.', flags: 1 << 6 });
+                if (!cur) return ix.reply({ content: `⚠️ Empty.`, flags: 1 << 6 });
+                client.updateServerSetting(ix.guild.id, 'automodwhitelist', null); client.settings.delete(ix.guild.id);
+                if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: null }); }
+                return ix.reply({ content: `✅ Cleared.`, flags: 1 << 6 });
             }
         }
-
-        // ========== LOG ==========
-        if (subcommand === 'log') {
-            const channel = interaction.options.getChannel('channel');
-            // 🔥 FIX: Use resolveSetting to check all possible key names for current log
-            const currentLogChannel = resolveSetting(settings, 'autoModLogChannel', 'autoModLog', 'automodlog', 'modlog', 'log');
-            if (currentLogChannel === channel.id) return interaction.reply({ content: lang === 'fr' ? `⚠️ Les logs sont déjà envoyés dans ${channel}.` : `⚠️ Logs are already sent to ${channel}.`, flags: 1 << 6 });
-            client.updateServerSetting(interaction.guild.id, 'automodlog', channel.id);
-            client.settings.delete(interaction.guild.id);
-            return interaction.reply({ content: lang === 'fr' ? `✅ Salon de logs changé : ${currentLogChannel ? `<#${currentLogChannel}>` : 'Aucun'} → ${channel}.` : `✅ Log channel changed: ${currentLogChannel ? `<#${currentLogChannel}>` : 'None'} → ${channel}.`, flags: 1 << 6 });
+        if (sc === 'log') {
+            const ch = ix.options.getChannel('channel');
+            client.updateServerSetting(ix.guild.id, 'automodlog', ch.id); client.settings.delete(ix.guild.id);
+            return ix.reply({ content: `✅ Log → ${ch}`, flags: 1 << 6 });
         }
     },
 
-    // ================= MAIN MESSAGE HOOK =================
-    async handleMessage(message, client, db) {
-        if (!message.guild || message.author.bot || message.webhookId) return;
-        const settings = client.getServerSettings?.(message.guild.id);
-        if (!settings) return;
-        if (!settings.autoModEnabled) return;
-        const member = message.member;
-        if (member && settings.autoModWhitelist) {
-            const whitelistRoles = settings.autoModWhitelist.split(',');
-            if (whitelistRoles.some(roleId => member.roles.cache.has(roleId))) return;
-        }
-        if (member?.permissions.has(PermissionsBitField.Flags.ManageMessages)) return;
-
-        const content = message.content;
-        const userId = message.author.id;
-        const guildId = message.guild.id;
-        const trackKey = getTrackKey(userId, guildId);
-        const now = Date.now();
-
-        if (userMessageHistory.size >= MAX_TRACKED_USERS && !userMessageHistory.has(trackKey)) {
-            const firstKey = userMessageHistory.keys().next().value;
-            userMessageHistory.delete(firstKey);
-            userWarnings.delete(firstKey);
-        }
-        if (!userMessageHistory.has(trackKey)) {
-            userMessageHistory.set(trackKey, { messages: [], lastActivity: now, crossChannelViolations: new Set() });
-        }
-        const trackEntry = userMessageHistory.get(trackKey);
-        trackEntry.lastActivity = now;
-
-        const msgRecord = {
-            timestamp: now, content, channelId: message.channel.id, messageId: message.id,
-            attachments: message.attachments.map(a => ({ id: a.id, name: a.name, size: a.size, contentType: a.contentType, fingerprint: getAttachmentFingerprint(a), url: a.url })),
-            hasLinks: /https?:\/\//i.test(content), normalized: normalizeContent(content)
-        };
-        trackEntry.messages.push(msgRecord);
-
-        const retentionCutoff = now - 120000;
-        while (trackEntry.messages.length > 0 && trackEntry.messages[0].timestamp < retentionCutoff) trackEntry.messages.shift();
-        if (trackEntry.messages.length > MAX_HISTORY_PER_USER) trackEntry.messages = trackEntry.messages.slice(-150);
-
-        const history = trackEntry.messages;
-        const recentHistory = history.filter(m => now - m.timestamp <= SPAM_WINDOW);
-        let violations = [];
-        let violationSources = new Set();
-
-        // Single-channel checks
-        const sameChannelRecent = recentHistory.filter(m => m.channelId === message.channel.id);
-        if (sameChannelRecent.length >= SPAM_THRESHOLD && !violationSources.has('single-spam')) {
-            violations.push({ type: 'spam', reason: 'Message flooding', source: 'single-spam' });
-            violationSources.add('single-spam');
-        }
-        if (content.length > 20) {
-            const capsCount = (content.match(/[A-Z]/g) || []).length;
-            const totalLetters = (content.match(/[A-Za-z]/g) || []).length;
-            if (totalLetters > 0 && capsCount / totalLetters > CAPS_RATIO && !violationSources.has('caps')) {
-                violations.push({ type: 'caps', reason: 'Excessive caps', source: 'caps' });
-                violationSources.add('caps');
-            }
-        }
-        if (content.length > 30) {
-            const emojiCount = (content.match(/[\p{Emoji}]/gu) || []).length;
-            if (emojiCount / content.length > EMOJI_RATIO && !violationSources.has('emoji')) {
-                violations.push({ type: 'emoji', reason: 'Emoji flood', source: 'emoji' });
-                violationSources.add('emoji');
-            }
-        }
-        const mentionCount = message.mentions.users.size + message.mentions.roles.size;
-        if (mentionCount > MENTION_LIMIT && !violationSources.has('mentions')) {
-            violations.push({ type: 'mentions', reason: 'Mass mention', source: 'mentions' });
-            violationSources.add('mentions');
-        }
-
-        const hasHereEveryone = message.content.includes('@here') || message.content.includes('@everyone');
-        if (hasHereEveryone && msgRecord.hasLinks && !violationSources.has('here-everyone-spam')) {
-            violations.push({ 
-                type: 'promo spam', 
-                reason: `@here/@everyone + external link — promotional spam detected`, 
-                source: 'here-everyone-spam',
-                crossChannel: true
-            });
-            violationSources.add('here-everyone-spam');
-        }
-
-        // Cross-channel checks
-        const crossChannelRecent = history.filter(m => now - m.timestamp <= CROSS_CHANNEL_WINDOW);
-        const rapidFireRecent = history.filter(m => now - m.timestamp <= RAPID_FIRE_WINDOW);
-        const attachmentRecent = history.filter(m => now - m.timestamp <= ATTACHMENT_HASH_WINDOW);
-
-        if (rapidFireRecent.length >= CROSS_CHANNEL_MSG_THRESHOLD && !violationSources.has('rapid-fire')) {
-            const uniqueChannels = new Set(rapidFireRecent.map(m => m.channelId));
-            if (uniqueChannels.size >= 2) {
-                violations.push({ type: 'cross-channel spam', reason: `Rapid-fire: ${rapidFireRecent.length} messages across ${uniqueChannels.size} channels in 5s`, source: 'rapid-fire', crossChannel: true });
-                violationSources.add('rapid-fire');
-            }
-        }
-
-        if (!violationSources.has('cross-dupe')) {
-            const contentMap = new Map();
-            for (const m of crossChannelRecent) {
-                if (m.normalized.length < 5) continue;
-                if (!contentMap.has(m.normalized)) contentMap.set(m.normalized, new Set());
-                contentMap.get(m.normalized).add(m.channelId);
-            }
-
-            for (const [normContent, channels] of contentMap) {
-                if (channels.size >= 2) {
-                    const hasLinks = /https?:\/\//i.test(normContent);
-                    const hasMentions = normContent.includes('@');
-                    const threshold = (hasLinks || hasMentions) ? 2 : 3;
-                    if (channels.size >= threshold) {
-                        violations.push({ 
-                            type: 'cross-channel duplicate', 
-                            reason: `Identical message in ${channels.size} channels${hasLinks ? ' (contains links)' : ''}`, 
-                            source: 'cross-dupe', 
-                            crossChannel: true, 
-                            channels: [...channels] 
-                        });
-                        violationSources.add('cross-dupe');
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!violationSources.has('attachment-spam') && message.attachments.size > 0) {
-            const attachmentFingerprints = new Map();
-            for (const m of attachmentRecent) {
-                for (const att of m.attachments) {
-                    if (!attachmentFingerprints.has(att.fingerprint)) attachmentFingerprints.set(att.fingerprint, new Set());
-                    attachmentFingerprints.get(att.fingerprint).add(m.channelId);
-                }
-            }
-            for (const [fingerprint, channels] of attachmentFingerprints) {
-                if (channels.size >= 3) {
-                    violations.push({ type: 'attachment spam', reason: `Same file spread across ${channels.size} channels`, source: 'attachment-spam', crossChannel: true, channels: [...channels] });
-                    violationSources.add('attachment-spam');
-                    break;
-                }
-            }
-        }
-
-        if (!violationSources.has('malicious-spread') && msgRecord.hasLinks) {
-            const hasMalicious = hasMaliciousLinks(content);
-            const hasInvites = hasUnauthorizedInvites(content, guildId);
-            if (hasMalicious || hasInvites) {
-                const maliciousChannels = new Set();
-                for (const m of crossChannelRecent) {
-                    if (m.hasLinks && (hasMaliciousLinks(m.content) || hasUnauthorizedInvites(m.content, guildId))) maliciousChannels.add(m.channelId);
-                }
-                if (maliciousChannels.size >= 2) {
-                    violations.push({ type: 'malicious link spread', reason: `Unauthorized links posted in ${maliciousChannels.size} channels`, source: 'malicious-spread', crossChannel: true, channels: [...maliciousChannels] });
-                    violationSources.add('malicious-spread');
-                } else if (hasMalicious && !violationSources.has('malicious-link')) {
-                    violations.push({ type: 'malicious link', reason: 'Unauthorized or phishing link detected', source: 'malicious-link' });
-                    violationSources.add('malicious-link');
-                }
-            }
-        }
-
-        if (!violationSources.has('image-spam') && message.attachments.size > 0 && content.length < 10) {
-            const imageChannels = new Set();
-            for (const m of attachmentRecent) { if (m.attachments.length > 0 && m.content.length < 10) imageChannels.add(m.channelId); }
-            if (imageChannels.size >= 3) {
-                violations.push({ type: 'image spam', reason: `Image-only messages across ${imageChannels.size} channels`, source: 'image-spam', crossChannel: true, channels: [...imageChannels] });
-                violationSources.add('image-spam');
-            }
-        }
-
-        if (violations.length === 0 && content.length > 15) {
-            const toxicityResult = await checkToxicity(content);
-            if (toxicityResult?.toxic && violations.length === 0) {
-                violations.push({ type: toxicityResult.type || 'toxic', reason: toxicityResult.reason, source: 'ai-toxicity' });
-            }
-        }
-
-        if (violations.length > 0) {
-            await this.handleViolation(message, violations, settings, client, db);
-            return true;
-        }
-        return false;
-    },
-
-    // ================= HANDLE VIOLATION =================
-    async handleViolation(message, violations, settings, client, db) {
-        const userId = message.author.id;
-        const guildId = message.guild.id;
-        const trackKey = getTrackKey(userId, guildId);
-        const warnCount = (userWarnings.get(trackKey) || 0) + 1;
-        userWarnings.set(trackKey, warnCount);
-
-        const hasCrossChannel = violations.some(v => v.crossChannel);
-        const hasMalicious = violations.some(v => v.type.includes('malicious') || v.type.includes('phishing'));
-
-        let action = 'warn';
-        let timeoutDuration = null;
-        if (warnCount >= 5) action = 'ban';
-        else if (warnCount >= 3) { action = 'timeout'; timeoutDuration = hasCrossChannel ? 7 * 24 * 60 * 60 * 1000 : 2 * 24 * 60 * 60 * 1000; }
-        else if (warnCount >= 2) action = 'mute';
-        if (hasMalicious && hasCrossChannel && warnCount >= 2) action = 'ban';
-
-        // Delete the triggering message
-        await message.delete().catch(() => {});
-
-        // Delete cross-channel copies
-        const crossChannelViolation = violations.find(v => v.crossChannel && v.channels);
-        if (crossChannelViolation?.channels) {
-            for (const channelId of crossChannelViolation.channels) {
-                if (channelId === message.channel.id) continue;
-                const channel = message.guild.channels.cache.get(channelId);
-                if (!channel) continue;
-                const trackEntry = userMessageHistory.get(trackKey);
-                if (!trackEntry) continue;
-                const matchingMsgs = trackEntry.messages.filter(m => m.channelId === channelId && Date.now() - m.timestamp <= CROSS_CHANNEL_WINDOW);
-                for (const m of matchingMsgs) {
-                    try { const msg = await channel.messages.fetch(m.messageId).catch(() => null); if (msg) await msg.delete().catch(() => {}); }
-                    catch (e) {}
-                }
-            }
-        }
-
-        // Discord-style notification
-        const primaryViolation = violations[0];
-        let notifyLines = [
-            `⚠️ Your message was removed by automated moderation.`,
-            `Reason: ${primaryViolation.type} — ${primaryViolation.reason}`,
-            `Warning ${warnCount} of 5. Further violations will escalate.`
-        ];
-        if (hasCrossChannel && crossChannelViolation?.channels) {
-            notifyLines.push(`All copies across ${crossChannelViolation.channels.length} channels have been removed.`);
-        }
-        const notifyText = notifyLines.join('\n');
-
-        await message.channel.send({ content: notifyText })
-            .then(m => setTimeout(() => m.delete().catch(() => {}), 6000))
-            .catch(() => {});
-
-        // Professional sentencing log
-        // 🔥 FIX: Use resolveSetting for log channel
-        const logChannelId = resolveSetting(settings, 'autoModLogChannel', 'autoModLog', 'automodlog', 'auto_mod_log', 'modlog', 'logChannel', 'log');
-        if (logChannelId) {
-            const logChannel = message.guild.channels.cache.get(logChannelId);
-            if (logChannel && logChannel.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
-                const { bar, next } = getEscalationBar(warnCount);
-                const actionEmoji = getActionEmoji(action);
-                const actionTitle = getActionTitle(action);
-
-                const embed = new EmbedBuilder()
-                    .setColor('#8B0000')
-                    .setAuthor({ name: `⚖️ ARCHITECT CG-223 • SENTENCING ORDER`, iconURL: client.user.displayAvatarURL() })
-                    .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setTitle(`${actionEmoji} ${actionTitle}`)
-                    .addFields(
-                        { name: '📋 OFFENDER', value: `${message.author} (${message.author.tag}) | ID: \`${userId}\``, inline: false },
-                        { name: '📝 VIOLATION', value: `**${primaryViolation.type}** — ${primaryViolation.reason}`, inline: false },
-                        { name: '⚡ ACTION TAKEN', value: `**${action.toUpperCase()}** — Warning #${warnCount} of 5`, inline: false },
-                        { name: '📍 LOCATION', value: `<#${message.channel.id}>`, inline: true },
-                        { name: '📅 TIMESTAMP', value: formatTimestamp(new Date()), inline: true }
-                    )
-                    .setFooter({ text: `ARCHITECT CG-223 • Autonomous Moderation • v${VERSION}`, iconURL: client.user.displayAvatarURL() })
-                    .setTimestamp();
-
-                if (hasCrossChannel && crossChannelViolation?.channels && crossChannelViolation.channels.length > 1) {
-                    embed.addFields({
-                        name: '🌐 CROSS-CHANNEL ACTIVITY',
-                        value: crossChannelViolation.channels.map(c => `<#${c}>`).join(' '),
-                        inline: false
-                    });
-                }
-
-                embed.addFields({
-                    name: '📊 ESCALATION STATUS',
-                    value: `${bar} ${warnCount}/5 — NEXT: ${next}`,
-                    inline: false
-                });
-
-                await logChannel.send({ embeds: [embed] }).catch(() => {});
-            }
-        }
-
-        // Execute moderation action
-        try {
-            switch (action) {
-                case 'mute': {
-                    // 🔥 FIX: Use resolveSetting for mute role
-                    let muteRoleId = resolveSetting(settings, 'muteRoleId', 'muteRole', 'muterole', 'mute_role_id', 'MUTE_ROLE_ID', 'MUTED_ROLE');
-                    if (!muteRoleId) {
-                        try { 
-                            const row = db.prepare('SELECT muterole, "mute role id", muteRoleId FROM server_settings WHERE guild_id = ?').get(message.guild.id); 
-                            if (row) muteRoleId = row.muteRoleId || row.muterole || row['mute role id']; 
-                        }
-                        catch (e) {}
-                    }
-                    if (!muteRoleId && message.guild.id === process.env.GUILD_ID) {
-                        muteRoleId = process.env.MUTE_ROLE_ID || process.env.MUTED_ROLE;
-                    }
-                    if (!muteRoleId) {
-                        console.log(`[AUTOMOD] Mute skipped — No mute role configured for guild "${message.guild.name}" (${message.guild.id}).`);
-                        try { db.prepare(`INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?, ?, ?, 'warn', ?, ?)`).run(message.guild.id, userId, client.user.id, `Auto-Mod (mute failed - no role): ${violations[0].reason}`, Date.now()); }
-                        catch (e) {}
-                        break;
-                    }
-                    const muteRole = message.guild.roles.cache.get(muteRoleId);
-                    if (!muteRole) { console.log(`[AUTOMOD] Mute role not found in ${message.guild.name}.`); break; }
-                    const member = await message.guild.members.fetch(userId).catch(() => null);
-                    if (!member) { console.log(`[AUTOMOD] Member ${userId} left before mute.`); break; }
-                    await member.roles.add(muteRole).catch(err => console.log(`[AUTOMOD] Failed to add mute role: ${err.message}`));
-                    setTimeout(() => member.roles.remove(muteRole).catch(() => {}), 3600000);
-                    try { db.prepare(`INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?, ?, ?, 'mute', ?, ?)`).run(message.guild.id, userId, client.user.id, `Auto-Mod: ${violations[0].reason}`, Date.now()); }
-                    catch (e) {}
-                    console.log(`[AUTOMOD] 🔇 Muted ${message.author.tag} in ${message.guild.name}`);
-                    break;
-                }
-                case 'timeout': {
-                    const member = await message.guild.members.fetch(userId).catch(() => null);
-                    if (member?.moderatable) {
-                        await member.timeout(timeoutDuration, `Auto-Mod: Warning #${warnCount} — ${violations[0].reason}`).catch(() => {});
-                        try { db.prepare(`INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?, ?, ?, 'timeout', ?, ?)`).run(message.guild.id, userId, client.user.id, `Auto-Mod (${Math.round(timeoutDuration/86400000)}-day timeout): ${violations[0].reason}`, Date.now()); }
-                        catch (e) {}
-                    }
-                    break;
-                }
-                case 'ban': {
-                    const member = await message.guild.members.fetch(userId).catch(() => null);
-                    if (member?.bannable) {
-                        await member.ban({ reason: `Auto-Mod: ${violations[0].reason}` }).catch(() => {});
-                        try { db.prepare(`INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?, ?, ?, 'ban', ?, ?)`).run(message.guild.id, userId, client.user.id, `Auto-Mod: ${violations[0].reason}`, Date.now()); }
-                        catch (e) {}
-                    }
-                    break;
-                }
-            }
-        } catch (e) { console.log(`[AUTOMOD] Action failed: ${e.message}`); }
-
-        if (action === 'warn') {
-            try {
-                db.prepare(`INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?, ?, ?, 'warn', ?, ?)`).run(message.guild.id, userId, client.user.id, `Auto-Mod: ${violations[0].reason}`, Date.now());
-                const warningId = `AM-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-                const expiresAt = Math.floor(Date.now() / 1000) + (30 * 86400);
-                db.prepare(`INSERT INTO warnings (id, guild_id, user_id, moderator_id, reason, expires_at, active) VALUES (?, ?, ?, ?, ?, ?, 1)`).run(warningId, message.guild.id, userId, client.user.id, `Auto-Mod: ${violations[0].reason}`, expiresAt);
-            } catch (e) {}
-        }
-
-        if (action !== 'warn') {
-            const crossPrefix = hasCrossChannel ? '[CROSS-CHANNEL] ' : '';
-            console.log(`[AUTOMOD] ${crossPrefix}${action.toUpperCase()} | ${message.author.tag} | ${violations.map(v => v.type).join(', ')}`);
-        }
-    },
-
-    // ================= COMMAND HANDLER (PREFIX) =================
-    run: async (client, message, args, db, serverSettings) => {
-        const isOwner = message.author.id === message.guild.ownerId;
-        const isAdmin = message.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!isOwner && !isAdmin) {
-            const lang = client.detectLanguage?.(usedCommand, 'en') || 'en';
-            return message.reply(lang === 'fr' ? '🔒 Seul le propriétaire du serveur ou les administrateurs peuvent configurer l\'auto-mod.' : '🔒 Only the server owner or administrators can configure auto-mod.');
-        }
-
-        const lang = client.detectLanguage?.(usedCommand, 'en') || 'en';
-        const settings = client.getServerSettings(message.guild.id);
+    // ================= PREFIX =================
+    run: async (client, msg, args, db, ss) => {
+        const adm = msg.member.permissions.has(PermissionsBitField.Flags.Administrator);
+        if (!adm) return msg.reply('🔒 Admin only.');
         const action = args[0]?.toLowerCase() || 'status';
+        const settings = client.getServerSettings(msg.guild.id);
 
-        // 🔥 FIX: Use resolveSetting for all status lookups in prefix command too
-        const logChannelId = resolveSetting(settings, 'autoModLogChannel', 'autoModLog', 'automodlog', 'auto_mod_log', 'modlog', 'logChannel', 'logchannel', 'log');
-        const muteRoleId = resolveSetting(settings, 'muteRoleId', 'muteRole', 'muterole', 'mute_role_id', 'MUTE_ROLE_ID', 'MUTED_ROLE');
-        const whitelistRoles = resolveSetting(settings, 'autoModWhitelist', 'automodwhitelist', 'whitelist');
-
-                if (action === 'status') {
-        const logChannelId = resolveSetting(settings, 'autoModLogChannel', 'automodlog', 'logChannel', 'log');
-            const muteRoleId = resolveSetting(settings, 'muteRoleId', 'muterole', 'muteRole');
-            const whitelistRoles = resolveSetting(settings, 'autoModWhitelist', 'automodwhitelist', 'whitelist');
-
-            const embed = new EmbedBuilder()
-                .setColor(settings.autoModEnabled ? '#2ecc71' : '#e74c3c')
-                .setAuthor({ name: '🛡️ AUTO-MOD AI STATUS', iconURL: client.user.displayAvatarURL() })
-                .addFields(
-                    { name: '⚡ Status', value: settings.autoModEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
-                    { name: '🎯 Sensitivity', value: (settings.autoModSensitivity || 'medium').toUpperCase(), inline: true },
-                    { name: '📋 Log Channel', value: logChannelId ? `<#${logChannelId}>` : '❌ Not set', inline: true },
-                    { name: '👑 Whitelist', value: whitelistRoles ? whitelistRoles.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
-                    { name: '⏱️ Auto-Mute', value: muteRoleId ? `<@&${muteRoleId}>` : '❌ No mute role set', inline: false }
-                )
-                .setFooter({ text: `ARCHITECT CG-223 • Auto-Mod AI • v${VERSION}` })
-                .setTimestamp();
-            return message.reply({ embeds: [embed] });
+        if (action === 'status') {
+            const logId = resolveSetting(settings, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
+            const wl = settings?.autoModWhitelist;
+            const e = new EmbedBuilder().setColor(settings?.autoModEnabled ? '#2ecc71' : '#e74c3c').setAuthor({ name: '🛡️ AutoMod Status', iconURL: client.user.displayAvatarURL() }).
+                addFields({ name: 'Status', value: settings?.autoModEnabled ? '✅ Enabled' : '❌ Disabled', inline: true }, { name: 'Sensitivity', value: (settings?.autoModSensitivity || 'medium').toUpperCase(), inline: true }, { name: 'Log', value: logId ? `<#${logId}>` : 'Not set', inline: true }, { name: 'Whitelist', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false }).
+                setFooter({ text: '🦅 ARCHON CG-223 • AutoMod' }).setTimestamp();
+            return msg.reply({ embeds: [e] });
         }
-
         if (action === 'enable' || action === 'on') {
-            const dbSettings = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(message.guild.id);
-            if (dbSettings?.automod_enabled !== 0) return message.reply(lang === 'fr' ? '⚠️ L\'auto-mod est déjà **ACTIVÉ**.' : '⚠️ Auto-mod is already **ENABLED**.');
-
-            const botMember = message.guild.members.me;
-            const missingPerms = [];
-            if (!botMember.permissions.has(PermissionsBitField.Flags.ManageGuild)) missingPerms.push('`Manage Guild`');
-            if (!botMember.permissions.has(PermissionsBitField.Flags.ManageMessages)) missingPerms.push('`Manage Messages`');
-            if (!botMember.permissions.has(PermissionsBitField.Flags.ModerateMembers)) missingPerms.push('`Moderate Members`');
-            if (missingPerms.length > 0) return message.reply(lang === 'fr' ? `🛡️ **Permissions insuffisantes**\n\n${botMember.user.username} a besoin de :\n${missingPerms.map(p => `• ${p}`).join('\n')}\n\n📋 Contactez le propriétaire du serveur.` : `🛡️ **Insufficient Permissions**\n\n${botMember.user.username} needs:\n${missingPerms.map(p => `• ${p}`).join('\n')}\n\n📋 Ask the server owner.`);
-
-            let gatewayMsg = '';
-            const synced = await syncGatewayRule(message.guild, 'create', settings);
-            gatewayMsg = synced ? '\n🛡️ Shield badge active!' : '';
-            client.db.prepare("UPDATE server_settings SET automod_enabled = 1, updated_at = strftime('%s', 'now') WHERE guild_id = ?").run(message.guild.id);
-            client.settings.delete(message.guild.id);
-            return message.reply(lang === 'fr' ? `✅ Auto-mod **ACTIVÉ**.${gatewayMsg}` : `✅ Auto-mod **ENABLED**.${gatewayMsg}`);
+            const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
+            if (cur?.automod_enabled === 1) return msg.reply('⚠️ Already enabled.');
+            const me = msg.guild.members.me;
+            const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter(p => !me.permissions.has(PermissionsBitField.Flags[p]));
+            if (missing.length) return msg.reply(`🛡️ Missing: ${missing.join(', ')}`);
+            client.db.prepare("UPDATE server_settings SET automod_enabled = 1 WHERE guild_id = ?").run(msg.guild.id);
+            client.settings.delete(msg.guild.id);
+            const synced = await syncRules(msg.guild, 'create', settings);
+            return msg.reply(`✅ Enabled.${synced ? ' 🛡️ Shield active!' : ''}`);
         }
-
         if (action === 'disable' || action === 'off') {
-            const dbSettings = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(message.guild.id);
-            if (dbSettings?.automod_enabled === 0) return message.reply(lang === 'fr' ? '⚠️ L\'auto-mod est déjà **DÉSACTIVÉ**.' : '⚠️ Auto-mod is already **DISABLED**.');
-            await syncGatewayRule(message.guild, 'delete');
-            client.db.prepare("UPDATE server_settings SET automod_enabled = 0, updated_at = strftime('%s', 'now') WHERE guild_id = ?").run(message.guild.id);
-            client.settings.delete(message.guild.id);
-            return message.reply(lang === 'fr' ? '✅ Auto-mod **DÉSACTIVÉ**.' : '✅ Auto-mod **DISABLED**.');
+            const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
+            if (cur?.automod_enabled === 0) return msg.reply('⚠️ Already disabled.');
+            await syncRules(msg.guild, 'delete');
+            client.db.prepare("UPDATE server_settings SET automod_enabled = 0 WHERE guild_id = ?").run(msg.guild.id);
+            client.settings.delete(msg.guild.id);
+            return msg.reply('✅ Disabled.');
         }
-
         if (action === 'sensitivity') {
-            const level = args[1]?.toLowerCase();
-            if (!['low', 'medium', 'high'].includes(level)) return message.reply(lang === 'fr' ? '❌ Usage: `.automod sensitivity <low|medium|high>`' : '❌ Usage: `.automod sensitivity <low|medium|high>`');
-            const currentLevel = settings.autoModSensitivity || 'medium';
-            if (level === currentLevel) return message.reply(lang === 'fr' ? `⚠️ La sensibilité est déjà réglée sur **${level.toUpperCase()}**.` : `⚠️ Sensitivity is already set to **${level.toUpperCase()}**.`);
-            client.updateServerSetting(message.guild.id, 'automodsensitivity', level);
-            client.settings.delete(message.guild.id);
-            return message.reply(lang === 'fr' ? `✅ Sensibilité changée de **${currentLevel.toUpperCase()}** → **${level.toUpperCase()}**.` : `✅ Sensitivity changed from **${currentLevel.toUpperCase()}** → **${level.toUpperCase()}**.`);
+            const lv = args[1]?.toLowerCase();
+            if (!['low', 'medium', 'high'].includes(lv)) return msg.reply('❌ Usage: `.automod sensitivity <low|medium|high>`');
+            client.updateServerSetting(msg.guild.id, 'automodsensitivity', lv); client.settings.delete(msg.guild.id);
+            return msg.reply(`✅ Sensitivity → **${lv.toUpperCase()}**`);
         }
-
         if (action === 'whitelist') {
-            const role = message.mentions.roles.first();
-            const currentWhitelist = settings.autoModWhitelist || settings.automodwhitelist || settings.whitelist;
+            const role = msg.mentions.roles.first();
+            const cur = settings?.autoModWhitelist;
             if (role) {
-                if (currentWhitelist === role.id || (currentWhitelist && currentWhitelist.split(',').includes(role.id))) return message.reply(lang === 'fr' ? `⚠️ Le rôle **${role.name}** est déjà whitelisté.` : `⚠️ Role **${role.name}** is already whitelisted.`);
-                const newWhitelist = currentWhitelist ? `${currentWhitelist},${role.id}` : role.id;
-                client.updateServerSetting(message.guild.id, 'automodwhitelist', newWhitelist);
-                client.settings.delete(message.guild.id);
-
-                if (settings.autoModEnabled) {
-                    await syncGatewayRule(message.guild, 'delete');
-                    const updatedSettings = { ...settings, autoModWhitelist: newWhitelist };
-                    await syncGatewayRule(message.guild, 'create', updatedSettings);
-                }
-                return message.reply(lang === 'fr' ? `✅ Rôle whitelisté: **${role.name}**` : `✅ Whitelisted role: **${role.name}**`);
+                if (cur?.split(',').includes(role.id)) return msg.reply('⚠️ Already whitelisted.');
+                const nw = cur ? `${cur},${role.id}` : role.id;
+                client.updateServerSetting(msg.guild.id, 'automodwhitelist', nw); client.settings.delete(msg.guild.id);
+                if (settings?.autoModEnabled) { await syncRules(msg.guild, 'delete'); await syncRules(msg.guild, 'create', { ...settings, autoModWhitelist: nw }); }
+                return msg.reply(`✅ Whitelisted **${role.name}**`);
             } else {
-                if (!currentWhitelist) return message.reply(lang === 'fr' ? '⚠️ La whitelist est déjà vide.' : '⚠️ Whitelist is already empty.');
-                client.updateServerSetting(message.guild.id, 'automodwhitelist', null);
-                client.settings.delete(message.guild.id);
-
-                if (settings.autoModEnabled) {
-                    await syncGatewayRule(message.guild, 'delete');
-                    const updatedSettings = { ...settings, autoModWhitelist: null };
-                    await syncGatewayRule(message.guild, 'create', updatedSettings);
-                }
-                return message.reply(lang === 'fr' ? '✅ Whitelist effacée.' : '✅ Whitelist cleared.');
+                if (!cur) return msg.reply('⚠️ Empty.');
+                client.updateServerSetting(msg.guild.id, 'automodwhitelist', null); client.settings.delete(msg.guild.id);
+                if (settings?.autoModEnabled) { await syncRules(msg.guild, 'delete'); await syncRules(msg.guild, 'create', { ...settings, autoModWhitelist: null }); }
+                return msg.reply('✅ Cleared.');
             }
         }
-
         if (action === 'log') {
-            const channel = message.mentions.channels.first();
-            if (!channel) return message.reply(lang === 'fr' ? '❌ Mentionnez un salon. Ex: `.automod log #mod-logs`' : '❌ Mention a channel. Ex: `.automod log #mod-logs`');
-            const currentLogChannel = resolveSetting(settings, 'autoModLogChannel', 'autoModLog', 'automodlog', 'modlog', 'log');
-            if (currentLogChannel === channel.id) return message.reply(lang === 'fr' ? `⚠️ Les logs sont déjà envoyés dans ${channel}.` : `⚠️ Logs are already sent to ${channel}.`);
-            client.updateServerSetting(message.guild.id, 'automodlog', channel.id);
-            client.settings.delete(message.guild.id);
-            return message.reply(lang === 'fr' ? `✅ Salon de logs changé : ${currentLogChannel ? `<#${currentLogChannel}>` : 'Aucun'} → ${channel}.` : `✅ Log channel changed: ${currentLogChannel ? `<#${currentLogChannel}>` : 'None'} → ${channel}.`);
+            const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[1]);
+            if (!ch) return msg.reply('❌ Mention a channel.');
+            client.updateServerSetting(msg.guild.id, 'automodlog', ch.id); client.settings.delete(msg.guild.id);
+            return msg.reply(`✅ Log → ${ch}`);
         }
+        return msg.reply('❓ Usage: `.automod [status|enable|disable|sensitivity|whitelist|log]`');
+    },
 
-        return message.reply(lang === 'fr'
-            ? '🛡️ **Auto-Mod AI — Commandes:**\n\n📊 `.automod status` — Voir l\'état\n✅ `.automod enable` — Activer\n❌ `.automod disable` — Désactiver\n🎯 `.automod sensitivity <low|medium|high>` — Sensibilité\n👑 `.automod whitelist @role` — Ajouter rôle\n🧹 `.automod whitelist` — Effacer whitelist\n📋 `.automod log #channel` — Définir salon logs'
-            : '🛡️ **Auto-Mod AI — Commands:**\n\n📊 `.automod status` — View status\n✅ `.automod enable` — Enable\n❌ `.automod disable` — Disable\n🎯 `.automod sensitivity <low|medium|high>` — Sensitivity\n👑 `.automod whitelist @role` — Add role\n🧹 `.automod whitelist` — Clear whitelist\n📋 `.automod log #channel` — Set log channel');
+    // ================= MESSAGE HOOK (called by index.js) =================
+    async handleMessage(message, client, db) {
+        return await scanMessage(message, client, db);
     }
 };
