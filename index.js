@@ -2113,13 +2113,12 @@ client.once(Events.ClientReady, async () => {
 
     await client.loadPlugins();
 
-// ================= LEVELING SYSTEM REFERENCE =================
-// Store reference to leveling plugin for event hooks
+// ================= PLUGIN EVENT REFERENCES =================
+// Store references to plugins that need event hooks
 const leveling = client.commands.get('leveling');
-if (leveling?.onMemberAdd) {
-    client.leveling = leveling;
-    console.log(`${green}[LEVELING]${reset} Plugin reference stored for event hooks`);
-}
+if (leveling?.onMemberAdd) { client.leveling = leveling; console.log(`${green}[LEVELING]${reset} Event hooks registered`); }
+const welcomeMod = client.commands.get('welcome');
+if (welcomeMod?.onMemberAdd) { client.welcome = welcomeMod; console.log(`${green}[WELCOME]${reset} Event hooks registered`); }
 
 // ----- FULLY AUTOMATIC BILINGUAL ALIAS MAP -----
 function buildAliasLanguageMap() {
@@ -3183,17 +3182,15 @@ if (message.content && message.content.length > 4000) {
 
         // ================= LEVEL UP DETECTED =================
         if (newLevel > oldLevel) {
-    // ================= LEVELING PLUGIN: ON LEVEL UP =================
-    if (client.leveling?.onLevelUp) {
-        const currentLevelXP = Math.pow((newLevel - 1) / 0.1, 2);
-        const nextLevelXP = Math.pow(newLevel / 0.1, 2);
-        const xpCurrent = newXP - currentLevelXP;
-        const xpNeeded = nextLevelXP - currentLevelXP;
-        await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCurrent), Math.floor(xpNeeded), client, db);
-    }
-    
-    const userLang = client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
-    const isDM = !message.guild;
+            // ================= LEVELING PLUGIN: ON LEVEL UP =================
+            if (client.leveling?.onLevelUp) {
+                const xpCur = newXP - Math.pow((newLevel - 1) / 0.1, 2);
+                const xpNeed = Math.pow(newLevel / 0.1, 2) - Math.pow((newLevel - 1) / 0.1, 2);
+                await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCur), Math.floor(xpNeed), client, db);
+            }
+
+            const userLang = client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
+            const isDM = !message.guild;
             const guildName = isDM ? 'NEURAL NETWORK' : message.guild.name;
             const guildIcon = isDM ? client.user.displayAvatarURL() : message.guild.iconURL();
 
@@ -4028,17 +4025,12 @@ safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     
     if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
-    
-    // ================= LEVELING: ON MEMBER ADD =================
-    if (client.leveling?.onMemberAdd) {
-        await client.leveling.onMemberAdd(member, client, db);
-    }
-    
+
+    // ================= LEVELING PLUGIN: ON MEMBER ADD =================
+    if (client.leveling?.onMemberAdd) { await client.leveling.onMemberAdd(member, client, db); }
+
     // ================= WELCOME PLUGIN: ON MEMBER ADD =================
-    const welcome = client.commands.get('welcome');
-    if (welcome?.onMemberAdd) {
-        await welcome.onMemberAdd(member, client, db);
-    }
+    if (client.welcome?.onMemberAdd) { await client.welcome.onMemberAdd(member, client, db); }
     
     const settings = getServerSettings(member.guild.id);
     const isArchitectServer = member.guild.id === process.env.GUILD_ID;
@@ -4370,13 +4362,9 @@ safeOn(Events.GuildMemberRemove, async (member) => {
     if (member.user.bot) return;
     
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
-    
-    
+
     // ================= WELCOME PLUGIN: ON MEMBER REMOVE =================
-    const welcome = client.commands.get('welcome');
-    if (welcome?.onMemberRemove) {
-        await welcome.onMemberRemove(member, client, db);
-    }
+    if (client.welcome?.onMemberRemove) { await client.welcome.onMemberRemove(member, client, db); }
     
     const settings = getServerSettings(member.guild.id);
     const isArchitectServer = member.guild.id === process.env.GUILD_ID;
