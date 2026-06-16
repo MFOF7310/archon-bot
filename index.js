@@ -2866,7 +2866,8 @@ setInterval(async () => {
                         { name: '🎯 **YOUR PROFILE**', value: `⭐ **Level:** ${user.level || 1}\n💰 **Balance:** ${(user.credits || 0).toLocaleString()} 🪙\n💬 **Messages:** ${(user.total_messages || 0).toLocaleString()}`, inline: true },
                         { name: '⏰ **STATUS**', value: `${availabilityStatus}\n\n📌 **Claim Command:**\n\`${prefix}daily\``, inline: false },
                         { name: '🏛️ **WHERE TO CLAIM**', value: guild ? `**${guildName}**\nUse \`${prefix}daily\` in any channel!` : `Use \`${prefix}daily\` in any server!`, inline: false },
-                        { name: '💡 **STREAK MASTERY TIPS**', value: `🛡️ **Shield:** \`${prefix}shop\` → Buy Streak Shield (2,000 🪙)\n🔥 **7 Days:** Unlock +50% bonus credits\n🛡️ **30 Days:** Exclusive Elite role\n💎 **100 Days:** Premium rewards tier\n👑 **365 Days:** Legendary status + custom role`, inline: false }
+                        { name: '💡 **STREAK MASTERY TIPS**', value: `🛡️ **Shield:** \`${prefix}shop\` → Buy Streak Shield (2,000 🪙)\n🔥 **7 Days:** Unlock +50% bonus credits\n🛡️ **30 Days:** Exclusive Elite role\n💎 **100 Days:** Premium rewards tier\n👑 **365 Days:** Legendary status + custom role`, inline: false },
+                        { name: '🌐 **DASHBOARD**', value: '[**bamako-steel-dev.xyz**](https://bamako-steel-dev.xyz)', inline: false }
                     )
                     .setThumbnail(discordUser.displayAvatarURL({ dynamic: true, size: 256 }))
                     .setFooter({ text: `🦅 ARCHON CG-223 • bamako-steel-dev.xyz • ${guildName}`, iconURL: guildIcon })
@@ -3031,7 +3032,7 @@ setInterval(async () => {
                     `\`\`\``
                 )
                 .addFields(
-                    { name: '🌐 Dashboard', value: '```ansi\n\u001b[1;36mbamako-steel-dev.xyz\u001b[0m\n```', inline: true },
+                    { name: '🌐 Dashboard', value: '[**bamako-steel-dev.xyz**](https://bamako-steel-dev.xyz)', inline: true },
                     { name: '🏗️ Architect', value: '```ansi\n\u001b[1;33mMFOF7310\u001b[0m\n```', inline: true },
                     { name: '⚡ Slash Commands', value: `\`\`\`ansi\n\u001b[1;32m${commands.length} commands registered\u001b[0m\n\`\`\``, inline: true },
                     { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
@@ -3451,7 +3452,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
 
         if (!command) {
             console.log(`${yellow}[SLASH]${reset} Unknown command: ${interaction.commandName}`);
-            return interaction.reply({ content: '❌ Command not found.', ephemeral: true }).catch(() => {});
+            return interaction.reply({ content: '❌ Command not found.', flags: 1 << 6 }).catch(() => {});
         }
 
         const restrictedCommands = ['profile', 'daily', 'shop', 'credits', 'balance', 'rank', 'leaderboard'];
@@ -3486,7 +3487,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             .setFooter({ text: `BAMAKO-223 NODE • ${client.user.username} v${client.version}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
 
-        return interaction.reply({ embeds: [fallbackEmbed], ephemeral: true });
+        return interaction.reply({ embeds: [fallbackEmbed], flags: 1 << 6 });
     }
 }
 
@@ -3586,7 +3587,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
 
                 // If plugin never replied, send basic acknowledgment
                 if (!repliedSet.value && !interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ content: '\u2705 Command executed.', ephemeral: true }).catch(() => {});
+                    await interaction.reply({ content: '\u2705 Command executed.', flags: 1 << 6 }).catch(() => {});
                 }
 
                 // Bot XP tracking
@@ -3594,11 +3595,11 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                     client.botStats.onCommandProcessed(db, interaction.guild.id, interaction.user.id, interaction.commandName, true);
                 }
             } else {
-                await interaction.reply({ content: '\u274c This command has no execution handler.', ephemeral: true }).catch(() => {});
+                await interaction.reply({ content: '\u274c This command has no execution handler.', flags: 1 << 6 }).catch(() => {});
             }
         } catch (error) {
             console.error(`${red}[SLASH ERROR]${reset} ${interaction.commandName}:`, error);
-            const errorMsg = { content: '\u274c There was an error executing this command!', ephemeral: true };
+            const errorMsg = { content: '\u274c There was an error executing this command!', flags: 1 << 6 };
 
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp(errorMsg).catch(() => {});
@@ -3640,7 +3641,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             )
             .setFooter({ text: `${interaction.guild?.name || 'Neural Network'} • ${prefix} = prefix • v${client.version}` });
         
-        await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [helpEmbed], flags: 1 << 6 });
         return;
     }
 
@@ -3752,13 +3753,13 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                 })
                 .setTimestamp();
             
-            await interaction.reply({ embeds: [profileEmbed], ephemeral: true });
+            await interaction.reply({ embeds: [profileEmbed], flags: 1 << 6 });
             
         } catch (err) {
             console.error('[PROFILE BUTTON ERROR]', err);
             await interaction.reply({ 
                 content: lang === 'fr' ? "❌ Erreur lors du chargement du profil." : "❌ Error loading profile.", 
-                ephemeral: true 
+                flags: 1 << 6 
             });
         }
         return;
@@ -3770,7 +3771,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         const user = await client.users.fetch(userId).catch(() => null);
         
         if (!user) {
-            return interaction.reply({ content: 'User not found!', ephemeral: true });
+            return interaction.reply({ content: 'User not found!', flags: 1 << 6 });
         }
         
         const messages = {
@@ -3799,7 +3800,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         const user = await client.users.fetch(userId).catch(() => null);
         
         if (!user) {
-            return interaction.reply({ content: 'User not found!', ephemeral: true });
+            return interaction.reply({ content: 'User not found!', flags: 1 << 6 });
         }
         
         const messages = {
@@ -3828,7 +3829,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         const afkData = afkUsers.get(targetId);
         
         if (!afkData) {
-            return interaction.reply({ content: 'This user is no longer AFK.', ephemeral: true });
+            return interaction.reply({ content: 'This user is no longer AFK.', flags: 1 << 6 });
         }
         
         if (!afkData.reminders) afkData.reminders = [];
@@ -3844,7 +3845,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             ? `🔔 Rappel envoye! ${afkData.username} le verra a son retour.`
             : `🔔 Reminder sent! ${afkData.username} will see it when they return.`;
         
-        await interaction.reply({ content: replyMsg, ephemeral: true });
+        await interaction.reply({ content: replyMsg, flags: 1 << 6 });
         return;
     }
 
@@ -3860,7 +3861,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         
         await interaction.reply({ 
             content: `**🔥 STREAK REWARDS:**\n${rewardTiers.join('\n')}\n\n*Use \`.daily\` every 24h to build your streak!*`,
-            ephemeral: true 
+            flags: 1 << 6 
         });
         return;
     }
@@ -3889,7 +3890,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                     : `Need ${(2000 - credits).toLocaleString()} more 🪙. Use \`.daily\` to earn!`
             });
         
-        await interaction.reply({ embeds: [shopEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [shopEmbed], flags: 1 << 6 });
         return;
     }
 
@@ -3924,7 +3925,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             }
         } catch (err) {
             console.error(`${red}[TICKET COMPONENT]${reset}`, err.message);
-            await interaction.reply({ content: '❌ Ticket action failed.', ephemeral: true }).catch(() => {});
+            await interaction.reply({ content: '❌ Ticket action failed.', flags: 1 << 6 }).catch(() => {});
         }
         return;
     }
@@ -3939,7 +3940,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             }
         } catch (err) {
             console.error(`${red}[VOTE BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: '❌ Vote action failed.', ephemeral: true }).catch(() => {});
+            await interaction.reply({ content: '❌ Vote action failed.', flags: 1 << 6 }).catch(() => {});
         }
         return;
     }
