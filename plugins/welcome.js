@@ -1,4 +1,4 @@
-const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const { EmbedBuilder, AttachmentBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 const W = 520, H = 140; // Compact card size
@@ -259,8 +259,66 @@ async function handleGoodbye(member, client, db) {
 module.exports = {
     name: 'welcome', category: 'SOCIAL', aliases: ['goodbye', 'leave', 'join'],
     description: 'Neural-grid welcome/goodbye cards with ANSI art and smart detection.',
-    usage: 'Auto-triggers on member join/leave. Set channels via serversettings.',
+    usage: '.welcome config | .welcome test',
     cooldown: 1000,
+
+    run: async (client, message, args, db, ss) => {
+        const sub = args[0]?.toLowerCase() || 'config';
+        const prefix = ss?.prefix || '.';
+        if (sub === 'test') {
+            // Simulate welcome for testing
+            const embed = new EmbedBuilder().setColor(0x00fbff).setDescription('**Sending test welcome...**').setFooter({ text: 'ARCHON CG-223' });
+            await message.reply({ embeds: [embed] }).catch(() => {});
+            await module.exports.onMemberAdd(message.member, client, db);
+            return;
+        }
+        // Default: show config
+        const wCh = ss?.welcomeChannel || ss?.welcome_channel;
+        const gCh = ss?.goodbyeChannel || ss?.goodbye_channel;
+        const wMsg = ss?.welcomeMessage || 'Welcome {user} to {server}! You are member #{count}.';
+        const embed = new EmbedBuilder().setColor(0x00fbff).setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() }).
+            addFields(
+                { name: 'Welcome Channel', value: wCh ? `<#${wCh}>` : '*Not set*', inline: true },
+                { name: 'Goodbye Channel', value: gCh ? `<#${gCh}>` : '*Not set*', inline: true },
+                { name: 'Welcome Message', value: `\`${wMsg}\``, inline: false },
+                { name: 'Setup', value: `\`${prefix}serversettings set welcome_channel #channel\`\n\`${prefix}serversettings set goodbye_channel #channel\`\n\`${prefix}serversettings set welcome_message Your message here\``, inline: false },
+                { name: 'Test', value: `\`${prefix}welcome test\` — Simulate welcome`, inline: false }
+            ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+        message.reply({ embeds: [embed] }).catch(() => {});
+    },
+
+    data: new SlashCommandBuilder().setName('welcome').setDescription('Welcome/goodbye system configuration')
+        .addSubcommand(s => s.setName('config').setDescription('View welcome/goodbye configuration'))
+        .addSubcommand(s => s.setName('test').setDescription('Test welcome banner (admin only)')),
+
+    execute: async (ix, client) => {
+        const sc = ix.options.getSubcommand();
+        const db = client.db;
+        const ss = client.getServerSettings?.(ix.guild.id) || {};
+
+        if (sc === 'config') {
+            const wCh = ss?.welcomeChannel || ss?.welcome_channel;
+            const gCh = ss?.goodbyeChannel || ss?.goodbye_channel;
+            const wMsg = ss?.welcomeMessage || 'Welcome {user} to {server}! You are member #{count}.';
+            const embed = new EmbedBuilder().setColor(0x00fbff).setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() }).
+                addFields(
+                    { name: 'Welcome Channel', value: wCh ? `<#${wCh}>` : '*Not set*', inline: true },
+                    { name: 'Goodbye Channel', value: gCh ? `<#${gCh}>` : '*Not set*', inline: true },
+                    { name: 'Welcome Message', value: `\`${wMsg}\``, inline: false },
+                    { name: 'Setup', value: '`/serversettings` → set welcome_channel, goodbye_channel, welcome_message', inline: false }
+                ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+            return ix.reply({ embeds: [embed], flags: 1 << 6 });
+        }
+
+        if (sc === 'test') {
+            const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
+            if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+            await ix.reply({ content: 'Sending test welcome...', flags: 1 << 6 });
+            await module.exports.onMemberAdd(ix.member, client, db);
+            return;
+        }
+    },
+
     async onMemberAdd(member, client, db) { await handleWelcome(member, client, db); },
     async onMemberRemove(member, client, db) { await handleGoodbye(member, client, db); }
 };
