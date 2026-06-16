@@ -57,6 +57,12 @@ async function checkToxicity(text) {
     return null;
 }
 
+// ================= DISCORD-NATIVE STYLE CONSTANTS =================
+const C = { BLURPLE: 0x5865F2, RED: 0xED4245, GREEN: 0x3BA55D, YELLOW: 0xFAA61A, GREY: 0x2F3136, DARK: 0x202225 };
+const ICON = 'https://cdn.discordapp.com/embed/avatars/0.png';
+function fmtDur(ms) { return ms >= 86400000 ? `${Math.round(ms/86400000)} day${Math.round(ms/86400000)>1?'s':''}` : `${Math.round(ms/3600000)} hour${Math.round(ms/3600000)>1?'s':''}`; }
+function strikeBar(wc) { const f = Math.min(wc, 4), e = 4 - f; return `${'●'.repeat(f)}${'○'.repeat(e)}`; }
+
 // ================= ACTION ENGINE =================
 async function takeAction(message, violations, client, db) {
     const uid = message.author.id, gid = message.guild.id;
@@ -68,10 +74,10 @@ async function takeAction(message, violations, client, db) {
 
     // Determine action
     const hasMalicious = violations.some(v => v.type.includes('malicious') || v.type.includes('phishing'));
-    let action = 'timeout', duration = 3600000; // default: 1h timeout
-    if (wc === 1) { action = 'timeout'; duration = 3600000; }        // 1h
-    else if (wc === 2) { action = 'timeout'; duration = 86400000; }   // 1d
-    else if (wc === 3) { action = 'timeout'; duration = 604800000; }  // 7d
+    let action = 'timeout', duration = 3600000;
+    if (wc === 1) { action = 'timeout'; duration = 3600000; }
+    else if (wc === 2) { action = 'timeout'; duration = 86400000; }
+    else if (wc === 3) { action = 'timeout'; duration = 604800000; }
     else { action = 'ban'; duration = 0; }
     if (hasMalicious && wc >= 2) { action = 'ban'; duration = 0; }
 
@@ -95,50 +101,67 @@ async function takeAction(message, violations, client, db) {
 
     // Execute action
     const member = await message.guild.members.fetch(uid).catch(() => null);
-    let actionStatus = '⏳ Pending';
+    let actionText = 'Timed out', actionColor = C.YELLOW;
     try {
         if (action === 'timeout' && member?.moderatable) {
             await member.timeout(duration, `AutoMod: ${violations[0].reason}`);
-            actionStatus = `⏱️ Timed out for ${duration >= 86400000 ? Math.round(duration/86400000) + 'd' : Math.round(duration/3600000) + 'h'}`;
+            actionText = `Timed out for ${fmtDur(duration)}`;
+            actionColor = duration >= 604800000 ? C.RED : C.YELLOW;
         } else if (action === 'ban' && member?.bannable) {
             await member.ban({ reason: `AutoMod: ${violations[0].reason}`, deleteMessageSeconds: 86400 });
-            actionStatus = '🔨 Banned';
+            actionText = 'Banned'; actionColor = C.RED;
         } else {
-            actionStatus = '⚠️ Warned (insufficient perms)';
+            actionText = 'Warned (insufficient permissions)'; actionColor = C.GREY;
         }
-    } catch (e) { actionStatus = '❌ Failed: ' + e.message; }
+    } catch (e) { actionText = 'Action failed'; actionColor = C.GREY; }
 
-    // DM user
+    // ================= DM NOTIFICATION (Discord-native style) =================
     try {
-        const dmEmbed = new EmbedBuilder().setColor('#5865F2').setAuthor({ name: '🛡️ AutoMod', iconURL: 'https://cdn.discordapp.com/embed/avatars/0.png' })
-            .setTitle(action === 'ban' ? 'You were banned' : action === 'timeout' ? 'You were timed out' : 'Warning issued')
-            .setDescription(`Your message in **${message.guild.name}** was removed.\n\n**Reason:** ${violations[0].type}\n**Details:** ${violations[0].reason}\n**Action:** ${actionStatus}\n**Strike:** ${wc}/4`)
-            .setFooter({ text: 'ARCHON CG-223 AutoMod' }).setTimestamp();
-        await message.author.send({ embeds: [dmEmbed] }).catch(() => {});
+        const dm = new EmbedBuilder()
+            .setColor(actionColor)
+            .setAuthor({ name: 'AutoMod', iconURL: message.guild.iconURL({ size: 64 }) || ICON })
+            .setTitle(action === 'ban' ? 'You were banned' : action === 'timeout' ? 'You were timed out' : 'Action taken on your account')
+            .setDescription(`Your message in **${message.guild.name}** was removed by AutoMod.`)
+            .addFields(
+                { name: 'Rule', value: violations[0].type, inline: true },
+                { name: 'Action', value: actionText, inline: true },
+                { name: 'Violation', value: violations[0].reason, inline: false }
+            )
+            .setFooter({ text: `Strike ${wc} of 4` })
+            .setTimestamp();
+        await message.author.send({ embeds: [dm] }).catch(() => {});
     } catch (e) {}
 
-    // Channel notification (10s)
+    // ================= CHANNEL NOTIFICATION (10s, Discord-native) =================
     try {
         const notif = await message.channel.send({
-            embeds: [new EmbedBuilder().setColor(action === 'ban' ? '#ED4245' : '#F23F43').setDescription(`**${message.author.tag}** was ${action === 'ban' ? 'banned' : action === 'timeout' ? 'timed out' : 'warned'} by AutoMod\n**Reason:** ${violations[0].reason}`)]
+            embeds: [new EmbedBuilder().setColor(actionColor).setDescription(`**${message.author.tag}** — ${actionText} by AutoMod\n**Rule:** ${violations[0].type}`)]
         }).catch(() => {});
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
 
-    // Log to mod channel
+    // ================= MOD LOG (Discord-native AutoMod style) =================
     const settings = client.getServerSettings?.(gid) || {};
     const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog || settings.log;
     if (logId) {
         const logCh = message.guild.channels.cache.get(logId);
         if (logCh?.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
-            const bar = '🟥'.repeat(Math.min(wc, 4)) + '⬛'.repeat(Math.max(0, 4 - wc));
-            const next = ['1h Timeout', '1d Timeout', '7d Timeout', 'Ban'][Math.min(wc - 1, 3)] || 'MAX';
-            const embed = new EmbedBuilder().setColor('#ED4245').setAuthor({ name: '🛡️ AutoMod Action', iconURL: client.user.displayAvatarURL() })
-                .setDescription(`**Member:** ${message.author} \`${uid}\`\n**Action:** ${actionStatus}\n**Reason:** ${violations[0].type} — ${violations[0].reason}\n**Channel:** <#${message.channel.id}>\n**Strike:** ${wc}/4`)
-                .addFields({ name: 'Escalation', value: `${bar} Next: ${next}`, inline: false })
-                .setFooter({ text: `ARCHON CG-223 • Strike ${wc}/4` }).setTimestamp();
-            if (repeatV?.channels) embed.addFields({ name: 'Cross-channel', value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
-            await logCh.send({ embeds: [embed] }).catch(() => {});
+            const bar = strikeBar(wc);
+            const next = wc >= 4 ? 'None — maximum reached' : ['1 hour timeout', '1 day timeout', '7 day timeout', 'Ban'][wc];
+            const log = new EmbedBuilder()
+                .setColor(actionColor)
+                .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
+                .setTitle(actionText)
+                .addFields(
+                    { name: 'Member', value: `${message.author} \`${uid}\``, inline: false },
+                    { name: 'Rule', value: violations[0].type, inline: true },
+                    { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
+                    { name: 'Content', value: message.content.substring(0, 500) || '(attachment)', inline: false }
+                )
+                .setFooter({ text: `${bar}  Strike ${wc} of 4  •  Next: ${next}` })
+                .setTimestamp();
+            if (repeatV?.channels?.length > 1) log.addFields({ name: 'Cross-channel', value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
+            await logCh.send({ embeds: [log] }).catch(() => {});
         }
     }
 
@@ -319,9 +342,18 @@ module.exports = {
         if (sc === 'status') {
             const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
             const wl = ss?.autoModWhitelist;
-            const e = new EmbedBuilder().setColor(ss?.autoModEnabled ? '#2ecc71' : '#e74c3c').setAuthor({ name: '🛡️ AutoMod Status', iconURL: client.user.displayAvatarURL() }).
-                addFields({ name: 'Status', value: ss?.autoModEnabled ? '✅ Enabled' : '❌ Disabled', inline: true }, { name: 'Sensitivity', value: (ss?.autoModSensitivity || 'medium').toUpperCase(), inline: true }, { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not set', inline: true }, { name: 'Whitelist', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false }).
-                setFooter({ text: '🦅 ARCHON CG-223 • AutoMod' }).setTimestamp();
+            const e = new EmbedBuilder()
+                .setColor(ss?.autoModEnabled ? C.GREEN : C.RED)
+                .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
+                .setTitle('Configuration')
+                .addFields(
+                    { name: 'Status', value: ss?.autoModEnabled ? 'Enabled' : 'Disabled', inline: true },
+                    { name: 'Sensitivity', value: (ss?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
+                    { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
+                    { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false }
+                )
+                .setFooter({ text: 'ARCHON CG-223' })
+                .setTimestamp();
             return ix.reply({ embeds: [e], flags: 1 << 6 });
         }
 
@@ -336,7 +368,8 @@ module.exports = {
             }
             client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s','now') WHERE guild_id = ?").run(en ? '1' : '0', ix.guild.id);
             client.settings.delete(ix.guild.id);
-            await ix.reply({ content: `✅ AutoMod ${en ? 'enabled' : 'disabled'}...`, flags: 1 << 6 });
+            const e = new EmbedBuilder().setColor(en ? C.GREEN : C.GREY).setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() }).setDescription(en ? '**AutoMod is now enabled.**\nShield rules deployed to this server.' : '**AutoMod is now disabled.**\nShield rules removed.').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+            await ix.reply({ embeds: [e], flags: 1 << 6 });
             await syncRules(ix.guild, en ? 'create' : 'delete', ss);
             return;
         }
@@ -380,9 +413,18 @@ module.exports = {
         if (action === 'status') {
             const logId = resolveSetting(settings, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
             const wl = settings?.autoModWhitelist;
-            const e = new EmbedBuilder().setColor(settings?.autoModEnabled ? '#2ecc71' : '#e74c3c').setAuthor({ name: '🛡️ AutoMod Status', iconURL: client.user.displayAvatarURL() }).
-                addFields({ name: 'Status', value: settings?.autoModEnabled ? '✅ Enabled' : '❌ Disabled', inline: true }, { name: 'Sensitivity', value: (settings?.autoModSensitivity || 'medium').toUpperCase(), inline: true }, { name: 'Log', value: logId ? `<#${logId}>` : 'Not set', inline: true }, { name: 'Whitelist', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false }).
-                setFooter({ text: '🦅 ARCHON CG-223 • AutoMod' }).setTimestamp();
+            const e = new EmbedBuilder()
+                .setColor(settings?.autoModEnabled ? C.GREEN : C.RED)
+                .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
+                .setTitle('Configuration')
+                .addFields(
+                    { name: 'Status', value: settings?.autoModEnabled ? 'Enabled' : 'Disabled', inline: true },
+                    { name: 'Sensitivity', value: (settings?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
+                    { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
+                    { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false }
+                )
+                .setFooter({ text: 'ARCHON CG-223' })
+                .setTimestamp();
             return msg.reply({ embeds: [e] });
         }
         if (action === 'enable' || action === 'on') {
