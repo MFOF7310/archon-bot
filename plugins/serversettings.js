@@ -22,7 +22,7 @@ module.exports = {
 data: new SlashCommandBuilder()
 .setName('serversettings')
 .setDescription('🛠️ Configure the bot for your server')
-.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+.setDefaultMemberPermissions(Number(PermissionFlagsBits.Administrator))
 .setDescriptionLocalizations({
     fr: '🛠️ Configurer le bot pour votre serveur'
 })
@@ -709,7 +709,7 @@ async execute(interaction, client) {
                 attachment: buffer,
                 name: `server-config-${interaction.guild.id}.json`
             }],
-            ephemeral: true
+            flags: 1 << 6
         });
     },
 
