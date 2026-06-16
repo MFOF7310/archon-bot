@@ -4034,6 +4034,12 @@ safeOn(Events.GuildMemberAdd, async (member) => {
         await client.leveling.onMemberAdd(member, client, db);
     }
     
+    // ================= WELCOME PLUGIN: ON MEMBER ADD =================
+    const welcome = client.commands.get('welcome');
+    if (welcome?.onMemberAdd) {
+        await welcome.onMemberAdd(member, client, db);
+    }
+    
     const settings = getServerSettings(member.guild.id);
     const isArchitectServer = member.guild.id === process.env.GUILD_ID;
     
@@ -4364,6 +4370,13 @@ safeOn(Events.GuildMemberRemove, async (member) => {
     if (member.user.bot) return;
     
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
+    
+    
+    // ================= WELCOME PLUGIN: ON MEMBER REMOVE =================
+    const welcome = client.commands.get('welcome');
+    if (welcome?.onMemberRemove) {
+        await welcome.onMemberRemove(member, client, db);
+    }
     
     const settings = getServerSettings(member.guild.id);
     const isArchitectServer = member.guild.id === process.env.GUILD_ID;
