@@ -1,103 +1,237 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const fs = require('fs');
-const path = require('path');
 
-const W = 850, H = 260;
-const AV_CACHE = path.join(__dirname, '..', 'cache', 'avatars');
-if (!fs.existsSync(AV_CACHE)) fs.mkdirSync(AV_CACHE, { recursive: true });
+const W = 520, H = 140; // Compact card size
 
-async function getAvatar(user, size = 128) {
-    const url = user.displayAvatarURL({ extension: 'png', size });
-    try { return await loadImage(url); } catch { return null; }
+// ================= SMART UTILS =================
+function ordinal(n) { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); }
+function fmtDur(ms) {
+    if (!ms || ms < 60000) return '< 1m';
+    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+    return `${d ? d + 'd ' : ''}${h ? h + 'h ' : ''}${m}m`.trim();
+}
+function accountAge(createdAt) {
+    const ms = Date.now() - createdAt;
+    const d = Math.floor(ms / 86400000);
+    if (d < 1) return 'Created today';
+    if (d < 7) return `${d} days old`;
+    if (d < 30) return `${Math.floor(d / 7)} weeks old`;
+    if (d < 365) return `${Math.floor(d / 30)} months old`;
+    return `${Math.floor(d / 365)} years old`;
 }
 
-async function renderWelcomeBanner(member, count) {
-    const c = createCanvas(W, H + 70);
-    const ctx = c.getContext('2d');
-    const bg1 = '#5865f2', bg2 = '#2d3a8c', accent = '#8b9aff';
-    const grad = ctx.createLinearGradient(0, 0, W, H + 70);
-    grad.addColorStop(0, bg1); grad.addColorStop(1, bg2);
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H + 70);
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0, 0, W, H + 70);
-    ctx.strokeStyle = 'rgba(255,255,255,0.025)'; ctx.lineWidth = 1;
-    for (let i = 0; i < W; i += 50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H + 70); ctx.stroke(); }
-    const av = await getAvatar(member.user, 128);
-    const ax = 55, ay = (H + 70) / 2, ar = 64;
-    if (av) {
-        ctx.save(); ctx.beginPath(); ctx.arc(ax + ar, ay, ar + 10, 0, Math.PI * 2); ctx.fillStyle = accent + '20'; ctx.fill(); ctx.restore();
-        ctx.save(); ctx.beginPath(); ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2); ctx.closePath(); ctx.clip(); ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2); ctx.restore();
-        ctx.beginPath(); ctx.arc(ax + ar, ay, ar + 3, 0, Math.PI * 2); ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.stroke();
-    }
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('WELCOME', 210, (H + 70) / 2 - 42);
-    ctx.fillStyle = accent; ctx.font = '30px sans-serif';
-    const name = member.user.username.length > 20 ? member.user.username.substring(0, 19) + '...' : member.user.username;
-    ctx.fillText(name, 210, (H + 70) / 2 + 8);
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '16px sans-serif';
-    ctx.fillText(`Member #${count.toLocaleString()}`, 210, (H + 70) / 2 + 48);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText('ARCHON CG-223', W - 25, 22);
-    return c.encode('png');
-}
-
-async function renderGoodbyeBanner(member, duration, roleCount) {
+// ================= CANVAS: COMPACT WELCOME CARD =================
+async function renderWelcomeCard(member, count) {
     const c = createCanvas(W, H);
     const ctx = c.getContext('2d');
-    const bg1 = '#e74c3c', bg2 = '#8e2409', accent = '#ff7a6b';
-    const grad = ctx.createLinearGradient(0, 0, W, H);
-    grad.addColorStop(0, bg1); grad.addColorStop(1, bg2);
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(255,255,255,0.025)'; ctx.lineWidth = 1;
-    for (let i = 0; i < W; i += 50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke(); }
-    const av = await getAvatar(member.user, 128);
-    const ax = 55, ay = H / 2, ar = 58;
+
+    // Background
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#1a1a2e');
+    g.addColorStop(1, '#16213e');
+    ctx.fillStyle = g;
+    roundRect(ctx, 0, 0, W, H, 16);
+    ctx.fill();
+
+    // Neural grid lines
+    ctx.strokeStyle = 'rgba(0,251,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < W; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - 40, H); ctx.stroke(); }
+
+    // Left accent bar
+    ctx.fillStyle = '#00fbff';
+    roundRect(ctx, 0, 20, 4, H - 40, 2);
+    ctx.fill();
+
+    // Avatar
+    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 })).catch(() => null);
+    const ax = 22, ay = H / 2, ar = 38;
     if (av) {
-        ctx.save(); ctx.beginPath(); ctx.arc(ax + ar, ay, ar + 8, 0, Math.PI * 2); ctx.fillStyle = accent + '20'; ctx.fill(); ctx.restore();
-        ctx.save(); ctx.beginPath(); ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2); ctx.closePath(); ctx.clip(); ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2); ctx.restore();
-        ctx.beginPath(); ctx.arc(ax + ar, ay, ar + 3, 0, Math.PI * 2); ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.stroke();
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
+        ctx.restore();
+        // Ring
+        ctx.beginPath();
+        ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2);
+        ctx.strokeStyle = '#00fbff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
     }
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 42px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('DEPARTURE', 185, H / 2 - 35);
-    ctx.fillStyle = accent; ctx.font = '26px sans-serif';
-    const name = member.user.username.length > 22 ? member.user.username.substring(0, 21) + '...' : member.user.username;
-    ctx.fillText(name, 185, H / 2 + 10);
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '14px sans-serif';
-    const durText = duration ? `Stay: ${duration}` : 'Brief visit';
-    const roleText = roleCount ? `| ${roleCount} role${roleCount > 1 ? 's' : ''} lost` : '';
-    ctx.fillText(`${durText} ${roleText}`, 185, H / 2 + 42);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText('ARCHON CG-223', W - 25, 20);
+
+    // "JOINED" label
+    ctx.fillStyle = '#00fbff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('JOINED', 100, 32);
+
+    // Username
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px sans-serif';
+    const name = member.user.username.length > 18 ? member.user.username.substring(0, 17) + '...' : member.user.username;
+    ctx.fillText(name, 100, 56);
+
+    // Stats row
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '11px sans-serif';
+    const age = accountAge(member.user.createdTimestamp);
+    const isSus = (Date.now() - member.user.createdTimestamp) < 604800000; // < 7 days
+    const ageColor = isSus ? '  [NEW]' : '';
+    ctx.fillText(`#${ordinal(count)} member  |  ${age}${ageColor}`, 100, 78);
+
+    // Server name (bottom right)
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    const sName = member.guild.name.length > 25 ? member.guild.name.substring(0, 24) + '...' : member.guild.name;
+    ctx.fillText(sName, W - 18, H - 18);
+
+    // "ARCHON" badge (top right)
+    ctx.fillStyle = 'rgba(0,251,255,0.15)';
+    roundRect(ctx, W - 90, 14, 72, 20, 4);
+    ctx.fill();
+    ctx.fillStyle = '#00fbff';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('ARCHON CG-223', W - 54, 27);
+
     return c.encode('png');
 }
 
-function formatDuration(ms) {
-    if (!ms || ms < 60000) return '< 1 minute';
-    const mins = Math.floor(ms / 60000);
-    if (mins < 60) return `${mins} minute${mins > 1 ? 's' : ''}`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''}`;
-    const days = Math.floor(hrs / 24);
-    return `${days} day${days > 1 ? 's' : ''}`;
+// ================= CANVAS: COMPACT GOODBYE CARD =================
+async function renderGoodbyeCard(member, duration, roleCount) {
+    const c = createCanvas(W, H);
+    const ctx = c.getContext('2d');
+
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#1a0a0a');
+    g.addColorStop(1, '#2d1313');
+    ctx.fillStyle = g;
+    roundRect(ctx, 0, 0, W, H, 16);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(231,76,60,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < W; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - 40, H); ctx.stroke(); }
+
+    ctx.fillStyle = '#e74c3c';
+    roundRect(ctx, 0, 20, 4, H - 40, 2);
+    ctx.fill();
+
+    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 })).catch(() => null);
+    const ax = 22, ay = H / 2, ar = 38;
+    if (av) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2);
+        ctx.strokeStyle = '#e74c3c';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = '#e74c3c';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('DEPARTED', 100, 32);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px sans-serif';
+    const name = member.user.username.length > 18 ? member.user.username.substring(0, 17) + '...' : member.user.username;
+    ctx.fillText(name, 100, 56);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '11px sans-serif';
+    const dur = duration || '< 1m';
+    ctx.fillText(`Stay: ${dur}  |  ${roleCount} role${roleCount !== 1 ? 's' : ''} removed`, 100, 78);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    const sName = member.guild.name.length > 25 ? member.guild.name.substring(0, 24) + '...' : member.guild.name;
+    ctx.fillText(sName, W - 18, H - 18);
+
+    ctx.fillStyle = 'rgba(231,76,60,0.15)';
+    roundRect(ctx, W - 90, 14, 72, 20, 4);
+    ctx.fill();
+    ctx.fillStyle = '#e74c3c';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('ARCHON CG-223', W - 54, 27);
+
+    return c.encode('png');
 }
 
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+
+// ================= NEURAL GRID ANSI TEXT =================
+function ansiWelcome(member, count) {
+    const name = member.user.username;
+    const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
+    return '```ansi\n' +
+        '\u001b[0;36m╔══════════════════════════════════════════╗\u001b[0m\n' +
+        '\u001b[0;36m║\u001b[1;36m  NEURAL LINK // NETWORK EXPANSION       \u001b[0;36m║\u001b[0m\n' +
+        '\u001b[0;36m╠══════════════════════════════════════════╣\u001b[0m\n' +
+        `\u001b[0;36m║\u001b[0m  Node: \u001b[1;33m${name.padEnd(18)}\u001b[0m #${String(count).padStart(4)}     \u001b[0;36m║\u001b[0m\n` +
+        `\u001b[0;36m║\u001b[0m  Grid: \u001b[0;37m${member.guild.name.substring(0, 26).padEnd(26)}\u001b[0m  \u001b[0;36m║\u001b[0m\n` +
+        `\u001b[0;36m║\u001b[0m  Account: \u001b[0;37m${accountAge(member.user.createdTimestamp).padEnd(23)}\u001b[0m` + (isNew ? ' \u001b[1;31m[NEW]\u001b[0m ' : '       ') + '\u001b[0;36m║\u001b[0m\n' +
+        '\u001b[0;36m╚══════════════════════════════════════════╝\u001b[0m\n' +
+        '```\n' +
+        `${member.toString()} Welcome to the grid.`;
+}
+
+function ansiGoodbye(member, duration, roleCount, roles) {
+    const name = member.user.username;
+    const dur = duration || '< 1m';
+    const rl = roles.slice(0, 4).map(r => r.name).join(', ') || 'None';
+    return '```ansi\n' +
+        '\u001b[0;31m╔══════════════════════════════════════════╗\u001b[0m\n' +
+        '\u001b[0;31m║\u001b[1;31m  NEURAL LINK // NETWORK SEVERED         \u001b[0;31m║\u001b[0m\n' +
+        '\u001b[0;31m╠══════════════════════════════════════════╣\u001b[0m\n' +
+        `\u001b[0;31m║\u001b[0m  Node: \u001b[1;33m${name.padEnd(18)}\u001b[0m              \u001b[0;31m║\u001b[0m\n` +
+        `\u001b[0;31m║\u001b[0m  Stay: \u001b[0;37m${dur.padEnd(26)}\u001b[0m       \u001b[0;31m║\u001b[0m\n` +
+        `\u001b[0;31m║\u001b[0m  Roles: \u001b[0;37m${rl.substring(0, 28).padEnd(28)}\u001b[0m  \u001b[0;31m║\u001b[0m\n` +
+        '\u001b[0;31m╚══════════════════════════════════════════╝\u001b[0m\n' +
+        '```';
+}
+
+// ================= HANDLERS =================
 async function handleWelcome(member, client, db) {
     const ss = client.getServerSettings?.(member.guild.id) || {};
     if (ss.welcomeEnabled === false) return;
     const chId = ss.welcomeChannel || ss.welcome_channel;
     const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
     if (!ch) return;
-    const png = await renderWelcomeBanner(member, member.guild.memberCount);
+
+    const png = await renderWelcomeCard(member, member.guild.memberCount);
     const embed = new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setDescription((ss.welcomeMessage || 'Welcome {user} to **{server}**!').replace('{user}', member.toString()).replace('{server}', member.guild.name).replace('{count}', String(member.guild.memberCount)))
+        .setColor(0x00fbff)
         .setImage('attachment://welcome.png')
-        .setFooter({ text: `Member #${member.guild.memberCount} | ARCHON CG-223` })
+        .setFooter({ text: 'ARCHON CG-223 | Neural Grid' })
         .setTimestamp();
-    const ansiText = '**> NETWORK LINK ESTABLISHED**\n> `' + member.user.username + '` joined the grid | Member #' + member.guild.memberCount + '\n> Glad you\'re here, ' + member.toString() + '!';
-    await ch.send({ content: ansiText }).catch(() => {});
-    await ch.send({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'welcome.png' })] }).catch(() => {});
+
+    const content = ansiWelcome(member, member.guild.memberCount);
+    await ch.send({ content, embeds: [embed], files: [new AttachmentBuilder(png, { name: 'welcome.png' })] }).catch(() => {});
 }
 
 async function handleGoodbye(member, client, db) {
@@ -106,29 +240,26 @@ async function handleGoodbye(member, client, db) {
     const chId = ss.goodbyeChannel || ss.goodbye_channel;
     const ch = member.guild.channels.cache.get(chId);
     if (!ch) return;
+
     const joinedAt = member.joinedTimestamp;
-    const duration = joinedAt ? formatDuration(Date.now() - joinedAt) : null;
-    const roleCount = member.roles.cache.size - 1;
+    const duration = joinedAt ? fmtDur(Date.now() - joinedAt) : null;
     const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
-    const png = await renderGoodbyeBanner(member, duration, roleCount);
+    const png = await renderGoodbyeCard(member, duration, roles.length);
     const embed = new EmbedBuilder()
         .setColor(0xe74c3c)
-        .setDescription(`**${member.user.tag}** left **${member.guild.name}**.`)
         .setImage('attachment://goodbye.png')
         .setFooter({ text: 'ARCHON CG-223 | Departure Log' })
         .setTimestamp();
-    if (duration) embed.addFields({ name: 'Stay Duration', value: duration, inline: true });
-    if (roleCount > 0) embed.addFields({ name: `Roles Lost (${roleCount})`, value: roles.slice(0, 10).map(r => r.name).join(', ') || 'None', inline: true });
-    const roleList = roles.slice(0, 5).map(r => r.name).join(', ') || 'None';
-    const ansiText = '**> NETWORK LINK SEVERED**\n> `' + member.user.username + '` left the grid\n> **DEPARTURE REPORT**\n```\nDisplay:  ' + member.user.username + '\nID:       ' + member.id + '\nStay:     ' + (duration || 'Brief visit') + '\nRoles:    ' + roleList + '\n```';
-    await ch.send({ content: ansiText }).catch(() => {});
-    await ch.send({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'goodbye.png' })] }).catch(() => {});
+
+    const content = ansiGoodbye(member, duration, roles.length, roles);
+    await ch.send({ content, embeds: [embed], files: [new AttachmentBuilder(png, { name: 'goodbye.png' })] }).catch(() => {});
 }
 
+// ================= MODULE =================
 module.exports = {
     name: 'welcome', category: 'SOCIAL', aliases: ['goodbye', 'leave', 'join'],
-    description: 'Canvas welcome/goodbye banners with styled text.',
-    usage: '.welcome config | Set welcome_channel and goodbye_channel in serversettings',
+    description: 'Neural-grid welcome/goodbye cards with ANSI art and smart detection.',
+    usage: 'Auto-triggers on member join/leave. Set channels via serversettings.',
     cooldown: 1000,
     async onMemberAdd(member, client, db) { await handleWelcome(member, client, db); },
     async onMemberRemove(member, client, db) { await handleGoodbye(member, client, db); }
