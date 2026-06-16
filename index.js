@@ -2043,12 +2043,12 @@ client.loadPlugins = async () => {
     // ═══════════════════════════════════════════════════════════════════
     //  NEURAL GRID FOOTER — STATISTICS MATRIX
     // ═══════════════════════════════════════════════════════════════════
-    console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
+    console.log(`\x1b[38;5;39m    ══════════════════════\x1b[0m`);
     console.log(`\x1b[38;5;39m    ║\x1b[0m  \x1b[32m💬 DISCORD:\x1b[0m ${String(moduleStats.discord).padEnd(4)}  \x1b[36m🌉 TELEGRAM:\x1b[0m ${String(moduleStats.telegram).padEnd(4)}  \x1b[33m🔗 ALIASES:\x1b[0m ${String(moduleStats.aliases).padEnd(4)}  \x1b[35m📊 CATEGORIES:\x1b[0m ${String(categories.length).padEnd(3)}  \x1b[32m⚡ SLASH:\x1b[0m ${String(moduleStats.slash).padEnd(3)}  \x1b[38;5;39m║\x1b[0m`);
     console.log(`\x1b[38;5;39m    ║\x1b[0m  \x1b[32m✅ LOADED:\x1b[0m ${String(moduleStats.total).padEnd(5)}  \x1b[31m❌ FAILED:\x1b[0m ${String(failedCommands.length).padEnd(5)}  \x1b[34m📡 SERVERS:\x1b[0m ${String(client.guilds.cache.size).padEnd(5)}  \x1b[33m🧠 STATUS:\x1b[0m \x1b[5;32mONLINE\x1b[0m                    \x1b[38;5;39m║\x1b[0m`);
     
     if (failedCommands.length > 0) {
-        console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
+        console.log(`\x1b[38;5;39m    ══════════════════\x1b[0m`);
         failedCommands.forEach(f => {
             const sourceTag = f.source === 'TELEGRAM' ? '\x1b[36m🌉' : '\x1b[32m💬';
             const errTrunc = f.error.substring(0, 40).padEnd(40);
@@ -2056,7 +2056,7 @@ client.loadPlugins = async () => {
         });
     }
     
-    console.log(`\x1b[38;5;39m    ╚══════════════════════════════════════════════════════════════════════╝\x1b[0m\n`);
+    console.log(`\x1b[38;5;39m    ═════════════════════\x1b[0m\n`);
     
         // Final status line
     const statusColor = failedCommands.length === 0 ? '\x1b[32m' : '\x1b[33m';
@@ -2113,12 +2113,13 @@ client.once(Events.ClientReady, async () => {
 
     await client.loadPlugins();
 
-// ================= PLUGIN EVENT REFERENCES =================
-// Store references to plugins that need event hooks
+// ================= LEVELING SYSTEM REFERENCE =================
+// Store reference to leveling plugin for event hooks
 const leveling = client.commands.get('leveling');
-if (leveling?.onMemberAdd) { client.leveling = leveling; console.log(`${green}[LEVELING]${reset} Event hooks registered`); }
-const welcomeMod = client.commands.get('welcome');
-if (welcomeMod?.onMemberAdd) { client.welcome = welcomeMod; console.log(`${green}[WELCOME]${reset} Event hooks registered`); }
+if (leveling?.onMemberAdd) {
+    client.leveling = leveling;
+    console.log(`${green}[LEVELING]${reset} Plugin reference stored for event hooks`);
+}
 
 // ----- FULLY AUTOMATIC BILINGUAL ALIAS MAP -----
 function buildAliasLanguageMap() {
@@ -3182,15 +3183,17 @@ if (message.content && message.content.length > 4000) {
 
         // ================= LEVEL UP DETECTED =================
         if (newLevel > oldLevel) {
-            // ================= LEVELING PLUGIN: ON LEVEL UP =================
-            if (client.leveling?.onLevelUp) {
-                const xpCur = newXP - Math.pow((newLevel - 1) / 0.1, 2);
-                const xpNeed = Math.pow(newLevel / 0.1, 2) - Math.pow((newLevel - 1) / 0.1, 2);
-                await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCur), Math.floor(xpNeed), client, db);
-            }
-
-            const userLang = client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
-            const isDM = !message.guild;
+    // ================= LEVELING PLUGIN: ON LEVEL UP =================
+    if (client.leveling?.onLevelUp) {
+        const currentLevelXP = Math.pow((newLevel - 1) / 0.1, 2);
+        const nextLevelXP = Math.pow(newLevel / 0.1, 2);
+        const xpCurrent = newXP - currentLevelXP;
+        const xpNeeded = nextLevelXP - currentLevelXP;
+        await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCurrent), Math.floor(xpNeeded), client, db);
+    }
+    
+    const userLang = client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
+    const isDM = !message.guild;
             const guildName = isDM ? 'NEURAL NETWORK' : message.guild.name;
             const guildIcon = isDM ? client.user.displayAvatarURL() : message.guild.iconURL();
 
@@ -4025,12 +4028,17 @@ safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     
     if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
-
-    // ================= LEVELING PLUGIN: ON MEMBER ADD =================
-    if (client.leveling?.onMemberAdd) { await client.leveling.onMemberAdd(member, client, db); }
-
+    
+    // ================= LEVELING: ON MEMBER ADD =================
+    if (client.leveling?.onMemberAdd) {
+        await client.leveling.onMemberAdd(member, client, db);
+    }
+    
     // ================= WELCOME PLUGIN: ON MEMBER ADD =================
-    if (client.welcome?.onMemberAdd) { await client.welcome.onMemberAdd(member, client, db); }
+    const welcome = client.commands.get('welcome');
+    if (welcome?.onMemberAdd) {
+        await welcome.onMemberAdd(member, client, db);
+    }
     
     const settings = getServerSettings(member.guild.id);
     const isArchitectServer = member.guild.id === process.env.GUILD_ID;
@@ -4136,11 +4144,11 @@ safeOn(Events.GuildMemberAdd, async (member) => {
             `### ${tierEmoji} ${lang === 'fr' ? 'AGENT AUTHENTIFIÉ' : 'AGENT AUTHENTICATED'}\n` +
             `${chosen.body}\n\n` +
             `\`\`\`\n` +
-            `╔══════════════ DAEMON_LOG ══════════════╗\n` +
+            `DAEMON_LOG\n` +
             `║  🛰️ NODE:    ${member.guild.name.substring(0, 18).padEnd(22)}║\n` +
             `║  ${tierEmoji} TIER:    ${memberTier.padEnd(20)}║\n` +
             `║  👥 SECTOR:  #${String(memberCount).padEnd(20)}║\n` +
-            `╚══════════════════════════════════════════╝\n` +
+            `\n` +
             `\`\`\``
         )
         .addFields(
@@ -4333,7 +4341,7 @@ safeOn(Events.GuildMemberAdd, async (member) => {
                         `\u001b[1;36m║\u001b[0m \u001b[1;33mTARGET:\u001b[0m ${member.user.displayName.padEnd(20)}\u001b[1;36m║\u001b[0m`,
                         `\u001b[1;36m║\u001b[0m \u001b[1;31mTHREAT:\u001b[0m ${threatAnalysis.risk.padEnd(20)}\u001b[1;36m║\u001b[0m`,
                         `\u001b[1;36m║\u001b[0m \u001b[1;35mSCORE:\u001b[0m ${(threatAnalysis.score + '/100').padEnd(20)}\u001b[1;36m║\u001b[0m`,
-                        `\u001b[1;36m╚════════════════════════════════╝\u001b[0m`,
+                        `\u001b[1;36m════\u001b[0m`,
                         `\`\`\``
                     ].join('\n'))
                     .addFields(
@@ -4362,9 +4370,13 @@ safeOn(Events.GuildMemberRemove, async (member) => {
     if (member.user.bot) return;
     
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
-
+    
+    
     // ================= WELCOME PLUGIN: ON MEMBER REMOVE =================
-    if (client.welcome?.onMemberRemove) { await client.welcome.onMemberRemove(member, client, db); }
+    const welcome = client.commands.get('welcome');
+    if (welcome?.onMemberRemove) {
+        await welcome.onMemberRemove(member, client, db);
+    }
     
     const settings = getServerSettings(member.guild.id);
     const isArchitectServer = member.guild.id === process.env.GUILD_ID;
@@ -4435,13 +4447,13 @@ safeOn(Events.GuildMemberRemove, async (member) => {
         })
         .setDescription([
             `\`\`\`ansi`,
-            `\u001b[1;31m╔══════════════════════════════════════════════╗\u001b[0m`,
+            `\u001b[1;31m═════════\u001b[0m`,
             `\u001b[1;31m║\u001b[0m  \u001b[1;37m${lang === 'fr' ? 'DEPART DU RESEAU' : 'NETWORK DEPARTURE'}\u001b[0m                    \u001b[1;31m║\u001b[0m`,
-            `\u001b[1;31m╠══════════════════════════════════════════════╣\u001b[0m`,
+            `\u001b[1;31m═════\u001b[0m`,
             `\u001b[1;31m║\u001b[0m  \u001b[1;33m${departureEmoji} ${member.user.username}\u001b[0m`,
             `\u001b[1;31m║\u001b[0m  \u001b[1;35m${departureEmoji} ${departureType}\u001b[0m`,
             `\u001b[1;31m║\u001b[0m  \u001b[1;32m${stayEmoji} ${stayStatus}\u001b[0m`,
-            `\u001b[1;31m╚══════════════════════════════════════════════╝\u001b[0m`,
+            `\u001b[1;31m════\u001b[0m`,
             `\`\`\``
         ].join('\n'))
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
