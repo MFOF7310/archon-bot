@@ -42,7 +42,6 @@ data: new SlashCommandBuilder()
             { name: '🛡️ Moderation', value: 'moderation' },
             { name: '🤖 AI & Features', value: 'features' },
             { name: '🏅 Gaming & Reward Roles', value: 'specialRoles' },
-            { name: '🎫 Ticket System', value: 'ticket' },
             { name: '📋 All Settings', value: 'all' }
         )
     )
@@ -76,12 +75,14 @@ data: new SlashCommandBuilder()
             { name: '🎁 Daily Channel', value: 'daily' },
             { name: '🛒 Shop Channel', value: 'shop' },
             { name: '📊 Market Channel', value: 'market' },
-            { name: '🎫 Ticket Category', value: 'ticketcategory' },
-            { name: '🎫 Ticket Staff Role', value: 'ticketstaffrole' },
-            { name: '🎫 Ticket Transcript Channel', value: 'tickettranscriptchannel' },
-            { name: '🎫 Ticket Log Channel', value: 'ticketlogchannel' },
-            { name: '🎫 Ticket Auto-Close Hours', value: 'ticketautoclose' },
-            { name: '🎫 Ticket Limit Per User', value: 'ticketlimit' },
+            { name: '📈 Investor Role', value: 'investorrole' },
+            { name: '🎮 Gamer Role', value: 'gamerrole' },
+            { name: '🧠 Quiz Master Role', value: 'quizmasterrole' },
+            { name: '⚔️ Duelist Role', value: 'duelistrole' },
+            { name: '🌱 Daily Initiate Role (3d)', value: 'dailyinitiaterole' },
+            { name: '🔥 Daily Warrior Role (7d)', value: 'dailywarriorrole' },
+            { name: '⚔️ Daily Champion Role (30d)', value: 'dailychampionrole' },
+            { name: '💎 Daily Legend Role (100d)', value: 'dailylegendrole' },
         )
     )
     .addStringOption(opt => opt
@@ -164,7 +165,7 @@ async execute(interaction, client) {
 
             const embed = new EmbedBuilder()
                 .setColor('#e74c3c')
-                .setAuthor({ name: '🛡️ ARCHITECT CG-223 • SECURITY LAYER', iconURL: message.guild.iconURL() || client.user.displayAvatarURL() })
+                .setAuthor({ name: '🛡️ ARCHON CG-223 • SECURITY LAYER', iconURL: message.guild.iconURL() || client.user.displayAvatarURL() })
                 .setDescription(msg)
                 .setFooter({ text: `${message.guild.name} • Server Configuration Protected` })
                 .setTimestamp();
@@ -260,16 +261,10 @@ async execute(interaction, client) {
                 generalChannel: 'Salon Général',
                 dailyChannel: 'Salon Quotidien',
                 shopChannel: 'Salon Boutique',
-                ticketCategory: 'Catégorie Tickets',
-                ticketStaffRole: 'Rôle Staff Tickets',
-                ticketTranscriptChannel: 'Salon Transcriptions',
-                ticketLogChannel: 'Salon Logs Tickets',
-                ticketAutoClose: 'Fermeture Auto',
-                ticketLimit: 'Limite par Utilisateur',
                 enabled: '✅ Activé',
                 disabled: '❌ Désactivé',
                 notSet: '⚠️ Non défini',
-                footer: '🦅 ARCHITECT CG-223 • Configuration par serveur',
+                footer: '🦅 ARCHON CG-223 • Configuration par serveur',
                 tip: '💡 Utilisez `/serversettings set` pour modifier'
             },
             en: {
@@ -301,16 +296,10 @@ async execute(interaction, client) {
                 generalChannel: 'General Channel',
                 dailyChannel: 'Daily Channel',
                 shopChannel: 'Shop Channel',
-                ticketCategory: 'Ticket Category',
-                ticketStaffRole: 'Ticket Staff Role',
-                ticketTranscriptChannel: 'Ticket Transcript Channel',
-                ticketLogChannel: 'Ticket Log Channel',
-                ticketAutoClose: 'Auto-Close Hours',
-                ticketLimit: 'Limit Per User',
                 enabled: '✅ Enabled',
                 disabled: '❌ Disabled',
                 notSet: '⚠️ Not set',
-                footer: '🦅 ARCHITECT CG-223 • Per-Server Configuration',
+                footer: '🦅 ARCHON CG-223 • Per-Server Configuration',
                 tip: '💡 Use `/serversettings set` to modify'
             }
         }[lang];
@@ -418,18 +407,6 @@ async execute(interaction, client) {
                 ].join('\n'),
                 inline: false
             }),
-            ticket: () => embed.addFields({
-                name: '\ud83c\udfab TICKET SYSTEM',
-                value: [
-                    `**Category:** ${channelMention(settings.ticketCategory)}`,
-                    `**Staff Role:** ${roleMention(settings.ticketStaffRole)}`,
-                    `**Transcript Channel:** ${channelMention(settings.ticketTranscriptChannel)}`,
-                    `**Log Channel:** ${channelMention(settings.ticketLogChannel)}`,
-                    `**Auto-Close:** ${settings.ticketAutoCloseHours || 24}h`,
-                    `**Limit Per User:** ${settings.ticketLimitPerUser || 1}`,
-                ].join('\n'),
-                inline: false
-            }),
         };
 
         // ================= CATEGORY =================
@@ -463,7 +440,7 @@ async execute(interaction, client) {
                 .setColor('#2ecc71')
                 .setTitle(result.title)
                 .setDescription(result.description)
-                .setFooter({ text: `ARCHITECT CG-223 • ${interaction.guild.name}` })
+                .setFooter({ text: `🦅 ARCHON CG-223 • ${interaction.guild.name}` })
                 .setTimestamp();
 
             await interaction.reply({ embeds: [embed], flags: 1 << 6 });
@@ -483,7 +460,7 @@ async execute(interaction, client) {
                 .setColor('#2ecc71')
                 .setTitle(result.title)
                 .setDescription(result.description)
-                .setFooter({ text: `ARCHITECT CG-223 • ${message.guild.name}` })
+                .setFooter({ text: `🦅 ARCHON CG-223 • ${message.guild.name}` })
                 .setTimestamp();
 
             await message.reply({ embeds: [embed] });
@@ -532,16 +509,10 @@ async execute(interaction, client) {
             levelchan: { type: 'channel', col: 'levelchan', name: lang === 'fr' ? 'Salon des Niveaux' : 'Level-Up Channel' },
             modlog: { type: 'channel', col: 'modlog', name: lang === 'fr' ? 'Salon Logs Modération' : 'Mod Log Channel' },
             market: { type: 'channel', col: 'market', name: lang === 'fr' ? 'Salon du Marché' : 'Market Channel' },
-            // Ticket system
-            ticketcategory: { type: 'channel', col: 'ticketcategory', name: lang === 'fr' ? 'Catégorie Tickets' : 'Ticket Category' },
-            tickettranscriptchannel: { type: 'channel', col: 'tickettranscriptchannel', name: lang === 'fr' ? 'Salon Transcriptions' : 'Ticket Transcript Channel' },
-            ticketlogchannel: { type: 'channel', col: 'ticketlogchannel', name: lang === 'fr' ? 'Salon Logs Tickets' : 'Ticket Log Channel' },
-            
             // Role settings
             member: { type: 'role', col: 'member', name: lang === 'fr' ? 'Rôle Membre' : 'Member Role' },
             muterole: { type: 'role', col: 'muterole', name: lang === 'fr' ? 'Rôle Muet' : 'Mute Role' },
             autorole: { type: 'role', col: 'autorole', name: lang === 'fr' ? 'Rôle Automatique' : 'Auto Role' },
-            ticketstaffrole: { type: 'role', col: 'ticketstaffrole', name: lang === 'fr' ? 'Rôle Staff Tickets' : 'Ticket Staff Role' },
             // Gaming & Economy Roles
             investorrole: { type: 'role', col: 'investorrole', name: lang === 'fr' ? 'Rôle Investisseur' : 'Investor Role' },
             gamerrole: { type: 'role', col: 'gamerrole', name: lang === 'fr' ? 'Rôle Joueur' : 'Gamer Role' },
@@ -558,8 +529,6 @@ async execute(interaction, client) {
             ai: { type: 'bool', col: 'ai', name: lang === 'fr' ? 'Lydia AI' : 'Lydia AI' },
             // Number settings
             xpboost: { type: 'number', col: 'xpboost', name: lang === 'fr' ? 'Multiplicateur XP' : 'XP Multiplier', min: 0.5, max: 5.0 },
-            ticketautoclose: { type: 'number', col: 'ticketautoclose', name: lang === 'fr' ? 'Fermeture Auto (heures)' : 'Auto-Close Hours', min: 1, max: 168 },
-            ticketlimit: { type: 'number', col: 'ticketlimit', name: lang === 'fr' ? 'Limite Tickets/Utilisateur' : 'Ticket Limit Per User', min: 1, max: 10 },
             // Text settings
             prefix: { type: 'text', col: 'prefix', name: 'Prefix', maxLen: 5 },
             message: { type: 'text', col: 'message', name: lang === 'fr' ? 'Message de Bienvenue' : 'Welcome Message', maxLen: 2000 },
