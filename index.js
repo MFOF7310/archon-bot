@@ -5064,7 +5064,7 @@ function rotateStatus() {
 }
 
 // Set About Me (bot profile description) — runs once on ready
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     try {
         await client.user.setAboutMe(
             `╔════════════════════════════════════════╗\n` +
