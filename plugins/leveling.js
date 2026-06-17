@@ -7,6 +7,35 @@ const W = 850, H = 260;
 const AV_CACHE = path.join(__dirname, '..', 'cache', 'avatars');
 if (!fs.existsSync(AV_CACHE)) fs.mkdirSync(AV_CACHE, { recursive: true });
 
+// ================= COLOR NAME → HEX MAP =================
+const COLOR_MAP = {
+    // Discord official
+    blurple: '#5865F2', blue: '#5865F2', discord: '#5865F2',
+    green: '#3BA55D', emerald: '#43b581',
+    yellow: '#FAA61A', gold: '#faa61a', amber: '#faa61a',
+    red: '#ED4245', ruby: '#e74c3c', crimson: '#e74c3c',
+    pink: '#EB459E', magenta: '#EB459E',
+    // Common
+    purple: '#9b59b6', violet: '#9b59b6', royal: '#9b59b6',
+    cyan: '#00fbff', aqua: '#00fbff', teal: '#00fbff',
+    orange: '#e67e22', sunset: '#e67e22',
+    black: '#1a1a2e', dark: '#1a1a2e', midnight: '#1a1a2e',
+    white: '#ecf0f1', silver: '#95a5a6', grey: '#95a5a6', gray: '#95a5a6',
+    // Matrix
+    matrix: '#00ff41', hacker: '#00ff41',
+    // Pastels
+    lavender: '#B39DDB', mint: '#A5D6A7', peach: '#FFCCBC', sky: '#90CAF9',
+};
+function resolveColor(input) {
+    if (!input) return null;
+    const clean = input.toLowerCase().trim().replace(/^#/, '');
+    // Check color names
+    if (COLOR_MAP[clean]) return COLOR_MAP[clean];
+    // Check hex
+    if (/^[0-9a-f]{6}$/.test(clean)) return '#' + clean;
+    return null;
+}
+
 // ================= PER-SERVER DEFAULT THEMES =================
 const DEFAULT_THEMES = {
     5:  { bg1: '#43b581', bg2: '#2e7d52', accent: '#66f0a0', label: 'INITIATE' },
@@ -15,6 +44,16 @@ const DEFAULT_THEMES = {
     20: { bg1: '#e74c3c', bg2: '#8e2409', accent: '#ff7a6b', label: 'ELITE' },
     25: { bg1: '#9b59b6', bg2: '#5b2c6f', accent: '#d7a3ef', label: 'LEGEND' },
 };
+
+// ================= XP FORMULA (matches index.js exactly) =================
+function xpForLevel(level) { return Math.pow(level / 0.1, 2); }
+function xpInCurrentLevel(totalXP, level) { return Math.floor(totalXP - xpForLevel(level - 1)); }
+function xpNeededForLevel(level) { return Math.floor(xpForLevel(level) - xpForLevel(level - 1)); }
+function xpProgress(totalXP, level) {
+    const cur = xpInCurrentLevel(totalXP, level);
+    const need = xpNeededForLevel(level);
+    return need > 0 ? Math.min(cur / need, 0.99) : 0;
+}
 function getTheme(level, custom) {
     const keys = Object.keys(DEFAULT_THEMES).map(Number).sort((a, b) => b - a);
     for (const k of keys) if (level >= k) return { ...DEFAULT_THEMES[k], ...(custom || {}) };
@@ -107,10 +146,10 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
     const name = user.username.length > 20 ? user.username.substring(0, 19) + '…' : user.username;
     ctx.fillText(name, 175, H / 2 + 22);
 
-    // XP text
+    // XP text — shows XP in current level / XP needed for this level
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = '13px sans-serif';
-    ctx.fillText(`${Math.floor(xpCurrent).toLocaleString()} / ${Math.floor(xpNeeded).toLocaleString()} XP`, 175, H / 2 + 52);
+    ctx.fillText(`${xpCur.toLocaleString()} / ${xpNeed.toLocaleString()} XP`, 175, H / 2 + 52);
 
     // ARCHON branding (top right)
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
@@ -215,11 +254,13 @@ async function renderWelcomeBanner(member, count, theme = {}) {
 }
 
 // ================= CANVAS: RANK CARD =================
-async function renderRankCard(user, rank, level, xp, xpNeed, theme = {}) {
+async function renderRankCard(user, rank, level, totalXP, theme = {}) {
     const t = getTheme(level, theme);
     const c = createCanvas(W, H);
     const ctx = c.getContext('2d');
-    const prog = xpNeed > 0 ? Math.min(xp / xpNeed, 0.99) : 0.5;
+    const xpCur = xpInCurrentLevel(totalXP, level);
+    const xpNeed = xpNeededForLevel(level);
+    const prog = xpProgress(totalXP, level);
 
     // Background
     const grad = ctx.createLinearGradient(0, 0, W, H);
@@ -378,9 +419,8 @@ async function handleRank(message, args, client, db) {
     if (!row) return message.reply('❌ No XP data found. Chat to earn XP!').catch(() => { });
     const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(message.guild.id, row.xp);
     const rank = rankRow?.rank || '?';
-    const xpNeed = Math.floor(100 * Math.pow(1.2, row.level));
     const customTheme = getThemeDB(db, message.guild.id);
-    const png = await renderRankCard(target, rank, row.level, row.xp, xpNeed, customTheme);
+    const png = await renderRankCard(target, rank, row.level, row.xp, customTheme);
     const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
     await message.reply({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] }).catch(() => { });
 }
@@ -456,9 +496,8 @@ module.exports = {
             if (!row) return ix.editReply({ content: '❌ No XP data found. Chat to earn XP!' }).catch(() => { });
             const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(ix.guild.id, row.xp);
             const rank = rankRow?.rank || '?';
-            const xpNeed = Math.floor(100 * Math.pow(1.2, row.level));
             const customTheme = db ? getThemeDB(db, ix.guild.id) : null;
-            const png = await renderRankCard(target, rank, row.level, row.xp, xpNeed, customTheme);
+            const png = await renderRankCard(target, rank, row.level, row.xp, customTheme);
             const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
             return ix.editReply({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] }).catch(() => { });
         }
