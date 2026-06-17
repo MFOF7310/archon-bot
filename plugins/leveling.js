@@ -373,10 +373,10 @@ async function handleWelcome(member, client, db) {
 
 async function handleRank(message, args, client, db) {
     const target = message.mentions.users.first() || message.author;
-    // Fetch from your XP table - adapt column names to your schema
-    const row = db?.prepare(`SELECT level, xp FROM xp WHERE guild_id = ? AND user_id = ?`)?.get(message.guild.id, target.id);
-    if (!row) return message.reply('❌ No XP data found.').catch(() => { });
-    const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM xp WHERE guild_id = ? AND xp > ?`)?.get(message.guild.id, row.xp);
+    // Fetch from users table (ARCHON CG-223 schema)
+    const row = db?.prepare(`SELECT level, xp FROM users WHERE guild_id = ? AND id = ?`)?.get(message.guild.id, target.id);
+    if (!row) return message.reply('❌ No XP data found. Chat to earn XP!').catch(() => { });
+    const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(message.guild.id, row.xp);
     const rank = rankRow?.rank || '?';
     const xpNeed = Math.floor(100 * Math.pow(1.2, row.level));
     const customTheme = getThemeDB(db, message.guild.id);
@@ -452,9 +452,9 @@ module.exports = {
         if (sc === 'rank') {
             await ix.deferReply();
             const target = ix.options.getUser('user') || ix.user;
-            const row = db?.prepare(`SELECT level, xp FROM xp WHERE guild_id = ? AND user_id = ?`)?.get(ix.guild.id, target.id);
-            if (!row) return ix.editReply({ content: '❌ No XP data found.' }).catch(() => { });
-            const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM xp WHERE guild_id = ? AND xp > ?`)?.get(ix.guild.id, row.xp);
+            const row = db?.prepare(`SELECT level, xp FROM users WHERE guild_id = ? AND id = ?`)?.get(ix.guild.id, target.id);
+            if (!row) return ix.editReply({ content: '❌ No XP data found. Chat to earn XP!' }).catch(() => { });
+            const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(ix.guild.id, row.xp);
             const rank = rankRow?.rank || '?';
             const xpNeed = Math.floor(100 * Math.pow(1.2, row.level));
             const customTheme = db ? getThemeDB(db, ix.guild.id) : null;
