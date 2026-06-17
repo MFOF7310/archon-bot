@@ -306,10 +306,16 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
     ctx.font = 'bold 22px sans-serif';
     ctx.fillText(`Level ${level}`, 170, H / 2 - 5);
 
-    // XP
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.font = '13px sans-serif';
-    ctx.fillText(`${Math.floor(totalXP).toLocaleString()} / ${Math.floor(xpNeed).toLocaleString()} XP`, 170, H / 2 + 20);
+    // XP in current level (main display)
+    const curXP = xpInCurrentLevel(totalXP, level);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(`${curXP.toLocaleString()} / ${xpNeed.toLocaleString()} XP`, 170, H / 2 + 22);
+
+    // Total XP (secondary, dimmer)
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = '11px sans-serif';
+    ctx.fillText(`Total: ${Math.floor(totalXP).toLocaleString()} XP`, 170, H / 2 + 42);
 
     // Progress bar
     const bx = 170, by = H - 40, bw = 420, bh = 10;
