@@ -309,7 +309,7 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
     // XP
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.font = '13px sans-serif';
-    ctx.fillText(`${Math.floor(xp).toLocaleString()} / ${Math.floor(xpNeed).toLocaleString()} XP`, 170, H / 2 + 20);
+    ctx.fillText(`${Math.floor(totalXP).toLocaleString()} / ${Math.floor(xpNeed).toLocaleString()} XP`, 170, H / 2 + 20);
 
     // Progress bar
     const bx = 170, by = H - 40, bw = 420, bh = 10;
