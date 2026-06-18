@@ -821,7 +821,7 @@ function getServerSettings(guildId) {
     try {
         let settings = db.prepare(`SELECT * FROM server_settings WHERE guild_id = ?`).get(guildId);
         if (!settings) {
-            db.prepare(`INSERT INTO server_settings (guild_id, prefix, automod_enabled) VALUES (?, ?, 0)`).run(guildId, DEFAULT_SETTINGS.prefix);
+            db.prepare(`INSERT INTO server_settings (guild_id, prefix) VALUES (?, ?)`).run(guildId, DEFAULT_SETTINGS.prefix);
             settings = { guild_id: guildId, prefix: DEFAULT_SETTINGS.prefix };
         }
         
@@ -3068,9 +3068,11 @@ safeOn(Events.MessageCreate, async (message) => {
                 const handled = await automod.handleDM(message, client);
                 if (handled) return; // appeal processed, stop here
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error(`[APPEAL] Error handling DM: ${e.message}`);
+        }
         // If not an appeal, continue to Lydia/command processing below
-    }
+    };
     // ✅ SECURE: Message size limit (FIX #16)
 if (message.content && message.content.length > 4000) {
     console.log(`${yellow}[MESSAGE]${reset} Blocked oversized message from ${message.author.tag}: ${message.content.length} chars`);
@@ -4030,6 +4032,133 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             await interaction.reply({ content: '❌ Car button failed.', flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         return;
+    }
+});
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  🦅 GUILD CREATE — OWNER WELCOME SYSTEM                            ║
+// ║  Sends professional onboarding DM when ARCHON joins a new server   ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+safeOn(Events.GuildCreate, async (guild) => {
+    try {
+        // Skip owner's test guild — they already know the bot
+        if (guild.id === process.env.GUILD_ID) return;
+
+        const owner = await guild.fetchOwner().catch(() => null);
+        if (!owner || owner.user.bot) return;
+
+        const setupEmbed = new EmbedBuilder()
+            .setColor('#2ecc71')
+            .setAuthor({ 
+                name: '🦅 ARCHON CG-223 — Neural Grid Expansion', 
+                iconURL: client.user.displayAvatarURL() 
+            })
+            .setTitle(`Welcome to ${guild.name}!`)
+            .setDescription(
+                `Thank you for adding **ARCHON CG-223** to your server.\n\n` +
+                `Your server data is **fully isolated** — per-server partitioning ensures nothing is shared with other guilds.\n\n` +
+                `\`\`\`ansi\n\u001b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n\`\`\``
+            )
+            .addFields(
+                { 
+                    name: '🛡️ AutoMod Protection', 
+                    value: 
+                        '```diff\n' +
+                        '- Status: OFF by default\n' +
+                        '+ Command: /automod enable\n' +
+                        '```\n' +
+                        'AutoMod blocks spam, malicious links, and unauthorized invites. It is **disabled until you explicitly enable it** — no surprises, no forced features.', 
+                    inline: false 
+                },
+                { 
+                    name: '⚡ Quick Setup Commands', 
+                    value: 
+                        '`/automod enable` — Activate protection\n' +
+                        '`/serversettings` — Configure your server\n' +
+                        '`/welcome` — Set welcome channel\n' +
+                        '`/leveling` — Configure XP & ranks\n' +
+                        '`/ticket setup` — Create support panel\n' +
+                        '`/lydia` — Talk to AI (28 languages)', 
+                    inline: false 
+                },
+                { 
+                    name: '📊 Included Systems', 
+                    value: 
+                        '🧠 Lydia AI · 28-language chat\n' +
+                        '💰 Economy · Credits, shop, market\n' +
+                        '📈 Leveling · Canvas rank cards\n' +
+                        '🎫 Tickets · 3 categories\n' +
+                        '🛡️ AutoMod · Domain whitelist\n' +
+                        '⚡ Daily · Streak rewards\n' +
+                        '📢 Broadcast · Smart updates', 
+                    inline: true 
+                },
+                { 
+                    name: '🌐 Links', 
+                    value: 
+                        '[Dashboard](https://bamako-steel-dev.xyz)\n' +
+                        '[Support Server](https://discord.gg/NFSMFJajp9)\n' +
+                        '[Website](https://bamako-steel-dev.xyz)', 
+                    inline: true 
+                }
+            )
+            .setFooter({ 
+                text: `ARCHON CG-223 v${client.version || '3.2'} • Server ID: ${guild.id} • MFOF7310 🇲🇱`, 
+                iconURL: client.user.displayAvatarURL() 
+            })
+            .setTimestamp();
+
+        await owner.send({ embeds: [setupEmbed] }).catch(() => {});
+        console.log(`\x1b[32m[GUILD CREATE]\x1b[0m Welcome DM sent to ${owner.user.tag} (${guild.name})`);
+
+    } catch (e) {
+        console.log(`\x1b[33m[GUILD CREATE]\x1b[0m Could not DM owner: ${e.message}`);
+    }
+});
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  🗑️ GUILD DELETE — CLEANUP PROTOCOL                                ║
+// ║  Removes server data when ARCHON is kicked                         ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+safeOn(Events.GuildDelete, async (guild) => {
+    try {
+        const gid = guild.id;
+        
+        // Log the departure
+        console.log(`\x1b[33m[GUILD DELETE]\x1b[0m Left ${guild.name} (${gid}) — ${guild.memberCount} members`);
+
+        // Clean up server_settings row
+        db.prepare('DELETE FROM server_settings WHERE guild_id = ?').run(gid);
+        
+        // Clean up per-server user data
+        const deletedUsers = db.prepare('DELETE FROM users WHERE guild_id = ?').run(gid);
+        
+        // Clean up server-specific warnings
+        db.prepare('DELETE FROM warnings WHERE guild_id = ?').run(gid);
+        
+        // Clean up server-specific moderation logs
+        db.prepare('DELETE FROM moderation_logs WHERE guild_id = ?').run(gid);
+        
+        // Clean up command settings
+        db.prepare('DELETE FROM server_command_settings WHERE guild_id = ?').run(gid);
+        
+        // Clean up economy settings
+        db.prepare('DELETE FROM server_economy_settings WHERE guild_id = ?').run(gid);
+        
+        // Remove from in-memory cache
+        client.settings.delete(gid);
+        
+        // Clear any cached user data for this guild
+        if (client.userDataCache) {
+            for (const [key] of client.userDataCache) {
+                if (key.endsWith(`:${gid}`)) client.userDataCache.delete(key);
+            }
+        }
+        
+        console.log(`\x1b[32m[GUILD DELETE]\x1b[0m Cleanup complete: ${deletedUsers.changes} users removed`);
+
+    } catch (e) {
+        console.error(`\x1b[31m[GUILD DELETE]\x1b[0m Cleanup error for ${guild.id}: ${e.message}`);
     }
 });
 
