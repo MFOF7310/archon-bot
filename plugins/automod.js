@@ -22,6 +22,77 @@ const MALICIOUS = [
     /t\.me\/\+?[a-zA-Z0-9_-]+/i,
 ];
 const INVITE_RE = /discord\.gg\/[a-zA-Z0-9_-]+/gi;
+const ANY_LINK_RE = /https?:\/\/[^\s<>"`{}|\[\]]+/gi;  // matches ALL URLs
+
+// ================= DEFAULT DOMAIN WHITELIST =================
+// These domains are always allowed for everyone (safe, trusted sites)
+const DEFAULT_DOMAIN_WHITELIST = new Set([
+    // Google
+    'google.com', 'www.google.com', 'youtube.com', 'www.youtube.com',
+    'youtu.be', 'drive.google.com', 'docs.google.com', 'photos.google.com',
+    // GitHub / Dev
+    'github.com', 'www.github.com', 'raw.githubusercontent.com',
+    'stackoverflow.com', 'www.stackoverflow.com', 'stackexchange.com',
+    'gitlab.com', 'www.gitlab.com', 'codepen.io', 'replit.com',
+    // Social (safe versions)
+    'twitter.com', 'x.com', 'www.twitter.com', 'www.x.com',
+    'instagram.com', 'www.instagram.com',
+    'tiktok.com', 'www.tiktok.com',
+    'facebook.com', 'www.facebook.com',
+    'reddit.com', 'www.reddit.com',
+    'pinterest.com', 'www.pinterest.com',
+    // Media
+    'imgur.com', 'www.imgur.com', 'i.imgur.com',
+    'tenor.com', 'www.tenor.com', 'media.tenor.com',
+    'giphy.com', 'www.giphy.com', 'media.giphy.com',
+    'cdn.discordapp.com', 'media.discordapp.net',
+    // Utilities
+    'pastebin.com', 'www.pastebin.com',
+    'wikipedia.org', 'www.wikipedia.org', 'en.wikipedia.org',
+    'spotify.com', 'www.spotify.com', 'open.spotify.com',
+    'steamcommunity.com', 'store.steampowered.com',
+    // Archon
+    'bamako-steel-dev.xyz', 'www.bamako-steel-dev.xyz',
+]);
+
+function extractDomain(url) {
+    try {
+        const u = new URL(url);
+        return u.hostname.toLowerCase();
+    } catch {
+        // fallback for non-URL links
+        const m = url.match(/^(?:https?:\/\/)?([^\/\s:]+)/i);
+        return m ? m[1].toLowerCase() : '';
+    }
+}
+
+function isDomainWhitelisted(content, customWhitelist) {
+    const links = content.match(ANY_LINK_RE);
+    if (!links) return true; // no links = whitelisted
+
+    const whitelist = new Set([...DEFAULT_DOMAIN_WHITELIST, ...(customWhitelist || [])]);
+
+    for (const link of links) {
+        const domain = extractDomain(link);
+        if (!domain) continue;
+        // Check exact match or parent domain
+        if (whitelist.has(domain)) continue;
+        // Check parent domain (e.g., www.sub.youtube.com -> youtube.com)
+        const parts = domain.split('.');
+        let found = false;
+        for (let i = 0; i < parts.length - 1; i++) {
+            const parent = parts.slice(i).join('.');
+            if (whitelist.has(parent)) { found = true; break; }
+        }
+        if (!found) return false; // at least one link is not whitelisted
+    }
+    return true;
+}
+
+function parseDomainWhitelist(str) {
+    if (!str) return [];
+    return str.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+}
 
 // ================= HELPERS =================
 function key(uid, gid) { return `${uid}:${gid}`; }
@@ -62,6 +133,14 @@ const C = { BLURPLE: 0x5865F2, RED: 0xED4245, GREEN: 0x3BA55D, YELLOW: 0xFAA61A,
 const ICON = 'https://cdn.discordapp.com/embed/avatars/0.png';
 function fmtDur(ms) { return ms >= 86400000 ? `${Math.round(ms/86400000)} day${Math.round(ms/86400000)>1?'s':''}` : `${Math.round(ms/3600000)} hour${Math.round(ms/3600000)>1?'s':''}`; }
 function strikeBar(wc) { const f = Math.min(wc, 4), e = 4 - f; return `${'●'.repeat(f)}${'○'.repeat(e)}`; }
+
+function isElevated(member) {
+    if (!member) return false;
+    return member.permissions.has(PermissionsBitField.Flags.Administrator) ||
+           member.permissions.has(PermissionsBitField.Flags.ManageMessages) ||
+           member.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
+           member.permissions.has(PermissionsBitField.Flags.ManageGuild);
+}
 
 // ================= ACTION ENGINE =================
 async function takeAction(message, violations, client, db) {
@@ -115,8 +194,12 @@ async function takeAction(message, violations, client, db) {
         }
     } catch (e) { actionText = 'Action failed'; actionColor = C.GREY; }
 
-    // ================= DM NOTIFICATION (Discord-native style) =================
+    // ================= DM NOTIFICATION (Discord-native style) + APPEAL INFO =================
     try {
+        // Find an admin/mod to mention in appeal
+        const guildOwner = await message.guild.fetchOwner().catch(() => null);
+        const appealContact = guildOwner ? `<@${guildOwner.id}>` : 'a server administrator';
+
         const dm = new EmbedBuilder()
             .setColor(actionColor)
             .setAuthor({ name: 'AutoMod', iconURL: message.guild.iconURL({ size: 64 }) || ICON })
@@ -129,6 +212,21 @@ async function takeAction(message, violations, client, db) {
             )
             .setFooter({ text: `Strike ${wc} of 4` })
             .setTimestamp();
+
+        // Add allowed domains hint
+        dm.addFields({
+            name: 'Allowed link domains include',
+            value: '`youtube.com, youtu.be, github.com, twitter.com, x.com, instagram.com, reddit.com, wikipedia.org`\nContact an admin to request additions.',
+            inline: false
+        });
+
+        // Add appeal section
+        dm.addFields({
+            name: 'Think this was a mistake?',
+            value: `Reply here to start an appeal, or contact ${appealContact} directly.\nInclude: **server name**, **what you posted**, and why it should be allowed.`,
+            inline: false
+        });
+
         await message.author.send({ embeds: [dm] }).catch(() => {});
     } catch (e) {}
 
@@ -148,7 +246,6 @@ async function takeAction(message, violations, client, db) {
         if (logCh?.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
             const bar = strikeBar(wc);
             const next = wc >= 4 ? 'None — maximum reached' : ['1 hour timeout', '1 day timeout', '7 day timeout', 'Ban'][wc];
-            // Sanitized log — no message content visible to channel viewers
             const log = new EmbedBuilder()
                 .setColor(actionColor)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -214,7 +311,7 @@ async function scanMessage(message, client, db) {
     const entry = history.get(k);
     entry.last = now;
 
-    const record = { ts: now, content: message.content, channelId: message.channel.id, mid: message.id, hasLinks: /https?:\/\//i.test(message.content), norm: normalize(message.content) };
+    const record = { ts: now, content: message.content, channelId: message.channel.id, mid: message.id, hasLinks: ANY_LINK_RE.test(message.content), norm: normalize(message.content) };
     entry.messages.push(record);
     const cutoff = now - 120000;
     while (entry.messages.length && entry.messages[0].ts < cutoff) entry.messages.shift();
@@ -263,7 +360,7 @@ async function scanMessage(message, client, db) {
         seen.add('promo');
     }
 
-    // 6. Malicious links
+    // 6. Malicious links (phishing/scams)
     if (record.hasLinks) {
         const mal = MALICIOUS.some(p => p.test(message.content));
         const inv = message.content.match(INVITE_RE);
@@ -271,7 +368,19 @@ async function scanMessage(message, client, db) {
         else if (inv?.length && !seen.has('invite')) { violations.push({ type: 'unauthorized invite', reason: 'External Discord invite', source: 'invite' }); seen.add('invite'); }
     }
 
-    // 7. Cross-channel duplicate
+    // 7. GLOBAL LINK BLOCKER — Block ALL links from non-admin/non-mod users
+    // (unless domain is in whitelist)
+    if (record.hasLinks && !seen.has('malicious') && !seen.has('invite') && !seen.has('global_link')) {
+        if (!isElevated(member)) {
+            const customDomains = parseDomainWhitelist(ss?.autoModDomains);
+            if (!isDomainWhitelisted(message.content, customDomains)) {
+                violations.push({ type: 'unauthorized link', reason: 'Link domain not permitted', source: 'global_link' });
+                seen.add('global_link');
+            }
+        }
+    }
+
+    // 8. Cross-channel duplicate
     const crossRecent = h.filter(m => now - m.ts <= REPEAT_WINDOW);
     if (!seen.has('repeat')) {
         const contentMap = new Map();
@@ -285,13 +394,13 @@ async function scanMessage(message, client, db) {
         }
     }
 
-    // 8. Rapid fire across channels
+    // 9. Rapid fire across channels
     if (!seen.has('rapid')) {
         const rapid = h.filter(m => now - m.ts <= SPAM_WINDOW);
         if (rapid.length >= 3) { const uc = new Set(rapid.map(m => m.channelId)); if (uc.size >= 2) { violations.push({ type: 'rapid fire', reason: `${rapid.length} messages across ${uc.size} channels in ${SPAM_WINDOW/1000}s`, source: 'rapid', crossChannel: true, channels: [...uc] }); seen.add('rapid'); } }
     }
 
-    // 9. AI toxicity
+    // 10. AI toxicity
     if (violations.length === 0 && message.content.length > 10) {
         const ai = await checkToxicity(message.content);
         if (ai?.toxic) { violations.push({ type: ai.type || 'toxic content', reason: ai.reason || 'AI detected', source: 'ai' }); }
@@ -302,6 +411,122 @@ async function scanMessage(message, client, db) {
         return true;
     }
     return false;
+}
+
+// ================= APPEAL HANDLER (DM only) =================
+async function handleAppeal(message, client) {
+    if (message.guild) return; // DMs only
+    if (message.author.bot) return;
+
+    const content = message.content.trim().toLowerCase();
+
+    // Check if user is appealing
+    if (content === 'appeal' || content === 'help' || content.startsWith('appeal ')) {
+        // Find guilds where this user has been actioned by AutoMod
+        const appeals = [];
+        for (const [guildId, guild] of client.guilds.cache) {
+            try {
+                const member = await guild.members.fetch(message.author.id).catch(() => null);
+                if (member) {
+                    const entry = history.get(key(message.author.id, guildId));
+                    if (entry && entry.warns > 0) {
+                        appeals.push({ guild, warns: entry.warns });
+                    }
+                }
+            } catch (e) {}
+        }
+
+        if (appeals.length === 0) {
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.GREY)
+                    .setTitle('No Active Strikes')
+                    .setDescription('You have no recent AutoMod actions on servers I manage.\nIf you believe a message was wrongly deleted, please include:\n\n**Server name**\n**What you posted**\n**Why it should be allowed**\n\nI will forward this to the server owner.')
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
+        // Show active strikes and appeal instructions
+        const embed = new EmbedBuilder()
+            .setColor(C.YELLOW)
+            .setTitle('AutoMod Appeal')
+            .setDescription('You have active strikes on the following servers:');
+
+        for (const a of appeals.slice(0, 5)) {
+            const owner = await a.guild.fetchOwner().catch(() => null);
+            embed.addFields({
+                name: a.guild.name,
+                value: `Strikes: ${a.warns}/4\nContact: ${owner ? `<@${owner.id}>` : 'Server admin'}`,
+                inline: true
+            });
+        }
+
+        embed.addFields({
+            name: 'How to appeal',
+            value: 'Reply with:\n`appeal [server name] [your message]`\n\nOr contact the server owner directly.',
+            inline: false
+        });
+
+        return message.reply({ embeds: [embed] }).catch(() => {});
+    }
+
+    // Handle appeal submission: "appeal [server name] [reason]"
+    if (content.startsWith('appeal ')) {
+        const parts = message.content.trim().substring(7).split(' ');
+        const serverName = parts[0];
+        const reason = parts.slice(1).join(' ') || 'No reason provided';
+
+        // Find matching guild
+        let targetGuild = null;
+        for (const [gid, guild] of client.guilds.cache) {
+            if (guild.name.toLowerCase().includes(serverName.toLowerCase())) {
+                targetGuild = guild;
+                break;
+            }
+        }
+
+        if (!targetGuild) {
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.RED)
+                    .setTitle('Server Not Found')
+                    .setDescription(`I couldn't find a server matching "${serverName}".\nUse `appeal` to see your active strikes.`)
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
+        // Forward to server owner
+        try {
+            const owner = await targetGuild.fetchOwner().catch(() => null);
+            if (owner && !owner.user.bot) {
+                const appealEmbed = new EmbedBuilder()
+                    .setColor(C.BLURPLE)
+                    .setAuthor({ name: 'AutoMod Appeal', iconURL: message.author.displayAvatarURL() })
+                    .setTitle('New Appeal Received')
+                    .setDescription(`**From:** ${message.author.tag} (${message.author.id})\n**Server:** ${targetGuild.name}\n**Reason:** ${reason}`)
+                    .setFooter({ text: 'Reply to this DM to contact the user • ARCHON CG-223' })
+                    .setTimestamp();
+
+                await owner.send({ embeds: [appealEmbed] }).catch(() => {});
+
+                return message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setColor(C.GREEN)
+                        .setTitle('Appeal Submitted')
+                        .setDescription(`Your appeal for **${targetGuild.name}** has been forwarded to the server owner.\nThey will review it and may contact you directly.`)
+                        .setFooter({ text: 'ARCHON CG-223' })]
+                }).catch(() => {});
+            }
+        } catch (e) {
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.RED)
+                    .setTitle('Appeal Failed')
+                    .setDescription('Could not contact the server owner. Please try again later.')
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+    }
 }
 
 // ================= GATEWAY RULES =================
@@ -343,8 +568,8 @@ function resolveSetting(s, ...keys) { for (const k of keys) { if (s?.[k] != null
 // ================= MODULE =================
 module.exports = {
     name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
-    description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, and escalation.',
-    usage: '.automod [status|enable|disable|sensitivity|whitelist|log]',
+    description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, domain-based link blocking, and appeals.',
+    usage: '.automod [status|enable|disable|sensitivity|whitelist|domains|log]',
     cooldown: 3000,
 
     data: new SlashCommandBuilder().setName('automod').setDescription('🛡️ Configure AutoMod').
@@ -354,6 +579,7 @@ module.exports = {
         addSubcommand(s => s.setName('disable').setDescription('Disable AutoMod')).
         addSubcommand(s => s.setName('sensitivity').setDescription('Set sensitivity').addStringOption(o => o.setName('level').setDescription('Level').setRequired(true).addChoices({name:'🟢 Low',value:'low'},{name:'🟡 Medium',value:'medium'},{name:'🔴 High',value:'high'}))).
         addSubcommand(s => s.setName('whitelist').setDescription('Whitelist role').addRoleOption(o => o.setName('role').setDescription('Role (skip to clear)').setRequired(false))).
+        addSubcommand(s => s.setName('domains').setDescription('Manage allowed link domains').addStringOption(o => o.setName('action').setDescription('add, remove, list, or reset').setRequired(true).addChoices({name:'📋 List allowed domains',value:'list'},{name:'➕ Add domain',value:'add'},{name:'➖ Remove domain',value:'remove'},{name:'🔄 Reset to defaults',value:'reset'})).addStringOption(o => o.setName('domain').setDescription('Domain to add/remove (e.g., example.com)').setRequired(false))).
         addSubcommand(s => s.setName('log').setDescription('Set log channel').addChannelOption(o => o.setName('channel').setDescription('Channel').setRequired(true))),
 
     // ================= SLASH =================
@@ -367,6 +593,7 @@ module.exports = {
         if (sc === 'status') {
             const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
             const wl = ss?.autoModWhitelist;
+            const domainList = parseDomainWhitelist(ss?.autoModDomains);
             const e = new EmbedBuilder()
                 .setColor(ss?.autoModEnabled ? C.GREEN : C.RED)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -375,9 +602,10 @@ module.exports = {
                     { name: 'Status', value: ss?.autoModEnabled ? 'Enabled' : 'Disabled', inline: true },
                     { name: 'Sensitivity', value: (ss?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
                     { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
-                    { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false }
+                    { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
+                    { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true }
                 )
-                .setFooter({ text: 'ARCHON CG-223' })
+                .setFooter({ text: 'Use /automod domains to manage • ARCHON CG-223' })
                 .setTimestamp();
             return ix.reply({ embeds: [e], flags: 1 << 6 });
         }
@@ -393,7 +621,7 @@ module.exports = {
             }
             client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s','now') WHERE guild_id = ?").run(en ? '1' : '0', ix.guild.id);
             client.settings.delete(ix.guild.id);
-            const e = new EmbedBuilder().setColor(en ? C.GREEN : C.GREY).setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() }).setDescription(en ? '**AutoMod is now enabled.**\nShield rules deployed to this server.' : '**AutoMod is now disabled.**\nShield rules removed.').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+            const e = new EmbedBuilder().setColor(en ? C.GREEN : C.GREY).setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() }).setDescription(en ? '**AutoMod is now enabled.**\nShield rules deployed to this server.\n🛡️ Non-moderators can only post links from trusted domains.\nUse `/automod domains` to customize.' : '**AutoMod is now disabled.**\nShield rules removed.').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
             await ix.reply({ embeds: [e], flags: 1 << 6 });
             await syncRules(ix.guild, en ? 'create' : 'delete', ss);
             return;
@@ -421,6 +649,47 @@ module.exports = {
                 return ix.reply({ content: `✅ Cleared.`, flags: 1 << 6 });
             }
         }
+        if (sc === 'domains') {
+            const action = ix.options.getString('action');
+            const domain = ix.options.getString('domain')?.toLowerCase().trim();
+            const cur = ss?.autoModDomains || '';
+            const list = parseDomainWhitelist(cur);
+
+            if (action === 'list') {
+                const customList = list.length > 0 ? list.join(', ') : 'None (using defaults only)';
+                const e = new EmbedBuilder()
+                    .setColor(C.BLURPLE)
+                    .setAuthor({ name: 'AutoMod — Domain Whitelist', iconURL: client.user.displayAvatarURL() })
+                    .addFields(
+                        { name: 'Default Allowed', value: [...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ') + '...', inline: false },
+                        { name: 'Custom Added', value: customList, inline: false }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223' });
+                return ix.reply({ embeds: [e], flags: 1 << 6 });
+            }
+
+            if (action === 'add') {
+                if (!domain) return ix.reply({ content: '❌ Provide a domain. Example: `example.com`', flags: 1 << 6 });
+                if (list.includes(domain)) return ix.reply({ content: `⚠️ `${domain}` is already allowed.`, flags: 1 << 6 });
+                const nw = cur ? `${cur},${domain}` : domain;
+                client.updateServerSetting(ix.guild.id, 'automoddomains', nw); client.settings.delete(ix.guild.id);
+                return ix.reply({ content: `✅ Added `${domain}` to allowed domains.`, flags: 1 << 6 });
+            }
+
+            if (action === 'remove') {
+                if (!domain) return ix.reply({ content: '❌ Provide a domain to remove.', flags: 1 << 6 });
+                if (!list.includes(domain)) return ix.reply({ content: `⚠️ `${domain}` is not in the custom list.`, flags: 1 << 6 });
+                const nw = list.filter(d => d !== domain).join(',');
+                client.updateServerSetting(ix.guild.id, 'automoddomains', nw || null); client.settings.delete(ix.guild.id);
+                return ix.reply({ content: `✅ Removed `${domain}` from allowed domains.`, flags: 1 << 6 });
+            }
+
+            if (action === 'reset') {
+                client.updateServerSetting(ix.guild.id, 'automoddomains', null); client.settings.delete(ix.guild.id);
+                return ix.reply({ content: `✅ Custom domains cleared. Using defaults only.`, flags: 1 << 6 });
+            }
+        }
+
         if (sc === 'log') {
             const ch = ix.options.getChannel('channel');
             client.updateServerSetting(ix.guild.id, 'automodlog', ch.id); client.settings.delete(ix.guild.id);
@@ -438,6 +707,7 @@ module.exports = {
         if (action === 'status') {
             const logId = resolveSetting(settings, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
             const wl = settings?.autoModWhitelist;
+            const domainList = parseDomainWhitelist(settings?.autoModDomains);
             const e = new EmbedBuilder()
                 .setColor(settings?.autoModEnabled ? C.GREEN : C.RED)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -446,9 +716,10 @@ module.exports = {
                     { name: 'Status', value: settings?.autoModEnabled ? 'Enabled' : 'Disabled', inline: true },
                     { name: 'Sensitivity', value: (settings?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
                     { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
-                    { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false }
+                    { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
+                    { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true }
                 )
-                .setFooter({ text: 'ARCHON CG-223' })
+                .setFooter({ text: 'Use .automod domains to manage • ARCHON CG-223' })
                 .setTimestamp();
             return msg.reply({ embeds: [e] });
         }
@@ -461,7 +732,7 @@ module.exports = {
             client.db.prepare("UPDATE server_settings SET automod_enabled = 1 WHERE guild_id = ?").run(msg.guild.id);
             client.settings.delete(msg.guild.id);
             const synced = await syncRules(msg.guild, 'create', settings);
-            return msg.reply(`✅ Enabled.${synced ? ' 🛡️ Shield active!' : ''}`);
+            return msg.reply(`✅ Enabled.${synced ? ' 🛡️ Shield active! Non-mods can only post trusted domains. Use `.automod domains` to customize.' : ''}`);
         }
         if (action === 'disable' || action === 'off') {
             const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
@@ -493,17 +764,61 @@ module.exports = {
                 return msg.reply('✅ Cleared.');
             }
         }
+        if (action === 'domains') {
+            const sub = args[1]?.toLowerCase();
+            const cur = settings?.autoModDomains || '';
+            const list = parseDomainWhitelist(cur);
+
+            if (!sub || sub === 'list') {
+                const customList = list.length > 0 ? list.join(', ') : 'None (using defaults only)';
+                const e = new EmbedBuilder()
+                    .setColor(C.BLURPLE)
+                    .setAuthor({ name: 'AutoMod — Domain Whitelist', iconURL: client.user.displayAvatarURL() })
+                    .addFields(
+                        { name: 'Default Allowed', value: [...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ') + '...', inline: false },
+                        { name: 'Custom Added', value: customList, inline: false }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223' });
+                return msg.reply({ embeds: [e] });
+            }
+            if (sub === 'add') {
+                const domain = args[2]?.toLowerCase().trim();
+                if (!domain) return msg.reply('❌ Usage: `.automod domains add <domain>` (e.g., `example.com`)');
+                if (list.includes(domain)) return msg.reply(`⚠️ `${domain}` is already allowed.`);
+                const nw = cur ? `${cur},${domain}` : domain;
+                client.updateServerSetting(msg.guild.id, 'automoddomains', nw); client.settings.delete(msg.guild.id);
+                return msg.reply(`✅ Added `${domain}` to allowed domains.`);
+            }
+            if (sub === 'remove') {
+                const domain = args[2]?.toLowerCase().trim();
+                if (!domain) return msg.reply('❌ Usage: `.automod domains remove <domain>`');
+                if (!list.includes(domain)) return msg.reply(`⚠️ `${domain}` is not in the custom list.`);
+                const nw = list.filter(d => d !== domain).join(',');
+                client.updateServerSetting(msg.guild.id, 'automoddomains', nw || null); client.settings.delete(msg.guild.id);
+                return msg.reply(`✅ Removed `${domain}` from allowed domains.`);
+            }
+            if (sub === 'reset') {
+                client.updateServerSetting(msg.guild.id, 'automoddomains', null); client.settings.delete(msg.guild.id);
+                return msg.reply(`✅ Custom domains cleared. Using defaults only.`);
+            }
+            return msg.reply('❓ Usage: `.automod domains [list|add|remove|reset]`');
+        }
         if (action === 'log') {
             const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[1]);
             if (!ch) return msg.reply('❌ Mention a channel.');
             client.updateServerSetting(msg.guild.id, 'automodlog', ch.id); client.settings.delete(msg.guild.id);
             return msg.reply(`✅ Log → ${ch}`);
         }
-        return msg.reply('❓ Usage: `.automod [status|enable|disable|sensitivity|whitelist|log]`');
+        return msg.reply('❓ Usage: `.automod [status|enable|disable|sensitivity|whitelist|domains|log]`');
     },
 
     // ================= MESSAGE HOOK (called by index.js) =================
     async handleMessage(message, client, db) {
         return await scanMessage(message, client, db);
+    },
+
+    // ================= DM HOOK (called by index.js for appeals) =================
+    async handleDM(message, client) {
+        return await handleAppeal(message, client);
     }
 };
