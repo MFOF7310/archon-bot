@@ -821,7 +821,7 @@ function getServerSettings(guildId) {
     try {
         let settings = db.prepare(`SELECT * FROM server_settings WHERE guild_id = ?`).get(guildId);
         if (!settings) {
-            db.prepare(`INSERT INTO server_settings (guild_id, prefix) VALUES (?, ?)`).run(guildId, DEFAULT_SETTINGS.prefix);
+            db.prepare(`INSERT INTO server_settings (guild_id, prefix, automod_enabled) VALUES (?, ?, 0)`).run(guildId, DEFAULT_SETTINGS.prefix);
             settings = { guild_id: guildId, prefix: DEFAULT_SETTINGS.prefix };
         }
         
@@ -3058,6 +3058,19 @@ setInterval(async () => {
 // ================= MESSAGE PROCESSING (PER-SERVER PARTITIONED) =================
 safeOn(Events.MessageCreate, async (message) => {
     if (!message || message.author?.bot || message.webhookId) return;
+
+    // ================= AUTOMOD DM APPEAL HANDLER =================
+    // Handle DMs for AutoMod appeals (before guild processing)
+    if (!message.guild) {
+        try {
+            const automod = client.commands.get('automod');
+            if (automod?.handleDM) {
+                const handled = await automod.handleDM(message, client);
+                if (handled) return; // appeal processed, stop here
+            }
+        } catch (e) {}
+        // If not an appeal, continue to Lydia/command processing below
+    }
     // ✅ SECURE: Message size limit (FIX #16)
 if (message.content && message.content.length > 4000) {
     console.log(`${yellow}[MESSAGE]${reset} Blocked oversized message from ${message.author.tag}: ${message.content.length} chars`);
