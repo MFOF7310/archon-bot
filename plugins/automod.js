@@ -490,7 +490,7 @@ async function handleAppeal(message, client) {
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle('Server Not Found')
-                    .setDescription(`I couldn't find a server matching "${serverName}".\nUse `appeal` to see your active strikes.`)
+                    .setDescription("I couldn't find a server matching \"" + serverName + "\".\nUse `appeal` to see your active strikes.")
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -670,18 +670,18 @@ module.exports = {
 
             if (action === 'add') {
                 if (!domain) return ix.reply({ content: '❌ Provide a domain. Example: `example.com`', flags: 1 << 6 });
-                if (list.includes(domain)) return ix.reply({ content: `⚠️ `${domain}` is already allowed.`, flags: 1 << 6 });
+                if (list.includes(domain)) return ix.reply({ content: '⚠️ `' + domain + '` is already allowed.', flags: 1 << 6 });
                 const nw = cur ? `${cur},${domain}` : domain;
                 client.updateServerSetting(ix.guild.id, 'automoddomains', nw); client.settings.delete(ix.guild.id);
-                return ix.reply({ content: `✅ Added `${domain}` to allowed domains.`, flags: 1 << 6 });
+                return ix.reply({ content: '✅ Added `' + domain + '` to allowed domains.', flags: 1 << 6 });
             }
 
             if (action === 'remove') {
                 if (!domain) return ix.reply({ content: '❌ Provide a domain to remove.', flags: 1 << 6 });
-                if (!list.includes(domain)) return ix.reply({ content: `⚠️ `${domain}` is not in the custom list.`, flags: 1 << 6 });
+                if (!list.includes(domain)) return ix.reply({ content: '⚠️ `' + domain + '` is not in the custom list.', flags: 1 << 6 });
                 const nw = list.filter(d => d !== domain).join(',');
                 client.updateServerSetting(ix.guild.id, 'automoddomains', nw || null); client.settings.delete(ix.guild.id);
-                return ix.reply({ content: `✅ Removed `${domain}` from allowed domains.`, flags: 1 << 6 });
+                return ix.reply({ content: '✅ Removed `' + domain + '` from allowed domains.', flags: 1 << 6 });
             }
 
             if (action === 'reset') {
@@ -784,18 +784,18 @@ module.exports = {
             if (sub === 'add') {
                 const domain = args[2]?.toLowerCase().trim();
                 if (!domain) return msg.reply('❌ Usage: `.automod domains add <domain>` (e.g., `example.com`)');
-                if (list.includes(domain)) return msg.reply(`⚠️ `${domain}` is already allowed.`);
+                if (list.includes(domain)) return msg.reply('⚠️ `' + domain + '` is already allowed.');
                 const nw = cur ? `${cur},${domain}` : domain;
                 client.updateServerSetting(msg.guild.id, 'automoddomains', nw); client.settings.delete(msg.guild.id);
-                return msg.reply(`✅ Added `${domain}` to allowed domains.`);
+                return msg.reply('✅ Added `' + domain + '` to allowed domains.');
             }
             if (sub === 'remove') {
                 const domain = args[2]?.toLowerCase().trim();
                 if (!domain) return msg.reply('❌ Usage: `.automod domains remove <domain>`');
-                if (!list.includes(domain)) return msg.reply(`⚠️ `${domain}` is not in the custom list.`);
+                if (!list.includes(domain)) return msg.reply('⚠️ `' + domain + '` is not in the custom list.');
                 const nw = list.filter(d => d !== domain).join(',');
                 client.updateServerSetting(msg.guild.id, 'automoddomains', nw || null); client.settings.delete(msg.guild.id);
-                return msg.reply(`✅ Removed `${domain}` from allowed domains.`);
+                return msg.reply('✅ Removed `' + domain + '` from allowed domains.');
             }
             if (sub === 'reset') {
                 client.updateServerSetting(msg.guild.id, 'automoddomains', null); client.settings.delete(msg.guild.id);
