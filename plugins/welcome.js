@@ -1,19 +1,18 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
-// ║  🦅 ARCHON CG-223 — WELCOME/GOODBYE PLUGIN v3.0                     ║
-// ║  Uses shared cinematic engine (welcome-style.js)                    ║
+// ║  🦅 ARCHON CG-223 — WELCOME/GOODBYE PLUGIN v4.0                     ║
+// ║  Single canvas output | Warm welcome | Random pro-tips | Real age   ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const { EmbedBuilder, AttachmentBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const Style = require('./welcome-style.js');
 
 // ================= HANDLERS =================
 async function handleWelcome(member, client, db) {
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
     const cfg = Style.normalizeWelcomeConfig(ssRaw);
-    
+
     if (!cfg.welcomeEnabled) return;
-    
-    // Resolve channel: configured → system → null
+
     const ch = cfg.welcomeChannel 
         ? member.guild.channels.cache.get(cfg.welcomeChannel) 
         : member.guild.systemChannel;
@@ -22,63 +21,104 @@ async function handleWelcome(member, client, db) {
     const count = member.guild.memberCount;
     const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
 
-    // Render cinematic card
-    const png = await Style.renderWelcomeCard(member, count);
-    const embed = new EmbedBuilder()
-        .setColor(0x00fbff)
-        .setImage('attachment://welcome.png')
-        .setFooter({ text: 'ARCHON CG-223 | Neural Grid' })
-        .setTimestamp();
+    // SINGLE canvas render — no duplicates
+    const png = await Style.renderWelcomeCard(member, count, cfg);
 
-    // Custom message support — prepended above ANSI panel
+    // Warm welcome text (no ANSI block)
+    let content = Style.warmWelcomeText(member, count, cfg);
+
+    // Custom message support — prepended if set
     const customTemplate = cfg.welcomeMessage;
-    const ansi = Style.ansiWelcome(member, count);
-    let content = ansi;
-    
     if (customTemplate) {
-        content = `${Style.formatTemplate(customTemplate, member, count)}\n${ansi}`;
+        content = `${Style.formatTemplate(customTemplate, member, count)}\n${content}`;
     }
 
-    // Dynamic pro-tips based on enabled features
-    const tips = Style.buildProTips(cfg, lang);
+    // Random pro-tips (3-5 tips, feature-gated)
+    const tips = Style.buildRandomTips(cfg, lang);
     const tipBlock = lang === 'fr' 
         ? `\n> 💡 **Commandes essentielles :**\n${tips.map(t => `> • ${t}`).join('\n')}`
         : `\n> 💡 **Essential commands :**\n${tips.map(t => `> • ${t}`).join('\n')}`;
 
+    content += tipBlock;
+
+    // Build embed with single image attachment
+    const embed = new EmbedBuilder()
+        .setColor(0x00fbff)
+        .setImage('attachment://welcome.png')
+        .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Member #${count}` })
+        .setTimestamp();
+
+    // Build buttons — suppress rules/general if channels are configured
+    const buttonDefs = Style.getWelcomeButtons(cfg, member);
+    const rows = [];
+    let currentRow = new ActionRowBuilder();
+    let btnCount = 0;
+
+    for (const def of buttonDefs) {
+        if (btnCount >= 5) {
+            rows.push(currentRow);
+            currentRow = new ActionRowBuilder();
+            btnCount = 0;
+        }
+
+        if (def.style === 'Link') {
+            currentRow.addComponents(
+                new ButtonBuilder()
+                    .setLabel(def.label)
+                    .setEmoji(def.emoji)
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(def.url)
+            );
+        } else {
+            currentRow.addComponents(
+                new ButtonBuilder()
+                    .setLabel(def.label)
+                    .setEmoji(def.emoji)
+                    .setStyle(def.style === 'Primary' ? ButtonStyle.Primary : ButtonStyle.Success)
+                    .setCustomId(def.customId)
+            );
+        }
+        btnCount++;
+    }
+    if (btnCount > 0) rows.push(currentRow);
+
     await ch.send({
-        content: content + tipBlock,
+        content,
         embeds: [embed],
-        files: [new AttachmentBuilder(png, { name: 'welcome.png' })]
+        files: [new AttachmentBuilder(png, { name: 'welcome.png' })],
+        components: rows.length > 0 ? rows : undefined
     }).catch(() => {});
 }
 
 async function handleGoodbye(member, client, db) {
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
     const cfg = Style.normalizeWelcomeConfig(ssRaw);
-    
+
     if (!cfg.goodbyeEnabled || !cfg.goodbyeChannel) return;
-    
+
     const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
     if (!ch) return;
 
     const joinedAt = member.joinedTimestamp;
     const duration = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
     const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
-    
+
+    // SINGLE canvas render
     const png = await Style.renderGoodbyeCard(member, duration, roles.length);
-    const embed = new EmbedBuilder()
-        .setColor(0xe74c3c)
-        .setImage('attachment://goodbye.png')
-        .setFooter({ text: 'ARCHON CG-223 | Departure Log' })
-        .setTimestamp();
+
+    let content = Style.goodbyeText(member, duration, roles.length);
 
     // Custom goodbye message support
     const customTemplate = cfg.goodbyeMessage;
-    let content = Style.ansiGoodbye(member, duration, roles.length, roles);
-    
     if (customTemplate) {
         content = `${Style.formatTemplate(customTemplate, member, member.guild.memberCount)}\n${content}`;
     }
+
+    const embed = new EmbedBuilder()
+        .setColor(0xe74c3c)
+        .setImage('attachment://goodbye.png')
+        .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Departure Log` })
+        .setTimestamp();
 
     await ch.send({
         content,
@@ -92,26 +132,23 @@ module.exports = {
     name: 'welcome',
     category: 'SYSTEM',
     aliases: ['goodbye', 'leave', 'join', 'welcomecard'],
-    description: 'Neural-grid welcome/goodbye cards with ANSI art and smart detection.',
+    description: 'Neural-grid welcome/goodbye cards with warm welcome, random pro-tips, and real account age.',
     usage: '.welcome config | .welcome test | .welcome message <text> | .welcome goodbyemsg <text>',
     cooldown: 1000,
 
-    // Event hooks — these are what index.js calls
     async onMemberAdd(member, client, db) {
         await handleWelcome(member, client, db);
     },
-    
+
     async onMemberRemove(member, client, db) {
         await handleGoodbye(member, client, db);
     },
 
-    // Prefix command handler
     run: async (client, message, args, db, usedCommand, serverSettings, lang) => {
         const sub = args[0]?.toLowerCase() || 'config';
         const prefix = serverSettings?.prefix || '.';
         const cfg = Style.normalizeWelcomeConfig(serverSettings);
 
-        // ── TEST ──
         if (sub === 'test') {
             const embed = new EmbedBuilder()
                 .setColor(0x00fbff)
@@ -122,7 +159,6 @@ module.exports = {
             return;
         }
 
-        // ── SET WELCOME MESSAGE ──
         if (sub === 'message' || sub === 'msg') {
             const adm = message.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return message.reply('🔒 Admin only.').catch(() => {});
@@ -131,13 +167,13 @@ module.exports = {
             if (!customMsg) {
                 return message.reply(
                     `⚠️ **Usage:** \`${prefix}welcome message <text>\`\n` +
-                    `Placeholders: \`{user}\` \`{server}\` \`{count}\`\n` +
+                    `Placeholders: \`{user}\` \`{server}\` \`{count}\` \`{age}\`\n` +
                     `Example: \`${prefix}welcome message Welcome {user} to {server}! You are member #{count}.\``
                 ).catch(() => {});
             }
 
             client.updateServerSetting(message.guild.id, 'welcome_message', customMsg);
-            client.settings.delete(message.guild.id); // Bust cache
+            client.settings.delete(message.guild.id);
 
             const preview = Style.formatTemplate(customMsg, message.member, message.guild.memberCount);
             return message.reply({
@@ -152,7 +188,6 @@ module.exports = {
             }).catch(() => {});
         }
 
-        // ── SET GOODBYE MESSAGE ──
         if (sub === 'goodbyemsg' || sub === 'goodbye' || sub === 'leavemsg') {
             const adm = message.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return message.reply('🔒 Admin only.').catch(() => {});
@@ -161,7 +196,7 @@ module.exports = {
             if (!customMsg) {
                 return message.reply(
                     `⚠️ **Usage:** \`${prefix}welcome goodbyemsg <text>\`\n` +
-                    `Placeholders: \`{user}\` \`{server}\` \`{count}\`\n` +
+                    `Placeholders: \`{user}\` \`{server}\` \`{count}\` \`{age}\`\n` +
                     `Example: \`${prefix}welcome goodbyemsg Goodbye {user}, thanks for being part of {server}!\``
                 ).catch(() => {});
             }
@@ -182,12 +217,12 @@ module.exports = {
             }).catch(() => {});
         }
 
-        // ── DEFAULT: CONFIG DISPLAY ──
+        // Default: config display
         const wCh = cfg.welcomeChannel;
         const gCh = cfg.goodbyeChannel;
         const wMsg = cfg.welcomeMessage || 'Welcome {user} to {server}! You are member #{count}.';
         const gMsg = cfg.goodbyeMessage || 'Goodbye {user}, thanks for being part of {server}!';
-        
+
         const embed = new EmbedBuilder()
             .setColor(0x00fbff)
             .setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() })
@@ -205,29 +240,26 @@ module.exports = {
             )
             .setFooter({ text: 'ARCHON CG-223' })
             .setTimestamp();
-        
+
         message.reply({ embeds: [embed] }).catch(() => {});
     },
 
-    // Slash command builder
     data: new SlashCommandBuilder()
         .setName('welcome')
         .setDescription('Welcome/goodbye system configuration')
         .addSubcommand(s => s.setName('config').setDescription('View welcome/goodbye configuration'))
         .addSubcommand(s => s.setName('test').setDescription('Test welcome banner (admin only)'))
         .addSubcommand(s => s.setName('message').setDescription('Set a custom welcome message (admin only)')
-            .addStringOption(o => o.setName('text').setDescription('Use {user}, {server}, {count} as placeholders').setRequired(true)))
+            .addStringOption(o => o.setName('text').setDescription('Use {user}, {server}, {count}, {age} as placeholders').setRequired(true)))
         .addSubcommand(s => s.setName('goodbyemsg').setDescription('Set a custom goodbye message (admin only)')
-            .addStringOption(o => o.setName('text').setDescription('Use {user}, {server}, {count} as placeholders').setRequired(true))),
+            .addStringOption(o => o.setName('text').setDescription('Use {user}, {server}, {count}, {age} as placeholders').setRequired(true))),
 
-    // Slash command handler
     execute: async (ix, client) => {
         const sc = ix.options.getSubcommand();
         const db = client.db;
         const ssRaw = client.getServerSettings?.(ix.guild.id) || {};
         const cfg = Style.normalizeWelcomeConfig(ssRaw);
 
-        // ── CONFIG ──
         if (sc === 'config') {
             const embed = new EmbedBuilder()
                 .setColor(0x00fbff)
@@ -244,7 +276,6 @@ module.exports = {
             return ix.reply({ embeds: [embed], flags: 1 << 6 });
         }
 
-        // ── TEST ──
         if (sc === 'test') {
             const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
@@ -253,7 +284,6 @@ module.exports = {
             return;
         }
 
-        // ── MESSAGE ──
         if (sc === 'message') {
             const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
@@ -276,7 +306,6 @@ module.exports = {
             });
         }
 
-        // ── GOODBYEMSG ──
         if (sc === 'goodbyemsg') {
             const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
