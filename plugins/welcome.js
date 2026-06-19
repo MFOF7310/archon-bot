@@ -1,296 +1,128 @@
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  🦅 ARCHON CG-223 — WELCOME/GOODBYE PLUGIN v3.0                     ║
+// ║  Uses shared cinematic engine (welcome-style.js)                    ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
 const { EmbedBuilder, AttachmentBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
-
-const W = 520, H = 140; // Compact card size
-
-// ================= SMART UTILS =================
-function ordinal(n) { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); }
-function fmtDur(ms) {
-    if (!ms || ms < 60000) return '< 1m';
-    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
-    return `${d ? d + 'd ' : ''}${h ? h + 'h ' : ''}${m}m`.trim();
-}
-function accountAge(createdAt) {                     const ms = Date.now() - createdAt;
-    const d = Math.floor(ms / 86400000);             if (d < 1) return 'Created today';
-    if (d < 7) return `${d} days old`;
-    if (d < 30) return `${Math.floor(d / 7)} weeks old`;
-    if (d < 365) return `${Math.floor(d / 30)} months old`;
-    return `${Math.floor(d / 365)} years old`;
-}
-
-// ================= TEMPLATE FORMATTER =================
-// Replaces {user}, {server}, {count} in a custom welcome message template.
-function formatTemplate(template, member, count) {
-    return template
-        .replace(/\{user\}/g, member.toString())
-        .replace(/\{server\}/g, member.guild.name)
-        .replace(/\{count\}/g, count);
-}
-
-// ================= CANVAS: COMPACT WELCOME CARD =================
-async function renderWelcomeCard(member, count) {
-    const c = createCanvas(W, H);
-    const ctx = c.getContext('2d');
-
-    // Background
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#1a1a2e');
-    g.addColorStop(1, '#16213e');
-    ctx.fillStyle = g;
-    roundRect(ctx, 0, 0, W, H, 16);
-    ctx.fill();
-
-    // Neural grid lines
-    ctx.strokeStyle = 'rgba(0,251,255,0.04)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < W; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - 40, H); ctx.stroke(); }
-
-    // Left accent bar
-    ctx.fillStyle = '#00fbff';
-    roundRect(ctx, 0, 20, 4, H - 40, 2);
-    ctx.fill();
-
-    // Avatar
-    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 })).catch(() => null);
-    const ax = 22, ay = H / 2, ar = 38;
-    if (av) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
-        ctx.restore();
-        // Ring
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2);
-        ctx.strokeStyle = '#00fbff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    }
-
-    // "JOINED" label
-    ctx.fillStyle = '#00fbff';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('JOINED', 100, 32);
-
-    // Username
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px sans-serif';
-    const name = member.user.username.length > 18 ? member.user.username.substring(0, 17) + '...' : member.user.username;
-    ctx.fillText(name, 100, 56);
-
-    // Stats row
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = '11px sans-serif';
-    const age = accountAge(member.user.createdTimestamp);
-    const isSus = (Date.now() - member.user.createdTimestamp) < 604800000; // < 7 days
-    const ageColor = isSus ? '  [NEW]' : '';
-    ctx.fillText(`#${ordinal(count)} member  |  ${age}${ageColor}`, 100, 78);
-
-    // Server name (bottom right)
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'right';
-    const sName = member.guild.name.length > 25 ? member.guild.name.substring(0, 24) + '...' : member.guild.name;
-    ctx.fillText(sName, W - 18, H - 18);
-
-    // "ARCHON" badge (top right)
-    ctx.fillStyle = 'rgba(0,251,255,0.15)';
-    roundRect(ctx, W - 90, 14, 72, 20, 4);
-    ctx.fill();
-    ctx.fillStyle = '#00fbff';
-    ctx.font = 'bold 8px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('ARCHON CG-223', W - 54, 27);
-
-    return c.encode('png');
-}
-
-// ================= CANVAS: COMPACT GOODBYE CARD =================
-async function renderGoodbyeCard(member, duration, roleCount) {
-    const c = createCanvas(W, H);
-    const ctx = c.getContext('2d');
-
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#1a0a0a');
-    g.addColorStop(1, '#2d1313');
-    ctx.fillStyle = g;
-    roundRect(ctx, 0, 0, W, H, 16);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(231,76,60,0.06)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < W; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - 40, H); ctx.stroke(); }
-
-    ctx.fillStyle = '#e74c3c';
-    roundRect(ctx, 0, 20, 4, H - 40, 2);
-    ctx.fill();
-
-    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 })).catch(() => null);
-    const ax = 22, ay = H / 2, ar = 38;
-    if (av) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
-        ctx.restore();
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2);
-        ctx.strokeStyle = '#e74c3c';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    }
-
-    ctx.fillStyle = '#e74c3c';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('DEPARTED', 100, 32);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px sans-serif';
-    const name = member.user.username.length > 18 ? member.user.username.substring(0, 17) + '...' : member.user.username;
-    ctx.fillText(name, 100, 56);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = '11px sans-serif';
-    const dur = duration || '< 1m';
-    ctx.fillText(`Stay: ${dur}  |  ${roleCount} role${roleCount !== 1 ? 's' : ''} removed`, 100, 78);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'right';
-    const sName = member.guild.name.length > 25 ? member.guild.name.substring(0, 24) + '...' : member.guild.name;
-    ctx.fillText(sName, W - 18, H - 18);
-
-    ctx.fillStyle = 'rgba(231,76,60,0.15)';
-    roundRect(ctx, W - 90, 14, 72, 20, 4);
-    ctx.fill();
-    ctx.fillStyle = '#e74c3c';
-    ctx.font = 'bold 8px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('ARCHON CG-223', W - 54, 27);
-
-    return c.encode('png');
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-}
-
-// ================= NEURAL GRID ANSI TEXT =================
-function ansiWelcome(member, count) {
-    const name = member.user.username;
-    const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
-    return '```ansi\n' +
-        '\u001b[0;36m╔══════════════════════════════════════════╗\u001b[0m\n' +
-        '\u001b[0;36m║\u001b[1;36m  NEURAL LINK // NETWORK EXPANSION       \u001b[0;36m║\u001b[0m\n' +
-        '\u001b[0;36m╠══════════════════════════════════════════╣\u001b[0m\n' +
-        `\u001b[0;36m║\u001b[0m  Node: \u001b[1;33m${name.padEnd(18)}\u001b[0m #${String(count).padStart(4)}     \u001b[0;36m║\u001b[0m\n` +
-        `\u001b[0;36m║\u001b[0m  Grid: \u001b[0;37m${member.guild.name.substring(0, 26).padEnd(26)}\u001b[0m  \u001b[0;36m║\u001b[0m\n` +
-        `\u001b[0;36m║\u001b[0m  Account: \u001b[0;37m${accountAge(member.user.createdTimestamp).padEnd(23)}\u001b[0m` + (isNew ? ' \u001b[1;31m[NEW]\u001b[0m ' : '       ') + '\u001b[0;36m║\u001b[0m\n' +
-        '\u001b[0;36m╚══════════════════════════════════════════╝\u001b[0m\n' +
-        '```\n' +
-        `${member.toString()} Welcome to the grid.`;
-}
-
-function ansiGoodbye(member, duration, roleCount, roles) {
-    const name = member.user.username;
-    const dur = duration || '< 1m';
-    const rl = roles.slice(0, 4).map(r => r.name).join(', ') || 'None';
-    return '```ansi\n' +
-        '\u001b[0;31m╔══════════════════════════════════════════╗\u001b[0m\n' +
-        '\u001b[0;31m║\u001b[1;31m  NEURAL LINK // NETWORK SEVERED         \u001b[0;31m║\u001b[0m\n' +
-        '\u001b[0;31m╠══════════════════════════════════════════╣\u001b[0m\n' +
-        `\u001b[0;31m║\u001b[0m  Node: \u001b[1;33m${name.padEnd(18)}\u001b[0m              \u001b[0;31m║\u001b[0m\n` +
-        `\u001b[0;31m║\u001b[0m  Stay: \u001b[0;37m${dur.padEnd(26)}\u001b[0m       \u001b[0;31m║\u001b[0m\n` +
-        `\u001b[0;31m║\u001b[0m  Roles: \u001b[0;37m${rl.substring(0, 28).padEnd(28)}\u001b[0m  \u001b[0;31m║\u001b[0m\n` +
-        '\u001b[0;31m╚══════════════════════════════════════════╝\u001b[0m\n' +
-        '```';
-}
+const Style = require('./welcome-style.js');
 
 // ================= HANDLERS =================
 async function handleWelcome(member, client, db) {
-    const ss = client.getServerSettings?.(member.guild.id) || {};
-    if (ss.welcomeEnabled === false) return;
-    const chId = ss.welcomeChannel || ss.welcome_channel;
-    const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
+    const ssRaw = client.getServerSettings?.(member.guild.id) || {};
+    const cfg = Style.normalizeWelcomeConfig(ssRaw);
+    
+    if (!cfg.welcomeEnabled) return;
+    
+    // Resolve channel: configured → system → null
+    const ch = cfg.welcomeChannel 
+        ? member.guild.channels.cache.get(cfg.welcomeChannel) 
+        : member.guild.systemChannel;
     if (!ch) return;
 
-    const png = await renderWelcomeCard(member, member.guild.memberCount);
+    const count = member.guild.memberCount;
+    const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
+
+    // Render cinematic card
+    const png = await Style.renderWelcomeCard(member, count);
     const embed = new EmbedBuilder()
         .setColor(0x00fbff)
         .setImage('attachment://welcome.png')
         .setFooter({ text: 'ARCHON CG-223 | Neural Grid' })
         .setTimestamp();
 
-    // Custom message support: if an admin has set a custom welcome message,
-    // it's prepended above the ANSI panel with {user}/{server}/{count} filled in.
-    const customTemplate = ss.welcomeMessage || ss.welcome_message;
-    const ansi = ansiWelcome(member, member.guild.memberCount);
-    const content = customTemplate
-        ? `${formatTemplate(customTemplate, member, member.guild.memberCount)}\n${ansi}`
-        : ansi;
+    // Custom message support — prepended above ANSI panel
+    const customTemplate = cfg.welcomeMessage;
+    const ansi = Style.ansiWelcome(member, count);
+    let content = ansi;
+    
+    if (customTemplate) {
+        content = `${Style.formatTemplate(customTemplate, member, count)}\n${ansi}`;
+    }
 
-    await ch.send({ content, embeds: [embed], files: [new AttachmentBuilder(png, { name: 'welcome.png' })] }).catch(() => {});
+    // Dynamic pro-tips based on enabled features
+    const tips = Style.buildProTips(cfg, lang);
+    const tipBlock = lang === 'fr' 
+        ? `\n> 💡 **Commandes essentielles :**\n${tips.map(t => `> • ${t}`).join('\n')}`
+        : `\n> 💡 **Essential commands :**\n${tips.map(t => `> • ${t}`).join('\n')}`;
+
+    await ch.send({
+        content: content + tipBlock,
+        embeds: [embed],
+        files: [new AttachmentBuilder(png, { name: 'welcome.png' })]
+    }).catch(() => {});
 }
 
 async function handleGoodbye(member, client, db) {
-    const ss = client.getServerSettings?.(member.guild.id) || {};
-    if (!ss.goodbyeChannel && !ss.goodbye_channel) return;
-    const chId = ss.goodbyeChannel || ss.goodbye_channel;
-    const ch = member.guild.channels.cache.get(chId);
+    const ssRaw = client.getServerSettings?.(member.guild.id) || {};
+    const cfg = Style.normalizeWelcomeConfig(ssRaw);
+    
+    if (!cfg.goodbyeEnabled || !cfg.goodbyeChannel) return;
+    
+    const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
     if (!ch) return;
 
     const joinedAt = member.joinedTimestamp;
-    const duration = joinedAt ? fmtDur(Date.now() - joinedAt) : null;
+    const duration = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
     const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
-    const png = await renderGoodbyeCard(member, duration, roles.length);
+    
+    const png = await Style.renderGoodbyeCard(member, duration, roles.length);
     const embed = new EmbedBuilder()
         .setColor(0xe74c3c)
         .setImage('attachment://goodbye.png')
         .setFooter({ text: 'ARCHON CG-223 | Departure Log' })
         .setTimestamp();
 
-    const content = ansiGoodbye(member, duration, roles.length, roles);
-    await ch.send({ content, embeds: [embed], files: [new AttachmentBuilder(png, { name: 'goodbye.png' })] }).catch(() => {});
+    // Custom goodbye message support
+    const customTemplate = cfg.goodbyeMessage;
+    let content = Style.ansiGoodbye(member, duration, roles.length, roles);
+    
+    if (customTemplate) {
+        content = `${Style.formatTemplate(customTemplate, member, member.guild.memberCount)}\n${content}`;
+    }
+
+    await ch.send({
+        content,
+        embeds: [embed],
+        files: [new AttachmentBuilder(png, { name: 'goodbye.png' })]
+    }).catch(() => {});
 }
 
 // ================= MODULE =================
 module.exports = {
-    name: 'welcome', category: 'SOCIAL', aliases: ['goodbye', 'leave', 'join'],
+    name: 'welcome',
+    category: 'SYSTEM',
+    aliases: ['goodbye', 'leave', 'join', 'welcomecard'],
     description: 'Neural-grid welcome/goodbye cards with ANSI art and smart detection.',
-    usage: '.welcome config | .welcome test | .welcome message <text>',
+    usage: '.welcome config | .welcome test | .welcome message <text> | .welcome goodbyemsg <text>',
     cooldown: 1000,
 
-    run: async (client, message, args, db, ss) => {
-        const sub = args[0]?.toLowerCase() || 'config';
-        const prefix = ss?.prefix || '.';
+    // Event hooks — these are what index.js calls
+    async onMemberAdd(member, client, db) {
+        await handleWelcome(member, client, db);
+    },
+    
+    async onMemberRemove(member, client, db) {
+        await handleGoodbye(member, client, db);
+    },
 
+    // Prefix command handler
+    run: async (client, message, args, db, usedCommand, serverSettings, lang) => {
+        const sub = args[0]?.toLowerCase() || 'config';
+        const prefix = serverSettings?.prefix || '.';
+        const cfg = Style.normalizeWelcomeConfig(serverSettings);
+
+        // ── TEST ──
         if (sub === 'test') {
-            // Simulate welcome for testing
-            const embed = new EmbedBuilder().setColor(0x00fbff).setDescription('**Sending test welcome...**').setFooter({ text: 'ARCHON CG-223' });
+            const embed = new EmbedBuilder()
+                .setColor(0x00fbff)
+                .setDescription('**Sending test welcome...**')
+                .setFooter({ text: 'ARCHON CG-223' });
             await message.reply({ embeds: [embed] }).catch(() => {});
-            await module.exports.onMemberAdd(message.member, client, db);
+            await handleWelcome(message.member, client, db);
             return;
         }
 
-        // NEW: .welcome message <text> — sets a custom welcome message template.
-        // This is what was missing — previously any non-"test" first argument
-        // fell straight through to the config display below ("floop" behavior).
+        // ── SET WELCOME MESSAGE ──
         if (sub === 'message' || sub === 'msg') {
             const adm = message.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return message.reply('🔒 Admin only.').catch(() => {});
@@ -304,12 +136,10 @@ module.exports = {
                 ).catch(() => {});
             }
 
-            // Persist to DB under the same key the rest of the codebase reads
-            // (handleWelcome checks both welcomeMessage and welcome_message).
             client.updateServerSetting(message.guild.id, 'welcome_message', customMsg);
-            client.settings.delete(message.guild.id); // bust cache so it takes effect immediately
+            client.settings.delete(message.guild.id); // Bust cache
 
-            const preview = formatTemplate(customMsg, message.member, message.guild.memberCount);
+            const preview = Style.formatTemplate(customMsg, message.member, message.guild.memberCount);
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00fbff)
@@ -322,56 +152,108 @@ module.exports = {
             }).catch(() => {});
         }
 
-        // Default: show config
-        const wCh = ss?.welcomeChannel || ss?.welcome_channel;
-        const gCh = ss?.goodbyeChannel || ss?.goodbye_channel;
-        const wMsg = ss?.welcomeMessage || ss?.welcome_message || 'Welcome {user} to {server}! You are member #{count}.';
-        const embed = new EmbedBuilder().setColor(0x00fbff).setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() }).
-            addFields(
+        // ── SET GOODBYE MESSAGE ──
+        if (sub === 'goodbyemsg' || sub === 'goodbye' || sub === 'leavemsg') {
+            const adm = message.member.permissions.has(PermissionFlagsBits.Administrator);
+            if (!adm) return message.reply('🔒 Admin only.').catch(() => {});
+
+            const customMsg = args.slice(1).join(' ');
+            if (!customMsg) {
+                return message.reply(
+                    `⚠️ **Usage:** \`${prefix}welcome goodbyemsg <text>\`\n` +
+                    `Placeholders: \`{user}\` \`{server}\` \`{count}\`\n` +
+                    `Example: \`${prefix}welcome goodbyemsg Goodbye {user}, thanks for being part of {server}!\``
+                ).catch(() => {});
+            }
+
+            client.updateServerSetting(message.guild.id, 'goodbye_message', customMsg);
+            client.settings.delete(message.guild.id);
+
+            const preview = Style.formatTemplate(customMsg, message.member, message.guild.memberCount);
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(0xe74c3c)
+                    .setTitle('✅ Goodbye Message Updated')
+                    .addFields(
+                        { name: 'Template Saved', value: `\`${customMsg}\``, inline: false },
+                        { name: 'Preview', value: preview, inline: false }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
+        // ── DEFAULT: CONFIG DISPLAY ──
+        const wCh = cfg.welcomeChannel;
+        const gCh = cfg.goodbyeChannel;
+        const wMsg = cfg.welcomeMessage || 'Welcome {user} to {server}! You are member #{count}.';
+        const gMsg = cfg.goodbyeMessage || 'Goodbye {user}, thanks for being part of {server}!';
+        
+        const embed = new EmbedBuilder()
+            .setColor(0x00fbff)
+            .setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() })
+            .addFields(
                 { name: 'Welcome Channel', value: wCh ? `<#${wCh}>` : '*Not set*', inline: true },
                 { name: 'Goodbye Channel', value: gCh ? `<#${gCh}>` : '*Not set*', inline: true },
                 { name: 'Welcome Message', value: `\`${wMsg}\``, inline: false },
-                // Setup hint now points to the working command — .welcome message — instead
-                // of the old "welcome_message" key that didn't have a handler.
-                { name: 'Setup', value: `\`${prefix}welcome message Your text here\`\n\`${prefix}serversettings set welcome_channel #channel\`\n\`${prefix}serversettings set goodbye_channel #channel\``, inline: false },
+                { name: 'Goodbye Message', value: `\`${gMsg}\``, inline: false },
+                { name: 'Setup', value: 
+                    `\`${prefix}welcome message <text>\` — Set welcome text\n` +
+                    `\`${prefix}welcome goodbyemsg <text>\` — Set goodbye text\n` +
+                    `\`${prefix}serversettings set welcome_channel #channel\`\n` +
+                    `\`${prefix}serversettings set goodbye_channel #channel\``, inline: false },
                 { name: 'Test', value: `\`${prefix}welcome test\` — Simulate welcome`, inline: false }
-            ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+            )
+            .setFooter({ text: 'ARCHON CG-223' })
+            .setTimestamp();
+        
         message.reply({ embeds: [embed] }).catch(() => {});
     },
 
-    data: new SlashCommandBuilder().setName('welcome').setDescription('Welcome/goodbye system configuration')
+    // Slash command builder
+    data: new SlashCommandBuilder()
+        .setName('welcome')
+        .setDescription('Welcome/goodbye system configuration')
         .addSubcommand(s => s.setName('config').setDescription('View welcome/goodbye configuration'))
         .addSubcommand(s => s.setName('test').setDescription('Test welcome banner (admin only)'))
         .addSubcommand(s => s.setName('message').setDescription('Set a custom welcome message (admin only)')
+            .addStringOption(o => o.setName('text').setDescription('Use {user}, {server}, {count} as placeholders').setRequired(true)))
+        .addSubcommand(s => s.setName('goodbyemsg').setDescription('Set a custom goodbye message (admin only)')
             .addStringOption(o => o.setName('text').setDescription('Use {user}, {server}, {count} as placeholders').setRequired(true))),
 
+    // Slash command handler
     execute: async (ix, client) => {
         const sc = ix.options.getSubcommand();
         const db = client.db;
-        const ss = client.getServerSettings?.(ix.guild.id) || {};
+        const ssRaw = client.getServerSettings?.(ix.guild.id) || {};
+        const cfg = Style.normalizeWelcomeConfig(ssRaw);
 
+        // ── CONFIG ──
         if (sc === 'config') {
-            const wCh = ss?.welcomeChannel || ss?.welcome_channel;
-            const gCh = ss?.goodbyeChannel || ss?.goodbye_channel;
-            const wMsg = ss?.welcomeMessage || ss?.welcome_message || 'Welcome {user} to {server}! You are member #{count}.';
-            const embed = new EmbedBuilder().setColor(0x00fbff).setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() }).
-                addFields(
-                    { name: 'Welcome Channel', value: wCh ? `<#${wCh}>` : '*Not set*', inline: true },
-                    { name: 'Goodbye Channel', value: gCh ? `<#${gCh}>` : '*Not set*', inline: true },
-                    { name: 'Welcome Message', value: `\`${wMsg}\``, inline: false },
-                    { name: 'Setup', value: '`/welcome message` to set text · `/serversettings` for channels', inline: false }
-                ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+            const embed = new EmbedBuilder()
+                .setColor(0x00fbff)
+                .setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() })
+                .addFields(
+                    { name: 'Welcome Channel', value: cfg.welcomeChannel ? `<#${cfg.welcomeChannel}>` : '*Not set*', inline: true },
+                    { name: 'Goodbye Channel', value: cfg.goodbyeChannel ? `<#${cfg.goodbyeChannel}>` : '*Not set*', inline: true },
+                    { name: 'Welcome Message', value: `\`${cfg.welcomeMessage || 'Default'}\``, inline: false },
+                    { name: 'Goodbye Message', value: `\`${cfg.goodbyeMessage || 'Default'}\``, inline: false },
+                    { name: 'Setup', value: '`/welcome message` · `/welcome goodbyemsg` · `/serversettings` for channels', inline: false }
+                )
+                .setFooter({ text: 'ARCHON CG-223' })
+                .setTimestamp();
             return ix.reply({ embeds: [embed], flags: 1 << 6 });
         }
 
+        // ── TEST ──
         if (sc === 'test') {
             const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
             await ix.reply({ content: 'Sending test welcome...', flags: 1 << 6 });
-            await module.exports.onMemberAdd(ix.member, client, db);
+            await handleWelcome(ix.member, client, db);
             return;
         }
 
+        // ── MESSAGE ──
         if (sc === 'message') {
             const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
@@ -380,7 +262,7 @@ module.exports = {
             client.updateServerSetting(ix.guild.id, 'welcome_message', customMsg);
             client.settings.delete(ix.guild.id);
 
-            const preview = formatTemplate(customMsg, ix.member, ix.guild.memberCount);
+            const preview = Style.formatTemplate(customMsg, ix.member, ix.guild.memberCount);
             return ix.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00fbff)
@@ -393,9 +275,28 @@ module.exports = {
                 flags: 1 << 6
             });
         }
-    },
 
-    async onMemberAdd(member, client, db) { await handleWelcome(member, client, db); },
-    async onMemberRemove(member, client, db) { await handleGoodbye(member, client, db); }
+        // ── GOODBYEMSG ──
+        if (sc === 'goodbyemsg') {
+            const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
+            if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+
+            const customMsg = ix.options.getString('text');
+            client.updateServerSetting(ix.guild.id, 'goodbye_message', customMsg);
+            client.settings.delete(ix.guild.id);
+
+            const preview = Style.formatTemplate(customMsg, ix.member, ix.guild.memberCount);
+            return ix.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(0xe74c3c)
+                    .setTitle('✅ Goodbye Message Updated')
+                    .addFields(
+                        { name: 'Template Saved', value: `\`${customMsg}\``, inline: false },
+                        { name: 'Preview', value: preview, inline: false }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223' })],
+                flags: 1 << 6
+            });
+        }
+    }
 };
-
