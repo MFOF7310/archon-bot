@@ -10,14 +10,21 @@ function fmtDur(ms) {
     const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
     return `${d ? d + 'd ' : ''}${h ? h + 'h ' : ''}${m}m`.trim();
 }
-function accountAge(createdAt) {
-    const ms = Date.now() - createdAt;
-    const d = Math.floor(ms / 86400000);
-    if (d < 1) return 'Created today';
+function accountAge(createdAt) {                     const ms = Date.now() - createdAt;
+    const d = Math.floor(ms / 86400000);             if (d < 1) return 'Created today';
     if (d < 7) return `${d} days old`;
     if (d < 30) return `${Math.floor(d / 7)} weeks old`;
     if (d < 365) return `${Math.floor(d / 30)} months old`;
     return `${Math.floor(d / 365)} years old`;
+}
+
+// ================= TEMPLATE FORMATTER =================
+// Replaces {user}, {server}, {count} in a custom welcome message template.
+function formatTemplate(template, member, count) {
+    return template
+        .replace(/\{user\}/g, member.toString())
+        .replace(/\{server\}/g, member.guild.name)
+        .replace(/\{count\}/g, count);
 }
 
 // ================= CANVAS: COMPACT WELCOME CARD =================
@@ -230,7 +237,14 @@ async function handleWelcome(member, client, db) {
         .setFooter({ text: 'ARCHON CG-223 | Neural Grid' })
         .setTimestamp();
 
-    const content = ansiWelcome(member, member.guild.memberCount);
+    // Custom message support: if an admin has set a custom welcome message,
+    // it's prepended above the ANSI panel with {user}/{server}/{count} filled in.
+    const customTemplate = ss.welcomeMessage || ss.welcome_message;
+    const ansi = ansiWelcome(member, member.guild.memberCount);
+    const content = customTemplate
+        ? `${formatTemplate(customTemplate, member, member.guild.memberCount)}\n${ansi}`
+        : ansi;
+
     await ch.send({ content, embeds: [embed], files: [new AttachmentBuilder(png, { name: 'welcome.png' })] }).catch(() => {});
 }
 
@@ -259,12 +273,13 @@ async function handleGoodbye(member, client, db) {
 module.exports = {
     name: 'welcome', category: 'SOCIAL', aliases: ['goodbye', 'leave', 'join'],
     description: 'Neural-grid welcome/goodbye cards with ANSI art and smart detection.',
-    usage: '.welcome config | .welcome test',
+    usage: '.welcome config | .welcome test | .welcome message <text>',
     cooldown: 1000,
 
     run: async (client, message, args, db, ss) => {
         const sub = args[0]?.toLowerCase() || 'config';
         const prefix = ss?.prefix || '.';
+
         if (sub === 'test') {
             // Simulate welcome for testing
             const embed = new EmbedBuilder().setColor(0x00fbff).setDescription('**Sending test welcome...**').setFooter({ text: 'ARCHON CG-223' });
@@ -272,16 +287,53 @@ module.exports = {
             await module.exports.onMemberAdd(message.member, client, db);
             return;
         }
+
+        // NEW: .welcome message <text> — sets a custom welcome message template.
+        // This is what was missing — previously any non-"test" first argument
+        // fell straight through to the config display below ("floop" behavior).
+        if (sub === 'message' || sub === 'msg') {
+            const adm = message.member.permissions.has(PermissionFlagsBits.Administrator);
+            if (!adm) return message.reply('🔒 Admin only.').catch(() => {});
+
+            const customMsg = args.slice(1).join(' ');
+            if (!customMsg) {
+                return message.reply(
+                    `⚠️ **Usage:** \`${prefix}welcome message <text>\`\n` +
+                    `Placeholders: \`{user}\` \`{server}\` \`{count}\`\n` +
+                    `Example: \`${prefix}welcome message Welcome {user} to {server}! You are member #{count}.\``
+                ).catch(() => {});
+            }
+
+            // Persist to DB under the same key the rest of the codebase reads
+            // (handleWelcome checks both welcomeMessage and welcome_message).
+            client.updateServerSetting(message.guild.id, 'welcome_message', customMsg);
+            client.settings.delete(message.guild.id); // bust cache so it takes effect immediately
+
+            const preview = formatTemplate(customMsg, message.member, message.guild.memberCount);
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(0x00fbff)
+                    .setTitle('✅ Welcome Message Updated')
+                    .addFields(
+                        { name: 'Template Saved', value: `\`${customMsg}\``, inline: false },
+                        { name: 'Preview', value: preview, inline: false }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
         // Default: show config
         const wCh = ss?.welcomeChannel || ss?.welcome_channel;
         const gCh = ss?.goodbyeChannel || ss?.goodbye_channel;
-        const wMsg = ss?.welcomeMessage || 'Welcome {user} to {server}! You are member #{count}.';
+        const wMsg = ss?.welcomeMessage || ss?.welcome_message || 'Welcome {user} to {server}! You are member #{count}.';
         const embed = new EmbedBuilder().setColor(0x00fbff).setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() }).
             addFields(
                 { name: 'Welcome Channel', value: wCh ? `<#${wCh}>` : '*Not set*', inline: true },
                 { name: 'Goodbye Channel', value: gCh ? `<#${gCh}>` : '*Not set*', inline: true },
                 { name: 'Welcome Message', value: `\`${wMsg}\``, inline: false },
-                { name: 'Setup', value: `\`${prefix}serversettings set welcome_channel #channel\`\n\`${prefix}serversettings set goodbye_channel #channel\`\n\`${prefix}serversettings set welcome_message Your message here\``, inline: false },
+                // Setup hint now points to the working command — .welcome message — instead
+                // of the old "welcome_message" key that didn't have a handler.
+                { name: 'Setup', value: `\`${prefix}welcome message Your text here\`\n\`${prefix}serversettings set welcome_channel #channel\`\n\`${prefix}serversettings set goodbye_channel #channel\``, inline: false },
                 { name: 'Test', value: `\`${prefix}welcome test\` — Simulate welcome`, inline: false }
             ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
         message.reply({ embeds: [embed] }).catch(() => {});
@@ -289,7 +341,9 @@ module.exports = {
 
     data: new SlashCommandBuilder().setName('welcome').setDescription('Welcome/goodbye system configuration')
         .addSubcommand(s => s.setName('config').setDescription('View welcome/goodbye configuration'))
-        .addSubcommand(s => s.setName('test').setDescription('Test welcome banner (admin only)')),
+        .addSubcommand(s => s.setName('test').setDescription('Test welcome banner (admin only)'))
+        .addSubcommand(s => s.setName('message').setDescription('Set a custom welcome message (admin only)')
+            .addStringOption(o => o.setName('text').setDescription('Use {user}, {server}, {count} as placeholders').setRequired(true))),
 
     execute: async (ix, client) => {
         const sc = ix.options.getSubcommand();
@@ -299,13 +353,13 @@ module.exports = {
         if (sc === 'config') {
             const wCh = ss?.welcomeChannel || ss?.welcome_channel;
             const gCh = ss?.goodbyeChannel || ss?.goodbye_channel;
-            const wMsg = ss?.welcomeMessage || 'Welcome {user} to {server}! You are member #{count}.';
+            const wMsg = ss?.welcomeMessage || ss?.welcome_message || 'Welcome {user} to {server}! You are member #{count}.';
             const embed = new EmbedBuilder().setColor(0x00fbff).setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() }).
                 addFields(
                     { name: 'Welcome Channel', value: wCh ? `<#${wCh}>` : '*Not set*', inline: true },
                     { name: 'Goodbye Channel', value: gCh ? `<#${gCh}>` : '*Not set*', inline: true },
                     { name: 'Welcome Message', value: `\`${wMsg}\``, inline: false },
-                    { name: 'Setup', value: '`/serversettings` → set welcome_channel, goodbye_channel, welcome_message', inline: false }
+                    { name: 'Setup', value: '`/welcome message` to set text · `/serversettings` for channels', inline: false }
                 ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
             return ix.reply({ embeds: [embed], flags: 1 << 6 });
         }
@@ -317,8 +371,31 @@ module.exports = {
             await module.exports.onMemberAdd(ix.member, client, db);
             return;
         }
+
+        if (sc === 'message') {
+            const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
+            if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+
+            const customMsg = ix.options.getString('text');
+            client.updateServerSetting(ix.guild.id, 'welcome_message', customMsg);
+            client.settings.delete(ix.guild.id);
+
+            const preview = formatTemplate(customMsg, ix.member, ix.guild.memberCount);
+            return ix.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(0x00fbff)
+                    .setTitle('✅ Welcome Message Updated')
+                    .addFields(
+                        { name: 'Template Saved', value: `\`${customMsg}\``, inline: false },
+                        { name: 'Preview', value: preview, inline: false }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223' })],
+                flags: 1 << 6
+            });
+        }
     },
 
     async onMemberAdd(member, client, db) { await handleWelcome(member, client, db); },
     async onMemberRemove(member, client, db) { await handleGoodbye(member, client, db); }
 };
+

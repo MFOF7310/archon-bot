@@ -105,7 +105,7 @@ module.exports = {
     description: '🛒 Browse the Neural Shop, buy items, and manage your inventory.', category: 'ECONOMY', usage: '.shop | .buy <item-id> | .inventory',
     examples: ['.shop', '.buy starter_pack', '.inventory', '.inv sell starter_pack'], cooldown: 3000,
 
-    data: new SlashCommandBuilder().setName('shop').setDescription('🛒 Neural Shop Bamako')
+    data: new SlashCommandBuilder().setName('inventory').setDescription('🛒 Neural Shop Bamako')
         .addSubcommand(sub => sub.setName('browse').setDescription('Browse the shop'))
         .addSubcommand(sub => sub.setName('buy').setDescription('Buy an item').addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true)))
         .addSubcommand(sub => sub.setName('inventory').setDescription('View your inventory'))

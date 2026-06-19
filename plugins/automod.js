@@ -12,6 +12,8 @@ const MAX_HISTORY = 100;            // per-user message cache
 
 // ================= STATE =================
 const history = new Map();          // user:guild -> { messages: [], warns: 0 }
+const appealCooldowns = new Map();  // userId -> last appeal timestamp (ms)
+const APPEAL_COOLDOWN = 86400000;   // 24 hours, 1 appeal per user per day
 
 // ================= MALICIOUS PATTERNS =================
 const MALICIOUS = [
@@ -102,6 +104,12 @@ setInterval(() => {
     for (const [k, v] of history) { if (v.last < cutoff) history.delete(k); }
 }, 600000);
 
+// Periodically clear stale appeal cooldowns (older than the cooldown window)
+setInterval(() => {
+    const cutoff = Date.now() - APPEAL_COOLDOWN;
+    for (const [uid, ts] of appealCooldowns) { if (ts < cutoff) appealCooldowns.delete(uid); }
+}, 3600000);
+
 function normalize(s) { return s.toLowerCase().replace(/\s+/g, ' ').trim(); }
 
 function similarity(a, b) {
@@ -150,6 +158,8 @@ async function takeAction(message, violations, client, db) {
     entry.warns++;
     history.set(k, entry);
     const wc = entry.warns;
+    // Display strike count never exceeds the 4-strike scale (caps at 4 for UI purposes)
+    const displayWc = Math.min(wc, 4);
 
     // Determine action
     const hasMalicious = violations.some(v => v.type.includes('malicious') || v.type.includes('phishing'));
@@ -189,6 +199,9 @@ async function takeAction(message, violations, client, db) {
         } else if (action === 'ban' && member?.bannable) {
             await member.ban({ reason: `AutoMod: ${violations[0].reason}`, deleteMessageSeconds: 86400 });
             actionText = 'Banned'; actionColor = C.RED;
+            // Reset strike counter after a ban — the slate is wiped, so a future
+            // unban + re-offense starts back at strike 1 instead of "5 of 4", "6 of 4", etc.
+            history.delete(k);
         } else {
             actionText = 'Warned (insufficient permissions)'; actionColor = C.GREY;
         }
@@ -210,7 +223,7 @@ async function takeAction(message, violations, client, db) {
                 { name: 'Action', value: actionText, inline: true },
                 { name: 'Violation', value: violations[0].reason, inline: false }
             )
-            .setFooter({ text: `Strike ${wc} of 4` })
+            .setFooter({ text: `Strike ${displayWc} of 4` })
             .setTimestamp();
 
         // Add allowed domains hint
@@ -244,8 +257,8 @@ async function takeAction(message, violations, client, db) {
     if (logId) {
         const logCh = message.guild.channels.cache.get(logId);
         if (logCh?.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
-            const bar = strikeBar(wc);
-            const next = wc >= 4 ? 'None — maximum reached' : ['1 hour timeout', '1 day timeout', '7 day timeout', 'Ban'][wc];
+            const bar = strikeBar(displayWc);
+            const next = displayWc >= 4 ? 'None — maximum reached' : ['1 hour timeout', '1 day timeout', '7 day timeout', 'Ban'][displayWc];
             const log = new EmbedBuilder()
                 .setColor(actionColor)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -256,7 +269,7 @@ async function takeAction(message, violations, client, db) {
                     { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
                     { name: 'Violation', value: violations[0].reason, inline: true }
                 )
-                .setFooter({ text: `${bar}  Strike ${wc} of 4  •  Next: ${next}` })
+                .setFooter({ text: `${bar}  Strike ${displayWc} of 4  •  Next: ${next}` })
                 .setTimestamp();
             if (repeatV?.channels?.length > 1) log.addFields({ name: 'Cross-channel', value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
             await logCh.send({ embeds: [log] }).catch(() => {});
@@ -276,7 +289,7 @@ async function takeAction(message, violations, client, db) {
                     { name: 'Member', value: `${message.author} \`${uid}\``, inline: false },
                     { name: 'Rule', value: violations[0].type, inline: true },
                     { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
-                    { name: 'Strike', value: `${wc}/4`, inline: true },
+                    { name: 'Strike', value: `${displayWc}/4`, inline: true },
                     { name: 'Message Content', value: `\`\`\`${message.content.substring(0, 1800) || '(attachment)'}\`\`\``, inline: false }
                 )
                 .setFooter({ text: 'ARCHON CG-223 • Confidential' })
@@ -290,7 +303,7 @@ async function takeAction(message, violations, client, db) {
     try { db.prepare(`INSERT INTO warnings (id,guild_id,user_id,moderator_id,reason,expires_at,active) VALUES (?,?,?,?,?,?,1)`).run(`AM-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`, gid, uid, client.user.id, `AutoMod: ${violations[0].reason}`, Math.floor(Date.now()/1000)+2592000); } catch (e) {}
 
     const cc = repeatV ? '[CROSS] ' : '';
-    console.log(`[AUTOMOD] ${cc}${action.toUpperCase()} | ${message.author.tag} | ${violations.map(v=>v.type).join(', ')} | Strike ${wc}/4`);
+    console.log(`[AUTOMOD] ${cc}${action.toUpperCase()} | ${message.author.tag} | ${violations.map(v=>v.type).join(', ')} | Strike ${displayWc}/4`);
 }
 
 // ================= DETECTION ENGINE =================
@@ -418,10 +431,11 @@ async function handleAppeal(message, client) {
     if (message.guild) return; // DMs only
     if (message.author.bot) return;
 
-    const content = message.content.trim().toLowerCase();
+    const content = message.content.trim();
+    const lower = content.toLowerCase();
 
-    // Check if user is appealing
-    if (content === 'appeal' || content === 'help' || content.startsWith('appeal ')) {
+    // Check if user is asking to see their strikes / how to appeal
+    if (lower === 'appeal' || lower === 'help') {
         // Find guilds where this user has been actioned by AutoMod
         const appeals = [];
         for (const [guildId, guild] of client.guilds.cache) {
@@ -430,7 +444,7 @@ async function handleAppeal(message, client) {
                 if (member) {
                     const entry = history.get(key(message.author.id, guildId));
                     if (entry && entry.warns > 0) {
-                        appeals.push({ guild, warns: entry.warns });
+                        appeals.push({ guild, warns: Math.min(entry.warns, 4) });
                     }
                 }
             } catch (e) {}
@@ -463,18 +477,42 @@ async function handleAppeal(message, client) {
 
         embed.addFields({
             name: 'How to appeal',
-            value: 'Reply with:\n`appeal [server name] [your message]`\n\nOr contact the server owner directly.',
+            value: 'Reply with:\n`appeal [server name] | [your message]`\n\nExample:\n`appeal Testing bot | I was just excited, not flooding caps on purpose`\n\n⚠️ You get **1 appeal per server every 24 hours** — make it count.\nOr contact the server owner directly.',
             inline: false
         });
 
         return message.reply({ embeds: [embed] }).catch(() => {});
     }
 
-    // Handle appeal submission: "appeal [server name] [reason]"
-    if (content.startsWith('appeal ')) {
-        const parts = message.content.trim().substring(7).split(' ');
-        const serverName = parts[0];
-        const reason = parts.slice(1).join(' ') || 'No reason provided';
+    // Handle appeal submission: "appeal [server name] | [reason]"
+    // Pipe-delimited so multi-word server names (e.g. "Testing bot") parse correctly.
+    if (lower.startsWith('appeal ')) {
+        const body = content.substring(7).trim();
+        const pipeIdx = body.indexOf('|');
+
+        let serverName, reason, usedFallback = false;
+        if (pipeIdx !== -1) {
+            serverName = body.substring(0, pipeIdx).trim();
+            reason = body.substring(pipeIdx + 1).trim() || 'No reason provided';
+        } else {
+            // No pipe given. Only safe to guess when the FIRST WORD ALONE already
+            // matches a guild — that covers single-word server names without
+            // risking a silent mis-parse on multi-word names like "Testing bot".
+            usedFallback = true;
+            const parts = body.split(' ');
+            serverName = parts[0];
+            reason = parts.slice(1).join(' ') || 'No reason provided';
+        }
+
+        if (!serverName) {
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.RED)
+                    .setTitle('Missing Server Name')
+                    .setDescription('Usage:\n`appeal [server name] | [your message]`\n\nExample:\n`appeal Testing bot | I was just excited, not flooding caps on purpose`')
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
 
         // Find matching guild
         let targetGuild = null;
@@ -483,6 +521,18 @@ async function handleAppeal(message, client) {
                 targetGuild = guild;
                 break;
             }
+        }
+
+        // If we had to guess (no pipe) and the guess didn't match anything, don't
+        // keep guessing with partial words — tell the user to use the explicit format.
+        if (!targetGuild && usedFallback && body.split(' ').length > 1) {
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.RED)
+                    .setTitle('Couldn\'t Identify the Server')
+                    .setDescription(`I couldn't tell where the server name ends and your message begins.\n\nPlease use the pipe format so I parse it correctly:\n\`appeal [server name] | [your message]\`\n\nExample:\n\`appeal Testing bot | I was just excited, not flooding caps on purpose\``)
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
         }
 
         if (!targetGuild) {
@@ -495,7 +545,23 @@ async function handleAppeal(message, client) {
             }).catch(() => {});
         }
 
-        // Forward to server owner
+        // ── COOLDOWN CHECK: 1 appeal per user per server per 24h ──
+        const cdKey = `${message.author.id}:${targetGuild.id}`;
+        const lastAppeal = appealCooldowns.get(cdKey);
+        const now = Date.now();
+        if (lastAppeal && (now - lastAppeal) < APPEAL_COOLDOWN) {
+            const remainingMs = APPEAL_COOLDOWN - (now - lastAppeal);
+            const remainingHrs = Math.ceil(remainingMs / 3600000);
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.YELLOW)
+                    .setTitle('Appeal Cooldown Active')
+                    .setDescription(`You've already submitted an appeal for **${targetGuild.name}** recently.\nYou can submit one appeal per server every 24 hours.\n\nTry again in **${remainingHrs} hour${remainingHrs !== 1 ? 's' : ''}**.`)
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
+        // ── FORWARD TO SERVER OWNER ──
         try {
             const owner = await targetGuild.fetchOwner().catch(() => null);
             if (owner && !owner.user.bot) {
@@ -507,13 +573,35 @@ async function handleAppeal(message, client) {
                     .setFooter({ text: 'Reply to this DM to contact the user • ARCHON CG-223' })
                     .setTimestamp();
 
-                await owner.send({ embeds: [appealEmbed] }).catch(() => {});
+                const sent = await owner.send({ embeds: [appealEmbed] }).catch(() => null);
+
+                if (!sent) {
+                    // Owner has DMs closed — don't start the cooldown, let them retry / contact directly
+                    return message.reply({
+                        embeds: [new EmbedBuilder()
+                            .setColor(C.RED)
+                            .setTitle('Appeal Could Not Be Delivered')
+                            .setDescription(`I couldn't reach the owner of **${targetGuild.name}** by DM.\nTry contacting a server admin directly instead.`)
+                            .setFooter({ text: 'ARCHON CG-223' })]
+                    }).catch(() => {});
+                }
+
+                // Start cooldown only after a successful forward
+                appealCooldowns.set(cdKey, now);
 
                 return message.reply({
                     embeds: [new EmbedBuilder()
                         .setColor(C.GREEN)
-                        .setTitle('Appeal Submitted')
-                        .setDescription(`Your appeal for **${targetGuild.name}** has been forwarded to the server owner.\nThey will review it and may contact you directly.`)
+                        .setTitle('✅ Appeal Submitted')
+                        .setDescription(`Your appeal for **${targetGuild.name}** has been forwarded to the server owner.\n\n🕊️ **Please be patient** — they'll review it and may reach out to you directly. Since you get one appeal per server per day, sending follow-up messages here won't speed things up, but I'll let you know if anything changes.`)
+                        .setFooter({ text: 'ARCHON CG-223' })]
+                }).catch(() => {});
+            } else {
+                return message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setColor(C.RED)
+                        .setTitle('Appeal Failed')
+                        .setDescription(`Could not find a reachable owner for **${targetGuild.name}**. Please try again later.`)
                         .setFooter({ text: 'ARCHON CG-223' })]
                 }).catch(() => {});
             }
@@ -822,3 +910,4 @@ module.exports = {
         return await handleAppeal(message, client);
     }
 };
+
