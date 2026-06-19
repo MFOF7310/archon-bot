@@ -4162,492 +4162,129 @@ safeOn(Events.GuildDelete, async (guild) => {
     }
 });
 
-// ================= SUPREME NEURAL WELCOME MATRIX v5.0 =================
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  🦅 GUILD MEMBER ADD — ORCHESTRATED WELCOME v6.0                    ║
+// ║  Delegates to welcome.js plugin if loaded & configured.             ║
+// ║  Falls back to shared cinematic engine if no custom config.       ║
+// ╚══════════════════════════════════════════════════════════════════════╝
 safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
-    
     if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
 
-    // ================= LEVELING PLUGIN: ON MEMBER ADD =================
-    if (client.leveling?.onMemberAdd) { await client.leveling.onMemberAdd(member, client, db); }
-
-    // ================= WELCOME PLUGIN: ON MEMBER ADD =================
-    if (client.welcome?.onMemberAdd) { await client.welcome.onMemberAdd(member, client, db); }
-    
-    const settings = getServerSettings(member.guild.id);
-    const isArchitectServer = member.guild.id === process.env.GUILD_ID;
-    
-    let welcomeChannelId = settings.welcomeChannel;
-    let logChannelId = settings.logChannel;
-    let rulesChannelId = settings.rulesChannel;
-    let generalChannelId = settings.generalChannel;
-    let memberRoleId = settings.memberRole;
-    
-    if (isArchitectServer) {
-        welcomeChannelId = welcomeChannelId || process.env.WELCOME_CHANNEL_ID;
-        logChannelId = logChannelId || process.env.LOG_CHANNEL_ID;
-        rulesChannelId = rulesChannelId || process.env.RULES_CHANNEL_ID;
-        generalChannelId = generalChannelId || process.env.GENERAL_CHANNEL_ID;
-        memberRoleId = memberRoleId || process.env.MEMBER_ROLE;
+    // ── LEVELING PLUGIN (always runs, independent of welcome) ──
+    if (client.leveling?.onMemberAdd) {
+        await client.leveling.onMemberAdd(member, client, db);
     }
-    
-    const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
-    const logChannel = member.guild.channels.cache.get(logChannelId);
-    
-    const memberCount = member.guild.memberCount;
-    const accountAgeDays = Math.floor((Date.now() - member.user.createdTimestamp) / 86400000);
-    const accountAgeHours = Math.floor((Date.now() - member.user.createdTimestamp) / 3600000);
+
+    // ── WELCOME ORCHESTRATION ──
+    // Load settings via shared normalizer for consistency
+    const Style = require('./plugins/welcome-style.js');
+    const ssRaw = client.getServerSettings?.(member.guild.id) || {};
+    const cfg = Style.normalizeWelcomeConfig(ssRaw);
+
+    // Determine if custom welcome is configured
+    const hasCustomWelcome = cfg.welcomeChannel || cfg.welcomeMessage;
+
+    if (hasCustomWelcome && client.welcome?.onMemberAdd) {
+        // PLUGIN PATH: Custom config exists → let welcome.js handle everything
+        // (cinematic card + ANSI + custom message + dynamic tips)
+        await client.welcome.onMemberAdd(member, client, db);
+    } else {
+        // FALLBACK PATH: No custom config → use shared module directly
+        // This keeps the hardcoded cinematic matrix as default behavior
+        await fallbackWelcome(member, client, db, cfg, Style);
+    }
+});
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  FALLBACK WELCOME — Default cinematic matrix when no custom config   ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+async function fallbackWelcome(member, client, db, cfg, Style) {
+    if (!cfg.welcomeEnabled) return;
+
+    const ch = cfg.welcomeChannel 
+        ? member.guild.channels.cache.get(cfg.welcomeChannel) 
+        : member.guild.systemChannel;
+    if (!ch) return;
+
+    const count = member.guild.memberCount;
     const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
-    const joinNumber = memberCount;
-    const serverCreationDate = Math.floor(member.guild.createdTimestamp / 1000);
-    const accountCreationDate = Math.floor(member.user.createdTimestamp / 1000);
-    
-    // ================= AUTO-ROLE ASSIGNMENT =================
-    // Priority: 1) server_settings.auto_role_id  2) env fallback (owner server)  3) member_role fallback
-    const autoRoleId = settings.autoRoleId || (isArchitectServer ? process.env.AUTO_ROLE_ID : null) || memberRoleId;
-    if (autoRoleId) {
-        try {
-            const role = member.guild.roles.cache.get(autoRoleId);
-            if (role && !member.roles.cache.has(autoRoleId)) {
-                await member.roles.add(role, '[SYSTEM] Auto-role on join');
-                console.log(`[AUTO-ROLE] Assigned ${role.name} to ${member.user.tag} in ${member.guild.name}`);
-            }
-        } catch (e) {
-            console.error(`[AUTO-ROLE] Failed for ${member.user.tag}:`, e.message);
-        }
-    }
 
-    // ================= BOT AUTO-ROLE =================
-    // When a member joins, also check if the bot needs an auto-role
-    if (client.botStats && member.user.id !== client.user.id) {
-        try {
-            client.botStats.applyBotAutoRole(member.guild, settings);
-        } catch (e) {
-            // Silent fail — bot auto-role is best-effort
-        }
-    }
-    
-    let memberTier, tierEmoji, tierColor;
-    if (joinNumber <= 10) { memberTier = lang === 'fr' ? 'FONDATEUR' : 'FOUNDER'; tierEmoji = '💎'; tierColor = '#ffd700'; }
-    else if (joinNumber <= 50) { memberTier = lang === 'fr' ? 'PIONNIER' : 'PIONEER'; tierEmoji = '🏅'; tierColor = '#e91e63'; }
-    else if (joinNumber <= 100) { memberTier = lang === 'fr' ? 'VETERAN' : 'VETERAN'; tierEmoji = '⚔️'; tierColor = '#9b59b6'; }
-    else if (joinNumber <= 500) { memberTier = lang === 'fr' ? 'ELITE' : 'ELITE'; tierEmoji = '🛡️'; tierColor = '#3498db'; }
-    else if (joinNumber <= 1000) { memberTier = lang === 'fr' ? 'GARDIEN' : 'GUARDIAN'; tierEmoji = '🌟'; tierColor = '#2ecc71'; }
-    else { memberTier = lang === 'fr' ? 'LEGENDE' : 'LEGEND'; tierEmoji = '👑'; tierColor = '#f39c12'; }
-    
-    let ageStatus, ageEmoji;
-    if (accountAgeDays < 1) { ageStatus = lang === 'fr' ? 'Nouveau-ne' : 'Newborn'; ageEmoji = '👶'; }
-    else if (accountAgeDays < 7) { ageStatus = lang === 'fr' ? 'Jeune pousse' : 'Sprout'; ageEmoji = '🌱'; }
-    else if (accountAgeDays < 30) { ageStatus = lang === 'fr' ? 'En croissance' : 'Growing'; ageEmoji = '🌿'; }
-    else if (accountAgeDays < 365) { ageStatus = lang === 'fr' ? 'Etabli' : 'Established'; ageEmoji = '🌳'; }
-    else { ageStatus = lang === 'fr' ? 'Ancien' : 'Ancient'; ageEmoji = '🏛️'; }
-
-    const formatDate = (timestamp) => {
-        const d = new Date(timestamp * 1000);
-        const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-        return `${d.getFullYear()}-${months[d.getMonth()]}-${String(d.getDate()).padStart(2, '0')}`;
-    };
-
-    // ================= CINEMATIC WELCOME TITLES (rotating) =================
-    const cinematicTitles = lang === 'fr' ? [
-        { header: '⚡ CONNEXION NEURALE ÉTABLIE', body: `**${member.user.username.toUpperCase()}** s'est synchronisé avec le réseau.` },
-        { header: '🌐 NŒUD NEURAL ACTIVÉ', body: `**${member.user.username.toUpperCase()}** a matérialisé sa présence dans la grille.` },
-        { header: '🔮 CONSCIENCE TÉLÉCHARGÉE', body: `**${member.user.username.toUpperCase()}** est en ligne. Systèmes opérationnels.` },
-        { header: '🚀 PROTOCOLE D\'ARRIVÉE', body: `**${member.user.username.toUpperCase()}** a franchi la passerelle neuronale.` },
-        { header: '💠 MATRICE RECONFIGURÉE', body: `**${member.user.username.toUpperCase()}** enrichit le réseau de sa signature.` },
-        { header: '🦅 L\'AIGLE ATTERRIT', body: `**${member.user.username.toUpperCase()}** a pris position dans le nid.` }
-    ] : [
-        { header: '⚡ NEURAL HANDSHAKE COMPLETE', body: `**${member.user.username.toUpperCase()}** has synchronized with the network.` },
-        { header: '🌐 NEURAL NODE ACTIVATED', body: `**${member.user.username.toUpperCase()}** materialized within the grid.` },
-        { header: '🔮 CONSCIOUSNESS UPLOADED', body: `**${member.user.username.toUpperCase()}** is online. All systems nominal.` },
-        { header: '🚀 ARRIVAL PROTOCOL', body: `**${member.user.username.toUpperCase()}** has crossed the neural gateway.` },
-        { header: '💠 MATRIX RECONFIGURED', body: `**${member.user.username.toUpperCase()}** adds their signature to the network.` },
-        { header: '🦅 THE EAGLE LANDS', body: `**${member.user.username.toUpperCase()}** has taken position in the nest.` }
-    ];
-    // Deterministic rotation: same user always gets same title (based on userId hash)
-    const titleIndex = [...member.user.id].reduce((a, c) => a + c.charCodeAt(0), 0) % cinematicTitles.length;
-    const chosen = cinematicTitles[titleIndex];
-
-    const welcomeEmbed = new EmbedBuilder()
-        .setColor(tierColor)
-        .setAuthor({
-            name: chosen.header,
-            iconURL: member.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL()
-        })
-        .setDescription(
-            `### ${tierEmoji} ${lang === 'fr' ? 'AGENT AUTHENTIFIÉ' : 'AGENT AUTHENTICATED'}\n` +
-            `${chosen.body}\n\n` +
-            `\`\`\`\n` +
-            `╔══════════════ DAEMON_LOG ══════════════╗\n` +
-            `║  🛰️ NODE:    ${member.guild.name.substring(0, 18).padEnd(22)}║\n` +
-            `║  ${tierEmoji} TIER:    ${memberTier.padEnd(20)}║\n` +
-            `║  👥 SECTOR:  #${String(memberCount).padEnd(20)}║\n` +
-            `╚══════════════════════════════════════════╝\n` +
-            `\`\`\``
-        )
-        .addFields(
-            {
-                name: `📡 **${lang === 'fr' ? 'FREQUENCE' : 'FREQUENCY'}**`,
-                value: `\`ONLINE\``,
-                inline: true
-            },
-            {
-                name: `🔐 **${lang === 'fr' ? 'CRYPTAGE' : 'ENCRYPTION'}**`,
-                value: `\`AES-256\``,
-                inline: true
-            },
-            {
-                name: `🔋 **${lang === 'fr' ? 'STABILITE' : 'STABILITY'}**`,
-                value: `\`100%\``,
-                inline: true
-            },
-            {
-                name: `📂 **${lang === 'fr' ? 'DOSSIER AGENT' : 'AGENT DOSSIER'}**`,
-                value: [
-                    `\`\`\``,
-                    `${lang === 'fr' ? 'Identifiant' : 'User ID'}: ${member.user.id}`,
-                    `${lang === 'fr' ? 'Pseudonyme' : 'Username'}: ${member.user.username}`,
-                    `${lang === 'fr' ? 'Affiche comme' : 'Display Name'}: ${member.user.displayName}`,
-                    `${lang === 'fr' ? 'Compte cree le' : 'Account Created'}: ${formatDate(accountCreationDate)}`,
-                    `${lang === 'fr' ? 'Age du compte' : 'Account Age'}: ${ageEmoji} ${accountAgeDays < 1 ? accountAgeHours + 'h' : accountAgeDays + 'd'}`,
-                    `\`\`\``
-                ].join('\n'),
-                inline: false
-            },
-            {
-                name: `🏛️ **${lang === 'fr' ? 'ROYAUME' : 'KINGDOM'}**`,
-                value: [
-                    `\`\`\``,
-                    `${lang === 'fr' ? 'Serveur' : 'Server'}: ${member.guild.name}`,
-                    `${lang === 'fr' ? 'Fonde le' : 'Founded'}: ${formatDate(serverCreationDate)}`,
-                    `${lang === 'fr' ? 'Membres' : 'Members'}: ${memberCount.toLocaleString()}`,
-                    `\`\`\``
-                ].join('\n'),
-                inline: false
-            }
-        )
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-        .setFooter({ 
-            text: `${member.guild.name} • v${client.version || '2.0'}`, 
-            iconURL: member.guild.iconURL() || client.user.displayAvatarURL() 
-        })
+    // Render card via shared engine
+    const png = await Style.renderWelcomeCard(member, count);
+    const embed = new EmbedBuilder()
+        .setColor(0x00fbff)
+        .setImage('attachment://welcome.png')
+        .setFooter({ text: 'ARCHON CG-223 | Neural Grid' })
         .setTimestamp();
-    
-    const buttons = [];
 
-    if (rulesChannelId && validateSnowflake(rulesChannelId)) {
-    buttons.push(
-        new ButtonBuilder()
-            .setLabel(lang === 'fr' ? '📜 REGLES' : '📜 RULES')
-            .setStyle(ButtonStyle.Link)
-            .setURL(`https://discord.com/channels/${member.guild.id}/${rulesChannelId}`)
-    );
+    const ansi = Style.ansiWelcome(member, count);
+    const tips = Style.buildProTips(cfg, lang);
+    
+    const tipBlock = lang === 'fr'
+        ? `\n> 💡 **Pour bien démarrer :**\n${tips.map(t => `> • ${t}`).join('\n')}`
+        : `\n> 💡 **Quick start :**\n${tips.map(t => `> • ${t}`).join('\n')}`;
+
+    await ch.send({
+        content: ansi + tipBlock,
+        embeds: [embed],
+        files: [new AttachmentBuilder(png, { name: 'welcome.png' })]
+    }).catch(() => {});
 }
 
-    if (generalChannelId) {
-        buttons.push(
-            new ButtonBuilder()
-                .setLabel(lang === 'fr' ? '💬 GENERAL' : '💬 GENERAL')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://discord.com/channels/${member.guild.id}/${generalChannelId}`)
-        );
-    }
-
-    buttons.push(
-        new ButtonBuilder()
-            .setLabel(lang === 'fr' ? '🤖 ASSISTANT IA' : '🤖 AI ASSISTANT')
-            .setStyle(ButtonStyle.Primary)
-            .setCustomId('welcome_help')
-    );
-
-    buttons.push(
-        new ButtonBuilder()
-            .setLabel(lang === 'fr' ? '👤 MON PROFIL' : '👤 MY PROFILE')
-            .setStyle(ButtonStyle.Success)
-            .setCustomId(`welcome_profile_${member.user.id}`)
-    );
-
-    const buttonRow = new ActionRowBuilder().addComponents(buttons);
-    
-    if (welcomeChannel) {
-        console.log(`[WELCOME] 🚀 Sending embed to #${welcomeChannel.name}`);
-        
-        try {
-            await welcomeChannel.send({ 
-                content: `\`[SYS]\` 🛰️ **${member.user.username.toUpperCase()}** ${lang === 'fr' ? 'connecte au reseau' : 'connected to the grid'} • TIER: **${memberTier}**`,
-                embeds: [welcomeEmbed], 
-                components: [buttonRow]
-            });
-            console.log(`[WELCOME] ✅ EMBED SENT successfully`);
-        } catch (error) {
-            console.error(`[WELCOME] ❌ EMBED FAILED:`, error.message);
-            try {
-                await welcomeChannel.send({
-                    content: [
-                        `${tierEmoji} **${member.user.displayName}** ${lang === 'fr' ? 'vient de rejoindre' : 'just joined'} **${member.guild.name}**!`,
-                        `📊 ${lang === 'fr' ? 'Membre' : 'Member'} **#${joinNumber}** | 🏅 ${memberTier}`,
-                        `${lang === 'fr' ? '💡 Utilise' : '💡 Use'} \`${settings.prefix || '.'}help\` ${lang === 'fr' ? 'pour commencer' : 'to get started'}!`
-                    ].join('\n'),
-                    components: [buttonRow]
-                });
-                console.log(`[WELCOME] ✅ Text fallback sent`);
-            } catch (e2) {
-                console.error(`[WELCOME] 💀 FALLBACK FAILED:`, e2.message);
-            }
-        }
-        
-        setTimeout(async () => {
-            try {
-                const pfx = settings.prefix || '.';
-                const serverName = member.guild.name;
-                const tips = lang === 'fr' ? [
-                    `> 🧠 **${member.user.username}**, bienvenue au **${serverName}** ! Je suis **Archon CG-223**, votre assistant neuronal.\n> \n> 🚀 **Pour bien demarrer :**\n> \`${pfx}help\` — Decouvrir toutes mes commandes\n> \`${pfx}daily\` — Recompense quotidienne (ne manquez pas un jour pour la serie !)\n> \`${pfx}profile\` — Voir votre dossier d'agent\n> \n> 💡 **Conseil pro :** Utilisez \`${pfx}whois\` pour scanner n'importe quel membre et \`${pfx}rank\` pour voir votre position sur ce serveur. Bonne chance, agent ! 🎯`,
-                    `> 🎯 **${member.user.username}**, votre connexion au reseau **${serverName}** est etablie.\n> \n> 📊 **Commandes essentielles pour debuter :**\n> \`${pfx}help\` — Carte complete des capacites\n> \`${pfx}daily\` — Recolter vos credits quotidiens\n> \`${pfx}shop\` — Acheter des boosts et objets\n> \`${pfx}lydia [message]\` — Discuter avec l'IA Lydia\n> \n> 🏆 **Astuce :** Jouez a \`${pfx}trivia\` pour gagner de l'XP et des credits, ou \`${pfx}game\` pour defier d'autres agents. Que l'aventure commence ! ⚡`,
-                    `> ⚡ **${member.user.username}**, le node **${serverName}** vous souhaite la bienvenue !\n> \n> 🛠 **Votre toolkit d'agent :**\n> \`${pfx}help\` — Toutes les commandes disponibles\n> \`${pfx}profile\` — Vos statistiques et progression\n> \`${pfx}daily\` — Recompense quotidienne ( serie = bonus !)\n> \`${pfx}market\` — Investir dans le marche de Bamako\n> \n> 🧠 **Besoin d'aide ?** L'IA Lydia (\`${pfx}lydia\`) repond a toutes vos questions. Profitez de votre sejour, agent **${memberTier}** ! 🦅`
-                ] : [
-                    `> 🧠 **${member.user.username}**, welcome to **${serverName}** ! I am **Archon CG-223**, your neural assistant.\n> \n> 🚀 **To get started :**\n> \`${pfx}help\` — Discover all my commands\n> \`${pfx}daily\` — Daily reward (don't miss a day for streak bonus!)\n> \`${pfx}profile\` — View your agent dossier\n> \n> 💡 **Pro tip :** Use \`${pfx}whois\` to deep-scan any member and \`${pfx}rank\` to check your server standing. Good luck, agent ! 🎯`,
-                    `> 🎯 **${member.user.username}**, your connection to **${serverName}** network is established.\n> \n> 📊 **Essential commands to start :**\n> \`${pfx}help\` — Full capability map\n> \`${pfx}daily\` — Harvest your daily credits\n> \`${pfx}shop\` — Buy boosts and items\n> \`${pfx}lydia [message]\` — Chat with AI Lydia\n> \n> 🏆 **Tip :** Play \`${pfx}trivia\` to earn XP and credits, or \`${pfx}game\` to challenge other agents. Let the adventure begin ! ⚡`,
-                    `> ⚡ **${member.user.username}**, node **${serverName}** welcomes you !\n> \n> 🛠 **Your agent toolkit :**\n> \`${pfx}help\` — All available commands\n> \`${pfx}profile\` — Your stats and progression\n> \`${pfx}daily\` — Daily reward (streak = bonus!)\n> \`${pfx}market\` — Invest in the Bamako market\n> \n> 🧠 **Need help ?** AI Lydia (\`${pfx}lydia\`) answers all your questions. Enjoy your stay, **${memberTier}** agent ! 🦅`
-                ];
-                await welcomeChannel.send({ content: tips[Math.floor(Math.random() * tips.length)] });
-            } catch (e) {}
-        }, 3000);
-        
-    } else {
-        console.log(`[WELCOME] ⚠️ No welcome channel for ${member.guild.name}`);
-    }
-
-    // ================= PHASE 6: SECURITY INTELLIGENCE =================
-    if (logChannel) {
-        setImmediate(async () => {
-            try {
-                const owner = await member.guild.fetchOwner().catch(() => null);
-                
-                const threatAnalysis = {
-                    score: 0,
-                    flags: [],
-                    risk: 'LOW',
-                    color: '#3498db'
-                };
-                
-                if (accountAgeDays < 1) { threatAnalysis.score += 40; threatAnalysis.flags.push('🔴 BRAND NEW ACCOUNT (<24h)'); }
-                else if (accountAgeDays < 3) { threatAnalysis.score += 30; threatAnalysis.flags.push('🟠 VERY NEW ACCOUNT (<3 days)'); }
-                else if (accountAgeDays < 7) { threatAnalysis.score += 20; threatAnalysis.flags.push('🟡 NEW ACCOUNT (<7 days)'); }
-                else if (accountAgeDays < 30) { threatAnalysis.score += 10; threatAnalysis.flags.push('🟢 RECENT ACCOUNT (<30 days)'); }
-                else { threatAnalysis.flags.push('✅ ESTABLISHED ACCOUNT'); }
-                
-                const hasDefaultAvatar = !member.user.avatar || 
-                    (!member.user.avatar.startsWith('a_') && member.user.displayAvatarURL().includes('embed/avatars'));
-                if (hasDefaultAvatar) { threatAnalysis.score += 15; threatAnalysis.flags.push('⚠️ DEFAULT AVATAR'); }
-                
-                const username = member.user.username.toLowerCase();
-                [
-                    { pattern: /^\d{4,}$/, flag: '🔢 NUMERIC-ONLY', weight: 10 },
-                    { pattern: /(spam|scam|hack|bot|raid|nuke)/i, flag: '🚫 SUSPICIOUS KEYWORDS', weight: 25 },
-                    { pattern: /(discord|mod|admin|staff|support)/i, flag: '⚠️ IMPERSONATION', weight: 30 }
-                ].forEach(({ pattern, flag, weight }) => {
-                    if (pattern.test(username)) { threatAnalysis.score += weight; threatAnalysis.flags.push(flag); }
-                });
-                
-                const joinKey = `recentJoins:${member.guild.id}`;
-                const recentJoins = client._recentJoins?.get(joinKey) || [];
-                const now = Date.now();
-                const recentJoinWindow = recentJoins.filter(t => now - t < 60000);
-                if (recentJoinWindow.length > 5) { threatAnalysis.score += 25; threatAnalysis.flags.push(`🌊 RAID: ${recentJoinWindow.length} joins/60s`); }
-                else if (recentJoinWindow.length > 3) { threatAnalysis.score += 15; threatAnalysis.flags.push(`⚡ HIGH VELOCITY: ${recentJoinWindow.length}/60s`); }
-                
-                recentJoins.push(now);
-                if (!client._recentJoins) client._recentJoins = new Map();
-                client._recentJoins.set(joinKey, recentJoinWindow.slice(-20));
-                
-                if (threatAnalysis.score >= 70) { threatAnalysis.risk = 'CRITICAL'; threatAnalysis.color = '#ff0000'; }
-                else if (threatAnalysis.score >= 50) { threatAnalysis.risk = 'HIGH'; threatAnalysis.color = '#e74c3c'; }
-                else if (threatAnalysis.score >= 30) { threatAnalysis.risk = 'MEDIUM'; threatAnalysis.color = '#f39c12'; }
-                else if (threatAnalysis.score >= 15) { threatAnalysis.risk = 'ELEVATED'; threatAnalysis.color = '#f1c40f'; }
-                else { threatAnalysis.risk = 'LOW'; threatAnalysis.color = '#2ecc71'; }
-                
-                const intelEmbed = new EmbedBuilder()
-                    .setColor(threatAnalysis.color)
-                    .setAuthor({ name: `🛡️ GUARDIAN OSINT • RISK: ${threatAnalysis.risk}`, iconURL: client.user.displayAvatarURL() })
-                    .setDescription([
-                        `\`\`\`ansi`,
-                        `\u001b[1;36m╔════════════════════════════════╗\u001b[0m`,
-                        `\u001b[1;36m║\u001b[0m \u001b[1;33mTARGET:\u001b[0m ${member.user.displayName.padEnd(20)}\u001b[1;36m║\u001b[0m`,
-                        `\u001b[1;36m║\u001b[0m \u001b[1;31mTHREAT:\u001b[0m ${threatAnalysis.risk.padEnd(20)}\u001b[1;36m║\u001b[0m`,
-                        `\u001b[1;36m║\u001b[0m \u001b[1;35mSCORE:\u001b[0m ${(threatAnalysis.score + '/100').padEnd(20)}\u001b[1;36m║\u001b[0m`,
-                        `\u001b[1;36m╚════════════════════════════════╝\u001b[0m`,
-                        `\`\`\``
-                    ].join('\n'))
-                    .addFields(
-                        { name: '📊 SUMMARY', value: `\`\`\`yaml\nThreat Score: ${threatAnalysis.score}/100\nRisk: ${threatAnalysis.risk}\nFlags: ${threatAnalysis.flags.length}\nMember #${memberCount}\n\`\`\``, inline: false },
-                        { name: '🔍 FLAGS', value: threatAnalysis.flags.length > 0 ? threatAnalysis.flags.map(f => `• ${f}`).join('\n') : '✅ Clean', inline: false }
-                    )
-                    .setFooter({ text: `GUARDIAN OSINT v5.0 • ${member.guild.name}` })
-                    .setTimestamp();
-                
-                await logChannel.send({ 
-                    content: threatAnalysis.score >= 50 ? `🚨 **SECURITY ALERT: ${threatAnalysis.risk} RISK JOIN**` : null,
-                    embeds: [intelEmbed] 
-                }).catch(() => {});
-                
-                console.log(`[SECURITY] ${member.user.username} | Threat: ${threatAnalysis.risk} (${threatAnalysis.score}/100)`);
-                
-            } catch (err) {
-                console.error(`[SECURITY ERROR]`, err.message);
-            }
-        });
-    }
-});
-
-// ================= SUPREME NEURAL DEPARTURE MATRIX v4.0 =================
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  🦅 GUILD MEMBER REMOVE — ORCHESTRATED GOODBYE v6.0                ║
+// ║  Delegates to welcome.js plugin if loaded & configured.             ║
+// ║  Falls back to shared cinematic engine if no custom config.         ║
+// ╚══════════════════════════════════════════════════════════════════════╝
 safeOn(Events.GuildMemberRemove, async (member) => {
     if (member.user.bot) return;
-    
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
 
-    // ================= WELCOME PLUGIN: ON MEMBER REMOVE =================
-    if (client.welcome?.onMemberRemove) { await client.welcome.onMemberRemove(member, client, db); }
-    
-    const settings = getServerSettings(member.guild.id);
-    const isArchitectServer = member.guild.id === process.env.GUILD_ID;
-    
-    let goodbyeChannelId = settings.goodbyeChannel;
-    if (isArchitectServer) {
-        goodbyeChannelId = goodbyeChannelId || process.env.GOODBYE_CHANNEL_ID;
+    // ── WELCOME PLUGIN: ON MEMBER REMOVE (goodbye handler) ──
+    const Style = require('./plugins/welcome-style.js');
+    const ssRaw = client.getServerSettings?.(member.guild.id) || {};
+    const cfg = Style.normalizeWelcomeConfig(ssRaw);
+
+    const hasCustomGoodbye = cfg.goodbyeChannel || cfg.goodbyeMessage;
+
+    if (hasCustomGoodbye && client.welcome?.onMemberRemove) {
+        // PLUGIN PATH
+        await client.welcome.onMemberRemove(member, client, db);
+    } else {
+        // FALLBACK PATH
+        await fallbackGoodbye(member, client, db, cfg, Style);
     }
-    
-    const goodbyeChannel = member.guild.channels.cache.get(goodbyeChannelId);
-    if (!goodbyeChannel) return;
-    
-    const memberCount = member.guild.memberCount;
-    const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
-    
-    const joinDate = member.joinedAt;
-    const now = Date.now();
-    const stayDuration = joinDate ? now - joinDate.getTime() : 0;
-    const stayDays = Math.floor(stayDuration / (1000 * 60 * 60 * 24));
-    const stayHours = Math.floor(stayDuration / (1000 * 60 * 60));
-    
-    let stayStatus, stayEmoji;
-    if (stayDays < 1) { stayStatus = lang === 'fr' ? 'Visiteur Eclair' : 'Flash Visitor'; stayEmoji = '⚡'; }
-    else if (stayDays < 7) { stayStatus = lang === 'fr' ? 'Explorateur' : 'Explorer'; stayEmoji = '🔍'; }
-    else if (stayDays < 30) { stayStatus = lang === 'fr' ? 'Resident' : 'Resident'; stayEmoji = '🏠'; }
-    else if (stayDays < 180) { stayStatus = lang === 'fr' ? 'Pilier' : 'Pillar'; stayEmoji = '🏛️'; }
-    else if (stayDays < 365) { stayStatus = lang === 'fr' ? 'Veteran' : 'Veteran'; stayEmoji = '⚔️'; }
-    else { stayStatus = lang === 'fr' ? 'Legende Eternelle' : 'Eternal Legend'; stayEmoji = '👑'; }
-    
-    let departureType = lang === 'fr' ? 'A quitte' : 'Left';
-    let departureEmoji = '🚪';
-    let departureColor = '#e74c3c';
-    
-    try {
-        const auditLogs = await member.guild.fetchAuditLogs({ type: 20, limit: 3 }).catch(() => null);
-        if (auditLogs) {
-            const kickEntry = auditLogs.entries.find(e => e.target.id === member.user.id && Date.now() - e.createdTimestamp < 5000);
-            if (kickEntry) {
-                departureType = lang === 'fr' ? 'Expulse' : 'Kicked';
-                departureEmoji = '👢';
-                departureColor = '#ff6b6b';
-            }
-        }
-        
-        const banLogs = await member.guild.fetchAuditLogs({ type: 22, limit: 3 }).catch(() => null);
-        if (banLogs) {
-            const banEntry = banLogs.entries.find(e => e.target.id === member.user.id && Date.now() - e.createdTimestamp < 5000);
-            if (banEntry) {
-                departureType = lang === 'fr' ? 'Banni' : 'Banned';
-                departureEmoji = '🔨';
-                departureColor = '#ff0000';
-            }
-        }
-    } catch (e) {}
-    
-    const roles = member.roles?.cache
-        .filter(r => r.name !== '@everyone')
-        .sort((a, b) => b.position - a.position)
-        .first(5)
-        .map(r => r.name)
-        .join(', ') || (lang === 'fr' ? 'Aucun role' : 'No roles');
-    
-    const goodbyeEmbed = new EmbedBuilder()
-        .setColor(departureColor)
-        .setAuthor({ 
-            name: lang === 'fr' ? '🦅 RESEAU NEURAL • LIEN ROMPU' : '🦅 NEURAL NETWORK • LINK SEVERED',
-            iconURL: member.user.displayAvatarURL()
-        })
-        .setDescription([
-            `\`\`\`ansi`,
-            `\u001b[1;31m╔══════════════════════════════════════════════╗\u001b[0m`,
-            `\u001b[1;31m║\u001b[0m  \u001b[1;37m${lang === 'fr' ? 'DEPART DU RESEAU' : 'NETWORK DEPARTURE'}\u001b[0m                    \u001b[1;31m║\u001b[0m`,
-            `\u001b[1;31m╠══════════════════════════════════════════════╣\u001b[0m`,
-            `\u001b[1;31m║\u001b[0m  \u001b[1;33m${departureEmoji} ${member.user.username}\u001b[0m`,
-            `\u001b[1;31m║\u001b[0m  \u001b[1;35m${departureEmoji} ${departureType}\u001b[0m`,
-            `\u001b[1;31m║\u001b[0m  \u001b[1;32m${stayEmoji} ${stayStatus}\u001b[0m`,
-            `\u001b[1;31m╚══════════════════════════════════════════════╝\u001b[0m`,
-            `\`\`\``
-        ].join('\n'))
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
-        .addFields(
-            {
-                name: `${lang === 'fr' ? '📊 RAPPORT DE DEPART' : '📊 DEPARTURE REPORT'}`,
-                value: [
-                    `\`\`\`yaml`,
-                    `${lang === 'fr' ? 'Nom' : 'Display'}: ${member.user.displayName}`,
-                    `ID: ${member.user.id}`,
-                    `${lang === 'fr' ? 'Type de depart' : 'Departure'}: ${departureEmoji} ${departureType}`,
-                    `\`\`\``
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: `${lang === 'fr' ? '⏱️ DUREE DE SEJOUR' : '⏱️ STAY DURATION'}`,
-                value: [
-                    `\`\`\`yaml`,
-                    `${stayEmoji} ${stayStatus}`,
-                    `${lang === 'fr' ? 'Membre depuis' : 'Member Since'}: ${joinDate ? `<t:${Math.floor(joinDate.getTime() / 1000)}:R>` : 'Unknown'}`,
-                    `${lang === 'fr' ? 'Duree' : 'Duration'}: ${stayDays < 1 ? stayHours + 'h' : stayDays + 'd'}`,
-                    `\`\`\``
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: `${lang === 'fr' ? '🎭 ROLES PERDUS' : '🎭 ROLES LOST'}`,
-                value: `\`\`\`yaml\n${roles}\n\`\`\``,
-                inline: false
-            },
-            {
-                name: `${lang === 'fr' ? '📈 IMPACT SUR LE SERVEUR' : '📈 SERVER IMPACT'}`,
-                value: [
-                    `\`\`\`yaml`,
-                    `${lang === 'fr' ? 'Membres' : 'Members'}: ${memberCount.toLocaleString()}`,
-                    `${lang === 'fr' ? 'Depart' : 'Departure'}: ${departureEmoji} ${departureType}`,
-                    `${lang === 'fr' ? 'Duree' : 'Stay'}: ${stayDays < 1 ? stayHours + 'h' : stayDays + 'd'}`,
-                    `\`\`\``
-                ].join('\n'),
-                inline: false
-            }
-        );
-    
-    if (settings.goodbyeMessage) {
-        goodbyeEmbed.setDescription(settings.goodbyeMessage
-            .replace(/{user}/g, `<@${member.user.id}>`)
-            .replace(/{username}/g, member.user.username)
-            .replace(/{server}/g, member.guild.name)
-            .replace(/{membercount}/g, memberCount.toString())
-            .replace(/{staystatus}/g, stayStatus)
-            .replace(/{departuretype}/g, departureType)
-        );
-    }
-    
-    goodbyeEmbed.setFooter({ 
-        text: `${member.guild.name} • Neural Link Terminated • BAMAKO_223 🇲🇱 • v${client.version}`,
-        iconURL: member.guild.iconURL() || client.user.displayAvatarURL()
-    })
-    .setTimestamp();
-    
-    await goodbyeChannel.send({ embeds: [goodbyeEmbed] }).catch(() => {});
-    console.log(`[GOODBYE] ${member.user.tag} | ${departureType} | Stay: ${stayDays}d | ${member.guild.name}`);
 });
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  FALLBACK GOODBYE — Default departure matrix when no custom config  ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+async function fallbackGoodbye(member, client, db, cfg, Style) {
+    if (!cfg.goodbyeEnabled || !cfg.goodbyeChannel) return;
+
+    const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
+    if (!ch) return;
+
+    const joinedAt = member.joinedTimestamp;
+    const duration = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
+    const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
+
+    const png = await Style.renderGoodbyeCard(member, duration, roles.length);
+    const embed = new EmbedBuilder()
+        .setColor(0xe74c3c)
+        .setImage('attachment://goodbye.png')
+        .setFooter({ text: 'ARCHON CG-223 | Departure Log' })
+        .setTimestamp();
+
+    const content = Style.ansiGoodbye(member, duration, roles.length, roles);
+
+    await ch.send({
+        content,
+        embeds: [embed],
+        files: [new AttachmentBuilder(png, { name: 'goodbye.png' })]
+    }).catch(() => {});
+}
 
 // ================= GRACEFUL SHUTDOWN (PER-SERVER PARTITIONED FLUSH) =================
 async function gracefulShutdown(signal) {
