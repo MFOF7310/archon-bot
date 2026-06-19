@@ -222,6 +222,32 @@ app.get('/api/auth/logout', (req, res) => {
 });
 
 // ============================================================
+// AUTOMATED OAUTH2 INVITE LINK SYSTEM
+// ============================================================
+app.get('/api/auth/invite', (req, res) => {
+    try {
+        const clientId = process.env.DISCORD_CLIENT_ID;
+        
+        if (!clientId) {
+            console.error('[INVITE] Impossible de générer l\'invitation : DISCORD_CLIENT_ID manquant.');
+            return res.status(500).send('Configuration du serveur incomplète (ID client manquant).');
+        }
+
+        // 8 = Administrateur (Recommandé pour un gros moteur comme Archon pour s'assurer que rien ne bloque)
+        const permissions = '8'; 
+        
+        // Scope incluant le bot et l'autorisation d'injecter tes 97 commandes Starlink
+        const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=bot%20applications.commands`;
+
+        console.log(`[INVITE] URL d'invitation automatique générée pour le client: ${clientId}`);
+        res.redirect(inviteUrl);
+    } catch (error) {
+        console.error('[INVITE] Erreur lors de la génération de la route:', error);
+        res.status(500).send('Erreur temporaire du service d\'invitation.');
+    }
+});
+
+// ============================================================
 // 8. GUILD LIST — Returns guilds the user and bot share
 // ============================================================
 app.get('/api/auth/guilds', async (req, res) => {

@@ -161,8 +161,7 @@ module.exports = {
         const payAliases = ['pay', 'transfer', 'donate', 'send', 'envoyer', 'payer', 'transférer'];
         const balAliases = ['credit', 'credits', 'bal', 'balance', 'crédits', 'solde'];
         const lbAliases = ['lb', 'leaderboard', 'top', 'classement', 'rich'];
-        const cmd = usedCommand?.toLowerCase() || '';
-
+        const cmd = usedCommand ? String(usedCommand).toLowerCase() : '';
         if (payAliases.includes(cmd)) return handlePay(message, args, client, db, serverSettings, lang, t, prefix, guildId, economySettings, guildName, guildIcon, version);
         if (lbAliases.includes(cmd)) return handleLeaderboard(message, client, db, lang, t, guildId, economySettings, guildName, guildIcon, version);
         return handleBalance(message, args, client, db, lang, t, guildId, economySettings, guildName, guildIcon, version);
