@@ -1,12 +1,12 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
-// ║  🦅 ARCHON CG-223 — WELCOME/GOODBYE SHARED CINEMATIC ENGINE        ║
-// ║  Neural Grid Style Module v2.0 — Bamako Steel Edition               ║
+// ║  🦅 ARCHON CG-223 — WELCOME/GOODBYE SHARED CINEMATIC ENGINE v3.0  ║
+// ║  Single canvas output | Warm welcome | Smart pro-tips | Real age  ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
-const W = 520, H = 140; // Compact card size — mobile-optimized
+const W = 700, H = 220; // Wider, more impressive canvas
 
 // ================= SMART UTILITIES =================
 function ordinal(n) {
@@ -15,53 +15,82 @@ function ordinal(n) {
 }
 
 function fmtDur(ms) {
-    if (!ms || ms < 60000) return '< 1m';
+    if (!ms || ms < 60000) return '< 1 minute';
     const d = Math.floor(ms / 86400000);
     const h = Math.floor((ms % 86400000) / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
-    return `${d ? d + 'd ' : ''}${h ? h + 'h ' : ''}${m}m`.trim();
+    if (d > 365) return `${Math.floor(d / 365)}y ${d % 365}d`;
+    if (d > 30) return `${Math.floor(d / 30)}mo ${d % 30}d`;
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
 }
 
-function accountAge(createdAt) {
-    const ms = Date.now() - createdAt;
-    const d = Math.floor(ms / 86400000);
-    if (d < 1) return 'Created today';
-    if (d < 7) return `${d} days old`;
-    if (d < 30) return `${Math.floor(d / 7)} weeks old`;
-    if (d < 365) return `${Math.floor(d / 30)} months old`;
-    return `${Math.floor(d / 365)} years old`;
+// REAL account age: years, months, days — accurate calculation
+function realAccountAge(createdAt) {
+    const created = new Date(createdAt);
+    const now = new Date();
+    let years = now.getFullYear() - created.getFullYear();
+    let months = now.getMonth() - created.getMonth();
+    let days = now.getDate() - created.getDate();
+
+    if (days < 0) {
+        months--;
+        const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        days += prevMonth.getDate();
+    }
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+
+    const parts = [];
+    if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+    if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+    if (days > 0 && years === 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+
+    if (parts.length === 0) return 'Created today';
+    return parts.join(', ');
+}
+
+function accountAgeShort(createdAt) {
+    const age = realAccountAge(createdAt);
+    // Truncate for canvas if too long
+    if (age.length > 20) {
+        const years = Math.floor((Date.now() - createdAt) / (365.25 * 86400000));
+        if (years > 0) return `${years}y old`;
+        const months = Math.floor((Date.now() - createdAt) / (30 * 86400000));
+        if (months > 0) return `${months}mo old`;
+        const days = Math.floor((Date.now() - createdAt) / 86400000);
+        return `${days}d old`;
+    }
+    return age;
 }
 
 // ================= CONFIG NORMALIZATION (CRITICAL BUGFIX) =================
-// Handles the DB column mismatch between serversettings.js ('welcome'/'goodbye')
-// and index.js/welcome.js ('welcomeChannel'/'welcome_channel')
 function normalizeWelcomeConfig(ss) {
     if (!ss || typeof ss !== 'object') ss = {};
     return {
-        // Channel IDs — cascade through all known variants
         welcomeChannel:    ss.welcomeChannel    || ss.welcome_channel    || ss.welcome    || null,
         goodbyeChannel:    ss.goodbyeChannel    || ss.goodbye_channel    || ss.goodbye    || null,
-        
-        // Message templates
         welcomeMessage:    ss.welcomeMessage    || ss.welcome_message    || ss.welcomeMsg    || null,
         goodbyeMessage:    ss.goodbyeMessage    || ss.goodbye_message    || ss.goodbyemsg    || null,
-        
-        // Toggles
         welcomeEnabled:    ss.welcomeEnabled !== false && ss.welcome_enabled !== 0,
         goodbyeEnabled:    ss.goodbyeEnabled !== false && ss.goodbye_enabled !== 0,
-        
-        // Prefix for tips
         prefix:            ss.prefix || '.',
-        
-        // Feature flags for dynamic tips
+
+        // Feature flags for dynamic tips & button suppression
         levelingEnabled:   ss.levelChannel || ss.levelup_channel || ss.xpMultiplier > 0,
-        dailyEnabled:      true, // Always on by default
+        dailyEnabled:      true,
         shopEnabled:       true,
         aiEnabled:         ss.aiEnabled !== false && ss.ai_enabled !== 0,
         marketEnabled:     ss.marketEnabled !== false && ss.market_enabled !== 0,
         ticketEnabled:     ss.ticketCategory || ss.ticket_category || ss.ticketStaffRole || ss.ticket_staff_role,
-        
-        // Raw for advanced checks
+
+        // Channel IDs for button suppression (if configured, don't show button)
+        rulesChannel:      ss.rulesChannel || ss.rules_channel || ss.rules || null,
+        generalChannel:    ss.generalChannel || ss.general_channel || ss.general || null,
+
         _raw: ss
     };
 }
@@ -76,10 +105,11 @@ function formatTemplate(template, member, count) {
         .replace(/\{count\}/g, count)
         .replace(/\{guild\}/g, member.guild.name)
         .replace(/\{membercount\}/g, count)
-        .replace(/\{mention\}/g, member.toString());
+        .replace(/\{mention\}/g, member.toString())
+        .replace(/\{age\}/g, realAccountAge(member.user.createdTimestamp));
 }
 
-// ================= CANVAS: ROUNDED RECT HELPER =================
+// ================= ROUNDED RECT HELPER =================
 function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -94,37 +124,54 @@ function roundRect(ctx, x, y, w, h, r) {
     ctx.closePath();
 }
 
-// ================= CANVAS: COMPACT WELCOME CARD =================
-async function renderWelcomeCard(member, count) {
+// ================= CANVAS: ULTIMATE WELCOME CARD =================
+async function renderWelcomeCard(member, count, cfg) {
     const c = createCanvas(W, H);
     const ctx = c.getContext('2d');
 
-    // Background — deep neural grid
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#1a1a2e');
-    g.addColorStop(1, '#16213e');
-    ctx.fillStyle = g;
-    roundRect(ctx, 0, 0, W, H, 16);
+    // Deep space background with subtle gradient
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0d1117');
+    bg.addColorStop(0.5, '#161b22');
+    bg.addColorStop(1, '#0d1117');
+    ctx.fillStyle = bg;
+    roundRect(ctx, 0, 0, W, H, 24);
     ctx.fill();
 
-    // Neural grid lines — subtle, mobile-friendly
-    ctx.strokeStyle = 'rgba(0, 251, 255, 0.04)';
+    // Neural grid overlay — subtle cyan lines
+    ctx.strokeStyle = 'rgba(0, 251, 255, 0.03)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < W; i += 30) {
+    for (let i = 0; i < W; i += 40) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
-        ctx.lineTo(i - 40, H);
+        ctx.lineTo(i - 60, H);
+        ctx.stroke();
+    }
+    for (let i = 0; i < H; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(W, i - 30);
         ctx.stroke();
     }
 
-    // Left accent bar — cyan neural pulse
-    ctx.fillStyle = '#00fbff';
-    roundRect(ctx, 0, 20, 4, H - 40, 2);
+    // Left accent glow bar
+    const glow = ctx.createLinearGradient(0, 0, 6, H);
+    glow.addColorStop(0, 'rgba(0, 251, 255, 0)');
+    glow.addColorStop(0.5, 'rgba(0, 251, 255, 0.8)');
+    glow.addColorStop(1, 'rgba(0, 251, 255, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 30, 6, H - 60);
+
+    // Avatar with glow ring
+    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 })).catch(() => null);
+    const ax = 40, ay = H / 2, ar = 55;
+
+    // Outer glow
+    ctx.beginPath();
+    ctx.arc(ax + ar, ay, ar + 8, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 251, 255, 0.15)';
     ctx.fill();
 
-    // Avatar
-    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 })).catch(() => null);
-    const ax = 22, ay = H / 2, ar = 38;
     if (av) {
         ctx.save();
         ctx.beginPath();
@@ -133,84 +180,113 @@ async function renderWelcomeCard(member, count) {
         ctx.clip();
         ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
         ctx.restore();
+
         // Cyan ring
         ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2);
+        ctx.arc(ax + ar, ay, ar + 3, 0, Math.PI * 2);
         ctx.strokeStyle = '#00fbff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.stroke();
     }
 
-    // "JOINED" label
+    // Text content
+    const tx = 160;
+
+    // "WELCOME" label
     ctx.fillStyle = '#00fbff';
-    ctx.font = 'bold 9px sans-serif';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('JOINED', 100, 32);
+    ctx.fillText('WELCOME TO THE GRID', tx, 45);
 
     // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px sans-serif';
-    const name = member.user.username.length > 18 ? member.user.username.substring(0, 17) + '...' : member.user.username;
-    ctx.fillText(name, 100, 56);
+    ctx.font = 'bold 32px sans-serif';
+    const name = member.user.username.length > 22 ? member.user.username.substring(0, 21) + '…' : member.user.username;
+    ctx.fillText(name, tx, 85);
 
-    // Stats row — account age + member count
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.font = '11px sans-serif';
-    const age = accountAge(member.user.createdTimestamp);
-    const isSus = (Date.now() - member.user.createdTimestamp) < 604800000; // < 7 days
-    const ageColor = isSus ? '  [NEW]' : '';
-    ctx.fillText(`#${ordinal(count)} member  |  ${age}${ageColor}`, 100, 78);
+    // Stats row
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = '13px sans-serif';
+    const age = accountAgeShort(member.user.createdTimestamp);
+    const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
+    const newBadge = isNew ? '  ● NEW' : '';
+    ctx.fillText(`${ordinal(count)} member  ·  ${age}${newBadge}`, tx, 115);
 
-    // Server name (bottom right, subtle)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.font = '10px sans-serif';
+    // Server name (bottom right)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.font = '12px sans-serif';
     ctx.textAlign = 'right';
-    const sName = member.guild.name.length > 25 ? member.guild.name.substring(0, 24) + '...' : member.guild.name;
-    ctx.fillText(sName, W - 18, H - 18);
+    const sName = member.guild.name.length > 35 ? member.guild.name.substring(0, 34) + '…' : member.guild.name;
+    ctx.fillText(sName, W - 30, H - 30);
 
-    // "ARCHON" badge (top right)
-    ctx.fillStyle = 'rgba(0, 251, 255, 0.15)';
-    roundRect(ctx, W - 90, 14, 72, 20, 4);
+    // ARCHON badge (top right)
+    ctx.fillStyle = 'rgba(0, 251, 255, 0.1)';
+    roundRect(ctx, W - 140, 25, 110, 26, 6);
     ctx.fill();
     ctx.fillStyle = '#00fbff';
-    ctx.font = 'bold 8px sans-serif';
+    ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('ARCHON CG-223', W - 54, 27);
+    ctx.fillText('ARCHON CG-223', W - 85, 42);
+
+    // Decorative corner accents
+    ctx.strokeStyle = 'rgba(0, 251, 255, 0.2)';
+    ctx.lineWidth = 2;
+    // Top-right corner
+    ctx.beginPath();
+    ctx.moveTo(W - 60, 0);
+    ctx.lineTo(W, 0);
+    ctx.lineTo(W, 60);
+    ctx.stroke();
+    // Bottom-left corner
+    ctx.beginPath();
+    ctx.moveTo(0, H - 60);
+    ctx.lineTo(0, H);
+    ctx.lineTo(60, H);
+    ctx.stroke();
 
     return c.encode('png');
 }
 
-// ================= CANVAS: COMPACT GOODBYE CARD =================
+// ================= CANVAS: ULTIMATE GOODBYE CARD =================
 async function renderGoodbyeCard(member, duration, roleCount) {
     const c = createCanvas(W, H);
     const ctx = c.getContext('2d');
 
-    // Background — crimson departure
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#1a0a0a');
-    g.addColorStop(1, '#2d1313');
-    ctx.fillStyle = g;
-    roundRect(ctx, 0, 0, W, H, 16);
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#1a0a0a');
+    bg.addColorStop(0.5, '#2d1313');
+    bg.addColorStop(1, '#1a0a0a');
+    ctx.fillStyle = bg;
+    roundRect(ctx, 0, 0, W, H, 24);
     ctx.fill();
 
-    // Subtle grid lines
-    ctx.strokeStyle = 'rgba(231, 76, 60, 0.06)';
+    // Subtle grid
+    ctx.strokeStyle = 'rgba(231, 76, 60, 0.03)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < W; i += 30) {
+    for (let i = 0; i < W; i += 40) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
-        ctx.lineTo(i - 40, H);
+        ctx.lineTo(i - 60, H);
         ctx.stroke();
     }
 
-    // Left accent bar — red
-    ctx.fillStyle = '#e74c3c';
-    roundRect(ctx, 0, 20, 4, H - 40, 2);
+    // Left accent glow bar — crimson
+    const glow = ctx.createLinearGradient(0, 0, 6, H);
+    glow.addColorStop(0, 'rgba(231, 76, 60, 0)');
+    glow.addColorStop(0.5, 'rgba(231, 76, 60, 0.8)');
+    glow.addColorStop(1, 'rgba(231, 76, 60, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 30, 6, H - 60);
+
+    // Avatar with red glow
+    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 })).catch(() => null);
+    const ax = 40, ay = H / 2, ar = 55;
+
+    ctx.beginPath();
+    ctx.arc(ax + ar, ay, ar + 8, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
     ctx.fill();
 
-    // Avatar with red ring
-    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 })).catch(() => null);
-    const ax = 22, ay = H / 2, ar = 38;
     if (av) {
         ctx.save();
         ctx.beginPath();
@@ -219,115 +295,211 @@ async function renderGoodbyeCard(member, duration, roleCount) {
         ctx.clip();
         ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
         ctx.restore();
+
         ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2);
+        ctx.arc(ax + ar, ay, ar + 3, 0, Math.PI * 2);
         ctx.strokeStyle = '#e74c3c';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.stroke();
     }
 
-    // "DEPARTED" label
+    const tx = 160;
+
     ctx.fillStyle = '#e74c3c';
-    ctx.font = 'bold 9px sans-serif';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('DEPARTED', 100, 32);
+    ctx.fillText('DEPARTURE LOG', tx, 45);
 
-    // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px sans-serif';
-    const name = member.user.username.length > 18 ? member.user.username.substring(0, 17) + '...' : member.user.username;
-    ctx.fillText(name, 100, 56);
+    ctx.font = 'bold 32px sans-serif';
+    const name = member.user.username.length > 22 ? member.user.username.substring(0, 21) + '…' : member.user.username;
+    ctx.fillText(name, tx, 85);
 
-    // Stats row
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.font = '11px sans-serif';
-    const dur = duration || '< 1m';
-    ctx.fillText(`Stay: ${dur}  |  ${roleCount} role${roleCount !== 1 ? 's' : ''} removed`, 100, 78);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = '13px sans-serif';
+    const dur = duration || '< 1 minute';
+    ctx.fillText(`Stayed: ${dur}  ·  ${roleCount} role${roleCount !== 1 ? 's' : ''} removed`, tx, 115);
 
-    // Server name
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.font = '10px sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.font = '12px sans-serif';
     ctx.textAlign = 'right';
-    const sName = member.guild.name.length > 25 ? member.guild.name.substring(0, 24) + '...' : member.guild.name;
-    ctx.fillText(sName, W - 18, H - 18);
+    const sName = member.guild.name.length > 35 ? member.guild.name.substring(0, 34) + '…' : member.guild.name;
+    ctx.fillText(sName, W - 30, H - 30);
 
-    // ARCHON badge — red
-    ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
-    roundRect(ctx, W - 90, 14, 72, 20, 4);
+    ctx.fillStyle = 'rgba(231, 76, 60, 0.1)';
+    roundRect(ctx, W - 140, 25, 110, 26, 6);
     ctx.fill();
     ctx.fillStyle = '#e74c3c';
-    ctx.font = 'bold 8px sans-serif';
+    ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('ARCHON CG-223', W - 54, 27);
+    ctx.fillText('ARCHON CG-223', W - 85, 42);
+
+    // Decorative corners
+    ctx.strokeStyle = 'rgba(231, 76, 60, 0.2)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W - 60, 0);
+    ctx.lineTo(W, 0);
+    ctx.lineTo(W, 60);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, H - 60);
+    ctx.lineTo(0, H);
+    ctx.lineTo(60, H);
+    ctx.stroke();
 
     return c.encode('png');
 }
 
-// ================= NEURAL GRID ANSI TEXT — MOBILE OPTIMIZED =================
-// Borders aligned to 42 chars wide for perfect mobile rendering (Z Fold 5, etc.)
-function ansiWelcome(member, count) {
-    const name = member.user.username;
+// ================= WARM WELCOME TEXT (NO ANSI BLOCK) =================
+function warmWelcomeText(member, count, cfg) {
+    const greetings = [
+        `🎉 Welcome to **${member.guild.name}**, ${member.toString()}!`,
+        `👋 Hey ${member.toString()}, welcome to **${member.guild.name}**!`,
+        `🌟 ${member.toString()} just joined **${member.guild.name}** — welcome!`,
+        `🚀 ${member.toString()} has entered **${member.guild.name}**!`,
+        `✨ Welcome aboard, ${member.toString()}! **${member.guild.name}** just got better.`,
+    ];
+
+    const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+    const age = realAccountAge(member.user.createdTimestamp);
     const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
-    const age = accountAge(member.user.createdTimestamp);
-    const newFlag = isNew ? '\u001b[1;31m[NEW]\u001b[0m' : '';
-    
-    return '```ansi\n' +
-        '\u001b[0;36m╔══════════════════════════════════════╗\u001b[0m\n' +
-        '\u001b[0;36m║\u001b[1;36m  NEURAL LINK ESTABLISHED            \u001b[0;36m║\u001b[0m\n' +
-        '\u001b[0;36m╠══════════════════════════════════════╣\u001b[0m\n' +
-        `\u001b[0;36m║\u001b[0m  Node: \u001b[1;33m${name.substring(0,16).padEnd(16)}\u001b[0m #${String(count).padStart(4)}  \u001b[0;36m║\u001b[0m\n` +
-        `\u001b[0;36m║\u001b[0m  Grid: \u001b[0;37m${member.guild.name.substring(0,24).padEnd(24)}\u001b[0m  \u001b[0;36m║\u001b[0m\n` +
-        `\u001b[0;36m║\u001b[0m  Age:  \u001b[0;37m${age.substring(0,24).padEnd(24)}\u001b[0m ${newFlag.padEnd(6)}\u001b[0;36m║\u001b[0m\n` +
-        '\u001b[0;36m╚══════════════════════════════════════╝\u001b[0m\n' +
-        '```\n' +
-        `${member.toString()} **Welcome to the grid.**`;
+    const newBadge = isNew ? ' 🆕' : '';
+
+    return `${greeting}
+> 📊 You are member **#${count}** · Account: **${age}**${newBadge}`;
 }
 
-function ansiGoodbye(member, duration, roleCount, roles) {
-    const name = member.user.username;
-    const dur = duration || '< 1m';
-    const rl = roles.slice(0, 3).map(r => r.name).join(', ') || 'None';
-    return '```ansi\n' +
-        '\u001b[0;31m╔══════════════════════════════════════╗\u001b[0m\n' +
-        '\u001b[0;31m║\u001b[1;31m  NEURAL LINK SEVERED               \u001b[0;31m║\u001b[0m\n' +
-        '\u001b[0;31m╠══════════════════════════════════════╣\u001b[0m\n' +
-        `\u001b[0;31m║\u001b[0m  Node: \u001b[1;33m${name.substring(0,16).padEnd(16)}\u001b[0m        \u001b[0;31m║\u001b[0m\n` +
-        `\u001b[0;31m║\u001b[0m  Stay: \u001b[0;37m${dur.padEnd(24)}\u001b[0m        \u001b[0;31m║\u001b[0m\n` +
-        `\u001b[0;31m║\u001b[0m  Roles:\u001b[0;37m${rl.substring(0, 28).padEnd(28)}\u001b[0m  \u001b[0;31m║\u001b[0m\n` +
-        '\u001b[0;31m╚══════════════════════════════════════╝\u001b[0m\n' +
-        '```';
+// ================= GOODBYE TEXT =================
+function goodbyeText(member, duration, roleCount) {
+    const farewells = [
+        `👋 **${member.user.username}** has left the server.`,
+        `🚪 **${member.user.username}** departed after ${duration || 'a brief visit'}.`,
+        `💫 **${member.user.username}** is no longer with us.`,
+        `🌙 **${member.user.username}** has disconnected from the grid.`,
+    ];
+
+    const farewell = farewells[Math.floor(Math.random() * farewells.length)];
+    return `${farewell}
+> ⏱️ Stayed: **${duration || 'N/A'}** · Roles removed: **${roleCount}**`;
 }
 
-// ================= DYNAMIC PRO-TIPS BUILDER =================
-// Builds tips based on which features are actually enabled for the server
-function buildProTips(cfg, lang = 'en') {
+// ================= RANDOM PRO-TIPS POOL =================
+const ALL_TIPS = {
+    en: {
+        help:      { text: '`.help` — Discover all commands', weight: 10 },
+        daily:     { text: '`.daily` — Daily reward (streak = bonus!)', weight: 10 },
+        profile:   { text: '`.profile` — View your agent dossier', weight: 10 },
+        lydia:     { text: '`.lydia [message]` — Chat with AI Lydia', weight: 8 },
+        shop:      { text: '`.shop` — Buy boosts and items', weight: 8 },
+        market:    { text: '`.market` — Invest in the Bamako market', weight: 6 },
+        ticket:    { text: '`.ticket` — Open a support ticket', weight: 6 },
+        trivia:    { text: '`.trivia` — Test your knowledge & earn XP', weight: 5 },
+        rank:      { text: '`.rank` — Check your server standing', weight: 5 },
+        whois:     { text: '`.whois @user` — Deep-scan any member', weight: 4 },
+        game:      { text: '`.game` — Challenge other agents', weight: 4 },
+        credits:   { text: '`.credits` — Check your balance', weight: 3 },
+    },
+    fr: {
+        help:      { text: '`.help` — Découvrir toutes les commandes', weight: 10 },
+        daily:     { text: '`.daily` — Récompense quotidienne (série = bonus !)', weight: 10 },
+        profile:   { text: '`.profile` — Voir votre dossier d'agent', weight: 10 },
+        lydia:     { text: '`.lydia [message]` — Discuter avec l'IA Lydia', weight: 8 },
+        shop:      { text: '`.shop` — Acheter des boosts et objets', weight: 8 },
+        market:    { text: '`.market` — Investir dans le marché de Bamako', weight: 6 },
+        ticket:    { text: '`.ticket` — Ouvrir un ticket support', weight: 6 },
+        trivia:    { text: '`.trivia` — Tester vos connaissances & gagner XP', weight: 5 },
+        rank:      { text: '`.rank` — Voir votre position sur le serveur', weight: 5 },
+        whois:     { text: '`.whois @user` — Scanner n'importe quel membre', weight: 4 },
+        game:      { text: '`.game` — Défier d'autres agents', weight: 4 },
+        credits:   { text: '`.credits` — Vérifier votre solde', weight: 3 },
+    }
+};
+
+// ================= DYNAMIC PRO-TIPS (RANDOM FETCH) =================
+function buildRandomTips(cfg, lang = 'en') {
+    const pool = ALL_TIPS[lang] || ALL_TIPS.en;
     const tips = [];
     const p = cfg.prefix || '.';
-    
-    if (lang === 'fr') {
-        tips.push(`\`${p}help\` — Découvrir toutes les commandes`);
-        if (cfg.dailyEnabled) tips.push(`\`${p}daily\` — Récompense quotidienne (série = bonus !)`);
-        if (cfg.levelingEnabled) tips.push(`\`${p}profile\` — Voir votre dossier d'agent`);
-        if (cfg.aiEnabled) tips.push(`\`${p}lydia [message]\` — Discuter avec l'IA Lydia`);
-        if (cfg.shopEnabled) tips.push(`\`${p}shop\` — Acheter des boosts et objets`);
-        if (cfg.marketEnabled) tips.push(`\`${p}market\` — Investir dans le marché de Bamako`);
-        if (cfg.ticketEnabled) tips.push(`\`${p}ticket\` — Ouvrir un ticket support`);
-    } else {
-        tips.push(`\`${p}help\` — Discover all commands`);
-        if (cfg.dailyEnabled) tips.push(`\`${p}daily\` — Daily reward (streak = bonus!)`);
-        if (cfg.levelingEnabled) tips.push(`\`${p}profile\` — View your agent dossier`);
-        if (cfg.aiEnabled) tips.push(`\`${p}lydia [message]\` — Chat with AI Lydia`);
-        if (cfg.shopEnabled) tips.push(`\`${p}shop\` — Buy boosts and items`);
-        if (cfg.marketEnabled) tips.push(`\`${p}market\` — Invest in the Bamako market`);
-        if (cfg.ticketEnabled) tips.push(`\`${p}ticket\` — Open a support ticket`);
+
+    // Filter by enabled features
+    const available = [];
+    for (const [key, tip] of Object.entries(pool)) {
+        let enabled = true;
+        if (key === 'lydia' && !cfg.aiEnabled) enabled = false;
+        if (key === 'market' && !cfg.marketEnabled) enabled = false;
+        if (key === 'ticket' && !cfg.ticketEnabled) enabled = false;
+        if (key === 'profile' && !cfg.levelingEnabled) enabled = false;
+        if (key === 'rank' && !cfg.levelingEnabled) enabled = false;
+        if (enabled) available.push(tip);
     }
-    
-    // Always add at least one tip
-    if (tips.length === 0) {
-        tips.push(lang === 'fr' ? `\`${p}help\` — Commencer` : `\`${p}help\` — Get started`);
+
+    // Weighted random selection — pick 3-5 tips
+    const count = Math.min(available.length, 3 + Math.floor(Math.random() * 3));
+    const selected = [];
+    const poolCopy = [...available];
+
+    for (let i = 0; i < count && poolCopy.length > 0; i++) {
+        const totalWeight = poolCopy.reduce((sum, t) => sum + t.weight, 0);
+        let random = Math.random() * totalWeight;
+        let index = 0;
+        while (random > 0 && index < poolCopy.length) {
+            random -= poolCopy[index].weight;
+            if (random > 0) index++;
+        }
+        selected.push(poolCopy[index].text.replace(/\./g, p));
+        poolCopy.splice(index, 1);
     }
-    
-    return tips;
+
+    return selected;
+}
+
+// ================= BUTTON SUPPRESSION LOGIC =================
+// Returns which buttons to show based on config (hide if channel is configured)
+function getWelcomeButtons(cfg, member) {
+    const buttons = [];
+
+    // Rules button — only if rules channel is NOT configured
+    if (!cfg.rulesChannel) {
+        buttons.push({
+            label: 'Rules',
+            emoji: '📜',
+            style: 'Link',
+            url: `https://discord.com/channels/${member.guild.id}/${cfg.rulesChannel || member.guild.systemChannelId || member.guild.id}`,
+            customId: null
+        });
+    }
+
+    // General chat button — only if general channel is NOT configured
+    if (!cfg.generalChannel) {
+        buttons.push({
+            label: 'General',
+            emoji: '💬',
+            style: 'Link',
+            url: `https://discord.com/channels/${member.guild.id}/${cfg.generalChannel || member.guild.systemChannelId || member.guild.id}`,
+            customId: null
+        });
+    }
+
+    // AI Assistant — always show (unless you want to suppress it too)
+    buttons.push({
+        label: 'AI Assistant',
+        emoji: '🤖',
+        style: 'Primary',
+        url: null,
+        customId: 'welcome_help'
+    });
+
+    // Profile — always show
+    buttons.push({
+        label: 'My Profile',
+        emoji: '👤',
+        style: 'Success',
+        url: null,
+        customId: `welcome_profile_${member.user.id}`
+    });
+
+    return buttons;
 }
 
 // ================= EXPORT =================
@@ -335,23 +507,27 @@ module.exports = {
     // Config
     normalizeWelcomeConfig,
     formatTemplate,
-    
+
     // Canvas
     renderWelcomeCard,
     renderGoodbyeCard,
-    
-    // ANSI
-    ansiWelcome,
-    ansiGoodbye,
-    
+
+    // Text
+    warmWelcomeText,
+    goodbyeText,
+
     // Tips
-    buildProTips,
-    
+    buildRandomTips,
+
+    // Buttons
+    getWelcomeButtons,
+
     // Utils
     ordinal,
     fmtDur,
-    accountAge,
-    
+    realAccountAge,
+    accountAgeShort,
+
     // Constants
     CARD_WIDTH: W,
     CARD_HEIGHT: H
