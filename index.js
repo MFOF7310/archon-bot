@@ -4210,11 +4210,15 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
     const count = member.guild.memberCount;
     const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
 
-    // Render card via shared engine
+        // Render card via shared engine
     const png = await Style.renderWelcomeCard(member, count);
+    
+    // Convert canvas buffer to base64 data URL (no duplicate attachment)
+    const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
+    
     const embed = new EmbedBuilder()
         .setColor(0x00fbff)
-        .setImage('attachment://welcome.png')
+        .setImage(dataUrl)
         .setFooter({ text: 'ARCHON CG-223 | Neural Grid' })
         .setTimestamp();
 
@@ -4228,7 +4232,6 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
     await ch.send({
         content: ansi + tipBlock,
         embeds: [embed],
-        files: [new AttachmentBuilder(png, { name: 'welcome.png' })]
     }).catch(() => {});
 }
 
@@ -4270,10 +4273,14 @@ async function fallbackGoodbye(member, client, db, cfg, Style) {
     const duration = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
     const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
 
-    const png = await Style.renderGoodbyeCard(member, duration, roles.length);
+        const png = await Style.renderGoodbyeCard(member, duration, roles.length);
+    
+    // Convert canvas buffer to base64 data URL (no duplicate attachment)
+    const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
+    
     const embed = new EmbedBuilder()
         .setColor(0xe74c3c)
-        .setImage('attachment://goodbye.png')
+        .setImage(dataUrl)
         .setFooter({ text: 'ARCHON CG-223 | Departure Log' })
         .setTimestamp();
 
@@ -4282,7 +4289,6 @@ async function fallbackGoodbye(member, client, db, cfg, Style) {
     await ch.send({
         content,
         embeds: [embed],
-        files: [new AttachmentBuilder(png, { name: 'goodbye.png' })]
     }).catch(() => {});
 }
 
