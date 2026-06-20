@@ -44,7 +44,7 @@ async function handleWelcome(member, client, db) {
     // Build embed with single image attachment
     const embed = new EmbedBuilder()
         .setColor(0x00fbff)
-        .setImage('attachment://welcome.png')
+        .setImage(dataUrl)
         .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Member #${count}` })
         .setTimestamp();
 
@@ -85,7 +85,6 @@ async function handleWelcome(member, client, db) {
     await ch.send({
         content,
         embeds: [embed],
-        files: [new AttachmentBuilder(png, { name: 'welcome.png' })],
         components: rows.length > 0 ? rows : undefined
     }).catch(() => {});
 }
@@ -116,14 +115,13 @@ async function handleGoodbye(member, client, db) {
 
     const embed = new EmbedBuilder()
         .setColor(0xe74c3c)
-        .setImage('attachment://goodbye.png')
+        .setImage(dataUrl)
         .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Departure Log` })
         .setTimestamp();
 
     await ch.send({
         content,
         embeds: [embed],
-        files: [new AttachmentBuilder(png, { name: 'goodbye.png' })]
     }).catch(() => {});
 }
 
