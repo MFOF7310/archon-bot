@@ -21,8 +21,11 @@ async function handleWelcome(member, client, db) {
     const count = member.guild.memberCount;
     const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
 
-    // SINGLE canvas render — no duplicates
+        // SINGLE canvas render — no duplicates
     const png = await Style.renderWelcomeCard(member, count, cfg);
+
+    // Convert canvas buffer to base64 data URL (no duplicate attachment)
+    const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
 
     // Warm welcome text (no ANSI block)
     let content = Style.warmWelcomeText(member, count, cfg);
@@ -102,8 +105,11 @@ async function handleGoodbye(member, client, db) {
     const duration = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
     const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
 
-    // SINGLE canvas render
+        // SINGLE canvas render
     const png = await Style.renderGoodbyeCard(member, duration, roles.length);
+
+    // Convert canvas buffer to base64 data URL (no duplicate attachment)
+    const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
 
     let content = Style.goodbyeText(member, duration, roles.length);
 
