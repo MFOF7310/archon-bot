@@ -129,41 +129,15 @@ async function renderWelcomeCard(member, count, cfg) {
     const c = createCanvas(W, H);
     const ctx = c.getContext('2d');
 
-    // Deep space background with subtle gradient
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#0d1117');
-    bg.addColorStop(0.5, '#161b22');
-    bg.addColorStop(1, '#0d1117');
-    ctx.fillStyle = bg;
-    roundRect(ctx, 0, 0, W, H, 24);
-    ctx.fill();
+    // ✅ ADD THESE 3 LINES — no crash, better quality
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.textBaseline = 'middle';
 
-    // Neural grid overlay — subtle cyan lines
-    ctx.strokeStyle = 'rgba(0, 251, 255, 0.03)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < W; i += 40) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i - 60, H);
-        ctx.stroke();
-    }
-    for (let i = 0; i < H; i += 40) {
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(W, i - 30);
-        ctx.stroke();
-    }
-
-    // Left accent glow bar
-    const glow = ctx.createLinearGradient(0, 0, 6, H);
-    glow.addColorStop(0, 'rgba(0, 251, 255, 0)');
-    glow.addColorStop(0.5, 'rgba(0, 251, 255, 0.8)');
-    glow.addColorStop(1, 'rgba(0, 251, 255, 0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 30, 6, H - 60);
-
-    // Avatar with glow ring
-    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 })).catch(() => null);
+    // Optional: fetch bigger avatar for sharper downscaling
+    const av = await loadImage(
+        member.user.displayAvatarURL({ extension: 'png', size: 512 }) // was 256
+    ).catch(() => null);
     const ax = 40, ay = H / 2, ar = 55;
 
     // Outer glow
@@ -252,34 +226,15 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     const c = createCanvas(W, H);
     const ctx = c.getContext('2d');
 
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#1a0a0a');
-    bg.addColorStop(0.5, '#2d1313');
-    bg.addColorStop(1, '#1a0a0a');
-    ctx.fillStyle = bg;
-    roundRect(ctx, 0, 0, W, H, 24);
-    ctx.fill();
+    // ✅ ADD THESE 3 LINES
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.textBaseline = 'middle';
 
-    // Subtle grid
-    ctx.strokeStyle = 'rgba(231, 76, 60, 0.03)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < W; i += 40) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i - 60, H);
-        ctx.stroke();
-    }
-
-    // Left accent glow bar — crimson
-    const glow = ctx.createLinearGradient(0, 0, 6, H);
-    glow.addColorStop(0, 'rgba(231, 76, 60, 0)');
-    glow.addColorStop(0.5, 'rgba(231, 76, 60, 0.8)');
-    glow.addColorStop(1, 'rgba(231, 76, 60, 0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 30, 6, H - 60);
-
-    // Avatar with red glow
-    const av = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 })).catch(() => null);
+    // Optional: bigger avatar
+    const av = await loadImage(
+        member.user.displayAvatarURL({ extension: 'png', size: 512 })
+    ).catch(() => null);
     const ax = 40, ay = H / 2, ar = 55;
 
     ctx.beginPath();
