@@ -6,10 +6,24 @@
 const { EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const Style = require('./welcome-style.js');
 
+// ================= HELPERS =================
+function applyOwnerEnvFallback(cfg, guildId) {
+    // Top priority: Per-server isolation. Only apply .env to the Eagle Community owner guild.
+    if (guildId === process.env.OWNER_GUILD_ID) { 
+        cfg.welcomeChannel = cfg.welcomeChannel || process.env.WELCOME_CHANNEL;
+        cfg.goodbyeChannel = cfg.goodbyeChannel || process.env.GOODBYE_CHANNEL;
+        
+        // Optional: Add message fallbacks if they are also stored in .env
+        // cfg.welcomeMessage = cfg.welcomeMessage || process.env.WELCOME_MESSAGE;
+    }
+    return cfg;
+}
+
 // ================= HANDLERS =================
 async function handleWelcome(member, client, db) {
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
-    const cfg = Style.normalizeWelcomeConfig(ssRaw);
+    let cfg = Style.normalizeWelcomeConfig(ssRaw);
+    cfg = applyOwnerEnvFallback(cfg, member.guild.id); // <-- Inject fallback
 
     if (!cfg.welcomeEnabled) return;
 
@@ -94,7 +108,8 @@ async function handleWelcome(member, client, db) {
 
 async function handleGoodbye(member, client, db) {
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
-    const cfg = Style.normalizeWelcomeConfig(ssRaw);
+    let cfg = Style.normalizeWelcomeConfig(ssRaw);
+    cfg = applyOwnerEnvFallback(cfg, member.guild.id); // <-- Inject fallback
 
     if (!cfg.goodbyeEnabled || !cfg.goodbyeChannel) return;
 
@@ -151,8 +166,9 @@ module.exports = {
     run: async (client, message, args, db, usedCommand, serverSettings, lang) => {
         const sub = args[0]?.toLowerCase() || 'config';
         const prefix = serverSettings?.prefix || '.';
-        const cfg = Style.normalizeWelcomeConfig(serverSettings);
-
+        let cfg = Style.normalizeWelcomeConfig(serverSettings);
+    cfg = applyOwnerEnvFallback(cfg, message.guild.id);
+        
         if (sub === 'test') {
             const embed = new EmbedBuilder()
                 .setColor(0x00fbff)
@@ -262,7 +278,8 @@ module.exports = {
         const sc = ix.options.getSubcommand();
         const db = client.db;
         const ssRaw = client.getServerSettings?.(ix.guild.id) || {};
-        const cfg = Style.normalizeWelcomeConfig(ssRaw);
+        let cfg = Style.normalizeWelcomeConfig(ssRaw);
+    cfg = applyOwnerEnvFallback(cfg, ix.guild.id);
 
         if (sc === 'config') {
             const embed = new EmbedBuilder()
