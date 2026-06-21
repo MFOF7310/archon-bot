@@ -8,13 +8,10 @@ const Style = require('./welcome-style.js');
 
 // ================= HELPERS =================
 function applyOwnerEnvFallback(cfg, guildId) {
-    // Top priority: Per-server isolation. Only apply .env to the Eagle Community owner guild.
-    if (guildId === process.env.OWNER_GUILD_ID) { 
-        cfg.welcomeChannel = cfg.welcomeChannel || process.env.WELCOME_CHANNEL;
-        cfg.goodbyeChannel = cfg.goodbyeChannel || process.env.GOODBYE_CHANNEL;
-        
-        // Optional: Add message fallbacks if they are also stored in .env
-        // cfg.welcomeMessage = cfg.welcomeMessage || process.env.WELCOME_MESSAGE;
+    // Top priority: Per-server isolation. Aligned with serverSettings.js keys.
+    if (guildId === process.env.GUILD_ID) { 
+        cfg.welcomeChannel = cfg.welcomeChannel || process.env.WELCOME_CHANNEL_ID;
+        cfg.goodbyeChannel = cfg.goodbyeChannel || process.env.GOODBYE_CHANNEL_ID;
     }
     return cfg;
 }
