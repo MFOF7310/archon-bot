@@ -151,11 +151,18 @@ function isElevated(member) {
            member.permissions.has(PermissionsBitField.Flags.ManageGuild);
 }
 
+// ================= FIX 1: takeAction stores violation metadata in history =================
 async function takeAction(message, violations, client, db) {
     const uid = message.author.id, gid = message.guild.id;
     const k = key(uid, gid);
     const entry = history.get(k) || { messages: [], warns: 0, last: Date.now() };
     entry.warns++;
+
+    // ── FIX 1: Store violation metadata so the tribunal embed can show real evidence ──
+    entry.lastMessageContent = message.content?.substring(0, 1800) || '(attachment / image)';
+    entry.lastViolation = violations[0]?.type || 'unknown';
+    entry.lastViolationTime = Date.now();
+
     history.set(k, entry);
     const wc = entry.warns;
     const displayWc = Math.min(wc, 4);
@@ -169,6 +176,11 @@ async function takeAction(message, violations, client, db) {
     else { action = 'ban'; duration = 0; }
     if (hasMalicious && wc >= 2) { action = 'ban'; duration = 0; }
     if (hasEveryoneSpam && wc >= 1) { action = 'timeout'; duration = 86400000; }
+
+    // ── FIX 1 continued: Store action taken for tribunal context ──
+    entry.lastAction = action;
+    entry.lastDuration = duration;
+    history.set(k, entry);
 
     await message.delete().catch(() => {});
 
@@ -202,6 +214,7 @@ async function takeAction(message, violations, client, db) {
         }
     } catch (e) { actionText = 'Action failed'; actionColor = C.GREY; }
 
+    // ── FIX 2: DM to user now includes an "Appeal This Action" button ──
     try {
         const guildOwner = await message.guild.fetchOwner().catch(() => null);
         const appealContact = guildOwner ? `<@${guildOwner.id}>` : 'a server administrator';
@@ -224,10 +237,25 @@ async function takeAction(message, violations, client, db) {
         });
         dm.addFields({
             name: 'Think this was a mistake?',
-            value: `Reply here to start an appeal, or contact ${appealContact} directly.\nInclude: **server name**, **what you posted**, and why it should be allowed.`,
+            value: `Click the button below, or reply here with:\n"appeal ${message.guild.name} | your reason"\n\nOr contact ${appealContact} directly.\n⚠️ You get **1 appeal per server every 24 hours**.`,
             inline: false
         });
-        await message.author.send({ embeds: [dm] }).catch(() => {});
+
+        // ── FIX 2: Appeal button in the punishment DM ──
+        const appealRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`automod_appeal_${uid}_${gid}`)
+                .setLabel('📝 Appeal This Action')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setLabel('Server Rules')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://discord.com/channels/${gid}`)
+        );
+
+        await message.author.send({ embeds: [dm], components: [appealRow] }).catch(() => {
+            // If DM fails, that's fine — user can still type "appeal" manually
+        });
     } catch (e) {}
 
     try {
@@ -354,9 +382,12 @@ async function scanMessage(message, client, db) {
         seen.add('mention');
     }
 
-    // ── @everyone / @here spam ──
+    // ── FIX 3: @everyone/@here — check both content text AND Discord's resolved mention flag ──
     if (isRestrictedChannel && !seen.has('everyone')) {
-        const hasEveryone = message.content.includes('@everyone') || message.content.includes('@here');
+        const hasEveryoneText = message.content.includes('@everyone') || message.content.includes('@here');
+        const hasEveryoneResolved = message.mentions.everyone === true; // Discord sets this when it actually resolves
+        const hasEveryone = hasEveryoneText || hasEveryoneResolved;
+
         if (hasEveryone && !isElevated(member)) {
             const lastEveryone = everyoneCooldowns.get(gid) || 0;
             if (now - lastEveryone > EVERYONE_COOLDOWN) {
@@ -371,7 +402,7 @@ async function scanMessage(message, client, db) {
     }
 
     // 5. @here/@everyone + link
-    if ((message.content.includes('@here') || message.content.includes('@everyone')) && record.hasLinks && !seen.has('promo')) {
+    if ((message.content.includes('@here') || message.content.includes('@everyone') || message.mentions.everyone) && record.hasLinks && !seen.has('promo')) {
         violations.push({ type: 'promotional spam', reason: '@here/@everyone + external link', source: 'promo', crossChannel: true });
         seen.add('promo');
     }
@@ -397,14 +428,18 @@ async function scanMessage(message, client, db) {
 
     // ── Image/attachment spam ──
     if (isRestrictedChannel && !seen.has('image_spam')) {
-        const imageRecent = h.filter(m => 
-            now - m.ts <= IMAGE_SPAM_WINDOW && 
+        const imageRecent = h.filter(m =>
+            now - m.ts <= IMAGE_SPAM_WINDOW &&
             m.channelId === message.channel.id &&
             m.attachments > 0
         );
         const totalImages = imageRecent.reduce((sum, m) => sum + m.attachments, 0);
-        if (totalImages >= IMAGE_SPAM_LIMIT) {
-            violations.push({ type: 'image spam', reason: `${totalImages} images in ${IMAGE_SPAM_WINDOW/1000}s`, source: 'image_spam' });
+
+        // ── FIX 5: Also catch a single message that contains multiple attachments ──
+        const singleMsgImages = message.attachments.size;
+
+        if (totalImages >= IMAGE_SPAM_LIMIT || singleMsgImages >= IMAGE_SPAM_LIMIT) {
+            violations.push({ type: 'image spam', reason: `${Math.max(totalImages, singleMsgImages)} images in ${IMAGE_SPAM_WINDOW/1000}s`, source: 'image_spam' });
             seen.add('image_spam');
         }
     }
@@ -414,8 +449,8 @@ async function scanMessage(message, client, db) {
         const textContent = message.content.trim();
         const hasOnlyMentions = textContent.length > 0 && /^[@<>:!&\s\d]+$/.test(textContent);
         if (textContent.length === 0 || hasOnlyMentions) {
-            const attachmentRecent = h.filter(m => 
-                now - m.ts <= IMAGE_SPAM_WINDOW && 
+            const attachmentRecent = h.filter(m =>
+                now - m.ts <= IMAGE_SPAM_WINDOW &&
                 m.channelId === message.channel.id &&
                 m.attachments > 0 &&
                 (m.content.trim().length === 0 || /^[@<>:!&\s\d]+$/.test(m.content.trim()))
@@ -570,6 +605,22 @@ async function handleAppeal(message, client) {
         const cdKey = `${message.author.id}:${targetGuild.id}`;
         const lastAppeal = appealCooldowns.get(cdKey);
         const now = Date.now();
+
+        // ── Check for appeal ban (from 🔨 tribunal button) ──
+        const banKey = `ban:${message.author.id}:${targetGuild.id}`;
+        const banUntil = appealCooldowns.get(banKey);
+        if (banUntil && now < banUntil) {
+            const remainingMs = banUntil - now;
+            const remainingDays = Math.ceil(remainingMs / 86400000);
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.DARK)
+                    .setTitle('🚫 Appeals Banned')
+                    .setDescription(`You are banned from appealing on **${targetGuild.name}** for **${remainingDays} more day${remainingDays !== 1 ? 's' : ''}** due to a previous frivolous appeal.`)
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
         if (lastAppeal && (now - lastAppeal) < APPEAL_COOLDOWN) {
             const remainingMs = APPEAL_COOLDOWN - (now - lastAppeal);
             const remainingHrs = Math.ceil(remainingMs / 3600000);
@@ -584,78 +635,126 @@ async function handleAppeal(message, client) {
 
         try {
             const owner = await targetGuild.fetchOwner().catch(() => null);
-            if (owner && !owner.user.bot) {
-                // ── TRIBUNAL BUTTONS ──
-                const appealId = `AP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-                const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel('✅ Approve').setStyle(ButtonStyle.Success),
-                    new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel('❌ Reject').setStyle(ButtonStyle.Danger),
-                    new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel('🔨 Ban Appeals').setStyle(ButtonStyle.Secondary)
-                );
+            const entry = history.get(key(message.author.id, targetGuild.id));
 
-                // Get evidence from history
-                const evidence = entry?.lastMessageContent || '*(content unavailable)*';
-                const violationType = entry?.lastViolation || 'unknown';
-                const violationTime = entry?.lastViolationTime 
-                    ? `<t:${Math.floor(entry.lastViolationTime / 1000)}:R>` 
-                    : 'unknown';
+            // ── FIX 1: Use stored violation metadata for rich tribunal embed ──
+            const evidence = entry?.lastMessageContent || '*(content unavailable)*';
+            const violationType = entry?.lastViolation || 'unknown';
+            const violationTime = entry?.lastViolationTime
+                ? `<t:${Math.floor(entry.lastViolationTime / 1000)}:R>`
+                : 'unknown';
 
-                const tribunalEmbed = new EmbedBuilder()
-                    .setColor(C.BLURPLE)
-                    .setAuthor({ name: 'AutoMod Appeal Tribunal', iconURL: message.author.displayAvatarURL() })
-                    .setTitle('⚖️ New Appeal Received')
-                    .setDescription(`**From:** ${message.author.tag} (${message.author.id})
+            const appealId = `AP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel('✅ Approve').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel('❌ Reject').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel('🔨 Ban Appeals').setStyle(ButtonStyle.Secondary)
+            );
+
+            const tribunalEmbed = new EmbedBuilder()
+                .setColor(C.BLURPLE)
+                .setAuthor({ name: 'AutoMod Appeal Tribunal', iconURL: message.author.displayAvatarURL() })
+                .setTitle('⚖️ New Appeal Received')
+                .setDescription(`**From:** ${message.author.tag} (${message.author.id})
 **Server:** ${targetGuild.name}
 **Reason:** ${reason}
 
 **Strikes:** ${Math.min(entry?.warns || 1, 4)}/4`)
-                    .addFields(
-                        { name: '🛡️ Original Violation', value: `\`${violationType}\``, inline: true },
-                        { name: '⏰ When', value: violationTime, inline: true },
-                        { name: '⚡ Action Taken', value: entry?.lastAction ? `${entry.lastAction} (${entry.lastDuration ? fmtDur(entry.lastDuration) : 'permanent'})` : 'unknown', inline: true },
-                        { name: '📄 Deleted Message', value: `\`\`\`${evidence.substring(0, 900)}\`\`\`` }
-                    )
-                    .setFooter({ text: 'ARCHON CG-223 • Click to render verdict' })
-                    .setTimestamp();
+                .addFields(
+                    { name: '🛡️ Original Violation', value: `\`${violationType}\``, inline: true },
+                    { name: '⏰ When', value: violationTime, inline: true },
+                    { name: '⚡ Action Taken', value: entry?.lastAction ? `${entry.lastAction} (${entry.lastDuration ? fmtDur(entry.lastDuration) : 'permanent'})` : 'unknown', inline: true },
+                    { name: '📄 Deleted Message', value: `\`\`\`${evidence.substring(0, 900)}\`\`\`` }
+                )
+                .setFooter({ text: 'ARCHON CG-223 • Click to render verdict' })
+                .setTimestamp();
 
-                const sent = await owner.send({ embeds: [tribunalEmbed], components: [row] }).catch(() => null);
+            // ── FIX 4: 3-tier appeal delivery: DM → log channel → queue ──
+            let sent = null;
+            let deliveryMethod = 'none';
 
-                if (sent) {
-                    appealTribunal.set(appealId, {
-                        guildId: targetGuild.id,
-                        userId: message.author.id,
-                        ownerId: owner.id,
-                        status: 'pending',
-                        messageId: sent.id,
-                        channelId: sent.channel.id,
-                        expiresAt: Date.now() + 7 * 86400000 // 7 days
-                    });
-                }
-
-                appealCooldowns.set(cdKey, now);
-
-                return message.reply({
-                    embeds: [new EmbedBuilder()
-                        .setColor(C.GREEN)
-                        .setTitle('✅ Appeal Submitted')
-                        .setDescription(`Your appeal for **${targetGuild.name}** has been forwarded to the server owner.\n\n🕊️ **Please be patient** — they will review it and may reach out to you directly. Since you get one appeal per server per day, sending follow-up messages here won't speed things up, but I will let you know if anything changes.`)
-                        .setFooter({ text: 'ARCHON CG-223' })]
-                }).catch(() => {});
-            } else {
-                return message.reply({
-                    embeds: [new EmbedBuilder()
-                        .setColor(C.RED)
-                        .setTitle('Appeal Failed')
-                        .setDescription(`Could not find a reachable owner for **${targetGuild.name}**. Please try again later.`)
-                        .setFooter({ text: 'ARCHON CG-223' })]
-                }).catch(() => {});
+            // Tier 1: Try to DM the owner
+            if (owner && !owner.user.bot) {
+                sent = await owner.send({ embeds: [tribunalEmbed], components: [row] }).catch(() => null);
+                if (sent) deliveryMethod = 'dm';
             }
+
+            // Tier 2: Fall back to the server's automod log channel
+            if (!sent) {
+                const settings = client.getServerSettings?.(targetGuild.id) || {};
+                const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog;
+                if (logId) {
+                    const logCh = targetGuild.channels.cache.get(logId);
+                    if (logCh) {
+                        const ownerMention = owner ? `<@${owner.id}>` : 'Server owner';
+                        sent = await logCh.send({
+                            content: `${ownerMention} — an appeal was submitted but I couldn't DM you directly.`,
+                            embeds: [tribunalEmbed],
+                            components: [row]
+                        }).catch(() => null);
+                        if (sent) deliveryMethod = 'log_channel';
+                    }
+                }
+            }
+
+            // Tier 3: Queue for /automod appeals (always stored regardless)
+            if (sent) {
+                appealTribunal.set(appealId, {
+                    guildId: targetGuild.id,
+                    userId: message.author.id,
+                    ownerId: owner?.id || null,
+                    status: 'pending',
+                    messageId: sent.id,
+                    channelId: sent.channel.id,
+                    expiresAt: Date.now() + 7 * 86400000,
+                    reason,
+                    deliveryMethod,
+                    userTag: message.author.tag,
+                    evidence,
+                    violationType,
+                });
+            } else {
+                // No delivery succeeded — still queue so /automod appeals shows it
+                appealTribunal.set(appealId, {
+                    guildId: targetGuild.id,
+                    userId: message.author.id,
+                    ownerId: owner?.id || null,
+                    status: 'pending',
+                    messageId: null,
+                    channelId: null,
+                    expiresAt: Date.now() + 7 * 86400000,
+                    reason,
+                    deliveryMethod: 'queued',
+                    userTag: message.author.tag,
+                    evidence,
+                    violationType,
+                });
+                deliveryMethod = 'queued';
+            }
+
+            appealCooldowns.set(cdKey, now);
+
+            // Confirmation message varies by delivery method
+            const confirmDesc = deliveryMethod === 'dm'
+                ? `Your appeal for **${targetGuild.name}** has been forwarded to the server owner.\n\n🕊️ **Please be patient** — they will review it and may reach out to you directly.`
+                : deliveryMethod === 'log_channel'
+                ? `Your appeal for **${targetGuild.name}** could not reach the owner's DMs, so it was posted in the server log channel.\n\n🕊️ The owner will see it there.`
+                : `Your appeal for **${targetGuild.name}** has been queued. The server owner can review it with \`/automod appeals\`.\n\n⚠️ I could not reach the owner directly or via log channel.`;
+
+            return message.reply({
+                embeds: [new EmbedBuilder()
+                    .setColor(deliveryMethod === 'queued' ? C.YELLOW : C.GREEN)
+                    .setTitle(deliveryMethod === 'queued' ? '⏳ Appeal Queued' : '✅ Appeal Submitted')
+                    .setDescription(confirmDesc + '\n\nSince you get one appeal per server per day, sending follow-up messages here won\'t speed things up.')
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+
         } catch (e) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle('Appeal Failed')
-                    .setDescription('Could not contact the server owner. Please try again later.')
+                    .setDescription('An unexpected error occurred. Please try again later.')
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -699,9 +798,7 @@ async function handleAppealButton(interaction, client) {
                 embeds: [new EmbedBuilder()
                     .setColor(C.GREEN)
                     .setTitle('✅ Appeal Approved')
-                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **approved** by the owner.
-
-Your strike count has been reduced. Stay clean! 🕊️`)
+                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **approved** by the owner.\n\nYour strike count has been reduced. Stay clean! 🕊️`)
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -710,8 +807,7 @@ Your strike count has been reduced. Stay clean! 🕊️`)
         appealTribunal.set(appealId, vote);
 
         await interaction.update({
-            content: `✅ **APPROVED** by ${interaction.user.tag}
-Strike reduced. User notified.`,
+            content: `✅ **APPROVED** by ${interaction.user.tag}\nStrike reduced. User notified.`,
             embeds: [],
             components: []
         }).catch(() => {});
@@ -722,9 +818,7 @@ Strike reduced. User notified.`,
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle('❌ Appeal Rejected')
-                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **rejected** by the owner.
-
-The punishment stands. You can appeal again in 24 hours.`)
+                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **rejected** by the owner.\n\nThe punishment stands. You can appeal again in 24 hours.`)
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -733,14 +827,14 @@ The punishment stands. You can appeal again in 24 hours.`)
         appealTribunal.set(appealId, vote);
 
         await interaction.update({
-            content: `❌ **REJECTED** by ${interaction.user.tag}
-Punishment stands. User notified.`,
+            content: `❌ **REJECTED** by ${interaction.user.tag}\nPunishment stands. User notified.`,
             embeds: [],
             components: []
         }).catch(() => {});
 
     } else if (action === 'ban') {
         const banKey = `ban:${vote.userId}:${vote.guildId}`;
+        // Store timestamp of when the ban expires (7 days from now)
         appealCooldowns.set(banKey, Date.now() + 7 * 86400000);
 
         const k = key(vote.userId, vote.guildId);
@@ -753,9 +847,7 @@ Punishment stands. User notified.`,
                 embeds: [new EmbedBuilder()
                     .setColor(C.DARK)
                     .setTitle('🚫 Appeal Banned')
-                    .setDescription(`You have been **banned from appealing** on **${guild?.name || 'the server'}** for **7 days** due to frivolous appeals.
-
-You also received an additional strike.`)
+                    .setDescription(`You have been **banned from appealing** on **${guild?.name || 'the server'}** for **7 days** due to frivolous appeals.\n\nYou also received an additional strike.`)
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -764,8 +856,7 @@ You also received an additional strike.`)
         appealTribunal.set(appealId, vote);
 
         await interaction.update({
-            content: `🔨 **APPEAL BANNED** by ${interaction.user.tag}
-User cannot appeal for 7 days. +1 strike added.`,
+            content: `🔨 **APPEAL BANNED** by ${interaction.user.tag}\nUser cannot appeal for 7 days. +1 strike added.`,
             embeds: [],
             components: []
         }).catch(() => {});
@@ -808,17 +899,30 @@ async function syncRules(guild, action, settings) {
 
 function resolveSetting(s, ...keys) { for (const k of keys) { if (s?.[k] != null && s[k] !== '') return s[k]; } return null; }
 
+// ================= FIX 4 HELPER: Format pending appeals for /automod appeals ──
+function formatPendingAppeals(guildId) {
+    const pending = [];
+    for (const [id, data] of appealTribunal) {
+        if (data.guildId !== guildId) continue;
+        if (data.status !== 'pending') continue;
+        pending.push({ id, ...data });
+    }
+    return pending;
+}
+
 module.exports = {
     name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
     description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, domain-based link blocking, image spam detection, @everyone protection, and appeals.',
-    usage: '.automod [status|enable|disable|sensitivity|whitelist|domains|log|channels]',
+    usage: '.automod [status|enable|disable|sensitivity|whitelist|domains|log|channels|appeals]',
     cooldown: 3000,
 
+    // ── FIX 4: Added 'appeals' subcommand to slash builder ──
     data: new SlashCommandBuilder().setName('automod').setDescription('🛡️ Configure AutoMod').
         setDefaultMemberPermissions(Number(PermissionsBitField.Flags.Administrator)).
         addSubcommand(s => s.setName('status').setDescription('View AutoMod status')).
         addSubcommand(s => s.setName('enable').setDescription('Enable AutoMod')).
         addSubcommand(s => s.setName('disable').setDescription('Disable AutoMod')).
+        addSubcommand(s => s.setName('appeals').setDescription('View and manage pending appeals')).
         addSubcommand(s => s.setName('sensitivity').setDescription('Set sensitivity').addStringOption(o => o.setName('level').setDescription('Level').setRequired(true).addChoices({name:'🟢 Low',value:'low'},{name:'🟡 Medium',value:'medium'},{name:'🔴 High',value:'high'}))).
         addSubcommand(s => s.setName('whitelist').setDescription('Whitelist role').addRoleOption(o => o.setName('role').setDescription('Role (skip to clear)').setRequired(false))).
         addSubcommand(s => s.setName('domains').setDescription('Manage allowed link domains').addStringOption(o => o.setName('action').setDescription('add, remove, list, or reset').setRequired(true).addChoices({name:'📋 List allowed domains',value:'list'},{name:'➕ Add domain',value:'add'},{name:'➖ Remove domain',value:'remove'},{name:'🔄 Reset to defaults',value:'reset'})).addStringOption(o => o.setName('domain').setDescription('Domain to add/remove (e.g., example.com)').setRequired(false))).
@@ -830,7 +934,38 @@ module.exports = {
         if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
         const sc = ix.options.getSubcommand();
         const ss = client.getServerSettings(ix.guild.id);
-        const lang = ix.locale?.startsWith('fr') ? 'fr' : 'en';
+
+        // ── FIX 4: /automod appeals — slash handler ──
+        if (sc === 'appeals') {
+            const pending = formatPendingAppeals(ix.guild.id);
+            if (pending.length === 0) {
+                return ix.reply({
+                    embeds: [new EmbedBuilder()
+                        .setColor(C.GREEN)
+                        .setTitle('⚖️ Appeal Queue')
+                        .setDescription('No pending appeals for this server.')
+                        .setFooter({ text: 'ARCHON CG-223' })],
+                    flags: 1 << 6
+                });
+            }
+            const e = new EmbedBuilder()
+                .setColor(C.BLURPLE)
+                .setTitle(`⚖️ Pending Appeals (${pending.length})`)
+                .setFooter({ text: 'ARCHON CG-223 • Use the tribunal buttons to rule' })
+                .setTimestamp();
+
+            for (const a of pending.slice(0, 10)) {
+                const timeAgo = a.lastViolationTime
+                    ? `<t:${Math.floor(a.lastViolationTime / 1000)}:R>`
+                    : 'Unknown time';
+                e.addFields({
+                    name: `${a.userTag} — ${a.violationType || 'unknown violation'}`,
+                    value: `**Reason:** ${a.reason?.substring(0, 100) || 'No reason'}\n**Delivery:** ${a.deliveryMethod || 'unknown'}\n**When:** ${timeAgo}\n**ID:** \`${a.id}\``,
+                    inline: false
+                });
+            }
+            return ix.reply({ embeds: [e], flags: 1 << 6 });
+        }
 
         if (sc === 'status') {
             const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
@@ -838,6 +973,7 @@ module.exports = {
             const domainList = parseDomainWhitelist(ss?.autoModDomains);
             const rawChannels = ss?.automodChannels || ss?.automod_channels || '';
             const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : 'All channels';
+            const pendingCount = formatPendingAppeals(ix.guild.id).length;
             const e = new EmbedBuilder()
                 .setColor(ss?.autoModEnabled ? C.GREEN : C.RED)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -848,7 +984,8 @@ module.exports = {
                     { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
                     { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
                     { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true },
-                    { name: 'Restricted Channels', value: channelList, inline: false }
+                    { name: 'Restricted Channels', value: channelList, inline: false },
+                    { name: 'Pending Appeals', value: pendingCount > 0 ? `${pendingCount} — use \`/automod appeals\` to review` : 'None', inline: false }
                 )
                 .setFooter({ text: 'Use /automod domains to manage • ARCHON CG-223' })
                 .setTimestamp();
@@ -978,12 +1115,40 @@ module.exports = {
         const action = args[0]?.toLowerCase() || 'status';
         const settings = client.getServerSettings(msg.guild.id);
 
+        // ── FIX 4: .automod appeals — prefix handler ──
+        if (action === 'appeals') {
+            const pending = formatPendingAppeals(msg.guild.id);
+            if (pending.length === 0) {
+                return msg.reply({
+                    embeds: [new EmbedBuilder()
+                        .setColor(C.GREEN)
+                        .setTitle('⚖️ Appeal Queue')
+                        .setDescription('No pending appeals for this server.')
+                        .setFooter({ text: 'ARCHON CG-223' })]
+                });
+            }
+            const e = new EmbedBuilder()
+                .setColor(C.BLURPLE)
+                .setTitle(`⚖️ Pending Appeals (${pending.length})`)
+                .setFooter({ text: 'ARCHON CG-223 • Appeals expire after 7 days' })
+                .setTimestamp();
+            for (const a of pending.slice(0, 10)) {
+                e.addFields({
+                    name: `${a.userTag} — ${a.violationType || 'unknown'}`,
+                    value: `**Reason:** ${a.reason?.substring(0, 100) || 'No reason'}\n**Delivery:** ${a.deliveryMethod || 'unknown'}\n**ID:** \`${a.id}\``,
+                    inline: false
+                });
+            }
+            return msg.reply({ embeds: [e] });
+        }
+
         if (action === 'status') {
             const logId = resolveSetting(settings, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
             const wl = settings?.autoModWhitelist;
             const domainList = parseDomainWhitelist(settings?.autoModDomains);
             const rawChannels = settings?.automodChannels || settings?.automod_channels || '';
             const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : 'All channels';
+            const pendingCount = formatPendingAppeals(msg.guild.id).length;
             const e = new EmbedBuilder()
                 .setColor(settings?.autoModEnabled ? C.GREEN : C.RED)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -994,7 +1159,8 @@ module.exports = {
                     { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
                     { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
                     { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true },
-                    { name: 'Restricted Channels', value: channelList, inline: false }
+                    { name: 'Restricted Channels', value: channelList, inline: false },
+                    { name: 'Pending Appeals', value: pendingCount > 0 ? `${pendingCount} — use \`.automod appeals\` to review` : 'None', inline: false }
                 )
                 .setFooter({ text: 'Use .automod domains to manage • ARCHON CG-223' })
                 .setTimestamp();
@@ -1122,7 +1288,7 @@ module.exports = {
             client.updateServerSetting(msg.guild.id, 'automodlog', ch.id); client.settings.delete(msg.guild.id);
             return msg.reply(`✅ Log → ${ch}`);
         }
-        return msg.reply('❓ Usage: .automod [status|enable|disable|sensitivity|whitelist|domains|channels|log]');
+        return msg.reply('❓ Usage: .automod [status|enable|disable|sensitivity|whitelist|domains|channels|log|appeals]');
     },
 
     async handleMessage(message, client, db) {

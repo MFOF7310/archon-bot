@@ -1,7 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes, MessageFlags } = require('discord.js');
+const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, REST, Routes, MessageFlags } = require('discord.js');
 
 // ================= MALI-OPTIMIZED ASSET CACHE =================
 const AssetCache = require('./plugins/asset-cache.js');
@@ -3678,6 +3678,59 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         } catch (err) {
             console.error('[APPEAL BUTTON]', err.message);
         }
+    }
+
+    // ================= AUTOMOD DM APPEAL BUTTON =================
+    if (interaction.isButton() && interaction.customId.startsWith('automod_appeal_')) {
+        const parts = interaction.customId.split('_');
+        const userId = parts[2];
+        const guildId = parts[3];
+        
+        if (interaction.user.id !== userId) {
+            return interaction.reply({ content: '🔒 This appeal button is not for you.', flags: 1 << 6 }).catch(() => {});
+        }
+
+        const modal = new ModalBuilder()
+            .setCustomId(`appeal_modal_${userId}_${guildId}`)
+            .setTitle('📝 Appeal AutoMod Action');
+
+        const reasonInput = new TextInputBuilder()
+            .setCustomId('appeal_reason')
+            .setLabel('Why should this action be reversed?')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(true)
+            .setMaxLength(500)
+            .setPlaceholder('Explain why this was a mistake...');
+
+        modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
+
+        return interaction.showModal(modal).catch(() => {});
+    }
+
+    // ================= APPEAL MODAL SUBMIT =================
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('appeal_modal_')) {
+        const parts = interaction.customId.split('_');
+        const userId = parts[2];
+        const guildId = parts[3];
+        const reason = interaction.fields.getTextInputValue('appeal_reason');
+        
+        // Forward to DM appeal handler with formatted message
+        const fakeMessage = {
+            author: interaction.user,
+            content: `appeal ${interaction.client.guilds.cache.get(guildId)?.name || guildId} | ${reason}`,
+            guild: null,
+            reply: async (options) => interaction.reply({ ...options, flags: 1 << 6 }).catch(() => {}),
+        };
+        
+        try {
+            const automod = client.commands.get('automod');
+            if (automod?.handleDM) {
+                await automod.handleDM(fakeMessage, client);
+            }
+        } catch (err) {
+            console.error('[APPEAL MODAL]', err.message);
+        }
+        return;
     }
 
     // ================= WELCOME BUTTON HANDLER =================
