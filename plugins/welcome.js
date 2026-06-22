@@ -1,6 +1,7 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
-// ║  🦅 ARCHON CG-223 — WELCOME/GOODBYE PLUGIN v4.0                     ║
-// ║  Single canvas output | Warm welcome | Random pro-tips | Real age   ║
+// ║  🦅 ARCHON CG-223 — WELCOME/GOODBYE PLUGIN v4.2                     ║
+// ║  FIX: AttachmentBuilder for Discord.js v14+ embed images           ║
+// ║  Base64 data URLs are NOT valid in embed.setImage() — use files     ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
 const { EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
@@ -9,11 +10,40 @@ const Style = require('./welcome-style.js');
 // ================= HELPERS =================
 function applyOwnerEnvFallback(cfg, guildId) {
     // Top priority: Per-server isolation. Aligned with serverSettings.js keys.
+    // ONLY applies env fallbacks for the OWNER server — prevents credential leakage.
     if (guildId === process.env.GUILD_ID) { 
         cfg.welcomeChannel = cfg.welcomeChannel || process.env.WELCOME_CHANNEL_ID;
         cfg.goodbyeChannel = cfg.goodbyeChannel || process.env.GOODBYE_CHANNEL_ID;
     }
     return cfg;
+}
+
+// ================= SLASH TEST MEMBER PROXY =================
+// Slash command interactions provide a GuildMember that may not have all
+// the same properties as a real GuildMember (e.g., displayAvatarURL is on .user)
+// This proxy ensures the canvas renderer gets a consistent member object.
+function createMemberProxy(member) {
+    // If it's already a proper GuildMember with displayAvatarURL, return as-is
+    if (member && typeof member.displayAvatarURL === 'function') {
+        return member;
+    }
+
+    // If it's an InteractionGuildMember (slash context), wrap it
+    if (member && member.user) {
+        return new Proxy(member, {
+            get(target, prop) {
+                if (prop === 'displayAvatarURL') {
+                    return target.user.displayAvatarURL.bind(target.user);
+                }
+                if (prop === 'displayName') {
+                    return target.user.displayName || target.user.username;
+                }
+                return target[prop];
+            }
+        });
+    }
+
+    return member;
 }
 
 // ================= HANDLERS =================
@@ -32,19 +62,23 @@ async function handleWelcome(member, client, db) {
     const count = member.guild.memberCount;
     const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
 
-        // SINGLE canvas render — no duplicates
-    const png = await Style.renderWelcomeCard(member, count, cfg);
+    // Wrap member for consistent avatar access (fixes slash test crash)
+    const safeMember = createMemberProxy(member);
 
-    // Convert canvas buffer to base64 data URL (no duplicate attachment)
-    const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
+    // SINGLE canvas render — no duplicates
+    const png = await Style.renderWelcomeCard(safeMember, count, cfg);
+
+    // FIX: Discord.js v14+ requires AttachmentBuilder for embed images
+    // Base64 data URLs are NOT valid for embed.setImage()
+    const attachment = new AttachmentBuilder(png, { name: 'welcome-card.png' });
 
     // Warm welcome text (no ANSI block)
-    let content = Style.warmWelcomeText(member, count, cfg);
+    let content = Style.warmWelcomeText(safeMember, count, cfg);
 
     // Custom message support — prepended if set
     const customTemplate = cfg.welcomeMessage;
     if (customTemplate) {
-        content = `${Style.formatTemplate(customTemplate, member, count)}\n${content}`;
+        content = `${Style.formatTemplate(customTemplate, safeMember, count)}\n${content}`;
     }
 
     // Random pro-tips (3-5 tips, feature-gated)
@@ -55,15 +89,15 @@ async function handleWelcome(member, client, db) {
 
     content += tipBlock;
 
-    // Build embed with single image attachment
+    // Build embed with attachment reference (NOT base64 data URL)
     const embed = new EmbedBuilder()
         .setColor(0x00fbff)
-        .setImage(dataUrl)
+        .setImage('attachment://welcome-card.png')  // Reference the attachment
         .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Member #${count}` })
         .setTimestamp();
 
     // Build buttons — suppress rules/general if channels are configured
-    const buttonDefs = Style.getWelcomeButtons(cfg, member);
+    const buttonDefs = Style.getWelcomeButtons(cfg, safeMember);
     const rows = [];
     let currentRow = new ActionRowBuilder();
     let btnCount = 0;
@@ -96,10 +130,12 @@ async function handleWelcome(member, client, db) {
     }
     if (btnCount > 0) rows.push(currentRow);
 
+    // FIX: Include attachment in the send() call
     await ch.send({
         content,
         embeds: [embed],
-        components: rows.length > 0 ? rows : undefined
+        components: rows.length > 0 ? rows : undefined,
+        files: [attachment]  // <-- Discord.js v14+ requires this
     }).catch(() => {});
 }
 
@@ -117,29 +153,34 @@ async function handleGoodbye(member, client, db) {
     const duration = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
     const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
 
-        // SINGLE canvas render
-    const png = await Style.renderGoodbyeCard(member, duration, roles.length);
+    // Wrap member for consistent avatar access
+    const safeMember = createMemberProxy(member);
 
-    // Convert canvas buffer to base64 data URL (no duplicate attachment)
-    const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
+    // SINGLE canvas render
+    const png = await Style.renderGoodbyeCard(safeMember, duration, roles.length);
 
-    let content = Style.goodbyeText(member, duration, roles.length);
+    // FIX: Use AttachmentBuilder for Discord.js v14+
+    const attachment = new AttachmentBuilder(png, { name: 'goodbye-card.png' });
+
+    let content = Style.goodbyeText(safeMember, duration, roles.length);
 
     // Custom goodbye message support
     const customTemplate = cfg.goodbyeMessage;
     if (customTemplate) {
-        content = `${Style.formatTemplate(customTemplate, member, member.guild.memberCount)}\n${content}`;
+        content = `${Style.formatTemplate(customTemplate, safeMember, member.guild.memberCount)}\n${content}`;
     }
 
     const embed = new EmbedBuilder()
         .setColor(0xe74c3c)
-        .setImage(dataUrl)
+        .setImage('attachment://goodbye-card.png')  // Reference the attachment
         .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Departure Log` })
         .setTimestamp();
 
+    // FIX: Include attachment in the send() call
     await ch.send({
         content,
         embeds: [embed],
+        files: [attachment]  // <-- Discord.js v14+ requires this
     }).catch(() => {});
 }
 
@@ -164,8 +205,8 @@ module.exports = {
         const sub = args[0]?.toLowerCase() || 'config';
         const prefix = serverSettings?.prefix || '.';
         let cfg = Style.normalizeWelcomeConfig(serverSettings);
-    cfg = applyOwnerEnvFallback(cfg, message.guild.id);
-        
+        cfg = applyOwnerEnvFallback(cfg, message.guild.id);
+
         if (sub === 'test') {
             const embed = new EmbedBuilder()
                 .setColor(0x00fbff)
@@ -276,7 +317,7 @@ module.exports = {
         const db = client.db;
         const ssRaw = client.getServerSettings?.(ix.guild.id) || {};
         let cfg = Style.normalizeWelcomeConfig(ssRaw);
-    cfg = applyOwnerEnvFallback(cfg, ix.guild.id);
+        cfg = applyOwnerEnvFallback(cfg, ix.guild.id);
 
         if (sc === 'config') {
             const embed = new EmbedBuilder()
@@ -298,7 +339,10 @@ module.exports = {
             const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
             if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
             await ix.reply({ content: 'Sending test welcome...', flags: 1 << 6 });
-            await handleWelcome(ix.member, client, db);
+
+            // FIX: Fetch the real GuildMember to ensure full properties for canvas
+            const realMember = await ix.guild.members.fetch(ix.user.id).catch(() => ix.member);
+            await handleWelcome(realMember, client, db);
             return;
         }
 

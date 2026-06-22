@@ -640,6 +640,7 @@ try {
         { name: 'ticket_categories_config', type: 'TEXT' },
         { name: 'ticket_limit_per_user', type: 'INTEGER DEFAULT 1' },
         { name: 'ticket_panel_message_id', type: 'TEXT' },
+        { name: 'automod_channels', type: 'TEXT' },
     ];
     
     let addedCount = 0;
@@ -904,6 +905,7 @@ function getServerSettings(guildId) {
             startingBalance: settings.starting_balance || 0,
             maxDailyStreak: settings.max_daily_streak || 365,
             
+            automodChannels: settings.automod_channels,
             autoModWhitelist: settings.automod_whitelist,
             autoModSensitivity: settings.automod_sensitivity || 'medium',
             spamThreshold: settings.spam_threshold || 5,
@@ -1007,6 +1009,7 @@ function updateServerSetting(guildId, setting, value) {
         automod: 'automod_enabled',
         automodsensitivity: 'automod_sensitivity',
         automodwhitelist: 'automod_whitelist',
+        automodchannels: 'automod_channels',
         automodlog: 'automod_log_channel',
         language: 'language',
         timezone: 'timezone',
@@ -3664,6 +3667,19 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return;
     }
     
+    // ================= APPEAL TRIBUNAL BUTTONS =================
+    if (interaction.isButton() && interaction.customId.startsWith('appeal_')) {
+        try {
+            const automod = client.commands.get('automod');
+            if (automod?.handleAppealButton) {
+                const handled = await automod.handleAppealButton(interaction, client);
+                if (handled) return;
+            }
+        } catch (err) {
+            console.error('[APPEAL BUTTON]', err.message);
+        }
+    }
+
     // ================= WELCOME BUTTON HANDLER =================
     if (interaction.isButton() && interaction.customId === 'welcome_help') {
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : null;
@@ -4201,11 +4217,18 @@ safeOn(Events.GuildMemberAdd, async (member) => {
         await client.leveling.onMemberAdd(member, client, db);
     }
 
-    // ── WELCOME ORCHESTRATION ──
+        // ── WELCOME ORCHESTRATION ──
     // Load settings via shared normalizer for consistency
     const Style = require('./plugins/welcome-style.js');
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
-    const cfg = Style.normalizeWelcomeConfig(ssRaw);
+    let cfg = Style.normalizeWelcomeConfig(ssRaw);
+
+    // ── PER-SERVER ENV FALLBACK (owner server only — no leakage) ──
+    const isOwnerServer = member.guild.id === process.env.GUILD_ID;
+    if (isOwnerServer) {
+        cfg.welcomeChannel = cfg.welcomeChannel || process.env.WELCOME_CHANNEL_ID;
+        cfg.goodbyeChannel = cfg.goodbyeChannel || process.env.GOODBYE_CHANNEL_ID;
+    }
 
     // Determine if custom welcome is configured
     const hasCustomWelcome = cfg.welcomeChannel || cfg.welcomeMessage;
@@ -4269,10 +4292,17 @@ safeOn(Events.GuildMemberRemove, async (member) => {
     if (member.user.bot) return;
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
 
-    // ── WELCOME PLUGIN: ON MEMBER REMOVE (goodbye handler) ──
+        // ── WELCOME PLUGIN: ON MEMBER REMOVE (goodbye handler) ──
     const Style = require('./plugins/welcome-style.js');
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
-    const cfg = Style.normalizeWelcomeConfig(ssRaw);
+    let cfg = Style.normalizeWelcomeConfig(ssRaw);
+
+    // ── PER-SERVER ENV FALLBACK (owner server only — no leakage) ──
+    const isOwnerServer = member.guild.id === process.env.GUILD_ID;
+    if (isOwnerServer) {
+        cfg.welcomeChannel = cfg.welcomeChannel || process.env.WELCOME_CHANNEL_ID;
+        cfg.goodbyeChannel = cfg.goodbyeChannel || process.env.GOODBYE_CHANNEL_ID;
+    }
 
     const hasCustomGoodbye = cfg.goodbyeChannel || cfg.goodbyeMessage;
 
@@ -4929,3 +4959,4 @@ client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error('\x1b[31m[LOGIN ERROR]\x1b[0m Failed to connect to Discord:', err.message);
     console.error('\x1b[33m[TIP]\x1b[0m Check your internet connection and token validity.');
 });
+
