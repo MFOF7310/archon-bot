@@ -1,19 +1,34 @@
-const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
 
 // ================= THRESHOLDS =================
-const SPAM_THRESHOLD = 3;           // messages in window
-const SPAM_WINDOW = 5000;           // 5 seconds
-const CAPS_RATIO = 0.7;             // 70% uppercase
-const EMOJI_RATIO = 0.5;            // 50% emoji
-const MENTION_LIMIT = 4;            // @mentions
-const REPEAT_WINDOW = 15000;        // cross-channel repeat window
-const MAX_HISTORY = 100;            // per-user message cache
+const SPAM_THRESHOLD = 3;
+const SPAM_WINDOW = 5000;
+const CAPS_RATIO = 0.7;
+const EMOJI_RATIO = 0.5;
+const MENTION_LIMIT = 4;
+const REPEAT_WINDOW = 15000;
+const MAX_HISTORY = 100;
+const IMAGE_SPAM_LIMIT = 2;
+const IMAGE_SPAM_WINDOW = 10000;
+const EVERYONE_COOLDOWN = 30000;
 
 // ================= STATE =================
-const history = new Map();          // user:guild -> { messages: [], warns: 0 }
-const appealCooldowns = new Map();  // userId -> last appeal timestamp (ms)
-const APPEAL_COOLDOWN = 86400000;   // 24 hours, 1 appeal per user per day
+const history = new Map();
+const appealCooldowns = new Map();
+const everyoneCooldowns = new Map();
+const APPEAL_COOLDOWN = 86400000;
+
+// ================= APPEAL TRIBUNAL STATE =================
+const appealTribunal = new Map(); // appealId => { guildId, userId, ownerId, status, messageId, channelId, expiresAt }
+
+// Auto-cleanup expired tribunal entries every hour
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, data] of appealTribunal) {
+        if (data.expiresAt < now) appealTribunal.delete(id);
+    }
+}, 3600000);
 
 // ================= MALICIOUS PATTERNS =================
 const MALICIOUS = [
@@ -24,36 +39,25 @@ const MALICIOUS = [
     /t\.me\/\+?[a-zA-Z0-9_-]+/i,
 ];
 const INVITE_RE = /discord\.gg\/[a-zA-Z0-9_-]+/gi;
-const ANY_LINK_RE = /https?:\/\/[^\s<>"`{}|\[\]]+/gi;  // matches ALL URLs
+const ANY_LINK_RE = /https?:\/\/[^\s<>"`{}|\[\]]+/gi;
 
 // ================= DEFAULT DOMAIN WHITELIST =================
-// These domains are always allowed for everyone (safe, trusted sites)
 const DEFAULT_DOMAIN_WHITELIST = new Set([
-    // Google
     'google.com', 'www.google.com', 'youtube.com', 'www.youtube.com',
     'youtu.be', 'drive.google.com', 'docs.google.com', 'photos.google.com',
-    // GitHub / Dev
     'github.com', 'www.github.com', 'raw.githubusercontent.com',
     'stackoverflow.com', 'www.stackoverflow.com', 'stackexchange.com',
     'gitlab.com', 'www.gitlab.com', 'codepen.io', 'replit.com',
-    // Social (safe versions)
     'twitter.com', 'x.com', 'www.twitter.com', 'www.x.com',
-    'instagram.com', 'www.instagram.com',
-    'tiktok.com', 'www.tiktok.com',
-    'facebook.com', 'www.facebook.com',
-    'reddit.com', 'www.reddit.com',
-    'pinterest.com', 'www.pinterest.com',
-    // Media
-    'imgur.com', 'www.imgur.com', 'i.imgur.com',
-    'tenor.com', 'www.tenor.com', 'media.tenor.com',
+    'instagram.com', 'www.instagram.com', 'tiktok.com', 'www.tiktok.com',
+    'facebook.com', 'www.facebook.com', 'reddit.com', 'www.reddit.com',
+    'pinterest.com', 'www.pinterest.com', 'imgur.com', 'www.imgur.com',
+    'i.imgur.com', 'tenor.com', 'www.tenor.com', 'media.tenor.com',
     'giphy.com', 'www.giphy.com', 'media.giphy.com',
     'cdn.discordapp.com', 'media.discordapp.net',
-    // Utilities
-    'pastebin.com', 'www.pastebin.com',
-    'wikipedia.org', 'www.wikipedia.org', 'en.wikipedia.org',
-    'spotify.com', 'www.spotify.com', 'open.spotify.com',
+    'pastebin.com', 'www.pastebin.com', 'wikipedia.org', 'www.wikipedia.org',
+    'en.wikipedia.org', 'spotify.com', 'www.spotify.com', 'open.spotify.com',
     'steamcommunity.com', 'store.steampowered.com',
-    // Archon
     'bamako-steel-dev.xyz', 'www.bamako-steel-dev.xyz',
 ]);
 
@@ -62,7 +66,6 @@ function extractDomain(url) {
         const u = new URL(url);
         return u.hostname.toLowerCase();
     } catch {
-        // fallback for non-URL links
         const m = url.match(/^(?:https?:\/\/)?([^\/\s:]+)/i);
         return m ? m[1].toLowerCase() : '';
     }
@@ -70,23 +73,19 @@ function extractDomain(url) {
 
 function isDomainWhitelisted(content, customWhitelist) {
     const links = content.match(ANY_LINK_RE);
-    if (!links) return true; // no links = whitelisted
-
+    if (!links) return true;
     const whitelist = new Set([...DEFAULT_DOMAIN_WHITELIST, ...(customWhitelist || [])]);
-
     for (const link of links) {
         const domain = extractDomain(link);
         if (!domain) continue;
-        // Check exact match or parent domain
         if (whitelist.has(domain)) continue;
-        // Check parent domain (e.g., www.sub.youtube.com -> youtube.com)
         const parts = domain.split('.');
         let found = false;
         for (let i = 0; i < parts.length - 1; i++) {
             const parent = parts.slice(i).join('.');
             if (whitelist.has(parent)) { found = true; break; }
         }
-        if (!found) return false; // at least one link is not whitelisted
+        if (!found) return false;
     }
     return true;
 }
@@ -96,7 +95,6 @@ function parseDomainWhitelist(str) {
     return str.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 }
 
-// ================= HELPERS =================
 function key(uid, gid) { return `${uid}:${gid}`; }
 
 setInterval(() => {
@@ -104,11 +102,15 @@ setInterval(() => {
     for (const [k, v] of history) { if (v.last < cutoff) history.delete(k); }
 }, 600000);
 
-// Periodically clear stale appeal cooldowns (older than the cooldown window)
 setInterval(() => {
     const cutoff = Date.now() - APPEAL_COOLDOWN;
     for (const [uid, ts] of appealCooldowns) { if (ts < cutoff) appealCooldowns.delete(uid); }
 }, 3600000);
+
+setInterval(() => {
+    const cutoff = Date.now() - 300000;
+    for (const [gid, ts] of everyoneCooldowns) { if (ts < cutoff) everyoneCooldowns.delete(gid); }
+}, 60000);
 
 function normalize(s) { return s.toLowerCase().replace(/\s+/g, ' ').trim(); }
 
@@ -136,7 +138,6 @@ async function checkToxicity(text) {
     return null;
 }
 
-// ================= DISCORD-NATIVE STYLE CONSTANTS =================
 const C = { BLURPLE: 0x5865F2, RED: 0xED4245, GREEN: 0x3BA55D, YELLOW: 0xFAA61A, GREY: 0x2F3136, DARK: 0x202225 };
 const ICON = 'https://cdn.discordapp.com/embed/avatars/0.png';
 function fmtDur(ms) { return ms >= 86400000 ? `${Math.round(ms/86400000)} day${Math.round(ms/86400000)>1?'s':''}` : `${Math.round(ms/3600000)} hour${Math.round(ms/3600000)>1?'s':''}`; }
@@ -150,7 +151,6 @@ function isElevated(member) {
            member.permissions.has(PermissionsBitField.Flags.ManageGuild);
 }
 
-// ================= ACTION ENGINE =================
 async function takeAction(message, violations, client, db) {
     const uid = message.author.id, gid = message.guild.id;
     const k = key(uid, gid);
@@ -158,22 +158,20 @@ async function takeAction(message, violations, client, db) {
     entry.warns++;
     history.set(k, entry);
     const wc = entry.warns;
-    // Display strike count never exceeds the 4-strike scale (caps at 4 for UI purposes)
     const displayWc = Math.min(wc, 4);
 
-    // Determine action
     const hasMalicious = violations.some(v => v.type.includes('malicious') || v.type.includes('phishing'));
+    const hasEveryoneSpam = violations.some(v => v.type.includes('everyone') || v.type.includes('here'));
     let action = 'timeout', duration = 3600000;
     if (wc === 1) { action = 'timeout'; duration = 3600000; }
     else if (wc === 2) { action = 'timeout'; duration = 86400000; }
     else if (wc === 3) { action = 'timeout'; duration = 604800000; }
     else { action = 'ban'; duration = 0; }
     if (hasMalicious && wc >= 2) { action = 'ban'; duration = 0; }
+    if (hasEveryoneSpam && wc >= 1) { action = 'timeout'; duration = 86400000; }
 
-    // Delete message
     await message.delete().catch(() => {});
 
-    // Delete repeated messages across channels
     const repeatV = violations.find(v => v.channels);
     if (repeatV?.channels) {
         for (const cid of repeatV.channels) {
@@ -188,7 +186,6 @@ async function takeAction(message, violations, client, db) {
         }
     }
 
-    // Execute action
     const member = await message.guild.members.fetch(uid).catch(() => null);
     let actionText = 'Timed out', actionColor = C.YELLOW;
     try {
@@ -199,20 +196,15 @@ async function takeAction(message, violations, client, db) {
         } else if (action === 'ban' && member?.bannable) {
             await member.ban({ reason: `AutoMod: ${violations[0].reason}`, deleteMessageSeconds: 86400 });
             actionText = 'Banned'; actionColor = C.RED;
-            // Reset strike counter after a ban — the slate is wiped, so a future
-            // unban + re-offense starts back at strike 1 instead of "5 of 4", "6 of 4", etc.
             history.delete(k);
         } else {
             actionText = 'Warned (insufficient permissions)'; actionColor = C.GREY;
         }
     } catch (e) { actionText = 'Action failed'; actionColor = C.GREY; }
 
-    // ================= DM NOTIFICATION (Discord-native style) + APPEAL INFO =================
     try {
-        // Find an admin/mod to mention in appeal
         const guildOwner = await message.guild.fetchOwner().catch(() => null);
         const appealContact = guildOwner ? `<@${guildOwner.id}>` : 'a server administrator';
-
         const dm = new EmbedBuilder()
             .setColor(actionColor)
             .setAuthor({ name: 'AutoMod', iconURL: message.guild.iconURL({ size: 64 }) || ICON })
@@ -225,25 +217,19 @@ async function takeAction(message, violations, client, db) {
             )
             .setFooter({ text: `Strike ${displayWc} of 4` })
             .setTimestamp();
-
-        // Add allowed domains hint
         dm.addFields({
             name: 'Allowed link domains include',
-            value: '`youtube.com, youtu.be, github.com, twitter.com, x.com, instagram.com, reddit.com, wikipedia.org`\nContact an admin to request additions.',
+            value: 'youtube.com, youtu.be, github.com, twitter.com, x.com, instagram.com, reddit.com, wikipedia.org\nContact an admin to request additions.',
             inline: false
         });
-
-        // Add appeal section
         dm.addFields({
             name: 'Think this was a mistake?',
             value: `Reply here to start an appeal, or contact ${appealContact} directly.\nInclude: **server name**, **what you posted**, and why it should be allowed.`,
             inline: false
         });
-
         await message.author.send({ embeds: [dm] }).catch(() => {});
     } catch (e) {}
 
-    // ================= CHANNEL NOTIFICATION (10s, Discord-native) =================
     try {
         const notif = await message.channel.send({
             embeds: [new EmbedBuilder().setColor(actionColor).setDescription(`**${message.author.tag}** — ${actionText} by AutoMod\n**Rule:** ${violations[0].type}`)]
@@ -251,7 +237,6 @@ async function takeAction(message, violations, client, db) {
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
 
-    // ================= MOD LOG — CHANNEL (SANITIZED, no content exposed) =================
     const settings = client.getServerSettings?.(gid) || {};
     const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog || settings.log;
     if (logId) {
@@ -276,7 +261,6 @@ async function takeAction(message, violations, client, db) {
         }
     }
 
-    // ================= PRIVATE ADMIN DM — Full details with message content =================
     try {
         const owner = await message.guild.fetchOwner().catch(() => null);
         if (owner && !owner.user.bot) {
@@ -290,7 +274,7 @@ async function takeAction(message, violations, client, db) {
                     { name: 'Rule', value: violations[0].type, inline: true },
                     { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
                     { name: 'Strike', value: `${displayWc}/4`, inline: true },
-                    { name: 'Message Content', value: `\`\`\`${message.content.substring(0, 1800) || '(attachment)'}\`\`\``, inline: false }
+                    { name: 'Message Content', value: `\`\`\`${message.content.substring(0, 1800) || '(attachment / image)'}\`\`\``, inline: false }
                 )
                 .setFooter({ text: 'ARCHON CG-223 • Confidential' })
                 .setTimestamp();
@@ -298,7 +282,6 @@ async function takeAction(message, violations, client, db) {
         }
     } catch (e) {}
 
-    // DB log
     try { db.prepare(`INSERT INTO moderation_logs (guild_id,user_id,moderator_id,action,reason,timestamp) VALUES (?,?,?,?,?,?)`).run(gid, uid, client.user.id, action, `AutoMod: ${violations[0].reason}`, Date.now()); } catch (e) {}
     try { db.prepare(`INSERT INTO warnings (id,guild_id,user_id,moderator_id,reason,expires_at,active) VALUES (?,?,?,?,?,?,1)`).run(`AM-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`, gid, uid, client.user.id, `AutoMod: ${violations[0].reason}`, Math.floor(Date.now()/1000)+2592000); } catch (e) {}
 
@@ -306,7 +289,6 @@ async function takeAction(message, violations, client, db) {
     console.log(`[AUTOMOD] ${cc}${action.toUpperCase()} | ${message.author.tag} | ${violations.map(v=>v.type).join(', ')} | Strike ${displayWc}/4`);
 }
 
-// ================= DETECTION ENGINE =================
 async function scanMessage(message, client, db) {
     if (!message.guild || message.author.bot || message.webhookId) return false;
     const ss = client.getServerSettings?.(message.guild.id);
@@ -324,7 +306,7 @@ async function scanMessage(message, client, db) {
     const entry = history.get(k);
     entry.last = now;
 
-    const record = { ts: now, content: message.content, channelId: message.channel.id, mid: message.id, hasLinks: ANY_LINK_RE.test(message.content), norm: normalize(message.content) };
+    const record = { ts: now, content: message.content, channelId: message.channel.id, mid: message.id, hasLinks: ANY_LINK_RE.test(message.content), norm: normalize(message.content), attachments: message.attachments.size };
     entry.messages.push(record);
     const cutoff = now - 120000;
     while (entry.messages.length && entry.messages[0].ts < cutoff) entry.messages.shift();
@@ -334,6 +316,11 @@ async function scanMessage(message, client, db) {
     const recent = h.filter(m => now - m.ts <= SPAM_WINDOW);
     const violations = [];
     const seen = new Set();
+
+    // ── PER-SERVER CHANNEL RESTRICTION ──
+    const rawChannels = ss?.automodChannels || ss?.automod_channels || '';
+    const restrictedChannels = rawChannels ? rawChannels.split(',').map(c => c.trim()) : null;
+    const isRestrictedChannel = restrictedChannels ? restrictedChannels.includes(message.channel.id) : true;
 
     // 1. Message spam (same channel)
     if (recent.filter(m => m.channelId === message.channel.id).length >= SPAM_THRESHOLD && !seen.has('spam')) {
@@ -367,13 +354,29 @@ async function scanMessage(message, client, db) {
         seen.add('mention');
     }
 
+    // ── @everyone / @here spam ──
+    if (isRestrictedChannel && !seen.has('everyone')) {
+        const hasEveryone = message.content.includes('@everyone') || message.content.includes('@here');
+        if (hasEveryone && !isElevated(member)) {
+            const lastEveryone = everyoneCooldowns.get(gid) || 0;
+            if (now - lastEveryone > EVERYONE_COOLDOWN) {
+                everyoneCooldowns.set(gid, now);
+                violations.push({ type: 'everyone/here spam', reason: 'Unauthorized @everyone/@here ping', source: 'everyone' });
+                seen.add('everyone');
+            } else {
+                violations.push({ type: 'rapid everyone spam', reason: 'Multiple @everyone/@here pings in short window', source: 'everyone' });
+                seen.add('everyone');
+            }
+        }
+    }
+
     // 5. @here/@everyone + link
     if ((message.content.includes('@here') || message.content.includes('@everyone')) && record.hasLinks && !seen.has('promo')) {
         violations.push({ type: 'promotional spam', reason: '@here/@everyone + external link', source: 'promo', crossChannel: true });
         seen.add('promo');
     }
 
-    // 6. Malicious links (phishing/scams)
+    // 6. Malicious links
     if (record.hasLinks) {
         const mal = MALICIOUS.some(p => p.test(message.content));
         const inv = message.content.match(INVITE_RE);
@@ -381,14 +384,45 @@ async function scanMessage(message, client, db) {
         else if (inv?.length && !seen.has('invite')) { violations.push({ type: 'unauthorized invite', reason: 'External Discord invite', source: 'invite' }); seen.add('invite'); }
     }
 
-    // 7. GLOBAL LINK BLOCKER — Block ALL links from non-admin/non-mod users
-    // (unless domain is in whitelist)
+    // 7. Global link blocker
     if (record.hasLinks && !seen.has('malicious') && !seen.has('invite') && !seen.has('global_link')) {
         if (!isElevated(member)) {
             const customDomains = parseDomainWhitelist(ss?.autoModDomains);
             if (!isDomainWhitelisted(message.content, customDomains)) {
                 violations.push({ type: 'unauthorized link', reason: 'Link domain not permitted', source: 'global_link' });
                 seen.add('global_link');
+            }
+        }
+    }
+
+    // ── Image/attachment spam ──
+    if (isRestrictedChannel && !seen.has('image_spam')) {
+        const imageRecent = h.filter(m => 
+            now - m.ts <= IMAGE_SPAM_WINDOW && 
+            m.channelId === message.channel.id &&
+            m.attachments > 0
+        );
+        const totalImages = imageRecent.reduce((sum, m) => sum + m.attachments, 0);
+        if (totalImages >= IMAGE_SPAM_LIMIT) {
+            violations.push({ type: 'image spam', reason: `${totalImages} images in ${IMAGE_SPAM_WINDOW/1000}s`, source: 'image_spam' });
+            seen.add('image_spam');
+        }
+    }
+
+    // ── Attachment-only spam ──
+    if (isRestrictedChannel && !seen.has('attachment_spam') && message.attachments.size > 0) {
+        const textContent = message.content.trim();
+        const hasOnlyMentions = textContent.length > 0 && /^[@<>:!&\s\d]+$/.test(textContent);
+        if (textContent.length === 0 || hasOnlyMentions) {
+            const attachmentRecent = h.filter(m => 
+                now - m.ts <= IMAGE_SPAM_WINDOW && 
+                m.channelId === message.channel.id &&
+                m.attachments > 0 &&
+                (m.content.trim().length === 0 || /^[@<>:!&\s\d]+$/.test(m.content.trim()))
+            );
+            if (attachmentRecent.length >= 2) {
+                violations.push({ type: 'attachment spam', reason: 'Multiple image-only posts', source: 'attachment_spam' });
+                seen.add('attachment_spam');
             }
         }
     }
@@ -426,17 +460,14 @@ async function scanMessage(message, client, db) {
     return false;
 }
 
-// ================= APPEAL HANDLER (DM only) =================
 async function handleAppeal(message, client) {
-    if (message.guild) return; // DMs only
+    if (message.guild) return;
     if (message.author.bot) return;
 
     const content = message.content.trim();
     const lower = content.toLowerCase();
 
-    // Check if user is asking to see their strikes / how to appeal
     if (lower === 'appeal' || lower === 'help') {
-        // Find guilds where this user has been actioned by AutoMod
         const appeals = [];
         for (const [guildId, guild] of client.guilds.cache) {
             try {
@@ -460,7 +491,6 @@ async function handleAppeal(message, client) {
             }).catch(() => {});
         }
 
-        // Show active strikes and appeal instructions
         const embed = new EmbedBuilder()
             .setColor(C.YELLOW)
             .setTitle('AutoMod Appeal')
@@ -477,15 +507,13 @@ async function handleAppeal(message, client) {
 
         embed.addFields({
             name: 'How to appeal',
-            value: 'Reply with:\n`appeal [server name] | [your message]`\n\nExample:\n`appeal Testing bot | I was just excited, not flooding caps on purpose`\n\n⚠️ You get **1 appeal per server every 24 hours** — make it count.\nOr contact the server owner directly.',
+            value: 'Reply with:\n"appeal [server name] | [your message]"\n\nExample:\n"appeal Testing bot | I was just excited, not flooding caps on purpose"\n\n⚠️ You get **1 appeal per server every 24 hours** — make it count.\nOr contact the server owner directly.',
             inline: false
         });
 
         return message.reply({ embeds: [embed] }).catch(() => {});
     }
 
-    // Handle appeal submission: "appeal [server name] | [reason]"
-    // Pipe-delimited so multi-word server names (e.g. "Testing bot") parse correctly.
     if (lower.startsWith('appeal ')) {
         const body = content.substring(7).trim();
         const pipeIdx = body.indexOf('|');
@@ -495,9 +523,6 @@ async function handleAppeal(message, client) {
             serverName = body.substring(0, pipeIdx).trim();
             reason = body.substring(pipeIdx + 1).trim() || 'No reason provided';
         } else {
-            // No pipe given. Only safe to guess when the FIRST WORD ALONE already
-            // matches a guild — that covers single-word server names without
-            // risking a silent mis-parse on multi-word names like "Testing bot".
             usedFallback = true;
             const parts = body.split(' ');
             serverName = parts[0];
@@ -509,12 +534,11 @@ async function handleAppeal(message, client) {
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle('Missing Server Name')
-                    .setDescription('Usage:\n`appeal [server name] | [your message]`\n\nExample:\n`appeal Testing bot | I was just excited, not flooding caps on purpose`')
+                    .setDescription('Usage:\n"appeal [server name] | [your message]"\n\nExample:\n"appeal Testing bot | I was just excited, not flooding caps on purpose"')
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
 
-        // Find matching guild
         let targetGuild = null;
         for (const [gid, guild] of client.guilds.cache) {
             if (guild.name.toLowerCase().includes(serverName.toLowerCase())) {
@@ -523,14 +547,12 @@ async function handleAppeal(message, client) {
             }
         }
 
-        // If we had to guess (no pipe) and the guess didn't match anything, don't
-        // keep guessing with partial words — tell the user to use the explicit format.
         if (!targetGuild && usedFallback && body.split(' ').length > 1) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
-                    .setTitle('Couldn\'t Identify the Server')
-                    .setDescription(`I couldn't tell where the server name ends and your message begins.\n\nPlease use the pipe format so I parse it correctly:\n\`appeal [server name] | [your message]\`\n\nExample:\n\`appeal Testing bot | I was just excited, not flooding caps on purpose\``)
+                    .setTitle('Could not Identify the Server')
+                    .setDescription('I could not tell where the server name ends and your message begins.\n\nPlease use the pipe format so I parse it correctly:\n"appeal [server name] | [your message]"\n\nExample:\n"appeal Testing bot | I was just excited, not flooding caps on purpose"')
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -540,12 +562,11 @@ async function handleAppeal(message, client) {
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle('Server Not Found')
-                    .setDescription("I couldn't find a server matching \"" + serverName + "\".\nUse `appeal` to see your active strikes.")
+                    .setDescription('I could not find a server matching "' + serverName + '".\nUse "appeal" to see your active strikes.')
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
 
-        // ── COOLDOWN CHECK: 1 appeal per user per server per 24h ──
         const cdKey = `${message.author.id}:${targetGuild.id}`;
         const lastAppeal = appealCooldowns.get(cdKey);
         const now = Date.now();
@@ -556,44 +577,68 @@ async function handleAppeal(message, client) {
                 embeds: [new EmbedBuilder()
                     .setColor(C.YELLOW)
                     .setTitle('Appeal Cooldown Active')
-                    .setDescription(`You've already submitted an appeal for **${targetGuild.name}** recently.\nYou can submit one appeal per server every 24 hours.\n\nTry again in **${remainingHrs} hour${remainingHrs !== 1 ? 's' : ''}**.`)
+                    .setDescription(`You have already submitted an appeal for **${targetGuild.name}** recently.\nYou can submit one appeal per server every 24 hours.\n\nTry again in **${remainingHrs} hour${remainingHrs !== 1 ? 's' : ''}**.`)
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
 
-        // ── FORWARD TO SERVER OWNER ──
         try {
             const owner = await targetGuild.fetchOwner().catch(() => null);
             if (owner && !owner.user.bot) {
-                const appealEmbed = new EmbedBuilder()
+                // ── TRIBUNAL BUTTONS ──
+                const appealId = `AP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel('✅ Approve').setStyle(ButtonStyle.Success),
+                    new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel('❌ Reject').setStyle(ButtonStyle.Danger),
+                    new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel('🔨 Ban Appeals').setStyle(ButtonStyle.Secondary)
+                );
+
+                // Get evidence from history
+                const evidence = entry?.lastMessageContent || '*(content unavailable)*';
+                const violationType = entry?.lastViolation || 'unknown';
+                const violationTime = entry?.lastViolationTime 
+                    ? `<t:${Math.floor(entry.lastViolationTime / 1000)}:R>` 
+                    : 'unknown';
+
+                const tribunalEmbed = new EmbedBuilder()
                     .setColor(C.BLURPLE)
-                    .setAuthor({ name: 'AutoMod Appeal', iconURL: message.author.displayAvatarURL() })
-                    .setTitle('New Appeal Received')
-                    .setDescription(`**From:** ${message.author.tag} (${message.author.id})\n**Server:** ${targetGuild.name}\n**Reason:** ${reason}`)
-                    .setFooter({ text: 'Reply to this DM to contact the user • ARCHON CG-223' })
+                    .setAuthor({ name: 'AutoMod Appeal Tribunal', iconURL: message.author.displayAvatarURL() })
+                    .setTitle('⚖️ New Appeal Received')
+                    .setDescription(`**From:** ${message.author.tag} (${message.author.id})
+**Server:** ${targetGuild.name}
+**Reason:** ${reason}
+
+**Strikes:** ${Math.min(entry?.warns || 1, 4)}/4`)
+                    .addFields(
+                        { name: '🛡️ Original Violation', value: `\`${violationType}\``, inline: true },
+                        { name: '⏰ When', value: violationTime, inline: true },
+                        { name: '⚡ Action Taken', value: entry?.lastAction ? `${entry.lastAction} (${entry.lastDuration ? fmtDur(entry.lastDuration) : 'permanent'})` : 'unknown', inline: true },
+                        { name: '📄 Deleted Message', value: `\`\`\`${evidence.substring(0, 900)}\`\`\`` }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223 • Click to render verdict' })
                     .setTimestamp();
 
-                const sent = await owner.send({ embeds: [appealEmbed] }).catch(() => null);
+                const sent = await owner.send({ embeds: [tribunalEmbed], components: [row] }).catch(() => null);
 
-                if (!sent) {
-                    // Owner has DMs closed — don't start the cooldown, let them retry / contact directly
-                    return message.reply({
-                        embeds: [new EmbedBuilder()
-                            .setColor(C.RED)
-                            .setTitle('Appeal Could Not Be Delivered')
-                            .setDescription(`I couldn't reach the owner of **${targetGuild.name}** by DM.\nTry contacting a server admin directly instead.`)
-                            .setFooter({ text: 'ARCHON CG-223' })]
-                    }).catch(() => {});
+                if (sent) {
+                    appealTribunal.set(appealId, {
+                        guildId: targetGuild.id,
+                        userId: message.author.id,
+                        ownerId: owner.id,
+                        status: 'pending',
+                        messageId: sent.id,
+                        channelId: sent.channel.id,
+                        expiresAt: Date.now() + 7 * 86400000 // 7 days
+                    });
                 }
 
-                // Start cooldown only after a successful forward
                 appealCooldowns.set(cdKey, now);
 
                 return message.reply({
                     embeds: [new EmbedBuilder()
                         .setColor(C.GREEN)
                         .setTitle('✅ Appeal Submitted')
-                        .setDescription(`Your appeal for **${targetGuild.name}** has been forwarded to the server owner.\n\n🕊️ **Please be patient** — they'll review it and may reach out to you directly. Since you get one appeal per server per day, sending follow-up messages here won't speed things up, but I'll let you know if anything changes.`)
+                        .setDescription(`Your appeal for **${targetGuild.name}** has been forwarded to the server owner.\n\n🕊️ **Please be patient** — they will review it and may reach out to you directly. Since you get one appeal per server per day, sending follow-up messages here won't speed things up, but I will let you know if anything changes.`)
                         .setFooter({ text: 'ARCHON CG-223' })]
                 }).catch(() => {});
             } else {
@@ -617,7 +662,118 @@ async function handleAppeal(message, client) {
     }
 }
 
-// ================= GATEWAY RULES =================
+// ================= TRIBUNAL BUTTON HANDLER =================
+async function handleAppealButton(interaction, client) {
+    if (!interaction.isButton() || !interaction.customId.startsWith('appeal_')) return false;
+
+    const parts = interaction.customId.split('_');
+    const action = parts[1];
+    const appealId = parts[2];
+    const vote = appealTribunal.get(appealId);
+
+    if (!vote) {
+        return interaction.reply({ content: '⚠️ This appeal has expired or was already ruled on.', flags: 1 << 6 }).catch(() => {});
+    }
+
+    if (interaction.user.id !== vote.ownerId) {
+        return interaction.reply({ content: '🔒 Only the server owner can rule on this appeal.', flags: 1 << 6 }).catch(() => {});
+    }
+
+    if (vote.status !== 'pending') {
+        return interaction.reply({ content: '⚠️ This appeal was already decided.', flags: 1 << 6 }).catch(() => {});
+    }
+
+    const guild = client.guilds.cache.get(vote.guildId);
+    const targetUser = await client.users.fetch(vote.userId).catch(() => null);
+
+    if (action === 'approve') {
+        const k = key(vote.userId, vote.guildId);
+        const entry = history.get(k);
+        if (entry && entry.warns > 0) {
+            entry.warns = Math.max(0, entry.warns - 1);
+            history.set(k, entry);
+        }
+
+        if (targetUser) {
+            await targetUser.send({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.GREEN)
+                    .setTitle('✅ Appeal Approved')
+                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **approved** by the owner.
+
+Your strike count has been reduced. Stay clean! 🕊️`)
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
+        vote.status = 'approved';
+        appealTribunal.set(appealId, vote);
+
+        await interaction.update({
+            content: `✅ **APPROVED** by ${interaction.user.tag}
+Strike reduced. User notified.`,
+            embeds: [],
+            components: []
+        }).catch(() => {});
+
+    } else if (action === 'reject') {
+        if (targetUser) {
+            await targetUser.send({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.RED)
+                    .setTitle('❌ Appeal Rejected')
+                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **rejected** by the owner.
+
+The punishment stands. You can appeal again in 24 hours.`)
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
+        vote.status = 'rejected';
+        appealTribunal.set(appealId, vote);
+
+        await interaction.update({
+            content: `❌ **REJECTED** by ${interaction.user.tag}
+Punishment stands. User notified.`,
+            embeds: [],
+            components: []
+        }).catch(() => {});
+
+    } else if (action === 'ban') {
+        const banKey = `ban:${vote.userId}:${vote.guildId}`;
+        appealCooldowns.set(banKey, Date.now() + 7 * 86400000);
+
+        const k = key(vote.userId, vote.guildId);
+        const entry = history.get(k) || { messages: [], warns: 0, last: Date.now() };
+        entry.warns++;
+        history.set(k, entry);
+
+        if (targetUser) {
+            await targetUser.send({
+                embeds: [new EmbedBuilder()
+                    .setColor(C.DARK)
+                    .setTitle('🚫 Appeal Banned')
+                    .setDescription(`You have been **banned from appealing** on **${guild?.name || 'the server'}** for **7 days** due to frivolous appeals.
+
+You also received an additional strike.`)
+                    .setFooter({ text: 'ARCHON CG-223' })]
+            }).catch(() => {});
+        }
+
+        vote.status = 'banned';
+        appealTribunal.set(appealId, vote);
+
+        await interaction.update({
+            content: `🔨 **APPEAL BANNED** by ${interaction.user.tag}
+User cannot appeal for 7 days. +1 strike added.`,
+            embeds: [],
+            components: []
+        }).catch(() => {});
+    }
+
+    return true;
+}
+
 async function syncRules(guild, action, settings) {
     const PREFIX = 'ARCHON CG-223';
     try {
@@ -650,14 +806,12 @@ async function syncRules(guild, action, settings) {
     } catch (e) { console.log(`[AUTOMOD GATEWAY] ${e.message}`); return false; }
 }
 
-// ================= RESOLVER =================
 function resolveSetting(s, ...keys) { for (const k of keys) { if (s?.[k] != null && s[k] !== '') return s[k]; } return null; }
 
-// ================= MODULE =================
 module.exports = {
     name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
-    description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, domain-based link blocking, and appeals.',
-    usage: '.automod [status|enable|disable|sensitivity|whitelist|domains|log]',
+    description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, domain-based link blocking, image spam detection, @everyone protection, and appeals.',
+    usage: '.automod [status|enable|disable|sensitivity|whitelist|domains|log|channels]',
     cooldown: 3000,
 
     data: new SlashCommandBuilder().setName('automod').setDescription('🛡️ Configure AutoMod').
@@ -668,9 +822,9 @@ module.exports = {
         addSubcommand(s => s.setName('sensitivity').setDescription('Set sensitivity').addStringOption(o => o.setName('level').setDescription('Level').setRequired(true).addChoices({name:'🟢 Low',value:'low'},{name:'🟡 Medium',value:'medium'},{name:'🔴 High',value:'high'}))).
         addSubcommand(s => s.setName('whitelist').setDescription('Whitelist role').addRoleOption(o => o.setName('role').setDescription('Role (skip to clear)').setRequired(false))).
         addSubcommand(s => s.setName('domains').setDescription('Manage allowed link domains').addStringOption(o => o.setName('action').setDescription('add, remove, list, or reset').setRequired(true).addChoices({name:'📋 List allowed domains',value:'list'},{name:'➕ Add domain',value:'add'},{name:'➖ Remove domain',value:'remove'},{name:'🔄 Reset to defaults',value:'reset'})).addStringOption(o => o.setName('domain').setDescription('Domain to add/remove (e.g., example.com)').setRequired(false))).
-        addSubcommand(s => s.setName('log').setDescription('Set log channel').addChannelOption(o => o.setName('channel').setDescription('Channel').setRequired(true))),
+        addSubcommand(s => s.setName('log').setDescription('Set log channel').addChannelOption(o => o.setName('channel').setDescription('Channel').setRequired(true))).
+        addSubcommand(s => s.setName('channels').setDescription('Restrict AutoMod to specific channels').addStringOption(o => o.setName('action').setDescription('add, remove, list, or clear').setRequired(true).addChoices({name:'📋 List restricted channels',value:'list'},{name:'➕ Add channel',value:'add'},{name:'➖ Remove channel',value:'remove'},{name:'🔄 Clear all',value:'clear'})).addChannelOption(o => o.setName('channel').setDescription('Channel to add/remove').setRequired(false))),
 
-    // ================= SLASH =================
     execute: async (ix, client) => {
         const adm = ix.member.permissions.has(PermissionsBitField.Flags.Administrator);
         if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
@@ -682,6 +836,8 @@ module.exports = {
             const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
             const wl = ss?.autoModWhitelist;
             const domainList = parseDomainWhitelist(ss?.autoModDomains);
+            const rawChannels = ss?.automodChannels || ss?.automod_channels || '';
+            const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : 'All channels';
             const e = new EmbedBuilder()
                 .setColor(ss?.autoModEnabled ? C.GREEN : C.RED)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -691,7 +847,8 @@ module.exports = {
                     { name: 'Sensitivity', value: (ss?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
                     { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
                     { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
-                    { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true }
+                    { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true },
+                    { name: 'Restricted Channels', value: channelList, inline: false }
                 )
                 .setFooter({ text: 'Use /automod domains to manage • ARCHON CG-223' })
                 .setTimestamp();
@@ -755,15 +912,13 @@ module.exports = {
                     .setFooter({ text: 'ARCHON CG-223' });
                 return ix.reply({ embeds: [e], flags: 1 << 6 });
             }
-
             if (action === 'add') {
-                if (!domain) return ix.reply({ content: '❌ Provide a domain. Example: `example.com`', flags: 1 << 6 });
+                if (!domain) return ix.reply({ content: '❌ Provide a domain. Example: example.com', flags: 1 << 6 });
                 if (list.includes(domain)) return ix.reply({ content: '⚠️ `' + domain + '` is already allowed.', flags: 1 << 6 });
                 const nw = cur ? `${cur},${domain}` : domain;
                 client.updateServerSetting(ix.guild.id, 'automoddomains', nw); client.settings.delete(ix.guild.id);
                 return ix.reply({ content: '✅ Added `' + domain + '` to allowed domains.', flags: 1 << 6 });
             }
-
             if (action === 'remove') {
                 if (!domain) return ix.reply({ content: '❌ Provide a domain to remove.', flags: 1 << 6 });
                 if (!list.includes(domain)) return ix.reply({ content: '⚠️ `' + domain + '` is not in the custom list.', flags: 1 << 6 });
@@ -771,13 +926,45 @@ module.exports = {
                 client.updateServerSetting(ix.guild.id, 'automoddomains', nw || null); client.settings.delete(ix.guild.id);
                 return ix.reply({ content: '✅ Removed `' + domain + '` from allowed domains.', flags: 1 << 6 });
             }
-
             if (action === 'reset') {
                 client.updateServerSetting(ix.guild.id, 'automoddomains', null); client.settings.delete(ix.guild.id);
                 return ix.reply({ content: `✅ Custom domains cleared. Using defaults only.`, flags: 1 << 6 });
             }
         }
+        if (sc === 'channels') {
+            const action = ix.options.getString('action');
+            const ch = ix.options.getChannel('channel');
+            const rawCur = ss?.automodChannels || ss?.automod_channels || '';
+            const list = rawCur ? rawCur.split(',').map(c => c.trim()).filter(Boolean) : [];
 
+            if (action === 'list') {
+                const channelList = list.length > 0 ? list.map(c => `<#${c}>`).join(' ') : 'All channels (no restrictions)';
+                const e = new EmbedBuilder()
+                    .setColor(C.BLURPLE)
+                    .setAuthor({ name: 'AutoMod — Channel Restrictions', iconURL: client.user.displayAvatarURL() })
+                    .setDescription(`AutoMod is active in: ${channelList}`)
+                    .setFooter({ text: 'ARCHON CG-223' });
+                return ix.reply({ embeds: [e], flags: 1 << 6 });
+            }
+            if (action === 'add') {
+                if (!ch) return ix.reply({ content: '❌ Mention a channel.', flags: 1 << 6 });
+                if (list.includes(ch.id)) return ix.reply({ content: '⚠️ Already restricted.', flags: 1 << 6 });
+                const nw = rawCur ? `${rawCur},${ch.id}` : ch.id;
+                client.updateServerSetting(ix.guild.id, 'automodchannels', nw); client.settings.delete(ix.guild.id);
+                return ix.reply({ content: `✅ AutoMod now active in <#${ch.id}>`, flags: 1 << 6 });
+            }
+            if (action === 'remove') {
+                if (!ch) return ix.reply({ content: '❌ Mention a channel.', flags: 1 << 6 });
+                if (!list.includes(ch.id)) return ix.reply({ content: '⚠️ Not in list.', flags: 1 << 6 });
+                const nw = list.filter(c => c !== ch.id).join(',');
+                client.updateServerSetting(ix.guild.id, 'automodchannels', nw || null); client.settings.delete(ix.guild.id);
+                return ix.reply({ content: `✅ Removed <#${ch.id}> from restrictions.`, flags: 1 << 6 });
+            }
+            if (action === 'clear') {
+                client.updateServerSetting(ix.guild.id, 'automodchannels', null); client.settings.delete(ix.guild.id);
+                return ix.reply({ content: `✅ Channel restrictions cleared. AutoMod active in all channels.`, flags: 1 << 6 });
+            }
+        }
         if (sc === 'log') {
             const ch = ix.options.getChannel('channel');
             client.updateServerSetting(ix.guild.id, 'automodlog', ch.id); client.settings.delete(ix.guild.id);
@@ -785,7 +972,6 @@ module.exports = {
         }
     },
 
-    // ================= PREFIX =================
     run: async (client, msg, args, db, ss) => {
         const adm = msg.member.permissions.has(PermissionsBitField.Flags.Administrator);
         if (!adm) return msg.reply('🔒 Admin only.');
@@ -796,6 +982,8 @@ module.exports = {
             const logId = resolveSetting(settings, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
             const wl = settings?.autoModWhitelist;
             const domainList = parseDomainWhitelist(settings?.autoModDomains);
+            const rawChannels = settings?.automodChannels || settings?.automod_channels || '';
+            const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : 'All channels';
             const e = new EmbedBuilder()
                 .setColor(settings?.autoModEnabled ? C.GREEN : C.RED)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
@@ -805,7 +993,8 @@ module.exports = {
                     { name: 'Sensitivity', value: (settings?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
                     { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
                     { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
-                    { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true }
+                    { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true },
+                    { name: 'Restricted Channels', value: channelList, inline: false }
                 )
                 .setFooter({ text: 'Use .automod domains to manage • ARCHON CG-223' })
                 .setTimestamp();
@@ -820,7 +1009,7 @@ module.exports = {
             client.db.prepare("UPDATE server_settings SET automod_enabled = 1 WHERE guild_id = ?").run(msg.guild.id);
             client.settings.delete(msg.guild.id);
             const synced = await syncRules(msg.guild, 'create', settings);
-            return msg.reply(`✅ Enabled.${synced ? ' 🛡️ Shield active! Non-mods can only post trusted domains. Use `.automod domains` to customize.' : ''}`);
+            return msg.reply(`✅ Enabled.${synced ? ' 🛡️ Shield active! Non-mods can only post trusted domains. Use .automod domains to customize.' : ''}`);
         }
         if (action === 'disable' || action === 'off') {
             const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
@@ -832,7 +1021,7 @@ module.exports = {
         }
         if (action === 'sensitivity') {
             const lv = args[1]?.toLowerCase();
-            if (!['low', 'medium', 'high'].includes(lv)) return msg.reply('❌ Usage: `.automod sensitivity <low|medium|high>`');
+            if (!['low', 'medium', 'high'].includes(lv)) return msg.reply('❌ Usage: .automod sensitivity <low|medium|high>');
             client.updateServerSetting(msg.guild.id, 'automodsensitivity', lv); client.settings.delete(msg.guild.id);
             return msg.reply(`✅ Sensitivity → **${lv.toUpperCase()}**`);
         }
@@ -871,7 +1060,7 @@ module.exports = {
             }
             if (sub === 'add') {
                 const domain = args[2]?.toLowerCase().trim();
-                if (!domain) return msg.reply('❌ Usage: `.automod domains add <domain>` (e.g., `example.com`)');
+                if (!domain) return msg.reply('❌ Usage: .automod domains add <domain> (e.g., example.com)');
                 if (list.includes(domain)) return msg.reply('⚠️ `' + domain + '` is already allowed.');
                 const nw = cur ? `${cur},${domain}` : domain;
                 client.updateServerSetting(msg.guild.id, 'automoddomains', nw); client.settings.delete(msg.guild.id);
@@ -879,7 +1068,7 @@ module.exports = {
             }
             if (sub === 'remove') {
                 const domain = args[2]?.toLowerCase().trim();
-                if (!domain) return msg.reply('❌ Usage: `.automod domains remove <domain>`');
+                if (!domain) return msg.reply('❌ Usage: .automod domains remove <domain>');
                 if (!list.includes(domain)) return msg.reply('⚠️ `' + domain + '` is not in the custom list.');
                 const nw = list.filter(d => d !== domain).join(',');
                 client.updateServerSetting(msg.guild.id, 'automoddomains', nw || null); client.settings.delete(msg.guild.id);
@@ -889,7 +1078,43 @@ module.exports = {
                 client.updateServerSetting(msg.guild.id, 'automoddomains', null); client.settings.delete(msg.guild.id);
                 return msg.reply(`✅ Custom domains cleared. Using defaults only.`);
             }
-            return msg.reply('❓ Usage: `.automod domains [list|add|remove|reset]`');
+            return msg.reply('❓ Usage: .automod domains [list|add|remove|reset]');
+        }
+        if (action === 'channels') {
+            const sub = args[1]?.toLowerCase();
+            const rawCur = settings?.automodChannels || settings?.automod_channels || '';
+            const list = rawCur ? rawCur.split(',').map(c => c.trim()).filter(Boolean) : [];
+
+            if (!sub || sub === 'list') {
+                const channelList = list.length > 0 ? list.map(c => `<#${c}>`).join(' ') : 'All channels (no restrictions)';
+                const e = new EmbedBuilder()
+                    .setColor(C.BLURPLE)
+                    .setAuthor({ name: 'AutoMod — Channel Restrictions', iconURL: client.user.displayAvatarURL() })
+                    .setDescription(`AutoMod is active in: ${channelList}`)
+                    .setFooter({ text: 'ARCHON CG-223' });
+                return msg.reply({ embeds: [e] });
+            }
+            if (sub === 'add') {
+                const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[2]);
+                if (!ch) return msg.reply('❌ Mention a channel.');
+                if (list.includes(ch.id)) return msg.reply('⚠️ Already restricted.');
+                const nw = rawCur ? `${rawCur},${ch.id}` : ch.id;
+                client.updateServerSetting(msg.guild.id, 'automodchannels', nw); client.settings.delete(msg.guild.id);
+                return msg.reply(`✅ AutoMod now active in ${ch}`);
+            }
+            if (sub === 'remove') {
+                const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[2]);
+                if (!ch) return msg.reply('❌ Mention a channel.');
+                if (!list.includes(ch.id)) return msg.reply('⚠️ Not in list.');
+                const nw = list.filter(c => c !== ch.id).join(',');
+                client.updateServerSetting(msg.guild.id, 'automodchannels', nw || null); client.settings.delete(msg.guild.id);
+                return msg.reply(`✅ Removed ${ch} from restrictions.`);
+            }
+            if (sub === 'clear') {
+                client.updateServerSetting(msg.guild.id, 'automodchannels', null); client.settings.delete(msg.guild.id);
+                return msg.reply(`✅ Channel restrictions cleared. AutoMod active in all channels.`);
+            }
+            return msg.reply('❓ Usage: .automod channels [list|add|remove|clear]');
         }
         if (action === 'log') {
             const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[1]);
@@ -897,17 +1122,19 @@ module.exports = {
             client.updateServerSetting(msg.guild.id, 'automodlog', ch.id); client.settings.delete(msg.guild.id);
             return msg.reply(`✅ Log → ${ch}`);
         }
-        return msg.reply('❓ Usage: `.automod [status|enable|disable|sensitivity|whitelist|domains|log]`');
+        return msg.reply('❓ Usage: .automod [status|enable|disable|sensitivity|whitelist|domains|channels|log]');
     },
 
-    // ================= MESSAGE HOOK (called by index.js) =================
     async handleMessage(message, client, db) {
         return await scanMessage(message, client, db);
     },
 
-    // ================= DM HOOK (called by index.js for appeals) =================
     async handleDM(message, client) {
         return await handleAppeal(message, client);
+    },
+
+    async handleAppealButton(interaction, client) {
+        return await handleAppealButton(interaction, client);
     }
 };
 
