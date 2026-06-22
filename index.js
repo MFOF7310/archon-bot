@@ -4663,6 +4663,24 @@ apiApp.get('/api/settings/:guildId', (req, res) => {
 
 // ─── UPDATE CONFIG ─────────────────────────────────────
 apiApp.post('/api/update-config', (req, res) => {
+
+// Broadcast endpoint
+apiApp.post("/api/broadcast", (req, res) => {
+    const { message, target } = req.body;
+    if (!message) return res.status(400).json({ error: "Message required" });
+    let count = 0;
+    const guilds = client.guilds.cache;
+    guilds.forEach(async (guild) => {
+        try {
+            const channel = guild.systemChannel || guild.channels.cache.find(c => c.type === 0 && c.permissionsFor(guild.members.me).has("SendMessages"));
+            if (channel) {
+                await channel.send({ content: `📢 **Broadcast from Architect:**\n${message}` });
+                count++;
+            }
+        } catch(e) {}
+    });
+    setTimeout(() => res.json({ success: true, guildCount: count, total: guilds.size }), 2000);
+});
     const { guildId, settings } = req.body;
     if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
     
