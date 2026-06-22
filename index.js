@@ -4688,6 +4688,20 @@ apiApp.get('/api/settings/:guildId', (req, res) => {
 
 // ─── UPDATE CONFIG ─────────────────────────────────────
 apiApp.post('/api/update-config', (req, res) => {
+    const { guildId, settings } = req.body;
+    if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
+
+    try {
+        let updated = 0;
+        for (const [key, value] of Object.entries(settings)) {
+            if (updateServerSetting(guildId, key, String(value))) updated++;
+        }
+        client.settings.delete(guildId);
+        res.json({ success: true, updated, guildId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Broadcast endpoint
 apiApp.post("/api/broadcast", (req, res) => {
@@ -4706,21 +4720,6 @@ apiApp.post("/api/broadcast", (req, res) => {
     });
     setTimeout(() => res.json({ success: true, guildCount: count, total: guilds.size }), 2000);
 });
-    const { guildId, settings } = req.body;
-    if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
-    
-    try {
-        let updated = 0;
-        for (const [key, value] of Object.entries(settings)) {
-            if (updateServerSetting(guildId, key, String(value))) updated++;
-        }
-        client.settings.delete(guildId);
-        res.json({ success: true, updated, guildId });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 // ─── COMMANDS (par guild) ──────────────────────────────
 apiApp.get('/api/commands/:guildId', (req, res) => {
     const { guildId } = req.params;
