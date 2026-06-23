@@ -4286,13 +4286,11 @@ safeOn(Events.GuildMemberAdd, async (member) => {
     // Determine if custom welcome is configured
     const hasCustomWelcome = cfg.welcomeChannel || cfg.welcomeMessage;
 
-    if (hasCustomWelcome && client.welcome?.onMemberAdd) {
-        // PLUGIN PATH: Custom config exists → let welcome.js handle everything
-        // (cinematic card + ANSI + custom message + dynamic tips)
+if (client.welcome?.onMemberAdd) {
+        // PLUGIN PATH: Plugin loaded → it handles everything, fallback skipped
         await client.welcome.onMemberAdd(member, client, db);
-    } else {
-        // FALLBACK PATH: No custom config → use shared module directly
-        // This keeps the hardcoded cinematic matrix as default behavior
+    } else if (hasCustomWelcome) {
+        // FALLBACK PATH: No plugin but channel configured → use shared module
         await fallbackWelcome(member, client, db, cfg, Style);
     }
 });
@@ -4359,11 +4357,11 @@ safeOn(Events.GuildMemberRemove, async (member) => {
 
     const hasCustomGoodbye = cfg.goodbyeChannel || cfg.goodbyeMessage;
 
-    if (hasCustomGoodbye && client.welcome?.onMemberRemove) {
-        // PLUGIN PATH
+if (client.welcome?.onMemberRemove) {
+        // PLUGIN PATH: Plugin loaded → it handles everything, fallback skipped
         await client.welcome.onMemberRemove(member, client, db);
-    } else {
-        // FALLBACK PATH
+    } else if (hasCustomGoodbye) {
+        // FALLBACK PATH: No plugin but channel configured → use shared module
         await fallbackGoodbye(member, client, db, cfg, Style);
     }
 });
@@ -5012,4 +5010,3 @@ client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error('\x1b[31m[LOGIN ERROR]\x1b[0m Failed to connect to Discord:', err.message);
     console.error('\x1b[33m[TIP]\x1b[0m Check your internet connection and token validity.');
 });
-
