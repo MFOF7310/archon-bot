@@ -793,12 +793,39 @@ async function handleAppealButton(interaction, client) {
             history.set(k, entry);
         }
 
+        // ── CORE FIX: Actually lift the Discord timeout on the member ──
+        let timeoutLifted = false;
+        let wasTimedOut = false;
+        if (guild) {
+            try {
+                const member = await guild.members.fetch(vote.userId).catch(() => null);
+                if (member) {
+                    // Check if they are actually still timed out
+                    wasTimedOut = !!member.communicationDisabledUntilTimestamp &&
+                                  member.communicationDisabledUntilTimestamp > Date.now();
+                    if (wasTimedOut) {
+                        // null removes the timeout immediately
+                        await member.timeout(null, `Appeal approved by ${interaction.user.tag}`);
+                        timeoutLifted = true;
+                        console.log(`[AUTOMOD APPEAL] Timeout lifted for ${vote.userId} in ${guild.name} by ${interaction.user.tag}`);
+                    }
+                }
+            } catch (e) {
+                console.error(`[AUTOMOD APPEAL] Failed to lift timeout for ${vote.userId}:`, e.message);
+            }
+        }
+
         if (targetUser) {
+            const liftedNote = timeoutLifted
+                ? '\n\n⏰ Your timeout has been **lifted immediately**. You can chat again!'
+                : wasTimedOut === false && guild
+                ? '\n\n✅ Your timeout had already expired.'
+                : '';
             await targetUser.send({
                 embeds: [new EmbedBuilder()
                     .setColor(C.GREEN)
                     .setTitle('✅ Appeal Approved')
-                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **approved** by the owner.\n\nYour strike count has been reduced. Stay clean! 🕊️`)
+                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **approved** by the owner.\n\nYour strike count has been reduced. Stay clean! 🕊️${liftedNote}`)
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -807,7 +834,7 @@ async function handleAppealButton(interaction, client) {
         appealTribunal.set(appealId, vote);
 
         await interaction.update({
-            content: `✅ **APPROVED** by ${interaction.user.tag}\nStrike reduced. User notified.`,
+            content: `✅ **APPROVED** by ${interaction.user.tag}\nStrike reduced. User notified.${timeoutLifted ? ' Timeout lifted.' : ' (timeout already expired or user left)'}`,
             embeds: [],
             components: []
         }).catch(() => {});
@@ -1303,4 +1330,3 @@ module.exports = {
         return await handleAppealButton(interaction, client);
     }
 };
-
