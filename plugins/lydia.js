@@ -1020,6 +1020,10 @@ function hardFormatResponse(text) {
 async function handleLydiaMessage(message, client, database) {
   if (!message.guild || message.author.bot) return;
 
+  // Check if Lydia AI is enabled for this server
+  const lydiaSettings = client.getServerSettings?.(message.guild.id);
+  if (lydiaSettings?.ai_enabled === 0 || lydiaSettings?.aiEnabled === false) return;
+
   const key = `${message.id}-${message.author.id}`;
   if (messageProcessingLocks.has(key)) return;
 
