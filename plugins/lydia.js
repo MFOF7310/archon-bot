@@ -1587,14 +1587,17 @@ async function executeSlashCommand(interaction, client) {
     });
   }
 
-  await interaction.deferReply({ ephemeral: true });
   const sub = interaction.options.getSubcommand();
 
   if (sub === 'memory') {
+    // memory uses its own reply — no defer needed
     const database = client.db;
-    if (!database) return interaction.followUp({ content: 'Database unavailable.' });
+    if (!database) return interaction.reply({ content: 'Database unavailable.', flags: 64 });
     return await handleMemorySubcommand(interaction, database, true);
   }
+
+  // All other subcommands need defer first
+  await interaction.deferReply({ ephemeral: true });
 
   await handleLydiaToggle(client, interaction.channelId, interaction.guildId, interaction.user.id, sub, async (payload) => {
     return interaction.followUp(payload);
