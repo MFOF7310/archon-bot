@@ -45,7 +45,7 @@ module.exports = {
         const roleName = 'CR: ' + args.slice(1).join(' ').substring(0, 30);
 
         try {
-            const role = await guild.roles.create({ name: roleName, color: colorInput, reason: `Custom role purchased by ${user.tag}`, position: guild.members.me.roles.highest.position - 1 });
+            const role = await guild.roles.create({ name: roleName, colors: [colorInput], reason: `Custom role purchased by ${user.tag}`, position: guild.members.me.roles.highest.position - 1 });
             await guild.members.cache.get(user.id).roles.add(role);
 
             // Deduct credits
@@ -82,7 +82,7 @@ module.exports = {
         const roleName = 'CR: ' + roleNameInput.substring(0, 30);
 
         try {
-            const role = await guild.roles.create({ name: roleName, color: colorInput, reason: `Custom role purchased by ${interaction.user.tag}`, position: guild.members.me.roles.highest.position - 1 });
+            const role = await guild.roles.create({ name: roleName, colors: [colorInput], reason: `Custom role purchased by ${interaction.user.tag}`, position: guild.members.me.roles.highest.position - 1 });
             await guild.members.cache.get(interaction.user.id).roles.add(role);
             if (client.db) client.db.prepare("UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?").run(t.cost, interaction.user.id, guildId);
             const embed = new EmbedBuilder().setColor(colorInput).setTitle(t.purchased).setDescription(`**Role:** <@&${role.id}>\n**Color:** \`${colorInput}\`\n**Cost:** ${t.cost.toLocaleString()} 🪙\n**New Balance:** ${(balance - t.cost).toLocaleString()} 🪙`).setFooter({ text: t.footer.replace('{version}', client.version || '2.0') }).setTimestamp();
