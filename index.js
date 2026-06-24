@@ -253,9 +253,11 @@ const FRENCH_ALIASES = new Set([
 ]);
 
 client.detectLanguage = (usedCommand, guildId = null) => {
+    // Safety check
+    const cmd = typeof usedCommand === 'string' ? usedCommand : String(usedCommand || '');
     // French alias override
-    if (FRENCH_ALIASES.has(usedCommand?.toLowerCase())) return 'fr';
-    return detectLanguage(usedCommand, guildId);
+    if (FRENCH_ALIASES.has(cmd.toLowerCase())) return 'fr';
+    return detectLanguage(cmd, guildId);
 };
 client.calculateLevel = calculateLevel;
 client.formatNumber = formatNumber;
