@@ -44,13 +44,13 @@ const aboutTranslations = {
         buttonStatus: 'Status',
         systemStatus: 'SYSTEM STATUS',
         online: '🟢 ONLINE',
-        inferenceModel: 'Groq LPU™ 70B',
-        inferenceDesc: 'Low Latency • 70B Parameters',
-        searchModel: 'Brave Search API',
-        searchDesc: 'Live Web Access • Real-time',
+        inferenceModel: 'OpenRouter Multi-Model',
+        inferenceDesc: 'Llama 3.1 • Gemini • Mistral',
+        searchModel: 'Lydia Neural Engine',
+        searchDesc: '111 Plugins • Per-Server AI',
         nodeLocation: 'Bamako, Mali',
         nodeDesc: '🇲🇱 West Africa Node',
-        neuralCore: 'Neural Core: LYDIA_70B',
+        neuralCore: 'Neural Core: LYDIA_MULTI',
         apiStatus: '📡 API STATUS',
         activeModules: 'active modules',
         agents: 'agents',
@@ -105,10 +105,10 @@ const aboutTranslations = {
         buttonStatus: 'État',
         systemStatus: 'ÉTAT DU SYSTÈME',
         online: '🟢 EN LIGNE',
-        inferenceModel: 'Groq LPU™ 70B',
-        inferenceDesc: 'Faible Latence • 70B Paramètres',
-        searchModel: 'Brave Search API',
-        searchDesc: 'Accès Web Direct • Temps Réel',
+        inferenceModel: 'OpenRouter Multi-Model',
+        inferenceDesc: 'Llama 3.1 • Gemini • Mistral',
+        searchModel: 'Lydia Neural Engine',
+        searchDesc: '111 Plugins • IA Par-Serveur',
         nodeLocation: 'Bamako, Mali',
         nodeDesc: '🇲🇱 Nœud Afrique de l\'Ouest',
         neuralCore: 'Noyau Neural : LYDIA_70B',
@@ -175,7 +175,7 @@ function buildButtonRows(t, isSlash = false) {
     
     const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel(t.buttonFacebook).setURL('https://www.facebook.com/share/17KysmJrtm/').setStyle(ButtonStyle.Link).setEmoji('📘'),
-        new ButtonBuilder().setLabel('Website').setURL('https://architect-neural-grid.pages.dev').setStyle(ButtonStyle.Link).setEmoji('🌐'),
+        new ButtonBuilder().setLabel('Website').setURL('https://bamako-steel-dev.xyz').setStyle(ButtonStyle.Link).setEmoji('🌐'),
         new ButtonBuilder().setLabel(t.buttonGitHub).setURL('https://github.com/MFOF7310').setStyle(ButtonStyle.Link).setEmoji('💻')
     );
     
@@ -256,13 +256,13 @@ module.exports = {
 
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
         const t = aboutTranslations[lang];
         const ARCHITECT_ID = process.env.OWNER_ID;
         const version = client.version || '1.8.0';
         const isDM = !message.guild;
         const groqStatus = (process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY) ? '✅' : '❌';
-        const braveStatus = process.env.BRAVE_API_KEY ? '✅' : '❌';
+        const braveStatus = process.env.OPENROUTER_API_KEY ? '✅' : '❌';
         const isArchitect = message.author.id === ARCHITECT_ID;
         const stats = getSystemStats(client);
         
@@ -295,7 +295,8 @@ module.exports = {
 
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
+        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
         const t = aboutTranslations[lang];
         
         try {
@@ -309,7 +310,7 @@ module.exports = {
         const version = client.version || '1.8.0';
         const isDM = !interaction.guild;
         const groqStatus = (process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY) ? '✅' : '❌';
-        const braveStatus = process.env.BRAVE_API_KEY ? '✅' : '❌';
+        const braveStatus = process.env.OPENROUTER_API_KEY ? '✅' : '❌';
         const isArchitect = interaction.user.id === ARCHITECT_ID;
         const stats = getSystemStats(client);
         

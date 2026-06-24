@@ -183,7 +183,16 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 // ================= SAFE UNIVERSAL LANGUAGE DETECTION =================
-function detectLanguage(usedCommand) {
+function detectLanguage(usedCommand, guildId = null) {
+    // Priority 1: Server language setting
+    if (guildId) {
+        const serverLang = client.settings?.get(guildId)?.language || 
+                          client.getServerSettings?.(guildId)?.language;
+        if (serverLang === 'fr') return 'fr';
+        if (serverLang === 'en') return 'en';
+        // 'auto' falls through to detection below
+    }
+
     if (!usedCommand || typeof usedCommand !== 'string') return 'en';
     const cmd = usedCommand.toLowerCase().trim();
     if (!cmd) return 'en';
@@ -232,7 +241,22 @@ function calculateLevel(xp) {
     return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1;
 }
 
-client.detectLanguage = detectLanguage;
+// French command aliases — force FR response
+const FRENCH_ALIASES = new Set([
+    'réclamer', 'reclamer', 'recolter', 'récolter',
+    'quotidien', 'journalier', 'profil', 'niveau',
+    'classement', 'boutique', 'marché', 'inventaire',
+    'solde', 'transferer', 'transférer', 'acheter',
+    'vendre', 'voter', 'aide', 'apropos', 'statut',
+    'bannir', 'expulser', 'avertir', 'signaler',
+    'muet', 'supprimer', 'épingler', 'sondage',
+]);
+
+client.detectLanguage = (usedCommand, guildId = null) => {
+    // French alias override
+    if (FRENCH_ALIASES.has(usedCommand?.toLowerCase())) return 'fr';
+    return detectLanguage(usedCommand, guildId);
+};
 client.calculateLevel = calculateLevel;
 client.formatNumber = formatNumber;
 
