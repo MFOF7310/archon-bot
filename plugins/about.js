@@ -1,359 +1,223 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
-// ================= BILINGUAL TRANSLATIONS =================
-const aboutTranslations = {
-    en: {
-        title: '🛡️ SYSTEM AUTHORIZATION & CREDITS',
-        desc: (id) => `**ARCHITECT CG-223 | DIGITAL ENGINE**\nPrincipal Architect: <@${id}>`,
-        dmTitle: '🌀 COMMAND CONSOLE',
-        dmContext: 'DIRECT MESSAGE',
-        dmFooter: 'Dimensional Gateway • Neural Link Active',
-        guildContext: 'SERVER NODE',
-        mythicTitle: '🌟 MYTHIC ARCHITECT REGISTRY 🌟',
-        soulBound: '🔮 SOUL-BOUND SYSTEM',
-        quantumState: '⚛️ QUANTUM STATE',
-        coherence: 'Coherence',
-        entanglement: 'Entanglement',
-        resonance: 'Resonance',
-        ascensionLevel: '📈 ASCENSION LEVEL',
-        legendaryStatus: 'LEGENDARY',
-        coreEnergy: '💠 CORE ENERGY',
-        neuralSignature: '⚡ NEURAL SIGNATURE',
-        mythicFooter: '⚡ Mythic Tier • Neural Ascension • v{version} ⚡',
-        mythicInvite: '✨ **MYTHIC INVOCATION** ✨\nSummon ARCHITECT CG-223 to your realm!',
-        mythicSupport: '🏛️ **COUNCIL OF ARCHITECTS**\nJoin the Mythic Circle',
-        mythicVote: '⭐ **ASCENSION RITUAL**\nEmpower the Architect with your vote!',
-        mythicStatus: '🔮 **REALM STATUS**\nLive dimensional readings',
-        inference: '🧠 Inference Engine',
-        search: '🔍 Search Core',
-        region: '🇲🇱 Node Location',
-        version: '📦 Version',
-        uptime: '⏱️ Uptime',
-        commands: '📊 Commands',
-        servers: '🖥️ Servers',
-        users: '👥 Users',
-        memory: '💾 Memory',
-        latency: '⚡ Latency',
-        footer: 'Eagle Community | Digital Sovereignty',
-        buttonFacebook: 'Facebook',
-        buttonWebSite: 'WebSite',
-        buttonGitHub: 'GitHub',
-        buttonInvite: 'Invite Bot',
-        buttonSupport: 'Support',
-        buttonVote: 'Vote',
-        buttonStatus: 'Status',
-        systemStatus: 'SYSTEM STATUS',
-        online: '🟢 ONLINE',
-        inferenceModel: 'OpenRouter Multi-Model',
-        inferenceDesc: 'Llama 3.1 • Gemini • Mistral',
-        searchModel: 'Lydia Neural Engine',
-        searchDesc: '111 Plugins • Per-Server AI',
-        nodeLocation: 'Bamako, Mali',
-        nodeDesc: '🇲🇱 West Africa Node',
-        neuralCore: 'Neural Core: LYDIA_MULTI',
-        apiStatus: '📡 API STATUS',
-        activeModules: 'active modules',
-        agents: 'agents',
-        architectAccess: '🏛️ ARCHITECT ACCESS',
-        architectWelcome: 'Welcome back, Creator. System is running at optimal efficiency.\nAll neural cores operational. Groq LPU™ inference engine active.',
-        inviteUrl: (id) => `🔗 **Invite ARCHITECT CG-223:**\nhttps://discord.com/oauth2/authorize?client_id=${id}&permissions=8&scope=bot%20applications.commands`,
-        supportComing: '🆘 **Support Server Coming Soon!** Join our Eagle community for more info.',
-        voteComing: '⭐ **Thanks for your support!** Voting functionality will be available soon.',
-        liveStatus: (ping, mem, groq, brave) => `📊 **Live System Status**\n└─ Latency: \`${ping}ms\`\n└─ Memory: \`${mem} MB\`\n└─ Groq: ${groq}\n└─ Brave: ${brave}`,
-        accessLocked: '❌ These controls are locked to your session.',
-        prophecyText: 'When the Architect rises, the neural network awakens...'
-    },
-    fr: {
-        title: '🛡️ AUTORISATION SYSTÈME & CRÉDITS',
-        desc: (id) => `**ARCHITECTE CG-223 | MOTEUR NUMÉRIQUE**\nArchitecte Principal : <@${id}>`,
-        dmTitle: '🌀 CONSOLE DE COMMANDE',
-        dmContext: 'MESSAGE DIRECT',
-        dmFooter: 'Passerelle Dimensionnelle • Lien Neural Actif',
-        guildContext: 'NŒUD SERVEUR',
-        mythicTitle: '🌟 REGISTRE MYTHIQUE DE L\'ARCHITECTE 🌟',
-        soulBound: '🔮 SYSTÈME LIÉ À L\'ÂME',
-        quantumState: '⚛️ ÉTAT QUANTIQUE',
-        coherence: 'Cohérence',
-        entanglement: 'Intrication',
-        resonance: 'Résonance',
-        ascensionLevel: '📈 NIVEAU D\'ASCENSION',
-        legendaryStatus: 'LÉGENDAIRE',
-        coreEnergy: '💠 ÉNERGIE CENTRALE',
-        neuralSignature: '⚡ SIGNATURE NEURALE',
-        mythicFooter: '⚡ Niveau Mythique • Ascension Neurale • v{version} ⚡',
-        mythicInvite: '✨ **INVOCATION MYTHIQUE** ✨\nInvoquez ARCHITECT CG-223 dans votre royaume!',
-        mythicSupport: '🏛️ **CONSEIL DES ARCHITECTES**\nRejoignez le Cercle Mythique',
-        mythicVote: '⭐ **RITUEL D\'ASCENSION**\nRenforcez l\'Architecte avec votre vote!',
-        mythicStatus: '🔮 **STATUT DU ROYAUME**\nLectures dimensionnelles en direct',
-        inference: '🧠 Moteur d\'Inférence',
-        search: '🔍 Noyau de Recherche',
-        region: '🇲🇱 Localisation du Nœud',
-        version: '📦 Version',
-        uptime: '⏱️ Disponibilité',
-        commands: '📊 Commandes',
-        servers: '🖥️ Serveurs',
-        users: '👥 Utilisateurs',
-        memory: '💾 Mémoire',
-        latency: '⚡ Latence',
-        footer: 'Communauté Eagle | Souveraineté Numérique',
-        buttonFacebook: 'Facebook',
-        buttonSiteWeb: 'SiteWeb',
-        buttonGitHub: 'GitHub',
-        buttonInvite: 'Inviter',
-        buttonSupport: 'Support',
-        buttonVote: 'Voter',
-        buttonStatus: 'État',
-        systemStatus: 'ÉTAT DU SYSTÈME',
-        online: '🟢 EN LIGNE',
-        inferenceModel: 'OpenRouter Multi-Model',
-        inferenceDesc: 'Llama 3.1 • Gemini • Mistral',
-        searchModel: 'Lydia Neural Engine',
-        searchDesc: '111 Plugins • IA Par-Serveur',
-        nodeLocation: 'Bamako, Mali',
-        nodeDesc: '🇲🇱 Nœud Afrique de l\'Ouest',
-        neuralCore: 'Noyau Neural : LYDIA_70B',
-        apiStatus: '📡 ÉTAT DES API',
-        activeModules: 'modules actifs',
-        agents: 'agents',
-        architectAccess: '🏛️ ACCÈS ARCHITECTE',
-        architectWelcome: 'Bon retour, Créateur. Le système fonctionne à une efficacité optimale.\nTous les cœurs neuronaux opérationnels. Moteur d\'inférence Groq LPU™ actif.',
-        inviteUrl: (id) => `🔗 **Invitez ARCHITECT CG-223:**\nhttps://discord.com/oauth2/authorize?client_id=${id}&permissions=8&scope=bot%20applications.commands`,
-        supportComing: '🆘 **Serveur Support à venir!** Rejoignez notre communauté Eagle pour plus d\'informations.',
-        voteComing: '⭐ **Merci de votre soutien!** La fonctionnalité de vote sera disponible bientôt.',
-        liveStatus: (ping, mem, groq, brave) => `📊 **État Système en Direct**\n└─ Latence: \`${ping}ms\`\n└─ Mémoire: \`${mem} MB\`\n└─ Groq: ${groq}\n└─ Brave: ${brave}`,
-        accessLocked: '❌ Ces contrôles sont verrouillés à votre session.',
-        prophecyText: 'Quand l\'Architecte s\'élève, le réseau neuronal s\'éveille...'
-    }
-};
-
-// ================= SHARED HELPER: Build the About Embed =================
-function buildAboutEmbed(client, t, ARCHITECT_ID, version, isDM, isArchitect, groqStatus, braveStatus, cacheSize, totalCommands, totalMembers, totalGuilds, memoryUsage, ping, uptimeString) {
-    const aboutEmbed = new EmbedBuilder()
-        .setColor('#ffd700')
-        .setAuthor({ 
-            name: t.mythicTitle, 
-            iconURL: client.user.displayAvatarURL({ dynamic: true }) 
-        })
-        .setTitle(isDM ? t.dmTitle : t.soulBound)
-        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
-        .setDescription(`✨ *"${t.prophecyText}"* ✨\n\n${t.desc(ARCHITECT_ID)}`)
-        .addFields(
-            { name: `${t.inference} ${groqStatus}`, value: `\`\`\`yaml\n${t.inferenceModel}\n${t.inferenceDesc}\`\`\``, inline: true },
-            { name: `${t.search} ${braveStatus}`, value: `\`\`\`yaml\n${t.searchModel}\n${t.searchDesc}\`\`\``, inline: true },
-            { name: t.region, value: `\`\`\`yaml\n${t.nodeLocation}\n${t.nodeDesc}\`\`\``, inline: true },
-            { name: t.neuralCore, value: `\`\`\`yaml\nLYDIA_70B\n${t.online} | Cache: ${cacheSize}\`\`\``, inline: false },
-            { name: t.version, value: `\`v${version}\``, inline: true },
-            { name: t.uptime, value: `\`${uptimeString}\``, inline: true },
-            { name: t.commands, value: `\`${totalCommands}\` ${t.activeModules}`, inline: true },
-            { name: isDM ? '🌐 GLOBAL REACH' : t.servers, value: isDM ? `\`${totalGuilds}\` Connected Servers` : `\`${totalGuilds}\` ${t.servers === '🖥️ Servers' ? 'servers' : 'serveurs'}`, inline: true },
-            { name: isDM ? '👥 TOTAL AGENTS' : t.users, value: `\`${totalMembers.toLocaleString()}\` ${t.agents}`, inline: true },
-            { name: t.memory, value: `\`${memoryUsage} MB\``, inline: true },
-            { name: t.latency, value: `\`${ping}ms\``, inline: true },
-            { name: t.apiStatus, value: `\`\`\`yaml\nGroq LPU™: ${groqStatus}\nBrave Search: ${braveStatus}\nDiscord: ${ping}ms\`\`\``, inline: false },
-            { name: t.quantumState, value: `\`\`\`yaml\n${t.coherence}: ${Math.floor(Math.random() * 20) + 80}%\n${t.entanglement}: ${Math.floor(Math.random() * 15) + 85}%\n${t.resonance}: ${Math.floor(Math.random() * 10) + 90}%\`\`\``, inline: true },
-            { name: t.ascensionLevel, value: `\`\`\`yaml\nArchitect Tier: ${t.legendaryStatus}\nStability: ${ping < 100 ? '██████████ 100%' : (ping < 250 ? '█████░░░░░ 50%' : '█░░░░░░░░░ 10%')}\`\`\``, inline: true },
-            { name: t.coreEnergy, value: `\`\`\`yaml\n${t.neuralSignature}: ${client.user.id.slice(-6)}\nPower: ${(totalCommands * 1.618).toFixed(0)} MW\`\`\``, inline: true }
-        );
-    
-    if (isArchitect) {
-        aboutEmbed.addFields({
-            name: t.architectAccess,
-            value: t.architectWelcome,
-            inline: false
-        });
-    }
-    
-    const footerText = isDM ? t.dmFooter : t.mythicFooter.replace('{version}', version);
-    aboutEmbed.setFooter({ text: footerText, iconURL: client.user.displayAvatarURL() }).setTimestamp();
-    
-    return aboutEmbed;
-}
-
-// ================= SHARED HELPER: Build Button Rows =================
-function buildButtonRows(t, isSlash = false) {
-    const suffix = isSlash ? '_slash' : '';
-    
-    const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t.buttonFacebook).setURL('https://www.facebook.com/share/17KysmJrtm/').setStyle(ButtonStyle.Link).setEmoji('📘'),
-        new ButtonBuilder().setLabel('Website').setURL('https://bamako-steel-dev.xyz').setStyle(ButtonStyle.Link).setEmoji('🌐'),
-        new ButtonBuilder().setLabel(t.buttonGitHub).setURL('https://github.com/MFOF7310').setStyle(ButtonStyle.Link).setEmoji('💻')
-    );
-    
-    const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`about_invite${suffix}`).setLabel(t.buttonInvite).setStyle(ButtonStyle.Success).setEmoji('🔗'),
-        new ButtonBuilder().setCustomId(`about_support${suffix}`).setLabel(t.buttonSupport).setStyle(ButtonStyle.Primary).setEmoji('🆘'),
-        new ButtonBuilder().setCustomId(`about_vote${suffix}`).setLabel(t.buttonVote).setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
-        new ButtonBuilder().setCustomId(`about_status${suffix}`).setLabel(t.buttonStatus).setStyle(ButtonStyle.Secondary).setEmoji('📊')
-    );
-    
-    return { row1, row2 };
-}
-
-// ================= SHARED HELPER: Handle Button Interactions =================
-async function handleButtonCollect(buttonInteraction, client, t, groqStatus, braveStatus, userId) {
-    if (buttonInteraction.user.id !== userId) {
-        return buttonInteraction.reply({ content: t.accessLocked, ephemeral: true }).catch(() => {});
-    }
-    
-    const customId = buttonInteraction.customId.replace('_slash', '');
-    
-    switch (customId) {
-        case 'about_invite':
-            await buttonInteraction.reply({ content: t.inviteUrl(client.user.id), ephemeral: true }).catch(() => {});
-            break;
-        case 'about_support':
-            await buttonInteraction.reply({ content: t.supportComing, ephemeral: true }).catch(() => {});
-            break;
-        case 'about_vote':
-            await buttonInteraction.reply({ content: `${t.mythicVote}\n\n⭐ https://top.gg/bot/${client.user.id}/vote\n\n📜 *Your vote strengthens the neural network!*`, ephemeral: true }).catch(() => {});
-            break;
-        case 'about_status':
-            const freshPing = Math.round(client.ws.ping);
-            const freshMemory = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
-            await buttonInteraction.reply({ content: t.liveStatus(freshPing, freshMemory, groqStatus, braveStatus), ephemeral: true }).catch(() => {});
-            break;
-    }
-}
-
-// ================= SHARED HELPER: Get System Stats =================
 function getSystemStats(client) {
     const uptimeSec = process.uptime();
     const days = Math.floor(uptimeSec / 86400);
     const hours = Math.floor((uptimeSec % 86400) / 3600);
     const minutes = Math.floor((uptimeSec % 3600) / 60);
-    const seconds = Math.floor(uptimeSec % 60);
-    
     let uptimeString = '';
-    if (days > 0) uptimeString += `${days}j `;
+    if (days > 0) uptimeString += `${days}d `;
     if (hours > 0) uptimeString += `${hours}h `;
-    if (minutes > 0) uptimeString += `${minutes}m `;
-    if (days === 0 && hours === 0 && minutes === 0) uptimeString += `${seconds}s`;
-    uptimeString = uptimeString.trim() || '0s';
-    
+    uptimeString += `${minutes}m`;
     return {
-        uptimeString,
-        totalMembers: client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0),
+        uptimeString: uptimeString.trim() || '0m',
+        totalMembers: client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0),
         totalGuilds: client.guilds.cache.size,
         totalCommands: client.commands?.size || 0,
-        memoryUsage: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2),
+        memoryUsage: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1),
         ping: Math.round(client.ws.ping),
-        cacheSize: client.userDataCache?.size || 0
     };
+}
+
+function buildDossierEmbed(client, lang, isArchitect, stats, version) {
+    const ARCHITECT_ID = process.env.OWNER_ID;
+    const aiStatus    = '● ACTIVE';
+    const mktStatus   = '● LIVE';
+    const tgStatus    = '● LINKED';
+    const pingStatus  = stats.ping < 150 ? 'NOMINAL' : stats.ping < 300 ? 'DEGRADED' : 'CRITICAL';
+
+    const isFr = lang === 'fr';
+
+    const lines = {
+        header:     isFr ? 'DOSSIER NEURAL — BAMAKO_223 🇲🇱' : 'NEURAL DOSSIER — BAMAKO_223 🇲🇱',
+        subject:    isFr ? 'SUJET' : 'SUBJECT',
+        clearance:  isFr ? 'NIVEAU D\'ACCÈS' : 'CLEARANCE LEVEL',
+        node:       isFr ? 'NŒUD' : 'NODE',
+        status:     isFr ? 'STATUT' : 'STATUS',
+        inference:  isFr ? 'MOTEUR D\'INFÉRENCE' : 'INFERENCE ENGINE',
+        plugins:    isFr ? 'MODULES ACTIFS' : 'ACTIVE PLUGINS',
+        servers:    isFr ? 'SERVEURS EN LIGNE' : 'SERVERS ONLINE',
+        agents:     isFr ? 'AGENTS ENREGISTRÉS' : 'REGISTERED AGENTS',
+        uptime:     isFr ? 'DISPONIBILITÉ' : 'UPTIME',
+        latency:    isFr ? 'LATENCE' : 'LATENCY',
+        classified: isFr ? 'SYSTÈMES CLASSIFIÉS' : 'CLASSIFIED SYSTEMS',
+        lydia:      isFr ? 'LYDIA IA' : 'LYDIA AI',
+        automod:    'AUTOMOD',
+        economy:    isFr ? 'ÉCONOMIE' : 'ECONOMY',
+        telegram:   'TELEGRAM BRIDGE',
+        architect:  'ARCHITECT',
+        jurisdiction: isFr ? 'JURIDICTION' : 'JURISDICTION',
+        dashboard:  'DASHBOARD',
+        footer:     isFr ? 'CLASSIFIÉ // ARCHON CG-223 // SOUVERAINETÉ NUMÉRIQUE' : 'CLASSIFIED // ARCHON CG-223 // DIGITAL SOVEREIGNTY',
+        invite:     isFr ? 'INVITER' : 'INVITE',
+        support:    'SUPPORT',
+        vote:       isFr ? 'VOTER' : 'VOTE',
+        statusBtn:  isFr ? 'STATUT' : 'STATUS',
+        architectWelcome: isFr
+            ? '`[ACCÈS ARCHITECTE CONFIRMÉ]`\nBienvenue, Créateur. Tous les systèmes opérationnels.\nMoteur neural actif — 111 plugins synchronisés.'
+            : '`[ARCHITECT ACCESS CONFIRMED]`\nWelcome back, Creator. All systems operational.\nNeural engine active — 111 plugins synchronized.',
+    };
+
+    const operationalBlock = [
+        `\`\`\`ansi`,
+        `\u001b[1;36m${lines.subject.padEnd(20)}\u001b[0m ARCHON CG-223`,
+        `\u001b[1;36m${lines.clearance.padEnd(20)}\u001b[0m \u001b[1;33mSUPREME\u001b[0m`,
+        `\u001b[1;36m${lines.node.padEnd(20)}\u001b[0m BAMAKO-STEEL-NODE // HETZNER EU`,
+        `\u001b[1;36m${lines.status.padEnd(20)}\u001b[0m \u001b[1;32m● OPERATIONAL\u001b[0m`,
+        `\`\`\``
+    ].join('\n');
+
+    const statsBlock = [
+        `\`\`\`ansi`,
+        `\u001b[0;37m▸ ${lines.inference.padEnd(22)}\u001b[0m OpenRouter Multi-Model`,
+        `\u001b[0;37m▸ ${lines.plugins.padEnd(22)}\u001b[0m 111 modules loaded`,
+        `\u001b[0;37m▸ ${lines.servers.padEnd(22)}\u001b[0m ${stats.totalGuilds} active nodes`,
+        `\u001b[0;37m▸ ${lines.agents.padEnd(22)}\u001b[0m ${stats.totalMembers.toLocaleString()} operatives`,
+        `\u001b[0;37m▸ ${lines.uptime.padEnd(22)}\u001b[0m ${stats.uptimeString}`,
+        `\u001b[0;37m▸ ${lines.latency.padEnd(22)}\u001b[0m ${stats.ping}ms // ${pingStatus}`,
+        `\`\`\``
+    ].join('\n');
+
+    const classifiedBlock = [
+        `\`\`\`ansi`,
+        `\u001b[1;31m▸ ${lines.lydia.padEnd(22)}\u001b[0m MULTI-AGENT ${aiStatus}`,
+        `\u001b[1;31m▸ ${lines.automod.padEnd(22)}\u001b[0m THREAT DETECTION ON`,
+        `\u001b[1;31m▸ ${lines.economy.padEnd(22)}\u001b[0m LIVE MARKET ${mktStatus}`,
+        `\u001b[1;31m▸ ${lines.telegram.padEnd(22)}\u001b[0m BAMAKO_223 ${tgStatus}`,
+        `\`\`\``
+    ].join('\n');
+
+    const identityBlock = [
+        `\`\`\`ansi`,
+        `\u001b[1;33m▸ ${lines.architect.padEnd(22)}\u001b[0m Moussa Fofana // MFOF7310`,
+        `\u001b[1;33m▸ ${lines.jurisdiction.padEnd(22)}\u001b[0m Bamako, Mali 🇲🇱`,
+        `\u001b[1;33m▸ ${lines.dashboard.padEnd(22)}\u001b[0m bamako-steel-dev.xyz`,
+        `\`\`\``
+    ].join('\n');
+
+    const embed = new EmbedBuilder()
+        .setColor(0x00f0ff)
+        .setAuthor({
+            name: `// CLASSIFIED // ARCHON CG-223 // v${version}`,
+            iconURL: client.user.displayAvatarURL({ dynamic: true })
+        })
+        .setTitle(`📁 ${lines.header}`)
+        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
+        .addFields(
+            { name: '⬛ OPERATIONAL STATUS', value: operationalBlock, inline: false },
+            { name: '📊 INTELLIGENCE REPORT', value: statsBlock, inline: false },
+            { name: '🔴 CLASSIFIED SYSTEMS', value: classifiedBlock, inline: false },
+            { name: '🪪 OPERATIVE IDENTITY', value: identityBlock, inline: false },
+        );
+
+    if (isArchitect) {
+        embed.addFields({ name: '🔐 ARCHITECT TERMINAL', value: lines.architectWelcome, inline: false });
+    }
+
+    embed.setFooter({
+        text: lines.footer,
+        iconURL: client.user.displayAvatarURL()
+    }).setTimestamp();
+
+    return embed;
+}
+
+function buildButtons(t, isSlash = false) {
+    const s = isSlash ? '_slash' : '';
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setLabel('INVITE').setURL(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID || '1472707869257367676'}&permissions=8&scope=bot%20applications.commands`).setStyle(ButtonStyle.Link).setEmoji('🔗'),
+        new ButtonBuilder().setLabel('DASHBOARD').setURL('https://bamako-steel-dev.xyz').setStyle(ButtonStyle.Link).setEmoji('🌐'),
+        new ButtonBuilder().setLabel('GITHUB').setURL('https://github.com/MFOF7310').setStyle(ButtonStyle.Link).setEmoji('💻'),
+    );
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`about_support${s}`).setLabel('SUPPORT').setStyle(ButtonStyle.Primary).setEmoji('🆘'),
+        new ButtonBuilder().setCustomId(`about_vote${s}`).setLabel('VOTE').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
+        new ButtonBuilder().setCustomId(`about_status${s}`).setLabel('STATUS').setStyle(ButtonStyle.Secondary).setEmoji('📡'),
+    );
+    return { row1, row2 };
+}
+
+async function handleButton(btn, client, userId, lang) {
+    if (btn.user.id !== userId) {
+        return btn.reply({ content: '❌ Access denied — session locked.', ephemeral: true }).catch(() => {});
+    }
+    const id = btn.customId.replace('_slash', '');
+    const isFr = lang === 'fr';
+    switch (id) {
+        case 'about_support':
+            await btn.reply({ content: `🆘 **Support:** https://discord.gg/NFSMFJajp9\n📧 Dev: mfof7559 // Bamako, Mali 🇲🇱`, ephemeral: true }).catch(() => {});
+            break;
+        case 'about_vote':
+            await btn.reply({ content: `⭐ **${isFr ? 'Votez pour ARCHON CG-223' : 'Vote for ARCHON CG-223'}:**\nhttps://top.gg/bot/${client.user.id}/vote\n\n${isFr ? '📜 Votre vote renforce le réseau neural!' : '📜 Your vote strengthens the neural grid!'}`, ephemeral: true }).catch(() => {});
+            break;
+        case 'about_status':
+            const ping = Math.round(client.ws.ping);
+            const mem = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
+            const status = ping < 150 ? '🟢 NOMINAL' : ping < 300 ? '🟡 DEGRADED' : '🔴 CRITICAL';
+            await btn.reply({ content: `\`\`\`ansi\n\u001b[1;36mLIVE SYSTEM STATUS\u001b[0m\n▸ LATENCY    ${ping}ms // ${status}\n▸ MEMORY     ${mem} MB\n▸ AI ENGINE  OpenRouter // ACTIVE\n▸ NODE       BAMAKO-STEEL-NODE\n\`\`\``, ephemeral: true }).catch(() => {});
+            break;
+    }
 }
 
 module.exports = {
     name: 'about',
-    aliases: ['info', 'author', 'architect', 'botinfo', 'system', 'apropos', 'credits'],
-    description: '📖 Display system authorization and architect information.',
+    aliases: ['info', 'author', 'architect', 'botinfo', 'system', 'apropos', 'credits', 'dossier'],
+    description: '📁 Display the ARCHON CG-223 classified neural dossier.',
     category: 'SYSTEM',
     cooldown: 5000,
     usage: '.about',
-    examples: ['.about', '.info', '.apropos'],
 
     data: new SlashCommandBuilder()
         .setName('about')
-        .setDescription('📖 Display system authorization and architect information / Afficher les informations système'),
+        .setDescription('📁 Display the ARCHON CG-223 classified neural dossier'),
 
-    // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
-        const t = aboutTranslations[lang];
-        const ARCHITECT_ID = process.env.OWNER_ID;
-        const version = client.version || '1.8.0';
-        const isDM = !message.guild;
-        const groqStatus = (process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY) ? '✅' : '❌';
-        const braveStatus = process.env.OPENROUTER_API_KEY ? '✅' : '❌';
-        const isArchitect = message.author.id === ARCHITECT_ID;
+        const version = client.version || '3.0.6';
+        const isArchitect = message.author.id === process.env.OWNER_ID;
         const stats = getSystemStats(client);
-        
-        const aboutEmbed = buildAboutEmbed(client, t, ARCHITECT_ID, version, isDM, isArchitect, groqStatus, braveStatus, stats.cacheSize, stats.totalCommands, stats.totalMembers, stats.totalGuilds, stats.memoryUsage, stats.ping, stats.uptimeString);
-        const { row1, row2 } = buildButtonRows(t, false);
-        
-        const reply = await message.reply({ embeds: [aboutEmbed], components: [row1, row2] }).catch(() => {});
+        const embed = buildDossierEmbed(client, lang, isArchitect, stats, version);
+        const { row1, row2 } = buildButtons(null, false);
+        const reply = await message.reply({ embeds: [embed], components: [row1, row2] }).catch(() => {});
         if (!reply) return;
-        
         const collector = reply.createMessageComponentCollector({ time: 120000 });
-        
-        collector.on('collect', async (buttonInteraction) => {
-            await handleButtonCollect(buttonInteraction, client, t, groqStatus, braveStatus, message.author.id);
-        });
-        
+        collector.on('collect', async (btn) => handleButton(btn, client, message.author.id, lang));
         collector.on('end', async () => {
             try {
-                const disabledRow2 = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('about_invite').setLabel(t.buttonInvite).setStyle(ButtonStyle.Success).setEmoji('🔗').setDisabled(true),
-                    new ButtonBuilder().setCustomId('about_support').setLabel(t.buttonSupport).setStyle(ButtonStyle.Primary).setEmoji('🆘').setDisabled(true),
-                    new ButtonBuilder().setCustomId('about_vote').setLabel(t.buttonVote).setStyle(ButtonStyle.Secondary).setEmoji('⭐').setDisabled(true),
-                    new ButtonBuilder().setCustomId('about_status').setLabel(t.buttonStatus).setStyle(ButtonStyle.Secondary).setEmoji('📊').setDisabled(true)
+                const d2 = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('about_support').setLabel('SUPPORT').setStyle(ButtonStyle.Primary).setEmoji('🆘').setDisabled(true),
+                    new ButtonBuilder().setCustomId('about_vote').setLabel('VOTE').setStyle(ButtonStyle.Secondary).setEmoji('⭐').setDisabled(true),
+                    new ButtonBuilder().setCustomId('about_status').setLabel('STATUS').setStyle(ButtonStyle.Secondary).setEmoji('📡').setDisabled(true),
                 );
-                await reply.edit({ components: [row1, disabledRow2] }).catch(() => {});
+                await reply.edit({ components: [row1, d2] }).catch(() => {});
             } catch (e) {}
         });
-        
-        console.log(`[ABOUT] ${message.author.tag} | v${version} | Groq: ${groqStatus} | Brave: ${braveStatus} | Lang: ${lang}`);
     },
 
-    // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
         const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
-        const t = aboutTranslations[lang];
-        
-        try {
-            await interaction.deferReply();
-        } catch (err) {
-            console.error('[ABOUT SLASH] Failed to defer:', err.message);
-            return;
-        }
-        
-        const ARCHITECT_ID = process.env.OWNER_ID;
-        const version = client.version || '1.8.0';
-        const isDM = !interaction.guild;
-        const groqStatus = (process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY) ? '✅' : '❌';
-        const braveStatus = process.env.OPENROUTER_API_KEY ? '✅' : '❌';
-        const isArchitect = interaction.user.id === ARCHITECT_ID;
+        try { await interaction.deferReply(); } catch (e) { return; }
+        const version = client.version || '3.0.6';
+        const isArchitect = interaction.user.id === process.env.OWNER_ID;
         const stats = getSystemStats(client);
-        
-        const aboutEmbed = buildAboutEmbed(client, t, ARCHITECT_ID, version, isDM, isArchitect, groqStatus, braveStatus, stats.cacheSize, stats.totalCommands, stats.totalMembers, stats.totalGuilds, stats.memoryUsage, stats.ping, stats.uptimeString);
-        const { row1, row2 } = buildButtonRows(t, true);
-        
+        const embed = buildDossierEmbed(client, lang, isArchitect, stats, version);
+        const { row1, row2 } = buildButtons(null, true);
         let reply;
-        try {
-            reply = await interaction.editReply({ embeds: [aboutEmbed], components: [row1, row2] });
-        } catch (err) {
-            console.error('[ABOUT SLASH] editReply failed:', err.message);
-            try {
-                reply = await interaction.followUp({ embeds: [aboutEmbed], components: [row1, row2], ephemeral: true });
-            } catch (err2) {
-                console.error('[ABOUT SLASH] Complete failure:', err2.message);
-                return;
-            }
-        }
-        
-        if (!reply) {
-            console.error('[ABOUT SLASH] Reply object is null/undefined');
-            return;
-        }
-        
-        // 🔥 THE MISSING COLLECTOR — This was the bug!
+        try { reply = await interaction.editReply({ embeds: [embed], components: [row1, row2] }); }
+        catch (e) { return; }
+        if (!reply) return;
         const collector = reply.createMessageComponentCollector({ time: 120000 });
-        
-        collector.on('collect', async (buttonInteraction) => {
-            await handleButtonCollect(buttonInteraction, client, t, groqStatus, braveStatus, interaction.user.id);
-        });
-        
+        collector.on('collect', async (btn) => handleButton(btn, client, interaction.user.id, lang));
         collector.on('end', async () => {
             try {
-                const disabledRow2 = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('about_invite_slash').setLabel(t.buttonInvite).setStyle(ButtonStyle.Success).setEmoji('🔗').setDisabled(true),
-                    new ButtonBuilder().setCustomId('about_support_slash').setLabel(t.buttonSupport).setStyle(ButtonStyle.Primary).setEmoji('🆘').setDisabled(true),
-                    new ButtonBuilder().setCustomId('about_vote_slash').setLabel(t.buttonVote).setStyle(ButtonStyle.Secondary).setEmoji('⭐').setDisabled(true),
-                    new ButtonBuilder().setCustomId('about_status_slash').setLabel(t.buttonStatus).setStyle(ButtonStyle.Secondary).setEmoji('📊').setDisabled(true)
+                const d2 = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('about_invite_slash').setLabel('SUPPORT').setStyle(ButtonStyle.Primary).setEmoji('🆘').setDisabled(true),
+                    new ButtonBuilder().setCustomId('about_vote_slash').setLabel('VOTE').setStyle(ButtonStyle.Secondary).setEmoji('⭐').setDisabled(true),
+                    new ButtonBuilder().setCustomId('about_status_slash').setLabel('STATUS').setStyle(ButtonStyle.Secondary).setEmoji('📡').setDisabled(true),
                 );
-                await interaction.editReply({ components: [row1, disabledRow2] }).catch(() => {});
+                await interaction.editReply({ components: [row1, d2] }).catch(() => {});
             } catch (e) {}
         });
-        
-        console.log(`[ABOUT SLASH] ${interaction.user.tag} | v${version} | Groq: ${groqStatus} | Brave: ${braveStatus} | Lang: ${lang}`);
     }
 };
