@@ -4800,6 +4800,44 @@ apiApp.post('/api/update-config', (req, res) => {
     }
 });
 
+
+// TOP.GG VOTE WEBHOOK
+apiApp.post('/api/vote', (req, res) => {
+    const auth = req.headers['authorization'];
+    const expectedAuth = process.env.TOPGG_WEBHOOK_SECRET || 'archon-vote-secret-2026';
+    if (auth !== expectedAuth) {
+        console.error('[VOTE] Unauthorized');
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { user, type, isWeekend } = req.body;
+    if (!user) return res.status(400).json({ error: 'Missing user' });
+    console.log('[VOTE] Received from user ' + user + ' | weekend: ' + isWeekend);
+    try {
+        const votesync = require('./plugins/votesync.js');
+        const guild = client.guilds.cache.find(g => g.members.cache.has(user)) || client.guilds.cache.first();
+        if (guild && votesync.processVote) {
+            votesync.processVote(user, guild.id, client).catch(e => console.error('[VOTE] processVote:', e.message));
+        }
+        client.users.fetch(user).then(async u => {
+            try {
+                await u.send({
+                    embeds: [{
+                        color: 0x00ff88,
+                        title: 'Vote Received - Thank You!',
+                        description: 'Your Top.gg vote has been recorded! Credits added.' + (isWeekend ? ' Weekend bonus: 2x!' : ''),
+                        footer: { text: 'ARCHON CG-223 - Vote Rewards' },
+                        timestamp: new Date().toISOString()
+                    }]
+                });
+            } catch(e) { console.log('[VOTE] DM failed:', e.message); }
+        }).catch(() => {});
+        res.json({ success: true, user, type });
+    } catch(err) {
+        console.error('[VOTE] Error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Broadcast endpoint
 apiApp.post("/api/broadcast", (req, res) => {
     const { message, target } = req.body;
