@@ -13,12 +13,13 @@ const CFG = {
   MAX_MEMORY_PER_USER: 25,
   CHANNEL_COOLDOWN: 1500,
   MAX_EMBED_DESC: 3800,
-  MAX_TOKENS: 1200,
+  MAX_TOKENS: 700,
   RESPONSE_TIMEOUT: 15000,
   CACHE_TTL_MS: 120000,
   MAX_CONCURRENT_MODELS: 3,
   MAX_EMBEDS_PER_MSG: 4,
-  PARAGRAPH_MAX_LINES: 8,
+  PARAGRAPH_MAX_LINES: 4,
+  MAX_SENTENCES_PER_PARA: 3,
 };
 
 let isLydiaInitialized = false;
@@ -618,6 +619,29 @@ function rehydrateReminders(client, database) {
  * - Wraps code blocks
  * - Keeps paragraphs short and readable
  */
+
+// Split prose at sentence boundaries — max 3 sentences per paragraph
+function splitIntoShortParagraphs(text) {
+  const MAX_S = 3;
+  const lines = text.split('\n');
+  const result = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || /^\*\*.+\*\*$/.test(trimmed) ||
+        /^\s*(\d+\.|[-*\u2022])\s/.test(trimmed) ||
+        /^```/.test(trimmed) || trimmed.startsWith('>')) {
+      result.push(line); continue;
+    }
+    const parts = trimmed.split(/(?<=[.!?])\s+(?=[A-Z\u00C0-\u024F"'])/);
+    if (parts.length <= MAX_S) { result.push(trimmed); continue; }
+    for (let i = 0; i < parts.length; i += MAX_S) {
+      const chunk = parts.slice(i, i + MAX_S).join(' ').trim();
+      if (chunk) { result.push(chunk); if (i + MAX_S < parts.length) result.push(''); }
+    }
+  }
+  return result.join('\n');
+}
+
 function formatDiscordResponse(text) {
   if (!text) return '';
 
@@ -646,7 +670,7 @@ function formatDiscordResponse(text) {
   formatted = formatted.replace(/\n{3,}/g, '\n\n');
 
   // Split very long paragraphs (no newlines for 8+ lines)
-  formatted = splitLongParagraphs(formatted);
+  formatted = splitIntoShortParagraphs(formatted);
 
   // Add spacing between distinct ideas (detect short bold phrases as mini-headers)
   formatted = formatted.replace(/(\n[A-Z][^\n]{5,50}?\n)(?=\n[A-Z])/g, '$1\n');
@@ -899,7 +923,7 @@ LANGUAGE PROTOCOL \u2014 CRITICAL:
 FORMATTING PROTOCOL \u2014 CRITICAL:
 Your responses are displayed in Discord embeds. Follow these formatting rules STRICTLY:
 
-1. Use SHORT paragraphs (2-4 sentences max). Never write walls of text.
+1. MAXIMUM 3 SENTENCES PER PARAGRAPH. After 3 sentences, blank line, new paragraph. ZERO EXCEPTIONS.
 2. Separate EVERY section with a blank line (double newline).
 3. Use **bold headers** for sections: "**Key Features:**" not "Key Features:"
 4. Add visual separator lines between major sections: the system will add them automatically when you use **bold headers**.
@@ -910,7 +934,10 @@ Your responses are displayed in Discord embeds. Follow these formatting rules ST
 9. Use Discord markdown: *italic*, **bold**, \`code\`, ~~strikethrough~~.
 10. Between major topics, add a **bold header** — the system will render a visual separator line.
 11. End with a brief friendly closing if appropriate.
-12. Keep total response under 1200 tokens (concise but complete).
+12. Keep total response under 400 words. Cut all filler.
+13. NEVER write a wall of text. If in doubt, add a blank line and break it up.
+14. EXAMPLE WRONG: One giant paragraph with 10 sentences explaining everything at once.
+15. EXAMPLE RIGHT: 2-3 short paragraphs, each with a clear point, separated by blank lines.
 `;
 
   return `${BOT_KNOWLEDGE}
