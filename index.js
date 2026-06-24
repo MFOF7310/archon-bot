@@ -5094,7 +5094,7 @@ client.once('clientReady', async () => {
         );
         console.log(`${green}[PROFILE]${reset} About Me set successfully`);
     } catch (e) {
-        console.log(`${yellow}[PROFILE]${reset} setAboutMe not supported on this bot type: ${e.message}`);
+        // setAboutMe not supported for bots — skipping silently
     }
 
     // Start status rotation
