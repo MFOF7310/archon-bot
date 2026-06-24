@@ -359,6 +359,11 @@ if (action === 'alert' || args[0]?.toLowerCase() === 'alert') {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const subcommand = interaction.options.getSubcommand();
+        // Check if Market is enabled for this server
+        const marketServerSettings = client.getServerSettings?.(interaction.guild?.id);
+        if (marketServerSettings?.market_enabled === 0 || marketServerSettings?.marketEnabled === false) {
+            return interaction.reply({ content: '❌ The market system is disabled on this server.', flags: 64 });
+        }
         
         // Build args array from subcommand
         let args = [];

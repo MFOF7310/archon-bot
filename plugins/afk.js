@@ -309,6 +309,11 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        // Check if AFK system is enabled for this server
+        const afkServerSettings = client.getServerSettings?.(interaction.guild?.id);
+        if (afkServerSettings?.afk_enabled === 0 || afkServerSettings?.afkEnabled === false) {
+            return interaction.reply({ content: lang === 'fr' ? '❌ Le système AFK est désactivé sur ce serveur.' : '❌ The AFK system is disabled on this server.', flags: 64 });
+        }
         const t = translations[lang];
         const version = client.version || '1.8.0';
         
