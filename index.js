@@ -4818,6 +4818,50 @@ apiApp.post("/api/broadcast", (req, res) => {
     setTimeout(() => res.json({ success: true, guildCount: count, total: guilds.size }), 2000);
 });
 // ─── COMMANDS (par guild) ──────────────────────────────
+apiApp.get('/api/channels/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    if (!validateSnowflake(guildId)) return res.status(400).json({ error: 'Invalid guild ID' });
+    try {
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ error: 'Guild not found' });
+        const channels = guild.channels.cache
+            .filter(c => [0, 5, 15, 16].includes(c.type)) // text, announcement, forum, media
+            .sort((a, b) => (a.rawPosition || 0) - (b.rawPosition || 0))
+            .map(c => ({
+                id: c.id,
+                name: c.name,
+                type: c.type,
+                category: c.parent?.name || null,
+                position: c.rawPosition || 0,
+            }));
+        res.json({ success: true, guildId, channels });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+apiApp.get('/api/roles/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    if (!validateSnowflake(guildId)) return res.status(400).json({ error: 'Invalid guild ID' });
+    try {
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ error: 'Guild not found' });
+        const roles = guild.roles.cache
+            .filter(r => r.id !== guild.id) // exclude @everyone
+            .sort((a, b) => b.position - a.position)
+            .map(r => ({
+                id: r.id,
+                name: r.name,
+                color: r.hexColor,
+                position: r.position,
+                managed: r.managed,
+            }));
+        res.json({ success: true, guildId, roles });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 apiApp.get('/api/commands/:guildId', (req, res) => {
     const { guildId } = req.params;
     try {
