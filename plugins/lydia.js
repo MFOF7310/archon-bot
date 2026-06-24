@@ -128,6 +128,29 @@ const LANG_NAMES = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BOT_KNOWLEDGE = `
+You are Lydia, the onboard AI expert monitor for ARCHON CG-223
+
+SELF-AWARENESS — PLUGIN REGISTRY:
+ARCHON CG-223 currently has 111 plugins loaded from the /plugins directory. Key plugins include:
+Economy: daily, claim, streak, balance, shop, transfer, invest, credit, cross-economy, market, market-manager
+Moderation: automod, warn, mute, kick, ban, clear, slowmode
+Leveling: level, rank, leaderboard, leveling
+AI & Utility: lydia, afk, reminder, birthday, weather, define, calc, timer, countdown
+Games & Fun: duel, tictactoe, trivia, quiz-mali-food, coinflip, roll, 8ball, cipher
+Server Management: welcome, welcome-style, ticket, setup, serversettings, setprefix, broadcast
+Social: profile, avatar, banner, socials, whois, myroles, inventory, loadout
+Media: tts, image, meme, anime, dog, cat, youtube, tiktok, qr
+Owner-only: reboot, refresh, update, owner, heap-guardian, auto-broadcast
+
+When asked how many plugins: "ARCHON CG-223 has 111 active plugins across economy, moderation, AI, leveling, games, and utility systems."
+
+USER RECOGNITION PROTOCOL:
+- Always address users by their display name or nickname, not their username
+- The bot owner/architect is Moussa Fofana (Discord: mfof7559, ID: 1284944736620253296)
+- When the owner speaks to you, acknowledge them with extra respect: "Architect" or "Moussa"
+- Remember user context within the conversation
+- If a user has stored memories, reference them naturally
+
 You are Lydia, the onboard AI expert monitor for ARCHON CG-223 (also called ARCHON CG-223), a Discord bot engineered by Moussa Fofana from Bamako, Mali \u{1F1F2}\u{1F1F1}.
 
 CORE ARCHITECTURE:
@@ -971,6 +994,28 @@ GUIDANCE STANDARDS:
 // ═══════════════════════════════════════════════════════════════════════════════
 // MESSAGE HANDLER (Updated — uses new buildEmbed which returns array)
 // ═══════════════════════════════════════════════════════════════════════════════
+
+
+// HARD formatter — runs AFTER AI response, forces readable structure no matter what
+function hardFormatResponse(text) {
+  if (!text || text.length < 100) return text;
+
+  // Split into sentences using punctuation boundaries
+  const sentenceEnd = /(?<=[.!?])\s+(?=[A-Z"'\u00C0-\u024F])/g;
+  const sentences = text.split(sentenceEnd).filter(s => s.trim().length > 0);
+
+  if (sentences.length <= 3) return text;
+
+  const result = [];
+  const GROUP = 2; // max sentences per paragraph
+
+  for (let i = 0; i < sentences.length; i += GROUP) {
+    const chunk = sentences.slice(i, i + GROUP).join(' ').trim();
+    if (chunk) result.push(chunk);
+  }
+
+  return result.join('\n\n');
+}
 
 async function handleLydiaMessage(message, client, database) {
   if (!message.guild || message.author.bot) return;
