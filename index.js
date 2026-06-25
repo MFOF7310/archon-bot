@@ -979,7 +979,12 @@ function parseJSONSafe(str, fallback) {
 }
 
 function updateServerSetting(guildId, setting, value) {
-    if (setting === 'xpboost') {
+    // Handle null/undefined — store as NULL in SQLite
+    if (value === null || value === undefined || value === 'null' || value === 'undefined') {
+        value = null;
+    }
+
+    if (setting === 'xpboost' && value !== null) {
         const num = parseFloat(value);
         if (isNaN(num) || num < 0.1 || num > 10.0) {
             value = '1.0';
@@ -4817,7 +4822,8 @@ apiApp.post('/api/update-config', (req, res) => {
     try {
         let updated = 0;
         for (const [key, value] of Object.entries(settings)) {
-            if (updateServerSetting(guildId, key, String(value))) updated++;
+            const val = (value === null || value === undefined || value === 'null') ? null : String(value);
+            if (updateServerSetting(guildId, key, val)) updated++;
         }
         client.settings.delete(guildId);
         res.json({ success: true, updated, guildId });
