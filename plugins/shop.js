@@ -346,13 +346,13 @@ if (selectedItem.effect?.streak_protection) {
 
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
+        await interaction.deferReply();
         const fakeMessage = {
             author: interaction.user,
             guild: interaction.guild,
             channel: interaction.channel,
             reply: async (options) => {
-                if (interaction.deferred) return interaction.editReply(options);
-                return interaction.reply(options);
+                return interaction.editReply(options);
             },
             react: () => Promise.resolve()
         };
