@@ -990,6 +990,14 @@ function updateServerSetting(guildId, setting, value) {
             value = '1.0';
         }
     }
+
+    // Ensure row exists (upsert) before updating
+    try {
+        const exists = db.prepare('SELECT 1 FROM server_settings WHERE guild_id = ?').get(guildId);
+        if (!exists) {
+            db.prepare('INSERT OR IGNORE INTO server_settings (guild_id, prefix) VALUES (?, ?)').run(guildId, '.');
+        }
+    } catch (e) {}
     
     const columnMap = { 
         prefix: 'prefix', 
