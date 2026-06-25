@@ -158,11 +158,13 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         const createMenuOptions = (ownedSet, currentLevel) => {
             return shopItems.map(item => {
-                let description = `${item.price.toLocaleString()} Credits - ${item[lang]?.desc || item.en.desc}`;
+                const itemName = item[lang]?.name || item.en?.name || item.name || item.id;
+                const itemDesc = item[lang]?.desc || item.en?.desc || item.desc || '';
+                let description = `${item.price.toLocaleString()} Credits - ${itemDesc}`;
                 if (ownedSet.has(item.id)) description = `✅ ${t.owned} - ${description}`;
                 if (item.requirement?.level && currentLevel < item.requirement.level) description = `🔒 ${t.locked} ${item.requirement.level} - ${description}`;
                 return {
-                    label: `${item.emoji} ${item[lang]?.name || item.en.name}`.substring(0, 100),
+                    label: `${item.emoji || '📦'} ${itemName}`.substring(0, 100),
                     description: description.substring(0, 100),
                     value: item.id
                 };

@@ -96,7 +96,8 @@ async function buildProfile(target, client, db, guildId, guild, lang, version, i
 
     // ── Fetch user data ──
     let userData = null;
-    try { if (client.getUserData) userData = client.getUserData(target.id, guildId); } catch (e) {}
+    // Skip cache for profile — always get fresh data including active_badge
+    // try { if (client.getUserData) userData = client.getUserData(target.id, guildId); } catch (e) {}
     if (!userData && db) {
         userData = db.prepare(
             `SELECT id, xp, credits, streak_days, created_at, games_played, games_won,
