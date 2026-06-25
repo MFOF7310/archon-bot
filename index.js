@@ -4841,6 +4841,44 @@ apiApp.post('/api/update-config', (req, res) => {
 });
 
 
+
+// ─── MODERATION LOGS ──────────────────────────────────────────────────────────
+apiApp.get('/api/modlogs/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    const { limit = 50, action, userId } = req.query;
+    if (!validateSnowflake(guildId)) return res.status(400).json({ error: 'Invalid guild ID' });
+    try {
+        let query = 'SELECT * FROM moderation_logs WHERE guild_id = ?';
+        const params = [guildId];
+        if (action) { query += ' AND action = ?'; params.push(action); }
+        if (userId) { query += ' AND user_id = ?'; params.push(userId); }
+        query += ' ORDER BY timestamp DESC LIMIT ?';
+        params.push(parseInt(limit) || 50);
+        const logs = db.prepare(query).all(...params);
+        res.json({ success: true, logs, total: logs.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── WARNINGS ────────────────────────────────────────────────────────────────
+apiApp.get('/api/warnings/:guildId', (req, res) => {
+    const { guildId } = req.params;
+    const { userId, active } = req.query;
+    if (!validateSnowflake(guildId)) return res.status(400).json({ error: 'Invalid guild ID' });
+    try {
+        let query = 'SELECT * FROM warnings WHERE guild_id = ?';
+        const params = [guildId];
+        if (userId) { query += ' AND user_id = ?'; params.push(userId); }
+        if (active !== undefined) { query += ' AND active = ?'; params.push(active === 'true' ? 1 : 0); }
+        query += ' ORDER BY created_at DESC LIMIT 100';
+        const warnings = db.prepare(query).all(...params);
+        res.json({ success: true, warnings, total: warnings.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // TOP.GG VOTE WEBHOOK
 apiApp.post('/api/vote', (req, res) => {
     const auth = req.headers['authorization'];
