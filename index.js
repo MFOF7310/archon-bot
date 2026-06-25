@@ -1873,6 +1873,32 @@ client.shopItems = [
         en: { name: 'VIP Status', desc: 'Exclusive VIP role and perks.', perk: 'VIP Role + Special Channel Access' },
         fr: { name: 'Statut VIP', desc: 'Role VIP exclusif et avantages.', perk: 'Role VIP + Acces Salon Special' } 
     },
+    // ── BADGES ──
+    {
+        id: 'badge_eagle', price: 5000, emoji: '🦅', type: 'badge', rarity: 'rare',
+        en: { name: 'Eagle Badge', desc: 'Elite Eagle Community emblem.', perk: 'Display on profile' },
+        fr: { name: 'Badge Aigle', desc: 'Emblème élite communauté Eagle.', perk: 'Afficher sur le profil' }
+    },
+    {
+        id: 'badge_neural', price: 3000, emoji: '🔮', type: 'badge', rarity: 'uncommon',
+        en: { name: 'Neural Grid Badge', desc: 'Neural grid operative emblem.', perk: 'Display on profile' },
+        fr: { name: 'Badge Réseau Neural', desc: 'Emblème opérateur neural.', perk: 'Afficher sur le profil' }
+    },
+    {
+        id: 'badge_bamako', price: 2000, emoji: '🇲🇱', type: 'badge', rarity: 'common',
+        en: { name: 'Bamako Badge', desc: 'West Africa node emblem.', perk: 'Display on profile' },
+        fr: { name: 'Badge Bamako', desc: 'Emblème nœud Afrique de l\'Ouest.', perk: 'Afficher sur le profil' }
+    },
+    {
+        id: 'badge_architect', price: 50000, emoji: '👑', type: 'badge', rarity: 'legendary',
+        en: { name: 'Architect Badge', desc: 'Supreme architect emblem.', perk: 'Display on profile' },
+        fr: { name: 'Badge Architecte', desc: 'Emblème suprême architecte.', perk: 'Afficher sur le profil' }
+    },
+    {
+        id: 'badge_steel', price: 7500, emoji: '⚙️', type: 'badge', rarity: 'epic',
+        en: { name: 'Steel Node Badge', desc: 'BAMAKO-STEEL-NODE operative badge.', perk: 'Display on profile' },
+        fr: { name: 'Badge Nœud Acier', desc: 'Badge opérateur BAMAKO-STEEL-NODE.', perk: 'Afficher sur le profil' }
+    },
     { 
         id: 'verified_role', 
         price: 5000, 
