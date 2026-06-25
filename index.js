@@ -1883,7 +1883,7 @@ client.shopItems = [
         id: 'badge_neural', price: 3000, emoji: '🔮', type: 'badge', rarity: 'uncommon',
         en: { name: 'Neural Grid Badge', desc: 'Neural grid operative emblem.', perk: 'Display on profile' },
         fr: { name: 'Badge Réseau Neural', desc: 'Emblème opérateur neural.', perk: 'Afficher sur le profil' }
-    }
+    },
     {
         id: 'badge_architect', price: 50000, emoji: '👑', type: 'badge', rarity: 'legendary',
         en: { name: 'Architect Badge', desc: 'Supreme architect emblem.', perk: 'Display on profile' },
