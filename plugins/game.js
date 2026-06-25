@@ -230,7 +230,8 @@ async function bridgeToTrivia(interaction, client) {
         return await trivia.execute(interaction, client);
     } catch (e) {
         console.error('[TRIVIA BRIDGE]', e.message);
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
+        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
         const t = gameTranslations[lang];
         const embed = new EmbedBuilder().setColor('#9b59b6')
             .setAuthor({ name: '🧠 NEURAL TRIVIA BRIDGE', iconURL: client.user.displayAvatarURL() })
@@ -626,7 +627,7 @@ async function executeSlashCommand(interaction, client) {
 
 // ================= PREFIX FALLBACK =================
 async function run(client, message, args, db, serverSettings, usedCommand) {
-    const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
+    const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
     const t = gameTranslations[lang];
     const guildId = message.guild?.id || 'DM';
     const userId = message.author.id;
