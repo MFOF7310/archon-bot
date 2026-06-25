@@ -171,7 +171,10 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             });
         };
         
-        const menu = new StringSelectMenuBuilder().setCustomId('shop_select').setPlaceholder(t.placeholder).addOptions(createMenuOptions(ownedItems, userLevel));
+        console.log('[SHOP DEBUG] Building menu with', shopItems.length, 'items');
+        const menuOptions = createMenuOptions(ownedItems, userLevel);
+        console.log('[SHOP DEBUG] Menu options built:', menuOptions.length);
+        const menu = new StringSelectMenuBuilder().setCustomId('shop_select').setPlaceholder(t.placeholder).addOptions(menuOptions);
         const row = new ActionRowBuilder().addComponents(menu);
         const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('shop_inventory').setLabel(t.inventory).setStyle(ButtonStyle.Secondary).setEmoji('📦'),
@@ -349,18 +352,104 @@ if (selectedItem.effect?.streak_protection) {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         await interaction.deferReply();
-        const fakeMessage = {
-            author: interaction.user,
-            guild: interaction.guild,
-            channel: interaction.channel,
-            reply: async (options) => {
-                return interaction.editReply(options);
-            },
-            react: () => Promise.resolve()
-        };
-        
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-        
-        await module.exports.run(client, fakeMessage, [], client.db, serverSettings, 'shop');
+        const db = client.db;
+        const lang = serverSettings?.language === 'fr' ? 'fr' : 'en';
+        const t = shopTranslations[lang];
+        const version = client.version || '1.7.0';
+        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
+        const userId = interaction.user.id;
+        const userName = interaction.user.username;
+        const guildId = interaction.guild?.id || 'DM';
+
+        let userData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+        if (!userData) {
+            db.prepare('INSERT OR IGNORE INTO users (id, guild_id, username, xp, level, credits) VALUES (?, ?, ?, 0, 1, 0)').run(userId, guildId, userName);
+            userData = { credits: 0, xp: 0, level: 1, streak_protections: 0 };
+        }
+
+        const balance = userData.credits || 0;
+        const userLevel = userData.level || 1;
+        const shopItems = client.shopItems || [];
+        const inventory = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
+        const ownedItems = new Set(inventory.map(i => i.item_id));
+
+        const shopEmbed = new EmbedBuilder()
+            .setColor('#f1c40f')
+            .setAuthor({ name: '🏪 NEURAL MARKETPLACE', iconURL: client.user.displayAvatarURL() })
+            .setTitle(t.title)
+            .setDescription(t.desc + '\n\n💰 **' + t.balance + ':** `' + balance.toLocaleString() + '` Credits\n📊 **' + t.level + ':** `' + userLevel + '`')
+            .setFooter({ text: guildName + ' • ' + t.footer + ' • v' + version, iconURL: guildIcon })
+            .setTimestamp();
+
+        const buildOptions = (ownedSet, lvl) => shopItems.map(item => {
+            const name = item[lang]?.name || item.en?.name || item.name || item.id;
+            const desc = item[lang]?.desc || item.en?.desc || item.desc || '';
+            let label = (item.emoji || '📦') + ' ' + name;
+            let description = item.price?.toLocaleString() + ' Credits - ' + desc;
+            if (ownedSet.has(item.id)) description = '✅ Owned - ' + description;
+            if (item.requirement?.level && lvl < item.requirement.level) description = '🔒 Lv.' + item.requirement.level + ' - ' + description;
+            return { label: label.substring(0, 100), description: description.substring(0, 100), value: item.id };
+        });
+
+        const menu = new StringSelectMenuBuilder().setCustomId('shop_s').setPlaceholder(t.placeholder).addOptions(buildOptions(ownedItems, userLevel));
+        const row = new ActionRowBuilder().addComponents(menu);
+        const btnRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('shop_inv_s').setLabel(t.inventory).setStyle(ButtonStyle.Secondary).setEmoji('📦'),
+            new ButtonBuilder().setCustomId('shop_ref_s').setLabel(t.refresh).setStyle(ButtonStyle.Success).setEmoji('🔄')
+        );
+
+        const reply = await interaction.editReply({ embeds: [shopEmbed], components: [row, btnRow] });
+        const collector = reply.createMessageComponentCollector({ time: 180000 });
+
+        collector.on('collect', async (i) => {
+            if (i.user.id !== userId) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
+            try { await i.deferUpdate(); } catch (e) {}
+
+            if (i.customId === 'shop_ref_s') {
+                const fd = db.prepare('SELECT credits, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const fi = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
+                const fo = new Set(fi.map(x => x.item_id));
+                const refreshedEmbed = new EmbedBuilder().setColor('#f1c40f')
+                    .setAuthor({ name: '🏪 NEURAL MARKETPLACE', iconURL: client.user.displayAvatarURL() })
+                    .setTitle(t.title)
+                    .setDescription(t.desc + '\n\n💰 **' + t.balance + ':** `' + (fd?.credits || 0).toLocaleString() + '` Credits')
+                    .setFooter({ text: guildName + ' • ' + t.footer, iconURL: guildIcon }).setTimestamp();
+                const rm = new StringSelectMenuBuilder().setCustomId('shop_s').setPlaceholder(t.placeholder).addOptions(buildOptions(fo, fd?.level || 1));
+                await i.editReply({ embeds: [refreshedEmbed], components: [new ActionRowBuilder().addComponents(rm), btnRow] }).catch(() => {});
+            }
+
+            if (i.customId === 'shop_s') {
+                const selId = i.values[0];
+                const selItem = shopItems.find(x => x.id === selId);
+                if (!selItem) return;
+                const fd = db.prepare('SELECT credits, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const curBal = fd?.credits || 0;
+                const curLvl = fd?.level || 1;
+                if (selItem.requirement?.level && curLvl < selItem.requirement.level) {
+                    return i.followUp({ content: '🔒 Requires level ' + selItem.requirement.level, flags: 64 }).catch(() => {});
+                }
+                if (curBal < selItem.price) {
+                    return i.followUp({ content: '❌ Insufficient funds! Need ' + selItem.price?.toLocaleString() + ' but have ' + curBal.toLocaleString(), flags: 64 }).catch(() => {});
+                }
+                const newBal = curBal - selItem.price;
+                db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(newBal, userId, guildId);
+                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ?').get(userId, selId);
+                if (ex) {
+                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_id = ?').run(userId, selId);
+                } else {
+                    db.prepare('INSERT INTO user_inventory (user_id, item_id, quantity, active) VALUES (?, ?, 1, 1)').run(userId, selId);
+                }
+                if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
+                const itemName = selItem[lang]?.name || selItem.en?.name || selItem.name;
+                const itemPerk = selItem[lang]?.perk || selItem.en?.perk || '';
+                await i.followUp({ content: '✅ **PURCHASE SUCCESSFUL**\n' + selItem.emoji + ' **' + itemName + '** acquired!\n💰 New balance: `' + newBal.toLocaleString() + '` Credits\n⚡ ' + itemPerk, flags: 64 }).catch(() => {});
+            }
+        });
+
+        collector.on('end', async () => {
+            try { await interaction.editReply({ components: [] }).catch(() => {}); } catch (e) {}
+        });
     }
 };
