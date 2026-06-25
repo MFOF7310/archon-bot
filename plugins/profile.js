@@ -1,320 +1,323 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
-// --- UNIFIED CONFIGURATION ---
 const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
-    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
-    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
-    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
+    { minLevel: 1,  maxLevel: 5,        title: { fr: "RECRUE NEURALE",    en: "NEURAL RECRUIT"    }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 6,  maxLevel: 15,       title: { fr: "AGENT DE TERRAIN",  en: "FIELD AGENT"       }, color: "#3498db", emoji: "🔹" },
+    { minLevel: 16, maxLevel: 30,       title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST"  }, color: "#9b59b6", emoji: "💠" },
+    { minLevel: 31, maxLevel: 50,       title: { fr: "COMMANDANT BKO",    en: "BKO COMMANDER"     }, color: "#e67e22", emoji: "⚜️" },
+    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME",en: "SYSTEM ARCHITECT"  }, color: "#e74c3c", emoji: "👑" },
 ];
 
 const WEALTH_TIERS = [
-    { minCredits: 0, title: { fr: "SANS LE SOU", en: "BROKE" }, emoji: "💀", color: "#95a5a6" },
-    { minCredits: 100, title: { fr: "PETIT PORTEFEUILLE", en: "SMALL WALLET" }, emoji: "🪙", color: "#7f8c8d" },
-    { minCredits: 1000, title: { fr: "COLLECTIONNEUR", en: "COLLECTOR" }, emoji: "💰", color: "#f1c40f" },
-    { minCredits: 5000, title: { fr: "INVESTISSEUR", en: "INVESTOR" }, emoji: "📈", color: "#e67e22" },
-    { minCredits: 15000, title: { fr: "BARON", en: "BARON" }, emoji: "🏦", color: "#3498db" },
-    { minCredits: 50000, title: { fr: "MAGNAT", en: "MAGNATE" }, emoji: "👑", color: "#9b59b6" },
-    { minCredits: 100000, title: { fr: "LÉGENDE FINANCIÈRE", en: "FINANCIAL LEGEND" }, emoji: "🏆", color: "#e74c3c" }
+    { minCredits: 0,      title: { fr: "SANS LE SOU",          en: "BROKE"              }, emoji: "💀", color: "#95a5a6" },
+    { minCredits: 100,    title: { fr: "PETIT PORTEFEUILLE",    en: "SMALL WALLET"       }, emoji: "🪙", color: "#7f8c8d" },
+    { minCredits: 1000,   title: { fr: "COLLECTIONNEUR",        en: "COLLECTOR"          }, emoji: "💰", color: "#f1c40f" },
+    { minCredits: 5000,   title: { fr: "INVESTISSEUR",          en: "INVESTOR"           }, emoji: "📈", color: "#e67e22" },
+    { minCredits: 15000,  title: { fr: "BARON",                 en: "BARON"              }, emoji: "🏦", color: "#3498db" },
+    { minCredits: 50000,  title: { fr: "MAGNAT",                en: "MAGNATE"            }, emoji: "👑", color: "#9b59b6" },
+    { minCredits: 100000, title: { fr: "LÉGENDE FINANCIÈRE",    en: "FINANCIAL LEGEND"   }, emoji: "🏆", color: "#e74c3c" },
 ];
 
 function calculateLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1; }
 function getAgentRank(level) { return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1]; }
 function getWealthTier(credits) { return [...WEALTH_TIERS].reverse().find(t => (credits || 0) >= t.minCredits) || WEALTH_TIERS[0]; }
 function getNextWealthTier(credits) { return WEALTH_TIERS.find(t => t.minCredits > (credits || 0)); }
-function createProgressBar(percentage, length = 12) {
-    const filled = Math.round((percentage / 100) * length);
-    const empty = length - filled;
-    return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty));
+function createProgressBar(pct, len = 12) {
+    const f = Math.round((Math.min(100, Math.max(0, pct)) / 100) * len);
+    return '█'.repeat(f) + '░'.repeat(len - f);
+}
+
+// ── Badge helpers ──────────────────────────────────────────────
+function getBadgeDisplay(activeBadge, shopItems) {
+    if (!activeBadge) return null;
+    const item = shopItems?.find(i => i.id === activeBadge);
+    if (!item) return { emoji: '🎖️', name: activeBadge };
+    return {
+        emoji: item.emoji || '🎖️',
+        name: item.en?.name || item.name || activeBadge,
+        rarity: item.rarity || 'standard',
+    };
+}
+
+// ── Translations ───────────────────────────────────────────────
+const TRANSLATIONS = {
+    fr: {
+        title: (n) => `📋 DOSSIER AGENT: ${n.toUpperCase()}`,
+        node: 'Nœud', core: 'Noyau', rank: 'Rang',
+        level: 'Niveau', xp: 'XP', credits: 'Crédits',
+        wealth: 'Richesse', progress: 'PROGRESSION',
+        next: 'Prochain', combatMatrix: 'MATRICE COMBAT',
+        played: 'Parties', won: 'Victoires', winRate: 'Taux',
+        streak: 'SÉRIE QUOTIDIENNE', messages: 'Messages',
+        serverRank: 'Classement', days: 'jours',
+        required: 'requis', wealthProg: 'Progression Richesse',
+        badge: 'EMBLÈME ACTIF', noBadge: 'Aucun emblème équipé',
+        architectRecognition: '🏛️ RECONNAISSANCE ARCHITECTE',
+        architectDesc: 'Le Créateur marche parmi nous. Le Système honore son Architecte.',
+        noData: (n) => `❌ **Agent ${n}** n'a aucune donnée enregistrée.`,
+        footer: 'BAMAKO_223 🇲🇱 • NEURAL GRID',
+        classifiedHeader: 'CLASSIFIÉ // ARCHON CG-223',
+        operationalStatus: 'STATUT OPÉRATIONNEL',
+        intelligenceReport: 'RAPPORT DE RENSEIGNEMENT',
+        combatRecord: 'BILAN COMBAT',
+        identity: 'IDENTITÉ',
+    },
+    en: {
+        title: (n) => `📋 AGENT DOSSIER: ${n.toUpperCase()}`,
+        node: 'Node', core: 'Core', rank: 'Rank',
+        level: 'Level', xp: 'XP', credits: 'Credits',
+        wealth: 'Wealth', progress: 'PROGRESS',
+        next: 'Next', combatMatrix: 'COMBAT MATRIX',
+        played: 'Played', won: 'Won', winRate: 'Rate',
+        streak: 'DAILY STREAK', messages: 'Messages',
+        serverRank: 'Server Rank', days: 'days',
+        required: 'required', wealthProg: 'Wealth Progress',
+        badge: 'ACTIVE EMBLEM', noBadge: 'No emblem equipped',
+        architectRecognition: '🏛️ ARCHITECT RECOGNITION',
+        architectDesc: 'The Creator walks among us. The System honors its Architect.',
+        noData: (n) => `❌ **Agent ${n}** has no recorded data.`,
+        footer: 'BAMAKO_223 🇲🇱 • NEURAL GRID',
+        classifiedHeader: 'CLASSIFIED // ARCHON CG-223',
+        operationalStatus: 'OPERATIONAL STATUS',
+        intelligenceReport: 'INTELLIGENCE REPORT',
+        combatRecord: 'COMBAT RECORD',
+        identity: 'IDENTITY',
+    }
+};
+
+// ══════════════════════════════════════════════════════════════
+// CORE PROFILE BUILDER
+// ══════════════════════════════════════════════════════════════
+async function buildProfile(target, client, db, guildId, guild, lang, version, isSlash = false) {
+    const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+    const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
+    const guildIcon  = guild?.iconURL() || client.user.displayAvatarURL();
+    const shopItems  = client.shopItems || [];
+
+    // ── Fetch user data ──
+    let userData = null;
+    try { if (client.getUserData) userData = client.getUserData(target.id, guildId); } catch (e) {}
+    if (!userData && db) {
+        userData = db.prepare(
+            `SELECT id, xp, credits, streak_days, created_at, games_played, games_won,
+             total_messages, total_winnings, gaming, level, username, guild_id, active_badge
+             FROM users WHERE id = ? AND guild_id = ?`
+        ).get(target.id, guildId);
+    }
+    if (!userData && client.getOrCreateUser) {
+        try { userData = client.getOrCreateUser(target.id, guildId, target.username); } catch (e) {}
+    }
+    if (!userData) return null;
+
+    // ── Stats ──
+    const xp           = userData.xp           ?? 0;
+    const credits      = userData.credits       ?? 0;
+    const streakDays   = userData.streak_days   ?? 0;
+    const totalMessages= userData.total_messages?? 0;
+    const gamesPlayed  = userData.games_played  ?? 0;
+    const gamesWon     = userData.games_won     ?? 0;
+    const totalWinnings= userData.total_winnings?? 0;
+    const level        = userData.level         ?? calculateLevel(xp);
+    const agentRank    = getAgentRank(level);
+    const wealthTier   = getWealthTier(credits);
+    const nextWealth   = getNextWealthTier(credits);
+    const winRate      = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
+    const activeBadge  = userData.active_badge  || null;
+    const badgeDisplay = getBadgeDisplay(activeBadge, shopItems);
+
+    // ── Server rank ──
+    let serverRank = 1, totalUsers = 1;
+    try {
+        if (db && guild) {
+            serverRank = ((db.prepare(`SELECT COUNT(*) as r FROM users WHERE xp > ? AND guild_id = ?`).get(xp, guildId)?.r) || 0) + 1;
+            totalUsers  = db.prepare(`SELECT COUNT(*) as c FROM users WHERE guild_id = ?`).get(guildId)?.c || 1;
+        }
+    } catch (e) {}
+
+    // ── Progress bars ──
+    const curLvlXP   = Math.pow((level - 1) / 0.1, 2);
+    const nxtLvlXP   = Math.pow(level / 0.1, 2);
+    const pct        = nxtLvlXP > curLvlXP ? Math.min(100, ((xp - curLvlXP) / (nxtLvlXP - curLvlXP)) * 100) : 100;
+    const xpRemain   = Math.max(0, Math.ceil(nxtLvlXP - xp));
+    const lvlBar     = createProgressBar(pct, 14);
+
+    let wealthPct = 100, creditsToNext = 0;
+    if (nextWealth) {
+        const prev = WEALTH_TIERS[WEALTH_TIERS.indexOf(nextWealth) - 1]?.minCredits || 0;
+        creditsToNext = nextWealth.minCredits - credits;
+        wealthPct = Math.min(100, ((credits - prev) / (nextWealth.minCredits - prev)) * 100);
+    }
+    const wealthBar = createProgressBar(wealthPct, 14);
+
+    // ── Discord member info ──
+    let highestRole = 'Member', memberDays = 0;
+    try {
+        const member = guild?.members.cache.get(target.id);
+        if (member) {
+            highestRole = member.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
+            memberDays = Math.floor((Date.now() - (member.joinedAt?.getTime() || Date.now())) / 86400000);
+        }
+    } catch (e) {}
+
+    // ── Gaming data ──
+    let gamingData = { game: 'CODM', rank: 'Unranked', mode: 'Standard' };
+    try { if (userData.gaming) gamingData = JSON.parse(userData.gaming); } catch (e) {}
+
+    // ══════════════════════════════════════════════════════════
+    // BUILD CLASSIFIED DOSSIER EMBED
+    // ══════════════════════════════════════════════════════════
+    const embed = new EmbedBuilder()
+        .setColor(agentRank.color)
+        .setAuthor({
+            name: `// ${t.classifiedHeader} // v${version}`,
+            iconURL: client.user.displayAvatarURL({ dynamic: true })
+        })
+        .setTitle(`📁 ${t.title(target.username)}`)
+        .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }));
+
+    // ── BLOCK 1: Operational Status ──
+    const statusBlock = [
+        `\`\`\`ansi`,
+        `\u001b[1;36mSUBJECT          \u001b[0m ${target.username}`,
+        `\u001b[1;36m${t.rank.padEnd(17)}\u001b[0m ${agentRank.emoji} ${agentRank.title[lang]}`,
+        `\u001b[1;36m${t.level.padEnd(17)}\u001b[0m \u001b[1;33m${level}\u001b[0m`,
+        `\u001b[1;36m${t.serverRank.padEnd(17)}\u001b[0m #${serverRank}/${totalUsers}`,
+        `\u001b[1;36mNODE             \u001b[0m BAMAKO-STEEL-NODE`,
+        `\`\`\``
+    ].join('\n');
+
+    embed.addFields({ name: `⬛ ${t.operationalStatus}`, value: statusBlock, inline: false });
+
+    // ── BLOCK 2: Intelligence Report ──
+    const intelBlock = [
+        `\`\`\`ansi`,
+        `\u001b[0;37m▸ ${t.xp.padEnd(16)}\u001b[0m \u001b[1;36m${xp.toLocaleString()}\u001b[0m`,
+        `\u001b[0;37m▸ ${t.credits.padEnd(16)}\u001b[0m \u001b[1;33m${credits.toLocaleString()} 🪙\u001b[0m`,
+        `\u001b[0;37m▸ ${t.wealth.padEnd(16)}\u001b[0m ${wealthTier.emoji} ${wealthTier.title[lang]}`,
+        `\u001b[0;37m▸ ${t.streak.padEnd(16)}\u001b[0m \u001b[1;31m🔥 ${streakDays} ${t.days}\u001b[0m`,
+        `\u001b[0;37m▸ ${t.messages.padEnd(16)}\u001b[0m ${totalMessages.toLocaleString()}`,
+        `\`\`\``
+    ].join('\n');
+
+    embed.addFields({ name: `📊 ${t.intelligenceReport}`, value: intelBlock, inline: false });
+
+    // ── BLOCK 3: XP Progress ──
+    const progressBlock = `\`\`\`ansi\n\u001b[1;36m${lvlBar}\u001b[0m ${pct.toFixed(1)}%\n\u001b[0;37m└─ ${t.next} ${t.level}: ${xpRemain.toLocaleString()} ${t.xp}\u001b[0m\n\`\`\``;
+    embed.addFields({ name: `🚀 ${t.progress}`, value: progressBlock, inline: true });
+
+    // ── BLOCK 4: Wealth Progress ──
+    const wealthBlock = nextWealth
+        ? `\`\`\`ansi\n\u001b[1;33m${wealthBar}\u001b[0m ${wealthPct.toFixed(1)}%\n\u001b[0;37m└─ ${creditsToNext.toLocaleString()} 🪙 ${t.required}\u001b[0m\n\`\`\``
+        : `\`\`\`ansi\n\u001b[1;33m██████████████\u001b[0m 100%\n\u001b[1;32m└─ MAX ${t.wealth.toUpperCase()} ACHIEVED\u001b[0m\n\`\`\``;
+    embed.addFields({ name: `💎 ${t.wealthProg}`, value: wealthBlock, inline: true });
+
+    // ── BLOCK 5: Badge ──
+    const badgeBlock = badgeDisplay
+        ? `\`\`\`ansi\n\u001b[1;35m${badgeDisplay.emoji} ${badgeDisplay.name}\u001b[0m\n\u001b[0;37m${badgeDisplay.rarity?.toUpperCase() || 'STANDARD'} CLEARANCE\u001b[0m\n\`\`\``
+        : `\`\`\`ansi\n\u001b[0;37m${t.noBadge}\u001b[0m\n\`\`\``;
+    embed.addFields({ name: `🎖️ ${t.badge}`, value: badgeBlock, inline: false });
+
+    // ── BLOCK 6: Combat Record ──
+    const combatBlock = [
+        `\`\`\`ansi`,
+        `\u001b[1;31m▸ SECTOR         \u001b[0m ${gamingData.game}`,
+        `\u001b[1;31m▸ MODE           \u001b[0m ${gamingData.mode || 'Standard'}`,
+        `\u001b[1;31m▸ RANK           \u001b[0m ${gamingData.rank || 'Unranked'}`,
+        `\u001b[1;31m▸ ${t.played.padEnd(16)}\u001b[0m ${gamesPlayed.toLocaleString()}`,
+        `\u001b[1;31m▸ ${t.won.padEnd(16)}\u001b[0m ${gamesWon} (${winRate}%)`,
+        `\u001b[1;31m▸ WINNINGS       \u001b[0m ${totalWinnings.toLocaleString()} 🪙`,
+        `\`\`\``
+    ].join('\n');
+    embed.addFields({ name: `🔴 ${t.combatRecord}`, value: combatBlock, inline: false });
+
+    // ── BLOCK 7: Identity ──
+    const identityBlock = [
+        `\`\`\`ansi`,
+        `\u001b[1;33m▸ ROLE           \u001b[0m ${highestRole}`,
+        `\u001b[1;33m▸ MEMBER         \u001b[0m ${memberDays} ${t.days}`,
+        `\u001b[1;33m▸ ID             \u001b[0m ${target.id.slice(0, 10)}...`,
+        `\u001b[1;33m▸ SERVER         \u001b[0m ${guildName.slice(0, 20)}`,
+        `\`\`\``
+    ].join('\n');
+    embed.addFields({ name: `🪪 ${t.identity}`, value: identityBlock, inline: false });
+
+    // ── Architect recognition ──
+    if (target.id === process.env.OWNER_ID) {
+        embed.addFields({
+            name: t.architectRecognition,
+            value: `\`\`\`ansi\n\u001b[1;32m[ARCHITECT ACCESS CONFIRMED]\u001b[0m\n\u001b[0;37m${t.architectDesc}\u001b[0m\n\`\`\``,
+            inline: false
+        });
+    }
+
+    embed.setFooter({ text: `${t.footer} • v${version}`, iconURL: guildIcon }).setTimestamp();
+    return embed;
 }
 
 module.exports = {
     name: 'profile',
     aliases: ['p', 'identifiant', 'userinfo', 'agent', 'profil'],
-    description: '📊 Complete Agent Dossier with unified neural statistics.',
+    description: '📋 Complete Agent Dossier — classified neural statistics.',
     category: 'PROFILE',
     usage: '.profile [@user]',
     cooldown: 3000,
-    examples: ['.profile', '.profile @user'],
+    examples: ['.profile', '.profile @user', '.p @agent'],
 
     data: new SlashCommandBuilder()
         .setName('profile')
-        .setDescription('📊 Complete Agent Dossier with unified neural statistics')
-        .addUserOption(option => option.setName('agent').setDescription('Agent to inspect').setRequired(false)),
+        .setDescription('📋 Display classified agent dossier with neural statistics')
+        .addUserOption(o => o.setName('agent').setDescription('Agent to inspect').setRequired(false)),
 
+    // ══════════════════════════════════════════════════
+    // PREFIX
+    // ══════════════════════════════════════════════════
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
-            // PER-SERVER: Extract guildId FIRST (before any DB operation)
             const guildId = message.guild?.id || 'DM';
-            const guild = message.guild;
+            const guild   = message.guild;
+            const lang    = client.detectLanguage ? client.detectLanguage(usedCommand || 'profile', guildId) : 'en';
+            const version = client.version || '3.0.7';
 
-            // Target resolution
-            let target;
-            if (args[0] && message.mentions?.users?.size > 0) {
-                target = message.mentions.users.first();
-            } else if (args[0] && guild) {
-                target = guild.members.cache.get(args[0])?.user || message.author;
-            } else {
-                target = message.author;
+            let target = message.author;
+            if (args[0] && message.mentions?.users?.size > 0) target = message.mentions.users.first();
+            else if (args[0] && guild) target = guild.members.cache.get(args[0])?.user || message.author;
+
+            const embed = await buildProfile(target, client, db, guildId, guild, lang, version, false);
+            if (!embed) {
+                const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+                return message.reply({ content: t.noData(target.username) }).catch(() => {});
             }
-
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand || 'profile', 'en') : 'en';
-            const t = {
-                fr: {
-                    title: (name) => `📜 DOSSIER AGENT: ${name.toUpperCase()}`,
-                    node: 'Nœud', core: 'Noyau', rank: 'Rang',
-                    statsTelemetry: '📊 TÉLÉMÉTRIE STATS', level: 'Niveau', xp: 'XP',
-                    credits: 'Crédits', wealth: 'Richesse', progress: '🚀 PROGRESSION',
-                    complete: 'Complet', next: 'Prochain', combatMatrix: '🎮 MATRICE DE COMBAT',
-                    sector: 'Secteur', played: 'Parties', won: 'Victoires', winRate: 'Taux',
-                    dailyStreak: '🔥 Série Quotidienne', messages: '💬 Messages',
-                    gamesPlayed: '🎮 Parties Jouées', totalWinnings: '🏆 Gains Totaux',
-                    serverRank: '📈 Classement Serveur', days: 'jours',
-                    footer: 'EAGLE COMMUNITY 🇲🇱 • Nœud Bamako',
-                    noData: (name) => `❌ **Agent ${name}** n'a aucune donnée enregistrée.`,
-                    wealthProgress: 'Progression de Richesse', required: 'requis',
-                    architectRecognition: '🏛️ RECONNAISSANCE ARCHITECTE',
-                    architectDesc: 'Le Créateur marche parmi nous. Le Système honore son Architecte.'
-                },
-                en: {
-                    title: (name) => `📜 AGENT DOSSIER: ${name.toUpperCase()}`,
-                    node: 'Node', core: 'Core', rank: 'Rank',
-                    statsTelemetry: '📊 STATS TELEMETRY', level: 'Level', xp: 'XP',
-                    credits: 'Credits', wealth: 'Wealth', progress: '🚀 PROGRESS',
-                    complete: 'Complete', next: 'Next', combatMatrix: '🎮 COMBAT MATRIX',
-                    sector: 'Sector', played: 'Played', won: 'Won', winRate: 'Rate',
-                    dailyStreak: '🔥 Daily Streak', messages: '💬 Messages',
-                    gamesPlayed: '🎮 Games Played', totalWinnings: '🏆 Total Winnings',
-                    serverRank: '📈 Server Rank', days: 'days',
-                    footer: 'EAGLE COMMUNITY 🇲🇱 • Bamako Node',
-                    noData: (name) => `❌ **Agent ${name}** has no recorded data.`,
-                    wealthProgress: 'Wealth Progress', required: 'required',
-                    architectRecognition: '🏛️ ARCHITECT RECOGNITION',
-                    architectDesc: 'The Creator walks among us. The System honors its Architect.'
-                }
-            }[lang];
-
-            const version = client.version || '2.0.0';
-            const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
-            const guildIcon = guild?.iconURL() || client.user.displayAvatarURL();
-
-            // ===== STEP 1: Try getUserData with COMPOSITE KEY (userId, guildId) =====
-            let userData = null;
-            try {
-                if (client.getUserData) {
-                    userData = client.getUserData(target.id, guildId);
-                }
-            } catch (e) {
-                console.log(`[PROFILE] getUserData error: ${e.message}`);
-            }
-
-            // ===== STEP 2: Fallback to direct DB query with guild_id =====
-            if (!userData && db) {
-                try {
-                    userData = db.prepare(
-                        `SELECT id, xp, credits, streak_days, created_at, games_played, games_won, 
-                         total_messages, total_winnings, gaming, level, username, guild_id 
-                         FROM users WHERE id = ? AND guild_id = ?`
-                    ).get(target.id, guildId);
-                } catch (e) {
-                    console.log(`[PROFILE] DB query error: ${e.message}`);
-                }
-            }
-
-            // ===== STEP 3: Auto-create user if missing (getOrCreateUser) =====
-            if (!userData && client.getOrCreateUser) {
-                try {
-                    userData = client.getOrCreateUser(target.id, guildId, target.username);
-                } catch (e) {
-                    console.log(`[PROFILE] getOrCreateUser error: ${e.message}`);
-                }
-            }
-
-            // ===== STEP 4: If STILL no data, show error =====
-            if (!userData) {
-                const errorEmbed = new EmbedBuilder()
-                    .setColor('#ED4245')
-                    .setDescription(t.noData(target.username))
-                    .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                    .setTimestamp();
-                return message.reply({ embeds: [errorEmbed] }).catch(() => {});
-            }
-
-            // ===== BUILD PROFILE =====
-            const xp = userData?.xp ?? 0;
-            const credits = userData?.credits ?? 0;
-            const streakDays = userData?.streak_days ?? 0;
-            const totalMessages = userData?.total_messages ?? 0;
-            const gamesPlayed = userData?.games_played ?? 0;
-            const gamesWon = userData?.games_won ?? 0;
-            const totalWinnings = userData?.total_winnings ?? 0;
-            const level = userData?.level ?? calculateLevel(xp);
-            const agentRank = getAgentRank(level);
-            const wealthTier = getWealthTier(credits);
-            const nextWealthTier = getNextWealthTier(credits);
-            const winRate = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
-
-            // ===== PER-SERVER RANK: Fast indexed query with guild_id =====
-            let serverRank = 1, totalUsers = 1;
-            try {
-                if (db && guild) {
-                    const rankData = db.prepare(`SELECT COUNT(*) as rank FROM users WHERE xp > ? AND guild_id = ?`).get(xp, guildId);
-                    serverRank = (rankData?.rank || 0) + 1;
-                    totalUsers = db.prepare(`SELECT COUNT(*) as count FROM users WHERE guild_id = ?`).get(guildId)?.count || 1;
-                }
-            } catch (e) {}
-
-            // Progress bars
-            const currentLevelXP = Math.pow((level - 1) / 0.1, 2);
-            const nextLevelXP = Math.pow(level / 0.1, 2);
-            const xpForCurrentLevel = xp - currentLevelXP;
-            const xpNeededForNext = nextLevelXP - currentLevelXP;
-            const progressPercent = xpNeededForNext > 0 ? Math.min(100, Math.max(0, (xpForCurrentLevel / xpNeededForNext) * 100)) : 0;
-            const xpRemaining = Math.ceil(nextLevelXP - xp);
-            const levelProgressBar = createProgressBar(progressPercent, 15);
-
-            let wealthProgress = 0, creditsToNextTier = 0;
-            if (nextWealthTier) {
-                creditsToNextTier = nextWealthTier.minCredits - credits;
-                const prevTierMin = WEALTH_TIERS[WEALTH_TIERS.indexOf(nextWealthTier) - 1]?.minCredits || 0;
-                const tierRange = nextWealthTier.minCredits - prevTierMin;
-                const creditsInRange = credits - prevTierMin;
-                wealthProgress = tierRange > 0 ? Math.min(100, Math.max(0, (creditsInRange / tierRange) * 100)) : 0;
-            }
-            const wealthProgressBar = createProgressBar(wealthProgress, 15);
-
-            // Gaming data
-            let gamingData = { game: "CODM", rank: "Unranked", mode: "Standard" };
-            if (userData?.gaming) { try { gamingData = JSON.parse(userData.gaming); } catch (e) {} }
-
-            // Discord member info
-            let highestRole = 'Member', memberDays = 0;
-            try {
-                const member = guild?.members.cache.get(target.id);
-                if (member) {
-                    highestRole = member.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
-                    const joinedAt = member.joinedAt ? new Date(member.joinedAt) : new Date();
-                    memberDays = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
-                }
-            } catch (e) {}
-
-            // Build embed
-            const embed = new EmbedBuilder()
-                .setColor(agentRank.color)
-                .setAuthor({ name: t.title(target.username), iconURL: target.displayAvatarURL({ dynamic: true }) })
-                .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 1024 }))
-                .setDescription(`\`\`\`prolog\n${t.node}: BKO-223 • ${t.core}: Groq LPU™ 70B\n${t.rank}: ${agentRank.emoji} ${agentRank.title[lang]} • ${t.level} ${level}\`\`\``)
-                .addFields(
-                    {
-                        name: t.statsTelemetry,
-                        value: `\`\`\`yaml\n${t.xp}: ${xp.toLocaleString()}\n${t.credits}: ${credits.toLocaleString()} 🪙\n${t.wealth}: ${wealthTier.emoji} ${wealthTier.title[lang]}\n${t.serverRank}: #${serverRank}/${totalUsers}\n${t.messages}: ${totalMessages.toLocaleString()}\`\`\``,
-                        inline: true
-                    },
-                    {
-                        name: t.progress,
-                        value: `\`\`\`\n${levelProgressBar} ${progressPercent.toFixed(1)}%\n└─ ${t.next}: ${xpRemaining.toLocaleString()} ${t.xp}\`\`\``,
-                        inline: true
-                    }
-                );
-
-            // Wealth progress
-            if (nextWealthTier) {
-                embed.addFields({
-                    name: `💎 ${t.wealthProgress}`,
-                    value: `\`${wealthProgressBar}\` **${wealthProgress.toFixed(1)}%**\n└─ ${creditsToNextTier.toLocaleString()} 🪙 ${t.required}`,
-                    inline: false
-                });
-            } else {
-                embed.addFields({
-                    name: `🏆 ${t.wealth}`,
-                    value: `**MAXIMUM ${t.wealth.toUpperCase()} ACHIEVED!**\n└─ ${credits.toLocaleString()} 🪙`,
-                    inline: false
-                });
-            }
-
-            embed.addFields(
-                {
-                    name: t.combatMatrix,
-                    value: `\`\`\`prolog\n${t.sector}: ${gamingData.game}\nMode: ${gamingData.mode}\nRank: ${gamingData.rank}\n${t.played}: ${gamesPlayed.toLocaleString()} • ${t.won}: ${gamesWon} (${winRate}%)\n${t.totalWinnings}: ${totalWinnings.toLocaleString()} 🪙\`\`\``,
-                    inline: false
-                },
-                { name: `🔥 ${t.dailyStreak}`, value: `**${streakDays}** ${t.days}`, inline: true },
-                { name: `🎮 ${t.gamesPlayed}`, value: `**${gamesPlayed.toLocaleString()}**`, inline: true },
-                { name: `🏆 ${t.totalWinnings}`, value: `**${totalWinnings.toLocaleString()}** 🪙`, inline: true },
-                {
-                    name: `🕹️ DISCORD`,
-                    value: `**Role:** ${highestRole}\n**Member:** ${memberDays} ${t.days}\n**ID:** \`${target.id.slice(0, 8)}...\``,
-                    inline: false
-                }
-            )
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
-
-            // Architect recognition
-            const ARCHITECT_ID = process.env.OWNER_ID;
-            if (target.id === ARCHITECT_ID) {
-                embed.addFields({ name: t.architectRecognition, value: t.architectDesc, inline: false });
-            }
-
             await message.reply({ embeds: [embed] }).catch(() => {});
-
-        } catch (error) {
-            console.error("[PROFILE ERROR]:", error);
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand || 'profile', 'en') : 'en';
-            const errorMsg = lang === 'fr'
-                ? "⚠️ **Erreur de Liaison Neurale:** Contactez l'Architecte."
-                : "⚠️ **Neural Link Error:** Please contact the Architect.";
-            message.reply(errorMsg).catch(() => {});
+        } catch (err) {
+            console.error('[PROFILE] Error:', err);
+            message.reply('⚠️ Neural link error. Contact the Architect.').catch(() => {});
         }
     },
 
+    // ══════════════════════════════════════════════════
+    // SLASH
+    // ══════════════════════════════════════════════════
     execute: async (interaction, client) => {
-        if (!interaction.guild) {
-            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-            const t = { fr: "❌ **ERREUR:** Serveur uniquement.", en: "❌ **ERROR:** Server only." }[lang];
-            return interaction.reply({
-                embeds: [new EmbedBuilder().setColor('#ED4245').setTitle('🏰 SERVER ONLY').setDescription(t)],
-                ephemeral: true
-            });
+        try {
+            const guildId  = interaction.guild?.id || 'DM';
+            const guild    = interaction.guild;
+            const serverLang = client.getServerSettings?.(guildId)?.language;
+            const lang     = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+            const version  = client.version || '3.0.7';
+            const db       = client.db;
+            const target   = interaction.options.getUser('agent') || interaction.user;
+
+            await interaction.deferReply();
+
+            const embed = await buildProfile(target, client, db, guildId, guild, lang, version, true);
+            if (!embed) {
+                const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+                return interaction.editReply({ content: t.noData(target.username) });
+            }
+            await interaction.editReply({ embeds: [embed] });
+        } catch (err) {
+            console.error('[PROFILE SLASH] Error:', err);
+            interaction.editReply('⚠️ Neural link error.').catch(() => {});
         }
-
-        await interaction.deferReply();
-
-        const targetUser = interaction.options.getUser('agent') || interaction.user;
-        const args = targetUser.id !== interaction.user.id ? [targetUser.id] : [];
-
-        // Collection-compatible mentions (Discord.js API match)
-        const userMap = targetUser.id !== interaction.user.id
-            ? new Map([[targetUser.id, targetUser]])
-            : new Map();
-
-        const fakeMessage = {
-            author: interaction.user,
-            guild: interaction.guild,
-            channel: interaction.channel,
-            mentions: {
-                users: {
-                    _map: userMap,
-                    first() { return this._map.values().next().value || null; },
-                    get(id) { return this._map.get(id); },
-                    has(id) { return this._map.has(id); },
-                    get size() { return this._map.size; },
-                    [Symbol.iterator]() { return this._map.values(); }
-                },
-                members: { first: () => null },
-                roles: { first: () => null },
-                channels: { first: () => null },
-                everyone: false,
-                repliedUser: null
-            },
-            reply: async (options) => interaction.editReply(options),
-            react: () => Promise.resolve(),
-            content: `/profile ${targetUser.id !== interaction.user.id ? `<@${targetUser.id}>` : ''}`
-        };
-
-        const serverSettings = interaction.guild ? client.getServerSettings?.(interaction.guild.id) || {} : { prefix: '.' };
-
-        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'profile');
     }
 };
