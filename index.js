@@ -5068,17 +5068,30 @@ apiApp.listen(5000, '0.0.0.0', () => {
 
 // ================= BOT PROFILE & STATUS =================
 const STATUS_MESSAGES = [
-    // Fun/cool rotating statuses
-    { name: '🦅 Architecting servers...', type: 0 },           // Playing
-    { name: 'with Lydia AI 🧠', type: 0 },                      // Playing
-    { name: '⚡ Daily streaks fired up', type: 0 },             // Playing
-    { name: '🛡️ Shield active — AutoMod on', type: 0 },        // Playing
-    { name: 'the neural grid 🔮', type: 0 },                    // Playing
-    { name: '📊 Market charts', type: 3 },                      // Watching
-    { name: 'tickets resolve 🎫', type: 3 },                    // Watching
-    { name: 'over {guilds} servers', type: 3 },                // Watching (dynamic)
-    { name: '{users} members grow', type: 3 },                 // Watching (dynamic)
-    { name: 'bamako-steel-dev.xyz 🌐', type: 4 },              // Custom (URL clickable)
+    // PLAYING
+    { name: '🦅 Architecting servers...', type: 0 },
+    { name: 'with Lydia AI 🧠', type: 0 },
+    { name: '⚡ {guilds} servers in the grid', type: 0 },
+    { name: 'defense protocols 🛡️', type: 0 },
+    { name: 'the economy engine 💰', type: 0 },
+    { name: 'Neural Grid v3.0.7 🔮', type: 0 },
+    { name: '111 plugins loaded ⚡', type: 0 },
+    // WATCHING
+    { name: 'over {guilds} servers 🌐', type: 3 },
+    { name: '{users} agents in the field', type: 3 },
+    { name: '📊 live market data', type: 3 },
+    { name: 'tickets resolve 🎫', type: 3 },
+    { name: 'daily streaks burn 🔥', type: 3 },
+    { name: 'BAMAKO_223 // ONLINE 🇲🇱', type: 3 },
+    // LISTENING
+    { name: 'slash commands /', type: 2 },
+    { name: '{users} agents', type: 2 },
+    { name: 'the neural feed 🧠', type: 2 },
+    { name: 'Cloud Gaming-223 🎮', type: 2 },
+    // COMPETING
+    { name: 'top.gg rankings 🏆', type: 5 },
+    { name: 'Best Bot — Mali 🇲🇱', type: 5 },
+    { name: 'Neural Grid Challenge', type: 5 },
 ];
 
 let statusIndex = 0;
