@@ -395,7 +395,7 @@ async function playNext(q) {
                 try {
                     const ytUrl = track.query?.includes('youtube.com') ? track.query : `https://www.youtube.com/watch?v=${track.youtubeId}`;
                     console.log('[MUSIC] Direct YouTube stream:', ytUrl);
-                    const { stdout } = await execAsync(`yt-dlp --no-playlist -x --audio-format opus --get-url "${ytUrl}" 2>/dev/null`, { timeout: 20000 });
+                    const { stdout } = await execAsync(`yt-dlp --cookies /root/cloud-gaming-223-digital-engine/data/cookies.txt --no-playlist -x --audio-format opus --get-url "${ytUrl}" 2>/dev/null`, { timeout: 20000 });
                     const url = stdout.trim().split('\n')[0];
                     if (url?.startsWith('http')) {
                         const ffmpeg = require('child_process').spawn('ffmpeg', [
