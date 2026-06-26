@@ -433,7 +433,7 @@ async function playNext(q) {
             if (!stream) {
                 try {
                     const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '');
-                    const { stdout } = await execAsync(`yt-dlp --js-runtime deno --no-playlist -x --audio-format opus --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
+                    const { stdout } = await execAsync(`yt-dlp --cookies /root/cloud-gaming-223-digital-engine/data/cookies.txt --no-playlist -x --audio-format opus --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
                     const url = stdout.trim().split('\n')[0];
                     if (url?.startsWith('http')) {
                         const ffmpeg = require('child_process').spawn('ffmpeg', [
@@ -541,7 +541,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
                 try {
                     // Use yt-dlp for YouTube playlists — more reliable
                     const { stdout } = await execAsync(
-                        `yt-dlp --js-runtime deno --flat-playlist --print "%(title)s|%(id)s" "${query}" 2>/dev/null | head -50`,
+                        `yt-dlp --cookies /root/cloud-gaming-223-digital-engine/data/cookies.txt --flat-playlist --print "%(title)s|%(id)s" "${query}" 2>/dev/null | head -50`,
                         { timeout: 30000 }
                     );
                     const lines = stdout.trim().split('\n').filter(Boolean);
