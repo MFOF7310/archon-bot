@@ -505,9 +505,124 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     q.textChannel = textChannel;
     q._client = client;
 
+    // ── Detect playlist URLs ──────────────────────────
+    const isYTPlaylist = query.includes('youtube.com/playlist') || query.includes('youtu.be') && query.includes('list=');
+    const isSpotifyPlaylist = query.includes('spotify.com/playlist') || query.includes('spotify.com/album');
+    const isSCPlaylist = query.includes('soundcloud.com') && query.includes('/sets/');
+
+    if (isYTPlaylist || isSpotifyPlaylist || isSCPlaylist) {
+        await replyFn({ content: '⏳ Loading playlist...' });
+        try {
+            let playlistTracks = [];
+
+            if (isYTPlaylist) {
+                const info = await playdl.playlist_info(query, { incomplete: true });
+                const videos = info?.videos?.slice(0, 50) || [];
+                playlistTracks = videos.map(v => ({
+                    title: v.title || 'Unknown',
+                    query: v.title || 'Unknown',
+                    artist: v.channel?.name || 'Unknown',
+                    source: 'YouTube',
+                    duration: v.durationInSec || 0,
+                    thumbnail: v.thumbnails?.[0]?.url || null,
+                    requestedBy,
+                    url: null,
+                }));
+                console.log('[MUSIC] YouTube playlist:', info?.title, '-', playlistTracks.length, 'tracks');
+            }
+
+            if (isSpotifyPlaylist) {
+                const id = await playdl.getFreeClientID();
+                await playdl.setToken({ soundcloud: { client_id: id } });
+                // Set Spotify token
+                const spotifyToken = await getSpotifyToken();
+                if (spotifyToken) {
+                    const isAlbum = query.includes('/album/');
+                    const playlistId = query.split(isAlbum ? '/album/' : '/playlist/')[1]?.split('?')[0];
+                    const endpoint = isAlbum ? 'albums' : 'playlists';
+                    const res = await fetch(`https://api.spotify.com/v1/${endpoint}/${playlistId}/tracks?limit=50`, {
+                        headers: { Authorization: `Bearer ${spotifyToken}` }
+                    });
+                    const data = await res.json();
+                    const items = data.items || [];
+                    playlistTracks = items.map(item => {
+                        const t = isAlbum ? item : item.track;
+                        if (!t) return null;
+                        return {
+                            title: t.name,
+                            query: `${t.name} ${t.artists?.[0]?.name || ''}`.trim(),
+                            artist: t.artists?.map(a => a.name).join(', ') || 'Unknown',
+                            source: 'SoundCloud',
+                            duration: Math.floor((t.duration_ms || 0) / 1000),
+                            thumbnail: t.album?.images?.[0]?.url || null,
+                            requestedBy,
+                            url: null,
+                        };
+                    }).filter(Boolean);
+                    console.log('[MUSIC] Spotify playlist:', playlistTracks.length, 'tracks');
+                }
+            }
+
+            if (isSCPlaylist) {
+                const info = await playdl.playlist_info(query);
+                const tracks = info?.tracks?.slice(0, 50) || [];
+                playlistTracks = tracks.map(t => ({
+                    title: t.name || 'Unknown',
+                    query: t.name || 'Unknown',
+                    artist: t.user?.name || 'Unknown',
+                    source: 'SoundCloud',
+                    duration: t.durationInSec || 0,
+                    thumbnail: t.thumbnail || null,
+                    requestedBy,
+                    url: null,
+                }));
+                console.log('[MUSIC] SoundCloud playlist:', playlistTracks.length, 'tracks');
+            }
+
+            if (playlistTracks.length === 0) {
+                await replyFn({ content: '❌ Could not load playlist or it is empty.' });
+                return;
+            }
+
+            // Add to queue (respect 50 limit)
+            const available = 50 - q.tracks.length;
+            const toAdd = playlistTracks.slice(0, Math.max(0, available));
+            q.tracks.push(...toAdd);
+
+            const embed = new EmbedBuilder()
+                .setColor(ARCHON.cyan)
+                .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
+                .setDescription(
+                    `\`\`\`ansi
+` +
+                    `[1;32m▸ PLAYLIST LOADED[0m
+` +
+                    `[1;36m${toAdd.length} tracks added to queue[0m
+` +
+                    `[0;37mFirst: ${toAdd[0]?.title?.substring(0,40)}[0m
+` +
+                    `\`\`\``
+                )
+                .setFooter({ text: 'BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID' });
+
+            await replyFn({ content: null, embeds: [embed] });
+
+            if (!getQueue(guildId)?.player || !getQueue(guildId)?.currentTrack) {
+                try { await ensureConnection(q); await playNext(q); } catch(e) {}
+            }
+            return;
+
+        } catch(err) {
+            console.error('[MUSIC] Playlist error:', err.message);
+            await replyFn({ content: `❌ Playlist error: ${err.message.substring(0,100)}` });
+            return;
+        }
+    }
+
+    // ── Single track ──────────────────────────────────
     const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, url: null };
     if (q.tracks.length >= 50) {
-        await replyFn({ content: '❌ Queue is full! Max 50 tracks. Use `/music skip` or `/music stop` to clear.' });
+        await replyFn({ content: '❌ Queue is full! Max 50 tracks.' });
         return;
     }
     q.tracks.push(track);
