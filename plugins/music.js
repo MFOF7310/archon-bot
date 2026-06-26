@@ -516,19 +516,30 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             let playlistTracks = [];
 
             if (isYTPlaylist) {
-                const info = await playdl.playlist_info(query, { incomplete: true });
-                const videos = info?.videos?.slice(0, 50) || [];
-                playlistTracks = videos.map(v => ({
-                    title: v.title || 'Unknown',
-                    query: v.title || 'Unknown',
-                    artist: v.channel?.name || 'Unknown',
-                    source: 'YouTube',
-                    duration: v.durationInSec || 0,
-                    thumbnail: v.thumbnails?.[0]?.url || null,
-                    requestedBy,
-                    url: null,
-                }));
-                console.log('[MUSIC] YouTube playlist:', info?.title, '-', playlistTracks.length, 'tracks');
+                try {
+                    // Use yt-dlp for YouTube playlists — more reliable
+                    const { stdout } = await execAsync(
+                        `yt-dlp --flat-playlist --print "%(title)s|%(id)s" "${query}" 2>/dev/null | head -50`,
+                        { timeout: 30000 }
+                    );
+                    const lines = stdout.trim().split('\n').filter(Boolean);
+                    playlistTracks = lines.map(line => {
+                        const [title, id] = line.split('|');
+                        return {
+                            title: title || 'Unknown',
+                            query: title || id || 'Unknown',
+                            artist: 'YouTube',
+                            source: 'YouTube',
+                            duration: 0,
+                            thumbnail: id ? `https://img.youtube.com/vi/${id}/mqdefault.jpg` : null,
+                            requestedBy,
+                            url: null,
+                        };
+                    }).filter(t => t.title && t.title !== 'Unknown');
+                    console.log('[MUSIC] YouTube playlist via yt-dlp:', playlistTracks.length, 'tracks');
+                } catch(e) {
+                    console.error('[MUSIC] YT playlist error:', e.message);
+                }
             }
 
             if (isSpotifyPlaylist) {
