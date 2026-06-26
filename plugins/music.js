@@ -147,46 +147,20 @@ async function updatePersistentPanel(q) {
     const embed = new EmbedBuilder()
         .setColor(isPaused ? ARCHON.gold : ARCHON.cyan)
         .setAuthor({
-            name: '// ARCHON NEURAL MUSIC ENGINE //',
+            name: isPaused ? '⏸️ PAUSED — ARCHON MUSIC' : '🎵 NOW PLAYING — ARCHON MUSIC',
             iconURL: t.spotifyUrl
                 ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png'
                 : client.user.displayAvatarURL()
         })
         .setDescription(
-            `\`\`\`ansi
-` +
-            `[1;36m╔══════════════════════════════════════╗[0m
-` +
-            `[1;36m║[0m  ${statusLine.padEnd(36)}[1;36m║[0m
-` +
-            `[1;36m╚══════════════════════════════════════╝[0m
-` +
-            `\`\`\``
-        )
-        .addFields(
-            {
-                name: '🎵 TRACK',
-                value: `**${t.title.substring(0,50)}**
-${t.artist || 'Unknown Artist'} • ${t.album || sourceLine}`,
-                inline: false
-            },
-            {
-                name: '📊 STREAM',
-                value: `\`\`\`ansi
-[1;${isPaused ? '33' : '32'}m${bar}[0m ${pct}%
-[0;37m${formatTime(elapsed)} ━━ ${formatTime(duration)}[0m
-\`\`\``,
-                inline: false
-            },
-            { name: '🎚️ VOL', value: `\`${q.volume}%\``, inline: true },
-            { name: '📋 QUEUE', value: `\`${q.tracks.length} tracks\``, inline: true },
-            { name: '🔁 LOOP', value: `\`${q.loop ? 'ON' : 'OFF'}\``, inline: true },
-            { name: '🔀 AUTO', value: `\`${q.autoplay ? 'ON' : 'OFF'}\``, inline: true },
-            { name: '📍 STAGE', value: `\`${q.voiceChannel?.name?.substring(0,15) || 'Voice'}\``, inline: true },
-            { name: '👤 BY', value: `\`${t.requestedBy?.substring(0,12) || 'Unknown'}\``, inline: true },
+            `**${t.title.substring(0,50)}**\n` +
+            `${t.artist || 'Unknown Artist'}${t.album ? ` • ${t.album.substring(0,25)}` : ''}\n\n` +
+            `${bar} **${pct}%**\n` +
+            `\`${formatTime(elapsed)}\` ─── \`${formatTime(duration)}\`\n\n` +
+            `👤 ${t.requestedBy} • 📍 ${q.voiceChannel?.name?.substring(0,15) || 'Voice'} • ${sourceLine}`
         )
         .setThumbnail(t.thumbnail || client.user.displayAvatarURL())
-        .setFooter({ text: `BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID • Updates every 15s` })
+        .setFooter({ text: `BAMAKO_223 🇲🇱 • Queue: ${q.tracks.length} • Loop: ${q.loop ? 'ON' : 'OFF'} • Auto: ${q.autoplay ? 'ON' : 'OFF'} • Updates every 15s` })
         .setTimestamp();
 
     const row1 = new ActionRowBuilder().addComponents(
