@@ -390,8 +390,30 @@ async function playNext(q) {
         } else {
             let stream = null;
 
+            // Direct YouTube URL — use yt-dlp directly
+            if (track.query?.includes('youtube.com/watch?v=') || track.youtubeId) {
+                try {
+                    const ytUrl = track.query?.includes('youtube.com') ? track.query : `https://www.youtube.com/watch?v=${track.youtubeId}`;
+                    console.log('[MUSIC] Direct YouTube stream:', ytUrl);
+                    const { stdout } = await execAsync(`yt-dlp --no-playlist -x --audio-format opus --get-url "${ytUrl}" 2>/dev/null`, { timeout: 20000 });
+                    const url = stdout.trim().split('\n')[0];
+                    if (url?.startsWith('http')) {
+                        const ffmpeg = require('child_process').spawn('ffmpeg', [
+                            '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
+                            '-i', url, '-vn', '-acodec', 'libopus', '-f', 'opus', 'pipe:1'
+                        ], { stdio: ['ignore', 'pipe', 'ignore'] });
+                        resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus, inlineVolume: true });
+                        track.source = 'YouTube';
+                        stream = { type: StreamType.OggOpus };
+                        console.log('[MUSIC] ▸ YouTube direct:', track.title);
+                    }
+                } catch(e) {
+                    console.error('[MUSIC] YouTube direct error:', e.message);
+                }
+            }
+
             // SoundCloud primary
-            try {
+            if (!stream && !resource) try {
                 const id = await playdl.getFreeClientID();
                 await playdl.setToken({ soundcloud: { client_id: id } });
                 const results = await playdl.search(track.query || track.title, { source: { soundcloud: 'tracks' }, limit: 1 });
@@ -527,13 +549,14 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
                         const [title, id] = line.split('|');
                         return {
                             title: title || 'Unknown',
-                            query: title || id || 'Unknown',
+                            query: id ? `https://www.youtube.com/watch?v=${id}` : title,
                             artist: 'YouTube',
                             source: 'YouTube',
                             duration: 0,
                             thumbnail: id ? `https://img.youtube.com/vi/${id}/mqdefault.jpg` : null,
                             requestedBy,
                             url: null,
+                            youtubeId: id,
                         };
                     }).filter(t => t.title && t.title !== 'Unknown');
                     console.log('[MUSIC] YouTube playlist via yt-dlp:', playlistTracks.length, 'tracks');
