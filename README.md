@@ -1,139 +1,186 @@
 ---
 
-# 🦅 ARCHITECT CG-223 — THE SUPREME NEURAL GRID
-
 <div align="center">
-  <img src="https://img.shields.io/badge/ARCHITECT-CG--223-gold?style=for-the-badge" alt="ARCHITECT CG-223">
-  <img src="https://img.shields.io/badge/Node-BAMAKO__223-2ecc71?style=for-the-badge" alt="BAMAKO_223">
-  <img src="https://img.shields.io/badge/Version-v1.8.0-blue?style=for-the-badge" alt="v1.8.0">
-  <br>
-  <img src="https://img.shields.io/badge/Status-ONLINE-brightgreen?style=flat-square" alt="ONLINE">
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT">
-  <img src="https://img.shields.io/badge/Platform-Discord.js_v14-5865F2?style=flat-square" alt="Discord.js">
+  <img src="assets/1775240583852.png" alt="ARCHON CG-223" width="200"/>
+
+  # 🦅 ARCHON CG-223 — NEURAL GRID
+
+  <img src="https://img.shields.io/badge/ARCHON-CG--223-00f0ff?style=for-the-badge&logo=discord&logoColor=white">
+  <img src="https://img.shields.io/badge/Node-BAMAKO__STEEL__NODE-2ecc71?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Version-v3.0.7-f1c40f?style=for-the-badge">
+  <br/>
+  <img src="https://img.shields.io/badge/Status-ONLINE-brightgreen?style=flat-square">
+  <img src="https://img.shields.io/badge/Servers-11-blue?style=flat-square">
+  <img src="https://img.shields.io/badge/Commands-92-purple?style=flat-square">
+  <img src="https://img.shields.io/badge/Plugins-111-orange?style=flat-square">
+  <img src="https://img.shields.io/badge/Language-EN%2FFR-red?style=flat-square">
+  <img src="https://img.shields.io/badge/Platform-Discord.js_v14-5865F2?style=flat-square">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square">
+
+  **Enterprise-grade Discord bot — built on a phone, deployed from Bamako, Mali 🇲🇱**
+
+  [**Dashboard**](https://bamako-steel-dev.xyz) • [**Invite**](https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=8&scope=bot%20applications.commands) • [**Support**](https://discord.gg/NFSMFJajp9) • [**Vote**](https://top.gg/bot/1472707869257367676)
 </div>
 
 ---
 
 ## 📋 OVERVIEW
 
-**ARCHITECT CG-223** is an enterprise-grade, multi-server Discord bot with advanced per-server configuration, bilingual support (English/French), real-time threat intelligence, neural leveling, AI-powered conversations, and a competitive marketplace. Built for the **Cloud Gaming-223** community in Bamako, Mali.
+**ARCHON CG-223** is a full-stack Discord bot with per-server isolation, bilingual EN/FR support, AI conversations, music streaming, economy system, moderation, leveling, badge system, and a React dashboard. Built and deployed entirely from a mobile phone via Termux + SSH on a Hetzner VPS in Bamako, Mali.
+
+| Name | Description |
+|------|-------------|
+| `cloud-gaming-223-digital-engine` | GitHub Repository |
+| `ARCHON CG-223` | Bot display name in Discord |
+| `BAMAKO_223` | Node name in logs & PM2 |
+| `BAMAKO-STEEL-NODE` | Hetzner VPS hostname |
+| `bamako-steel-dev.xyz` | Dashboard domain |
 
 ---
 
-## 📛 NAMING CLARIFICATION
+## ✨ FEATURE MATRIX
 
-| Name | What It Refers To |
-|------|-------------------|
-| `cloud-gaming-223-digital-engine` | **GitHub Repository** |
-| `ARCHITECT CG-223` | **Bot Display Name** (in Discord) |
-| `BAMAKO_223` | **Node Name** (in logs & PM2) |
-| `Cloud Gaming-223` | **Community/Server Name** |
+### 🎵 Music Engine
+
+| Feature | Description |
+|---------|-------------|
+| `/music play` | Stream from SoundCloud (primary) → YouTube via yt-dlp (fallback) |
+| `/music file` | Upload any audio file (mp3/wav/ogg/flac) directly from phone |
+| `/music pause` | Pause or resume playback |
+| `/music skip` | Skip to next track |
+| `/music stop` | Stop and disconnect |
+| `/music queue` | View queued tracks |
+| `/music volume` | Set volume 1-100 |
+| `/music loop` | Toggle loop mode |
+| `/music autoplay` | Auto-queue similar tracks when queue empties |
+| `/music nowplaying` | Show current track with progress |
+| Stage Support | Bot becomes speaker automatically in stage channels |
+| Spotify Metadata | Album art, artist, duration from Spotify API |
+| Persistent Panel | One message updates every 15s — no spam |
+| Suggested Songs | Recommends tracks based on server play history |
+
+### 🧠 AI — Lydia Neural Engine
+
+| Feature | Description |
+|---------|-------------|
+| Multi-model | Llama 3.1, Gemini, Mistral via OpenRouter |
+| Per-server AI | Enable/disable per server from dashboard |
+| 111 plugins | Full bot knowledge base |
+| Vision | Image analysis support |
+| AFK system | Auto-respond when AFK |
+| Bilingual | EN/FR per server or auto-detect |
+
+### 💰 Economy System
+
+| Feature | Description |
+|---------|-------------|
+| Per-server credits | Isolated balance per server |
+| Daily rewards | Streak system with streak protections |
+| Shop | Badges, XP boosts, credit boosts, VIP roles |
+| Badge system | Buy & equip badges — display on `/profile` |
+| Transfer | Send credits to other users with confirmation |
+| Market | Live dynamic market with investments |
+| Giveaways | Premium giveaway system with entry tracking |
+| `/use` | Dynamic inventory with select menu |
+
+### 📈 Leveling
+
+| Feature | Description |
+|---------|-------------|
+| Per-server XP | Configurable cooldown, min/max gain, multiplier |
+| Level-up cards | Canvas-rendered cards via @napi-rs/canvas |
+| Neural ranks | NEURAL RECRUIT → SYSTEM ARCHITECT |
+| Wealth tiers | BROKE → FINANCIAL LEGEND |
+| Server leaderboard | XP/credits/streak/messages rankings |
+| Profile dossier | Classified police-style agent profile |
+
+### 🛡️ Moderation
+
+| Feature | Description |
+|---------|-------------|
+| AutoMod | Spam, caps, emoji flood, link/invite filter |
+| Warnings | Per-server warning system with auto-actions |
+| Audit log | Full moderation history in dashboard |
+| Appeal system | Users can appeal AutoMod actions via DM |
+| Moderation logs | All actions tracked in SQLite |
+| Timeout/Ban/Kick | Full moderation toolkit |
+
+### 👋 Welcome/Goodbye
+
+| Feature | Description |
+|---------|-------------|
+| Canvas cards | 600×170 2x scale cards with avatar + glow ring |
+| Custom messages | `{user}` `{server}` `{count}` `{age}` placeholders |
+| Per-server config | Channel, message, enable/disable from dashboard |
+| Departure detection | Detects kick/ban vs voluntary leave |
+
+### 🎮 Games
+
+| Feature | Description |
+|---------|-------------|
+| Slots | Spin neural slots with credits |
+| Blackjack | Beat the dealer |
+| Roulette | Bet on your number |
+| TicTacToe | 2-player with challenge system |
+| CODM Simulator | Simulated ranked match results |
+
+### 🌐 Dashboard — bamako-steel-dev.xyz
+
+| Feature | Description |
+|---------|-------------|
+| Stack | React + Vite + tRPC + MySQL + Drizzle ORM |
+| Auth | Discord OAuth2 login |
+| General Settings | Prefix, language, timezone, welcome/goodbye |
+| Economy Settings | Currency, daily bonus, tax, channels |
+| Moderation Settings | AutoMod, thresholds, log channels |
+| Leveling Settings | XP multiplier, cooldown, level-up channel |
+| AI Settings | Enable/disable Lydia, AFK, Market |
+| Reset buttons | Per-section reset with confirmation modal |
+| Audit Log panel | Moderation history with action filters |
+| Leaderboard panel | XP/credits/streak/messages rankings |
+| Users panel | OAuth dashboard logins (owner only) |
+| Admin panel | Full control room with live diagnostics |
+| Premium toast | Color-coded save notifications with sync status |
 
 ---
 
-## ✨ SUPREME FEATURE MATRIX
+## 🏗️ TECH STACK
 
-| Category | Feature | Description |
-|----------|---------|-------------|
-| 🧠 **AI** | Lydia Multi-Agent AI | Gaming expert (CODM), general knowledge, channel-aware |
-| | Gemini Vision | Analyze images, screenshots, and pictures |
-| | Auto-Mod AI | Real-time message filtering and violation detection |
-| 🛡️ **Security** | OSINT Threat Engine | 6-vector threat analysis on member join (0-100 scoring) |
-| | Raid Detection | Join velocity monitoring with auto-quarantine |
-| | Impersonation Detection | Flags admin/mod/staff usernames |
-| | Circuit Breaker | Database write protection with dead letter queue |
-| 📈 **Leveling** | Per-Server Dynamic XP | Configurable cooldown, min/max gain, multiplier per server |
-| | Tiered Level-Up Cards | Milestone-based announcements (1-5, 6-10, 11-20, 21+) |
-| | Neural Titles | Knight, Synapse Lord, Digital Sovereign, Supreme Architect |
-| 👋 **Welcome/Goodbye** | Supreme Welcome Matrix v4.0 | Tier-based cards (FOUNDER→LEGEND) with ANSI art |
-| | Supreme Departure Matrix v4.0 | Audit log detection (Kick/Ban vs Leave) |
-| | Interactive Buttons | Rules, General, AI Assistant, Profile buttons |
-| ⚙️ **Per-Server** | 47 Configurable Settings | Prefix, channels, roles, XP, economy, moderation |
-| | Feature Toggles | Enable/disable Welcome, Goodbye, AFK, Market, AI, AutoMod |
-| | Command Control | Disable commands/categories per server |
-| 💰 **Economy** | Shop System | 11 items with bilingual descriptions |
-| | Market Manager | Real-time trends (STEADY, BULL, BEAR, VOLATILE) |
-| | Daily Rewards | Streak tracking with protection shields |
-| 💤 **AFK** | Real-time Status | Mention detection with reason display |
-| | Reminder Buttons | Interactive AFK reminders |
-| | Bilingual Messages | English/French AFK responses |
-| 🌉 **Telegram** | Bridge v1.7.0 | Bidirectional Discord ↔ Telegram message relay |
-| 🎂 **Birthday** | Daily Check | Celebration buttons, gift interactions |
-| 💾 **Database** | SQLite WAL Mode | High-performance with batch writes |
-| | Auto-Repair | Self-healing schema with migrations |
-| | Weekly Purge | Automatic cleanup + VACUUM |
-| 📊 **Monitoring** | Memory Tracker | 100-sample history with averages |
-| | Database Health | Fragmentation detection, WAL size |
-| | Auto-Changelog | v3.5 neural registry on every restart |
-| 🔒 **Self-Healing** | Anti-Crash Protocol | unhandledRejection + uncaughtException handlers |
-| | Graceful Shutdown | SIGINT/SIGTERM with data flush |
+```
+
+Bot:           Node.js 20 + Discord.js v14
+Database:      SQLite WAL (bot) + MySQL (dashboard)
+AI:            OpenRouter — Llama 3.1, Gemini, Mistral
+Music:         @discordjs/voice + play-dl + yt-dlp + ffmpeg
+Music Meta:    Spotify Web API (album art, artist, duration)
+Canvas:        @napi-rs/canvas (welcome cards, level-up)
+Dashboard:     React + Vite + tRPC + Drizzle ORM
+Hosting:       Hetzner VPS + Cloudflare + Nginx + PM2
+Domain:        bamako-steel-dev.xyz
+Dev Setup:     Mobile phone + Termux + SSH 🇲🇱
+```
 
 ---
 
-## 🚀 QUICK START
-
-### Prerequisites
-
-- **Node.js** v18 or higher
-- **Discord Bot Token** ([Developer Portal](https://discord.com/developers/applications))
-- **API Keys:** OpenRouter/Groq, Google Gemini, Brave Search (optional)
-
-### Installation
+## 🚀 INSTALLATION
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
 cd cloud-gaming-223-digital-engine
 
-# 2. Install dependencies
+# 2. Install Node dependencies
 npm install
 
-# 3. Configure environment
+# 3. Install system dependencies
+apt install ffmpeg
+pip install yt-dlp --break-system-packages
+
+# 4. Configure environment
 cp .env.example .env
 nano .env
-```
 
-Environment Variables
-
-```env
-# ================= REQUIRED =================
-DISCORD_TOKEN=your_discord_bot_token_here
-CLIENT_ID=your_application_client_id
-OWNER_ID=your_discord_user_id
-
-# ================= AI APIs =================
-OPENROUTER_API_KEY=your_openrouter_key_here    # Lydia AI
-GEMINI_API_KEY=your_gemini_key_here            # Vision analysis
-BRAVE_API_KEY=your_brave_search_key_here       # Web search (optional)
-
-# ================= TELEGRAM BRIDGE =================
-TELEGRAM_BOT_TOKEN=your_telegram_token_here    # Optional
-TELEGRAM_CHAT_ID=your_chat_id_here             # Optional
-
-# ================= OPTIONAL =================
-PREFIX=.
-GUILD_ID=your_main_server_id
-WELCOME_CHANNEL_ID=channel_id
-GOODBYE_CHANNEL_ID=channel_id
-LOG_CHANNEL_ID=channel_id
-RULES_CHANNEL_ID=channel_id
-GENERAL_CHANNEL_ID=channel_id
-MEMBER_ROLE=role_id
-VIP_ROLE_ID=role_id
-VERIFIED_ROLE_ID=role_id
-```
-
-Start the Bot
-
-```bash
-# Production (run once)
-npm start
-
-# Development with auto-restart on file changes
-npx nodemon index.js
-
-# With PM2 (recommended for 24/7 production)
-npm install -g pm2
+# 5. Start with PM2
 pm2 start index.js --name "Architect-CG223"
 pm2 save
 pm2 startup
@@ -141,320 +188,79 @@ pm2 startup
 
 ---
 
-## 📁 PROJECT STRUCTURE
+## ⚙️ ENVIRONMENT VARIABLES
 
-```
-cloud-gaming-223-digital-engine/
-├── index.js                    # 🧠 Main neural engine (3300+ lines)
-├── package.json                # Dependencies
-├── ecosystem.config.js         # PM2 configuration
-├── .env                        # Environment variables (not committed)
-├── .gitignore                  # Git ignore rules
-├── LICENSE                     # MIT License
-├── README.md                   # This file
-├── SECURITY.md                 # Security policy
-├── version.txt                 # Dynamic versioning
-│
-├── scripts/                    # 🛠️ Utility scripts
-│   ├── start.sh               # Auto-restart launcher
-│   ├── deploy-commands.js     # Slash command deployer
-│   └── backup.js              # Backup utility
-│
-├── plugins/                    # 🧩 Command modules
-│   ├── lydia.js               # 🧠 Lydia AI (multi-agent)
-│   ├── gemini.js              # 📸 Gemini Vision analysis
-│   ├── market-manager.js      # 📊 Market trends engine
-│   ├── afk.js                 # 💤 AFK system
-│   ├── birthday.js            # 🎂 Birthday reminders
-│   ├── automod.js             # 🛡️ Auto-moderation
-│   ├── serversettings.js      # ⚙️ Per-server configuration
-│   └── ...                    # 20+ more commands
-│
-├── telegram/                   # 🌉 Telegram bridge
-│   ├── bridge.js              # Discord → Telegram
-│   └── bot.js                 # Telegram → Discord
-│
-├── utils/                      # 🔧 Helper utilities
-│   └── ...
-│
-├── data/                       # 💾 Auto-generated (gitignored)
-│   ├── database.sqlite        # SQLite database
-│   ├── changelog.md           # Auto-generated registry
-│   └── .bot_state.json        # State tracking
-│
-├── logs/                       # 📋 Auto-generated (gitignored)
-│   ├── error.log              # PM2 error logs
-│   ├── output.log             # PM2 output logs
-│   └── combined.log           # PM2 combined logs
-│
-└── backups/                    # 📦 Auto-generated (gitignored)
-    └── backup-*.json           # Server backups
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_TOKEN` | ✅ | Discord bot token |
+| `CLIENT_ID` | ✅ | Application client ID |
+| `OWNER_ID` | ✅ | Your Discord user ID |
+| `OPENROUTER_API_KEY` | ✅ | AI API for Lydia |
+| `SPOTIFY_CLIENT_ID` | ✅ | Spotify API for music metadata |
+| `SPOTIFY_CLIENT_SECRET` | ✅ | Spotify API secret |
+| `GEMINI_API_KEY` | ❌ | Google Gemini Vision |
+| `TELEGRAM_BOT_TOKEN` | ❌ | Telegram bridge |
+| `TELEGRAM_CHAT_ID` | ❌ | Target Telegram chat |
+| `PREFIX` | ❌ | Command prefix (default: `.`) |
+| `GUILD_ID` | ❌ | Main server ID |
+| `WELCOME_CHANNEL_ID` | ❌ | Fallback welcome channel |
+| `TOPGG_WEBHOOK_SECRET` | ❌ | Top.gg vote webhook secret |
 
 ---
 
-🎮 COMMANDS
-
-🧠 AI Commands
-
-Command Description
-.lydia [message] Ask Lydia AI anything
-@Lydia [question] Mention-based AI query
-.gemini [question] Analyze with Gemini Vision
-.gemini + image Analyze attached image
-
-⚙️ Admin Commands
-
-Command Description
-.serversettings View/Edit per-server configuration
-.serversettings view View all server settings
-.serversettings set <setting> <value> Change a setting
-.serversettings reset CONFIRM Reset to defaults
-.serversettings export Export config as JSON
-.lydia on/off Toggle Lydia AI per channel
-
-👤 User Commands
-
-Command Description
-.help View available commands
-.profile View your neural profile
-.daily Claim daily rewards
-.shop Browse the item shop
-.rank Check your level rank
-.leaderboard Server XP leaderboard
-.afk [reason] Set AFK status
-.credits / .balance Check your credits
-
-🎮 Gaming Commands
-
-Command Description
-.gaming set <game> <rank> Set your gaming profile
-.gaming profile View gaming stats
-
-💰 Economy Commands
-
-Command Description
-.shop buy <item> Purchase shop items
-.shop inventory View your inventory
-.transfer <@user> <amount> Transfer credits
-.invest <amount> Invest in the market
-.market View market trends
-
----
-
-🛡️ SECURITY INTELLIGENCE SYSTEM
-
-The GUARDIAN OSINT v3.0 engine analyzes every new member across 6 threat vectors:
-
-Vector Detection
-🔴 Account Age <24h (40pts), <3d (30pts), <7d (20pts)
-⚠️ Default Avatar Possible bot/troll (15pts)
-🔢 Username Patterns Numeric-only, suspicious keywords, impersonation
-🌊 Join Velocity Raid detection (5+ joins/60s = 25pts)
-🎯 Server Targeting New account targeting old server (10pts)
-🤖 Unverified Bot Bot without verification (20pts)
-
-Risk Classification
-
-Score Level Action
-0-14 🟢 LOW Routine processing
-15-29 🟡 ELEVATED Standard monitoring
-30-49 🟠 MEDIUM Active surveillance
-50-69 🔴 HIGH Heightened surveillance, mod alert
-70+ ⛔ CRITICAL Auto-quarantine, DM owner
-
----
-
-⚙️ PER-SERVER CONFIGURATION (47 SETTINGS)
-
-Each server can customize:
-
-Category Settings
-🏠 General Prefix, Language, Timezone
-👋 Welcome Channel, Message, Enable/Disable
-👋 Goodbye Channel, Message, Enable/Disable
-📈 Leveling XP Multiplier, Cooldown, Min/Max Gain, Level Channel
-💰 Economy Starting Balance, Max Daily Streak, Market Enable
-🛡️ Moderation Spam Threshold, Mention Limit, Max Warnings, Action
-🤖 Features AFK, AI, Auto-Mod, Link Filter, Invite Filter
-👤 Roles Member, Auto, Mute, Join roles
-📡 Channels Rules, General, Daily, Shop, Market, Log, Mod Log
-
----
-
-💾 DATABASE ARCHITECTURE
-
-```
-📊 SQLite (WAL Mode)
-├── PRAGMA synchronous = NORMAL
-├── PRAGMA cache_size = -64000
-├── PRAGMA temp_store = MEMORY
-├── Circuit Breaker (5 failures → 60s cooldown)
-├── Batch Writes (50 updates/batch)
-├── Dead Letter Queue (1000 max)
-├── Cache Janitor (30min cleanup, 1h TTL)
-└── Weekly Auto-Purge (Sunday 3AM UTC)
-
-Tables:
-├── users                  # XP, level, credits, streaks
-├── server_settings        # 47 per-server configs
-├── security_intel         # Threat history database
-├── lydia_conversations    # AI chat history
-├── lydia_memory          # AI memory storage
-├── shop_items            # Economy items
-├── user_inventory        # Player inventories
-├── investments           # Market investments
-├── reminders             # User reminders
-├── warnings              # Moderation warnings
-├── moderation_logs       # Action history
-├── birthdays             # Birthday registry
-├── transfers             # Credit transfers
-├── server_backups        # Server backups
-└── user_links            # Telegram bridge links
-```
-
----
-
-🚀 DEPLOYMENT OPTIONS
-
-Option 1: Bot-Hosting.net (FREE) ✅
-
-1. Create ZIP with: index.js, package.json, plugins/, .env
-2. Upload to Bot-Hosting.net
-3. Set start command: node index.js
-4. Click Start
-
-Free Tier: 24/7 Uptime • 100MB RAM • 500MB Storage
-
----
-
-Option 2: PM2 on VPS (Recommended)
-
-You'll need a VPS from: DigitalOcean, Hetzner, Vultr, or OVHcloud
+## 🔧 PM2 COMMANDS
 
 ```bash
-# 1. SSH into your VPS (replace with your actual IP)
-ssh root@your-server-ip
-
-# 2. Update system packages
-sudo apt update && sudo apt upgrade -y
-
-# 3. Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# 4. Verify installation
-node --version
-npm --version
-
-# 5. Clone repository & setup
-git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
-cd cloud-gaming-223-digital-engine
-npm install
-
-# 6. Configure environment variables
-nano .env
-# Paste your tokens, then CTRL+X → Y → ENTER to save
-
-# 7. Install PM2 globally
-npm install -g pm2
-
-# 8. Start the bot with PM2
-pm2 start index.js --name "Architect-CG223"
-
-# 9. Save PM2 process list (auto-restart on reboot)
-pm2 save
-
-# 10. Enable PM2 startup on system boot
-pm2 startup
-# (Copy and run the command it outputs)
-```
-
-PM2 Management Commands
-
-```bash
-pm2 status              # View all processes
-pm2 logs Architect-CG223 # View real-time logs
-pm2 restart Architect-CG223  # Restart bot
-pm2 stop Architect-CG223     # Stop bot
-pm2 monit               # Monitor CPU/RAM usage
+pm2 status                    # View all processes
+pm2 logs Architect-CG223      # Real-time logs
+pm2 restart Architect-CG223   # Restart bot
+pm2 stop Architect-CG223      # Stop bot
+pm2 monit                     # Monitor CPU/RAM
+pm2 flush Architect-CG223     # Clear logs
 ```
 
 ---
 
-Option 3: Render / Heroku
+## 🔧 TROUBLESHOOTING
 
-1. Push code to GitHub
-2. Connect repository in dashboard
-3. Add environment variables
-4. Build: npm install | Start: node index.js
-
----
-
-⚙️ ENVIRONMENT VARIABLES REFERENCE
-
-Variable Required Default Description
-DISCORD_TOKEN ✅ - Discord bot token
-CLIENT_ID ✅ - Application client ID
-OWNER_ID ✅ - Your Discord user ID
-OPENROUTER_API_KEY ✅ - AI API for Lydia
-GEMINI_API_KEY ✅ - Google Gemini for Vision
-BRAVE_API_KEY ❌ - Web search capability
-TELEGRAM_BOT_TOKEN ❌ - Telegram bridge
-TELEGRAM_CHAT_ID ❌ - Target chat ID
-PREFIX ❌ . Command prefix
-GUILD_ID ❌ - Main server ID
-WELCOME_CHANNEL_ID ❌ - Welcome messages
-GOODBYE_CHANNEL_ID ❌ - Goodbye messages
-LOG_CHANNEL_ID ❌ - Security intel logs
-MEMBER_ROLE ❌ - Auto-assign role
+| Issue | Solution |
+|-------|----------|
+| Bot won't start | Check `DISCORD_TOKEN` and `CLIENT_ID` in .env |
+| Music not playing | Ensure `ffmpeg` and `yt-dlp` are installed |
+| Commands not responding | Enable MESSAGE CONTENT INTENT in Dev Portal |
+| Database locked | Circuit breaker active — wait 60 seconds |
+| Welcome not sending | Set `welcome_channel` in dashboard General settings |
+| Voice connection failed | Check bot has Connect + Speak permissions |
+| Shop not loading | Verify `client.shopItems` in index.js |
+| Canvas errors | Run `npm install @napi-rs/canvas` |
 
 ---
 
-🔧 TROUBLESHOOTING
+## 📱 CONNECT
 
-Issue Solution
-"Neural link interrupted" Check OPENROUTER_API_KEY in .env
-Bot won't start Verify DISCORD_TOKEN and CLIENT_ID are set
-Commands not responding Enable MESSAGE CONTENT INTENT in Discord Developer Portal
-Database locked errors Circuit breaker activates; wait 60 seconds
-Welcome messages not sending Set welcome_channel in server settings
-Memory usage high Cache janitor runs every 30min
+🌐 [Dashboard](https://bamako-steel-dev.xyz)
+🔵 [Facebook](https://www.facebook.com/share/17KysmJrtm/)
+🐙 [GitHub](https://github.com/MFOF7310)
+💬 [Support Server](https://discord.gg/NFSMFJajp9)
+⭐ [Vote on Top.gg](https://top.gg/bot/1472707869257367676)
 
 ---
 
-📱 CONNECT WITH THE ARCHITECT
+## 🙏 CREDITS
 
-🔵 [Facebook Official Page](https://www.facebook.com/share/1bQAoqjri9/)
-📱 [TikTok](https://www.tiktok.com/@cloudgaming223)
-📸 [Instagram](https://instagram.com/mfof7310)
-💬 [WhatsApp](https://wa.me/15485200518)
-🐙 [GitHub](https://github.com/cloud-gaming-223-digital-engine)
-
----
-
-📜 LICENSE
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-🙏 CREDITS
-
-· Architect: Moussa Fofana (CG-223)
-· Community: Cloud Gaming-223 🇲🇱
-· Node: BAMAKO_223
-· Powered by: Discord.js v14, Groq AI, Google Gemini, SQLite (WAL)
+- **Architect:** Moussa Fofana — MFOF7310
+- **Community:** Eagle Community 🇲🇱
+- **Node:** BAMAKO-STEEL-NODE (Hetzner EU)
+- **Powered by:** Discord.js v14 · OpenRouter · Spotify · SQLite WAL · React · @napi-rs/canvas
 
 ---
 
 <div align="center">
-  <b>🏗️ Built with neural precision in Bamako, Mali 🇲🇱</b><br>
-  <img src="https://img.shields.io/badge/Cloud_Gaming--223-Official-blue?style=for-the-badge" alt="Cloud Gaming-223">
-  <br>
-  <sub>✅ Bot-Hosting.net Compatible • ✅ PM2 Ready • ✅ 24/7 Uptime</sub>
+  <b>🏗️ Built with neural precision in Bamako, Mali 🇲🇱</b><br><br>
+  <img src="https://img.shields.io/badge/Cloud_Gaming--223-Official-00f0ff?style=for-the-badge">
   <br><br>
   <i>"The grid adapts. The grid survives. The grid prevails."</i>
 </div>
+```
 
 ---
