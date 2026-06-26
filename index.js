@@ -5176,10 +5176,13 @@ function rotateStatus() {
     if (musicPlugin?.getQueue) {
         const activeQueues = [...client.guilds.cache.keys()].filter(id => musicPlugin.getQueue(id));
         if (activeQueues.length > 0) {
-            client.user.setActivity(`🎵 music in ${activeQueues.length} server${activeQueues.length > 1 ? 's' : ''}`, { type: 2 }); // Listening
+            const q = musicPlugin.getQueue(activeQueues[0]);
+            const trackName = q?.currentTrack?.title?.substring(0, 40) || 'music';
+            client.user.setActivity(trackName, { type: 2 }); // Listening to <track>
             return;
         }
     }
+    // No music playing — continue normal rotation
     if (!client.user) return;
     const msg = STATUS_MESSAGES[statusIndex];
     let name = msg.name;
