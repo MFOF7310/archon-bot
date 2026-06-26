@@ -225,9 +225,7 @@ ${t.artist || 'Unknown Artist'} • ${t.album || sourceLine}`,
                     } else if (i.customId === 'mc_stop') {
                         if (qNow.persistentMsg) {
                             const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                                .setDescription('```ansi
-[1;31m▸ STOPPED — Neural stream terminated.[0m
-```');
+                                .setDescription('\`\`\`ansi\n\u001b[1;31m▸ STOPPED — Neural stream terminated.\u001b[0m\n\`\`\`');
                             await qNow.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
                             qNow.persistentMsg = null;
                         }
