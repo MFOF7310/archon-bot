@@ -204,12 +204,14 @@ async function playNext(q, client) {
                 } catch (e) {}
             }
 
-            if (!stream) throw new Error('Could not find audio stream');
+            if (!stream && !resource) throw new Error('Could not find audio stream');
 
-            resource = createAudioResource(stream.stream, {
-                inputType: stream.type,
-                inlineVolume: true,
-            });
+            if (!resource) {
+                resource = createAudioResource(stream.stream, {
+                    inputType: stream.type,
+                    inlineVolume: true,
+                });
+            }
         }
 
         resource.volume?.setVolume(q.volume / 100);
