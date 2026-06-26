@@ -4597,6 +4597,72 @@ apiApp.use(express.json());
 
 // ================= API ROUTES =================
 
+// ── MUSIC API ──────────────────────────────────────
+apiApp.get('/api/music', (req, res) => {
+    try {
+        const musicPlugin = client.commands?.get('music');
+        if (!musicPlugin?.getQueue) return res.json([]);
+        const active = [];
+        for (const [guildId, guild] of client.guilds.cache) {
+            const q = musicPlugin.getQueue(guildId);
+            if (q?.currentTrack) {
+                const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - (q.totalPaused||0)) / 1000) : 0;
+                active.push({
+                    guildId,
+                    guildName: guild.name,
+                    guildIcon: guild.iconURL(),
+                    currentTrack: q.currentTrack.title,
+                    artist: q.currentTrack.artist || 'Unknown',
+                    thumbnail: q.currentTrack.thumbnail,
+                    duration: q.currentTrack.duration,
+                    elapsed,
+                    source: q.currentTrack.source,
+                    requestedBy: q.currentTrack.requestedBy,
+                    queueLength: q.tracks.length,
+                    volume: q.volume,
+                    loop: q.loop,
+                    paused: q.player?.state?.status === 'paused',
+                    voiceChannel: q.voiceChannel?.name,
+                });
+            }
+        }
+        res.json(active);
+    } catch(e) { res.json([]); }
+});
+
+apiApp.get('/api/music/:guildId', (req, res) => {
+    try {
+        const musicPlugin = client.commands?.get('music');
+        if (!musicPlugin?.getQueue) return res.json({ playing: false });
+        const q = musicPlugin.getQueue(req.params.guildId);
+        if (!q?.currentTrack) return res.json({ playing: false });
+        const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - (q.totalPaused||0)) / 1000) : 0;
+        res.json({
+            playing: true,
+            paused: q.player?.state?.status === 'paused',
+            currentTrack: {
+                title: q.currentTrack.title,
+                artist: q.currentTrack.artist,
+                thumbnail: q.currentTrack.thumbnail,
+                duration: q.currentTrack.duration,
+                elapsed,
+                source: q.currentTrack.source,
+                requestedBy: q.currentTrack.requestedBy,
+            },
+            queue: q.tracks.slice(0,20).map((t,i) => ({
+                position: i+1,
+                title: t.title,
+                artist: t.artist,
+                duration: t.duration,
+            })),
+            volume: q.volume,
+            loop: q.loop,
+            autoplay: q.autoplay,
+            voiceChannel: q.voiceChannel?.name,
+        });
+    } catch(e) { res.json({ playing: false }); }
+});
+
 // Health check simple
 apiApp.get('/api/health', (req, res) => {
     res.json({
