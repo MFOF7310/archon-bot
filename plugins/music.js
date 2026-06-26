@@ -156,6 +156,18 @@ async function playNext(q, client) {
     q.totalPaused = 0;
     q.pausedAt = null;
 
+    // Save to music history
+    try {
+        const db = require('better-sqlite3')('/root/cloud-gaming-223-digital-engine/data/database.sqlite');
+        const existing = db.prepare('SELECT id, play_count FROM music_history WHERE guild_id = ? AND query = ?').get(q.guild.id, track.query || track.title);
+        if (existing) {
+            db.prepare('UPDATE music_history SET play_count = play_count + 1, played_at = ? WHERE id = ?').run(Math.floor(Date.now()/1000), existing.id);
+        } else {
+            db.prepare('INSERT INTO music_history (guild_id, title, query, source) VALUES (?, ?, ?, ?)').run(q.guild.id, track.title, track.query || track.title, track.source || 'SoundCloud');
+        }
+        db.close();
+    } catch(e) {}
+
     console.log('[MUSIC] playNext called, track:', track?.title, 'queue size:', q.tracks.length);
     try {
         let resource;
@@ -468,6 +480,14 @@ module.exports = {
 
         await interaction.deferReply();
 
+        // Show recent suggestions alongside the queued track
+        let suggestions = [];
+        try {
+            const db = require('better-sqlite3')('/root/cloud-gaming-223-digital-engine/data/database.sqlite');
+            suggestions = db.prepare('SELECT title, query FROM music_history WHERE guild_id = ? AND query != ? ORDER BY play_count DESC, played_at DESC LIMIT 4').all(interaction.guild.id, query);
+            db.close();
+        } catch(e) {}
+
         const guildId = interaction.guild.id;
         let q = getQueue(guildId) || createQueue(interaction.guild, voiceChannel, interaction.channel);
         q.textChannel = interaction.channel;
@@ -497,7 +517,51 @@ module.exports = {
             )
             .setFooter({ text: `BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID` });
 
-        await interaction.editReply({ embeds: [queuedEmbed] });
+        // Build suggestion buttons if we have history
+        const components = [];
+        if (suggestions.length > 0) {
+            const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
+            const suggestMenu = new StringSelectMenuBuilder()
+                .setCustomId(`music_suggest_${interaction.user.id}`)
+                .setPlaceholder('🎵 Queue a suggested track...')
+                .addOptions(suggestions.map(s => ({
+                    label: s.title.substring(0, 100),
+                    value: s.query.substring(0, 100),
+                    emoji: '🎵'
+                })));
+            components.push(new ActionRowBuilder().addComponents(suggestMenu));
+        }
+
+        await interaction.editReply({ embeds: [queuedEmbed], components });
+
+        // Handle suggestion selection
+        if (components.length > 0) {
+            const reply = await interaction.fetchReply();
+            const collector = reply.createMessageComponentCollector({ time: 30000 });
+            collector.on('collect', async (i) => {
+                if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Not your session', flags: 64 }).catch(() => {});
+                await i.deferUpdate().catch(() => {});
+                const selectedQuery = i.values[0];
+                const qState = getQueue(interaction.guild.id);
+                if (qState) {
+                    qState.tracks.push({
+                        title: selectedQuery,
+                        query: selectedQuery,
+                        artist: 'Unknown',
+                        source: 'SoundCloud',
+                        duration: 0,
+                        thumbnail: null,
+                        requestedBy: interaction.user.username,
+                        url: null,
+                    });
+                    await i.followUp({ content: `✅ Added **${selectedQuery.substring(0,50)}** to queue!`, flags: 64 }).catch(() => {});
+                }
+                collector.stop();
+            });
+            collector.on('end', () => {
+                interaction.editReply({ components: [] }).catch(() => {});
+            });
+        }
 
         if (!isPlaying) {
             try {
