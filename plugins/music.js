@@ -168,7 +168,7 @@ async function updatePersistentPanel(q) {
         new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
         new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
         new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
-        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel(`Queue (${q.tracks.length})`).setStyle(ButtonStyle.Secondary).setEmoji('📋'),
     );
 
     try {
@@ -506,6 +506,10 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     q._client = client;
 
     const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, url: null };
+    if (q.tracks.length >= 50) {
+        await replyFn({ content: '❌ Queue is full! Max 50 tracks. Use `/music skip` or `/music stop` to clear.' });
+        return;
+    }
     q.tracks.push(track);
 
     // Get suggestions from history
