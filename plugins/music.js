@@ -600,31 +600,27 @@ module.exports = {
 
     autocomplete: async (interaction, client) => {
         const focused = interaction.options.getFocused();
-        if (!focused || focused.length < 2) {
-            // Show recent plays as suggestions
-            try {
-                const recent = client.db?.prepare(
-                    'SELECT title, query FROM music_history WHERE guild_id = ? ORDER BY played_at DESC LIMIT 5'
-                ).all(interaction.guild?.id) || [];
+        try {
+            // Always show history first (instant)
+            const history = client.db?.prepare(
+                'SELECT title, query FROM music_history WHERE guild_id = ? AND (title LIKE ? OR query LIKE ?) ORDER BY play_count DESC, played_at DESC LIMIT 5'
+            ).all(interaction.guild?.id, `%${focused}%`, `%${focused}%`) || [];
+
+            if (history.length > 0) {
                 await interaction.respond(
-                    recent.map(r => ({ name: r.title.substring(0,100), value: r.query.substring(0,100) }))
+                    history.map(r => ({ name: `🕐 ${r.title.substring(0,95)}`, value: r.query.substring(0,100) }))
                 ).catch(() => {});
-            } catch(e) {
+                return;
+            }
+
+            // No history — just echo the query back as an option
+            if (focused.length >= 1) {
+                await interaction.respond([
+                    { name: `🔍 Search: ${focused.substring(0,90)}`, value: focused.substring(0,100) }
+                ]).catch(() => {});
+            } else {
                 await interaction.respond([]).catch(() => {});
             }
-            return;
-        }
-        // Live SoundCloud search
-        try {
-            const id = await playdl.getFreeClientID();
-            await playdl.setToken({ soundcloud: { client_id: id } });
-            const results = await playdl.search(focused, { source: { soundcloud: 'tracks' }, limit: 5 });
-            await interaction.respond(
-                results.map(r => ({
-                    name: `🎵 ${r.title.substring(0,90)}`,
-                    value: r.title.substring(0,100)
-                }))
-            ).catch(() => {});
         } catch(e) {
             await interaction.respond([]).catch(() => {});
         }
