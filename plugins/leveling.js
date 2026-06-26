@@ -408,7 +408,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
 
 async function handleWelcome(member, client, db) {
     const ss = client.getServerSettings?.(member.guild.id) || {};
-    if (ss.welcomeEnabled === false) return;
+    return; // Welcome handled by welcome.js — disabled here to prevent duplicate
     const customTheme = db ? getThemeDB(db, member.guild.id) : null;
     const png = await renderWelcomeBanner(member, member.guild.memberCount, customTheme || {});
     const embed = new EmbedBuilder().setColor(0x5865f2).setDescription((ss.welcomeMessage || 'Welcome to **{server}**, {user}!').replace('{user}', member.toString()).replace('{server}', member.guild.name).replace('{count}', String(member.guild.memberCount))).setImage('attachment://welcome.png').setFooter({ text: `Member #${member.guild.memberCount} • ARCHON CG-223` }).setTimestamp();
