@@ -12,6 +12,26 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
 
+// Initialize play-dl SoundCloud token
+(async () => {
+    try {
+        const clientId = await playdl.getFreeClientID();
+        await playdl.setToken({ soundcloud: { client_id: clientId } });
+        console.log('[MUSIC] SoundCloud token initialized:', clientId.substring(0, 8) + '...');
+    } catch (e) {
+        console.error('[MUSIC] SoundCloud token init failed:', e.message);
+    }
+})();
+
+// Refresh SoundCloud token every 12 hours
+setInterval(async () => {
+    try {
+        const clientId = await playdl.getFreeClientID();
+        await playdl.setToken({ soundcloud: { client_id: clientId } });
+        console.log('[MUSIC] SoundCloud token refreshed');
+    } catch (e) {}
+}, 12 * 60 * 60 * 1000);
+
 // ═══════════════════════════════════════════════════════
 // ARCHON MUSIC ENGINE — Queue Manager
 // ═══════════════════════════════════════════════════════
@@ -136,6 +156,7 @@ async function playNext(q, client) {
     q.totalPaused = 0;
     q.pausedAt = null;
 
+    console.log('[MUSIC] playNext called, track:', track?.title, 'queue size:', q.tracks.length);
     try {
         let resource;
 
@@ -151,15 +172,25 @@ async function playNext(q, client) {
             let stream = null;
 
             try {
+                // Ensure token is set before search
+                const scId = await playdl.getFreeClientID();
+                await playdl.setToken({ soundcloud: { client_id: scId } });
+                console.log('[MUSIC] Searching SoundCloud for:', track.query || track.title);
                 const scSearch = await playdl.search(track.query || track.title, { source: { soundcloud: 'tracks' }, limit: 1 });
+                console.log('[MUSIC] SoundCloud results:', scSearch.length);
                 if (scSearch.length > 0) {
-                    stream = await playdl.stream(scSearch[0].url, { quality: 2 });
+                    const scUrl = scSearch[0].permalink || scSearch[0].url;
+                    console.log('[MUSIC] Streaming:', scUrl);
+                    stream = await playdl.stream(scUrl);
                     track.source = 'SoundCloud';
                     track.duration = scSearch[0].durationInSec;
                     track.thumbnail = scSearch[0].thumbnail?.url;
                     track.artist = scSearch[0].publisher?.artist || scSearch[0].user?.name;
+                    console.log('[MUSIC] Stream type:', stream.type);
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error('[MUSIC] SoundCloud stream error:', e.message);
+            }
 
             if (!stream) {
                 try {
@@ -279,20 +310,47 @@ function buildQueueEmbed(q, client) {
 async function ensureConnection(q) {
     let connection = getVoiceConnection(q.guild.id);
     if (!connection) {
+        // Stage channels need selfDeaf: false and speaker request
+        const isStage = q.voiceChannel.type === 13; // ChannelType.GuildStageVoice
         connection = joinVoiceChannel({
             channelId: q.voiceChannel.id,
             guildId: q.guild.id,
             adapterCreator: q.guild.voiceAdapterCreator,
-            selfDeaf: true,
+            selfDeaf: !isStage,
+            selfMute: false,
+            debug: true,
         });
+        // Request to speak in stage channel
+        if (isStage) {
+            try {
+                await q.guild.members.me?.voice.setSuppressed(false);
+            } catch (e) {}
+        }
         q.connection = connection;
+
+        // Handle disconnection
+        connection.on(VoiceConnectionStatus.Disconnected, async () => {
+            try {
+                await Promise.race([
+                    entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+                    entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+                ]);
+            } catch (e) {
+                destroyQueue(q.guild.id);
+            }
+        });
     }
 
+    console.log('[MUSIC] Connecting to voice channel:', q.voiceChannel.id, 'Guild:', q.guild.id);
+    console.log('[MUSIC] Connection state:', connection.state.status);
+    connection.on('stateChange', (oldState, newState) => {
+        console.log('[MUSIC] Voice state:', oldState.status, '->', newState.status);
+    });
     try {
-        await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
+        await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
     } catch (e) {
         destroyQueue(q.guild.id);
-        throw new Error('Could not connect to voice channel');
+        throw new Error('Could not connect to voice channel — check bot permissions');
     }
 
     if (!q.player) {
