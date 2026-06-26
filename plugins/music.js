@@ -29,6 +29,7 @@ function createQueue(guild, voiceChannel, textChannel, client) {
         tracks: [], currentTrack: null,
         volume: 80, loop: false, autoplay: true,
         startTime: null, pausedAt: null, totalPaused: 0,
+        persistentMsg: null, updateInterval: null,
     };
     queues.set(guild.id, state);
     return state;
@@ -124,6 +125,139 @@ function buildQueueEmbed(q, client) {
             { name: `UP NEXT (${q.tracks.length})`, value: `\`\`\`ansi\n${list}\n\`\`\``, inline: false }
         )
         .setFooter({ text: `BAMAKO_223 🇲🇱 • Vol: ${q.volume}% • Loop: ${q.loop ? 'ON' : 'OFF'}` });
+}
+
+// ═══════════════════════════════════════════════════════
+// PERSISTENT MUSIC PANEL
+// ═══════════════════════════════════════════════════════
+async function updatePersistentPanel(q) {
+    const client = q._client;
+    if (!client || !q.currentTrack) return;
+
+    const t = q.currentTrack;
+    const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000) : 0;
+    const duration = t.duration || 0;
+    const bar = progressBar(elapsed, duration, 18);
+    const pct = duration > 0 ? Math.min(100, Math.round((elapsed/duration)*100)) : 0;
+    const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
+
+    const statusLine = isPaused ? '⏸️ PAUSED' : '🟢 LIVE';
+    const sourceLine = t.spotifyUrl ? '🟢 Spotify' : `🎵 ${t.source || 'SoundCloud'}`;
+
+    const embed = new EmbedBuilder()
+        .setColor(isPaused ? ARCHON.gold : ARCHON.cyan)
+        .setAuthor({
+            name: '// ARCHON NEURAL MUSIC ENGINE //',
+            iconURL: t.spotifyUrl
+                ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png'
+                : client.user.displayAvatarURL()
+        })
+        .setDescription(
+            `\`\`\`ansi
+` +
+            `[1;36m╔══════════════════════════════════════╗[0m
+` +
+            `[1;36m║[0m  ${statusLine.padEnd(36)}[1;36m║[0m
+` +
+            `[1;36m╚══════════════════════════════════════╝[0m
+` +
+            `\`\`\``
+        )
+        .addFields(
+            {
+                name: '🎵 TRACK',
+                value: `**${t.title.substring(0,50)}**
+${t.artist || 'Unknown Artist'} • ${t.album || sourceLine}`,
+                inline: false
+            },
+            {
+                name: '📊 STREAM',
+                value: `\`\`\`ansi
+[1;${isPaused ? '33' : '32'}m${bar}[0m ${pct}%
+[0;37m${formatTime(elapsed)} ━━ ${formatTime(duration)}[0m
+\`\`\``,
+                inline: false
+            },
+            { name: '🎚️ VOL', value: `\`${q.volume}%\``, inline: true },
+            { name: '📋 QUEUE', value: `\`${q.tracks.length} tracks\``, inline: true },
+            { name: '🔁 LOOP', value: `\`${q.loop ? 'ON' : 'OFF'}\``, inline: true },
+            { name: '🔀 AUTO', value: `\`${q.autoplay ? 'ON' : 'OFF'}\``, inline: true },
+            { name: '📍 STAGE', value: `\`${q.voiceChannel?.name?.substring(0,15) || 'Voice'}\``, inline: true },
+            { name: '👤 BY', value: `\`${t.requestedBy?.substring(0,12) || 'Unknown'}\``, inline: true },
+        )
+        .setThumbnail(t.thumbnail || client.user.displayAvatarURL())
+        .setFooter({ text: `BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID • Updates every 15s` })
+        .setTimestamp();
+
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+    );
+
+    try {
+        if (q.persistentMsg) {
+            await q.persistentMsg.edit({ embeds: [embed], components: [row1] }).catch(() => {
+                q.persistentMsg = null;
+            });
+        }
+        if (!q.persistentMsg && q.textChannel) {
+            q.persistentMsg = await q.textChannel.send({ embeds: [embed], components: [row1] }).catch(() => null);
+            // Set up button collector on persistent message
+            if (q.persistentMsg) {
+                const collector = q.persistentMsg.createMessageComponentCollector({ time: 3600000 });
+                collector.on('collect', async (i) => {
+                    if (!i.member?.voice?.channel) return i.reply({ content: '❌ Join a voice channel!', flags: 64 }).catch(() => {});
+                    await i.deferUpdate().catch(() => {});
+                    const qNow = getQueue(q.guild.id);
+                    if (!qNow) return;
+                    if (i.customId === 'mc_pause') {
+                        if (qNow.player.state.status === AudioPlayerStatus.Paused) {
+                            qNow.player.unpause();
+                            qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
+                            qNow.pausedAt = null;
+                        } else { qNow.player.pause(); qNow.pausedAt = Date.now(); }
+                        await updatePersistentPanel(qNow);
+                    } else if (i.customId === 'mc_skip') {
+                        qNow.player.stop();
+                    } else if (i.customId === 'mc_stop') {
+                        if (qNow.persistentMsg) {
+                            const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
+                                .setDescription('```ansi
+[1;31m▸ STOPPED — Neural stream terminated.[0m
+```');
+                            await qNow.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
+                            qNow.persistentMsg = null;
+                        }
+                        destroyQueue(q.guild.id);
+                    } else if (i.customId === 'mc_loop') {
+                        qNow.loop = !qNow.loop;
+                        if (qNow.loop && qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
+                        await updatePersistentPanel(qNow);
+                    } else if (i.customId === 'mc_queue') {
+                        await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
+                    }
+                });
+            }
+        }
+    } catch(e) {
+        console.error('[MUSIC PANEL] Update error:', e.message);
+    }
+}
+
+// Start/stop auto-update interval
+function startPanelUpdater(q) {
+    if (q.updateInterval) clearInterval(q.updateInterval);
+    q.updateInterval = setInterval(() => {
+        const qNow = getQueue(q.guild.id);
+        if (!qNow || !qNow.currentTrack) {
+            clearInterval(q.updateInterval);
+            return;
+        }
+        updatePersistentPanel(qNow).catch(() => {});
+    }, 15000);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -322,39 +456,9 @@ async function playNext(q) {
         resource.volume?.setVolume(q.volume / 100);
         q.player.play(resource);
 
-        const embed = buildNowPlayingEmbed(q, client);
-        const row = buildControls(q);
-        const msg = await q.textChannel?.send({ embeds: [embed], components: [row] }).catch(() => {});
-
-        if (msg) {
-            const collector = msg.createMessageComponentCollector({ time: 600000 });
-            collector.on('collect', async (i) => {
-                if (!i.member?.voice?.channel) return i.reply({ content: '❌ Join a voice channel!', flags: 64 }).catch(() => {});
-                await i.deferUpdate().catch(() => {});
-                const qNow = getQueue(q.guild.id);
-                if (!qNow) return;
-                if (i.customId === 'mc_pause') {
-                    if (qNow.player.state.status === AudioPlayerStatus.Paused) {
-                        qNow.player.unpause();
-                        qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
-                        qNow.pausedAt = null;
-                    } else { qNow.player.pause(); qNow.pausedAt = Date.now(); }
-                    await i.editReply({ components: [buildControls(qNow)] }).catch(() => {});
-                } else if (i.customId === 'mc_skip') {
-                    qNow.player.stop();
-                } else if (i.customId === 'mc_stop') {
-                    destroyQueue(q.guild.id);
-                    await i.editReply({ components: [] }).catch(() => {});
-                } else if (i.customId === 'mc_loop') {
-                    qNow.loop = !qNow.loop;
-                    if (qNow.loop && qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
-                    await i.editReply({ components: [buildControls(qNow)] }).catch(() => {});
-                } else if (i.customId === 'mc_queue') {
-                    await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
-                }
-            });
-            collector.on('end', () => { msg.edit({ components: [] }).catch(() => {}); });
-        }
+        // Update/create persistent panel
+        await updatePersistentPanel(q);
+        startPanelUpdater(q);
 
     } catch (err) {
         console.error('[MUSIC] Error:', err.message);
