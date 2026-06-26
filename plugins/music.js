@@ -390,30 +390,8 @@ async function playNext(q) {
         } else {
             let stream = null;
 
-            // Direct YouTube URL — use yt-dlp directly
-            if (track.query?.includes('youtube.com/watch?v=') || track.youtubeId) {
-                try {
-                    const ytUrl = track.query?.includes('youtube.com') ? track.query : `https://www.youtube.com/watch?v=${track.youtubeId}`;
-                    console.log('[MUSIC] Direct YouTube stream:', ytUrl);
-                    const { stdout } = await execAsync(`yt-dlp --cookies /root/cloud-gaming-223-digital-engine/data/cookies.txt --no-playlist -x --audio-format opus --get-url "${ytUrl}" 2>/dev/null`, { timeout: 20000 });
-                    const url = stdout.trim().split('\n')[0];
-                    if (url?.startsWith('http')) {
-                        const ffmpeg = require('child_process').spawn('ffmpeg', [
-                            '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
-                            '-i', url, '-vn', '-acodec', 'libopus', '-f', 'opus', 'pipe:1'
-                        ], { stdio: ['ignore', 'pipe', 'ignore'] });
-                        resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus, inlineVolume: true });
-                        track.source = 'YouTube';
-                        stream = { type: StreamType.OggOpus };
-                        console.log('[MUSIC] ▸ YouTube direct:', track.title);
-                    }
-                } catch(e) {
-                    console.error('[MUSIC] YouTube direct error:', e.message);
-                }
-            }
-
             // SoundCloud primary
-            if (!stream && !resource) try {
+            try {
                 const id = await playdl.getFreeClientID();
                 await playdl.setToken({ soundcloud: { client_id: id } });
                 const results = await playdl.search(track.query || track.title, { source: { soundcloud: 'tracks' }, limit: 1 });
@@ -433,7 +411,7 @@ async function playNext(q) {
             if (!stream) {
                 try {
                     const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '');
-                    const { stdout } = await execAsync(`yt-dlp --cookies /root/cloud-gaming-223-digital-engine/data/cookies.txt --no-playlist -x --audio-format opus --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
+                    const { stdout } = await execAsync(`yt-dlp --no-playlist -x --audio-format opus --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
                     const url = stdout.trim().split('\n')[0];
                     if (url?.startsWith('http')) {
                         const ffmpeg = require('child_process').spawn('ffmpeg', [
@@ -527,136 +505,9 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     q.textChannel = textChannel;
     q._client = client;
 
-    // ── Detect playlist URLs ──────────────────────────
-    const isYTPlaylist = query.includes('youtube.com/playlist') || query.includes('youtu.be') && query.includes('list=');
-    const isSpotifyPlaylist = query.includes('spotify.com/playlist') || query.includes('spotify.com/album');
-    const isSCPlaylist = query.includes('soundcloud.com') && query.includes('/sets/');
-
-    if (isYTPlaylist || isSpotifyPlaylist || isSCPlaylist) {
-        await replyFn({ content: '⏳ Loading playlist...' });
-        try {
-            let playlistTracks = [];
-
-            if (isYTPlaylist) {
-                try {
-                    // Use yt-dlp for YouTube playlists — more reliable
-                    const { stdout } = await execAsync(
-                        `yt-dlp --cookies /root/cloud-gaming-223-digital-engine/data/cookies.txt --flat-playlist --print "%(title)s|%(id)s" "${query}" 2>/dev/null | head -50`,
-                        { timeout: 30000 }
-                    );
-                    const lines = stdout.trim().split('\n').filter(Boolean);
-                    playlistTracks = lines.map(line => {
-                        const [title, id] = line.split('|');
-                        return {
-                            title: title || 'Unknown',
-                            query: id ? `https://www.youtube.com/watch?v=${id}` : title,
-                            artist: 'YouTube',
-                            source: 'YouTube',
-                            duration: 0,
-                            thumbnail: id ? `https://img.youtube.com/vi/${id}/mqdefault.jpg` : null,
-                            requestedBy,
-                            url: null,
-                            youtubeId: id,
-                        };
-                    }).filter(t => t.title && t.title !== 'Unknown');
-                    console.log('[MUSIC] YouTube playlist via yt-dlp:', playlistTracks.length, 'tracks');
-                } catch(e) {
-                    console.error('[MUSIC] YT playlist error:', e.message);
-                }
-            }
-
-            if (isSpotifyPlaylist) {
-                const id = await playdl.getFreeClientID();
-                await playdl.setToken({ soundcloud: { client_id: id } });
-                // Set Spotify token
-                const spotifyToken = await getSpotifyToken();
-                if (spotifyToken) {
-                    const isAlbum = query.includes('/album/');
-                    const playlistId = query.split(isAlbum ? '/album/' : '/playlist/')[1]?.split('?')[0];
-                    const endpoint = isAlbum ? 'albums' : 'playlists';
-                    const res = await fetch(`https://api.spotify.com/v1/${endpoint}/${playlistId}/tracks?limit=50`, {
-                        headers: { Authorization: `Bearer ${spotifyToken}` }
-                    });
-                    const data = await res.json();
-                    const items = data.items || [];
-                    playlistTracks = items.map(item => {
-                        const t = isAlbum ? item : item.track;
-                        if (!t) return null;
-                        return {
-                            title: t.name,
-                            query: `${t.name} ${t.artists?.[0]?.name || ''}`.trim(),
-                            artist: t.artists?.map(a => a.name).join(', ') || 'Unknown',
-                            source: 'SoundCloud',
-                            duration: Math.floor((t.duration_ms || 0) / 1000),
-                            thumbnail: t.album?.images?.[0]?.url || null,
-                            requestedBy,
-                            url: null,
-                        };
-                    }).filter(Boolean);
-                    console.log('[MUSIC] Spotify playlist:', playlistTracks.length, 'tracks');
-                }
-            }
-
-            if (isSCPlaylist) {
-                const info = await playdl.playlist_info(query);
-                const tracks = info?.tracks?.slice(0, 50) || [];
-                playlistTracks = tracks.map(t => ({
-                    title: t.name || 'Unknown',
-                    query: t.name || 'Unknown',
-                    artist: t.user?.name || 'Unknown',
-                    source: 'SoundCloud',
-                    duration: t.durationInSec || 0,
-                    thumbnail: t.thumbnail || null,
-                    requestedBy,
-                    url: null,
-                }));
-                console.log('[MUSIC] SoundCloud playlist:', playlistTracks.length, 'tracks');
-            }
-
-            if (playlistTracks.length === 0) {
-                await replyFn({ content: '❌ Could not load playlist or it is empty.' });
-                return;
-            }
-
-            // Add to queue (respect 50 limit)
-            const available = 50 - q.tracks.length;
-            const toAdd = playlistTracks.slice(0, Math.max(0, available));
-            q.tracks.push(...toAdd);
-
-            const embed = new EmbedBuilder()
-                .setColor(ARCHON.cyan)
-                .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
-                .setDescription(
-                    `\`\`\`ansi
-` +
-                    `[1;32m▸ PLAYLIST LOADED[0m
-` +
-                    `[1;36m${toAdd.length} tracks added to queue[0m
-` +
-                    `[0;37mFirst: ${toAdd[0]?.title?.substring(0,40)}[0m
-` +
-                    `\`\`\``
-                )
-                .setFooter({ text: 'BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID' });
-
-            await replyFn({ content: null, embeds: [embed] });
-
-            if (!getQueue(guildId)?.player || !getQueue(guildId)?.currentTrack) {
-                try { await ensureConnection(q); await playNext(q); } catch(e) {}
-            }
-            return;
-
-        } catch(err) {
-            console.error('[MUSIC] Playlist error:', err.message);
-            await replyFn({ content: `❌ Playlist error: ${err.message.substring(0,100)}` });
-            return;
-        }
-    }
-
-    // ── Single track ──────────────────────────────────
     const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, url: null };
     if (q.tracks.length >= 50) {
-        await replyFn({ content: '❌ Queue is full! Max 50 tracks.' });
+        await replyFn({ content: '❌ Queue is full! Max 50 tracks. Use `/music skip` or `/music stop` to clear.' });
         return;
     }
     q.tracks.push(track);
