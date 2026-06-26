@@ -5171,6 +5171,15 @@ let statusIndex = 0;
 
 // Rotate status every 30 minutes
 function rotateStatus() {
+    // If music is playing in any guild, show music status
+    const musicPlugin = client.commands?.get('music');
+    if (musicPlugin?.getQueue) {
+        const activeQueues = [...client.guilds.cache.keys()].filter(id => musicPlugin.getQueue(id));
+        if (activeQueues.length > 0) {
+            client.user.setActivity(`🎵 music in ${activeQueues.length} server${activeQueues.length > 1 ? 's' : ''}`, { type: 2 }); // Listening
+            return;
+        }
+    }
     if (!client.user) return;
     const msg = STATUS_MESSAGES[statusIndex];
     let name = msg.name;
