@@ -460,9 +460,15 @@ async function playNext(q) {
 
     } catch (err) {
         console.error('[MUSIC] Error:', err.message);
+        // Update persistent panel with error instead of spamming
         const errEmbed = new EmbedBuilder().setColor(ARCHON.red)
-            .setDescription(`\`\`\`ansi\n\u001b[1;31m▸ STREAM ERROR\u001b[0m\n\u001b[0;37m${err.message.substring(0,100)}\u001b[0m\n\`\`\``);
-        q.textChannel?.send({ embeds: [errEmbed] }).catch(() => {});
+            .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
+            .setDescription(`\`\`\`ansi\n\u001b[1;31m▸ STREAM ERROR\u001b[0m\n\u001b[0;37m${err.message.substring(0,80)}\u001b[0m\n\u001b[0;37mTrying next track...\u001b[0m\n\`\`\``);
+        if (q.persistentMsg) {
+            await q.persistentMsg.edit({ embeds: [errEmbed] }).catch(() => {});
+        } else {
+            q.persistentMsg = await q.textChannel?.send({ embeds: [errEmbed] }).catch(() => null);
+        }
         setTimeout(() => playNext(q), 2000);
     }
 }
