@@ -1,6 +1,6 @@
 const {
     SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
-    ButtonBuilder, ButtonStyle
+    ButtonBuilder, ButtonStyle, StringSelectMenuBuilder
 } = require('discord.js');
 const {
     joinVoiceChannel, createAudioPlayer, createAudioResource,
@@ -10,41 +10,24 @@ const {
 const playdl = require('play-dl');
 const { exec } = require('child_process');
 const { promisify } = require('util');
+const { createWriteStream, unlinkSync } = require('fs');
+const https = require('https');
+const http = require('http');
 const execAsync = promisify(exec);
 
-// Initialize play-dl SoundCloud token
-(async () => {
-    try {
-        const clientId = await playdl.getFreeClientID();
-        await playdl.setToken({ soundcloud: { client_id: clientId } });
-        console.log('[MUSIC] SoundCloud token initialized:', clientId.substring(0, 8) + '...');
-    } catch (e) {
-        console.error('[MUSIC] SoundCloud token init failed:', e.message);
-    }
-})();
-
-// Refresh SoundCloud token every 12 hours
-setInterval(async () => {
-    try {
-        const clientId = await playdl.getFreeClientID();
-        await playdl.setToken({ soundcloud: { client_id: clientId } });
-        console.log('[MUSIC] SoundCloud token refreshed');
-    } catch (e) {}
-}, 12 * 60 * 60 * 1000);
-
 // ═══════════════════════════════════════════════════════
-// ARCHON MUSIC ENGINE — Queue Manager
+// QUEUE MANAGER
 // ═══════════════════════════════════════════════════════
-const queues = new Map(); // guildId → QueueState
+const queues = new Map();
 
 function getQueue(guildId) { return queues.get(guildId) || null; }
 
-function createQueue(guild, voiceChannel, textChannel) {
+function createQueue(guild, voiceChannel, textChannel, client) {
     const state = {
-        guild, voiceChannel, textChannel,
+        guild, voiceChannel, textChannel, _client: client,
         connection: null, player: null,
         tracks: [], currentTrack: null,
-        volume: 80, loop: false, autoplay: false,
+        volume: 80, loop: false, autoplay: true,
         startTime: null, pausedAt: null, totalPaused: 0,
     };
     queues.set(guild.id, state);
@@ -55,99 +38,143 @@ function destroyQueue(guildId) {
     const q = queues.get(guildId);
     if (q) {
         try { q.connection?.destroy(); } catch (e) {}
-        try { q.player?.stop(); } catch (e) {}
+        try { q.player?.stop(true); } catch (e) {}
         queues.delete(guildId);
     }
 }
 
 // ═══════════════════════════════════════════════════════
-// ARCHON COLORS
+// ARCHON STYLE
 // ═══════════════════════════════════════════════════════
 const ARCHON = {
     cyan: 0x00f0ff, green: 0x00ff88, red: 0xff3333,
     gold: 0xf1c40f, purple: 0x9b59b6, orange: 0xe67e22,
 };
 
-// ═══════════════════════════════════════════════════════
-// PROGRESS BAR
-// ═══════════════════════════════════════════════════════
-function progressBar(current, total, length = 15) {
-    if (!total || total === 0) return '░'.repeat(length);
-    const pct = Math.min(1, current / total);
-    const filled = Math.round(pct * length);
-    return '█'.repeat(filled) + '░'.repeat(length - filled);
+function progressBar(cur, total, len = 15) {
+    if (!total) return '░'.repeat(len);
+    const f = Math.round(Math.min(1, cur / total) * len);
+    return '█'.repeat(f) + '░'.repeat(len - f);
 }
 
-function formatTime(seconds) {
-    if (!seconds || isNaN(seconds)) return '0:00';
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
+function formatTime(s) {
+    if (!s || isNaN(s)) return '0:00';
+    return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 }
 
 // ═══════════════════════════════════════════════════════
-// BUILD NOW PLAYING EMBED
+// EMBEDS
 // ═══════════════════════════════════════════════════════
 function buildNowPlayingEmbed(q, client) {
-    const track = q.currentTrack;
-    if (!track) return null;
-
-    const elapsed = q.startTime
-        ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000)
-        : 0;
-    const duration = track.duration || 0;
-    const bar = progressBar(elapsed, duration);
-    const pct = duration > 0 ? Math.min(100, Math.round((elapsed / duration) * 100)) : 0;
-
+    const t = q.currentTrack;
+    if (!t) return null;
+    const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000) : 0;
+    const bar = progressBar(elapsed, t.duration);
+    const pct = t.duration > 0 ? Math.min(100, Math.round((elapsed / t.duration) * 100)) : 0;
     return new EmbedBuilder()
         .setColor(ARCHON.cyan)
         .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
         .setTitle('🎵 NOW PLAYING')
         .setDescription(
             `\`\`\`ansi\n` +
-            `\u001b[1;36m▸ TRACK    \u001b[0m ${track.title.substring(0, 50)}\n` +
-            `\u001b[1;36m▸ ARTIST   \u001b[0m ${track.artist || 'Unknown'}\n` +
-            `\u001b[1;36m▸ SOURCE   \u001b[0m ${track.source || 'Neural Feed'}\n` +
-            `\u001b[1;36m▸ ADDED BY \u001b[0m ${track.requestedBy}\n` +
+            `\u001b[1;36m▸ TRACK    \u001b[0m ${t.title.substring(0,50)}\n` +
+            `\u001b[1;36m▸ ARTIST   \u001b[0m ${t.artist || 'Unknown'}\n` +
+            `\u001b[1;36m▸ SOURCE   \u001b[0m ${t.source || 'Neural Feed'}\n` +
+            `\u001b[1;36m▸ ADDED BY \u001b[0m ${t.requestedBy}\n` +
             `\`\`\``
         )
         .addFields(
-            {
-                name: '📊 NEURAL STREAM',
-                value: `\`\`\`ansi\n\u001b[1;32m${bar}\u001b[0m ${pct}%\n\u001b[0;37m${formatTime(elapsed)} / ${formatTime(duration)}\u001b[0m\n\`\`\``,
-                inline: false
-            },
+            { name: '📊 NEURAL STREAM', value: `\`\`\`ansi\n\u001b[1;32m${bar}\u001b[0m ${pct}%\n\u001b[0;37m${formatTime(elapsed)} / ${formatTime(t.duration)}\u001b[0m\n\`\`\``, inline: false },
             { name: '🎚️ VOLUME', value: `\`${q.volume}%\``, inline: true },
             { name: '📋 QUEUE', value: `\`${q.tracks.length} tracks\``, inline: true },
             { name: '🔁 LOOP', value: `\`${q.loop ? 'ON' : 'OFF'}\``, inline: true },
         )
-        .setThumbnail(track.thumbnail || client.user.displayAvatarURL())
-        .setFooter({ text: `BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID • v${client.version || '3.0.7'}` })
+        .setThumbnail(t.thumbnail || client.user.displayAvatarURL())
+        .setFooter({ text: `BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID` })
         .setTimestamp();
 }
 
-function buildControlButtons(q) {
+function buildControls(q) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     return new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('music_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
-        new ButtonBuilder().setCustomId('music_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
-        new ButtonBuilder().setCustomId('music_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('music_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
-        new ButtonBuilder().setCustomId('music_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
     );
 }
 
+function buildQueueEmbed(q, client) {
+    const list = q.tracks.slice(0, 10).map((t, i) =>
+        `\u001b[0;37m${(i+1).toString().padStart(2)}.\u001b[0m \u001b[1;36m${t.title.substring(0,40)}\u001b[0m`
+    ).join('\n') || '\u001b[0;37m  Queue is empty\u001b[0m';
+    return new EmbedBuilder()
+        .setColor(ARCHON.purple)
+        .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
+        .setTitle('📋 NEURAL QUEUE')
+        .addFields(
+            { name: 'NOW PLAYING', value: `\`\`\`ansi\n\u001b[1;32m▸ ${q.currentTrack?.title?.substring(0,50) || 'Nothing'}\u001b[0m\n\`\`\``, inline: false },
+            { name: `UP NEXT (${q.tracks.length})`, value: `\`\`\`ansi\n${list}\n\`\`\``, inline: false }
+        )
+        .setFooter({ text: `BAMAKO_223 🇲🇱 • Vol: ${q.volume}% • Loop: ${q.loop ? 'ON' : 'OFF'}` });
+}
+
 // ═══════════════════════════════════════════════════════
-// PLAY NEXT TRACK
+// SOUNDCLOUD TOKEN INIT
 // ═══════════════════════════════════════════════════════
-async function playNext(q, client) {
+let scReady = false;
+(async () => {
+    try {
+        const id = await playdl.getFreeClientID();
+        await playdl.setToken({ soundcloud: { client_id: id } });
+        scReady = true;
+        console.log('[MUSIC] SoundCloud ready ✅');
+    } catch (e) { console.error('[MUSIC] SoundCloud init failed:', e.message); }
+})();
+setInterval(async () => {
+    try {
+        const id = await playdl.getFreeClientID();
+        await playdl.setToken({ soundcloud: { client_id: id } });
+    } catch (e) {}
+}, 12 * 60 * 60 * 1000);
+
+// ═══════════════════════════════════════════════════════
+// DOWNLOAD FILE
+// ═══════════════════════════════════════════════════════
+async function downloadFile(url, dest) {
+    return new Promise((resolve, reject) => {
+        const proto = url.startsWith('https') ? https : http;
+        const file = createWriteStream(dest);
+        proto.get(url, res => { res.pipe(file); file.on('finish', () => { file.close(); resolve(); }); })
+            .on('error', err => { try { unlinkSync(dest); } catch(e) {} reject(err); });
+    });
+}
+
+// ═══════════════════════════════════════════════════════
+// PLAY NEXT
+// ═══════════════════════════════════════════════════════
+async function playNext(q) {
+    const client = q._client;
     if (q.tracks.length === 0) {
-        const embed = new EmbedBuilder()
-            .setColor(ARCHON.orange)
-            .setDescription('```ansi\n\u001b[1;33m▸ QUEUE EMPTY — Neural stream ended.\u001b[0m\n```');
-        q.textChannel?.send({ embeds: [embed] }).catch(() => {});
-        setTimeout(() => destroyQueue(q.guild.id), 30000);
-        return;
+        // Autoplay — find similar
+        if (q.autoplay && q.currentTrack) {
+            const similar = q.currentTrack.artist || q.currentTrack.title.split(' ')[0];
+            q.tracks.push({
+                title: similar + ' mix',
+                query: similar,
+                artist: 'Unknown', source: 'SoundCloud',
+                duration: 0, thumbnail: null,
+                requestedBy: '🤖 Autoplay', url: null,
+            });
+            console.log('[MUSIC] Autoplay:', similar);
+        } else {
+            const embed = new EmbedBuilder().setColor(ARCHON.orange)
+                .setDescription('```ansi\n\u001b[1;33m▸ QUEUE EMPTY — Neural stream ended.\u001b[0m\n```');
+            q.textChannel?.send({ embeds: [embed] }).catch(() => {});
+            setTimeout(() => destroyQueue(q.guild.id), 30000);
+            return;
+        }
     }
 
     const track = q.tracks.shift();
@@ -156,73 +183,64 @@ async function playNext(q, client) {
     q.totalPaused = 0;
     q.pausedAt = null;
 
-    // Save to music history
+    // Save to history
     try {
-        const db = require('better-sqlite3')('/root/cloud-gaming-223-digital-engine/data/database.sqlite');
-        const existing = db.prepare('SELECT id, play_count FROM music_history WHERE guild_id = ? AND query = ?').get(q.guild.id, track.query || track.title);
-        if (existing) {
-            db.prepare('UPDATE music_history SET play_count = play_count + 1, played_at = ? WHERE id = ?').run(Math.floor(Date.now()/1000), existing.id);
-        } else {
-            db.prepare('INSERT INTO music_history (guild_id, title, query, source) VALUES (?, ?, ?, ?)').run(q.guild.id, track.title, track.query || track.title, track.source || 'SoundCloud');
+        const db = client.db;
+        if (db && q.guild.id) {
+            const ex = db.prepare('SELECT id FROM music_history WHERE guild_id = ? AND query = ?').get(q.guild.id, track.query || track.title);
+            if (ex) db.prepare('UPDATE music_history SET play_count = play_count + 1, played_at = ? WHERE id = ?').run(Math.floor(Date.now()/1000), ex.id);
+            else db.prepare('INSERT OR IGNORE INTO music_history (guild_id, title, query, source) VALUES (?, ?, ?, ?)').run(q.guild.id, track.title, track.query || track.title, track.source || 'SoundCloud');
         }
-        db.close();
     } catch(e) {}
 
-    console.log('[MUSIC] playNext called, track:', track?.title, 'queue size:', q.tracks.length);
     try {
         let resource;
 
         if (track.source === 'file') {
-            const { createReadStream } = require('fs');
-            const { createAudioResource: car } = require('@discordjs/voice');
-            resource = car(createReadStream(track.url), {
-                inputType: StreamType.Arbitrary,
-                inlineVolume: true,
+            resource = createAudioResource(require('fs').createReadStream(track.url), {
+                inputType: StreamType.Arbitrary, inlineVolume: true,
             });
         } else {
-            // Try SoundCloud first, then YouTube via yt-dlp
             let stream = null;
 
+            // SoundCloud primary
             try {
-                // Ensure token is set before search
-                const scId = await playdl.getFreeClientID();
-                await playdl.setToken({ soundcloud: { client_id: scId } });
-                console.log('[MUSIC] Searching SoundCloud for:', track.query || track.title);
-                const scSearch = await playdl.search(track.query || track.title, { source: { soundcloud: 'tracks' }, limit: 1 });
-                console.log('[MUSIC] SoundCloud results:', scSearch.length);
-                if (scSearch.length > 0) {
-                    const scUrl = scSearch[0].permalink || scSearch[0].url;
-                    console.log('[MUSIC] Streaming:', scUrl);
-                    stream = await playdl.stream(scUrl);
+                const id = await playdl.getFreeClientID();
+                await playdl.setToken({ soundcloud: { client_id: id } });
+                const results = await playdl.search(track.query || track.title, { source: { soundcloud: 'tracks' }, limit: 1 });
+                if (results.length > 0) {
+                    const url = results[0].permalink || results[0].url;
+                    stream = await playdl.stream(url);
                     track.source = 'SoundCloud';
-                    track.duration = scSearch[0].durationInSec;
-                    track.thumbnail = scSearch[0].thumbnail?.url;
-                    track.artist = scSearch[0].publisher?.artist || scSearch[0].user?.name;
-                    console.log('[MUSIC] Stream type:', stream.type);
+                    track.duration = results[0].durationInSec || 0;
+                    track.thumbnail = results[0].thumbnail?.url;
+                    track.artist = results[0].publisher?.artist || results[0].user?.name;
+                    track.title = results[0].title || track.title;
+                    console.log('[MUSIC] ▸ SoundCloud:', track.title);
                 }
-            } catch (e) {
-                console.error('[MUSIC] SoundCloud stream error:', e.message);
-            }
+            } catch (e) { console.log('[MUSIC] SoundCloud error:', e.message); }
 
+            // yt-dlp fallback
             if (!stream) {
                 try {
-                    const ytSearch = `ytsearch1:${track.query || track.title}`;
-                    const { stdout } = await execAsync(`yt-dlp -x --audio-format mp3 --get-url "${ytSearch}" 2>/dev/null`, { timeout: 15000 });
+                    const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '');
+                    const { stdout } = await execAsync(`yt-dlp --no-playlist -x --audio-format opus --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
                     const url = stdout.trim().split('\n')[0];
-                    if (url) {
-                        stream = await playdl.stream(url, { quality: 2 }).catch(() => null);
+                    if (url?.startsWith('http')) {
+                        const ffmpeg = require('child_process').spawn('ffmpeg', [
+                            '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
+                            '-i', url, '-vn', '-acodec', 'libopus', '-f', 'opus', 'pipe:1'
+                        ], { stdio: ['ignore', 'pipe', 'ignore'] });
+                        resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus, inlineVolume: true });
                         track.source = 'YouTube';
+                        console.log('[MUSIC] ▸ YouTube fallback for:', track.title);
                     }
-                } catch (e) {}
+                } catch (e) { console.log('[MUSIC] yt-dlp error:', e.message); }
             }
 
             if (!stream && !resource) throw new Error('Could not find audio stream');
-
             if (!resource) {
-                resource = createAudioResource(stream.stream, {
-                    inputType: stream.type,
-                    inlineVolume: true,
-                });
+                resource = createAudioResource(stream.stream, { inputType: stream.type, inlineVolume: true });
             }
         }
 
@@ -230,347 +248,322 @@ async function playNext(q, client) {
         q.player.play(resource);
 
         const embed = buildNowPlayingEmbed(q, client);
-        const row = buildControlButtons(q);
+        const row = buildControls(q);
         const msg = await q.textChannel?.send({ embeds: [embed], components: [row] }).catch(() => {});
 
-        // Button collector
         if (msg) {
             const collector = msg.createMessageComponentCollector({ time: 600000 });
             collector.on('collect', async (i) => {
-                if (!i.member?.voice?.channel) {
-                    return i.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
-                }
+                if (!i.member?.voice?.channel) return i.reply({ content: '❌ Join a voice channel!', flags: 64 }).catch(() => {});
                 await i.deferUpdate().catch(() => {});
-                const qState = getQueue(q.guild.id);
-                if (!qState) return;
-
-                switch (i.customId) {
-                    case 'music_pause':
-                        if (qState.player.state.status === AudioPlayerStatus.Paused) {
-                            qState.player.unpause();
-                            qState.totalPaused += Date.now() - (qState.pausedAt || Date.now());
-                            qState.pausedAt = null;
-                        } else {
-                            qState.player.pause();
-                            qState.pausedAt = Date.now();
-                        }
-                        await i.editReply({ components: [buildControlButtons(qState)] }).catch(() => {});
-                        break;
-                    case 'music_skip':
-                        qState.player.stop();
-                        break;
-                    case 'music_stop':
-                        destroyQueue(q.guild.id);
-                        await i.editReply({ components: [] }).catch(() => {});
-                        await i.followUp({ content: '⏹️ Playback stopped.', flags: 64 }).catch(() => {});
-                        break;
-                    case 'music_loop':
-                        qState.loop = !qState.loop;
-                        if (qState.loop && qState.currentTrack) qState.tracks.unshift({ ...qState.currentTrack });
-                        await i.editReply({ components: [buildControlButtons(qState)] }).catch(() => {});
-                        break;
-                    case 'music_queue':
-                        const qEmbed = buildQueueEmbed(qState, client);
-                        await i.followUp({ embeds: [qEmbed], flags: 64 }).catch(() => {});
-                        break;
+                const qNow = getQueue(q.guild.id);
+                if (!qNow) return;
+                if (i.customId === 'mc_pause') {
+                    if (qNow.player.state.status === AudioPlayerStatus.Paused) {
+                        qNow.player.unpause();
+                        qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
+                        qNow.pausedAt = null;
+                    } else { qNow.player.pause(); qNow.pausedAt = Date.now(); }
+                    await i.editReply({ components: [buildControls(qNow)] }).catch(() => {});
+                } else if (i.customId === 'mc_skip') {
+                    qNow.player.stop();
+                } else if (i.customId === 'mc_stop') {
+                    destroyQueue(q.guild.id);
+                    await i.editReply({ components: [] }).catch(() => {});
+                } else if (i.customId === 'mc_loop') {
+                    qNow.loop = !qNow.loop;
+                    if (qNow.loop && qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
+                    await i.editReply({ components: [buildControls(qNow)] }).catch(() => {});
+                } else if (i.customId === 'mc_queue') {
+                    await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
                 }
             });
-            collector.on('end', () => {
-                msg.edit({ components: [] }).catch(() => {});
-            });
+            collector.on('end', () => { msg.edit({ components: [] }).catch(() => {}); });
         }
 
     } catch (err) {
-        console.error('[MUSIC] Playback error:', err.message);
-        const errEmbed = new EmbedBuilder()
-            .setColor(ARCHON.red)
-            .setDescription(`\`\`\`ansi\n\u001b[1;31m▸ STREAM ERROR\u001b[0m\n\u001b[0;37m${err.message.substring(0, 100)}\u001b[0m\n\`\`\``);
+        console.error('[MUSIC] Error:', err.message);
+        const errEmbed = new EmbedBuilder().setColor(ARCHON.red)
+            .setDescription(`\`\`\`ansi\n\u001b[1;31m▸ STREAM ERROR\u001b[0m\n\u001b[0;37m${err.message.substring(0,100)}\u001b[0m\n\`\`\``);
         q.textChannel?.send({ embeds: [errEmbed] }).catch(() => {});
-        setTimeout(() => playNext(q, client), 2000);
+        setTimeout(() => playNext(q), 2000);
     }
 }
 
 // ═══════════════════════════════════════════════════════
-// BUILD QUEUE EMBED
+// ENSURE CONNECTION
 // ═══════════════════════════════════════════════════════
-function buildQueueEmbed(q, client) {
-    const tracks = q.tracks.slice(0, 10);
-    const qList = tracks.length > 0
-        ? tracks.map((t, i) => `\u001b[0;37m${(i + 1).toString().padStart(2)}.\u001b[0m \u001b[1;36m${t.title.substring(0, 40)}\u001b[0m`).join('\n')
-        : '\u001b[0;37m  Queue is empty\u001b[0m';
-
-    return new EmbedBuilder()
-        .setColor(ARCHON.purple)
-        .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
-        .setTitle('📋 NEURAL QUEUE')
-        .addFields(
-            {
-                name: `NOW PLAYING`,
-                value: `\`\`\`ansi\n\u001b[1;32m▸ ${q.currentTrack?.title?.substring(0, 50) || 'Nothing'}\u001b[0m\n\`\`\``,
-                inline: false
-            },
-            {
-                name: `UP NEXT (${q.tracks.length} tracks)`,
-                value: `\`\`\`ansi\n${qList}\n\`\`\``,
-                inline: false
-            }
-        )
-        .setFooter({ text: `BAMAKO_223 🇲🇱 • Volume: ${q.volume}% • Loop: ${q.loop ? 'ON' : 'OFF'}` });
-}
-
-// ═══════════════════════════════════════════════════════
-// ENSURE VOICE CONNECTION
-// ═══════════════════════════════════════════════════════
-async function ensureConnection(q, client) {
-    if (client) q._client = client;
-    let connection = getVoiceConnection(q.guild.id);
-    if (!connection) {
-        // Stage channels need selfDeaf: false and speaker request
-        const isStage = q.voiceChannel.type === 13; // ChannelType.GuildStageVoice
-        connection = joinVoiceChannel({
+async function ensureConnection(q) {
+    let conn = getVoiceConnection(q.guild.id);
+    if (!conn) {
+        const isStage = q.voiceChannel.type === 13;
+        conn = joinVoiceChannel({
             channelId: q.voiceChannel.id,
             guildId: q.guild.id,
             adapterCreator: q.guild.voiceAdapterCreator,
-            selfDeaf: !isStage,
-            selfMute: false,
-            debug: true,
+            selfDeaf: !isStage, selfMute: false,
         });
-        // Request to speak in stage channel
+        q.connection = conn;
         if (isStage) {
-            try {
-                await q.guild.members.me?.voice.setSuppressed(false);
-            } catch (e) {}
+            setTimeout(async () => {
+                try { await q.guild.members.me?.voice.setSuppressed(false); console.log('[MUSIC] Stage speaker ✅'); } catch(e) {}
+            }, 1500);
         }
-        q.connection = connection;
-
-        // Handle disconnection
-        connection.on(VoiceConnectionStatus.Disconnected, async () => {
+        conn.on(VoiceConnectionStatus.Disconnected, async () => {
             try {
                 await Promise.race([
-                    entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
-                    entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+                    entersState(conn, VoiceConnectionStatus.Signalling, 5000),
+                    entersState(conn, VoiceConnectionStatus.Connecting, 5000),
                 ]);
-            } catch (e) {
-                destroyQueue(q.guild.id);
-            }
+            } catch(e) { destroyQueue(q.guild.id); }
         });
     }
-
-    console.log('[MUSIC] Connecting to voice channel:', q.voiceChannel.id, 'Guild:', q.guild.id);
-    console.log('[MUSIC] Connection state:', connection.state.status);
-    connection.on('stateChange', (oldState, newState) => {
-        console.log('[MUSIC] Voice state:', oldState.status, '->', newState.status);
-    });
-    try {
-        await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
-    } catch (e) {
-        destroyQueue(q.guild.id);
-        throw new Error('Could not connect to voice channel — check bot permissions');
-    }
+    try { await entersState(conn, VoiceConnectionStatus.Ready, 20000); }
+    catch(e) { destroyQueue(q.guild.id); throw new Error('Could not connect to voice channel'); }
 
     if (!q.player) {
         const player = createAudioPlayer();
         q.player = player;
-        connection.subscribe(player);
-
+        conn.subscribe(player);
         player.on(AudioPlayerStatus.Idle, () => {
-            if (q.loop && q.currentTrack) {
-                q.tracks.unshift({ ...q.currentTrack });
-            }
-            // Autoplay — find similar song when queue is empty
-            if (q.tracks.length === 0 && q.autoplay && q.currentTrack) {
-                const similar = q.currentTrack.artist || q.currentTrack.title;
-                q.tracks.push({
-                    title: similar + ' mix',
-                    query: similar,
-                    artist: 'Unknown',
-                    source: 'SoundCloud',
-                    duration: 0,
-                    thumbnail: null,
-                    requestedBy: '🤖 Autoplay',
-                    url: null,
-                });
-            }
-            playNext(q, q._client);
+            if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
+            playNext(q);
         });
-
-        player.on('error', (err) => {
-            console.error('[MUSIC PLAYER ERROR]', err.message);
-            playNext(q, q._client);
-        });
+        player.on('error', err => { console.error('[MUSIC PLAYER]', err.message); playNext(q); });
     }
-
-    return connection;
+    return conn;
 }
 
 // ═══════════════════════════════════════════════════════
-// MODULE EXPORTS
+// PLAY HELPER
+// ═══════════════════════════════════════════════════════
+async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requestedBy, client, replyFn) {
+    let q = getQueue(guildId) || createQueue(guild, voiceChannel, textChannel, client);
+    q.textChannel = textChannel;
+    q._client = client;
+
+    const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, url: null };
+    q.tracks.push(track);
+
+    // Get suggestions from history
+    let suggestions = [];
+    try {
+        suggestions = client.db?.prepare('SELECT title, query FROM music_history WHERE guild_id = ? AND query != ? ORDER BY play_count DESC, played_at DESC LIMIT 4').all(guildId, query) || [];
+    } catch(e) {}
+
+    const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
+    const embed = new EmbedBuilder().setColor(ARCHON.cyan)
+        .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
+        .setDescription(
+            isPlaying
+                ? `\`\`\`ansi\n\u001b[1;32m▸ ADDED TO QUEUE\u001b[0m\n\u001b[1;36m${query.substring(0,60)}\u001b[0m\n\u001b[0;37m Position: #${q.tracks.length}\u001b[0m\n\`\`\``
+                : `\`\`\`ansi\n\u001b[1;36m▸ LOADING NEURAL STREAM...\u001b[0m\n\u001b[0;37m${query.substring(0,60)}\u001b[0m\n\`\`\``
+        )
+        .setFooter({ text: 'BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID' });
+
+    const components = [];
+    if (suggestions.length > 0) {
+        const menu = new StringSelectMenuBuilder()
+            .setCustomId(`ms_suggest_${Date.now()}`)
+            .setPlaceholder('🎵 Queue a suggested track...')
+            .addOptions(suggestions.map(s => ({ label: s.title.substring(0,100), value: s.query.substring(0,100), emoji: '🎵' })));
+        components.push(new ActionRowBuilder().addComponents(menu));
+    }
+
+    const msg = await replyFn({ embeds: [embed], components });
+
+    if (suggestions.length > 0 && msg) {
+        const collector = msg.createMessageComponentCollector({ time: 30000 });
+        collector.on('collect', async (i) => {
+            if (i.user.id !== (i.message.interaction?.user?.id || i.user.id)) return;
+            await i.deferUpdate().catch(() => {});
+            const qNow = getQueue(guildId);
+            if (qNow) {
+                const sel = i.values[0];
+                qNow.tracks.push({ title: sel, query: sel, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy: i.user.username, url: null });
+                await i.followUp({ content: `✅ Added **${sel.substring(0,50)}** to queue!`, flags: 64 }).catch(() => {});
+            }
+            collector.stop();
+        });
+        collector.on('end', () => { msg.edit?.({ components: [] }).catch(() => {}); });
+    }
+
+    if (!isPlaying) {
+        try { await ensureConnection(q); await playNext(q); }
+        catch(err) { destroyQueue(guildId); replyFn({ content: `❌ ${err.message}`, embeds: [], components: [] }).catch(() => {}); }
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+// MODULE EXPORT — UNIFIED /music COMMAND
 // ═══════════════════════════════════════════════════════
 module.exports = {
-    name: 'play',
-    aliases: ['p', 'music', 'jouer'],
-    description: '🎵 Play music in your voice channel',
+    name: 'music',
+    aliases: ['m', 'musique', 'play', 'p'],
+    description: '🎵 Full music system for ARCHON CG-223',
     category: 'MUSIC',
-    usage: '.play <song name or URL>',
-    cooldown: 3000,
+    cooldown: 2000,
+
+    // Export utilities for other plugins
+    getQueue, createQueue, destroyQueue, buildNowPlayingEmbed,
+    buildControls, buildQueueEmbed, ARCHON, progressBar, formatTime,
 
     data: new SlashCommandBuilder()
-        .setName('play')
-        .setDescription('🎵 Play a song in your voice channel')
-        .addStringOption(o => o
-            .setName('query')
-            .setDescription('Song name, URL, or search query')
-            .setRequired(true)
-        ),
+        .setName('music')
+        .setDescription('🎵 ARCHON Music Engine — play, queue, control')
+        .addSubcommand(s => s.setName('play').setDescription('▶️ Play a song').addStringOption(o => o.setName('query').setDescription('Song name or URL').setRequired(true)))
+        .addSubcommand(s => s.setName('file').setDescription('📁 Play from uploaded file').addAttachmentOption(o => o.setName('file').setDescription('Audio file (mp3/wav/ogg/flac)').setRequired(true)))
+        .addSubcommand(s => s.setName('pause').setDescription('⏸️ Pause or resume'))
+        .addSubcommand(s => s.setName('skip').setDescription('⏭️ Skip current track'))
+        .addSubcommand(s => s.setName('stop').setDescription('⏹️ Stop and disconnect'))
+        .addSubcommand(s => s.setName('queue').setDescription('📋 View the queue'))
+        .addSubcommand(s => s.setName('nowplaying').setDescription('🎵 Now playing info'))
+        .addSubcommand(s => s.setName('volume').setDescription('🎚️ Set volume').addIntegerOption(o => o.setName('level').setDescription('1-100').setRequired(true).setMinValue(1).setMaxValue(100)))
+        .addSubcommand(s => s.setName('loop').setDescription('🔁 Toggle loop'))
+        .addSubcommand(s => s.setName('autoplay').setDescription('🔀 Toggle autoplay')),
 
-    // Export queue utilities for play-file.js
-    getQueue, createQueue, destroyQueue, ensureConnection,
-    playNext, buildNowPlayingEmbed, buildControlButtons, buildQueueEmbed,
-    ARCHON, progressBar, formatTime,
-
+    // PREFIX — .play <query>
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
         const query = args.join(' ');
-
-        if (!query) return message.reply('❌ Provide a song name or URL!').catch(() => {});
-
-        const voiceChannel = message.member?.voice?.channel;
-        if (!voiceChannel) return message.reply('❌ **Join a voice channel first!**').catch(() => {});
-
-        const guildId = message.guild.id;
-        let q = getQueue(guildId) || createQueue(message.guild, voiceChannel, message.channel);
-        q.textChannel = message.channel;
-
-        const track = {
-            title: query,
-            query,
-            artist: 'Unknown',
-            source: 'SoundCloud',
-            duration: 0,
-            thumbnail: null,
-            requestedBy: message.author.username,
-            url: null,
-        };
-
-        q.tracks.push(track);
-
-        const queuedEmbed = new EmbedBuilder()
-            .setColor(ARCHON.cyan)
-            .setDescription(`\`\`\`ansi\n\u001b[1;32m▸ QUEUED\u001b[0m \u001b[1;36m${query.substring(0, 60)}\u001b[0m\n\u001b[0;37m Position: #${q.tracks.length}\u001b[0m\n\`\`\``);
-        await message.reply({ embeds: [queuedEmbed] }).catch(() => {});
-
-        if (!q.player || q.player.state.status === AudioPlayerStatus.Idle || !q.currentTrack) {
-            try {
-                await ensureConnection(q, client);
-                await playNext(q, client);
-            } catch (err) {
-                destroyQueue(guildId);
-                message.reply(`❌ ${err.message}`).catch(() => {});
-            }
-        }
+        if (!query) return message.reply('❌ Provide a song name! Usage: `.play <song>`').catch(() => {});
+        const vc = message.member?.voice?.channel;
+        if (!vc) return message.reply('❌ Join a voice channel first!').catch(() => {});
+        await handlePlay(
+            message.guild.id, message.guild, vc, message.channel,
+            query, message.author.username, client,
+            (opts) => message.reply(opts).catch(() => {})
+        );
     },
 
     execute: async (interaction, client) => {
-        const query = interaction.options.getString('query');
-        const voiceChannel = interaction.member?.voice?.channel;
+        const sub = interaction.options.getSubcommand();
+        const guildId = interaction.guild?.id;
+        const vc = interaction.member?.voice?.channel;
 
-        if (!voiceChannel) {
-            return interaction.reply({ content: '❌ **Join a voice channel first!**', flags: 64 });
+        // Commands that need voice channel
+        if (['play', 'file'].includes(sub) && !vc) {
+            return interaction.reply({ content: '❌ Join a voice channel first!', flags: 64 });
         }
 
         await interaction.deferReply();
 
-        // Show recent suggestions alongside the queued track
-        let suggestions = [];
-        try {
-            const db = require('better-sqlite3')('/root/cloud-gaming-223-digital-engine/data/database.sqlite');
-            suggestions = db.prepare('SELECT title, query FROM music_history WHERE guild_id = ? AND query != ? ORDER BY play_count DESC, played_at DESC LIMIT 4').all(interaction.guild.id, query);
-            db.close();
-        } catch(e) {}
-
-        const guildId = interaction.guild.id;
-        let q = getQueue(guildId) || createQueue(interaction.guild, voiceChannel, interaction.channel);
-        q.textChannel = interaction.channel;
-
-        const track = {
-            title: query,
-            query,
-            artist: 'Unknown',
-            source: 'SoundCloud',
-            duration: 0,
-            thumbnail: null,
-            requestedBy: interaction.user.username,
-            url: null,
-        };
-
-        q.tracks.push(track);
-
-        const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
-
-        const queuedEmbed = new EmbedBuilder()
-            .setColor(ARCHON.cyan)
-            .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
-            .setDescription(
-                isPlaying
-                    ? `\`\`\`ansi\n\u001b[1;32m▸ ADDED TO QUEUE\u001b[0m\n\u001b[1;36m${query.substring(0, 60)}\u001b[0m\n\u001b[0;37m Position: #${q.tracks.length}\u001b[0m\n\`\`\``
-                    : `\`\`\`ansi\n\u001b[1;36m▸ LOADING NEURAL STREAM...\u001b[0m\n\u001b[0;37m${query.substring(0, 60)}\u001b[0m\n\`\`\``
-            )
-            .setFooter({ text: `BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID` });
-
-        // Build suggestion buttons if we have history
-        const components = [];
-        if (suggestions.length > 0) {
-            const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
-            const suggestMenu = new StringSelectMenuBuilder()
-                .setCustomId(`music_suggest_${interaction.user.id}`)
-                .setPlaceholder('🎵 Queue a suggested track...')
-                .addOptions(suggestions.map(s => ({
-                    label: s.title.substring(0, 100),
-                    value: s.query.substring(0, 100),
-                    emoji: '🎵'
-                })));
-            components.push(new ActionRowBuilder().addComponents(suggestMenu));
+        // ── PLAY ──
+        if (sub === 'play') {
+            const query = interaction.options.getString('query');
+            const msg = await interaction.editReply({ content: '⏳ Loading...' });
+            await handlePlay(
+                guildId, interaction.guild, vc, interaction.channel,
+                query, interaction.user.username, client,
+                async (opts) => { await interaction.editReply(opts); return await interaction.fetchReply(); }
+            );
+            return;
         }
 
-        await interaction.editReply({ embeds: [queuedEmbed], components });
-
-        // Handle suggestion selection
-        if (components.length > 0) {
-            const reply = await interaction.fetchReply();
-            const collector = reply.createMessageComponentCollector({ time: 30000 });
-            collector.on('collect', async (i) => {
-                if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Not your session', flags: 64 }).catch(() => {});
-                await i.deferUpdate().catch(() => {});
-                const selectedQuery = i.values[0];
-                const qState = getQueue(interaction.guild.id);
-                if (qState) {
-                    qState.tracks.push({
-                        title: selectedQuery,
-                        query: selectedQuery,
-                        artist: 'Unknown',
-                        source: 'SoundCloud',
-                        duration: 0,
-                        thumbnail: null,
-                        requestedBy: interaction.user.username,
-                        url: null,
-                    });
-                    await i.followUp({ content: `✅ Added **${selectedQuery.substring(0,50)}** to queue!`, flags: 64 }).catch(() => {});
-                }
-                collector.stop();
-            });
-            collector.on('end', () => {
-                interaction.editReply({ components: [] }).catch(() => {});
-            });
-        }
-
-        if (!isPlaying) {
-            try {
-                await ensureConnection(q, client);
-                await playNext(q, client);
-            } catch (err) {
-                destroyQueue(guildId);
-                interaction.editReply({ content: `❌ ${err.message}`, embeds: [] }).catch(() => {});
+        // ── FILE ──
+        if (sub === 'file') {
+            const att = interaction.options.getAttachment('file');
+            const validExts = ['mp3','wav','ogg','flac','m4a','aac','opus'];
+            const ext = att.name.split('.').pop()?.toLowerCase();
+            if (!validExts.includes(ext || '')) {
+                return interaction.editReply({ content: `❌ Invalid file type! Supported: ${validExts.join(', ')}` });
             }
+            const tempPath = `/tmp/archon_${Date.now()}.${ext}`;
+            try { await downloadFile(att.url, tempPath); } catch(e) {
+                return interaction.editReply({ content: `❌ Download failed: ${e.message}` });
+            }
+            let q = getQueue(guildId) || createQueue(interaction.guild, vc, interaction.channel, client);
+            q._client = client;
+            const track = {
+                title: att.name.replace(/\.[^/.]+$/, ''),
+                query: att.name, artist: 'File Upload',
+                source: 'file', duration: 0, thumbnail: null,
+                requestedBy: interaction.user.username, url: tempPath,
+            };
+            q.tracks.push(track);
+            const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
+            const embed = new EmbedBuilder().setColor(ARCHON.cyan)
+                .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
+                .setDescription(`\`\`\`ansi\n\u001b[1;32m▸ FILE QUEUED\u001b[0m\n\u001b[1;36m${track.title.substring(0,60)}\u001b[0m\n\u001b[0;37m${ext?.toUpperCase()} • ${(att.size/1024/1024).toFixed(2)} MB\u001b[0m\n\`\`\``)
+                .setFooter({ text: 'BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID' });
+            await interaction.editReply({ embeds: [embed] });
+            if (!isPlaying) {
+                try { await ensureConnection(q); await playNext(q); }
+                catch(e) { destroyQueue(guildId); }
+            }
+            return;
+        }
+
+        // Commands that need active queue
+        const q = getQueue(guildId);
+        if (!q && !['play','file'].includes(sub)) {
+            return interaction.editReply({ content: '❌ Nothing is playing!' });
+        }
+
+        // ── PAUSE ──
+        if (sub === 'pause') {
+            const isPaused = q.player.state.status === AudioPlayerStatus.Paused;
+            isPaused ? q.player.unpause() : q.player.pause();
+            if (isPaused) { q.totalPaused += Date.now() - (q.pausedAt || Date.now()); q.pausedAt = null; }
+            else q.pausedAt = Date.now();
+            const embed = new EmbedBuilder().setColor(isPaused ? ARCHON.green : ARCHON.gold)
+                .setDescription(`\`\`\`ansi\n\u001b[1;${isPaused?'32':'33'}m▸ ${isPaused?'RESUMED':'PAUSED'}\u001b[0m\n\`\`\``);
+            return interaction.editReply({ embeds: [embed] });
+        }
+
+        // ── SKIP ──
+        if (sub === 'skip') {
+            const title = q.currentTrack?.title || 'Unknown';
+            q.player.stop();
+            const embed = new EmbedBuilder().setColor(ARCHON.cyan)
+                .setDescription(`\`\`\`ansi\n\u001b[1;36m▸ SKIPPED\u001b[0m\n\u001b[0;37m${title.substring(0,60)}\u001b[0m\n\`\`\``);
+            return interaction.editReply({ embeds: [embed] });
+        }
+
+        // ── STOP ──
+        if (sub === 'stop') {
+            destroyQueue(guildId);
+            const embed = new EmbedBuilder().setColor(ARCHON.red)
+                .setDescription('```ansi\n\u001b[1;31m▸ STOPPED — Neural stream terminated.\u001b[0m\n```');
+            return interaction.editReply({ embeds: [embed] });
+        }
+
+        // ── QUEUE ──
+        if (sub === 'queue') {
+            return interaction.editReply({ embeds: [buildQueueEmbed(q, client)] });
+        }
+
+        // ── NOW PLAYING ──
+        if (sub === 'nowplaying') {
+            if (!q.currentTrack) return interaction.editReply({ content: '❌ Nothing is playing!' });
+            return interaction.editReply({ embeds: [buildNowPlayingEmbed(q, client)], components: [buildControls(q)] });
+        }
+
+        // ── VOLUME ──
+        if (sub === 'volume') {
+            const vol = interaction.options.getInteger('level');
+            q.volume = vol;
+            try { q.player?.state?.resource?.volume?.setVolume(vol/100); } catch(e) {}
+            const bar = '█'.repeat(Math.round(vol/10)) + '░'.repeat(10-Math.round(vol/10));
+            const embed = new EmbedBuilder().setColor(ARCHON.purple)
+                .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ VOLUME\u001b[0m \u001b[1;36m${bar}\u001b[0m \u001b[1;33m${vol}%\u001b[0m\n\`\`\``);
+            return interaction.editReply({ embeds: [embed] });
+        }
+
+        // ── LOOP ──
+        if (sub === 'loop') {
+            q.loop = !q.loop;
+            if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
+            const embed = new EmbedBuilder().setColor(q.loop ? ARCHON.green : ARCHON.orange)
+                .setDescription(`\`\`\`ansi\n\u001b[1;${q.loop?'32':'33'}m▸ LOOP ${q.loop?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
+            return interaction.editReply({ embeds: [embed] });
+        }
+
+        // ── AUTOPLAY ──
+        if (sub === 'autoplay') {
+            q.autoplay = !q.autoplay;
+            const embed = new EmbedBuilder().setColor(q.autoplay ? ARCHON.green : ARCHON.orange)
+                .setDescription(`\`\`\`ansi\n\u001b[1;${q.autoplay?'32':'33'}m▸ AUTOPLAY ${q.autoplay?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
+            return interaction.editReply({ embeds: [embed] });
         }
     }
 };
