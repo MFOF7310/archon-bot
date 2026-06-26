@@ -3580,6 +3580,19 @@ if (cooldownCheck.blocked) {
 // ================= INTERACTION HANDLER =================
 safeOn(Events.InteractionCreate, async (interaction) => {
     // SLASH COMMAND EXECUTION
+    // Autocomplete handler
+    if (interaction.isAutocomplete()) {
+        const command = client.commands.get(interaction.commandName);
+        if (command?.autocomplete) {
+            try {
+                await command.autocomplete(interaction, client);
+            } catch(e) {
+                await interaction.respond([]).catch(() => {});
+            }
+        }
+        return;
+    }
+
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
 
