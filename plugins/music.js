@@ -574,7 +574,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('music')
         .setDescription('🎵 ARCHON Music Engine — play, queue, control')
-        .addSubcommand(s => s.setName('play').setDescription('▶️ Play a song').addStringOption(o => o.setName('query').setDescription('Song name or URL').setRequired(true)))
+        .addSubcommand(s => s.setName('play').setDescription('▶️ Play a song').addStringOption(o => o.setName('query').setDescription('Song name or URL').setRequired(true).setAutocomplete(true)))
         .addSubcommand(s => s.setName('file').setDescription('📁 Play from uploaded file').addAttachmentOption(o => o.setName('file').setDescription('Audio file (mp3/wav/ogg/flac)').setRequired(true)))
         .addSubcommand(s => s.setName('pause').setDescription('⏸️ Pause or resume'))
         .addSubcommand(s => s.setName('skip').setDescription('⏭️ Skip current track'))
@@ -596,6 +596,38 @@ module.exports = {
             query, message.author.username, client,
             (opts) => message.reply(opts).catch(() => {})
         );
+    },
+
+    autocomplete: async (interaction, client) => {
+        const focused = interaction.options.getFocused();
+        if (!focused || focused.length < 2) {
+            // Show recent plays as suggestions
+            try {
+                const recent = client.db?.prepare(
+                    'SELECT title, query FROM music_history WHERE guild_id = ? ORDER BY played_at DESC LIMIT 5'
+                ).all(interaction.guild?.id) || [];
+                await interaction.respond(
+                    recent.map(r => ({ name: r.title.substring(0,100), value: r.query.substring(0,100) }))
+                ).catch(() => {});
+            } catch(e) {
+                await interaction.respond([]).catch(() => {});
+            }
+            return;
+        }
+        // Live SoundCloud search
+        try {
+            const id = await playdl.getFreeClientID();
+            await playdl.setToken({ soundcloud: { client_id: id } });
+            const results = await playdl.search(focused, { source: { soundcloud: 'tracks' }, limit: 5 });
+            await interaction.respond(
+                results.map(r => ({
+                    name: `🎵 ${r.title.substring(0,90)}`,
+                    value: r.title.substring(0,100)
+                }))
+            ).catch(() => {});
+        } catch(e) {
+            await interaction.respond([]).catch(() => {});
+        }
     },
 
     execute: async (interaction, client) => {
