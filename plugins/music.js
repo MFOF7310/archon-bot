@@ -73,7 +73,12 @@ function buildNowPlayingEmbed(q, client) {
     const pct = t.duration > 0 ? Math.min(100, Math.round((elapsed / t.duration) * 100)) : 0;
     return new EmbedBuilder()
         .setColor(ARCHON.cyan)
-        .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ 
+            name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', 
+            iconURL: t.spotifyUrl 
+                ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png'
+                : client.user.displayAvatarURL()
+        })
         .setTitle(`${t.spotifyUrl ? '🟢' : '🎵'} NOW PLAYING`)
         .setDescription(
             `\`\`\`ansi\n` +
