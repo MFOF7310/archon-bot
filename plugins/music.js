@@ -309,7 +309,8 @@ function buildQueueEmbed(q, client) {
 // ═══════════════════════════════════════════════════════
 // ENSURE VOICE CONNECTION
 // ═══════════════════════════════════════════════════════
-async function ensureConnection(q) {
+async function ensureConnection(q, client) {
+    if (client) q._client = client;
     let connection = getVoiceConnection(q.guild.id);
     if (!connection) {
         // Stage channels need selfDeaf: false and speaker request
@@ -364,12 +365,26 @@ async function ensureConnection(q) {
             if (q.loop && q.currentTrack) {
                 q.tracks.unshift({ ...q.currentTrack });
             }
-            playNext(q, q.guild.client || { version: '3.0.7', user: { displayAvatarURL: () => '' } });
+            // Autoplay — find similar song when queue is empty
+            if (q.tracks.length === 0 && q.autoplay && q.currentTrack) {
+                const similar = q.currentTrack.artist || q.currentTrack.title;
+                q.tracks.push({
+                    title: similar + ' mix',
+                    query: similar,
+                    artist: 'Unknown',
+                    source: 'SoundCloud',
+                    duration: 0,
+                    thumbnail: null,
+                    requestedBy: '🤖 Autoplay',
+                    url: null,
+                });
+            }
+            playNext(q, q._client);
         });
 
         player.on('error', (err) => {
             console.error('[MUSIC PLAYER ERROR]', err.message);
-            playNext(q, q.guild.client);
+            playNext(q, q._client);
         });
     }
 
@@ -434,7 +449,7 @@ module.exports = {
 
         if (!q.player || q.player.state.status === AudioPlayerStatus.Idle || !q.currentTrack) {
             try {
-                await ensureConnection(q);
+                await ensureConnection(q, client);
                 await playNext(q, client);
             } catch (err) {
                 destroyQueue(guildId);
@@ -486,7 +501,7 @@ module.exports = {
 
         if (!isPlaying) {
             try {
-                await ensureConnection(q);
+                await ensureConnection(q, client);
                 await playNext(q, client);
             } catch (err) {
                 destroyQueue(guildId);
