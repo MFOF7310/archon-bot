@@ -74,11 +74,12 @@ function buildNowPlayingEmbed(q, client) {
     return new EmbedBuilder()
         .setColor(ARCHON.cyan)
         .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
-        .setTitle('🎵 NOW PLAYING')
+        .setTitle(`${t.spotifyUrl ? '🟢' : '🎵'} NOW PLAYING`)
         .setDescription(
             `\`\`\`ansi\n` +
             `\u001b[1;36m▸ TRACK    \u001b[0m ${t.title.substring(0,50)}\n` +
             `\u001b[1;36m▸ ARTIST   \u001b[0m ${t.artist || 'Unknown'}\n` +
+            `\u001b[1;36m▸ ALBUM    \u001b[0m ${t.album || 'Unknown'}\n` +
             `\u001b[1;36m▸ SOURCE   \u001b[0m ${t.source || 'Neural Feed'}\n` +
             `\u001b[1;36m▸ ADDED BY \u001b[0m ${t.requestedBy}\n` +
             `\`\`\``
@@ -118,6 +119,59 @@ function buildQueueEmbed(q, client) {
             { name: `UP NEXT (${q.tracks.length})`, value: `\`\`\`ansi\n${list}\n\`\`\``, inline: false }
         )
         .setFooter({ text: `BAMAKO_223 🇲🇱 • Vol: ${q.volume}% • Loop: ${q.loop ? 'ON' : 'OFF'}` });
+}
+
+// ═══════════════════════════════════════════════════════
+// SPOTIFY TOKEN MANAGER
+// ═══════════════════════════════════════════════════════
+const { execSync } = require('child_process');
+let spotifyToken = null;
+let spotifyExpiry = 0;
+
+async function getSpotifyToken() {
+    if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
+    try {
+        const id = process.env.SPOTIFY_CLIENT_ID;
+        const secret = process.env.SPOTIFY_CLIENT_SECRET;
+        if (!id || !secret) return null;
+        const res = await fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `grant_type=client_credentials&client_id=${id}&client_secret=${secret}`
+        });
+        const data = await res.json();
+        spotifyToken = data.access_token;
+        spotifyExpiry = Date.now() + (data.expires_in - 60) * 1000;
+        console.log('[MUSIC] Spotify token refreshed ✅');
+        return spotifyToken;
+    } catch(e) {
+        console.error('[MUSIC] Spotify token error:', e.message);
+        return null;
+    }
+}
+
+async function searchSpotify(query) {
+    try {
+        const token = await getSpotifyToken();
+        if (!token) return null;
+        const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=1`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const track = data.tracks?.items?.[0];
+        if (!track) return null;
+        return {
+            title: track.name,
+            artist: track.artists?.map(a => a.name).join(', '),
+            album: track.album?.name,
+            thumbnail: track.album?.images?.[0]?.url,
+            duration: Math.floor(track.duration_ms / 1000),
+            spotifyUrl: track.external_urls?.spotify,
+            previewUrl: track.preview_url,
+        };
+    } catch(e) {
+        return null;
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -182,6 +236,22 @@ async function playNext(q) {
     q.startTime = Date.now();
     q.totalPaused = 0;
     q.pausedAt = null;
+
+    // Enrich with Spotify metadata (album art, duration, artist)
+    if (track.source !== 'file') {
+        try {
+            const spotifyData = await searchSpotify(track.query || track.title);
+            if (spotifyData) {
+                track.title = spotifyData.title || track.title;
+                track.artist = spotifyData.artist || track.artist;
+                track.thumbnail = spotifyData.thumbnail || track.thumbnail;
+                track.duration = spotifyData.duration || track.duration;
+                track.album = spotifyData.album;
+                track.spotifyUrl = spotifyData.spotifyUrl;
+                console.log('[MUSIC] Spotify metadata ✅:', track.title, 'by', track.artist);
+            }
+        } catch(e) {}
+    }
 
     // Save to history
     try {
