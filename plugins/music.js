@@ -322,18 +322,24 @@ async function downloadFile(url, dest) {
 async function playNext(q) {
     const client = q._client;
     if (q.tracks.length === 0) {
-        // Autoplay — find similar
-        if (q.autoplay && q.currentTrack) {
-            const similar = q.currentTrack.artist || q.currentTrack.title.split(' ')[0];
-            q.tracks.push({
-                title: similar + ' mix',
-                query: similar,
-                artist: 'Unknown', source: 'SoundCloud',
-                duration: 0, thumbnail: null,
-                requestedBy: '🤖 Autoplay', url: null,
-            });
-            console.log('[MUSIC] Autoplay:', similar);
-        } else {
+        // Autoplay — find similar (skip if source was file or artist unknown)
+        if (q.autoplay && q.currentTrack && q.currentTrack.source !== 'file') {
+            const artist = q.currentTrack.artist && q.currentTrack.artist !== 'Unknown' && q.currentTrack.artist !== 'File Upload'
+                ? q.currentTrack.artist
+                : null;
+            const similar = artist || q.currentTrack.title.split(' ').slice(0,3).join(' ');
+            if (similar && similar.length > 2) {
+                q.tracks.push({
+                    title: similar,
+                    query: similar,
+                    artist: 'Unknown', source: 'SoundCloud',
+                    duration: 0, thumbnail: null,
+                    requestedBy: '🤖 Autoplay', url: null,
+                });
+                console.log('[MUSIC] Autoplay:', similar);
+            } else {
+                console.log('[MUSIC] Autoplay skipped — no valid query');
+            }
             const embed = new EmbedBuilder().setColor(ARCHON.orange)
                 .setDescription('```ansi\n\u001b[1;33m▸ QUEUE EMPTY — Neural stream ended.\u001b[0m\n```');
             q.textChannel?.send({ embeds: [embed] }).catch(() => {});
