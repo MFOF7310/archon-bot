@@ -682,9 +682,23 @@ module.exports = {
                 return interaction.editReply({ content: `❌ Invalid file type! Supported: ${validExts.join(', ')}` });
             }
             const tempPath = `/tmp/archon_${Date.now()}.${ext}`;
+            const sizeMB = (att.size/1024/1024).toFixed(2);
+
+            // Show downloading state immediately
+            await interaction.editReply({
+                embeds: [new EmbedBuilder()
+                    .setColor(ARCHON.gold)
+                    .setDescription(`📥 **${att.name.replace(/\.[^/.]+$/, '').substring(0,60)}**\n> \`[downloading]\` • ${ext?.toUpperCase()} • ${sizeMB} MB — please wait...`)]
+            });
+
             try { await downloadFile(att.url, tempPath); } catch(e) {
-                return interaction.editReply({ content: `❌ Download failed: ${e.message}` });
+                return interaction.editReply({
+                    embeds: [new EmbedBuilder()
+                        .setColor(ARCHON.red)
+                        .setDescription(`❌ Download failed\n> ${e.message.substring(0,80)}`)]
+                });
             }
+
             let q = getQueue(guildId) || createQueue(interaction.guild, vc, interaction.channel, client);
             q._client = client;
             const track = {
@@ -695,11 +709,18 @@ module.exports = {
             };
             q.tracks.push(track);
             const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
-            const embed = new EmbedBuilder().setColor(ARCHON.cyan)
-                .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
-                .setDescription(`\`\`\`ansi\n\u001b[1;32m▸ FILE QUEUED\u001b[0m\n\u001b[1;36m${track.title.substring(0,60)}\u001b[0m\n\u001b[0;37m${ext?.toUpperCase()} • ${(att.size/1024/1024).toFixed(2)} MB\u001b[0m\n\`\`\``)
-                .setFooter({ text: 'BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID' });
-            await interaction.editReply({ embeds: [embed] });
+
+            // Update to queued/playing state
+            await interaction.editReply({
+                embeds: [new EmbedBuilder()
+                    .setColor(isPlaying ? 0x1DB954 : ARCHON.cyan)
+                    .setDescription(
+                        isPlaying
+                            ? `🎵 Added **${track.title.substring(0,60)}**\n> \`[queued]\` • ${ext?.toUpperCase()} • ${sizeMB} MB • Position **#${q.tracks.length}** in queue`
+                            : `🎵 **${track.title.substring(0,60)}**\n> \`[ready]\` • ${ext?.toUpperCase()} • ${sizeMB} MB — connecting to voice...`
+                    )]
+            });
+
             if (!isPlaying) {
                 try { await ensureConnection(q); await playNext(q); }
                 catch(e) { destroyQueue(guildId); }
