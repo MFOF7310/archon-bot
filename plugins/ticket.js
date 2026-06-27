@@ -126,17 +126,62 @@ async function createCh(g, uid, uname, cat, s, client) {
 // ================= UI BUILDERS =================
 function panelEmbed(s, gn, lang='en') {
     const t=TX[lang]||TX.en, cats=getCats(s);
-    return new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.pTitle}`,iconURL:'https://cdn.discordapp.com/emojis/1234567890123456789.webp'}).setDescription(`${t.pDesc(gn)}\n\n${cats.map(c=>`${c.emoji} **${c.label}**`).join('  ·  ')}\n\n> Select a category below.`).setFooter({text:t.pFooter}).setTimestamp();
+    return new EmbedBuilder()
+        .setColor(0x00f0ff)
+        .setAuthor({ name: '🦅 ARCHON ENGINE • SUPPORT PROTOCOL', iconURL: 'https://cdn.discordapp.com/emojis/1234567890123456789.webp' })
+        .setTitle('🎫 CLASSIFIED SUPPORT SYSTEM')
+        .setDescription(
+            `\`\`\`ansi
+` +
+            `[1;36m▸ SERVER   [0m ${gn}
+` +
+            `[1;36m▸ STATUS   [0m [1;32mOPERATIONAL[0m
+` +
+            `[1;36m▸ PROTOCOL [0m NEURAL TICKET v2.0
+` +
+            `\`\`\`
+` +
+            `${cats.map(c => `${c.emoji} **${c.label}** — *${c.desc}*`).join('\n')}
+
+` +
+            `> Select a category below to open a private support channel.`
+        )
+        .addFields({ name: '📋 AVAILABLE CATEGORIES', value: `\`${cats.length}\` categories`, inline: true },
+                   { name: '⏰ AUTO-CLOSE', value: `\`${s?.ticketAutoCloseHours || 24}h\``, inline: true },
+                   { name: '🔒 PRIVATE', value: '`Staff + You only`', inline: true })
+        .setFooter({ text: 'BAMAKO_223 🇲🇱 • ARCHON CLASSIFIED PROTOCOL' })
+        .setTimestamp();
 }
 function panelMenu(s) {
     const sel=new StringSelectMenuBuilder().setCustomId('ticket_category_select').setPlaceholder('Select category...');
     getCats(s).forEach(c=>sel.addOptions({label:`${c.emoji} ${c.label}`,description:c.desc.substring(0,100),value:c.value,emoji:c.emoji}));
     return sel;
 }
-async function welcomeMsg(ch, u, cat, n, lang='en') {
+async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false) {
     const t=TX[lang]||TX.en, cl=typeof cat==='object'?`${cat.emoji} ${cat.label}`:'🎫 Support';
-    const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`${t.welcome} #${n}`,iconURL:u.displayAvatarURL()}).setDescription(t.wDesc(u.id,cl)).addFields({name:t.by,value:`<@${u.id}>`,inline:true},{name:t.at,value:`<t:${Math.floor(Date.now()/1000)}:R>`,inline:true},{name:t.cat,value:cl,inline:true},{name:t.st,value:t.open,inline:true}).setFooter({text:'🦅 ARCHON CG-223'}).setTimestamp();
-    const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t.claim).setStyle(ButtonStyle.Primary).setEmoji('🙋'),new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t.close).setStyle(ButtonStyle.Danger).setEmoji('🔒'),new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t.transcript).setStyle(ButtonStyle.Secondary).setEmoji('📄'));
+    const e=new EmbedBuilder()
+        .setColor(isPremium ? 0xf1c40f : 0x00f0ff)
+        .setAuthor({name:`🦅 ARCHON SUPPORT • TICKET #${n}`,iconURL:u.displayAvatarURL()})
+        .setDescription(
+            `\`\`\`ansi\n` +
+            `\u001b[1;36m▸ AGENT    \u001b[0m ${u.username}\n` +
+            `\u001b[1;36m▸ CATEGORY \u001b[0m ${cl}\n` +
+            `\u001b[1;36m▸ PRIORITY \u001b[0m ${isPremium ? '\u001b[1;33mPREMIUM\u001b[0m' : '\u001b[1;32mSTANDARD\u001b[0m'}\n` +
+            `\u001b[1;36m▸ STATUS   \u001b[0m \u001b[1;32mOPEN\u001b[0m\n` +
+            `\`\`\`\n${t.wDesc(u.id,cl)}`
+        )
+        .addFields(
+            {name:'👤 Agent',value:`<@${u.id}>`,inline:true},
+            {name:'⏰ Opened',value:`<t:${Math.floor(Date.now()/1000)}:R>`,inline:true},
+            {name:'📁 Category',value:cl,inline:true}
+        )
+        .setFooter({text:'BAMAKO_223 🇲🇱 • ARCHON CLASSIFIED PROTOCOL'})
+        .setTimestamp();
+    const r=new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t.claim).setStyle(ButtonStyle.Primary).setEmoji('🙋'),
+        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t.close).setStyle(ButtonStyle.Danger).setEmoji('🔒'),
+        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t.transcript).setStyle(ButtonStyle.Secondary).setEmoji('📄')
+    );
     await ch.send({content:`<@${u.id}>`,embeds:[e],components:[r]});
 }
 function cfgEmbed(s, g, c, lang='en') {
@@ -251,13 +296,84 @@ module.exports = {
         if(act==='close'){if(!isC&&!isS)return ix.reply({content:t.noPerm,flags:1<<6}).catch(()=>{});const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t.closeQ).setDescription(t.closeD);const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t.closeY).setStyle(ButtonStyle.Danger).setEmoji('✅'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t.closeN).setStyle(ButtonStyle.Secondary).setEmoji('❌'));await ix.reply({embeds:[e],components:[r],flags:1<<6}).catch(()=>{});return true;}
 
         // CONFIRM CLOSE
-        if(act==='confirmclose'){const cl=p[4]||uid;await ix.update({content:t.closing,embeds:[],components:[]}).catch(()=>{});const ch=ix.channel;if(tk)await saveTx(ch,tk,cl,client,ss);await ch.send(t.closedBy(cl)).catch(()=>{});active.delete(cid);if(db)delTicket(db,cid);const ex=timers.get(cid);if(ex){clearTimeout(ex);timers.delete(cid);}setTimeout(()=>ch.delete(`By ${ix.user.tag}`).catch(()=>{}),5000);return true;}
+        if(act==='confirmclose'){
+            const cl=p[4]||uid;
+            await ix.update({content:t.closing,embeds:[],components:[]}).catch(()=>{});
+            const ch=ix.channel;
+            if(tk) await saveTx(ch,tk,cl,client,ss);
+            await ch.send(t.closedBy(cl)).catch(()=>{});
+            active.delete(cid);
+            if(db) delTicket(db,cid);
+            const ex=timers.get(cid);
+            if(ex){clearTimeout(ex);timers.delete(cid);}
+            
+            // Send rating request to ticket creator
+            try {
+                const creator = await client.users.fetch(tk?.creatorId || crid).catch(()=>null);
+                if (creator && creator.id !== cl) {
+                    const ratingEmbed = new EmbedBuilder()
+                        .setColor(0x00f0ff)
+                        .setAuthor({ name: '🦅 ARCHON ENGINE • SUPPORT FEEDBACK' })
+                        .setDescription(
+                            `**Your ticket has been closed.**
+
+` +
+                            `How would you rate your support experience?
+` +
+                            `*Server: ${ix.guild?.name}*`
+                        )
+                        .setFooter({ text: 'BAMAKO_223 🇲🇱 • Your feedback helps us improve' });
+                    const ratingRow = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId(`ticket_rate_1_${ix.guild?.id}`).setLabel('⭐').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(`ticket_rate_2_${ix.guild?.id}`).setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(`ticket_rate_3_${ix.guild?.id}`).setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(`ticket_rate_4_${ix.guild?.id}`).setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(`ticket_rate_5_${ix.guild?.id}`).setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success),
+                    );
+                    await creator.send({ embeds: [ratingEmbed], components: [ratingRow] }).catch(()=>{});
+                }
+            } catch(e) {}
+            
+            setTimeout(()=>ch.delete(`By ${ix.user.tag}`).catch(()=>{}),5000);
+            return true;
+        }
 
         // CANCEL CLOSE
         if(act==='cancelclose'){await ix.deleteReply().catch(()=>{});return true;}
 
         // TRANSCRIPT
         if(act==='transcript'){if(!isC&&!isS)return ix.reply({content:t.noPerm,flags:1<<6}).catch(()=>{});await ix.deferReply({flags:1<<6});const ch=ix.channel;if(!tk)return ix.editReply({content:'❌ Data not found.'}).catch(()=>{});const r=await saveTx(ch,tk,null,client,ss);if(r===true)await ix.editReply({content:t.txSaved}).catch(()=>{});else if(r&&r.buffer)await ix.editReply({content:t.txSaved,files:[{attachment:r.buffer,name:r.filename}]}).catch(()=>{});else await ix.editReply({content:'❌ Failed.'}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
+
+        // RATING
+        if(act==='rate'){
+            const stars = parseInt(p[2]) || 0;
+            const gid = p[3];
+            const starEmoji = '⭐'.repeat(stars);
+            await ix.update({ 
+                embeds: [new EmbedBuilder().setColor(0x2ecc71)
+                    .setDescription(`✅ **Thank you for your feedback!**
+
+You rated: ${starEmoji}
+
+*Your feedback helps improve ARCHON support.*`)],
+                components: [] 
+            }).catch(()=>{});
+            // Log rating
+            try {
+                const ss2 = client.getServerSettings?.(gid) || {};
+                const txCh = ss2?.ticketTranscriptChannel;
+                if (txCh) {
+                    const logCh = await client.channels.fetch(txCh).catch(()=>null);
+                    if (logCh) {
+                        await logCh.send({ embeds: [new EmbedBuilder().setColor(0xf1c40f)
+                            .setDescription(`⭐ **Support Rating** — ${starEmoji} (${stars}/5)
+From: <@${ix.user.id}>`)
+                            .setTimestamp()] }).catch(()=>{});
+                    }
+                }
+            } catch(e) {}
+            return true;
+        }
 
         return false;
     },
