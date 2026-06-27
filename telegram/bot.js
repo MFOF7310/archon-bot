@@ -438,7 +438,7 @@ async function handleBuiltin(ctx, cmdName, bridge) {
                     raw = execSync('tail -25 /root/.pm2/logs/Architect-CG223-out.log 2>/dev/null').toString();
                 }
                 const lines = raw.trim().split('\n').slice(-20);
-                const cleaned = lines.map(l => l.replace(/.*\|\s+/, '').trim()).filter(Boolean).join('\n');
+                const cleaned = lines.map(l => l.replace(/\x1b\[[0-9;]*m/g, '').replace(/.*\|\s+/, '').trim()).filter(Boolean).join('\n');
                 const label = filter === 'errors' ? '🔴 ERROR LOG' : filter === 'dash' ? '🖥️ DASHBOARD LOG' : '📋 BOT LOG';
                 await ctx.replyHTML(`${label}\n<pre>${escapeHTML(cleaned.substring(0, 3500))}</pre>\n<i>filter: ${filter} · ${new Date().toLocaleTimeString()}</i>`);
             } catch(e) {
