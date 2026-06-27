@@ -127,7 +127,7 @@ module.exports = {
             console.error(`[DAILY SLASH ERROR] ${err.message}`);
             return interaction.editReply({
                 content: '❌ Something went wrong. Try again in a moment.',
-                ephemeral: true
+                flags: 64
             }).catch(() => {});
         }
     },

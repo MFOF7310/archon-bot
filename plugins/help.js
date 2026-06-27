@@ -464,7 +464,7 @@ module.exports = {
         collector.on('collect', async (i) => {
             // 🔒 SECURITY CHECK FIRST
             if (i.user.id !== message.author.id) {
-                return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
             }
 
             try {
@@ -543,7 +543,7 @@ module.exports = {
                     if (!i.replied && !i.deferred) {
                         await i.reply({ 
                             content: lang === 'fr' ? '❌ Une erreur est survenue. Veuillez réessayer.' : '❌ An error occurred. Please try again.',
-                            ephemeral: true
+                            flags: 64
                         }).catch(() => {});
                     }
                 } catch (e) {}
@@ -636,7 +636,7 @@ module.exports = {
                 if (i.user.id !== interaction.user.id) {
                     return i.reply({ 
                         content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', 
-                        ephemeral: true
+                        flags: 64
                     }).catch(() => {});
                 }
 
@@ -673,7 +673,7 @@ module.exports = {
         }
 
         // ===== SERVER EXECUTION =====
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         const fakeMessage = {
             author: interaction.user,

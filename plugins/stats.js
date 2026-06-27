@@ -435,7 +435,7 @@ try {
         
         collector.on('collect', async (i) => {
             if (i.user.id !== (message.author?.id || message.user?.id)) {
-                return i.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', ephemeral: true });
+                return i.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', flags: 64 });
             }
             
             await i.deferUpdate();

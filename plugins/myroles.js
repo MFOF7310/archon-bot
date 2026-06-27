@@ -37,7 +37,7 @@ module.exports = {
             if (!target) {
                 return interaction.reply({
                     embeds: [buildErrorEmbed(lang, 'agent_not_found')],
-                    ephemeral: true
+                    flags: 64
                 });
             }
         } else {
@@ -50,7 +50,7 @@ module.exports = {
         if (!isSelf && !interaction.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
             return interaction.reply({
                 embeds: [buildErrorEmbed(lang, 'no_permission')],
-                ephemeral: true
+                flags: 64
             });
         }
         

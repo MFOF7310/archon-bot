@@ -281,7 +281,7 @@ module.exports = {
         const uid = id.split('_').pop();
 
         if (interaction.user.id !== uid) {
-            return interaction.reply({ content: '❌ Not your car button!', ephemeral: true }).catch(() => {}); // Remplacé ici
+            return interaction.reply({ content: '❌ Not your car button!', flags: 64 }).catch(() => {}); // Remplacé ici
         }
 
         await interaction.deferUpdate().catch(() => {});

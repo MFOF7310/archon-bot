@@ -59,7 +59,7 @@ module.exports = {
         
         // Check permissions
         if (!message.member.permissions.has('ManageGuild')) {
-            return message.reply({ content: t.noPermission, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.noPermission, flags: 64 }).catch(() => {});
         }
         
         // Get new prefix from args
@@ -78,12 +78,12 @@ module.exports = {
         
         // Validate prefix
         if (newPrefix.length < 1 || newPrefix.length > 5) {
-            return message.reply({ content: t.invalid, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.invalid, flags: 64 }).catch(() => {});
         }
         
         const currentPrefix = serverSettings?.prefix || '.';
         if (newPrefix === currentPrefix) {
-            return message.reply({ content: t.samePrefix, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.samePrefix, flags: 64 }).catch(() => {});
         }
         
         // Update database
@@ -113,7 +113,7 @@ module.exports = {
             
         } catch (error) {
             console.error('[PREFIX ERROR]', error);
-            return message.reply({ content: '❌ Failed to update prefix. Please try again.', ephemeral: true }).catch(() => {});
+            return message.reply({ content: '❌ Failed to update prefix. Please try again.', flags: 64 }).catch(() => {});
         }
     },
 
@@ -124,7 +124,7 @@ module.exports = {
         
         // Check permissions
         if (!interaction.memberPermissions.has('ManageGuild')) {
-            return interaction.reply({ content: t.noPermission, ephemeral: true });
+            return interaction.reply({ content: t.noPermission, flags: 64 });
         }
         
         const newPrefix = interaction.options.getString('prefix');
@@ -135,7 +135,7 @@ module.exports = {
         const currentPrefix = settings?.prefix || '.';
         
         if (newPrefix === currentPrefix) {
-            return interaction.reply({ content: t.samePrefix, ephemeral: true });
+            return interaction.reply({ content: t.samePrefix, flags: 64 });
         }
         
         // Update database
@@ -164,7 +164,7 @@ module.exports = {
             
         } catch (error) {
             console.error('[PREFIX ERROR]', error);
-            return interaction.reply({ content: '❌ Failed to update prefix. Please try again.', ephemeral: true });
+            return interaction.reply({ content: '❌ Failed to update prefix. Please try again.', flags: 64 });
         }
     }
 };

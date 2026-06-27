@@ -138,7 +138,7 @@ module.exports = {
                 content: lang === 'fr'
                     ? '❌ Rôle muet non configuré.'
                     : '❌ Mute role not configured.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -150,7 +150,7 @@ module.exports = {
                         content: lang === 'fr'
                             ? `❌ **${target.user.username}** n'est pas muet.`
                             : `❌ **${target.user.username}** is not muted.`,
-                        ephemeral: true
+                        flags: 64
                     });
                 }
                 await target.roles.remove(muteRoleId);
@@ -158,10 +158,10 @@ module.exports = {
                     content: lang === 'fr'
                         ? `🔊 **${target.user.username}** démuté.`
                         : `🔊 **${target.user.username}** unmuted.`,
-                    ephemeral: true
+                    flags: 64
                 });
             } catch (e) {
-                return interaction.reply({ content: '❌ Failed to unmute.', ephemeral: true });
+                return interaction.reply({ content: '❌ Failed to unmute.', flags: 64 });
             }
         }
 
@@ -171,7 +171,7 @@ module.exports = {
                 content: lang === 'fr'
                     ? `❌ **${target.user.username}** est déjà muet.`
                     : `❌ **${target.user.username}** is already muted.`,
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -182,7 +182,7 @@ module.exports = {
         if (ms === null) {
             return interaction.reply({
                 content: '❌ Invalid duration. Use: 1m, 1h, 1d',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -201,10 +201,10 @@ module.exports = {
                 content: lang === 'fr'
                     ? `🔇 **${target.user.username}** muet pour ${timeStr}. Raison: ${reason}`
                     : `🔇 **${target.user.username}** muted for ${timeStr}. Reason: ${reason}`,
-                ephemeral: true
+                flags: 64
             });
         } catch (e) {
-            return interaction.reply({ content: '❌ Failed to mute.', ephemeral: true });
+            return interaction.reply({ content: '❌ Failed to mute.', flags: 64 });
         }
     }
 };

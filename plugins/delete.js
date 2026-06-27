@@ -87,7 +87,7 @@ async function checkDeletePermission(context, t, lang) {
             .setTimestamp();
 
         if (isSlash) {
-            await context.reply({ embeds: [noGuildEmbed], ephemeral: true }).catch(() => {});
+            await context.reply({ embeds: [noGuildEmbed], flags: 64 }).catch(() => {});
         } else {
             await context.reply({ embeds: [noGuildEmbed] }).catch(() => {});
             setTimeout(() => context.delete().catch(() => {}), 8000);
@@ -125,7 +125,7 @@ async function checkDeletePermission(context, t, lang) {
         } catch (dmErr) {
             // Fallback: ephemeral reply in channel if DMs blocked
             if (isSlash) {
-                await context.reply({ embeds: [permEmbed], ephemeral: true }).catch(() => {});
+                await context.reply({ embeds: [permEmbed], flags: 64 }).catch(() => {});
             } else {
                 const fallbackMsg = await context.channel.send({
                     content: `<@${user.id}>`,
@@ -279,37 +279,37 @@ module.exports = {
         const permCheck = await checkDeletePermission(interaction, t, lang);
         if (!permCheck.ok) return; // Graceful exit — no crash
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         try {
             switch (subcommand) {
                 case 'bulk': {
                     const amount = interaction.options.getInteger('amount');
                     await bulkDeleteMessages(interaction.channel, interaction.user, amount, t, lang, client);
-                    await interaction.editReply({ content: `✅ Bulk deleted **${amount}** messages.`, ephemeral: true });
+                    await interaction.editReply({ content: `✅ Bulk deleted **${amount}** messages.`, flags: 64 });
                     break;
                 }
                 case 'user': {
                     const target = interaction.options.getUser('target');
                     const amount = interaction.options.getInteger('amount') || 10;
                     await deleteUserMessages(interaction.channel, interaction.user, target, amount, t, lang, client);
-                    await interaction.editReply({ content: t.userMessagesDeleted(amount, target.username), ephemeral: true });
+                    await interaction.editReply({ content: t.userMessagesDeleted(amount, target.username), flags: 64 });
                     break;
                 }
                 case 'message': {
                     const messageId = interaction.options.getString('message_id');
                     const targetMsg = await interaction.channel.messages.fetch(messageId).catch(() => null);
                     if (!targetMsg) {
-                        return interaction.editReply({ content: '❌ Message not found.', ephemeral: true });
+                        return interaction.editReply({ content: '❌ Message not found.', flags: 64 });
                     }
                     await deleteSingleMessage(interaction.channel, interaction.user, targetMsg, t, lang, client);
-                    await interaction.editReply({ content: t.targetErased, ephemeral: true });
+                    await interaction.editReply({ content: t.targetErased, flags: 64 });
                     break;
                 }
             }
         } catch (err) {
             console.error('[DLT] Slash error:', err.message);
-            await interaction.editReply({ content: t.errorOld, ephemeral: true }).catch(() => {});
+            await interaction.editReply({ content: t.errorOld, flags: 64 }).catch(() => {});
         }
     }
 };
@@ -330,7 +330,7 @@ async function bulkDeleteMessages(channel, moderator, amount, t, lang, client) {
 
         const deleted = await channel.bulkDelete(filtered, true);
 
-        const successMsg = await channel.send({ content: t.bulkSuccess(deleted.size), ephemeral: true });
+        const successMsg = await channel.send({ content: t.bulkSuccess(deleted.size), flags: 64 });
         setTimeout(() => {
             successMsg.delete().catch(() => {});
             fetchingMsg.delete().catch(() => {});
@@ -366,7 +366,7 @@ async function deleteUserMessages(channel, moderator, targetUser, amount, t, lan
             await msg.delete().catch(() => {});
         }
 
-        const successMsg = await channel.send({ content: t.userMessagesDeleted(userMessages.length, targetUser.username), ephemeral: true });
+        const successMsg = await channel.send({ content: t.userMessagesDeleted(userMessages.length, targetUser.username), flags: 64 });
         setTimeout(() => {
             successMsg.delete().catch(() => {});
             fetchingMsg.delete().catch(() => {});
@@ -389,7 +389,7 @@ async function deleteSingleMessage(channel, moderator, targetMsg, t, lang, clien
     try {
         await targetMsg.delete();
 
-        const successMsg = await channel.send({ content: t.targetErased, ephemeral: true });
+        const successMsg = await channel.send({ content: t.targetErased, flags: 64 });
         setTimeout(() => successMsg.delete().catch(() => {}), 2000);
 
         if (client && channel.guild) {
@@ -399,7 +399,7 @@ async function deleteSingleMessage(channel, moderator, targetMsg, t, lang, clien
         console.log(`[DLT] ${moderator.tag} deleted message by ${targetMsg.author.tag} (ID: ${targetMsg.id}) | Lang: ${lang}`);
 
     } catch (err) {
-        const failMsg = await channel.send({ content: t.errorOld, ephemeral: true });
+        const failMsg = await channel.send({ content: t.errorOld, flags: 64 });
         setTimeout(() => failMsg.delete().catch(() => {}), 3000);
     }
 }

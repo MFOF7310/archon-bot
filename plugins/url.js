@@ -234,7 +234,7 @@ module.exports = {
         const targetUrl = interaction.options.getString('link');
 
         if (!targetUrl || !targetUrl.match(/^https?:\/\//)) {
-            return interaction.reply({ content: t.invalid, ephemeral: true });
+            return interaction.reply({ content: t.invalid, flags: 64 });
         }
 
         await interaction.deferReply();

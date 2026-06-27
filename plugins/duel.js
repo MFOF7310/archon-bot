@@ -385,16 +385,16 @@ async function startDuel(ctx, client, db, opponent, bet) {
   const lang = ctx.isInteraction ? (ctx.source.locale?.startsWith('fr') ? 'fr' : 'en') : 'en';
 
   if (opponent.id === userId) {
-    return ctx.reply({ content: '❌ You cannot challenge yourself!', ephemeral: true });
+    return ctx.reply({ content: '❌ You cannot challenge yourself!', flags: 64 });
   }
   if (opponent.bot) {
-    return ctx.reply({ content: '❌ Cannot challenge a bot!', ephemeral: true });
+    return ctx.reply({ content: '❌ Cannot challenge a bot!', flags: 64 });
   }
 
   const userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare(`SELECT credits FROM users WHERE id = ? AND guild_id = ?`).get(userId, guildId);
   const oppData = client.getUserData ? client.getUserData(opponent.id, guildId) : db.prepare(`SELECT credits FROM users WHERE id = ? AND guild_id = ?`).get(opponent.id, guildId);
-  if ((userData?.credits || 0) < bet) return ctx.reply({ content: `❌ You need ${bet} 🪙!`, ephemeral: true });
-  if ((oppData?.credits || 0) < bet) return ctx.reply({ content: `❌ Opponent doesn't have ${bet} 🪙!`, ephemeral: true });
+  if ((userData?.credits || 0) < bet) return ctx.reply({ content: `❌ You need ${bet} 🪙!`, flags: 64 });
+  if ((oppData?.credits || 0) < bet) return ctx.reply({ content: `❌ Opponent doesn't have ${bet} 🪙!`, flags: 64 });
 
   // Deduct bets
   if (client.removeCredits) {
@@ -456,7 +456,7 @@ const slashCommand = new SlashCommandBuilder()
 
 async function executeSlashCommand(interaction, client) {
   const db = client.db;
-  if (!db) return interaction.reply({ content: '❌ DB unavailable.', ephemeral: true });
+  if (!db) return interaction.reply({ content: '❌ DB unavailable.', flags: 64 });
   setupDuelDB(db);
 
   const opponent = interaction.options.getUser('opponent');

@@ -470,7 +470,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         
         collector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) {
-                return i.reply({ content: t.restricted, ephemeral: true });
+                return i.reply({ content: t.restricted, flags: 64 });
             }
             
             // Handle Mention Buttons
@@ -527,7 +527,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                 }
                 
                 if (i.customId === 'broadcast_schedule') {
-                    await i.reply({ content: t.schedulePrompt, ephemeral: true });
+                    await i.reply({ content: t.schedulePrompt, flags: 64 });
                     
                     const filter = m => m.author.id === message.author.id;
                     const scheduleCollector = message.channel.createMessageCollector({ filter, time: 60000, max: 1 });
@@ -537,20 +537,20 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                         
                         if (input === 'cancel') {
                             scheduleCollector.stop();
-                            return m.reply({ content: t.cancelled, ephemeral: true });
+                            return m.reply({ content: t.cancelled, flags: 64 });
                         }
                         
                         const timeData = parseTime(input, lang);
                         
                         if (!timeData) {
-                            await m.reply({ content: t.invalidTime, ephemeral: true });
+                            await m.reply({ content: t.invalidTime, flags: 64 });
                             scheduleCollector.stop();
                             return;
                         }
                         
                         settings.scheduledTime = timeData.text;
                         
-                        await m.reply({ content: t.scheduled(timeData.text), ephemeral: true });
+                        await m.reply({ content: t.scheduled(timeData.text), flags: 64 });
                         await m.delete().catch(() => {});
                         
                         // Schedule the broadcast
@@ -613,14 +613,14 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                 .setColor('#ED4245')
                 .setDescription('❌ Broadcast commands can only be used in a server channel.')
                 .setFooter({ text: `Neural Core • v${client.version || '1.8.0'}` });
-            return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [errorEmbed], flags: 64 });
         }
         
         // Permission check
         if (interaction.user.id !== process.env.OWNER_ID) {
             const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
             const t = translations[lang];
-            return interaction.reply({ content: t.restricted, ephemeral: true });
+            return interaction.reply({ content: t.restricted, flags: 64 });
         }
         
         await interaction.deferReply();

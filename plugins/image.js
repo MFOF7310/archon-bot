@@ -450,7 +450,7 @@ module.exports = {
                 const collector = msg.createMessageComponentCollector({ time: 120000 });
                 collector.on('collect', async (i) => {
                     if (!i.customId.endsWith(`_${message.author.id}`)) {
-                        return i.reply({ content: txt.en.accessDenied || '❌ Only the author can use this.', ephemeral: true }).catch(() => {});
+                        return i.reply({ content: txt.en.accessDenied || '❌ Only the author can use this.', flags: 64 }).catch(() => {});
                     }
                     if (i.customId.startsWith('image_next')) {
                         await i.deferUpdate().catch(() => {});
@@ -461,7 +461,7 @@ module.exports = {
                             const newEmbed = buildImageEmbed(newImage, lang, version, guildName);
                             await i.editReply({ embeds: [newEmbed] }).catch(() => {});
                         } catch (e) {
-                            await i.followUp({ content: txt.error, ephemeral: true }).catch(() => {});
+                            await i.followUp({ content: txt.error, flags: 64 }).catch(() => {});
                         }
                     }
                 });
@@ -485,7 +485,7 @@ module.exports = {
         // Check if Unsplash key needed but missing
         const needsKey = ['car', 'nature', 'architecture', 'food', 'cyberpunk'];
         if (needsKey.includes(category) && !accessKey) {
-            return interaction.reply({ content: txt.noApiKey(category), ephemeral: true });
+            return interaction.reply({ content: txt.noApiKey(category), flags: 64 });
         }
 
         await interaction.deferReply();
@@ -513,7 +513,7 @@ module.exports = {
             const collector = msg.createMessageComponentCollector({ time: 120000 });
             collector.on('collect', async (i) => {
                 if (!i.customId.endsWith(`_${interaction.user.id}`)) {
-                    return i.reply({ content: txt.en?.accessDenied || '❌ Only the author can use this.', ephemeral: true }).catch(() => {});
+                    return i.reply({ content: txt.en?.accessDenied || '❌ Only the author can use this.', flags: 64 }).catch(() => {});
                 }
                 if (i.customId.startsWith('image_slash_next')) {
                     await i.deferUpdate().catch(() => {});
@@ -524,7 +524,7 @@ module.exports = {
                         const newEmbed = buildImageEmbed(newImage, lang, version, guildName);
                         await i.editReply({ embeds: [newEmbed] }).catch(() => {});
                     } catch (e) {
-                        await i.followUp({ content: txt.error, ephemeral: true }).catch(() => {});
+                        await i.followUp({ content: txt.error, flags: 64 }).catch(() => {});
                     }
                 }
             });

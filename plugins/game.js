@@ -237,7 +237,7 @@ async function bridgeToTrivia(interaction, client) {
             .setAuthor({ name: '🧠 NEURAL TRIVIA BRIDGE', iconURL: client.user.displayAvatarURL() })
             .setDescription(`⚡ ${t.triviaBridge || 'Use /trivia to play!'}`)
             .setFooter({ text: 'ARCHITECT CG-223 • Game Center' });
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.reply({ embeds: [embed], flags: 64 });
     }
 }
 
@@ -248,7 +248,7 @@ async function playCODM(ctx, client, db, lang, guildId, userId, bet) {
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], ephemeral: true });
+        return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
 
@@ -284,7 +284,7 @@ async function playSlots(ctx, client, db, lang, guildId, userId, bet) {
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], ephemeral: true });
+        return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
 
@@ -314,22 +314,22 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
     const t = gameTranslations[lang];
     if (!opponent) {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`❌ ${t.usage(ctx.client.PREFIX || '.')}`);
-        return ctx.reply({ embeds: [embed], ephemeral: true });
+        return ctx.reply({ embeds: [embed], flags: 64 });
     }
     if (opponent.id === userId) {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription(t.noSelfChallenge);
-        return ctx.reply({ embeds: [embed], ephemeral: true });
+        return ctx.reply({ embeds: [embed], flags: 64 });
     }
     if (opponent.bot) {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription(t.cannotChallengeBot);
-        return ctx.reply({ embeds: [embed], ephemeral: true });
+        return ctx.reply({ embeds: [embed], flags: 64 });
     }
 
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], ephemeral: true });
+        return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
 
@@ -397,7 +397,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
                     time: 60000
                 });
                 const idx = parseInt(move.customId.split('_')[1]);
-                if (board[idx] !== ' ') { await move.reply({ content: t.spotTaken, ephemeral: true }).catch(() => {}); continue; }
+                if (board[idx] !== ' ') { await move.reply({ content: t.spotTaken, flags: 64 }).catch(() => {}); continue; }
 
                 board[idx] = players[currentPlayer].symbol;
                 await move.deferUpdate().catch(() => {});
@@ -437,7 +437,7 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], ephemeral: true });
+        return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
 
@@ -525,7 +525,7 @@ async function playRoulette(ctx, client, db, lang, guildId, userId, bet) {
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], ephemeral: true });
+        return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
 
@@ -596,7 +596,7 @@ const slashCommand = new SlashCommandBuilder()
 // ================= EXECUTE =================
 async function executeSlashCommand(interaction, client) {
     const db = client.db;
-    if (!db) return interaction.reply({ content: '❌ Database unavailable.', ephemeral: true });
+    if (!db) return interaction.reply({ content: '❌ Database unavailable.', flags: 64 });
     setupGameDB(db);
 
     const sub = interaction.options.getSubcommand();
@@ -611,8 +611,8 @@ async function executeSlashCommand(interaction, client) {
     }
 
     const bet = interaction.options.getInteger('bet') || 100;
-    if (bet < 10) return interaction.reply({ content: gameTranslations[lang].invalidBet + '\n*' + gameTranslations[lang].minBet + '*', ephemeral: true });
-    if (bet > 10000) return interaction.reply({ content: gameTranslations[lang].invalidBet + '\n*' + gameTranslations[lang].maxBet + '*', ephemeral: true });
+    if (bet < 10) return interaction.reply({ content: gameTranslations[lang].invalidBet + '\n*' + gameTranslations[lang].minBet + '*', flags: 64 });
+    if (bet > 10000) return interaction.reply({ content: gameTranslations[lang].invalidBet + '\n*' + gameTranslations[lang].maxBet + '*', flags: 64 });
 
     if (sub === 'codm') return playCODM(ctx, client, db, lang, guildId, userId, bet);
     if (sub === 'slots') return playSlots(ctx, client, db, lang, guildId, userId, bet);
@@ -665,7 +665,7 @@ async function run(client, message, args, db, serverSettings, usedCommand) {
 async function handleComponent(interaction, client) {
     if (!interaction.customId.startsWith('game_')) return false;
     const db = client.db;
-    if (!db) return interaction.reply({ content: '❌ Database unavailable.', ephemeral: true });
+    if (!db) return interaction.reply({ content: '❌ Database unavailable.', flags: 64 });
 
     const parts = interaction.customId.split('_');
     const action = parts[1];
@@ -684,7 +684,7 @@ async function handleComponent(interaction, client) {
     // Tic-tac-toe needs an opponent — quick reply
     if (game === 'tictactoe') {
         const embed = new EmbedBuilder().setColor('#ff4757').setDescription('❌ Use `/game tictactoe @user` to challenge someone!');
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     // CRITICAL: Defer immediately so DB lookups + game logic don't expire the token

@@ -1402,7 +1402,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
         )
         .setFooter({ text: 'Memories persist across conversations' })
         .setTimestamp();
-      await respond({ embeds: [embed], ephemeral: true });
+      await respond({ embeds: [embed], flags: 64 });
       return;
     }
 
@@ -1422,7 +1422,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
       .setFooter({ text: memories.length > 25 ? `Showing 25 of ${memories.length}` : 'Memories persist across conversations' })
       .setTimestamp();
 
-    await respond({ embeds: [embed], ephemeral: true });
+    await respond({ embeds: [embed], flags: 64 });
   } catch (err) {
     console.error(`${C.red}[LYDIA MEMORY]${C.reset} ${err.message}`);
     const errorEmbed = new EmbedBuilder()
@@ -1430,7 +1430,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
       .setAuthor({ name: '\u{1F534} SYSTEM ALERT', iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL() })
       .setDescription('\u274C Could not retrieve memories. Please try again later.')
       .setTimestamp();
-    await respond({ embeds: [errorEmbed], ephemeral: true });
+    await respond({ embeds: [errorEmbed], flags: 64 });
   }
 }
 
@@ -1601,7 +1601,7 @@ async function executeSlashCommand(interaction, client) {
   }
 
   // All other subcommands need defer first
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: 64 });
 
   await handleLydiaToggle(client, interaction.channelId, interaction.guildId, interaction.user.id, sub, async (payload) => {
     return interaction.followUp(payload);

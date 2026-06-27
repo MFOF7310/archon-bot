@@ -288,7 +288,7 @@ let userData = db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").g
         };
         await handleLeaderboard(lbMessage, client, db, lang, t, guildId, economySettings, guildName, guildIcon, version);
     } else if (i.customId === 'credit_pay') {
-        await i.followUp({ content: `\`${t.transferPrompt}\``, ephemeral: true }).catch(() => {});
+        await i.followUp({ content: `\`${t.transferPrompt}\``, flags: 64 }).catch(() => {});
     } else if (i.customId === 'credit_shop') {
         const shopCmd = client.commands.get('shop');
         if (shopCmd) {

@@ -57,7 +57,7 @@ module.exports = {
                 if (interaction.user.id !== target.id) {
                     return interaction.reply({
                         content: '❌ Only the slapped user can slap back!',
-                        ephemeral: true
+                        flags: 64
                     });
                 }
                 
@@ -108,7 +108,7 @@ module.exports = {
                 if (btnInteraction.user.id !== target.id) {
                     return btnInteraction.reply({
                         content: '❌ Only the slapped user can slap back!',
-                        ephemeral: true
+                        flags: 64
                     });
                 }
                 

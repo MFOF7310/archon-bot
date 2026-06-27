@@ -277,7 +277,7 @@ module.exports = {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({ 
                 content: t.noPermission,
-                ephemeral: true 
+                flags: 64 
             }).catch(() => {});
         }
         
@@ -306,7 +306,7 @@ module.exports = {
         
         // Check permissions
         if (!interaction.memberPermissions.has(PermissionsBitField.Flags.ManageMessages)) {
-            return interaction.reply({ content: t.noPermission, ephemeral: true });
+            return interaction.reply({ content: t.noPermission, flags: 64 });
         }
         
         const subcommand = interaction.options.getSubcommand();
@@ -362,19 +362,19 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
             .setDescription(`**${t.noTarget}**\n\n${t.replyTip}`)
             .setFooter({ text: `${t.neuralArchive} • v${version}` });
         
-        return message.reply({ embeds: [tipEmbed], ephemeral: true }).catch(() => {});
+        return message.reply({ embeds: [tipEmbed], flags: 64 }).catch(() => {});
     }
     
     const channelPins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
     if (channelPins.has(targetMessage.id)) {
-        return message.reply({ content: t.alreadyPinned, ephemeral: true }).catch(() => {});
+        return message.reply({ content: t.alreadyPinned, flags: 64 }).catch(() => {});
     }
     
     try {
         await targetMessage.pin();
     } catch (error) {
         if (error.code === 30003) {
-            return message.reply({ content: t.pinLimitReached, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.pinLimitReached, flags: 64 }).catch(() => {});
         }
         throw error;
     }
@@ -454,12 +454,12 @@ async function handleUnpin(client, message, args, db, t, lang) {
             .setColor('#00fbff')
             .setDescription(`**${t.unpinPrompt}**\n\n${t.cleanupTip}`)
             .setFooter({ text: `${t.neuralArchive} • v${version}` });
-        return message.reply({ embeds: [tipEmbed], ephemeral: true }).catch(() => {});
+        return message.reply({ embeds: [tipEmbed], flags: 64 }).catch(() => {});
     }
     
     const pins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());
     if (!pins.has(targetMessage.id)) {
-        return message.reply({ content: t.notPinned, ephemeral: true }).catch(() => {});
+        return message.reply({ content: t.notPinned, flags: 64 }).catch(() => {});
     }
     
     try {
@@ -469,10 +469,10 @@ async function handleUnpin(client, message, args, db, t, lang) {
             .setColor('#00fbff')
             .setDescription(`✅ **${t.unpinned}**`)
             .setFooter({ text: `${t.neuralArchive} • v${version}` });
-        await message.reply({ embeds: [successEmbed], ephemeral: true }).catch(() => {});
+        await message.reply({ embeds: [successEmbed], flags: 64 }).catch(() => {});
         console.log(`[UNPIN] ${message.author.tag} unpinned message ${targetMessage.id}`);
     } catch (err) {
-        return message.reply({ content: t.unpinFailed, ephemeral: true }).catch(() => {});
+        return message.reply({ content: t.unpinFailed, flags: 64 }).catch(() => {});
     }
 }
 
@@ -486,7 +486,7 @@ async function handlePinsList(client, message, t, lang) {
                 .setColor('#00fbff')
                 .setDescription(`**${t.noPinsInChannel}**\n\n${t.replyTip}`)
                 .setFooter({ text: `${t.neuralArchive} • v${version}` });
-            return message.reply({ embeds: [tipEmbed], ephemeral: true }).catch(() => {});
+            return message.reply({ embeds: [tipEmbed], flags: 64 }).catch(() => {});
         }
         
         const pinsList = [...pins.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp).slice(0, 10)
@@ -503,13 +503,13 @@ async function handlePinsList(client, message, t, lang) {
         
         await message.reply({ embeds: [embed] }).catch(() => {});
     } catch (err) {
-        return message.reply({ content: t.fetchFailed, ephemeral: true }).catch(() => {});
+        return message.reply({ content: t.fetchFailed, flags: 64 }).catch(() => {});
     }
 }
 
 // ================= SLASH UNPIN HANDLER =================
 async function handleSlashUnpin(interaction, client, db, t, lang) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
     const version = getVersion();
     const messageId = interaction.options.getString('message_id');
     

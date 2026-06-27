@@ -311,7 +311,7 @@ module.exports = {
 
         confirmCollector.on('collect', async (i) => {
             if (i.user.id !== userId) {
-                return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
             }
 
             await i.deferUpdate().catch(() => {});
@@ -449,10 +449,10 @@ module.exports = {
 
         receiptCollector.on('collect', async (i) => {
             if (i.user.id !== userId) {
-                return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
             }
 
-            await i.deferReply({ ephemeral: true }).catch(() => {});
+            await i.deferReply({ flags: 64 }).catch(() => {});
 
             if (i.customId.startsWith('transfer_balance_')) {
                 const senderDataFresh = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT credits FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
@@ -463,7 +463,7 @@ module.exports = {
                     .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.checkBalance}`, iconURL: message.author.displayAvatarURL() })
                     .setTitle(`\`\`\`ansi\n\u001b[1;32m  💰 ${currentBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``)
                     .setFooter({ text: `${guildName} • ${t.footer}` });
-                await i.followUp({ embeds: [balanceEmbed], ephemeral: true }).catch(() => {});
+                await i.followUp({ embeds: [balanceEmbed], flags: 64 }).catch(() => {});
             }
 
             if (i.customId.startsWith('transfer_history_')) {
@@ -487,7 +487,7 @@ module.exports = {
                     .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.historyTitle}`, iconURL: message.author.displayAvatarURL() })
                     .setDescription(historyText || `\`\`\`ansi\n\u001b[0;37m  ${t.noHistory}\u001b[0m\n\`\`\``)
                     .setFooter({ text: `${guildName} • ${t.footer}` });
-                await i.followUp({ embeds: [historyEmbed], ephemeral: true }).catch(() => {});
+                await i.followUp({ embeds: [historyEmbed], flags: 64 }).catch(() => {});
             }
         });
     },
@@ -517,7 +517,7 @@ module.exports = {
                 .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.invalidTarget}\u001b[0m\n\`\`\``)
                 .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.invalidTargetDesc}\u001b[0m\n\`\`\``)
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
-            return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [errorEmbed], flags: 64 });
         }
 
         await interaction.deferReply();
@@ -644,7 +644,7 @@ module.exports = {
 
         confirmCollector.on('collect', async (i) => {
             if (i.user.id !== userId) {
-                return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
             }
 
             await i.deferUpdate().catch(() => {});

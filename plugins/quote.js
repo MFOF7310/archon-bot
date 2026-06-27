@@ -253,7 +253,7 @@ module.exports = {
                 const collector = msg.createMessageComponentCollector({ time: 120000 });
                 collector.on('collect', async (i) => {
                     if (!i.customId.endsWith(`_${message.author.id}`)) {
-                        return i.reply({ content: '❌ Only the author can use this.', ephemeral: true }).catch(() => {});
+                        return i.reply({ content: '❌ Only the author can use this.', flags: 64 }).catch(() => {});
                     }
                     await i.deferUpdate().catch(() => {});
                     try {
@@ -261,7 +261,7 @@ module.exports = {
                         const newEmbed = buildQuoteEmbed(newQuote, category, lang, version, guildName);
                         await i.editReply({ embeds: [newEmbed] }).catch(() => {});
                     } catch (e) {
-                        await i.followUp({ content: txt.error, ephemeral: true }).catch(() => {});
+                        await i.followUp({ content: txt.error, flags: 64 }).catch(() => {});
                     }
                 });
             }
@@ -310,7 +310,7 @@ module.exports = {
             const collector = msg.createMessageComponentCollector({ time: 120000 });
             collector.on('collect', async (i) => {
                 if (!i.customId.endsWith(`_${interaction.user.id}`)) {
-                    return i.reply({ content: '❌ Only the author can use this.', ephemeral: true }).catch(() => {});
+                    return i.reply({ content: '❌ Only the author can use this.', flags: 64 }).catch(() => {});
                 }
                 await i.deferUpdate().catch(() => {});
                 try {
@@ -318,7 +318,7 @@ module.exports = {
                     const newEmbed = buildQuoteEmbed(newQuote, category, lang, version, guildName);
                     await i.editReply({ embeds: [newEmbed] }).catch(() => {});
                 } catch (e) {
-                    await i.followUp({ content: txt.error, ephemeral: true }).catch(() => {});
+                    await i.followUp({ content: txt.error, flags: 64 }).catch(() => {});
                 }
             });
 

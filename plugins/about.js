@@ -139,22 +139,22 @@ function buildButtons(t, isSlash = false) {
 
 async function handleButton(btn, client, userId, lang) {
     if (btn.user.id !== userId) {
-        return btn.reply({ content: '❌ Access denied — session locked.', ephemeral: true }).catch(() => {});
+        return btn.reply({ content: '❌ Access denied — session locked.', flags: 64 }).catch(() => {});
     }
     const id = btn.customId.replace('_slash', '');
     const isFr = lang === 'fr';
     switch (id) {
         case 'about_support':
-            await btn.reply({ content: `🆘 **Support:** https://discord.gg/NFSMFJajp9\n📧 Dev: mfof7559 // Bamako, Mali 🇲🇱`, ephemeral: true }).catch(() => {});
+            await btn.reply({ content: `🆘 **Support:** https://discord.gg/NFSMFJajp9\n📧 Dev: mfof7559 // Bamako, Mali 🇲🇱`, flags: 64 }).catch(() => {});
             break;
         case 'about_vote':
-            await btn.reply({ content: `⭐ **${isFr ? 'Votez pour ARCHON CG-223' : 'Vote for ARCHON CG-223'}:**\nhttps://top.gg/bot/${client.user.id}/vote\n\n${isFr ? '📜 Votre vote renforce le réseau neural!' : '📜 Your vote strengthens the neural grid!'}`, ephemeral: true }).catch(() => {});
+            await btn.reply({ content: `⭐ **${isFr ? 'Votez pour ARCHON CG-223' : 'Vote for ARCHON CG-223'}:**\nhttps://top.gg/bot/${client.user.id}/vote\n\n${isFr ? '📜 Votre vote renforce le réseau neural!' : '📜 Your vote strengthens the neural grid!'}`, flags: 64 }).catch(() => {});
             break;
         case 'about_status':
             const ping = Math.round(client.ws.ping);
             const mem = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
             const status = ping < 150 ? '🟢 NOMINAL' : ping < 300 ? '🟡 DEGRADED' : '🔴 CRITICAL';
-            await btn.reply({ content: `\`\`\`ansi\n\u001b[1;36mLIVE SYSTEM STATUS\u001b[0m\n▸ LATENCY    ${ping}ms // ${status}\n▸ MEMORY     ${mem} MB\n▸ AI ENGINE  OpenRouter // ACTIVE\n▸ NODE       BAMAKO-STEEL-NODE\n\`\`\``, ephemeral: true }).catch(() => {});
+            await btn.reply({ content: `\`\`\`ansi\n\u001b[1;36mLIVE SYSTEM STATUS\u001b[0m\n▸ LATENCY    ${ping}ms // ${status}\n▸ MEMORY     ${mem} MB\n▸ AI ENGINE  OpenRouter // ACTIVE\n▸ NODE       BAMAKO-STEEL-NODE\n\`\`\``, flags: 64 }).catch(() => {});
             break;
     }
 }

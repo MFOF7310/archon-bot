@@ -87,18 +87,18 @@ module.exports = {
         const guildIcon = message.guild.iconURL();
         
         if (!message.member.permissions.has(PermissionFlagsBits.KickMembers)) {
-            return message.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
         }
 
         const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
         const reason = args.slice(1).join(' ') || t.reason;
 
         if (!target) {
-            return message.reply({ content: t.noTarget, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.noTarget, flags: 64 }).catch(() => {});
         }
         
         if (!target.kickable) {
-            return message.reply({ content: t.notKickable, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.notKickable, flags: 64 }).catch(() => {});
         }
 
         try {
@@ -132,7 +132,7 @@ module.exports = {
                 .setTimestamp();
 
             await message.channel.send({ embeds: [kickEmbed] }).catch(() => {});
-            await message.reply({ content: `✅ ${t.executed}`, ephemeral: true }).catch(() => {});
+            await message.reply({ content: `✅ ${t.executed}`, flags: 64 }).catch(() => {});
             
             if (serverSettings?.logChannel) {
                 const logChannel = message.guild.channels.cache.get(serverSettings.logChannel);
@@ -157,7 +157,7 @@ module.exports = {
             
         } catch (error) {
             console.error('[KICK] Error:', error);
-            return message.reply({ content: t.error, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.error, flags: 64 }).catch(() => {});
         }
     },
 
@@ -183,7 +183,7 @@ module.exports = {
                 )
                 .setFooter({ text: 'BAMAKO-223 NODE • Neural Security Protocol' })
                 .setTimestamp();
-            return interaction.reply({ embeds: [fallbackEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [fallbackEmbed], flags: 64 });
         }
         
         const target = interaction.options.getUser('target');

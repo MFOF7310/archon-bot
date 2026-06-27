@@ -410,7 +410,7 @@ module.exports = {
                         if (i.customId === 'claim_goto_daily') {
                             // Build inline dashboard directly — avoids stale message context
                             const dash = buildMiniDashboard(userData, lang, prefix, guildName, guildIcon, version);
-                            await i.followUp({ embeds: [dash], ephemeral: true });
+                            await i.followUp({ embeds: [dash], flags: 64 });
                         }
                     } catch (err) {
                         console.error(`[CLAIM BUTTON ERROR]`, err);
@@ -559,7 +559,7 @@ module.exports = {
                     
                     if (i.customId === 'claim_view_daily') {
                         const dash = buildMiniDashboard(userData, lang, prefix, guildName, guildIcon, version);
-                        await i.followUp({ embeds: [dash], ephemeral: true });
+                        await i.followUp({ embeds: [dash], flags: 64 });
                     } else if (i.customId === 'claim_view_profile') {
                         // Build inline profile directly
                         const rank = getRank(currentLevel);
@@ -570,7 +570,7 @@ module.exports = {
                             .setDescription(`**${userName}**\n\`\`\`yaml\nLevel: ${currentLevel}\nXP: ${currentXP.toLocaleString()}\nCredits: ${currentCredits.toLocaleString()}\nStreak: ${userData.streak_days || 0} days\n\`\`\``)
                             .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                             .setTimestamp();
-                        await i.followUp({ embeds: [profileEmbed], ephemeral: true });
+                        await i.followUp({ embeds: [profileEmbed], flags: 64 });
                     }
                 } catch (err) {
                     console.error(`[CLAIM BUTTON ERROR]`, err);
@@ -605,7 +605,7 @@ module.exports = {
             
             // Channel restriction
             if (serverSettings?.dailyChannel && interaction.channel.id !== serverSettings.dailyChannel) {
-                return interaction.reply({ content: t.channelRestricted(serverSettings.dailyChannel), ephemeral: true });
+                return interaction.reply({ content: t.channelRestricted(serverSettings.dailyChannel), flags: 64 });
             }
             
             const userId = interaction.user.id;
@@ -657,7 +657,7 @@ module.exports = {
                             .setEmoji('📊')
                     );
                 
-                await interaction.reply({ embeds: [cooldownEmbed], components: [row], ephemeral: true });
+                await interaction.reply({ embeds: [cooldownEmbed], components: [row], flags: 64 });
                 
                 try {
                     const buttonResponse = await interaction.channel.awaitMessageComponent({
@@ -668,7 +668,7 @@ module.exports = {
                     await buttonResponse.deferUpdate().catch(() => {});
                     // Build inline dashboard directly — avoids calling daily with stale interaction
                     const dash = buildMiniDashboard(userData, lang, prefix, guildName, guildIcon, version);
-                    await buttonResponse.followUp({ embeds: [dash], ephemeral: true });
+                    await buttonResponse.followUp({ embeds: [dash], flags: 64 });
                 } catch (e) {
                     // Timeout - button expired
                 }
@@ -813,7 +813,7 @@ module.exports = {
 
                 if (buttonResponse.customId === 'claim_slash_view_daily') {
                     const dash = buildMiniDashboard(userData, lang, prefix, guildName, guildIcon, version);
-                    await buttonResponse.followUp({ embeds: [dash], ephemeral: true });
+                    await buttonResponse.followUp({ embeds: [dash], flags: 64 });
                 } else if (buttonResponse.customId === 'claim_slash_view_profile') {
                     const rank = getRank(currentLevel);
                     const profileEmbed = new EmbedBuilder()
@@ -823,7 +823,7 @@ module.exports = {
                         .setDescription(`**${userName}**\n\`\`\`yaml\nLevel: ${currentLevel}\nXP: ${currentXP.toLocaleString()}\nCredits: ${currentCredits.toLocaleString()}\nStreak: ${userData.streak_days || 0} days\n\`\`\``)
                         .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
-                    await buttonResponse.followUp({ embeds: [profileEmbed], ephemeral: true });
+                    await buttonResponse.followUp({ embeds: [profileEmbed], flags: 64 });
                 }
             } catch (e) {
                 // Timeout - button expired
@@ -831,7 +831,7 @@ module.exports = {
             
         } catch (error) {
             console.error(`[CLAIM SLASH] FATAL ERROR:`, error);
-            const errorMsg = { content: '❌ An error occurred during claim processing.', ephemeral: true };
+            const errorMsg = { content: '❌ An error occurred during claim processing.', flags: 64 };
             if (interaction.deferred || interaction.replied) {
                 return interaction.editReply(errorMsg).catch(() => {});
             }

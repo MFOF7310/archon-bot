@@ -82,14 +82,14 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         }
 
         if (parts.length < 3) {
-            return message.reply({ content: t.invalid, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.invalid, flags: 64 }).catch(() => {});
         }
 
         const question = parts[0];
         const options = parts.slice(1);
 
         if (options.length > 9) {
-            return message.reply({ content: t.maxOptions, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.maxOptions, flags: 64 }).catch(() => {});
         }
 
         const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
@@ -147,11 +147,11 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         }
 
         if (options.length < 2) {
-            return interaction.reply({ content: '❌ You must provide at least 2 options.', ephemeral: true });
+            return interaction.reply({ content: '❌ You must provide at least 2 options.', flags: 64 });
         }
 
         if (options.length > 9) {
-            return interaction.reply({ content: t.maxOptions, ephemeral: true });
+            return interaction.reply({ content: t.maxOptions, flags: 64 });
         }
 
         const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];

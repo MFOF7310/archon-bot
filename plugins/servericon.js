@@ -34,7 +34,7 @@ module.exports = {
         const icon = guild.iconURL({ dynamic: true, size: 1024 });
         
         if (!icon) {
-            return message.reply({ content: t.noIcon, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.noIcon, flags: 64 }).catch(() => {});
         }
 
         const embed = new EmbedBuilder()

@@ -41,7 +41,7 @@ module.exports = {
         const boostLevel = guild.premiumTier;
         
         if (boostCount === 0) {
-            return message.reply({ content: t.noBoosters, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.noBoosters, flags: 64 }).catch(() => {});
         }
 
         // Get boosters (members with booster role or premium since)

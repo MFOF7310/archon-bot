@@ -147,7 +147,7 @@ async function handleSystemCommand(client, interaction, subcommand, args, lang) 
             }
         }
 
-        return { content: `📋 Last ${lines} lines:\n\`\`\`${logOutput.slice(-1900)}\`\`\``, ephemeral: true };
+        return { content: `📋 Last ${lines} lines:\n\`\`\`${logOutput.slice(-1900)}\`\`\``, flags: 64 };
     }
 
     return null;
@@ -257,7 +257,7 @@ module.exports = {
         const t = translations[lang];
 
         if (interaction.user.id !== ARCHITECT_ID) {
-            return interaction.reply({ content: t.securityBreach, ephemeral: true });
+            return interaction.reply({ content: t.securityBreach, flags: 64 });
         }
 
         const subcommand = interaction.options.getSubcommand();

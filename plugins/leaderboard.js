@@ -158,7 +158,7 @@ module.exports = {
                         .setAuthor({ name: `📊 ${message.author.username}`, iconURL: message.author.displayAvatarURL() })
                         .setDescription(`\`\`\`yaml\nRank: ${userRank}\nLevel: ${lv}\nXP: ${(uData.xp || 0).toLocaleString()}\nCredits: ${(uData.credits || 0).toLocaleString()}\nMessages: ${(uData.total_messages || 0).toLocaleString()}\nStreak: ${uData.streak_days || 0}d\nGames Won: ${uData.games_won || 0}\n\`\`\``)
                         .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                    await i.followUp({ embeds: [rankEmbed], ephemeral: true }).catch(() => {});
+                    await i.followUp({ embeds: [rankEmbed], flags: 64 }).catch(() => {});
                 }
             } else if (i.customId === 'lb_profile') {
                 const profileCmd = client.commands.get('profile') || client.commands.get('rank');

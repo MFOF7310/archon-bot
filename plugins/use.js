@@ -217,7 +217,7 @@ module.exports = {
 
             const collector = reply.createMessageComponentCollector({ time: 30000 });
             collector.on('collect', async (i) => {
-                if (i.user.id !== userId) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                if (i.user.id !== userId) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 if (i.customId === 'use_shop') {
                     collector.stop();
                     await reply.delete().catch(() => {});
@@ -362,14 +362,14 @@ module.exports = {
                     `\`\`\``
                 )
                 .setFooter({ text: `NEURAL NODE • ${t.footer} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
-            return interaction.reply({ embeds: [noItemsEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [noItemsEmbed], flags: 64 });
         }
 
         // Direct item use via slash autocomplete
         if (itemId) {
             const targetItem = usableItems.find(i => i.item_id === itemId);
             if (!targetItem) {
-                return interaction.reply({ content: t.itemNotFound, ephemeral: true });
+                return interaction.reply({ content: t.itemNotFound, flags: 64 });
             }
             const item = itemsMap.get(itemId);
             await interaction.deferReply().catch(() => {});
@@ -417,7 +417,7 @@ module.exports = {
             )
             .setFooter({ text: `NEURAL NODE • ${t.footer} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
 
-        await interaction.reply({ embeds: [useEmbed], components: [actionRow], ephemeral: true });
+        await interaction.reply({ embeds: [useEmbed], components: [actionRow], flags: 64 });
 
         const replyMsg = await interaction.fetchReply();
 

@@ -187,7 +187,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
 const collector = reply.createMessageComponentCollector({ time: 180000 });
 
 collector.on('collect', async (i) => {
-            if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+            if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
             
             if (!i.deferred && !i.replied) {
                 try { await i.deferUpdate(); } catch (e) {}
@@ -221,17 +221,17 @@ collector.on('collect', async (i) => {
             if (i.isStringSelectMenu() && i.customId === 'shop_select') {
                 const selectedId = i.values[0];
                 const selectedItem = shopItems.find(item => item.id === selectedId);
-                if (!selectedItem) return i.followUp({ content: t.itemNotFound, ephemeral: true }).catch(() => {});
+                if (!selectedItem) return i.followUp({ content: t.itemNotFound, flags: 64 }).catch(() => {});
                 
                 const { balance: freshCredits, level: currentLevel, owned: currentOwned } = getCurrentState();
                 if (currentOwned.has(selectedItem.id) && selectedItem.type !== 'consumable' && selectedItem.type !== 'boost') {
-                    return i.followUp({ content: t.alreadyOwned, ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.alreadyOwned, flags: 64 }).catch(() => {});
                 }
                 if (selectedItem.requirement?.level && currentLevel < selectedItem.requirement.level) {
-                    return i.followUp({ content: t.levelRequirement(selectedItem.requirement.level, currentLevel), ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.levelRequirement(selectedItem.requirement.level, currentLevel), flags: 64 }).catch(() => {});
                 }
                 if (freshCredits < selectedItem.price) {
-                    return i.followUp({ content: t.insufficientFunds(selectedItem.price, freshCredits), ephemeral: true }).catch(() => {});
+                    return i.followUp({ content: t.insufficientFunds(selectedItem.price, freshCredits), flags: 64 }).catch(() => {});
                 }
                 
                 try {
@@ -294,7 +294,7 @@ if (selectedItem.effect?.streak_protection) {
                         .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                         .setTimestamp();
                     
-                    await i.followUp({ embeds: [successEmbed], ephemeral: true }).catch(() => {});
+                    await i.followUp({ embeds: [successEmbed], flags: 64 }).catch(() => {});
 
                     // 📢 Send purchase notification to configured shop channel
                     try {
@@ -333,7 +333,7 @@ if (selectedItem.effect?.streak_protection) {
                     
                 } catch (err) {
                     console.error('[SHOP] Purchase error:', err);
-                    await i.followUp({ content: t.purchaseError, ephemeral: true }).catch(() => {});
+                    await i.followUp({ content: t.purchaseError, flags: 64 }).catch(() => {});
                 }
             }
         });

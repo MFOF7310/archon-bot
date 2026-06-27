@@ -61,8 +61,8 @@ module.exports = {
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
         const t = T[lang], guild = interaction.guild;
-        if (!guild) return interaction.reply({ content: '❌ Server only.', ephemeral: true });
-        if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ content: t.noPermission, ephemeral: true });
+        if (!guild) return interaction.reply({ content: '❌ Server only.', flags: 64 });
+        if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ content: t.noPermission, flags: 64 });
 
         const colorInputRaw = interaction.options.getString('color');
         const roleNameInput = interaction.options.getString('name');

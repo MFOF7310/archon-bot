@@ -395,7 +395,7 @@ module.exports = {
                     )
                     .setFooter({ text: t.footer })
                     .setTimestamp();
-                await i.reply({ embeds: [helpEmbed], ephemeral: true });
+                await i.reply({ embeds: [helpEmbed], flags: 64 });
             }
         });
     }
@@ -407,7 +407,7 @@ async function handleCollector(msg, client, originalMsg, db, t, lang, guildName,
     
     collector.on('collect', async (i) => {
         if (i.user.id !== originalMsg.author.id) {
-            return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+            return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
         }
         
         await i.deferUpdate().catch(() => {});
@@ -496,7 +496,7 @@ async function handleCollector(msg, client, originalMsg, db, t, lang, guildName,
                 )
                 .setFooter({ text: t.footer })
                 .setTimestamp();
-            await i.reply({ embeds: [helpEmbed], ephemeral: true });
+            await i.reply({ embeds: [helpEmbed], flags: 64 });
         }
     });
 }

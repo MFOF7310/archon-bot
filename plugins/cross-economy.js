@@ -769,7 +769,7 @@ module.exports = {
 
         // --- TRANSFER ---
         if (sub === 'transfer') {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 64 });
             const target = interaction.options.getUser('user');
             const amount = interaction.options.getInteger('amount');
             if (!target || !amount || amount < 1) return interaction.editReply(t.invalidAmount);

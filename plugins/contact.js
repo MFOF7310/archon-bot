@@ -134,7 +134,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
 
     const ARCHITECT_ID = process.env.OWNER_ID;
     if (!ARCHITECT_ID) {
-        return reply({ content: t.architectUnavailable, ephemeral: true });
+        return reply({ content: t.architectUnavailable, flags: 64 });
     }
 
     // ================= CONFIRMATION EMBED =================
@@ -178,7 +178,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
         if (i.user.id !== user.id) {
             return i.reply({ 
                 content: lang === 'fr' ? '❌ Cette confirmation ne vous appartient pas.' : '❌ This confirmation is not yours.', 
-                ephemeral: true 
+                flags: 64 
             });
         }
 

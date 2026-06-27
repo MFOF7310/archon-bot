@@ -231,7 +231,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             db.prepare(`CREATE INDEX IF NOT EXISTS idx_modlogs_guild_user ON moderation_logs(guild_id, user_id)`).run();
         } catch (err) {
             console.error('[WARN] Table error:', err);
-            return message.reply({ content: '❌ Database error.', ephemeral: true }).catch(() => {});
+            return message.reply({ content: '❌ Database error.', flags: 64 }).catch(() => {});
         }
         
         const subCommand = args[0]?.toLowerCase();
@@ -239,7 +239,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         // ================= VIEW WARNINGS =================
         if (!subCommand || subCommand === 'warnings' || subCommand === 'list' || subCommand === 'avertissements') {
             const target = message.mentions.users.first() || message.author;
-            if (target.bot) return message.reply({ content: t.cannotWarnBot, ephemeral: true }).catch(() => {});
+            if (target.bot) return message.reply({ content: t.cannotWarnBot, flags: 64 }).catch(() => {});
             
             const warnings = getUserWarnings(db, guildId, target.id);
             
@@ -268,7 +268,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             // ================= 🔥 COLLECTOR CORRIGÉ =================
             const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
             collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 
                 // 🛡️ LA LIGNE CRITIQUE
                 await i.deferUpdate().catch(() => {});
@@ -289,14 +289,14 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         // ================= CLEAR WARNINGS =================
         if (subCommand === 'clear' || subCommand === 'clearwarn' || subCommand === 'effacer') {
             const target = message.mentions.users.first();
-            if (!target) return message.reply({ content: lang === 'fr' ? '❌ Mentionnez un utilisateur.' : '❌ Mention a user.', ephemeral: true }).catch(() => {});
+            if (!target) return message.reply({ content: lang === 'fr' ? '❌ Mentionnez un utilisateur.' : '❌ Mention a user.', flags: 64 }).catch(() => {});
             
             const warnings = getUserWarnings(db, guildId, target.id);
             const now = Math.floor(Date.now() / 1000);
             const activeWarnings = warnings.filter(w => !w.expires_at || w.expires_at > now);
             
             if (activeWarnings.length === 0) {
-                return message.reply({ content: t.noWarnings(target.username), ephemeral: true }).catch(() => {});
+                return message.reply({ content: t.noWarnings(target.username), flags: 64 }).catch(() => {});
             }
             
             const confirmRow = new ActionRowBuilder().addComponents(
@@ -315,7 +315,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             
             const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
             collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 
                 // 🛡️ LA LIGNE CRITIQUE
                 await i.deferUpdate().catch(() => {});
@@ -337,10 +337,10 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         // ================= REMOVE WARNING =================
         if (subCommand === 'remove' || subCommand === 'removewarn' || subCommand === 'supprimer') {
             const warningId = args[1];
-            if (!warningId) return message.reply({ content: lang === 'fr' ? '❌ Fournissez un ID.' : '❌ Provide a warning ID.', ephemeral: true }).catch(() => {});
+            if (!warningId) return message.reply({ content: lang === 'fr' ? '❌ Fournissez un ID.' : '❌ Provide a warning ID.', flags: 64 }).catch(() => {});
             
             const warning = db.prepare(`SELECT * FROM warnings WHERE id = ? AND guild_id = ?`).get(warningId, guildId);
-            if (!warning) return message.reply({ content: t.removeNotFound, ephemeral: true }).catch(() => {});
+            if (!warning) return message.reply({ content: t.removeNotFound, flags: 64 }).catch(() => {});
             
             db.prepare(`UPDATE warnings SET active = 0 WHERE id = ?`).run(warningId);
             logModAction(db, guildId, warning.user_id, message.author.id, 'remove', `Removed ${warningId}`, warningId);
@@ -375,7 +375,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             
             const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
             collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 
                 // 🛡️ LA LIGNE CRITIQUE
                 await i.deferUpdate().catch(() => {});
@@ -398,16 +398,16 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
         if (!target) {
             return message.reply({ 
                 content: lang === 'fr' ? '❌ Mentionnez un utilisateur.\nUsage: `.warn @user [raison]`' : '❌ Mention a user.\nUsage: `.warn @user [reason]`', 
-                ephemeral: true 
+                flags: 64 
             }).catch(() => {});
         }
         
-        if (target.id === message.author.id) return message.reply({ content: t.cannotWarnSelf, ephemeral: true }).catch(() => {});
-        if (target.bot) return message.reply({ content: t.cannotWarnBot, ephemeral: true }).catch(() => {});
+        if (target.id === message.author.id) return message.reply({ content: t.cannotWarnSelf, flags: 64 }).catch(() => {});
+        if (target.bot) return message.reply({ content: t.cannotWarnBot, flags: 64 }).catch(() => {});
         
         const targetMember = message.guild.members.cache.get(target.id);
         if (targetMember && message.member.roles.highest.position <= targetMember.roles.highest.position) {
-            return message.reply({ content: t.cannotWarnHigher, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.cannotWarnHigher, flags: 64 }).catch(() => {});
         }
         
         const reason = args.slice(1).join(' ') || t.noReason;
@@ -453,7 +453,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             db.prepare(`CREATE TABLE IF NOT EXISTS warnings (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER DEFAULT (strftime('%s', 'now')), expires_at INTEGER, active BOOLEAN DEFAULT 1)`).run();
             db.prepare(`CREATE TABLE IF NOT EXISTS moderation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, warning_id TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`).run();
         } catch (err) {
-            return interaction.reply({ content: '❌ Database error.', ephemeral: true });
+            return interaction.reply({ content: '❌ Database error.', flags: 64 });
         }
         
         await interaction.deferReply().catch(() => {});
