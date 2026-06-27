@@ -7,27 +7,6 @@ const { ButtonBuilder } = require('./_buttons');
 const os = require('os');
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-async function editOrSend(ctx, text, markup) {
-    const msgId = ctx.callbackQuery?.message?.message_id;
-    const chatId = ctx.chatId;
-    const bridge = ctx.bridge;
-    if (msgId) {
-        const payload = { chat_id: chatId, message_id: msgId, text: text.substring(0,4096), parse_mode: 'HTML' };
-        if (markup) payload.reply_markup = markup;
-        const body = JSON.stringify(payload);
-        const https = require('https');
-        return new Promise((resolve) => {
-            const req = https.request(
-                `https://api.telegram.org/bot${bridge.token}/editMessageText`,
-                { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 10000 },
-                (res) => { let d=''; res.on('data',c=>d+=c); res.on('end',()=>resolve()); }
-            );
-            req.on('error',()=>resolve()); req.write(body); req.end();
-        });
-    }
-    return bridge.sendTo(chatId, text, { parse_mode: 'HTML', extra: { reply_markup: markup } });
-}
 const formatUptime = (s) => { const d = Math.floor(s/86400), h = Math.floor((s%86400)/3600), m = Math.floor((s%3600)/60); return d>0?`${d}d ${h}h ${m}m`:h>0?`${h}h ${m}m`:`${m}m`; };
 const formatNumber = (n) => n?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') || '0';
 
@@ -59,7 +38,7 @@ module.exports = {
                     .back('🔙 Back', 'menu_main')
                     .build();
 
-                await editOrSend(ctx,
+                await ctx.bridge.sendTo(ctx.chatId,
                     `🤖 <b>LYDIA AI ASSISTANT</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
                     `Powered by <b>Gemini 2.0</b> via OpenRouter.\n\n` +
@@ -68,7 +47,9 @@ module.exports = {
                     `• <code>/lydia off</code> — Disable auto-reply\n` +
                     `• <code>/lydia clear</code> — Reset conversation\n\n` +
                     `I remember up to 12 messages and can help with questions, coding, writing, and more!\n\n` +
-                    `💡 <i>I also respond when you mention my keywords like "archon", "bamako", or "cg223"!</i>`, bb);
+                    `💡 <i>I also respond when you mention my keywords like "archon", "bamako", or "cg223"!</i>`,
+                    { parse_mode: 'HTML', extra: { reply_markup: bb } }
+                );
                 return true;
             }
 
@@ -87,7 +68,7 @@ module.exports = {
                     .back('🔙 Back', 'menu_main')
                     .build();
 
-                await editOrSend(ctx,
+                await ctx.bridge.sendTo(ctx.chatId,
                     `🎮 <b>GAMES & FUN</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
                     `<b>🎯 Trivia</b> — Test your knowledge with 25+ questions\n` +
@@ -95,7 +76,9 @@ module.exports = {
                     `<b>🎲 Roll Dice</b> — Roll d6, d20, or custom dice\n` +
                     `<b>🪙 Coin Flip</b> — Heads or tails?\n\n` +
                     `Earn XP and climb the leaderboard!\n\n` +
-                    `💡 <i>All games work in any chat — groups, channels, or DMs!</i>`, bb);
+                    `💡 <i>All games work in any chat — groups, channels, or DMs!</i>`,
+                    { parse_mode: 'HTML', extra: { reply_markup: bb } }
+                );
                 return true;
             }
 
@@ -116,7 +99,7 @@ module.exports = {
                     .back('🔙 Back', 'menu_main')
                     .build();
 
-                await editOrSend(ctx,
+                await ctx.bridge.sendTo(ctx.chatId,
                     `💰 <b>ECONOMY SYSTEM</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
                     `Welcome to the <b>Bamako Economy</b>!\n\n` +
@@ -127,7 +110,9 @@ module.exports = {
                     `• <code>/leaderboard</code> — Top players\n` +
                     `• <code>/invest</code> — Invest in the Bamako Market\n\n` +
                     `🔥 <b>Streak Bonuses:</b> 7 days = +500 🪙 · 30 days = +2000 🪙\n` +
-                    `🏆 <b>5 Ranks:</b> Neural Recruit → System Architect`, bb);
+                    `🏆 <b>5 Ranks:</b> Neural Recruit → System Architect`,
+                    { parse_mode: 'HTML', extra: { reply_markup: bb } }
+                );
                 return true;
             }
 
@@ -148,7 +133,7 @@ module.exports = {
                     .back('🔙 Back', 'menu_main')
                     .build();
 
-                await editOrSend(ctx,
+                await ctx.bridge.sendTo(ctx.chatId,
                     `🛠️ <b>UTILITY TOOLS</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
                     `<b>🌤️ Weather</b> — <code>/weather Bamako</code>\n` +
@@ -158,7 +143,9 @@ module.exports = {
                     `<b>🎬 Video DL</b> — <code>/douyin &lt;url&gt;</code>\n` +
                     `<b>😂 Joke</b> — <code>/joke</code>\n\n` +
                     `Also available:\n` +
-                    `<code>/id</code> · <code>/ping</code> · <code>/alive</code> · <code>/creator</code>`, bb);
+                    `<code>/id</code> · <code>/ping</code> · <code>/alive</code> · <code>/creator</code>`,
+                    { parse_mode: 'HTML', extra: { reply_markup: bb } }
+                );
                 return true;
             }
 
@@ -182,7 +169,7 @@ module.exports = {
                     .back('🔙 Back', 'menu_main')
                     .build();
 
-                await editOrSend(ctx,
+                await ctx.bridge.sendTo(ctx.chatId,
                     `🦅 <b>ABOUT ARCHON CG-223</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
                     `<b>Architect:</b> Moussa Fofana\n` +
@@ -201,7 +188,9 @@ module.exports = {
                     `Discord   · ${arr.length} servers · ${formatNumber(totalM)} members\n` +
                     `Telegram  · ${bridge.commands.size} commands\n` +
                     `Uptime    · ${formatUptime(process.uptime())}\n\n` +
-                    `<i>"Digital Sovereignty · BAMAKO_223"</i>`, bb);
+                    `<i>"Digital Sovereignty · BAMAKO_223"</i>`,
+                    { parse_mode: 'HTML', extra: { reply_markup: bb } }
+                );
                 return true;
             }
 
@@ -253,44 +242,51 @@ module.exports = {
             // ── Quick action: Feedback ──
             case 'start_feedback': {
                 await ctx.answerCallback('Send Feedback');
-                await editOrSend(ctx,
+                await ctx.bridge.sendTo(ctx.chatId,
                     `💬 <b>SEND FEEDBACK</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
                     `Have a suggestion or found a bug?\n\n` +
                     `<code>/feedback Your message here</code>\n\n` +
-                    `It goes directly to @mfof7310!`, null);
+                    `It goes directly to @mfof7310!`,
+                    { parse_mode: 'HTML' }
+                );
                 return true;
             }
 
             // ── Info pages (text-only, no buttons to keep it simple) ──
             case 'start_weather':
                 await ctx.answerCallback('Weather');
-                await editOrSend(ctx,
-                    `🌤️ <b>WEATHER</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/weather Bamako</code>\n<code>/weather London</code>\n<code>/weather Tokyo</code>\n\nGet current conditions for any city worldwide!`, null);
+                await ctx.bridge.sendTo(ctx.chatId,
+                    `🌤️ <b>WEATHER</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/weather Bamako</code>\n<code>/weather London</code>\n<code>/weather Tokyo</code>\n\nGet current conditions for any city worldwide!`,
+                    { parse_mode: 'HTML' });
                 return true;
 
             case 'start_crypto':
                 await ctx.answerCallback('Crypto');
-                await editOrSend(ctx,
-                    `💎 <b>CRYPTO PRICES</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/crypto bitcoin</code>\n<code>/crypto eth</code>\n<code>/crypto sol</code>\n\nLive prices from CoinGecko!`, null);
+                await ctx.bridge.sendTo(ctx.chatId,
+                    `💎 <b>CRYPTO PRICES</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/crypto bitcoin</code>\n<code>/crypto eth</code>\n<code>/crypto sol</code>\n\nLive prices from CoinGecko!`,
+                    { parse_mode: 'HTML' });
                 return true;
 
             case 'start_translate':
                 await ctx.answerCallback('Translate');
-                await editOrSend(ctx,
-                    `🌐 <b>TRANSLATOR</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/translate Hello world fr</code>\n<code>/translate fr:en Bonjour</code>\n\nSupports 15+ languages!`, null);
+                await ctx.bridge.sendTo(ctx.chatId,
+                    `🌐 <b>TRANSLATOR</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/translate Hello world fr</code>\n<code>/translate fr:en Bonjour</code>\n\nSupports 15+ languages!`,
+                    { parse_mode: 'HTML' });
                 return true;
 
             case 'start_reminder':
                 await ctx.answerCallback('Reminder');
-                await editOrSend(ctx,
-                    `⏰ <b>REMINDER</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/reminder 30m Check oven</code>\n<code>/reminder 2h Meeting</code>\n<code>/reminder 1d Birthday</code>\n\nI'll ping you when time's up!`, null);
+                await ctx.bridge.sendTo(ctx.chatId,
+                    `⏰ <b>REMINDER</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/reminder 30m Check oven</code>\n<code>/reminder 2h Meeting</code>\n<code>/reminder 1d Birthday</code>\n\nI'll ping you when time's up!`,
+                    { parse_mode: 'HTML' });
                 return true;
 
             case 'start_douyin':
                 await ctx.answerCallback('Video Downloader');
-                await editOrSend(ctx,
-                    `🎬 <b>VIDEO DOWNLOADER</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/douyin &lt;url&gt;</code>\n<code>/tiktok &lt;url&gt;</code>\n<code>/tt &lt;url&gt;</code>\n\nDownload TikTok & Douyin videos in HD!`, null);
+                await ctx.bridge.sendTo(ctx.chatId,
+                    `🎬 <b>VIDEO DOWNLOADER</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n<code>/douyin &lt;url&gt;</code>\n<code>/tiktok &lt;url&gt;</code>\n<code>/tt &lt;url&gt;</code>\n\nDownload TikTok & Douyin videos in HD!`,
+                    { parse_mode: 'HTML' });
                 return true;
 
             case 'start_joke':
@@ -304,15 +300,17 @@ module.exports = {
             case 'lydia_on': {
                 await ctx.answerCallback('AI Enabled!');
                 ctx.lydiaActiveChats.add(String(ctx.chatId));
-                await editOrSend(ctx,
-                    `🟢 <b>Lydia AI is now ACTIVE!</b>\n\nI'll respond to all your messages in this chat.\n\n<code>/lydia off</code> to disable.`, null);
+                await ctx.bridge.sendTo(ctx.chatId,
+                    `🟢 <b>Lydia AI is now ACTIVE!</b>\n\nI'll respond to all your messages in this chat.\n\n<code>/lydia off</code> to disable.`,
+                    { parse_mode: 'HTML' });
                 return true;
             }
 
             case 'lydia_ask': {
                 await ctx.answerCallback('Ask me anything!');
-                await editOrSend(ctx,
-                    `💬 <b>Just send me a message!</b>\n\nOr use:\n<code>/lydia What is quantum computing?</code>`, null);
+                await ctx.bridge.sendTo(ctx.chatId,
+                    `💬 <b>Just send me a message!</b>\n\nOr use:\n<code>/lydia What is quantum computing?</code>`,
+                    { parse_mode: 'HTML' });
                 return true;
             }
 

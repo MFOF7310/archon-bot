@@ -215,27 +215,6 @@ async function handleCallback(update, bridge, client) {
     }
 
     // Menu navigation — smooth edit in place
-    // Route to help/start plugin callbacks
-    if (data.startsWith('menu_') || data.startsWith('cmd_') || data.startsWith('start_') || data.startsWith('game_') || data.startsWith('lydia_') || data.startsWith('help_')) {
-        const ctx = buildContext(update, bridge, client);
-        if (!ctx) return;
-        try {
-            const help = require('./plugins/help');
-            if (help.handleCallback) {
-                const handled = await help.handleCallback(ctx, data);
-                if (handled) return;
-            }
-        } catch(e) { console.error('[TG CB HELP]', e.message); }
-        try {
-            const start = require('./plugins/start');
-            if (start.handleCallback) {
-                const handled = await start.handleCallback(ctx, data);
-                if (handled) return;
-            }
-        } catch(e) { console.error('[TG CB START]', e.message); }
-        return;
-    }
-
     if (!data.startsWith('m:')) return;
 
     const page = data.split(':')[1];

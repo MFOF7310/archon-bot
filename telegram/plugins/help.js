@@ -6,27 +6,6 @@ const { ButtonBuilder, mainMenu, helpMenu } = require('./_buttons');
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-async function editOrSend(ctx, text, markup) {
-    const msgId = ctx.callbackQuery?.message?.message_id;
-    const chatId = ctx.chatId;
-    const bridge = ctx.bridge;
-    if (msgId) {
-        const payload = { chat_id: chatId, message_id: msgId, text: text.substring(0,4096), parse_mode: 'HTML' };
-        if (markup) payload.reply_markup = markup;
-        const body = JSON.stringify(payload);
-        const https = require('https');
-        return new Promise((resolve) => {
-            const req = https.request(
-                `https://api.telegram.org/bot${bridge.token}/editMessageText`,
-                { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 10000 },
-                (res) => { let d=''; res.on('data',c=>d+=c); res.on('end',()=>resolve()); }
-            );
-            req.on('error',()=>resolve()); req.write(body); req.end();
-        });
-    }
-    return bridge.sendTo(chatId, text, { parse_mode: 'HTML', extra: { reply_markup: markup } });
-}
-
 module.exports = {
     name: 'help',
     description: 'Comprehensive help menu with buttons',
@@ -65,7 +44,10 @@ module.exports = {
             `📺 <b>Media</b> · TikTok/Douyin downloader\n\n` +
             `Tap a button below or type <code>/help &lt;command&gt;</code>!`;
 
-        await editOrSend(ctx, msg, null);
+        await ctx.bridge.sendTo(ctx.chatId, msg, {
+            parse_mode: 'HTML',
+            extra: { reply_markup: mainMenu() }
+        });
     }
 };
 
@@ -98,7 +80,10 @@ module.exports.handleCallback = async (ctx, data) => {
         }
         msg += `<i>Use /help &lt;command&gt; for details</i>`;
 
-        await editOrSend(ctx, msg, null);
+        await ctx.bridge.sendTo(ctx.chatId, msg, {
+            parse_mode: 'HTML',
+            extra: { reply_markup: helpMenu() }
+        });
         return true;
     }
     if (data === 'cmd_games') {
@@ -109,7 +94,10 @@ module.exports.handleCallback = async (ctx, data) => {
         games.forEach(c => {
             msg += `  <code>/${c.name.padEnd(12)}</code> ${escapeHTML(c.description || '')}\n`;
         });
-        await editOrSend(ctx, msg, null);
+        await ctx.bridge.sendTo(ctx.chatId, msg, {
+            parse_mode: 'HTML',
+            extra: { reply_markup: require('./_buttons').gamesMenu() }
+        });
         return true;
     }
     if (data === 'cmd_mod') {
@@ -120,7 +108,7 @@ module.exports.handleCallback = async (ctx, data) => {
         cmds.forEach(c => {
             msg += `  <code>/${c.name.padEnd(12)}</code> ${escapeHTML(c.description || '')}\n`;
         });
-        await editOrSend(ctx, msg, null);
+        await ctx.bridge.sendTo(ctx.chatId, msg, { parse_mode: 'HTML' });
         return true;
     }
     if (data === 'cmd_economy') {
@@ -131,7 +119,7 @@ module.exports.handleCallback = async (ctx, data) => {
         cmds.forEach(c => {
             msg += `  <code>/${c.name.padEnd(12)}</code> ${escapeHTML(c.description || '')}\n`;
         });
-        await editOrSend(ctx, msg, null);
+        await ctx.bridge.sendTo(ctx.chatId, msg, { parse_mode: 'HTML' });
         return true;
     }
     if (data === 'cmd_utility') {
@@ -142,7 +130,7 @@ module.exports.handleCallback = async (ctx, data) => {
         cmds.forEach(c => {
             msg += `  <code>/${c.name.padEnd(12)}</code> ${escapeHTML(c.description || '')}\n`;
         });
-        await editOrSend(ctx, msg, null);
+        await ctx.bridge.sendTo(ctx.chatId, msg, { parse_mode: 'HTML' });
         return true;
     }
     // Help category buttons
@@ -158,7 +146,7 @@ module.exports.handleCallback = async (ctx, data) => {
             cmds.forEach(c => {
                 msg += `  <code>/${c.name.padEnd(12)}</code> ${escapeHTML(c.description || '')}\n`;
             });
-            await editOrSend(ctx, msg, null);
+            await ctx.bridge.sendTo(ctx.chatId, msg, { parse_mode: 'HTML' });
         }
         return true;
     }
