@@ -321,6 +321,8 @@ async function downloadFile(url, dest) {
 // ═══════════════════════════════════════════════════════
 async function playNext(q) {
     const client = q._client;
+    if (!q || !q.guild) return; // Guard: queue destroyed
+    if (q.tracks.length > 0 && !q.tracks[0]) { q.tracks = q.tracks.filter(Boolean); }
     if (q.tracks.length === 0) {
         // Autoplay — find similar (skip if source was file or artist unknown)
         if (q.autoplay && q.currentTrack && q.currentTrack.source !== 'file') {
