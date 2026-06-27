@@ -225,14 +225,14 @@ async function handleCallback(update, bridge, client) {
                 const handled = await help.handleCallback(ctx, data);
                 if (handled) return;
             }
-        } catch(e) {}
+        } catch(e) { console.error('[TG CB HELP]', e.message); }
         try {
             const start = require('./plugins/start');
             if (start.handleCallback) {
                 const handled = await start.handleCallback(ctx, data);
                 if (handled) return;
             }
-        } catch(e) {}
+        } catch(e) { console.error('[TG CB START]', e.message); }
         return;
     }
 
