@@ -22,6 +22,23 @@ const queues = new Map();
 
 function getQueue(guildId) { return queues.get(guildId) || null; }
 
+const INACTIVITY_MS = 3 * 60 * 1000;
+function resetInactivityTimer(q) {
+    if (q.inactivityTimer) clearTimeout(q.inactivityTimer);
+    q.inactivityTimer = setTimeout(async () => {
+        const qNow = queues.get(q.guild.id);
+        if (!qNow) return;
+        if (qNow.player?.state?.status === AudioPlayerStatus.Playing) { resetInactivityTimer(qNow); return; }
+        try {
+            await qNow.textChannel?.send({ embeds: [new EmbedBuilder().setColor(0xf39c12).setDescription('⚠️ Left the voice channel due to inactivity. Use /music play to start a new session.')] });
+        } catch(e) {}
+        destroyQueue(q.guild.id);
+    }, INACTIVITY_MS);
+}
+function clearInactivityTimer(q) {
+    if (q.inactivityTimer) { clearTimeout(q.inactivityTimer); q.inactivityTimer = null; }
+}
+
 function createQueue(guild, voiceChannel, textChannel, client) {
     const state = {
         guild, voiceChannel, textChannel, _client: client,
@@ -30,6 +47,7 @@ function createQueue(guild, voiceChannel, textChannel, client) {
         volume: 80, loop: false, autoplay: true,
         startTime: null, pausedAt: null, totalPaused: 0,
         persistentMsg: null, updateInterval: null,
+        inactivityTimer: null,
     };
     queues.set(guild.id, state);
     return state;
@@ -342,10 +360,8 @@ async function playNext(q) {
             } else {
                 console.log('[MUSIC] Autoplay skipped — no valid query');
             }
-            const embed = new EmbedBuilder().setColor(ARCHON.orange)
-                .setDescription('```ansi\n\u001b[1;33m▸ QUEUE EMPTY — Neural stream ended.\u001b[0m\n```');
-            q.textChannel?.send({ embeds: [embed] }).catch(() => {});
-            setTimeout(() => destroyQueue(q.guild.id), 30000);
+            q.textChannel?.send({ embeds: [new EmbedBuilder().setColor(ARCHON.orange).setDescription('🎵 Queue finished. Leaving in **3 minutes** if nothing is added.\n> Use `/music play` to keep the session going.')] }).catch(() => {});
+            resetInactivityTimer(q);
             return;
         }
     }
@@ -439,6 +455,7 @@ async function playNext(q) {
         // Update/create persistent panel
         await updatePersistentPanel(q);
         startPanelUpdater(q);
+        clearInactivityTimer(q);
 
     } catch (err) {
         console.error('[MUSIC] Error:', err.message);
@@ -522,13 +539,12 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
 
     const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
     const embed = new EmbedBuilder().setColor(ARCHON.cyan)
-        .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
+        .setColor(isPlaying ? 0x1DB954 : ARCHON.cyan)
         .setDescription(
             isPlaying
-                ? `\`\`\`ansi\n\u001b[1;32m▸ ADDED TO QUEUE\u001b[0m\n\u001b[1;36m${query.substring(0,60)}\u001b[0m\n\u001b[0;37m Position: #${q.tracks.length}\u001b[0m\n\`\`\``
-                : `\`\`\`ansi\n\u001b[1;36m▸ LOADING NEURAL STREAM...\u001b[0m\n\u001b[0;37m${query.substring(0,60)}\u001b[0m\n\`\`\``
-        )
-        .setFooter({ text: 'BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID' });
+                ? `🎵 Added **${query.substring(0,60)}**\n> Position **#${q.tracks.length}** in queue • Added by **${requestedBy}**`
+                : `🎵 **${query.substring(0,60)}**\n> Loading... connecting to voice`
+        );
 
     const components = [];
     if (suggestions.length > 0) {
