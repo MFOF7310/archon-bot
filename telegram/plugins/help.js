@@ -65,7 +65,7 @@ module.exports = {
             `📺 <b>Media</b> · TikTok/Douyin downloader\n\n` +
             `Tap a button below or type <code>/help &lt;command&gt;</code>!`;
 
-        await editOrSend(ctx, msg, markup);
+        await editOrSend(ctx, msg, null);
     }
 };
 
@@ -98,7 +98,7 @@ module.exports.handleCallback = async (ctx, data) => {
         }
         msg += `<i>Use /help &lt;command&gt; for details</i>`;
 
-        await editOrSend(ctx, msg, markup);
+        await editOrSend(ctx, msg, null);
         return true;
     }
     if (data === 'cmd_games') {
@@ -109,7 +109,7 @@ module.exports.handleCallback = async (ctx, data) => {
         games.forEach(c => {
             msg += `  <code>/${c.name.padEnd(12)}</code> ${escapeHTML(c.description || '')}\n`;
         });
-        await editOrSend(ctx, msg, markup);
+        await editOrSend(ctx, msg, null);
         return true;
     }
     if (data === 'cmd_mod') {
