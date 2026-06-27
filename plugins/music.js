@@ -367,6 +367,7 @@ async function playNext(q) {
     }
 
     const track = q.tracks.shift();
+    if (!track) { resetInactivityTimer(q); return; }
     q.currentTrack = track;
     q.startTime = Date.now();
     q.totalPaused = 0;
