@@ -423,6 +423,76 @@ async function handleBuiltin(ctx, cmdName, bridge) {
             return true;
         }
 
+        case 'logs': {
+            if (!ctx.isOwner()) return ctx.replyHTML('⛔ <b>Owner only</b>');
+            await ctx.action('typing');
+            const { execSync } = require('child_process');
+            const filter = ctx.args[0]?.toLowerCase() || 'all';
+            try {
+                let raw;
+                if (filter === 'errors') {
+                    raw = execSync('tail -30 /root/.pm2/logs/Architect-CG223-error.log 2>/dev/null').toString();
+                } else if (filter === 'dash') {
+                    raw = execSync('tail -20 /root/.pm2/logs/architect-dashboard-out.log 2>/dev/null').toString();
+                } else {
+                    raw = execSync('tail -25 /root/.pm2/logs/Architect-CG223-out.log 2>/dev/null').toString();
+                }
+                const lines = raw.trim().split('\n').slice(-20);
+                const cleaned = lines.map(l => l.replace(/.*\|\s+/, '').trim()).filter(Boolean).join('\n');
+                const label = filter === 'errors' ? '🔴 ERROR LOG' : filter === 'dash' ? '🖥️ DASHBOARD LOG' : '📋 BOT LOG';
+                await ctx.replyHTML(`${label}\n<pre>${escapeHTML(cleaned.substring(0, 3500))}</pre>\n<i>filter: ${filter} · ${new Date().toLocaleTimeString()}</i>`);
+            } catch(e) {
+                await ctx.replyHTML(`❌ <b>Log read failed</b>\n<code>${escapeHTML(e.message)}</code>`);
+            }
+            return true;
+        }
+
+        case 'restart': {
+            if (!ctx.isOwner()) return ctx.replyHTML('⛔ <b>Owner only</b>');
+            const target = ctx.args[0]?.toLowerCase();
+            if (!target) return ctx.replyHTML('⚠️ Usage: <code>/restart bot</code> or <code>/restart dash</code>');
+            await ctx.action('typing');
+            const { execSync } = require('child_process');
+            try {
+                if (target === 'bot') {
+                    execSync('pm2 restart Architect-CG223 --update-env', { timeout: 15000 });
+                    await ctx.replyHTML('⚡ <b>BOT RESTARTING</b>\n━━━━━━━━━━━━━━━━━━━━\n\n🔄 Architect-CG223 restart signal sent\n⏳ Back online in ~10 seconds\n\n<i>· BAMAKO_223 🇲🇱 ·</i>');
+                } else if (target === 'dash') {
+                    execSync('pm2 restart architect-dashboard', { timeout: 15000 });
+                    await ctx.replyHTML('⚡ <b>DASHBOARD RESTARTING</b>\n━━━━━━━━━━━━━━━━━━━━\n\n🔄 architect-dashboard restart signal sent\n⏳ Back online in ~5 seconds\n\n<i>· BAMAKO_223 🇲🇱 ·</i>');
+                } else {
+                    await ctx.replyHTML('⚠️ Unknown target. Use <code>bot</code> or <code>dash</code>');
+                }
+            } catch(e) {
+                await ctx.replyHTML(`❌ <b>Restart failed</b>\n<code>${escapeHTML(e.message)}</code>`);
+            }
+            return true;
+        }
+
+        case 'pm2': {
+            if (!ctx.isOwner()) return ctx.replyHTML('⛔ <b>Owner only</b>');
+            await ctx.action('typing');
+            const { execSync } = require('child_process');
+            try {
+                const raw = execSync('pm2 jlist 2>/dev/null').toString();
+                const list = JSON.parse(raw);
+                let msg = '📊 <b>PM2 PROCESSES</b>\n━━━━━━━━━━━━━━━━━━━━\n\n';
+                list.forEach(p => {
+                    const status = p.pm2_env?.status === 'online' ? '🟢' : '🔴';
+                    const mem = Math.round((p.monit?.memory || 0) / 1024 / 1024);
+                    const cpu = p.monit?.cpu || 0;
+                    const restarts = p.pm2_env?.restart_time || 0;
+                    msg += `${status} <b>${escapeHTML(p.name)}</b> <i>(id:${p.pm_id})</i>\n`;
+                    msg += `   RAM: ${mem}MB · CPU: ${cpu}% · ↺ ${restarts}\n\n`;
+                });
+                msg += `<i>${new Date().toLocaleTimeString()} · BAMAKO_223 🇲🇱</i>`;
+                await ctx.replyHTML(msg);
+            } catch(e) {
+                await ctx.replyHTML(`❌ <b>PM2 read failed</b>\n<code>${escapeHTML(e.message)}</code>`);
+            }
+            return true;
+        }
+
         default: return false;
     }
 }
