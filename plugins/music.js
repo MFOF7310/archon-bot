@@ -699,12 +699,19 @@ module.exports = {
                 });
             }
 
+            // Get real duration via ffprobe
+            let fileDuration = 0;
+            try {
+                const { stdout } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tempPath}"`, { timeout: 8000 });
+                fileDuration = Math.floor(parseFloat(stdout.trim())) || 0;
+            } catch(e) { fileDuration = 0; }
+
             let q = getQueue(guildId) || createQueue(interaction.guild, vc, interaction.channel, client);
             q._client = client;
             const track = {
                 title: att.name.replace(/\.[^/.]+$/, ''),
                 query: att.name, artist: 'File Upload',
-                source: 'file', duration: 0, thumbnail: null,
+                source: 'file', duration: fileDuration, thumbnail: null,
                 requestedBy: interaction.user.username, url: tempPath,
             };
             q.tracks.push(track);
