@@ -488,7 +488,7 @@ module.exports = {
                         console.log(`[UNBAN] ${message.author.tag} unbanned ${user.tag} (${userId}) | Case: ${caseId} | Invite: ${inviteData.source}`);
                     } catch (error) {
                         console.error('Unban Error:', error);
-                        await i.followUp({ content: t.unbanFailed, ephemeral: true });
+                        await i.followUp({ content: t.unbanFailed, flags: 64 });
                     }
                 } else if (i.customId.startsWith('unban_cancel')) {
                     await i.deferUpdate();
@@ -558,7 +558,7 @@ module.exports = {
                         console.log(`[BAN] ${message.author.tag} banned ${target.user.tag} | Case: ${caseId}`);
                     } catch (error) {
                         console.error('Ban Error:', error);
-                        await i.followUp({ content: t.banFailed, ephemeral: true });
+                        await i.followUp({ content: t.banFailed, flags: 64 });
                     }
                 } else if (i.customId.startsWith('ban_cancel')) {
                     await i.deferUpdate();
@@ -576,7 +576,7 @@ module.exports = {
 
         let subcommand = null;
         try { subcommand = interaction.options.getSubcommand(); } catch {
-            return interaction.reply({ content: '❌ Use `/ban ban`, `/ban unban`, `/ban setinvite`, or `/ban getinvite`.', ephemeral: true });
+            return interaction.reply({ content: '❌ Use `/ban ban`, `/ban unban`, `/ban setinvite`, or `/ban getinvite`.', flags: 64 });
         }
 
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
@@ -597,9 +597,9 @@ module.exports = {
             const reason = interaction.options.getString('reason') || 'Breach of conduct.';
             const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
 
-            if (!targetMember) return interaction.reply({ content: t.noTarget, ephemeral: true });
-            if (targetMember.id === interaction.user.id) return interaction.reply({ content: t.selfBan, ephemeral: true });
-            if (!targetMember.bannable) return interaction.reply({ content: t.notBannable, ephemeral: true });
+            if (!targetMember) return interaction.reply({ content: t.noTarget, flags: 64 });
+            if (targetMember.id === interaction.user.id) return interaction.reply({ content: t.selfBan, flags: 64 });
+            if (!targetMember.bannable) return interaction.reply({ content: t.notBannable, flags: 64 });
 
             const caseId = generateCaseId('BAN');
             const confirmEmbed = new EmbedBuilder()
@@ -649,7 +649,7 @@ module.exports = {
 
                         await interaction.editReply({ embeds: [banEmbed], components: [] });
                         await logToModChannel(interaction.guild, banEmbed, client);
-                    } catch { await i.followUp({ content: t.banFailed, ephemeral: true }); }
+                    } catch { await i.followUp({ content: t.banFailed, flags: 64 }); }
                 } else {
                     await i.deferUpdate();
                     await interaction.editReply({ content: t.actionCancelled, embeds: [], components: [] });
@@ -661,10 +661,10 @@ module.exports = {
             const userId = interaction.options.getString('user_id');
             const reason = interaction.options.getString('reason') || 'Pardoned by moderator.';
 
-            if (!/^\d+$/.test(userId)) return interaction.reply({ content: t.noTarget, ephemeral: true });
+            if (!/^\d+$/.test(userId)) return interaction.reply({ content: t.noTarget, flags: 64 });
 
             const banInfo = await getBanInfo(interaction.guild, userId);
-            if (!banInfo) return interaction.reply({ content: t.notBanned, ephemeral: true });
+            if (!banInfo) return interaction.reply({ content: t.notBanned, flags: 64 });
 
             let user;
             try { user = await client.users.fetch(userId); } catch { user = { tag: `Unknown (${userId})`, id: userId }; }
@@ -723,7 +723,7 @@ module.exports = {
                         console.log(`[UNBAN] ${interaction.user.tag} unbanned ${user.tag} | Case: ${caseId} | Invite: ${inviteData.source}`);
                     } catch (error) {
                         console.error('Unban Error:', error);
-                        await i.followUp({ content: t.unbanFailed, ephemeral: true });
+                        await i.followUp({ content: t.unbanFailed, flags: 64 });
                     }
                 } else {
                     await i.deferUpdate();

@@ -140,7 +140,7 @@ async function checkSlowmodePermission(context, t, lang) {
             .setTimestamp();
 
         if (isSlash) {
-            await context.reply({ embeds: [noGuildEmbed], ephemeral: true }).catch(() => {});
+            await context.reply({ embeds: [noGuildEmbed], flags: 64 }).catch(() => {});
         } else {
             await context.reply({ embeds: [noGuildEmbed] }).catch(() => {});
             setTimeout(() => context.delete().catch(() => {}), 8000);
@@ -204,7 +204,7 @@ async function checkSlowmodePermission(context, t, lang) {
             if (isSlash) {
                 await context.reply({ 
                     embeds: [permEmbed], 
-                    ephemeral: true 
+                    flags: 64 
                 }).catch(() => {});
             } else {
                 const fallbackMsg = await context.channel.send({
@@ -342,14 +342,14 @@ module.exports = {
             }).catch(() => {});
         }
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         const result = await applySlowmode(targetChannel, input, t, interaction.user, lang);
 
         if (result.error) {
             return interaction.editReply({ 
                 content: result.error, 
-                ephemeral: true 
+                flags: 64 
             }).catch(() => {});
         }
 
@@ -360,7 +360,7 @@ module.exports = {
 
         return interaction.editReply({ 
             embeds: [result.embed], 
-            ephemeral: true 
+            flags: 64 
         }).catch(() => {});
     },
 

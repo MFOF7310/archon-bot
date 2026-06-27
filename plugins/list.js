@@ -503,7 +503,7 @@ module.exports = {
                     
                     collector.on('collect', async (i) => {
                         if (i.user.id !== userId) {
-                            return i.reply({ content: t.accessDenied, ephemeral: true });
+                            return i.reply({ content: t.accessDenied, flags: 64 });
                         }
                         
                         await i.deferUpdate();
@@ -537,7 +537,7 @@ module.exports = {
                             
                             await i.followUp({ 
                                 content: newIsFav ? t.favoriteAdded : t.favoriteRemoved, 
-                                ephemeral: true 
+                                flags: 64 
                             });
                         }
                     });
@@ -611,7 +611,7 @@ module.exports = {
             
             collector.on('collect', async (i) => {
                 if (i.user.id !== userId) {
-                    return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                    return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 }
                 
                 try {
@@ -817,7 +817,7 @@ module.exports = {
                         
                         await i.followUp({ 
                             content: newIsFav ? t.favoriteAdded : t.favoriteRemoved, 
-                            ephemeral: true 
+                            flags: 64 
                         });
                         return;
                     }

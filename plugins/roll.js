@@ -39,7 +39,7 @@ module.exports = {
         if (!result) {
             return interaction.reply({ 
                 content: '❌ Invalid format! Use NdN (e.g., `2d6`, `1d20`)', 
-                ephemeral: true 
+                flags: 64 
             });
         }
         

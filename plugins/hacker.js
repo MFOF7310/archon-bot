@@ -369,7 +369,7 @@ async function startGame(interaction, database, difficulty) {
   if (activeGames.has(userId)) {
     return interaction.reply({
       content: '❌ **MISSION IN PROGRESS** — You already have an active Neural Hacker session!',
-      ephemeral: true
+      flags: 64
     });
   }
 
@@ -590,7 +590,7 @@ const slashCommand = new SlashCommandBuilder()
 async function executeSlashCommand(interaction, client) {
   const database = client.db;
   if (!database) {
-    return interaction.reply({ content: '❌ Database unavailable.', ephemeral: true });
+    return interaction.reply({ content: '❌ Database unavailable.', flags: 64 });
   }
 
   setupHackerDB(database);
@@ -664,7 +664,7 @@ async function showProfile(interaction, database) {
 
   } catch (e) {
     console.error(`${C.red}[HACKER PROFILE]${C.reset} ${e.message}`);
-    await interaction.reply({ content: '❌ Failed to load profile.', ephemeral: true });
+    await interaction.reply({ content: '❌ Failed to load profile.', flags: 64 });
   }
 }
 

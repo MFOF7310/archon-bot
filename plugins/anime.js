@@ -158,7 +158,7 @@ module.exports = {
                 if (interaction.user.id !== message.author.id) {
                     return interaction.reply({ 
                         content: '❌ This summon belongs to someone else! Use `.anime` to summon your own!', 
-                        ephemeral: true 
+                        flags: 64 
                     });
                 }
                 
@@ -200,7 +200,7 @@ module.exports = {
                 if (btnInteraction.user.id !== interaction.user.id) {
                     return btnInteraction.reply({ 
                         content: '❌ This summon belongs to someone else! Use `/anime` to summon your own!', 
-                        ephemeral: true 
+                        flags: 64 
                     });
                 }
                 

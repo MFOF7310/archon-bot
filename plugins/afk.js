@@ -266,7 +266,7 @@ module.exports = {
             const currentAfk = afkUsers.get(targetId);
             
             if (!currentAfk) {
-                return i.reply({ content: '❌ This user is no longer AFK.', ephemeral: true });
+                return i.reply({ content: '❌ This user is no longer AFK.', flags: 64 });
             }
             
             if (i.customId.startsWith('afk_remind')) {
@@ -279,12 +279,12 @@ module.exports = {
                 });
                 afkUsers.set(targetId, currentAfk);
                 
-                await i.reply({ content: t.remindSent, ephemeral: true });
+                await i.reply({ content: t.remindSent, flags: 64 });
             }
             
             if (i.customId.startsWith('afk_extend')) {
                 if (i.user.id !== targetId) {
-                    return i.reply({ content: t.cannotClearOthers, ephemeral: true });
+                    return i.reply({ content: t.cannotClearOthers, flags: 64 });
                 }
                 
                 // Extend by 30 minutes
@@ -299,7 +299,7 @@ module.exports = {
                 }, extendMs);
                 
                 afkUsers.set(targetId, currentAfk);
-                await i.reply({ content: t.afkExtended('30 ' + t.minutes), ephemeral: true });
+                await i.reply({ content: t.afkExtended('30 ' + t.minutes), flags: 64 });
             }
         });
         

@@ -413,7 +413,7 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
         const ut = T[userLang];
 
         if (i.customId === `gw_enter_${id}`) {
-            await i.deferReply({ ephemeral: true }).catch(() => {});
+            await i.deferReply({ flags: 64 }).catch(() => {});
 
             if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: '❌ Giveaway has ended.' }).catch(() => {});
             if (i.user.id === gwNow.hostId) return i.editReply({ content: ut.cantEnter }).catch(() => {});
@@ -447,7 +447,7 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
             await i.editReply({ content: reply }).catch(() => {});
 
         } else if (i.customId === `gw_leave_${id}`) {
-            await i.deferReply({ ephemeral: true }).catch(() => {});
+            await i.deferReply({ flags: 64 }).catch(() => {});
             if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: '❌ Giveaway has ended.' }).catch(() => {});
             if (!gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut.notIn }).catch(() => {});
 
@@ -462,7 +462,7 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
             if (i.user.id !== gwNow?.hostId && !i.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
                 return i.reply({ content: '❌ Only the host or moderators can reroll.', flags: 64 }).catch(() => {});
             }
-            await i.deferReply({ ephemeral: true }).catch(() => {});
+            await i.deferReply({ flags: 64 }).catch(() => {});
             const newWinners = selectWinners(gwNow.entries, gwNow.winners);
             gwNow.winnersList = newWinners;
             if (newWinners.length > 0) await creditWinners(client, db, newWinners, gwNow.amount, guild.id);
@@ -476,7 +476,7 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
             if (i.user.id !== gwNow?.hostId && !i.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
                 return i.reply({ content: '❌ Only the host or moderators can end this.', flags: 64 }).catch(() => {});
             }
-            await i.deferReply({ ephemeral: true }).catch(() => {});
+            await i.deferReply({ flags: 64 }).catch(() => {});
             if (gwNow?.status === 'active') {
                 await endGiveaway(gwNow, client, db);
             } else {

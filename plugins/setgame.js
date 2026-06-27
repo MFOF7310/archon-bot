@@ -241,18 +241,18 @@ module.exports = {
             const collector = reply.createMessageComponentCollector({ time: 120000 });
             
             collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 
                 if (i.isButton()) {
                     const gameMap = { quick_cod: 'CALL OF DUTY', quick_val: 'VALORANT', quick_apex: 'APEX LEGENDS', quick_fortnite: 'FORTNITE', quick_csgo: 'CS:GO' };
                     const selectedGame = gameMap[i.customId];
-                    if (selectedGame) await i.reply({ content: t.selectedGame(selectedGame), ephemeral: true }).catch(() => {});
+                    if (selectedGame) await i.reply({ content: t.selectedGame(selectedGame), flags: 64 }).catch(() => {});
                 }
                 
                 if (i.isStringSelectMenu() && i.customId === 'select_game') {
                     const gameMap = { cod: 'CALL OF DUTY', val: 'VALORANT', apex: 'APEX LEGENDS', fortnite: 'FORTNITE', csgo: 'CS:GO', lol: 'LEAGUE OF LEGENDS' };
                     const selectedGame = gameMap[i.values[0]];
-                    if (selectedGame) await i.reply({ content: t.selectedGame(selectedGame), ephemeral: true }).catch(() => {});
+                    if (selectedGame) await i.reply({ content: t.selectedGame(selectedGame), flags: 64 }).catch(() => {});
                 }
             });
             return;

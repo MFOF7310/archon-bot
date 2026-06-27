@@ -295,12 +295,12 @@ module.exports = {
             if (!gameActive) return;
             
             if (i.user.id !== turn) {
-                return i.reply({ content: t.notYourTurn, ephemeral: true }).catch(() => {});
+                return i.reply({ content: t.notYourTurn, flags: 64 }).catch(() => {});
             }
             
             const index = parseInt(i.customId.split('_')[1]);
             if (board[index]) {
-                return i.reply({ content: t.cellTaken, ephemeral: true }).catch(() => {});
+                return i.reply({ content: t.cellTaken, flags: 64 }).catch(() => {});
             }
             
             // 🛡️ LA LIGNE CRITIQUE

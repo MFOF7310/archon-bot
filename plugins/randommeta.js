@@ -287,7 +287,7 @@ module.exports = {
                 if (!i.customId.endsWith(`_${message.author.id}`)) {
                     return i.reply({ 
                         content: t.securityLock, 
-                        ephemeral: true 
+                        flags: 64 
                     }).catch(() => {});
                 }
 

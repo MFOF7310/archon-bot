@@ -114,7 +114,7 @@ module.exports = {
         if (interaction.user.id !== process.env.OWNER_ID) {
             return interaction.reply({
                 content: '```yaml\n🔒 ACCESS DENIED\nThis command is restricted to the Architect.\nNode: BAMAKO_223 🇲🇱\n```',
-                ephemeral: true
+                flags: 64
             });
         }
 

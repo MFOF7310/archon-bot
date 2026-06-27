@@ -379,7 +379,7 @@ async function startCipherGame(interaction, database, difficulty) {
   if (activeGames.has(userId)) {
     return interaction.reply({
       content: '❌ **MISSION IN PROGRESS** — You already have an active Neural Cipher session!',
-      ephemeral: true
+      flags: 64
     });
   }
 
@@ -589,7 +589,7 @@ async function showCipherProfile(interaction, database) {
 
   } catch (e) {
     console.error(`${C.red}[CIPHER PROFILE]${C.reset} ${e.message}`);
-    await interaction.reply({ content: '❌ Failed to load operative dossier.', ephemeral: true });
+    await interaction.reply({ content: '❌ Failed to load operative dossier.', flags: 64 });
   }
 }
 
@@ -631,7 +631,7 @@ const slashCommand = new SlashCommandBuilder()
 async function executeSlashCommand(interaction, client) {
   const database = client.db;
   if (!database) {
-    return interaction.reply({ content: '❌ Database unavailable.', ephemeral: true });
+    return interaction.reply({ content: '❌ Database unavailable.', flags: 64 });
   }
 
   setupCipherDB(database);

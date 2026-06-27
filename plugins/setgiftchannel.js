@@ -34,7 +34,7 @@ module.exports = {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
             return interaction.reply({
                 content: '❌ You need **Manage Server** permission to use this command.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -62,7 +62,7 @@ module.exports = {
             .setFooter({ text: `Set by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: 64 });
     },
 
     async run(client, message, args, db) {

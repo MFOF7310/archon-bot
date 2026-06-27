@@ -150,7 +150,7 @@ async function startQuiz(client, context, lang, isSlash) {
     };
 
     if (activeQuizzes.has(userId)) {
-        return reply({ content: 'You already have an active quiz! Finish it first.', ephemeral: true });
+        return reply({ content: 'You already have an active quiz! Finish it first.', flags: 64 });
     }
 
     const startEmbed = new EmbedBuilder()

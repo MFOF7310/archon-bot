@@ -201,7 +201,7 @@ module.exports = {
             if (interaction.user.id !== message.author.id) {
                 return interaction.reply({ 
                     content: '❌ This menu is locked to your session.', 
-                    ephemeral: true 
+                    flags: 64 
                 }).catch(() => {});
             }
             
@@ -230,7 +230,7 @@ module.exports = {
                     .setFooter({ text: t.footer.replace('{version}', version) })
                     .setTimestamp();
                 
-                await interaction.reply({ embeds: [statsEmbed], ephemeral: true }).catch(() => {});
+                await interaction.reply({ embeds: [statsEmbed], flags: 64 }).catch(() => {});
             }
         });
         
@@ -323,7 +323,7 @@ module.exports = {
                 .setFooter({ text: t.footer.replace('{version}', version) })
                 .setTimestamp();
             
-            await btnInteraction.reply({ embeds: [statsEmbed], ephemeral: true }).catch(() => {});
+            await btnInteraction.reply({ embeds: [statsEmbed], flags: 64 }).catch(() => {});
         });
         
         console.log(`[INVITE] ${interaction.user.tag} used slash invite | Lang: ${lang}`);

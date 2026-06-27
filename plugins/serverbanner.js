@@ -32,7 +32,7 @@ module.exports = {
         const banner = guild.bannerURL({ dynamic: true, size: 1024 });
         
         if (!banner) {
-            return message.reply({ content: t.noBanner, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.noBanner, flags: 64 }).catch(() => {});
         }
 
         const embed = new EmbedBuilder()

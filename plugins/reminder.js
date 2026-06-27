@@ -261,7 +261,7 @@ module.exports = {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
         const t = T[lang];
         const durationMs = parseTime(interaction.options.getString('duration'));
-        if (!durationMs) return interaction.reply({ content: t.invalid, ephemeral: true });
+        if (!durationMs) return interaction.reply({ content: t.invalid, flags: 64 });
         const remindText = interaction.options.getString('message');
         const when = Date.now() + durationMs;
         const executeAt = Math.floor(when / 1000);

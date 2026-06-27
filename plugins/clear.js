@@ -75,7 +75,7 @@ module.exports = {
         if (!isArchitect && !hasPerms) {
             const lang = serverSettings?.language || 'en';
             const t = translations[lang];
-            return message.reply({ content: t.accessDenied, ephemeral: true });
+            return message.reply({ content: t.accessDenied, flags: 64 });
         }
 
         // ================= LANGUAGE SETUP =================
@@ -110,7 +110,7 @@ module.exports = {
     
     // ================= SLASH COMMAND =================
     execute: async (interaction) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
         
         const amount = interaction.options.getInteger('amount');
         const targetUser = interaction.options.getUser('target');
@@ -126,13 +126,13 @@ module.exports = {
             
             await interaction.editReply({ 
                 content: `✅ **${amount}** messages purged successfully.${targetUser ? ` Target: **${targetUser.tag}**` : ''}\n📝 Reason: ${reason}`,
-                ephemeral: true 
+                flags: 64 
             });
         } catch (err) {
             console.error('Slash clear error:', err.message);
             await interaction.editReply({ 
                 content: t.error,
-                ephemeral: true 
+                flags: 64 
             });
         }
     }

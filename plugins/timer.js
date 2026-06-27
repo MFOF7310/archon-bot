@@ -49,7 +49,7 @@ module.exports = {
 
         const collector = msg.createMessageComponentCollector({ time: durationMs });
         collector.on('collect', async (i) => {
-            if (i.user.id !== message.author.id) return i.reply({ content: '❌ Not your timer.', ephemeral: true }).catch(() => {});
+            if (i.user.id !== message.author.id) return i.reply({ content: '❌ Not your timer.', flags: 64 }).catch(() => {});
             if (i.customId.startsWith('timer_cancel')) {
                 collector.stop('cancelled');
                 await i.update({ content: t.cancelled, embeds: [], components: [] }).catch(() => {});
@@ -81,7 +81,7 @@ module.exports = {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
         const t = T[lang];
         const durationMs = parseTime(interaction.options.getString('duration'));
-        if (!durationMs) return interaction.reply({ content: t.invalidTime, ephemeral: true });
+        if (!durationMs) return interaction.reply({ content: t.invalidTime, flags: 64 });
         const label = interaction.options.getString('label') || 'Timer';
         const endTime = Date.now() + durationMs;
         await interaction.deferReply();
@@ -98,7 +98,7 @@ module.exports = {
 
         const collector = msg.createMessageComponentCollector({ time: durationMs });
         collector.on('collect', async (i) => {
-            if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Not your timer.', ephemeral: true }).catch(() => {});
+            if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Not your timer.', flags: 64 }).catch(() => {});
             if (i.customId.startsWith('timer_cancel')) {
                 collector.stop('cancelled');
                 await i.update({ content: t.cancelled, embeds: [], components: [] }).catch(() => {});

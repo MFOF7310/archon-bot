@@ -75,12 +75,12 @@ module.exports = {
 
         const input = args[0];
         if (!input) {
-            return message.reply({ content: t.noEmoji, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.noEmoji, flags: 64 }).catch(() => {});
         }
 
         const embed = await buildEmojiEmbed(input, t, client, message.guild);
         if (!embed) {
-            return message.reply({ content: t.notFound, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.notFound, flags: 64 }).catch(() => {});
         }
 
         await message.reply({ embeds: [embed] }).catch(() => {});

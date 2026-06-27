@@ -49,7 +49,7 @@ module.exports = {
 
         const roleInput = args.join(' ');
         if (!roleInput) {
-            return message.reply({ content: t.noRole, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.noRole, flags: 64 }).catch(() => {});
         }
 
         // Find role by mention, ID, or name
@@ -58,7 +58,7 @@ module.exports = {
                    message.guild.roles.cache.find(r => r.name.toLowerCase().includes(roleInput.toLowerCase()));
 
         if (!role) {
-            return message.reply({ content: t.noRole, ephemeral: true }).catch(() => {});
+            return message.reply({ content: t.noRole, flags: 64 }).catch(() => {});
         }
 
         // Get key permissions

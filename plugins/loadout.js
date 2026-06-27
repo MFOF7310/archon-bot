@@ -331,7 +331,7 @@ module.exports = {
             collector.on('collect', async (i) => {
                 // Verify this interaction belongs to the command author
                 if (!i.customId.endsWith(`_${authorId}`)) {
-                    return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                    return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 }
 
                 // Handle close button

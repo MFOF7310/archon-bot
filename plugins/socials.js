@@ -242,7 +242,7 @@ module.exports = {
             if (i.user.id !== message.author.id) {
                 return i.reply({ 
                     content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', 
-                    ephemeral: true 
+                    flags: 64 
                 });
             }
             
@@ -268,7 +268,7 @@ module.exports = {
                     .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
                     .setTimestamp();
                 
-                await i.reply({ embeds: [statsEmbed], ephemeral: true });
+                await i.reply({ embeds: [statsEmbed], flags: 64 });
             }
             
             if (i.customId === 'socials_invite') {
@@ -288,7 +288,7 @@ module.exports = {
                     .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
                     .setTimestamp();
                 
-                await i.reply({ embeds: [inviteEmbed], ephemeral: true });
+                await i.reply({ embeds: [inviteEmbed], flags: 64 });
             }
         });
 

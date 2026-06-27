@@ -380,7 +380,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             const categoryCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
             
             categoryCollector.on('collect', async (i) => {
-                if (i.user.id !== userId) return i.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                if (i.user.id !== userId) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 if (i.customId === 'trivia_cancel') { await i.update({ embeds: [categoryEmbed.setColor('#ED4245')], components: [] }).catch(() => {}); return categoryCollector.stop(); }
                 if (i.customId === 'trivia_category') {
                     const selectedCategory = i.values[0];
@@ -415,13 +415,13 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                     const diffCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
                     
                     diffCollector.on('collect', async (j) => {
-                        if (j.user.id !== userId) return j.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                        if (j.user.id !== userId) return j.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                         if (j.customId === 'trivia_cancel') { await j.update({ embeds: [diffEmbed.setColor('#ED4245')], components: [] }).catch(() => {}); return diffCollector.stop(); }
                         if (j.customId === 'trivia_back') { await j.update({ embeds: [categoryEmbed], components: [categoryRow, cancelRow] }).catch(() => {}); return diffCollector.stop(); }
                         if (j.customId === 'trivia_difficulty') {
                             const selectedDifficulty = j.values[0];
                             const diff = DIFFICULTIES[selectedDifficulty];
-                            if (credits < diff.bet) return j.reply({ content: t.insufficientCredits.replace('{bet}', diff.bet), ephemeral: true }).catch(() => {});
+                            if (credits < diff.bet) return j.reply({ content: t.insufficientCredits.replace('{bet}', diff.bet), flags: 64 }).catch(() => {});
                             await j.deferUpdate().catch(() => {});
                             diffCollector.stop();
                             
@@ -461,7 +461,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                                     const answerCollector = categoryMsg.createMessageComponentCollector({ time: diff.timeLimit * 1000, max: 1 });
                                     const timeout = setTimeout(() => { answerCollector.stop('timeout'); resolve({ timeout: true }); }, diff.timeLimit * 1000);
                                     answerCollector.on('collect', async (k) => {
-                                        if (k.user.id !== userId) { await k.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {}); return; }
+                                        if (k.user.id !== userId) { await k.reply({ content: t.accessDenied, flags: 64 }).catch(() => {}); return; }
                                         clearTimeout(timeout); answerCollector.stop();
                                         const answerMap = { 'trivia_a': 0, 'trivia_b': 1, 'trivia_c': 2, 'trivia_d': 3 };
                                         const isCorrect = answerMap[k.customId] === q.correct;
@@ -491,7 +491,7 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                                 
                                 await new Promise((resolve) => {
                                     const nextCollector = categoryMsg.createMessageComponentCollector({ time: 30000, max: 1 });
-                                    nextCollector.on('collect', async (k) => { if (k.user.id !== userId) { await k.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {}); return; } await k.deferUpdate().catch(() => {}); nextCollector.stop(); resolve(); });
+                                    nextCollector.on('collect', async (k) => { if (k.user.id !== userId) { await k.reply({ content: t.accessDenied, flags: 64 }).catch(() => {}); return; } await k.deferUpdate().catch(() => {}); nextCollector.stop(); resolve(); });
                                     nextCollector.on('end', () => resolve());
                                 });
                             }
@@ -553,7 +553,7 @@ if (correctAnswers >= questions.length / 2) {
                             
                             const finalCollector = categoryMsg.createMessageComponentCollector({ time: 60000 });
                             finalCollector.on('collect', async (k) => {
-                                if (k.user.id !== userId) return k.reply({ content: t.accessDenied, ephemeral: true }).catch(() => {});
+                                if (k.user.id !== userId) return k.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                                 // Build a FRESH message context from the button interaction
                                 // (the original 'message' is stale for slash commands)
                                 const freshMsg = {

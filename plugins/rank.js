@@ -221,7 +221,7 @@ module.exports = {
 
         } catch (err) {
             console.error(`[RANK ERROR]`, err);
-            return message.reply({ content: '❌ An error occurred while loading the dossier.', ephemeral: true }).catch(() => {});
+            return message.reply({ content: '❌ An error occurred while loading the dossier.', flags: 64 }).catch(() => {});
         }
     },
 

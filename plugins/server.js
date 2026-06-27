@@ -243,7 +243,7 @@ execute: async (interaction, client) => {
                 content: lang === 'fr' 
                     ? '❌ Cette commande ne peut être utilisée que dans un serveur.' 
                     : '❌ This command can only be used in a server.', 
-                ephemeral: true 
+                flags: 64 
             });
         }
         

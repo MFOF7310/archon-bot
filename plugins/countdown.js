@@ -168,14 +168,14 @@ module.exports = {
         const t = T[lang];
         const guild = interaction.guild;
 
-        if (!guild) return interaction.reply({ content: '❌ Server only.', ephemeral: true });
+        if (!guild) return interaction.reply({ content: '❌ Server only.', flags: 64 });
 
         const name = interaction.options.getString('name');
         const dateStr = interaction.options.getString('date');
         const remind = interaction.options.getString('remind');
 
         const target = parseDate(dateStr);
-        if (!target) return interaction.reply({ content: t.invalidDate, ephemeral: true });
+        if (!target) return interaction.reply({ content: t.invalidDate, flags: 64 });
 
         const guildCountdowns = countdowns.get(guild.id) || {};
         countdownId++;
