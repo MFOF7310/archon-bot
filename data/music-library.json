@@ -248,5 +248,255 @@
     "title": "Deadmau5 - Strobe",
     "query": "Deadmau5 Strobe",
     "genre": "EDM"
+  },
+  {
+    "title": "Salif Keita - Nous Pas Bouger",
+    "query": "Salif Keita Nous Pas Bouger",
+    "genre": "Mali"
+  },
+  {
+    "title": "Salif Keita - Folon",
+    "query": "Salif Keita Folon",
+    "genre": "Mali"
+  },
+  {
+    "title": "Oumou Sangaré - Moussolou",
+    "query": "Oumou Sangare Moussolou",
+    "genre": "Mali"
+  },
+  {
+    "title": "Oumou Sangaré - Worotan",
+    "query": "Oumou Sangare Worotan",
+    "genre": "Mali"
+  },
+  {
+    "title": "Ali Farka Touré - Goye Kur",
+    "query": "Ali Farka Toure Goye Kur",
+    "genre": "Mali"
+  },
+  {
+    "title": "Ali Farka Touré - Cinquante Six",
+    "query": "Ali Farka Toure Cinquante Six",
+    "genre": "Mali"
+  },
+  {
+    "title": "Toumani Diabaté - Kaira",
+    "query": "Toumani Diabate Kaira",
+    "genre": "Mali"
+  },
+  {
+    "title": "Toumani Diabaté - Djelimady",
+    "query": "Toumani Diabate Djelimady",
+    "genre": "Mali"
+  },
+  {
+    "title": "Fatoumata Diawara - Nsera",
+    "query": "Fatoumata Diawara Nsera",
+    "genre": "Mali"
+  },
+  {
+    "title": "Fatoumata Diawara - Boloko",
+    "query": "Fatoumata Diawara Boloko",
+    "genre": "Mali"
+  },
+  {
+    "title": "Rokia Traoré - Tounkan",
+    "query": "Rokia Traore Tounkan",
+    "genre": "Mali"
+  },
+  {
+    "title": "Rokia Traoré - Kounandi",
+    "query": "Rokia Traore Kounandi",
+    "genre": "Mali"
+  },
+  {
+    "title": "Sidiki Diabaté - Kasse Mady",
+    "query": "Sidiki Diabate Kasse Mady",
+    "genre": "Mali"
+  },
+  {
+    "title": "Sidiki Diabaté - Mon Amour",
+    "query": "Sidiki Diabate Mon Amour",
+    "genre": "Mali"
+  },
+  {
+    "title": "Habib Koité - Wassiye",
+    "query": "Habib Koite Wassiye",
+    "genre": "Mali"
+  },
+  {
+    "title": "Habib Koité - Cigarette Abana",
+    "query": "Habib Koite Cigarette Abana",
+    "genre": "Mali"
+  },
+  {
+    "title": "Boubacar Traoré - Baba Drame",
+    "query": "Boubacar Traore Baba Drame",
+    "genre": "Mali"
+  },
+  {
+    "title": "Amadou & Mariam - Beaux Dimanches",
+    "query": "Amadou Mariam Beaux Dimanches",
+    "genre": "Mali"
+  },
+  {
+    "title": "Amadou & Mariam - Africa",
+    "query": "Amadou Mariam Africa",
+    "genre": "Mali"
+  },
+  {
+    "title": "Lobi Traoré - Bambara Rock",
+    "query": "Lobi Traore Bambara Rock",
+    "genre": "Mali"
+  },
+  {
+    "title": "Jay Chou - Qilixiang",
+    "query": "Jay Chou Qilixiang",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Jay Chou - Nunchucks",
+    "query": "Jay Chou Shuang Jie Gun",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Jay Chou - Blue and White Porcelain",
+    "query": "Jay Chou Qinghua Ci",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Jay Chou - Nocturne",
+    "query": "Jay Chou Ye Qu",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Teresa Teng - The Moon Represents My Heart",
+    "query": "Teresa Teng Moon Represents My Heart",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Teresa Teng - Tian Mi Mi",
+    "query": "Teresa Teng Tian Mi Mi",
+    "genre": "Chinese"
+  },
+  {
+    "title": "G.E.M. - Light Years Away",
+    "query": "GEM Guang Nian Zhi Wai",
+    "genre": "Chinese"
+  },
+  {
+    "title": "G.E.M. - Trend",
+    "query": "GEM Qu Shi",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Eason Chan - K",
+    "query": "Eason Chan K",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Eason Chan - Lonely Christmas",
+    "query": "Eason Chan Lonely Christmas",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Mayday - DNA",
+    "query": "Mayday DNA",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Mayday - You Are Not Truly Happy",
+    "query": "Mayday Ni Bu Shi Zhen Zheng De Kuai Le",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Wang Fong - Red Bean",
+    "query": "Faye Wong Red Bean",
+    "genre": "Chinese"
+  },
+  {
+    "title": "JJ Lin - Practice Love",
+    "query": "JJ Lin Cao Lian Ai Qing",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Joker Xue - Playgirl",
+    "query": "Joker Xue Playgirl",
+    "genre": "Chinese"
+  },
+  {
+    "title": "Burna Boy - Way Too Big",
+    "query": "Burna Boy Way Too Big",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Burna Boy - Kilometre",
+    "query": "Burna Boy Kilometre",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Wizkid - Soco",
+    "query": "Wizkid Soco",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Davido - Assurance",
+    "query": "Davido Assurance",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Rema - Iron Man",
+    "query": "Rema Iron Man",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Asake - Organise",
+    "query": "Asake Organise",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Kizz Daniel - Buga",
+    "query": "Kizz Daniel Buga",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Patoranking - Heal the World",
+    "query": "Patoranking Heal the World",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Yemi Alade - Johnny",
+    "query": "Yemi Alade Johnny",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Tiwa Savage - Somebody's Son",
+    "query": "Tiwa Savage Somebodys Son",
+    "genre": "Afrobeat"
+  },
+  {
+    "title": "Drake - Laugh Now Cry Later",
+    "query": "Drake Laugh Now Cry Later",
+    "genre": "HipHop"
+  },
+  {
+    "title": "Kendrick Lamar - Not Like Us",
+    "query": "Kendrick Lamar Not Like Us",
+    "genre": "HipHop"
+  },
+  {
+    "title": "Tyler the Creator - EARFQUAKE",
+    "query": "Tyler the Creator EARFQUAKE",
+    "genre": "HipHop"
+  },
+  {
+    "title": "Childish Gambino - Redbone",
+    "query": "Childish Gambino Redbone",
+    "genre": "HipHop"
+  },
+  {
+    "title": "Frank Ocean - Nights",
+    "query": "Frank Ocean Nights",
+    "genre": "HipHop"
   }
 ]

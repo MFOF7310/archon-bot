@@ -656,7 +656,7 @@ module.exports = {
             if (results.length < 5) {
                 try {
                     const lib = require('../data/music-library.json');
-                    const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡' };
+                    const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄' };
                     const filtered = focused.length === 0
                         ? lib.slice(0, 5 - results.length)
                         : lib.filter(t =>
