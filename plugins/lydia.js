@@ -127,6 +127,44 @@ const LANG_NAMES = {
 // BOT KNOWLEDGE BASE
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ── Dynamic changelog reader ──────────────────────────
+const fs = require('fs');
+const path = require('path');
+
+function getChangelogSummary() {
+    try {
+        const changelogPath = path.join(__dirname, '..', 'changelog.md');
+        if (!fs.existsSync(changelogPath)) return 'No changelog available yet.';
+        const raw = fs.readFileSync(changelogPath, 'utf8');
+        const lines = raw.split('\n');
+        const summary = [];
+        let inSection = false;
+        let lineCount = 0;
+        for (const line of lines) {
+            if (line.includes('EXECUTIVE SUMMARY') || line.includes('Detected Changes')) {
+                inSection = true;
+                summary.push(line);
+                lineCount = 0;
+                continue;
+            }
+            if (inSection) {
+                if (line.startsWith('## ') && !line.includes('EXECUTIVE')) {
+                    inSection = false;
+                    continue;
+                }
+                summary.push(line);
+                lineCount++;
+                if (lineCount > 20) inSection = false;
+            }
+        }
+        const bootLine = lines.find(l => l.includes('Last System Boot:'));
+        if (bootLine) summary.push('\n' + bootLine);
+        return summary.join('\n').substring(0, 1500) || 'Changelog loaded but empty.';
+    } catch(e) {
+        return 'Could not load changelog: ' + e.message;
+    }
+}
+
 const BOT_KNOWLEDGE = `
 You are Lydia, the onboard AI expert monitor for ARCHON CG-223
 
@@ -966,7 +1004,12 @@ Your responses are displayed in Discord embeds. Follow these formatting rules ST
 15. EXAMPLE RIGHT: 2-3 short paragraphs, each with a clear point, separated by blank lines.
 `;
 
+  const changelogSummary = getChangelogSummary();
   return `${BOT_KNOWLEDGE}
+
+LIVE SYSTEM REPORT — AUTO-GENERATED AT BOOT:
+${changelogSummary}
+
 
 ${languageInstruction}
 
