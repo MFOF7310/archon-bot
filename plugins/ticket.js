@@ -50,7 +50,7 @@ const CATS = [
 const TX = {
     en: {
         sTitle:'🎫 TICKET SYSTEM', sDesc:'**Configure your ticket system.**',
-        sUsage:p=>`\`${p}ticket setcategory <id>\` — Archive category\n\`${p}ticket setstaffrole <id>\` — Staff role\n\`${p}ticket settranscript <id>\` — Log channel\n\`${p}ticket setautoclose <h>\` — Auto-close (0=off)\n\`${p}ticket setlimit <1-10>\` — Max per user\n\`${p}ticket config\` — View config`,
+        sUsage:p=>`\`/channels set\` — Set ticket category & log channel\n\`/roles set type:Staff/Ticket Role\` — Set staff role\n\`/ticket setautoclose\` — Auto-close hours\n\`/ticket setlimit\` — Max tickets per user\n\`/ticket config\` — View config`,
         pTitle:'🎫 Support', pDesc:g=>`Need help? Select a category below to open a private ticket.`, pFooter:'🦅 ARCHON CG-223',
         made:'✅ Ticket created', welcome:'🎫 NEW TICKET',
         wDesc:(u,c)=>`Hi <@${u}>, staff will assist you shortly.\n**Category:** ${c}`,
@@ -60,7 +60,7 @@ const TX = {
         closing:'🔒 Closing in 5s...', closedBy:u=>`🔒 Closed by <@${u}>`,
         closedLog:(u,c,cat)=>`Ticket #${c} closed | Creator: <@${u}> | ${cat}`,
         txSaved:'📄 Log saved!', noPerm:'❌ Staff or creator only.', staffOnly:'❌ Staff only.',
-        notSet:'⚠️ **Not configured.** Run `.ticket setup` then `.ticket setcategory <id>`',
+        notSet:'⚠️ **Not configured.** Use `/ticket setup` → `/channels set` and `/roles set` to configure.',
         createErr:'❌ Failed to create ticket.', maxT:l=>`❌ Max ${l} ticket(s).`,
         by:'By', at:'Created', claimed:'Claimed', cat:'Category', st:'Status',
         open:'🟢 Open', claimed2:'🟡 Claimed', closing2:'🔴 Closing',
@@ -69,7 +69,7 @@ const TX = {
         cfgTx:'📄 Log Channel', cfgLog:'📋 Extra Log', cfgAC:'⏰ Auto-Close', cfgLim:'🔢 Limit',
         cfgNS:'Not set', cfgOff:'Off', cfgFoot:'🦅 ARCHON CG-223',
         setOK:(s,v)=>`✅ **${s}** → ${v}`, badCh:'❌ Channel not found.', badRole:'❌ Role not found.', badNum:'❌ Invalid number.', needAdmin:'❌ Admin required.',
-        helpCmds:p=>`\`${p}ticket panel\` — Post panel\n\`${p}ticket close\` — Close\n\`${p}ticket config\` — View config\n\`${p}ticket setcategory <id>\` — Category\n\`${p}ticket setstaffrole <id>\` — Staff role\n\`${p}ticket settranscript <id>\` — Log channel\n\`${p}ticket setautoclose <h>\` — Auto-close\n\`${p}ticket setlimit <1-10>\` — Max per user`,
+        helpCmds:p=>`\`${p}ticket panel\` — Post panel\n\`${p}ticket close\` — Close\n\`${p}ticket config\` — View config\n\`/channels set\` — Set ticket channels\n\`/roles set\` — Set staff role\n\`/ticket setautoclose\` — Auto-close hours\n\`/ticket setlimit\` — Max tickets per user`,
     },
     fr: {
         sTitle:'🎫 SYSTÈME DE TICKETS', sDesc:'**Configurez votre système.**',
