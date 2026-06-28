@@ -62,8 +62,6 @@ data: new SlashCommandBuilder()
             { name: '💰 Market Enabled', value: 'marketenabled' },
             { name: '💤 AFK System', value: 'afk' },
             { name: '🤖 Lydia AI', value: 'ai' },
-            { name: '👤 Member Role', value: 'member' },
-            { name: '📊 Market Channel', value: 'market' },
         )
     )
     .addStringOption(opt => opt
