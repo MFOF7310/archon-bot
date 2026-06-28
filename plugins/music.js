@@ -995,7 +995,7 @@ module.exports = {
                 ctx.beginPath(); ctx.moveTo(W-40,1); ctx.lineTo(W-1,1); ctx.lineTo(W-1,40); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(1,H-40); ctx.lineTo(1,H-1); ctx.lineTo(40,H-1); ctx.stroke();
 
-                const png = c.encode('png');
+                const png = await c.encode('png');
                 const { AttachmentBuilder, EmbedBuilder: EB2 } = require('discord.js');
                 const attachment = new AttachmentBuilder(png, { name: 'nowplaying.png' });
                 // Build a clean minimal embed that just hosts the image
@@ -1093,6 +1093,21 @@ module.exports = {
                 rows.push(row);
             }
 
+            // Pagination buttons
+            const { ButtonBuilder: BB2, ButtonStyle: BS2 } = require('discord.js');
+            const navRow = new ActionRowBuilder();
+            if (pageNum > 1) {
+                navRow.addComponents(
+                    new BB2().setCustomId(`ml_page_${genreFilter}_${pageNum-1}`).setLabel('◀ Previous').setStyle(BS2.Secondary)
+                );
+            }
+            if (pageNum < totalPages) {
+                navRow.addComponents(
+                    new BB2().setCustomId(`ml_page_${genreFilter}_${pageNum+1}`).setLabel('Next ▶').setStyle(BS2.Primary)
+                );
+            }
+            if (navRow.components.length > 0) rows.push(navRow);
+
             const msg = await interaction.editReply({ embeds: [embed], components: rows });
 
             // Button collector — play the selected track
@@ -1112,6 +1127,60 @@ module.exports = {
                         query, i.user.username, client,
                         async (opts) => { await i.followUp({ ...opts, flags: 64 }).catch(() => {}); return null; }
                     );
+                });
+                collector.on('collect', async (i) => {
+                    if (i.customId.startsWith('ml_page_')) {
+                        const parts = i.customId.split('_');
+                        const newGenre = parts[2];
+                        const newPage = parseInt(parts[3]);
+                        await i.deferUpdate().catch(() => {});
+
+                        const lib2 = require('../data/music-library.json');
+                        const genreEmoji2 = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄' };
+                        const filtered2 = newGenre === 'all' ? lib2 : lib2.filter(t => t.genre === newGenre);
+                        const totalPages2 = Math.ceil(filtered2.length / PER_PAGE);
+                        const slice2 = filtered2.slice((newPage-1)*PER_PAGE, newPage*PER_PAGE);
+                        const genreLabel2 = newGenre === 'all' ? '🎵 All Genres' : `${genreEmoji2[newGenre]||'🎵'} ${newGenre}`;
+
+                        const trackList2 = slice2.map((t,idx) => {
+                            const n = (newPage-1)*PER_PAGE+idx+1;
+                            return `\`${String(n).padStart(3,'0')}\` ${genreEmoji2[t.genre]||'🎵'} **${t.title}**`;
+                        }).join('\n');
+
+                        const embed2 = new EmbedBuilder()
+                            .setColor(ARCHON.cyan)
+                            .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC LIBRARY //', iconURL: client.user.displayAvatarURL() })
+                            .setTitle(`📚 ${genreLabel2}`)
+                            .setDescription(trackList2)
+                            .addFields(
+                                { name: 'Total Tracks', value: `\`${filtered2.length}\``, inline: true },
+                                { name: 'Page', value: `\`${newPage}/${totalPages2}\``, inline: true },
+                                { name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0,40)}` : '⏹️ Nothing', inline: true },
+                            )
+                            .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /music play <song name> to queue any track` })
+                            .setTimestamp();
+
+                        const rows2 = [];
+                        const btnSlice2 = slice2.slice(0,5);
+                        if (btnSlice2.length > 0) {
+                            const { ActionRowBuilder: ARB2, ButtonBuilder: BB3, ButtonStyle: BS3 } = require('discord.js');
+                            const row2 = new ARB2();
+                            for (const t of btnSlice2) {
+                                row2.addComponents(
+                                    new BB3().setCustomId(`ml_play_${Buffer.from(t.query).toString('base64').substring(0,80)}`).setLabel(t.title.substring(0,20)).setEmoji(genreEmoji2[t.genre]||'🎵').setStyle(BS3.Secondary)
+                                );
+                            }
+                            rows2.push(row2);
+                        }
+                        const { ActionRowBuilder: ARB3, ButtonBuilder: BB4, ButtonStyle: BS4 } = require('discord.js');
+                        const navRow2 = new ARB3();
+                        if (newPage > 1) navRow2.addComponents(new BB4().setCustomId(`ml_page_${newGenre}_${newPage-1}`).setLabel('◀ Previous').setStyle(BS4.Secondary));
+                        if (newPage < totalPages2) navRow2.addComponents(new BB4().setCustomId(`ml_page_${newGenre}_${newPage+1}`).setLabel('Next ▶').setStyle(BS4.Primary));
+                        if (navRow2.components.length > 0) rows2.push(navRow2);
+
+                        await msg.edit({ embeds: [embed2], components: rows2 }).catch(() => {});
+                        return;
+                    }
                 });
                 collector.on('end', () => { msg.edit?.({ components: [] }).catch(() => {}); });
             }
