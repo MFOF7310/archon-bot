@@ -1114,6 +1114,8 @@ module.exports = {
             if (msg && rows.length > 0) {
                 const collector = msg.createMessageComponentCollector({ time: 60000 });
                 collector.on('collect', async (i) => {
+                    // Ignore page navigation buttons — handled by separate collector
+                    if (i.customId.startsWith('ml_page_')) return;
                     if (!i.member?.voice?.channel) {
                         return i.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
                     }
