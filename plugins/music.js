@@ -199,7 +199,7 @@ async function updatePersistentPanel(q) {
             q.persistentMsg = await q.textChannel.send({ embeds: [embed], components: [row1] }).catch(() => null);
             // Set up button collector on persistent message
             if (q.persistentMsg) {
-                const collector = q.persistentMsg.createMessageComponentCollector({ time: 3600000 });
+                const collector = q.persistentMsg.createMessageComponentCollector({ time: 21600000 }); // 6 hours
                 collector.on('collect', async (i) => {
                     if (!i.member?.voice?.channel) return i.reply({ content: '❌ Join a voice channel!', flags: 64 }).catch(() => {});
                     await i.deferUpdate().catch(() => {});
@@ -224,7 +224,8 @@ async function updatePersistentPanel(q) {
                         destroyQueue(q.guild.id);
                     } else if (i.customId === 'mc_loop') {
                         qNow.loop = !qNow.loop;
-                        if (qNow.loop && qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
+                        // NOTE: do NOT unshift here — AudioPlayerStatus.Idle handler does it
+                        // Unshifting here caused the current track to play twice
                         await updatePersistentPanel(qNow);
                     } else if (i.customId === 'mc_queue') {
                         await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
