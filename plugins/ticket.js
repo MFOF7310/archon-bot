@@ -15,13 +15,21 @@ function effectiveSettings(ss, gid) {
 function setupTicketDB(db) {
     try {
         db.prepare(`CREATE TABLE IF NOT EXISTS tickets (channel_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, creator_id TEXT NOT NULL, creator_tag TEXT, created_at INTEGER, claimed_by TEXT, category TEXT, category_value TEXT, ticket_number INTEGER, participants TEXT, status TEXT DEFAULT 'open', priority TEXT DEFAULT 'normal', closed_at INTEGER, closed_by TEXT, transcript TEXT)`).run();
+        // Add missing columns safely
+        const ticketCols = db.prepare("PRAGMA table_info(tickets)").all().map(c => c.name);
+        const newCols = { status: "TEXT DEFAULT 'open'", priority: "TEXT DEFAULT 'normal'", closed_at: "INTEGER", closed_by: "TEXT", transcript: "TEXT" };
+        for (const [col, type] of Object.entries(newCols)) {
+            if (!ticketCols.includes(col)) {
+                try { db.prepare('ALTER TABLE tickets ADD COLUMN ' + col + ' ' + type).run(); } catch(e) {}
+            }
+        }
         db.prepare(`ALTER TABLE tickets ADD COLUMN status TEXT DEFAULT 'open'`).prepare = undefined;
         ['status','priority','closed_at','closed_by','transcript'].forEach(col => { try { db.prepare(`ALTER TABLE tickets ADD COLUMN ${col} TEXT`).run(); } catch(e) { /* column exists */ } });
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_tg ON tickets(guild_id)`).run();
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_tc ON tickets(creator_id)`).run();
     } catch(e) { console.error('[TDB] setup:', e.message); }
 }
-function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets VALUES (?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy, t.category, t.categoryValue, t.number, JSON.stringify(t.participants||[t.creatorId])); } catch(e) { console.error('[TDB] save:', e.message); } }
+function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets (channel_id, guild_id, creator_id, creator_tag, created_at, claimed_by, category, category_value, ticket_number, participants, status, priority, closed_at, closed_by, transcript) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy||null, t.category||null, t.categoryValue||null, t.number||0, JSON.stringify(t.participants||[t.creatorId]), t.status||'open', t.priority||'normal', t.closedAt||null, t.closedBy||null, t.transcript||null); } catch(e) { console.error('[TDB] save:', e.message); } }
 function loadTicket(db, cid) { try { const r = db.prepare(`SELECT * FROM tickets WHERE channel_id=?`).get(cid); if(!r) return null; return { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]') }; } catch(e) { return null; } }
 function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph})`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]') })); const sk = db.prepare(`SELECT COUNT(*) as c FROM tickets WHERE guild_id NOT IN (${ph})`).get(...gids); if(sk?.c) { db.prepare(`DELETE FROM tickets WHERE guild_id NOT IN (${ph})`).run(...gids); console.log(`[TDB] cleaned ${sk.c} orphans`); } if(rows.length) console.log(`[TDB] restored ${rows.length} tickets`); } catch(e) {} }
 function delTicket(db, cid) { try { db.prepare(`DELETE FROM tickets WHERE channel_id=?`).run(cid); } catch(e) {} }
@@ -292,7 +300,7 @@ module.exports = {
         const isC=uid===crid, isS=isStaff(ix.member,ss);
 
         // CLAIM
-        if(act==='claim'){if(!isS)return ix.reply({content:t.staffOnlyClaim,flags:1<<6}).catch(()=>{});if(tk?.claimedBy)return ix.reply({content:t.already,flags:1<<6}).catch(()=>{});tk.claimedBy=uid;if(db)saveTicket(db,cid,tk);try{const msgs=await ix.channel.messages.fetch({limit:10});const wm=msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));if(wm&&wm.embeds[0]){const ne=EmbedBuilder.from(wm.embeds[0]).spliceFields(3,1,{name:t.st,value:`${t.claimed2}\n${t.claimed}: <@${uid}>`,inline:true});await wm.edit({embeds:[ne]}).catch(()=>{});}}catch(e){}await ix.channel.send(t.claimed(uid));await ix.reply({content:'✅ Claimed.',flags:1<<6}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
+        if(act==='claim'){if(!isS)return ix.reply({content:t.staffOnlyClaim,flags:1<<6}).catch(()=>{});if(tk?.claimedBy)return ix.reply({content:t.already,flags:1<<6}).catch(()=>{});tk.claimedBy=uid;if(db)saveTicket(db,cid,tk);try{const msgs=await ix.channel.messages.fetch({limit:10});const wm=msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));if(wm&&wm.embeds[0]){const ne=EmbedBuilder.from(wm.embeds[0]).spliceFields(3,1,{name:t.st,value:`${t.claimed2}\n${t.claimed}: <@${uid}>`,inline:true});await wm.edit({embeds:[ne]}).catch(()=>{});}}catch(e){}await ix.channel.send(typeof t.claimed === 'function' ? t.claimed(uid) : `🙋 <@${uid}> claimed this ticket.`);await ix.reply({content:'✅ Claimed.',flags:1<<6}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
 
         // CLOSE (confirm)
         if(act==='close'){if(!isC&&!isS)return ix.reply({content:t.noPerm,flags:1<<6}).catch(()=>{});const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t.closeQ).setDescription(t.closeD);const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t.closeY).setStyle(ButtonStyle.Danger).setEmoji('✅'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t.closeN).setStyle(ButtonStyle.Secondary).setEmoji('❌'));await ix.reply({embeds:[e],components:[r],flags:1<<6}).catch(()=>{});return true;}
