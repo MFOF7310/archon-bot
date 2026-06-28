@@ -267,7 +267,7 @@ if (action === 'alert' || args[0]?.toLowerCase() === 'alert') {
                 return message.reply(
                     `❌ **Market test failed to send.**\n\n` +
                     `Possible causes:\n` +
-                    `• No market channel configured (run \`.serversettings set market #channel\`)\n` +
+                    `• No market channel configured (run \`./channels set type:Market #channel\`)\n` +
                     `• Bot lacks SendMessages/EmbedLinks in the target channel\n` +
                     `• Channel was deleted or the bot can't see it\n\n` +
                     `**Current config:** \`${serverSettings?.marketChannel || 'NOT SET'}\``
