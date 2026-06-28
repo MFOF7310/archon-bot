@@ -45,6 +45,7 @@ function createQueue(guild, voiceChannel, textChannel, client) {
         connection: null, player: null,
         tracks: [], currentTrack: null, trackHistory: [],
         volume: 80, loop: false, autoplay: true,
+        libraryIndex: -1, // -1 = not in library mode; >= 0 = current library position
         startTime: null, pausedAt: null, totalPaused: 0,
         persistentMsg: null, updateInterval: null,
         inactivityTimer: null,
@@ -355,26 +356,29 @@ async function playNext(q) {
     if (!q || !q.guild) return; // Guard: queue destroyed
     if (q.tracks.length > 0 && !q.tracks[0]) { q.tracks = q.tracks.filter(Boolean); }
     if (q.tracks.length === 0) {
-        // Autoplay — find similar (skip if source was file or artist unknown)
+        // Smart autoplay — library-aware sequential play
         if (q.autoplay && q.currentTrack && q.currentTrack.source !== 'file') {
-            const artist = q.currentTrack.artist && q.currentTrack.artist !== 'Unknown' && q.currentTrack.artist !== 'File Upload'
-                ? q.currentTrack.artist
-                : null;
-            const similar = artist || q.currentTrack.title.split(' ').slice(0,3).join(' ');
-            if (similar && similar.length > 2) {
+            try {
+                const lib = require('../data/music-library.json');
+                // Advance library index
+                q.libraryIndex = (q.libraryIndex + 1) % lib.length;
+                const next = lib[q.libraryIndex];
                 q.tracks.push({
-                    title: similar,
-                    query: similar,
+                    title: next.title,
+                    query: next.query,
                     artist: 'Unknown', source: 'SoundCloud',
                     duration: 0, thumbnail: null,
-                    requestedBy: '🤖 Autoplay', url: null,
+                    requestedBy: `🤖 Library • ${next.genre}`, url: null,
+                    _libraryIndex: q.libraryIndex,
                 });
-                console.log('[MUSIC] Autoplay:', similar);
-            } else {
-                console.log('[MUSIC] Autoplay skipped — no valid query');
+                console.log(`[MUSIC] Smart autoplay [${q.libraryIndex}/${lib.length}]: ${next.title}`);
+            } catch(e) {
+                // Fallback to old artist-based search if library missing
+                const similar = q.currentTrack.title.split(' ').slice(0,3).join(' ');
+                if (similar.length > 2) {
+                    q.tracks.push({ title: similar, query: similar, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy: '🤖 Autoplay', url: null });
+                }
             }
-            q.textChannel?.send({ embeds: [new EmbedBuilder().setColor(ARCHON.orange).setDescription('🎵 Queue finished. Leaving in **3 minutes** if nothing is added.\n> Use `/music play` to keep the session going.')] }).catch(() => {});
-            resetInactivityTimer(q);
             return;
         }
     }
@@ -385,6 +389,10 @@ async function playNext(q) {
     if (q.currentTrack) {
         q.trackHistory.unshift({...q.currentTrack});
         if (q.trackHistory.length > 5) q.trackHistory.pop();
+    }
+    // Sync libraryIndex if this track came from library
+    if (track._libraryIndex !== undefined && track._libraryIndex >= 0) {
+        q.libraryIndex = track._libraryIndex;
     }
     q.currentTrack = track;
     q.startTime = Date.now();
@@ -543,7 +551,17 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     q.textChannel = textChannel;
     q._client = client;
 
-    const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, url: null };
+    // Check if query matches a library track — sync libraryIndex for smart autoplay
+    let libIdx = -1;
+    try {
+        const lib = require('../data/music-library.json');
+        libIdx = lib.findIndex(t => t.query === query || t.title === query);
+    } catch(e) {}
+    const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, url: null, _libraryIndex: libIdx };
+    if (libIdx >= 0) {
+        let q2 = getQueue(guildId);
+        if (q2) q2.libraryIndex = libIdx;
+    }
     if (q.tracks.length >= 50) {
         await replyFn({ content: '❌ Queue is full! Max 50 tracks. Use `/music skip` or `/music stop` to clear.' });
         return;
@@ -624,7 +642,18 @@ module.exports = {
         .addSubcommand(s => s.setName('nowplaying').setDescription('🎵 Now playing info'))
         .addSubcommand(s => s.setName('volume').setDescription('🎚️ Set volume').addIntegerOption(o => o.setName('level').setDescription('1-100').setRequired(true).setMinValue(1).setMaxValue(100)))
         .addSubcommand(s => s.setName('loop').setDescription('🔁 Toggle loop'))
-        .addSubcommand(s => s.setName('autoplay').setDescription('🔀 Toggle autoplay')),
+        .addSubcommand(s => s.setName('autoplay').setDescription('🔀 Toggle autoplay'))
+        .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library')
+            .addStringOption(o => o.setName('genre').setDescription('Filter by genre').setRequired(false)
+                .addChoices(
+                    { name: '🌍 Afrobeat', value: 'Afrobeat' },
+                    { name: '🇲🇱 Mali / West African', value: 'Mali' },
+                    { name: '🎤 Hip-Hop / Rap', value: 'HipHop' },
+                    { name: '⚡ Electronic / EDM', value: 'EDM' },
+                    { name: '🀄 Chinese', value: 'Chinese' },
+                    { name: '🎵 All Genres', value: 'all' }
+                ))
+            .addIntegerOption(o => o.setName('page').setDescription('Page number').setRequired(false).setMinValue(1))),
 
     // PREFIX — .play <query>
     run: async (client, message, args, db, serverSettings, usedCommand) => {
@@ -839,6 +868,85 @@ module.exports = {
             const embed = new EmbedBuilder().setColor(q.autoplay ? ARCHON.green : ARCHON.orange)
                 .setDescription(`\`\`\`ansi\n\u001b[1;${q.autoplay?'32':'33'}m▸ AUTOPLAY ${q.autoplay?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
+        }
+
+        // ── LIBRARY ──
+        if (sub === 'library') {
+            let lib;
+            try { lib = require('../data/music-library.json'); }
+            catch(e) { return interaction.editReply({ content: '❌ Library not found on server.' }); }
+
+            const genreFilter = interaction.options.getString('genre') || 'all';
+            const page = interaction.options.getInteger('page') || 1;
+            const PER_PAGE = 10;
+            const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄' };
+
+            const filtered = genreFilter === 'all' ? lib : lib.filter(t => t.genre === genreFilter);
+            const totalPages = Math.ceil(filtered.length / PER_PAGE);
+            const pageNum = Math.min(page, totalPages);
+            const slice = filtered.slice((pageNum - 1) * PER_PAGE, pageNum * PER_PAGE);
+
+            const genreLabel = genreFilter === 'all' ? '🎵 All Genres' : `${genreEmoji[genreFilter] || '🎵'} ${genreFilter}`;
+            const trackList = slice.map((t, i) => {
+                const idx = (pageNum - 1) * PER_PAGE + i + 1;
+                const emoji = genreEmoji[t.genre] || '🎵';
+                return `\`${String(idx).padStart(3, '0')}\` ${emoji} **${t.title}**`;
+            }).join('\n');
+
+            const embed = new EmbedBuilder()
+                .setColor(ARCHON.cyan)
+                .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC LIBRARY //', iconURL: client.user.displayAvatarURL() })
+                .setTitle(`📚 ${genreLabel}`)
+                .setDescription(trackList)
+                .addFields(
+                    { name: 'Total Tracks', value: `\`${filtered.length}\``, inline: true },
+                    { name: 'Page', value: `\`${pageNum}/${totalPages}\``, inline: true },
+                    { name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0,40)}` : '⏹️ Nothing', inline: true },
+                )
+                .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /music play <song name> to queue any track` })
+                .setTimestamp();
+
+            // Play buttons (max 5 per row, up to 2 rows = 10 buttons)
+            const rows = [];
+            const btnSlice = slice.slice(0, 5); // first 5 tracks get play buttons
+            if (btnSlice.length > 0) {
+                const { ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = require('discord.js');
+                const row = new ARB();
+                for (const t of btnSlice) {
+                    row.addComponents(
+                        new BB()
+                            .setCustomId(`ml_play_${Buffer.from(t.query).toString('base64').substring(0,80)}`)
+                            .setLabel(t.title.substring(0, 20))
+                            .setEmoji(genreEmoji[t.genre] || '🎵')
+                            .setStyle(BS.Secondary)
+                    );
+                }
+                rows.push(row);
+            }
+
+            const msg = await interaction.editReply({ embeds: [embed], components: rows });
+
+            // Button collector — play the selected track
+            if (msg && rows.length > 0) {
+                const collector = msg.createMessageComponentCollector({ time: 60000 });
+                collector.on('collect', async (i) => {
+                    if (!i.member?.voice?.channel) {
+                        return i.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
+                    }
+                    await i.deferUpdate().catch(() => {});
+                    const b64 = i.customId.replace('ml_play_', '');
+                    let query;
+                    try { query = Buffer.from(b64, 'base64').toString('utf8'); } catch(e) { return; }
+                    await handlePlay(
+                        interaction.guild.id, interaction.guild,
+                        i.member.voice.channel, interaction.channel,
+                        query, i.user.username, client,
+                        async (opts) => { await i.followUp({ ...opts, flags: 64 }).catch(() => {}); return null; }
+                    );
+                });
+                collector.on('end', () => { msg.edit?.({ components: [] }).catch(() => {}); });
+            }
+            return;
         }
     }
 };
