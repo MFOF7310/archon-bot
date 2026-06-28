@@ -377,7 +377,7 @@ async runStep5(interaction, client, guild, state, t, prefix, userId) {
         await i.deferUpdate().catch(() => {});
         if (i.customId === 'setup_finish') {
             collector.stop();
-            await i.editReply({ content: '✅ **Setup complete!** Use `/serversettings view` to review.', embeds: [], components: [] }).catch(() => {});
+            await i.editReply({ content: '✅ **Setup complete!** Use `/serversettings view`, `/channels view` and `/roles view` to review.', embeds: [], components: [] }).catch(() => {});
             }
         });
     }
