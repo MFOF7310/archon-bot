@@ -640,28 +640,43 @@ module.exports = {
     },
 
     autocomplete: async (interaction, client) => {
-        const focused = interaction.options.getFocused();
+        const focused = interaction.options.getFocused().toLowerCase();
         try {
-            // Always show history first (instant)
+            const results = [];
+
+            // 1. Guild history first (personalized, max 3)
             const history = client.db?.prepare(
-                'SELECT title, query FROM music_history WHERE guild_id = ? AND (title LIKE ? OR query LIKE ?) ORDER BY play_count DESC, played_at DESC LIMIT 5'
+                'SELECT title, query FROM music_history WHERE guild_id = ? AND (LOWER(title) LIKE ? OR LOWER(query) LIKE ?) ORDER BY play_count DESC, played_at DESC LIMIT 3'
             ).all(interaction.guild?.id, `%${focused}%`, `%${focused}%`) || [];
-
-            if (history.length > 0) {
-                await interaction.respond(
-                    history.map(r => ({ name: `🕐 ${r.title.substring(0,95)}`, value: r.query.substring(0,100) }))
-                ).catch(() => {});
-                return;
+            for (const r of history) {
+                results.push({ name: `🕐 ${r.title.substring(0,93)}`, value: r.query.substring(0,100) });
             }
 
-            // No history — just echo the query back as an option
-            if (focused.length >= 1) {
-                await interaction.respond([
-                    { name: `🔍 Search: ${focused.substring(0,90)}`, value: focused.substring(0,100) }
-                ]).catch(() => {});
-            } else {
-                await interaction.respond([]).catch(() => {});
+            // 2. Fill remaining slots from curated library (max 5 total)
+            if (results.length < 5) {
+                try {
+                    const lib = require('../data/music-library.json');
+                    const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡' };
+                    const filtered = focused.length === 0
+                        ? lib.slice(0, 5 - results.length)
+                        : lib.filter(t =>
+                            t.title.toLowerCase().includes(focused) ||
+                            t.query.toLowerCase().includes(focused) ||
+                            t.genre.toLowerCase().includes(focused)
+                          ).slice(0, 5 - results.length);
+                    for (const t of filtered) {
+                        const emoji = genreEmoji[t.genre] || '🎵';
+                        results.push({ name: `${emoji} ${t.title.substring(0,93)}`, value: t.query.substring(0,100) });
+                    }
+                } catch(e) {}
             }
+
+            // 3. If user typed something and we have room, add live search option
+            if (focused.length >= 2 && results.length < 5) {
+                results.push({ name: `🔍 Search: ${focused.substring(0,88)}`, value: focused.substring(0,100) });
+            }
+
+            await interaction.respond(results.slice(0,5)).catch(() => {});
         } catch(e) {
             await interaction.respond([]).catch(() => {});
         }
