@@ -816,7 +816,9 @@ function ensureTableColumns(db, tableName, expectedColumns) {
                 const defaultClause = col.default !== undefined ? ` DEFAULT ${col.default}` : '';
                 // ✅ SECURE: All identifiers validated before interpolation
                 const alterSQL = `ALTER TABLE ${tableName} ADD COLUMN ${col.name} ${col.type}${defaultClause}`;
-                db.exec(alterSQL);
+                try { db.exec(alterSQL); } catch(e) {
+                    if (!e.message.includes('duplicate column')) throw e;
+                }
                 console.log(`${green}[AUTO-REPAIR]${reset} Added ${tableName}.${col.name}${defaultClause ? ` (default: ${col.default})` : ''}`);
                 added++;
             }
