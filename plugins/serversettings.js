@@ -74,7 +74,7 @@ data: new SlashCommandBuilder()
             { name: '🛒 Shop Channel', value: 'shop' },
             { name: '📊 Market Channel', value: 'market' },
             { name: '📈 Investor Role', value: 'investorrole' },
-            { name: '🏠 General Channel', value: 'generalchannel' },
+            { name: '🏠 General Channel', value: 'general' },
             { name: '🎮 Gamer Role', value: 'gamerrole' },
             { name: '🧠 Quiz Master Role', value: 'quizmasterrole' },
             { name: '⚔️ Duelist Role', value: 'duelistrole' },
