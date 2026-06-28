@@ -123,6 +123,30 @@ async function renderWelcomeCard(member, count, cfg) {
     ctx.imageSmoothingQuality = 'high';
     ctx.textBaseline = 'middle';
 
+    // ── Background ──
+    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+    bgGrad.addColorStop(0,   '#0a0e1a');
+    bgGrad.addColorStop(0.5, '#0d1525');
+    bgGrad.addColorStop(1,   '#0a0e1a');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle grid lines
+    ctx.strokeStyle = 'rgba(0, 251, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 28) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 28) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Card border
+    ctx.strokeStyle = 'rgba(0, 251, 255, 0.20)';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, 1, 1, W - 2, H - 2, 8);
+    ctx.stroke();
+
     // Avatar — scaled to fit smaller canvas
     const av = await loadImage(
         member.user.displayAvatarURL({ extension: 'png', size: 256 })
@@ -220,6 +244,30 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.textBaseline = 'middle';
+
+    // ── Background ──
+    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+    bgGrad.addColorStop(0,   '#1a0a0a');
+    bgGrad.addColorStop(0.5, '#1f0d0d');
+    bgGrad.addColorStop(1,   '#1a0a0a');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle grid lines
+    ctx.strokeStyle = 'rgba(231, 76, 60, 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 28) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 28) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Card border
+    ctx.strokeStyle = 'rgba(231, 76, 60, 0.25)';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, 1, 1, W - 2, H - 2, 8);
+    ctx.stroke();
 
     const av = await loadImage(
         member.user.displayAvatarURL({ extension: 'png', size: 256 })
