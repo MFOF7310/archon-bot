@@ -43,7 +43,7 @@ function createQueue(guild, voiceChannel, textChannel, client) {
     const state = {
         guild, voiceChannel, textChannel, _client: client,
         connection: null, player: null,
-        tracks: [], currentTrack: null,
+        tracks: [], currentTrack: null, trackHistory: [],
         volume: 80, loop: false, autoplay: true,
         startTime: null, pausedAt: null, totalPaused: 0,
         persistentMsg: null, updateInterval: null,
@@ -121,12 +121,13 @@ function buildNowPlayingEmbed(q, client) {
 
 function buildControls(q) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
+    const hasPrev = q.trackHistory && q.trackHistory.length > 0;
     return new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
         new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
         new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
         new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
         new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
-        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
     );
 }
 
@@ -181,12 +182,13 @@ async function updatePersistentPanel(q) {
         .setFooter({ text: `BAMAKO_223 🇲🇱 • Queue: ${q.tracks.length} • Loop: ${q.loop ? 'ON' : 'OFF'} • Auto: ${q.autoplay ? 'ON' : 'OFF'} • Updates every 15s` })
         .setTimestamp();
 
+    const hasPrev = q.trackHistory && q.trackHistory.length > 0;
     const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
         new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
         new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
         new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
         new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
-        new ButtonBuilder().setCustomId('mc_queue').setLabel(`Queue (${q.tracks.length})`).setStyle(ButtonStyle.Secondary).setEmoji('📋'),
     );
 
     try {
@@ -205,7 +207,17 @@ async function updatePersistentPanel(q) {
                     await i.deferUpdate().catch(() => {});
                     const qNow = getQueue(q.guild.id);
                     if (!qNow) return;
-                    if (i.customId === 'mc_pause') {
+                    if (i.customId === 'mc_prev') {
+                        if (!qNow.trackHistory || qNow.trackHistory.length === 0) {
+                            await i.followUp({ content: '⏮️ No previous track.', flags: 64 }).catch(() => {});
+                            return;
+                        }
+                        const prev = qNow.trackHistory.shift();
+                        // Put current track back at front of queue, play previous
+                        if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
+                        qNow.tracks.unshift(prev);
+                        qNow.player.stop(); // Triggers Idle → playNext
+                    } else if (i.customId === 'mc_pause') {
                         if (qNow.player.state.status === AudioPlayerStatus.Paused) {
                             qNow.player.unpause();
                             qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
@@ -369,6 +381,11 @@ async function playNext(q) {
 
     const track = q.tracks.shift();
     if (!track) { resetInactivityTimer(q); return; }
+    // Save previous track to history (max 5)
+    if (q.currentTrack) {
+        q.trackHistory.unshift({...q.currentTrack});
+        if (q.trackHistory.length > 5) q.trackHistory.pop();
+    }
     q.currentTrack = track;
     q.startTime = Date.now();
     q.totalPaused = 0;
