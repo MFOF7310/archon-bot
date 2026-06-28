@@ -57,31 +57,13 @@ data: new SlashCommandBuilder()
         .setRequired(true)
         .addChoices(
             { name: '🔤 Prefix', value: 'prefix' },
-            { name: '👋 Welcome Channel', value: 'welcome' },
             { name: '💬 Welcome Message', value: 'message' },
-            { name: '👋 Goodbye Channel', value: 'goodbye' },
             { name: '📈 XP Multiplier (0.5-5.0)', value: 'xpboost' },
             { name: '💰 Market Enabled', value: 'marketenabled' },
             { name: '💤 AFK System', value: 'afk' },
             { name: '🤖 Lydia AI', value: 'ai' },
-            { name: '📋 Log Channel', value: 'log' },
-            { name: '🔨 Mute Role', value: 'muterole' },
-            { name: '📋 Mod Log Channel', value: 'modlog' },
             { name: '👤 Member Role', value: 'member' },
-            { name: '🎭 Auto Role', value: 'autorole' },
-            { name: '📜 Rules Channel', value: 'rules' },
-            { name: '🎁 Daily Channel', value: 'daily' },
-            { name: '🛒 Shop Channel', value: 'shop' },
             { name: '📊 Market Channel', value: 'market' },
-            { name: '📈 Investor Role', value: 'investorrole' },
-            { name: '🏠 General Channel', value: 'general' },
-            { name: '🎮 Gamer Role', value: 'gamerrole' },
-            { name: '🧠 Quiz Master Role', value: 'quizmasterrole' },
-            { name: '⚔️ Duelist Role', value: 'duelistrole' },
-            { name: '🌱 Daily Initiate Role (3d)', value: 'dailyinitiaterole' },
-            { name: '🔥 Daily Warrior Role (7d)', value: 'dailywarriorrole' },
-            { name: '⚔️ Daily Champion Role (30d)', value: 'dailychampionrole' },
-            { name: '💎 Daily Legend Role (100d)', value: 'dailylegendrole' },
         )
     )
     .addStringOption(opt => opt
