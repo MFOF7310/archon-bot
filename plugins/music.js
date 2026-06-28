@@ -456,7 +456,9 @@ async function playNext(q) {
             if (!stream) {
                 try {
                     const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '');
-                    const { stdout } = await execAsync(`yt-dlp --no-playlist -x --audio-format opus --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
+                    const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
+                    const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
+                    const { stdout } = await execAsync(`yt-dlp --no-playlist -x --audio-format opus ${cookiesFlag} --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
                     const url = stdout.trim().split('\n')[0];
                     if (url?.startsWith('http')) {
                         const ffmpeg = require('child_process').spawn('ffmpeg', [
@@ -839,7 +841,172 @@ module.exports = {
         // ── NOW PLAYING ──
         if (sub === 'nowplaying') {
             if (!q.currentTrack) return interaction.editReply({ content: '❌ Nothing is playing!' });
-            return interaction.editReply({ embeds: [buildNowPlayingEmbed(q, client)], components: [buildControls(q)] });
+            // Try canvas card first, fall back to embed
+            try {
+                const { createCanvas, loadImage } = require('@napi-rs/canvas');
+                const t = q.currentTrack;
+                const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000) : 0;
+                const W = 580, H = 200;
+                const c = createCanvas(W, H);
+                const ctx = c.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.textBaseline = 'middle';
+
+                // Background
+                const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+                bgGrad.addColorStop(0, '#04080f');
+                bgGrad.addColorStop(0.5, '#08101e');
+                bgGrad.addColorStop(1, '#04080f');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, W, H);
+
+                // Grid lines
+                ctx.strokeStyle = 'rgba(0,240,255,0.04)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < W; x += 28) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+                for (let y = 0; y < H; y += 28) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+                // Border
+                ctx.strokeStyle = 'rgba(0,240,255,0.18)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(8,1); ctx.lineTo(W-8,1); ctx.quadraticCurveTo(W-1,1,W-1,8);
+                ctx.lineTo(W-1,H-8); ctx.quadraticCurveTo(W-1,H-1,W-8,H-1);
+                ctx.lineTo(8,H-1); ctx.quadraticCurveTo(1,H-1,1,H-8);
+                ctx.lineTo(1,8); ctx.quadraticCurveTo(1,1,8,1);
+                ctx.closePath(); ctx.stroke();
+
+                // Thumbnail
+                const thumbSize = 140;
+                const thumbX = 30, thumbY = (H - thumbSize) / 2;
+                let thumbLoaded = false;
+                if (t.thumbnail) {
+                    try {
+                        const thumb = await loadImage(t.thumbnail);
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(thumbX+8,thumbY); ctx.lineTo(thumbX+thumbSize-8,thumbY);
+                        ctx.quadraticCurveTo(thumbX+thumbSize,thumbY,thumbX+thumbSize,thumbY+8);
+                        ctx.lineTo(thumbX+thumbSize,thumbY+thumbSize-8);
+                        ctx.quadraticCurveTo(thumbX+thumbSize,thumbY+thumbSize,thumbX+thumbSize-8,thumbY+thumbSize);
+                        ctx.lineTo(thumbX+8,thumbY+thumbSize); ctx.quadraticCurveTo(thumbX,thumbY+thumbSize,thumbX,thumbY+thumbSize-8);
+                        ctx.lineTo(thumbX,thumbY+8); ctx.quadraticCurveTo(thumbX,thumbY,thumbX+8,thumbY);
+                        ctx.closePath(); ctx.clip();
+                        ctx.drawImage(thumb, thumbX, thumbY, thumbSize, thumbSize);
+                        ctx.restore();
+                        thumbLoaded = true;
+                    } catch(e) {}
+                }
+                if (!thumbLoaded) {
+                    ctx.fillStyle = 'rgba(0,240,255,0.08)';
+                    ctx.fillRect(thumbX, thumbY, thumbSize, thumbSize);
+                    ctx.fillStyle = '#00f0ff';
+                    ctx.font = 'bold 40px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🎵', thumbX + thumbSize/2, thumbY + thumbSize/2);
+                }
+
+                // Cyan border around thumb
+                ctx.strokeStyle = 'rgba(0,240,255,0.35)';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(thumbX, thumbY, thumbSize, thumbSize);
+
+                // Text area
+                const tx = thumbX + thumbSize + 22;
+                const maxW = W - tx - 20;
+
+                // Status label
+                const isPaused = q.player?.state?.status === 'paused';
+                ctx.fillStyle = isPaused ? '#f1c40f' : '#00ff88';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(isPaused ? '⏸ PAUSED' : '▶ NOW PLAYING', tx, 28);
+
+                // Title
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 22px sans-serif';
+                const title = t.title.length > 28 ? t.title.substring(0,27)+'…' : t.title;
+                ctx.fillText(title, tx, 60);
+
+                // Artist + Album
+                ctx.fillStyle = 'rgba(255,255,255,0.55)';
+                ctx.font = '12px sans-serif';
+                const artistLine = [t.artist, t.album].filter(x => x && x !== 'Unknown').join(' · ');
+                const artistTrim = artistLine.length > 38 ? artistLine.substring(0,37)+'…' : artistLine;
+                if (artistTrim) ctx.fillText(artistTrim, tx, 84);
+
+                // Progress bar
+                const barX = tx, barY = 108, barW = maxW, barH = 6;
+                const pct = t.duration > 0 ? Math.min(1, elapsed / t.duration) : 0;
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 3); ctx.fill();
+                if (pct > 0) {
+                    const barGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+                    barGrad.addColorStop(0, '#00f0ff');
+                    barGrad.addColorStop(1, '#00ff88');
+                    ctx.fillStyle = barGrad;
+                    ctx.beginPath(); ctx.roundRect(barX, barY, Math.max(6, barW * pct), barH, 3); ctx.fill();
+                    // Glow dot at end
+                    ctx.fillStyle = '#00f0ff';
+                    ctx.beginPath(); ctx.arc(barX + barW * pct, barY + barH/2, 5, 0, Math.PI*2); ctx.fill();
+                }
+
+                // Time
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(formatTime(elapsed), barX, barY + 20);
+                ctx.textAlign = 'right';
+                ctx.fillText(formatTime(t.duration), barX + barW, barY + 20);
+
+                // Stats row
+                ctx.textAlign = 'left';
+                ctx.font = '10px sans-serif';
+                const stats = [
+                    `🔊 ${q.volume}%`,
+                    `📋 ${q.tracks.length} queued`,
+                    `🔁 ${q.loop ? 'ON' : 'OFF'}`,
+                    t.source || 'SoundCloud'
+                ];
+                let sx = tx;
+                for (const stat of stats) {
+                    ctx.fillStyle = 'rgba(0,240,255,0.5)';
+                    ctx.fillText(stat, sx, 155);
+                    sx += ctx.measureText(stat).width + 16;
+                }
+
+                // Requested by
+                ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                ctx.font = '9px sans-serif';
+                ctx.fillText(`Requested by ${t.requestedBy}`, tx, 175);
+
+                // ARCHON badge
+                ctx.fillStyle = 'rgba(0,240,255,0.08)';
+                ctx.beginPath(); ctx.roundRect(W-108, 14, 90, 18, 4); ctx.fill();
+                ctx.fillStyle = '#00f0ff';
+                ctx.font = 'bold 7px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('ARCHON CG-223', W-63, 25);
+
+                // Corner accents
+                ctx.strokeStyle = 'rgba(0,240,255,0.2)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(W-40,1); ctx.lineTo(W-1,1); ctx.lineTo(W-1,40); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(1,H-40); ctx.lineTo(1,H-1); ctx.lineTo(40,H-1); ctx.stroke();
+
+                const png = c.encode('png');
+                const { AttachmentBuilder } = require('discord.js');
+                const attachment = new AttachmentBuilder(png, { name: 'nowplaying.png' });
+                const npEmbed = buildNowPlayingEmbed(q, client);
+                npEmbed.setImage('attachment://nowplaying.png');
+                npEmbed.setDescription(null);
+                npEmbed.spliceFields(0, npEmbed.data.fields?.length || 0);
+                return interaction.editReply({ embeds: [npEmbed], files: [attachment], components: [buildControls(q)] });
+            } catch(canvasErr) {
+                console.error('[MUSIC NP] Canvas error:', canvasErr.message);
+                return interaction.editReply({ embeds: [buildNowPlayingEmbed(q, client)], components: [buildControls(q)] });
+            }
         }
 
         // ── VOLUME ──
