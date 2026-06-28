@@ -996,12 +996,14 @@ module.exports = {
                 ctx.beginPath(); ctx.moveTo(1,H-40); ctx.lineTo(1,H-1); ctx.lineTo(40,H-1); ctx.stroke();
 
                 const png = c.encode('png');
-                const { AttachmentBuilder } = require('discord.js');
+                const { AttachmentBuilder, EmbedBuilder: EB2 } = require('discord.js');
                 const attachment = new AttachmentBuilder(png, { name: 'nowplaying.png' });
-                const npEmbed = buildNowPlayingEmbed(q, client);
-                npEmbed.setImage('attachment://nowplaying.png');
-                npEmbed.setDescription(null);
-                npEmbed.spliceFields(0, npEmbed.data.fields?.length || 0);
+                // Build a clean minimal embed that just hosts the image
+                const npEmbed = new EB2()
+                    .setColor(q.player?.state?.status === 'paused' ? 0xf1c40f : 0x00f0ff)
+                    .setImage('attachment://nowplaying.png')
+                    .setFooter({ text: `BAMAKO_223 🇲🇱 • Vol: ${q.volume}% • Queue: ${q.tracks.length} • Loop: ${q.loop ? 'ON' : 'OFF'}` })
+                    .setTimestamp();
                 return interaction.editReply({ embeds: [npEmbed], files: [attachment], components: [buildControls(q)] });
             } catch(canvasErr) {
                 console.error('[MUSIC NP] Canvas error:', canvasErr.message);
