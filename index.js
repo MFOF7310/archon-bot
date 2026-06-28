@@ -2932,7 +2932,8 @@ setInterval(async () => {
                     }
                 } catch (e) {}
 
-                const baseReward = 200;
+                const ss = user.guild_id ? client.getServerSettings?.(user.guild_id) : null;
+                const baseReward = parseInt(ss?.daily_bonus) || 200;
                 const streakDays = user.streak_days || 0;
                 const streakBonus = Math.min(streakDays * 10, 500);
                 const levelBonus = Math.floor((user.level || 1) * 5);
