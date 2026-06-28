@@ -995,7 +995,8 @@ module.exports = {
                 ctx.beginPath(); ctx.moveTo(W-40,1); ctx.lineTo(W-1,1); ctx.lineTo(W-1,40); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(1,H-40); ctx.lineTo(1,H-1); ctx.lineTo(40,H-1); ctx.stroke();
 
-                const png = await c.encode('png');
+                const pngRaw = await c.encode('png');
+                const png = Buffer.isBuffer(pngRaw) ? pngRaw : Buffer.from(pngRaw);
                 const { AttachmentBuilder, EmbedBuilder: EB2 } = require('discord.js');
                 const attachment = new AttachmentBuilder(png, { name: 'nowplaying.png' });
                 // Build a clean minimal embed that just hosts the image
