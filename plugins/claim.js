@@ -353,7 +353,8 @@ module.exports = {
             const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
             
             const baseXP = 250;
-            const baseCredits = 100;
+            const _ss = client.getServerSettings?.(guildId) || {};
+            const baseCredits = parseInt(_ss.daily_bonus) || 100;
             const oneDay = 24 * 60 * 60 * 1000;
             
             // ================= PER-SERVER USER LOOKUP =================
@@ -613,7 +614,8 @@ module.exports = {
             const avatarURL = interaction.user.displayAvatarURL({ dynamic: true, size: 256 });
             
             const baseXP = 250;
-            const baseCredits = 100;
+            const _ss = client.getServerSettings?.(guildId) || {};
+            const baseCredits = parseInt(_ss.daily_bonus) || 100;
             const oneDay = 24 * 60 * 60 * 1000;
             
             // ================= PER-SERVER USER LOOKUP =================
