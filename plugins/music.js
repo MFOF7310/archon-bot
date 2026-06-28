@@ -799,7 +799,7 @@ module.exports = {
 
         // Commands that need active queue
         const q = getQueue(guildId);
-        if (!q && !['play','file'].includes(sub)) {
+        if (!q && !['play','file','library'].includes(sub)) {
             return interaction.editReply({ content: '❌ Nothing is playing!' });
         }
 
