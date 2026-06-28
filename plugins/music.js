@@ -379,7 +379,7 @@ async function playNext(q) {
                     q.tracks.push({ title: similar, query: similar, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy: '🤖 Autoplay', url: null });
                 }
             }
-            return;
+            // DO NOT return here — fall through so playNext plays the track we just pushed
         }
     }
 
