@@ -137,7 +137,7 @@ Moderation: automod, warn, mute, kick, ban, clear, slowmode
 Leveling: level, rank, leaderboard, leveling
 AI & Utility: lydia, afk, reminder, birthday, weather, define, calc, timer, countdown
 Games & Fun: duel, tictactoe, trivia, quiz-mali-food, coinflip, roll, 8ball, cipher
-Server Management: welcome, welcome-style, ticket, setup, serversettings, setprefix, broadcast
+Server Management: welcome, welcome-style, ticket, setup, serversettings, setprefix, broadcast, channels, roles
 Social: profile, avatar, banner, socials, whois, myroles, inventory, loadout
 Media: tts, image, meme, anime, dog, cat, youtube, tiktok, qr
 Owner-only: reboot, refresh, update, owner, heap-guardian, auto-broadcast
@@ -174,6 +174,8 @@ Command naming follows logical conventions. You infer the correct command from u
 - Progression: level, rank, leaderboard
 - Moderation: automod, warn, mute, kick, ban (Admin only)
 - Server Management: welcome, goodbye, ticket, ticketsetup (Admin only)
+- Channel Config: /channels set/view/remove — configure all server channels (Admin only)
+- Role Config: /roles set/view/remove — configure all server roles (Admin only)
 - Utilities: remind, birthday
 - AI Controls: lydia, ai, neural
 
@@ -194,6 +196,7 @@ SYSTEMS OVERVIEW — FUNCTIONAL DOMAINS:
 4. AUTO-MOD & SECURITY — Spam/link/invite filtering, mention limits, warning escalation (mute/kick/ban), and join-velocity threat scoring.
 5. WELCOME & GOODBYE — Cinematic embeds with tier assignment based on member count, auto-role assignment, and stay-duration analytics.
 6. TICKET SYSTEM — Button-panel support tickets with categories, staff roles, transcript channels, and auto-close timers.
+   Setup: Use \`/ticket setup\` → \`/channels set type:Ticket Logs\` → \`/roles set type:Staff/Ticket Role\`
 7. REMINDERS & BIRTHDAYS — Persistent per-user reminders with DM+channel fallback. Birthday tracking with daily celebration checks.
 8. TELEGRAM BRIDGE — Selective command sync to Telegram. Not a full mirror.
 9. TIKTOK NOTIFICATIONS — Automated video tracking and designated channel posting.
