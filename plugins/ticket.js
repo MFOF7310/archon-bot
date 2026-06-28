@@ -73,7 +73,7 @@ const TX = {
     },
     fr: {
         sTitle:'🎫 SYSTÈME DE TICKETS', sDesc:'**Configurez votre système.**',
-        sUsage:p=>`\`${p}ticket setcategory <id>\` — Catégorie\n\`${p}ticket setstaffrole <id>\` — Rôle staff\n\`${p}ticket settranscript <id>\` — Salon log\n\`${p}ticket setautoclose <h>\` — Fermeture auto\n\`${p}ticket setlimit <1-10>\` — Max par user\n\`${p}ticket config\` — Voir config`,
+        sUsage:p=>`\`${p}//channels set type:Ticket category\` — Catégorie\n\`${p}/roles set type:Staff/Ticket Role <id>\` — Rôle staff\n\`${p}/channels set type:Ticket Logs <id>\` — Salon log\n\`${p}ticket setautoclose <h>\` — Fermeture auto\n\`${p}ticket setlimit <1-10>\` — Max par user\n\`${p}ticket config\` — Voir config`,
         pTitle:'🎫 Support', pDesc:g=>`Besoin d'aide ? Sélectionnez une catégorie ci-dessous.`, pFooter:'🦅 ARCHON CG-223',
         made:'✅ Ticket créé', welcome:'🎫 NOUVEAU TICKET',
         wDesc:(u,c)=>`Bonjour <@${u}>, un staff va vous aider.\n**Catégorie :** ${c}`,
@@ -83,7 +83,7 @@ const TX = {
         closing:'🔒 Fermeture dans 5s...', closedBy:u=>`🔒 Fermé par <@${u}>`,
         closedLog:(u,c,cat)=>`Ticket #${c} fermé | Créateur : <@${u}> | ${cat}`,
         txSaved:'📄 Log enregistré !', noPerm:'❌ Staff ou créateur.', staffOnly:'❌ Staff uniquement.',
-        notSet:'⚠️ **Non configuré.** Utilisez `.ticket setup` puis `.ticket setcategory <id>`',
+        notSet:'⚠️ **Non configuré.** Utilisez `.ticket setup` puis `.//channels set type:Ticket category`',
         createErr:'❌ Échec.', maxT:l=>`❌ Max ${l} ticket(s).`,
         by:'Créé par', at:'Créé', claimed:'Pris par', cat:'Catégorie', st:'Statut',
         open:'🟢 Ouvert', claimed2:'🟡 Pris', closing2:'🔴 Fermeture',
@@ -92,7 +92,7 @@ const TX = {
         cfgTx:'📄 Salon Log', cfgLog:'📋 Log Extra', cfgAC:'⏰ Fermeture Auto', cfgLim:'🔢 Limite',
         cfgNS:'Non défini', cfgOff:'Désactivé', cfgFoot:'🦅 ARCHON CG-223',
         setOK:(s,v)=>`✅ **${s}** → ${v}`, badCh:'❌ Salon introuvable.', badRole:'❌ Rôle introuvable.', badNum:'❌ Nombre invalide.', needAdmin:'❌ Admin requis.',
-        helpCmds:p=>`\`${p}ticket panel\` — Panel\n\`${p}ticket close\` — Fermer\n\`${p}ticket config\` — Config\n\`${p}ticket setcategory <id>\` — Catégorie\n\`${p}ticket setstaffrole <id>\` — Rôle staff\n\`${p}ticket settranscript <id>\` — Salon log\n\`${p}ticket setautoclose <h>\` — Auto-close\n\`${p}ticket setlimit <1-10>\` — Max par user`,
+        helpCmds:p=>`\`${p}ticket panel\` — Panel\n\`${p}ticket close\` — Fermer\n\`${p}ticket config\` — Config\n\`${p}//channels set type:Ticket category\` — Catégorie\n\`${p}/roles set type:Staff/Ticket Role <id>\` — Rôle staff\n\`${p}/channels set type:Ticket Logs <id>\` — Salon log\n\`${p}ticket setautoclose <h>\` — Auto-close\n\`${p}ticket setlimit <1-10>\` — Max par user`,
     }
 };
 
@@ -230,9 +230,9 @@ module.exports = {
         const es=effectiveSettings(ss,g.id);
 
         // Config setters
-        if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply('⚠️ `.ticket setcategory <id>`').catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketcategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
-        if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply('⚠️ `.ticket setstaffrole <id>`').catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t.badRole).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketstaffrole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
-        if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply('⚠️ `.ticket settranscript <id>`').catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'tickettranscriptchannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply('⚠️ `.//channels set type:Ticket category`').catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketcategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply('⚠️ `./roles set type:Staff/Ticket Role <id>`').catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t.badRole).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketstaffrole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
+        if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply('⚠️ `./channels set type:Ticket Logs <id>`').catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'tickettranscriptchannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setautoclose'){const h=parseInt(args[1]);if(isNaN(h)||h<0||h>168)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketautoclose',String(h),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setlimit'){const l=parseInt(args[1]);if(isNaN(l)||l<1||l>10)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketlimit',String(l),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='config'){const e=cfgEmbed(es,g,client,lang);return msg.reply({embeds:[e]}).catch(()=>{});}

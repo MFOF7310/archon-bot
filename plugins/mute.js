@@ -36,8 +36,8 @@ module.exports = {
 
         if (!muteRoleId) {
             return message.reply(lang === 'fr'
-                ? '❌ Rôle muet non configuré. Utilisez `/serversettings set muterole @role`'
-                : '❌ Mute role not configured. Use `/serversettings set muterole @role`');
+                ? '❌ Rôle muet non configuré. Utilisez `//roles set type:Mute Role @role`'
+                : '❌ Mute role not configured. Use `/roles set type:Mute Role @role`');
         }
 
         const target = message.mentions.members.first();

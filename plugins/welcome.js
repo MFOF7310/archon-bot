@@ -254,7 +254,7 @@ module.exports = {
                     { name: 'Setup', value:
                         `\`${prefix}welcome message <text>\` — Set welcome text\n` +
                         `\`${prefix}welcome goodbyemsg <text>\` — Set goodbye text\n` +
-                        `\`${prefix}serversettings set welcome_channel #channel\`\n` +
+                        `\`${prefix}/channels set type:Welcome_channel #channel\`\n` +
                         `\`${prefix}serversettings set goodbye_channel #channel\``, inline: false },
                     { name: 'Test', value: `\`${prefix}welcome test\` — Simulate welcome`, inline: false }
                 )
