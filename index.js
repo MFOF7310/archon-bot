@@ -4123,6 +4123,83 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
+// ================= MUSIC PANEL BUTTONS (Global — never expires, works for 24h streams) =================
+    if (interaction.isButton() && ['mc_prev','mc_pause','mc_skip','mc_stop','mc_loop','mc_queue'].includes(interaction.customId)) {
+        try {
+            const { getQueue, buildQueueEmbed, ARCHON } = require('./plugins/music.js');
+            const { AudioPlayerStatus } = require('@discordjs/voice');
+
+            if (!interaction.member?.voice?.channel) {
+                return interaction.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
+            }
+
+            await interaction.deferUpdate().catch(() => {});
+            const q = getQueue(interaction.guild.id);
+            if (!q) return;
+
+            switch (interaction.customId) {
+                case 'mc_prev': {
+                    if (!q.trackHistory || q.trackHistory.length === 0) {
+                        await interaction.followUp({ content: '⏮️ No previous track.', flags: 64 }).catch(() => {});
+                        return;
+                    }
+                    const prev = q.trackHistory.shift();
+                    if (q.currentTrack) q.tracks.unshift({...q.currentTrack});
+                    q.tracks.unshift(prev);
+                    q.player.stop();
+                    break;
+                }
+                case 'mc_pause': {
+                    const isPaused = q.player.state.status === AudioPlayerStatus.Paused;
+                    if (isPaused) {
+                        q.player.unpause();
+                        q.totalPaused += Date.now() - (q.pausedAt || Date.now());
+                        q.pausedAt = null;
+                    } else {
+                        q.player.pause();
+                        q.pausedAt = Date.now();
+                    }
+                    // Update panel immediately
+                    const { updatePersistentPanel } = require('./plugins/music.js');
+                    if (updatePersistentPanel) await updatePersistentPanel(q).catch(() => {});
+                    break;
+                }
+                case 'mc_skip': {
+                    q.player.stop();
+                    break;
+                }
+                case 'mc_stop': {
+                    const { destroyQueue } = require('./plugins/music.js');
+                    if (q.persistentMsg) {
+                        const { EmbedBuilder } = require('discord.js');
+                        const stoppedEmbed = new EmbedBuilder().setColor(0xff3333)
+                            .setDescription('```ansi
+[1;31m▸ STOPPED — Neural stream terminated.[0m
+```');
+                        await q.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
+                        q.persistentMsg = null;
+                    }
+                    destroyQueue(interaction.guild.id);
+                    break;
+                }
+                case 'mc_loop': {
+                    q.loop = !q.loop;
+                    const { updatePersistentPanel: updPanel } = require('./plugins/music.js');
+                    if (updPanel) await updPanel(q).catch(() => {});
+                    break;
+                }
+                case 'mc_queue': {
+                    const qEmbed = buildQueueEmbed(q, client);
+                    await interaction.followUp({ embeds: [qEmbed], flags: 64 }).catch(() => {});
+                    break;
+                }
+            }
+        } catch(err) {
+            console.error('[MUSIC BUTTON GLOBAL]', err.message);
+        }
+        return;
+    }
+
 // ================= TICKET SYSTEM COMPONENTS (Select Menu + Buttons + Modals) =================
 const isTicketComponent = (interaction.isButton() && interaction.customId.startsWith('ticket_')) ||
 (interaction.isStringSelectMenu() && (

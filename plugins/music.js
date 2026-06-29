@@ -630,7 +630,8 @@ module.exports = {
 
     // Export utilities for other plugins
     getQueue, createQueue, destroyQueue, buildNowPlayingEmbed,
-    buildControls, buildQueueEmbed, ARCHON, progressBar, formatTime,
+    buildControls, buildQueueEmbed, updatePersistentPanel,
+    ARCHON, progressBar, formatTime,
 
     data: new SlashCommandBuilder()
         .setName('music')
