@@ -4159,6 +4159,11 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                     .setColor('#00ff88')
                     .setAuthor({ name: '📡 NEURAL TRANSMISSION — ARCHITECT REPLY', iconURL: client.user.displayAvatarURL() })
                     .setDescription(
+                        '```ansi\n' +
+                        '\u001b[1;32m\u25b8 FROM      \u001b[0mThe Architect\n' +
+                        '\u001b[1;37m\u25b8 MESSAGE   \u001b[0m' + replyText + '\n' +
+                        '\u001b[0;37m\u25b8 TIP       \u001b[0mUse .contact to send a follow-up\n' +
+                        '```'
                         '```ansi
 ' +
                         '[1;32m▸ FROM      [0mThe Architect
