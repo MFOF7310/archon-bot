@@ -237,27 +237,28 @@ async function renderWelcomeCard(member, count, cfg) {
         : member.user.username;
     ctx.fillText(name, tx, 70);
 
-    // Member number pill
+    // Member number pill — moved down
     const memberText = ordinal(count) + ' member';
     ctx.font = 'bold 10px sans-serif';
     const pillW = ctx.measureText(memberText).width + 16;
     ctx.fillStyle = 'rgba(0, 251, 255, 0.15)';
-    roundRect(ctx, tx, 84, pillW, 18, 9);
+    roundRect(ctx, tx, 96, pillW, 18, 9);
     ctx.fill();
     ctx.strokeStyle = 'rgba(0, 251, 255, 0.35)';
     ctx.lineWidth = 1;
-    roundRect(ctx, tx, 84, pillW, 18, 9);
+    roundRect(ctx, tx, 96, pillW, 18, 9);
     ctx.stroke();
     ctx.fillStyle = '#00fbff';
-    ctx.fillText(memberText, tx + pillW / 2, 93);
+    ctx.textAlign = 'center';
+    ctx.fillText(memberText, tx + pillW / 2, 105);
 
-    // Account age
+    // Account age — own line below pill
     const age = accountAgeShort(member.user.createdTimestamp);
     const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
-    ctx.fillStyle = isNew ? '#f1c40f' : 'rgba(255,255,255,0.45)';
+    ctx.fillStyle = isNew ? '#f1c40f' : 'rgba(255,255,255,0.55)';
     ctx.font = (isNew ? 'bold ' : '') + '10px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(isNew ? '● NEW ACCOUNT · ' + age : age, tx + pillW + 10, 93);
+    ctx.fillText(isNew ? '🆕 ' + age + ' old account' : '⏱ ' + age + ' old account', tx, 128);
 
     // Server name bottom right
     ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
