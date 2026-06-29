@@ -1,502 +1,1616 @@
 [
   {
-    "title": "Burna Boy - Last Last",
+    "title": "🎵 Burna Boy - Last Last",
     "query": "Burna Boy Last Last",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Wizkid - Essence ft. Tems",
+    "title": "🎵 Wizkid - Essence ft. Tems",
     "query": "Wizkid Essence Tems",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Davido - Fall",
+    "title": "🎵 Davido - Fall",
     "query": "Davido Fall",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Afrobeats - Rema Calm Down",
+    "title": "🎵 Afrobeats - Rema Calm Down",
     "query": "Rema Calm Down",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Burna Boy - Ye",
+    "title": "🎵 Burna Boy - Ye",
     "query": "Burna Boy Ye",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Wizkid - Come Closer ft. Drake",
+    "title": "🎵 Wizkid - Come Closer ft. Drake",
     "query": "Wizkid Come Closer Drake",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Ckay - Love Nwantiti",
+    "title": "🎵 Ckay - Love Nwantiti",
     "query": "Ckay Love Nwantiti",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Ayra Starr - Rush",
+    "title": "🎵 Ayra Starr - Rush",
     "query": "Ayra Starr Rush",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Asake - Joha",
+    "title": "🎵 Asake - Joha",
     "query": "Asake Joha",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Burna Boy - Outside",
+    "title": "🎵 Burna Boy - Outside",
     "query": "Burna Boy Outside",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Tems - Free Mind",
+    "title": "🎵 Tems - Free Mind",
     "query": "Tems Free Mind",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Omah Lay - Understand",
+    "title": "🎵 Omah Lay - Understand",
     "query": "Omah Lay Understand",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Fireboy DML - Peru",
+    "title": "🎵 Fireboy DML - Peru",
     "query": "Fireboy DML Peru",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Salif Keita - Yamore",
+    "title": "🎵 Salif Keita - Yamore",
     "query": "Salif Keita Yamore",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Oumou Sangaré - Yala",
+    "title": "🎵 Oumou Sangaré - Yala",
     "query": "Oumou Sangare Yala",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Amadou & Mariam - Sabali",
+    "title": "🎵 Amadou & Mariam - Sabali",
     "query": "Amadou Mariam Sabali",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Toumani Diabaté - Jarabi",
+    "title": "🎵 Toumani Diabaté - Jarabi",
     "query": "Toumani Diabate Jarabi",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Ali Farka Touré - Savane",
+    "title": "🎵 Ali Farka Touré - Savane",
     "query": "Ali Farka Toure Savane",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Rokia Traoré - Dounia",
+    "title": "🎵 Rokia Traoré - Dounia",
     "query": "Rokia Traore Dounia",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Fatoumata Diawara - Clandestin",
+    "title": "🎵 Fatoumata Diawara - Clandestin",
     "query": "Fatoumata Diawara Clandestin",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Sidiki Diabaté - Bali",
+    "title": "🎵 Sidiki Diabaté - Bali",
     "query": "Sidiki Diabate Bali",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Salif Keita - Africa",
+    "title": "🎵 Salif Keita - Africa",
     "query": "Salif Keita Africa",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Boubacar Traoré - Mariama",
+    "title": "🎵 Boubacar Traoré - Mariama",
     "query": "Boubacar Traore Mariama",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Oumou Sangaré - Djoukourou",
+    "title": "🎵 Oumou Sangaré - Djoukourou",
     "query": "Oumou Sangare Djoukourou",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Amadou & Mariam - Je pense à toi",
+    "title": "🎵 Amadou & Mariam - Je pense à toi",
     "query": "Amadou Mariam Je pense a toi",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Drake - God's Plan",
+    "title": "🎵 Drake - God's Plan",
     "query": "Drake Gods Plan",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Kendrick Lamar - HUMBLE.",
+    "title": "🎵 Kendrick Lamar - HUMBLE.",
     "query": "Kendrick Lamar HUMBLE",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Travis Scott - SICKO MODE",
+    "title": "🎵 Travis Scott - SICKO MODE",
     "query": "Travis Scott SICKO MODE",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "J. Cole - No Role Modelz",
+    "title": "🎵 J. Cole - No Role Modelz",
     "query": "J Cole No Role Modelz",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Kanye West - POWER",
+    "title": "🎵 Kanye West - POWER",
     "query": "Kanye West POWER",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "21 Savage - a lot",
+    "title": "🎵 21 Savage - a lot",
     "query": "21 Savage a lot",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Post Malone - Rockstar",
+    "title": "🎵 Post Malone - Rockstar",
     "query": "Post Malone Rockstar",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Cardi B - WAP",
+    "title": "🎵 Cardi B - WAP",
     "query": "Cardi B WAP",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Drake - Hotline Bling",
+    "title": "🎵 Drake - Hotline Bling",
     "query": "Drake Hotline Bling",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Nicki Minaj - Super Bass",
+    "title": "🎵 Nicki Minaj - Super Bass",
     "query": "Nicki Minaj Super Bass",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Kendrick Lamar - All The Stars",
+    "title": "🎵 Kendrick Lamar - All The Stars",
     "query": "Kendrick Lamar All The Stars",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Eminem - Lose Yourself",
+    "title": "🎵 Eminem - Lose Yourself",
     "query": "Eminem Lose Yourself",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Jay-Z - Empire State of Mind",
+    "title": "🎵 Jay-Z - Empire State of Mind",
     "query": "Jay-Z Empire State of Mind",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Martin Garrix - Animals",
+    "title": "🎵 Martin Garrix - Animals",
     "query": "Martin Garrix Animals",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Avicii - Wake Me Up",
+    "title": "🎵 Avicii - Wake Me Up",
     "query": "Avicii Wake Me Up",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "David Guetta - Titanium ft. Sia",
+    "title": "🎵 David Guetta - Titanium ft. Sia",
     "query": "David Guetta Titanium Sia",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Calvin Harris - Summer",
+    "title": "🎵 Calvin Harris - Summer",
     "query": "Calvin Harris Summer",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Daft Punk - Get Lucky",
+    "title": "🎵 Daft Punk - Get Lucky",
     "query": "Daft Punk Get Lucky",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "The Chainsmokers - Closer",
+    "title": "🎵 The Chainsmokers - Closer",
     "query": "The Chainsmokers Closer",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Marshmello - Alone",
+    "title": "🎵 Marshmello - Alone",
     "query": "Marshmello Alone",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Kygo - Firestone",
+    "title": "🎵 Kygo - Firestone",
     "query": "Kygo Firestone",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Skrillex - Bangarang",
+    "title": "🎵 Skrillex - Bangarang",
     "query": "Skrillex Bangarang",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Zedd - Clarity ft. Foxes",
+    "title": "🎵 Zedd - Clarity ft. Foxes",
     "query": "Zedd Clarity Foxes",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Alan Walker - Faded",
+    "title": "🎵 Alan Walker - Faded",
     "query": "Alan Walker Faded",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Deadmau5 - Strobe",
+    "title": "🎵 Deadmau5 - Strobe",
     "query": "Deadmau5 Strobe",
-    "genre": "EDM"
+    "genre": "EDM",
+    "folder": "EDM Classics"
   },
   {
-    "title": "Salif Keita - Nous Pas Bouger",
+    "title": "🎵 Salif Keita - Nous Pas Bouger",
     "query": "Salif Keita Nous Pas Bouger",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Salif Keita - Folon",
+    "title": "🎵 Salif Keita - Folon",
     "query": "Salif Keita Folon",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Oumou Sangaré - Moussolou",
+    "title": "🎵 Oumou Sangaré - Moussolou",
     "query": "Oumou Sangare Moussolou",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Oumou Sangaré - Worotan",
+    "title": "🎵 Oumou Sangaré - Worotan",
     "query": "Oumou Sangare Worotan",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Ali Farka Touré - Goye Kur",
+    "title": "🎵 Ali Farka Touré - Goye Kur",
     "query": "Ali Farka Toure Goye Kur",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Ali Farka Touré - Cinquante Six",
+    "title": "🎵 Ali Farka Touré - Cinquante Six",
     "query": "Ali Farka Toure Cinquante Six",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Toumani Diabaté - Kaira",
+    "title": "🎵 Toumani Diabaté - Kaira",
     "query": "Toumani Diabate Kaira",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Toumani Diabaté - Djelimady",
+    "title": "🎵 Toumani Diabaté - Djelimady",
     "query": "Toumani Diabate Djelimady",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Fatoumata Diawara - Nsera",
+    "title": "🎵 Fatoumata Diawara - Nsera",
     "query": "Fatoumata Diawara Nsera",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Fatoumata Diawara - Boloko",
+    "title": "🎵 Fatoumata Diawara - Boloko",
     "query": "Fatoumata Diawara Boloko",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Rokia Traoré - Tounkan",
+    "title": "🎵 Rokia Traoré - Tounkan",
     "query": "Rokia Traore Tounkan",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Rokia Traoré - Kounandi",
+    "title": "🎵 Rokia Traoré - Kounandi",
     "query": "Rokia Traore Kounandi",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Sidiki Diabaté - Kasse Mady",
+    "title": "🎵 Sidiki Diabaté - Kasse Mady",
     "query": "Sidiki Diabate Kasse Mady",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Sidiki Diabaté - Mon Amour",
+    "title": "🎵 Sidiki Diabaté - Mon Amour",
     "query": "Sidiki Diabate Mon Amour",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Habib Koité - Wassiye",
+    "title": "🎵 Habib Koité - Wassiye",
     "query": "Habib Koite Wassiye",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Habib Koité - Cigarette Abana",
+    "title": "🎵 Habib Koité - Cigarette Abana",
     "query": "Habib Koite Cigarette Abana",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Boubacar Traoré - Baba Drame",
+    "title": "🎵 Boubacar Traoré - Baba Drame",
     "query": "Boubacar Traore Baba Drame",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Amadou & Mariam - Beaux Dimanches",
+    "title": "🎵 Amadou & Mariam - Beaux Dimanches",
     "query": "Amadou Mariam Beaux Dimanches",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Amadou & Mariam - Africa",
+    "title": "🎵 Amadou & Mariam - Africa",
     "query": "Amadou Mariam Africa",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Lobi Traoré - Bambara Rock",
+    "title": "🎵 Lobi Traoré - Bambara Rock",
     "query": "Lobi Traore Bambara Rock",
-    "genre": "Mali"
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
   },
   {
-    "title": "Jay Chou - Qilixiang",
+    "title": "🎵 Jay Chou - Qilixiang",
     "query": "Jay Chou Qilixiang",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Jay Chou - Nunchucks",
+    "title": "🎵 Jay Chou - Nunchucks",
     "query": "Jay Chou Shuang Jie Gun",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Jay Chou - Blue and White Porcelain",
+    "title": "🎵 Jay Chou - Blue and White Porcelain",
     "query": "Jay Chou Qinghua Ci",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Jay Chou - Nocturne",
+    "title": "🎵 Jay Chou - Nocturne",
     "query": "Jay Chou Ye Qu",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Teresa Teng - The Moon Represents My Heart",
+    "title": "🎵 Teresa Teng - The Moon Represents My Heart",
     "query": "Teresa Teng Moon Represents My Heart",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Teresa Teng - Tian Mi Mi",
+    "title": "🎵 Teresa Teng - Tian Mi Mi",
     "query": "Teresa Teng Tian Mi Mi",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "G.E.M. - Light Years Away",
+    "title": "🎵 G.E.M. - Light Years Away",
     "query": "GEM Guang Nian Zhi Wai",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "G.E.M. - Trend",
+    "title": "🎵 G.E.M. - Trend",
     "query": "GEM Qu Shi",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Eason Chan - K",
+    "title": "🎵 Eason Chan - K",
     "query": "Eason Chan K",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Eason Chan - Lonely Christmas",
+    "title": "🎵 Eason Chan - Lonely Christmas",
     "query": "Eason Chan Lonely Christmas",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Mayday - DNA",
+    "title": "🎵 Mayday - DNA",
     "query": "Mayday DNA",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Mayday - You Are Not Truly Happy",
+    "title": "🎵 Mayday - You Are Not Truly Happy",
     "query": "Mayday Ni Bu Shi Zhen Zheng De Kuai Le",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Wang Fong - Red Bean",
+    "title": "🎵 Wang Fong - Red Bean",
     "query": "Faye Wong Red Bean",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "JJ Lin - Practice Love",
+    "title": "🎵 JJ Lin - Practice Love",
     "query": "JJ Lin Cao Lian Ai Qing",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Joker Xue - Playgirl",
+    "title": "🎵 Joker Xue - Playgirl",
     "query": "Joker Xue Playgirl",
-    "genre": "Chinese"
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
   },
   {
-    "title": "Burna Boy - Way Too Big",
+    "title": "🎵 Burna Boy - Way Too Big",
     "query": "Burna Boy Way Too Big",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Burna Boy - Kilometre",
+    "title": "🎵 Burna Boy - Kilometre",
     "query": "Burna Boy Kilometre",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Wizkid - Soco",
+    "title": "🎵 Wizkid - Soco",
     "query": "Wizkid Soco",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Davido - Assurance",
+    "title": "🎵 Davido - Assurance",
     "query": "Davido Assurance",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Rema - Iron Man",
+    "title": "🎵 Rema - Iron Man",
     "query": "Rema Iron Man",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Asake - Organise",
+    "title": "🎵 Asake - Organise",
     "query": "Asake Organise",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Kizz Daniel - Buga",
+    "title": "🎵 Kizz Daniel - Buga",
     "query": "Kizz Daniel Buga",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Patoranking - Heal the World",
+    "title": "🎵 Patoranking - Heal the World",
     "query": "Patoranking Heal the World",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Yemi Alade - Johnny",
+    "title": "🎵 Yemi Alade - Johnny",
     "query": "Yemi Alade Johnny",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Tiwa Savage - Somebody's Son",
+    "title": "🎵 Tiwa Savage - Somebody's Son",
     "query": "Tiwa Savage Somebodys Son",
-    "genre": "Afrobeat"
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
   },
   {
-    "title": "Drake - Laugh Now Cry Later",
+    "title": "🎵 Drake - Laugh Now Cry Later",
     "query": "Drake Laugh Now Cry Later",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Kendrick Lamar - Not Like Us",
+    "title": "🎵 Kendrick Lamar - Not Like Us",
     "query": "Kendrick Lamar Not Like Us",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Tyler the Creator - EARFQUAKE",
+    "title": "🎵 Tyler the Creator - EARFQUAKE",
     "query": "Tyler the Creator EARFQUAKE",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Childish Gambino - Redbone",
+    "title": "🎵 Childish Gambino - Redbone",
     "query": "Childish Gambino Redbone",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
   },
   {
-    "title": "Frank Ocean - Nights",
+    "title": "🎵 Frank Ocean - Nights",
     "query": "Frank Ocean Nights",
-    "genre": "HipHop"
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Salif Keita - Mandjou",
+    "query": "Salif Keita Mandjou",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Salif Keita - Primpin",
+    "query": "Salif Keita Primpin",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Oumou Sangaré - Ah Ndiya",
+    "query": "Oumou Sangare Ah Ndiya",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Oumou Sangaré - SigiBoro",
+    "query": "Oumou Sangare SigiBoro",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Ali Farka Touré - Amandrai",
+    "query": "Ali Farka Toure Amandrai",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Ali Farka Touré - Roucky",
+    "query": "Ali Farka Toure Roucky",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Toumani Diabaté - Boulevard de l'Indépendance",
+    "query": "Toumani Diabate Boulevard Independance",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Habib Koité - I Ka Barra",
+    "query": "Habib Koite I Ka Barra",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Boubacar Traoré - Macire",
+    "query": "Boubacar Traore Macire",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Fatoumata Diawara - Kanou",
+    "query": "Fatoumata Diawara Kanou",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Rokia Traoré - Samba",
+    "query": "Rokia Traore Samba",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Amadou & Mariam - Coulibaly",
+    "query": "Amadou Mariam Coulibaly",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Salif Keita - Seydou Bathily",
+    "query": "Salif Keita Seydou Bathily",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Toumani Diabaté - Simbi",
+    "query": "Toumani Diabate Simbi",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Kasse Mady Diabaté - Tutu Jara",
+    "query": "Kasse Mady Diabate Tutu Jara",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Nahawa Doumbia - Didadi",
+    "query": "Nahawa Doumbia Didadi",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Ami Koita - Djely Mousso",
+    "query": "Ami Koita Djely Mousso",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Sali Sidibé - Massake",
+    "query": "Sali Sidibe Massake",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Lobi Traoré - Bwati Kono",
+    "query": "Lobi Traore Bwati Kono",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Super Rail Band - Mande",
+    "query": "Super Rail Band Mande",
+    "genre": "Mali",
+    "folder": "Mali Traditionnel"
+  },
+  {
+    "title": "🎵 Iba One - Fadjiri",
+    "query": "Iba One Fadjiri",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Iba One - Bénédiction",
+    "query": "Iba One Benediction",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Master Soumy - Dieu Merci",
+    "query": "Master Soumy Dieu Merci",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Master Soumy - Réalité",
+    "query": "Master Soumy Realite",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Sidiki Diabaté - Jalaki",
+    "query": "Sidiki Diabate Jalaki",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Sidiki Diabaté - Douga",
+    "query": "Sidiki Diabate Douga",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Dja - Bamako By Night",
+    "query": "Dja Bamako By Night",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Tata Pound - Mali Koura",
+    "query": "Tata Pound Mali Koura",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Amkoullel - Bamako",
+    "query": "Amkoullel Bamako",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Fatoumata Diawara - Nterini",
+    "query": "Fatoumata Diawara Nterini",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Oumou Sangaré - Kamelemba",
+    "query": "Oumou Sangare Kamelemba",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Salif Keita - Tomorrow",
+    "query": "Salif Keita Tomorrow",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Iba One - Dieu Pardonne",
+    "query": "Iba One Dieu Pardonne",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Master Soumy - La Vérité",
+    "query": "Master Soumy La Verite",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Sidiki Diabaté - Pour Toi",
+    "query": "Sidiki Diabate Pour Toi",
+    "genre": "Mali",
+    "folder": "Mali Moderne"
+  },
+  {
+    "title": "🎵 Fela Kuti - Water No Get Enemy",
+    "query": "Fela Kuti Water No Get Enemy",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Fela Kuti - Zombie",
+    "query": "Fela Kuti Zombie",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 King Sunny Ade - Ja Funmi",
+    "query": "King Sunny Ade Ja Funmi",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 2Baba - African Queen",
+    "query": "2Baba African Queen",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 P-Square - Personally",
+    "query": "P-Square Personally",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 P-Square - Do Me",
+    "query": "P-Square Do Me",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 D'Banj - Oliver Twist",
+    "query": "DBanj Oliver Twist",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Asa - Fire on the Mountain",
+    "query": "Asa Fire on the Mountain",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Lagbaja - Suuru Lere",
+    "query": "Lagbaja Suuru Lere",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Youssou N'Dour - 7 Seconds",
+    "query": "Youssou Ndour 7 Seconds",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Miriam Makeba - Pata Pata",
+    "query": "Miriam Makeba Pata Pata",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Hugh Masekela - Grazing in the Grass",
+    "query": "Hugh Masekela Grazing in the Grass",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Brenda Fassie - Nomakanjani",
+    "query": "Brenda Fassie Nomakanjani",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Oliver Mtukudzi - Neria",
+    "query": "Oliver Mtukudzi Neria",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Angelique Kidjo - Agolo",
+    "query": "Angelique Kidjo Agolo",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats Classics"
+  },
+  {
+    "title": "🎵 Burna Boy - Tested Approved & Trusted",
+    "query": "Burna Boy Tested Approved Trusted",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Wizkid - Kese",
+    "query": "Wizkid Kese",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Davido - Feel",
+    "query": "Davido Feel",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Asake - Lonely at the Top",
+    "query": "Asake Lonely at the Top",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Rema - Baby Calm Down",
+    "query": "Rema Baby Calm Down",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Tems - Me & U",
+    "query": "Tems Me and U",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Ayra Starr - Commas",
+    "query": "Ayra Starr Commas",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 BNXN - Gwagwalada",
+    "query": "BNXN Gwagwalada",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Omah Lay - Holy Ghost",
+    "query": "Omah Lay Holy Ghost",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Kizz Daniel - Cough",
+    "query": "Kizz Daniel Cough",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Seun Kuti - Zombie 2.0",
+    "query": "Seun Kuti Zombie",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Victony - Soweto",
+    "query": "Victony Soweto",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Blaqbonez - Back in Uni",
+    "query": "Blaqbonez Back in Uni",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Fireboy DML - Playboy",
+    "query": "Fireboy DML Playboy",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Oxlade - Ku Lo Sa",
+    "query": "Oxlade Ku Lo Sa",
+    "genre": "Afrobeat",
+    "folder": "Afrobeats 2025"
+  },
+  {
+    "title": "🎵 Kendrick Lamar - DNA",
+    "query": "Kendrick Lamar DNA",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Drake - Started From the Bottom",
+    "query": "Drake Started From the Bottom",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 J. Cole - Middle Child",
+    "query": "J Cole Middle Child",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Travis Scott - Goosebumps",
+    "query": "Travis Scott Goosebumps",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Kanye West - Stronger",
+    "query": "Kanye West Stronger",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Lil Baby - Drip Too Hard",
+    "query": "Lil Baby Drip Too Hard",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Gunna - Pushin P",
+    "query": "Gunna Pushin P",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Future - Mask Off",
+    "query": "Future Mask Off",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Megan Thee Stallion - Savage",
+    "query": "Megan Thee Stallion Savage",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Doja Cat - Say So",
+    "query": "Doja Cat Say So",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 SZA - Kill Bill",
+    "query": "SZA Kill Bill",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Tyler the Creator - See You Again",
+    "query": "Tyler the Creator See You Again",
+    "genre": "HipHop",
+    "folder": "US Hip-Hop"
+  },
+  {
+    "title": "🎵 Youssoupha - Blessé",
+    "query": "Youssoupha Blesse",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Youssoupha - Synthèse",
+    "query": "Youssoupha Synthese",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 MHD - Afro Trap Part 7",
+    "query": "MHD Afro Trap Part 7",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 MHD - À Kele",
+    "query": "MHD A Kele",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Dosseh - Toujours",
+    "query": "Dosseh Toujours",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Black M - Sur Ma Route",
+    "query": "Black M Sur Ma Route",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Fally Ipupa - Eloko Oyo",
+    "query": "Fally Ipupa Eloko Oyo",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Ninho - Millions",
+    "query": "Ninho Millions",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Niska - Charo",
+    "query": "Niska Charo",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Freeze Corleone - LMF",
+    "query": "Freeze Corleone LMF",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Hamza - Maintenant",
+    "query": "Hamza Maintenant",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Laylow - Trinity",
+    "query": "Laylow Trinity",
+    "genre": "HipHop",
+    "folder": "African Rap"
+  },
+  {
+    "title": "🎵 Jay Chou - Qi Li Xiang",
+    "query": "Jay Chou Qi Li Xiang",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Jay Chou - Dao Xiang",
+    "query": "Jay Chou Dao Xiang",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Jay Chou - Fa Ru Xue",
+    "query": "Jay Chou Fa Ru Xue",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Jay Chou - Cai Hong",
+    "query": "Jay Chou Cai Hong",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Teresa Teng - Wo Zhi Zai Hu Ni",
+    "query": "Teresa Teng Wo Zhi Zai Hu Ni",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Faye Wong - Dreams",
+    "query": "Faye Wong Dreams",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Faye Wong - Yan Jing",
+    "query": "Faye Wong Yan Jing",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Eason Chan - Shi Yi",
+    "query": "Eason Chan Shi Yi",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Eason Chan - Fu Qin",
+    "query": "Eason Chan Fu Qin",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Mayday - Ren Sheng Hai Hai",
+    "query": "Mayday Ren Sheng Hai Hai",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 G.E.M. - Sha",
+    "query": "GEM Sha",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 JJ Lin - Xiao Jiu",
+    "query": "JJ Lin Xiao Jiu",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Wang Leehom - Yi Ran Ai Ni",
+    "query": "Wang Leehom Yi Ran Ai Ni",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Stefanie Sun - Tian Hei Hei",
+    "query": "Stefanie Sun Tian Hei Hei",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Fish Leong - Ning Xin",
+    "query": "Fish Leong Ning Xin",
+    "genre": "Chinese",
+    "folder": "C-Pop Classics 最火"
+  },
+  {
+    "title": "🎵 Higher Brothers - Made in China",
+    "query": "Higher Brothers Made in China",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 GAI - Douc Gei",
+    "query": "GAI Douc Gei",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Jackson Wang - Blow",
+    "query": "Jackson Wang Blow",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Jackson Wang - Cruel",
+    "query": "Jackson Wang Cruel",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Kris Wu - Antares",
+    "query": "Kris Wu Antares",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Lay Zhang - Lit",
+    "query": "Lay Zhang Lit",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Wang Yibo - Lover",
+    "query": "Wang Yibo Lover",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 TFBoys - Heart",
+    "query": "TFBoys Heart",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Hua Chenyu - Rolling In The Deep",
+    "query": "Hua Chenyu Rolling In The Deep",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Xiao Zhan - Spotlight",
+    "query": "Xiao Zhan Spotlight",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 CAPPER - Young King",
+    "query": "CAPPER Young King Chinese rap",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Ty. - So Far So Good",
+    "query": "Ty So Far So Good Chinese",
+    "genre": "Chinese",
+    "folder": "Chinese Rap 中国说唱"
+  },
+  {
+    "title": "🎵 Avicii - Levels",
+    "query": "Avicii Levels",
+    "genre": "EDM",
+    "folder": "EDM Classics"
+  },
+  {
+    "title": "🎵 Avicii - Hey Brother",
+    "query": "Avicii Hey Brother",
+    "genre": "EDM",
+    "folder": "EDM Classics"
+  },
+  {
+    "title": "🎵 Swedish House Mafia - Don't You Worry Child",
+    "query": "Swedish House Mafia Don't You Worry Child",
+    "genre": "EDM",
+    "folder": "EDM Classics"
+  },
+  {
+    "title": "🎵 Daft Punk - Around the World",
+    "query": "Daft Punk Around the World",
+    "genre": "EDM",
+    "folder": "EDM Classics"
+  },
+  {
+    "title": "🎵 Daft Punk - One More Time",
+    "query": "Daft Punk One More Time",
+    "genre": "EDM",
+    "folder": "EDM Classics"
+  },
+  {
+    "title": "🎵 Eric Prydz - Call On Me",
+    "query": "Eric Prydz Call On Me",
+    "genre": "EDM",
+    "folder": "EDM Classics"
+  },
+  {
+    "title": "🎵 Tiësto - Red Lights",
+    "query": "Tiesto Red Lights",
+    "genre": "EDM",
+    "folder": "EDM Classics"
+  },
+  {
+    "title": "🎵 Martin Garrix - Scared to Be Lonely",
+    "query": "Martin Garrix Scared to Be Lonely",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 David Guetta - Without You",
+    "query": "David Guetta Without You",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Calvin Harris - This Is What You Came For",
+    "query": "Calvin Harris This Is What You Came For",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Marshmello - Happier",
+    "query": "Marshmello Happier",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 The Chainsmokers - Something Just Like This",
+    "query": "Chainsmokers Something Just Like This",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Illenium - Gorgeous",
+    "query": "Illenium Gorgeous",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Zedd - The Middle",
+    "query": "Zedd The Middle",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Kygo - Cloud Nine",
+    "query": "Kygo Cloud Nine",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Diplo - Revolution",
+    "query": "Diplo Revolution",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Flume - Never Be Like You",
+    "query": "Flume Never Be Like You",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Porter Robinson - Shelter",
+    "query": "Porter Robinson Shelter",
+    "genre": "EDM",
+    "folder": "EDM 2025"
+  },
+  {
+    "title": "🎵 Booba - Pitbull",
+    "query": "Booba Pitbull",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Booba - DKR",
+    "query": "Booba DKR",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Jul - Tout là-haut",
+    "query": "Jul Tout la-haut",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Jul - Bande Organisée",
+    "query": "Jul Bande Organisee",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 SCH - Rooftop",
+    "query": "SCH Rooftop",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 SCH - Riviera",
+    "query": "SCH Riviera",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Nekfeu - Étoiles",
+    "query": "Nekfeu Etoiles",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Nekfeu - Humain",
+    "query": "Nekfeu Humain",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 PNL - Au DD",
+    "query": "PNL Au DD",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 PNL - Jusqu'au dernier gramme",
+    "query": "PNL Jusqu'au dernier gramme",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Damso - Macarena",
+    "query": "Damso Macarena",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Damso - Batterie Faible",
+    "query": "Damso Batterie Faible",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Ninho - Jefe",
+    "query": "Ninho Jefe",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Ninho - Comme Prévu",
+    "query": "Ninho Comme Prevu",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Lacrim - Corleone",
+    "query": "Lacrim Corleone",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Gradur - Chocolat",
+    "query": "Gradur Chocolat",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Aya Nakamura - Djadja",
+    "query": "Aya Nakamura Djadja",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Aya Nakamura - Pookie",
+    "query": "Aya Nakamura Pookie",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Niska - Réseaux",
+    "query": "Niska Reseaux",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 Kaaris - Zoo",
+    "query": "Kaaris Zoo",
+    "genre": "FrenchRap",
+    "folder": "French Rap 🇫🇷"
+  },
+  {
+    "title": "🎵 MHD - Afro Trap Part 3",
+    "query": "MHD Afro Trap Part 3",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 MHD - Maman",
+    "query": "MHD Maman",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Damso - Teki",
+    "query": "Damso Teki",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Aya Nakamura - Copines",
+    "query": "Aya Nakamura Copines",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Burna Boy - Outside",
+    "query": "Burna Boy Outside afro trap",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Afro B - Drogba",
+    "query": "Afro B Drogba Joanna",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Kranium - Nobody Has to Know",
+    "query": "Kranium Nobody Has to Know",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Popcaan - Inna Di Dancehall",
+    "query": "Popcaan Inna Di Dancehall",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Sean Paul - Temperature",
+    "query": "Sean Paul Temperature",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Vybz Kartel - Fever",
+    "query": "Vybz Kartel Fever",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Konshens - Bruk It Down",
+    "query": "Konshens Bruk It Down",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Masicka - Gvnman Shift",
+    "query": "Masicka Gvnman Shift",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Alkaline - Champion Boy",
+    "query": "Alkaline Champion Boy",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Squash - 6ixx",
+    "query": "Squash 6ixx",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
+  },
+  {
+    "title": "🎵 Skillibeng - Crocodile Teeth",
+    "query": "Skillibeng Crocodile Teeth",
+    "genre": "AfroTrap",
+    "folder": "Afro-Trap 🌴"
   }
 ]
