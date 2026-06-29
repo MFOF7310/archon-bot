@@ -436,7 +436,6 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 
     return c.encode('png');
 }
-}
 
 // ================= WARM WELCOME TEXT =================
 function warmWelcomeText(member, count, cfg) {
