@@ -254,24 +254,20 @@ module.exports = {
         // ================= GAME EMBED =================
         const gameEmbed = new EmbedBuilder()
             .setColor('#9b59b6')
-            .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
+            .setAuthor({ name: '⚔️ NEURAL TIC-TAC-TOE', iconURL: client.user.displayAvatarURL() })
             .setDescription(
-                `\`\`\`yaml\n${t.challenge(challenger.username, opponent.username)}\n${t.betInfo}\n\`\`\`\n` +
-                `**${t.clickToPlay}**`
+                '```ansi\n' +
+                '\u001b[1;35m\u25b8 MATCH    \u001b[0m' + challenger.username + ' vs ' + opponent.username + '\n' +
+                '\u001b[1;35m\u25b8 ENTRY    \u001b[0m50 🪙 each · Winner takes 100 🪙\n' +
+                '\u001b[1;33m\u25b8 TURN     \u001b[0m\u001b[1;37m❌ ' + challenger.username + '\u001b[0m goes first\n' +
+                '```'
             )
             .addFields(
-                { 
-                    name: `❌ ${challenger.username}`, 
-                    value: `${challengerRank.emoji} ${challengerRank.title[lang]}\n${t.level}: ${challengerLevel}\n${t.credits}: ${challengerCredits.toLocaleString()} 🪙`, 
-                    inline: true 
-                },
-                { 
-                    name: `⭕ ${opponent.username}`, 
-                    value: `${opponentRank.emoji} ${opponentRank.title[lang]}\n${t.level}: ${opponentLevel}\n${t.credits}: ${opponentCredits.toLocaleString()} 🪙`, 
-                    inline: true 
-                },
-                { name: t.turn, value: `<@${turn}>`, inline: false }
+                { name: '❌ ' + challenger.username, value: challengerRank.emoji + ' ' + challengerRank.title[lang] + ' · Lv.' + challengerLevel, inline: true },
+                { name: '⭕ ' + opponent.username, value: opponentRank.emoji + ' ' + opponentRank.title[lang] + ' · Lv.' + opponentLevel, inline: true }
             )
+            .setFooter({ text: `${guildName} · NEURAL ARENA · BAMAKO_223 🇲🇱` })
+            .setTimestamp();
             .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
         
@@ -343,11 +339,16 @@ module.exports = {
                     }
                     
                     resultEmbed
+                    resultEmbed
                         .setColor('#FEE75C')
-                        .setTitle(t.tie)
-                        .setDescription(t.tieDesc)
-                        .addFields({ name: t.refund, value: t.refundDesc, inline: false });
-                } else {
+                        .setAuthor({ name: '🤝 TACTICAL STALEMATE', iconURL: client.user.displayAvatarURL() })
+                        .setDescription(
+                            '```ansi\n' +
+                            '\u001b[1;33m\u25b8 RESULT   \u001b[0mDRAW — No winner\n' +
+                            '\u001b[1;33m\u25b8 REFUND   \u001b[0m50 🪙 returned to each player\n' +
+                            '\u001b[0;37m\u25b8 TIP      \u001b[0mChallenge again to settle the score!\n' +
+                            '```'
+                        );
                     const winnerData = client.getUserData(winnerId) || (winnerId === challenger.id ? challengerData : opponentData);
                     const loserData = client.getUserData(loserId) || (loserId === challenger.id ? challengerData : opponentData);
                     
@@ -391,13 +392,17 @@ if (message.guild) {
     } catch (e) {}
 }
                     resultEmbed
+                    resultEmbed
                         .setColor('#57F287')
-                        .setTitle(t.win)
-                        .setDescription(t.winDesc(winner.username))
-                        .addFields(
-                            { name: t.reward, value: `\`\`\`yaml\n${t.creditsGain}: +${winnerReward} 🪙\n${t.xpGain}: +100 XP\`\`\``, inline: true },
-                            { name: `📈 ${lang === 'fr' ? 'Nouveau Rang' : 'New Rank'}`, value: `${newWinnerRank.emoji} ${newWinnerRank.title[lang]}\n${t.level} ${newWinnerLevel}`, inline: true },
-                            { name: t.winnerStats, value: `\`\`\`yaml\n${t.gamesPlayed}: ${(winnerData?.games_played || 0) + 1}\n${t.winRate}: ${winRate.toFixed(1)}%\`\`\``, inline: false }
+                        .setAuthor({ name: '🏆 NEURAL ARENA — VICTORY!', iconURL: client.user.displayAvatarURL() })
+                        .setDescription(
+                            '```ansi\n' +
+                            '\u001b[1;32m\u25b8 WINNER   \u001b[0m\u001b[1;37m' + winner.username + '\u001b[0m\n' +
+                            '\u001b[1;32m\u25b8 PRIZE    \u001b[0m+100 🪙 · +100 XP\n' +
+                            '\u001b[1;31m\u25b8 LOSER    \u001b[0m' + loser.username + ' · +25 XP consolation\n' +
+                            '\u001b[1;32m\u25b8 NEW RANK \u001b[0m' + newWinnerRank.emoji + ' ' + newWinnerRank.title[lang] + ' · Lv.' + newWinnerLevel + '\n' +
+                            '\u001b[0;37m\u25b8 WIN RATE \u001b[0m' + winRate.toFixed(1) + '%\n' +
+                            '```'
                         );
                 }
                 
@@ -425,24 +430,20 @@ if (message.guild) {
             
             const updatedEmbed = new EmbedBuilder()
                 .setColor('#9b59b6')
-                .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
+                .setAuthor({ name: '⚔️ NEURAL TIC-TAC-TOE', iconURL: client.user.displayAvatarURL() })
                 .setDescription(
-                    `\`\`\`yaml\n${t.challenge(challenger.username, opponent.username)}\n${t.betInfo}\n\`\`\`\n` +
-                    `**${t.clickToPlay}**`
+                    '```ansi\n' +
+                    '\u001b[1;35m\u25b8 MATCH    \u001b[0m' + challenger.username + ' vs ' + opponent.username + '\n' +
+                    '\u001b[1;33m\u25b8 TURN     \u001b[0m\u001b[1;37m' + (turn === challenger.id ? '❌ ' + challenger.username : '⭕ ' + opponent.username) + '\u001b[0m\n' +
+                    '\u001b[0;37m\u25b8 PRIZE    \u001b[0m100 🪙 winner takes all\n' +
+                    '```'
                 )
                 .addFields(
-                    { 
-                        name: `❌ ${challenger.username}`, 
-                        value: `${challengerRank.emoji} ${challengerRank.title[lang]}\n${t.level}: ${challengerLevel}\n${t.credits}: ${((updatedChallenger?.credits || 0)).toLocaleString()} 🪙`, 
-                        inline: true 
-                    },
-                    { 
-                        name: `⭕ ${opponent.username}`, 
-                        value: `${opponentRank.emoji} ${opponentRank.title[lang]}\n${t.level}: ${opponentLevel}\n${t.credits}: ${((updatedOpponent?.credits || 0)).toLocaleString()} 🪙`, 
-                        inline: true 
-                    },
-                    { name: t.turn, value: `<@${turn}>`, inline: false }
+                    { name: '❌ ' + challenger.username, value: challengerRank.emoji + ' Lv.' + challengerLevel, inline: true },
+                    { name: '⭕ ' + opponent.username, value: opponentRank.emoji + ' Lv.' + opponentLevel, inline: true }
                 )
+                .setFooter({ text: `${guildName} · NEURAL ARENA · BAMAKO_223 🇲🇱` })
+                .setTimestamp();
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             
@@ -466,11 +467,15 @@ if (message.guild) {
                 
                 const timeoutEmbed = new EmbedBuilder()
                     .setColor('#ED4245')
-                    .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-                    .setTitle('⏰ TIME EXPIRED')
-                    .setDescription(t.gameTimeout)
-                    .addFields({ name: t.refund, value: `${entryFee} 🪙 ${lang === 'fr' ? 'retournés' : 'returned'}`, inline: false })
-                    .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
+                    .setAuthor({ name: '⏰ NEURAL ARENA — TIMEOUT', iconURL: client.user.displayAvatarURL() })
+                    .setDescription(
+                        '```ansi\n' +
+                        '\u001b[1;31m\u25b8 RESULT   \u001b[0mGame expired — no winner\n' +
+                        '\u001b[1;31m\u25b8 REFUND   \u001b[0m50 🪙 returned to each player\n' +
+                        '\u001b[0;37m\u25b8 TIP      \u001b[0mRespond faster next time!\n' +
+                        '```'
+                    )
+                    .setFooter({ text: `${guildName} · NEURAL ARENA · BAMAKO_223 🇲🇱` })
                     .setTimestamp();
                 
                 await msg.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => {});
