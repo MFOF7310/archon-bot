@@ -394,15 +394,13 @@ async function runGame(client, message, args, db, lang) {
             .setAuthor({ name: `🎮 ARCHON WORD COMBAT — ${tier.label[lang]} · ${cat.emoji} ${cat.label[lang]}`, iconURL: client.user.displayAvatarURL() })
             .setDescription(
                 `\`\`\`ansi\n` +
-                `${tier.ansiColor}╔══════════════════════════════════╗\u001b[0m\n` +
-                `${tier.ansiColor}║  TIER    \u001b[0m ${tier.emoji} ${tierKey.toUpperCase().padEnd(22)}${tier.ansiColor}║\u001b[0m\n` +
-                `${tier.ansiColor}║  WORD    \u001b[0m \u001b[1;37m${'█'.repeat(targetWord.length).padEnd(24)}\u001b[0m${tier.ansiColor}║\u001b[0m\n` +
-                `${tier.ansiColor}║  LETTERS \u001b[0m \u001b[1;36m${String(targetWord.length).padEnd(24)}\u001b[0m${tier.ansiColor}║\u001b[0m\n` +
-                `${tier.ansiColor}║  TIME    \u001b[0m \u001b[1;33m${String(tier.timeLimit/1000)+'s'}\u001b[0m\n` +
-                `${tier.ansiColor}╚══════════════════════════════════╝\u001b[0m\n` +
+                `${tier.ansiColor}▸ TIER     \u001b[0m${tier.emoji} ${tierKey.toUpperCase()}\n` +
+                `${tier.ansiColor}▸ CATEGORY \u001b[0m${cat.emoji} ${cat.label[lang]}\n` +
+                `${tier.ansiColor}▸ LETTERS  \u001b[0m\u001b[1;37m${targetWord.length}\u001b[0m\n` +
+                `${tier.ansiColor}▸ TIME     \u001b[0m\u001b[1;33m${tier.timeLimit/1000}s\u001b[0m\n` +
+                `${tier.ansiColor}▸ SCRAMBLE \u001b[0m\u001b[1;36m${scrambled}\u001b[0m\n` +
                 `\`\`\`` +
-                `\n## ${tier.emoji}  \`${scrambled}\`\n` +
-                `*${tier.hint[lang]}*`
+                `\n*${tier.hint[lang]}*`
             )
             .addFields(
                 { name: '💰 Base Rewards', value: `\`+${estRewards.xp} XP\` · \`+${estRewards.credits} 🪙\``, inline: true },
@@ -519,11 +517,10 @@ async function runGame(client, message, args, db, lang) {
                     .setColor(finalRank.color)
                     .setDescription(
                         `\`\`\`ansi\n` +
-                        `\u001b[1;33m╔══════════════════════════════════╗\u001b[0m\n` +
-                        `\u001b[1;33m║        🎉 LEVEL UP!              ║\u001b[0m\n` +
-                        `\u001b[1;33m║  ${m.author.username.substring(0,18).padEnd(18)} → Lv.${String(newLevel).padEnd(6)}\u001b[1;33m║\u001b[0m\n` +
-                        `\u001b[1;33m║  ${finalRank.emoji} ${finalRank.title[lang].substring(0,26).padEnd(26)}\u001b[1;33m║\u001b[0m\n` +
-                        `\u001b[1;33m╚══════════════════════════════════╝\u001b[0m\n` +
+                        `\u001b[1;33m▸ LEVEL UP  \u001b[0m🎉\n` +
+                        `\u001b[1;33m▸ AGENT     \u001b[0m${m.author.username.substring(0,20)}\n` +
+                        `\u001b[1;33m▸ NEW LEVEL \u001b[0m\u001b[1;37mLv.${newLevel}\u001b[0m\n` +
+                        `\u001b[1;33m▸ NEW RANK  \u001b[0m${finalRank.emoji} ${finalRank.title[lang]}\n` +
                         `\`\`\``
                     )
                     .setFooter({ text: `ARCHON CG-223 · BAMAKO_223 🇲🇱` });
@@ -554,12 +551,10 @@ async function runGame(client, message, args, db, lang) {
                     .setColor('#e74c3c')
                     .setDescription(
                         `\`\`\`ansi\n` +
-                        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
-                        `\u001b[1;31m║  ⏰ TIME\'S UP!                   ║\u001b[0m\n` +
-                        `\u001b[1;31m║  The word was: ${targetWord.padEnd(18)}\u001b[1;31m║\u001b[0m\n` +
-                        `\u001b[1;31m║  Scrambled:   ${scrambled.padEnd(18)}\u001b[1;31m║\u001b[0m\n` +
-                        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
-                        `\u001b[0;37mStreak reset. Try \`.wrg rookie\` to warm up!\u001b[0m\n` +
+                        `\u001b[1;31m▸ TIME UP   \u001b[0m⏰\n` +
+                        `\u001b[1;31m▸ WORD WAS  \u001b[0m\u001b[1;37m${targetWord}\u001b[0m\n` +
+                        `\u001b[1;31m▸ SCRAMBLED \u001b[0m${scrambled}\n` +
+                        `\u001b[0;37m▸ TIP       \u001b[0mTry .wrg rookie to warm up\n` +
                         `\`\`\``
                     )
                     .setFooter({ text: `${guildName} · NEURAL WRG v3.0 · BAMAKO_223 🇲🇱` });
