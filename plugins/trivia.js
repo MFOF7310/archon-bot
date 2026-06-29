@@ -353,19 +353,29 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
             const userRank = getRank(userLevel);
             
             // Category Selection Menu
-            const categoryEmbed = new EmbedBuilder().setColor('#00fbff')
-                .setAuthor({ name: `${t.title} • ${lang === 'fr' ? 'SÉLECTION' : 'SELECTION'}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(lang === 'fr' ? '═ CHOISISSEZ UNE CATÉGORIE ═' : '═ SELECT A CATEGORY ═')
-                .setDescription(lang === 'fr' ? 'Sélectionnez une catégorie pour commencer.' : 'Select a category to begin.')
-                .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon }).setTimestamp()
-                .addFields({ name: `💰 ${t.balance}`, value: `\`${credits.toLocaleString()} 🪙\` • ${userRank.emoji} ${userRank.title[lang]} (${lang === 'fr' ? 'Niv.' : 'Lvl.'} ${userLevel})`, inline: false });
-            
-            // Add first 9 categories as fields (Discord limit)
             const catEntries = Object.entries(CATEGORIES);
-            for (let i = 0; i < Math.min(9, catEntries.length); i++) {
-                const [key, cat] = catEntries[i];
-                categoryEmbed.addFields({ name: `${cat.emoji} ${cat.name[lang]}`, value: '`─────────────`', inline: true });
-            }
+            const categoryEmbed = new EmbedBuilder().setColor('#00f0ff')
+                .setAuthor({ name: '🧠 NEURAL TRIVIA — SELECT CATEGORY', iconURL: client.user.displayAvatarURL() })
+                .setDescription(
+                    '```ansi\n' +
+                    '\u001b[1;36m\u25b8 AGENT     \u001b[0m' + userName + '\n' +
+                    '\u001b[1;36m\u25b8 RANK      \u001b[0m' + userRank.emoji + ' ' + userRank.title[lang] + ' · Lv.' + userLevel + '\n' +
+                    '\u001b[1;36m\u25b8 CREDITS   \u001b[0m' + credits.toLocaleString() + ' 🪙\n' +
+                    '\u001b[1;36m\u25b8 MISSION   \u001b[0mSelect a category below\n' +
+                    '```'
+                )
+                .addFields(
+                    { name: '🔬 Science', value: '`Neural Knowledge`', inline: true },
+                    { name: '📜 History', value: '`Time & Empires`', inline: true },
+                    { name: '🎮 Gaming', value: '`Digital Arena`', inline: true },
+                    { name: '💻 Tech', value: '`Cyber Grid`', inline: true },
+                    { name: '🌍 Geography', value: '`World Map`', inline: true },
+                    { name: '🚀 Space', value: '`Deep Space`', inline: true },
+                    { name: '🐾 Animals', value: '`Wild Kingdom`', inline: true },
+                    { name: '⚽ Sports', value: '`Champion Arena`', inline: true },
+                    { name: '🇲🇱 Mali', value: '`BAMAKO_223`', inline: true }
+                )
+                .setFooter({ text: `${guildName} · NEURAL TRIVIA v2.0 · BAMAKO_223 🇲🇱` }).setTimestamp();
             
             const categoryOptions = catEntries.map(([key, cat]) => ({
                 label: `${cat.emoji} ${cat.name[lang]}`.substring(0, 100), value: key,
@@ -442,12 +452,19 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                             for (let qIndex = 0; qIndex < questions.length; qIndex++) {
                                 currentQuestion = qIndex + 1;
                                 const q = questions[qIndex];
+                                const streakBar = streak > 0 ? '🔥'.repeat(Math.min(streak,5)) : '─────';
                                 const questionEmbed = new EmbedBuilder().setColor(diff.color)
-                                    .setAuthor({ name: `${t.title} • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]}`, iconURL: client.user.displayAvatarURL() })
-                                    .setTitle(`${t.question} ${currentQuestion}/${questions.length}`)
-                                    .setDescription(`**${q.q}**\n\n${q.a.map((ans, idx) => `${['🇦', '🇧', '🇨', '🇩'][idx]} ${ans}`).join('\n')}`)
-                                    .addFields({ name: `🔥 ${t.streak}`, value: `\`${streak}\``, inline: true }, { name: `✅ ${t.correctAnswers}`, value: `\`${correctAnswers}/${questions.length}\``, inline: true }, { name: `⏰ ${t.timeLeft}`, value: `\`${diff.timeLimit}s\``, inline: true })
-                                    .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon }).setTimestamp();
+                                    .setAuthor({ name: `${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang].toUpperCase()} · ${diff.emoji} ${diff.name[lang].toUpperCase()}`, iconURL: client.user.displayAvatarURL() })
+                                    .setDescription(
+                                        '```ansi\n' +
+                                        '\u001b[1;36m\u25b8 Q' + currentQuestion + '/' + questions.length + '\u001b[0m  \u001b[1;37m' + q.q + '\u001b[0m\n' +
+                                        '\u001b[0;37m\u25b8 STREAK  \u001b[0m' + streakBar + ' ' + streak + '\n' +
+                                        '\u001b[0;37m\u25b8 SCORE   \u001b[0m' + correctAnswers + '/' + (currentQuestion-1) + ' correct\n' +
+                                        '\u001b[0;37m\u25b8 TIME    \u001b[0m' + diff.timeLimit + 's\n' +
+                                        '```' +
+                                        '\n' + q.a.map((ans,idx) => `${['🇦','🇧','🇨','🇩'][idx]} **${ans}**`).join('  ·  ')
+                                    )
+                                    .setFooter({ text: `${guildName} · NEURAL TRIVIA v2.0 · BAMAKO_223 🇲🇱` }).setTimestamp();
                                 
                                 const answerRow = new ActionRowBuilder().addComponents(
                                     new ButtonBuilder().setCustomId('trivia_a').setLabel('A').setStyle(ButtonStyle.Primary),
@@ -478,11 +495,21 @@ run: async (client, message, args, db, serverSettings, usedCommand) => {
                                     else { resultText = t.incorrect; resultColor = '#e74c3c'; streak = 0; }
                                 }
                                 
+                                const isCorr = !answer.timeout && answer.isCorrect;
+                                const aColor = answer.timeout ? '\u001b[0;37m' : (isCorr ? '\u001b[1;32m' : '\u001b[1;31m');
+                                const aIcon = answer.timeout ? '⏰' : (isCorr ? '✅' : '❌');
                                 const resultEmbed = new EmbedBuilder().setColor(resultColor)
-                                    .setAuthor({ name: `${t.title} • ${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang]}`, iconURL: client.user.displayAvatarURL() })
-                                    .setTitle(resultText).setDescription(`**${q.q}**\n\n${t.answer}: **${q.a[q.correct]}**`)
-                                    .addFields({ name: `💡 ${t.fact}`, value: q.fact, inline: false }, { name: `🔥 ${t.streak}`, value: `\`${streak}\``, inline: true }, { name: `✅ ${t.correctAnswers}`, value: `\`${correctAnswers}/${currentQuestion}\``, inline: true })
-                                    .setFooter({ text: `${guildName} • NEURAL TRIVIA • v${version}`, iconURL: guildIcon }).setTimestamp();
+                                    .setAuthor({ name: `${CATEGORIES[selectedCategory].emoji} ${CATEGORIES[selectedCategory].name[lang].toUpperCase()} · ${aIcon} ${resultText}`, iconURL: client.user.displayAvatarURL() })
+                                    .setDescription(
+                                        '```ansi\n' +
+                                        aColor + '\u25b8 RESULT  \u001b[0m' + resultText + '\n' +
+                                        '\u001b[1;37m\u25b8 ANSWER  \u001b[0m' + q.a[q.correct] + '\n' +
+                                        '\u001b[0;37m\u25b8 STREAK  \u001b[0m' + streak + ' wins\n' +
+                                        '\u001b[0;37m\u25b8 SCORE   \u001b[0m' + correctAnswers + '/' + currentQuestion + ' correct\n' +
+                                        '```' +
+                                        '\n💡 **' + t.fact + ':** ' + q.fact
+                                    )
+                                    .setFooter({ text: `${guildName} · NEURAL TRIVIA v2.0 · BAMAKO_223 🇲🇱` }).setTimestamp();
                                 
                                 const nextRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('trivia_next')
                                     .setLabel(currentQuestion === questions.length ? t.gameOver.split('!')[0] : (lang === 'fr' ? 'Suivant' : 'Next'))
