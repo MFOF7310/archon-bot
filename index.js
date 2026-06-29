@@ -4173,9 +4173,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                     if (q.persistentMsg) {
                         const { EmbedBuilder } = require('discord.js');
                         const stoppedEmbed = new EmbedBuilder().setColor(0xff3333)
-                            .setDescription('```ansi
+                            .setDescription('\`\`\`ansi
 [1;31m▸ STOPPED — Neural stream terminated.[0m
-```');
+\`\`\`');
                         await q.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
                         q.persistentMsg = null;
                     }
