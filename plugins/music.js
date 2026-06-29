@@ -439,7 +439,8 @@ async function playNext(q) {
             try {
                 const id = await playdl.getFreeClientID();
                 await playdl.setToken({ soundcloud: { client_id: id } });
-                const results = await playdl.search(track.query || track.title, { source: { soundcloud: 'tracks' }, limit: 1 });
+                const scQuery = (track.query || track.title).replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+                const results = await playdl.search(scQuery, { source: { soundcloud: 'tracks' }, limit: 1 });
                 if (results.length > 0) {
                     const url = results[0].permalink || results[0].url;
                     stream = await playdl.stream(url);
@@ -455,7 +456,7 @@ async function playNext(q) {
             // yt-dlp fallback
             if (!stream) {
                 try {
-                    const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '');
+                    const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                     const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
                     const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
                     const { stdout } = await execAsync(`yt-dlp --no-playlist -x --audio-format opus ${cookiesFlag} --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
