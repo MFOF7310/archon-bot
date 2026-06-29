@@ -496,8 +496,9 @@ async function runGame(client, message, args, db, lang) {
                 `\u001b[1;32m\u25b8 STREAK   \u001b[0m${newStreak} wins\n` +
                 (bonusLines ? bonusLines : '') +
                 `\u001b[1;36m\u25b8 XP       \u001b[0m\u001b[1;32m+${rewards.xp}\u001b[0m\n` +
-                `\u001b[1;33m\u25b8 CREDITS  \u001b[0m+${rewards.credits} \uD83E\uDE99\n` +
-                `\`\`\`
+                `\u001b[1;33m\u25b8 CREDITS  \u001b[0m+${rewards.credits}\n` +
+                `\u001b[0m\`\`\``
+            )
                 .addFields(
                     { name: '📊 Progress', value: `\`${progressBar(newPct,15)}\` ${newPct.toFixed(1)}%\n└ ${Math.ceil(newXpNeeded-newXpProgress).toLocaleString()} XP to next level`, inline: false },
                     { name: `${finalRank.emoji} Rank`, value: `${finalRank.title[lang]} · Lv.${newLevel}`, inline: true },
