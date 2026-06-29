@@ -4123,6 +4123,67 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
+// ================= CONTACT REPLY HANDLER (Cross-server DM reply) =================
+    if (interaction.isButton() && interaction.customId.startsWith('creply_')) {
+        try {
+            const parts = interaction.customId.split('_');
+            const targetUserId = parts[1];
+
+            // Only owner can use reply button
+            const OWNER_ID = process.env.OWNER_ID;
+            if (interaction.user.id !== OWNER_ID) {
+                return interaction.reply({ content: '❌ Owner only.', flags: 64 }).catch(() => {});
+            }
+
+            // Ask owner for reply text via a follow-up
+            await interaction.reply({ content: '💬 **Type your reply** — send it in the next 60 seconds:', flags: 64 }).catch(() => {});
+
+            const filter = m => m.author.id === OWNER_ID;
+            const collected = await interaction.channel.awaitMessages({ filter, max: 1, time: 60000 }).catch(() => null);
+
+            if (!collected || collected.size === 0) {
+                return interaction.followUp({ content: '⏰ Reply timed out.', flags: 64 }).catch(() => {});
+            }
+
+            const replyText = collected.first().content;
+            collected.first().delete().catch(() => {});
+
+            // DM the target user
+            const targetUser = await client.users.fetch(targetUserId).catch(() => null);
+            if (!targetUser) {
+                return interaction.followUp({ content: '❌ Could not find user.', flags: 64 }).catch(() => {});
+            }
+
+            await targetUser.send({
+                embeds: [new (require('discord.js').EmbedBuilder)()
+                    .setColor('#00ff88')
+                    .setAuthor({ name: '📡 NEURAL TRANSMISSION — ARCHITECT REPLY', iconURL: client.user.displayAvatarURL() })
+                    .setDescription(
+                        '```ansi
+' +
+                        '[1;32m▸ FROM      [0mThe Architect
+' +
+                        '[1;37m▸ MESSAGE   [0m' + replyText + '
+' +
+                        '[0;37m▸ TIP       [0mUse .contact to send a follow-up
+' +
+                        '```'
+                    )
+                    .setFooter({ text: 'NEURAL CONTACT v2.0 · BAMAKO_223 🇲🇱' })
+                    .setTimestamp()
+                ]
+            });
+
+            await interaction.followUp({ content: `✅ Reply sent to **${targetUser.username}** via DM.`, flags: 64 }).catch(() => {});
+            console.log(`[CONTACT REPLY] Architect → ${targetUser.tag}: ${replyText.substring(0,80)}`);
+
+        } catch(err) {
+            console.error('[CONTACT REPLY]', err.message);
+            interaction.followUp({ content: '❌ Reply failed.', flags: 64 }).catch(() => {});
+        }
+        return;
+    }
+
 // ================= MUSIC PANEL BUTTONS (Global — never expires, works for 24h streams) =================
     if (interaction.isButton() && ['mc_prev','mc_pause','mc_skip','mc_stop','mc_loop','mc_queue'].includes(interaction.customId)) {
         try {

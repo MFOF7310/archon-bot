@@ -1,286 +1,269 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, SlashCommandBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
-// ================= BILINGUAL TRANSLATIONS =================
+// ═══════════════════════════════════════════════════════
+//  📡 CONTACT v2.0 — NEURAL TRANSMISSION SYSTEM
+//  Priority tags · Cross-server DM reply · Read receipts
+// ═══════════════════════════════════════════════════════
+
+const PRIORITIES = {
+    bug:        { emoji: '🔴', label: { en: 'Bug Report',   fr: 'Rapport de Bug'  }, color: '#e74c3c', ansi: '\u001b[1;31m' },
+    suggestion: { emoji: '🟡', label: { en: 'Suggestion',   fr: 'Suggestion'      }, color: '#f1c40f', ansi: '\u001b[1;33m' },
+    general:    { emoji: '🔵', label: { en: 'General',      fr: 'Général'         }, color: '#00f0ff', ansi: '\u001b[1;36m' }
+};
+
 const translations = {
     en: {
-        title: '📡 NEURAL TRANSMISSION',
-        sending: '🛰️ TRANSMITTING',
-        delivered: '✅ TRANSMISSION DELIVERED',
-        failed: '❌ TRANSMISSION FAILED',
-        usage: (prefix) => `❌ **Usage:** \`${prefix}contact [message]\`\n\n**Example:**\n\`${prefix}contact Hello Architect! I have a suggestion...\``,
-        slashUsage: '❌ **Usage:** `/contact message:Your message here`',
-        architectUnavailable: '⚠️ **Architect ID not configured.**\nContact the owner manually.',
-        linkFailure: '❌ **Link Failure:** Architect secure line is currently closed.',
-        deliveredMsg: '🛰️ **Transmission delivered to the Architect.**\nThank you for your feedback!',
-        incomingTitle: '📥 INCOMING NEURAL TRANSMISSION',
-        from: 'From',
-        sourceServer: 'Source Server',
-        channel: 'Channel',
-        messageContent: 'Message Content',
-        directMessage: 'Direct Message',
-        userInfo: 'User Information',
-        userTag: 'Tag',
-        userID: 'ID',
-        accountCreated: 'Account Created',
-        footer: 'ARCHITECT CG-223 • Neural Contact System',
-        confirmTitle: '📋 CONFIRM TRANSMISSION',
-        confirmDesc: (feedback) => `You are about to send the following message to the Architect:\n\n\`\`\`\n${feedback}\`\`\``,
-        confirm: '✅ Send',
-        cancel: '❌ Cancel',
-        cancelled: '❌ **Transmission cancelled.**',
-        timeout: '⏰ **Transmission timed out.**',
-        processing: '📡 Processing transmission...',
-        maxLength: '❌ **Message too long.**\nMaximum 1900 characters.'
+        title: 'NEURAL TRANSMISSION',
+        selectPriority: 'Select message priority:',
+        confirmTitle: 'CONFIRM TRANSMISSION',
+        confirmDesc: (msg, priority) => `Priority: ${PRIORITIES[priority].emoji} ${PRIORITIES[priority].label.en}\nMessage: ${msg}`,
+        confirm: 'Transmit',
+        cancel: 'Abort',
+        cancelled: 'Transmission aborted.',
+        timeout: 'Transmission timed out.',
+        processing: 'Routing transmission...',
+        delivered: 'Transmission delivered to the Architect.',
+        failed: 'Transmission failed. Try again later.',
+        usage: (p) => `Usage: \`${p}contact [message]\``,
+        maxLength: 'Message too long. Max 1900 characters.',
+        architectUnavailable: 'Architect ID not configured.',
+        replyReceived: (msg) => `The Architect replied to your transmission:\n${msg}`,
+        incomingTitle: 'INCOMING NEURAL TRANSMISSION',
     },
     fr: {
-        title: '📡 TRANSMISSION NEURALE',
-        sending: '🛰️ TRANSMISSION',
-        delivered: '✅ TRANSMISSION LIVRÉE',
-        failed: '❌ TRANSMISSION ÉCHOUÉE',
-        usage: (prefix) => `❌ **Utilisation:** \`${prefix}contact [message]\`\n\n**Exemple:**\n\`${prefix}contact Bonjour Architecte! J'ai une suggestion...\``,
-        slashUsage: '❌ **Utilisation:** `/contact message:Votre message ici`',
-        architectUnavailable: '⚠️ **ID de l\'Architecte non configuré.**\nContactez le propriétaire manuellement.',
-        linkFailure: '❌ **Échec de Liaison:** La ligne sécurisée de l\'Architecte est fermée.',
-        deliveredMsg: '🛰️ **Transmission livrée à l\'Architecte.**\nMerci pour votre retour!',
-        incomingTitle: '📥 TRANSMISSION NEURALE ENTRANTE',
-        from: 'De',
-        sourceServer: 'Serveur Source',
-        channel: 'Canal',
-        messageContent: 'Contenu du Message',
-        directMessage: 'Message Direct',
-        userInfo: 'Information Utilisateur',
-        userTag: 'Pseudo',
-        userID: 'ID',
-        accountCreated: 'Compte Créé',
-        footer: 'ARCHITECT CG-223 • Système de Contact Neural',
-        confirmTitle: '📋 CONFIRMER LA TRANSMISSION',
-        confirmDesc: (feedback) => `Vous allez envoyer le message suivant à l\'Architecte:\n\n\`\`\`\n${feedback}\`\`\``,
-        confirm: '✅ Envoyer',
-        cancel: '❌ Annuler',
-        cancelled: '❌ **Transmission annulée.**',
-        timeout: '⏰ **Transmission expirée.**',
-        processing: '📡 Traitement de la transmission...',
-        maxLength: '❌ **Message trop long.**\nMaximum 1900 caractères.'
+        title: 'TRANSMISSION NEURALE',
+        selectPriority: 'Sélectionnez la priorité:',
+        confirmTitle: 'CONFIRMER LA TRANSMISSION',
+        confirmDesc: (msg, priority) => `Priorité: ${PRIORITIES[priority].emoji} ${PRIORITIES[priority].label.fr}\nMessage: ${msg}`,
+        confirm: 'Transmettre',
+        cancel: 'Annuler',
+        cancelled: 'Transmission annulée.',
+        timeout: 'Transmission expirée.',
+        processing: 'Routage de la transmission...',
+        delivered: 'Transmission livrée à l\'Architecte.',
+        failed: 'Transmission échouée. Réessayez plus tard.',
+        usage: (p) => `Utilisation: \`${p}contact [message]\``,
+        maxLength: 'Message trop long. Maximum 1900 caractères.',
+        architectUnavailable: 'ID de l\'Architecte non configuré.',
+        replyReceived: (msg) => `L\'Architecte a répondu à votre transmission:\n${msg}`,
+        incomingTitle: 'TRANSMISSION NEURALE ENTRANTE',
     }
 };
+
+// ── Active reply sessions (owner is replying to someone) ──
+const replySessions = new Map();
 
 module.exports = {
     name: 'contact',
     aliases: ['feedback', 'report', 'suggest', 'msg', 'contacter', 'messagearchitecte'],
-    description: '📡 Send a direct message to the Architect (bot owner).',
+    description: '📡 Send a direct message to the Architect.',
     category: 'SYSTEM',
     cooldown: 30000,
     usage: '.contact [message]',
-    examples: ['.contact Hello! I have a suggestion...', '.contact There\'s a bug in the shop command.'],
+    examples: ['.contact I found a bug in the shop!'],
 
-    // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('contact')
         .setDescription('📡 Send a direct message to the Architect (bot owner)')
-        .addStringOption(option =>
-            option.setName('message')
-                .setDescription('Your message to the Architect')
-                .setRequired(true)
-                .setMaxLength(1900)
-        ),
+        .addStringOption(o => o.setName('message').setDescription('Your message').setRequired(true).setMaxLength(1900)),
 
-    // ================= PREFIX COMMAND =================
-    run: async (client, message, args, database, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
-            : (serverSettings?.language || 'en');
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
         const t = translations[lang];
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const feedback = args.join(' ');
-
-        if (!feedback) {
-            return message.reply({ content: t.usage(prefix) });
-        }
-        if (feedback.length > 1900) {
-            return message.reply({ content: t.maxLength });
-        }
-
+        if (!feedback) return message.reply({ content: t.usage(prefix) });
+        if (feedback.length > 1900) return message.reply({ content: t.maxLength });
         await handleContact(client, message, feedback, lang, false);
     },
 
-    // ================= SLASH COMMAND =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const t = translations[lang];
         const feedback = interaction.options.getString('message', true);
-
         await handleContact(client, interaction, feedback, lang, true);
-    }
+    },
+
+    // ── Expose replySessions for index.js global handler ──
+    replySessions,
+    PRIORITIES
 };
 
-// ================= SHARED CONTACT HANDLER =================
+// ═══════════════════════════════════════════════════════
+//  SHARED CONTACT HANDLER
+// ═══════════════════════════════════════════════════════
 async function handleContact(client, context, feedback, lang, isSlash) {
     const t = translations[lang];
-    const version = client.version || '1.9.0';
-    
+    const version = client.version || '2.0.0';
     const user = isSlash ? context.user : context.author;
     const guild = context.guild;
     const channel = context.channel;
-    const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
-    const guildIcon = guild?.iconURL() || client.user.displayAvatarURL();
+    const guildName = guild?.name?.toUpperCase() || 'DM';
 
     const reply = async (opts) => {
         if (isSlash) {
             if (context.deferred || context.replied) return context.editReply(opts);
-            return context.reply(opts);
+            return context.reply({ ...opts, flags: 64 });
         }
         return context.reply(opts);
     };
 
     const ARCHITECT_ID = process.env.OWNER_ID;
-    if (!ARCHITECT_ID) {
-        return reply({ content: t.architectUnavailable, flags: 64 });
-    }
+    if (!ARCHITECT_ID) return reply({ content: t.architectUnavailable });
 
-    // ================= CONFIRMATION EMBED =================
-    const confirmEmbed = new EmbedBuilder()
-        .setColor('#00fbff')
-        .setAuthor({ name: `${t.title} • ${t.confirmTitle}`, iconURL: user.displayAvatarURL() })
-        .setDescription(t.confirmDesc(feedback))
-        .addFields({
-            name: '📋 ' + (lang === 'fr' ? 'Détails' : 'Details'),
-            value: `**${t.sourceServer}:** ${guild?.name || t.directMessage}\n**${t.channel}:** ${channel?.name || 'DM'}`,
-            inline: false
-        })
-        .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-        .setTimestamp();
-
-    const confirmRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId(`contact_confirm_${user.id}`)
-            .setLabel(t.confirm)
-            .setStyle(ButtonStyle.Success)
-            .setEmoji('✅'),
-        new ButtonBuilder()
-            .setCustomId(`contact_cancel_${user.id}`)
-            .setLabel(t.cancel)
-            .setStyle(ButtonStyle.Danger)
-            .setEmoji('❌')
+    // ── Step 1: Priority selection ──
+    const priorityRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`cp_bug_${user.id}`).setLabel('🔴 Bug Report').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`cp_suggestion_${user.id}`).setLabel('🟡 Suggestion').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`cp_general_${user.id}`).setLabel('🔵 General').setStyle(ButtonStyle.Secondary)
     );
 
-    await reply({ embeds: [confirmEmbed], components: [confirmRow], ephemeral: isSlash });
-    
-    // Get the reply message for collector
+    const priorityEmbed = new EmbedBuilder()
+        .setColor('#00f0ff')
+        .setAuthor({ name: `📡 ${t.title}`, iconURL: client.user.displayAvatarURL() })
+        .setDescription(
+            '```ansi\n' +
+            '\u001b[1;36m\u25b8 AGENT     \u001b[0m' + user.username + '\n' +
+            '\u001b[1;36m\u25b8 SERVER    \u001b[0m' + (guild?.name || 'DM') + '\n' +
+            '\u001b[1;36m\u25b8 MESSAGE   \u001b[0m' + feedback.substring(0, 60) + (feedback.length > 60 ? '...' : '') + '\n' +
+            '\u001b[1;33m\u25b8 ACTION    \u001b[0mSelect priority below\n' +
+            '```'
+        )
+        .setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0 \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` });
+
+    await reply({ embeds: [priorityEmbed], components: [priorityRow] });
     const replyMsg = isSlash ? await context.fetchReply() : await context.fetchReply();
 
-    // ================= BUTTON COLLECTOR =================
-    const collector = replyMsg.createMessageComponentCollector({ 
-        componentType: ComponentType.Button, 
-        time: 30000 
-    });
+    const priorityCollector = replyMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
-    collector.on('collect', async (i) => {
-        if (i.user.id !== user.id) {
-            return i.reply({ 
-                content: lang === 'fr' ? '❌ Cette confirmation ne vous appartient pas.' : '❌ This confirmation is not yours.', 
-                flags: 64 
-            });
-        }
+    priorityCollector.on('collect', async (i) => {
+        if (i.user.id !== user.id) return i.reply({ content: '\u274c Not your transmission.', flags: 64 });
 
-        // CANCEL
-        if (i.customId === `contact_cancel_${user.id}`) {
-            collector.stop('cancelled');
-            const cancelEmbed = new EmbedBuilder()
-                .setColor('#ED4245')
-                .setAuthor({ name: t.title, iconURL: user.displayAvatarURL() })
-                .setDescription(t.cancelled)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            await i.update({ embeds: [cancelEmbed], components: [] });
-            return;
-        }
+        const priorityKey = i.customId.split('_')[1];
+        const priority = PRIORITIES[priorityKey];
+        priorityCollector.stop('selected');
 
-        // CONFIRM
-        if (i.customId === `contact_confirm_${user.id}`) {
-            collector.stop('confirmed');
-            
-            // Processing
-            const processingEmbed = new EmbedBuilder()
-                .setColor('#FEE75C')
-                .setAuthor({ name: `${t.title} • ${t.sending}`, iconURL: user.displayAvatarURL() })
-                .setDescription(t.processing)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            await i.update({ embeds: [processingEmbed], components: [] });
+        await i.deferUpdate().catch(() => {});
 
-            try {
-                const owner = await client.users.fetch(ARCHITECT_ID);
-                
-                // Build rich embed for Architect
-                const contactEmbed = new EmbedBuilder()
-                    .setColor('#00fbff')
-                    .setAuthor({ 
-                        name: `${t.incomingTitle} • ${user.tag}`, 
-                        iconURL: user.displayAvatarURL() 
-                    })
-                    .setDescription(`**${t.messageContent}:**\n\`\`\`\n${feedback}\`\`\``)
-                    .addFields(
-                        { 
-                            name: `📍 ${t.sourceServer}`, 
-                            value: `${guild?.name || t.directMessage}\n└─ ID: \`${guild?.id || 'N/A'}\``, 
-                            inline: true 
-                        },
-                        { 
-                            name: `💬 ${t.channel}`, 
-                            value: `${channel?.name || 'DM'}\n└─ ID: \`${channel?.id}\``, 
-                            inline: true 
-                        }
-                    )
-                    .addFields({
-                        name: `👤 ${t.userInfo}`,
-                        value: `**${t.userTag}:** ${user.tag}\n**${t.userID}:** \`${user.id}\`\n**${t.accountCreated}:** <t:${Math.floor(user.createdAt.getTime() / 1000)}:R>`,
-                        inline: false
-                    })
-                    .setFooter({ text: `${t.footer} • v${version}` })
-                    .setTimestamp();
+        // ── Step 2: Confirm ──
+        const confirmRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`cc_confirm_${user.id}`).setLabel(t.confirm).setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`cc_cancel_${user.id}`).setLabel(t.cancel).setStyle(ButtonStyle.Danger)
+        );
 
-                const replyRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setLabel(lang === 'fr' ? '💬 Répondre' : '💬 Reply')
-                        .setStyle(ButtonStyle.Link)
-                        .setURL(`https://discord.com/channels/${guild?.id || '@me'}/${channel?.id}`)
-                );
+        const confirmEmbed = new EmbedBuilder()
+            .setColor(priority.color)
+            .setAuthor({ name: `📡 ${t.title} \u00b7 ${t.confirmTitle}`, iconURL: user.displayAvatarURL() })
+            .setDescription(
+                '```ansi\n' +
+                priority.ansi + '\u25b8 PRIORITY  \u001b[0m' + priority.emoji + ' ' + priority.label[lang] + '\n' +
+                '\u001b[1;37m\u25b8 MESSAGE   \u001b[0m' + feedback.substring(0, 80) + (feedback.length > 80 ? '...' : '') + '\n' +
+                '\u001b[0;37m\u25b8 SERVER    \u001b[0m' + (guild?.name || 'DM') + '\n' +
+                '\u001b[0;37m\u25b8 CHANNEL   \u001b[0m' + (channel?.name || 'DM') + '\n' +
+                '```'
+            )
+            .setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` });
 
-                await owner.send({ embeds: [contactEmbed], components: [replyRow] });
-                
-                // Success
-                const successEmbed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setAuthor({ name: `${t.title} • ${t.delivered}`, iconURL: user.displayAvatarURL() })
-                    .setDescription(t.deliveredMsg)
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                    .setTimestamp();
-                
-                await replyMsg.edit({ embeds: [successEmbed], components: [] });
-                console.log(`[CONTACT] ${user.tag} → Architect: ${feedback.substring(0, 100)}...`);
-                
-            } catch (error) {
-                console.error('[CONTACT] Error:', error);
-                const errorEmbed = new EmbedBuilder()
-                    .setColor('#ED4245')
-                    .setAuthor({ name: `${t.title} • ${t.failed}`, iconURL: user.displayAvatarURL() })
-                    .setDescription(t.linkFailure)
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                    .setTimestamp();
-                await replyMsg.edit({ embeds: [errorEmbed], components: [] });
+        await replyMsg.edit({ embeds: [confirmEmbed], components: [confirmRow] });
+
+        const confirmCollector = replyMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+
+        confirmCollector.on('collect', async (j) => {
+            if (j.user.id !== user.id) return j.reply({ content: '\u274c Not your transmission.', flags: 64 });
+
+            if (j.customId === `cc_cancel_${user.id}`) {
+                confirmCollector.stop('cancelled');
+                await j.update({
+                    embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription('```ansi\n\u001b[1;31m\u25b8 ABORTED   \u001b[0mTransmission cancelled.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                    components: []
+                });
+                return;
             }
-        }
+
+            if (j.customId === `cc_confirm_${user.id}`) {
+                confirmCollector.stop('confirmed');
+                await j.deferUpdate().catch(() => {});
+
+                // Processing
+                await replyMsg.edit({
+                    embeds: [new EmbedBuilder().setColor('#f1c40f').setDescription('```ansi\n\u001b[1;33m\u25b8 STATUS    \u001b[0mRouting transmission to Architect...\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                    components: []
+                });
+
+                try {
+                    const owner = await client.users.fetch(ARCHITECT_ID);
+
+                    // ── Build owner DM embed ──
+                    const ownerEmbed = new EmbedBuilder()
+                        .setColor(priority.color)
+                        .setAuthor({ name: `\uD83D\uDCE5 ${t.incomingTitle}`, iconURL: user.displayAvatarURL() })
+                        .setDescription(
+                            '```ansi\n' +
+                            priority.ansi + '\u25b8 PRIORITY  \u001b[0m' + priority.emoji + ' ' + priority.label.en + '\n' +
+                            '\u001b[1;37m\u25b8 MESSAGE   \u001b[0m' + feedback + '\n' +
+                            '\u001b[1;36m\u25b8 FROM      \u001b[0m' + user.username + ' (' + user.id + ')\n' +
+                            '\u001b[1;36m\u25b8 SERVER    \u001b[0m' + (guild?.name || 'DM') + '\n' +
+                            '\u001b[1;36m\u25b8 CHANNEL   \u001b[0m' + (channel?.name || 'DM') + '\n' +
+                            '\u001b[0;37m\u25b8 CREATED   \u001b[0m' + Math.floor((Date.now() - user.createdAt.getTime()) / (1000*60*60*24)) + ' days ago\n' +
+                            '```'
+                        )
+                        .setFooter({ text: `NEURAL CONTACT v2.0 \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
+                        .setTimestamp();
+
+                    // ── Reply button (triggers DM reply flow) ──
+                    const replyBtn = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`creply_${user.id}_${Date.now()}`)
+                            .setLabel('\uD83D\uDCAC Reply via DM')
+                            .setStyle(ButtonStyle.Primary)
+                    );
+
+                    await owner.send({ embeds: [ownerEmbed], components: [replyBtn] });
+
+                    // ── Success embed for user ──
+                    await replyMsg.edit({
+                        embeds: [new EmbedBuilder()
+                            .setColor('#2ecc71')
+                            .setAuthor({ name: `\uD83D\uDEF0\uFE0F ${t.title} \u00b7 DELIVERED`, iconURL: user.displayAvatarURL() })
+                            .setDescription(
+                                '```ansi\n' +
+                                '\u001b[1;32m\u25b8 STATUS    \u001b[0mTransmission delivered to the Architect\n' +
+                                priority.ansi + '\u25b8 PRIORITY  \u001b[0m' + priority.emoji + ' ' + priority.label[lang] + '\n' +
+                                '\u001b[0;37m\u25b8 REPLY     \u001b[0mYou will be notified if the Architect replies\n' +
+                                '```'
+                            )
+                            .setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0 \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
+                        ],
+                        components: []
+                    });
+
+                    console.log(`[CONTACT v2] ${user.tag} → Architect | Priority: ${priorityKey} | ${feedback.substring(0,80)}`);
+
+                } catch (err) {
+                    console.error('[CONTACT v2] Error:', err.message);
+                    await replyMsg.edit({
+                        embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription('```ansi\n\u001b[1;31m\u25b8 FAILED    \u001b[0mTransmission error. Try again later.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                        components: []
+                    });
+                }
+            }
+        });
+
+        confirmCollector.on('end', (_, reason) => {
+            if (reason === 'time') {
+                replyMsg.edit({
+                    embeds: [new EmbedBuilder().setColor('#95a5a6').setDescription('```ansi\n\u001b[0;37m\u25b8 TIMEOUT   \u001b[0mTransmission window expired.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                    components: []
+                }).catch(() => {});
+            }
+        });
     });
 
-    collector.on('end', async (collected, reason) => {
-        if (reason === 'timeout' && !collected.size) {
-            const timeoutEmbed = new EmbedBuilder()
-                .setColor('#95a5a6')
-                .setAuthor({ name: t.title, iconURL: user.displayAvatarURL() })
-                .setDescription(t.timeout)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            await replyMsg.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => {});
+    priorityCollector.on('end', (_, reason) => {
+        if (reason === 'time') {
+            replyMsg.edit({
+                embeds: [new EmbedBuilder().setColor('#95a5a6').setDescription('```ansi\n\u001b[0;37m\u25b8 TIMEOUT   \u001b[0mPriority selection expired.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                components: []
+            }).catch(() => {});
         }
     });
 }
