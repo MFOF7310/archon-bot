@@ -648,12 +648,14 @@ module.exports = {
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library')
             .addStringOption(o => o.setName('genre').setDescription('Filter by genre').setRequired(false)
                 .addChoices(
-                    { name: '🌍 Afrobeat', value: 'Afrobeat' },
+                    { name: '🎵 All Genres', value: 'all' },
                     { name: '🇲🇱 Mali / West African', value: 'Mali' },
+                    { name: '🌍 Afrobeats / Afropop', value: 'Afrobeat' },
                     { name: '🎤 Hip-Hop / Rap', value: 'HipHop' },
+                    { name: '🀄 Chinese 最火', value: 'Chinese' },
                     { name: '⚡ Electronic / EDM', value: 'EDM' },
-                    { name: '🀄 Chinese', value: 'Chinese' },
-                    { name: '🎵 All Genres', value: 'all' }
+                    { name: '🇫🇷 French Rap', value: 'FrenchRap' },
+                    { name: '🌴 Afro-Trap / Dancehall', value: 'AfroTrap' }
                 ))
             .addIntegerOption(o => o.setName('page').setDescription('Page number').setRequired(false).setMinValue(1))),
 
@@ -687,7 +689,7 @@ module.exports = {
             if (results.length < 5) {
                 try {
                     const lib = require('../data/music-library.json');
-                    const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄' };
+                    const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄', FrenchRap: '🇫🇷', AfroTrap: '🌴' };
                     const filtered = focused.length === 0
                         ? lib.slice(0, 5 - results.length)
                         : lib.filter(t =>
@@ -1060,9 +1062,17 @@ module.exports = {
             const trackList = slice.map((t, i) => {
                 const idx = (pageNum - 1) * PER_PAGE + i + 1;
                 const emoji = genreEmoji[t.genre] || '🎵';
-                return `\`${String(idx).padStart(3, '0')}\` ${emoji} **${t.title}**`;
+                const folderTag = t.folder ? ` \`${t.folder}\`` : '';
+                return `\`${String(idx).padStart(3, '0')}\` ${t.title}`;
             }).join('\n');
 
+            // Group by folders
+            const folderGroups = {};
+            for (const t of slice) {
+                const f = t.folder || t.genre;
+                if (!folderGroups[f]) folderGroups[f] = [];
+                folderGroups[f].push(t);
+            }
             const embed = new EmbedBuilder()
                 .setColor(ARCHON.cyan)
                 .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC LIBRARY //', iconURL: client.user.displayAvatarURL() })
