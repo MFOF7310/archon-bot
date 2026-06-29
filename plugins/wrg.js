@@ -490,16 +490,14 @@ async function runGame(client, message, args, db, lang) {
                 .setColor('#00ff88')
                 .setAuthor({ name: `🏆 NEURAL GRID — CODE CRACKED!`, iconURL: m.author.displayAvatarURL() })
                 .setDescription(
-                    `\`\`\`ansi\n` +
-                    `\u001b[1;32m╔══════════════════════════════════╗\u001b[0m\n` +
-                    `\u001b[1;32m║  ✅ CORRECT — ${targetWord.padEnd(19)}\u001b[1;32m║\u001b[0m\n` +
-                    `\u001b[1;32m║  ⏱  Solved in ${String(solveSeconds+'s').padEnd(18)}\u001b[1;32m║\u001b[0m\n` +
-                    `\u001b[1;32m║  🔥 Streak   ${String(newStreak+' wins').padEnd(19)}\u001b[1;32m║\u001b[0m\n` +
-                    `\u001b[1;32m╚══════════════════════════════════╝\u001b[0m\n` +
-                    (bonusLines ? bonusLines : '') +
-                    `\u001b[1;36m+${rewards.xp} XP\u001b[0m  \u001b[1;33m+${rewards.credits} 🪙\u001b[0m\n` +
-                    `\`\`\``
-                )
+                `\`\`\`ansi\n` +
+                `\u001b[1;32m\u25b8 CORRECT  \u001b[0m\u001b[1;37m${targetWord}\u001b[0m\n` +
+                `\u001b[1;32m\u25b8 TIME     \u001b[0m${solveSeconds}s\n` +
+                `\u001b[1;32m\u25b8 STREAK   \u001b[0m${newStreak} wins\n` +
+                (bonusLines ? bonusLines : '') +
+                `\u001b[1;36m\u25b8 XP       \u001b[0m\u001b[1;32m+${rewards.xp}\u001b[0m\n` +
+                `\u001b[1;33m\u25b8 CREDITS  \u001b[0m+${rewards.credits} \uD83E\uDE99\n` +
+                `\`\`\`
                 .addFields(
                     { name: '📊 Progress', value: `\`${progressBar(newPct,15)}\` ${newPct.toFixed(1)}%\n└ ${Math.ceil(newXpNeeded-newXpProgress).toLocaleString()} XP to next level`, inline: false },
                     { name: `${finalRank.emoji} Rank`, value: `${finalRank.title[lang]} · Lv.${newLevel}`, inline: true },
