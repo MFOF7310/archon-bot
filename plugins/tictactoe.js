@@ -268,8 +268,6 @@ module.exports = {
             )
             .setFooter({ text: `${guildName} · NEURAL ARENA · BAMAKO_223 🇲🇱` })
             .setTimestamp();
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
         
         const msg = await message.reply({
             embeds: [gameEmbed],
@@ -324,7 +322,6 @@ module.exports = {
                 
                 let resultEmbed = new EmbedBuilder()
                     .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
                 if (result === 'tie') {
@@ -443,8 +440,6 @@ if (message.guild) {
                     { name: '⭕ ' + opponent.username, value: opponentRank.emoji + ' Lv.' + opponentLevel, inline: true }
                 )
                 .setFooter({ text: `${guildName} · NEURAL ARENA · BAMAKO_223 🇲🇱` })
-                .setTimestamp();
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             
             await i.editReply({ embeds: [updatedEmbed], components: createBoard(true) }).catch(() => {});
