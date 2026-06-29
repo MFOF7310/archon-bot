@@ -4164,15 +4164,6 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                         '\u001b[1;37m\u25b8 MESSAGE   \u001b[0m' + replyText + '\n' +
                         '\u001b[0;37m\u25b8 TIP       \u001b[0mUse .contact to send a follow-up\n' +
                         '```'
-                        '```ansi
-' +
-                        '[1;32m▸ FROM      [0mThe Architect
-' +
-                        '[1;37m▸ MESSAGE   [0m' + replyText + '
-' +
-                        '[0;37m▸ TIP       [0mUse .contact to send a follow-up
-' +
-                        '```'
                     )
                     .setFooter({ text: 'NEURAL CONTACT v2.0 · BAMAKO_223 🇲🇱' })
                     .setTimestamp()
