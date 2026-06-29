@@ -131,6 +131,24 @@ async function renderWelcomeCard(member, count, cfg) {
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
+    // Eagle background image (right side, faded)
+    const bgImg = await loadImage('/root/cloud-gaming-223-digital-engine/data/assets/welcome-bg.jpg').catch(() => null);
+    if (bgImg) {
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        // Draw on right side only, cropped
+        ctx.drawImage(bgImg, W - 280, -20, 300, H + 40);
+        ctx.globalAlpha = 1;
+        ctx.restore();
+        // Fade overlay so left side stays dark for text
+        const fadeGrad = ctx.createLinearGradient(W - 280, 0, W, 0);
+        fadeGrad.addColorStop(0, 'rgba(7, 13, 26, 1)');
+        fadeGrad.addColorStop(0.4, 'rgba(7, 13, 26, 0.6)');
+        fadeGrad.addColorStop(1, 'rgba(7, 13, 26, 0.2)');
+        ctx.fillStyle = fadeGrad;
+        ctx.fillRect(W - 280, 0, 300, H);
+    }
+
     // Diagonal accent stripe (top-right)
     ctx.save();
     const stripeGrad = ctx.createLinearGradient(W - 180, 0, W, H);
