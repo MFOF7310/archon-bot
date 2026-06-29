@@ -330,7 +330,13 @@ data: new SlashCommandBuilder()
 
 run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+            // Force correct language: slash passes 'trivia' (en) or 'trivia_fr' (fr)
+            // Prefix command uses alias detection (quizz/culture = fr, trivia = en)
+            let lang = 'en';
+            if (usedCommand === 'trivia_fr') lang = 'fr';
+            else if (usedCommand && usedCommand !== 'trivia') {
+                lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+            }
             const t = texts[lang];
             const version = client.version || '1.6.0';
             const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -635,6 +641,7 @@ if (correctAnswers >= questions.length / 2) {
         
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
         
-        await module.exports.run(client, fakeMessage, [], client.db, serverSettings, 'trivia');
+        const triviaLang = interaction.locale?.startsWith('fr') ? 'trivia_fr' : 'trivia';
+        await module.exports.run(client, fakeMessage, [], client.db, serverSettings, triviaLang);
     }
 };
