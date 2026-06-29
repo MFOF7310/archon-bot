@@ -4172,7 +4172,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                     const { destroyQueue } = require('./plugins/music.js');
                     if (q.persistentMsg) {
                         const { EmbedBuilder } = require('discord.js');
-                        const stoppedEmbed = new EmbedBuilder().setColor(0xff3333).setDescription("⏹️ STOPPED — Neural stream terminated.");
+                        const stoppedEmbed = new EmbedBuilder().setColor(0xff3333).setDescription("Stream stopped.");
                         await q.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
                         q.persistentMsg = null;
                     }
