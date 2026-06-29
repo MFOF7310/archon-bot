@@ -101,6 +101,195 @@ const TIERS = {
     }
 };
 
+// ═══════════════════════════════════════════════════════
+//  WORD CATEGORIES — 8 THEMES
+// ═══════════════════════════════════════════════════════
+const CATEGORIES = {
+    tech: {
+        label: { en: '💻 Technology', fr: '💻 Technologie' },
+        emoji: '💻',
+        words: {
+            en: {
+                rookie:    ['CODE','DATA','FILE','BYTE','DISK','PORT','CHIP','WIRE','GRID','BOOT'],
+                agent:     ['GAMING','LAPTOP','MONITOR','ROUTER','SERVER','PYTHON','CURSOR','BINARY','PIXELS','REBOOT'],
+                elite:     ['ALGORITHM','DATABASE','FIREWALL','PROCESSOR','SOFTWARE','NETWORK','PROTOCOL','TERMINAL','COMPILER','DEBUGGER'],
+                commander: ['TECHNOLOGY','CYBERSECURITY','INFRASTRUCTURE','CRYPTOCURRENCY','VIRTUALIZATION','AUTHENTICATION'],
+                architect: ['DECENTRALIZATION','CRYPTOGRAPHY','MICROPROCESSOR','TELECOMMUNICATION','SUPERINTELLIGENCE','ELECTROMAGNETIC']
+            },
+            fr: {
+                rookie:    ['CODE','DONNEE','FICHIER','OCTET','DISQUE','PORT','PUCE','CABLE','GRILLE','DEMARRAGE'],
+                agent:     ['CLAVIER','ECRAN','ROUTEUR','SERVEUR','PYTHON','CURSEUR','BINAIRE','PIXELS','REDEMARRAGE','TABLETTE'],
+                elite:     ['ALGORITHME','PAREFEU','PROCESSEUR','LOGICIEL','RESEAU','PROTOCOLE','TERMINAL','COMPILATEUR','DEBOGUEUR','CHIFFREMENT'],
+                commander: ['TECHNOLOGIE','CYBERSECURITE','INFRASTRUCTURE','CRYPTOMONNAIE','VIRTUALISATION','AUTHENTIFICATION'],
+                architect: ['DECENTRALISATION','CRYPTOGRAPHIE','MICROPROCESSEUR','TELECOMMUNICATION','SUPERINTELLIGENCE','ELECTROMAGNETIQUE']
+            }
+        }
+    },
+    science: {
+        label: { en: '🔬 Science', fr: '🔬 Science' },
+        emoji: '🔬',
+        words: {
+            en: {
+                rookie:    ['ATOM','CELL','GENE','MOON','STAR','LAVA','ACID','BONE','ROCK','CORE'],
+                agent:     ['OXYGEN','CARBON','PLASMA','NEURON','PHOTON','PROTON','GALAXY','FOSSIL','MAGNET','ENZYME'],
+                elite:     ['MOLECULE','ELECTRON','HYDROGEN','NITROGEN','GENETICS','ORGANISM','CHEMICAL','UNIVERSE','ASTEROID','BACTERIA'],
+                commander: ['CHROMOSOME','ATMOSPHERE','RELATIVITY','PHOTOSYNTHESIS','GRAVITATIONAL','THERMODYNAMICS'],
+                architect: ['ELECTROMAGNETIC','BIOLUMINESCENCE','PHOTOSYNTHESIS','NEUROTRANSMITTER','DEOXYRIBONUCLEIC','THERMODYNAMICS']
+            },
+            fr: {
+                rookie:    ['ATOME','CELLULE','GENE','LUNE','ETOILE','LAVE','ACIDE','OS','ROCHE','NOYAU'],
+                agent:     ['OXYGENE','CARBONE','PLASMA','NEURONE','PHOTON','PROTON','GALAXIE','FOSSILE','AIMANT','ENZYME'],
+                elite:     ['MOLECULE','ELECTRON','HYDROGENE','AZOTE','GENETIQUE','ORGANISME','CHIMIQUE','UNIVERS','ASTEROIDE','BACTERIE'],
+                commander: ['CHROMOSOME','ATMOSPHERE','RELATIVITE','PHOTOSYNTHESE','GRAVITATIONNEL','THERMODYNAMIQUE'],
+                architect: ['ELECTROMAGNETIQUE','BIOLUMINESCENCE','PHOTOSYNTHESE','NEUROTRANSMETTEUR','DESOXYRIBONUCLEIQUE','THERMODYNAMIQUE']
+            }
+        }
+    },
+    history: {
+        label: { en: '🏛️ History', fr: '🏛️ Histoire' },
+        emoji: '🏛️',
+        words: {
+            en: {
+                rookie:    ['WAR','KING','ROME','GOLD','SHIP','SWORD','CROWN','TRIBE','SIEGE','VAULT'],
+                agent:     ['EMPIRE','BATTLE','CASTLE','PHARAOH','VIKING','KNIGHT','SAMURAI','DYNASTY','PYRAMID','REPUBLIC'],
+                elite:     ['REVOLUTION','NAPOLEON','ALEXANDER','OTTOMAN','MONGOLIA','CRUSADE','DEMOCRACY','RENAISSANCE','COLONIALISM','FEUDALISM'],
+                commander: ['CIVILIZATION','INDEPENDENCE','IMPERIALISM','CONSTITUTION','MESOPOTAMIA','ENLIGHTENMENT'],
+                architect: ['MESOPOTAMIA','REVOLUTIONARY','INDEPENDENCE','CONSTITUTION','MEDITERRANEAN','INDUSTRIALIZATION']
+            },
+            fr: {
+                rookie:    ['GUERRE','ROI','ROME','OR','NAVIRE','EPEE','COURONNE','TRIBU','SIEGE','VOUTE'],
+                agent:     ['EMPIRE','BATAILLE','CHATEAU','PHARAON','VIKING','CHEVALIER','SAMOURAI','DYNASTIE','PYRAMIDE','REPUBLIQUE'],
+                elite:     ['REVOLUTION','NAPOLEON','ALEXANDRE','OTTOMAN','MONGOLIE','CROISADE','DEMOCRATIE','RENAISSANCE','COLONIALISME','FEODALISME'],
+                commander: ['CIVILISATION','INDEPENDANCE','IMPERIALISME','CONSTITUTION','MESOPOTAMIE','LUMIÈRES'],
+                architect: ['MESOPOTAMIE','REVOLUTIONNAIRE','INDEPENDANCE','CONSTITUTIONNEL','MEDITERRANEE','INDUSTRIALISATION']
+            }
+        }
+    },
+    animals: {
+        label: { en: '🦁 Animals', fr: '🦁 Animaux' },
+        emoji: '🦁',
+        words: {
+            en: {
+                rookie:    ['CAT','DOG','COW','PIG','HEN','OWL','BEE','ANT','FOX','EEL'],
+                agent:     ['TIGER','SHARK','EAGLE','SNAKE','WHALE','ZEBRA','PANDA','KOALA','LEMUR','HYENA'],
+                elite:     ['ELEPHANT','GORILLA','CHEETAH','DOLPHIN','PENGUIN','PANTHER','LEOPARD','PLATYPUS','MONGOOSE','FLAMINGO'],
+                commander: ['RHINOCEROS','CROCODILE','HIPPOPOTAMUS','ORANGUTAN','CHIMPANZEE','BARRACUDA'],
+                architect: ['TYRANNOSAURUS','HIPPOPOTAMUS','ARCHAEOPTERYX','BRACHIOSAURUS','PTERODACTYLUS','PACHYCEPHALOSAURUS']
+            },
+            fr: {
+                rookie:    ['CHAT','CHIEN','VACHE','COCHON','POULE','HIBOU','ABEILLE','FOURMI','RENARD','ANGUILLE'],
+                agent:     ['TIGRE','REQUIN','AIGLE','SERPENT','BALEINE','ZEBRE','PANDA','KOALA','LEMURIEN','HYENE'],
+                elite:     ['ELEPHANT','GORILLE','GUEPARD','DAUPHIN','PINGOUIN','PANTHERE','LEOPARD','ORNITHORYNQUE','MANGOUSTE','FLAMANT'],
+                commander: ['RHINOCEROS','CROCODILE','HIPPOPOTAME','ORANG-OUTAN','CHIMPANZE','BARRACUDA'],
+                architect: ['TYRANNOSAURE','HIPPOPOTAME','ARCHEOPTERYX','BRACHIOSAURE','PTERODACTYLE','PACHYCEPHALOSAURE']
+            }
+        }
+    },
+    music: {
+        label: { en: '🎵 Music', fr: '🎵 Musique' },
+        emoji: '🎵',
+        words: {
+            en: {
+                rookie:    ['BEAT','BASS','DRUM','JAZZ','SOUL','FUNK','ROCK','FOLK','HYMN','TUNE'],
+                agent:     ['GUITAR','VIOLIN','TRUMPET','PIANIST','CHORUS','BALLAD','REGGAE','LYRICS','TREBLE','OCTAVE'],
+                elite:     ['SYMPHONY','ORCHESTRA','HARMONICA','SAXOPHONE','CONDUCTOR','ACAPELLA','VIRTUOSO','CLASSICAL','AFROBEAT','FREESTYLE'],
+                commander: ['COMPOSITION','INSTRUMENT','MASTERPIECE','ARRANGEMENT','IMPROVISATION','PHILHARMONIC'],
+                architect: ['PHILHARMONIC','IMPROVISATION','COUNTERPOINT','ORCHESTRATION','CONSERVATORY','MICROTONALITY']
+            },
+            fr: {
+                rookie:    ['RYTHME','BASSE','TAMBOUR','JAZZ','SOUL','FUNK','ROCK','FOLK','HYMNE','MELODIE'],
+                agent:     ['GUITARE','VIOLON','TROMPETTE','PIANISTE','CHOEUR','BALLADE','REGGAE','PAROLES','TREBLE','OCTAVE'],
+                elite:     ['SYMPHONIE','ORCHESTRE','HARMONICA','SAXOPHONE','CHEF','ACAPELLA','VIRTUOSE','CLASSIQUE','AFROBEAT','FREESTYLE'],
+                commander: ['COMPOSITION','INSTRUMENT','CHEFDOEUVRE','ARRANGEMENT','IMPROVISATION','PHILHARMONIQUE'],
+                architect: ['PHILHARMONIQUE','IMPROVISATION','CONTREPOINT','ORCHESTRATION','CONSERVATOIRE','MICROTONALITE']
+            }
+        }
+    },
+    sports: {
+        label: { en: '⚽ Sports', fr: '⚽ Sports' },
+        emoji: '⚽',
+        words: {
+            en: {
+                rookie:    ['GOAL','BALL','RACE','JUMP','SWIM','KICK','PASS','DUNK','SHOT','FOUL'],
+                agent:     ['SOCCER','TENNIS','BOXING','SPRINT','TACKLE','DRIBBLE','PENALTY','REFEREE','STADIUM','TROPHY'],
+                elite:     ['BASKETBALL','VOLLEYBALL','ATHLETICS','FREESTYLE','MARATHON','CHAMPION','SEMIFINAL','GOALKEEPER','WRESTLING','BADMINTON'],
+                commander: ['CHAMPIONSHIP','TOURNAMENT','QUARTERBACK','WEIGHTLIFTING','COMPETITION','DECATHLON'],
+                architect: ['CHAMPIONSHIP','DECATHLON','PARALYMPICS','SPORTSMANSHIP','INFRASTRUCTURE','PROFESSIONALISM']
+            },
+            fr: {
+                rookie:    ['BUT','BALLE','COURSE','SAUT','NAGE','COUP','PASSE','DUNK','TIR','FAUTE'],
+                agent:     ['FOOTBALL','TENNIS','BOXE','SPRINT','TACLE','DRIBBLE','PENALTY','ARBITRE','STADE','TROPHEE'],
+                elite:     ['BASKETBALL','VOLLEYBALL','ATHLETISME','FREESTYLE','MARATHON','CHAMPION','SEMIFINALE','GARDIEN','LUTTE','BADMINTON'],
+                commander: ['CHAMPIONNAT','TOURNOI','QUARTERBACK','HALTÉROPHILIE','COMPETITION','DECATHLON'],
+                architect: ['CHAMPIONNAT','DECATHLON','PARALYMPIQUES','ESPRITDUSPORT','INFRASTRUCTURE','PROFESSIONNALISME']
+            }
+        }
+    },
+    food: {
+        label: { en: '🍕 Food', fr: '🍕 Cuisine' },
+        emoji: '🍕',
+        words: {
+            en: {
+                rookie:    ['RICE','CAKE','SOUP','MEAT','FISH','MILK','SALT','CORN','BEAN','PEAR'],
+                agent:     ['PIZZA','PASTA','BURGER','SUSHI','TACOS','MANGO','LEMON','BUTTER','PEPPER','GARLIC'],
+                elite:     ['CHOCOLATE','CROISSANT','BARBECUE','AVOCADO','PINEAPPLE','CINNAMON','BROCCOLI','PARMESAN','TORTILLA','COUSCOUS'],
+                commander: ['CAPPUCCINO','PROSCIUTTO','GUACAMOLE','RATATOUILLE','QUESADILLA','BRUSCHETTA'],
+                architect: ['CHATEAUBRIAND','PROFITEROLE','BOULANGERIE','GASTRONOMIQUE','CONFISERIE','CHARCUTERIE']
+            },
+            fr: {
+                rookie:    ['RIZ','GATEAU','SOUPE','VIANDE','POISSON','LAIT','SEL','MAIS','HARICOT','POIRE'],
+                agent:     ['PIZZA','PATES','BURGER','SUSHI','TACOS','MANGUE','CITRON','BEURRE','POIVRE','AIL'],
+                elite:     ['CHOCOLAT','CROISSANT','BARBECUE','AVOCAT','ANANAS','CANNELLE','BROCOLI','PARMESAN','TORTILLA','COUSCOUS'],
+                commander: ['CAPPUCCINO','PROSCIUTTO','GUACAMOLE','RATATOUILLE','QUESADILLA','BRUSCHETTA'],
+                architect: ['CHATEAUBRIAND','PROFITEROLE','BOULANGERIE','GASTRONOMIQUE','CONFISERIE','CHARCUTERIE']
+            }
+        }
+    },
+    movies: {
+        label: { en: '🎬 Movies & TV', fr: '🎬 Films & TV' },
+        emoji: '🎬',
+        words: {
+            en: {
+                rookie:    ['FILM','CAST','PLOT','HERO','ROLE','SCENE','DRAMA','ACTOR','SCORE','DUEL'],
+                agent:     ['CINEMA','SCRIPT','COMEDY','HORROR','ACTION','SEQUEL','STUDIO','CAMERA','TRAILER','VILLAIN'],
+                elite:     ['DIRECTOR','PRODUCER','ANIMATED','THRILLER','MUSICAL','PREMIERE','BLOCKBUSTER','CHARACTER','FRANCHISE','SUPERHERO'],
+                commander: ['CINEMATOGRAPHY','DOCUMENTARY','SCREENWRITER','PRODUCTION','PROTAGONIST','CLIFFHANGER'],
+                architect: ['CINEMATOGRAPHY','MASTERPIECE','SCREENWRITING','POSTPRODUCTION','CHOREOGRAPHY','VISUALIZATION']
+            },
+            fr: {
+                rookie:    ['FILM','ROLE','SCENE','DRAME','ACTEUR','HEROS','INTRIGUE','BUDGET','DUEL','STUDIO'],
+                agent:     ['CINEMA','SCRIPT','COMEDIE','HORREUR','ACTION','SUITE','STUDIO','CAMERA','BANDE-ANNONCE','VILLAIN'],
+                elite:     ['REALISATEUR','PRODUCTEUR','ANIME','THRILLER','MUSICAL','PREMIERE','BLOCKBUSTER','PERSONNAGE','FRANCHISE','SUPERHEROS'],
+                commander: ['CINEMATOGRAPHIE','DOCUMENTAIRE','SCENARISTE','PRODUCTION','PROTAGONISTE','CLIFFHANGER'],
+                architect: ['CINEMATOGRAPHIE','CHEFDOEUVRE','SCENARISATION','POSTPRODUCTION','CHOREGRAPHIE','VISUALISATION']
+            }
+        }
+    },
+    geography: {
+        label: { en: '🌍 Geography', fr: '🌍 Géographie' },
+        emoji: '🌍',
+        words: {
+            en: {
+                rookie:    ['MALI','ROME','NILE','ALPS','CUBA','PERU','CHAD','IRAN','IRAQ','LAOS'],
+                agent:     ['FRANCE','BRAZIL','CANADA','SAHARA','AMAZON','ARCTIC','LONDON','MEXICO','MOSCOW','BAMAKO'],
+                elite:     ['ATLANTIC','HIMALAYA','SINGAPORE','CARIBBEAN','INDONESIA','MEDITERRANEAN','MADAGASCAR','AUSTRALIA','ARGENTINA','PAKISTAN'],
+                commander: ['MOZAMBIQUE','AFGHANISTAN','PHILIPPINES','SWITZERLAND','MEDITERRANEAN','MESOPOTAMIA'],
+                architect: ['MEDITERRANEAN','LIECHTENSTEIN','TURKMENISTAN','CZECHOSLOVAKIA','AZERBAIJAN','NEWFOUNDLAND']
+            },
+            fr: {
+                rookie:    ['MALI','ROME','NIL','ALPES','CUBA','PEROU','TCHAD','IRAN','IRAK','LAOS'],
+                agent:     ['FRANCE','BRESIL','CANADA','SAHARA','AMAZONE','ARCTIQUE','LONDRES','MEXIQUE','MOSCOU','BAMAKO'],
+                elite:     ['ATLANTIQUE','HIMALAYA','SINGAPOUR','CARAIBES','INDONESIE','MEDITERRANEE','MADAGASCAR','AUSTRALIE','ARGENTINE','PAKISTAN'],
+                commander: ['MOZAMBIQUE','AFGHANISTAN','PHILIPPINES','SUISSE','MEDITERRANEE','MESOPOTAMIE'],
+                architect: ['MEDITERRANEE','LIECHTENSTEIN','TURKMENISTAN','TCHECOSLOVAQUIE','AZERBAIDJAN','TERRENEUVE']
+            }
+        }
+    }
+};
+
+// ── Default category mapping per tier if no category selected ──
+const DEFAULT_CATEGORY = 'tech';
+
 // ── Streak storage (per guild+user, in memory) ──
 const streaks = new Map();
 function getStreak(userId, guildId) { return streaks.get(`${userId}:${guildId}`) || 0; }
@@ -139,23 +328,42 @@ async function runGame(client, message, args, db, lang) {
     try {
         // ── Tier selection ──
         const tierMap = {
-            rookie:['rookie','recrue','easy','facile','r'],
-            agent:['agent','medium','moyen','a'],
-            elite:['elite','hard','difficile','e'],
-            commander:['commander','commandant','expert','c'],
-            architect:['architect','architecte','legend','legendary','god','x']
+            rookie:    ['rookie','recrue','easy','facile','r'],
+            agent:     ['agent','medium','moyen','a'],
+            elite:     ['elite','hard','difficile','e'],
+            commander: ['commander','commandant','expert','c'],
+            architect: ['architect','architecte','legend','legendary','god','x']
         };
+        const categoryMap = {
+            tech:      ['tech','technology','technologie','computer','t'],
+            science:   ['science','sci','s'],
+            history:   ['history','histoire','hist','h'],
+            animals:   ['animals','animaux','animal','a'],
+            music:     ['music','musique','m'],
+            sports:    ['sports','sport','sp'],
+            food:      ['food','cuisine','nourriture','f'],
+            movies:    ['movies','films','movie','cinema','mv'],
+            geography: ['geography','geographie','geo','g']
+        };
+
         let tierKey = 'rookie';
-        if (args[0]) {
-            const a = args[0].toLowerCase();
+        let categoryKey = DEFAULT_CATEGORY;
+
+        // Parse args — first arg = tier, second = category (or vice versa)
+        for (const arg of args) {
+            const a = arg.toLowerCase();
             for (const [k, aliases] of Object.entries(tierMap)) {
                 if (aliases.includes(a)) { tierKey = k; break; }
+            }
+            for (const [k, aliases] of Object.entries(categoryMap)) {
+                if (aliases.includes(a)) { categoryKey = k; break; }
             }
         }
 
         const tier = TIERS[tierKey];
-        const wordPool = tier.words[lang] || tier.words.en;
-        const rawWord = wordPool[Math.floor(Math.random() * wordPool.length)];
+        const cat = CATEGORIES[categoryKey] || CATEGORIES.tech;
+        const tierWords = cat.words[lang]?.[tierKey] || cat.words.en[tierKey] || cat.words.en.rookie;
+        const rawWord = tierWords[Math.floor(Math.random() * tierWords.length)];
         const targetWord = sanitize(rawWord);
         let scrambled = shuffle(targetWord);
         while (scrambled === targetWord && targetWord.length > 2) scrambled = shuffle(targetWord);
@@ -183,7 +391,7 @@ async function runGame(client, message, args, db, lang) {
         // ── Start embed ──
         const startEmbed = new EmbedBuilder()
             .setColor(tier.color)
-            .setAuthor({ name: `🎮 ARCHON WORD COMBAT — ${tier.label[lang]}`, iconURL: client.user.displayAvatarURL() })
+            .setAuthor({ name: `🎮 ARCHON WORD COMBAT — ${tier.label[lang]} · ${cat.emoji} ${cat.label[lang]}`, iconURL: client.user.displayAvatarURL() })
             .setDescription(
                 `\`\`\`ansi\n` +
                 `${tier.ansiColor}╔══════════════════════════════════╗\u001b[0m\n` +
@@ -359,7 +567,7 @@ async function runGame(client, message, args, db, lang) {
             }
         });
 
-        console.log(`[WRG v3] ${message.author.tag} | Tier: ${tierKey} | Word: ${targetWord} | Streak: ${streakCount}`);
+        console.log(`[WRG v3] ${message.author.tag} | Tier: ${tierKey} | Cat: ${categoryKey} | Word: ${targetWord} | Streak: ${streakCount}`);
 
     } catch(err) {
         console.error('[WRG v3] Fatal:', err.message);
@@ -381,7 +589,7 @@ module.exports = {
 
     data: new SlashCommandBuilder()
         .setName('wrg')
-        .setDescription('🎮 Neural Grid Word Combat — 5 tiers, speed bonus, streaks!')
+        .setDescription('🎮 Neural Grid Word Combat — 5 tiers, 9 categories, speed bonus!')
         .addStringOption(opt => opt
             .setName('tier')
             .setDescription('Combat tier / Niveau de combat')
@@ -392,6 +600,21 @@ module.exports = {
                 { name: '🟠 Elite  — Technical & cyber terms',         value: 'elite'      },
                 { name: '🔴 Commander — Advanced vocabulary',          value: 'commander'  },
                 { name: '👑 Architect — LEGENDARY difficulty',         value: 'architect'  }
+            ))
+        .addStringOption(opt => opt
+            .setName('category')
+            .setDescription('Word category / Catégorie de mots')
+            .setRequired(false)
+            .addChoices(
+                { name: '💻 Technology — Computers & code',            value: 'tech'       },
+                { name: '🔬 Science — Elements, planets, biology',     value: 'science'    },
+                { name: '🏛️ History — Events, empires, figures',       value: 'history'    },
+                { name: '🦁 Animals — Species & habitats',             value: 'animals'    },
+                { name: '🎵 Music — Artists, songs, albums',           value: 'music'      },
+                { name: '⚽ Sports — Teams & tournaments',             value: 'sports'     },
+                { name: '🍕 Food & Cuisine — Dishes & ingredients',    value: 'food'       },
+                { name: '🎬 Movies & TV — Films & characters',         value: 'movies'     },
+                { name: '🌍 Geography — Countries & capitals',         value: 'geography'  }
             )),
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
@@ -401,6 +624,7 @@ module.exports = {
 
     execute: async (interaction, client) => {
         const tier = interaction.options.getString('tier') || 'rookie';
+        const category = interaction.options.getString('category') || 'tech';
         await interaction.deferReply();
         const fakeMessage = {
             author: interaction.user,
@@ -410,6 +634,6 @@ module.exports = {
             react: () => Promise.resolve()
         };
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        await runGame(client, fakeMessage, [tier], client.db, lang);
+        await runGame(client, fakeMessage, [tier, category], client.db, lang);
     }
 };
