@@ -816,11 +816,14 @@ function ensureTableColumns(db, tableName, expectedColumns) {
                 const defaultClause = col.default !== undefined ? ` DEFAULT ${col.default}` : '';
                 // ✅ SECURE: All identifiers validated before interpolation
                 const alterSQL = `ALTER TABLE ${tableName} ADD COLUMN ${col.name} ${col.type}${defaultClause}`;
-                try { db.exec(alterSQL); } catch(e) {
+                let didAdd = false;
+                try { db.exec(alterSQL); didAdd = true; } catch(e) {
                     if (!e.message.includes('duplicate column')) throw e;
                 }
-                console.log(`${green}[AUTO-REPAIR]${reset} Added ${tableName}.${col.name}${defaultClause ? ` (default: ${col.default})` : ''}`);
-                added++;
+                if (didAdd) {
+                    console.log(`${green}[AUTO-REPAIR]${reset} Added ${tableName}.${col.name}${defaultClause ? ` (default: ${col.default})` : ''}`);
+                    added++;
+                }
             }
         }
         return added;
