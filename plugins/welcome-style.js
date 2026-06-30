@@ -154,7 +154,7 @@ async function renderWelcomeCard(member, count, cfg) {
     const bgImg = await loadWelcomeBg().catch(() => null);
     if (bgImg) {
         ctx.save();
-        ctx.globalAlpha = 0.38;
+        ctx.globalAlpha = 0.85;
         // Cover-fit: scale image to fill canvas while preserving aspect ratio
         const imgRatio = bgImg.width / bgImg.height;
         const canvasRatio = W / H;
@@ -169,9 +169,9 @@ async function renderWelcomeCard(member, count, cfg) {
         ctx.restore();
         // Dark fade on left so text stays readable, warm tone on right
         const fadeGrad = ctx.createLinearGradient(0, 0, W, 0);
-        fadeGrad.addColorStop(0, 'rgba(7, 13, 26, 0.94)');
-        fadeGrad.addColorStop(0.45, 'rgba(7, 13, 26, 0.7)');
-        fadeGrad.addColorStop(1, 'rgba(7, 13, 26, 0.15)');
+        fadeGrad.addColorStop(0, 'rgba(7, 13, 26, 0.92)');
+        fadeGrad.addColorStop(0.5, 'rgba(7, 13, 26, 0.55)');
+        fadeGrad.addColorStop(1, 'rgba(7, 13, 26, 0.05)');
         ctx.fillStyle = fadeGrad;
         ctx.fillRect(0, 0, W, H);
     }
