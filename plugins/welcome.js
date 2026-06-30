@@ -126,7 +126,7 @@ async function handleGoodbye(member, client, db) {
     if (!ch) return;
 
     const joinedAt  = member.joinedTimestamp;
-    const duration  = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
+    const duration  = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : '< 1 min';
     const roles     = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
     const safeMember = createMemberProxy(member);
 
