@@ -163,7 +163,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
             )
             .setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` });
 
-        await replyMsg.edit({ embeds: [confirmEmbed], components: [confirmRow] });
+        await i.editReply({ embeds: [confirmEmbed], components: [confirmRow] });
 
         const confirmCollector = replyMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
@@ -184,7 +184,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
                 await j.deferUpdate().catch(() => {});
 
                 // Processing
-                await replyMsg.edit({
+                await j.editReply({
                     embeds: [new EmbedBuilder().setColor('#f1c40f').setDescription('```ansi\n\u001b[1;33m\u25b8 STATUS    \u001b[0mRouting transmission to Architect...\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
                     components: []
                 });
@@ -220,7 +220,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
                     await owner.send({ embeds: [ownerEmbed], components: [replyBtn] });
 
                     // ── Success embed for user ──
-                    await replyMsg.edit({
+                    await j.editReply({
                         embeds: [new EmbedBuilder()
                             .setColor('#2ecc71')
                             .setAuthor({ name: `\uD83D\uDEF0\uFE0F ${t.title} \u00b7 DELIVERED`, iconURL: user.displayAvatarURL() })
@@ -240,7 +240,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
 
                 } catch (err) {
                     console.error('[CONTACT v2] Error:', err.message);
-                    await replyMsg.edit({
+                    await j.editReply({
                         embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription('```ansi\n\u001b[1;31m\u25b8 FAILED    \u001b[0mTransmission error. Try again later.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
                         components: []
                     });
