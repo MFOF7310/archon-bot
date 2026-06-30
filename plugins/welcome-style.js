@@ -5,6 +5,25 @@
 
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const fs = require('fs');
+const path = require('path');
+
+// ── Dynamic background loader — auto-detects any image in data/assets/ named welcome-* ──
+let _cachedBg = null;
+let _cachedBgPath = null;
+async function loadWelcomeBg() {
+    const assetsDir = path.join(__dirname, '..', 'data', 'assets');
+    let files = [];
+    try { files = fs.readdirSync(assetsDir); } catch (e) { return null; }
+    const match = files.find(f => /^welcome-.*\.(jpg|jpeg|png|webp)$/i.test(f));
+    if (!match) return null;
+    const fullPath = path.join(assetsDir, match);
+    if (_cachedBg && _cachedBgPath === fullPath) return _cachedBg;
+    const img = await loadImage(fullPath);
+    _cachedBg = img;
+    _cachedBgPath = fullPath;
+    return img;
+}
 
 // ── Reduced from 700×220 → 560×175 (20% smaller, much more compact on mobile) ──
 const W = 560, H = 175;
@@ -131,19 +150,28 @@ async function renderWelcomeCard(member, count, cfg) {
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // Eagle background image — full width, faded
-    const bgImg = await loadImage('/root/cloud-gaming-223-digital-engine/data/assets/welcome-bg.jpg').catch(() => null);
+    // Background image — auto-loads cached welcome-fire.jpg, dynamic & swappable
+    const bgImg = await loadWelcomeBg().catch(() => null);
     if (bgImg) {
         ctx.save();
-        ctx.globalAlpha = 0.28;
-        ctx.drawImage(bgImg, 0, 0, W, H);
+        ctx.globalAlpha = 0.38;
+        // Cover-fit: scale image to fill canvas while preserving aspect ratio
+        const imgRatio = bgImg.width / bgImg.height;
+        const canvasRatio = W / H;
+        let dw, dh, dx, dy;
+        if (imgRatio > canvasRatio) {
+            dh = H; dw = H * imgRatio; dx = (W - dw) / 2; dy = 0;
+        } else {
+            dw = W; dh = W / imgRatio; dx = 0; dy = (H - dh) / 2;
+        }
+        ctx.drawImage(bgImg, dx, dy, dw, dh);
         ctx.globalAlpha = 1;
         ctx.restore();
-        // Dark fade on left so text stays readable
+        // Dark fade on left so text stays readable, warm tone on right
         const fadeGrad = ctx.createLinearGradient(0, 0, W, 0);
-        fadeGrad.addColorStop(0, 'rgba(7, 13, 26, 0.92)');
-        fadeGrad.addColorStop(0.45, 'rgba(7, 13, 26, 0.75)');
-        fadeGrad.addColorStop(1, 'rgba(7, 13, 26, 0.3)');
+        fadeGrad.addColorStop(0, 'rgba(7, 13, 26, 0.94)');
+        fadeGrad.addColorStop(0.45, 'rgba(7, 13, 26, 0.7)');
+        fadeGrad.addColorStop(1, 'rgba(7, 13, 26, 0.15)');
         ctx.fillStyle = fadeGrad;
         ctx.fillRect(0, 0, W, H);
     }
