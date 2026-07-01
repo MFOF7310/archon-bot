@@ -195,20 +195,21 @@ module.exports = {
             timeInfo = `${t.comeBack} ${hours}h ${minutes}m`;
         }
 
+        const statusAnsi = canClaim ? '\u001b[1;32m' : '\u001b[1;31m';
         const embed = new EmbedBuilder()
             .setColor(canClaim ? '#2ecc71' : '#e74c3c')
-            .setAuthor({ name: `👏 Bon Clay: @${username}, here are your daily stats:`, iconURL: user.displayAvatarURL() })
+            .setAuthor({ name: `📅 NEURAL DAILY · @${username}`, iconURL: user.displayAvatarURL() })
             .setDescription(
-                `## ${statusEmoji} ${statusText}\n` +
-                `### ${timeInfo}\n` +
-                `---\n` +
-                `📊 **${t.totalDailies}:** ${totalDailies}\n` +
-                `🔥 **${t.currentStreak}:** ${streakDays} ${streakDays === 1 ? t.day : t.days}\n` +
-                `💰 **${t.newBalance}:** ${balance.toLocaleString()} 🪙\n` +
-                `🛡️ **${t.streakProtections}:** ${streakProtections}\n\n` +
-                `💡 *${t.checkBalance(prefix)}*`
+                '```ansi\n' +
+                statusAnsi + '\u25b8 STATUS   \u001b[0m' + statusEmoji + ' ' + statusText + '\n' +
+                '\u001b[1;33m\u25b8 TIME     \u001b[0m' + timeInfo + '\n' +
+                '\u001b[1;36m\u25b8 STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t.day : t.days) + ' \uD83D\uDD25\n' +
+                '\u001b[1;36m\u25b8 DAILIES  \u001b[0m' + totalDailies + '\n' +
+                '\u001b[1;36m\u25b8 BALANCE  \u001b[0m' + balance.toLocaleString() + ' \uD83E\uDE99\n' +
+                '\u001b[1;36m\u25b8 SHIELDS  \u001b[0m' + streakProtections + '\n' +
+                '```'
             )
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+            .setFooter({ text: `${guildName} · NEURAL DAILY · BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
             .setTimestamp();
 
         await reply({ embeds: [embed] });
@@ -262,15 +263,17 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor('#3498db')
-            .setAuthor({ name: `👏 Daily Stats: @${username}`, iconURL: user.displayAvatarURL() })
+            .setAuthor({ name: `📊 DAILY STATS · @${username}`, iconURL: user.displayAvatarURL() })
             .setDescription(
-                `📊 **${t.totalDailies}:** ${totalDailies}\n` +
-                `📅 **${t.lastDaily}:** ${lastDailyText}\n\n` +
-                `🔥 **${t.currentStreak}:** ${streakDays} ${streakDays === 1 ? t.day : t.days}\n` +
-                `🔥 **${t.highestStreak}:** ${highestStreak} ${highestStreak === 1 ? t.day : t.days}\n` +
-                `🛡️ **${t.streakProtections}:** ${streakProtections}`
+                '```ansi\n' +
+                '\u001b[1;36m\u25b8 TOTAL    \u001b[0m' + totalDailies + ' dailies\n' +
+                '\u001b[1;36m\u25b8 LAST     \u001b[0m' + lastDailyText + '\n' +
+                '\u001b[1;33m\u25b8 STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t.day : t.days) + ' \uD83D\uDD25\n' +
+                '\u001b[1;33m\u25b8 BEST     \u001b[0m' + highestStreak + ' ' + (highestStreak === 1 ? t.day : t.days) + '\n' +
+                '\u001b[1;35m\u25b8 SHIELDS  \u001b[0m' + streakProtections + ' \uD83D\uDEE1\uFE0F\n' +
+                '```'
             )
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+            .setFooter({ text: `${guildName} \u00b7 NEURAL DAILY \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
             .setTimestamp();
 
         await reply({ embeds: [embed] });
