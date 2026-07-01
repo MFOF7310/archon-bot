@@ -12,19 +12,19 @@ const claimTranslations = {
         successTitle: '✅ RESOURCES INJECTED',
         cooldownTitle: '🔒 ACCESS DENIED',
         cooldownDesc: (name, time, prefix) => `**Agent ${name}**, your neural cycle is still processing.\n\n⏳ **Cooldown Remaining:** \`${time}\`\n\n💡 Use \`${prefix}daily\` to view your full dashboard.`,
-        successDesc: (credits, xp, streak) => 
-            `**Agent**, your daily resources have been successfully injected.\n\n` +
-            `┌─ 📦 **REWARDS RECEIVED** ─────────\n` +
-            `│  💰 **Credits:** +${credits.toLocaleString()}\n` +
-            `│  📈 **XP:** +${xp.toLocaleString()}\n` +
-            `│  🔥 **Streak:** ${streak} day${streak > 1 ? 's' : ''}\n` +
-            `└──────────────────────────────────`,
+        successDesc: (credits, xp, streak) =>
+            '```ansi\n' +
+            '\u001b[1;36m\u25b8 CREDITS  \u001b[0m\u001b[1;32m+' + credits.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
+            '\u001b[1;36m\u25b8 XP       \u001b[0m\u001b[1;32m+' + xp.toLocaleString() + '\u001b[0m\n' +
+            '\u001b[1;36m\u25b8 STREAK   \u001b[0m\u001b[1;33m' + streak + ' day' + (streak > 1 ? 's' : '') + ' \uD83D\uDD25\u001b[0m\n' +
+            '```',
         streakBonus: '🔥 STREAK BONUS ACTIVE',
-        streakInfo: (streak, bonusXP, bonusCredits) => 
-            `┌─ ✨ **${streak} Day Streak!** ─────────\n` +
-            `│  ⚡ **Bonus XP:** +${bonusXP}\n` +
-            `│  💎 **Bonus Credits:** +${bonusCredits}\n` +
-            `└──────────────────────────────────`,
+        streakInfo: (streak, bonusXP, bonusCredits) =>
+            '```ansi\n' +
+            '\u001b[1;33m\u25b8 STREAK   \u001b[0m\u001b[1;37m' + streak + ' days \uD83D\uDD25\u001b[0m\n' +
+            '\u001b[1;33m\u25b8 BONUS XP \u001b[0m\u001b[1;32m+' + bonusXP + '\u001b[0m\n' +
+            '\u001b[1;33m\u25b8 BONUS \uD83E\uDE99 \u001b[0m\u001b[1;32m+' + bonusCredits + '\u001b[0m\n' +
+            '```',
         nextClaim: '⏰ NEXT CLAIM AVAILABLE',
         currentStats: '📊 CURRENT STATISTICS',
         viewDashboard: '📊 Dashboard',
@@ -40,19 +40,19 @@ const claimTranslations = {
         successTitle: '✅ RESSOURCES INJECTÉES',
         cooldownTitle: '🔒 ACCÈS REFUSÉ',
         cooldownDesc: (name, time, prefix) => `**Agent ${name}**, votre cycle neural est toujours en cours.\n\n⏳ **Temps restant:** \`${time}\`\n\n💡 Utilisez \`${prefix}daily\` pour voir votre tableau de bord.`,
-        successDesc: (credits, xp, streak) => 
-            `**Agent**, vos ressources quotidiennes ont été injectées.\n\n` +
-            `┌─ 📦 **RÉCOMPENSES REÇUES** ─────────\n` +
-            `│  💰 **Crédits:** +${credits.toLocaleString()}\n` +
-            `│  📈 **XP:** +${xp.toLocaleString()}\n` +
-            `│  🔥 **Série:** ${streak} jour${streak > 1 ? 's' : ''}\n` +
-            `└──────────────────────────────────`,
+        successDesc: (credits, xp, streak) =>
+            '```ansi\n' +
+            '\u001b[1;36m\u25b8 CRÉDITS  \u001b[0m\u001b[1;32m+' + credits.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
+            '\u001b[1;36m\u25b8 XP       \u001b[0m\u001b[1;32m+' + xp.toLocaleString() + '\u001b[0m\n' +
+            '\u001b[1;36m\u25b8 SÉRIE    \u001b[0m\u001b[1;33m' + streak + ' jour' + (streak > 1 ? 's' : '') + ' \uD83D\uDD25\u001b[0m\n' +
+            '```',
         streakBonus: '🔥 BONUS DE SÉRIE ACTIF',
-        streakInfo: (streak, bonusXP, bonusCredits) => 
-            `┌─ ✨ **Série de ${streak} Jours!** ─────────\n` +
-            `│  ⚡ **Bonus XP:** +${bonusXP}\n` +
-            `│  💎 **Bonus Crédits:** +${bonusCredits}\n` +
-            `└──────────────────────────────────`,
+        streakInfo: (streak, bonusXP, bonusCredits) =>
+            '```ansi\n' +
+            '\u001b[1;33m\u25b8 SÉRIE    \u001b[0m\u001b[1;37m' + streak + ' jours \uD83D\uDD25\u001b[0m\n' +
+            '\u001b[1;33m\u25b8 BONUS XP \u001b[0m\u001b[1;32m+' + bonusXP + '\u001b[0m\n' +
+            '\u001b[1;33m\u25b8 BONUS \uD83E\uDE99 \u001b[0m\u001b[1;32m+' + bonusCredits + '\u001b[0m\n' +
+            '```',
         nextClaim: '⏰ PROCHAINE RÉCLAMATION',
         currentStats: '📊 STATISTIQUES ACTUELLES',
         viewDashboard: '📊 Tableau de Bord',
