@@ -184,7 +184,6 @@ module.exports = {
             .setAuthor({ name: t.investmentMade, iconURL: message.author.displayAvatarURL() })
             .setTitle(`${trend.emoji} ${trend.name}`)
             .setDescription(
-                .setDescription(
                     '```ansi\n' +
                     '\u001b[1;32m\u25b8 INVESTED \u001b[0m\u001b[1;32m' + amount.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
                     '\u001b[1;33m\u25b8 TREND    \u001b[0m' + trend.emoji + ' ' + trend.name + '\n' +
