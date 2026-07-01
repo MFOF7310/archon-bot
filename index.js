@@ -2715,8 +2715,9 @@ buildAliasLanguageMap();
     // Singleton guard — prevents double execution if plugin has internal timers
     client._autoBroadcastRan = false;
     setTimeout(async () => {
-        if (client._autoBroadcastRan) {
-            console.log(`${yellow}[AUTO-BROADCAST]${reset} Already ran — skipping duplicate`);
+        // Auto-broadcast disabled — too spammy for production servers
+        if (true || client._autoBroadcastRan) {
+            console.log(`${yellow}[AUTO-BROADCAST]${reset} Disabled in production`);
             return;
         }
         client._autoBroadcastRan = true;
