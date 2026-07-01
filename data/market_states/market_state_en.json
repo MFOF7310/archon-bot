@@ -1,0 +1,22 @@
+{
+  "trend": "BULL",
+  "multiplier": 1.3178,
+  "lastUpdate": 1782934380992,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "BULL",
+      "multiplier": 1.3178,
+      "event": "Mobile Money Boom",
+      "timestamp": 1782934380992
+    }
+  ],
+  "activeEvent": {
+    "name": "Mobile Money Boom",
+    "emoji": "📱",
+    "effect": 0.22,
+    "msg": "Mobile money adoption hits record highs! Fintech sector explodes.",
+    "severity": "major",
+    "timestamp": 1782934380992
+  }
+}

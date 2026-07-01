@@ -1,0 +1,15 @@
+{
+  "trend": "BULL",
+  "multiplier": 1.0798,
+  "lastUpdate": 1782934380992,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "BULL",
+      "multiplier": 1.0798,
+      "event": null,
+      "timestamp": 1782934380992
+    }
+  ],
+  "activeEvent": null
+}

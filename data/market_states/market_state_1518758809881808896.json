@@ -1,0 +1,22 @@
+{
+  "trend": "STEADY",
+  "multiplier": 1.2561,
+  "lastUpdate": 1782934380991,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "STEADY",
+      "multiplier": 1.2561,
+      "event": "Solar Flare",
+      "timestamp": 1782934380991
+    }
+  ],
+  "activeEvent": {
+    "name": "Solar Flare",
+    "emoji": "☀️",
+    "effect": 0.25,
+    "msg": "Massive solar energy breakthrough! Renewable stocks explode upward!",
+    "severity": "major",
+    "timestamp": 1782934380991
+  }
+}

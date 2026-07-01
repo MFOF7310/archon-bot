@@ -1,0 +1,15 @@
+{
+  "trend": "STEADY",
+  "multiplier": 1.0576,
+  "lastUpdate": 1782934380991,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "STEADY",
+      "multiplier": 1.0576,
+      "event": null,
+      "timestamp": 1782934380991
+    }
+  ],
+  "activeEvent": null
+}
