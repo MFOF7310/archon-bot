@@ -2711,24 +2711,6 @@ buildAliasLanguageMap();
         console.log(`${red}[CHANGELOG]${reset}   Stack: ${e.stack}`);
     }
 
-    // ================= AUTO-BROADCAST PROTOCOL v2.0 =================
-    // Singleton guard — prevents double execution if plugin has internal timers
-    client._autoBroadcastRan = false;
-    setTimeout(async () => {
-        // Auto-broadcast disabled — too spammy for production servers
-        if (true || client._autoBroadcastRan) {
-            console.log(`${yellow}[AUTO-BROADCAST]${reset} Disabled in production`);
-            return;
-        }
-        client._autoBroadcastRan = true;
-        try {
-            const { autoBroadcast } = require('./plugins/auto-broadcast.js');
-            await autoBroadcast(client);
-        } catch (err) {
-            console.log(`${yellow}[AUTO-BROADCAST]${reset} Skipped: ${err.message}`);
-        }
-    }, 15000); 
-
     // ================= BIRTHDAY SYSTEM =================
     const birthdayModule = require('./plugins/birthday.js');
     if (birthdayModule.initialize) {
