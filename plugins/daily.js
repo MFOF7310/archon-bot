@@ -267,11 +267,11 @@ module.exports = {
             .setDescription(
                 '```ansi\n' +
                 '\u001b[1;36m\u25b8 TOTAL    \u001b[0m' + totalDailies + ' dailies\n' +
-                '\u001b[1;36m\u25b8 LAST     \u001b[0m' + lastDailyText + '\n' +
                 '\u001b[1;33m\u25b8 STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t.day : t.days) + ' \uD83D\uDD25\n' +
                 '\u001b[1;33m\u25b8 BEST     \u001b[0m' + highestStreak + ' ' + (highestStreak === 1 ? t.day : t.days) + '\n' +
                 '\u001b[1;35m\u25b8 SHIELDS  \u001b[0m' + streakProtections + ' \uD83D\uDEE1\uFE0F\n' +
-                '```'
+                '```' +
+                '\n\uD83D\uDCC5 **Last claim:** ' + lastDailyText
             )
             .setFooter({ text: `${guildName} \u00b7 NEURAL DAILY \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
             .setTimestamp();
