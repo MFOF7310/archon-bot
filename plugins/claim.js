@@ -661,18 +661,21 @@ module.exports = {
                 
                 await interaction.reply({ embeds: [cooldownEmbed], components: [row], flags: 64 });
                 
-                try {
-                    const buttonResponse = await interaction.channel.awaitMessageComponent({
-                        filter: (i) => i.user.id === userId && i.customId === 'claim_slash_goto_daily',
+                const cooldownMsg = await interaction.fetchReply().catch(() => null);
+                if (cooldownMsg) {
+                    const cdCollector = cooldownMsg.createMessageComponentCollector({
+                        filter: (i) => i.user.id === userId,
                         time: 30000
                     });
-
-                    await buttonResponse.deferUpdate().catch(() => {});
-                    // Build inline dashboard directly — avoids calling daily with stale interaction
-                    const dash = buildMiniDashboard(userData, lang, prefix, guildName, guildIcon, version);
-                    await buttonResponse.followUp({ embeds: [dash], flags: 64 });
-                } catch (e) {
-                    // Timeout - button expired
+                    cdCollector.on('collect', async (i) => {
+                        try {
+                            await i.deferUpdate().catch(() => {});
+                            const dash = buildMiniDashboard(userData, lang, prefix, guildName, guildIcon, version);
+                            await i.followUp({ embeds: [dash], flags: 64 });
+                        } catch (err) {
+                            console.error('[CLAIM COOLDOWN BTN]', err.message);
+                        }
+                    });
                 }
                 return;
             }
@@ -803,32 +806,42 @@ module.exports = {
             
             await interaction.reply({ embeds: [successEmbed], components: [actionRow], ephemeral: false });
             
-            // Handle button clicks
-            try {
-                const buttonResponse = await interaction.channel.awaitMessageComponent({
-                    filter: (i) => i.user.id === userId &&
-                        (i.customId === 'claim_slash_view_daily' || i.customId === 'claim_slash_view_profile'),
+            // Handle button clicks via collector
+            const claimMsg = await interaction.fetchReply().catch(() => null);
+            if (claimMsg) {
+                const btnCollector = claimMsg.createMessageComponentCollector({
+                    filter: (i) => i.user.id === userId,
                     time: 60000
                 });
-
-                await buttonResponse.deferUpdate().catch(() => {});
-
-                if (buttonResponse.customId === 'claim_slash_view_daily') {
-                    const dash = buildMiniDashboard(userData, lang, prefix, guildName, guildIcon, version);
-                    await buttonResponse.followUp({ embeds: [dash], flags: 64 });
-                } else if (buttonResponse.customId === 'claim_slash_view_profile') {
-                    const rank = getRank(currentLevel);
-                    const profileEmbed = new EmbedBuilder()
-                        .setColor(rank.color)
-                        .setAuthor({ name: `${rank.emoji} ${rank.title[lang]}`, iconURL: avatarURL })
-                        .setThumbnail(avatarURL)
-                        .setDescription(`**${userName}**\n\`\`\`yaml\nLevel: ${currentLevel}\nXP: ${currentXP.toLocaleString()}\nCredits: ${currentCredits.toLocaleString()}\nStreak: ${userData.streak_days || 0} days\n\`\`\``)
-                        .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                        .setTimestamp();
-                    await buttonResponse.followUp({ embeds: [profileEmbed], flags: 64 });
-                }
-            } catch (e) {
-                // Timeout - button expired
+                btnCollector.on('collect', async (i) => {
+                    try {
+                        await i.deferUpdate().catch(() => {});
+                        if (i.customId === 'claim_slash_view_daily') {
+                            const dash = buildMiniDashboard(updatedUser || userData, lang, prefix, guildName, guildIcon, version);
+                            await i.followUp({ embeds: [dash], flags: 64 });
+                        } else if (i.customId === 'claim_slash_view_profile') {
+                            const rank = getRank(currentLevel);
+                            const profileEmbed = new EmbedBuilder()
+                                .setColor(rank.color)
+                                .setAuthor({ name: `${rank.emoji} ${rank.title[lang]}`, iconURL: avatarURL })
+                                .setThumbnail(avatarURL)
+                                .setDescription(
+                                    '```ansi\n' +
+                                    '\u001b[1;36m\u25b8 AGENT    \u001b[0m' + userName + '\n' +
+                                    '\u001b[1;36m\u25b8 LEVEL    \u001b[0m' + currentLevel + '\n' +
+                                    '\u001b[1;36m\u25b8 XP       \u001b[0m' + currentXP.toLocaleString() + '\n' +
+                                    '\u001b[1;36m\u25b8 CREDITS  \u001b[0m' + currentCredits.toLocaleString() + ' \uD83E\uDE99\n' +
+                                    '\u001b[1;33m\u25b8 STREAK   \u001b[0m' + (updatedUser?.streak_days || streak) + ' days \uD83D\uDD25\n' +
+                                    '```'
+                                )
+                                .setFooter({ text: `${guildName} · v${version}` })
+                                .setTimestamp();
+                            await i.followUp({ embeds: [profileEmbed], flags: 64 });
+                        }
+                    } catch (err) {
+                        console.error('[CLAIM SLASH BTN]', err.message);
+                    }
+                });
             }
             
         } catch (error) {
