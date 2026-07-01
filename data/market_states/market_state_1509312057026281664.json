@@ -1,0 +1,22 @@
+{
+  "trend": "BEAR",
+  "multiplier": 1.1161,
+  "lastUpdate": 1782934380987,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "BEAR",
+      "multiplier": 1.1161,
+      "event": "Tech Innovation",
+      "timestamp": 1782934380987
+    }
+  ],
+  "activeEvent": {
+    "name": "Tech Innovation",
+    "emoji": "🤖",
+    "effect": 0.15,
+    "msg": "Neural-tech breakthrough from the Malian Innovation Lab! Bullish momentum building.",
+    "severity": "moderate",
+    "timestamp": 1782934380987
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "trend": "STEADY",
+  "multiplier": 1.1703,
+  "lastUpdate": 1782934380992,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "STEADY",
+      "multiplier": 1.1703,
+      "event": "ECOWAS Summit",
+      "timestamp": 1782934380992
+    }
+  ],
+  "activeEvent": {
+    "name": "ECOWAS Summit",
+    "emoji": "🌍",
+    "effect": 0.18,
+    "msg": "ECOWAS leaders meet in Bamako! Regional trade agreements boost investor confidence.",
+    "severity": "major",
+    "timestamp": 1782934380992
+  }
+}

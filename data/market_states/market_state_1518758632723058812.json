@@ -1,0 +1,22 @@
+{
+  "trend": "STEADY",
+  "multiplier": 1.2198,
+  "lastUpdate": 1782934380991,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "STEADY",
+      "multiplier": 1.2198,
+      "event": "Gold Discovery",
+      "timestamp": 1782934380991
+    }
+  ],
+  "activeEvent": {
+    "name": "Gold Discovery",
+    "emoji": "💎",
+    "effect": 0.2,
+    "msg": "New gold deposits discovered near Bamako! Investors rush in — market surges!",
+    "severity": "major",
+    "timestamp": 1782934380991
+  }
+}

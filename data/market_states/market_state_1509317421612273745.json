@@ -1,0 +1,15 @@
+{
+  "trend": "BEAR",
+  "multiplier": 0.9779,
+  "lastUpdate": 1782934380990,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "BEAR",
+      "multiplier": 0.9779,
+      "event": null,
+      "timestamp": 1782934380990
+    }
+  ],
+  "activeEvent": null
+}

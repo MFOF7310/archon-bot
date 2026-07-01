@@ -1,0 +1,15 @@
+{
+  "trend": "VOLATILE",
+  "multiplier": 1.1901,
+  "lastUpdate": 1782934380991,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "VOLATILE",
+      "multiplier": 1.1901,
+      "event": null,
+      "timestamp": 1782934380991
+    }
+  ],
+  "activeEvent": null
+}

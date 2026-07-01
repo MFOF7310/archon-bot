@@ -1,0 +1,22 @@
+{
+  "trend": "BULL",
+  "multiplier": 1.1915,
+  "lastUpdate": 1782934380992,
+  "nextUpdate": 1782950400000,
+  "history": [
+    {
+      "trend": "BULL",
+      "multiplier": 1.1915,
+      "event": "Festival Boom",
+      "timestamp": 1782934380992
+    }
+  ],
+  "activeEvent": {
+    "name": "Festival Boom",
+    "emoji": "🎉",
+    "effect": 0.1,
+    "msg": "Bamako Cultural Festival draws massive tourism! Local economy gets a festive boost.",
+    "severity": "moderate",
+    "timestamp": 1782934380992
+  }
+}
