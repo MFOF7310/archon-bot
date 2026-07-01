@@ -80,11 +80,13 @@ module.exports = {
                 .setAuthor({ name: t.statusTitle, iconURL: client.user.displayAvatarURL() })
                 .setTitle(`${trend.emoji} ${trend.name}`)
                 .setDescription(
-                    `**${t.currentMultiplier}:** ${(marketState.multiplier * 100).toFixed(1)}%\n` +
-                    `**${t.nextMarketUpdate}:** ${getTimeUntilUpdate(message.guild?.id)}\n\n` +
-                    `**${t.yourBalance}:** ${oldBalance.toLocaleString()} 🪙\n` +
-                    `**${t.activeInvestments}:** ${totalInvested.toLocaleString()} 🪙\n\n` +
-                    `💡 **${t.verifyWith} \`${prefix}bal\` or \`${prefix}credits\`***`
+                    '```ansi\n' +
+                    '\u001b[1;33m\u25b8 TREND    \u001b[0m' + trend.emoji + ' ' + trend.name + '\n' +
+                    '\u001b[1;36m\u25b8 MULT     \u001b[0m' + (marketState.multiplier * 100).toFixed(1) + '%\n' +
+                    '\u001b[1;36m\u25b8 NEXT     \u001b[0m' + getTimeUntilUpdate(message.guild?.id) + '\n' +
+                    '\u001b[1;32m\u25b8 BALANCE  \u001b[0m' + oldBalance.toLocaleString() + ' \uD83E\uDE99\n' +
+                    '\u001b[1;35m\u25b8 INVESTED \u001b[0m' + totalInvested.toLocaleString() + ' \uD83E\uDE99\n' +
+                    '```'
                 )
                 .addFields(
                     { name: '📈 ' + (lang === 'fr' ? 'Investir' : 'Invest'), value: `\`${prefix}invest <amount>\``, inline: true },
@@ -145,16 +147,18 @@ module.exports = {
                 .setColor(profit >= 0 ? '#2ecc71' : '#e74c3c')
                 .setAuthor({ name: t.investmentClaimed, iconURL: message.author.displayAvatarURL() })
                 .setDescription(
-                    `\`\`\`yaml\n` +
-                    `${t.invested}: ${totalInvested.toLocaleString()} 🪙\n` +
-                    `${t.returned}: ${totalReturn.toLocaleString()} 🪙\n` +
-                    `${profit >= 0 ? t.profit : t.loss}: ${profit >= 0 ? '+' : ''}${profit.toLocaleString()} 🪙\n` +
-                    `${t.holdingPeriod}: ${holdingHours} ${t.hours}\n` +
-                    `${t.marketTrend}: ${trend.emoji} ${trend.name}\n` +
-                    `${t.roi}: ${roi}%\n\`\`\`\n` +
-                    `## 📊 **${t.previousBalance}:** ${oldBalance.toLocaleString()} 🪙\n` +
-                    `## 💰 **${t.newBalance}:** ${newCredits.toLocaleString()} 🪙\n\n---\n` +
-                    `💡 **${t.verifyWith} \`${prefix}bal\` or \`${prefix}credits\`***`
+                    '```ansi\n' +
+                    '\u001b[1;36m\u25b8 INVESTED \u001b[0m' + totalInvested.toLocaleString() + ' \uD83E\uDE99\n' +
+                    '\u001b[1;36m\u25b8 RETURNED \u001b[0m' + totalReturn.toLocaleString() + ' \uD83E\uDE99\n' +
+                    (profit >= 0
+                        ? '\u001b[1;32m\u25b8 PROFIT   \u001b[0m\u001b[1;32m+' + profit.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n'
+                        : '\u001b[1;31m\u25b8 LOSS     \u001b[0m\u001b[1;31m' + profit.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n') +
+                    '\u001b[1;33m\u25b8 HELD     \u001b[0m' + holdingHours + ' ' + t.hours + '\n' +
+                    '\u001b[1;33m\u25b8 TREND    \u001b[0m' + trend.emoji + ' ' + trend.name + '\n' +
+                    '\u001b[1;35m\u25b8 ROI      \u001b[0m' + roi + '%\n' +
+                    '\u001b[1;36m\u25b8 OLD BAL  \u001b[0m' + oldBalance.toLocaleString() + ' \uD83E\uDE99\n' +
+                    '\u001b[1;32m\u25b8 NEW BAL  \u001b[0m\u001b[1;32m' + newCredits.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
+                    '```'
                 )
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
@@ -180,15 +184,16 @@ module.exports = {
             .setAuthor({ name: t.investmentMade, iconURL: message.author.displayAvatarURL() })
             .setTitle(`${trend.emoji} ${trend.name}`)
             .setDescription(
-                `\`\`\`yaml\n` +
-                `${t.investedAmount}: ${amount.toLocaleString()} 🪙\n` +
-                `${t.currentMultiplier}: ${(marketState.multiplier * 100).toFixed(1)}%\n` +
-                `${t.previousBalance}: ${oldBalance.toLocaleString()} 🪙\n` +
-                `${t.newBalance}: ${newCredits.toLocaleString()} 🪙\n\`\`\`\n\n` +
-                `📌 **${t.useClaim(prefix)}**\n*${t.returnsGrow}*\n\n---\n` +
-                `💡 **${t.verifyWith} \`${prefix}bal\` or \`${prefix}credits\`***\n` +
-                `*${t.checkBalance(prefix)}*`
-            )
+                .setDescription(
+                    '```ansi\n' +
+                    '\u001b[1;32m\u25b8 INVESTED \u001b[0m\u001b[1;32m' + amount.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
+                    '\u001b[1;33m\u25b8 TREND    \u001b[0m' + trend.emoji + ' ' + trend.name + '\n' +
+                    '\u001b[1;36m\u25b8 MULT     \u001b[0m' + (marketState.multiplier * 100).toFixed(1) + '%\n' +
+                    '\u001b[1;36m\u25b8 OLD BAL  \u001b[0m' + oldBalance.toLocaleString() + ' \uD83E\uDE99\n' +
+                    '\u001b[1;31m\u25b8 NEW BAL  \u001b[0m' + newCredits.toLocaleString() + ' \uD83E\uDE99\n' +
+                    '\u001b[0;37m\u25b8 TIP      \u001b[0mClaim after 6+ hours for returns\n' +
+                    '```'
+                )
             .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
 
