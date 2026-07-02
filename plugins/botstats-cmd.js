@@ -77,9 +77,12 @@ async function showBotStats(client, context, db, lang, isSlash) {
         .setTimestamp();
 
     if (isSlash) {
+        if (context.deferred || context.replied) {
+            return context.editReply({ embeds: [embed] });
+        }
         return context.reply({ embeds: [embed] });
     }
-    return context.reply({ embeds: [embed] });
+    return context.reply({ embeds: [embed] }).catch(() => {});
 }
 
 module.exports = {
@@ -101,6 +104,7 @@ module.exports = {
     },
 
     execute: async (interaction, client) => {
+        await interaction.deferReply().catch(() => {});
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
         await showBotStats(client, interaction, client.db, lang, true);
     }
