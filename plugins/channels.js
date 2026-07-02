@@ -1,17 +1,17 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 
 const CHANNEL_DEFS = {
-    general:   { col: 'general_channel',            env: 'GENERAL_CHANNEL_ID',            emoji: '🏠', label: 'General Channel' },
-    welcome:   { col: 'welcome_channel',            env: 'WELCOME_CHANNEL_ID',            emoji: '👋', label: 'Welcome Channel' },
-    goodbye:   { col: 'goodbye_channel',            env: 'GOODBYE_CHANNEL_ID',            emoji: '🚪', label: 'Goodbye Channel' },
-    log:       { col: 'log_channel',                env: 'LOG_CHANNEL_ID',                emoji: '📋', label: 'Log Channel' },
-    modlog:    { col: 'mod_log_channel',            env: 'MOD_LOG_CHANNEL_ID',            emoji: '🔨', label: 'Mod Log Channel' },
-    daily:     { col: 'daily_channel',              env: 'DAILY_CHANNEL_ID',              emoji: '🎁', label: 'Daily Channel' },
-    shop:      { col: 'shop_channel',               env: 'SHOP_CHANNEL_ID',               emoji: '🛒', label: 'Shop Channel' },
-    market:    { col: 'market_channel',             env: 'MARKET_CHANNEL_ID',             emoji: '📈', label: 'Market Channel' },
-    rules:     { col: 'rules_channel',              env: 'RULES_CHANNEL_ID',              emoji: '📜', label: 'Rules Channel' },
-    ticket:    { col: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: '🎫', label: 'Ticket Logs Channel' },
-    levelup:   { col: 'levelup_channel',            env: 'LEVELUP_CHANNEL_ID',            emoji: '📊', label: 'Level-Up Channel' },
+    general:   { col: 'generalChannel',            dbcol: 'general_channel',            env: 'GENERAL_CHANNEL_ID',            emoji: '🏠', label: 'General Channel' },
+    welcome:   { col: 'welcomeChannel',            dbcol: 'welcome_channel',            env: 'WELCOME_CHANNEL_ID',            emoji: '👋', label: 'Welcome Channel' },
+    goodbye:   { col: 'goodbyeChannel',            dbcol: 'goodbye_channel',            env: 'GOODBYE_CHANNEL_ID',            emoji: '🚪', label: 'Goodbye Channel' },
+    log:       { col: 'logChannel',                dbcol: 'log_channel',                env: 'LOG_CHANNEL_ID',                emoji: '📋', label: 'Log Channel' },
+    modlog:    { col: 'modLogChannel',             dbcol: 'mod_log_channel',            env: 'MOD_LOG_CHANNEL_ID',            emoji: '🔨', label: 'Mod Log Channel' },
+    daily:     { col: 'dailyChannel',              dbcol: 'daily_channel',              env: 'DAILY_CHANNEL_ID',              emoji: '🎁', label: 'Daily Channel' },
+    shop:      { col: 'shopChannel',               dbcol: 'shop_channel',               env: 'SHOP_CHANNEL_ID',               emoji: '🛒', label: 'Shop Channel' },
+    market:    { col: 'marketChannel',             dbcol: 'market_channel',             env: 'MARKET_CHANNEL_ID',             emoji: '📈', label: 'Market Channel' },
+    rules:     { col: 'rulesChannel',              dbcol: 'rules_channel',              env: 'RULES_CHANNEL_ID',              emoji: '📜', label: 'Rules Channel' },
+    ticket:    { col: 'ticketTranscriptChannel',   dbcol: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: '🎫', label: 'Ticket Logs Channel' },
+    levelup:   { col: 'levelupChannel',            dbcol: 'levelup_channel',            env: 'LEVELUP_CHANNEL_ID',            emoji: '📊', label: 'Level-Up Channel' },
 };
 
 module.exports = {
@@ -121,7 +121,7 @@ module.exports = {
             const def = CHANNEL_DEFS[type];
             if (!def) return interaction.reply({ content: '❌ Unknown channel type.', flags: 64 });
 
-            const ok = client.updateServerSetting?.(guildId, def.col, channel.id);
+            const ok = client.updateServerSetting?.(guildId, def.dbcol, channel.id);
             client.settings?.delete(guildId);
 
             const embed = new EmbedBuilder()
@@ -140,7 +140,7 @@ module.exports = {
             const def = CHANNEL_DEFS[type];
             if (!def) return interaction.reply({ content: '❌ Unknown channel type.', flags: 64 });
 
-            client.updateServerSetting?.(guildId, def.col, null);
+            client.updateServerSetting?.(guildId, def.dbcol, null);
             client.settings?.delete(guildId);
 
             const embed = new EmbedBuilder()
@@ -191,7 +191,7 @@ module.exports = {
             if (!channelId) return message.reply(`❌ Usage: \`.channels set ${type} #channel\``).catch(() => {});
             const ch = message.guild.channels.cache.get(channelId);
             if (!ch) return message.reply('❌ Channel not found.').catch(() => {});
-            client.updateServerSetting?.(guildId, def.col, channelId);
+            client.updateServerSetting?.(guildId, def.dbcol, channelId);
             client.settings?.delete(guildId);
             return message.reply(`✅ **${def.label}** set to <#${channelId}>`).catch(() => {});
         }
