@@ -207,10 +207,11 @@ function formatUptime(seconds) {
 
 // ================= MODULE EXPORTS =================
 module.exports = {
-    name: 'botstats',
+    name: 'bot-stats-engine',
     description: 'Internal bot stats engine — not a user command',
     category: 'SYSTEM',
     hidden: true,
+    skipLoad: true,
 
     // Core functions
     setupBotStatsDB,
