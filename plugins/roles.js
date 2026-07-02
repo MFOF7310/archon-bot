@@ -97,14 +97,19 @@ module.exports = {
 
         // ── VIEW ──
         if (sub === 'view') {
+            // Force fresh settings — bypass stale cache
+            client.settings?.delete(guildId);
+            const freshSettings = client.getServerSettings?.(guildId) || {};
             const embed = new EmbedBuilder()
                 .setColor(0x9b59b6)
                 .setAuthor({ name: '🦅 ARCHON ENGINE • ROLE CONFIG', iconURL: client.user.displayAvatarURL() })
                 .setTitle(`🎭 ${guild.name} — Roles`)
                 .setDescription(
-                    Object.entries(ROLE_DEFS).map(([key, def]) =>
-                        `${def.emoji} **${def.label}** — ${roleMention(settings[def.col], def.env)}`
-                    ).join('\n')
+                    Object.entries(ROLE_DEFS).map(([key, def]) => {
+                        const id = freshSettings[def.col];
+                        const val = id ? `<@&${id}>` : (isOwnerGuild && process.env[def.env] ? `<@&${process.env[def.env]}> 🔹 .env` : '\`Not set\`');
+                        return `${def.emoji} **${def.label}** — ${val}`;
+                    }).join('\n')
                 )
                 .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /roles set to configure` })
                 .setTimestamp();
