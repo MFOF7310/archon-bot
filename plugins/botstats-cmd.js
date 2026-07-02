@@ -43,7 +43,8 @@ async function showBotStats(client, context, db, lang, isSlash) {
     const stats = BotStats.getOrCreateBotStats(db, guildId);
     const prog = BotStats.buildProgressBar(stats.xp, stats.level);
     const rank = BotStats.getBotRank(db, guildId);
-    const uptime = BotStats.formatUptime(process.uptime());
+    const uptimeSecs = client.readyAt ? Math.floor((Date.now() - client.readyAt.getTime()) / 1000) : Math.floor(process.uptime());
+    const uptime = BotStats.formatUptime(uptimeSecs);
     const version = client.version || '3.1.0';
 
     // Count unique agents helped
@@ -67,7 +68,7 @@ async function showBotStats(client, context, db, lang, isSlash) {
             `\u001b[1;33m\u25b8 ${tr.topCmd.padEnd(13)}\u001b[0m${stats.top_command || 'N/A'}\n` +
             `\u001b[1;35m\u25b8 ${tr.aiChats.padEnd(13)}\u001b[0m${stats.ai_chats.toLocaleString()}\n` +
             `\u001b[1;35m\u25b8 ${tr.buttons.padEnd(13)}\u001b[0m${stats.buttons_clicked.toLocaleString()}\n` +
-            `\u001b[1;32m\u25b8 ${tr.agents.padEnd(13)}\u001b[0m${agentCount.toLocaleString()}\n` +
+            `\u001b[1;32m\u25b8 ${tr.agents.padEnd(13)}\u001b[0m${agentCount.toLocaleString()} \n` +
             `\u001b[1;32m\u25b8 ${tr.rank.padEnd(13)}\u001b[0m#${rank.rank} of ${rank.total}\n` +
             `\u001b[1;32m\u25b8 ${tr.uptime.padEnd(13)}\u001b[0m${uptime}\n` +
             '```' +
