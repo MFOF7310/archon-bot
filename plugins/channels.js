@@ -95,13 +95,17 @@ module.exports = {
 
         // ── VIEW ──
         if (sub === 'view') {
+            // Force fresh settings — bypass cache
+            client.settings?.delete(guildId);
+            const freshSettings = client.getServerSettings?.(guildId) || {};
             const embed = new EmbedBuilder()
                 .setColor(0x00f0ff)
                 .setAuthor({ name: '🦅 ARCHON ENGINE • CHANNEL CONFIG', iconURL: client.user.displayAvatarURL() })
                 .setTitle(`📡 ${guild.name} — Channels`)
                 .setDescription(
                     Object.entries(CHANNEL_DEFS).map(([key, def]) => {
-                        const val = chMention(settings[def.col], def.env);
+                        const id = freshSettings[def.col];
+                        const val = id ? `<#${id}>` : (isOwnerGuild && process.env[def.env] ? `<#${process.env[def.env]}> 🔹 .env` : '\`Not set\`');
                         return `${def.emoji} **${def.label}** — ${val}`;
                     }).join('\n')
                 )
@@ -157,6 +161,9 @@ module.exports = {
         const settings = client.getServerSettings?.(guildId) || {};
 
         if (sub === 'view' || !sub) {
+            // Force fresh settings — bypass cache
+            client.settings?.delete(guildId);
+            const freshSettings = client.getServerSettings?.(guildId) || {};
             const chMention = (id, envKey) => {
                 if (id) return `<#${id}>`;
                 if (isOwnerGuild && envKey && process.env[envKey]) return `<#${process.env[envKey]}> 🔹 .env`;
@@ -168,7 +175,7 @@ module.exports = {
                 .setTitle(`📡 ${message.guild.name} — Channels`)
                 .setDescription(
                     Object.entries(CHANNEL_DEFS).map(([key, def]) =>
-                        `${def.emoji} **${def.label}** — ${chMention(settings[def.col], def.env)}`
+                        `${def.emoji} **${def.label}** — ${chMention(freshSettings[def.col], def.env)}`
                     ).join('\n')
                 )
                 .setFooter({ text: `BAMAKO_223 🇲🇱 • Use .channels set <type> #channel` })
