@@ -319,7 +319,7 @@ module.exports = {
 
         const t = translations[lang];
         const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
-        const version = client.version || '1.8.0';
+        const version = client.version || '3.1.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
