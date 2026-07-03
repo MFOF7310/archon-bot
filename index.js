@@ -884,7 +884,7 @@ function getServerSettings(guildId) {
             logChannel: settings.log_channel,
             dailyChannel: settings.daily_channel,
             shopChannel: env('shop_channel', 'SHOP_CHANNEL_ID'),
-            marketChannel: settings.market_channel || process.env.MARKET_CHANNEL_ID || null,
+            marketChannel: settings.market_channel || (guildId === process.env.GUILD_ID ? process.env.MARKET_CHANNEL_ID : null) || null,
             rulesChannel: settings.rules_channel,
             generalChannel: settings.general_channel,
             goodbyeChannel: settings.goodbye_channel,
