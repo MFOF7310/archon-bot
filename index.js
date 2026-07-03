@@ -15,40 +15,14 @@ const { setupLydia } = require('./plugins/lydia.js');
 const { afkUsers } = require('./plugins/afk.js');
 
 // ================= BAMAKO MARKET MANAGER (SAFE FALLBACK) =================
-let getMarketState, updateMarketTrend, TRENDS, startAutoUpdate, loadAllStates, startMarketAlerts;
-
-try {
-    const MarketManager = require('./plugins/market-manager.js');
-    getMarketState = MarketManager.getMarketState;
-    updateMarketTrend = MarketManager.updateMarketTrend;
-    TRENDS = MarketManager.TRENDS;
-    startAutoUpdate = MarketManager.startAutoUpdate;
-    loadAllStates = MarketManager.loadAllStates;
-    startMarketAlerts = MarketManager.startMarketAlerts;
-    console.log(`\x1b[32m[MARKET]\x1b[0m Manager loaded successfully`);
-} catch (err) {
-    console.log(`\x1b[33m[MARKET]\x1b[0m Manager not found - using fallback`);
-    
-    TRENDS = {
-        STEADY: { name: 'Steady Market', emoji: '📊', color: '#f1c40f', multiplier: [0.98, 1.08] },
-        BULL: { name: 'Bull Market', emoji: '📈', color: '#2ecc71', multiplier: [1.05, 1.20] },
-        BEAR: { name: 'Bear Market', emoji: '📉', color: '#e74c3c', multiplier: [0.85, 0.98] },
-        VOLATILE: { name: 'Volatile Market', emoji: '🌪️', color: '#9b59b6', multiplier: [0.70, 1.40] }
-    };
-    
-    getMarketState = () => ({
-        trend: 'STEADY',
-        multiplier: 1.0,
-        lastUpdate: Date.now(),
-        nextUpdate: Date.now() + (6 * 60 * 60 * 1000),
-        history: []
-    });
-    
-    updateMarketTrend = () => getMarketState();
-    startAutoUpdate = () => {};
-    loadAllStates = () => {};
-    startMarketAlerts = () => {};
-}
+// Market system removed — invest.js uses fixed return rates
+let getMarketState = null;
+let updateMarketTrend = null;
+let TRENDS = {
+    STEADY: { name: 'Steady Market', emoji: '📊', color: '#f1c40f' },
+    BULL:   { name: 'Bull Market',   emoji: '📈', color: '#2ecc71' },
+    BEAR:   { name: 'Bear Market',   emoji: '📉', color: '#e74c3c' },
+};
 
 // ================= SELF-HEALING PROTOCOL =================
 process.on('unhandledRejection', (reason, promise) => {
@@ -884,7 +858,7 @@ function getServerSettings(guildId) {
             logChannel: settings.log_channel,
             dailyChannel: settings.daily_channel,
             shopChannel: env('shop_channel', 'SHOP_CHANNEL_ID'),
-            marketChannel: settings.market_channel || (guildId === process.env.GUILD_ID ? process.env.MARKET_CHANNEL_ID : null) || null,
+            marketChannel: settings.market_channel || null,
             rulesChannel: settings.rules_channel,
             generalChannel: settings.general_channel,
             goodbyeChannel: settings.goodbye_channel,
@@ -3072,9 +3046,7 @@ setInterval(async () => {
 
     console.log(`${green}[SUPREME DM]${reset} Neural Reminder Heartbeat v4.0 active (45s) • 6h anti-spam • Per-user safety • Fallback ready`);
 
-    if (typeof startAutoUpdate === 'function') startAutoUpdate(client, db);
-    if (typeof loadAllStates === 'function') loadAllStates(client);
-    if (typeof startMarketAlerts === 'function') startMarketAlerts(client, db);
+
 
     // ================= TIKTOK NOTIFICATION ENGINE =================
     try {
