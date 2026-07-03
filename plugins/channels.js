@@ -8,7 +8,6 @@ const CHANNEL_DEFS = {
     modlog:    { col: 'modLogChannel',             dbcol: 'mod_log_channel',            env: 'MOD_LOG_CHANNEL_ID',            emoji: '🔨', label: 'Mod Log Channel' },
     daily:     { col: 'dailyChannel',              dbcol: 'daily_channel',              env: 'DAILY_CHANNEL_ID',              emoji: '🎁', label: 'Daily Channel' },
     shop:      { col: 'shopChannel',               dbcol: 'shop_channel',               env: 'SHOP_CHANNEL_ID',               emoji: '🛒', label: 'Shop Channel' },
-    market:    { col: 'marketChannel',             dbcol: 'market_channel',             env: 'MARKET_CHANNEL_ID',             emoji: '📈', label: 'Market Channel' },
     rules:     { col: 'rulesChannel',              dbcol: 'rules_channel',              env: 'RULES_CHANNEL_ID',              emoji: '📜', label: 'Rules Channel' },
     ticket:    { col: 'ticketTranscriptChannel',   dbcol: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: '🎫', label: 'Ticket Logs Channel' },
     levelup:   { col: 'levelupChannel',            dbcol: 'levelup_channel',            env: 'LEVELUP_CHANNEL_ID',            emoji: '📊', label: 'Level-Up Channel' },
