@@ -89,7 +89,7 @@ async function buildLookupEmbed(client, db, target, guildId, scope) {
 
     const lydiaMem = db.prepare('SELECT COUNT(*) as cnt FROM lydia_memory WHERE user_id = ?').get(userId);
 
-    const tickets = db.prepare('SELECT COUNT(*) as cnt FROM tickets WHERE user_id = ?').get(userId);
+    const tickets = db.prepare('SELECT COUNT(*) as cnt FROM tickets WHERE creator_id = ?').get(userId);
 
     // ── Build embed ──
     const lines = [];
