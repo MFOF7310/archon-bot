@@ -580,22 +580,24 @@ function buildRandomTips(cfg, lang = 'en') {
 // ================= BUTTON DEFINITIONS =================
 function getWelcomeButtons(cfg, member) {
     const buttons = [];
+    const guildId = member.guild.id;
+    const fallbackId = member.guild.systemChannelId || guildId;
 
-    if (!cfg.rulesChannel) {
-        buttons.push({
-            label: 'Rules', emoji: '📜', style: 'Link',
-            url: `https://discord.com/channels/${member.guild.id}/${member.guild.systemChannelId || member.guild.id}`,
-            customId: null
-        });
-    }
+    // Rules button — use configured channel if set, else fallback to system channel
+    const rulesId = cfg.rulesChannel || null;
+    buttons.push({
+        label: 'Rules', emoji: '📜', style: 'Link',
+        url: `https://discord.com/channels/${guildId}/${rulesId || fallbackId}`,
+        customId: null
+    });
 
-    if (!cfg.generalChannel) {
-        buttons.push({
-            label: 'General', emoji: '💬', style: 'Link',
-            url: `https://discord.com/channels/${member.guild.id}/${member.guild.systemChannelId || member.guild.id}`,
-            customId: null
-        });
-    }
+    // General button — use configured channel if set, else fallback to system channel
+    const generalId = cfg.generalChannel || null;
+    buttons.push({
+        label: 'General', emoji: '💬', style: 'Link',
+        url: `https://discord.com/channels/${guildId}/${generalId || fallbackId}`,
+        customId: null
+    });
 
     buttons.push({ label: 'AI Assistant', emoji: '🤖', style: 'Primary', url: null, customId: 'welcome_help' });
     buttons.push({ label: 'My Profile',   emoji: '👤', style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
