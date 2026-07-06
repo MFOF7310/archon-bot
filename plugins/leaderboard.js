@@ -1,10 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
-const { getMarketState, TRENDS } = require('./market-manager');
 
-function getMarketStatus(guildId) { 
-    try { const ms = getMarketState(guildId); const t = TRENDS[ms.trend] || TRENDS.STEADY; return `${t.emoji} ${t.name}`; } 
-    catch (e) { return '📊 Steady'; } 
-}
+
+
 
 function calculateLevel(xp) { 
     return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1; 
