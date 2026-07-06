@@ -392,7 +392,20 @@ function saveThemeDB(db, gid, data) {
 // ================= HANDLERS =================
 async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) {
     const isMilestone = DEFAULT_THEMES[newLevel] || (newLevel > 25 && newLevel % 5 === 0);
-    if (!isMilestone) return;
+
+    if (!isMilestone) {
+        const ss = client.getServerSettings?.(member.guild.id) || {};
+        const chId = ss.levelupChannel || ss.levelup_channel;
+        const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
+        if (!ch) return;
+        const lang = ss.language && ss.language !== 'auto' ? ss.language : 'en';
+        const text = lang === 'fr'
+            ? `⚡ ${member} a atteint le **Niveau ${newLevel}** ! Continue comme ça.`
+            : `⚡ ${member} reached **Level ${newLevel}**! Keep grinding.`;
+        const msg = await ch.send({ content: text }).catch(() => null);
+        if (msg) setTimeout(() => msg.delete().catch(() => {}), 15000);
+        return;
+    }
     const added = await assignRoles(member, newLevel);
     const customTheme = db ? getThemeDB(db, member.guild.id) : null;
     const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme);
