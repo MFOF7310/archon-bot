@@ -3367,6 +3367,10 @@ if (message.content && message.content.length > 4000) {
                 if (configured) targetChannel = configured;
             }
 
+            // ================= MILESTONE CHECK =================
+            const isMilestone = [5, 10, 15, 20, 25, 30, 35, 50, 75, 100].includes(newLevel) || (newLevel > 35 && newLevel % 5 === 0);
+            if (!isMilestone) return;
+
             // ================= CUSTOM levelup_message TEMPLATE =================
             const customTemplate = serverSettings.levelupMessage;
             if (customTemplate && customTemplate.trim()) {
