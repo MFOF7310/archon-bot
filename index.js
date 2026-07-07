@@ -5164,7 +5164,53 @@ apiApp.post("/api/broadcast", (req, res) => {
     setTimeout(() => res.json({ success: true, guildCount: count, total: guilds.size }), 2000);
 });
 // ─── COMMANDS (par guild) ──────────────────────────────
+// ================= WHATSAPP SESSION MANAGER =================
+let sessionManager = null;
+async function getSessionManager() {
+    if (!sessionManager) {
+        const mod = await import('/root/archon-wa/lib/sessionManager.js');
+        sessionManager = mod;
+    }
+    return sessionManager;
+}
+
 // ================= WHATSAPP SESSION API =================
+// Create new session with phone number
+apiApp.post('/api/whatsapp/create', async (req, res) => {
+    try {
+        const { phoneNumber, customName } = req.body;
+        if (!phoneNumber) return res.status(400).json({ error: 'Phone number required' });
+        const mgr = await getSessionManager();
+        const token = await mgr.createSession(phoneNumber, customName || 'mybot');
+        return res.json({ token, status: 'pending' });
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
+// Poll session status
+apiApp.get('/api/whatsapp/poll/:token', async (req, res) => {
+    try {
+        const mgr = await getSessionManager();
+        const session = mgr.getSession(req.params.token);
+        if (!session) return res.status(404).json({ error: 'Session not found or expired' });
+        return res.json(session);
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
+// Clean up session
+apiApp.delete('/api/whatsapp/session/:token', async (req, res) => {
+    try {
+        const mgr = await getSessionManager();
+        mgr.cleanSession(req.params.token);
+        return res.json({ ok: true });
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
 apiApp.get('/api/whatsapp/session', async (req, res) => {
     try {
         const fs = require('fs');
