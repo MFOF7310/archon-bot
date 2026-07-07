@@ -5,8 +5,8 @@
 const https = require('https');
 
 const MAX_HISTORY = 12;
-const AI_MODEL = process.env.AI_MODEL || 'meta-llama/llama-3.3-70b:free';
-const AI_FALLBACK = process.env.AI_FALLBACK_MODEL || 'meta-llama/llama-3.3-70b:free';
+const AI_MODEL = process.env.AI_MODEL || 'openrouter/free';
+const AI_FALLBACK = process.env.AI_FALLBACK_MODEL || 'openrouter/free';
 
 module.exports = {
     name: 'lydia',
