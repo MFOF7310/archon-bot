@@ -177,7 +177,7 @@ module.exports = {
 
     // ================= PREFIX HANDLER =================
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = translations[lang];
         const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';

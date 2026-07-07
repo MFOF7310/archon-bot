@@ -54,7 +54,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         // Detect language
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = translations[lang];
         
         // Check permissions

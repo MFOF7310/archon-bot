@@ -11,7 +11,7 @@ module.exports = {
     examples: ['.banner', '.banner @user'],
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, 'en') || 'en';
+        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
         const target = message.mentions.users.first() || message.author;
         
         const t = {

@@ -401,7 +401,7 @@ data: new SlashCommandBuilder()
 // ================= PERMISSION CHECK =================
 if (message.author.id !== process.env.OWNER_ID) {
     const lang = client.detectLanguage 
-        ? client.detectLanguage(usedCommand, 'en')
+        ? client.detectLanguage(usedCommand, guildId)
         : (usedCommand?.includes('diffusion') || usedCommand?.includes('annonce') ? 'fr' : 'en');
     const t = translations[lang];
     return message.reply({ content: t.restricted });
@@ -409,7 +409,7 @@ if (message.author.id !== process.env.OWNER_ID) {
 
 // ================= LANGUAGE SETUP =================
 const lang = client.detectLanguage 
-    ? client.detectLanguage(usedCommand, 'en')
+    ? client.detectLanguage(usedCommand, guildId)
     : (usedCommand?.includes('diffusion') || usedCommand?.includes('annonce') ? 'fr' : 'en');
 const t = translations[lang];
 const prefix = serverSettings?.prefix || process.env.PREFIX || '.';

@@ -68,7 +68,7 @@ module.exports = {
         .addStringOption(o => o.setName('message').setDescription('Your message').setRequired(true).setMaxLength(1900)),
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = translations[lang];
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const feedback = args.join(' ');

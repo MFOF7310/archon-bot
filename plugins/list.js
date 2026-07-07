@@ -441,7 +441,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
             const t = translations[lang];
             const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
             const version = client.version || '1.8.0';

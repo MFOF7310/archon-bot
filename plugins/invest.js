@@ -90,7 +90,7 @@ module.exports = {
         ),
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = T[lang] || T.en;
         const version = client.version || '3.1.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';

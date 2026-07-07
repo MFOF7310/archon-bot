@@ -26,7 +26,7 @@ module.exports = {
     examples: ['.servericon', '.icon', '.icone'],
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, 'en') || 'en';
+        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
         const t = translations[lang];
         const version = client.version || '1.6.0';
         const guild = message.guild;

@@ -42,7 +42,7 @@ module.exports = {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, 'en')
+            ? client.detectLanguage(usedCommand, guildId)
             : 'en';
         
         const t = translations[lang];

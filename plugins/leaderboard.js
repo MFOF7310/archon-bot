@@ -55,7 +55,7 @@ module.exports = {
             .addChoices({ name: 'XP', value: 'xp' }, { name: 'Credits', value: 'credits' }, { name: 'Messages', value: 'messages' }, { name: 'Daily Streak', value: 'streak' }, { name: 'Games Won', value: 'wins' })),
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = lbTranslations[lang];
         const prefix = serverSettings?.prefix || '.';
         const version = client.version || '2.0.0';
