@@ -93,7 +93,7 @@ module.exports = {
         // Priority: 1) French aliases (quotidien, journalier), 2) guild locale, 3) detectLanguage
         const frenchAliases = ['quotidien', 'journalier', 'journalière', 'qotd'];
         const isFrenchAlias = usedCommand && frenchAliases.some(a => usedCommand.toLowerCase().includes(a));
-        const lang = isFrenchAlias ? 'fr' :
+        lang = isFrenchAlias ? 'fr' :
                      (message.guild?.preferredLocale?.startsWith('fr') ? 'fr' :
                      (client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en'));
         const t = dailyTranslations[lang];

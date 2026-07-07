@@ -33,7 +33,6 @@ module.exports = {
 
         const mode = args[0]?.toLowerCase();
         const isUpdate = mode === 'update' || usedCommand === 'update' || usedCommand === 'pull';
-        const lang = message.content?.match(/reboot|restart|update|pull|reload/) ? 'en' : 'en';
 
         const prepEmbed = new EmbedBuilder()
             .setColor('#f39c12')
