@@ -5,8 +5,8 @@
 const https = require('https');
 
 const MAX_HISTORY = 12;
-const AI_MODEL = process.env.AI_MODEL || 'google/gemini-2.0-flash-001';
-const AI_FALLBACK = process.env.AI_FALLBACK_MODEL || 'google/gemini-2.0-flash-001';
+const AI_MODEL = process.env.AI_MODEL || 'google/gemini-flash-1.5';
+const AI_FALLBACK = process.env.AI_FALLBACK_MODEL || 'google/gemini-flash-1.5';
 
 module.exports = {
     name: 'lydia',
