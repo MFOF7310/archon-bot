@@ -1482,7 +1482,7 @@ async function assignRole(guild, userId, roleName, roleColor, source, detail = '
         if (!role) {
             role = await guild.roles.create({
                 name: roleName,
-                color: roleColor || '#95a5a6',
+                colors: [roleColor || '#95a5a6'],
                 reason: `[${source}] ${detail}`
             });
         }
