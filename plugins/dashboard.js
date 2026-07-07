@@ -352,7 +352,7 @@ module.exports = {
         ),
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
             const embed = await generateDashboardEmbed(client, message, db, true);
             

@@ -399,8 +399,8 @@ module.exports = {
             )),
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const txt = T[lang];
         const category = (args[0] || 'random').toLowerCase();
         const accessKey = process.env.UNSPLASH_ACCESS_KEY;

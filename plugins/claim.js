@@ -328,7 +328,7 @@ module.exports = {
         .setDescription('⚡ Claim your daily rewards when the neural cycle is complete'),
 
     // ================= TEXT COMMAND HANDLER =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
             // PER-SERVER: Extract guildId for composite key lookups
             const guildId = message.guild?.id || 'DM';
@@ -337,9 +337,7 @@ module.exports = {
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
             // Language detection
-            const lang = client.detectLanguage 
-                ? client.detectLanguage(usedCommand, serverSettings?.language || 'en')
-                : serverSettings?.language || 'en';
+            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
             const t = claimTranslations[lang];
             const version = client.version || '2.0.0';
             
@@ -580,9 +578,7 @@ module.exports = {
             
         } catch (error) {
             console.error(`[CLAIM] FATAL ERROR:`, error);
-            const lang = client.detectLanguage 
-                ? client.detectLanguage(usedCommand || 'claim', 'en')
-                : 'en';
+            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
             return message.reply({ content: claimTranslations[lang].error }).catch(() => {});
         }
     },
@@ -594,9 +590,7 @@ module.exports = {
             const guildId = interaction.guild?.id || 'DM';
             const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
             
-            const lang = client.detectLanguage 
-                ? client.detectLanguage('claim', serverSettings?.language || 'en')
-                : serverSettings?.language || 'en';
+            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
             const t = claimTranslations[lang];
             
             const version = client.version || '2.0.0';

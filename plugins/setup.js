@@ -101,7 +101,7 @@ module.exports = {
         if (!isOwner && !isAdmin) {
             return message.reply('🔒 This command requires Administrator permissions.').catch(() => {});
         }
-        const lang = client.detectLanguage ? client.detectLanguage('setup', 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
         await module.exports.startWizard(message, client, lang, false);
     },
 

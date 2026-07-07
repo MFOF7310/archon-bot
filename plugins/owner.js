@@ -176,8 +176,8 @@ module.exports = {
                .addIntegerOption(opt => opt.setName('lines').setDescription('Lines (default: 20)').setRequired(false))),
 
     // ================= PREFIX HANDLER =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = translations[lang];
         const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -253,7 +253,7 @@ module.exports = {
     // ================= SLASH HANDLER =================
     execute: async (interaction, client) => {
         const ARCHITECT_ID = process.env.OWNER_ID;
-        const lang = client.detectLanguage ? client.detectLanguage('owner', 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
         const t = translations[lang];
 
         if (interaction.user.id !== ARCHITECT_ID) {

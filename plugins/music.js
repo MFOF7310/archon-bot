@@ -662,7 +662,7 @@ module.exports = {
             .addIntegerOption(o => o.setName('page').setDescription('Page number').setRequired(false).setMinValue(1))),
 
     // PREFIX — .play <query>
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const query = args.join(' ');
         if (!query) return message.reply('❌ Provide a song name! Usage: `.play <song>`').catch(() => {});
         const vc = message.member?.voice?.channel;

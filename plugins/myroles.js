@@ -61,7 +61,7 @@ module.exports = {
     
     // ⚡ PREFIX COMMAND EXECUTION
     async run(client, message, args, db) {
-        const lang = client.detectLanguage(message.content) === 'fr' ? 'fr' : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
         
         // Resolve target
         const target = message.mentions.members.first() || message.member;

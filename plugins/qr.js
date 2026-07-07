@@ -11,7 +11,7 @@ module.exports = {
     category: 'UTILITY', cooldown: 3000, usage: '.qr <text>', examples: ['.qr https://discord.com', '.qr Hello World!', '/qr text:Hello'],
     data: new SlashCommandBuilder().setName('qr').setDescription('📱 Generate a QR code').addStringOption(o => o.setName('text').setDescription('Text or URL to encode').setRequired(true)).addStringOption(o => o.setName('color').setDescription('QR color (hex, default: black)').setRequired(false)).addIntegerOption(o => o.setName('size').setDescription('Size in pixels (100-1000, default: 500)').setRequired(false)),
     run: async (client, message, args, db, ss, used) => {
-        const lang = client.detectLanguage ? client.detectLanguage(used, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang], text = args.join(' ');
         if (!text) return message.reply(`❌ ${t.usage}`).catch(() => {});
         const loadingMsg = await message.reply(t.generating).catch(() => null);

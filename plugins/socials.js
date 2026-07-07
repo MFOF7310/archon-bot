@@ -81,12 +81,10 @@ module.exports = {
         .setDescription('🔗 Display official social media links / Afficher les liens sociaux'),
 
     // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, guildId)
-            : 'en';
+        lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         
         const t = translations[lang];
         const version = client.version || '1.8.0';

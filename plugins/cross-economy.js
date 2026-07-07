@@ -668,7 +668,7 @@ module.exports = {
         // SYNC SERVER STATS
         syncServerStats(db, message.guild.id, message.guild.name, message.guild.memberCount, 0);
         
-        const lang = client.detectLanguage ? client.detectLanguage(used, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang] || T.en;
         const uid = message.author.id;
         const gid = message.guild.id;

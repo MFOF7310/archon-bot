@@ -171,7 +171,7 @@ module.exports = {
         .setName('about')
         .setDescription('📁 Display the ARCHON CG-223 classified neural dossier'),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
         const version = client.version || '3.0.6';
         const isArchitect = message.author.id === process.env.OWNER_ID;

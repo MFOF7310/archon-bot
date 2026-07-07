@@ -147,8 +147,8 @@ module.exports = {
     // ═══════════════════════════════════════════════════════
     // PREFIX COMMAND
     // ═══════════════════════════════════════════════════════
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = transferTranslations[lang];
         const version = client.version || '1.7.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';

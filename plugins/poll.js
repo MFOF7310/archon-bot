@@ -53,8 +53,8 @@ data: new SlashCommandBuilder()
         .setDescription('Option 9 (optional)')
         .setRequired(false)),
 
-run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
+run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         
         const t = {
             en: {

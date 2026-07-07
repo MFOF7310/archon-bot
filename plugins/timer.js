@@ -29,7 +29,7 @@ module.exports = {
     category: 'UTILITY', cooldown: 2000, usage: '.timer <time> [label]', examples: ['.timer 5m Break', '.timer 25m Pomodoro', '/timer duration:30s label:Coffee'],
     data: new SlashCommandBuilder().setName('timer').setDescription('⏱️ Set a timer').addStringOption(o => o.setName('duration').setDescription('Duration: 30s, 5m, 1h, 2h30m').setRequired(true)).addStringOption(o => o.setName('label').setDescription('What is this timer for?').setRequired(false)),
     run: async (client, message, args, db, ss, used) => {
-        const lang = client.detectLanguage ? client.detectLanguage(used, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang];
         if (args.length < 1) return message.reply(`❌ ${t.usage}`).catch(() => {});
         const durationMs = parseTime(args[0]);

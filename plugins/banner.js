@@ -10,8 +10,8 @@ module.exports = {
     usage: '.banner [@user]',
     examples: ['.banner', '.banner @user'],
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const target = message.mentions.users.first() || message.author;
         
         const t = {

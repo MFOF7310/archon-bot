@@ -99,9 +99,9 @@ data: new SlashCommandBuilder()
     .setName('shop')
     .setDescription('💎 Spend your Archon Credits on exclusive upgrades'),
 
-run: async (client, message, args, db, serverSettings, usedCommand) => {
+run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+        
         const t = shopTranslations[lang];
         
         const version = client.version || '1.7.0';

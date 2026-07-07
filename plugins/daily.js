@@ -89,7 +89,7 @@ module.exports = {
     ),
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // Priority: 1) French aliases (quotidien, journalier), 2) guild locale, 3) detectLanguage
         const frenchAliases = ['quotidien', 'journalier', 'journalière', 'qotd'];
         const isFrenchAlias = usedCommand && frenchAliases.some(a => usedCommand.toLowerCase().includes(a));

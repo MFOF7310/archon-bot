@@ -15,7 +15,7 @@ module.exports = {
     category: 'UTILITY', cooldown: 3000, usage: '.level [@user]', examples: ['.level', '.level @user', '/level user:@user'],
     data: new SlashCommandBuilder().setName('level').setDescription('📊 Check level progress').addUserOption(o => o.setName('user').setDescription('User to check (default: you)').setRequired(false)),
     run: async (client, message, args, db, ss, used) => {
-        const lang = client.detectLanguage ? client.detectLanguage(used, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang], guild = message.guild, guildId = guild?.id || 'DM';
         const target = message.mentions.users.first() || message.author;
         let userData = client.getUserData ? client.getUserData(target.id, guildId) : null;

@@ -20,8 +20,8 @@ module.exports = {
         ),
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const target = message.mentions.users.first() || message.author;
 
         return sendAvatarEmbed(message, target, lang, client);

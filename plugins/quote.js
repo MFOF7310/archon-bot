@@ -213,8 +213,8 @@ module.exports = {
             )),
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const txt = TRANSLATIONS[lang];
         const version = client.version || '2.0';
         const guildName = message.guild?.name || 'DM';

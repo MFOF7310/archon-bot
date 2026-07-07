@@ -11,7 +11,7 @@ module.exports = {
     category: 'ECONOMY', cooldown: 10000, usage: '.customrole <color> <name>', examples: ['.customrole #FF5733 MyRole', '.customrole red VIP', '/customrole color:#3498db name:Elite'],
     data: new SlashCommandBuilder().setName('customrole').setDescription('🎨 Buy a custom color role').addStringOption(o => o.setName('color').setDescription('Color hex or name (red, blue, green...)').setRequired(true)).addStringOption(o => o.setName('name').setDescription('Role name').setRequired(true)),
     run: async (client, message, args, db, ss, used) => {
-        const lang = client.detectLanguage ? client.detectLanguage(used, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang], guild = message.guild, user = message.author;
         if (!guild) return message.reply('❌ Server only.').catch(() => {});
         if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) return message.reply(t.noPermission).catch(() => {});

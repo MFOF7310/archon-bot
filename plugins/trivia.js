@@ -328,7 +328,7 @@ data: new SlashCommandBuilder()
     .setName('trivia')
     .setDescription('🧠 Test your knowledge with the Neural Trivia System!'),
 
-run: async (client, message, args, db, serverSettings, usedCommand) => {
+run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
             // Force correct language: slash passes 'trivia' (en) or 'trivia_fr' (fr)
             // Prefix command uses alias detection (quizz/culture = fr, trivia = en)

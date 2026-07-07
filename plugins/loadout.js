@@ -307,8 +307,8 @@ module.exports = {
     },
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = translations[lang];
         const authorId = message.author.id;
         const guildName = message.guild?.name || 'Neural Network';

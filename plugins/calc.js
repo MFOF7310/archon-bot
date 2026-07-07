@@ -33,7 +33,7 @@ module.exports = {
     category: 'UTILITY', cooldown: 2000, usage: '.calc <expression>', examples: ['.calc 2+2', '.calc sin(45)', '.calc sqrt(144)'],
     data: new SlashCommandBuilder().setName('calc').setDescription('🧮 Calculator').addStringOption(o => o.setName('expression').setDescription('Math expression').setRequired(true)),
     run: async (client, message, args, db, ss, used) => {
-        const lang = client.detectLanguage ? client.detectLanguage(used, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang], expr = args.join(' ');
         if (!expr) return message.reply(`❌ ${t.usage}`).catch(() => {});
         try {

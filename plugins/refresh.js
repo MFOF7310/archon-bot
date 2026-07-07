@@ -73,8 +73,8 @@ module.exports = {
         await executeWipe(interaction, type, t, client, db, fakeMessage, targetUser?.id);
     },
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = translations[lang];
         const ARCHITECT_ID = process.env.OWNER_ID;
 

@@ -26,8 +26,8 @@ module.exports = {
         ),
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const cmd = usedCommand?.toLowerCase() || 'mute';
         const isUnmute = ['unmute', 'unsilence', 'demute'].includes(cmd);
 

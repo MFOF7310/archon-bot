@@ -437,7 +437,7 @@ module.exports = {
         ),
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // Language detection
         let lang = 'en';
         if (usedCommand?.toLowerCase() === 'grimoire') lang = 'fr';

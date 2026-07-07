@@ -74,8 +74,8 @@ module.exports = {
         .addStringOption(opt => opt.setName('remind').setDescription('Get DM reminder when countdown ends?').setRequired(false)
             .addChoices({ name: 'Yes', value: 'yes' }, { name: 'No', value: 'no' })),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = T[lang];
         const guild = message.guild;
 

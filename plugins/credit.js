@@ -145,8 +145,8 @@ module.exports = {
         .addSubcommand(sub => sub.setName('leaderboard').setDescription('View top agents')),
 
     // ================= TEXT COMMAND HANDLER =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = creditTranslations[lang];
         const prefix = serverSettings?.prefix || '.';
 
