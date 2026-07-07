@@ -5188,6 +5188,30 @@ apiApp.post('/api/whatsapp/create', async (req, res) => {
     }
 });
 
+// Create QR session
+apiApp.post('/api/whatsapp/qr', async (req, res) => {
+    try {
+        const { phoneNumber, customName } = req.body;
+        const mgr = await getSessionManager();
+        const token = await mgr.createQRSession(phoneNumber || '', customName || 'mybot');
+        return res.json({ token, status: 'pending', method: 'qr' });
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
+// Poll QR session status
+apiApp.get('/api/whatsapp/qr/poll/:token', async (req, res) => {
+    try {
+        const mgr = await getSessionManager();
+        const session = mgr.getQRSession(req.params.token);
+        if (!session) return res.status(404).json({ error: 'Session not found or expired' });
+        return res.json(session);
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
 // Poll session status
 apiApp.get('/api/whatsapp/poll/:token', async (req, res) => {
     try {
