@@ -52,9 +52,9 @@ module.exports = {
                 .setMaxLength(5)
         ),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // Detect language
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+        
         const t = translations[lang];
         
         // Check permissions

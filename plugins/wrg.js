@@ -611,8 +611,8 @@ module.exports = {
                 { name: '🌍 Geography — Countries & capitals',         value: 'geography'  }
             )),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         await runGame(client, message, args, db, lang);
     },
 

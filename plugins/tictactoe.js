@@ -114,11 +114,9 @@ module.exports = {
     cooldown: 5000,
     examples: ['.ttt @friend'],
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, guildId)
-            : 'en';
+        lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         
         const t = tttTranslations[lang];
         const version = client.version || '1.6.0';

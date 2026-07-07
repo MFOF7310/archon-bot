@@ -214,9 +214,9 @@ data: new SlashCommandBuilder()
         .setDescription('View moderation history / Voir l\'historique')
         .addUserOption(opt => opt.setName('target').setDescription('User to check').setRequired(false))),
 
-run: async (client, message, args, db, serverSettings, usedCommand) => {
+run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+        
         const t = translations[lang];
         const version = client.version || '1.6.0';
         const guildId = message.guild.id;

@@ -2202,16 +2202,16 @@ const COMMAND_PARAM_MAP = {
 
 // VERSION ORIGINALE (avant notre modif)
 async function executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, lang = 'en') {
-    const argsMap = { client, message, args, db, usedCommand, serverSettings, lang };
+    const argsMap = { client, message, args, db, serverSettings, usedCommand, lang };
     
     let paramOrder;
     if (command.params && Array.isArray(command.params)) {
         paramOrder = command.params;
     } else if (command.run.length > 0) {
-        const defaultParams = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
+        const defaultParams = ['client', 'message', 'args', 'db', 'serverSettings', 'usedCommand', 'lang'];
         paramOrder = defaultParams.slice(0, command.run.length);
     } else {
-        paramOrder = ['client', 'message', 'args', 'db', 'usedCommand', 'serverSettings', 'lang'];
+        paramOrder = ['client', 'message', 'args', 'db', 'serverSettings', 'usedCommand', 'lang'];
     }
     
     const filteredArgs = paramOrder.map(param => argsMap[param]).filter(arg => arg !== undefined);

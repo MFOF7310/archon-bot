@@ -94,14 +94,12 @@ data: new SlashCommandBuilder()
     .setDescription('📡 Check if the bot is alive and get system statistics'),
 
 // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-run: async (client, message, args, db, serverSettings, usedCommand) => {
+run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         const startTime = Date.now();
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
-        const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, guildId)
-            : 'en';
+        lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         
         const t = translations[lang];
         const version = client.version || '1.6.0';

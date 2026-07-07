@@ -365,8 +365,8 @@ module.exports = {
     },
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = translations[lang];
 
         // PER-SERVER PERMISSION CHECK

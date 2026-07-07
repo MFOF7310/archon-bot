@@ -296,7 +296,7 @@ module.exports = {
     run: async (client, message, args, db, ss, used) => {
         if (!message.guild) return message.reply('Server only.').catch(() => {});
         voteSync.setupDB(db);
-        const lang = client.detectLanguage ? client.detectLanguage(used, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang] || T.en;
         const sub = args[0]?.toLowerCase();
         const uid = message.author.id;

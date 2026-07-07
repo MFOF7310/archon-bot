@@ -202,10 +202,10 @@ module.exports = {
     examples: ['.setgame Call of Duty | Ranked | Diamond II', '.sg Valorant | Competitive | Platinum I'],
 
     // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+        
         const t = translations[lang];
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const version = client.version || '1.6.0';

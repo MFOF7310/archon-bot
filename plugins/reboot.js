@@ -23,7 +23,7 @@ module.exports = {
                 )
         ),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // Only bot owner
         if (message.author.id !== process.env.OWNER_ID) {
             return message.reply({

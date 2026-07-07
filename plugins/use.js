@@ -160,8 +160,8 @@ module.exports = {
     },
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = useTranslations[lang];
         const userId = message.author.id;
         const userName = message.author.username;

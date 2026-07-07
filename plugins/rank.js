@@ -72,12 +72,12 @@ module.exports = {
         .addUserOption(option => option.setName('agent').setDescription('Agent to inspect (leave empty for your own dossier)').setRequired(false)),
 
     // ================= PREFIX COMMAND EXECUTION =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
             // DM fallback — allow self-profile in DMs with 'DM' guild_id
             const guildId = message.guild?.id || 'DM';
             const guild = message.guild;
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand || 'rank', 'en') : 'en';
+            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
             const t = translations[lang];
             const version = client.version || '2.0.0';
             const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';

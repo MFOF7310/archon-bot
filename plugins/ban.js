@@ -397,11 +397,11 @@ module.exports = {
         ),
 
     // ================= PREFIX COMMAND HANDLER =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // Ensure DB column exists
         ensureInviteColumn(db);
 
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+        
         const t = translations[lang];
         const version = getBotVersion(client);
         const action = usedCommand?.toLowerCase();

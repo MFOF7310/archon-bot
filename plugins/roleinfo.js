@@ -9,8 +9,8 @@ module.exports = {
     usage: '.roleinfo <@role/roleID/role name>',
     examples: ['.roleinfo @Admin', '.roleinfo Member'],
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         
         const t = {
             en: {

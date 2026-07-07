@@ -86,8 +86,8 @@ module.exports = {
         .setName('invite')
         .setDescription('🔮 Summon ARCHITECT CG-223 to your server!'),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = translations[lang];
         const version = client.version || '1.8.0';
         

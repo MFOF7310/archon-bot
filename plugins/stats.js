@@ -161,9 +161,9 @@ module.exports = {
         .setName('stats')
         .setDescription('📊 Display live neural bot statistics and system telemetry'),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
+        
         const t = statsTranslations[lang];
         const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';

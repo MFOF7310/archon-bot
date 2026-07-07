@@ -465,7 +465,7 @@ async function executeSlashCommand(interaction, client) {
 }
 
 async function run(client, message, args, db, serverSettings, usedCommand) {
-  const lang = client.detectLanguage ? client.detectLanguage(usedCommand) : 'en';
+  
   const prefix = serverSettings?.prefix || '.';
   const opponent = message.mentions.users.first();
   const bet = parseInt(args[1]) || 100;

@@ -78,9 +78,9 @@ module.exports = {
         ),
 
     // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+        
         const t = translations[lang];
         const version = client.version || '1.6.0';
         const guildName = message.guild.name;

@@ -99,8 +99,8 @@ module.exports = {
         .setName('botstats')
         .setDescription('🦅 View ARCHON CG-223 neural engine stats for this server'),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         await showBotStats(client, message, db, lang, false);
     },
 

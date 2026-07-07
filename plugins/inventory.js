@@ -111,8 +111,8 @@ module.exports = {
         .addSubcommand(sub => sub.setName('inventory').setDescription('View your inventory'))
         .addSubcommand(sub => sub.setName('sell').setDescription('Sell an item').addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true))),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        
         const t = shopTranslations[lang];
         const prefix = serverSettings?.prefix || '.';
         const userId = message.author.id;

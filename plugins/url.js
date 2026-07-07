@@ -177,7 +177,7 @@ module.exports = {
             .setRequired(true)),
 
     run: async (client, message, args, db, ss, used) => {
-        const lang = client.detectLanguage ? client.detectLanguage(used, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang];
         const targetUrl = args[0];
 

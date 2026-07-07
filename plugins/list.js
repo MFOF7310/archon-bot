@@ -439,9 +439,9 @@ module.exports = {
             .setDescription('Category, command, or search term')
             .setRequired(false)),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+            
             const t = translations[lang];
             const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
             const version = client.version || '1.8.0';

@@ -154,7 +154,7 @@ async execute(interaction, client) {
 
         const action = args[0]?.toLowerCase();
         const cmdName = args[0]?.toLowerCase() || 'view';
-        const lang = client.detectLanguage(cmdName);
+        const lang = client.detectLanguage ? client.detectLanguage(cmdName, message.guild?.id) : 'en';
         const guildId = message.guild.id;
         const settings = client.getServerSettings(guildId);
 

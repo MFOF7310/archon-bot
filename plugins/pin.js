@@ -264,7 +264,7 @@ module.exports = {
             .setDescription('View all pinned messages in this channel')
         ),
 
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         // ================= LANGUAGE DETECTION =================
         let lang = 'en';
