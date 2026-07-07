@@ -382,11 +382,11 @@ async function webSearch(query) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const MODEL_POOL = [
-  { id: 'meta-llama/llama-3.1-70b-instruct', emoji: '\u{1F9E0}', name: 'Llama 3.1', tier: 'fast' },
-  { id: 'google/gemini-flash-1.5',            emoji: '\u2728', name: 'Gemini Flash', tier: 'fast' },
-  { id: 'mistralai/mistral-nemo',              emoji: '\u26A1', name: 'Mistral Nemo', tier: 'fast' },
-  { id: 'anthropic/claude-3-haiku',           emoji: '\u{1F38B}', name: 'Claude Haiku', tier: 'reliable' },
-  { id: 'cohere/command-r-plus',              emoji: '\u{1F52E}', name: 'Command R+', tier: 'deep' },
+  { id: 'meta-llama/llama-3.1-8b-instruct:free', emoji: '\u{1F9E0}', name: 'Llama 3.1', tier: 'fast' },
+  { id: 'google/gemma-3-27b-it:free',            emoji: '\u2728', name: 'Gemini Flash', tier: 'fast' },
+  { id: 'mistralai/mistral-7b-instruct:free',              emoji: '\u26A1', name: 'Mistral Nemo', tier: 'fast' },
+  { id: 'meta-llama/llama-3.2-11b-vision-instruct:free',           emoji: '\u{1F38B}', name: 'Claude Haiku', tier: 'reliable' },
+  { id: 'deepseek/deepseek-chat-v3-0324:free',              emoji: '\u{1F52E}', name: 'Command R+', tier: 'deep' },
 ];
 
 async function tryModel(model, messages, timeoutMs) {
