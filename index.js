@@ -5164,6 +5164,39 @@ apiApp.post("/api/broadcast", (req, res) => {
     setTimeout(() => res.json({ success: true, guildCount: count, total: guilds.size }), 2000);
 });
 // ─── COMMANDS (par guild) ──────────────────────────────
+// ================= WHATSAPP SESSION API =================
+apiApp.get('/api/whatsapp/session', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const zlib = require('zlib');
+        const credsPath = '/root/archon-wa/auth/creds.json';
+        if (!fs.existsSync(credsPath)) {
+            return res.status(404).json({ error: 'No active WhatsApp session found' });
+        }
+        const creds = fs.readFileSync(credsPath, 'utf8');
+        const compressed = zlib.gzipSync(Buffer.from(creds));
+        const sessionId = 'ARCHON_' + compressed.toString('base64');
+        return res.json({ 
+            sessionId,
+            length: sessionId.length,
+            generated: new Date().toISOString()
+        });
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
+apiApp.get('/api/whatsapp/status', (req, res) => {
+    try {
+        const fs = require('fs');
+        const credsPath = '/root/archon-wa/auth/creds.json';
+        const connected = fs.existsSync(credsPath);
+        return res.json({ connected, timestamp: new Date().toISOString() });
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+});
+
 apiApp.get('/api/channels/:guildId', (req, res) => {
     const { guildId } = req.params;
     if (!validateSnowflake(guildId)) return res.status(400).json({ error: 'Invalid guild ID' });
