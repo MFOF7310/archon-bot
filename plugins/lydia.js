@@ -382,11 +382,11 @@ async function webSearch(query) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const MODEL_POOL = [
-  { id: 'meta-llama/llama-3.1-8b-instruct:free', emoji: '\u{1F9E0}', name: 'Llama 3.1', tier: 'fast' },
-  { id: 'google/gemma-3-27b-it:free',            emoji: '\u2728', name: 'Gemini Flash', tier: 'fast' },
-  { id: 'mistralai/mistral-7b-instruct:free',              emoji: '\u26A1', name: 'Mistral Nemo', tier: 'fast' },
-  { id: 'meta-llama/llama-3.2-11b-vision-instruct:free',           emoji: '\u{1F38B}', name: 'Claude Haiku', tier: 'reliable' },
-  { id: 'deepseek/deepseek-chat-v3-0324:free',              emoji: '\u{1F52E}', name: 'Command R+', tier: 'deep' },
+  { id: 'meta-llama/llama-3.3-70b:free',      emoji: '🧠', name: 'Llama 3.3 70B', tier: 'fast' },
+  { id: 'deepseek/deepseek-r1:free',           emoji: '⚡', name: 'DeepSeek R1', tier: 'fast' },
+  { id: 'google/gemma-3-27b-it:free',          emoji: '✨', name: 'Gemma 3 27B', tier: 'fast' },
+  { id: 'qwen/qwen3-235b-a22b:free',           emoji: '🎋', name: 'Qwen3 235B', tier: 'reliable' },
+  { id: 'openrouter/free',                     emoji: '🔮', name: 'Auto Router', tier: 'deep' },
 ];
 
 async function tryModel(model, messages, timeoutMs) {
