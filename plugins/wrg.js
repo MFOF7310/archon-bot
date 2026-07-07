@@ -612,7 +612,7 @@ module.exports = {
             )),
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         await runGame(client, message, args, db, lang);
     },
 

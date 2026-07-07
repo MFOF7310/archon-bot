@@ -396,7 +396,7 @@ module.exports = {
         .setDescription('📋 View live intelligence briefing'),
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = T[lang] || T['en'];
         const prefix = serverSettings?.prefix || '.';
         const guildName = message.guild?.name || 'DM';

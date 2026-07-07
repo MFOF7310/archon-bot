@@ -498,7 +498,7 @@ module.exports = {
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         try {
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
             const targetMember = message.mentions.members.first() || message.member;
             const isOwner = message.author.id === process.env.OWNER_ID;
 

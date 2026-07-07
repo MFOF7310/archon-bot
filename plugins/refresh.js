@@ -74,7 +74,7 @@ module.exports = {
     },
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = translations[lang];
         const ARCHITECT_ID = process.env.OWNER_ID;
 

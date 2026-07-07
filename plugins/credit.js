@@ -146,7 +146,7 @@ module.exports = {
 
     // ================= TEXT COMMAND HANDLER =================
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = creditTranslations[lang];
         const prefix = serverSettings?.prefix || '.';
 

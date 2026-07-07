@@ -101,7 +101,7 @@ data: new SlashCommandBuilder()
 
 run: async (client, message, args, db, serverSettings, usedCommand) => {
         
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = shopTranslations[lang];
         
         const version = client.version || '1.7.0';

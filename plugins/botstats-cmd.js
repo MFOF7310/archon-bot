@@ -100,7 +100,7 @@ module.exports = {
         .setDescription('🦅 View ARCHON CG-223 neural engine stats for this server'),
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         await showBotStats(client, message, db, lang, false);
     },
 

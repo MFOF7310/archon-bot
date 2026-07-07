@@ -95,7 +95,7 @@ module.exports = {
         const isFrenchAlias = usedCommand && frenchAliases.some(a => usedCommand.toLowerCase().includes(a));
         const lang = isFrenchAlias ? 'fr' :
                      (message.guild?.preferredLocale?.startsWith('fr') ? 'fr' :
-                     (client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en'));
+                     (client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en'));
         const t = dailyTranslations[lang];
         const prefix = serverSettings?.prefix || '.';
 

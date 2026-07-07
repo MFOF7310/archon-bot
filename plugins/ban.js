@@ -401,7 +401,7 @@ module.exports = {
         // Ensure DB column exists
         ensureInviteColumn(db);
 
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = translations[lang];
         const version = getBotVersion(client);
         const action = usedCommand?.toLowerCase();

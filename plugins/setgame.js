@@ -205,7 +205,7 @@ module.exports = {
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, 'en') : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
         const t = translations[lang];
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const version = client.version || '1.6.0';

@@ -70,7 +70,7 @@ module.exports = {
 
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const lang = client.detectLanguage?.(usedCommand, 'en') || 'en';
+        const lang = client.detectLanguage?.(usedCommand, guildId) || 'en';
         const t = translations[lang];
 
         const input = args[0];

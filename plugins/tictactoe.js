@@ -117,7 +117,7 @@ module.exports = {
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         
         const lang = client.detectLanguage 
-            ? client.detectLanguage(usedCommand, 'en')
+            ? client.detectLanguage(usedCommand, guildId)
             : 'en';
         
         const t = tttTranslations[lang];
