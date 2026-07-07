@@ -382,11 +382,11 @@ async function webSearch(query) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const MODEL_POOL = [
-  { id: 'meta-llama/llama-3.3-70b:free',      emoji: '🧠', name: 'Llama 3.3 70B', tier: 'fast' },
-  { id: 'deepseek/deepseek-r1:free',           emoji: '⚡', name: 'DeepSeek R1', tier: 'fast' },
-  { id: 'google/gemma-3-27b-it:free',          emoji: '✨', name: 'Gemma 3 27B', tier: 'fast' },
-  { id: 'qwen/qwen3-235b-a22b:free',           emoji: '🎋', name: 'Qwen3 235B', tier: 'reliable' },
-  { id: 'openrouter/free',                     emoji: '🔮', name: 'Auto Router', tier: 'deep' },
+  { id: 'openrouter/free',                          emoji: '🔮', name: 'Auto Router', tier: 'fast' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free',  emoji: '🧠', name: 'Llama 3.3 70B', tier: 'fast' },
+  { id: 'microsoft/phi-4:free',                     emoji: '⚡', name: 'Phi 4', tier: 'fast' },
+  { id: 'mistralai/mistral-small-3.1-24b-instruct:free', emoji: '✨', name: 'Mistral Small', tier: 'reliable' },
+  { id: 'google/gemini-2.0-flash-exp:free',         emoji: '🎋', name: 'Gemini Flash Exp', tier: 'deep' },
 ];
 
 async function tryModel(model, messages, timeoutMs) {
