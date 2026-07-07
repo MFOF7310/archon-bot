@@ -267,7 +267,6 @@ module.exports = {
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         // ================= LANGUAGE DETECTION =================
-        let lang = 'en';
         if (client.detectLanguage && usedCommand) {
             lang = client.detectLanguage(usedCommand, guildId);
         }
