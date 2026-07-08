@@ -5,6 +5,7 @@
 
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const canvafy = require('canvafy');
 const fs = require('fs');
 const path = require('path');
 
@@ -133,96 +134,73 @@ function roundRect(ctx, x, y, w, h, r) {
     ctx.closePath();
 }
 
-// ================= CANVAS: WELCOME CARD (compact 560×175) =================
+// ================= CANVAS: WELCOME CARD v4 (landscape 500x150 @ 2x) =================
 async function renderWelcomeCard(member, count, cfg) {
-    const c = createCanvas(W, H);
+    const SCALE = 2;
+    const CW = 500 * SCALE, CH = 150 * SCALE;
+    const c = createCanvas(CW, CH);
     const ctx = c.getContext('2d');
-
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.textBaseline = 'middle';
 
-    // ── Background ──
-    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-    bgGrad.addColorStop(0,   '#070d1a');
-    bgGrad.addColorStop(0.5, '#0b1428');
-    bgGrad.addColorStop(1,   '#070d1a');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, W, H);
+    // Background
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, CW, CH);
 
-    // Background image — auto-loads cached welcome-fire.jpg, dynamic & swappable
-    const bgImg = await loadWelcomeBg().catch(() => null);
-    if (bgImg) {
-        ctx.save();
-        ctx.globalAlpha = 0.85;
-        // Cover-fit: scale image to fill canvas while preserving aspect ratio
-        const imgRatio = bgImg.width / bgImg.height;
-        const canvasRatio = W / H;
-        let dw, dh, dx, dy;
-        if (imgRatio > canvasRatio) {
-            dh = H; dw = H * imgRatio; dx = (W - dw) / 2; dy = 0;
-        } else {
-            dw = W; dh = W / imgRatio; dx = 0; dy = (H - dh) / 2;
-        }
-        ctx.drawImage(bgImg, dx, dy, dw, dh);
-        ctx.globalAlpha = 1;
-        ctx.restore();
-        // Dark fade on left so text stays readable, warm tone on right
-        const fadeGrad = ctx.createLinearGradient(0, 0, W, 0);
-        fadeGrad.addColorStop(0, 'rgba(7, 13, 26, 0.92)');
-        fadeGrad.addColorStop(0.5, 'rgba(7, 13, 26, 0.55)');
-        fadeGrad.addColorStop(1, 'rgba(7, 13, 26, 0.05)');
-        ctx.fillStyle = fadeGrad;
-        ctx.fillRect(0, 0, W, H);
-    }
-
-    // Diagonal accent stripe (top-right)
+    // Chevron pattern
     ctx.save();
-    const stripeGrad = ctx.createLinearGradient(W - 180, 0, W, H);
-    stripeGrad.addColorStop(0, 'rgba(0, 240, 255, 0.00)');
-    stripeGrad.addColorStop(0.5, 'rgba(0, 240, 255, 0.05)');
-    stripeGrad.addColorStop(1, 'rgba(0, 240, 255, 0.00)');
-    ctx.fillStyle = stripeGrad;
-    ctx.beginPath();
-    ctx.moveTo(W - 200, 0); ctx.lineTo(W, 0); ctx.lineTo(W, H); ctx.lineTo(W - 120, H);
-    ctx.closePath();
-    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,251,255,0.06)';
+    ctx.lineWidth = 1.5;
+    const cv = 24 * SCALE;
+    for (let y = -cv; y < CH + cv; y += cv) {
+        for (let x = -CW; x < CW * 2; x += cv * 2) {
+            ctx.beginPath();
+            ctx.moveTo(x, y + cv);
+            ctx.lineTo(x + cv, y);
+            ctx.lineTo(x + cv * 2, y + cv);
+            ctx.stroke();
+        }
+    }
     ctx.restore();
 
-    // Subtle grid lines
-    ctx.strokeStyle = 'rgba(0, 251, 255, 0.035)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < W; x += 28) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-    }
-    for (let y = 0; y < H; y += 28) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
+    // Left cyan accent bar
+    const barGrad = ctx.createLinearGradient(0, 0, 0, CH);
+    barGrad.addColorStop(0, 'rgba(0,251,255,0.0)');
+    barGrad.addColorStop(0.5, 'rgba(0,251,255,0.9)');
+    barGrad.addColorStop(1, 'rgba(0,251,255,0.0)');
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(0, 0, 4 * SCALE, CH);
 
-    // Card border
-    ctx.strokeStyle = 'rgba(0, 251, 255, 0.22)';
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, 1, 1, W - 2, H - 2, 8);
+    // Glow border
+    ctx.save();
+    ctx.shadowColor = '#00fbff';
+    ctx.shadowBlur = 20 * SCALE;
+    ctx.strokeStyle = '#00fbff';
+    ctx.lineWidth = 3;
+    roundRect(ctx, 2, 2, CW - 4, CH - 4, 14 * SCALE);
     ctx.stroke();
+    ctx.restore();
 
     // Avatar
     const av = await loadImage(
         member.user.displayAvatarURL({ extension: 'png', size: 256 })
     ).catch(() => null);
 
-    const ar = 42;
-    const ax = 30;
-    const ay = H / 2;
+    const ar = 52 * SCALE;
+    const ax = 20 * SCALE;
+    const ay = CH / 2;
 
-    // Double glow ring
+    // Glow behind avatar
+    ctx.save();
+    ctx.shadowColor = '#00fbff';
+    ctx.shadowBlur = 18 * SCALE;
     ctx.beginPath();
-    ctx.arc(ax + ar, ay, ar + 10, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 251, 255, 0.06)';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(ax + ar, ay, ar + 5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 251, 255, 0.10)';
-    ctx.fill();
+    ctx.arc(ax + ar, ay, ar + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = '#00fbff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
 
     if (av) {
         ctx.save();
@@ -232,148 +210,124 @@ async function renderWelcomeCard(member, count, cfg) {
         ctx.clip();
         ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
         ctx.restore();
-
-        // Outer ring
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 3, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0, 251, 255, 0.4)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        // Inner ring
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 1, 0, Math.PI * 2);
-        ctx.strokeStyle = '#00fbff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
     }
 
-    const tx = 132;
+    // Text start x
+    const tx = ax + ar * 2 + 22 * SCALE;
 
-    // Label
-    ctx.fillStyle = 'rgba(0, 251, 255, 0.8)';
-    ctx.font = 'bold 8.5px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.letterSpacing = '0.15em';
-    ctx.fillText('WELCOME TO THE GRID', tx, 32);
-    ctx.letterSpacing = '0';
-
-    // Username
+    // Username — big and bold
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 27px sans-serif';
+    ctx.font = `bold ${26 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.textAlign = 'left';
     const name = member.user.username.length > 18
-        ? member.user.username.substring(0, 17) + '…'
+        ? member.user.username.substring(0, 17) + '\u2026'
         : member.user.username;
-    ctx.fillText(name, tx, 70);
+    ctx.fillText(name, tx, CH * 0.35);
 
-    // Member number pill — moved down
-    const memberText = ordinal(count) + ' member';
-    ctx.font = 'bold 10px sans-serif';
-    const pillW = ctx.measureText(memberText).width + 16;
-    ctx.fillStyle = 'rgba(0, 251, 255, 0.15)';
-    roundRect(ctx, tx, 96, pillW, 18, 9);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0, 251, 255, 0.35)';
-    ctx.lineWidth = 1;
-    roundRect(ctx, tx, 96, pillW, 18, 9);
-    ctx.stroke();
+    // WELCOME TO THE GRID label — cyan below username
     ctx.fillStyle = '#00fbff';
-    ctx.textAlign = 'center';
-    ctx.fillText(memberText, tx + pillW / 2, 105);
+    ctx.font = `bold ${8 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.letterSpacing = `${1.5 * SCALE}px`;
+    ctx.fillText('WELCOME TO THE GRID', tx, CH * 0.57);
+    ctx.letterSpacing = '0px';
 
-    // Account age — own line below pill
+    // Member + age subtitle
     const age = accountAgeShort(member.user.createdTimestamp);
     const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
-    ctx.fillStyle = isNew ? '#f1c40f' : 'rgba(255,255,255,0.55)';
-    ctx.font = (isNew ? 'bold ' : '') + '10px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(isNew ? '🆕 ' + age + ' old account' : '⏱ ' + age + ' old account', tx, 128);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = `${8 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillText(
+        `${ordinal(count)} member  \u00b7  ${isNew ? '\uD83C\uDD95 ' : ''}${age} old account`,
+        tx, CH * 0.76
+    );
 
-    // Server name bottom right
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-    ctx.font = '9.5px sans-serif';
-    ctx.textAlign = 'right';
-    const sName = member.guild.name.length > 28
-        ? member.guild.name.substring(0, 27) + '…'
-        : member.guild.name;
-    ctx.fillText(sName, W - 18, H - 18);
-
-    // Mali flag watermark bottom left
+    // Bottom right — server name
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.font = '9px sans-serif';
+    ctx.font = `${6.5 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.textAlign = 'right';
+    const sName = member.guild.name.length > 24
+        ? member.guild.name.substring(0, 23) + '\u2026'
+        : member.guild.name;
+    ctx.fillText(sName, CW - 14 * SCALE, CH - 12 * SCALE);
+
+    // Bottom left — Mali watermark
     ctx.textAlign = 'left';
-    ctx.fillText('🇲🇱 BAMAKO_223', 18, H - 18);
+    ctx.fillText('\uD83C\uDDF2\uD83C\uDDF1 BAMAKO_223', 14 * SCALE, CH - 12 * SCALE);
 
-    // ARCHON badge top right
-    ctx.fillStyle = 'rgba(0, 251, 255, 0.08)';
-    roundRect(ctx, W - 112, 16, 94, 20, 4);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,251,255,0.2)';
-    ctx.lineWidth = 0.8;
-    roundRect(ctx, W - 112, 16, 94, 20, 4);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(0, 251, 255, 0.7)';
-    ctx.font = 'bold 7.5px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('ARCHON CG-223', W - 65, 29);
-
-    // Corner accents
-    ctx.strokeStyle = 'rgba(0, 251, 255, 0.2)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(W - 40, 0); ctx.lineTo(W, 0); ctx.lineTo(W, 40);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, H - 40); ctx.lineTo(0, H); ctx.lineTo(40, H);
-    ctx.stroke();
-
-    return c.encode('png');
+    // Output at 500x150
+    const out = createCanvas(500, 150);
+    const octx = out.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(c, 0, 0, 500, 150);
+    return out.encode('png');
 }
-
-// ================= CANVAS: GOODBYE CARD (compact 560×175) =================
+// ================= CANVAS: GOODBYE CARD v4 (landscape 500x150 @ 2x) =================
 async function renderGoodbyeCard(member, duration, roleCount) {
-    const c = createCanvas(W, H);
+    const SCALE = 2;
+    const CW = 500 * SCALE, CH = 150 * SCALE;
+    const c = createCanvas(CW, CH);
     const ctx = c.getContext('2d');
-
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.textBaseline = 'middle';
 
-    // ── Background ──
-    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-    bgGrad.addColorStop(0,   '#1a0a0a');
-    bgGrad.addColorStop(0.5, '#1f0d0d');
-    bgGrad.addColorStop(1,   '#1a0a0a');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, W, H);
+    // Background
+    ctx.fillStyle = '#110a0a';
+    ctx.fillRect(0, 0, CW, CH);
 
-    // Subtle grid lines
-    ctx.strokeStyle = 'rgba(231, 76, 60, 0.04)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < W; x += 28) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-    }
-    for (let y = 0; y < H; y += 28) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
-
-    // Card border
-    ctx.strokeStyle = 'rgba(231, 76, 60, 0.25)';
+    // Chevron pattern
+    ctx.save();
+    ctx.strokeStyle = 'rgba(231,76,60,0.06)';
     ctx.lineWidth = 1.5;
-    roundRect(ctx, 1, 1, W - 2, H - 2, 8);
-    ctx.stroke();
+    const cv = 24 * SCALE;
+    for (let y = -cv; y < CH + cv; y += cv) {
+        for (let x = -CW; x < CW * 2; x += cv * 2) {
+            ctx.beginPath();
+            ctx.moveTo(x, y + cv);
+            ctx.lineTo(x + cv, y);
+            ctx.lineTo(x + cv * 2, y + cv);
+            ctx.stroke();
+        }
+    }
+    ctx.restore();
 
+    // Left red accent bar
+    const barGrad = ctx.createLinearGradient(0, 0, 0, CH);
+    barGrad.addColorStop(0, 'rgba(231,76,60,0.0)');
+    barGrad.addColorStop(0.5, 'rgba(231,76,60,0.9)');
+    barGrad.addColorStop(1, 'rgba(231,76,60,0.0)');
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(0, 0, 4 * SCALE, CH);
+
+    // Glow border
+    ctx.save();
+    ctx.shadowColor = '#e74c3c';
+    ctx.shadowBlur = 20 * SCALE;
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 3;
+    roundRect(ctx, 2, 2, CW - 4, CH - 4, 14 * SCALE);
+    ctx.stroke();
+    ctx.restore();
+
+    // Avatar
     const av = await loadImage(
         member.user.displayAvatarURL({ extension: 'png', size: 256 })
     ).catch(() => null);
 
-    const ar = 42;
-    const ax = 30;
-    const ay = H / 2;
+    const ar = 52 * SCALE;
+    const ax = 20 * SCALE;
+    const ay = CH / 2;
 
+    ctx.save();
+    ctx.shadowColor = '#e74c3c';
+    ctx.shadowBlur = 18 * SCALE;
     ctx.beginPath();
-    ctx.arc(ax + ar, ay, ar + 6, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(231, 76, 60, 0.12)';
-    ctx.fill();
+    ctx.arc(ax + ar, ay, ar + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
 
     if (av) {
         ctx.save();
@@ -383,105 +337,54 @@ async function renderGoodbyeCard(member, duration, roleCount) {
         ctx.clip();
         ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
         ctx.restore();
-
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2);
-        ctx.strokeStyle = '#e74c3c';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
     }
 
-    const tx = 132;
-
-    // Diagonal accent stripe
-    ctx.save();
-    const stripeGrad = ctx.createLinearGradient(W - 180, 0, W, H);
-    stripeGrad.addColorStop(0, 'rgba(231, 76, 60, 0.00)');
-    stripeGrad.addColorStop(0.5, 'rgba(231, 76, 60, 0.05)');
-    stripeGrad.addColorStop(1, 'rgba(231, 76, 60, 0.00)');
-    ctx.fillStyle = stripeGrad;
-    ctx.beginPath();
-    ctx.moveTo(W - 200, 0); ctx.lineTo(W, 0); ctx.lineTo(W, H); ctx.lineTo(W - 120, H);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // Label
-    ctx.fillStyle = 'rgba(231, 76, 60, 0.85)';
-    ctx.font = 'bold 8.5px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('DEPARTURE LOG', tx, 32);
+    const tx = ax + ar * 2 + 22 * SCALE;
 
     // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 27px sans-serif';
+    ctx.font = `bold ${26 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.textAlign = 'left';
     const name = member.user.username.length > 18
         ? member.user.username.substring(0, 17) + '\u2026'
         : member.user.username;
-    ctx.fillText(name, tx, 70);
+    ctx.fillText(name, tx, CH * 0.35);
 
-    // Duration pill
-    const dur = duration || '< 1 min';
-    const durText = 'Stayed: ' + dur;
-    ctx.font = 'bold 10px sans-serif';
-    const pillW = ctx.measureText(durText).width + 16;
-    ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
-    roundRect(ctx, tx, 84, pillW, 18, 9);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(231, 76, 60, 0.35)';
-    ctx.lineWidth = 1;
-    roundRect(ctx, tx, 84, pillW, 18, 9);
-    ctx.stroke();
+    // DEPARTURE LOG label
     ctx.fillStyle = '#e74c3c';
-    ctx.textAlign = 'center';
-    ctx.fillText(durText, tx + pillW / 2, 93);
+    ctx.font = `bold ${8 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.letterSpacing = `${1.5 * SCALE}px`;
+    ctx.fillText('DEPARTURE LOG', tx, CH * 0.57);
+    ctx.letterSpacing = '0px';
 
-    // Role count
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(`${roleCount} role${roleCount !== 1 ? 's' : ''} removed`, tx + pillW + 10, 93);
+    // Duration + roles
+    const dur = duration || '< 1 min';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = `${8 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillText(
+        `Stayed: ${dur}  \u00b7  ${roleCount} role${roleCount !== 1 ? 's' : ''} removed`,
+        tx, CH * 0.76
+    );
 
-    // Server name bottom right
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-    ctx.font = '9.5px sans-serif';
-    ctx.textAlign = 'right';
-    const sName = member.guild.name.length > 28
-        ? member.guild.name.substring(0, 27) + '\u2026'
-        : member.guild.name;
-    ctx.fillText(sName, W - 18, H - 18);
-
-    // Mali flag watermark
+    // Watermarks
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.font = '9px sans-serif';
+    ctx.font = `${6.5 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.textAlign = 'right';
+    const sName = member.guild.name.length > 24
+        ? member.guild.name.substring(0, 23) + '\u2026'
+        : member.guild.name;
+    ctx.fillText(sName, CW - 14 * SCALE, CH - 12 * SCALE);
     ctx.textAlign = 'left';
-    ctx.fillText('\uD83C\uDDF2\uD83C\uDDF1 BAMAKO_223', 18, H - 18);
+    ctx.fillText('\uD83C\uDDF2\uD83C\uDDF1 BAMAKO_223', 14 * SCALE, CH - 12 * SCALE);
 
-    // ARCHON badge top right
-    ctx.fillStyle = 'rgba(231, 76, 60, 0.08)';
-    roundRect(ctx, W - 112, 16, 94, 20, 4);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(231,76,60,0.25)';
-    ctx.lineWidth = 0.8;
-    roundRect(ctx, W - 112, 16, 94, 20, 4);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(231, 76, 60, 0.8)';
-    ctx.font = 'bold 7.5px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('ARCHON CG-223', W - 65, 29);
-
-    // Corner accents
-    ctx.strokeStyle = 'rgba(231, 76, 60, 0.22)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(W - 40, 0); ctx.lineTo(W, 0); ctx.lineTo(W, 40);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, H - 40); ctx.lineTo(0, H); ctx.lineTo(40, H);
-    ctx.stroke();
-
-    return c.encode('png');
+    const out = createCanvas(500, 150);
+    const octx = out.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(c, 0, 0, 500, 150);
+    return out.encode('png');
 }
+
 
 // ================= WARM WELCOME TEXT =================
 function warmWelcomeText(member, count, cfg) {
