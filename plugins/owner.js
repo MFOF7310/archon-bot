@@ -253,7 +253,7 @@ module.exports = {
     // ================= SLASH HANDLER =================
     execute: async (interaction, client) => {
         const ARCHITECT_ID = process.env.OWNER_ID;
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage('owner', message.guild?.id) : 'en';
         const t = translations[lang];
 
         if (interaction.user.id !== ARCHITECT_ID) {

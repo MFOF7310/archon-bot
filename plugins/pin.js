@@ -268,7 +268,7 @@ module.exports = {
         
         // ================= LANGUAGE DETECTION =================
         if (client.detectLanguage && usedCommand) {
-            lang = client.detectLanguage(usedCommand, guildId);
+            lang = client.detectLanguage('pin', guildId);
         }
         const t = translations[lang];
         

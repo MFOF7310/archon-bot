@@ -400,13 +400,13 @@ data: new SlashCommandBuilder()
         // ================= PERMISSION CHECK =================
 // ================= PERMISSION CHECK =================
 if (message.author.id !== process.env.OWNER_ID) {
-    const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+    const lang = client.detectLanguage ? client.detectLanguage('broadcast', guildId) : 'en';
     const t = translations[lang];
     return message.reply({ content: t.restricted });
 }
 
 // ================= LANGUAGE SETUP =================
-const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+const lang = client.detectLanguage ? client.detectLanguage('broadcast', guildId) : 'en';
 const t = translations[lang];
 const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         

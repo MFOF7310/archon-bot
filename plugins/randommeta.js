@@ -247,7 +247,7 @@ module.exports = {
     run: async (client, message, args, db, usedCommand) => {
         
         // Language detection
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage('randommeta', guildId) : 'en';
         
         const t = translations[lang];
 

@@ -127,7 +127,7 @@ module.exports = {
         .setDescription('Test your knowledge of Malian cuisine!'),
 
     run: async (client, message, args) => {
-        const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage('quiz-mali-food', message.guild?.id) : 'en';
         await startQuiz(client, message, lang, false);
     },
 

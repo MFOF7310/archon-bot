@@ -335,7 +335,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
             let lang = 'en';
             if (usedCommand === 'trivia_fr') lang = 'fr';
             else if (usedCommand && usedCommand !== 'trivia') {
-                lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+                lang = client.detectLanguage ? client.detectLanguage('trivia', guildId) : 'en';
             }
             const t = texts[lang];
             const version = client.version || '1.6.0';
