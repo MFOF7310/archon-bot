@@ -2230,6 +2230,8 @@ client.once(Events.ClientReady, async () => {
 
     await client.loadPlugins();
 
+// ================= KAZAGUMO initialized before login (see below) =================
+
 // ================= PLUGIN EVENT REFERENCES =================
 // Store references to plugins that need event hooks
 const leveling = client.commands.get('leveling');
@@ -4176,70 +4178,57 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
-// ================= MUSIC PANEL BUTTONS (Global — never expires, works for 24h streams) =================
+// ================= MUSIC PANEL BUTTONS (Kazagumo/Lavalink) =================
     if (interaction.isButton() && ['mc_prev','mc_pause','mc_skip','mc_stop','mc_loop','mc_queue'].includes(interaction.customId)) {
         try {
-            const { getQueue, buildQueueEmbed, ARCHON } = require('./plugins/music.js');
-            const { AudioPlayerStatus } = require('@discordjs/voice');
+            const { getMeta, buildQueueEmbed, updatePersistentPanel, ARCHON } = require('./plugins/music.js');
+            const { EmbedBuilder } = require('discord.js');
 
             if (!interaction.member?.voice?.channel) {
                 return interaction.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
             }
 
             await interaction.deferUpdate().catch(() => {});
-            const q = getQueue(interaction.guild.id);
-            if (!q) return;
+
+            const kz = client.kazagumo;
+            if (!kz) return;
+            const player = kz.players.get(interaction.guild.id);
+            if (!player) return;
+            const meta = getMeta(interaction.guild.id);
 
             switch (interaction.customId) {
                 case 'mc_prev': {
-                    if (!q.trackHistory || q.trackHistory.length === 0) {
-                        await interaction.followUp({ content: '⏮️ No previous track.', flags: 64 }).catch(() => {});
-                        return;
-                    }
-                    const prev = q.trackHistory.shift();
-                    if (q.currentTrack) q.tracks.unshift({...q.currentTrack});
-                    q.tracks.unshift(prev);
-                    q.player.stop();
+                    await interaction.followUp({ content: '⏮️ Previous track not supported in Lavalink mode yet.', flags: 64 }).catch(() => {});
                     break;
                 }
                 case 'mc_pause': {
-                    const isPaused = q.player.state.status === AudioPlayerStatus.Paused;
-                    if (isPaused) {
-                        q.player.unpause();
-                        q.totalPaused += Date.now() - (q.pausedAt || Date.now());
-                        q.pausedAt = null;
-                    } else {
-                        q.player.pause();
-                        q.pausedAt = Date.now();
-                    }
-                    // Update panel immediately
-                    const { updatePersistentPanel } = require('./plugins/music.js');
-                    if (updatePersistentPanel) await updatePersistentPanel(q).catch(() => {});
+                    player.paused ? await player.pause(false) : await player.pause(true);
+                    await updatePersistentPanel(player, client).catch(() => {});
                     break;
                 }
                 case 'mc_skip': {
-                    q.player.stop();
+                    await player.skip();
                     break;
                 }
                 case 'mc_stop': {
-                    const { destroyQueue } = require('./plugins/music.js');
-                    if (q.persistentMsg) {
-                        const { EmbedBuilder } = require('discord.js');
-                        const stoppedEmbed = new EmbedBuilder().setColor(0xff3333).setDescription("Stream stopped.");
-                        await q.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
-                        q.persistentMsg = null;
+                    if (meta.persistentMsg) {
+                        const stoppedEmbed = new EmbedBuilder().setColor(0xff3333)
+                            .setDescription('```ansi\n\u001b[1;31m▸ STOPPED\u001b[0m\n```');
+                        await meta.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
+                        meta.persistentMsg = null;
                     }
-                    destroyQueue(interaction.guild.id);
+                    await player.destroy();
                     break;
                 }
                 case 'mc_loop': {
-                    q.loop = !q.loop;
-                    const { updatePersistentPanel: updPanel } = require('./plugins/music.js');
-                    if (updPanel) await updPanel(q).catch(() => {});
+                    const modes = ['none', 'track', 'queue'];
+                    const next = modes[(modes.indexOf(player.loop) + 1) % modes.length];
+                    player.setLoop(next);
+                    await updatePersistentPanel(player, client).catch(() => {});
                     break;
                 }
                 case 'mc_queue': {
-                    const qEmbed = buildQueueEmbed(q, client);
+                    const qEmbed = buildQueueEmbed(player, client);
                     await interaction.followUp({ embeds: [qEmbed], flags: 64 }).catch(() => {});
                     break;
                 }
@@ -5540,6 +5529,68 @@ client.once('clientReady', async () => {
 });
 
 // ── Discord Login ──
+// ================= LAVALINK CLIENT INIT (before login) =================
+try {
+    const { LavalinkManager } = require('lavalink-client');
+
+    client.kazagumo = new LavalinkManager({
+        nodes: [{
+            id: 'BAMAKO-STEEL-NODE',
+            host: '127.0.0.1',
+            port: 2333,
+            authorization: 'archon-bamako-steel-2026',
+            secure: false,
+        }],
+        sendToShard: (guildId, payload) => {
+            const guild = client.guilds.cache.get(guildId);
+            if (guild) guild.shard.send(payload);
+        },
+        client: { id: process.env.CLIENT_ID || '1472707869257367676', username: 'ARCHON CG-223' },
+        playerOptions: {
+            defaultSearchPlatform: 'scsearch',
+            onDisconnect: { autoReconnect: true, destroyPlayer: false },
+            onEmptyQueue: { destroyAfterMs: 180000 },
+        },
+        queueOptions: { maxPreviousTracks: 5 },
+    });
+
+    client.kazagumo.nodeManager.on('connect', (node) => {
+        console.log(`\x1b[32m[MUSIC]\x1b[0m Lavalink connected: ${node.id} ✅`);
+    });
+    client.kazagumo.nodeManager.on('error', (node, err) => {
+        console.error(`[MUSIC] Lavalink error [${node.id}]:`, err?.message);
+    });
+
+    client.kazagumo.on('trackStart', async (player, track) => {
+        const musicPlugin = client.commands.get('music');
+        if (!musicPlugin) return;
+        const meta = musicPlugin.getMeta(player.guildId);
+        if (!meta) return;
+        meta.startTime = Date.now();
+        meta.currentTrack = track;
+        try {
+            const db = client.db;
+            if (db) {
+                db.prepare('INSERT OR IGNORE INTO music_history (guild_id, title, query, source) VALUES (?,?,?,?)').run(player.guildId, track.info?.title, track.info?.title, track.info?.sourceName || 'unknown');
+                db.prepare('UPDATE music_history SET play_count = play_count + 1, played_at = ? WHERE guild_id = ? AND title = ?').run(Math.floor(Date.now()/1000), player.guildId, track.info?.title);
+            }
+        } catch(e) {}
+        await musicPlugin.updatePersistentPanel(player, client).catch(() => {});
+    });
+
+    client.kazagumo.on('playerDestroy', (player) => {
+        const musicPlugin = client.commands.get('music');
+        if (musicPlugin?.getMeta) {
+            const meta = musicPlugin.getMeta(player.guildId);
+            if (meta) { meta.persistentMsg = null; meta.startTime = null; meta.currentTrack = null; }
+        }
+    });
+
+    console.log('\x1b[32m[MUSIC]\x1b[0m LavalinkManager pre-initialized ✅');
+} catch(e) {
+    console.error('[MUSIC] LavalinkManager init failed:', e.message);
+}
+
 client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error('\x1b[31m[LOGIN ERROR]\x1b[0m Failed to connect to Discord:', err.message);
     console.error('\x1b[33m[TIP]\x1b[0m Check your internet connection and token validity.');
