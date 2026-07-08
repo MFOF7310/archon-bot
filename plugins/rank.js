@@ -77,7 +77,7 @@ module.exports = {
             // DM fallback — allow self-profile in DMs with 'DM' guild_id
             const guildId = message.guild?.id || 'DM';
             const guild = message.guild;
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
+            const lang = client.detectLanguage ? client.detectLanguage('rank', message.guild?.id) : 'en';
             const t = translations[lang];
             const version = client.version || '2.0.0';
             const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';

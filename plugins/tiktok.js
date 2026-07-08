@@ -760,7 +760,7 @@ module.exports = {
 
     // ─── PREFIX COMMAND HANDLER ───
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        lang = client.detectLanguage ? client.detectLanguage(usedCommand, message.guild?.id) : 'en';
+        lang = client.detectLanguage ? client.detectLanguage('tiktok', message.guild?.id) : 'en';
         const guildId = message.guild?.id;
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();

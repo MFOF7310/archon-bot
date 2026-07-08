@@ -337,7 +337,7 @@ module.exports = {
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
             // Language detection
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+            const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
             const t = claimTranslations[lang];
             const version = client.version || '2.0.0';
             
@@ -578,7 +578,7 @@ module.exports = {
             
         } catch (error) {
             console.error(`[CLAIM] FATAL ERROR:`, error);
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+            const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
             return message.reply({ content: claimTranslations[lang].error }).catch(() => {});
         }
     },
@@ -590,7 +590,7 @@ module.exports = {
             const guildId = interaction.guild?.id || 'DM';
             const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
             
-            const lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+            const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
             const t = claimTranslations[lang];
             
             const version = client.version || '2.0.0';
@@ -840,7 +840,8 @@ module.exports = {
             
         } catch (error) {
             console.error(`[CLAIM SLASH] FATAL ERROR:`, error);
-            const errorMsg = { content: '❌ An error occurred during claim processing.', flags: 64 };
+            const _lang = client.detectLanguage ? client.detectLanguage('claim', interaction.guild?.id || 'DM') : 'en';
+            const errorMsg = { content: claimTranslations[_lang]?.error || '❌ An error occurred during claim processing.', flags: 64 };
             if (interaction.deferred || interaction.replied) {
                 return interaction.editReply(errorMsg).catch(() => {});
             }

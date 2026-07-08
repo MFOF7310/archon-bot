@@ -99,7 +99,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const startTime = Date.now();
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
-        lang = client.detectLanguage ? client.detectLanguage(usedCommand, guildId) : 'en';
+        lang = client.detectLanguage ? client.detectLanguage('alive', guildId) : 'en';
         
         const t = translations[lang];
         const version = client.version || '1.6.0';

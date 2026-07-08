@@ -310,7 +310,7 @@ module.exports = {
     run: async (client, message, args, database, serverSettings, usedCommand) => {
         let lang = 'en';
         if (client.detectLanguage && usedCommand) {
-            lang = client.detectLanguage(usedCommand, guildId);
+            lang = client.detectLanguage('help', guildId);
         } else if (usedCommand) {
             const cmd = usedCommand.toLowerCase();
             if (cmd === 'aide' || cmd === 'commandes') lang = 'fr';
