@@ -255,12 +255,7 @@ async function renderWelcomeCard(member, count, cfg) {
     ctx.fillText('\uD83C\uDDF2\uD83C\uDDF1 BAMAKO_223', 14 * SCALE, CH - 12 * SCALE);
 
     // Output at 500x150
-    const out = createCanvas(500, 150);
-    const octx = out.getContext('2d');
-    octx.imageSmoothingEnabled = true;
-    octx.imageSmoothingQuality = 'high';
-    octx.drawImage(c, 0, 0, 500, 150);
-    return out.encode('png');
+    return c.encode('png');
 }
 // ================= CANVAS: GOODBYE CARD v4 (landscape 500x150 @ 2x) =================
 async function renderGoodbyeCard(member, duration, roleCount) {
@@ -377,12 +372,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     ctx.textAlign = 'left';
     ctx.fillText('\uD83C\uDDF2\uD83C\uDDF1 BAMAKO_223', 14 * SCALE, CH - 12 * SCALE);
 
-    const out = createCanvas(500, 150);
-    const octx = out.getContext('2d');
-    octx.imageSmoothingEnabled = true;
-    octx.imageSmoothingQuality = 'high';
-    octx.drawImage(c, 0, 0, 500, 150);
-    return out.encode('png');
+    return c.encode('png');
 }
 
 

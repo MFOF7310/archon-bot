@@ -68,50 +68,61 @@ async function getAvatar(user, size = 128) {
     try { return await loadImage(url); } catch { return null; }
 }
 
-// ================= CANVAS: LEGENDARY LEVEL BANNER =================
+// ================= CANVAS: LEGENDARY LEVEL BANNER (2x) =================
 async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
+    const SCALE = 2;
+    const CW = W * SCALE, CH = H * SCALE;
     const t = getTheme(level, theme);
-    const c = createCanvas(W, H);
+    const c = createCanvas(CW, CH);
     const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     const prog = xpNeeded > 0 ? Math.min(xpCurrent / xpNeeded, 0.99) : 0.5;
 
-    // Gradient background
-    const grad = ctx.createLinearGradient(0, 0, W, H);
+    // Background gradient
+    const grad = ctx.createLinearGradient(0, 0, CW, CH);
     grad.addColorStop(0, t.bg1);
     grad.addColorStop(1, t.bg2);
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(0, 0, CW, CH);
 
-    // Subtle noise overlay
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, 0, W, H);
+    // Diagonal lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1.5;
+    for (let i = -CH; i < CW + CH; i += 35 * SCALE) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - CH, CH); ctx.stroke();
+    }
 
-    // Diagonal lines pattern
-    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
-    ctx.lineWidth = 1;
-    for (let i = -H; i < W + H; i += 35) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - H, H); ctx.stroke(); }
-
-    // Rank label badge (top left)
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    roundRect(ctx, 20, 18, 100, 26, 6);
+    // Rank label badge
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    roundRect(ctx, 20 * SCALE, 18 * SCALE, 110 * SCALE, 28 * SCALE, 6 * SCALE);
     ctx.fill();
     ctx.fillStyle = t.accent;
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(t.label, 70, 35);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(t.label, 75 * SCALE, 32 * SCALE);
 
-    // Avatar (left, with double ring)
-    const av = await getAvatar(user, 128);
-    const ax = 55, ay = H / 2 + 10, ar = 60;
+    // Avatar
+    const av = await getAvatar(user, 256);
+    const ar = 60 * SCALE;
+    const ax = 55 * SCALE;
+    const ay = CH / 2 + 10 * SCALE;
+
     if (av) {
         // Outer glow
         ctx.save();
+        ctx.shadowColor = t.accent;
+        ctx.shadowBlur = 18 * SCALE;
         ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 8, 0, Math.PI * 2);
-        ctx.fillStyle = t.accent + '25'; // hex + alpha
-        ctx.fill();
+        ctx.arc(ax + ar, ay, ar + 5 * SCALE, 0, Math.PI * 2);
+        ctx.strokeStyle = t.accent;
+        ctx.lineWidth = 3 * SCALE;
+        ctx.stroke();
         ctx.restore();
-        // Clip avatar circle
+        // Clip avatar
         ctx.save();
         ctx.beginPath();
         ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2);
@@ -121,70 +132,191 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
         ctx.restore();
         // Inner ring
         ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2);
-        ctx.strokeStyle = '#ffffff40';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        // Outer accent ring
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar + 5, 0, Math.PI * 2);
-        ctx.strokeStyle = t.accent;
-        ctx.lineWidth = 3;
+        ctx.arc(ax + ar, ay, ar + 2 * SCALE, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2 * SCALE;
         ctx.stroke();
     }
 
-    // Level number (big, right of avatar)
+    const tx = ax + ar * 2 + 28 * SCALE;
+
+    // Level number
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 56px sans-serif';
+    ctx.font = `bold ${52 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`LEVEL ${level}`, 175, H / 2 - 25);
+    ctx.fillText(`LEVEL ${level}`, tx, CH / 2 - 22 * SCALE);
 
-    // Username below level
+    // Username
     ctx.fillStyle = t.accent;
-    ctx.font = '28px sans-serif';
-    const name = user.username.length > 20 ? user.username.substring(0, 19) + '…' : user.username;
-    ctx.fillText(name, 175, H / 2 + 22);
+    ctx.font = `${26 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    const name = user.username.length > 20 ? user.username.substring(0, 19) + '\u2026' : user.username;
+    ctx.fillText(name, tx, CH / 2 + 24 * SCALE);
 
-    // XP text — shows XP in current level / XP needed for this level
+    // XP text
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = '13px sans-serif';
-    ctx.fillText(`${xpCur.toLocaleString()} / ${xpNeed.toLocaleString()} XP`, 175, H / 2 + 52);
+    ctx.font = `${12 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillText(`${xpCurrent.toLocaleString()} / ${xpNeeded.toLocaleString()} XP`, tx, CH / 2 + 54 * SCALE);
 
-    // ARCHON branding (top right)
+    // Branding
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = '11px sans-serif';
+    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.textAlign = 'right';
-    ctx.fillText('ARCHON CG-223', W - 25, 32);
+    ctx.fillText('ARCHON CG-223', CW - 25 * SCALE, 30 * SCALE);
 
     // Progress bar
-    const barX = 175, barY = H - 42, barW = 440, barH = 10;
+    const barX = tx, barY = CH - 42 * SCALE, barW = 440 * SCALE, barH = 10 * SCALE;
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    roundRect(ctx, barX, barY, barW, barH, 5);
+    roundRect(ctx, barX, barY, barW, barH, 5 * SCALE);
     ctx.fill();
-    const fillW = Math.max(barW * prog, 6);
+    const fillW = Math.max(barW * prog, 6 * SCALE);
     const pGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
     pGrad.addColorStop(0, t.accent);
     pGrad.addColorStop(1, t.bg1);
+    ctx.save();
+    ctx.shadowColor = t.accent;
+    ctx.shadowBlur = 8 * SCALE;
     ctx.fillStyle = pGrad;
-    roundRect(ctx, barX, barY, fillW, barH, 5);
+    roundRect(ctx, barX, barY, fillW, barH, 5 * SCALE);
     ctx.fill();
-    // Percentage
+    ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = `bold ${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.textAlign = 'left';
-    ctx.fillText(`${Math.round(prog * 100)}%`, barX + barW + 10, barY + 8);
+    ctx.fillText(`${Math.round(prog * 100)}%`, barX + barW + 10 * SCALE, barY + 8 * SCALE);
 
-    // Corner accent line
+    // Corner accent
     ctx.strokeStyle = t.accent + '60';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * SCALE;
     ctx.beginPath();
-    ctx.moveTo(W - 120, H - 3);
-    ctx.lineTo(W, H - 3);
-    ctx.stroke();
+    ctx.moveTo(CW - 120 * SCALE, CH - 3); ctx.lineTo(CW, CH - 3); ctx.stroke();
+
+    // Output full 2x
+    return c.encode('png');
+}
+// ================= CANVAS: RANK CARD (2x) =================
+async function renderRankCard(user, rank, level, totalXP, theme = {}) {
+    const SCALE = 2;
+    const CW = W * SCALE, CH = H * SCALE;
+    const t = getTheme(level, theme);
+    const c = createCanvas(CW, CH);
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    const xpCur = xpInCurrentLevel(totalXP, level);
+    const xpNeed = xpNeededForLevel(level);
+    const prog = xpProgress(totalXP, level);
+
+    // Background
+    const grad = ctx.createLinearGradient(0, 0, CW, CH);
+    grad.addColorStop(0, t.bg1);
+    grad.addColorStop(1, t.bg2);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(0, 0, CW, CH);
+
+    // Diagonal lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+    ctx.lineWidth = 1.5;
+    for (let i = -CH; i < CW + CH; i += 40 * SCALE) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - CH, CH); ctx.stroke();
+    }
+
+    // Avatar
+    const av = await getAvatar(user, 256);
+    const ar = 55 * SCALE;
+    const ax = 50 * SCALE;
+    const ay = CH / 2;
+
+    if (av) {
+        ctx.save();
+        ctx.shadowColor = t.accent;
+        ctx.shadowBlur = 16 * SCALE;
+        ctx.beginPath();
+        ctx.arc(ax + ar, ay, ar + 5 * SCALE, 0, Math.PI * 2);
+        ctx.strokeStyle = t.accent;
+        ctx.lineWidth = 3 * SCALE;
+        ctx.stroke();
+        ctx.restore();
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(ax + ar, ay, ar + 2 * SCALE, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 2 * SCALE;
+        ctx.stroke();
+    }
+
+    // Rank badge
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    roundRect(ctx, 20 * SCALE, 15 * SCALE, 85 * SCALE, 28 * SCALE, 6 * SCALE);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`RANK #${rank}`, 62 * SCALE, 29 * SCALE);
+
+    const tx = ax + ar * 2 + 22 * SCALE;
+
+    // Username
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${28 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    const nm = user.username.length > 22 ? user.username.substring(0, 21) + '\u2026' : user.username;
+    ctx.fillText(nm, tx, CH / 2 - 35 * SCALE);
+
+    // Level
+    ctx.fillStyle = t.accent;
+    ctx.font = `bold ${20 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillText(`Level ${level}`, tx, CH / 2 - 5 * SCALE);
+
+    // XP
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = `bold ${13 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillText(`${xpCur.toLocaleString()} / ${xpNeed.toLocaleString()} XP`, tx, CH / 2 + 22 * SCALE);
+
+    // Total XP
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillText(`Total: ${Math.floor(totalXP).toLocaleString()} XP`, tx, CH / 2 + 42 * SCALE);
+
+    // Progress bar
+    const bx = tx, by = CH - 40 * SCALE, bw = 420 * SCALE, bh = 10 * SCALE;
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    roundRect(ctx, bx, by, bw, bh, 5 * SCALE);
+    ctx.fill();
+    const fw = Math.max(bw * prog, 6 * SCALE);
+    const pg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    pg.addColorStop(0, t.accent);
+    pg.addColorStop(1, t.bg1);
+    ctx.save();
+    ctx.shadowColor = t.accent;
+    ctx.shadowBlur = 8 * SCALE;
+    ctx.fillStyle = pg;
+    roundRect(ctx, bx, by, fw, bh, 5 * SCALE);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = `bold ${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`${Math.round(prog * 100)}%`, bx + bw + 10 * SCALE, by + 8 * SCALE);
+
+    // Branding
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.textAlign = 'right';
+    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillText('ARCHON CG-223', CW - 20 * SCALE, 25 * SCALE);
 
     return c.encode('png');
 }
+
 
 // ================= CANVAS: WELCOME BANNER =================
 async function renderWelcomeBanner(member, count, theme = {}) {
