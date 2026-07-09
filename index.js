@@ -5574,25 +5574,24 @@ function rotateStatus() {
 // Set About Me (bot profile description) — runs once on ready
 client.once('clientReady', async () => {
     try {
+        const _servers = client.guilds.cache.size;
+        const _users = client.guilds.cache.reduce((t, g) => t + g.memberCount, 0);
+        const _cmds = client.commands?.size || 0;
+        const _ver = client.version || '3.1.0';
         await client.user.setAboutMe(
-            `╔════════════════════════════════════════╗\n` +
-            `║         🦅 A R C H O N  C G - 2 2 3    ║\n` +
-            `║                                        ║\n` +
-            `║   The AI-Powered Server Architect      ║\n` +
-            `╚════════════════════════════════════════╝\n\n` +
-            `Your server. Your rules. Fully isolated.\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `🧠 Lydia AI          28 languages\n` +
-            `💰 Economy & Leveling  Canvas cards\n` +
-            `🎫 Tickets            3-cat system\n` +
-            `🛡️ AutoMod            Native timeouts\n` +
-            `📊 Market             Live trading\n` +
-            `📢 Smart Broadcast    Not spammy\n` +
-            `⚡ Daily Rewards      Streak system\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `🌐  https://bamako-steel-dev.xyz\n` +
-            `💬  https://discord.gg/NFSMFJajp9\n\n` +
-            `Built with 🔥 by MFOF7310 · Bamako, Mali 🇲🇱`
+            `Hey! I'm ARCHON CG-223 🦅\n\n` +
+            `Running on ${_servers} servers, helping ${_users.toLocaleString()} people ` +
+            `manage their communities — built from scratch in Bamako, Mali 🇲🇱\n\n` +
+            `What I do:\n` +
+            `• Lydia AI speaks 28 languages naturally\n` +
+            `• Economy, leveling & daily rewards\n` +
+            `• AutoMod, tickets & smart broadcast\n` +
+            `• Music, games, giveaways & trivia\n` +
+            `• Auto-replies that feel human\n\n` +
+            `${_cmds} commands • v${_ver} • Not a fork, not a template.\n\n` +
+            `🌐 bamako-steel-dev.xyz\n` +
+            `💬 discord.gg/NFSMFJajp9\n\n` +
+            `— @MFOF7310`
         );
         console.log(`${green}[PROFILE]${reset} About Me set successfully`);
     } catch (e) {
