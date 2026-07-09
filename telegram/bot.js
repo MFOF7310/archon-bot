@@ -11,6 +11,13 @@ const os = require('os');
 const green = "\x1b[32m", yellow = "\x1b[33m", red = "\x1b[31m", cyan = "\x1b[36m", reset = "\x1b[0m";
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// Typing animation helper — shows ... then resolves
+async function thinkingMsg(bridge, chatId, text = '⏳') {
+    const dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    await bridge.sendAction(chatId, 'typing');
+    return bridge.sendTo(chatId, text, { parse_mode: 'HTML' });
+}
 const formatNumber = (n) => n?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') || '0';
 const formatUptime = (s) => { const d = Math.floor(s/86400), h = Math.floor((s%86400)/3600), m = Math.floor((s%3600)/60); return d>0?`${d}d ${h}h ${m}m`:h>0?`${h}h ${m}m`:`${m}m`; };
 const escapeHTML = (t) => !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -212,6 +219,123 @@ async function handleCallback(update, bridge, client) {
             try { const tr = require('./plugins/trivia'); if (tr.handleCallback) await tr.handleCallback(ctx, data); } catch(e){}
             return;
         }
+    }
+
+    // Help menu button handlers
+    if (data.startsWith('cmd_') || data.startsWith('help_') || data.startsWith('game_') || data === 'menu_main') {
+        const ctx = buildContext(update, bridge, client);
+        if (!ctx) return;
+
+        // Animate: show typing first
+        await bridge.sendAction(chatId, 'typing');
+
+        if (data === 'menu_main' || data === 'cmd_menu') {
+            // Show all commands by category
+            const cats = new Map();
+            for (const [n, c] of bridge.commands) {
+                if (c.hidden) continue;
+                if (!cats.has(c.category)) cats.set(c.category, []);
+                cats.get(c.category).push(n);
+            }
+            let txt = `📋 <b>All Commands</b> (${bridge.commands.size} total)\n━━━━━━━━━━━━━━━━\n\n`;
+            for (const [cat, cmds] of [...cats.entries()].sort()) {
+                txt += `<b>${escapeHTML(cat)}</b>\n${cmds.map(c=>`<code>/${c}</code>`).join(' ')}\n\n`;
+            }
+            await editMsg(bridge, chatId, msgId, txt, { inline_keyboard: [[{ text: '🔙 Back', callback_data: 'm:main' }]] });
+            return;
+        }
+
+        if (data === 'cmd_games' || data === 'game_trivia') {
+            const ctx2 = buildContext(update, bridge, client);
+            ctx2.args = [];
+            const cmd = bridge.getCommand('trivia');
+            if (cmd?.handler) await cmd.handler(ctx2).catch(() => {});
+            return;
+        }
+        if (data === 'game_word') {
+            const ctx2 = buildContext(update, bridge, client);
+            ctx2.args = [];
+            const cmd = bridge.getCommand('wordguess');
+            if (cmd?.handler) await cmd.handler(ctx2).catch(() => {});
+            return;
+        }
+        if (data === 'game_roll') {
+            const ctx2 = buildContext(update, bridge, client);
+            ctx2.args = [];
+            const cmd = bridge.getCommand('roll');
+            if (cmd?.handler) await cmd.handler(ctx2).catch(() => {});
+            return;
+        }
+        if (data === 'game_flip') {
+            const ctx2 = buildContext(update, bridge, client);
+            ctx2.args = [];
+            const cmd = bridge.getCommand('coinflip');
+            if (cmd?.handler) await cmd.handler(ctx2).catch(() => {});
+            return;
+        }
+        if (data === 'cmd_economy') {
+            const ctx2 = buildContext(update, bridge, client);
+            ctx2.args = [];
+            const cmd = bridge.getCommand('balance');
+            if (cmd?.handler) await cmd.handler(ctx2).catch(() => {});
+            return;
+        }
+        if (data === 'cmd_utility') {
+            await editMsg(bridge, chatId, msgId,
+                `🛠️ <b>Utility Commands</b>\n━━━━━━━━━━━━━━━━\n\n` +
+                `<code>/weather</code> &lt;city&gt; — Weather forecast\n` +
+                `<code>/crypto</code> &lt;coin&gt; — Crypto prices\n` +
+                `<code>/translate</code> &lt;text&gt; — Translate text\n` +
+                `<code>/remind</code> — Set reminders\n` +
+                `<code>/id</code> — Get user/chat ID\n` +
+                `<code>/ping</code> — Bot latency`,
+                { inline_keyboard: [[{ text: '🔙 Back', callback_data: 'menu_main' }]] }
+            );
+            return;
+        }
+        if (data === 'cmd_mod') {
+            await editMsg(bridge, chatId, msgId,
+                `🛡️ <b>Moderation Commands</b>\n━━━━━━━━━━━━━━━━\n\n` +
+                `<code>/kick</code> — Kick a member\n` +
+                `<code>/ban</code> — Ban a member\n` +
+                `<code>/unban</code> &lt;id&gt; — Unban someone\n` +
+                `<code>/mute</code> — Mute a member\n` +
+                `<code>/warn</code> — Warn a member\n` +
+                `<code>/pin</code> — Pin a message\n` +
+                `<code>/rules</code> — View/set group rules\n` +
+                `<code>/admins</code> — List admins\n` +
+                `<code>/antilink</code> on/off — Block links\n` +
+                `<code>/promote</code>/<code>/demote</code> — Manage admins`,
+                { inline_keyboard: [[{ text: '🔙 Back', callback_data: 'menu_main' }]] }
+            );
+            return;
+        }
+        if (data === 'cmd_help') {
+            await editMsg(bridge, chatId, msgId,
+                `🆘 <b>How to use ARCHON CG-223</b>\n━━━━━━━━━━━━━━━━\n\n` +
+                `• Type <code>/help &lt;command&gt;</code> for details\n` +
+                `• Most commands work in groups and private chats\n` +
+                `• Admin commands require admin rights\n` +
+                `• Use /start to see the main menu\n\n` +
+                `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`,
+                { inline_keyboard: [[{ text: '🔙 Back', callback_data: 'menu_main' }]] }
+            );
+            return;
+        }
+
+        // Help category pages
+        if (data.startsWith('help_')) {
+            const category = data.replace('help_', '');
+            const cmds = [...bridge.commands.values()].filter(c => c.category?.toLowerCase() === category && !c.hidden);
+            let txt = `📂 <b>${escapeHTML(category.charAt(0).toUpperCase() + category.slice(1))}</b>\n━━━━━━━━━━━━━━━━\n\n`;
+            if (!cmds.length) txt += 'No commands in this category.';
+            else cmds.forEach(c => {
+                txt += `<code>/${c.name}</code> — ${escapeHTML(c.description)}\n`;
+            });
+            await editMsg(bridge, chatId, msgId, txt, { inline_keyboard: [[{ text: '🔙 Back', callback_data: 'menu_main' }]] });
+            return;
+        }
+        return;
     }
 
     // Direct command trigger from button

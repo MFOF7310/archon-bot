@@ -33,6 +33,12 @@ module.exports = {
             } catch(e) {}
         }
 
+        // Extract video ID from iesdouyin redirect
+        if (url.includes('iesdouyin.com/share/video/')) {
+            const match = url.match(/video\/([\d]+)/);
+            if (match) url = `https://www.douyin.com/video/${match[1]}`;
+        }
+        
         // Clean URL
         url = url.split('?')[0];
 
@@ -75,14 +81,22 @@ function requestJSON(url, opts = {}) {
 }
 
 async function followRedirect(url) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const lib = url.startsWith('https:') ? https : require('http');
-        const req = lib.request(url, { method: 'HEAD', timeout: 10000 }, (res) => {
+        const req = lib.request(url, {
+            method: 'GET',
+            timeout: 10000,
+            headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
+        }, (res) => {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                resolve(res.headers.location);
+                // Follow one more redirect if needed
+                const loc = res.headers.location;
+                if (loc.startsWith('http')) resolve(loc);
+                else resolve(url);
             } else {
                 resolve(url);
             }
+            res.resume(); // drain response
         });
         req.on('error', () => resolve(url));
         req.on('timeout', () => { req.destroy(); resolve(url); });
