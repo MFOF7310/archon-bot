@@ -1,4 +1,5 @@
-const { getStreamUrl, getInfo, dlFile } = require('./_media.js');
+const { dlVideo, getInfo } = require('./_media.js');
+const fs = require('fs');
 
 module.exports = {
     name: 'ytv',
@@ -16,17 +17,27 @@ module.exports = {
         const proc = await ctx.replyHTML(`🎬 <i>Fetching that YouTube video...</i>`);
 
         try {
-            const [info, streamUrl] = await Promise.all([getInfo(url), getStreamUrl(url)]);
-            const caption = `🎬 <b>${(info.title || 'YouTube Video').substring(0, 80)}</b>\n👤 ${info.uploader || ''} • ⏱ ${info.duration || ''}\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+            const [info, filePath] = await Promise.all([
+                getInfo(url).catch(() => ({})),
+                dlVideo(url, '720')
+            ]);
 
-            try {
-                await ctx.sendVideo(streamUrl, { caption, parse_mode: 'HTML' });
-            } catch {
-                await ctx.sendDoc(streamUrl, { caption, parse_mode: 'HTML' });
-            }
+            const buf = fs.readFileSync(filePath);
+            const mb = (buf.length / 1024 / 1024).toFixed(1);
+
+            const caption = [
+                info.title ? `🎬 <b>${info.title.substring(0, 80)}</b>` : `🎬 <b>YouTube Video</b>`,
+                info.uploader ? `👤 ${info.uploader}` : '',
+                info.duration ? `⏱ ${info.duration}` : '',
+                `\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`
+            ].filter(Boolean).join('\n');
+
+            await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+            await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
+
         } catch(e) {
             console.error('[YTV]', e.message);
-            await ctx.replyHTML(`❌ YouTube\'s being tricky right now — try again in a bit, or use a different link!`);
+            await ctx.replyHTML(`❌ YouTube\'s being tricky right now — try again in a bit!`);
         }
     }
 };

@@ -12,7 +12,7 @@ async function dlVideo(url, quality = '720') {
     const ts = Date.now();
     const outTemplate = path.join(TMP, `vid_${ts}.%(ext)s`);
     const cmd = [
-        'yt-dlp',
+        'yt-dlp --remote-components ejs:github --cookies /opt/youtube_cookies.txt',
         `-o "${outTemplate}"`,
         `-f "bestvideo[height<=${quality}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${quality}]+bestaudio/best[height<=${quality}]/best"`,
         `--merge-output-format mp4`,
@@ -43,7 +43,7 @@ async function dlVideo(url, quality = '720') {
 async function dlAudio(url) {
     const ts = Date.now();
     const outTemplate = path.join(TMP, `aud_${ts}.%(ext)s`);
-    const cmd = `yt-dlp -o "${outTemplate}" -x --audio-format mp3 --audio-quality 0 --no-playlist --max-filesize 50M "${url}"`;
+    const cmd = `yt-dlp --remote-components ejs:github -o "${outTemplate}" -x --audio-format mp3 --audio-quality 0 --no-playlist --max-filesize 50M "${url}"`;
 
     await new Promise((res, rej) =>
         exec(cmd, { timeout: 120000 }, (err) => err ? rej(err) : res())
@@ -59,7 +59,7 @@ async function dlAudio(url) {
 // Get video metadata
 async function getInfo(url) {
     return new Promise((res) => {
-        exec(`yt-dlp --no-playlist --print "%(title)s|||%(duration>%M:%S)s|||%(uploader)s|||%(description)s" "${url}"`,
+        exec(`yt-dlp --remote-components ejs:github --no-playlist --print "%(title)s|||%(duration>%M:%S)s|||%(uploader)s|||%(description)s" "${url}"`,
             { timeout: 30000 }, (err, stdout) => {
                 if (err) return res({});
                 const parts = stdout.trim().split('|||');

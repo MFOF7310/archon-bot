@@ -1,32 +1,50 @@
-const { getStreamUrl, getInfo } = require('./_media.js');
+const { dlAudio, getInfo } = require('./_media.js');
+const fs = require('fs');
 
 module.exports = {
     name: 'yta',
     aliases: ['ytaudio', 'ytmp3', 'ya'],
-    description: 'Get YouTube audio',
+    description: 'Download YouTube audio as MP3',
     category: 'Media',
-    usage: '/yta <url>',
+    usage: '/yta <url or song name>',
 
     handler: async (ctx) => {
-        const url = ctx.args[0];
-        if (!url || (!url.includes('youtube') && !url.includes('youtu.be')))
-            return ctx.replyHTML(`🎵 <b>YouTube Audio</b>\n\n<code>/yta &lt;url&gt;</code>\n\nBest quality audio!`);
+        const input = ctx.args.join(' ');
+        if (!input) return ctx.replyHTML(`🎵 <b>YouTube Audio</b>\n\n<code>/yta &lt;url or song name&gt;</code>`);
 
         await ctx.action('upload_audio');
         const proc = await ctx.replyHTML(`🎵 <i>Extracting audio...</i>`);
 
         try {
-            const [info, streamUrl] = await Promise.all([getInfo(url), getStreamUrl(url, true)]);
-            const caption = `🎵 <b>${(info.title || 'Audio').substring(0, 80)}</b>\n👤 ${info.uploader || ''}\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+            // If not a URL, search YouTube
+            const isUrl = input.startsWith('http');
+            const query = isUrl ? input : `ytsearch1:${input}`;
 
-            try {
-                await ctx.sendAudio(streamUrl, { caption, title: info.title?.substring(0, 64), performer: info.uploader, parse_mode: 'HTML' });
-            } catch {
-                await ctx.sendDoc(streamUrl, { caption, parse_mode: 'HTML' });
-            }
+            const [info, filePath] = await Promise.all([
+                getInfo(query).catch(() => ({})),
+                dlAudio(query)
+            ]);
+
+            const buf = fs.readFileSync(filePath);
+            const mb = (buf.length / 1024 / 1024).toFixed(1);
+
+            const caption = [
+                info.title ? `🎵 <b>${info.title.substring(0, 80)}</b>` : `🎵 <b>Audio</b>`,
+                info.uploader ? `👤 ${info.uploader}` : '',
+                `\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`
+            ].filter(Boolean).join('\n');
+
+            await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+            await ctx.sendAudioBuffer(buf, {
+                caption,
+                title: info.title?.substring(0, 64) || input.substring(0, 64),
+                performer: info.uploader || 'ARCHON',
+                parse_mode: 'HTML'
+            });
+
         } catch(e) {
             console.error('[YTA]', e.message);
-            await ctx.replyHTML(`❌ Couldn\'t extract audio — might be age-restricted. Try another link!`);
+            await ctx.replyHTML(`❌ Couldn\'t get that audio — try a direct YouTube link!`);
         }
     }
 };
