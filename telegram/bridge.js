@@ -173,6 +173,11 @@ class TelegramBridge {
     }
 
     // ── Send document ──
+    async sendAudio(chatId, audio, options = {}) {
+        if (!this.token) return { success: false };
+        return this._sendMedia(chatId, 'sendAudio', { audio, caption: options.caption, parse_mode: options.parse_mode, title: options.title, performer: options.performer });
+    }
+
     async sendDocument(chatId, document, options = {}) {
         if (!this.token) return { success: false };
         return this._sendMedia(chatId, 'sendDocument', { document, caption: options.caption, parse_mode: options.parse_mode });

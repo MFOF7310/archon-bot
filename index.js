@@ -2047,7 +2047,7 @@ client.loadPlugins = async () => {
     }
     
     // ── TELEGRAM BRIDGE MODULES ──
-    const telegramPath = path.join(__dirname, 'telegram');
+    const telegramPath = path.join(__dirname, 'telegram', 'plugins');
     if (fs.existsSync(telegramPath)) {
         const telegramFiles = fs.readdirSync(telegramPath).filter(file => 
             file.endsWith('.js') && file !== 'bridge.js' && file !== 'bot.js'
@@ -2060,7 +2060,7 @@ client.loadPlugins = async () => {
                 delete require.cache[require.resolve(filePath)];
                 const command = require(filePath);
 
-                if (command.name && command.run) {
+                if (command.name && (command.run || command.handler)) {
                     client.commands.set(command.name, command);
                     if (command.aliases && Array.isArray(command.aliases)) {
                         command.aliases.forEach(a => client.aliases.set(a, command.name));
