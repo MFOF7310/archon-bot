@@ -5524,8 +5524,8 @@ const STATUS_MESSAGES = [
     { name: '⚡ {guilds} servers in the grid', type: 0 },
     { name: 'defense protocols 🛡️', type: 0 },
     { name: 'the economy engine 💰', type: 0 },
-    { name: 'Neural Grid v3.0.7 🔮', type: 0 },
-    { name: '111 plugins loaded ⚡', type: 0 },
+    { name: `Neural Grid v${client.version || '3.1.0'} 🔮`, type: 0 },
+    { name: `${client.commands?.size || 0} plugins loaded ⚡`, type: 0 },
     // WATCHING
     { name: 'over {guilds} servers 🌐', type: 3 },
     { name: '{users} agents in the field', type: 3 },
