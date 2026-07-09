@@ -2230,6 +2230,8 @@ client.once(Events.ClientReady, async () => {
 
     await client.loadPlugins();
 
+
+
 // ================= KAZAGUMO initialized before login (see below) =================
 
 // ================= PLUGIN EVENT REFERENCES =================
@@ -4720,10 +4722,10 @@ apiApp.use(express.json());
 apiApp.get('/api/music', (req, res) => {
     try {
         const musicPlugin = client.commands?.get('music');
-        if (!musicPlugin?.getQueue) return res.json([]);
+        if (!client.commands?.get('music')) return res.json([]);
         const active = [];
         for (const [guildId, guild] of client.guilds.cache) {
-            const q = musicPlugin.getQueue(guildId);
+            const q = null;
             if (q?.currentTrack) {
                 const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - (q.totalPaused||0)) / 1000) : 0;
                 active.push({
@@ -4752,8 +4754,7 @@ apiApp.get('/api/music', (req, res) => {
 apiApp.get('/api/music/:guildId', (req, res) => {
     try {
         const musicPlugin = client.commands?.get('music');
-        if (!musicPlugin?.getQueue) return res.json({ playing: false });
-        const q = musicPlugin.getQueue(req.params.guildId);
+        const q = null;
         if (!q?.currentTrack) return res.json({ playing: false });
         const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - (q.totalPaused||0)) / 1000) : 0;
         res.json({
@@ -5474,11 +5475,11 @@ let statusIndex = 0;
 function rotateStatus() {
     // If music is playing in any guild, show music status
     const musicPlugin = client.commands?.get('music');
-    if (musicPlugin?.getQueue) {
-        const activeQueues = [...client.guilds.cache.keys()].filter(id => musicPlugin.getQueue(id));
+    if (false) {
+        const activeQueues = [];
         if (activeQueues.length > 0) {
-            const q = musicPlugin.getQueue(activeQueues[0]);
-            const trackName = q?.currentTrack?.title?.substring(0, 40) || 'music';
+            const p = client.kazagumo?.players?.get(activeQueues[0]);
+            const trackName = p?.queue?.current?.info?.title?.substring(0, 40) || 'music';
             client.user.setActivity(trackName, { type: 2 }); // Listening to <track>
             return;
         }
@@ -5529,67 +5530,7 @@ client.once('clientReady', async () => {
 });
 
 // ── Discord Login ──
-// ================= LAVALINK CLIENT INIT (before login) =================
-try {
-    const { LavalinkManager } = require('lavalink-client');
 
-    client.kazagumo = new LavalinkManager({
-        nodes: [{
-            id: 'BAMAKO-STEEL-NODE',
-            host: '127.0.0.1',
-            port: 2333,
-            authorization: 'archon-bamako-steel-2026',
-            secure: false,
-        }],
-        sendToShard: (guildId, payload) => {
-            const guild = client.guilds.cache.get(guildId);
-            if (guild) guild.shard.send(payload);
-        },
-        client: { id: process.env.CLIENT_ID || '1472707869257367676', username: 'ARCHON CG-223' },
-        playerOptions: {
-            defaultSearchPlatform: 'scsearch',
-            onDisconnect: { autoReconnect: true, destroyPlayer: false },
-            onEmptyQueue: { destroyAfterMs: 180000 },
-        },
-        queueOptions: { maxPreviousTracks: 5 },
-    });
-
-    client.kazagumo.nodeManager.on('connect', (node) => {
-        console.log(`\x1b[32m[MUSIC]\x1b[0m Lavalink connected: ${node.id} ✅`);
-    });
-    client.kazagumo.nodeManager.on('error', (node, err) => {
-        console.error(`[MUSIC] Lavalink error [${node.id}]:`, err?.message);
-    });
-
-    client.kazagumo.on('trackStart', async (player, track) => {
-        const musicPlugin = client.commands.get('music');
-        if (!musicPlugin) return;
-        const meta = musicPlugin.getMeta(player.guildId);
-        if (!meta) return;
-        meta.startTime = Date.now();
-        meta.currentTrack = track;
-        try {
-            const db = client.db;
-            if (db) {
-                db.prepare('INSERT OR IGNORE INTO music_history (guild_id, title, query, source) VALUES (?,?,?,?)').run(player.guildId, track.info?.title, track.info?.title, track.info?.sourceName || 'unknown');
-                db.prepare('UPDATE music_history SET play_count = play_count + 1, played_at = ? WHERE guild_id = ? AND title = ?').run(Math.floor(Date.now()/1000), player.guildId, track.info?.title);
-            }
-        } catch(e) {}
-        await musicPlugin.updatePersistentPanel(player, client).catch(() => {});
-    });
-
-    client.kazagumo.on('playerDestroy', (player) => {
-        const musicPlugin = client.commands.get('music');
-        if (musicPlugin?.getMeta) {
-            const meta = musicPlugin.getMeta(player.guildId);
-            if (meta) { meta.persistentMsg = null; meta.startTime = null; meta.currentTrack = null; }
-        }
-    });
-
-    console.log('\x1b[32m[MUSIC]\x1b[0m LavalinkManager pre-initialized ✅');
-} catch(e) {
-    console.error('[MUSIC] LavalinkManager init failed:', e.message);
-}
 
 client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error('\x1b[31m[LOGIN ERROR]\x1b[0m Failed to connect to Discord:', err.message);
