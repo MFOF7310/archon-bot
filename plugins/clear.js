@@ -74,7 +74,7 @@ module.exports = {
         
         if (!isArchitect && !hasPerms) {
             const lang = serverSettings?.language || 'en';
-            const t = translations[lang];
+            const t = translations[lang] || translations['en'];
             return message.reply({ content: t.accessDenied, flags: 64 });
         }
 
