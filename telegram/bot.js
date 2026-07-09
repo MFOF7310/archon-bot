@@ -662,6 +662,17 @@ async function handleUpdate(update, bridge, client) {
     const { text } = ctx;
     if (!text) return;
 
+    // Auto-reply filter check for regular messages
+    if (!text.startsWith('/')) {
+        try {
+            const filterPlugin = require('./plugins/filter.js');
+            if (filterPlugin.checkMessage) {
+                const handled = await filterPlugin.checkMessage(ctx);
+                if (handled) return;
+            }
+        } catch(e) { console.error('[FILTER ERR]', e.message); }
+    }
+
     if (text.startsWith('/')) {
         const parts = text.slice(1).split(' ');
         const cmdName = parts[0].toLowerCase().split('@')[0];
