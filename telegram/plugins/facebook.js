@@ -1,4 +1,5 @@
-const { getStreamUrl } = require('./_media.js');
+const { dlVideo, getInfo } = require('./_media.js');
+const fs = require('fs');
 
 module.exports = {
     name: 'facebook',
@@ -10,20 +11,31 @@ module.exports = {
     handler: async (ctx) => {
         const url = ctx.args[0];
         if (!url || !url.includes('facebook'))
-            return ctx.replyHTML(`📘 <b>Facebook Downloader</b>\n\n<code>/fb &lt;facebook video url&gt;</code>`);
+            return ctx.replyHTML(`📘 <b>Facebook Downloader</b>\n\nSend me a Facebook video link!\n\n<code>/fb &lt;url&gt;</code>`);
 
         await ctx.action('upload_video');
-        await ctx.replyHTML(`📘 <i>Grabbing from Facebook...</i>`);
+        const proc = await ctx.replyHTML(`📘 <i>Grabbing from Facebook...</i>`);
 
         try {
-            const streamUrl = await getStreamUrl(url);
-            await ctx.sendVideo(streamUrl, {
-                caption: `📘 <b>Facebook</b>\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`,
-                parse_mode: 'HTML'
-            });
+            const [info, filePath] = await Promise.all([
+                getInfo(url).catch(() => ({})),
+                dlVideo(url, '720')
+            ]);
+
+            const buf = fs.readFileSync(filePath);
+            const caption = [
+                info.title ? `📘 ${info.title.substring(0, 100)}` : `📘 <b>Facebook</b>`,
+                info.uploader ? `👤 ${info.uploader}` : '',
+                info.description ? `\n${info.description.substring(0, 100)}` : '',
+                `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`
+            ].filter(Boolean).join('\n');
+
+            await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+            await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
+
         } catch(e) {
             console.error('[FB]', e.message);
-            await ctx.replyHTML(`❌ Couldn\'t get that — public videos only, private ones need login!`);
+            await ctx.replyHTML(`❌ Couldn\'t get that — public videos only!`);
         }
     }
 };
