@@ -533,6 +533,19 @@ reminders: `CREATE TABLE IF NOT EXISTS reminders (
         source TEXT NOT NULL,
         assigned_at INTEGER DEFAULT (strftime('%s', 'now')),
         PRIMARY KEY (guild_id, user_id, role_id)
+    )`,
+    auto_replies: `CREATE TABLE IF NOT EXISTS auto_replies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        channel_id TEXT,
+        keyword TEXT NOT NULL COLLATE NOCASE,
+        response TEXT NOT NULL,
+        embed_title TEXT,
+        embed_color TEXT DEFAULT '0x00f0ff',
+        created_by TEXT NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        trigger_count INTEGER DEFAULT 0,
+        UNIQUE(guild_id, channel_id, keyword)
     )`
 };
 
@@ -543,6 +556,68 @@ for (const [tableName, createSQL] of Object.entries(requiredTables)) {
         console.error(`${red}[TABLE ERROR]${reset} ${tableName}:`, err.message);
     }
 }
+
+// ================= AUTO-REPLY MESSAGE LISTENER =================
+client.on('messageCreate', async (message) => {
+    try {
+        if (message.author.bot) return;
+        if (!message.guild) return;
+
+        const guildId = message.guild.id;
+        const channelId = message.channel.id;
+        const content = message.content.toLowerCase();
+
+        // Fetch matching autoreply — channel-specific first, then guild-wide
+        const replies = db.prepare(`
+            SELECT * FROM auto_replies
+            WHERE guild_id = ?
+            AND (channel_id = ? OR channel_id IS NULL)
+            ORDER BY channel_id DESC
+        `).all(guildId, channelId);
+
+        if (!replies.length) return;
+
+        // Check cooldowns
+        if (!client._arCooldowns) client._arCooldowns = new Map();
+
+        for (const reply of replies) {
+            const keyword = reply.keyword.toLowerCase();
+            // Smart match — keyword found anywhere in message
+            if (!content.includes(keyword)) continue;
+
+            // Cooldown check — 60s per keyword per channel
+            const cdKey = `${channelId}:${keyword}`;
+            const last = client._arCooldowns.get(cdKey);
+            if (last && Date.now() - last < 60000) continue;
+            client._arCooldowns.set(cdKey, Date.now());
+
+            // Build response
+            const { EmbedBuilder } = require('discord.js');
+            const color = parseInt(reply.embed_color) || 0x00f0ff;
+
+            let embed;
+            if (reply.embed_title) {
+                embed = new EmbedBuilder()
+                    .setColor(color)
+                    .setTitle(reply.embed_title)
+                    .setDescription(reply.response)
+                    .setFooter({ text: 'BAMAKO_223 🇲🇱', iconURL: client.user.displayAvatarURL() })
+                    .setTimestamp();
+            } else {
+                embed = new EmbedBuilder()
+                    .setColor(color)
+                    .setDescription(reply.response)
+                    .setFooter({ text: 'BAMAKO_223 🇲🇱', iconURL: client.user.displayAvatarURL() });
+            }
+
+            await message.reply({ embeds: [embed] }).catch(() => {});
+
+            // Update trigger count
+            db.prepare('UPDATE auto_replies SET trigger_count = trigger_count + 1 WHERE id = ?').run(reply.id);
+            break; // Only trigger first match
+        }
+    } catch(e) {}
+});
 
 // ================= PERFORMANCE INDEXES =================
 const performanceIndexes = [
