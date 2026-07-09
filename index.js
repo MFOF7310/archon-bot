@@ -2136,7 +2136,8 @@ client.loadPlugins = async () => {
                 const command = require(filePath);
 
                 if (command.name && (command.run || command.handler)) {
-                    client.commands.set(command.name, command);
+                    // Don't overwrite Discord plugins with Telegram ones
+                    if (!client.commands.has(command.name)) client.commands.set(command.name, command);
                     if (command.aliases && Array.isArray(command.aliases)) {
                         command.aliases.forEach(a => client.aliases.set(a, command.name));
                     }
