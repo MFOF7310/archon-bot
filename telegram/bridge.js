@@ -178,6 +178,93 @@ class TelegramBridge {
         return this._sendMedia(chatId, 'sendAudio', { audio, caption: options.caption, parse_mode: options.parse_mode, title: options.title, performer: options.performer });
     }
 
+    // Send local file buffer via multipart/form-data
+    async sendVideoBuffer(chatId, buffer, options = {}) {
+        if (!this.token) return { success: false };
+        return new Promise((resolve) => {
+            const boundary = '----ARCHON' + Date.now();
+            const caption = options.caption || '';
+            
+            let body = '';
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="supports_streaming"\r\n\r\ntrue\r\n`;
+            if (caption) {
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`;
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="parse_mode"\r\n\r\nHTML\r\n`;
+            }
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="video"; filename="video.mp4"\r\n`;
+            body += `Content-Type: video/mp4\r\n\r\n`;
+            
+            const bodyStart = Buffer.from(body, 'utf8');
+            const bodyEnd = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
+            const totalBody = Buffer.concat([bodyStart, buffer, bodyEnd]);
+            
+            const req = require('https').request(
+                `https://api.telegram.org/bot${this.token}/sendVideo`,
+                { method: 'POST', headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': totalBody.length }, timeout: 120000 },
+                (res) => {
+                    let data = '';
+                    res.on('data', c => data += c);
+                    res.on('end', () => { try { const j = JSON.parse(data); resolve({ success: j.ok, data: j.result }); } catch { resolve({ success: false }); } });
+                }
+            );
+            req.on('error', () => resolve({ success: false }));
+            req.write(totalBody);
+            req.end();
+        });
+    }
+
+    async sendAudioBuffer(chatId, buffer, options = {}) {
+        if (!this.token) return { success: false };
+        return new Promise((resolve) => {
+            const boundary = '----ARCHON' + Date.now();
+            const caption = options.caption || '';
+            
+            let body = '';
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+            if (caption) {
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`;
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="parse_mode"\r\n\r\nHTML\r\n`;
+            }
+            if (options.title) {
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="title"\r\n\r\n${options.title}\r\n`;
+            }
+            if (options.performer) {
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="performer"\r\n\r\n${options.performer}\r\n`;
+            }
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="audio"; filename="audio.mp3"\r\n`;
+            body += `Content-Type: audio/mpeg\r\n\r\n`;
+            
+            const bodyStart = Buffer.from(body, 'utf8');
+            const bodyEnd = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
+            const totalBody = Buffer.concat([bodyStart, buffer, bodyEnd]);
+            
+            const req = require('https').request(
+                `https://api.telegram.org/bot${this.token}/sendAudio`,
+                { method: 'POST', headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': totalBody.length }, timeout: 120000 },
+                (res) => {
+                    let data = '';
+                    res.on('data', c => data += c);
+                    res.on('end', () => { try { const j = JSON.parse(data); resolve({ success: j.ok, data: j.result }); } catch { resolve({ success: false }); } });
+                }
+            );
+            req.on('error', () => resolve({ success: false }));
+            req.write(totalBody);
+            req.end();
+        });
+    }
+
     async sendDocument(chatId, document, options = {}) {
         if (!this.token) return { success: false };
         return this._sendMedia(chatId, 'sendDocument', { document, caption: options.caption, parse_mode: options.parse_mode });

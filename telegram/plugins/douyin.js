@@ -14,16 +14,30 @@ module.exports = {
     aliases: ['dy', 'tiktok', 'tt', 'tik'],
 
     handler: async (ctx) => {
-        const url = ctx.args[0]?.split('?')[0];
+        // Extract URL from message (supports short links in long text)
+        const text = ctx.message?.text || ctx.text || '';
+        const urlMatch = text.match(/(https?:\/\/[^\s]+)/);
+        let url = urlMatch?.[0];
+        
         const cmd = ctx.message.text?.split(' ')[0]?.toLowerCase() || '/douyin';
         const platform = cmd.includes('tt') || cmd.includes('tik') ? 'TikTok' : 'Douyin';
 
         if (!url) {
-            return ctx.replyHTML(`🎬 <b>${platform} Downloader</b>\n\n<code>/${cmd.replace('/', '')} &lt;url&gt;</code>`);
+            return ctx.replyHTML(`🎬 <b>${platform} Downloader</b>\n\nJust send me a ${platform} link and I'll grab it for you!\n\n<code>/${cmd.replace('/', '')} &lt;url&gt;</code>`);
         }
 
+        // Follow redirects for short links (v.douyin.com, vm.tiktok.com, etc.)
+        if (url.includes('v.douyin.com') || url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
+            try {
+                url = await followRedirect(url);
+            } catch(e) {}
+        }
+
+        // Clean URL
+        url = url.split('?')[0];
+
         await ctx.action('upload_video');
-        const proc = await ctx.replyHTML(`🎬 <i>Downloading ${platform} video...</i>`);
+        const proc = await ctx.replyHTML(`🎬 <i>On it! Grabbing that ${platform} video...</i>`);
 
         try {
             let info = await fetchTikWM(url);
@@ -31,22 +45,17 @@ module.exports = {
             if (!info) info = await neuralGridFallback(url);
             if (!info?.url) throw new Error('All methods failed');
 
-            await ctx.bridge.deleteMessage(ctx.chatId, proc.result?.message_id || proc);
-
-            const caption = `✅ <b>${platform} Video</b>\n\n` +
-                (info.title ? `🎬 <b>Title:</b> ${escapeHTML(info.title.substring(0, 100))}\n` : '') +
-                (info.uploader ? `👤 <b>Author:</b> @${escapeHTML(info.uploader)}\n` : '') +
-                (info.duration ? `⏱️ <b>Duration:</b> ${info.duration}s\n` : '') +
-                `\n🛡️ Archon CG-223 · v3.0.0`;
+            const caption = (info.title ? `🎬 ${escapeHTML(info.title.substring(0, 120))}\n` : '') +
+                (info.uploader ? `👤 @${escapeHTML(info.uploader)}` : '') +
+                `\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
 
             try {
                 await ctx.sendVideo(info.url, { caption, parse_mode: 'HTML' });
             } catch {
-                await ctx.sendDoc(info.url, { caption: caption + '\n\n📁 Download to watch', parse_mode: 'HTML' });
+                await ctx.sendDoc(info.url, { caption, parse_mode: 'HTML' });
             }
         } catch (err) {
-            await ctx.bridge.deleteMessage(ctx.chatId, proc.result?.message_id || proc);
-            ctx.replyHTML(`❌ <b>Download Failed</b>\n\n${platform}'s protection blocked all attempts.\nTry a different video.`);
+            ctx.replyHTML(`❌ Couldn't grab that one — might be private or region-locked. Try a different video!`);
         }
     }
 };
@@ -61,6 +70,22 @@ function requestJSON(url, opts = {}) {
         });
         req.on('error', reject);
         req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+        req.end();
+    });
+}
+
+async function followRedirect(url) {
+    return new Promise((resolve, reject) => {
+        const lib = url.startsWith('https:') ? https : require('http');
+        const req = lib.request(url, { method: 'HEAD', timeout: 10000 }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                resolve(res.headers.location);
+            } else {
+                resolve(url);
+            }
+        });
+        req.on('error', () => resolve(url));
+        req.on('timeout', () => { req.destroy(); resolve(url); });
         req.end();
     });
 }

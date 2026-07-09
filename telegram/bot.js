@@ -214,6 +214,21 @@ async function handleCallback(update, bridge, client) {
         }
     }
 
+    // Direct command trigger from button
+    if (data.startsWith('cmd:')) {
+        const cmdName = data.split(':')[1];
+        const ctx = buildContext(update, bridge, client);
+        if (!ctx) return;
+        ctx.args = [];
+        const cmd = bridge.getCommand(cmdName);
+        if (cmd?.handler) {
+            try { await cmd.handler(ctx); } catch(e) { ctx.replyHTML(`❌ ${escapeHTML(e.message)}`); }
+        } else {
+            ctx.replyHTML(`💡 Type <code>/${escapeHTML(cmdName)}</code> to use this command!`);
+        }
+        return;
+    }
+
     // Menu navigation — smooth edit in place
     if (!data.startsWith('m:')) return;
 
@@ -226,28 +241,28 @@ async function handleCallback(update, bridge, client) {
 
         case 'ai':
             await editMsg(bridge, chatId, msgId, PAGES.ai, subMarkup([
-                [{ text: '💬 Start Chat', callback_data: '_noop' }, { text: '❓ Ask', callback_data: '_noop' }],
+                [{ text: '💬 Ask Lydia AI', callback_data: 'cmd:lydia' }, { text: '🌐 Translate', callback_data: 'cmd:translate' }],
             ]));
             break;
 
         case 'games':
             await editMsg(bridge, chatId, msgId, PAGES.games, subMarkup([
-                [{ text: '🎯 Trivia', callback_data: '_noop' }, { text: '🔤 Word Guess', callback_data: '_noop' }],
-                [{ text: '🎲 Roll Dice', callback_data: '_noop' }, { text: '🪙 Coin Flip', callback_data: '_noop' }],
+                [{ text: '🎯 Trivia', callback_data: 'cmd:trivia' }, { text: '🔤 Word Guess', callback_data: 'cmd:wordguess' }],
+                [{ text: '🎲 Roll Dice', callback_data: 'cmd:roll' }, { text: '🪙 Coin Flip', callback_data: 'cmd:coinflip' }],
             ]));
             break;
 
         case 'econ':
             await editMsg(bridge, chatId, msgId, PAGES.econ, subMarkup([
-                [{ text: '🎁 Daily', callback_data: '_noop' }, { text: '💰 Balance', callback_data: '_noop' }],
-                [{ text: '📊 Rank', callback_data: '_noop' }, { text: '📋 Profile', callback_data: '_noop' }],
+                [{ text: '🎁 Daily Reward', callback_data: 'cmd:daily' }, { text: '💰 Balance', callback_data: 'cmd:balance' }],
+                [{ text: '📊 Rank', callback_data: 'cmd:rank' }, { text: '📋 Profile', callback_data: 'cmd:profile' }],
             ]));
             break;
 
         case 'util':
             await editMsg(bridge, chatId, msgId, PAGES.util, subMarkup([
-                [{ text: '🌤️ Weather', callback_data: '_noop' }, { text: '💎 Crypto', callback_data: '_noop' }],
-                [{ text: '🌐 Translate', callback_data: '_noop' }, { text: '⏰ Reminder', callback_data: '_noop' }],
+                [{ text: '🌤️ Weather', callback_data: 'cmd:weather' }, { text: '💎 Crypto', callback_data: 'cmd:crypto' }],
+                [{ text: '🌐 Translate', callback_data: 'cmd:translate' }, { text: '⏰ Reminder', callback_data: 'cmd:remind' }],
             ]));
             break;
 
@@ -321,6 +336,8 @@ function buildContext(update, bridge, client) {
         sendPhoto: (p, o={}) => bridge.sendPhoto(chatId, p, o),
         sendVideo: (v, o={}) => bridge.sendVideo(chatId, v, o),
         sendAudio: (a, o={}) => bridge.sendAudio(chatId, a, o),
+        sendVideoBuffer: (buf, o={}) => bridge.sendVideoBuffer(chatId, buf, o),
+        sendAudioBuffer: (buf, o={}) => bridge.sendAudioBuffer(chatId, buf, o),
         sendDoc: (d, o={}) => bridge.sendDocument(chatId, d, o),
     };
 
