@@ -320,6 +320,7 @@ function buildContext(update, bridge, client) {
         action: (a='typing') => bridge.sendAction(chatId, a),
         sendPhoto: (p, o={}) => bridge.sendPhoto(chatId, p, o),
         sendVideo: (v, o={}) => bridge.sendVideo(chatId, v, o),
+        sendAudio: (a, o={}) => bridge.sendAudio(chatId, a, o),
         sendDoc: (d, o={}) => bridge.sendDocument(chatId, d, o),
     };
 
@@ -364,6 +365,7 @@ function loadPlugins(bridge, client) {
         client.telegramCommandCount = bridge.commands.size;
         client._telegramCommands = bridge.commands.size;
     }
+    console.log(`\x1b[35m[TELEGRAM]\x1b[0m ${loaded} plugins loaded ✅${failed > 0 ? ` • ${failed} failed ❌` : ''} • ${bridge?.commands?.size || loaded} commands registered`);
     return { loaded, failed };
 }
 
