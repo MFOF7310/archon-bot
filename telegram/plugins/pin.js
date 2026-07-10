@@ -1,5 +1,4 @@
 const https = require('https');
-const { t } = require('../lang/index.js');
 
 function tgApi(token, method, params) {
     return new Promise((res) => {
@@ -21,10 +20,8 @@ module.exports = {
     adminOnly: true,
 
     handler: async (ctx) => {
-        const lang = ctx.message?.from?.language_code || 'en';
-        const userId = ctx.userId;
-        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only', {}, userId));
-        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only', {}, userId));
+        if (!ctx.isGroup) return ctx.replyHTML(ctx.t('groups_only', {}));
+        if (!await ctx.isAdmin()) return ctx.replyHTML(ctx.t('admin_only', {}));
 
         const reply = ctx.message?.reply_to_message;
         if (!reply) return ctx.replyHTML(`💡 Reply to a message and use /pin to pin it.`);
@@ -34,8 +31,8 @@ module.exports = {
             chat_id: ctx.chatId, message_id: reply.message_id, disable_notification: silent
         });
 
-        if (!result.ok) return ctx.replyHTML(t(lang, 'pin_failed', {}, userId));
-        await ctx.replyHTML(`${t(lang, 'pin_success', {}, userId)}${silent ? ' 🤫' : ''}
+        if (!result.ok) return ctx.replyHTML(ctx.t('pin_failed', {}));
+        await ctx.replyHTML(`${ctx.t('pin_success', {})}${silent ? ' 🤫' : ''}
 
 🦅 ARCHON CG-223`);
     }

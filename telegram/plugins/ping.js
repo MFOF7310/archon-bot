@@ -1,7 +1,3 @@
-// ═══════════════════════════════════════════
-//  TG COMMAND: Ping
-// ═══════════════════════════════════════════
-
 module.exports = {
     name: 'ping',
     description: 'Test bot response latency',
@@ -10,7 +6,7 @@ module.exports = {
 
     handler: async (ctx) => {
         const start = Date.now();
-        await ctx.replyHTML(`📡 <i>Measuring...</i>`);
+        await ctx.action('typing');
         const latency = Date.now() - start;
         const wsPing = Math.round(ctx.client?.ws?.ping || 0);
 
@@ -21,11 +17,11 @@ module.exports = {
         else { emoji = '🐢'; rating = 'SLOW'; }
 
         await ctx.replyHTML(
-            `📡 <b>PING RESULT</b>\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `🏓 <b>PING</b>\n━━━━━━━━━━━━━━━━━━━━\n\n` +
             `${emoji} <b>${rating}</b>\n` +
             `📡 Latency: <b>${latency}ms</b>\n` +
             `📡 Discord: <b>${wsPing}ms</b>\n` +
-            `📍 Node: BAMAKO_223 🇲🇱`
+            `📍 BAMAKO_223 🇲🇱`
         );
     }
 };

@@ -1,5 +1,4 @@
 const { dlVideo, getInfo } = require('./_media.js');
-const { t } = require('../lang/index.js');
 const fs = require('fs');
 
 module.exports = {
@@ -10,14 +9,12 @@ module.exports = {
     usage: '/ig <url>',
 
     handler: async (ctx) => {
-        const lang = ctx.message?.from?.language_code || 'en';
-        const userId = ctx.userId;
         const url = ctx.args[0];
         if (!url || !url.includes('instagram'))
             return ctx.replyHTML(`📸 <b>Instagram Downloader</b>\n\nJust send me an Instagram reel or post link!\n\n<code>/ig &lt;url&gt;</code>`);
 
         await ctx.action('upload_video');
-        const proc = await ctx.replyHTML(t(lang, 'media_fetching_ig', {}, userId));
+        const proc = await ctx.replyHTML(ctx.t('media_fetching_ig', {}));
 
         try {
             const [info, filePath] = await Promise.all([
@@ -35,7 +32,7 @@ module.exports = {
             await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
         } catch(e) {
             console.error('[IG]', e.message);
-            await ctx.replyHTML(t(lang, 'media_failed_ig', {}, userId));
+            await ctx.replyHTML(ctx.t('media_failed_ig', {}));
         }
     }
 };

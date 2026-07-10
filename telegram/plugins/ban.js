@@ -1,5 +1,4 @@
 const https = require('https');
-const { t } = require('../lang/index.js');
 
 function escapeHTML(s) { return !s || typeof s !== 'string' ? '' : s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -23,10 +22,8 @@ module.exports = {
     adminOnly: true,
 
     handler: async (ctx) => {
-        const lang = ctx.message?.from?.language_code || 'en';
-        const userId = ctx.userId;
-        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only', {}, userId));
-        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only', {}, userId));
+        if (!ctx.isGroup) return ctx.replyHTML(ctx.t('groups_only', {}));
+        if (!await ctx.isAdmin()) return ctx.replyHTML(ctx.t('admin_only', {}));
 
         const reply = ctx.message?.reply_to_message;
         const target = reply?.from;
@@ -36,10 +33,10 @@ module.exports = {
         const result = await tgApi(ctx.bridge.token, 'banChatMember', { chat_id: ctx.chatId, user_id: target.id });
 
         const name = escapeHTML(target.first_name || target.username || 'User');
-        if (!result.ok) return ctx.replyHTML(t(lang, 'ban_failed', {}, userId));
+        if (!result.ok) return ctx.replyHTML(ctx.t('ban_failed', {}));
 
         await ctx.replyHTML(
-            `${t(lang, 'ban_success', { name }, userId)}
+            `${ctx.t('ban_success', { name })}
 ` +
             `📝 ${escapeHTML(reason)}
 
