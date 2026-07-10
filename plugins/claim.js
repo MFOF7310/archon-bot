@@ -392,7 +392,7 @@ module.exports = {
                 const row = new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder()
-                            .setURL('https://bamako-steel-dev.xyz/dashboard')
+                            .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}`)
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Link)
                             .setEmoji('📊')
@@ -536,7 +536,7 @@ module.exports = {
             const actionRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setURL('https://bamako-steel-dev.xyz/dashboard')
+                        .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}`)
                         .setLabel(t.viewDashboard)
                         .setStyle(ButtonStyle.Link)
                         .setEmoji('📊'),
@@ -647,7 +647,7 @@ module.exports = {
                 const row = new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder()
-                            .setURL('https://bamako-steel-dev.xyz/dashboard')
+                            .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}`)
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Link)
                             .setEmoji('📊')
@@ -787,7 +787,7 @@ module.exports = {
             const actionRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setURL('https://bamako-steel-dev.xyz/dashboard')
+                        .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}`)
                         .setLabel(t.viewDashboard)
                         .setStyle(ButtonStyle.Link)
                         .setEmoji('📊'),
