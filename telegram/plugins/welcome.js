@@ -3,14 +3,7 @@
 // ═══════════════════════════════════════════
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-const WELCOMES = [
-    "Welcome to the node, {name}! 🦅",
-    "🚀 {name} has entered the Digital Sovereignty zone!",
-    "A new agent joins us — welcome {name}! 🔥",
-    "🎉 {name} just dropped in! Say hello!",
-    "Welcome aboard, {name}! The Bamako Node awaits. 🇲🇱",
-];
+const { t } = require('../lang/index.js');
 
 module.exports = {
     name: 'welcome',
@@ -68,13 +61,14 @@ module.exports = {
         if (action === 'test') {
             const s = db.prepare("SELECT * FROM group_settings WHERE chat_id = ?").get(chatId);
             const name = escapeHTML(ctx.username);
+            const lang = ctx.message?.from?.language_code || 'en';
             let msg;
             if (s?.welcome_text) {
-                msg = s.welcome_text.replace(/{name}/g, name).replace(/{group}/g, escapeHTML(ctx.message.chat.title || 'this group'));
+                msg = s.welcome_text.replace(/{name}/g, name).replace(/{group}/g, escapeHTML(ctx.message?.chat?.title || 'this group'));
             } else {
-                msg = WELCOMES[Math.floor(Math.random() * WELCOMES.length)].replace('{name}', name);
+                msg = t(lang, 'welcome_default', { name, group: escapeHTML(ctx.message?.chat?.title || 'this group') });
             }
-            return ctx.replyHTML(`👋 <b>Preview:</b>\n\n${msg}`);
+            return ctx.replyHTML(`${t(lang, 'welcome_test')}\n\n${msg}`);
         }
 
         ctx.replyHTML(`❌ Unknown. Use <code>/welcome on</code>, <code>/welcome off</code>, or <code>/welcome set</code>.`);
