@@ -651,6 +651,113 @@ async function handleUpdate(update, bridge, client) {
         return;
     }
 
+    // ── NEW MEMBER JOIN (chat_member update) ──
+    if (update.chat_member) {
+        const cm = update.chat_member;
+        const newStatus = cm.new_chat_member?.status;
+        const oldStatus = cm.old_chat_member?.status;
+        // Member joined = new status is member/administrator, old was left/kicked/restricted
+        const joined = ['member','administrator','creator'].includes(newStatus) && 
+                       ['left','kicked','restricted'].includes(oldStatus);
+        if (!joined) return;
+        const member = cm.new_chat_member?.user;
+        if (!member || member.is_bot) return;
+        const chatId = String(cm.chat.id);
+        const chatTitle = cm.chat.title || 'the group';
+        const joinMembers = [member];
+        // Fall through to welcome logic below
+        try {
+            const db = client?.db;
+            if (db) {
+                try { db.prepare(`CREATE TABLE IF NOT EXISTS group_settings (chat_id TEXT PRIMARY KEY, welcome_enabled INTEGER DEFAULT 0, welcome_text TEXT, welcome_type TEXT DEFAULT 'random')`).run(); } catch {}
+                const settings = db.prepare('SELECT * FROM group_settings WHERE chat_id = ?').get(chatId);
+                if (settings?.welcome_enabled) {
+                    const name = escapeHTML(member.first_name || member.username || 'Friend');
+                    let msg;
+                    if (settings.welcome_text) {
+                        msg = settings.welcome_text
+                            .replace(/{name}/g, `<a href="tg://user?id=${member.id}">${name}</a>`)
+                            .replace(/{group}/g, escapeHTML(chatTitle));
+                    } else {
+                        const WELCOMES = [
+                            `Hey <a href="tg://user?id=${member.id}">${name}</a>! Welcome to ${escapeHTML(chatTitle)}! 🦅`,
+                            `🎉 <a href="tg://user?id=${member.id}">${name}</a> just joined — say hello!`,
+                            `Welcome aboard <a href="tg://user?id=${member.id}">${name}</a>! The node grows stronger 💪`,
+                            `🚀 <a href="tg://user?id=${member.id}">${name}</a> has entered the chat! Glad you're here!`,
+                            `<a href="tg://user?id=${member.id}">${name}</a> dropped in! Welcome to ${escapeHTML(chatTitle)} 🇲🇱`,
+                        ];
+                        msg = WELCOMES[Math.floor(Math.random() * WELCOMES.length)];
+                    }
+                    await bridge.sendTo(cm.chat.id, msg, { parse_mode: 'HTML' });
+                }
+            }
+        } catch(e) { console.error('[WELCOME]', e.message); }
+        return;
+    }
+
+    // ── NEW MEMBER JOIN (legacy message update) ──
+    const joinMembers = update.message?.new_chat_members;
+    if (joinMembers?.length) {
+        const chatId = String(update.message.chat.id);
+        const chatTitle = update.message.chat.title || 'the group';
+        try {
+            const welcomePlugin = require('./plugins/welcome.js');
+            const db = client?.db;
+            if (db) {
+                try {
+                    db.prepare(`CREATE TABLE IF NOT EXISTS group_settings (
+                        chat_id TEXT PRIMARY KEY, welcome_enabled INTEGER DEFAULT 0,
+                        welcome_text TEXT, welcome_type TEXT DEFAULT 'random'
+                    )`).run();
+                } catch {}
+                const settings = db.prepare('SELECT * FROM group_settings WHERE chat_id = ?').get(chatId);
+                if (settings?.welcome_enabled) {
+                    for (const member of joinMembers) {
+                        if (member.is_bot) continue;
+                        const name = escapeHTML(member.first_name || member.username || 'Friend');
+                        let msg;
+                        if (settings.welcome_text) {
+                            msg = settings.welcome_text
+                                .replace(/{name}/g, `<a href="tg://user?id=${member.id}">${name}</a>`)
+                                .replace(/{group}/g, escapeHTML(chatTitle));
+                        } else {
+                            const WELCOMES = [
+                                `Hey <a href="tg://user?id=${member.id}">${name}</a>! Welcome to ${escapeHTML(chatTitle)}! 🦅`,
+                                `🎉 <a href="tg://user?id=${member.id}">${name}</a> just joined! Say hello!`,
+                                `Welcome aboard <a href="tg://user?id=${member.id}">${name}</a>! The node grows stronger 💪`,
+                                `🚀 <a href="tg://user?id=${member.id}">${name}</a> has entered the chat! Glad you're here!`,
+                                `<a href="tg://user?id=${member.id}">${name}</a> dropped in! Welcome to ${escapeHTML(chatTitle)} 🇲🇱`,
+                            ];
+                            msg = WELCOMES[Math.floor(Math.random() * WELCOMES.length)];
+                        }
+                        await bridge.sendTo(update.message.chat.id, msg, { parse_mode: 'HTML' });
+                    }
+                }
+            }
+        } catch(e) { console.error('[WELCOME]', e.message); }
+        return;
+    }
+
+    // ── MEMBER LEFT ──
+    const leftMember = update.message?.left_chat_member;
+    if (leftMember && !leftMember.is_bot) {
+        const chatId = String(update.message.chat.id);
+        try {
+            const db = client?.db;
+            if (db) {
+                const settings = db.prepare('SELECT * FROM group_settings WHERE chat_id = ?').get(chatId);
+                if (settings?.welcome_enabled) {
+                    const name = escapeHTML(leftMember.first_name || 'Someone');
+                    await bridge.sendTo(update.message.chat.id,
+                        `👋 ${name} has left the chat. See you around!`,
+                        { parse_mode: 'HTML' }
+                    );
+                }
+            }
+        } catch(e) {}
+        return;
+    }
+
     // Regular text messages
     const ctx = buildContext(update, bridge, client);
     if (!ctx || ctx.isBot) return;
@@ -738,7 +845,8 @@ function startPolling(bridge, client) {
     const poll = async () => {
         if (!running) return;
         try {
-            const url = `https://api.telegram.org/bot${token}/getUpdates?offset=${lastId+1}&limit=100&timeout=30`;
+            const allowedUpdates = encodeURIComponent(JSON.stringify(["message","edited_message","callback_query","chat_member","my_chat_member"]));
+            const url = `https://api.telegram.org/bot${token}/getUpdates?offset=${lastId+1}&limit=100&timeout=30&allowed_updates=${allowedUpdates}`;
             https.get(url, { timeout: 40000 }, (res) => {
                 let body = '';
                 res.on('data', c => body += c);
@@ -747,7 +855,15 @@ function startPolling(bridge, client) {
                     try {
                         const json = JSON.parse(body);
                         if (json.ok && json.result?.length > 0) {
-                            for (const u of json.result) { lastId = Math.max(lastId, u.update_id); await handleUpdate(u, bridge, client); }
+                            for (const u of json.result) {
+                                lastId = Math.max(lastId, u.update_id);
+                                // Debug — log update types
+                                const uType = Object.keys(u).filter(k => k !== 'update_id')[0];
+                                if (uType !== 'message' || u.message?.new_chat_members || u.message?.left_chat_member) {
+                                    console.log('[TG DEBUG] update type:', uType, JSON.stringify(u).substring(0, 100));
+                                }
+                                await handleUpdate(u, bridge, client);
+                            }
                         }
                     } catch {}
                     setTimeout(poll, 500);
