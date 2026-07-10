@@ -4952,7 +4952,7 @@ apiApp.get('/api/stats', (req, res) => {
         const guildCache = client.guilds.cache;
         let count = 0;
         for (const [id, guild] of guildCache) {
-            if (count >= 10) break;
+            if (count >= 50) break; // Show up to 50 servers
             try {
                 const userCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE guild_id = ?').get(id)?.count || 0;
                 servers.push({
@@ -5287,20 +5287,34 @@ apiApp.post('/api/vote', (req, res) => {
 
 // Broadcast endpoint
 apiApp.post("/api/broadcast", (req, res) => {
-    const { message, target } = req.body;
+    const { message, target, guildIds } = req.body;
     if (!message) return res.status(400).json({ error: "Message required" });
     let count = 0;
-    const guilds = client.guilds.cache;
-    guilds.forEach(async (guild) => {
+    const allGuilds = client.guilds.cache;
+
+    // Filter by specific guilds if needed
+    const targetGuilds = (target === "specific" && guildIds?.length)
+        ? new Map([...allGuilds].filter(([id]) => guildIds.includes(id)))
+        : allGuilds;
+
+    targetGuilds.forEach(async (guild) => {
         try {
-            const channel = guild.systemChannel || guild.channels.cache.find(c => c.type === 0 && c.permissionsFor(guild.members.me).has("SendMessages"));
+            const channel = guild.systemChannel ||
+                guild.channels.cache.find(c => c.type === 0 && c.permissionsFor(guild.members.me)?.has("SendMessages"));
             if (channel) {
-                await channel.send({ content: `📢 **Broadcast from Architect:**\n${message}` });
+                const { EmbedBuilder } = require("discord.js");
+                const embed = new EmbedBuilder()
+                    .setColor(0x00f0ff)
+                    .setAuthor({ name: "// ARCHON BROADCAST //", iconURL: client.user.displayAvatarURL() })
+                    .setDescription(message)
+                    .setFooter({ text: `BAMAKO_223 🇲🇱 • Sent to ${targetGuilds.size} server${targetGuilds.size !== 1 ? "s" : ""}` })
+                    .setTimestamp();
+                await channel.send({ embeds: [embed] });
                 count++;
             }
         } catch(e) {}
     });
-    setTimeout(() => res.json({ success: true, guildCount: count, total: guilds.size }), 2000);
+    setTimeout(() => res.json({ success: true, guildCount: count, total: targetGuilds.size }), 2000);
 });
 // ─── COMMANDS (par guild) ──────────────────────────────
 // ================= WHATSAPP SESSION MANAGER =================
