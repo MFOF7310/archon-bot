@@ -679,14 +679,14 @@ async function handleUpdate(update, bridge, client) {
                             .replace(/{name}/g, `<a href="tg://user?id=${member.id}">${name}</a>`)
                             .replace(/{group}/g, escapeHTML(chatTitle));
                     } else {
-                        const WELCOMES = [
-                            `Hey <a href="tg://user?id=${member.id}">${name}</a>! Welcome to ${escapeHTML(chatTitle)}! 🦅`,
-                            `🎉 <a href="tg://user?id=${member.id}">${name}</a> just joined — say hello!`,
-                            `Welcome aboard <a href="tg://user?id=${member.id}">${name}</a>! The node grows stronger 💪`,
-                            `🚀 <a href="tg://user?id=${member.id}">${name}</a> has entered the chat! Glad you're here!`,
-                            `<a href="tg://user?id=${member.id}">${name}</a> dropped in! Welcome to ${escapeHTML(chatTitle)} 🇲🇱`,
-                        ];
-                        msg = WELCOMES[Math.floor(Math.random() * WELCOMES.length)];
+                        try {
+                            const { t } = require('./plugins/../lang/index.js');
+                            const memberLang = member.language_code || 'en';
+                            const rawMsg = t(memberLang, 'welcome_default', { name, group: escapeHTML(chatTitle) });
+                            msg = rawMsg.replace(/{name}/g, `<a href="tg://user?id=${member.id}">${name}</a>`);
+                        } catch(le) {
+                            msg = `Hey <a href="tg://user?id=${member.id}">${name}</a>! Welcome to ${escapeHTML(chatTitle)}! 🦅`;
+                        }
                     }
                     await bridge.sendTo(cm.chat.id, msg, { parse_mode: 'HTML' });
                 }
