@@ -449,6 +449,23 @@ function buildContext(update, bridge, client) {
         isGroup: ['group', 'supergroup'].includes(chatType), isChannel: chatType === 'channel',
         callbackQuery: cbq, session, lydiaActiveChats: bridge.lydiaActiveChats, conversations: bridge.conversations, args: [],
         isOwner: () => String(userId) === String(process.env.OWNER_ID) || String(userId) === String(process.env.TELEGRAM_CHAT_ID),
+        // Auto lang — checks user preference first, falls back to Telegram language_code
+        lang: (() => {
+            try {
+                const fs = require('fs');
+                const db = JSON.parse(fs.readFileSync('/tmp/archon_user_langs.json', 'utf8'));
+                return db[String(userId)] || msg?.from?.language_code || 'en';
+            } catch { return msg?.from?.language_code || 'en'; }
+        })(),
+        t: (key, vars = {}) => {
+            try {
+                const { t: translate } = require('./plugins/../lang/index.js');
+                const fs = require('fs');
+                const db = JSON.parse(fs.readFileSync('/tmp/archon_user_langs.json', 'utf8'));
+                const lang = db[String(userId)] || msg?.from?.language_code || 'en';
+                return translate(lang, key, vars, userId);
+            } catch { return key; }
+        },
         isAdmin: async () => bridge.isAdmin(chatId, userId),
         reply: (t, o={}) => bridge.sendTo(chatId, t, { reply_to: msg.message_id, ...o }),
         replyHTML: (t, o={}) => bridge.sendTo(chatId, t, { reply_to: msg.message_id, parse_mode: 'HTML', ...o }),

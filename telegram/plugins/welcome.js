@@ -3,7 +3,6 @@
 // ═══════════════════════════════════════════
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-const { t } = require('../lang/index.js');
 
 module.exports = {
     name: 'welcome',
@@ -61,14 +60,13 @@ module.exports = {
         if (action === 'test') {
             const s = db.prepare("SELECT * FROM group_settings WHERE chat_id = ?").get(chatId);
             const name = escapeHTML(ctx.username);
-            const lang = ctx.message?.from?.language_code || 'en';
             let msg;
             if (s?.welcome_text) {
                 msg = s.welcome_text.replace(/{name}/g, name).replace(/{group}/g, escapeHTML(ctx.message?.chat?.title || 'this group'));
             } else {
                 msg = t(lang, 'welcome_default', { name, group: escapeHTML(ctx.message?.chat?.title || 'this group') });
             }
-            return ctx.replyHTML(`${t(lang, 'welcome_test')}\n\n${msg}`);
+            return ctx.replyHTML(`${ctx.t('welcome_test')}\n\n${msg}`);
         }
 
         ctx.replyHTML(`❌ Unknown. Use <code>/welcome on</code>, <code>/welcome off</code>, or <code>/welcome set</code>.`);

@@ -1,5 +1,4 @@
 const fs = require('fs');
-const { t, LANG_MAP, LANGS } = require('../lang/index.js');
 
 const DB_PATH = '/tmp/archon_user_langs.json';
 
