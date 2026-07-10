@@ -392,9 +392,9 @@ module.exports = {
                 const row = new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder()
-                            .setCustomId('claim_goto_daily')
+                            .setURL('https://bamako-steel-dev.xyz/dashboard')
                             .setLabel(t.viewDashboard)
-                            .setStyle(ButtonStyle.Primary)
+                            .setStyle(ButtonStyle.Link)
                             .setEmoji('📊')
                     );
                 
@@ -536,9 +536,9 @@ module.exports = {
             const actionRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId('claim_view_daily')
+                        .setURL('https://bamako-steel-dev.xyz/dashboard')
                         .setLabel(t.viewDashboard)
-                        .setStyle(ButtonStyle.Secondary)
+                        .setStyle(ButtonStyle.Link)
                         .setEmoji('📊'),
                     new ButtonBuilder()
                         .setCustomId('claim_view_profile')
@@ -647,9 +647,9 @@ module.exports = {
                 const row = new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder()
-                            .setCustomId('claim_slash_goto_daily')
+                            .setURL('https://bamako-steel-dev.xyz/dashboard')
                             .setLabel(t.viewDashboard)
-                            .setStyle(ButtonStyle.Primary)
+                            .setStyle(ButtonStyle.Link)
                             .setEmoji('📊')
                     );
                 
@@ -787,9 +787,9 @@ module.exports = {
             const actionRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId('claim_slash_view_daily')
+                        .setURL('https://bamako-steel-dev.xyz/dashboard')
                         .setLabel(t.viewDashboard)
-                        .setStyle(ButtonStyle.Secondary)
+                        .setStyle(ButtonStyle.Link)
                         .setEmoji('📊'),
                     new ButtonBuilder()
                         .setCustomId('claim_slash_view_profile')
