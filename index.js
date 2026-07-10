@@ -4872,6 +4872,77 @@ apiApp.get('/api/health', (req, res) => {
 });
 
 // Statistiques en temps réel pour le dashboard
+apiApp.get('/api/user/:userId', (req, res) => {
+    try {
+        const userId = req.params.userId;
+        
+        // Get all guild data for this user
+        const allUserData = db.prepare('SELECT * FROM users WHERE id = ?').all(userId);
+        
+        // Get dashboard user info
+        let dashUser = null;
+        try {
+            dashUser = db.prepare('SELECT * FROM dashboard_users WHERE discord_id = ?').get(userId);
+        } catch(e) {}
+        
+        if (!allUserData.length && !dashUser) return res.json(null);
+        
+        // Aggregate across all servers
+        const totalXp = allUserData.reduce((sum, u) => sum + (u.xp || 0), 0);
+        const totalCredits = allUserData.reduce((sum, u) => sum + (u.credits || 0), 0);
+        const maxLevel = Math.max(...allUserData.map(u => u.level || 1), 1);
+        const maxStreak = Math.max(...allUserData.map(u => u.streak_days || 0), 0);
+        const totalClaims = allUserData.reduce((sum, u) => sum + (u.claim_count || 0), 0);
+        const totalMessages = allUserData.reduce((sum, u) => sum + (u.message_count || 0), 0);
+        const totalCommands = allUserData.reduce((sum, u) => sum + (u.commands_used || 0), 0);
+
+        // Get global rank by total XP
+        let rank = null;
+        try {
+            const rankRow = db.prepare(`
+                SELECT COUNT(*) + 1 as rank FROM (
+                    SELECT id, SUM(xp) as total_xp FROM users GROUP BY id
+                ) ranked WHERE total_xp > ?
+            `).get(totalXp);
+            rank = rankRow?.rank || null;
+        } catch(e) {}
+
+        // Build badges
+        const badges = [];
+        if (maxLevel >= 5) badges.push('⭐ Level 5+');
+        if (maxLevel >= 10) badges.push('🌟 Level 10+');
+        if (maxLevel >= 25) badges.push('💎 Level 25+');
+        if (maxStreak >= 7) badges.push('🔥 Week Streak');
+        if (maxStreak >= 30) badges.push('💫 Month Streak');
+        if (totalClaims >= 50) badges.push('🎯 Dedicated');
+        if (totalClaims >= 100) badges.push('👑 Legend');
+        if (dashUser) badges.push('🌐 Dashboard User');
+
+        // Get Discord user info from cache
+        const discordUser = client.users.cache.get(userId);
+        
+        res.json({
+            discordId: userId,
+            username: discordUser?.username || dashUser?.username || allUserData[0]?.username || 'Unknown',
+            avatar: discordUser?.avatar || dashUser?.avatar || null,
+            level: maxLevel,
+            xp: totalXp,
+            credits: totalCredits,
+            streakDays: maxStreak,
+            totalClaims,
+            messageCount: totalMessages,
+            commandsUsed: totalCommands,
+            rank,
+            badges,
+            servers: allUserData.length,
+            lastSeen: dashUser?.last_login || null,
+        });
+    } catch(err) {
+        console.error('[API /api/user]', err.message);
+        res.json(null);
+    }
+});
+
 apiApp.get('/api/stats', (req, res) => {
     try {
         const dbHealth = getDatabaseHealth();
@@ -4907,7 +4978,9 @@ apiApp.get('/api/stats', (req, res) => {
                 uptime: process.uptime(),
                 ping: Math.round(client.ws.ping),
                 commands: client.commands.size,
-                slashCommands: client.commands.filter(c => !!c.data).size,
+                slashCommands: client.commands.filter(c => !!c.data && c.category !== 'TELEGRAM').size,
+                telegramPlugins: client.telegramCommandCount || 0,
+                totalModules: client.commands.size,
                 servers: guildCache.size,
                 users: guildCache.reduce((acc, g) => acc + (g.memberCount || 0), 0)
             },
