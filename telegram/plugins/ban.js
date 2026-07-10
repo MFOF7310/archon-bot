@@ -24,8 +24,9 @@ module.exports = {
 
     handler: async (ctx) => {
         const lang = ctx.message?.from?.language_code || 'en';
-        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only'));
-        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only'));
+        const userId = ctx.userId;
+        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only', {}, userId));
+        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only', {}, userId));
 
         const reply = ctx.message?.reply_to_message;
         const target = reply?.from;
@@ -35,10 +36,10 @@ module.exports = {
         const result = await tgApi(ctx.bridge.token, 'banChatMember', { chat_id: ctx.chatId, user_id: target.id });
 
         const name = escapeHTML(target.first_name || target.username || 'User');
-        if (!result.ok) return ctx.replyHTML(t(lang, 'ban_failed'));
+        if (!result.ok) return ctx.replyHTML(t(lang, 'ban_failed', {}, userId));
 
         await ctx.replyHTML(
-            `${t(lang, 'ban_success', { name })}
+            `${t(lang, 'ban_success', { name }, userId)}
 ` +
             `📝 ${escapeHTML(reason)}
 

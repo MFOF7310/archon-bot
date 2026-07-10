@@ -18,6 +18,7 @@ module.exports = {
 
     handler: async (ctx) => {
         const lang = ctx.message?.from?.language_code || 'en';
+        const userId = ctx.userId;
         const cmd = ctx.message?.text?.split(' ')[0]?.replace('/','').replace('@' + (ctx.bridge?.botUsername||''),'').toLowerCase() || 'filter';
         const db = load();
         const isAdmin = await ctx.isAdmin();
@@ -50,19 +51,19 @@ Use <code>/filter keyword response</code> to add one!';
         }
 
         if (cmd === 'stop' || cmd === 'gstop' || cmd === 'pstop') {
-            if (!isAdmin && !isOwner) return ctx.replyHTML(t(lang, 'filter_admin_only'));
+            if (!isAdmin && !isOwner) return ctx.replyHTML(t(lang, 'filter_admin_only', {}, userId));
             const keyword = ctx.args[0]?.toLowerCase();
             if (!keyword) return ctx.replyHTML(`💡 Usage: <code>/${cmd} &lt;keyword&gt;</code>`);
             const key = cmd === 'gstop' ? `g:${ctx.chatId}` : cmd === 'pstop' ? 'pm' : `c:${ctx.chatId}`;
             if (db[key]?.[keyword]) {
                 delete db[key][keyword];
                 save(db);
-                return ctx.replyHTML(t(lang, 'filter_removed'));
+                return ctx.replyHTML(t(lang, 'filter_removed', {}, userId));
             }
-            return ctx.replyHTML(t(lang, 'filter_not_found'));
+            return ctx.replyHTML(t(lang, 'filter_not_found', {}, userId));
         }
 
-        if (!isAdmin && !isOwner) return ctx.replyHTML(t(lang, 'filter_admin_only'));
+        if (!isAdmin && !isOwner) return ctx.replyHTML(t(lang, 'filter_admin_only', {}, userId));
 
         const keyword = ctx.args[0]?.toLowerCase();
         const response = ctx.args.slice(1).join(' ');
@@ -99,7 +100,7 @@ Use <code>/filter keyword response</code> to add one!';
 
         const scopeLabel = cmd === 'gfilter' ? 'all groups' : cmd === 'pfilter' ? 'private chats' : 'this chat only';
         await ctx.replyHTML(
-            `${t(lang, 'filter_added')}
+            `${t(lang, 'filter_added', {}, userId)}
 
 ` +
             `🔑 Keyword: <code>${escapeHTML(keyword)}</code>
