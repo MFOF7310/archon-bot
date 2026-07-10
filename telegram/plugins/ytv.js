@@ -11,12 +11,13 @@ module.exports = {
 
     handler: async (ctx) => {
         const lang = ctx.message?.from?.language_code || 'en';
+        const userId = ctx.userId;
         const url = ctx.args[0];
         if (!url || (!url.includes('youtube') && !url.includes('youtu.be')))
             return ctx.replyHTML(`🎬 <b>YouTube Video</b>\n\n<code>/ytv &lt;url&gt;</code>\n\n720p quality, max 50MB`);
 
         await ctx.action('upload_video');
-        const proc = await ctx.replyHTML(t(lang, 'media_fetching_video'));
+        const proc = await ctx.replyHTML(t(lang, 'media_fetching_video', {}, userId));
 
         try {
             const [info, filePath] = await Promise.all([
@@ -34,7 +35,7 @@ module.exports = {
             await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
         } catch(e) {
             console.error('[YTV]', e.message);
-            await ctx.replyHTML(t(lang, 'media_failed_yt'));
+            await ctx.replyHTML(t(lang, 'media_failed_yt', {}, userId));
         }
     }
 };

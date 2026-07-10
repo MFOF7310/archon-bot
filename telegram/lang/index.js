@@ -19,7 +19,22 @@ const LANG_MAP = {
  * @param {string} langCode - Telegram user language_code
  * @returns {object} translations object
  */
-function getLang(langCode) {
+const fs = require('fs');
+const USER_LANG_DB = '/tmp/archon_user_langs.json';
+
+function getUserPreference(userId) {
+    try {
+        const db = JSON.parse(fs.readFileSync(USER_LANG_DB, 'utf8'));
+        return db[String(userId)] || null;
+    } catch { return null; }
+}
+
+function getLang(langCode, userId) {
+    // User preference takes priority
+    if (userId) {
+        const pref = getUserPreference(userId);
+        if (pref && LANGS[pref]) return LANGS[pref];
+    }
     const code = LANG_MAP[langCode] || LANG_MAP[langCode?.split('-')[0]] || 'en';
     return LANGS[code] || LANGS.en;
 }
@@ -31,8 +46,8 @@ function getLang(langCode) {
  * @param {object} vars - Variables to substitute {name}, {group} etc
  * @returns {string} Translated string
  */
-function t(langCode, key, vars = {}) {
-    const lang = getLang(langCode);
+function t(langCode, key, vars = {}, userId = null) {
+    const lang = getLang(langCode, userId);
     let str = lang[key] || LANGS.en[key] || key;
     
     // Handle arrays (pick random)

@@ -11,11 +11,12 @@ module.exports = {
 
     handler: async (ctx) => {
         const lang = ctx.message?.from?.language_code || 'en';
+        const userId = ctx.userId;
         const input = ctx.args.join(' ');
         if (!input) return ctx.replyHTML(`🎵 <b>YouTube Audio</b>\n\n<code>/yta &lt;url or song name&gt;</code>`);
 
         await ctx.action('upload_audio');
-        const proc = await ctx.replyHTML(t(lang, 'media_fetching_audio'));
+        const proc = await ctx.replyHTML(t(lang, 'media_fetching_audio', {}, userId));
 
         try {
             const isUrl = input.startsWith('http');
@@ -39,7 +40,7 @@ module.exports = {
             });
         } catch(e) {
             console.error('[YTA]', e.message);
-            await ctx.replyHTML(t(lang, 'media_failed_yt'));
+            await ctx.replyHTML(t(lang, 'media_failed_yt', {}, userId));
         }
     }
 };

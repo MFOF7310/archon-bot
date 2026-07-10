@@ -22,8 +22,9 @@ module.exports = {
 
     handler: async (ctx) => {
         const lang = ctx.message?.from?.language_code || 'en';
-        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only'));
-        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only'));
+        const userId = ctx.userId;
+        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only', {}, userId));
+        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only', {}, userId));
 
         const userId = ctx.args[0];
         if (!userId || isNaN(userId)) return ctx.replyHTML(`💡 Usage: <code>/unban &lt;user_id&gt;</code>`);
@@ -31,7 +32,7 @@ module.exports = {
         const result = await tgApi(ctx.bridge.token, 'unbanChatMember', { chat_id: ctx.chatId, user_id: parseInt(userId), only_if_banned: true });
         if (!result.ok) return ctx.replyHTML(`❌ Couldn\'t unban — they might not be banned!`);
 
-        await ctx.replyHTML(`${t(lang, 'unban_success')}
+        await ctx.replyHTML(`${t(lang, 'unban_success', {}, userId)}
 
 🦅 ARCHON CG-223`);
     }

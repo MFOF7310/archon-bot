@@ -11,12 +11,13 @@ module.exports = {
 
     handler: async (ctx) => {
         const lang = ctx.message?.from?.language_code || 'en';
+        const userId = ctx.userId;
         const url = ctx.args[0];
         if (!url || !url.includes('facebook'))
             return ctx.replyHTML(`📘 <b>Facebook Downloader</b>\n\nSend me a Facebook video link!\n\n<code>/fb &lt;url&gt;</code>`);
 
         await ctx.action('upload_video');
-        const proc = await ctx.replyHTML(t(lang, 'media_fetching_fb'));
+        const proc = await ctx.replyHTML(t(lang, 'media_fetching_fb', {}, userId));
 
         try {
             const [info, filePath] = await Promise.all([
@@ -34,7 +35,7 @@ module.exports = {
             await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
         } catch(e) {
             console.error('[FB]', e.message);
-            await ctx.replyHTML(t(lang, 'media_failed_fb'));
+            await ctx.replyHTML(t(lang, 'media_failed_fb', {}, userId));
         }
     }
 };

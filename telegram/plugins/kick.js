@@ -24,23 +24,24 @@ module.exports = {
 
     handler: async (ctx) => {
         const lang = ctx.message?.from?.language_code || 'en';
-        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only'));
-        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only'));
+        const userId = ctx.userId;
+        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only', {}, userId));
+        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only', {}, userId));
 
         const reply = ctx.message?.reply_to_message;
         const target = reply?.from;
-        if (!target) return ctx.replyHTML(t(lang, 'kick_no_reply'));
+        if (!target) return ctx.replyHTML(t(lang, 'kick_no_reply', {}, userId));
         if (target.is_bot) return ctx.replyHTML(`🤖 Can\'t kick bots this way!`);
 
         const reason = ctx.args.join(' ') || 'No reason given';
         const ban = await tgApi(ctx.bridge.token, 'banChatMember', { chat_id: ctx.chatId, user_id: target.id });
-        if (!ban.ok) return ctx.replyHTML(t(lang, 'kick_failed'));
+        if (!ban.ok) return ctx.replyHTML(t(lang, 'kick_failed', {}, userId));
 
         await tgApi(ctx.bridge.token, 'unbanChatMember', { chat_id: ctx.chatId, user_id: target.id, only_if_banned: true });
 
         const name = escapeHTML(target.first_name || target.username || 'User');
         await ctx.replyHTML(
-            `${t(lang, 'kick_success', { name })}
+            `${t(lang, 'kick_success', { name }, userId)}
 ` +
             `📝 ${escapeHTML(reason)}
 
