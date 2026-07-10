@@ -1,6 +1,7 @@
 const https = require('https');
+const { t } = require('../lang/index.js');
 
-function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeHTML(s) { return !s || typeof s !== 'string' ? '' : s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function tgApi(token, method, params) {
     return new Promise((res) => {
@@ -18,27 +19,32 @@ module.exports = {
     aliases: ['remove'],
     description: 'Kick a user from the group',
     category: 'Moderation',
-    usage: '/kick @user [reason]',
+    usage: '/kick',
     adminOnly: true,
 
     handler: async (ctx) => {
-        if (!ctx.isGroup) return ctx.replyHTML(`⚠️ This command only works in groups!`);
-        if (!await ctx.isAdmin()) return ctx.replyHTML(`⛔ You need to be an admin to kick people.`);
+        const lang = ctx.message?.from?.language_code || 'en';
+        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only'));
+        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only'));
 
         const reply = ctx.message?.reply_to_message;
         const target = reply?.from;
-        if (!target) return ctx.replyHTML(`💡 Reply to someone\'s message and use /kick to remove them.`);
-        if (target.is_bot) return ctx.replyHTML(`🤖 Can\'t kick bots this way — remove them from the member list.`);
+        if (!target) return ctx.replyHTML(t(lang, 'kick_no_reply'));
+        if (target.is_bot) return ctx.replyHTML(`🤖 Can\'t kick bots this way!`);
 
         const reason = ctx.args.join(' ') || 'No reason given';
-        const token = ctx.bridge.token;
+        const ban = await tgApi(ctx.bridge.token, 'banChatMember', { chat_id: ctx.chatId, user_id: target.id });
+        if (!ban.ok) return ctx.replyHTML(t(lang, 'kick_failed'));
 
-        // Ban then immediately unban = kick
-        const ban = await tgApi(token, 'banChatMember', { chat_id: ctx.chatId, user_id: target.id });
-        if (!ban.ok) return ctx.replyHTML(`❌ Couldn\'t kick ${escapeHTML(target.first_name)} — make sure I have admin rights!`);
+        await tgApi(ctx.bridge.token, 'unbanChatMember', { chat_id: ctx.chatId, user_id: target.id, only_if_banned: true });
 
-        await tgApi(token, 'unbanChatMember', { chat_id: ctx.chatId, user_id: target.id, only_if_banned: true });
+        const name = escapeHTML(target.first_name || target.username || 'User');
+        await ctx.replyHTML(
+            `${t(lang, 'kick_success', { name })}
+` +
+            `📝 ${escapeHTML(reason)}
 
-        await ctx.replyHTML(`👢 <b>${escapeHTML(target.first_name)}</b> has been kicked.\n📝 Reason: ${escapeHTML(reason)}\n\n🦅 ARCHON CG-223`);
+🦅 ARCHON CG-223`
+        );
     }
 };

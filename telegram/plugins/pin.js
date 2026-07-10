@@ -1,4 +1,5 @@
 const https = require('https');
+const { t } = require('../lang/index.js');
 
 function tgApi(token, method, params) {
     return new Promise((res) => {
@@ -14,26 +15,27 @@ function tgApi(token, method, params) {
 module.exports = {
     name: 'pin',
     aliases: ['pinmsg'],
-    description: 'Pin a message in the group',
+    description: 'Pin a message',
     category: 'Moderation',
     usage: '/pin [silent]',
     adminOnly: true,
 
     handler: async (ctx) => {
-        if (!ctx.isGroup) return ctx.replyHTML(`⚠️ Groups only!`);
-        if (!await ctx.isAdmin()) return ctx.replyHTML(`⛔ Admins only.`);
+        const lang = ctx.message?.from?.language_code || 'en';
+        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only'));
+        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only'));
 
         const reply = ctx.message?.reply_to_message;
         if (!reply) return ctx.replyHTML(`💡 Reply to a message and use /pin to pin it.`);
 
         const silent = ctx.args[0]?.toLowerCase() === 'silent';
         const result = await tgApi(ctx.bridge.token, 'pinChatMessage', {
-            chat_id: ctx.chatId,
-            message_id: reply.message_id,
-            disable_notification: silent
+            chat_id: ctx.chatId, message_id: reply.message_id, disable_notification: silent
         });
 
-        if (!result.ok) return ctx.replyHTML(`❌ Couldn\'t pin that — make sure I can pin messages!`);
-        await ctx.replyHTML(`📌 Message pinned${silent ? ' silently' : ''}!\n\n🦅 ARCHON CG-223`);
+        if (!result.ok) return ctx.replyHTML(t(lang, 'pin_failed'));
+        await ctx.replyHTML(`${t(lang, 'pin_success')}${silent ? ' 🤫' : ''}
+
+🦅 ARCHON CG-223`);
     }
 };
