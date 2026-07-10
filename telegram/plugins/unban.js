@@ -1,4 +1,5 @@
 const https = require('https');
+const { t } = require('../lang/index.js');
 
 function tgApi(token, method, params) {
     return new Promise((res) => {
@@ -20,15 +21,18 @@ module.exports = {
     adminOnly: true,
 
     handler: async (ctx) => {
-        if (!ctx.isGroup) return ctx.replyHTML(`⚠️ Groups only!`);
-        if (!await ctx.isAdmin()) return ctx.replyHTML(`⛔ Admins only.`);
+        const lang = ctx.message?.from?.language_code || 'en';
+        if (!ctx.isGroup) return ctx.replyHTML(t(lang, 'groups_only'));
+        if (!await ctx.isAdmin()) return ctx.replyHTML(t(lang, 'admin_only'));
 
         const userId = ctx.args[0];
-        if (!userId || isNaN(userId)) return ctx.replyHTML(`💡 Usage: <code>/unban &lt;user_id&gt;</code>\n\nGet the user ID with /id`);
+        if (!userId || isNaN(userId)) return ctx.replyHTML(`💡 Usage: <code>/unban &lt;user_id&gt;</code>`);
 
         const result = await tgApi(ctx.bridge.token, 'unbanChatMember', { chat_id: ctx.chatId, user_id: parseInt(userId), only_if_banned: true });
+        if (!result.ok) return ctx.replyHTML(`❌ Couldn\'t unban — they might not be banned!`);
 
-        if (!result.ok) return ctx.replyHTML(`❌ Couldn\'t unban that user — they might not be banned!`);
-        await ctx.replyHTML(`✅ User <code>${userId}</code> has been unbanned and can rejoin.\n\n🦅 ARCHON CG-223`);
+        await ctx.replyHTML(`${t(lang, 'unban_success')}
+
+🦅 ARCHON CG-223`);
     }
 };

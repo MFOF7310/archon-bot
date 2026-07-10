@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { t } = require('../lang/index.js');
 
 const DB_PATH = '/tmp/archon_filters.json';
 
@@ -6,10 +7,7 @@ function load() {
     try { return JSON.parse(fs.readFileSync(DB_PATH, 'utf8')); } catch { return {}; }
 }
 function save(d) { fs.writeFileSync(DB_PATH, JSON.stringify(d, null, 2)); }
-
-function escapeHTML(t) {
-    return !t || typeof t !== 'string' ? '' : t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+function escapeHTML(s) { return !s || typeof s !== 'string' ? '' : s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 module.exports = {
     name: 'filter',
@@ -19,59 +17,77 @@ module.exports = {
     usage: '/filter <keyword> <response>',
 
     handler: async (ctx) => {
-        const cmd = ctx.message?.text?.split(' ')[0]?.replace('/', '').replace('@' + (ctx.bridge?.botUsername || ''), '').toLowerCase() || 'filter';
+        const lang = ctx.message?.from?.language_code || 'en';
+        const cmd = ctx.message?.text?.split(' ')[0]?.replace('/','').replace('@' + (ctx.bridge?.botUsername||''),'').toLowerCase() || 'filter';
         const db = load();
         const isAdmin = await ctx.isAdmin();
         const isOwner = ctx.isOwner();
 
-        // LIST
         if (cmd === 'filters') {
-            const keys = [`c:${ctx.chatId}`, `g:${ctx.chatId}`, `pm`];
-            let msg = `🤖 <b>Active Filters</b>\n━━━━━━━━━━━━━━━━\n\n`;
+            const keys = [`c:${ctx.chatId}`, `g:${ctx.chatId}`, 'pm'];
+            let msg = `🤖 <b>Active Filters</b>
+━━━━━━━━━━━━━━━━
+
+`;
             let found = false;
             for (const k of keys) {
                 if (!db[k] || !Object.keys(db[k]).length) continue;
                 const label = k.startsWith('g:') ? '🌐 Group-wide' : k.startsWith('c:') ? '💬 This chat' : '📩 Private';
-                msg += `<b>${label}:</b>\n`;
+                msg += `<b>${label}:</b>
+`;
                 for (const [kw, val] of Object.entries(db[k])) {
-                    msg += `• <code>${escapeHTML(kw)}</code> → ${escapeHTML(val.response.substring(0,50))}\n`;
+                    msg += `• <code>${escapeHTML(kw)}</code> → ${escapeHTML(val.response.substring(0,50))}
+`;
                 }
-                msg += '\n';
+                msg += '
+';
                 found = true;
             }
-            if (!found) msg += 'No filters set yet.\n\nUse <code>/filter keyword response</code> to add one!';
+            if (!found) msg += 'No filters set yet.
+
+Use <code>/filter keyword response</code> to add one!';
             return ctx.replyHTML(msg);
         }
 
-        // STOP / REMOVE
         if (cmd === 'stop' || cmd === 'gstop' || cmd === 'pstop') {
-            if (!isAdmin && !isOwner) return ctx.replyHTML(`⛔ Only admins can remove filters.`);
+            if (!isAdmin && !isOwner) return ctx.replyHTML(t(lang, 'filter_admin_only'));
             const keyword = ctx.args[0]?.toLowerCase();
             if (!keyword) return ctx.replyHTML(`💡 Usage: <code>/${cmd} &lt;keyword&gt;</code>`);
             const key = cmd === 'gstop' ? `g:${ctx.chatId}` : cmd === 'pstop' ? 'pm' : `c:${ctx.chatId}`;
             if (db[key]?.[keyword]) {
                 delete db[key][keyword];
                 save(db);
-                return ctx.replyHTML(`✅ Filter <b>${escapeHTML(keyword)}</b> removed!`);
+                return ctx.replyHTML(t(lang, 'filter_removed'));
             }
-            return ctx.replyHTML(`❌ No filter found for: <b>${escapeHTML(keyword)}</b>`);
+            return ctx.replyHTML(t(lang, 'filter_not_found'));
         }
 
-        // ADD
-        if (!isAdmin && !isOwner) return ctx.replyHTML(`⛔ Only admins can add filters.`);
+        if (!isAdmin && !isOwner) return ctx.replyHTML(t(lang, 'filter_admin_only'));
 
         const keyword = ctx.args[0]?.toLowerCase();
         const response = ctx.args.slice(1).join(' ');
 
         if (!keyword || !response) {
             return ctx.replyHTML(
-                `🤖 <b>Auto-Reply Filter</b>\n━━━━━━━━━━━━━━━━\n\n` +
-                `<code>/filter &lt;keyword&gt; &lt;response&gt;</code> — This chat only\n` +
-                `<code>/gfilter &lt;keyword&gt; &lt;response&gt;</code> — All groups\n` +
-                `<code>/pfilter &lt;keyword&gt; &lt;response&gt;</code> — Private chats\n` +
-                `<code>/stop &lt;keyword&gt;</code> — Remove filter\n` +
-                `<code>/filters</code> — List all\n\n` +
-                `💡 Example:\n<code>/filter website Check bamako-steel-dev.xyz!</code>\n\n` +
+                `🤖 <b>Auto-Reply Filter</b>
+━━━━━━━━━━━━━━━━
+
+` +
+                `<code>/filter &lt;keyword&gt; &lt;response&gt;</code> — This chat only
+` +
+                `<code>/gfilter &lt;keyword&gt; &lt;response&gt;</code> — All groups
+` +
+                `<code>/pfilter &lt;keyword&gt; &lt;response&gt;</code> — Private chats
+` +
+                `<code>/stop &lt;keyword&gt;</code> — Remove filter
+` +
+                `<code>/filters</code> — List all
+
+` +
+                `💡 Example:
+<code>/filter website Check bamako-steel-dev.xyz!</code>
+
+` +
                 `🦅 ARCHON CG-223`
             );
         }
@@ -83,10 +99,16 @@ module.exports = {
 
         const scopeLabel = cmd === 'gfilter' ? 'all groups' : cmd === 'pfilter' ? 'private chats' : 'this chat only';
         await ctx.replyHTML(
-            `✅ <b>Filter Added!</b>\n\n` +
-            `🔑 Keyword: <code>${escapeHTML(keyword)}</code>\n` +
-            `💬 Response: ${escapeHTML(response.substring(0, 80))}${response.length > 80 ? '...' : ''}\n` +
-            `📍 Scope: ${scopeLabel}\n\n` +
+            `${t(lang, 'filter_added')}
+
+` +
+            `🔑 Keyword: <code>${escapeHTML(keyword)}</code>
+` +
+            `💬 Response: ${escapeHTML(response.substring(0, 80))}${response.length > 80 ? '...' : ''}
+` +
+            `📍 Scope: ${scopeLabel}
+
+` +
             `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`
         );
     },
