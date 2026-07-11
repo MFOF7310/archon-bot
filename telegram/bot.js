@@ -295,6 +295,20 @@ Tap a category:
         return;
     }
 
+    // Group settings panel callbacks
+    if (data.startsWith('gs_')) {
+        const ctx2 = buildContext(update, bridge, client);
+        if (!ctx2) return;
+        const db = client && client.db;
+        const groupName = update.callback_query && update.callback_query.message && update.callback_query.message.chat && update.callback_query.message.chat.title || 'this group';
+        if (!db) return;
+        try {
+            const sp = require('./plugins/settings.js');
+            await sp.handleCallback(ctx2, data, bridge, db, chatId, msgId, groupName);
+        } catch(e) { console.error('[SETTINGS CB]', e.message); }
+        return;
+    }
+
     // Route to game plugins first
     if (data.startsWith('wg_') || data.startsWith('tr_')) {
         const ctx = buildContext(update, bridge, client);
