@@ -311,6 +311,19 @@ Tap a category:
         return;
     }
 
+    // Trivia game callbacks
+    if (data.startsWith('trivia_')) {
+        const ctx2 = buildContext(update, bridge, client);
+        if (!ctx2) return;
+        try {
+            const triviaPlugin = require('./plugins/trivia.js');
+            if (triviaPlugin.handleCallback) {
+                await triviaPlugin.handleCallback(ctx2, data);
+            }
+        } catch(e) { console.error('[TRIVIA CB]', e.message); }
+        return;
+    }
+
     // Group settings panel callbacks
     if (data.startsWith('gs_')) {
         const ctx2 = buildContext(update, bridge, client);
