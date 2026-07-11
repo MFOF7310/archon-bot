@@ -872,36 +872,11 @@ async function handleUpdate(update, bridge, client) {
         const chatTitle = update.message.chat.title || 'the group';
         try {
             const welcomePlugin = require('./plugins/welcome.js');
-            const db = client?.db;
-            if (db) {
-                try {
-                    db.prepare(`CREATE TABLE IF NOT EXISTS group_settings (
-                        chat_id TEXT PRIMARY KEY, welcome_enabled INTEGER DEFAULT 0,
-                        welcome_text TEXT, welcome_type TEXT DEFAULT 'random'
-                    )`).run();
-                } catch {}
-                const settings = db.prepare('SELECT * FROM group_settings WHERE chat_id = ?').get(chatId);
-                if (settings?.welcome_enabled) {
-                    for (const member of joinMembers) {
-                        if (member.is_bot) continue;
-                        const name = escapeHTML(member.first_name || member.username || 'Friend');
-                        let msg;
-                        if (settings.welcome_text) {
-                            msg = settings.welcome_text
-                                .replace(/{name}/g, `<a href="tg://user?id=${member.id}">${name}</a>`)
-                                .replace(/{group}/g, escapeHTML(chatTitle));
-                        } else {
-                            const WELCOMES = [
-                                `Hey <a href="tg://user?id=${member.id}">${name}</a>! Welcome to ${escapeHTML(chatTitle)}! 🦅`,
-                                `🎉 <a href="tg://user?id=${member.id}">${name}</a> just joined! Say hello!`,
-                                `Welcome aboard <a href="tg://user?id=${member.id}">${name}</a>! The node grows stronger 💪`,
-                                `🚀 <a href="tg://user?id=${member.id}">${name}</a> has entered the chat! Glad you're here!`,
-                                `<a href="tg://user?id=${member.id}">${name}</a> dropped in! Welcome to ${escapeHTML(chatTitle)} 🇲🇱`,
-                            ];
-                            msg = WELCOMES[Math.floor(Math.random() * WELCOMES.length)];
-                        }
-                        await bridge.sendTo(update.message.chat.id, msg, { parse_mode: 'HTML' });
-                    }
+            const db = client && client.db;
+            if (db && welcomePlugin.sendWelcome) {
+                for (const member of joinMembers) {
+                    if (member.is_bot) continue;
+                    await welcomePlugin.sendWelcome(bridge, db, chatId, member, chatTitle);
                 }
             }
         } catch(e) { console.error('[WELCOME]', e.message); }
@@ -913,18 +888,12 @@ async function handleUpdate(update, bridge, client) {
     if (leftMember && !leftMember.is_bot) {
         const chatId = String(update.message.chat.id);
         try {
-            const db = client?.db;
-            if (db) {
-                const settings = db.prepare('SELECT * FROM group_settings WHERE chat_id = ?').get(chatId);
-                if (settings?.welcome_enabled) {
-                    const name = escapeHTML(leftMember.first_name || 'Someone');
-                    await bridge.sendTo(update.message.chat.id,
-                        `👋 ${name} has left the chat. See you around!`,
-                        { parse_mode: 'HTML' }
-                    );
-                }
+            const welcomePlugin = require('./plugins/welcome.js');
+            const db = client && client.db;
+            if (db && welcomePlugin.sendGoodbye) {
+                await welcomePlugin.sendGoodbye(bridge, db, chatId, leftMember, update.message?.chat?.title || 'the group');
             }
-        } catch(e) {}
+        } catch(e) { console.error('[GOODBYE]', e.message); }
         return;
     }
 
