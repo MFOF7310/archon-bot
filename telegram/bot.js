@@ -588,23 +588,33 @@ async function handleBuiltin(ctx, cmdName, bridge) {
             await ctx.action('typing');
             const { execSync } = require('child_process');
             const filter = ctx.args[0]?.toLowerCase() || 'all';
+            const numLines = ctx.args[1] || '20';
+            const LOG_PROCS = {
+                'arch': 'Architect-CG223', 'bot': 'Architect-CG223', 'all': 'Architect-CG223',
+                'dash': 'architect-dashboard', 'dashboard': 'architect-dashboard',
+                'lava': 'lavalink', 'lavalink': 'lavalink',
+                'wa': 'archon-wa', 'whatsapp': 'archon-wa',
+            };
+            const procName = LOG_PROCS[filter] || 'Architect-CG223';
+            const isErr = filter === 'errors' || filter === 'err';
             try {
                 let raw;
-                if (filter === 'errors') {
-                    raw = execSync('tail -30 /root/.pm2/logs/Architect-CG223-error.log 2>/dev/null').toString();
-                } else if (filter === 'dash') {
-                    raw = execSync('tail -20 /root/.pm2/logs/architect-dashboard-out.log 2>/dev/null').toString();
+                if (isErr) {
+                    raw = execSync(`pm2 logs Architect-CG223 --lines ${numLines} --nostream 2>&1 | grep -i error`).toString();
                 } else {
-                    raw = execSync('tail -25 /root/.pm2/logs/Architect-CG223-out.log 2>/dev/null').toString();
+                    raw = execSync(`pm2 logs ${procName} --lines ${numLines} --nostream 2>&1`).toString();
                 }
-                const lines = raw.trim().split('\n').slice(-20);
-                const cleaned = lines.map(l => l.replace(/\x1b\[[0-9;]*m/g, '').replace(/.*\|\s+/, '').trim()).filter(Boolean).join('\n');
-                const label = filter === 'errors' ? '🔴 ERROR LOG' : filter === 'dash' ? '🖥️ DASHBOARD LOG' : '📋 BOT LOG';
-                await ctx.replyHTML(`${label}\n<pre>${escapeHTML(cleaned.substring(0, 3500))}</pre>\n<i>filter: ${filter} · ${new Date().toLocaleTimeString()}</i>`);
+                const cleaned = raw.trim().split('\n')
+                    .filter(l => l.trim())
+                    .map(l => l.replace(/\x1b\[[0-9;]*m/g, '').replace(/^\d+\|[\w-]+\s*\|\s*/, '').trim())
+                    .filter(Boolean).slice(-parseInt(numLines)).join('\n');
+                const label = isErr ? '🔴 ERRORS' : filter === 'dash' || filter === 'dashboard' ? '🖥️ DASHBOARD' : filter === 'lava' || filter === 'lavalink' ? '🎵 LAVALINK' : '📋 BOT';
+                await ctx.replyHTML(`${label} <b>${procName}</b> (${numLines} lines)\n━━━━━━━━━━━━━━━━\n<pre>${escapeHTML(cleaned.substring(0, 3500))}</pre>\n<i>${new Date().toLocaleTimeString()} · BAMAKO_223 🇲🇱</i>`);
             } catch(e) {
                 await ctx.replyHTML(`❌ <b>Log read failed</b>\n<code>${escapeHTML(e.message)}</code>`);
             }
             return true;
+        }
         }
 
         case 'restart': {

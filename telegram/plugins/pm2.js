@@ -24,15 +24,16 @@ const PROCESSES = {
 };
 
 module.exports = {
-    name: 'pm2',
-    aliases: ['process', 'server', 'sys'],
+    name: 'sysctl',
+    aliases: ['admin', 'sys', 'process', 'pm2cmd'],
     description: 'PM2 process manager from Telegram',
     category: 'System',
     usage: '/pm2 <command>',
     ownerOnly: true,
 
     handler: async (ctx) => {
-        if (!ctx.isOwner()) return ctx.replyHTML(`⛔ Owner only command.`);
+        const tgOwnerId = process.env.TELEGRAM_CHAT_ID || process.env.OWNER_ID;
+if (String(ctx.userId) !== String(tgOwnerId) && !ctx.isOwner()) return ctx.replyHTML(`⛔ Owner only command.`);
 
         const sub = ctx.args[0]?.toLowerCase();
         const target = ctx.args[1]?.toLowerCase();
