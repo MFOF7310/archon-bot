@@ -8,34 +8,18 @@
 
 [
 
-![Discord](https://img.shields.io/badge/Discord-ARCHON%20CG--223-5865F2?style=flat&logo=discord&logoColor=white)
+[![Discord](https://img.shields.io/badge/Discord-ARCHON%20CG--223-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/NFSMFJajp9)
 
-](https://discord.gg/NFSMFJajp9)
-[
 
-![Telegram](https://img.shields.io/badge/Telegram-architect223bot-26A5E4?style=flat&logo=telegram&logoColor=white)
+[![Telegram](https://img.shields.io/badge/Telegram-architect223bot-26A5E4?style=flat&logo=telegram&logoColor=white)](https://t.me/architect223bot)
 
-](https://t.me/architect223bot)
-[
+[![Dashboard](https://img.shields.io/badge/Dashboard-bamako--steel--dev.xyz-00f0ff?style=flat&logo=vercel&logoColor=white)](https://bamako-steel-dev.xyz)
 
-![Dashboard](https://img.shields.io/badge/Dashboard-bamako--steel--dev.xyz-00f0ff?style=flat&logo=vercel&logoColor=white)
+[![Version](https://img.shields.io/badge/Version-v3.1.0-00ff88?style=flat)](#)
 
-](https://bamako-steel-dev.xyz)
-[
+[![Servers](https://img.shields.io/badge/Servers-16+-f1c40f?style=flat)](#)
 
-![Version](https://img.shields.io/badge/Version-v3.1.0-00ff88?style=flat)
-
-](#)
-[
-
-![Servers](https://img.shields.io/badge/Servers-16+-f1c40f?style=flat)
-
-](#)
-[
-
-![Made in Mali](https://img.shields.io/badge/Made%20in-Bamako%2C%20Mali%20🇲🇱-green?style=flat)
-
-](#)
+[![Made in Mali](https://img.shields.io/badge/Made%20in-Bamako%2C%20Mali%20🇲🇱-green?style=flat)](#)
 
 *Built from scratch in Bamako, Mali — developed entirely from a phone via Termux + SSH*
 
