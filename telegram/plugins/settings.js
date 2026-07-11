@@ -14,7 +14,7 @@ function tgApi(token, method, params) {
 }
 
 if (!global._settingsPanels) global._settingsPanels = new Map();
-const PANEL_TIMEOUT = 5 * 60 * 1000;
+const PANEL_TIMEOUT = 2 * 60 * 1000;
 
 function clearPanel(chatId, bridge) {
     const panel = global._settingsPanels.get(String(chatId));
@@ -34,7 +34,7 @@ function resetTimer(chatId, bridge) {
     panel.timer = setTimeout(() => {
         tgApi(bridge.token, 'editMessageText', {
             chat_id: chatId, message_id: panel.msgId,
-            text: '💤 Settings panel closed — no activity for 5 minutes.\n\nType /settings to reopen anytime! 😊\n\n🦅 ARCHON CG-223',
+            text: '💤 Settings panel closed — no activity for 2 minutes.\n\nType /settings to reopen anytime! 😊\n\n🦅 ARCHON CG-223',
             parse_mode: 'HTML'
         }).catch(() => {});
         setTimeout(() => clearPanel(chatId, bridge), 5000);
@@ -96,7 +96,7 @@ function buildMainPanel(s, groupName, chatId) {
         rl + ' <b>Rules</b>  ' + (s.rules_text ? '(set)' : '(not set)') + '\n' +
         '🤖 <b>Auto-Reply</b>  ' + (filters > 0 ? filters + ' active' : 'none') + '\n\n' +
         '💡 Tap anything to toggle or configure\n' +
-        '⏱ Closes after 5min inactivity\n\n' +
+        '⏱ Closes after 2min inactivity\n\n' +
         '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
 
     const keyboard = {
@@ -152,7 +152,7 @@ module.exports = {
         const timer = setTimeout(() => {
             tgApi(ctx.bridge.token, 'editMessageText', {
                 chat_id: ctx.chatId, message_id: msgId,
-                text: '💤 Settings panel closed — no activity for 5 minutes.\n\nType /settings anytime to reopen! 😊\n\n🦅 ARCHON CG-223',
+                text: '💤 Settings panel closed — no activity for 2 minutes.\n\nType /settings anytime to reopen! 😊\n\n🦅 ARCHON CG-223',
                 parse_mode: 'HTML'
             }).catch(() => {});
             setTimeout(() => {
