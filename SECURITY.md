@@ -1,13 +1,51 @@
 # Security Policy
 
 ## Supported Versions
-Currently, only **v1.1.0 (Release)** and above are supported with security updates.
+
+| Version | Supported |
+|---------|-----------|
+| 1.0.x   | ✅ Yes    |
+| < 1.0   | ❌ No     |
 
 ## Reporting a Vulnerability
-If you find a security bug (like an exposed API key or a crash command), please **do not** open a public Issue. 
 
-Instead, contact the Architect directly:
-* **Discord:** [Discord server link](https://discord.gg/NFSMFJajp9)
-* **Discord:** DM `mfof7559`
+If you discover a security vulnerability in ARCHON CG-223 or its dashboard, please **do not** open a public GitHub issue.
 
-We aim to respond to all security reports within 24 hours to keep the **Cloud Gaming-223** community safe.
+### Contact
+
+Report vulnerabilities privately via:
+- **Discord:** mfof7559
+- **Telegram:** [@architect223bot](https://t.me/architect223bot) — DM the owner
+- **Email:** (via Discord DM for email address)
+
+### What to Include
+
+Please include:
+1. Description of the vulnerability
+2. Steps to reproduce
+3. Potential impact
+4. Suggested fix (if any)
+
+### Response Time
+
+- **Acknowledgement:** Within 48 hours
+- **Fix timeline:** Within 7 days for critical issues
+
+### Scope
+
+In scope:
+- Authentication bypass
+- Data exposure (user credentials, tokens)
+- SQL/NoSQL injection
+- XSS vulnerabilities
+- CSRF vulnerabilities
+- Unauthorized access to admin functions
+
+Out of scope:
+- Rate limiting issues
+- Denial of service
+- Social engineering
+
+---
+
+🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱
