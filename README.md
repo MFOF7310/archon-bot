@@ -77,7 +77,6 @@
 
 ## 📊 Stats
 
-```bash
 💬 Discord Plugins    : 110
 📱 Telegram Plugins   : 53
 🔗 Total Modules      : 163
@@ -85,7 +84,6 @@
 📡 Servers            : 16+
 👥 Users              : 365+
 🌍 Languages          : EN / FR / BM / ZH
-```
 
 ---
 
