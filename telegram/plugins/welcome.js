@@ -236,25 +236,27 @@ ${text.replace(/{name}/g, 'Friend')}
 
         // ── SET CHANNEL ──
         if (action === 'setchannel') {
-            // Get current message thread ID (topic)
             const threadId = ctx.message?.message_thread_id;
+            const chatTitle = ctx.message?.chat?.title || 'this group';
             saveSettings(db, chatId, {
                 welcome_channel_id: chatId,
                 welcome_thread_id: threadId ? String(threadId) : null,
             });
-            const where = threadId ? `this topic (thread #${threadId})` : 'this channel';
-            return ctx.replyHTML(
-                `📌 <b>Welcome channel set!</b>
+            const where = threadId
+                ? `<b><i>this topic</i></b>`
+                : `<b><i>${escapeHTML(chatTitle)}</i></b>`;
 
-` +
-                `All welcome messages will be sent to ${where}.
-
-` +
-                `💡 Run this command FROM the topic/channel where you want welcomes!
-
-` +
-                `🦅 ARCHON CG-223`
+            const sent = await ctx.bridge.sendTo(ctx.chatId,
+                `📌 Welcome channel set!\n\nNew members will be greeted in ${where} 🎉\n\n🦅 ARCHON CG-223`,
+                { parse_mode: 'HTML', extra: threadId ? { message_thread_id: threadId } : {} }
             );
+            const msgId = sent && sent.data && sent.data.message_id;
+            if (msgId) {
+                setTimeout(() => {
+                    ctx.bridge.deleteMessage(ctx.chatId, msgId).catch(() => {});
+                }, 2 * 60 * 1000);
+            }
+            return;
         }
 
         // ── SET GOODBYE CHANNEL ──
