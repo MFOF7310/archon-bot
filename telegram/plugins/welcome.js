@@ -171,6 +171,7 @@ module.exports = {
 
         const chatId = String(ctx.chatId);
         const action = ctx.args[0]?.toLowerCase();
+        console.log('[WELCOME DEBUG] action:', action, 'args:', ctx.args);
         const settings = getSettings(db, chatId) || {};
 
         // ── ON ──
@@ -236,6 +237,7 @@ ${text.replace(/{name}/g, 'Friend')}
 
         // ── SET CHANNEL ──
         if (action === 'setchannel') {
+            console.log('[SETCHANNEL] chatId:', ctx.chatId, 'threadId:', ctx.message?.message_thread_id);
             const threadId = ctx.message?.message_thread_id;
             const chatTitle = ctx.message?.chat?.title || 'this group';
             saveSettings(db, chatId, {
@@ -246,14 +248,19 @@ ${text.replace(/{name}/g, 'Friend')}
                 ? `<b><i>this topic</i></b>`
                 : `<b><i>${escapeHTML(chatTitle)}</i></b>`;
 
-            const sent = await ctx.bridge.sendTo(ctx.chatId,
-                `📌 Welcome channel set!\n\nNew members will be greeted in ${where} 🎉\n\n🦅 ARCHON CG-223`,
-                { parse_mode: 'HTML', extra: threadId ? { message_thread_id: threadId } : {} }
-            );
-            const msgId = sent && sent.data && sent.data.message_id;
+            console.log('[SETCHANNEL] sending...');
+            const tgBody = {
+                chat_id: ctx.chatId,
+                text: '📌 Welcome channel set!\n\nNew members will be greeted in ' + (threadId ? 'this topic' : chatTitle) + ' 🎉\n\n🦅 ARCHON CG-223',
+                parse_mode: 'HTML'
+            };
+            if (threadId) tgBody.message_thread_id = parseInt(threadId);
+            const sent = await tgApi(ctx.bridge.token, 'sendMessage', tgBody);
+            console.log('[SETCHANNEL] result:', sent && sent.ok, sent && sent.description);
+            const msgId = sent && sent.result && sent.result.message_id;
             if (msgId) {
                 setTimeout(() => {
-                    ctx.bridge.deleteMessage(ctx.chatId, msgId).catch(() => {});
+                    tgApi(ctx.bridge.token, 'deleteMessage', { chat_id: ctx.chatId, message_id: msgId }).catch(() => {});
                 }, 2 * 60 * 1000);
             }
             return;
