@@ -91,7 +91,7 @@
 
 ## 🚀 Self-Hosting
 
-\`\`\`bash
+\`\`\`
 git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
 cd cloud-gaming-223-digital-engine
 npm install
