@@ -1,3 +1,4 @@
+/*
 module.exports = {
     name: 'app',
     aliases: ['miniapp', 'webapp', 'dashboard', 'dash'],
@@ -23,3 +24,4 @@ module.exports = {
         );
     }
 };
+*/
