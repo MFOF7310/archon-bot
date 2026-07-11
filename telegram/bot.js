@@ -295,6 +295,22 @@ Tap a category:
         return;
     }
 
+    // Update callbacks
+    if (data === 'update_pull') {
+        const ctx2 = buildContext(update, bridge, client);
+        if (!ctx2) return;
+        ctx2.args = ['pull'];
+        try {
+            const updatePlugin = require('./plugins/update.js');
+            await updatePlugin.handler(ctx2);
+        } catch(e) {}
+        return;
+    }
+    if (data === 'update_skip') {
+        await editMsg(bridge, chatId, msgId, '👍 No worries — update skipped for now!\n\n🦅 ARCHON CG-223', {});
+        return;
+    }
+
     // Group settings panel callbacks
     if (data.startsWith('gs_')) {
         const ctx2 = buildContext(update, bridge, client);
@@ -1004,6 +1020,17 @@ function startPolling(bridge, client) {
     poll();
     console.log(`${green}[TG]${reset} Polling started`);
     process.on('SIGINT', () => { running = false; });
+    
+    // Auto-check for updates 60s after boot
+    setTimeout(async () => {
+        try {
+            const updatePlugin = require('./plugins/update.js');
+            const ownerChatId = process.env.TELEGRAM_CHAT_ID;
+            if (ownerChatId && updatePlugin.autoCheck) {
+                await updatePlugin.autoCheck(bridge, ownerChatId);
+            }
+        } catch(e) {}
+    }, 60000);
     process.on('SIGTERM', () => { running = false; });
 }
 
