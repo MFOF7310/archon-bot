@@ -205,30 +205,48 @@ module.exports = {
         if (data === 'gs_welcome') {
             const newVal = s.welcome_enabled ? 0 : 1;
             saveSettings(db, chatId, { welcome_enabled: newVal });
-            const msg = '👋 <b>Welcome Messages</b> — ' + (newVal ? 'ON 🟢' : 'OFF 🔴') + '\n━━━━━━━━━━━━━━━━\n\n' +
-                (newVal ? 'Members get greeted when they join! 🎉\n\n• GIF: ' + (s.welcome_gif_id ? '✅ Set' : '❌ None') + '\n• Channel: ' + (s.welcome_thread_id ? 'Topic #' + s.welcome_thread_id : 'Default') + '\n• Text: ' + (s.welcome_text ? 'Custom ✅' : 'Random') + '\n\n💡 /welcome set {name} hello!\n💡 /welcome setgif — reply to GIF\n💡 /welcome setchannel — set topic' : 'Welcome messages are now off.') +
-                '\n\n🦅 ARCHON CG-223';
-            await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: newVal ? '🔴 Turn OFF' : '🟢 Turn ON', callback_data: 'gs_welcome' }], backRow] } });
+            const status = newVal ? 'ON 🟢' : 'OFF 🔴';
+            await bridge.editMessage(chatId, msgId,
+                '👋 Welcome messages ' + status + '!\n\n' +
+                (newVal ? 'Members will be greeted when they join 🎉' : 'No more welcome messages.') +
+                '\n\n⏱ Refreshing...',
+                { parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }
+            );
+            await new Promise(r => setTimeout(r, 1500));
+            const fresh = getSettings(db, chatId);
+            const { text, keyboard } = buildMainPanel(fresh, gName, chatId);
+            await bridge.editMessage(chatId, msgId, text, { parse_mode: 'HTML', reply_markup: keyboard });
             return;
         }
 
         if (data === 'gs_goodbye') {
             const newVal = s.goodbye_enabled ? 0 : 1;
             saveSettings(db, chatId, { goodbye_enabled: newVal });
-            const msg = '👋 <b>Goodbye Messages</b> — ' + (newVal ? 'ON 🟢' : 'OFF 🔴') + '\n━━━━━━━━━━━━━━━━\n\n' +
-                (newVal ? 'I\'ll say goodbye when members leave! 👋\n\n• GIF: ' + (s.goodbye_gif_id ? '✅ Set' : '❌ None') + '\n• Text: ' + (s.goodbye_text ? 'Custom ✅' : 'Random') + '\n\n💡 /welcome setgoodbye Bye {name}!\n💡 /welcome setgoodbyegif — reply to GIF' : 'Goodbye messages are now off.') +
-                '\n\n🦅 ARCHON CG-223';
-            await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: newVal ? '🔴 Turn OFF' : '🟢 Turn ON', callback_data: 'gs_goodbye' }], backRow] } });
+            await bridge.editMessage(chatId, msgId,
+                '👋 Goodbye messages ' + (newVal ? 'ON 🟢' : 'OFF 🔴') + '!\n\n' +
+                (newVal ? 'I\'ll say goodbye when members leave 👋' : 'No more goodbye messages.') +
+                '\n\n⏱ Refreshing...',
+                { parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }
+            );
+            await new Promise(r => setTimeout(r, 1500));
+            const fresh2 = getSettings(db, chatId);
+            const { text: t2, keyboard: k2 } = buildMainPanel(fresh2, gName, chatId);
+            await bridge.editMessage(chatId, msgId, t2, { parse_mode: 'HTML', reply_markup: k2 });
             return;
         }
 
         if (data === 'gs_antilink') {
             const newVal = s.antilink_enabled ? 0 : 1;
             saveSettings(db, chatId, { antilink_enabled: newVal });
-            const msg = '🔗 <b>Antilink</b> — ' + (newVal ? 'ON 🟢' : 'OFF 🔴') + '\n━━━━━━━━━━━━━━━━\n\n' +
-                (newVal ? 'Links from non-admins are deleted automatically! 🛡️\n\n✅ Admins always exempt\n✅ Silent deletion — no spam' : 'Links are now allowed from everyone.') +
-                '\n\n🦅 ARCHON CG-223';
-            await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: newVal ? '🔴 Turn OFF' : '🟢 Turn ON', callback_data: 'gs_antilink' }], backRow] } });
+            await bridge.editMessage(chatId, msgId,
+                '🔗 Antilink ' + (newVal ? 'ON 🟢 — Links will be deleted!' : 'OFF 🔴 — Links are allowed.') +
+                '\n\n⏱ Refreshing...',
+                { parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }
+            );
+            await new Promise(r => setTimeout(r, 1500));
+            const fresh3 = getSettings(db, chatId);
+            const { text: t3, keyboard: k3 } = buildMainPanel(fresh3, gName, chatId);
+            await bridge.editMessage(chatId, msgId, t3, { parse_mode: 'HTML', reply_markup: k3 });
             return;
         }
 
@@ -236,22 +254,29 @@ module.exports = {
             const newVal = s.antiflood_enabled ? 0 : 1;
             saveSettings(db, chatId, { antiflood_enabled: newVal });
             const limit = s.antiflood_limit || 5;
-            const msg = '⚡ <b>Antiflood</b> — ' + (newVal ? 'ON 🟢' : 'OFF 🔴') + '\n━━━━━━━━━━━━━━━━\n\n' +
-                (newVal ? 'Spammers get muted automatically! ⚡\n\nLimit: <b>' + limit + ' msgs</b>/10s\n\n💡 Adjust:' : 'Flood protection is now off.') +
-                '\n\n🦅 ARCHON CG-223';
-            await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [
-                [{ text: newVal ? '🔴 Turn OFF' : '🟢 Turn ON', callback_data: 'gs_antiflood' }],
-                [{ text: '⚡ Strict (3)', callback_data: 'gs_flood_3' }, { text: '⚡ Normal (5)', callback_data: 'gs_flood_5' }, { text: '⚡ Relaxed (10)', callback_data: 'gs_flood_10' }],
-                backRow
-            ]} });
+            await bridge.editMessage(chatId, msgId,
+                '⚡ Antiflood ' + (newVal ? 'ON 🟢 — Spammers get muted! (' + limit + ' msgs/10s)' : 'OFF 🔴 — No flood protection.') +
+                '\n\n⏱ Refreshing...',
+                { parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }
+            );
+            await new Promise(r => setTimeout(r, 1500));
+            const fresh4 = getSettings(db, chatId);
+            const { text: t4, keyboard: k4 } = buildMainPanel(fresh4, gName, chatId);
+            await bridge.editMessage(chatId, msgId, t4, { parse_mode: 'HTML', reply_markup: k4 });
             return;
         }
 
         if (data.startsWith('gs_flood_')) {
             const limit = parseInt(data.replace('gs_flood_', ''));
             saveSettings(db, chatId, { antiflood_limit: limit, antiflood_enabled: 1 });
-            const msg = '⚡ <b>Antiflood</b> — ON 🟢\n━━━━━━━━━━━━━━━━\n\nLimit set to <b>' + limit + ' messages</b>/10s ✅\n\n🦅 ARCHON CG-223';
-            await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '🔴 Turn OFF', callback_data: 'gs_antiflood' }], backRow] } });
+            await bridge.editMessage(chatId, msgId,
+                '⚡ Flood limit set to ' + limit + ' msgs/10s ✅\n\n⏱ Refreshing...',
+                { parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }
+            );
+            await new Promise(r => setTimeout(r, 1500));
+            const fresh5 = getSettings(db, chatId);
+            const { text: t5, keyboard: k5 } = buildMainPanel(fresh5, gName, chatId);
+            await bridge.editMessage(chatId, msgId, t5, { parse_mode: 'HTML', reply_markup: k5 });
             return;
         }
 
