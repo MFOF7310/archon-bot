@@ -25,7 +25,7 @@ module.exports = {
             game_short_name: 'archontrivia',
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '🎮 Play Trivia!', callback_game: {} }
+                    { text: '🎮 Play Trivia!', url: 'https://bamako-steel-dev.xyz/games/trivia.html' }
                 ]]
             }
         });

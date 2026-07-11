@@ -66,8 +66,10 @@ async function editMsg(bridge, chatId, msgId, text, markup) {
 }
 
 /** Acknowledge callback query */
-function answerCBQ(bridge, cbqId, text) {
-    const body = JSON.stringify({ callback_query_id: cbqId, text, show_alert: false });
+function answerCBQ(bridge, cbqId, text, showAlert = false, url = null) {
+    const payload = { callback_query_id: cbqId, text: text || '', show_alert: showAlert };
+    if (url) payload.url = url;
+    const body = JSON.stringify(payload);
     const req = https.request(`https://api.telegram.org/bot${bridge.token}/answerCallbackQuery`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, timeout: 5000 }, ()=>{});
     req.on('error',()=>{}); req.write(body); req.end();
@@ -195,8 +197,11 @@ if (!global._cbCooldowns) global._cbCooldowns = new Map();
 
 async function handleCallback(update, bridge, client) {
     const cbq = update.callback_query;
-    if (!cbq?.data) return;
-    
+    // Handle game callbacks (no data, just game_short_name)
+    if (!cbq?.data && cbq?.game_short_name) {
+        await answerCBQ(bridge, cbq.id, '', false, 'https://bamako-steel-dev.xyz/games/trivia.html');
+        return;
+    }
     // Cooldown — 1.2s per user per button
     const cdKey = `${cbq.from?.id}:${cbq.data}`;
     const last = global._cbCooldowns.get(cdKey);
@@ -308,6 +313,13 @@ Tap a category:
     }
     if (data === 'update_skip') {
         await editMsg(bridge, chatId, msgId, '👍 No worries — update skipped for now!\n\n🦅 ARCHON CG-223', {});
+        return;
+    }
+
+    // tgame play button — game callback
+    console.log('[TGAME CB] data:', data, 'game_short_name:', cbq.game_short_name);
+    if (cbq.game_short_name === 'archontrivia' || data === 'tgame_play') {
+        await answerCBQ(bridge, cbq.id, '', false, 'https://bamako-steel-dev.xyz/games/trivia.html');
         return;
     }
 
