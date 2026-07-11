@@ -6,8 +6,6 @@
 
 **The Neural Architect — Multi-Platform Discord & Telegram Bot**
 
-[
-
 [![Discord](https://img.shields.io/badge/Discord-ARCHON%20CG--223-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/NFSMFJajp9)
 
 
@@ -21,7 +19,7 @@
 
 [![Made in Mali](https://img.shields.io/badge/Made%20in-Bamako%2C%20Mali%20🇲🇱-green?style=flat)](#)
 
-*Built from scratch in Bamako, Mali — developed entirely from a phone via Termux + SSH*
+<!-- *Built from scratch in Bamako, Mali — developed entirely from a phone via Termux + SSH* -->
 
 </div>
 
