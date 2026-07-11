@@ -14,9 +14,10 @@ async function dlVideo(url, quality = '720') {
     const cmd = [
         'yt-dlp --remote-components ejs:github --cookies /opt/youtube_cookies.txt',
         `-o "${outTemplate}"`,
-        `-f "bestvideo[height<=${quality}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${quality}]+bestaudio/best[height<=${quality}]/best"`,
+        `-f "bestvideo[height<=${quality}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${quality}]+bestaudio/best[height<=${quality}]/best[ext=mp4]/best"`,
         `--merge-output-format mp4`,
         `--postprocessor-args "ffmpeg:-c:v libx264 -c:a aac -movflags +faststart"`,
+        `--hls-prefer-ffmpeg`,
         `--no-playlist`,
         `--max-filesize 50M`,
         `"${url}"`
