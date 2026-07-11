@@ -615,7 +615,6 @@ async function handleBuiltin(ctx, cmdName, bridge) {
             }
             return true;
         }
-        }
 
         case 'restart': {
             if (!ctx.isOwner()) return ctx.replyHTML('⛔ <b>Owner only</b>');
