@@ -2052,7 +2052,11 @@ const telegramBridge = require('./telegram/bridge.js');
 client.telegramBridge = telegramBridge.initialize(client);
 
 const telegramBot = require('./telegram/bot.js');
-telegramBot.initialize(client);
+try {
+    telegramBot.initialize(client);
+} catch(e) {
+    console.error('[TELEGRAM] Bot init failed:', e.message);
+}
 
 const bridgeStatus = client.telegramBridge.status();
 if (bridgeStatus.configured) {

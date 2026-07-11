@@ -190,9 +190,27 @@ Also: <code>/id</code> · <code>/ping</code> · <code>/alive</code> · <code>/cr
 //  CALLBACK HANDLER — Smooth UI
 // ═══════════════════════════════
 
+// Global callback cooldown map
+if (!global._cbCooldowns) global._cbCooldowns = new Map();
+
 async function handleCallback(update, bridge, client) {
     const cbq = update.callback_query;
     if (!cbq?.data) return;
+    
+    // Cooldown — 1.2s per user per button
+    const cdKey = `${cbq.from?.id}:${cbq.data}`;
+    const last = global._cbCooldowns.get(cdKey);
+    if (last && Date.now() - last < 1200) {
+        await answerCBQ(bridge, cbq.id);
+        return;
+    }
+    global._cbCooldowns.set(cdKey, Date.now());
+    
+    // Small human delay — feels natural
+    await new Promise(r => setTimeout(r, 350));
+    
+    // Show typing indicator
+    try { await bridge.sendAction(cbq.message?.chat?.id, 'typing'); } catch(e) {}
 
     const data = cbq.data;
     const chatId = cbq.message?.chat?.id;
@@ -205,6 +223,77 @@ async function handleCallback(update, bridge, client) {
 
     // Answer callback immediately to stop loading spinner
     answerCBQ(bridge, cbq.id);
+
+    // /list category navigation
+    if (data.startsWith('list_cat_') || data === 'list_main') {
+        // Answer callback first to stop loading spinner
+        await answerCBQ(bridge, cbq.id);
+        const ctx2 = buildContext(update, bridge, client);
+        if (!ctx2) return;
+        ctx2.args = data === 'list_main' ? [] : [data.replace('list_cat_', '')];
+        try {
+            const listPlugin = require('./plugins/list.js');
+            // Edit existing message instead of sending new one
+            const cats = new Map();
+            const fs = require('fs');
+            const path = require('path');
+            const pluginsDir = path.join(__dirname, 'plugins');
+            const files = fs.readdirSync(pluginsDir).filter(f => f.endsWith('.js') && !f.startsWith('_') && f !== 'list.js');
+            for (const file of files) {
+                try {
+                    const p = require(path.join(pluginsDir, file));
+                    if (!p.name || p.hidden) continue;
+                    const cat = (p.category || 'General').toUpperCase();
+                    if (!cats.has(cat)) cats.set(cat, []);
+                    cats.get(cat).push(p);
+                } catch(e) {}
+            }
+            const CAT_EMOJI = { 'MEDIA': '🎬', 'SYSTEM': '⚙️', 'MODERATION': '🛡️', 'ECONOMY': '💰', 'GAMES': '🎮', 'UTILITY': '🛠️', 'AI': '🤖', 'GENERAL': '📋', 'MUSIC': '🎵' };
+
+            if (data === 'list_main') {
+                const totalCmds = [...cats.values()].reduce((s, c) => s + c.length, 0);
+                const msg = `🦅 <b>ARCHON CG-223</b>
+━━━━━━━━━━━━━━━━
+
+<b>${totalCmds} commands</b> across <b>${cats.size} categories</b>
+
+Tap a category:
+
+🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+                const sorted = [...cats.entries()].sort((a,b) => b[1].length - a[1].length);
+                const rows = [];
+                for (let i = 0; i < sorted.length; i += 2) {
+                    const row = [];
+                    const [c1, cmds1] = sorted[i];
+                    row.push({ text: `${CAT_EMOJI[c1]||'📋'} ${c1} (${cmds1.length})`, callback_data: `list_cat_${c1.toLowerCase()}` });
+                    if (sorted[i+1]) { const [c2, cmds2] = sorted[i+1]; row.push({ text: `${CAT_EMOJI[c2]||'📋'} ${c2} (${cmds2.length})`, callback_data: `list_cat_${c2.toLowerCase()}` }); }
+                    rows.push(row);
+                }
+                await editMsg(bridge, chatId, msgId, msg, { inline_keyboard: rows });
+            } else {
+                const filter = data.replace('list_cat_', '');
+                const found = [...cats.entries()].find(([k]) => k.toLowerCase() === filter);
+                if (!found) return;
+                const [cat, cmds] = found;
+                const emoji = CAT_EMOJI[cat] || '📋';
+                let msg = `${emoji} <b>${cat}</b> (${cmds.length})
+━━━━━━━━━━━━━━━━
+
+`;
+                cmds.forEach(cmd => {
+                    const aliases = cmd.aliases?.length ? ` · ${cmd.aliases.slice(0,2).map(a => `/${a}`).join(' ')}` : '';
+                    msg += `<code>/${cmd.name}</code>${aliases}
+`;
+                    if (cmd.description) msg += `  <i>${cmd.description.substring(0,55)}</i>
+`;
+                });
+                msg += `
+🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+                await editMsg(bridge, chatId, msgId, msg, { inline_keyboard: [[{ text: '← Back', callback_data: 'list_main' }]] });
+            }
+        } catch(e) { console.error('[LIST CB]', e.message); }
+        return;
+    }
 
     // Route to game plugins first
     if (data.startsWith('wg_') || data.startsWith('tr_')) {
