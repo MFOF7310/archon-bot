@@ -92,11 +92,13 @@
 ## 🚀 Self-Hosting
 
 \`\`\`
+
 git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
 cd cloud-gaming-223-digital-engine
 npm install
 cp .env.example .env
 pm2 start index.js --name Architect-CG223
+
 \`\`\`
 
 ---
