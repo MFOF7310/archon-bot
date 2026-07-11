@@ -78,13 +78,13 @@
 ## 📊 Stats
 
 \`\`\`
-💬 Discord Plugins    : 110
-📱 Telegram Plugins   : 53
-🔗 Total Modules      : 163
-⚡ Slash Commands     : 96
-📡 Servers            : 16+
-👥 Users              : 365+
-🌍 Languages          : EN / FR / BM / ZH
+![](💬 Discord Plugins    : 110)
+![](📱 Telegram Plugins   : 53)
+![](🔗 Total Modules      : 163)
+![](⚡ Slash Commands     : 96)
+![](📡 Servers            : 16+)
+![](👥 Users              : 365+)
+![](🌍 Languages          : EN / FR / BM / ZH)
 \`\`\`
 
 ---
