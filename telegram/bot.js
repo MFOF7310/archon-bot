@@ -875,7 +875,6 @@ async function handleUpdate(update, bridge, client) {
             }
         } catch(e) { console.error('[WELCOME]', e.message); }
         return;
-    // ── NEW MEMBER JOIN (legacy message update) ──
     // Legacy new_chat_members handled by chat_member update above
 
     // ── MEMBER LEFT ──
