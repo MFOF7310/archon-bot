@@ -147,6 +147,8 @@ function buildQueueEmbed(q, client) {
         .setFooter({ text: `BAMAKO_223 🇲🇱 • Vol: ${q.volume}% • Loop: ${q.loop ? 'ON' : 'OFF'}` });
 }
 
+
+
 // ═══════════════════════════════════════════════════════
 // PERSISTENT MUSIC PANEL
 // ═══════════════════════════════════════════════════════
@@ -1199,7 +1201,6 @@ module.exports = {
                 });
                 collector.on('end', () => { msg.edit?.({ components: [] }).catch(() => {}); });
             }
-            return;
         }
     }
 };
