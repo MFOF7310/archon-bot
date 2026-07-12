@@ -826,10 +826,22 @@ async function handleUpdate(update, bridge, client) {
         const cm = update.chat_member;
         const newStatus = cm.new_chat_member?.status;
         const oldStatus = cm.old_chat_member?.status;
-        // Member joined = new status is member/administrator, old was left/kicked/restricted
-        const joined = ['member','administrator','creator'].includes(newStatus) && 
+        const joined = ['member','administrator','creator'].includes(newStatus) &&
                        ['left','kicked','restricted'].includes(oldStatus);
         if (!joined) return;
+        const member = cm.new_chat_member?.user;
+        if (!member || member.is_bot) return;
+        const chatId = String(cm.chat.id);
+        const chatTitle = cm.chat.title || 'the group';
+        try {
+            const welcomePlugin = require('./plugins/welcome.js');
+            const db = client && client.db;
+            if (db && welcomePlugin.sendWelcome) {
+                await welcomePlugin.sendWelcome(bridge, db, chatId, member, chatTitle);
+            }
+        } catch(e) { console.error('[WELCOME]', e.message); }
+        return;
+    }
         const member = cm.new_chat_member?.user;
         if (!member || member.is_bot) return;
         const chatId = String(cm.chat.id);
@@ -863,25 +875,9 @@ async function handleUpdate(update, bridge, client) {
             }
         } catch(e) { console.error('[WELCOME]', e.message); }
         return;
-    }
 
     // ── NEW MEMBER JOIN (legacy message update) ──
-    const joinMembers = update.message?.new_chat_members;
-    if (joinMembers?.length) {
-        const chatId = String(update.message.chat.id);
-        const chatTitle = update.message.chat.title || 'the group';
-        try {
-            const welcomePlugin = require('./plugins/welcome.js');
-            const db = client && client.db;
-            if (db && welcomePlugin.sendWelcome) {
-                for (const member of joinMembers) {
-                    if (member.is_bot) continue;
-                    await welcomePlugin.sendWelcome(bridge, db, chatId, member, chatTitle);
-                }
-            }
-        } catch(e) { console.error('[WELCOME]', e.message); }
-        return;
-    }
+    // Legacy new_chat_members handled by chat_member update above
 
     // ── MEMBER LEFT ──
     const leftMember = update.message?.left_chat_member;
