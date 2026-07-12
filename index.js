@@ -210,7 +210,7 @@ function detectLanguage(usedCommand, guildId = null) {
     if (cmd.length >= 4 && frenchVerbEndings.test(cmd) && !/^(get|set|put|run|let|hit|sit|fit|bit|kit)$/i.test(cmd)) return 'fr';
     
     // 5. Very common English short words (manually curated but short, <10 entries)
-    const englishCore = /^(help|daily|profile|rank|level|xp|shop|buy|game|coin|fight|duel|ping|stats|uptime|vote|remind|ticket|report|whois|userinfo)$/i;
+    const englishCore = /^(help|daily|profile|rank|level|xp|shop|buy|game|coin|fight|duel|ping|stats|uptime|vote|remind|ticket|report|whois|userinfo|about|alive|status|version|character|filter|hammer|banner|global|transmit|channel|setchannel|cipher|timer|event|credit|transfer|definition|pupper|arena|roulette|image|store|invest|invite|expel|loadout|weapons|configuration|lydia|neural|music|musique|owner|archive|agent|motivation|inspire|meta|reminder|server|configure|social|trivia|culture|questions|translation|weather|temperature|user|serial|modai|intel|diffusion|hacker|neuralhacker|specialisation|grimoire|registre|classement|shutdown|shut|lent)$/i;
     if (englishCore.test(cmd)) return 'en';
     
     // 6. English patterns (low weight, only if no French patterns matched)
