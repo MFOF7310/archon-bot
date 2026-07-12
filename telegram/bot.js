@@ -317,7 +317,6 @@ Tap a category:
     }
 
     // tgame play button — game callback
-    console.log('[TGAME CB] data:', data, 'game_short_name:', cbq.game_short_name);
     if (cbq.game_short_name === 'archontrivia' || data === 'tgame_play') {
         await answerCBQ(bridge, cbq.id, '', false, 'https://bamako-steel-dev.xyz/games/trivia.html');
         return;
@@ -359,10 +358,60 @@ Tap a category:
             try { const wg = require('./plugins/wordguess'); if (wg.handleCallback) await wg.handleCallback(ctx, data); } catch(e){}
             return;
         }
+
         if (data.startsWith('tr_')) {
             try { const tr = require('./plugins/trivia'); if (tr.handleCallback) await tr.handleCallback(ctx, data); } catch(e){}
             return;
         }
+    }
+
+    // ── YOUTUBE DOWNLOAD CALLBACKS ──
+    if (data.startsWith('ytdl:')) {
+        const ctx = buildContext(update, bridge, client);
+        if (!ctx) return;
+        const parts = data.split(':');
+        const mediaType = parts[1];
+        const quality   = parts[2];
+        const urlKey    = parts[3];
+        // Resolve short key back to full URL
+        let url = urlKey;
+        if (!urlKey.startsWith('http')) {
+            try {
+                const ytv = require('./plugins/ytv');
+                url = ytv.getUrl(urlKey) || urlKey;
+            } catch {}
+            try {
+                const yta = require('./plugins/yta');
+                if (!url || !url.startsWith('http')) url = yta.getUrl(urlKey) || urlKey;
+            } catch {}
+        }
+
+        answerCBQ(bridge, cbq.id);
+        await bridge.editMessage(chatId, msgId,
+            mediaType === 'v'
+                ? `🎬 <i>Starting ${quality}p download...</i>`
+                : `🎵 <i>Starting audio download...</i>`,
+            { parse_mode: 'HTML' }
+        ).catch(() => {});
+
+        try {
+            if (mediaType === 'v') {
+                const ytv = require('./plugins/ytv');
+                ctx.args = [url, quality];
+                await ytv.handler(ctx);
+            } else {
+                const yta = require('./plugins/yta');
+                ctx.args = [url];
+                await yta.handler(ctx);
+            }
+        } catch(e) {
+            console.error('[YTDL CB]', e.message);
+            await bridge.editMessage(chatId, msgId,
+                `😔 <b>Download failed!</b>\n\nTry again or use the command directly.`,
+                { parse_mode: 'HTML' }
+            ).catch(() => {});
+        }
+        return;
     }
 
     // Help menu button handlers
