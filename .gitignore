@@ -99,3 +99,5 @@ cookies.txt
 *.key
 *.pem
 Lavalink.jar
+start-lavalink.sh
+Lavalink.jar
