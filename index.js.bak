@@ -2310,17 +2310,6 @@ client.once(Events.ClientReady, async () => {
 
     await client.loadPlugins();
 
-    // ── TELEGRAM INIT ──
-    try {
-        const telegramBridge = require('./telegram/bridge.js');
-        client.telegramBridge = telegramBridge.initialize(client);
-        const telegramBot = require('./telegram/bot.js');
-        await telegramBot.initialize(client);
-        console.log('[TELEGRAM] Bot engine started!');
-    } catch(e) {
-        console.error('[TELEGRAM] Bot init failed:', e.message);
-    }
-
 
 
 // ================= KAZAGUMO initialized before login (see below) =================

@@ -316,17 +316,6 @@ Tap a category:
         return;
     }
 
-    // Verification captcha callbacks
-    if (data && data.startsWith('verify_')) {
-        try {
-            const automod = require('./plugins/automod.js');
-            if (automod.handleVerifyCallback) {
-                await automod.handleVerifyCallback(bridge, client?.db, cbq);
-            }
-        } catch(e) { console.error('[VERIFY CB]', e.message); }
-        return;
-    }
-
     // tgame play button — game callback
     console.log('[TGAME CB] data:', data, 'game_short_name:', cbq.game_short_name);
     if (cbq.game_short_name === 'archontrivia' || data === 'tgame_play') {
@@ -344,17 +333,6 @@ Tap a category:
                 await triviaPlugin.handleCallback(ctx2, data);
             }
         } catch(e) { console.error('[TRIVIA CB]', e.message); }
-        return;
-    }
-
-    // Verification callbacks
-    if (data.startsWith('verify_')) {
-        try {
-            const automod = require('./plugins/automod.js');
-            if (automod.handleVerifyCallback) {
-                await automod.handleVerifyCallback(bridge, client && client.db, cbq);
-            }
-        } catch(e) { console.error('[VERIFY CB]', e.message); }
         return;
     }
 
@@ -852,43 +830,52 @@ async function handleUpdate(update, bridge, client) {
                        ['left','kicked','restricted'].includes(oldStatus);
         if (!joined) return;
         const member = cm.new_chat_member?.user;
-        if (!member) return;
-        // Anti-bot check
-        if (member.is_bot) {
-            try {
-                const db = client && client.db;
-                const settings = db && db.prepare('SELECT anti_bot_enabled FROM group_settings WHERE chat_id = ?').get(String(cm.chat.id));
-                if (settings && settings.anti_bot_enabled) {
-                    await tgApi(bridge.token, 'banChatMember', { chat_id: cm.chat.id, user_id: member.id });
-                    await tgApi(bridge.token, 'sendMessage', {
-                        chat_id: cm.chat.id,
-                        text: '🤖 Bot detected and removed automatically.\n\n🦅 ARCHON AutoMod',
-                        parse_mode: 'HTML'
-                    });
-                }
-            } catch(e) {}
-            return;
-        }
+        if (!member || member.is_bot) return;
         const chatId = String(cm.chat.id);
         const chatTitle = cm.chat.title || 'the group';
         try {
+            const welcomePlugin = require('./plugins/welcome.js');
             const db = client && client.db;
-            // Check verification first
-            const automod = require('./plugins/automod.js');
-            const settings = db && db.prepare('SELECT verification_enabled FROM group_settings WHERE chat_id = ?').get(chatId);
-            if (settings && settings.verification_enabled && automod.verifyMember) {
-                await automod.verifyMember(bridge, db, chatId, member, chatTitle);
-            } else {
-                const welcomePlugin = require('./plugins/welcome.js');
-                if (db && welcomePlugin.sendWelcome) {
-                    await welcomePlugin.sendWelcome(bridge, db, chatId, member, chatTitle);
-                }
+            if (db && welcomePlugin.sendWelcome) {
+                await welcomePlugin.sendWelcome(bridge, db, chatId, member, chatTitle);
             }
         } catch(e) { console.error('[WELCOME]', e.message); }
         return;
     }
         const member = cm.new_chat_member?.user;
         if (!member || member.is_bot) return;
+        const chatId = String(cm.chat.id);
+        const chatTitle = cm.chat.title || 'the group';
+        const joinMembers = [member];
+        // Fall through to welcome logic below
+        try {
+            const db = client?.db;
+            if (db) {
+                try { db.prepare(`CREATE TABLE IF NOT EXISTS group_settings (chat_id TEXT PRIMARY KEY, welcome_enabled INTEGER DEFAULT 0, welcome_text TEXT, welcome_type TEXT DEFAULT 'random')`).run(); } catch {}
+                const settings = db.prepare('SELECT * FROM group_settings WHERE chat_id = ?').get(chatId);
+                if (settings?.welcome_enabled) {
+                    const name = escapeHTML(member.first_name || member.username || 'Friend');
+                    let msg;
+                    if (settings.welcome_text) {
+                        msg = settings.welcome_text
+                            .replace(/{name}/g, `<a href="tg://user?id=${member.id}">${name}</a>`)
+                            .replace(/{group}/g, escapeHTML(chatTitle));
+                    } else {
+                        try {
+                            const { t } = require('./plugins/../lang/index.js');
+                            const memberLang = member.language_code || 'en';
+                            const rawMsg = t(memberLang, 'welcome_default', { name, group: escapeHTML(chatTitle) });
+                            msg = rawMsg.replace(/{name}/g, `<a href="tg://user?id=${member.id}">${name}</a>`);
+                        } catch(le) {
+                            msg = `Hey <a href="tg://user?id=${member.id}">${name}</a>! Welcome to ${escapeHTML(chatTitle)}! 🦅`;
+                        }
+                    }
+                    await bridge.sendTo(cm.chat.id, msg, { parse_mode: 'HTML' });
+                }
+            }
+        } catch(e) { console.error('[WELCOME]', e.message); }
+        return;
+    // ── NEW MEMBER JOIN (legacy message update) ──
     // Legacy new_chat_members handled by chat_member update above
 
     // ── MEMBER LEFT ──
@@ -916,18 +903,6 @@ async function handleUpdate(update, bridge, client) {
     const { text } = ctx;
     if (!text) return;
 
-    // AutoMod check — antilink, antiflood
-    if (!text.startsWith('/') && ctx.isGroup) {
-        try {
-            const automod = require('./plugins/automod.js');
-            const db = client && client.db;
-            if (db && automod.checkMessage) {
-                const blocked = await automod.checkMessage(ctx, bridge, db);
-                if (blocked) return;
-            }
-        } catch(e) { console.error('[AUTOMOD]', e.message); }
-    }
-
     // Auto-reply filter check for regular messages
     if (!text.startsWith('/')) {
         try {
@@ -937,15 +912,6 @@ async function handleUpdate(update, bridge, client) {
                 if (handled) return;
             }
         } catch(e) { console.error('[FILTER ERR]', e.message); }
-
-        // AutoMod check — antilink, antiflood
-        try {
-            const automod = require('./plugins/automod.js');
-            if (automod.checkMessage && client?.db) {
-                const blocked = await automod.checkMessage(ctx, bridge, client.db);
-                if (blocked) return;
-            }
-        } catch(e) { console.error('[AUTOMOD]', e.message); }
     }
 
     if (text.startsWith('/')) {
