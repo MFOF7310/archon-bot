@@ -89,3 +89,12 @@ changelog.md
 # Add any project-specific ignores below this line
 # ...application.yml
 application.yml
+application.yml
+.env
+*.env
+config.yml
+secrets.yml
+cookies.txt
+*cookies*
+*.key
+*.pem
