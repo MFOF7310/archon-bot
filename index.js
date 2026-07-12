@@ -67,34 +67,56 @@ function validateSnowflake(id) {
 
 // ================= PM2 STYLE DISPLAY =================
 function displayPM2Banner(serverCount = 0) {
-    const isPM2 = process.env.pm_id !== undefined || process.env.name === 'Architect-CG223';
-    
     const version = '2.0.0';
     const memory = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
-    
-    const banner = `
-\x1b[38;5;39m    ██████╗ ███╗   ███╗██████╗ 
-\x1b[38;5;45m    ██╔══██╗████╗ ████║╚════██╗
-\x1b[38;5;51m    ██████╔╝██╔████╔██║ █████╔╝
-\x1b[38;5;51m    ██╔═══╝ ██║╚██╔╝██║██╔═══╝ 
-\x1b[38;5;45m    ██║     ██║ ╚═╝ ██║███████╗
-\x1b[38;5;39m    ╚═╝     ╚═╝     ╚═╝╚══════╝\x1b[0m
+    const hour = new Date().getHours();
 
-\x1b[36m╔══════════════════════════════════════════════════════════════════╗
-\x1b[36m║\x1b[0m  \x1b[1;33m  ARCHON CG-223\x1b[0m | \x1b[1;32mAI-POWERED SERVER ARCHITECT\x1b[0m                      \x1b[36m║
-\x1b[36m╠══════════════════════════════════════════════════════════════════╣
-\x1b[36m║\x1b[0m  \x1b[32mNODE:\x1b[0m BAMAKO_223 🇲🇱  \x1b[33mSERVERS:\x1b[0m ${String(serverCount).padEnd(6)}     \x1b[35mBY:\x1b[0m MFOF7310         \x1b[36m║
-\x1b[36m║\x1b[0m  \x1b[32mVERSION:\x1b[0m v${version.padEnd(8)}        \x1b[35mPM2 ID:\x1b[0m ${(process.env.pm_id || '0').padEnd(8)}        \x1b[36m║
-\x1b[36m║\x1b[0m  \x1b[32mSTATUS:\x1b[0m \x1b[5;32m ONLINE\x1b[0m   \x1b[33mMEMORY:\x1b[0m ${memory.padEnd(5)} MB                \x1b[36m║
-\x1b[36m╠══════════════════════════════════════════════════════════════════╣
-\x1b[36m║\x1b[0m  \x1b[1;34mTELEGRAM:\x1b[0m Bridge \x1b[32mACTIVE\x1b[0m      \x1b[1;34mLYDIA AI:\x1b[0m \x1b[32mCONNECTED\x1b[0m               \x1b[36m║
-\x1b[36m║\x1b[0m  \x1b[1;34mDATABASE:\x1b[0m WAL+Partitioned   \x1b[1;34mCIRCUIT:\x1b[0m \x1b[32mREADY\x1b[0m                   \x1b[36m║
-\x1b[36m╚══════════════════════════════════════════════════════════════════╝\x1b[0m
-`;
+    let primary, secondary, accent, timeLabel, logoColor;
+    if (hour >= 6 && hour < 12) {
+        primary   = '\x1b[1;32m';
+        secondary = '\x1b[0;32m';
+        accent    = '\x1b[1;33m';
+        logoColor = '\x1b[38;5;46m';
+        timeLabel = '🌅 MORNING';
+    } else if (hour >= 12 && hour < 18) {
+        primary   = '\x1b[1;33m';
+        secondary = '\x1b[0;33m';
+        accent    = '\x1b[1;32m';
+        logoColor = '\x1b[38;5;220m';
+        timeLabel = '☀️  MIDDAY';
+    } else {
+        primary   = '\x1b[1;31m';
+        secondary = '\x1b[0;31m';
+        accent    = '\x1b[1;33m';
+        logoColor = '\x1b[38;5;196m';
+        timeLabel = '🌙 NIGHT';
+    }
+    const R = '\x1b[0m';
+    const B = '\x1b[1m';
 
-        console.log(banner);
+    const banner = [
+        '',
+        logoColor + '    ██████╗ ███╗   ███╗██████╗' + R,
+        logoColor + '    ██╔══██╗████╗ ████║╚════██╗' + R,
+        primary   + '    ██████╔╝██╔████╔██║ █████╔╝' + R,
+        primary   + '    ██╔═══╝ ██║╚██╔╝██║██╔═══╝' + R,
+        logoColor + '    ██║     ██║ ╚═╝ ██║███████╗' + R,
+        logoColor + '    ╚═╝     ╚═╝     ╚═╝╚══════╝' + R,
+        '',
+        primary + '╔══════════════════════════════════════════════════════════════════╗' + R,
+        primary + '║' + R + '  ' + B + accent + '  ARCHON CG-223' + R + ' | ' + primary + 'AI-POWERED SERVER ARCHITECT' + R + '  ' + accent + timeLabel + R + '     ' + primary + '║' + R,
+        primary + '╠══════════════════════════════════════════════════════════════════╣' + R,
+        primary + '║' + R + '  ' + secondary + 'NODE:' + R + ' BAMAKO_223 🇲🇱  ' + accent + 'SERVERS:' + R + ' ' + String(serverCount).padEnd(6) + '     ' + accent + 'BY:' + R + ' MFOF7310         ' + primary + '║' + R,
+        primary + '║' + R + '  ' + secondary + 'VERSION:' + R + ' v' + version.padEnd(8) + '        ' + accent + 'PM2 ID:' + R + ' ' + (process.env.pm_id || '0').padEnd(8) + '        ' + primary + '║' + R,
+        primary + '║' + R + '  ' + secondary + 'STATUS:' + R + ' ' + primary + '● ONLINE' + R + '   ' + accent + 'MEMORY:' + R + ' ' + memory.padEnd(5) + ' MB                ' + primary + '║' + R,
+        primary + '╠══════════════════════════════════════════════════════════════════╣' + R,
+        primary + '║' + R + '  ' + accent + 'TELEGRAM:' + R + ' Bridge ' + secondary + 'ACTIVE' + R + '      ' + accent + 'LYDIA AI:' + R + ' ' + secondary + 'CONNECTED' + R + '               ' + primary + '║' + R,
+        primary + '║' + R + '  ' + accent + 'DATABASE:' + R + ' WAL+Partitioned   ' + accent + 'CIRCUIT:' + R + ' ' + secondary + 'READY' + R + '                   ' + primary + '║' + R,
+        primary + '╚══════════════════════════════════════════════════════════════════╝' + R,
+        ''
+    ].join('\n');
+    console.log(banner);
 }
-
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
