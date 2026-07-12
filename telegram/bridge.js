@@ -294,10 +294,12 @@ class TelegramBridge {
     async editMessage(chatId, messageId, text, options = {}) {
         if (!this.token) return { success: false };
         return new Promise((resolve) => {
+            const markup = options.extra?.reply_markup || options.reply_markup;
             const body = JSON.stringify({
                 chat_id: chatId, message_id: messageId,
                 text: String(text).substring(0, 4096),
                 parse_mode: options.parse_mode || undefined,
+                ...(markup ? { reply_markup: markup } : {}),
             });
             const req = https.request(
                 `https://api.telegram.org/bot${this.token}/editMessageText`,
