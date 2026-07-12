@@ -2047,24 +2047,6 @@ function getCategoryEmoji(category) {
     return emojiMap[category.toUpperCase()] || '📦';
 }
 
-// ================= TELEGRAM BRIDGE v1.7.0 =================
-const telegramBridge = require('./telegram/bridge.js');
-client.telegramBridge = telegramBridge.initialize(client);
-
-const telegramBot = require('./telegram/bot.js');
-try {
-    telegramBot.initialize(client);
-} catch(e) {
-    console.error('[TELEGRAM] Bot init failed:', e.message);
-}
-
-const bridgeStatus = client.telegramBridge.status();
-if (bridgeStatus.configured) {
-    console.log(`${cyan}[TELEGRAM]${reset} Bridge v1.7.0 configured - Auto-activating on boot`);
-} else {
-    console.log(`${yellow}[TELEGRAM]${reset} Bridge not configured - Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to .env`);
-}
-
 // ================= PLUGIN LOADER — SUPREME NEURAL GRID v3.0 =================
 client.loadPlugins = async () => {
     client.commands.clear();
