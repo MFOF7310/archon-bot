@@ -2104,7 +2104,7 @@ client.loadPlugins = async () => {
             delete require.cache[require.resolve(filePath)];
             const command = require(filePath);
 
-            if (command.name && command.run) {
+            if (command.name && (command.run || command.execute)) {
                 client.commands.set(command.name, command);
                 if (command.aliases && Array.isArray(command.aliases)) {
                     command.aliases.forEach(a => client.aliases.set(a, command.name));
@@ -3921,6 +3921,15 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
 
     // ================= WELCOME BUTTON HANDLER =================
+    // ── VERIFY BUTTON ──
+    if (interaction.isButton() && interaction.customId.startsWith('verify_')) {
+        try {
+            const verifyPlugin = require('./plugins/verify.js');
+            await verifyPlugin.onVerifyButton(interaction, client, db);
+        } catch(e) { console.error('[VERIFY BTN]', e.message); }
+        return;
+    }
+
     if (interaction.isButton() && interaction.customId === 'welcome_help') {
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : null;
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
@@ -4569,6 +4578,12 @@ safeOn(Events.GuildDelete, async (guild) => {
 safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
+
+    // ── VERIFICATION GATE ──
+    try {
+        const verifyPlugin = require('./plugins/verify.js');
+        await verifyPlugin.onMemberJoin(member, client, db);
+    } catch(e) { console.error('[VERIFY]', e.message); }
 
     // ── LEVELING PLUGIN (always runs, independent of welcome) ──
     if (client.leveling?.onMemberAdd) {
