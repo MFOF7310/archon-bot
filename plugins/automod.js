@@ -6,7 +6,7 @@ const SPAM_THRESHOLD = 3;
 const SPAM_WINDOW = 5000;
 const CAPS_RATIO = 0.7;
 const EMOJI_RATIO = 0.5;
-const MENTION_LIMIT = 4;
+const MENTION_LIMIT = 6;
 const REPEAT_WINDOW = 15000;
 const MAX_HISTORY = 100;
 const IMAGE_SPAM_LIMIT = 2;
@@ -322,7 +322,9 @@ async function scanMessage(message, client, db) {
     const ss = client.getServerSettings?.(message.guild.id);
     if (!ss?.autoModEnabled) return false;
     const member = message.member;
-    if (member?.permissions.has(PermissionsBitField.Flags.ManageMessages)) return false;
+    // Skip owner and elevated users entirely
+    if (message.guild.ownerId === message.author.id) return false;
+    if (isElevated(member)) return false;
     if (ss.autoModWhitelist) {
         const wl = ss.autoModWhitelist.split(',');
         if (wl.some(rid => member?.roles.cache.has(rid))) return false;
@@ -379,7 +381,7 @@ async function scanMessage(message, client, db) {
     const mentionedUsers = message.mentions.users.filter(u => !u.bot);
     const guild = message.guild;
     const ownerId = guild.ownerId;
-    const filteredUsers = mentionedUsers.filter(u => u.id !== ownerId);
+    const filteredUsers = mentionedUsers.filter(u => u.id !== ownerId && u.id !== message.author.id);
     // Filter out admin/mod roles
     const filteredRoles = message.mentions.roles.filter(r => {
         const perms = r.permissions;
