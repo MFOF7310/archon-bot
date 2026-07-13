@@ -1259,6 +1259,7 @@ module.exports = {
             const action = ix.options.getString('action');
             const value = ix.options.getInteger('value');
             const gid = ix.guild.id;
+            const db = client.db;
             db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
 
             if (action === 'enable') {
