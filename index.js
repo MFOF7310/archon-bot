@@ -5010,6 +5010,14 @@ apiApp.post('/api/premium/activate', (req, res) => {
     }
 });
 
+apiApp.get('/api/premium/info', (req, res) => {
+    return res.json({
+        omNumber: process.env.ORANGE_MONEY_NUMBER || '',
+        telegram: process.env.TELEGRAM_CONTACT || 'mfof7310',
+        discord: 'cloudgaming223'
+    });
+});
+
 apiApp.get('/api/premium/checkout-url', (req, res) => {
     try {
         const guildId = req.query.guildId || '';
