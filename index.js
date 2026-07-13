@@ -5010,6 +5010,19 @@ apiApp.post('/api/premium/activate', (req, res) => {
     }
 });
 
+apiApp.get('/api/premium/checkout-url', (req, res) => {
+    try {
+        const guildId = req.query.guildId || '';
+        const baseUrl = process.env.DODO_PRODUCT_URL || '';
+        if (!baseUrl) return res.json({ url: null });
+        const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 
+            'metadata[guild_id]=' + encodeURIComponent(guildId);
+        return res.json({ url });
+    } catch(e) {
+        return res.json({ url: null });
+    }
+});
+
 apiApp.get('/api/premium/status', (req, res) => {
     try {
         const { guildId } = req.query;
