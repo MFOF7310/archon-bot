@@ -1254,12 +1254,22 @@ module.exports = {
             return ix.reply({ content: `✅ Log → ${ch}`, flags: 1 << 6 });
         }
 
-        // ── RAID DETECTION HANDLER ──
+        // ── RAID DETECTION HANDLER (Premium) ──
         if (sc === 'raid') {
             const action = ix.options.getString('action');
             const value = ix.options.getInteger('value');
             const gid = ix.guild.id;
             const db = client.db;
+            const { isPremium } = require('./premium.js');
+            if (!isPremium(db, gid) && action !== 'status') {
+                return ix.reply({ embeds: [new EmbedBuilder()
+                    .setColor(0xffd700)
+                    .setTitle('⭐ Premium Feature')
+                    .setDescription('Raid detection requires **ARCHON Premium**!\n\nGet it for just **$1.99/month** — protect your server from coordinated attacks.')
+                    .addFields({ name: '🔑 Activate', value: 'Use `/premium status` to upgrade!' })
+                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                ], flags: 64 });
+            }
             db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
 
             if (action === 'enable') {

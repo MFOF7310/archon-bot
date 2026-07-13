@@ -4579,16 +4579,22 @@ safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
 
-    // ── RAID DETECTION ──
+    // ── RAID DETECTION (Premium) ──
     try {
-        const automod = require('./plugins/automod.js');
-        await automod.handleRaid(member, client, db);
+        const { isPremium } = require('./plugins/premium.js');
+        if (isPremium(db, member.guild.id)) {
+            const automod = require('./plugins/automod.js');
+            await automod.handleRaid(member, client, db);
+        }
     } catch(e) { console.error('[RAID]', e.message); }
 
-    // ── VERIFICATION GATE ──
+    // ── VERIFICATION GATE (Premium) ──
     try {
-        const verifyPlugin = require('./plugins/verify.js');
-        await verifyPlugin.onMemberJoin(member, client, db);
+        const { isPremium } = require('./plugins/premium.js');
+        if (isPremium(db, member.guild.id)) {
+            const verifyPlugin = require('./plugins/verify.js');
+            await verifyPlugin.onMemberJoin(member, client, db);
+        }
     } catch(e) { console.error('[VERIFY]', e.message); }
 
     // ── LEVELING PLUGIN (always runs, independent of welcome) ──

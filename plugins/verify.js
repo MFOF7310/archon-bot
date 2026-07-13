@@ -42,6 +42,16 @@ module.exports = {
         db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
 
         if (sub === 'enable') {
+            const { isPremium } = require('./premium.js');
+            if (!isPremium(db, gid)) {
+                return interaction.reply({ embeds: [new EmbedBuilder()
+                    .setColor(0xffd700)
+                    .setTitle('⭐ Premium Feature')
+                    .setDescription('Image captcha verification requires **ARCHON Premium**!\n\nGet it for just **$1.99/month**.')
+                    .addFields({ name: '🔑 Activate', value: 'Use `/premium status` to upgrade!' })
+                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                ], flags: 64 });
+            }
             db.prepare(`UPDATE server_settings SET verify_enabled = 1 WHERE guild_id = ?`).run(gid);
             const settings = db.prepare('SELECT verify_role_id, verify_kick_days FROM server_settings WHERE guild_id = ?').get(gid);
             const role = settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : '⚠️ Not set — use `/verify setrole`';
