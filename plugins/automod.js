@@ -375,8 +375,21 @@ async function scanMessage(message, client, db) {
         }
     }
 
-    // 4. Mass mention
-    const mentions = message.mentions.users.size + message.mentions.roles.size + (message.content.match(/@here|@everyone/g) || []).length;
+    // 4. Mass mention — exclude bots, owner, and admin/mod role mentions
+    const mentionedUsers = message.mentions.users.filter(u => !u.bot);
+    const guild = message.guild;
+    const ownerId = guild.ownerId;
+    const filteredUsers = mentionedUsers.filter(u => u.id !== ownerId);
+    // Filter out admin/mod roles
+    const filteredRoles = message.mentions.roles.filter(r => {
+        const perms = r.permissions;
+        return !perms.has(PermissionsBitField.Flags.Administrator) &&
+               !perms.has(PermissionsBitField.Flags.ManageGuild) &&
+               !perms.has(PermissionsBitField.Flags.ModerateMembers) &&
+               !perms.has(PermissionsBitField.Flags.ManageMessages);
+    });
+    const everyoneCount = (message.content.match(/@here|@everyone/g) || []).length;
+    const mentions = filteredUsers.size + filteredRoles.size + everyoneCount;
     if (mentions > MENTION_LIMIT && !seen.has('mention')) {
         violations.push({ type: 'mass mention', reason: `${mentions} mentions`, source: 'mention' });
         seen.add('mention');
