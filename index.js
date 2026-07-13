@@ -4841,6 +4841,100 @@ apiApp.use(express.json());
 
 // ================= API ROUTES =================
 
+// ── DODO PAYMENTS WEBHOOK ──────────────────────────────
+apiApp.post('/api/webhooks/dodo', async (req, res) => {
+    try {
+        const crypto = require('crypto');
+        const webhookSecret = process.env.DODO_WEBHOOK_SECRET;
+        
+        // Verify signature
+        const webhookId = req.headers['webhook-id'];
+        const webhookTimestamp = req.headers['webhook-timestamp'];
+        const webhookSignature = req.headers['webhook-signature'];
+        
+        if (webhookSecret && webhookSignature) {
+            const signedPayload = `${webhookId}.${webhookTimestamp}.${JSON.stringify(req.body)}`;
+            const expectedSig = crypto.createHmac('sha256', webhookSecret)
+                .update(signedPayload).digest('base64');
+            const signatures = webhookSignature.split(' ');
+            const valid = signatures.some(sig => {
+                const sigValue = sig.startsWith('v1,') ? sig.slice(3) : sig;
+                return crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(sigValue));
+            });
+            if (!valid) {
+                console.error('[DODO] Invalid webhook signature');
+                return res.status(401).json({ error: 'Invalid signature' });
+            }
+        }
+
+        const event = req.body;
+        const eventType = event.type;
+        console.log(`[DODO] Event: ${eventType}`);
+
+        // Extract guild ID from metadata
+        const guildId = event.data?.metadata?.guild_id || event.data?.custom_data?.guild_id;
+        const customerId = event.data?.customer?.customer_id;
+        const email = event.data?.customer?.email;
+
+        if (eventType === 'payment.succeeded' || eventType === 'subscription.active') {
+            if (!guildId) {
+                console.error('[DODO] No guild_id in metadata');
+                return res.json({ received: true });
+            }
+            // Activate premium — 30 days per payment
+            const expiresAt = Math.floor(Date.now()/1000) + (30 * 86400);
+            db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)').run(
+                guildId, expiresAt, 'monthly', 'dodo', event.data?.payment_id || 'dodo', email || 'dodo'
+            );
+            console.log(`[DODO] ✅ Premium activated for guild ${guildId}`);
+
+            // DM guild owner
+            try {
+                const guild = client.guilds.cache.get(guildId);
+                if (guild) {
+                    const owner = await guild.fetchOwner();
+                    const { EmbedBuilder } = require('discord.js');
+                    await owner.send({ embeds: [new EmbedBuilder()
+                        .setColor(0xffd700)
+                        .setTitle('⭐ ARCHON Premium Activated!')
+                        .setDescription(`Payment confirmed! Your server **${guild.name}** now has ARCHON Premium for 30 days!`)
+                        .addFields(
+                            { name: '💰 Amount', value: '$1.99', inline: true },
+                            { name: '⏰ Valid until', value: `<t:${expiresAt}:D>`, inline: true }
+                        )
+                        .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱 • Thank you for supporting!' })
+                    ]});
+                }
+            } catch(e) { console.error('[DODO] DM failed:', e.message); }
+        }
+
+        if (eventType === 'subscription.cancelled' || eventType === 'subscription.failed') {
+            if (guildId) {
+                db.prepare('DELETE FROM premium WHERE guild_id = ?').run(guildId);
+                console.log(`[DODO] ❌ Premium cancelled for guild ${guildId}`);
+                try {
+                    const guild = client.guilds.cache.get(guildId);
+                    if (guild) {
+                        const owner = await guild.fetchOwner();
+                        const { EmbedBuilder } = require('discord.js');
+                        await owner.send({ embeds: [new EmbedBuilder()
+                            .setColor(0xff3311)
+                            .setTitle('Premium Cancelled')
+                            .setDescription(`ARCHON Premium for **${guild.name}** has been cancelled.\n\nRejoin anytime at bamako-steel-dev.xyz/premium`)
+                            .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                        ]});
+                    }
+                } catch {}
+            }
+        }
+
+        res.json({ received: true });
+    } catch(e) {
+        console.error('[DODO WEBHOOK]', e.message);
+        res.status(500).json({ error: 'Webhook error' });
+    }
+});
+
 // ── PREMIUM API ──────────────────────────────────────
 apiApp.post('/api/premium/activate', (req, res) => {
     try {
