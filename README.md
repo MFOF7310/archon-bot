@@ -8,9 +8,7 @@
 
 [![Discord](https://img.shields.io/badge/Discord-Eagle%20Community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/NFSMFJajp9)
 
-
-[![Telegram](https://img.shields.io/badge/Telegram-architect223bot-26A5E4?style=flat&logo=telegram&logoColor=white)](https://t.me/architect223bot)
-
+[![Telegram](https://img.shields.io/badge/Telegram-archon223-26A5E4?style=flat&logo=telegram&logoColor=white)](https://t.me/architect223bot)
 
 [![Dashboard](https://img.shields.io/badge/Dashboard-bamako--steel--dev.xyz-00f0ff?style=flat&logo=vercel&logoColor=white)](https://bamako-steel-dev.xyz)
 
