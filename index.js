@@ -5653,7 +5653,7 @@ const STATUS_MESSAGES = [
     { name: 'defense protocols 🛡️', type: 0 },
     { name: 'the economy engine 💰', type: 0 },
     { name: `Neural Grid v${client.version || '3.1.0'} 🔮`, type: 0 },
-    { name: `${client.commands?.size || 0} plugins loaded ⚡`, type: 0 },
+    { name: '⚡ plugins loaded', type: 0, dynamic: 'plugins' },
     // WATCHING
     { name: 'over {guilds} servers 🌐', type: 3 },
     { name: '{users} agents in the field', type: 3 },
@@ -5694,6 +5694,7 @@ function rotateStatus() {
     // Replace dynamic placeholders
     if (name.includes('{guilds}')) name = name.replace('{guilds}', client.guilds.cache.size.toLocaleString());
     if (name.includes('{users}')) name = name.replace('{users}', client.guilds.cache.reduce((t, g) => t + g.memberCount, 0).toLocaleString());
+    if (msg.dynamic === 'plugins') name = `${client.commands?.size || 0} plugins loaded ⚡`;
     client.user.setActivity(name, { type: msg.type });
     statusIndex = (statusIndex + 1) % STATUS_MESSAGES.length;
 }
