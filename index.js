@@ -4841,6 +4841,45 @@ apiApp.use(express.json());
 
 // ================= API ROUTES =================
 
+// ── PREMIUM API ──────────────────────────────────────
+apiApp.post('/api/premium/activate', (req, res) => {
+    try {
+        const { code, guildId } = req.body;
+        if (!code || !guildId) return res.json({ success: false, error: 'Missing code or guild ID' });
+
+        const codeRow = db.prepare('SELECT * FROM premium_codes WHERE code = ? AND used = 0').get(code.toUpperCase());
+        if (!codeRow) return res.json({ success: false, error: 'Invalid or already used code' });
+
+        const expiresAt = codeRow.days === 0 ? null : Math.floor(Date.now()/1000) + (codeRow.days * 86400);
+        db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)').run(
+            guildId, expiresAt, 'code', 'code', code, 'dashboard'
+        );
+        db.prepare('UPDATE premium_codes SET used = 1, used_at = ? WHERE code = ?').run(
+            Math.floor(Date.now()/1000), code.toUpperCase()
+        );
+
+        const days = codeRow.days === 0 ? 'Lifetime' : codeRow.days + ' days';
+        return res.json({ success: true, message: `Premium activated! Duration: ${days}` });
+    } catch(e) {
+        console.error('[PREMIUM API]', e.message);
+        return res.json({ success: false, error: 'Server error' });
+    }
+});
+
+apiApp.get('/api/premium/status', (req, res) => {
+    try {
+        const { guildId } = req.query;
+        if (!guildId) return res.json({ premium: false });
+        const row = db.prepare('SELECT expires_at FROM premium WHERE guild_id = ?').get(guildId);
+        if (!row) return res.json({ premium: false });
+        const premium = !row.expires_at || Date.now()/1000 < row.expires_at;
+        const daysLeft = row.expires_at ? Math.max(0, Math.floor((row.expires_at - Date.now()/1000) / 86400)) : null;
+        return res.json({ premium, daysLeft, lifetime: !row.expires_at });
+    } catch(e) {
+        return res.json({ premium: false });
+    }
+});
+
 // ── MUSIC API ──────────────────────────────────────
 apiApp.get('/api/music', (req, res) => {
     try {
