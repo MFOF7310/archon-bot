@@ -151,6 +151,101 @@ function isElevated(member) {
            member.permissions.has(PermissionsBitField.Flags.ManageGuild);
 }
 
+
+// ═══════════════════════════════════════════════════════
+// RAID DETECTION ENGINE
+// ═══════════════════════════════════════════════════════
+const raidJoinLog = new Map(); // guildId => [timestamps]
+const raidActive = new Map();  // guildId => true/false
+
+async function handleRaidDetection(member, client, db) {
+    const gid = member.guild.id;
+    const settings = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid);
+    if (!settings?.raid_enabled) return;
+
+    const threshold = settings.raid_threshold || 5;
+    const window = (settings.raid_window || 30) * 1000;
+    const minAgeDays = settings.raid_min_age_days || 0;
+    const now = Date.now();
+
+    // Track joins
+    if (!raidJoinLog.has(gid)) raidJoinLog.set(gid, []);
+    const joins = raidJoinLog.get(gid);
+    joins.push(now);
+    // Clean old entries outside window
+    const recent = joins.filter(t => now - t < window);
+    raidJoinLog.set(gid, recent);
+
+    // Check account age
+    const accountAge = (now - member.user.createdTimestamp) / 86400000;
+    const isSuspect = minAgeDays > 0 && accountAge < minAgeDays;
+
+    // Check if raid threshold hit
+    if (recent.length >= threshold && !raidActive.get(gid)) {
+        raidActive.set(gid, true);
+        console.log(`[RAID] 🚨 Raid detected in ${member.guild.name} — ${recent.length} joins in ${settings.raid_window}s`);
+
+        // Alert owner
+        const owner = await member.guild.fetchOwner().catch(() => null);
+        if (owner) {
+            const embed = new EmbedBuilder()
+                .setColor(0xff0000)
+                .setTitle('🚨 RAID DETECTED — ' + member.guild.name)
+                .setDescription(
+                    '**Unusual join activity detected!**\n\n' +
+                    'Your server may be under a coordinated raid attack.'
+                )
+                .addFields(
+                    { name: '⚡ Joins', value: `${recent.length} in ${settings.raid_window}s`, inline: true },
+                    { name: '🏰 Server', value: member.guild.name, inline: true },
+                    { name: '🕐 Time', value: `<t:${Math.floor(now/1000)}:T>`, inline: true }
+                )
+                .setFooter({ text: 'ARCHON CG-223 • Auto-unlocks in 5 min if joins stop' })
+                .setTimestamp();
+            await owner.send({ embeds: [embed] }).catch(() => {});
+        }
+
+        // Auto-unlock after 5 min
+        setTimeout(() => {
+            const newJoins = raidJoinLog.get(gid) || [];
+            const stillActive = newJoins.filter(t => Date.now() - t < window).length >= threshold;
+            if (!stillActive) {
+                raidActive.set(gid, false);
+                console.log(`[RAID] ✅ Raid over in ${member.guild.name} — monitoring resumed`);
+                if (owner) {
+                    owner.send({ embeds: [new EmbedBuilder()
+                        .setColor(0x00cc44)
+                        .setTitle('✅ Raid Alert Cleared — ' + member.guild.name)
+                        .setDescription('Join rate has returned to normal. Server is secure.')
+                        .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                    ]}).catch(() => {});
+                }
+            }
+        }, 5 * 60000);
+    }
+
+    // Kick/flag new accounts during active raid
+    if (raidActive.get(gid) && isSuspect) {
+        console.log(`[RAID] 👶 Suspect account kicked: ${member.user.tag} (${accountAge.toFixed(1)} days old)`);
+        await member.kick(`Raid protection: Account too new (${accountAge.toFixed(1)} days)`).catch(() => {});
+        try {
+            const dm = await member.createDM();
+            await dm.send({
+                embeds: [new EmbedBuilder()
+                    .setColor(0xff8800)
+                    .setTitle('⚠️ Kicked — Account Too New')
+                    .setDescription(
+                        `You were automatically removed from **${member.guild.name}** during a security alert.\n\n` +
+                        `This server requires accounts to be at least **${minAgeDays} days old**.\n` +
+                        `Your account is **${accountAge.toFixed(1)} days old**.\n\n` +
+                        `Please try again when your account is older!`
+                    )
+                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
+            }).catch(() => {});
+        } catch {}
+    }
+}
+
 // ================= FIX 1: takeAction stores violation metadata in history =================
 async function takeAction(message, violations, client, db) {
     const uid = message.author.id, gid = message.guild.id;
@@ -969,7 +1064,16 @@ module.exports = {
         addSubcommand(s => s.setName('whitelist').setDescription('Whitelist role').addRoleOption(o => o.setName('role').setDescription('Role (skip to clear)').setRequired(false))).
         addSubcommand(s => s.setName('domains').setDescription('Manage allowed link domains').addStringOption(o => o.setName('action').setDescription('add, remove, list, or reset').setRequired(true).addChoices({name:'📋 List allowed domains',value:'list'},{name:'➕ Add domain',value:'add'},{name:'➖ Remove domain',value:'remove'},{name:'🔄 Reset to defaults',value:'reset'})).addStringOption(o => o.setName('domain').setDescription('Domain to add/remove (e.g., example.com)').setRequired(false))).
         addSubcommand(s => s.setName('log').setDescription('Set log channel').addChannelOption(o => o.setName('channel').setDescription('Channel').setRequired(true))).
-        addSubcommand(s => s.setName('channels').setDescription('Restrict AutoMod to specific channels').addStringOption(o => o.setName('action').setDescription('add, remove, list, or clear').setRequired(true).addChoices({name:'📋 List restricted channels',value:'list'},{name:'➕ Add channel',value:'add'},{name:'➖ Remove channel',value:'remove'},{name:'🔄 Clear all',value:'clear'})).addChannelOption(o => o.setName('channel').setDescription('Channel to add/remove').setRequired(false))),
+        addSubcommand(s => s.setName('channels').setDescription('Restrict AutoMod to specific channels').addStringOption(o => o.setName('action').setDescription('add, remove, list, or clear').setRequired(true).addChoices({name:'📋 List restricted channels',value:'list'},{name:'➕ Add channel',value:'add'},{name:'➖ Remove channel',value:'remove'},{name:'🔄 Clear all',value:'clear'})).addChannelOption(o => o.setName('channel').setDescription('Channel to add/remove').setRequired(false))).
+        addSubcommand(s => s.setName('raid').setDescription('🛡️ Configure raid detection').
+            addStringOption(o => o.setName('action').setDescription('Action').setRequired(true).addChoices(
+                {name:'✅ Enable', value:'enable'},
+                {name:'❌ Disable', value:'disable'},
+                {name:'📊 Status', value:'status'},
+                {name:'⚙️ Set threshold', value:'threshold'},
+                {name:'👶 Min account age', value:'minage'}
+            )).
+            addIntegerOption(o => o.setName('value').setDescription('Value for threshold or min age').setRequired(false))),
 
     execute: async (ix, client) => {
         const adm = ix.member.permissions.has(PermissionsBitField.Flags.Administrator);
@@ -1148,6 +1252,58 @@ module.exports = {
             const ch = ix.options.getChannel('channel');
             client.updateServerSetting(ix.guild.id, 'automodlog', ch.id); client.settings.delete(ix.guild.id);
             return ix.reply({ content: `✅ Log → ${ch}`, flags: 1 << 6 });
+        }
+
+        // ── RAID DETECTION HANDLER ──
+        if (sc === 'raid') {
+            const action = ix.options.getString('action');
+            const value = ix.options.getInteger('value');
+            const gid = ix.guild.id;
+            db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
+
+            if (action === 'enable') {
+                db.prepare(`UPDATE server_settings SET raid_enabled = 1 WHERE guild_id = ?`).run(gid);
+                const s = db.prepare('SELECT raid_threshold, raid_window, raid_action, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid);
+                return ix.reply({ embeds: [new EmbedBuilder()
+                    .setColor(0x00cc44)
+                    .setTitle('🛡️ Raid Detection — ENABLED')
+                    .addFields(
+                        { name: '⚡ Trigger', value: `${s?.raid_threshold || 5} joins in ${s?.raid_window || 30}s`, inline: true },
+                        { name: '🎯 Action', value: s?.raid_action || 'alert', inline: true },
+                        { name: '👶 Min Age', value: s?.raid_min_age_days ? `${s.raid_min_age_days} days` : 'Disabled', inline: true }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })], flags: 1 << 6 });
+            }
+
+            if (action === 'disable') {
+                db.prepare(`UPDATE server_settings SET raid_enabled = 0 WHERE guild_id = ?`).run(gid);
+                return ix.reply({ content: '❌ Raid detection disabled.', flags: 1 << 6 });
+            }
+
+            if (action === 'status') {
+                const s = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_action, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid);
+                return ix.reply({ embeds: [new EmbedBuilder()
+                    .setColor(s?.raid_enabled ? 0x00cc44 : 0x888888)
+                    .setTitle('🛡️ Raid Detection Status')
+                    .addFields(
+                        { name: '🔘 Status', value: s?.raid_enabled ? '🟢 Active' : '🔴 Disabled', inline: true },
+                        { name: '⚡ Trigger', value: `${s?.raid_threshold || 5} joins / ${s?.raid_window || 30}s`, inline: true },
+                        { name: '👶 Min Age', value: s?.raid_min_age_days ? `${s.raid_min_age_days} days` : 'Disabled', inline: true }
+                    )
+                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })], flags: 1 << 6 });
+            }
+
+            if (action === 'threshold') {
+                if (!value) return ix.reply({ content: '❌ Provide a value (e.g. 5)', flags: 1 << 6 });
+                db.prepare(`UPDATE server_settings SET raid_threshold = ? WHERE guild_id = ?`).run(value, gid);
+                return ix.reply({ content: `✅ Raid triggers at **${value} joins** in window.`, flags: 1 << 6 });
+            }
+
+            if (action === 'minage') {
+                const days = value || 0;
+                db.prepare(`UPDATE server_settings SET raid_min_age_days = ? WHERE guild_id = ?`).run(days, gid);
+                return ix.reply({ content: days === 0 ? '✅ Min account age disabled.' : `✅ Accounts newer than **${days} days** will be flagged during raids.`, flags: 1 << 6 });
+            }
         }
     },
 
@@ -1335,6 +1491,10 @@ module.exports = {
 
     async handleMessage(message, client, db) {
         return await scanMessage(message, client, db);
+    },
+
+    async handleRaid(member, client, db) {
+        return await handleRaidDetection(member, client, db);
     },
 
     async handleDM(message, client) {
