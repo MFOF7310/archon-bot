@@ -117,7 +117,7 @@ function archon_ps1() {
     local reset="\[\e[0m\]"
     local cyan="\[\e[1;36m\]"
     local bold="\[\e[1m\]"
-    export PS1="${color}┌[${cyan}ARCHON CG-223${color}]─[${bold}\u@BAMAKO-STEEL-NODE${color}]─[${cyan}\w${color}]\n${color}└─▶${reset} "
+    export PS1="${color}┌[${cyan}ARCHON CG-223${color}]─[${bold}\u@BAMAKO-STEEL-NODE${color}]─[${cyan}\w${color}]\n${color}╰─❯${reset} "
 }
 PROMPT_COMMAND=archon_ps1
 # ════════════════════════════
