@@ -5,7 +5,7 @@ const axios = require('axios');
 const SPAM_THRESHOLD = 3;
 const SPAM_WINDOW = 5000;
 const CAPS_RATIO = 0.7;
-const EMOJI_RATIO = 0.5;
+const EMOJI_RATIO = 0.75;
 const MENTION_LIMIT = 6;
 const REPEAT_WINDOW = 15000;
 const MAX_HISTORY = 100;
@@ -370,7 +370,7 @@ async function scanMessage(message, client, db) {
 
     // 3. Emoji flood
     if (message.content.length > 20) {
-        const emojis = (message.content.match(/[\p{Emoji}]/gu) || []).length;
+        const emojis = (message.content.match(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu) || []).length;
         if (emojis / message.content.length > EMOJI_RATIO && !seen.has('emoji')) {
             violations.push({ type: 'emoji flood', reason: `${Math.round(emojis/message.content.length*100)}% emoji`, source: 'emoji' });
             seen.add('emoji');
