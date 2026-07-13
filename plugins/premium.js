@@ -34,7 +34,11 @@ module.exports = {
         .addSubcommand(s => s.setName('activate').setDescription('🔑 Activate a premium code')
             .addStringOption(o => o.setName('code').setDescription('Your premium code').setRequired(true)))
         .addSubcommand(s => s.setName('features').setDescription('✨ View premium features'))
-        .addSubcommand(s => s.setName('grant').setDescription('👑 Grant premium [Owner only]')
+        .addSubcommand(s => s.setName('code').setDescription('🔑 Generate premium code [Owner only]')
+            .addIntegerOption(o => o.setName('days').setDescription('Days (0 = lifetime)').setRequired(true))
+            .addIntegerOption(o => o.setName('amount').setDescription('How many codes to generate (default 1)').setRequired(false).setMinValue(1).setMaxValue(10))).
+        addSubcommand(s => s.setName('codes').setDescription('📋 List all active codes [Owner only]')).
+        addSubcommand(s => s.setName('grant').setDescription('👑 Grant premium [Owner only]')
             .addStringOption(o => o.setName('guild').setDescription('Guild ID').setRequired(true))
             .addIntegerOption(o => o.setName('days').setDescription('Days (0 = lifetime)').setRequired(true))),
 
@@ -123,6 +127,40 @@ module.exports = {
                 .setColor(0xffd700)
                 .setTitle('⭐ Premium Activated!')
                 .setDescription(`**${interaction.guild.name}** now has ARCHON Premium!\n\nDuration: **${days}**\n\nAll premium features are now unlocked! 🎉`)
+                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+            ], flags: 64 });
+        }
+
+        if (sub === 'code') {
+            if (interaction.user.id !== process.env.OWNER_ID)
+                return interaction.reply({ content: '⛔ Bot owner only.', flags: 64 });
+            const days = interaction.options.getInteger('days');
+            const amount = interaction.options.getInteger('amount') || 1;
+            const codes = [];
+            for (let i = 0; i < amount; i++) {
+                const code = 'ARCHON-' + Math.random().toString(36).slice(2,6).toUpperCase() + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+                db.prepare('INSERT OR IGNORE INTO premium_codes (code, days) VALUES (?,?)').run(code, days);
+                codes.push(code);
+            }
+            const duration = days === 0 ? 'Lifetime' : days + ' days';
+            return interaction.reply({ embeds: [new EmbedBuilder()
+                .setColor(0xffd700)
+                .setTitle('🔑 Premium Codes Generated')
+                .setDescription('Duration: **' + duration + '**\n\n```\n' + codes.join('\n') + '\n```\n\nShare these with users — they activate with `/premium activate`')
+                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+            ], flags: 64 });
+        }
+
+        if (sub === 'codes') {
+            if (interaction.user.id !== process.env.OWNER_ID)
+                return interaction.reply({ content: '⛔ Bot owner only.', flags: 64 });
+            const codes = db.prepare('SELECT * FROM premium_codes WHERE used = 0 ORDER BY created_at DESC LIMIT 20').all();
+            if (!codes.length) return interaction.reply({ content: '📋 No active unused codes.', flags: 64 });
+            const list = codes.map(c => c.code + ' (' + (c.days === 0 ? 'Lifetime' : c.days + 'd') + ')').join('\n');
+            return interaction.reply({ embeds: [new EmbedBuilder()
+                .setColor(0x00aaff)
+                .setTitle('📋 Active Premium Codes (' + codes.length + ')')
+                .setDescription('```\n' + list + '\n```')
                 .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
             ], flags: 64 });
         }
