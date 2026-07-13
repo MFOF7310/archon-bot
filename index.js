@@ -4579,6 +4579,12 @@ safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
 
+    // ── RAID DETECTION ──
+    try {
+        const automod = require('./plugins/automod.js');
+        await automod.handleRaid(member, client, db);
+    } catch(e) { console.error('[RAID]', e.message); }
+
     // ── VERIFICATION GATE ──
     try {
         const verifyPlugin = require('./plugins/verify.js');
