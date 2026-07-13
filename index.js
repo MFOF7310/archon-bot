@@ -3895,6 +3895,37 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
 
     // ================= APPEAL MODAL SUBMIT =================
+    // ── PREMIUM CODE MODAL ──
+    if (interaction.isModalSubmit() && interaction.customId === 'premium_code_modal') {
+        const code = interaction.fields.getTextInputValue('premium_code').trim().toUpperCase();
+        const gid = interaction.guild?.id;
+        const { EmbedBuilder } = require('discord.js');
+
+        const codeRow = db.prepare('SELECT * FROM premium_codes WHERE code = ? AND used = 0').get(code);
+        if (!codeRow) {
+            return interaction.reply({ embeds: [new EmbedBuilder()
+                .setColor(0xff3311)
+                .setDescription('❌ Invalid or already used code. Contact **@cloudgaming223** if you think this is a mistake.')
+            ], flags: 64 });
+        }
+
+        const expiresAt = codeRow.days === 0 ? null : Math.floor(Date.now()/1000) + (codeRow.days * 86400);
+        db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)').run(
+            gid, expiresAt, 'code', 'code', code, interaction.user.id
+        );
+        db.prepare('UPDATE premium_codes SET used = 1, used_by = ?, used_at = ? WHERE code = ?').run(
+            interaction.user.id, Math.floor(Date.now()/1000), code
+        );
+
+        const days = codeRow.days === 0 ? 'Lifetime' : (codeRow.days + ' days');
+        return interaction.reply({ embeds: [new EmbedBuilder()
+            .setColor(0xffd700)
+            .setTitle('⭐ Premium Activated!')
+            .setDescription('**' + (interaction.guild?.name || 'Server') + '** now has ARCHON Premium!\n\nDuration: **' + days + '**\n\nAll premium features are now unlocked! 🎉')
+            .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+        ], flags: 64 });
+    }
+
     if (interaction.isModalSubmit() && interaction.customId.startsWith('appeal_modal_')) {
         const parts = interaction.customId.split('_');
         const userId = parts[2];
@@ -3921,6 +3952,25 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
 
     // ================= WELCOME BUTTON HANDLER =================
+    // ── PREMIUM ACTIVATE BUTTON ──
+    if (interaction.isButton() && interaction.customId === 'premium_activate') {
+        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+        const modal = new ModalBuilder()
+            .setCustomId('premium_code_modal')
+            .setTitle('⭐ Activate Premium Code');
+        const codeInput = new TextInputBuilder()
+            .setCustomId('premium_code')
+            .setLabel('Enter your premium code')
+            .setPlaceholder('ARCHON-XXXX-XXXX')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setMinLength(5)
+            .setMaxLength(50);
+        modal.addComponents(new ActionRowBuilder().addComponents(codeInput));
+        await interaction.showModal(modal);
+        return;
+    }
+
     // ── VERIFY BUTTON ──
     if (interaction.isButton() && interaction.customId.startsWith('verify_')) {
         try {
