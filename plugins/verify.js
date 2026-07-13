@@ -5,8 +5,9 @@
 const { 
     SlashCommandBuilder, EmbedBuilder, 
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
-    PermissionsBitField
+    PermissionsBitField, AttachmentBuilder
 } = require('discord.js');
+const { generateCaptcha, randomCode } = require('./captcha.js');
 
 const pending = new Map(); // userId:guildId => { timeout, messageId }
 
@@ -133,67 +134,140 @@ module.exports = {
             ? member.guild.roles.cache.get(settings.verify_role_id)
             : null;
 
-        // Build verification DM
-        const embed = new EmbedBuilder()
+
+        const unverifiedRole = settings.verify_unverified_role_id
+            ? member.guild.roles.cache.get(settings.verify_unverified_role_id)
+            : null;
+
+        // Auto-assign unverified role immediately
+        if (unverifiedRole) await member.roles.add(unverifiedRole).catch(() => {});
+        // Generate captcha
+        const code = randomCode(6);
+        const imgBuf = generateCaptcha(code);
+        const attachment = new AttachmentBuilder(imgBuf, { name: 'verify.png' });
+
+        // Store code in pending
+        const captchaEmbed = new EmbedBuilder()
             .setColor(0x00aaff)
             .setTitle(`👋 Welcome to ${member.guild.name}!`)
             .setDescription(
-                `To get full access, please verify you're human.\n\n` +
-                `Tap the button below — it only takes a second!`
+                `To get full access, **type the code shown in the image below.**\n\n` +
+                `⚠️ Case insensitive • You have **3 attempts** • Expires in **10 minutes**`
             )
+            .setImage('attachment://verify.png')
             .setThumbnail(member.guild.iconURL({ dynamic: true }))
-            .setFooter({ text: `ARCHON CG-223 • ${member.guild.name}` })
+            .setFooter({ text: `ARCHON CG-223 • ${member.guild.name} • Type the code to verify` })
             .setTimestamp();
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId(`verify_${gid}_${member.id}`)
-                .setLabel('✅ Verify Me')
-                .setStyle(ButtonStyle.Success),
-        );
-
         let dmMsg = null;
+        let dmChannel = null;
         try {
-            const dm = await member.createDM();
-            dmMsg = await dm.send({ embeds: [embed], components: [row] });
+            dmChannel = await member.createDM();
+            dmMsg = await dmChannel.send({ embeds: [captchaEmbed], files: [attachment] });
         } catch {
-            // DMs closed — try to post in system channel
+            // DMs closed — try system channel
             const sysCh = member.guild.systemChannel;
             if (sysCh) {
                 try {
-                    dmMsg = await sysCh.send({ 
+                    dmMsg = await sysCh.send({
                         content: `${member} please verify!`,
-                        embeds: [embed], 
-                        components: [row] 
+                        embeds: [captchaEmbed],
+                        files: [attachment]
                     });
+                    dmChannel = sysCh;
                 } catch {}
             }
         }
 
-        // Auto-kick timer
-        const kickMins = settings.verify_kick_days || 0;
-        if (kickMins > 0) {
-            const timer = setTimeout(async () => {
-                pending.delete(`${member.id}:${gid}`);
-                // Check if still unverified
-                const freshMember = await member.guild.members.fetch(member.id).catch(() => null);
-                if (!freshMember) return;
-                const hasRole = verifyRole && freshMember.roles.cache.has(verifyRole.id);
-                if (!hasRole) {
-                    await freshMember.kick('Failed to verify in time').catch(() => {});
-                    // Edit DM to show kicked
-                    if (dmMsg) {
-                        await dmMsg.edit({ 
-                            embeds: [embed.setColor(0xff3311).setDescription('❌ You were kicked for not verifying in time.\n\nYou can rejoin and try again!')],
-                            components: [] 
-                        }).catch(() => {});
+        // Store captcha code
+        const key = `${member.id}:${gid}`;
+        let attempts = 0;
+        const maxAttempts = 3;
+        const expireMs = 10 * 60 * 1000; // 10 min
+
+        // Listen for reply in DM
+        if (dmChannel) {
+            const filter = m => m.author.id === member.id && !m.author.bot;
+            const collector = dmChannel.createMessageCollector({ filter, time: expireMs });
+
+            collector.on('collect', async m => {
+                const guess = m.content.trim().toUpperCase();
+                if (guess === code) {
+                    // ✅ Correct!
+                    collector.stop('verified');
+                    pending.delete(key);
+
+                    // Remove unverified role
+                    if (unverifiedRole) await member.roles.remove(unverifiedRole).catch(() => {});
+                    // Add verified role
+                    if (verifyRole) await member.roles.add(verifyRole).catch(() => {});
+
+                    await dmChannel.send({ embeds: [new EmbedBuilder()
+                        .setColor(0x00cc44)
+                        .setTitle('✅ Verified!')
+                        .setDescription(`You're all set! Welcome to **${member.guild.name}** 🎉\n\nEnjoy your stay!`)
+                        .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                    ]}).catch(() => {});
+                } else {
+                    attempts++;
+                    if (attempts >= maxAttempts) {
+                        collector.stop('failed');
+                        await dmChannel.send({ embeds: [new EmbedBuilder()
+                            .setColor(0xff3311)
+                            .setTitle('❌ Too many wrong attempts!')
+                            .setDescription(`You've been removed from **${member.guild.name}**.\n\nYou can rejoin and try again!`)
+                            .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                        ]}).catch(() => {});
+                        await member.kick('Failed captcha verification').catch(() => {});
+                    } else {
+                        // Wrong — send new captcha
+                        const newCode = randomCode(6);
+                        const newBuf = generateCaptcha(newCode);
+                        const newAttach = new AttachmentBuilder(newBuf, { name: 'verify.png' });
+                        // Update stored code
+                        const p = pending.get(key);
+                        if (p) p.code = newCode;
+
+                        await dmChannel.send({ embeds: [new EmbedBuilder()
+                            .setColor(0xff8800)
+                            .setTitle(`❌ Wrong code — attempt ${attempts}/${maxAttempts}`)
+                            .setDescription(`That's not right! Try this new code:\n\n⚠️ **${maxAttempts - attempts} attempt(s) remaining**`)
+                            .setImage('attachment://verify.png')
+                            .setFooter({ text: 'ARCHON CG-223 • Type the code shown above' })
+                        ], files: [newAttach]}).catch(() => {});
+
+                        // Update code reference
+                        if (pending.has(key)) pending.get(key).code = newCode;
                     }
                 }
-            }, kickMins * 60000);
-            pending.set(`${member.id}:${gid}`, { timer, dmMsg });
-        } else {
-            pending.set(`${member.id}:${gid}`, { timer: null, dmMsg });
+            });
+
+            collector.on('end', async (_, reason) => {
+                if (reason === 'time') {
+                    pending.delete(key);
+                    await dmChannel.send({ embeds: [new EmbedBuilder()
+                        .setColor(0x888888)
+                        .setDescription('⏰ Verification expired. Rejoin the server to try again!')
+                        .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                    ]}).catch(() => {});
+                    // Kick if auto-kick enabled
+                    const kickMins = settings.verify_kick_days || 0;
+                    if (kickMins > 0) await member.kick('Verification timed out').catch(() => {});
+                }
+            });
         }
+
+        // Auto-kick timer
+        const kickMins = settings.verify_kick_days || 0;
+        const timer = kickMins > 0 ? setTimeout(async () => {
+            pending.delete(key);
+            const freshMember = await member.guild.members.fetch(member.id).catch(() => null);
+            if (!freshMember) return;
+            const hasRole = verifyRole && freshMember.roles.cache.has(verifyRole.id);
+            if (!hasRole) await freshMember.kick('Failed to verify in time').catch(() => {});
+        }, kickMins * 60000) : null;
+
+        pending.set(key, { timer, dmMsg, code });
     },
 
     // Called from button interaction handler
