@@ -4701,7 +4701,8 @@ async function fallbackGoodbye(member, client, db, cfg, Style) {
     const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
     if (!ch) return;
 
-    const joinedAt = member.joinedTimestamp;
+    // Try joinedTimestamp first, fall back to joinedAt, then DB
+    const joinedAt = member.joinedTimestamp || member.joinedAt?.getTime() || null;
     const duration = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
     const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
 
