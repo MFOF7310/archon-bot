@@ -1005,6 +1005,7 @@ function getServerSettings(guildId) {
             xpMaxGain: settings.xp_max_gain || 35,
             
             startingBalance: settings.starting_balance || 0,
+            dailyBonus: settings.daily_bonus || 200,
             maxDailyStreak: settings.max_daily_streak || 365,
             
             automodChannels: settings.automod_channels,
@@ -1118,9 +1119,12 @@ function updateServerSetting(guildId, setting, value) {
         currencyName: 'currency_name',
         currencyEmoji: 'currency_emoji',
         dailyBonus: 'daily_bonus',
+        startingBalance: 'starting_balance',
         transferTax: 'transfer_tax',
         xpMultiplier: 'xp_multiplier',
         xpCooldown: 'xp_cooldown',
+        xpMinGain: 'xp_min_gain',
+        xpMaxGain: 'xp_max_gain',
         aiEnabled: 'ai_enabled',
         afkEnabled: 'afk_enabled',
         marketEnabled: 'market_enabled',
@@ -5320,7 +5324,7 @@ apiApp.get('/api/server/:guildId', (req, res) => {
             economy: {
                 currencyName: settings.currency_name || 'credits',
                 currencyEmoji: settings.currency_emoji || '🪙',
-                dailyBonus: settings.daily_bonus || 200,
+                dailyBonus: settings.dailyBonus || settings.daily_bonus || 200,
                 transferTax: settings.transfer_tax || 0
             },
             topUsers: topUsers
