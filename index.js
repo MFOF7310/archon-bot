@@ -5014,6 +5014,22 @@ apiApp.post('/api/premium/activate', (req, res) => {
     }
 });
 
+apiApp.post('/api/premium/generate', (req, res) => {
+    try {
+        const ownerId = process.env.OWNER_ID || process.env.OWNER_DISCORD_ID || '';
+        const { days = 30, amount = 1 } = req.body;
+        const codes = [];
+        for (let i = 0; i < Math.min(amount, 10); i++) {
+            const code = 'ARCHON-' + Math.random().toString(36).slice(2,6).toUpperCase() + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+            db.prepare('INSERT OR IGNORE INTO premium_codes (code, days) VALUES (?,?)').run(code, days);
+            codes.push(code);
+        }
+        res.json({ success: true, codes });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 apiApp.get('/api/premium/info', (req, res) => {
     return res.json({
         omNumber: process.env.ORANGE_MONEY_NUMBER || '',
@@ -5028,7 +5044,7 @@ apiApp.get('/api/premium/checkout-url', (req, res) => {
         const baseUrl = process.env.DODO_PRODUCT_URL || '';
         if (!baseUrl) return res.json({ url: null });
         const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 
-            'metadata[guild_id]=' + encodeURIComponent(guildId);
+            'metadata[guild_id]=' + guildId;
         return res.json({ url });
     } catch(e) {
         return res.json({ url: null });
