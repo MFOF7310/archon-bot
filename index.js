@@ -3390,6 +3390,7 @@ if (message.content && message.content.length > 4000) {
         queueUserUpdate(userId, guildId, {
             ...userData,
             username: message.author.username,
+            avatar: message.author.avatar || null,
             xp: newXP,
             level: newLevel,
             total_messages: totalMsgs,
@@ -5387,7 +5388,7 @@ apiApp.get('/api/leaderboard/:guildId?', (req, res) => {
         let users;
         if (guildId && validateSnowflake(guildId)) {
             users = db.prepare(
-                `SELECT id, username, xp, level, credits, streak_days, total_messages, games_won
+                `SELECT id, username, avatar, xp, level, credits, streak_days, total_messages, games_won
                  FROM users WHERE guild_id = ? ORDER BY ${sortBy === 'credits' ? 'credits' : 'xp'} DESC LIMIT 50`
             ).all(guildId);
         } else {
