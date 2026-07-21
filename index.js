@@ -960,6 +960,7 @@ function getServerSettings(guildId) {
             generalChannel: settings.general_channel,
             goodbyeChannel: settings.goodbye_channel,
             levelChannel: settings.level_channel,
+            updatesChannel: env('updates_channel', 'UPDATES_CHANNEL_ID'),
             modLogChannel: settings.mod_log_channel,
             autoModLogChannel: settings.automod_log_channel || null,
             
@@ -2319,53 +2320,60 @@ client.once(Events.ClientReady, async () => {
 
     await client.loadPlugins();
 
-    // ── AUTO UPDATE BROADCASTER ──
-    try {
-        const currentVersion = client.version || 'unknown';
-        const metaRow = db.prepare("SELECT value FROM bot_meta WHERE key = 'last_version'").get();
-        const lastVersion = metaRow?.value || '0';
+    // ── AUTO UPDATE BROADCASTER ── (git hash, 15s delay for guild cache)
+    setTimeout(async () => { try {
+        const { execSync } = require('child_process');
+        const currentHash = execSync('git rev-parse HEAD', { cwd: __dirname }).toString().trim();
+        const shortHash = currentHash.substring(0, 7);
+        const currentVersion = client.version || '2.0.0';
 
-        if (currentVersion !== lastVersion && lastVersion !== '0') {
-            console.log(`${green}[UPDATE BROADCAST]${reset} New version detected: ${lastVersion} → ${currentVersion}`);
+        const metaRow = db.prepare("SELECT value FROM bot_meta WHERE key = 'last_commit'").get();
+        const lastHash = metaRow?.value || null;
+
+        if (lastHash && lastHash !== currentHash) {
+            console.log(`${green}[UPDATE BROADCAST]${reset} New deploy: ${lastHash.substring(0,7)} → ${shortHash}`);
+
+            const commits = execSync('git log --oneline -5', { cwd: __dirname })
+                .toString().trim().split('\n')
+                .map(l => `• ${l.substring(8).trim()}`)
+                .join('\n');
 
             const guilds = await client.guilds.fetch();
             let notified = 0;
 
             for (const [guildId] of guilds) {
                 try {
-                    const settings = db.prepare('SELECT updates_channel FROM server_settings WHERE guild_id = ?').get(guildId);
-                    if (!settings?.updates_channel) continue;
-
-                    const channel = await client.channels.fetch(settings.updates_channel).catch(() => null);
+                    const settings = client.getServerSettings?.(guildId) || {};
+                    if (!settings?.updatesChannel) continue;
+                    const channel = await client.channels.fetch(settings.updatesChannel).catch(() => null);
                     if (!channel) continue;
 
                     const { EmbedBuilder } = require('discord.js');
                     const embed = new EmbedBuilder()
                         .setColor('#00d4ff')
-                        .setTitle('🦅 ARCHON CG-223 — System Update')
-                        .setDescription(`A new version has been deployed to this server.`)
-                        .addFields(
-                            { name: '📦 Previous', value: `v${lastVersion}`, inline: true },
-                            { name: '✅ Current', value: `v${currentVersion}`, inline: true },
-                        )
-                        .setFooter({ text: 'ARCHON CG-223 • Bamako Neural Grid 🇲🇱' })
+                        .setAuthor({ name: '🦅 ARCHON just got an update', iconURL: client.user.displayAvatarURL() })
+                        .setDescription(`Hey — the bot was just updated to **v${currentVersion}** (\`${shortHash}\`). Here's what's new:\n\n${commits}`)
+                        .setFooter({ text: 'Bamako Neural Grid 🇲🇱 — always cooking' })
                         .setTimestamp();
 
                     await channel.send({ embeds: [embed] });
                     notified++;
                 } catch (e) {
-                    console.error(`[UPDATE BROADCAST] Failed for guild ${guildId}: ${e.message}`);
+                    console.error(`[UPDATE BROADCAST] Failed for ${guildId}: ${e.message}`);
                 }
             }
 
             console.log(`${green}[UPDATE BROADCAST]${reset} Notified ${notified} servers.`);
+        } else if (!lastHash) {
+            console.log(`${green}[UPDATE BROADCAST]${reset} First boot recorded: ${shortHash}`);
+        } else {
+            console.log(`${green}[UPDATE BROADCAST]${reset} Same commit ${shortHash} — no broadcast.`);
         }
 
-        // Always update last_version
-        db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_version', ?)").run(currentVersion);
+        db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_commit', ?)").run(currentHash);
     } catch (e) {
         console.error('[UPDATE BROADCAST] Error:', e.message);
-    }
+    } }, 15000); // 15s delay
 
     // ── TELEGRAM INIT ──
     try {
