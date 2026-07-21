@@ -53,6 +53,7 @@ module.exports = {
         ),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        const guildId = message.guild?.id ?? 'DM';
         // Detect language
         
         const t = translations[lang];

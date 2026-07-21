@@ -115,6 +115,7 @@ module.exports = {
     examples: ['.ttt @friend'],
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         
         lang = client.detectLanguage ? client.detectLanguage('tictactoe', guildId) : 'en';
         

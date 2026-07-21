@@ -324,6 +324,7 @@ module.exports = {
         .addSubcommand(sub => sub.setName('list').setDescription('Display upcoming birthdays intelligence')),
 
     run: async (client, message, args, db) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         const lang = message.content?.toLowerCase().includes('anniversaire') ? 'fr' : (client.detectLanguage ? client.detectLanguage('birthday') : 'en');
         const strings = t[lang];
         const subcommand = args[0]?.toLowerCase();

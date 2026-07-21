@@ -1607,6 +1607,7 @@ function setupLydia(client, database) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function runLydiaCommand(client, message, args, database, serverSettings, usedCommand) {
+    const guildId = message.guild?.id ?? 'DM';
   if (!message.guild) return;
   if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
     return message.reply({
