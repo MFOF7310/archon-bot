@@ -7,6 +7,14 @@ const axios = require('axios');
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
+let _isPremium = null;
+function isPremium(db, guildId) {
+  try {
+    if (!_isPremium) _isPremium = require('./premium').isPremium;
+    return _isPremium(db, guildId);
+  } catch { return false; }
+}
+
 const CFG = {
   COOLDOWN_TIME: 3000,
   MAX_HISTORY: 8,
@@ -389,6 +397,13 @@ const MODEL_POOL = [
   { id: 'google/gemini-2.0-flash-exp:free',         emoji: '🎋', name: 'Gemini Flash Exp', tier: 'deep' },
 ];
 
+const PREMIUM_MODEL = {
+  id: 'anthropic/claude-sonnet-4-6',
+  emoji: '🤖',
+  name: 'Claude Sonnet 4.6',
+  tier: 'premium'
+};
+
 async function tryModel(model, messages, timeoutMs) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return null;
@@ -437,7 +452,7 @@ async function tryModel(model, messages, timeoutMs) {
   });
 }
 
-async function generateAIResponse(systemPrompt, userMessage, history = [], imageUrl = null, theme = THEMES.default) {
+async function generateAIResponse(systemPrompt, userMessage, history = [], imageUrl = null, theme = THEMES.default, guildId = null) {
   const messages = [{ role: 'system', content: systemPrompt }];
 
   if (Array.isArray(history) && history.length > 0) {
@@ -458,6 +473,16 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
     });
   } else {
     messages.push({ role: 'user', content: userMessage });
+  }
+
+  // Premium servers get Claude Sonnet directly
+  const isPremiumGuild = guildId ? isPremium(client?.db || null, guildId) : false;
+
+  if (isPremiumGuild) {
+    console.log(`${C.cyan}[AI PREMIUM]${C.reset} Routing to ${PREMIUM_MODEL.emoji} ${PREMIUM_MODEL.name}...`);
+    const result = await tryModel(PREMIUM_MODEL, messages, CFG.RESPONSE_TIMEOUT);
+    if (result) return result;
+    console.log(`${C.yellow}[AI PREMIUM]${C.reset} Claude unavailable, falling back to free pool...`);
   }
 
   const topModels = MODEL_POOL.slice(0, CFG.MAX_CONCURRENT_MODELS);
@@ -1220,7 +1245,7 @@ async function handleLydiaMessage(message, client, database) {
       ? `[Web search results \u2014 cite sources using [1], [2], etc. when referencing]:\n${searchResults}\n\n[User question]: ${userPrompt}`
       : userPrompt;
 
-    const aiResult = await generateAIResponse(fullSystem, finalPrompt, history, imageUrl, theme);
+    const aiResult = await generateAIResponse(fullSystem, finalPrompt, history, imageUrl, theme, message.guild?.id ?? null);
 
     if (!aiResult) {
       const errors = {
