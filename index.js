@@ -1758,8 +1758,8 @@ async function flushUserUpdates(retryCount = 0, retryId = null) {
                     INSERT OR REPLACE INTO users (
                         id, guild_id, username, xp, level, total_messages, last_xp_gain, 
                         games_played, games_won, total_winnings, gaming, credits, 
-                        streak_days, last_daily, total_dailies, highest_streak, streak_protections
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        streak_days, last_daily, total_dailies, highest_streak, streak_protections, avatar
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `);
                 
                 db.transaction(() => {
@@ -1790,7 +1790,8 @@ async function flushUserUpdates(retryCount = 0, retryId = null) {
                             userData.last_daily ?? 0,         // 14
                             userData.total_dailies ?? 0,      // 15
                             userData.highest_streak ?? 0,     // 16
-                            userData.streak_protections ?? 0  // 17
+                            userData.streak_protections ?? 0,  // 17
+                            userData.avatar || null               // 18
                         );
                     }
                 })();
@@ -4805,8 +4806,8 @@ async function gracefulShutdown(signal) {
                 INSERT OR REPLACE INTO users (
                     id, guild_id, username, xp, level, total_messages, last_xp_gain, 
                     games_played, games_won, total_winnings, gaming, credits, 
-                    streak_days, last_daily, total_dailies, highest_streak, streak_protections
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    streak_days, last_daily, total_dailies, highest_streak, streak_protections, avatar
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             db.transaction(() => {
