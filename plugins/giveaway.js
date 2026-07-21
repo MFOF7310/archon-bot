@@ -315,6 +315,7 @@ module.exports = {
         .addBooleanOption(o => o.setName('booster_bonus').setDescription('Give boosters 2x entries').setRequired(false)),
 
     run: async (client, message, args, db) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
             return message.reply('❌ You need Manage Server permission.').catch(() => {});
         }

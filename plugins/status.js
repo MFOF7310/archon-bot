@@ -92,6 +92,7 @@ module.exports = {
 
     // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('status', guildId) : 'en';

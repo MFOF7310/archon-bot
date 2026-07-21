@@ -96,6 +96,7 @@ data: new SlashCommandBuilder()
 // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
 run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
+        const guildId = message.guild?.id ?? 'DM';
         const startTime = Date.now();
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!

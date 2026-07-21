@@ -396,6 +396,7 @@ data: new SlashCommandBuilder()
     ),
 
     run: async (client, message, args, database, serverSettings, usedCommand) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
 
         // ================= PERMISSION CHECK =================
 // ================= PERMISSION CHECK =================

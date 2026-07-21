@@ -245,6 +245,7 @@ module.exports = {
     examples: ['.meta', '.arme', '.weapon'],
 
     run: async (client, message, args, db, usedCommand) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         
         // Language detection
         const lang = client.detectLanguage ? client.detectLanguage('randommeta', guildId) : 'en';

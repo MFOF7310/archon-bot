@@ -663,6 +663,7 @@ module.exports = {
 
     // ================= PREFIX =================
     run: async (client, message, args, db, ss, used) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         setupDB(db);
         
         // SYNC SERVER STATS

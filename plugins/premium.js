@@ -181,6 +181,7 @@ module.exports = {
     },
 
     run: async (client, message, args, db) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         const premium = isPremium(db, message.guild?.id);
         return message.reply(premium ? '⭐ This server has ARCHON Premium!' : '🔒 No premium. Use `/premium status` to upgrade.');
     },

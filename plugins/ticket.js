@@ -222,6 +222,7 @@ module.exports = {
 
     // ================= PREFIX =================
     run: async(client,msg,args,db,ss)=>{
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         const lang=client.detectLanguage?client.detectLanguage(args[0]||''):'en', t=TX[lang]||TX.en, sub=args[0]?.toLowerCase(), g=msg.guild, p=ss?.prefix||'.';
         if(!g)return msg.reply('❌ Servers only.').catch(()=>{});
         const adm=msg.member.permissions.has(PermissionFlagsBits.Administrator);

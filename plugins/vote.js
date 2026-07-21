@@ -294,6 +294,7 @@ module.exports = {
 
     // ================= PREFIX =================
     run: async (client, message, args, db, ss, used) => {
+    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
         if (!message.guild) return message.reply('Server only.').catch(() => {});
         voteSync.setupDB(db);
         const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
