@@ -114,7 +114,7 @@ function displayPM2Banner(serverCount = 0) {
         primary + '║' + R + '  ' + accent + 'DATABASE:' + R + ' WAL+Partitioned   ' + accent + 'CIRCUIT:' + R + ' ' + secondary + 'READY' + R + '                   ' + primary + '║' + R,
         primary + '╚══════════════════════════════════════════════════════════════════╝' + R,
         ''
-    ].join('\n');
+    ].join('\n\n');
     console.log(banner);
 }
 const client = new Client({
