@@ -86,3 +86,4 @@ cookies.txt
 *.pem
 Lavalink.jar
 start-lavalink.sh
+dist-public/
