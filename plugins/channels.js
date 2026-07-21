@@ -11,6 +11,7 @@ const CHANNEL_DEFS = {
     rules:     { col: 'rulesChannel',              dbcol: 'rules_channel',              env: 'RULES_CHANNEL_ID',              emoji: '📜', label: 'Rules Channel' },
     ticket:    { col: 'ticketTranscriptChannel',   dbcol: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: '🎫', label: 'Ticket Logs Channel' },
     levelup:   { col: 'levelupChannel',            dbcol: 'levelup_channel',            env: 'LEVELUP_CHANNEL_ID',            emoji: '📊', label: 'Level-Up Channel' },
+    updates:   { col: 'updatesChannel',            dbcol: 'updates_channel',            env: 'UPDATES_CHANNEL_ID',            emoji: '🔔', label: 'Bot Updates Channel' },
 };
 
 module.exports = {

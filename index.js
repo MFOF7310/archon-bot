@@ -2319,6 +2319,54 @@ client.once(Events.ClientReady, async () => {
 
     await client.loadPlugins();
 
+    // ── AUTO UPDATE BROADCASTER ──
+    try {
+        const currentVersion = client.version || 'unknown';
+        const metaRow = db.prepare("SELECT value FROM bot_meta WHERE key = 'last_version'").get();
+        const lastVersion = metaRow?.value || '0';
+
+        if (currentVersion !== lastVersion && lastVersion !== '0') {
+            console.log(`${green}[UPDATE BROADCAST]${reset} New version detected: ${lastVersion} → ${currentVersion}`);
+
+            const guilds = await client.guilds.fetch();
+            let notified = 0;
+
+            for (const [guildId] of guilds) {
+                try {
+                    const settings = db.prepare('SELECT updates_channel FROM server_settings WHERE guild_id = ?').get(guildId);
+                    if (!settings?.updates_channel) continue;
+
+                    const channel = await client.channels.fetch(settings.updates_channel).catch(() => null);
+                    if (!channel) continue;
+
+                    const { EmbedBuilder } = require('discord.js');
+                    const embed = new EmbedBuilder()
+                        .setColor('#00d4ff')
+                        .setTitle('🦅 ARCHON CG-223 — System Update')
+                        .setDescription(`A new version has been deployed to this server.`)
+                        .addFields(
+                            { name: '📦 Previous', value: `v${lastVersion}`, inline: true },
+                            { name: '✅ Current', value: `v${currentVersion}`, inline: true },
+                        )
+                        .setFooter({ text: 'ARCHON CG-223 • Bamako Neural Grid 🇲🇱' })
+                        .setTimestamp();
+
+                    await channel.send({ embeds: [embed] });
+                    notified++;
+                } catch (e) {
+                    console.error(`[UPDATE BROADCAST] Failed for guild ${guildId}: ${e.message}`);
+                }
+            }
+
+            console.log(`${green}[UPDATE BROADCAST]${reset} Notified ${notified} servers.`);
+        }
+
+        // Always update last_version
+        db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_version', ?)").run(currentVersion);
+    } catch (e) {
+        console.error('[UPDATE BROADCAST] Error:', e.message);
+    }
+
     // ── TELEGRAM INIT ──
     try {
         const telegramBridge = require('./telegram/bridge.js');
