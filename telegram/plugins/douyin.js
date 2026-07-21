@@ -68,8 +68,17 @@ module.exports = {
 
 function requestJSON(url, opts = {}) {
     return new Promise((resolve, reject) => {
-        const lib = url.startsWith('https:') ? https : require('http');
-        const req = lib.request(url, { method: opts.method || 'GET', headers: opts.headers || {}, timeout: opts.timeout || 15000 }, (res) => {
+        const proxyUrl = process.env.PROXY_HOST ? `http://${process.env.PROXY_USER}:${process.env.PROXY_PASS}@${process.env.PROXY_HOST}:${process.env.PROXY_PORT}` : null;
+        let lib, reqOpts;
+        if (proxyUrl) {
+            const { HttpsProxyAgent } = require('https-proxy-agent');
+            lib = url.startsWith('https:') ? https : require('http');
+            reqOpts = { method: opts.method || 'GET', headers: opts.headers || {}, timeout: opts.timeout || 15000, agent: new HttpsProxyAgent(proxyUrl) };
+        } else {
+            lib = url.startsWith('https:') ? https : require('http');
+            reqOpts = { method: opts.method || 'GET', headers: opts.headers || {}, timeout: opts.timeout || 15000 };
+        }
+        const req = lib.request(url, reqOpts, (res) => {
             let d = '';
             res.on('data', c => d += c);
             res.on('end', () => { try { resolve(JSON.parse(d)); } catch { resolve(null); } });
