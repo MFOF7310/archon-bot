@@ -5272,6 +5272,46 @@ apiApp.get('/api/user/:userId', (req, res) => {
     }
 });
 
+// ── ADMIN ENDPOINTS ──────────────────────────────────────────
+apiApp.get('/api/admin/dashboard-users', (req, res) => {
+    try {
+        const users = db.prepare(`
+            SELECT discord_id, username, avatar, is_owner, login_count, updated_at, created_at
+            FROM dashboard_users
+            ORDER BY updated_at DESC
+            LIMIT 50
+        `).all();
+        res.json(users);
+    } catch(err) {
+        console.error('[API /api/admin/dashboard-users]', err.message);
+        res.json([]);
+    }
+});
+
+apiApp.post('/api/admin/dashboard-users/upsert', (req, res) => {
+    try {
+        const { discord_id, username, avatar } = req.body;
+        if (!discord_id) return res.json({ ok: false });
+
+        const isOwner = discord_id === process.env.OWNER_ID ? 1 : 0;
+        db.prepare(`
+            INSERT INTO dashboard_users (discord_id, username, avatar, is_owner, login_count, updated_at, created_at)
+            VALUES (?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+            ON CONFLICT(discord_id) DO UPDATE SET
+                username = excluded.username,
+                avatar = excluded.avatar,
+                is_owner = excluded.is_owner,
+                login_count = login_count + 1,
+                updated_at = datetime('now')
+        `).run(discord_id, username || 'Unknown', avatar || null, isOwner);
+
+        res.json({ ok: true });
+    } catch(err) {
+        console.error('[API /api/admin/upsert]', err.message);
+        res.json({ ok: false });
+    }
+});
+
 apiApp.get('/api/stats', (req, res) => {
     try {
         const dbHealth = getDatabaseHealth();
