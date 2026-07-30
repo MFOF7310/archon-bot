@@ -1,6 +1,7 @@
 const {
     SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
-    ButtonBuilder, ButtonStyle, StringSelectMenuBuilder
+    ButtonBuilder, ButtonStyle, StringSelectMenuBuilder,
+    MessageFlags
 } = require('discord.js');
 const {
     joinVoiceChannel, createAudioPlayer, createAudioResource,
@@ -45,9 +46,10 @@ function createQueue(guild, voiceChannel, textChannel, client) {
         connection: null, player: null,
         tracks: [], currentTrack: null, trackHistory: [],
         volume: 80, loop: false, autoplay: true,
-        libraryIndex: -1, // -1 = not in library mode; >= 0 = current library position
+        silentPanel: true, // 🔕 send panel as @silent by default
+        libraryIndex: -1,
         startTime: null, pausedAt: null, totalPaused: 0,
-        persistentMsg: null, updateInterval: null,
+        persistentMsg: null, panelMsgId: null, updateInterval: null,
         inactivityTimer: null,
     };
     queues.set(guild.id, state);
@@ -57,6 +59,8 @@ function createQueue(guild, voiceChannel, textChannel, client) {
 function destroyQueue(guildId) {
     const q = queues.get(guildId);
     if (q) {
+        if (q.updateInterval) clearInterval(q.updateInterval);
+        clearInactivityTimer(q);
         try { q.connection?.destroy(); } catch (e) {}
         try { q.player?.stop(true); } catch (e) {}
         queues.delete(guildId);
@@ -93,9 +97,9 @@ function buildNowPlayingEmbed(q, client) {
     const pct = t.duration > 0 ? Math.min(100, Math.round((elapsed / t.duration) * 100)) : 0;
     return new EmbedBuilder()
         .setColor(ARCHON.cyan)
-        .setAuthor({ 
-            name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', 
-            iconURL: t.spotifyUrl 
+        .setAuthor({
+            name: '// CLASSIFIED // ARCHON MUSIC ENGINE //',
+            iconURL: t.spotifyUrl
                 ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png'
                 : client.user.displayAvatarURL()
         })
@@ -147,106 +151,159 @@ function buildQueueEmbed(q, client) {
         .setFooter({ text: `BAMAKO_223 🇲🇱 • Vol: ${q.volume}% • Loop: ${q.loop ? 'ON' : 'OFF'}` });
 }
 
-
-
 // ═══════════════════════════════════════════════════════
-// PERSISTENT MUSIC PANEL
+// FLAVIBOT-STYLE PERSISTENT PANEL
 // ═══════════════════════════════════════════════════════
-async function updatePersistentPanel(q) {
-    const client = q._client;
-    if (!client || !q.currentTrack) return;
-
+function buildPanelEmbed(q, client) {
     const t = q.currentTrack;
     const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000) : 0;
     const duration = t.duration || 0;
-    const bar = progressBar(elapsed, duration, 18);
-    const pct = duration > 0 ? Math.min(100, Math.round((elapsed/duration)*100)) : 0;
+    const pct = duration > 0 ? Math.min(100, Math.round((elapsed / duration) * 100)) : 0;
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
+    const bar = progressBar(elapsed, duration, 16);
 
-    const statusLine = isPaused ? '⏸️ PAUSED' : '🟢 LIVE';
-    const sourceLine = t.spotifyUrl ? '🟢 Spotify' : `🎵 ${t.source || 'SoundCloud'}`;
+    const trackLink = t.spotifyUrl
+        ? `[${t.title.substring(0,60)}](${t.spotifyUrl})`
+        : `**${t.title.substring(0,60)}**`;
+    const requester = t.requestedById ? `<@${t.requestedById}>` : `@${t.requestedBy}`;
 
-    const embed = new EmbedBuilder()
-        .setColor(isPaused ? ARCHON.gold : ARCHON.cyan)
-        .setAuthor({
-            name: isPaused ? '⏸️ PAUSED — ARCHON MUSIC' : '🎵 NOW PLAYING — ARCHON MUSIC',
-            iconURL: t.spotifyUrl
-                ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png'
-                : client.user.displayAvatarURL()
-        })
+    return new EmbedBuilder()
+        .setColor(isPaused ? ARCHON.gold : ARCHON.purple)
+        .setTitle(isPaused ? '⏸️ Paused' : 'Now playing')
         .setDescription(
-            `**${t.title.substring(0,50)}**\n` +
-            `${t.artist || 'Unknown Artist'}${t.album ? ` • ${t.album.substring(0,25)}` : ''}\n\n` +
+            `${trackLink}\n\n` +
+            `• Added by ${requester}\n` +
+            `• 🔊 ${q.voiceChannel?.name?.substring(0,20) || 'Voice'}\n\n` +
+            `Queue Size: \`${q.tracks.length}\` · Volume: \`${q.volume}%\` · Loop: \`${q.loop ? 'On' : 'Off'}\`\n\n` +
             `${bar} **${pct}%**\n` +
-            `\`${formatTime(elapsed)}\` ─── \`${formatTime(duration)}\`\n\n` +
-            `👤 ${t.requestedBy} • 📍 ${q.voiceChannel?.name?.substring(0,15) || 'Voice'} • ${sourceLine}`
+            `\`${formatTime(elapsed)}\` ─────────── \`${formatTime(duration)}\``
         )
         .setThumbnail(t.thumbnail || client.user.displayAvatarURL())
-        .setFooter({ text: `BAMAKO_223 🇲🇱 • Queue: ${q.tracks.length} • Loop: ${q.loop ? 'ON' : 'OFF'} • Auto: ${q.autoplay ? 'ON' : 'OFF'} • Updates every 15s` })
+        .setFooter({
+            text: `BAMAKO_223 🇲🇱 • Auto: ${q.autoplay ? 'On' : 'Off'} • ${q.silentPanel ? '🔕 Silent' : '🔔 Notify'} • Updates every 15s`,
+            iconURL: client.user.displayAvatarURL()
+        })
         .setTimestamp();
+}
 
+function buildPanelRows(q) {
+    const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
         new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
         new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
         new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
     );
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+        new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
+    );
+    return [row1, row2];
+}
+
+function attachCollector(q, msg) {
+    const client = q._client;
+    const collector = msg.createMessageComponentCollector({ time: 21600000 }); // 6 hours
+    collector.on('collect', async (i) => {
+        if (!i.member?.voice?.channel) return i.reply({ content: '❌ Join a voice channel!', flags: 64 }).catch(() => {});
+        await i.deferUpdate().catch(() => {});
+        const qNow = getQueue(q.guild.id);
+        if (!qNow) return;
+
+        if (i.customId === 'mc_prev') {
+            if (!qNow.trackHistory || qNow.trackHistory.length === 0) {
+                await i.followUp({ content: '⏮️ No previous track.', flags: 64 }).catch(() => {});
+                return;
+            }
+            const prev = qNow.trackHistory.shift();
+            if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
+            qNow.tracks.unshift(prev);
+            qNow.player.stop(); // Triggers Idle → playNext
+        } else if (i.customId === 'mc_pause') {
+            if (qNow.player.state.status === AudioPlayerStatus.Paused) {
+                qNow.player.unpause();
+                qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
+                qNow.pausedAt = null;
+            } else { qNow.player.pause(); qNow.pausedAt = Date.now(); }
+            await updatePersistentPanel(qNow);
+        } else if (i.customId === 'mc_skip') {
+            qNow.player.stop();
+        } else if (i.customId === 'mc_stop') {
+            if (qNow.persistentMsg) {
+                const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
+                    .setDescription('```ansi\n\u001b[1;31m▸ STOPPED — Neural stream terminated.\u001b[0m\n```');
+                await qNow.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
+                qNow.persistentMsg = null; qNow.panelMsgId = null;
+            }
+            destroyQueue(q.guild.id);
+        } else if (i.customId === 'mc_loop') {
+            qNow.loop = !qNow.loop;
+            // NOTE: do NOT unshift here — AudioPlayerStatus.Idle handler does it
+            await updatePersistentPanel(qNow);
+        } else if (i.customId === 'mc_autoplay') {
+            qNow.autoplay = !qNow.autoplay;
+            await updatePersistentPanel(qNow);
+        } else if (i.customId === 'mc_like') {
+            await i.followUp({ content: `❤️ Liked **${qNow.currentTrack?.title?.substring(0,50) || 'track'}** — nice taste!`, flags: 64 }).catch(() => {});
+        } else if (i.customId === 'mc_queue') {
+            await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
+        }
+    });
+}
+
+async function sendPanel(q, embed, rows) {
+    const client = q._client;
+    // Sweep stray old panels from previous sessions so only ONE panel lives
+    try {
+        const recent = await q.textChannel.messages.fetch({ limit: 20 });
+        const stale = recent.filter(m => m.author.id === client.user.id && m.components.length > 0);
+        for (const [, m] of stale) await m.delete().catch(() => {});
+    } catch(e) {}
+
+    const msg = await q.textChannel.send({
+        embeds: [embed],
+        components: rows,
+        // 🔕 @silent — suppresses notifications, shows the mute bell icon (send-only flag)
+        ...(q.silentPanel ? { flags: MessageFlags.SuppressNotifications } : {}),
+    }).catch(() => null);
+    if (msg) {
+        q.persistentMsg = msg;
+        q.panelMsgId = msg.id;
+        attachCollector(q, msg);
+    }
+}
+
+async function updatePersistentPanel(q) {
+    const client = q._client;
+    if (!client || !q.currentTrack || !q.textChannel) return;
+
+    const embed = buildPanelEmbed(q, client);
+    const rows = buildPanelRows(q);
 
     try {
-        if (q.persistentMsg) {
-            await q.persistentMsg.edit({ embeds: [embed], components: [row1] }).catch(() => {
-                q.persistentMsg = null;
-            });
+        let msg = q.persistentMsg;
+
+        // Recover lost reference (e.g. after error paths) via stored ID
+        if (!msg && q.panelMsgId) {
+            msg = await q.textChannel.messages.fetch(q.panelMsgId).catch(() => null);
+            q.persistentMsg = msg;
         }
-        if (!q.persistentMsg && q.textChannel) {
-            q.persistentMsg = await q.textChannel.send({ embeds: [embed], components: [row1] }).catch(() => null);
-            // Set up button collector on persistent message
-            if (q.persistentMsg) {
-                const collector = q.persistentMsg.createMessageComponentCollector({ time: 21600000 }); // 6 hours
-                collector.on('collect', async (i) => {
-                    if (!i.member?.voice?.channel) return i.reply({ content: '❌ Join a voice channel!', flags: 64 }).catch(() => {});
-                    await i.deferUpdate().catch(() => {});
-                    const qNow = getQueue(q.guild.id);
-                    if (!qNow) return;
-                    if (i.customId === 'mc_prev') {
-                        if (!qNow.trackHistory || qNow.trackHistory.length === 0) {
-                            await i.followUp({ content: '⏮️ No previous track.', flags: 64 }).catch(() => {});
-                            return;
-                        }
-                        const prev = qNow.trackHistory.shift();
-                        // Put current track back at front of queue, play previous
-                        if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
-                        qNow.tracks.unshift(prev);
-                        qNow.player.stop(); // Triggers Idle → playNext
-                    } else if (i.customId === 'mc_pause') {
-                        if (qNow.player.state.status === AudioPlayerStatus.Paused) {
-                            qNow.player.unpause();
-                            qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
-                            qNow.pausedAt = null;
-                        } else { qNow.player.pause(); qNow.pausedAt = Date.now(); }
-                        await updatePersistentPanel(qNow);
-                    } else if (i.customId === 'mc_skip') {
-                        qNow.player.stop();
-                    } else if (i.customId === 'mc_stop') {
-                        if (qNow.persistentMsg) {
-                            const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                                .setDescription('\`\`\`ansi\n\u001b[1;31m▸ STOPPED — Neural stream terminated.\u001b[0m\n\`\`\`');
-                            await qNow.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
-                            qNow.persistentMsg = null;
-                        }
-                        destroyQueue(q.guild.id);
-                    } else if (i.customId === 'mc_loop') {
-                        qNow.loop = !qNow.loop;
-                        // NOTE: do NOT unshift here — AudioPlayerStatus.Idle handler does it
-                        // Unshifting here caused the current track to play twice
-                        await updatePersistentPanel(qNow);
-                    } else if (i.customId === 'mc_queue') {
-                        await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
-                    }
-                });
+
+        if (msg) {
+            let resend = false;
+            await msg.edit({ embeds: [embed], components: rows }).catch((e) => {
+                if (e.code === 10008) { resend = true; } // message genuinely deleted
+                // other errors (rate limit, network) → keep panel, retry next 15s tick
+            });
+            if (resend) {
+                q.persistentMsg = null; q.panelMsgId = null;
+                await sendPanel(q, embed, rows);
             }
+        } else {
+            await sendPanel(q, embed, rows);
         }
     } catch(e) {
         console.error('[MUSIC PANEL] Update error:', e.message);
@@ -269,7 +326,6 @@ function startPanelUpdater(q) {
 // ═══════════════════════════════════════════════════════
 // SPOTIFY TOKEN MANAGER
 // ═══════════════════════════════════════════════════════
-const { execSync } = require('child_process');
 let spotifyToken = null;
 let spotifyExpiry = 0;
 
@@ -362,7 +418,6 @@ async function playNext(q) {
         if (q.autoplay && q.currentTrack && q.currentTrack.source !== 'file') {
             try {
                 const lib = require('../data/music-library.json');
-                // Advance library index
                 q.libraryIndex = (q.libraryIndex + 1) % lib.length;
                 const next = lib[q.libraryIndex];
                 q.tracks.push({
@@ -375,7 +430,6 @@ async function playNext(q) {
                 });
                 console.log(`[MUSIC] Smart autoplay [${q.libraryIndex}/${lib.length}]: ${next.title}`);
             } catch(e) {
-                // Fallback to old artist-based search if library missing
                 const similar = q.currentTrack.title.split(' ').slice(0,3).join(' ');
                 if (similar.length > 2) {
                     q.tracks.push({ title: similar, query: similar, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy: '🤖 Autoplay', url: null });
@@ -392,7 +446,6 @@ async function playNext(q) {
         q.trackHistory.unshift({...q.currentTrack});
         if (q.trackHistory.length > 5) q.trackHistory.pop();
     }
-    // Sync libraryIndex if this track came from library
     if (track._libraryIndex !== undefined && track._libraryIndex >= 0) {
         q.libraryIndex = track._libraryIndex;
     }
@@ -491,7 +544,6 @@ async function playNext(q) {
 
     } catch (err) {
         console.error('[MUSIC] Error:', err.message);
-        // Update persistent panel with error instead of spamming
         const errEmbed = new EmbedBuilder().setColor(ARCHON.red)
             .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
             .setDescription(`\`\`\`ansi\n\u001b[1;31m▸ STREAM ERROR\u001b[0m\n\u001b[0;37m${err.message.substring(0,80)}\u001b[0m\n\u001b[0;37mTrying next track...\u001b[0m\n\`\`\``);
@@ -499,6 +551,7 @@ async function playNext(q) {
             await q.persistentMsg.edit({ embeds: [errEmbed] }).catch(() => {});
         } else {
             q.persistentMsg = await q.textChannel?.send({ embeds: [errEmbed] }).catch(() => null);
+            if (q.persistentMsg) q.panelMsgId = q.persistentMsg.id;
         }
         setTimeout(() => playNext(q), 2000);
     }
@@ -551,18 +604,18 @@ async function ensureConnection(q) {
 // ═══════════════════════════════════════════════════════
 // PLAY HELPER
 // ═══════════════════════════════════════════════════════
-async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requestedBy, client, replyFn) {
+async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requestedBy, client, replyFn, requestedById) {
     let q = getQueue(guildId) || createQueue(guild, voiceChannel, textChannel, client);
     q.textChannel = textChannel;
     q._client = client;
+    q.voiceChannel = voiceChannel;
 
-    // Check if query matches a library track — sync libraryIndex for smart autoplay
     let libIdx = -1;
     try {
         const lib = require('../data/music-library.json');
         libIdx = lib.findIndex(t => t.query === query || t.title === query);
     } catch(e) {}
-    const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, url: null, _libraryIndex: libIdx };
+    const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: null, _libraryIndex: libIdx };
     if (libIdx >= 0) {
         let q2 = getQueue(guildId);
         if (q2) q2.libraryIndex = libIdx;
@@ -607,7 +660,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             const qNow = getQueue(guildId);
             if (qNow) {
                 const sel = i.values[0];
-                qNow.tracks.push({ title: sel, query: sel, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy: i.user.username, url: null });
+                qNow.tracks.push({ title: sel, query: sel, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy: i.user.username, requestedById: i.user.id, url: null });
                 await i.followUp({ content: `✅ Added **${sel.substring(0,50)}** to queue!`, flags: 64 }).catch(() => {});
             }
             collector.stop();
@@ -640,7 +693,12 @@ module.exports = {
         .setName('music')
         .setDescription('🎵 ARCHON Music Engine — play, queue, control')
         .addSubcommand(s => s.setName('play').setDescription('▶️ Play a song').addStringOption(o => o.setName('query').setDescription('Song name or URL').setRequired(true).setAutocomplete(true)))
-        .addSubcommand(s => s.setName('file').setDescription('📁 Play from uploaded file').addAttachmentOption(o => o.setName('file').setDescription('Audio file (mp3/wav/ogg/flac)').setRequired(true)))
+        .addSubcommand(s => s.setName('file').setDescription('📁 Play uploaded file(s) — up to 5 at once')
+            .addAttachmentOption(o => o.setName('file1').setDescription('Audio file').setRequired(true))
+            .addAttachmentOption(o => o.setName('file2').setDescription('Audio file (optional)').setRequired(false))
+            .addAttachmentOption(o => o.setName('file3').setDescription('Audio file (optional)').setRequired(false))
+            .addAttachmentOption(o => o.setName('file4').setDescription('Audio file (optional)').setRequired(false))
+            .addAttachmentOption(o => o.setName('file5').setDescription('Audio file (optional)').setRequired(false)))
         .addSubcommand(s => s.setName('pause').setDescription('⏸️ Pause or resume'))
         .addSubcommand(s => s.setName('skip').setDescription('⏭️ Skip current track'))
         .addSubcommand(s => s.setName('stop').setDescription('⏹️ Stop and disconnect'))
@@ -649,6 +707,7 @@ module.exports = {
         .addSubcommand(s => s.setName('volume').setDescription('🎚️ Set volume').addIntegerOption(o => o.setName('level').setDescription('1-100').setRequired(true).setMinValue(1).setMaxValue(100)))
         .addSubcommand(s => s.setName('loop').setDescription('🔁 Toggle loop'))
         .addSubcommand(s => s.setName('autoplay').setDescription('🔀 Toggle autoplay'))
+        .addSubcommand(s => s.setName('silent').setDescription('🔕 Toggle @silent panel notifications'))
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library')
             .addStringOption(o => o.setName('genre').setDescription('Filter by genre').setRequired(false)
                 .addChoices(
@@ -672,7 +731,8 @@ module.exports = {
         await handlePlay(
             message.guild.id, message.guild, vc, message.channel,
             query, message.author.username, client,
-            (opts) => message.reply(opts).catch(() => {})
+            (opts) => message.reply(opts).catch(() => {}),
+            message.author.id
         );
     },
 
@@ -734,68 +794,65 @@ module.exports = {
         // ── PLAY ──
         if (sub === 'play') {
             const query = interaction.options.getString('query');
-            const msg = await interaction.editReply({ content: '⏳ Loading...' });
+            await interaction.editReply({ content: '⏳ Loading...' });
             await handlePlay(
                 guildId, interaction.guild, vc, interaction.channel,
                 query, interaction.user.username, client,
-                async (opts) => { await interaction.editReply(opts); return await interaction.fetchReply(); }
+                async (opts) => { await interaction.editReply(opts); return await interaction.fetchReply(); },
+                interaction.user.id
             );
             return;
         }
 
-        // ── FILE ──
+        // ── FILE (multi — up to 5 attachments queued together) ──
         if (sub === 'file') {
-            const att = interaction.options.getAttachment('file');
             const validExts = ['mp3','wav','ogg','flac','m4a','aac','opus'];
-            const ext = att.name.split('.').pop()?.toLowerCase();
-            if (!validExts.includes(ext || '')) {
-                return interaction.editReply({ content: `❌ Invalid file type! Supported: ${validExts.join(', ')}` });
-            }
-            const tempPath = `/tmp/archon_${Date.now()}.${ext}`;
-            const sizeMB = (att.size/1024/1024).toFixed(2);
-
-            // Show downloading state immediately
-            await interaction.editReply({
-                embeds: [new EmbedBuilder()
-                    .setColor(ARCHON.gold)
-                    .setDescription(`📥 **${att.name.replace(/\.[^/.]+$/, '').substring(0,60)}**\n> \`[downloading]\` • ${ext?.toUpperCase()} • ${sizeMB} MB — please wait...`)]
-            });
-
-            try { await downloadFile(att.url, tempPath); } catch(e) {
-                return interaction.editReply({
-                    embeds: [new EmbedBuilder()
-                        .setColor(ARCHON.red)
-                        .setDescription(`❌ Download failed\n> ${e.message.substring(0,80)}`)]
-                });
-            }
-
-            // Get real duration via ffprobe
-            let fileDuration = 0;
-            try {
-                const { stdout } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tempPath}"`, { timeout: 8000 });
-                fileDuration = Math.floor(parseFloat(stdout.trim())) || 0;
-            } catch(e) { fileDuration = 0; }
+            const atts = ['file1','file2','file3','file4','file5']
+                .map(n => interaction.options.getAttachment(n))
+                .filter(Boolean);
 
             let q = getQueue(guildId) || createQueue(interaction.guild, vc, interaction.channel, client);
             q._client = client;
-            const track = {
-                title: att.name.replace(/\.[^/.]+$/, ''),
-                query: att.name, artist: 'File Upload',
-                source: 'file', duration: fileDuration, thumbnail: null,
-                requestedBy: interaction.user.username, url: tempPath,
-            };
-            q.tracks.push(track);
-            const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
+            q.voiceChannel = vc;
 
-            // Update to queued/playing state
             await interaction.editReply({
-                embeds: [new EmbedBuilder()
-                    .setColor(isPlaying ? 0x1DB954 : ARCHON.cyan)
-                    .setDescription(
-                        isPlaying
-                            ? `🎵 Added **${track.title.substring(0,60)}**\n> \`[queued]\` • ${ext?.toUpperCase()} • ${sizeMB} MB • Position **#${q.tracks.length}** in queue`
-                            : `🎵 **${track.title.substring(0,60)}**\n> \`[ready]\` • ${ext?.toUpperCase()} • ${sizeMB} MB — connecting to voice...`
-                    )]
+                embeds: [new EmbedBuilder().setColor(ARCHON.gold)
+                    .setDescription(`📥 Downloading **${atts.length}** file(s)...`)]
+            });
+
+            const added = [];
+            for (const att of atts) {
+                const ext = att.name.split('.').pop()?.toLowerCase();
+                if (!validExts.includes(ext || '')) continue;
+                const tempPath = `/tmp/archon_${Date.now()}_${added.length}.${ext}`;
+                try {
+                    await downloadFile(att.url, tempPath);
+                    let fileDuration = 0;
+                    try {
+                        const { stdout } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tempPath}"`, { timeout: 8000 });
+                        fileDuration = Math.floor(parseFloat(stdout.trim())) || 0;
+                    } catch(e) { fileDuration = 0; }
+                    q.tracks.push({
+                        title: att.name.replace(/\.[^/.]+$/, ''), query: att.name,
+                        artist: 'File Upload', source: 'file', duration: fileDuration,
+                        thumbnail: null, requestedBy: interaction.user.username,
+                        requestedById: interaction.user.id, url: tempPath,
+                    });
+                    added.push(`**${att.name.replace(/\.[^/.]+$/, '').substring(0,40)}** \`${ext.toUpperCase()}\``);
+                } catch(e) {}
+            }
+
+            if (!added.length) {
+                return interaction.editReply({
+                    embeds: [new EmbedBuilder().setColor(ARCHON.red)
+                        .setDescription(`❌ No valid audio files! Supported: ${validExts.join(', ')}`)]
+                });
+            }
+
+            const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
+            await interaction.editReply({
+                embeds: [new EmbedBuilder().setColor(isPlaying ? 0x1DB954 : ARCHON.cyan)
+                    .setDescription(`🎵 Added **${added.length}** file(s) to queue:\n${added.map(a => `> ${a}`).join('\n')}`)]
             });
 
             if (!isPlaying) {
@@ -817,8 +874,9 @@ module.exports = {
             isPaused ? q.player.unpause() : q.player.pause();
             if (isPaused) { q.totalPaused += Date.now() - (q.pausedAt || Date.now()); q.pausedAt = null; }
             else q.pausedAt = Date.now();
+            await updatePersistentPanel(q).catch(() => {});
             const embed = new EmbedBuilder().setColor(isPaused ? ARCHON.green : ARCHON.gold)
-                .setDescription(`\`\`\`ansi\n\u001b[1;${isPaused?'32':'33'}m▸ ${isPaused?'RESUMED':'PAUSED'}\u001b[0m\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n[1;${isPaused?'32':'33'}m▸ ${isPaused?'RESUMED':'PAUSED'}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -833,6 +891,11 @@ module.exports = {
 
         // ── STOP ──
         if (sub === 'stop') {
+            if (q.persistentMsg) {
+                const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
+                    .setDescription('```ansi\n\u001b[1;31m▸ STOPPED — Neural stream terminated.\u001b[0m\n```');
+                await q.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
+            }
             destroyQueue(guildId);
             const embed = new EmbedBuilder().setColor(ARCHON.red)
                 .setDescription('```ansi\n\u001b[1;31m▸ STOPPED — Neural stream terminated.\u001b[0m\n```');
@@ -859,7 +922,6 @@ module.exports = {
                 ctx.imageSmoothingQuality = 'high';
                 ctx.textBaseline = 'middle';
 
-                // Background
                 const bgGrad = ctx.createLinearGradient(0, 0, W, H);
                 bgGrad.addColorStop(0, '#04080f');
                 bgGrad.addColorStop(0.5, '#08101e');
@@ -867,13 +929,11 @@ module.exports = {
                 ctx.fillStyle = bgGrad;
                 ctx.fillRect(0, 0, W, H);
 
-                // Grid lines
                 ctx.strokeStyle = 'rgba(0,240,255,0.04)';
                 ctx.lineWidth = 1;
                 for (let x = 0; x < W; x += 28) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
                 for (let y = 0; y < H; y += 28) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
-                // Border
                 ctx.strokeStyle = 'rgba(0,240,255,0.18)';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
@@ -883,7 +943,6 @@ module.exports = {
                 ctx.lineTo(1,8); ctx.quadraticCurveTo(1,1,8,1);
                 ctx.closePath(); ctx.stroke();
 
-                // Thumbnail
                 const thumbSize = 140;
                 const thumbX = 30, thumbY = (H - thumbSize) / 2;
                 let thumbLoaded = false;
@@ -913,36 +972,30 @@ module.exports = {
                     ctx.fillText('🎵', thumbX + thumbSize/2, thumbY + thumbSize/2);
                 }
 
-                // Cyan border around thumb
                 ctx.strokeStyle = 'rgba(0,240,255,0.35)';
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(thumbX, thumbY, thumbSize, thumbSize);
 
-                // Text area
                 const tx = thumbX + thumbSize + 22;
                 const maxW = W - tx - 20;
 
-                // Status label
                 const isPaused = q.player?.state?.status === 'paused';
                 ctx.fillStyle = isPaused ? '#f1c40f' : '#00ff88';
                 ctx.font = 'bold 9px sans-serif';
                 ctx.textAlign = 'left';
                 ctx.fillText(isPaused ? '⏸ PAUSED' : '▶ NOW PLAYING', tx, 28);
 
-                // Title
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 22px sans-serif';
                 const title = t.title.length > 28 ? t.title.substring(0,27)+'…' : t.title;
                 ctx.fillText(title, tx, 60);
 
-                // Artist + Album
                 ctx.fillStyle = 'rgba(255,255,255,0.55)';
                 ctx.font = '12px sans-serif';
                 const artistLine = [t.artist, t.album].filter(x => x && x !== 'Unknown').join(' · ');
                 const artistTrim = artistLine.length > 38 ? artistLine.substring(0,37)+'…' : artistLine;
                 if (artistTrim) ctx.fillText(artistTrim, tx, 84);
 
-                // Progress bar
                 const barX = tx, barY = 108, barW = maxW, barH = 6;
                 const pct = t.duration > 0 ? Math.min(1, elapsed / t.duration) : 0;
                 ctx.fillStyle = 'rgba(255,255,255,0.1)';
@@ -953,12 +1006,10 @@ module.exports = {
                     barGrad.addColorStop(1, '#00ff88');
                     ctx.fillStyle = barGrad;
                     ctx.beginPath(); ctx.roundRect(barX, barY, Math.max(6, barW * pct), barH, 3); ctx.fill();
-                    // Glow dot at end
                     ctx.fillStyle = '#00f0ff';
                     ctx.beginPath(); ctx.arc(barX + barW * pct, barY + barH/2, 5, 0, Math.PI*2); ctx.fill();
                 }
 
-                // Time
                 ctx.fillStyle = 'rgba(255,255,255,0.4)';
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'left';
@@ -966,7 +1017,6 @@ module.exports = {
                 ctx.textAlign = 'right';
                 ctx.fillText(formatTime(t.duration), barX + barW, barY + 20);
 
-                // Stats row
                 ctx.textAlign = 'left';
                 ctx.font = '10px sans-serif';
                 const stats = [
@@ -982,12 +1032,10 @@ module.exports = {
                     sx += ctx.measureText(stat).width + 16;
                 }
 
-                // Requested by
                 ctx.fillStyle = 'rgba(255,255,255,0.25)';
                 ctx.font = '9px sans-serif';
                 ctx.fillText(`Requested by ${t.requestedBy}`, tx, 175);
 
-                // ARCHON badge
                 ctx.fillStyle = 'rgba(0,240,255,0.08)';
                 ctx.beginPath(); ctx.roundRect(W-108, 14, 90, 18, 4); ctx.fill();
                 ctx.fillStyle = '#00f0ff';
@@ -995,7 +1043,6 @@ module.exports = {
                 ctx.textAlign = 'center';
                 ctx.fillText('ARCHON CG-223', W-63, 25);
 
-                // Corner accents
                 ctx.strokeStyle = 'rgba(0,240,255,0.2)';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath(); ctx.moveTo(W-40,1); ctx.lineTo(W-1,1); ctx.lineTo(W-1,40); ctx.stroke();
@@ -1005,7 +1052,6 @@ module.exports = {
                 const png = Buffer.isBuffer(pngRaw) ? pngRaw : Buffer.from(pngRaw);
                 const { AttachmentBuilder, EmbedBuilder: EB2 } = require('discord.js');
                 const attachment = new AttachmentBuilder(png, { name: 'nowplaying.png' });
-                // Build a clean minimal embed that just hosts the image
                 const npEmbed = new EB2()
                     .setColor(q.player?.state?.status === 'paused' ? 0xf1c40f : 0x00f0ff)
                     .setImage('attachment://nowplaying.png')
@@ -1023,6 +1069,7 @@ module.exports = {
             const vol = interaction.options.getInteger('level');
             q.volume = vol;
             try { q.player?.state?.resource?.volume?.setVolume(vol/100); } catch(e) {}
+            await updatePersistentPanel(q).catch(() => {});
             const bar = '█'.repeat(Math.round(vol/10)) + '░'.repeat(10-Math.round(vol/10));
             const embed = new EmbedBuilder().setColor(ARCHON.purple)
                 .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ VOLUME\u001b[0m \u001b[1;36m${bar}\u001b[0m \u001b[1;33m${vol}%\u001b[0m\n\`\`\``);
@@ -1033,16 +1080,32 @@ module.exports = {
         if (sub === 'loop') {
             q.loop = !q.loop;
             if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
+            await updatePersistentPanel(q).catch(() => {});
             const embed = new EmbedBuilder().setColor(q.loop ? ARCHON.green : ARCHON.orange)
-                .setDescription(`\`\`\`ansi\n\u001b[1;${q.loop?'32':'33'}m▸ LOOP ${q.loop?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n[1;${q.loop?'32':'33'}m▸ LOOP ${q.loop?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
         }
 
         // ── AUTOPLAY ──
         if (sub === 'autoplay') {
             q.autoplay = !q.autoplay;
+            await updatePersistentPanel(q).catch(() => {});
             const embed = new EmbedBuilder().setColor(q.autoplay ? ARCHON.green : ARCHON.orange)
-                .setDescription(`\`\`\`ansi\n\u001b[1;${q.autoplay?'32':'33'}m▸ AUTOPLAY ${q.autoplay?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n[1;${q.autoplay?'32':'33'}m▸ AUTOPLAY ${q.autoplay?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
+            return interaction.editReply({ embeds: [embed] });
+        }
+
+        // ── SILENT ── 🔕 toggle @silent panel notifications
+        if (sub === 'silent') {
+            q.silentPanel = !q.silentPanel;
+            if (q.persistentMsg) {
+                const oldMsg = q.persistentMsg;
+                q.persistentMsg = null; q.panelMsgId = null;
+                try { await oldMsg.delete().catch(() => {}); } catch(e) {}
+                await updatePersistentPanel(q);
+            }
+            const embed = new EmbedBuilder().setColor(q.silentPanel ? ARCHON.gold : ARCHON.green)
+                .setDescription(`\`\`\`ansi\n[1;${q.silentPanel?'33':'32'}m▸ SILENT PANEL ${q.silentPanel?'ENABLED 🔕':'DISABLED 🔔'}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -1065,18 +1128,9 @@ module.exports = {
             const genreLabel = genreFilter === 'all' ? '🎵 All Genres' : `${genreEmoji[genreFilter] || '🎵'} ${genreFilter}`;
             const trackList = slice.map((t, i) => {
                 const idx = (pageNum - 1) * PER_PAGE + i + 1;
-                const emoji = genreEmoji[t.genre] || '🎵';
-                const folderTag = t.folder ? ` \`${t.folder}\`` : '';
                 return `\`${String(idx).padStart(3, '0')}\` ${t.title}`;
             }).join('\n');
 
-            // Group by folders
-            const folderGroups = {};
-            for (const t of slice) {
-                const f = t.folder || t.genre;
-                if (!folderGroups[f]) folderGroups[f] = [];
-                folderGroups[f].push(t);
-            }
             const embed = new EmbedBuilder()
                 .setColor(ARCHON.cyan)
                 .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC LIBRARY //', iconURL: client.user.displayAvatarURL() })
@@ -1090,9 +1144,8 @@ module.exports = {
                 .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /music play <song name> to queue any track` })
                 .setTimestamp();
 
-            // Play buttons (max 5 per row, up to 2 rows = 10 buttons)
             const rows = [];
-            const btnSlice = slice.slice(0, 5); // first 5 tracks get play buttons
+            const btnSlice = slice.slice(0, 5);
             if (btnSlice.length > 0) {
                 const { ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = require('discord.js');
                 const row = new ARB();
@@ -1108,7 +1161,6 @@ module.exports = {
                 rows.push(row);
             }
 
-            // Pagination buttons
             const { ButtonBuilder: BB2, ButtonStyle: BS2 } = require('discord.js');
             const navRow = new ActionRowBuilder();
             if (pageNum > 1) {
@@ -1125,11 +1177,9 @@ module.exports = {
 
             const msg = await interaction.editReply({ embeds: [embed], components: rows });
 
-            // Button collector — play the selected track
             if (msg && rows.length > 0) {
                 const collector = msg.createMessageComponentCollector({ time: 60000 });
                 collector.on('collect', async (i) => {
-                    // Ignore page navigation buttons — handled by separate collector
                     if (i.customId.startsWith('ml_page_')) return;
                     if (!i.member?.voice?.channel) {
                         return i.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
@@ -1142,7 +1192,8 @@ module.exports = {
                         interaction.guild.id, interaction.guild,
                         i.member.voice.channel, interaction.channel,
                         query, i.user.username, client,
-                        async (opts) => { await i.followUp({ ...opts, flags: 64 }).catch(() => {}); return null; }
+                        async (opts) => { await i.followUp({ ...opts, flags: 64 }).catch(() => {}); return null; },
+                        i.user.id
                     );
                 });
                 collector.on('collect', async (i) => {
@@ -1204,3 +1255,4 @@ module.exports = {
         }
     }
 };
+
