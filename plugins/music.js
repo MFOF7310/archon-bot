@@ -56,12 +56,20 @@ function createQueue(guild, voiceChannel, textChannel, client) {
     return state;
 }
 
+function cleanTemp(track) {
+    if (track?.tempFile) {
+        try { require('fs').unlinkSync(track.tempFile); } catch (e) {}
+        track.tempFile = null;
+    }
+}
+
 function destroyQueue(guildId) {
     const q = queues.get(guildId);
     if (q) {
         q.destroyed = true; // guard: any pending playNext/Idle callbacks abort
         if (q.updateInterval) clearInterval(q.updateInterval);
         clearInactivityTimer(q);
+        cleanTemp(q.currentTrack);
         try { q.player?.removeAllListeners(); } catch (e) {} // prevent Idle → playNext zombie
         try { q.player?.stop(true); } catch (e) {}
         try { q.connection?.destroy(); } catch (e) {}
@@ -511,53 +519,73 @@ async function playNext(q) {
                 }
             } catch (e) { console.log('[MUSIC] SoundCloud error:', e.message); }
 
+            // yt-dlp pipe helper — yt-dlp handles URL signing/cookies/UA and streams
+            // raw audio to ffmpeg via stdin, so nothing re-requests the signed URL (no 403)
+            const pipeYtDlp = (spec, cookiesFlag, label) => {
+                const { spawn } = require('child_process');
+                const ytdlpArgs = ['--no-playlist', '--no-warnings', '-q', '-f', 'bestaudio/best'];
+                if (cookiesFlag) ytdlpArgs.push('--cookies', cookiesFlag);
+                ytdlpArgs.push('-o', '-', spec);
+                const ytdlp = spawn('yt-dlp', ytdlpArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+                const ffmpeg = spawn('ffmpeg', [
+                    '-i', 'pipe:0', '-vn', '-acodec', 'libopus', '-f', 'opus', 'pipe:1'
+                ], { stdio: ['pipe', 'pipe', 'pipe'] });
+                let ytErr = '', ffErr = '';
+                ytdlp.stderr.on('data', d => { ytErr += d.toString(); });
+                ffmpeg.stderr.on('data', d => { ffErr += d.toString(); });
+                ytdlp.on('close', code => {
+                    if (code !== 0 && code !== null) console.log(`[MUSIC] yt-dlp(${label}) exited ${code}:`, ytErr.slice(-300));
+                });
+                ffmpeg.on('close', code => {
+                    if (code !== 0 && code !== null) console.log(`[MUSIC] ffmpeg(${label}) exited ${code}:`, ffErr.slice(-300));
+                });
+                ytdlp.on('error', () => { try { ffmpeg.kill(); } catch (e) {} });
+                ytdlp.stdout.pipe(ffmpeg.stdin);
+                ytdlp.stdout.on('error', () => {});
+                ffmpeg.stdin.on('error', () => {});
+                return ffmpeg.stdout;
+            };
+
             // yt-dlp SoundCloud fallback — no API key, no cookies, immune to play-dl 404s
             if (!stream && !resource) {
                 try {
                     const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                     const { stdout } = await execAsync(`yt-dlp --no-playlist --get-url "scsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
-                    const scUrl = stdout.trim().split('\n')[0];
-                    if (scUrl?.startsWith('http')) {
-                        const ffmpeg = require('child_process').spawn('ffmpeg', [
-                            '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
-                            '-i', scUrl, '-vn', '-acodec', 'libopus', '-f', 'opus', 'pipe:1'
-                        ], { stdio: ['ignore', 'pipe', 'pipe'] });
-                        let ffErr = '';
-                        ffmpeg.stderr.on('data', d => { ffErr += d.toString(); });
-                        ffmpeg.on('close', code => {
-                            if (code !== 0 && code !== null) console.log(`[MUSIC] ffmpeg(SC) exited ${code}:`, ffErr.slice(-300));
-                        });
-                        resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus, inlineVolume: true });
+                    if (stdout.trim().split('\n')[0]?.startsWith('http')) {
+                        const audioOut = pipeYtDlp(`scsearch1:${safe}`, null, 'SC');
+                        resource = createAudioResource(audioOut, { inputType: StreamType.OggOpus, inlineVolume: true });
                         track.source = 'SoundCloud';
                         console.log('[MUSIC] ▸ yt-dlp SoundCloud for:', track.title);
                     }
                 } catch (e) { console.log('[MUSIC] yt-dlp SC error:', e.message); }
             }
 
-            // YouTube fallback — last resort (needs cookies on bot-checked IPs)
+            // YouTube fallback — download full track to temp file, then play locally.
+            // Immune to mid-stream connection resets (yt-dlp retries internally);
+            // a 3-min song downloads in ~1-2s on this box.
             if (!stream && !resource) {
                 try {
                     const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                     const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
                     const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
-                    const { stdout } = await execAsync(`yt-dlp --no-playlist -x --audio-format opus ${cookiesFlag} --get-url "ytsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
-                    const url = stdout.trim().split('\n')[0];
-                    if (url?.startsWith('http')) {
-                        const ffmpeg = require('child_process').spawn('ffmpeg', [
-                            '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
-                            '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                            '-i', url, '-vn', '-acodec', 'libopus', '-f', 'opus', 'pipe:1'
-                        ], { stdio: ['ignore', 'pipe', 'pipe'] });
-                        let ffErr = '';
-                        ffmpeg.stderr.on('data', d => { ffErr += d.toString(); });
-                        ffmpeg.on('close', code => {
-                            if (code !== 0 && code !== null) console.log(`[MUSIC] ffmpeg exited ${code}:`, ffErr.slice(-300));
-                        });
-                        resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus, inlineVolume: true });
+                    const tmpBase = require('path').join(require('os').tmpdir(), `archon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+                    await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 96K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 90000 });
+                    const tmpFile = `${tmpBase}.opus`;
+                    if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
+                        // Real duration from the file itself
+                        try {
+                            const { stdout: dur } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tmpFile}"`, { timeout: 8000 });
+                            const d = parseFloat(dur.trim());
+                            if (d > 0) track.duration = Math.round(d);
+                        } catch (e) {}
+                        resource = createAudioResource(require('fs').createReadStream(tmpFile), { inputType: StreamType.OggOpus, inlineVolume: true });
+                        track.tempFile = tmpFile;
                         track.source = 'YouTube';
-                        console.log('[MUSIC] ▸ YouTube fallback for:', track.title);
+                        console.log('[MUSIC] ▸ YouTube download for:', track.title, `(${track.duration}s)`);
+                    } else {
+                        console.log('[MUSIC] yt-dlp download produced no file');
                     }
-                } catch (e) { console.log('[MUSIC] yt-dlp error:', e.message); }
+                } catch (e) { console.log('[MUSIC] yt-dlp error:', e.message?.slice(0, 300)); }
             }
 
             if (!stream && !resource) throw new Error('Could not find audio stream');
@@ -632,6 +660,7 @@ async function ensureConnection(q) {
                 console.log(`[MUSIC] ⚠️ Stream starved after ${alive.toFixed(1)}s (${q.currentTrack.source}): ${q.currentTrack.title} — check yt-dlp/play-dl versions`);
             }
             if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
+            else cleanTemp(q.currentTrack); // delete downloaded file once done (loop keeps it)
             playNext(q);
         });
         player.on('error', err => { console.error('[MUSIC PLAYER]', err.message); playNext(q); });
