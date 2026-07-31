@@ -56,6 +56,16 @@ function createQueue(guild, voiceChannel, textChannel, client) {
     return state;
 }
 
+// ═══ LIKED SONGS — per-user persistent store (data/likes.json) ═══
+const LIKES_PATH = require('path').join(__dirname, '../data/likes.json');
+function loadLikes() {
+    try { return JSON.parse(require('fs').readFileSync(LIKES_PATH, 'utf8')); } catch (e) { return {}; }
+}
+function saveLikes(data) {
+    try { require('fs').writeFileSync(LIKES_PATH, JSON.stringify(data, null, 2)); } catch (e) {}
+}
+function getUserLikes(userId) { return loadLikes()[userId] || []; }
+
 function cleanTemp(track) {
     if (track?.tempFile) {
         try { require('fs').unlinkSync(track.tempFile); } catch (e) {}
@@ -257,7 +267,17 @@ function attachCollector(q, msg) {
             qNow.autoplay = !qNow.autoplay;
             await updatePersistentPanel(qNow);
         } else if (i.customId === 'mc_like') {
-            await i.followUp({ content: `❤️ Liked **${qNow.currentTrack?.title?.substring(0,50) || 'track'}** — nice taste!`, flags: 64 }).catch(() => {});
+            const t = qNow.currentTrack;
+            if (!t) return i.followUp({ content: '⏹️ Nothing playing to like.', flags: 64 }).catch(() => {});
+            const all = loadLikes();
+            const mine = all[i.user.id] = all[i.user.id] || [];
+            const key = (t.query || t.title).toLowerCase();
+            if (mine.some(x => (x.query || x.title).toLowerCase() === key)) {
+                return i.followUp({ content: `❤️ **${t.title.substring(0, 50)}** is already in your Liked Songs!`, flags: 64 }).catch(() => {});
+            }
+            mine.unshift({ title: t.title.replace(/^🎵\s*/, ''), query: t.query || t.title, folder: '❤️ Liked Songs', likedAt: Date.now() });
+            saveLikes(all);
+            await i.followUp({ content: `❤️ Saved **${t.title.substring(0, 50)}** — you now have \`${mine.length}\` liked song${mine.length > 1 ? 's' : ''}.\nFind them in \`/music library\` → **❤️ My Liked Songs**!`, flags: 64 }).catch(() => {});
         } else if (i.customId === 'mc_queue') {
             await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
         }
@@ -775,7 +795,8 @@ module.exports = {
         .addSubcommand(s => s.setName('loop').setDescription('🔁 Toggle loop'))
         .addSubcommand(s => s.setName('autoplay').setDescription('🔀 Toggle autoplay'))
         .addSubcommand(s => s.setName('silent').setDescription('🔕 Toggle @silent panel notifications'))
-        .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')),
+        .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')
+            .addStringOption(o => o.setName('search').setDescription('🔍 Search inside the library (optional)').setRequired(false).setAutocomplete(true))),
 
     // PREFIX — .play <query>
     run: async (client, message, args, db, serverSettings, usedCommand) => {
@@ -1219,7 +1240,15 @@ module.exports = {
                 folderMap.get(f).push(t);
             }
 
-            const state = { folder: null, page: 1 };
+            const searchTerm = (interaction.options.getString('search') || '').trim().toLowerCase();
+            const state = { folder: searchTerm ? '__search__' : null, page: 1, search: searchTerm, userId: interaction.user.id, viewTracks: [] };
+
+            const resolveTracks = () => {
+                if (state.folder === '__all__') return lib;
+                if (state.folder === '__liked__') return getUserLikes(state.userId);
+                if (state.folder === '__search__') return lib.filter(t => `${t.title} ${t.query || ''}`.toLowerCase().includes(state.search));
+                return folderMap.get(state.folder) || lib;
+            };
 
             const renderLibrary = () => {
                 const embed = new EmbedBuilder()
@@ -1230,10 +1259,18 @@ module.exports = {
 
                 // Row 1 — folder select (always present)
                 const folderMenu = new SSM().setCustomId('mlb_folder').setPlaceholder('📁 Choose a folder to browse…');
+                const likedCount = getUserLikes(state.userId).length;
+                if (likedCount > 0) {
+                    folderMenu.addOptions({
+                        label: '❤️ My Liked Songs', value: '__liked__',
+                        description: `${likedCount} track${likedCount > 1 ? 's' : ''} · your favorites`,
+                        default: state.folder === '__liked__',
+                    });
+                }
                 folderMenu.addOptions({
                     label: '🎵 All Tracks', value: '__all__',
                     description: `${lib.length} tracks · full catalog`,
-                    default: state.folder === null,
+                    default: state.folder === '__all__',
                 });
                 for (const f of folders.slice(0, 24)) {
                     folderMenu.addOptions({
@@ -1251,16 +1288,21 @@ module.exports = {
                     embed.setTitle('📚 Music Library')
                         .setDescription(`**${lib.length} curated tracks** across ${folders.length} folders.\nSelect a folder below to browse and queue.\n\n${overview}`)
                         .addFields({ name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0, 60)}` : '⏹️ Nothing', inline: false })
-                        .setFooter({ text: 'BAMAKO_223 🇲🇱 • Pick a folder, then pick tracks to queue them' });
+                        .setFooter({ text: 'BAMAKO_223 🇲🇱 • Pick a folder • /music library search:<term> to search' });
                 } else {
                     // Folder view — paginated tracks
-                    const tracks = state.folder === '__all__' ? lib : folderMap.get(state.folder) || lib;
+                    const tracks = resolveTracks();
+                    state.viewTracks = tracks;
                     const totalPages = Math.max(1, Math.ceil(tracks.length / PER_PAGE));
                     state.page = Math.min(Math.max(1, state.page), totalPages);
                     const slice = tracks.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
-                    const list = slice.map((t, i) => `\`${String((state.page - 1) * PER_PAGE + i + 1).padStart(3, '0')}\` ${t.title}`).join('\n');
-                    embed.setTitle(state.folder === '__all__' ? '🎵 All Tracks' : state.folder)
-                        .setDescription(list)
+                    const list = slice.map((t, i) => `\`${String((state.page - 1) * PER_PAGE + i + 1).padStart(3, '0')}\` ${t.title.replace(/^🎵\s*/, '🎵 ')}`).join('\n');
+                    const viewTitle = state.folder === '__all__' ? '🎵 All Tracks'
+                        : state.folder === '__liked__' ? '❤️ My Liked Songs'
+                        : state.folder === '__search__' ? `🔍 "${state.search}" — ${tracks.length} result${tracks.length !== 1 ? 's' : ''}`
+                        : state.folder;
+                    embed.setTitle(viewTitle)
+                        .setDescription(tracks.length ? list : '*Nothing here yet — hit the ❤️ Like button while listening!*')
                         .addFields(
                             { name: 'Tracks', value: `\`${tracks.length}\``, inline: true },
                             { name: 'Page', value: `\`${state.page}/${totalPages}\``, inline: true },
@@ -1268,23 +1310,27 @@ module.exports = {
                         )
                         .setFooter({ text: 'BAMAKO_223 🇲🇱 • Select tracks below to queue them instantly' });
 
-                    // Row 2 — track pick (multi-select queues several at once)
-                    const pickMenu = new SSM().setCustomId('mlb_pick').setPlaceholder('🎧 Pick track(s) to queue…')
-                        .setMinValues(1).setMaxValues(Math.min(slice.length, 10));
-                    for (const t of slice) {
-                        pickMenu.addOptions({
-                            label: t.title.replace(/^🎵\s*/, '').substring(0, 95),
-                            value: String(lib.indexOf(t)),
-                            description: (t.folder || '').substring(0, 95),
-                        });
+                    if (tracks.length) {
+                        // Row 2 — track pick (multi-select queues several at once)
+                        const pickMenu = new SSM().setCustomId('mlb_pick').setPlaceholder('🎧 Pick track(s) to queue…')
+                            .setMinValues(1).setMaxValues(Math.min(slice.length, 10));
+                        for (let i = 0; i < slice.length; i++) {
+                            const t = slice[i];
+                            pickMenu.addOptions({
+                                label: t.title.replace(/^🎵\s*/, '').substring(0, 95),
+                                value: String((state.page - 1) * PER_PAGE + i),
+                                description: (t.folder || '').substring(0, 95),
+                            });
+                        }
+                        rows.push(new ARB().addComponents(pickMenu));
                     }
-                    rows.push(new ARB().addComponents(pickMenu));
 
-                    // Row 3 — pagination
+                    // Row 3 — pagination + shuffle
                     const nav = new ARB();
                     nav.addComponents(new BB().setCustomId('mlb_prev').setLabel('◀ Prev').setStyle(BS.Secondary).setDisabled(state.page <= 1));
                     nav.addComponents(new BB().setCustomId('mlb_next').setLabel('Next ▶').setStyle(BS.Primary).setDisabled(state.page >= totalPages));
                     nav.addComponents(new BB().setCustomId('mlb_home').setLabel('📚 Folders').setStyle(BS.Secondary));
+                    nav.addComponents(new BB().setCustomId('mlb_shuffle').setLabel('🔀 Shuffle').setStyle(BS.Success).setDisabled(!tracks.length));
                     rows.push(nav);
                 }
                 return { embeds: [embed], components: rows };
@@ -1313,7 +1359,7 @@ module.exports = {
                         await i.deferUpdate().catch(() => {});
                         let first = true;
                         for (const v of i.values) {
-                            const t = lib[parseInt(v)];
+                            const t = state.viewTracks[parseInt(v)];
                             if (!t) continue;
                             await handlePlay(
                                 interaction.guild.id, interaction.guild,
@@ -1321,6 +1367,38 @@ module.exports = {
                                 t.query || t.title, i.user.username, client,
                                 async (opts) => {
                                     if (first) { first = false; await i.followUp({ ...opts, flags: 64 }).catch(() => {}); }
+                                    return null;
+                                },
+                                i.user.id
+                            );
+                        }
+                    } else if (i.customId === 'mlb_shuffle') {
+                        if (!i.member?.voice?.channel) {
+                            return i.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
+                        }
+                        const tracks = [...resolveTracks()];
+                        if (!tracks.length) return i.reply({ content: '❌ Nothing to shuffle here.', flags: 64 }).catch(() => {});
+                        // Fisher-Yates
+                        for (let x = tracks.length - 1; x > 0; x--) {
+                            const y = Math.floor(Math.random() * (x + 1));
+                            [tracks[x], tracks[y]] = [tracks[y], tracks[x]];
+                        }
+                        const qNow = getQueue(interaction.guild.id);
+                        const cap = Math.max(0, 50 - (qNow?.tracks.length || 0));
+                        const batch = tracks.slice(0, cap);
+                        if (!batch.length) return i.reply({ content: '❌ Queue is full (50 max). Skip or stop first!', flags: 64 }).catch(() => {});
+                        await i.deferUpdate().catch(() => {});
+                        let first = true;
+                        for (const t of batch) {
+                            await handlePlay(
+                                interaction.guild.id, interaction.guild,
+                                i.member.voice.channel, interaction.channel,
+                                t.query || t.title, i.user.username, client,
+                                async (opts) => {
+                                    if (first) {
+                                        first = false;
+                                        await i.followUp({ content: `🔀 Shuffled **${batch.length} tracks** from ${state.folder === '__liked__' ? '❤️ My Liked Songs' : state.folder === '__all__' ? '🎵 All Tracks' : state.folder} into the queue!`, flags: 64 }).catch(() => {});
+                                    }
                                     return null;
                                 },
                                 i.user.id
