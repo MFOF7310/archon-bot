@@ -59,10 +59,12 @@ function createQueue(guild, voiceChannel, textChannel, client) {
 function destroyQueue(guildId) {
     const q = queues.get(guildId);
     if (q) {
+        q.destroyed = true; // guard: any pending playNext/Idle callbacks abort
         if (q.updateInterval) clearInterval(q.updateInterval);
         clearInactivityTimer(q);
-        try { q.connection?.destroy(); } catch (e) {}
+        try { q.player?.removeAllListeners(); } catch (e) {} // prevent Idle → playNext zombie
         try { q.player?.stop(true); } catch (e) {}
+        try { q.connection?.destroy(); } catch (e) {}
         queues.delete(guildId);
     }
 }
@@ -180,7 +182,7 @@ function buildPanelEmbed(q, client) {
         )
         .setThumbnail(t.thumbnail || client.user.displayAvatarURL())
         .setFooter({
-            text: `BAMAKO_223 🇲🇱 • Auto: ${q.autoplay ? 'On' : 'Off'} • ${q.silentPanel ? '🔕 Silent' : '🔔 Notify'} • Updates every 15s`,
+            text: `BAMAKO_223 🇲🇱 • Auto: ${q.autoplay ? 'On' : 'Off'}`,
             iconURL: client.user.displayAvatarURL()
         })
         .setTimestamp();
@@ -411,7 +413,8 @@ async function downloadFile(url, dest) {
 // ═══════════════════════════════════════════════════════
 async function playNext(q) {
     const client = q._client;
-    if (!q || !q.guild) return; // Guard: queue destroyed
+    if (!q || !q.guild || q.destroyed) return; // Guard: queue destroyed
+    if (queues.get(q.guild.id) !== q) return; // Guard: stale queue reference
     if (q.tracks.length > 0 && !q.tracks[0]) { q.tracks = q.tracks.filter(Boolean); }
     if (q.tracks.length === 0) {
         // Smart autoplay — library-aware sequential play
@@ -593,6 +596,7 @@ async function ensureConnection(q) {
         q.player = player;
         conn.subscribe(player);
         player.on(AudioPlayerStatus.Idle, () => {
+            if (q.destroyed) return;
             if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
             playNext(q);
         });
