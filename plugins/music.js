@@ -775,19 +775,7 @@ module.exports = {
         .addSubcommand(s => s.setName('loop').setDescription('🔁 Toggle loop'))
         .addSubcommand(s => s.setName('autoplay').setDescription('🔀 Toggle autoplay'))
         .addSubcommand(s => s.setName('silent').setDescription('🔕 Toggle @silent panel notifications'))
-        .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library')
-            .addStringOption(o => o.setName('genre').setDescription('Filter by genre').setRequired(false)
-                .addChoices(
-                    { name: '🎵 All Genres', value: 'all' },
-                    { name: '🇲🇱 Mali / West African', value: 'Mali' },
-                    { name: '🌍 Afrobeats / Afropop', value: 'Afrobeat' },
-                    { name: '🎤 Hip-Hop / Rap', value: 'HipHop' },
-                    { name: '🀄 Chinese 最火', value: 'Chinese' },
-                    { name: '⚡ Electronic / EDM', value: 'EDM' },
-                    { name: '🇫🇷 French Rap', value: 'FrenchRap' },
-                    { name: '🌴 Afro-Trap / Dancehall', value: 'AfroTrap' }
-                ))
-            .addIntegerOption(o => o.setName('page').setDescription('Page number').setRequired(false).setMinValue(1))),
+        .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')),
 
     // PREFIX — .play <query>
     run: async (client, message, args, db, serverSettings, usedCommand) => {
@@ -1219,143 +1207,135 @@ module.exports = {
             try { lib = require('../data/music-library.json'); }
             catch(e) { return interaction.editReply({ content: '❌ Library not found on server.' }); }
 
-            const genreFilter = interaction.options.getString('genre') || 'all';
-            const page = interaction.options.getInteger('page') || 1;
+            const { StringSelectMenuBuilder: SSM, ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = require('discord.js');
             const PER_PAGE = 10;
-            const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄' };
 
-            const filtered = genreFilter === 'all' ? lib : lib.filter(t => t.genre === genreFilter);
-            const totalPages = Math.ceil(filtered.length / PER_PAGE);
-            const pageNum = Math.min(page, totalPages);
-            const slice = filtered.slice((pageNum - 1) * PER_PAGE, pageNum * PER_PAGE);
+            // Folder catalog (order of first appearance, with counts)
+            const folders = [];
+            const folderMap = new Map();
+            for (const t of lib) {
+                const f = t.folder || '🎵 Other';
+                if (!folderMap.has(f)) { folderMap.set(f, []); folders.push(f); }
+                folderMap.get(f).push(t);
+            }
 
-            const genreLabel = genreFilter === 'all' ? '🎵 All Genres' : `${genreEmoji[genreFilter] || '🎵'} ${genreFilter}`;
-            const trackList = slice.map((t, i) => {
-                const idx = (pageNum - 1) * PER_PAGE + i + 1;
-                return `\`${String(idx).padStart(3, '0')}\` ${t.title}`;
-            }).join('\n');
+            const state = { folder: null, page: 1 };
 
-            const embed = new EmbedBuilder()
-                .setColor(ARCHON.cyan)
-                .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC LIBRARY //', iconURL: client.user.displayAvatarURL() })
-                .setTitle(`📚 ${genreLabel}`)
-                .setDescription(trackList)
-                .addFields(
-                    { name: 'Total Tracks', value: `\`${filtered.length}\``, inline: true },
-                    { name: 'Page', value: `\`${pageNum}/${totalPages}\``, inline: true },
-                    { name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0,40)}` : '⏹️ Nothing', inline: true },
-                )
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /music play <song name> to queue any track` })
-                .setTimestamp();
+            const renderLibrary = () => {
+                const embed = new EmbedBuilder()
+                    .setColor(ARCHON.cyan)
+                    .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC LIBRARY //', iconURL: client.user.displayAvatarURL() })
+                    .setTimestamp();
+                const rows = [];
 
-            const rows = [];
-            const btnSlice = slice.slice(0, 5);
-            if (btnSlice.length > 0) {
-                const { ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = require('discord.js');
-                const row = new ARB();
-                for (const t of btnSlice) {
-                    row.addComponents(
-                        new BB()
-                            .setCustomId(`ml_play_${Buffer.from(t.query).toString('base64').substring(0,80)}`)
-                            .setLabel(t.title.substring(0, 20))
-                            .setEmoji(genreEmoji[t.genre] || '🎵')
-                            .setStyle(BS.Secondary)
-                    );
+                // Row 1 — folder select (always present)
+                const folderMenu = new SSM().setCustomId('mlb_folder').setPlaceholder('📁 Choose a folder to browse…');
+                folderMenu.addOptions({
+                    label: '🎵 All Tracks', value: '__all__',
+                    description: `${lib.length} tracks · full catalog`,
+                    default: state.folder === null,
+                });
+                for (const f of folders.slice(0, 24)) {
+                    folderMenu.addOptions({
+                        label: f.substring(0, 95),
+                        value: f,
+                        description: `${folderMap.get(f).length} tracks`,
+                        default: state.folder === f,
+                    });
                 }
-                rows.push(row);
-            }
+                rows.push(new ARB().addComponents(folderMenu));
 
-            const { ButtonBuilder: BB2, ButtonStyle: BS2 } = require('discord.js');
-            const navRow = new ActionRowBuilder();
-            if (pageNum > 1) {
-                navRow.addComponents(
-                    new BB2().setCustomId(`ml_page_${genreFilter}_${pageNum-1}`).setLabel('◀ Previous').setStyle(BS2.Secondary)
-                );
-            }
-            if (pageNum < totalPages) {
-                navRow.addComponents(
-                    new BB2().setCustomId(`ml_page_${genreFilter}_${pageNum+1}`).setLabel('Next ▶').setStyle(BS2.Primary)
-                );
-            }
-            if (navRow.components.length > 0) rows.push(navRow);
+                if (state.folder === null) {
+                    // Home — catalog overview
+                    const overview = folders.map(f => `> ${f} — \`${folderMap.get(f).length} tracks\``).join('\n');
+                    embed.setTitle('📚 Music Library')
+                        .setDescription(`**${lib.length} curated tracks** across ${folders.length} folders.\nSelect a folder below to browse and queue.\n\n${overview}`)
+                        .addFields({ name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0, 60)}` : '⏹️ Nothing', inline: false })
+                        .setFooter({ text: 'BAMAKO_223 🇲🇱 • Pick a folder, then pick tracks to queue them' });
+                } else {
+                    // Folder view — paginated tracks
+                    const tracks = state.folder === '__all__' ? lib : folderMap.get(state.folder) || lib;
+                    const totalPages = Math.max(1, Math.ceil(tracks.length / PER_PAGE));
+                    state.page = Math.min(Math.max(1, state.page), totalPages);
+                    const slice = tracks.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
+                    const list = slice.map((t, i) => `\`${String((state.page - 1) * PER_PAGE + i + 1).padStart(3, '0')}\` ${t.title}`).join('\n');
+                    embed.setTitle(state.folder === '__all__' ? '🎵 All Tracks' : state.folder)
+                        .setDescription(list)
+                        .addFields(
+                            { name: 'Tracks', value: `\`${tracks.length}\``, inline: true },
+                            { name: 'Page', value: `\`${state.page}/${totalPages}\``, inline: true },
+                            { name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0, 30)}` : '⏹️ Nothing', inline: true },
+                        )
+                        .setFooter({ text: 'BAMAKO_223 🇲🇱 • Select tracks below to queue them instantly' });
 
-            const msg = await interaction.editReply({ embeds: [embed], components: rows });
-
-            if (msg && rows.length > 0) {
-                const collector = msg.createMessageComponentCollector({ time: 60000 });
-                collector.on('collect', async (i) => {
-                    if (i.customId.startsWith('ml_page_')) return;
-                    if (!i.member?.voice?.channel) {
-                        return i.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
+                    // Row 2 — track pick (multi-select queues several at once)
+                    const pickMenu = new SSM().setCustomId('mlb_pick').setPlaceholder('🎧 Pick track(s) to queue…')
+                        .setMinValues(1).setMaxValues(Math.min(slice.length, 10));
+                    for (const t of slice) {
+                        pickMenu.addOptions({
+                            label: t.title.replace(/^🎵\s*/, '').substring(0, 95),
+                            value: String(lib.indexOf(t)),
+                            description: (t.folder || '').substring(0, 95),
+                        });
                     }
-                    await i.deferUpdate().catch(() => {});
-                    const b64 = i.customId.replace('ml_play_', '');
-                    let query;
-                    try { query = Buffer.from(b64, 'base64').toString('utf8'); } catch(e) { return; }
-                    await handlePlay(
-                        interaction.guild.id, interaction.guild,
-                        i.member.voice.channel, interaction.channel,
-                        query, i.user.username, client,
-                        async (opts) => { await i.followUp({ ...opts, flags: 64 }).catch(() => {}); return null; },
-                        i.user.id
-                    );
-                });
-                collector.on('collect', async (i) => {
-                    if (i.customId.startsWith('ml_page_')) {
-                        const parts = i.customId.split('_');
-                        const newGenre = parts[2];
-                        const newPage = parseInt(parts[3]);
-                        await i.deferUpdate().catch(() => {});
+                    rows.push(new ARB().addComponents(pickMenu));
 
-                        const lib2 = require('../data/music-library.json');
-                        const genreEmoji2 = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄' };
-                        const filtered2 = newGenre === 'all' ? lib2 : lib2.filter(t => t.genre === newGenre);
-                        const totalPages2 = Math.ceil(filtered2.length / PER_PAGE);
-                        const slice2 = filtered2.slice((newPage-1)*PER_PAGE, newPage*PER_PAGE);
-                        const genreLabel2 = newGenre === 'all' ? '🎵 All Genres' : `${genreEmoji2[newGenre]||'🎵'} ${newGenre}`;
+                    // Row 3 — pagination
+                    const nav = new ARB();
+                    nav.addComponents(new BB().setCustomId('mlb_prev').setLabel('◀ Prev').setStyle(BS.Secondary).setDisabled(state.page <= 1));
+                    nav.addComponents(new BB().setCustomId('mlb_next').setLabel('Next ▶').setStyle(BS.Primary).setDisabled(state.page >= totalPages));
+                    nav.addComponents(new BB().setCustomId('mlb_home').setLabel('📚 Folders').setStyle(BS.Secondary));
+                    rows.push(nav);
+                }
+                return { embeds: [embed], components: rows };
+            };
 
-                        const trackList2 = slice2.map((t,idx) => {
-                            const n = (newPage-1)*PER_PAGE+idx+1;
-                            return `\`${String(n).padStart(3,'0')}\` ${genreEmoji2[t.genre]||'🎵'} **${t.title}**`;
-                        }).join('\n');
+            const msg = await interaction.editReply(renderLibrary());
+            if (!msg) return;
 
-                        const embed2 = new EmbedBuilder()
-                            .setColor(ARCHON.cyan)
-                            .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC LIBRARY //', iconURL: client.user.displayAvatarURL() })
-                            .setTitle(`📚 ${genreLabel2}`)
-                            .setDescription(trackList2)
-                            .addFields(
-                                { name: 'Total Tracks', value: `\`${filtered2.length}\``, inline: true },
-                                { name: 'Page', value: `\`${newPage}/${totalPages2}\``, inline: true },
-                                { name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0,40)}` : '⏹️ Nothing', inline: true },
-                            )
-                            .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /music play <song name> to queue any track` })
-                            .setTimestamp();
-
-                        const rows2 = [];
-                        const btnSlice2 = slice2.slice(0,5);
-                        if (btnSlice2.length > 0) {
-                            const { ActionRowBuilder: ARB2, ButtonBuilder: BB3, ButtonStyle: BS3 } = require('discord.js');
-                            const row2 = new ARB2();
-                            for (const t of btnSlice2) {
-                                row2.addComponents(
-                                    new BB3().setCustomId(`ml_play_${Buffer.from(t.query).toString('base64').substring(0,80)}`).setLabel(t.title.substring(0,20)).setEmoji(genreEmoji2[t.genre]||'🎵').setStyle(BS3.Secondary)
-                                );
-                            }
-                            rows2.push(row2);
+            const collector = msg.createMessageComponentCollector({ time: 300000 });
+            collector.on('collect', async (i) => {
+                try {
+                    if (i.customId === 'mlb_folder') {
+                        state.folder = i.values[0] === '__all__' ? '__all__' : i.values[0];
+                        state.page = 1;
+                        await i.update(renderLibrary()).catch(() => {});
+                    } else if (i.customId === 'mlb_prev' || i.customId === 'mlb_next') {
+                        state.page += i.customId === 'mlb_next' ? 1 : -1;
+                        await i.update(renderLibrary()).catch(() => {});
+                    } else if (i.customId === 'mlb_home') {
+                        state.folder = null; state.page = 1;
+                        await i.update(renderLibrary()).catch(() => {});
+                    } else if (i.customId === 'mlb_pick') {
+                        if (!i.member?.voice?.channel) {
+                            return i.reply({ content: '❌ Join a voice channel first!', flags: 64 }).catch(() => {});
                         }
-                        const { ActionRowBuilder: ARB3, ButtonBuilder: BB4, ButtonStyle: BS4 } = require('discord.js');
-                        const navRow2 = new ARB3();
-                        if (newPage > 1) navRow2.addComponents(new BB4().setCustomId(`ml_page_${newGenre}_${newPage-1}`).setLabel('◀ Previous').setStyle(BS4.Secondary));
-                        if (newPage < totalPages2) navRow2.addComponents(new BB4().setCustomId(`ml_page_${newGenre}_${newPage+1}`).setLabel('Next ▶').setStyle(BS4.Primary));
-                        if (navRow2.components.length > 0) rows2.push(navRow2);
-
-                        await msg.edit({ embeds: [embed2], components: rows2 }).catch(() => {});
-                        return;
+                        await i.deferUpdate().catch(() => {});
+                        let first = true;
+                        for (const v of i.values) {
+                            const t = lib[parseInt(v)];
+                            if (!t) continue;
+                            await handlePlay(
+                                interaction.guild.id, interaction.guild,
+                                i.member.voice.channel, interaction.channel,
+                                t.query || t.title, i.user.username, client,
+                                async (opts) => {
+                                    if (first) { first = false; await i.followUp({ ...opts, flags: 64 }).catch(() => {}); }
+                                    return null;
+                                },
+                                i.user.id
+                            );
+                        }
                     }
-                });
-                collector.on('end', () => { msg.edit?.({ components: [] }).catch(() => {}); });
-            }
+                } catch (e) { console.log('[LIBRARY]', e.message); }
+            });
+            collector.on('end', () => {
+                try {
+                    const r = renderLibrary();
+                    for (const row of r.components) for (const c of row.components) c.setDisabled(true);
+                    msg.edit({ embeds: r.embeds, components: r.components }).catch(() => {});
+                } catch (e) {}
+            });
         }
     }
 };
