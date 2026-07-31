@@ -31,7 +31,11 @@ function resetInactivityTimer(q) {
         if (!qNow) return;
         if (qNow.player?.state?.status === AudioPlayerStatus.Playing) { resetInactivityTimer(qNow); return; }
         try {
-            await qNow.textChannel?.send({ embeds: [new EmbedBuilder().setColor(0xf39c12).setDescription('⚠️ Left the voice channel due to inactivity. Use /music play to start a new session.')] });
+            await qNow.textChannel?.send({ embeds: [new EmbedBuilder()
+                .setColor(0xFEE75C)
+                .setAuthor({ name: '💤 Auto-Disconnect' })
+                .setDescription('I left the voice channel due to inactivity.\nUse `/music play` to bring me back anytime.')
+            ] });
         } catch(e) {}
         destroyQueue(q.guild.id);
     }, INACTIVITY_MS);
@@ -99,6 +103,13 @@ function progressBar(cur, total, len = 15) {
     if (!total) return '░'.repeat(len);
     const f = Math.round(Math.min(1, cur / total) * len);
     return '█'.repeat(f) + '░'.repeat(len - f);
+}
+
+// FlaviBot-style slider with knob ────●─────
+function sliderBar(cur, total, len = 18) {
+    if (!total || total <= 0) return '─'.repeat(len);
+    const pos = Math.max(0, Math.min(len - 1, Math.round((cur / total) * (len - 1))));
+    return '─'.repeat(pos) + '●' + '─'.repeat(len - 1 - pos);
 }
 
 function formatTime(s) {
@@ -182,21 +193,24 @@ function buildPanelEmbed(q, client) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     const bar = progressBar(elapsed, duration, 16);
 
+    const fullTitle = (t.artist && t.artist !== 'Unknown' && !t.title.includes(t.artist))
+        ? `${t.artist} - ${t.title}`
+        : t.title;
     const trackLink = t.spotifyUrl
-        ? `[${t.title.substring(0,60)}](${t.spotifyUrl})`
-        : `**${t.title.substring(0,60)}**`;
+        ? `[${fullTitle.substring(0,120)}](${t.spotifyUrl})`
+        : `**${fullTitle.substring(0,120)}**`;
     const requester = t.requestedById ? `<@${t.requestedById}>` : `@${t.requestedBy}`;
 
     return new EmbedBuilder()
-        .setColor(isPaused ? ARCHON.gold : ARCHON.purple)
+        .setColor(isPaused ? ARCHON.gold : 0x5865F2)
         .setTitle(isPaused ? '⏸️ Paused' : 'Now playing')
         .setDescription(
             `${trackLink}\n\n` +
             `• Added by ${requester}\n` +
-            `• 🔊 ${q.voiceChannel?.name?.substring(0,20) || 'Voice'}\n\n` +
+            `• 🔊 ${q.voiceChannel?.name?.substring(0,22) || 'Voice'}\n\n` +
             `Queue Size: \`${q.tracks.length}\` · Volume: \`${q.volume}%\` · Loop: \`${q.loop ? 'On' : 'Off'}\`\n\n` +
-            `${bar} **${pct}%**\n` +
-            `\`${formatTime(elapsed)}\` ─────────── \`${formatTime(duration)}\``
+            `${sliderBar(elapsed, duration)}\n` +
+            `\`${formatTime(elapsed)}\` ――― \`${formatTime(duration)}\``
         )
         .setThumbnail(t.thumbnail || client.user.displayAvatarURL())
         .setFooter({
@@ -209,19 +223,24 @@ function buildPanelEmbed(q, client) {
 function buildPanelRows(q) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
+    // FlaviBot layout: Like on top, then 2+2 control rows, utility row last
+    const rowLike = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
+    );
     const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
         new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
+    );
+    const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
         new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
     );
-    const row2 = new ActionRowBuilder().addComponents(
+    const row3 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
         new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
         new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
-        new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
     );
-    return [row1, row2];
+    return [rowLike, row1, row2, row3];
 }
 
 function attachCollector(q, msg) {
@@ -728,13 +747,35 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     } catch(e) {}
 
     const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
-    const embed = new EmbedBuilder().setColor(ARCHON.cyan)
-        .setColor(isPlaying ? 0x1DB954 : ARCHON.cyan)
-        .setDescription(
-            isPlaying
-                ? `🎵 Added **${query.substring(0,60)}**\n> Position **#${q.tracks.length}** in queue • Added by **${requestedBy}**`
-                : `🎵 **${query.substring(0,60)}**\n> Loading... connecting to voice`
-        );
+
+    // Resolve real metadata up-front so the card shows full title + duration (FlaviBot style)
+    if (isPlaying && track.source !== 'file') {
+        try {
+            const sp = await searchSpotify(track.query || track.title);
+            if (sp) {
+                track.title = sp.title || track.title;
+                track.artist = sp.artist || track.artist;
+                track.duration = sp.duration || track.duration;
+                track.thumbnail = sp.thumbnail || track.thumbnail;
+                track.spotifyUrl = sp.spotifyUrl || null;
+                track.album = sp.album;
+            }
+        } catch(e) {}
+    }
+
+    const SPOTIFY_ICON = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/512px-Spotify_logo_without_text.svg.png';
+    const fullName = (track.artist && track.artist !== 'Unknown') ? `${track.artist} - ${track.title}` : track.title;
+    const nameMd = track.spotifyUrl ? `[${fullName}](${track.spotifyUrl})` : fullName;
+    const durMd = track.duration > 0 ? ` - \`${formatTime(track.duration)}\`` : '';
+
+    const embed = new EmbedBuilder().setColor(isPlaying ? 0x1DB954 : ARCHON.cyan);
+    if (isPlaying) {
+        embed.setAuthor({ name: 'Added to the queue', iconURL: SPOTIFY_ICON })
+            .setDescription(`Added **${nameMd}**${durMd} to the queue.\n> Position **#${q.tracks.length}** • Added by **${requestedBy}**`);
+        if (track.thumbnail) embed.setThumbnail(track.thumbnail);
+    } else {
+        embed.setDescription(`🎵 **${query.substring(0,60)}**\n> Loading... connecting to voice`);
+    }
 
     const components = [];
     if (suggestions.length > 0) {

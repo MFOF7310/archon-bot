@@ -2910,6 +2910,16 @@ buildAliasLanguageMap();
         }
     });
 
+    // [LYDIA-FIX] Guarantee lydia is in the slash payload
+    try {
+        const lm = require('./plugins/lydia.js');
+        if (lm.data && !commands.some(c => c.name === 'lydia')) {
+            commands.push(lm.data.toJSON());
+            slashRegistered++;
+            console.log(`${cyan}[SLASH]${reset} lydia injected into payload`);
+        }
+    } catch(e) { console.log(`${yellow}[SLASH WARN]${reset} lydia inject: ${e.message}`); }
+
     console.log(`${cyan}[SLASH]${reset} ${slashRegistered} commands prepared, ${slashSkipped} skipped`);
 
     const botToken = process.env.DISCORD_TOKEN;
