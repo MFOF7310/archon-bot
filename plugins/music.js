@@ -511,8 +511,31 @@ async function playNext(q) {
                 }
             } catch (e) { console.log('[MUSIC] SoundCloud error:', e.message); }
 
-            // yt-dlp fallback
-            if (!stream) {
+            // yt-dlp SoundCloud fallback — no API key, no cookies, immune to play-dl 404s
+            if (!stream && !resource) {
+                try {
+                    const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+                    const { stdout } = await execAsync(`yt-dlp --no-playlist --get-url "scsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
+                    const scUrl = stdout.trim().split('\n')[0];
+                    if (scUrl?.startsWith('http')) {
+                        const ffmpeg = require('child_process').spawn('ffmpeg', [
+                            '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
+                            '-i', scUrl, '-vn', '-acodec', 'libopus', '-f', 'opus', 'pipe:1'
+                        ], { stdio: ['ignore', 'pipe', 'pipe'] });
+                        let ffErr = '';
+                        ffmpeg.stderr.on('data', d => { ffErr += d.toString(); });
+                        ffmpeg.on('close', code => {
+                            if (code !== 0 && code !== null) console.log(`[MUSIC] ffmpeg(SC) exited ${code}:`, ffErr.slice(-300));
+                        });
+                        resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus, inlineVolume: true });
+                        track.source = 'SoundCloud';
+                        console.log('[MUSIC] ▸ yt-dlp SoundCloud for:', track.title);
+                    }
+                } catch (e) { console.log('[MUSIC] yt-dlp SC error:', e.message); }
+            }
+
+            // YouTube fallback — last resort (needs cookies on bot-checked IPs)
+            if (!stream && !resource) {
                 try {
                     const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                     const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
