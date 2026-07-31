@@ -1,11 +1,9 @@
 'use strict';
 
 const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const axios = require('axios');
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════════
+let axios = null;
+try { axios = require('axios'); }
+catch (e) { console.warn('[LYDIA] axios not installed — AI/web features degraded, but /lydia still registers. Fix: npm i axios'); }
 
 let _isPremium = null;
 function isPremium(db, guildId) {
@@ -322,7 +320,7 @@ function getBotName(message) {
 
 async function webSearch(query) {
   const apiKey = process.env.BRAVE_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey || !axios) return null;
   try {
     const res = await axios.get('https://api.search.brave.com/res/v1/web/search', {
       headers: {
