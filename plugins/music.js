@@ -522,8 +522,14 @@ async function playNext(q) {
                     if (url?.startsWith('http')) {
                         const ffmpeg = require('child_process').spawn('ffmpeg', [
                             '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
+                            '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
                             '-i', url, '-vn', '-acodec', 'libopus', '-f', 'opus', 'pipe:1'
-                        ], { stdio: ['ignore', 'pipe', 'ignore'] });
+                        ], { stdio: ['ignore', 'pipe', 'pipe'] });
+                        let ffErr = '';
+                        ffmpeg.stderr.on('data', d => { ffErr += d.toString(); });
+                        ffmpeg.on('close', code => {
+                            if (code !== 0 && code !== null) console.log(`[MUSIC] ffmpeg exited ${code}:`, ffErr.slice(-300));
+                        });
                         resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus, inlineVolume: true });
                         track.source = 'YouTube';
                         console.log('[MUSIC] ▸ YouTube fallback for:', track.title);
@@ -597,6 +603,11 @@ async function ensureConnection(q) {
         conn.subscribe(player);
         player.on(AudioPlayerStatus.Idle, () => {
             if (q.destroyed) return;
+            // Diagnostic: stream starved (ended in <5s) — source delivered no audio
+            const alive = q.startTime ? (Date.now() - q.startTime - q.totalPaused) / 1000 : 0;
+            if (q.currentTrack && alive < 5) {
+                console.log(`[MUSIC] ⚠️ Stream starved after ${alive.toFixed(1)}s (${q.currentTrack.source}): ${q.currentTrack.title} — check yt-dlp/play-dl versions`);
+            }
             if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
             playNext(q);
         });
