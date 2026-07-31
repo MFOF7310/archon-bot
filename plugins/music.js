@@ -737,43 +737,80 @@ module.exports = {
     },
 
     autocomplete: async (interaction, client) => {
-        const focused = interaction.options.getFocused().toLowerCase();
+        const focused = interaction.options.getFocused().trim();
+        const focusedLower = focused.toLowerCase();
         try {
             const results = [];
+            const seen = new Set();
+            const push = (name, value) => {
+                const v = String(value).substring(0, 100);
+                if (results.length < 25 && v.length > 0 && !seen.has(v)) {
+                    seen.add(v);
+                    results.push({ name: String(name).substring(0, 100), value: v });
+                }
+            };
+            const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄', FrenchRap: '🇫🇷', AfroTrap: '🌴' };
 
-            // 1. Guild history first (personalized, max 3)
-            const history = client.db?.prepare(
-                'SELECT title, query FROM music_history WHERE guild_id = ? AND (LOWER(title) LIKE ? OR LOWER(query) LIKE ?) ORDER BY play_count DESC, played_at DESC LIMIT 3'
-            ).all(interaction.guild?.id, `%${focused}%`, `%${focused}%`) || [];
-            for (const r of history) {
-                results.push({ name: `🕐 ${r.title.substring(0,93)}`, value: r.query.substring(0,100) });
-            }
-
-            // 2. Fill remaining slots from curated library (max 5 total)
-            if (results.length < 5) {
+            if (focused.length === 0) {
+                // ══ DEFAULT POPOUT — ready-to-pick library + recent history ══
+                const history = client.db?.prepare(
+                    'SELECT title, query FROM music_history WHERE guild_id = ? ORDER BY play_count DESC, played_at DESC LIMIT 5'
+                ).all(interaction.guild?.id) || [];
+                for (const r of history) push(`🕐 ${r.title}`, r.query);
                 try {
                     const lib = require('../data/music-library.json');
-                    const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄', FrenchRap: '🇫🇷', AfroTrap: '🌴' };
-                    const filtered = focused.length === 0
-                        ? lib.slice(0, 5 - results.length)
-                        : lib.filter(t =>
-                            t.title.toLowerCase().includes(focused) ||
-                            t.query.toLowerCase().includes(focused) ||
-                            t.genre.toLowerCase().includes(focused)
-                          ).slice(0, 5 - results.length);
-                    for (const t of filtered) {
-                        const emoji = genreEmoji[t.genre] || '🎵';
-                        results.push({ name: `${emoji} ${t.title.substring(0,93)}`, value: t.query.substring(0,100) });
+                    for (const t of lib.slice(0, 15)) {
+                        push(`${genreEmoji[t.genre] || '🎵'} ${t.title}`, t.query);
                     }
                 } catch(e) {}
+            } else {
+                // 1. Guild history (personalized)
+                const history = client.db?.prepare(
+                    'SELECT title, query FROM music_history WHERE guild_id = ? AND (LOWER(title) LIKE ? OR LOWER(query) LIKE ?) ORDER BY play_count DESC, played_at DESC LIMIT 3'
+                ).all(interaction.guild?.id, `%${focusedLower}%`, `%${focusedLower}%`) || [];
+                for (const r of history) push(`🕐 ${r.title}`, r.query);
+
+                // 2. Curated library matches
+                try {
+                    const lib = require('../data/music-library.json');
+                    const matches = lib.filter(t =>
+                        t.title.toLowerCase().includes(focusedLower) ||
+                        t.query.toLowerCase().includes(focusedLower) ||
+                        t.genre.toLowerCase().includes(focusedLower)
+                    ).slice(0, 5);
+                    for (const t of matches) push(`${genreEmoji[t.genre] || '🎵'} ${t.title}`, t.query);
+                } catch(e) {}
+
+                // 3. LIVE SPOTIFY SEARCH — FlaviBot-style 🎵 tracks / 🎤 artists / 📁 playlists
+                if (focused.length >= 2) {
+                    try {
+                        const token = await getSpotifyToken();
+                        if (token) {
+                            const res = await fetch(
+                                `https://api.spotify.com/v1/search?q=${encodeURIComponent(focused)}&type=track,artist,playlist&limit=10`,
+                                { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            const data = await res.json();
+                            for (const t of data.tracks?.items?.slice(0, 10) || []) {
+                                const artists = t.artists?.map(a => a.name).join(', ') || '';
+                                push(`🎵 ${t.name} — ${artists}`, `${t.name} ${t.artists?.[0]?.name || ''}`.trim());
+                            }
+                            for (const a of data.artists?.items?.slice(0, 2) || []) {
+                                push(`🎤 ${a.name}`, a.name);
+                            }
+                            for (const pl of data.playlists?.items?.slice(0, 3) || []) {
+                                if (!pl) continue;
+                                push(`📁 ${pl.name} (${pl.tracks?.total ?? '?'} tracks) by ${pl.owner?.display_name || 'Spotify'}`, pl.name);
+                            }
+                        }
+                    } catch(e) {}
+                }
+
+                // 4. Fallback: raw search option
+                if (focused.length >= 2) push(`🔍 Search: ${focused}`, focused);
             }
 
-            // 3. If user typed something and we have room, add live search option
-            if (focused.length >= 2 && results.length < 5) {
-                results.push({ name: `🔍 Search: ${focused.substring(0,88)}`, value: focused.substring(0,100) });
-            }
-
-            await interaction.respond(results.slice(0,5)).catch(() => {});
+            await interaction.respond(results.slice(0, 25)).catch(() => {});
         } catch(e) {
             await interaction.respond([]).catch(() => {});
         }
