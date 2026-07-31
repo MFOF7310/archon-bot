@@ -515,8 +515,9 @@ async function playNext(q) {
         let resource;
 
         if (track.source === 'file') {
+            if (!require('fs').existsSync(track.url)) throw new Error('Uploaded file expired — re-upload it');
             resource = createAudioResource(require('fs').createReadStream(track.url), {
-                inputType: StreamType.Arbitrary, inlineVolume: true,
+                inputType: StreamType.OggOpus, inlineVolume: true,
             });
         } else {
             let stream = null;
@@ -584,28 +585,35 @@ async function playNext(q) {
             // Immune to mid-stream connection resets (yt-dlp retries internally);
             // a 3-min song downloads in ~1-2s on this box.
             if (!stream && !resource) {
-                try {
-                    const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
-                    const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
-                    const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
-                    const tmpBase = require('path').join(require('os').tmpdir(), `archon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-                    await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 96K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 90000 });
-                    const tmpFile = `${tmpBase}.opus`;
-                    if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
-                        // Real duration from the file itself
-                        try {
-                            const { stdout: dur } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tmpFile}"`, { timeout: 8000 });
-                            const d = parseFloat(dur.trim());
-                            if (d > 0) track.duration = Math.round(d);
-                        } catch (e) {}
-                        resource = createAudioResource(require('fs').createReadStream(tmpFile), { inputType: StreamType.OggOpus, inlineVolume: true });
-                        track.tempFile = tmpFile;
-                        track.source = 'YouTube';
-                        console.log('[MUSIC] ▸ YouTube download for:', track.title, `(${track.duration}s)`);
-                    } else {
-                        console.log('[MUSIC] yt-dlp download produced no file');
+                const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+                const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
+                const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
+                // Attempt 2 appends "audio" — rescues titles that match age-restricted/odd first results
+                for (const attemptQuery of [safe, `${safe} audio`]) {
+                    try {
+                        const tmpBase = require('path').join(require('os').tmpdir(), `archon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+                        await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 96K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 90000 });
+                        const tmpFile = `${tmpBase}.opus`;
+                        if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
+                            // Real duration from the file itself
+                            try {
+                                const { stdout: dur } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tmpFile}"`, { timeout: 8000 });
+                                const d = parseFloat(dur.trim());
+                                if (d > 0) track.duration = Math.round(d);
+                            } catch (e) {}
+                            resource = createAudioResource(require('fs').createReadStream(tmpFile), { inputType: StreamType.OggOpus, inlineVolume: true });
+                            track.tempFile = tmpFile;
+                            track.source = 'YouTube';
+                            console.log('[MUSIC] ▸ YouTube download for:', track.title, `(${track.duration}s)`);
+                            break;
+                        }
+                        console.log('[MUSIC] yt-dlp download produced no file for:', attemptQuery);
+                    } catch (e) {
+                        console.log('[MUSIC] yt-dlp error:', e.message?.slice(0, 300));
+                        if (attemptQuery !== safe) console.log('[MUSIC] ⏭️ Giving up on:', track.title);
                     }
-                } catch (e) { console.log('[MUSIC] yt-dlp error:', e.message?.slice(0, 300)); }
+                    if (resource) break;
+                }
             }
 
             if (!stream && !resource) throw new Error('Could not find audio stream');
@@ -940,16 +948,21 @@ module.exports = {
                 const tempPath = `/tmp/archon_${Date.now()}_${added.length}.${ext}`;
                 try {
                     await downloadFile(att.url, tempPath);
+                    // Transcode to Ogg Opus up front — plays via the same bulletproof
+                    // path as YouTube temp downloads (no flaky Arbitrary transcoding)
+                    const opusPath = `${tempPath}.opus`;
+                    await execAsync(`ffmpeg -y -v error -i "${tempPath}" -vn -acodec libopus -b:a 96k -f opus "${opusPath}"`, { timeout: 60000 });
+                    try { require('fs').unlinkSync(tempPath); } catch(e) {}
                     let fileDuration = 0;
                     try {
-                        const { stdout } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tempPath}"`, { timeout: 8000 });
+                        const { stdout } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${opusPath}"`, { timeout: 8000 });
                         fileDuration = Math.floor(parseFloat(stdout.trim())) || 0;
                     } catch(e) { fileDuration = 0; }
                     q.tracks.push({
                         title: att.name.replace(/\.[^/.]+$/, ''), query: att.name,
                         artist: 'File Upload', source: 'file', duration: fileDuration,
                         thumbnail: null, requestedBy: interaction.user.username,
-                        requestedById: interaction.user.id, url: tempPath,
+                        requestedById: interaction.user.id, url: opusPath, tempFile: opusPath,
                     });
                     added.push(`**${att.name.replace(/\.[^/.]+$/, '').substring(0,40)}** \`${ext.toUpperCase()}\``);
                 } catch(e) {}
