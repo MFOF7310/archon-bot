@@ -70,6 +70,16 @@ function saveLikes(data) {
 }
 function getUserLikes(userId) { return loadLikes()[userId] || []; }
 
+// 👎 DISLIKES (per-guild autoplay blacklist) — data/dislikes.json
+const DISLIKES_PATH = require('path').join(__dirname, '../data/dislikes.json');
+function loadDislikes() {
+    try { return JSON.parse(require('fs').readFileSync(DISLIKES_PATH, 'utf8')); } catch (e) { return {}; }
+}
+function saveDislikes(data) {
+    try { require('fs').writeFileSync(DISLIKES_PATH, JSON.stringify(data, null, 2)); } catch (e) {}
+}
+function getGuildDislikes(guildId) { return loadDislikes()[guildId] || []; }
+
 function cleanTemp(track) {
     if (track?.tempFile) {
         try { require('fs').unlinkSync(track.tempFile); } catch (e) {}
@@ -239,6 +249,7 @@ function buildPanelRows(q) {
         new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
         new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
         new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+        new ButtonBuilder().setCustomId('mc_dislike').setLabel('Not for me').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
     );
     return [rowLike, row1, row2, row3];
 }
@@ -297,6 +308,20 @@ function attachCollector(q, msg) {
             mine.unshift({ title: t.title.replace(/^🎵\s*/, ''), query: t.query || t.title, folder: '❤️ Liked Songs', likedAt: Date.now() });
             saveLikes(all);
             await i.followUp({ content: `❤️ Saved **${t.title.substring(0, 50)}** — you now have \`${mine.length}\` liked song${mine.length > 1 ? 's' : ''}.\nFind them in \`/music library\` → **❤️ My Liked Songs**!`, flags: 64 }).catch(() => {});
+        } else if (i.customId === 'mc_dislike') {
+            const t = qNow.currentTrack;
+            if (!t) return i.followUp({ content: '⏹️ Nothing playing right now.', flags: 64 }).catch(() => {});
+            const artist = (t.artist && t.artist !== 'Unknown') ? t.artist : t.title.replace(/^🎵\s*/, '');
+            const all = loadDislikes();
+            const list = all[qNow.guild.id] = all[qNow.guild.id] || [];
+            const key = artist.toLowerCase();
+            if (!list.some(x => x.key === key)) {
+                list.unshift({ key, label: artist.substring(0, 60), at: Date.now() });
+                if (list.length > 50) list.pop();
+                saveDislikes(all);
+            }
+            await i.followUp({ content: `👎 Got it — skipping **${t.title.substring(0, 50)}**.\nI'll avoid **${artist.substring(0, 40)}** in autoplay from now on.`, flags: 64 }).catch(() => {});
+            qNow.player.stop(); // Triggers Idle → playNext
         } else if (i.customId === 'mc_queue') {
             await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
         }
@@ -468,8 +493,15 @@ async function playNext(q) {
         if (q.autoplay && q.currentTrack && q.currentTrack.source !== 'file') {
             try {
                 const lib = require('../data/music-library.json');
-                q.libraryIndex = (q.libraryIndex + 1) % lib.length;
-                const next = lib[q.libraryIndex];
+                const disliked = getGuildDislikes(q.guild.id).map(x => x.key);
+                let next = null;
+                for (let step = 0; step < lib.length; step++) {
+                    q.libraryIndex = (q.libraryIndex + 1) % lib.length;
+                    const cand = lib[q.libraryIndex];
+                    const hay = `${cand.title} ${cand.query}`.toLowerCase();
+                    if (!disliked.some(k => k && hay.includes(k))) { next = cand; break; }
+                }
+                if (!next) next = lib[q.libraryIndex]; // everything disliked — play anyway rather than stall
                 q.tracks.push({
                     title: next.title,
                     query: next.query,
