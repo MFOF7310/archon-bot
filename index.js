@@ -2430,7 +2430,8 @@ buildAliasLanguageMap();
         lydiaModule = require('./plugins/lydia.js');
         setupLydia(client, db);
         // Register lydia in client.commands so slash command registration picks it up
-        if (lydiaModule.name && lydiaModule.run && !client.commands.has(lydiaModule.name)) {
+        if (lydiaModule.name && lydiaModule.run) {
+            // Real lydia always owns the name — overwrites any bridge stub
             client.commands.set(lydiaModule.name, lydiaModule);
             if (lydiaModule.aliases && Array.isArray(lydiaModule.aliases)) {
                 lydiaModule.aliases.forEach(a => client.aliases.set(a, lydiaModule.name));
