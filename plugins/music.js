@@ -1062,7 +1062,7 @@ module.exports = {
                     results.push({ name: String(name).substring(0, 100), value: v });
                 }
             };
-            const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄', FrenchRap: '🇫🇷', AfroTrap: '🌴' };
+            const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄', FrenchRap: '🇫🇷', AfroTrap: '🌴', Arabic: '🌙' };
 
             if (focused.length === 0) {
                 // ══ DEFAULT POPOUT — ready-to-pick library + recent history ══
