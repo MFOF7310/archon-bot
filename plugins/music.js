@@ -576,6 +576,41 @@ async function downloadFile(url, dest) {
 }
 
 // ═══════════════════════════════════════════════════════
+// PREFETCH — pre-download next track so skip feels instant
+// ═══════════════════════════════════════════════════════
+async function prefetchNext(q) {
+    const track = q.tracks[0];
+    if (!track || track.tempFile || track.prefetching || track.source === 'file' || track.url) return;
+    track.prefetching = true;
+    try {
+        const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+        if (!safe) { track.prefetching = false; return; }
+        const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
+        const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
+        const tmpBase = require('path').join(require('os').tmpdir(), `archon_pre_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+        await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 96K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 300000 });
+        const tmpFile = `${tmpBase}.opus`;
+        if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
+            if (!track.tempFile) {
+                track.tempFile = tmpFile;
+                if (!track.source || track.source === 'SoundCloud') track.source = 'YouTube';
+                if (!track.duration) {
+                    try {
+                        const { stdout: dur } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tmpFile}"`, { timeout: 8000 });
+                        const d = parseFloat(dur.trim());
+                        if (d > 0) track.duration = Math.round(d);
+                    } catch (e) {}
+                }
+                console.log('[MUSIC] ⚡ Prefetched next:', track.title);
+            } else {
+                try { require('fs').unlinkSync(tmpFile); } catch(e) {}
+            }
+        }
+    } catch (e) { console.log('[MUSIC] Prefetch failed (non-fatal):', e.message?.slice(0, 120)); }
+    track.prefetching = false;
+}
+
+// ═══════════════════════════════════════════════════════
 // PLAY NEXT
 // ═══════════════════════════════════════════════════════
 async function playNext(q) {
@@ -742,6 +777,12 @@ async function playNext(q) {
             // YouTube fallback — download full track to temp file, then play locally.
             // Immune to mid-stream connection resets (yt-dlp retries internally);
             // a 3-min song downloads in ~1-2s on this box.
+            // ⚡ Prefetch hit — file already on disk, skip the download entirely
+            if (!stream && !resource && track.tempFile && require('fs').existsSync(track.tempFile)) {
+                resource = createAudioResource(require('fs').createReadStream(track.tempFile), { inputType: StreamType.OggOpus, inlineVolume: true });
+                console.log('[MUSIC] ⚡ Instant start from prefetch:', track.title);
+            }
+
             if (!stream && !resource) {
                 const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                 const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
@@ -795,6 +836,8 @@ async function playNext(q) {
         await updatePersistentPanel(q, { resend: true });
         startPanelUpdater(q);
         clearInactivityTimer(q);
+        // ⚡ Pre-download the next track in the background while this one plays
+        prefetchNext(q).catch(() => {});
 
     } catch (err) {
         console.error('[MUSIC] Error:', err.message);
