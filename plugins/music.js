@@ -277,7 +277,12 @@ function buildPanelContainer(q, client) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
 
     const trackLink = trackLinkFor(t);
-    const requester = t.requestedById ? `<@${t.requestedById}>` : `@${t.requestedBy}`;
+    // Human requests get a real mention; autoplay tracks credit the bot by name
+    const botName = client.user?.displayName || client.user?.username || 'ARCHON';
+    const autoGenre = t.requestedBy?.split('•')[1]?.trim();
+    const requester = t.requestedById
+        ? `<@${t.requestedById}>`
+        : `🤖 ${botName} • AutoPlay${autoGenre ? ` • ${autoGenre}` : ''}`;
 
     const header = new SectionBuilder()
         .addTextDisplayComponents(
