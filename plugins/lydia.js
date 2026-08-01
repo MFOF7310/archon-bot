@@ -13,6 +13,15 @@ function isPremium(db, guildId) {
   } catch { return false; }
 }
 
+// Per-guild custom API keys (premium) — falls back to global .env when unset
+function getGuildKey(database, guildId, service) {
+  try {
+    if (!database || !guildId) return null;
+    const row = database.prepare('SELECT api_key FROM lydia_keys WHERE guild_id = ? AND service = ?').get(String(guildId), service);
+    return row?.api_key || null;
+  } catch { return null; }
+}
+
 const CFG = {
   COOLDOWN_TIME: 3000,
   MAX_HISTORY: 8,
@@ -318,8 +327,8 @@ function getBotName(message) {
 // WEB SEARCH
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function webSearch(query) {
-  const apiKey = process.env.BRAVE_API_KEY;
+async function webSearch(query, keyOverride = null) {
+  const apiKey = keyOverride || process.env.BRAVE_API_KEY;
   if (!apiKey || !axios) return null;
   try {
     const res = await axios.get('https://api.search.brave.com/res/v1/web/search', {
@@ -360,8 +369,8 @@ const PREMIUM_MODEL = {
   tier: 'premium'
 };
 
-async function tryModel(model, messages, timeoutMs) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+async function tryModel(model, messages, timeoutMs, keyOverride = null) {
+  const apiKey = keyOverride || process.env.OPENROUTER_API_KEY;
   if (!apiKey) return null;
 
   return new Promise(async (resolve) => {
@@ -431,12 +440,15 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
     messages.push({ role: 'user', content: userMessage });
   }
 
+  // Premium servers may bring their own OpenRouter key — else global .env
+  const guildKey = guildId ? getGuildKey(client?.db || null, guildId, 'openrouter') : null;
+
   // Premium servers get Claude Sonnet directly
   const isPremiumGuild = guildId ? isPremium(client?.db || null, guildId) : false;
 
   if (isPremiumGuild) {
     console.log(`${C.cyan}[AI PREMIUM]${C.reset} Routing to ${PREMIUM_MODEL.emoji} ${PREMIUM_MODEL.name}...`);
-    const result = await tryModel(PREMIUM_MODEL, messages, CFG.RESPONSE_TIMEOUT);
+    const result = await tryModel(PREMIUM_MODEL, messages, CFG.RESPONSE_TIMEOUT, guildKey);
     if (result) return result;
     console.log(`${C.yellow}[AI PREMIUM]${C.reset} Claude unavailable, falling back to free pool...`);
   }
@@ -444,7 +456,7 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
   const topModels = MODEL_POOL.slice(0, CFG.MAX_CONCURRENT_MODELS);
   console.log(`${C.cyan}[AI]${C.reset} Racing ${topModels.length} models...`);
 
-  const promises = topModels.map(m => tryModel(m, messages, CFG.RESPONSE_TIMEOUT));
+  const promises = topModels.map(m => tryModel(m, messages, CFG.RESPONSE_TIMEOUT, guildKey));
 
   let winner = null;
   const results = await Promise.all(promises);
@@ -460,7 +472,7 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
   if (!winner) {
     const remaining = MODEL_POOL.slice(CFG.MAX_CONCURRENT_MODELS);
     for (const model of remaining) {
-      const result = await tryModel(model, messages, CFG.RESPONSE_TIMEOUT);
+      const result = await tryModel(model, messages, CFG.RESPONSE_TIMEOUT, guildKey);
       if (result) {
         winner = result;
         winner.attempted = 'parallel-fail \u2192 ' + model.name;
@@ -1144,7 +1156,7 @@ async function handleLydiaMessage(message, client, database) {
     let searchResults = null;
     const searchTriggers = ['search', 'find', 'what is', 'who is', 'latest', 'news', 'weather', 'how to', 'price', 'current', 'update', 'today'];
     if (searchTriggers.some(t => userPrompt.toLowerCase().includes(t)) && process.env.BRAVE_API_KEY) {
-      const searchData = await webSearch(userPrompt);
+      const searchData = await webSearch(userPrompt, message.guild?.id ? getGuildKey(database, message.guild.id, 'brave') : null);
       if (searchData) {
         searchResults = searchData.formatted;
         searchSources = searchData.sources;
@@ -1261,7 +1273,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel?.guild) {
-    if (respondFn) await respondFn({ content: '\u274C Channel not found.', flags: 64 });
+    if (respondFn) await respondFn({ content: '🧐 I can\'t find this channel anymore — was it deleted?', flags: 64 });
     return;
   }
 
@@ -1271,6 +1283,11 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   if (action === 'status') {
     const isEnabled = !!client.lydiaChannels[channelId];
+    let keyMode = '🌍 Shared keys (free tier)';
+    try {
+      if (getGuildKey(client.db, guildId, 'openrouter')) keyMode = '🔑 Custom key (AI brain)';
+      else if (getGuildKey(client.db, guildId, 'brave')) keyMode = '🔑 Custom key (web search)';
+    } catch(e) {}
     const embed = new EmbedBuilder()
       .setColor(isEnabled ? '#2ecc71' : '#95a5a6')
       .setAuthor({
@@ -1282,7 +1299,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
         isEnabled
           ? `\`\`\`ansi\n\u001b[1;32m[ SYSTEM MONITOR ]\u001b[0m\n\u001b[32m${botName} is active in #${channel.name}\u001b[0m\n\`\`\`\n` +
             `**Chat methods:**\n\u2022 Mention @${botName}\n\u2022 Type \`${prefix}ai [message]\`\n\u2022 Say \`${botName} [message]\`\n\n` +
-            `\u{1F5BC}\u{FE0F} Image analysis supported.\n\u{1F310} Universal language support.`
+            `\u{1F5BC}\u{FE0F} Image analysis supported.\n\u{1F310} Universal language support.\n\u{1F511} ${keyMode}`
           : `\`\`\`ansi\n\u001b[1;33m[ SYSTEM MONITOR ]\u001b[0m\n\u001b[33m${botName} is in standby mode\u001b[0m\n\`\`\`\n` +
             `**Activate:** \`${prefix}lydia on\`\n\n\u{1F4CC} Memory, reminders, web search, and multilingual support available when active.`
       )
@@ -1297,7 +1314,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   if (action === 'on') {
     if (client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: `\u26A0\uFE0F ${botName} is already active here.`, flags: 64 });
+      if (respondFn) await respondFn({ content: `🎧 I'm already awake and listening right here — just talk to me!`, flags: 64 });
       return;
     }
 
@@ -1326,7 +1343,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   if (action === 'off') {
     if (!client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: `\u26A0\uFE0F ${botName} is not active here.`, flags: 64 });
+      if (respondFn) await respondFn({ content: '😴 I\'m not active in this channel yet — wake me up with `/lydia on` first!', flags: 64 });
       return;
     }
 
@@ -1425,6 +1442,15 @@ function setupLydia(client, database) {
   isLydiaInitialized = true;
 
   try {
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS lydia_keys (
+        guild_id TEXT NOT NULL, service TEXT NOT NULL,
+        api_key TEXT NOT NULL, set_by TEXT,
+        set_at INTEGER DEFAULT (strftime('%s', 'now')),
+        PRIMARY KEY (guild_id, service)
+      )
+    `).run();
+
     database.prepare(`
       CREATE TABLE IF NOT EXISTS reminders (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL, user_tag TEXT,
@@ -1563,13 +1589,18 @@ const slashCommand = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('on').setDescription('\u{1F7E2} Activate Lydia AI'))
   .addSubcommand(s => s.setName('off').setDescription('\u{1F534} Deactivate Lydia AI'))
   .addSubcommand(s => s.setName('status').setDescription('\u{1F4CA} Show Lydia status'))
-  .addSubcommand(s => s.setName('memory').setDescription('\u{1F9E0} View your stored memories'));
+  .addSubcommand(s => s.setName('memory').setDescription('\u{1F9E0} View your stored memories'))
+  .addSubcommand(s => s.setName('setkey').setDescription('\u{1F511} [PREMIUM] Power this server with your own API key')
+    .addStringOption(o => o.setName('service').setDescription('Which service the key is for').setRequired(true)
+      .addChoices({ name: 'OpenRouter (AI brain)', value: 'openrouter' }, { name: 'Brave (web search)', value: 'brave' }))
+    .addStringOption(o => o.setName('key').setDescription('Your API key — do this in a private channel').setRequired(true)))
+  .addSubcommand(s => s.setName('delkey').setDescription('\u{1F5D1}\u{FE0F} Remove this server\'s custom keys'));
 
 async function executeSlashCommand(interaction, client) {
-  if (!interaction.guild) return interaction.reply({ content: 'Server only.', flags: 64 });
+  if (!interaction.guild) return interaction.reply({ content: '🏰 I only do my magic inside servers — DMs make me shy. Try me in a channel!', flags: 64 });
   if (!interaction.member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription('\u{1F534} **ACCESS DENIED** \u2014 Administrator privileges required')],
+      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription('🛡️ **Hold up** — only server admins can flip my switches. Grab one of them and try again!')],
       flags: 64
     });
   }
@@ -1579,8 +1610,50 @@ async function executeSlashCommand(interaction, client) {
   if (sub === 'memory') {
     // memory uses its own reply — no defer needed
     const database = client.db;
-    if (!database) return interaction.reply({ content: 'Database unavailable.', flags: 64 });
+    if (!database) return interaction.reply({ content: '😵 My memory bank is offline right now — give me a minute and try again.', flags: 64 });
     return await handleMemorySubcommand(interaction, database, true);
+  }
+
+  if (sub === 'setkey') {
+    const database = client.db;
+    if (!database) return interaction.reply({ content: '😵 My memory bank is offline right now — give me a minute and try again.', flags: 64 });
+    if (!isPremium(database, interaction.guildId)) {
+      return interaction.reply({ content: '🔑 **Custom API keys are a Premium perk** — but no worries, I already run on the bot\'s shared keys for free!\nUpgrade this server to Premium to bring your own quota ✨', flags: 64 });
+    }
+    const service = interaction.options.getString('service', true);
+    const key = (interaction.options.getString('key', true) || '').trim();
+    if (key.length < 20 || /\s/.test(key)) {
+      return interaction.reply({ content: '🤔 That doesn\'t look like a valid API key — double-check and paste the full thing (no spaces).', flags: 64 });
+    }
+    // One key per server — a new key always replaces the previous one
+    let replaced = null;
+    try {
+      const prev = database.prepare('SELECT service FROM lydia_keys WHERE guild_id = ?').get(String(interaction.guildId));
+      if (prev && prev.service !== service) replaced = prev.service;
+      database.prepare('DELETE FROM lydia_keys WHERE guild_id = ?').run(String(interaction.guildId));
+      database.prepare(`INSERT INTO lydia_keys (guild_id, service, api_key, set_by, set_at)
+        VALUES (?, ?, ?, ?, strftime('%s','now'))`)
+        .run(String(interaction.guildId), service, key, interaction.user.id);
+    } catch (e) {
+      return interaction.reply({ content: '😵 Couldn\'t save the key — my database hiccupped. Try again?', flags: 64 });
+    }
+    const label = service === 'openrouter' ? 'AI brain (OpenRouter)' : 'web search (Brave)';
+    const replacedNote = replaced ? `\n♻️ Your previous **${replaced === 'openrouter' ? 'OpenRouter' : 'Brave'}** key was replaced — one key per server keeps things clean.`
+      : '';
+    return interaction.reply({ content: `🔑 **Done!** This server now powers my **${label}** with your own key.\nYour quota, your rules ✨${replacedNote}\n-# Tip: your key is stored server-side only and never shown in chat.`, flags: 64 });
+  }
+
+  if (sub === 'delkey') {
+    const database = client.db;
+    if (!database) return interaction.reply({ content: '😵 My memory bank is offline right now — give me a minute and try again.', flags: 64 });
+    try {
+      const r = database.prepare('DELETE FROM lydia_keys WHERE guild_id = ?').run(String(interaction.guildId));
+      return interaction.reply({ content: r.changes > 0
+        ? '🗑️ **Custom keys removed** — I\'m back on the bot\'s shared keys. Smooth transition, zero downtime 🎧'
+        : '🤷 This server had no custom keys — already running on the shared ones!', flags: 64 });
+    } catch (e) {
+      return interaction.reply({ content: '😵 Couldn\'t remove the keys — try again in a moment.', flags: 64 });
+    }
   }
 
   // All other subcommands need defer first
