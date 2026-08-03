@@ -244,27 +244,31 @@ function buildPanelEmbed(q, client) {
 function buildPanelRows(q) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
-    // Modern transport layout: Like solo → Prev/Pause/Skip → Stop/Loop/AutoPlay → Vol/Queue/Not-for-me
+    // Strict 2-per-row (FlaviBot layout) — mobile never wraps buttons oddly
     const rowLike = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
     );
     const rowTransport = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
         new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
         new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Secondary).setEmoji('⏭️'),
     );
     const rowSession = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
         new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
+    );
+    const rowNav = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
     );
     const rowUtility = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_voldown').setLabel('Vol −').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
         new ButtonBuilder().setCustomId('mc_volup').setLabel('Vol +').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 150),
+    );
+    const rowTaste = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
         new ButtonBuilder().setCustomId('mc_dislike').setLabel('Not for me').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
     );
-    return [rowLike, rowTransport, rowSession, rowUtility];
+    return [rowLike, rowTransport, rowSession, rowNav, rowUtility, rowTaste];
 }
 
 // ═══════════════════════════════════════════════════════
@@ -299,7 +303,7 @@ function buildPanelContainer(q, client) {
         `Queue Size: \`${q.tracks.length}\` · Volume: \`${q.volume}%\` · Loop: \`${q.loop ? 'On' : 'Off'}\``
     );
 
-    const [rowLike, rowTransport, rowSession, rowUtility] = buildPanelRows(q);
+    const [rowLike, rowTransport, rowSession, rowNav, rowUtility, rowTaste] = buildPanelRows(q);
 
     const progress = new TextDisplayBuilder().setContent(
         `${sliderBar(elapsed, duration)}\n` +
@@ -316,8 +320,7 @@ function buildPanelContainer(q, client) {
         .addTextDisplayComponents(statsLine)
         .addActionRowComponents(rowLike)
         .addTextDisplayComponents(progress)
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-        .addActionRowComponents(rowTransport, rowSession, rowUtility)
+        .addActionRowComponents(rowTransport, rowSession, rowNav, rowUtility, rowTaste)
         .addTextDisplayComponents(footer);
 }
 
