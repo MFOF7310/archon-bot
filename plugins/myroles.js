@@ -56,7 +56,7 @@ module.exports = {
         
         // Build and send dossier
         const embed = await buildRoleDossier(client, interaction.guild, target, lang, isSelf);
-        await interaction.reply({ embeds: [embed], ephemeral: !isSelf });
+        await interaction.reply({ embeds: [embed], flags: !isSelf ? 1 << 6 : 0 });
     },
     
     // ⚡ PREFIX COMMAND EXECUTION

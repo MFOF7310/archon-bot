@@ -441,7 +441,7 @@ module.exports = {
         const lang = interaction.locale === 'fr' ? 'fr' : 'en';
         const strings = t[lang];
         const isPrivate = ['set', 'remove'].includes(subcommand);
-        await interaction.deferReply({ ephemeral: isPrivate });
+        await interaction.deferReply({ flags: isPrivate ? 1 << 6 : 0 });
 
         if (subcommand === 'set') {
             const day = interaction.options.getInteger('day');

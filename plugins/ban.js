@@ -304,13 +304,13 @@ async function handleSetInvite(interaction, client, db, lang, isSlash) {
     }
 
     if (!inviteLink) {
-        const reply = { content: t.inviteUsage, ephemeral: isSlash };
+        const reply = { content: t.inviteUsage, flags: isSlash ? 1 << 6 : 0 };
         return isSlash ? interaction.reply(reply) : interaction.reply(reply).catch(() => {});
     }
 
     // Validate format
     if (!validateInviteLink(inviteLink)) {
-        const reply = { content: t.inviteInvalid, ephemeral: isSlash };
+        const reply = { content: t.inviteInvalid, flags: isSlash ? 1 << 6 : 0 };
         return isSlash ? interaction.reply(reply) : interaction.reply(reply).catch(() => {});
     }
 
@@ -328,7 +328,7 @@ async function handleSetInvite(interaction, client, db, lang, isSlash) {
             .setTimestamp();
         return isSlash ? interaction.reply({ embeds: [embed] }) : interaction.reply({ embeds: [embed] }).catch(() => {});
     } else {
-        const reply = { content: t.inviteSetFailed, ephemeral: isSlash };
+        const reply = { content: t.inviteSetFailed, flags: isSlash ? 1 << 6 : 0 };
         return isSlash ? interaction.reply(reply) : interaction.reply(reply).catch(() => {});
     }
 }
