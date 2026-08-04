@@ -297,7 +297,7 @@ function buildPanelContainer(q, client) {
                 `• 🔊 ${q.voiceChannel?.name?.substring(0, 22) || 'Voice'}`
             )
         )
-        .setThumbnailAccessory(new ThumbnailBuilder().setURL(t.thumbnail || NO_COVER_ART));
+        .setThumbnailAccessory(new ThumbnailBuilder().setURL(t.thumbnail || client.user.displayAvatarURL()));
 
     const statsLine = new TextDisplayBuilder().setContent(
         `Queue Size: \`${q.tracks.length}\` · Volume: \`${q.volume}%\` · Loop: \`${q.loop ? 'On' : 'Off'}\``
@@ -329,9 +329,15 @@ function attachCollector(q, msg) {
     const collector = msg.createMessageComponentCollector({ time: 21600000 }); // 6 hours
     collector.on('collect', async (i) => {
         if (!i.member?.voice?.channel) return i.reply({ content: '🎤 Hop into a voice channel first — I need a stage!', flags: 64 }).catch(() => {});
-        await i.deferUpdate().catch(() => {});
+        let deferred = true;
+        await i.deferUpdate().catch(() => { deferred = false; });
         const qNow = getQueue(q.guild.id);
         if (!qNow) return;
+        if (!deferred && i.customId === 'mc_queue') {
+            await qNow.textChannel?.send({ embeds: [buildQueueEmbed(qNow, client)] }).catch(() => {});
+            return;
+        }
+        if (!deferred) return;
 
         if (i.customId === 'mc_prev') {
             if (!qNow.trackHistory || qNow.trackHistory.length === 0) {
@@ -1179,7 +1185,8 @@ module.exports = {
             return interaction.reply({ content: '🎤 Join a voice channel first — then I\'ll bring the music!', flags: 64 });
         }
 
-        await interaction.deferReply();
+        const isLibrary = sub === 'library';
+        await interaction.deferReply(isLibrary ? { flags: 1 << 6 } : {});
 
         // ── PLAY ──
         if (sub === 'play') {
