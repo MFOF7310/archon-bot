@@ -405,11 +405,21 @@ function attachCollector(q, msg) {
 
 async function sendPanel(q) {
     const client = q._client;
-    // Sweep stray old panels from previous sessions so only ONE panel lives
+
+    // ── Kill old panel by ID directly (works even if uncached) ──
+    if (q.panelMsgId) {
+        try { await q.textChannel.messages.delete(q.panelMsgId); } catch(e) {}
+        q.panelMsgId = null; q.persistentMsg = null;
+    }
+
+    // ── Sweep stray panels from previous sessions / restarts ──
     try {
-        const recent = await q.textChannel.messages.fetch({ limit: 20 });
-        const stale = recent.filter(m => m.author.id === client.user.id && m.components.length > 0);
-        for (const [, m] of stale) await m.delete().catch(() => {});
+        const recent = await q.textChannel.messages.fetch({ limit: 50 });
+        for (const [, m] of recent) {
+            if (m.author.id !== client.user.id) continue;
+            const isPanel = m.components.length > 0 || (m.flags && m.flags.has(MessageFlags.IsComponentsV2));
+            if (isPanel) await m.delete().catch(() => {});
+        }
     } catch(e) {}
 
     const flags = MessageFlags.IsComponentsV2 | (q.silentPanel ? MessageFlags.SuppressNotifications : 0);
@@ -440,8 +450,12 @@ async function updatePersistentPanel(q, opts = {}) {
         }
 
         // New track → relocate panel to the bottom of chat (one message per track, no spam)
-        if (opts.resend && msg) {
-            await msg.delete().catch(() => {});
+        if (opts.resend) {
+            if (q.panelMsgId) {
+                try { await q.textChannel.messages.delete(q.panelMsgId); } catch(e) {}
+                q.panelMsgId = null;
+            }
+            if (msg) { await msg.delete().catch(() => {}); }
             q.persistentMsg = null; q.panelMsgId = null;
             msg = null;
         }
@@ -793,20 +807,43 @@ async function playNext(q) {
                 // Attempt 2 appends "audio" — rescues titles that match age-restricted/odd first results
                 for (const attemptQuery of [safe, `${safe} audio`]) {
                     try {
+                        // ── Defense 1: pre-check search result duration ──
+                        let ytDuration = 0;
+                        try {
+                            const { stdout: durOut } = await execAsync(`yt-dlp --no-playlist --print duration "ytsearch1:${attemptQuery}"`, { timeout: 15000 });
+                            ytDuration = parseFloat(durOut.trim()) || 0;
+                        } catch (e) {}
+                        const isShortQuery = track.title.toLowerCase().includes('short') || track.title.toLowerCase().includes('clip') || track.title.toLowerCase().includes('tiktok');
+                        if (ytDuration > 0 && ytDuration < 45 && !isShortQuery) {
+                            console.log(`[MUSIC] ⚠️ Search result too short (${ytDuration}s) — skipping:`, attemptQuery);
+                            continue;
+                        }
+
                         const tmpBase = require('path').join(require('os').tmpdir(), `archon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
                         await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 96K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 300000 });
                         const tmpFile = `${tmpBase}.opus`;
                         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
-                            // Real duration from the file itself
+                            // ── Defense 2: real duration from the file (format + stream fallback) ──
                             let fileDur = 0;
                             try {
                                 const { stdout: dur } = await execAsync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tmpFile}"`, { timeout: 8000 });
                                 const d = parseFloat(dur.trim());
                                 if (d > 0) fileDur = Math.round(d);
                             } catch (e) {}
-                            // Truncation guard — a partial download must never reach the player
-                            if (track.duration > 60 && fileDur > 0 && fileDur < track.duration * 0.7) {
-                                console.log(`[MUSIC] ⚠️ Truncated download (${fileDur}s of expected ~${track.duration}s) — retrying:`, track.title);
+                            // Fallback: try stream duration if format duration failed
+                            if (fileDur === 0) {
+                                try {
+                                    const { stdout: dur2 } = await execAsync(`ffprobe -v error -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 "${tmpFile}"`, { timeout: 8000 });
+                                    const d2 = parseFloat(dur2.trim());
+                                    if (d2 > 0) fileDur = Math.round(d2);
+                                } catch (e) {}
+                            }
+                            // ── Defense 3: truncation guard (works even when track.duration is 0) ──
+                            const expectedDur = track.duration > 0 ? track.duration : (ytDuration > 0 ? ytDuration : 0);
+                            const isTruncated = expectedDur > 60 && fileDur > 0 && fileDur < expectedDur * 0.7;
+                            const isSuspiciouslyShort = fileDur > 0 && fileDur < 45 && !isShortQuery;
+                            if (isTruncated || isSuspiciouslyShort) {
+                                console.log(`[MUSIC] ⚠️ ${isTruncated ? 'Truncated' : 'Too short'} download (${fileDur}s of expected ~${expectedDur}s) — retrying:`, track.title);
                                 try { require('fs').unlinkSync(tmpFile); } catch(e) {}
                                 continue; // next attempt
                             }
