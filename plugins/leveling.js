@@ -523,6 +523,7 @@ function saveThemeDB(db, gid, data) {
 
 // ================= HANDLERS =================
 async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) {
+    if (!member || !member.guild) return; // Guard: user may have left server
     const isMilestone = DEFAULT_THEMES[newLevel] || (newLevel > 25 && newLevel % 5 === 0);
 
     if (!isMilestone) {

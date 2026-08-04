@@ -344,7 +344,7 @@ module.exports = {
                 .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
                 .setTimestamp();
             
-            return interaction.reply({ embeds: [embed], ephemeral });
+            return interaction.reply({ embeds: [embed], flags: ephemeral ? 1 << 6 : 0 });
         }
         
         // Store AFK
@@ -381,7 +381,7 @@ module.exports = {
             .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed], ephemeral });
+        await interaction.reply({ embeds: [embed], flags: ephemeral ? 1 << 6 : 0 });
         
         console.log(`[AFK] ${interaction.user.tag} set AFK: ${reason}${timeDisplay ? ` (auto-return: ${timeDisplay})` : ''}`);
     },
