@@ -146,7 +146,7 @@ function trackLinkFor(t, maxLen = 120) {
 function buildNowPlayingEmbed(q, client) {
     const t = q.currentTrack;
     if (!t) return null;
-    const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000) : 0;
+    const now = Date.now(); const currentPause = q.pausedAt ? now - q.pausedAt : 0; const elapsed = q.startTime ? Math.floor((now - q.startTime - q.totalPaused - currentPause) / 1000) : 0;
     const bar = progressBar(elapsed, t.duration);
     const pct = t.duration > 0 ? Math.min(100, Math.round((elapsed / t.duration) * 100)) : 0;
     return new EmbedBuilder()
@@ -210,7 +210,7 @@ function buildQueueEmbed(q, client) {
 // ═══════════════════════════════════════════════════════
 function buildPanelEmbed(q, client) {
     const t = q.currentTrack;
-    const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000) : 0;
+    const now = Date.now(); const currentPause = q.pausedAt ? now - q.pausedAt : 0; const elapsed = q.startTime ? Math.floor((now - q.startTime - q.totalPaused - currentPause) / 1000) : 0;
     const duration = t.duration || 0;
     const pct = duration > 0 ? Math.min(100, Math.round((elapsed / duration) * 100)) : 0;
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
@@ -248,7 +248,7 @@ function buildPanelRows(q) {
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
     // Strict 2-per-row (FlaviBot layout) — mobile never wraps buttons oddly
     const rowLike = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
+        new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
     );
     const rowTransport = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
@@ -293,7 +293,7 @@ function accentForTrack(t) {
 
 function buildPanelContainer(q, client) {
     const t = q.currentTrack;
-    const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000) : 0;
+    const now = Date.now(); const currentPause = q.pausedAt ? now - q.pausedAt : 0; const elapsed = q.startTime ? Math.floor((now - q.startTime - q.totalPaused - currentPause) / 1000) : 0;
     const duration = t.duration || 0;
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
 
