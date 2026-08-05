@@ -94,6 +94,7 @@ function destroyQueue(guildId) {
     if (q) {
         q.destroyed = true; // guard: any pending playNext/Idle callbacks abort
         if (q.updateInterval) clearInterval(q.updateInterval);
+        if (q._panelCollector) { try { q._panelCollector.stop('destroy'); } catch(e) {} q._panelCollector = null; }
         clearInactivityTimer(q);
         cleanTemp(q.currentTrack);
         try { q.player?.removeAllListeners(); } catch (e) {} // prevent Idle → playNext zombie
@@ -246,27 +247,27 @@ function buildPanelRows(q) {
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
     // Strict 2-per-row (FlaviBot layout) — mobile never wraps buttons oddly
     const rowLike = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
+        new ButtonBuilder().setCustomId('mc_like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
     );
     const rowTransport = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
-        new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Secondary).setEmoji('⏭️'),
+        new ButtonBuilder().setCustomId('mc_pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
+        new ButtonBuilder().setCustomId('mc_skip').setStyle(ButtonStyle.Secondary).setEmoji('⏭️'),
     );
     const rowSession = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
+        new ButtonBuilder().setCustomId('mc_stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
+        new ButtonBuilder().setCustomId('mc_autoplay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
     );
     const rowNav = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
-        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
     );
     const rowUtility = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_voldown').setLabel('Vol −').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
-        new ButtonBuilder().setCustomId('mc_volup').setLabel('Vol +').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 150),
+        new ButtonBuilder().setCustomId('mc_voldown').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
+        new ButtonBuilder().setCustomId('mc_volup').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 150),
     );
     const rowTaste = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
-        new ButtonBuilder().setCustomId('mc_dislike').setLabel('Not for me').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
+        new ButtonBuilder().setCustomId('mc_queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+        new ButtonBuilder().setCustomId('mc_dislike').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
     );
     return [rowLike, rowTransport, rowSession, rowNav, rowUtility, rowTaste];
 }
@@ -274,6 +275,21 @@ function buildPanelRows(q) {
 // ═══════════════════════════════════════════════════════
 // COMPONENTS V2 — TRUE FLAVIBOT CARD (buttons INSIDE the border)
 // ═══════════════════════════════════════════════════════
+// Genre-mapped accent colors for the CV2 container border
+const GENRE_ACCENT = {
+    Afrobeat: 0xE67E22, Mali: 0x14B53A, HipHop: 0x9B59B6,
+    EDM: 0x00f0ff, Chinese: 0xE74C3C, FrenchRap: 0x3498DB,
+    AfroTrap: 0x2ECC71, Arabic: 0x1ABC9C,
+};
+function accentForTrack(t) {
+    if (t?._genreColor) return t._genreColor;
+    const hay = (t?.requestedBy || '').toLowerCase();
+    for (const [g, c] of Object.entries(GENRE_ACCENT)) {
+        if (hay.includes(g.toLowerCase())) return c;
+    }
+    return 0x5865F2; // default blurple
+}
+
 function buildPanelContainer(q, client) {
     const t = q.currentTrack;
     const elapsed = q.startTime ? Math.floor((Date.now() - q.startTime - q.totalPaused) / 1000) : 0;
@@ -315,7 +331,7 @@ function buildPanelContainer(q, client) {
     );
 
     return new ContainerBuilder()
-        .setAccentColor(isPaused ? 0xF1C40F : 0x5865F2)
+        .setAccentColor(isPaused ? 0xF1C40F : accentForTrack(t))
         .addSectionComponents(header)
         .addTextDisplayComponents(statsLine)
         .addActionRowComponents(rowLike)
@@ -326,8 +342,19 @@ function buildPanelContainer(q, client) {
 
 function attachCollector(q, msg) {
     const client = q._client;
-    const collector = msg.createMessageComponentCollector({ time: 21600000 }); // 6 hours
+    // Stop any previous collector to prevent duplicate handlers
+    if (q._panelCollector) {
+        try { q._panelCollector.stop('new-panel'); } catch(e) {}
+        q._panelCollector = null;
+    }
+    // Collector lives until the panel is manually deleted (no timeout)
+    const collector = msg.createMessageComponentCollector({ time: 0 });
+    q._panelCollector = collector;
     collector.on('collect', async (i) => {
+        // ── ZOMBIE GUARD: if this click is on an old panel, tell user to scroll down ──
+        if (i.message.id !== q.panelMsgId) {
+            return i.reply({ content: '💡 This panel is outdated — scroll down for the live one!', flags: 64 }).catch(() => {});
+        }
         if (!i.member?.voice?.channel) return i.reply({ content: '🎤 Hop into a voice channel first — I need a stage!', flags: 64 }).catch(() => {});
         let deferred = true;
         await i.deferUpdate().catch(() => { deferred = false; });
@@ -412,15 +439,21 @@ function attachCollector(q, msg) {
 async function sendPanel(q) {
     const client = q._client;
 
-    // ── Kill old panel by ID directly (works even if uncached) ──
+    // ── Stop old collector so it doesn't eat clicks meant for the new panel ──
+    if (q._panelCollector) {
+        try { q._panelCollector.stop('relocate'); } catch(e) {}
+        q._panelCollector = null;
+    }
+
+    // ── Kill old panel by ID (direct API, no fetch needed) ──
     if (q.panelMsgId) {
         try { await q.textChannel.messages.delete(q.panelMsgId); } catch(e) {}
         q.panelMsgId = null; q.persistentMsg = null;
     }
 
-    // ── Sweep stray panels from previous sessions / restarts ──
+    // ── Sweep any other stray panels from crashes/restarts ──
     try {
-        const recent = await q.textChannel.messages.fetch({ limit: 50 });
+        const recent = await q.textChannel.messages.fetch({ limit: 20 });
         for (const [, m] of recent) {
             if (m.author.id !== client.user.id) continue;
             const isPanel = m.components.length > 0 || (m.flags && m.flags.has(MessageFlags.IsComponentsV2));
@@ -683,6 +716,13 @@ async function playNext(q) {
     }
     if (track._libraryIndex !== undefined && track._libraryIndex >= 0) {
         q.libraryIndex = track._libraryIndex;
+        try {
+            const lib = require('../data/music-library.json');
+            const libTrack = lib[track._libraryIndex];
+            if (libTrack?.genre && GENRE_ACCENT[libTrack.genre]) {
+                track._genreColor = GENRE_ACCENT[libTrack.genre];
+            }
+        } catch(e) {}
     }
     q.currentTrack = track;
     q.startTime = Date.now();
@@ -1393,7 +1433,7 @@ module.exports = {
                 const oldMsg = q.persistentMsg;
                 q.persistentMsg = null; q.panelMsgId = null;
                 try { await oldMsg.delete().catch(() => {}); } catch(e) {}
-                await updatePersistentPanel(q);
+                await updatePersistentPanel(q, { resend: true });
             }
             const embed = new EmbedBuilder().setColor(q.silentPanel ? ARCHON.gold : ARCHON.green)
                 .setDescription(`\`\`\`ansi\n[1;${q.silentPanel?'33':'32'}m▸ SILENT PANEL ${q.silentPanel?'ENABLED 🔕':'DISABLED 🔔'}\u001b[0m\n\`\`\``);
