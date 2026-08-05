@@ -11,7 +11,7 @@ const {
     getVoiceConnection, StreamType
 } = require('@discordjs/voice');
 const playdl = require('play-dl');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 const { createWriteStream, unlinkSync } = require('fs');
 const https = require('https');
@@ -53,6 +53,7 @@ function createQueue(guild, voiceChannel, textChannel, client) {
         tracks: [], currentTrack: null, trackHistory: [],
         volume: 80, loop: false, autoplay: true,
         silentPanel: true, // 🔕 send panel as @silent by default
+        audioFilter: 'normalize', // 🎚️ default audio filter
         libraryIndex: -1,
         startTime: null, pausedAt: null, totalPaused: 0,
         persistentMsg: null, panelMsgId: null, updateInterval: null,
@@ -263,7 +264,7 @@ function buildPanelRows(q) {
     );
     const rowUtility = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_voldown').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
-        new ButtonBuilder().setCustomId('mc_volup').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 150),
+        new ButtonBuilder().setCustomId('mc_volup').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 100),
     );
     const rowTaste = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
@@ -326,8 +327,9 @@ function buildPanelContainer(q, client) {
         `\`${formatTime(elapsed)}\` ――― \`${formatTime(duration)}\``
     );
 
+    const filterIcon = FILTER_EMOJI[q.audioFilter] || '🎵';
     const footer = new TextDisplayBuilder().setContent(
-        `-# BAMAKO_223 🇲🇱 • Auto: ${q.autoplay ? 'On' : 'Off'} • ${q.silentPanel ? '🔕' : '🔔'}`
+        `-# BAMAKO_223 🇲🇱 • Auto: ${q.autoplay ? 'On' : 'Off'} • ${q.silentPanel ? '🔕' : '🔔'} • ${filterIcon} ${q.audioFilter || 'Normal'}`
     );
 
     return new ContainerBuilder()
@@ -394,7 +396,7 @@ function attachCollector(q, msg) {
             }
             destroyQueue(q.guild.id);
         } else if (i.customId === 'mc_voldown' || i.customId === 'mc_volup') {
-            qNow.volume = Math.max(0, Math.min(150, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
+            qNow.volume = Math.max(0, Math.min(100, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
             try { qNow.player?.state?.resource?.volume?.setVolume(qNow.volume / 100); } catch(e) {}
             await updatePersistentPanel(qNow);
         } else if (i.customId === 'mc_loop') {
@@ -622,6 +624,45 @@ setInterval(async () => {
 // ═══════════════════════════════════════════════════════
 // DOWNLOAD FILE
 // ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+// AUDIO FILTER ENGINE — real-time ffmpeg effects
+// ═══════════════════════════════════════════════════════
+const FILTER_MAP = {
+    bassboost: 'bass=gain=15',
+    nightcore: 'asetrate=48000*1.25,atempo=1.25',
+    vaporwave: 'asetrate=48000*0.8,atempo=0.8,aecho=0.8:0.9:1000:0.3',
+    normalize: 'loudnorm=I=-14:TP=-2:LRA=11',
+};
+const FILTER_EMOJI = { bassboost: '🔊', nightcore: '🐰', vaporwave: '🌴', normalize: '📊', '': '🎵' };
+
+function createFilteredResource(input, q) {
+    const filterStr = FILTER_MAP[q?.audioFilter] || '';
+    if (!filterStr) {
+        if (typeof input === 'string') {
+            return createAudioResource(require('fs').createReadStream(input), { inputType: StreamType.OggOpus, inlineVolume: true });
+        }
+        return createAudioResource(input, { inputType: StreamType.OggOpus, inlineVolume: true });
+    }
+    const isFile = typeof input === 'string';
+    const args = ['-hide_banner', '-loglevel', 'error'];
+    if (isFile) args.push('-i', input);
+    else args.push('-i', 'pipe:0');
+    args.push('-vn', '-af', filterStr, '-acodec', 'libopus', '-b:a', '128k', '-f', 'opus', 'pipe:1');
+    const ffmpeg = spawn('ffmpeg', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    let err = '';
+    ffmpeg.stderr.on('data', d => { err += d.toString(); });
+    ffmpeg.on('close', code => { if (code !== 0 && code !== null) console.log('[FFMPEG] filter exited', code, err.slice(-200)); });
+    ffmpeg.on('error', () => {});
+    if (!isFile) {
+        input.pipe(ffmpeg.stdin);
+        input.on('error', () => { try { ffmpeg.kill(); } catch(e) {} });
+    }
+    ffmpeg.stdin.on('error', () => {});
+    ffmpeg.stdout.on('error', () => {});
+    return createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus, inlineVolume: true });
+}
+
 async function downloadFile(url, dest) {
     return new Promise((resolve, reject) => {
         const proto = url.startsWith('https') ? https : http;
@@ -644,7 +685,7 @@ async function prefetchNext(q) {
         const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
         const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
         const tmpBase = require('path').join(require('os').tmpdir(), `archon_pre_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-        await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 96K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 300000 });
+        await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 300000 });
         const tmpFile = `${tmpBase}.opus`;
         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
             if (!track.tempFile) {
@@ -772,9 +813,7 @@ async function playNext(q) {
 
         if (track.source === 'file') {
             if (!require('fs').existsSync(track.url)) throw new Error('Uploaded file expired — re-upload it');
-            resource = createAudioResource(require('fs').createReadStream(track.url), {
-                inputType: StreamType.OggOpus, inlineVolume: true,
-            });
+            resource = createFilteredResource(track.url, q);
         } else {
             let stream = null;
 
@@ -830,7 +869,7 @@ async function playNext(q) {
                     const { stdout } = await execAsync(`yt-dlp --no-playlist --get-url "scsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
                     if (stdout.trim().split('\n')[0]?.startsWith('http')) {
                         const audioOut = pipeYtDlp(`scsearch1:${safe}`, null, 'SC');
-                        resource = createAudioResource(audioOut, { inputType: StreamType.OggOpus, inlineVolume: true });
+                        resource = createFilteredResource(audioOut, q);
                         track.source = 'SoundCloud';
                         console.log('[MUSIC] ▸ yt-dlp SoundCloud for:', track.title);
                     }
@@ -842,7 +881,7 @@ async function playNext(q) {
             // a 3-min song downloads in ~1-2s on this box.
             // ⚡ Prefetch hit — file already on disk, skip the download entirely
             if (!stream && !resource && track.tempFile && require('fs').existsSync(track.tempFile)) {
-                resource = createAudioResource(require('fs').createReadStream(track.tempFile), { inputType: StreamType.OggOpus, inlineVolume: true });
+                resource = createFilteredResource(track.tempFile, q);
                 console.log('[MUSIC] ⚡ Instant start from prefetch:', track.title);
             }
 
@@ -866,7 +905,7 @@ async function playNext(q) {
                         }
 
                         const tmpBase = require('path').join(require('os').tmpdir(), `archon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-                        await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 96K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 300000 });
+                        await execAsync(`yt-dlp --no-playlist ${cookiesFlag} -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 300000 });
                         const tmpFile = `${tmpBase}.opus`;
                         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
                             // ── Defense 2: real duration from the file (format + stream fallback) ──
@@ -894,7 +933,7 @@ async function playNext(q) {
                                 continue; // next attempt
                             }
                             if (fileDur > 0) track.duration = fileDur;
-                            resource = createAudioResource(require('fs').createReadStream(tmpFile), { inputType: StreamType.OggOpus, inlineVolume: true });
+                            resource = createFilteredResource(tmpFile, q);
                             track.tempFile = tmpFile;
                             track.source = 'YouTube';
                             console.log('[MUSIC] ▸ YouTube download for:', track.title, `(${track.duration}s)`);
@@ -911,7 +950,7 @@ async function playNext(q) {
 
             if (!stream && !resource) throw new Error('Could not find audio stream');
             if (!resource) {
-                resource = createAudioResource(stream.stream, { inputType: stream.type, inlineVolume: true });
+                resource = createFilteredResource(stream.stream, q);
             }
         }
 
@@ -1118,6 +1157,15 @@ module.exports = {
         .addSubcommand(s => s.setName('loop').setDescription('🔁 Toggle loop'))
         .addSubcommand(s => s.setName('autoplay').setDescription('🔀 Toggle autoplay'))
         .addSubcommand(s => s.setName('silent').setDescription('🔕 Toggle @silent panel notifications'))
+        .addSubcommand(s => s.setName('filter').setDescription('🎚️ Audio filter — bassboost, nightcore, vaporwave, normalize, off')
+            .addStringOption(o => o.setName('effect').setDescription('Choose audio effect').setRequired(true)
+                .addChoices(
+                    {name: '🔊 Bass Boost', value: 'bassboost'},
+                    {name: '🐰 Nightcore', value: 'nightcore'},
+                    {name: '🌴 Vaporwave', value: 'vaporwave'},
+                    {name: '📊 Normalize (default)', value: 'normalize'},
+                    {name: '❌ Off', value: 'off'}
+                )))
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')
             .addStringOption(o => o.setName('search').setDescription('🔍 Search inside the library (optional)').setRequired(false).setAutocomplete(true))),
 
@@ -1267,7 +1315,7 @@ module.exports = {
                     // Transcode to Ogg Opus up front — plays via the same bulletproof
                     // path as YouTube temp downloads (no flaky Arbitrary transcoding)
                     const opusPath = `${tempPath}.opus`;
-                    await execAsync(`ffmpeg -y -v error -i "${tempPath}" -vn -acodec libopus -b:a 96k -f opus "${opusPath}"`, { timeout: 60000 });
+                    await execAsync(`ffmpeg -y -v error -i "${tempPath}" -vn -acodec libopus -b:a 128k -f opus "${opusPath}"`, { timeout: 60000 });
                     try { require('fs').unlinkSync(tempPath); } catch(e) {}
                     let fileDuration = 0;
                     try {
@@ -1308,6 +1356,17 @@ module.exports = {
         const q = getQueue(guildId);
         if (!q && !['play','file','library'].includes(sub)) {
             return interaction.editReply({ content: '🦗 All quiet right now — kick something off with `/music play`!' });
+        }
+
+        // ── FILTER ── 🎚️
+        if (sub === 'filter') {
+            const effect = interaction.options.getString('effect');
+            const qNow = getQueue(guildId);
+            if (qNow) { qNow.audioFilter = effect === 'off' ? '' : effect; await updatePersistentPanel(qNow).catch(() => {}); }
+            const names = {bassboost: '🔊 Bass Boost', nightcore: '🐰 Nightcore', vaporwave: '🌴 Vaporwave', normalize: '📊 Normalize', '': '❌ Off'};
+            const embed = new EmbedBuilder().setColor(ARCHON.purple)
+                .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ FILTER\u001b[0m ${names[effect === 'off' ? '' : effect] || '❌ Off'}\n\`\`\``);
+            return interaction.editReply({embeds: [embed]});
         }
 
         // ── PAUSE ──
@@ -1375,7 +1434,7 @@ module.exports = {
                     else if (i.customId === 'mc_loop') { qNow.loop = !qNow.loop; }
                     else if (i.customId === 'mc_autoplay') { qNow.autoplay = !qNow.autoplay; }
                     else if (i.customId === 'mc_voldown' || i.customId === 'mc_volup') {
-                        qNow.volume = Math.max(0, Math.min(150, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
+                        qNow.volume = Math.max(0, Math.min(100, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
                         try { qNow.player?.state?.resource?.volume?.setVolume(qNow.volume / 100); } catch(e) {}
                     } else if (i.customId === 'mc_queue') {
                         await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
