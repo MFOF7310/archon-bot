@@ -236,25 +236,25 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false) {
         .setAuthor({name:`🦅 ARCHON SUPPORT • TICKET #${n}`,iconURL:u.displayAvatarURL()})
         .setDescription(
             `\`\`\`ansi\n` +
-            `\u001b[1;36m▸ AGENT    \u001b[0m ${u.username}\n` +
+            `\u001b[1;36m▸ YOU      \u001b[0m ${u.username}\n` +
             `\u001b[1;36m▸ CATEGORY \u001b[0m ${cl}\n` +
             `\u001b[1;36m▸ PRIORITY \u001b[0m ${isPremium ? '\u001b[1;33mPREMIUM\u001b[0m' : '\u001b[1;32mSTANDARD\u001b[0m'}\n` +
             `\u001b[1;36m▸ STATUS   \u001b[0m \u001b[1;32mOPEN\u001b[0m\n` +
             `\`\`\`\n${t.wDesc(u.id,cl)}`
         )
         .addFields(
-            {name:'👤 Agent',value:`<@${u.id}>`,inline:true},
-            {name:'⏰ Opened',value:`<t:${Math.floor(Date.now()/1000)}:R>`,inline:true},
-            {name:'📁 Category',value:cl,inline:true}
+            {name:'👤 You',value:`<@${u.id}>`,inline:true},
+            {name:'⏰ Started',value:`<t:${Math.floor(Date.now()/1000)}:R>`,inline:true},
+            {name:'📁 Topic',value:cl,inline:true}
         )
-        .setFooter({text:'BAMAKO_223 🇲🇱 • ARCHON CLASSIFIED PROTOCOL'})
+        .setFooter({text:'BAMAKO_223 🇲🇱 • Here for you, always 💙'})
         .setTimestamp();
     const r=new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t.claim).setStyle(ButtonStyle.Primary).setEmoji('🙋'),
         new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t.close).setStyle(ButtonStyle.Danger).setEmoji('🔒'),
         new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t.transcript).setStyle(ButtonStyle.Secondary).setEmoji('📄')
     );
-    await ch.send({content:`<@${u.id}>`,embeds:[e],components:[r]});
+    await ch.send({content:`Hey <@${u.id}>! We'll be with you shortly. 💙`,embeds:[e],components:[r]});
 }
 function cfgEmbed(s, g, c, lang='en') {
     const t=TX[lang]||TX.en, io=g.id===process.env.GUILD_ID;
