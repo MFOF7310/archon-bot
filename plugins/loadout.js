@@ -1,6 +1,11 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const path = require('path');
+const fs = require('fs');
 
-// ================= BILINGUAL TRANSLATIONS =================
+const LOADOUT_IMG_DIR = path.join(__dirname, '../assets/loadouts');
+if (!fs.existsSync(LOADOUT_IMG_DIR)) fs.mkdirSync(LOADOUT_IMG_DIR, { recursive: true });
+
+// ================= TRANSLATIONS =================
 const translations = {
     en: {
         title: '🛠️ WEAPON INTELLIGENCE CENTER',
@@ -8,7 +13,6 @@ const translations = {
         searchPlaceholder: '🔍 Search for a weapon...',
         searchDescription: (key) => `View build for ${key}`,
         build: '🛠️ BUILD',
-        intel: '📋 INTEL',
         close: 'Close',
         sessionEnded: '✅ Session ended.',
         focusIntel: (weapon) => `📍 **Intelligence Focus:** ${weapon}`,
@@ -16,10 +20,8 @@ const translations = {
         selectWeapon: 'Select a weapon to view its optimized loadout.',
         back: '🔙 Back',
         footer: (guildName) => `${guildName} | Loadout Intelligence 🇲🇱`,
-        stats: {
-            range: 'Range', damage: 'Damage', mobility: 'Mobility',
-            fireRate: 'Fire Rate', accuracy: 'Accuracy'
-        }
+        noImage: (weapon) => `📸 No image set for **${weapon}** on this server yet.\nAn admin can add one with: \`.setloadout ${weapon}\` + attach a screenshot.`,
+        stats: { range: 'Range', damage: 'Damage', mobility: 'Mobility', fireRate: 'Fire Rate', accuracy: 'Accuracy' }
     },
     fr: {
         title: '🛠️ CENTRE DE RENSEIGNEMENT DES ARMES',
@@ -27,7 +29,6 @@ const translations = {
         searchPlaceholder: '🔍 Rechercher une arme...',
         searchDescription: (key) => `Voir le build pour ${key}`,
         build: '🛠️ CONFIGURATION',
-        intel: '📋 INTEL',
         close: 'Fermer',
         sessionEnded: '✅ Session terminée.',
         focusIntel: (weapon) => `📍 **Focus Intelligence:** ${weapon}`,
@@ -35,21 +36,18 @@ const translations = {
         selectWeapon: 'Sélectionnez une arme pour voir sa configuration optimisée.',
         back: '🔙 Retour',
         footer: (guildName) => `${guildName} | Renseignement Loadout 🇲🇱`,
-        stats: {
-            range: 'Portée', damage: 'Dégâts', mobility: 'Mobilité',
-            fireRate: 'Cadence', accuracy: 'Précision'
-        }
+        noImage: (weapon) => `📸 Pas encore d\'image pour **${weapon}** sur ce serveur.\nUn admin peut en ajouter une avec : \`.setloadout ${weapon}\` + joindre une capture d\'écran.`,
+        stats: { range: 'Portée', damage: 'Dégâts', mobility: 'Mobilité', fireRate: 'Cadence', accuracy: 'Précision' }
     }
 };
 
-// ================= WEAPON DATABASE (with stat bars) =================
+// ================= WEAPON DATABASE =================
 const loadouts = {
     AK117: {
         emoji: '🔫', color: '#e74c3c',
         title: { en: 'AK117 — TACTICAL RELIABILITY', fr: 'AK117 — FIABILITÉ TACTIQUE' },
         build: 'OWC Marksman, No Stock, OWC Laser, 40 Rnd, Granulated Grip',
         desc: { en: 'Dominate mid-range with high fire rate. Reliable in all engagements.', fr: 'Dominez à moyenne portée avec une cadence de tir élevée.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1479909018368741711/Screenshot_20260307_114446_Call_of_Duty.jpg',
         stats: { range: 72, damage: 68, mobility: 65, fireRate: 78, accuracy: 70 },
         category: { en: 'ASSAULT RIFLE', fr: 'FUSIL D\'ASSAUT' }
     },
@@ -58,7 +56,6 @@ const loadouts = {
         title: { en: 'FFAR 1 — CLOSE-QUARTERS SHREDDER', fr: 'FFAR 1 — DÉCHIQUETEUR RAPPROCHÉ' },
         build: 'Agency Suppressor, Task Force Barrel, Raider Stock, Speed Mag',
         desc: { en: 'High mobility and aggressive fire rate. Shreds at close range.', fr: 'Haute mobilité et cadence agressive. Déchiquete à courte portée.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1479909018725126286/Screenshot_20260307_114435_Call_of_Duty.jpg',
         stats: { range: 58, damage: 62, mobility: 82, fireRate: 88, accuracy: 60 },
         category: { en: 'ASSAULT RIFLE', fr: 'FUSIL D\'ASSAUT' }
     },
@@ -67,7 +64,6 @@ const loadouts = {
         title: { en: 'DL Q33 — LEGENDARY PRECISION', fr: 'DL Q33 — PRÉCISION LÉGENDAIRE' },
         build: 'MIP Light Barrel, YMK Combat Stock, OWC Laser, Maevwat Omega-1',
         desc: { en: 'The gold standard for snipers. One-shot precision at any range.', fr: 'L\'étalon-or des snipers. Précision one-shot à toute portée.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1479909017387143430/Screenshot_20260307_114516_Call_of_Duty.jpg',
         stats: { range: 95, damage: 92, mobility: 35, fireRate: 25, accuracy: 90 },
         category: { en: 'SNIPER RIFLE', fr: 'FUSIL DE PRÉCISION' }
     },
@@ -76,7 +72,6 @@ const loadouts = {
         title: { en: 'KRM-262 — SLIDING ASSASSIN', fr: 'KRM-262 — ASSASSIN GLISSANT' },
         build: 'Marauder Suppressor, Extended Barrel, No Stock, OWC Laser',
         desc: { en: 'Perfect for hip-fire mobility. Devastating in close quarters.', fr: 'Parfait pour la mobilité en tir au jugé. Dévastateur au corps-à-corps.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1479913614772142111/Screenshot_20260307_184727_Call_of_Duty.jpg',
         stats: { range: 35, damage: 95, mobility: 70, fireRate: 30, accuracy: 55 },
         category: { en: 'SHOTGUN', fr: 'FUSIL À POMPE' }
     },
@@ -85,7 +80,6 @@ const loadouts = {
         title: { en: 'LW3-TUNDRA — MODERN SNIPING', fr: 'LW3-TUNDRA — SNIPING MODERNE' },
         build: 'Tactical Suppressor, 26.5" Calvalry Lancer, FMJ, 7 Rnd, Serpent Wrap',
         desc: { en: 'Elite mobility for aggressive sniping. Fast ADS with lethal precision.', fr: 'Mobilité élite pour sniping agressif. ADS rapide avec précision létale.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1481256517700292722/Screenshot_20260311_114145_Call_of_Duty.jpg',
         stats: { range: 92, damage: 90, mobility: 45, fireRate: 30, accuracy: 88 },
         category: { en: 'SNIPER RIFLE', fr: 'FUSIL DE PRÉCISION' }
     },
@@ -94,7 +88,6 @@ const loadouts = {
         title: { en: 'BP50 — VELOCITY STRIKE', fr: 'BP50 — FRAPPE VÉLOCITÉ' },
         build: 'Leroy Custom Barrel, No Stock, Aim Assist Laser, 60 Round Mag, Stippled Grip',
         desc: { en: 'The fastest fire rate in the node. Melts enemies before they react.', fr: 'La cadence de tir la plus rapide du nœud. Fait fondre les ennemis avant qu\'ils ne réagissent.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1479913616877555882/Screenshot_20260307_184241_Call_of_Duty.jpg',
         stats: { range: 55, damage: 58, mobility: 85, fireRate: 95, accuracy: 62 },
         category: { en: 'ASSAULT RIFLE', fr: 'FUSIL D\'ASSAUT' }
     },
@@ -103,7 +96,6 @@ const loadouts = {
         title: { en: 'KN-44 — VERSATILE ASSAULT', fr: 'KN-44 — ASSAUT POLYVALENT' },
         build: 'OWC Marksman, No Stock, OWC Laser, 38 Rnd, Granulated Grip',
         desc: { en: 'Performs best at mid-range. Balanced stats for any playstyle.', fr: 'Performances optimales à moyenne portée. Stats équilibrées pour tout style.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1481065011530043442/Screenshot_20260310_223955_Call_of_Duty.jpg',
         stats: { range: 68, damage: 72, mobility: 68, fireRate: 70, accuracy: 72 },
         category: { en: 'ASSAULT RIFLE', fr: 'FUSIL D\'ASSAUT' }
     },
@@ -112,7 +104,6 @@ const loadouts = {
         title: { en: 'HS0405 — ONE-TAP DOMINANCE', fr: 'HS0405 — DOMINATION EN UN COUP' },
         build: 'Choke, Extended Barrel, No Stock, OWC Laser',
         desc: { en: 'Extreme damage output. One-shot potential at surprising ranges.', fr: 'Dégâts extrêmes. Potentiel one-shot à des portées surprenantes.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1479913615225258075/Screenshot_20260307_184718_Call_of_Duty.jpg',
         stats: { range: 40, damage: 98, mobility: 55, fireRate: 20, accuracy: 50 },
         category: { en: 'SHOTGUN', fr: 'FUSIL À POMPE' }
     },
@@ -121,7 +112,6 @@ const loadouts = {
         title: { en: 'RYTEC AMR — ANTI-MATERIAL RIFLE', fr: 'RYTEC AMR — FUSIL ANTI-MATÉRIEL' },
         build: 'MIP Light Barrel, OWC Skeleton Stock, OWC Laser, Explosive Mag, Stippled Grip',
         desc: { en: 'Heavy-duty firepower. Explosive rounds shred cover and vehicles.', fr: 'Puissance de feu lourde. Munitions explosives déchiquetent les abris et véhicules.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1481065012062585045/Screenshot_20260310_223824_Call_of_Duty.jpg',
         stats: { range: 88, damage: 94, mobility: 30, fireRate: 22, accuracy: 82 },
         category: { en: 'SNIPER RIFLE', fr: 'FUSIL DE PRÉCISION' }
     },
@@ -130,7 +120,6 @@ const loadouts = {
         title: { en: 'HDR — BOLT ACTION SNIPER', fr: 'HDR — SNIPER À VERROU' },
         build: 'Monolithic Suppressor, 26.9" HDR Pro, FTAC Stalker-Scout, 9 Round Mags',
         desc: { en: 'Excellent for long-distance combat. Maximum damage at extreme range.', fr: 'Excellent pour le combat à longue distance. Dégâts maximums à portée extrême.' },
-        image: 'https://cdn.discordapp.com/attachments/1472176119540224010/1481065011232112813/Screenshot_20260310_224049_Call_of_Duty.jpg',
         stats: { range: 98, damage: 96, mobility: 25, fireRate: 18, accuracy: 94 },
         category: { en: 'SNIPER RIFLE', fr: 'FUSIL DE PRÉCISION' }
     },
@@ -139,64 +128,82 @@ const loadouts = {
         title: { en: 'BY15 — PRECISION SLUGGER', fr: 'BY15 — FRAPPEUR DE PRÉCISION' },
         build: 'Choke, Extended Barrel, No Stock, OWC Laser',
         desc: { en: 'Elite tactical range. Consistent damage with slug precision.', fr: 'Portée tactique élite. Dégâts constants avec précision de slug.' },
-        image: 'https://raw.githubusercontent.com/MFOF7310/bot-assets-/main/IMG_20260307_011155_658.png',
         stats: { range: 38, damage: 88, mobility: 72, fireRate: 35, accuracy: 58 },
         category: { en: 'SHOTGUN', fr: 'FUSIL À POMPE' }
     }
 };
 
-// ================= STAT BAR BUILDER =================
+const WEAPON_KEYS = Object.keys(loadouts);
+
+// ================= HELPERS =================
 function statBar(value, length = 10) {
     const filled = Math.round((value / 100) * length);
     return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, length - filled));
 }
 
-// ================= EMBED CREATOR (upgraded with stats) =================
-function createEmbed(weaponKey, lang = 'en', guildName = 'Eagle Community') {
+function getWeaponImage(db, guildId, weaponKey) {
+    try {
+        const row = db.prepare('SELECT image_path FROM loadout_images WHERE guild_id = ? AND weapon_key = ?').get(guildId, weaponKey);
+        if (row && fs.existsSync(row.image_path)) return row.image_path;
+    } catch(e) {}
+    return null;
+}
+
+async function downloadToFile(url, dest) {
+    const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ARCHON-Bot/2.0)', 'Accept': 'image/*,*/*' }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.startsWith('image/')) throw new Error(`Not an image: ${ct}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length < 1000) throw new Error('File too small');
+    fs.writeFileSync(dest, buffer);
+    return dest;
+}
+
+// ================= EMBED BUILDER =================
+function createEmbed(weaponKey, lang, guildName, imagePath) {
     const data = loadouts[weaponKey];
     const t = translations[lang];
     const s = data.stats;
 
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
         .setColor(data.color)
         .setTitle(`${data.emoji} ${data.title[lang]}`)
-        .setDescription(
-            `**${data.category[lang]}**\n` +
-            `> *${data.desc[lang]}*`
-        )
+        .setDescription(`**${data.category[lang]}**\n> *${data.desc[lang]}*`)
         .addFields(
-            {
-                name: t.build,
-                value: `\`\`\`fix\n${data.build}\n\`\`\``,
-                inline: false
-            },
+            { name: t.build, value: `\`\`\`fix\n${data.build}\n\`\`\``, inline: false },
             {
                 name: '📊 STATS',
                 value:
-                    `${t.stats.range}:    \`${statBar(s.range)}\` ${s.range}\n` +
-                    `${t.stats.damage}:   \`${statBar(s.damage)}\` ${s.damage}\n` +
-                    `${t.stats.mobility}: \`${statBar(s.mobility)}\` ${s.mobility}\n` +
-                    `${t.stats.fireRate}: \`${statBar(s.fireRate)}\` ${s.fireRate}\n` +
-                    `${t.stats.accuracy}: \`${statBar(s.accuracy)}\` ${s.accuracy}`,
+                    `${t.stats.range.padEnd(10)}: \`${statBar(s.range)}\` ${s.range}\n` +
+                    `${t.stats.damage.padEnd(10)}: \`${statBar(s.damage)}\` ${s.damage}\n` +
+                    `${t.stats.mobility.padEnd(10)}: \`${statBar(s.mobility)}\` ${s.mobility}\n` +
+                    `${t.stats.fireRate.padEnd(10)}: \`${statBar(s.fireRate)}\` ${s.fireRate}\n` +
+                    `${t.stats.accuracy.padEnd(10)}: \`${statBar(s.accuracy)}\` ${s.accuracy}`,
                 inline: false
             }
         )
         .setFooter({ text: t.footer(guildName) })
-        .setImage(data.image)
         .setTimestamp();
+
+    if (imagePath) {
+        embed.setImage(`attachment://weapon.jpg`);
+    }
+
+    return embed;
 }
 
 // ================= COMPONENT BUILDERS =================
 function buildComponents(authorId, lang, includeBack = false) {
     const t = translations[lang];
-    const keys = Object.keys(loadouts);
 
-    // Search dropdown
     const searchRow = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
             .setCustomId(`loadout_search_${authorId}`)
             .setPlaceholder(t.searchPlaceholder)
-            .addOptions(keys.slice(0, 25).map(key => ({
+            .addOptions(WEAPON_KEYS.slice(0, 25).map(key => ({
                 label: key,
                 description: t.searchDescription(key).substring(0, 50),
                 value: key,
@@ -204,7 +211,6 @@ function buildComponents(authorId, lang, includeBack = false) {
             })))
     );
 
-    // Row 1: Primary weapons
     const primaryRow = new ActionRowBuilder().addComponents(
         ['AK117', 'FFAR1', 'DLQ', 'KRM', 'BP50'].map(key =>
             new ButtonBuilder()
@@ -215,7 +221,6 @@ function buildComponents(authorId, lang, includeBack = false) {
         )
     );
 
-    // Row 2: Secondary weapons
     const secondaryRow = new ActionRowBuilder().addComponents(
         ['TUNDRA', 'KN44', 'HS0405', 'RYTEC', 'HDR'].map(key =>
             new ButtonBuilder()
@@ -226,7 +231,6 @@ function buildComponents(authorId, lang, includeBack = false) {
         )
     );
 
-    // Row 3: BY15 + optional back button + close
     const tertiaryButtons = [
         new ButtonBuilder()
             .setCustomId(`loadout_BY15_${authorId}`)
@@ -253,130 +257,100 @@ function buildComponents(authorId, lang, includeBack = false) {
             .setEmoji('❌')
     );
 
-    const tertiaryRow = new ActionRowBuilder().addComponents(tertiaryButtons);
-
-    return [searchRow, primaryRow, secondaryRow, tertiaryRow];
+    return [searchRow, primaryRow, secondaryRow, new ActionRowBuilder().addComponents(tertiaryButtons)];
 }
 
-// ================= MAIN COMMAND =================
+// ================= MODULE =================
 module.exports = {
     name: 'loadout',
     aliases: ['loadouts', 'weapons', 'build', 'armes', 'configuration'],
-    description: '🛠️ Interactive armory with weapon stats, search and quick-select buttons.',
+    description: '🛠️ Interactive armory with weapon stats and per-server images.',
     category: 'GAMING',
     cooldown: 3000,
     usage: '.loadout',
-    examples: ['.loadout', '.armes', '.build'],
 
     data: new (require('discord.js').SlashCommandBuilder)()
         .setName('loadout')
-        .setDescription('🛠️ Browse the weapon loadout armory')
-        .setDescriptionLocalizations({ fr: '🛠️ Parcourir l\'arsenal de configurations d\'armes' }),
+        .setDescription('🛠️ Browse the weapon loadout armory'),
 
-    // ================= SLASH COMMAND =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-
-        // Build Collection-compatible fake message
+        await interaction.deferReply();
         const fakeMessage = {
-            author: interaction.user,
-            guild: interaction.guild,
-            channel: interaction.channel,
-            member: interaction.member,
-            reply: async (options) => interaction.deferred || interaction.replied
-                ? interaction.editReply(options)
-                : interaction.reply(options),
+            author: interaction.user, guild: interaction.guild,
+            channel: interaction.channel, member: interaction.member,
+            reply: async (opts) => interaction.deferred ? interaction.editReply(opts) : interaction.reply(opts),
             react: () => Promise.resolve()
         };
-
-        // Add Collection-compatible mentions
-        fakeMessage.mentions = {
-            users: {
-                first: () => interaction.options.getUser('agent') || interaction.user,
-                get: () => interaction.options.getUser('agent') || interaction.user,
-                has: () => !!interaction.options.getUser('agent'),
-                size: interaction.options.getUser('agent') ? 1 : 0
-            }
-        };
-
-        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-
-        // Defer first so reply() works
-        await interaction.deferReply();
-        await module.exports.run(client, fakeMessage, [], client.db, serverSettings, 'loadout');
+        await module.exports.run(client, fakeMessage, [], client.db, {}, 'loadout', lang);
     },
 
-    // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        const t = translations[lang];
+    run: async (client, message, args, db, serverSettings, usedCommand, lang = 'en') => {
+        const t = translations[lang] || translations.en;
         const authorId = message.author.id;
+        const guildId = message.guild?.id || 'DM';
         const guildName = message.guild?.name || 'Neural Network';
-
-        // Build components
         const components = buildComponents(authorId, lang);
 
         try {
-            // Determine if this is a slash call (has deferred reply)
-            const isSlash = !!message.guild && message.reply.toString().includes('editReply');
-
             const initialMsg = await message.reply({
                 content: `**${t.title}**\n*${t.subtitle}*\n\n💡 ${t.selectWeapon}`,
                 components
             });
 
-            // Single collector — no componentType filter (handles buttons + select menus)
             const collector = initialMsg.createMessageComponentCollector({ time: 180000 });
 
             collector.on('collect', async (i) => {
-                // Verify this interaction belongs to the command author
                 if (!i.customId.endsWith(`_${authorId}`)) {
                     return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                 }
 
-                // Handle close button
                 if (i.customId.startsWith('loadout_close')) {
-                    await i.update({ content: t.sessionEnded, embeds: [], components: [] }).catch(() => {});
+                    await i.update({ content: t.sessionEnded, embeds: [], components: [], files: [] }).catch(() => {});
                     collector.stop();
                     return;
                 }
 
-                // Handle back button — return to menu
                 if (i.customId.startsWith('loadout_back')) {
                     await i.update({
                         content: `**${t.title}**\n*${t.subtitle}*\n\n💡 ${t.selectWeapon}`,
-                        embeds: [],
+                        embeds: [], files: [],
                         components: buildComponents(authorId, lang)
                     }).catch(() => {});
                     return;
                 }
 
-                // Get selected weapon
                 let selected;
-                if (i.isStringSelectMenu()) {
-                    selected = i.values[0];
-                } else if (i.isButton()) {
-                    selected = i.customId.split('_')[1];
-                }
-
+                if (i.isStringSelectMenu()) selected = i.values[0];
+                else if (i.isButton()) selected = i.customId.split('_')[1];
                 if (!selected || !loadouts[selected]) return;
 
-                // Show weapon embed with back button
-                await i.update({
+                // Fetch per-server image
+                const imagePath = getWeaponImage(db, guildId, selected);
+                const embed = createEmbed(selected, lang, guildName, imagePath);
+
+                const replyOpts = {
                     content: t.focusIntel(selected),
-                    embeds: [createEmbed(selected, lang, guildName)],
-                    components: buildComponents(authorId, lang, true)
-                }).catch(() => {});
+                    embeds: [embed],
+                    components: buildComponents(authorId, lang, true),
+                    files: []
+                };
+
+                if (imagePath) {
+                    replyOpts.files = [{ attachment: imagePath, name: 'weapon.jpg' }];
+                } else {
+                    // No image set — append friendly notice
+                    replyOpts.content += `\n\n${t.noImage(selected)}`;
+                }
+
+                await i.update(replyOpts).catch(() => {});
             });
 
             collector.on('end', async () => {
-                // Disable all components
                 const disabled = components.map(row =>
                     new ActionRowBuilder().addComponents(
                         row.components.map(c => {
-                            if (c.data.type === 3) { // StringSelectMenu
-                                return require('discord.js').StringSelectMenuBuilder.from(c).setDisabled(true);
-                            }
+                            if (c.data.type === 3) return StringSelectMenuBuilder.from(c).setDisabled(true);
                             return ButtonBuilder.from(c).setDisabled(true);
                         })
                     )
@@ -384,9 +358,9 @@ module.exports = {
                 await initialMsg.edit({ components: disabled }).catch(() => {});
             });
 
-        } catch (error) {
-            console.error('[LOADOUT] Error:', error);
-            message.reply('❌ An error occurred.').catch(() => {});
+        } catch(err) {
+            console.error('[LOADOUT]', err);
+            message.reply('❌ Something went wrong loading the armory.').catch(() => {});
         }
     }
 };
