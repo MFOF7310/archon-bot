@@ -1,5 +1,4 @@
 const path = require('path');
-const https = require('https');
 const fs = require('fs');
 const { SlashCommandBuilder } = require('discord.js');
 
@@ -12,15 +11,17 @@ const BG_PRESETS = [
     path.join(BG_DIR, 'bg5.jpg'),
 ];
 
-function downloadFile(url, dest) {
-    return new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(dest);
-        https.get(url, res => {
-            if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
-            res.pipe(file);
-            file.on('finish', () => { file.close(); resolve(dest); });
-        }).on('error', e => { fs.unlink(dest, () => {}); reject(e); });
+async function downloadFile(url, dest) {
+    const res = await fetch(url, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; ARCHON-Bot/2.0)',
+            'Accept': 'image/*,*/*'
+        }
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    fs.writeFileSync(dest, buffer);
+    return dest;
 }
 
 module.exports = {
@@ -77,9 +78,7 @@ module.exports = {
             }
 
             // Custom image attachment
-            const srcUrl = attachment
-                ? attachment.url.split('?')[0] // strip expiry params, re-download fresh
-                : urlArg;
+            const srcUrl = attachment ? attachment.url : urlArg;
 
             if (!srcUrl?.startsWith('http')) {
                 return message.reply('❌ Invalid URL or argument.').catch(() => {});
