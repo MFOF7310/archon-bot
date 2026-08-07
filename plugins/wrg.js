@@ -477,12 +477,19 @@ async function runGame(client, message, args, db, lang) {
             const newLevel = calculateLevel(newXP);
             const oldLevel = winnerData?.level || calculateLevel(oldXP);
 
+            // Always use queueUserUpdate for consistency — avoids INSERT OR REPLACE overwriting raw SQL increments
+            const freshData = client.getUserData
+                ? client.getUserData(m.author.id, guildId)
+                : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(m.author.id, guildId);
+            const baseData = freshData || winnerData || {};
             if (client.queueUserUpdate) {
                 client.queueUserUpdate(m.author.id, guildId, {
-                    ...winnerData, xp: newXP, level: newLevel,
-                    credits: (winnerData?.credits||0) + rewards.credits,
-                    games_played: (winnerData?.games_played||0)+1,
-                    games_won: (winnerData?.games_won||0)+1,
+                    ...baseData,
+                    xp: (baseData.xp || 0) + rewards.xp,
+                    level: newLevel,
+                    credits: (baseData.credits || 0) + rewards.credits,
+                    games_played: (baseData.games_played || 0) + 1,
+                    games_won: (baseData.games_won || 0) + 1,
                     username: m.author.username
                 });
             } else {

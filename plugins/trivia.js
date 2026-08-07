@@ -802,8 +802,11 @@ async function runTriviaSession(client, msg, db, serverSettings, lang) {
 
     // ── deduct bet ──
     const diff = DIFFICULTIES[difficulty];
-    const currentData = client.getUserData ? client.getUserData(userId, guildId) : userData;
-    if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...currentData, credits: (currentData.credits || 0) - diff.bet, username: userName });
+    // Read fresh data right before deducting bet to avoid stale cache overwrites
+    const currentData = client.getUserData
+        ? client.getUserData(userId, guildId)
+        : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId) || userData;
+    if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...currentData, credits: Math.max(0, (currentData.credits || 0) - diff.bet), username: userName });
     else db.prepare("UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?").run(diff.bet, userId, guildId);
 
     const questions = getRandomQuestions(category, lang, diff.questions, sessionKey);
