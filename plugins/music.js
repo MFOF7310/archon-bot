@@ -246,31 +246,31 @@ function buildPanelEmbed(q, client) {
 function buildPanelRows(q) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
-    // Strict 2-per-row (FlaviBot layout) — mobile never wraps buttons oddly
-    const rowLike = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
-    );
+
+    // Row 1 — Transport (FlaviBot style: labeled buttons)
     const rowTransport = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
-        new ButtonBuilder().setCustomId('mc_skip').setStyle(ButtonStyle.Secondary).setEmoji('⏭️'),
+        new ButtonBuilder().setCustomId('mc_voldown').setLabel('Down').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
+        new ButtonBuilder().setCustomId('mc_prev').setLabel('Previous').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Secondary).setEmoji('⏭️'),
+        new ButtonBuilder().setCustomId('mc_volup').setLabel('Up').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 100),
     );
+
+    // Row 2 — Session controls
     const rowSession = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_autoplay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel('Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
     );
-    const rowNav = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
-        new ButtonBuilder().setCustomId('mc_loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
-    );
-    const rowUtility = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_voldown').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
-        new ButtonBuilder().setCustomId('mc_volup').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 100),
-    );
+
+    // Row 3 — Taste (FlaviBot: Like / Not for me / What's next)
     const rowTaste = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
-        new ButtonBuilder().setCustomId('mc_dislike').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
+        new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
+        new ButtonBuilder().setCustomId('mc_dislike').setLabel('Not for me').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
     );
-    return [rowLike, rowTransport, rowSession, rowNav, rowUtility, rowTaste];
+
+    return [rowTransport, rowSession, rowTaste];
 }
 
 // ═══════════════════════════════════════════════════════
@@ -297,19 +297,25 @@ function buildPanelContainer(q, client) {
     const duration = t.duration || 0;
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
 
-    const trackLink = trackLinkFor(t);
-    // Human requests get a real mention; autoplay tracks credit the bot by name
     const botName = client.user?.displayName || client.user?.username || 'ARCHON';
     const autoGenre = t.requestedBy?.split('•')[1]?.trim();
     const requester = t.requestedById
         ? `<@${t.requestedById}>`
         : `🤖 ${botName} • AutoPlay${autoGenre ? ` • ${autoGenre}` : ''}`;
 
+    // CV2 TextDisplay doesn't render markdown hyperlinks — use plain bold title
+    const fullTitle = (t.artist && t.artist !== 'Unknown' && !t.title.includes(t.artist))
+        ? `${t.artist} - ${t.title}` : t.title;
+    const displayTitle = `**${fullTitle.substring(0, 100)}**`;
+    const sourceUrl = t.spotifyUrl
+        || `https://www.youtube.com/results?search_query=${encodeURIComponent(t.query || t.title)}`;
+
     const header = new SectionBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(isPaused ? '## ⏸️ Paused' : '## Now playing'),
             new TextDisplayBuilder().setContent(
-                `${trackLink}\n\n` +
+                `${displayTitle}\n` +
+                `[Open on ${t.spotifyUrl ? 'Spotify' : 'YouTube'}](${sourceUrl})\n\n` +
                 `• Added by ${requester}\n` +
                 `• 🔊 ${q.voiceChannel?.name?.substring(0, 22) || 'Voice'}`
             )
@@ -320,7 +326,7 @@ function buildPanelContainer(q, client) {
         `Queue Size: \`${q.tracks.length}\` · Volume: \`${q.volume}%\` · Loop: \`${q.loop ? 'On' : 'Off'}\``
     );
 
-    const [rowLike, rowTransport, rowSession, rowNav, rowUtility, rowTaste] = buildPanelRows(q);
+    const [rowTransport, rowSession, rowTaste] = buildPanelRows(q);
 
     const progress = new TextDisplayBuilder().setContent(
         `${sliderBar(elapsed, duration)}\n` +
@@ -336,9 +342,10 @@ function buildPanelContainer(q, client) {
         .setAccentColor(isPaused ? 0xF1C40F : accentForTrack(t))
         .addSectionComponents(header)
         .addTextDisplayComponents(statsLine)
-        .addActionRowComponents(rowLike)
         .addTextDisplayComponents(progress)
-        .addActionRowComponents(rowTransport, rowSession, rowNav, rowUtility, rowTaste)
+        .addActionRowComponents(rowTransport)
+        .addActionRowComponents(rowSession)
+        .addActionRowComponents(rowTaste)
         .addTextDisplayComponents(footer);
 }
 

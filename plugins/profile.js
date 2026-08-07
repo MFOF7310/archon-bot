@@ -421,7 +421,7 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
 
     // ── Stats grid (6 boxes) ──
     const statsY = nameY + 110;
-    const boxW = 100, boxH = 58, boxGap = 12;
+    const boxW = 92, boxH = 62, boxGap = 8;
     const statsStartX = nameX;
 
     const stats = [
@@ -438,7 +438,7 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     });
 
     // ── Left panel dark backing ──
-    roundRect(ctx, 18, 200, 195, 280, 10);
+    roundRect(ctx, 18, 200, 205, 290, 10);
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
     ctx.fill();
     roundRect(ctx, 18, 200, 195, 280, 10);
@@ -449,8 +449,8 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     // ── Left panel: Identity + Gaming ──
     const leftX = 30, leftY = 210;
 
-    ctx.font = '10px DejaVuMonoBold';
-    ctx.fillStyle = hexToRgba(rankColor, 0.8);
+    ctx.font = 'bold 13px DejaVuMonoBold';
+    ctx.fillStyle = hexToRgba(rankColor, 0.9);
     ctx.fillText('IDENTITY', leftX, leftY);
 
     const idLines = [
@@ -459,12 +459,12 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
         { label: 'ID', value: `${target.id.slice(0,8)}...` },
     ];
     idLines.forEach((l, i) => {
-        const ly = leftY + 18 + i * 20;
-        ctx.font = '10px DejaVuMono';
-        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        const ly = leftY + 20 + i * 22;
+        ctx.font = '12px DejaVuMono';
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
         ctx.fillText(l.label, leftX, ly);
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.fillText(l.value, leftX + 60, ly);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillText(l.value, leftX + 65, ly);
     });
 
     // Divider
@@ -472,9 +472,9 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     ctx.beginPath(); ctx.moveTo(leftX, leftY + 80); ctx.lineTo(200, leftY + 80); ctx.stroke();
 
     // Gaming
-    ctx.font = '10px DejaVuMonoBold';
-    ctx.fillStyle = hexToRgba(rankColor, 0.8);
-    ctx.fillText('GAMING', leftX, leftY + 96);
+    ctx.font = 'bold 13px DejaVuMonoBold';
+    ctx.fillStyle = hexToRgba(rankColor, 0.9);
+    ctx.fillText('GAMING', leftX, leftY + 100);
 
     const gameLines = [
         { label: 'GAME',  value: (gamingData.game || 'CODM').substring(0,10) },
@@ -482,24 +482,24 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
         { label: 'RANK',  value: (gamingData.rank || 'Unranked').substring(0,10) },
     ];
     gameLines.forEach((l, i) => {
-        const ly = leftY + 114 + i * 20;
-        ctx.font = '10px DejaVuMono';
-        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        const ly = leftY + 120 + i * 22;
+        ctx.font = '12px DejaVuMono';
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
         ctx.fillText(l.label, leftX, ly);
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.fillText(l.value, leftX + 60, ly);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillText(l.value, leftX + 65, ly);
     });
 
     // Divider
     ctx.beginPath(); ctx.moveTo(leftX, leftY + 178); ctx.lineTo(200, leftY + 178); ctx.stroke();
 
     // Badge
-    ctx.font = '10px DejaVuMonoBold';
-    ctx.fillStyle = hexToRgba(rankColor, 0.8);
-    ctx.fillText('EMBLEM', leftX, leftY + 194);
-    ctx.font = '11px DejaVuMono';
-    ctx.fillStyle = activeBadge ? '#f1c40f' : 'rgba(255,255,255,0.3)';
-    ctx.fillText(badgeName.substring(0, 16), leftX, leftY + 212);
+    ctx.font = 'bold 13px DejaVuMonoBold';
+    ctx.fillStyle = hexToRgba(rankColor, 0.9);
+    ctx.fillText('EMBLEM', leftX, leftY + 200);
+    ctx.font = '12px DejaVuMono';
+    ctx.fillStyle = activeBadge ? '#f1c40f' : 'rgba(255,255,255,0.35)';
+    ctx.fillText(badgeName.substring(0, 16), leftX, leftY + 220);
 
     // ── Architect badge ──
     if (target.id === process.env.OWNER_ID) {
