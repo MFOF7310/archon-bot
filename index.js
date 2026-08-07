@@ -581,6 +581,13 @@ for (const [tableName, createSQL] of Object.entries(requiredTables)) {
 
 // ================= AUTO-REPLY MESSAGE LISTENER =================
 client.on('messageCreate', async (message) => {
+
+        // ── Ticket activity reset ──
+        const ticketMod = client.commands.get('ticket');
+        if (ticketMod?.onMessageActivity && message.guild) {
+            const ss = client.getServerSettings?.(message.guild.id) || {};
+            ticketMod.onMessageActivity(message, client, ss);
+        }
     try {
         if (message.author.bot) return;
         if (!message.guild) return;
