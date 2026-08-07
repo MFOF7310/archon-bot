@@ -700,10 +700,10 @@ async function prefetchNext(q) {
     try {
         const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
         if (!safe) { track.prefetching = false; return; }
-        const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
+        const cookiesPath = require('path').join(__dirname, '../assets/cookies.txt');
         const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
         const tmpBase = require('path').join(require('os').tmpdir(), `archon_pre_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-        await execAsync(`yt-dlp --no-playlist --cookies "${YTDLP_COOKIES}" -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 300000 });
+        await execAsync(`yt-dlp --no-playlist --cookies "${cookiesPath}" -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 300000 });
         const tmpFile = `${tmpBase}.opus`;
         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
             if (!track.tempFile) {
@@ -884,7 +884,8 @@ async function playNext(q) {
             if (!stream && !resource) {
                 try {
                     const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
-                    const { stdout } = await execAsync(`yt-dlp --no-playlist --cookies "${YTDLP_COOKIES}" --get-url "scsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
+                    const cookiesPath = require('path').join(__dirname, '../assets/cookies.txt');
+                    const { stdout } = await execAsync(`yt-dlp --no-playlist --cookies "${cookiesPath}" --get-url "scsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
                     if (stdout.trim().split('\n')[0]?.startsWith('http')) {
                         const audioOut = pipeYtDlp(`scsearch1:${safe}`, null, 'SC');
                         resource = createFilteredResource(audioOut, q);
@@ -905,7 +906,7 @@ async function playNext(q) {
 
             if (!stream && !resource) {
                 const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
-                const cookiesPath = require('path').join(__dirname, '../data/cookies.txt');
+                const cookiesPath = require('path').join(__dirname, '../assets/cookies.txt');
                 const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
                 // Attempt 2 appends "audio" — rescues titles that match age-restricted/odd first results
                 for (const attemptQuery of [safe, `${safe} audio`]) {
@@ -913,7 +914,7 @@ async function playNext(q) {
                         // ── Defense 1: pre-check search result duration ──
                         let ytDuration = 0;
                         try {
-                            const { stdout: durOut } = await execAsync(`yt-dlp --no-playlist --cookies "${YTDLP_COOKIES}" --print duration "ytsearch1:${attemptQuery}"`, { timeout: 15000 });
+                            const { stdout: durOut } = await execAsync(`yt-dlp --no-playlist --cookies "${cookiesPath}" --print duration "ytsearch1:${attemptQuery}"`, { timeout: 15000 });
                             ytDuration = parseFloat(durOut.trim()) || 0;
                         } catch (e) {}
                         const isShortQuery = track.title.toLowerCase().includes('short') || track.title.toLowerCase().includes('clip') || track.title.toLowerCase().includes('tiktok');
@@ -923,7 +924,7 @@ async function playNext(q) {
                         }
 
                         const tmpBase = require('path').join(require('os').tmpdir(), `archon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-                        await execAsync(`yt-dlp --no-playlist --cookies "${YTDLP_COOKIES}" -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 300000 });
+                        await execAsync(`yt-dlp --no-playlist --cookies "${cookiesPath}" -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 300000 });
                         const tmpFile = `${tmpBase}.opus`;
                         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
                             // ── Defense 2: real duration from the file (format + stream fallback) ──
