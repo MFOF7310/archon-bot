@@ -383,15 +383,22 @@ function attachCollector(q, msg) {
             const prev = qNow.trackHistory.shift();
             if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
             qNow.tracks.unshift(prev);
+            await i.followUp({ content: `⏮️ Going back to **${prev.title?.substring(0,50)}**…`, flags: 64 }).catch(() => {});
             qNow.player.stop(); // Triggers Idle → playNext
         } else if (i.customId === 'mc_pause') {
             if (qNow.player.state.status === AudioPlayerStatus.Paused) {
                 qNow.player.unpause();
                 qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
                 qNow.pausedAt = null;
-            } else { qNow.player.pause(); qNow.pausedAt = Date.now(); }
-            await updatePersistentPanel(qNow);
+                await i.followUp({ content: '▶️ Resumed', flags: 64 }).catch(() => {});
+            } else {
+                qNow.player.pause();
+                qNow.pausedAt = Date.now();
+                await i.followUp({ content: '⏸️ Paused', flags: 64 }).catch(() => {});
+            }
+            updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_skip') {
+            await i.followUp({ content: `⏭️ Skipping **${qNow.currentTrack?.title?.substring(0,50) || 'track'}**…`, flags: 64 }).catch(() => {});
             qNow.player.stop();
         } else if (i.customId === 'mc_stop') {
             if (qNow.persistentMsg) {
@@ -460,13 +467,14 @@ async function sendPanel(q) {
         q.panelMsgId = null; q.persistentMsg = null;
     }
 
-    // ── Sweep any other stray panels from crashes/restarts ──
+    // ── Sweep only CV2 panels (not regular embeds/stop messages) ──
     try {
         const recent = await q.textChannel.messages.fetch({ limit: 20 });
         for (const [, m] of recent) {
             if (m.author.id !== client.user.id) continue;
-            const isPanel = m.components.length > 0 || (m.flags && m.flags.has(MessageFlags.IsComponentsV2));
-            if (isPanel) await m.delete().catch(() => {});
+            // Only delete CV2 container messages (flags bit 32768)
+            const isCV2Panel = m.flags?.has(MessageFlags.IsComponentsV2);
+            if (isCV2Panel) await m.delete().catch(() => {});
         }
     } catch(e) {}
 
