@@ -102,11 +102,73 @@ const isStaff = (m, s) => m && (m.permissions?.has(PermissionFlagsBits.Administr
 const countUserTix = (gid, uid) => { let c=0; for(const[,t]of active)if(t.guildId===gid&&t.creatorId===uid)c++; return c; };
 
 function resetACTimer(cid, client, s) {
-    const ex = timers.get(cid); if(ex){clearTimeout(ex);timers.delete(cid);}
-    const h = s?.ticketAutoCloseHours||24; if(h<=0)return;
-    const ms=h*3600000, wm=ms-3600000;
-    if(wm>0)setTimeout(async()=>{try{const ch=await client.channels.fetch(cid).catch(()=>null);if(ch&&active.has(cid))await ch.send({embeds:[new EmbedBuilder().setColor('#f39c12').setDescription(TX.en.acWarn)]}).catch(()=>{});}catch(e){}},wm);
-    timers.set(cid,setTimeout(async()=>{try{const ch=await client.channels.fetch(cid).catch(()=>null);if(ch&&active.has(cid)){await ch.send({embeds:[new EmbedBuilder().setColor('#e74c3c').setDescription(TX.en.acDone)]}).catch(()=>{});active.delete(cid);setTimeout(()=>ch.delete('Auto-closed').catch(()=>{}),5000);}}catch(e){}timers.delete(cid);},ms));
+    // Clear existing timers
+    const existing = timers.get(cid);
+    if (existing) {
+        if (existing.warn) clearTimeout(existing.warn);
+        if (existing.close) clearTimeout(existing.close);
+        timers.delete(cid);
+    }
+    const h = s?.ticketAutoCloseHours || 24;
+    if (h <= 0) return;
+
+    const ms = h * 3600000;
+    const warnMs = ms - 3600000; // 1 hour warning before close
+
+    const timersForCid = {};
+
+    // Warning timer (only if auto-close > 1 hour)
+    if (warnMs > 0) {
+        timersForCid.warn = setTimeout(async () => {
+            try {
+                const ch = await client.channels.fetch(cid).catch(() => null);
+                if (ch && active.has(cid)) {
+                    await ch.send({ embeds: [new EmbedBuilder().setColor('#f39c12').setDescription(TX.en.acWarn)] }).catch(() => {});
+                }
+            } catch (e) {}
+        }, warnMs);
+    }
+
+    // Close timer — saves transcript, logs to channel, THEN deletes
+    timersForCid.close = setTimeout(async () => {
+        try {
+            const ch = await client.channels.fetch(cid).catch(() => null);
+            const tk = active.get(cid);
+            if (!tk) { timers.delete(cid); return; }
+
+            // Save transcript before deleting
+            const txResult = await saveTx(ch, tk, null, client, s);
+            if (txResult === true) {
+                // already sent to log channel
+            } else if (txResult && txResult.buffer) {
+                // fallback: send to log channel if not already done
+                const tcid = s?.ticketTranscriptChannel;
+                if (tcid) {
+                    const tc = await client.channels.fetch(tcid).catch(() => null);
+                    if (tc) {
+                        await tc.send({ files: [{ attachment: txResult.buffer, name: txResult.filename }] }).catch(() => {});
+                    }
+                }
+            }
+
+            // Notify ticket channel
+            if (ch) {
+                await ch.send({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(TX.en.acDone)] }).catch(() => {});
+            }
+
+            // Clean up
+            active.delete(cid);
+            if (client.db) delTicket(client.db, cid);
+            timers.delete(cid);
+
+            // Delete channel after brief delay
+            setTimeout(() => ch?.delete('Auto-closed').catch(() => {}), 5000);
+        } catch (e) {
+            timers.delete(cid);
+        }
+    }, ms);
+
+    timers.set(cid, timersForCid);
 }
 
 async function saveTx(ch, t, closer, client, s) {
@@ -204,6 +266,14 @@ function cfgEmbed(s, g, c, lang='en') {
 async function saveSetting(client, gid, key, val, lang='en') { const t=TX[lang]||TX.en; try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t.setOK(key,val)};} return{ok:false,err:'❌ DB error.'};}catch(e){return{ok:false,err:'❌ DB error.'};} }
 
 // ================= MODULE =================
+
+// Reset auto-close timer when there's activity in a ticket channel
+function onMessageActivity(message, client, s) {
+    const cid = message.channel.id;
+    if (!active.has(cid)) return;
+    resetACTimer(cid, client, s);
+}
+
 module.exports = {
     name:'ticket', aliases:['tickets','support'], category:'UTILITY', cooldown:5000,
     description:'🎫 Professional ticket system — panel, categories, auto-close, logs.',
@@ -242,7 +312,7 @@ module.exports = {
 
         if(sub==='setup'){const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.sTitle}`,iconURL:client.user.displayAvatarURL()}).setDescription(t.sDesc+'\n\n'+t.sUsage(p)).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();return msg.reply({embeds:[e]}).catch(()=>{});}
         if(sub==='panel'){const e=panelEmbed(es,g.name,lang),m=panelMenu(es),r=new ActionRowBuilder().addComponents(m);const s=await msg.channel.send({embeds:[e],components:[r]}).catch(()=>null);if(s){await msg.react('✅').catch(()=>{});try{db.prepare(`INSERT OR REPLACE INTO server_settings (guild_id,ticket_panel_channel) VALUES (?,?)`).run(g.id,s.id);}catch(e){}}return;}
-        if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply('❌ Not a ticket.').catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t.noPerm).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t.closing).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){clearTimeout(ex);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
+        if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply('❌ Not a ticket.').catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t.noPerm).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t.closing).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
 
         // Help
         const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.pTitle}`,iconURL:client.user.displayAvatarURL()}).setDescription(`**🎫 Commands**\n\n${t.helpCmds(p)}\n\nUsers create tickets via the panel.`).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();
@@ -267,7 +337,7 @@ module.exports = {
 
         if(sc==='setup'){const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.sTitle}`,iconURL:client.user.displayAvatarURL()}).setDescription(t.sDesc+'\n\n'+t.sUsage('/')).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();return ix.reply({embeds:[e],flags:1<<6});}
         if(sc==='panel'){const e=panelEmbed(ss,g.name,lang),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);await ix.reply({content:'Posting...',flags:1<<6});const s=await ix.channel.send({embeds:[e],components:[r]}).catch(()=>null);if(s){await ix.editReply({content:'✅ Posted!'}).catch(()=>{});try{db.prepare(`UPDATE server_settings SET ticket_panel_channel=? WHERE guild_id=?`).run(s.id,g.id);}catch(e){}}else await ix.editReply({content:'❌ Failed.'}).catch(()=>{});return;}
-        if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:'❌ Not a ticket.',flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t.noPerm,flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t.closing}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){clearTimeout(ex);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
+        if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:'❌ Not a ticket.',flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t.noPerm,flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t.closing}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
     },
 
     // ================= COMPONENT HANDLER =================
@@ -389,5 +459,5 @@ From: <@${ix.user.id}>`)
         return false;
     },
 
-    setupTicketDB,loadAllTicketsFromDB
+    setupTicketDB,loadAllTicketsFromDB,onMessageActivity
 };
