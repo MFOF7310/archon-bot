@@ -5222,10 +5222,12 @@ apiApp.get('/api/health', (req, res) => {
 apiApp.get('/api/user/:userId', (req, res) => {
     try {
         const userId = req.params.userId;
-        
-        // Get all guild data for this user
-        const allUserData = db.prepare('SELECT * FROM users WHERE id = ?').all(userId);
-        
+        const guildId = req.query.guild || null;
+
+        // Get guild-specific or all guild data
+        const allUserData = guildId && /^\d{17,19}$/.test(String(guildId))
+            ? db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').all(userId, String(guildId))
+            : db.prepare('SELECT * FROM users WHERE id = ?').all(userId);
         // Get dashboard user info
         let dashUser = null;
         try {
@@ -5233,6 +5235,9 @@ apiApp.get('/api/user/:userId', (req, res) => {
         } catch(e) {}
         
         if (!allUserData.length && !dashUser) return res.json(null);
+
+        // Always get total server count for this user across all guilds
+        const allGuildData = guildId ? db.prepare('SELECT * FROM users WHERE id = ?').all(userId) : allUserData;
         
         // Aggregate across all servers
         const totalXp = allUserData.reduce((sum, u) => sum + (u.xp || 0), 0);
@@ -5281,7 +5286,7 @@ apiApp.get('/api/user/:userId', (req, res) => {
             commandsUsed: totalCommands,
             rank,
             badges,
-            servers: allUserData.length,
+            servers: allGuildData.length,
             lastSeen: dashUser?.last_login || null,
         });
     } catch(err) {
