@@ -32,7 +32,12 @@ const TRIVIA_QUESTIONS = {
             { q: "What gas do plants absorb for photosynthesis?", a: ["Carbon Dioxide", "Oxygen", "Nitrogen", "Hydrogen"], correct: 0, fact: "Plants convert CO₂ and water into glucose and oxygen." },
             { q: "What is the chemical formula of water?", a: ["H₂O", "CO₂", "O₂", "NaCl"], correct: 0, fact: "Two hydrogen atoms bonded to one oxygen atom." },
             { q: "Which blood cells carry oxygen?", a: ["Red blood cells", "White blood cells", "Platelets", "Plasma cells"], correct: 0, fact: "Red blood cells contain hemoglobin, which binds oxygen." },
-            { q: "What force keeps planets in orbit around the Sun?", a: ["Gravity", "Magnetism", "Friction", "Inertia"], correct: 0, fact: "Newton described gravity; Einstein later redefined it as curved spacetime." }
+            { q: "What force keeps planets in orbit around the Sun?", a: ["Gravity", "Magnetism", "Friction", "Inertia"], correct: 0, fact: "Newton described gravity; Einstein later redefined it as curved spacetime." },
+            { q: "What is the atomic number of Carbon?", a: ["6", "12", "8", "4"], correct: 0, fact: "Carbon has 6 protons — the basis of all organic chemistry." },
+            { q: "Which planet has the most moons?", a: ["Saturn", "Jupiter", "Uranus", "Neptune"], correct: 0, fact: "Saturn has 146 confirmed moons as of 2023." },
+            { q: "What is the name of the process by which water turns to vapor?", a: ["Evaporation", "Condensation", "Sublimation", "Precipitation"], correct: 0, fact: "Evaporation drives the water cycle." },
+            { q: "What is the center of an atom called?", a: ["Nucleus", "Electron", "Proton", "Quark"], correct: 0, fact: "The nucleus contains protons and neutrons." },
+            { q: "How many chambers does the human heart have?", a: ["4", "2", "3", "6"], correct: 0, fact: "Two atria and two ventricles make up the four chambers." }
         ],
         fr: [
             { q: "Quel est le symbole chimique de l'or ?", a: ["Au", "Ag", "Fe", "Cu"], correct: 0, fact: "Le symbole 'Au' vient du latin 'aurum'." },
@@ -49,7 +54,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Quel gaz les plantes absorbent-elles pour la photosynthèse ?", a: ["Dioxyde de carbone", "Oxygène", "Azote", "Hydrogène"], correct: 0, fact: "Les plantes convertissent le CO₂ et l'eau en glucose et oxygène." },
             { q: "Quelle est la formule chimique de l'eau ?", a: ["H₂O", "CO₂", "O₂", "NaCl"], correct: 0, fact: "Deux atomes d'hydrogène liés à un atome d'oxygène." },
             { q: "Quelles cellules sanguines transportent l'oxygène ?", a: ["Globules rouges", "Globules blancs", "Plaquettes", "Plasmocytes"], correct: 0, fact: "Les globules rouges contiennent de l'hémoglobine." },
-            { q: "Quelle force maintient les planètes en orbite autour du Soleil ?", a: ["La gravité", "Le magnétisme", "La friction", "L'inertie"], correct: 0, fact: "Newton a décrit la gravité ; Einstein l'a redéfinie comme espace-temps courbé." }
+            { q: "Quelle force maintient les planètes en orbite autour du Soleil ?", a: ["La gravité", "Le magnétisme", "La friction", "L'inertie"], correct: 0, fact: "Newton a décrit la gravité ; Einstein l'a redéfinie comme espace-temps courbé." },
+            { q: "Quel est le numéro atomique du Carbone ?", a: ["6", "12", "8", "4"], correct: 0, fact: "Le carbone a 6 protons — base de toute chimie organique." },
+            { q: "Quelle planète possède le plus de lunes ?", a: ["Saturne", "Jupiter", "Uranus", "Neptune"], correct: 0, fact: "Saturne compte 146 lunes confirmées en 2023." },
+            { q: "Comment appelle-t-on le passage de l'eau à l'état vapeur ?", a: ["Évaporation", "Condensation", "Sublimation", "Précipitation"], correct: 0, fact: "L'évaporation est le moteur du cycle de l'eau." },
+            { q: "Comment appelle-t-on le centre d'un atome ?", a: ["Noyau", "Électron", "Proton", "Quark"], correct: 0, fact: "Le noyau contient protons et neutrons." },
+            { q: "Combien de cavités le cœur humain possède-t-il ?", a: ["4", "2", "3", "6"], correct: 0, fact: "Deux oreillettes et deux ventricules forment les quatre cavités." }
         ]
     },
     history: {
@@ -68,7 +78,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Which civilization invented the wheel?", a: ["Mesopotamians", "Egyptians", "Greeks", "Chinese"], correct: 0, fact: "The wheel appeared in Mesopotamia around 3500 BC." },
             { q: "Who wrote the 95 Theses, sparking the Reformation?", a: ["Martin Luther", "John Calvin", "Henry VIII", "Erasmus"], correct: 0, fact: "Luther nailed them to a church door in Wittenberg in 1517." },
             { q: "The Renaissance began in which country?", a: ["Italy", "France", "England", "Spain"], correct: 0, fact: "It began in Florence, Italy, in the 14th century." },
-            { q: "Which ship famously sank in 1912?", a: ["Titanic", "Lusitania", "Bismarck", "Queen Mary"], correct: 0, fact: "The RMS Titanic hit an iceberg on its maiden voyage." }
+            { q: "Which ship famously sank in 1912?", a: ["Titanic", "Lusitania", "Bismarck", "Queen Mary"], correct: 0, fact: "The RMS Titanic hit an iceberg on its maiden voyage." },
+            { q: "Who was the first Emperor of China?", a: ["Qin Shi Huang", "Kublai Khan", "Sun Yat-sen", "Genghis Khan"], correct: 0, fact: "Qin Shi Huang unified China in 221 BC." },
+            { q: "Which war was fought between the North and South of America?", a: ["Civil War", "Revolutionary War", "Mexican-American War", "Spanish-American War"], correct: 0, fact: "The American Civil War lasted from 1861 to 1865." },
+            { q: "Who was Napoleon Bonaparte?", a: ["French Emperor", "British General", "Russian Tsar", "Spanish King"], correct: 0, fact: "Napoleon rose from military officer to Emperor of the French." },
+            { q: "In which city was the Magna Carta signed?", a: ["Runnymede", "London", "Canterbury", "York"], correct: 0, fact: "King John signed it at Runnymede in 1215." },
+            { q: "Which ancient wonder was located in Alexandria?", a: ["The Lighthouse", "The Colossus", "The Hanging Gardens", "The Statue of Zeus"], correct: 0, fact: "The Lighthouse of Alexandria guided ships for centuries." }
         ],
         fr: [
             { q: "Qui était le premier président des États-Unis ?", a: ["George Washington", "Thomas Jefferson", "Abraham Lincoln", "John Adams"], correct: 0, fact: "Washington a servi de 1789 à 1797." },
@@ -85,7 +100,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Quelle civilisation a inventé la roue ?", a: ["Mésopotamiens", "Égyptiens", "Grecs", "Chinois"], correct: 0, fact: "La roue est apparue en Mésopotamie vers 3500 av. J.-C." },
             { q: "Qui a écrit les 95 thèses, déclenchant la Réforme ?", a: ["Martin Luther", "Jean Calvin", "Henri VIII", "Érasme"], correct: 0, fact: "Luther les a affichées à Wittemberg en 1517." },
             { q: "Dans quel pays la Renaissance a-t-elle commencé ?", a: ["Italie", "France", "Angleterre", "Espagne"], correct: 0, fact: "Elle a commencé à Florence, en Italie, au 14ème siècle." },
-            { q: "Quel navire célèbre a coulé en 1912 ?", a: ["Titanic", "Lusitania", "Bismarck", "Queen Mary"], correct: 0, fact: "Le RMS Titanic a heurté un iceberg lors de son voyage inaugural." }
+            { q: "Quel navire célèbre a coulé en 1912 ?", a: ["Titanic", "Lusitania", "Bismarck", "Queen Mary"], correct: 0, fact: "Le RMS Titanic a heurté un iceberg lors de son voyage inaugural." },
+            { q: "Qui fut le premier Empereur de Chine ?", a: ["Qin Shi Huang", "Kubilaï Khan", "Sun Yat-sen", "Gengis Khan"], correct: 0, fact: "Qin Shi Huang unifia la Chine en 221 av. J.-C." },
+            { q: "Quelle guerre opposa le Nord et le Sud des États-Unis ?", a: ["Guerre Civile", "Guerre d'Indépendance", "Guerre Mexicaine", "Guerre Hispano-Américaine"], correct: 0, fact: "La guerre de Sécession dura de 1861 à 1865." },
+            { q: "Qui était Napoléon Bonaparte ?", a: ["Empereur des Français", "Général Britannique", "Tsar de Russie", "Roi d'Espagne"], correct: 0, fact: "Napoléon passa d'officier militaire à Empereur des Français." },
+            { q: "Dans quelle ville la Magna Carta fut-elle signée ?", a: ["Runnymede", "Londres", "Cantorbéry", "York"], correct: 0, fact: "Le roi Jean la signa à Runnymede en 1215." },
+            { q: "Quelle merveille antique se trouvait à Alexandrie ?", a: ["Le Phare", "Le Colosse", "Les Jardins Suspendus", "La Statue de Zeus"], correct: 0, fact: "Le Phare d'Alexandrie guidait les navires depuis des siècles." }
         ]
     },
     gaming: {
@@ -104,7 +124,12 @@ const TRIVIA_QUESTIONS = {
             { q: "In League of Legends, what is the main map called?", a: ["Summoner's Rift", "Howling Abyss", "Twisted Treeline", "Crystal Scar"], correct: 0, fact: "Summoner's Rift is the iconic 5v5 map." },
             { q: "Which company developed Fortnite?", a: ["Epic Games", "Activision", "EA", "Ubisoft"], correct: 0, fact: "Epic Games also created the Unreal Engine." },
             { q: "What year was Roblox released?", a: ["2006", "2010", "2003", "2015"], correct: 0, fact: "Roblox launched in 2006 and exploded in popularity in the late 2010s." },
-            { q: "In GTA V, how many playable protagonists are there?", a: ["3", "1", "2", "4"], correct: 0, fact: "Michael, Franklin and Trevor — a first for the series." }
+            { q: "In GTA V, how many playable protagonists are there?", a: ["3", "1", "2", "4"], correct: 0, fact: "Michael, Franklin and Trevor — a first for the series." },
+            { q: "What is the name of the princess in Super Mario Bros?", a: ["Peach", "Zelda", "Daisy", "Rosalina"], correct: 0, fact: "Princess Peach has been Mario's rescue target since 1985." },
+            { q: "Which game features a character named Master Chief?", a: ["Halo", "Call of Duty", "Gears of War", "Destiny"], correct: 0, fact: "Master Chief is the Spartan-II supersoldier protagonist of Halo." },
+            { q: "What does 'NPC' stand for in gaming?", a: ["Non-Player Character", "Neural Processing Core", "New Player Control", "Network Play Character"], correct: 0, fact: "NPCs populate game worlds and drive story without player control." },
+            { q: "Which company makes the Xbox console?", a: ["Microsoft", "Sony", "Nintendo", "Sega"], correct: 0, fact: "Microsoft launched the original Xbox in 2001." },
+            { q: "In Among Us, what are players trying to find?", a: ["The Impostor", "The Key", "The Exit", "The Reactor"], correct: 0, fact: "One or more impostors sabotage and eliminate crewmates." }
         ],
         fr: [
             { q: "Quelle entreprise a créé Mario ?", a: ["Nintendo", "Sega", "Sony", "Microsoft"], correct: 0, fact: "Mario a été créé par Shigeru Miyamoto." },
@@ -121,7 +146,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Dans League of Legends, comment s'appelle la carte principale ?", a: ["Summoner's Rift", "Howling Abyss", "Twisted Treeline", "Crystal Scar"], correct: 0, fact: "Summoner's Rift est la carte 5v5 emblématique." },
             { q: "Quelle entreprise a développé Fortnite ?", a: ["Epic Games", "Activision", "EA", "Ubisoft"], correct: 0, fact: "Epic Games a aussi créé l'Unreal Engine." },
             { q: "En quelle année Roblox est-il sorti ?", a: ["2006", "2010", "2003", "2015"], correct: 0, fact: "Roblox a été lancé en 2006." },
-            { q: "Dans GTA V, combien y a-t-il de protagonistes jouables ?", a: ["3", "1", "2", "4"], correct: 0, fact: "Michael, Franklin et Trevor — une première pour la série." }
+            { q: "Dans GTA V, combien y a-t-il de protagonistes jouables ?", a: ["3", "1", "2", "4"], correct: 0, fact: "Michael, Franklin et Trevor — une première pour la série." },
+            { q: "Comment s'appelle la princesse de Super Mario Bros ?", a: ["Peach", "Zelda", "Daisy", "Rosalina"], correct: 0, fact: "La princesse Peach est le personnage à sauver depuis 1985." },
+            { q: "Quel jeu met en scène le Master Chief ?", a: ["Halo", "Call of Duty", "Gears of War", "Destiny"], correct: 0, fact: "Le Master Chief est le super-soldat Spartan-II protagoniste de Halo." },
+            { q: "Que signifie 'PNJ' dans le jeu vidéo ?", a: ["Personnage Non Joueur", "Processeur Neural de Jeu", "Protocole de Navigation de Jeu", "Plateforme de Nouveaux Joueurs"], correct: 0, fact: "Les PNJ peuplent les mondes de jeu sans contrôle du joueur." },
+            { q: "Quelle entreprise fabrique la console Xbox ?", a: ["Microsoft", "Sony", "Nintendo", "Sega"], correct: 0, fact: "Microsoft a lancé la première Xbox en 2001." },
+            { q: "Dans Among Us, que cherchent les joueurs ?", a: ["L'Imposteur", "La Clé", "La Sortie", "Le Réacteur"], correct: 0, fact: "Un ou plusieurs imposteurs sabotent et éliminent les équipiers." }
         ]
     },
     technology: {
@@ -140,7 +170,12 @@ const TRIVIA_QUESTIONS = {
             { q: "What was the first graphical web browser?", a: ["Mosaic", "Netscape", "Internet Explorer", "Firefox"], correct: 0, fact: "Mosaic, released in 1993, made the web visual." },
             { q: "What does 'GPU' stand for?", a: ["Graphics Processing Unit", "General Program Utility", "Global Processing Unit", "Graphics Power Unit"], correct: 0, fact: "GPUs power gaming and modern AI training alike." },
             { q: "Which language is known as the backbone of web pages?", a: ["HTML", "Python", "C++", "Java"], correct: 0, fact: "HTML structures every page you visit." },
-            { q: "What does 'Wi-Fi' primarily use to transmit data?", a: ["Radio waves", "Light beams", "Sound waves", "Magnetic fields"], correct: 0, fact: "Wi-Fi operates mainly on 2.4 GHz and 5 GHz radio bands." }
+            { q: "What does 'Wi-Fi' primarily use to transmit data?", a: ["Radio waves", "Light beams", "Sound waves", "Magnetic fields"], correct: 0, fact: "Wi-Fi operates mainly on 2.4 GHz and 5 GHz radio bands." },
+            { q: "What does 'VPN' stand for?", a: ["Virtual Private Network", "Visual Processing Node", "Verified Public Network", "Variable Packet Notation"], correct: 0, fact: "VPNs encrypt your connection and mask your IP address." },
+            { q: "Which programming language is known as the language of the web?", a: ["JavaScript", "Python", "Ruby", "PHP"], correct: 0, fact: "JavaScript runs in every modern browser natively." },
+            { q: "What is 'open source' software?", a: ["Software with publicly available code", "Free antivirus software", "Software made by governments", "Offline-only software"], correct: 0, fact: "Open source lets anyone view, modify, and distribute the code." },
+            { q: "What does 'SSD' stand for?", a: ["Solid State Drive", "Super Speed Disk", "System Storage Device", "Serial Sync Drive"], correct: 0, fact: "SSDs use flash memory with no moving parts, making them faster than HDDs." },
+            { q: "Who founded Apple Computer Company?", a: ["Steve Jobs", "Bill Gates", "Elon Musk", "Jeff Bezos"], correct: 0, fact: "Steve Jobs co-founded Apple with Wozniak and Wayne in 1976." }
         ],
         fr: [
             { q: "Que signifie CPU ?", a: ["Unité Centrale de Traitement", "Unité Personnelle d'Ordinateur", "Utilitaire Central de Programme", "Utilitaire de Traitement Central"], correct: 0, fact: "Le CPU est le cerveau de l'ordinateur." },
@@ -157,7 +192,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Quel fut le premier navigateur web graphique ?", a: ["Mosaic", "Netscape", "Internet Explorer", "Firefox"], correct: 0, fact: "Mosaic, sorti en 1993, a rendu le web visuel." },
             { q: "Que signifie 'GPU' ?", a: ["Processeur graphique", "Utilitaire général", "Processeur global", "Unité de puissance graphique"], correct: 0, fact: "Les GPU alimentent le gaming et l'entraînement de l'IA moderne." },
             { q: "Quel langage est la colonne vertébrale des pages web ?", a: ["HTML", "Python", "C++", "Java"], correct: 0, fact: "HTML structure chaque page que vous visitez." },
-            { q: "Qu'est-ce que le Wi-Fi utilise pour transmettre les données ?", a: ["Ondes radio", "Faisceaux lumineux", "Ondes sonores", "Champs magnétiques"], correct: 0, fact: "Le Wi-Fi fonctionne principalement sur les bandes 2,4 GHz et 5 GHz." }
+            { q: "Qu'est-ce que le Wi-Fi utilise pour transmettre les données ?", a: ["Ondes radio", "Faisceaux lumineux", "Ondes sonores", "Champs magnétiques"], correct: 0, fact: "Le Wi-Fi fonctionne principalement sur les bandes 2,4 GHz et 5 GHz." },
+            { q: "Que signifie 'VPN' ?", a: ["Réseau Privé Virtuel", "Nœud de Traitement Visuel", "Réseau Public Vérifié", "Notation de Paquets Variables"], correct: 0, fact: "Les VPN chiffrent votre connexion et masquent votre adresse IP." },
+            { q: "Quel langage est considéré comme le langage du web ?", a: ["JavaScript", "Python", "Ruby", "PHP"], correct: 0, fact: "JavaScript s'exécute nativement dans tous les navigateurs modernes." },
+            { q: "Qu'est-ce qu'un logiciel open source ?", a: ["Logiciel au code public", "Antivirus gratuit", "Logiciel gouvernemental", "Logiciel hors-ligne"], correct: 0, fact: "L'open source permet à chacun de voir, modifier et distribuer le code." },
+            { q: "Que signifie 'SSD' ?", a: ["Disque à État Solide", "Disque Super Rapide", "Stockage Système Dédié", "Synchronisation Série Disque"], correct: 0, fact: "Les SSD utilisent la mémoire flash sans pièces mobiles." },
+            { q: "Qui a fondé Apple ?", a: ["Steve Jobs", "Bill Gates", "Elon Musk", "Jeff Bezos"], correct: 0, fact: "Steve Jobs a cofondé Apple avec Wozniak et Wayne en 1976." }
         ]
     },
     geography: {
@@ -176,7 +216,12 @@ const TRIVIA_QUESTIONS = {
             { q: "On which continent is the Amazon rainforest?", a: ["South America", "Africa", "Asia", "Australia"], correct: 0, fact: "The Amazon produces around 6% of the world's oxygen." },
             { q: "What is the capital of Nigeria?", a: ["Abuja", "Lagos", "Kano", "Ibadan"], correct: 0, fact: "Abuja replaced Lagos as capital in 1991." },
             { q: "Which strait separates Europe and Africa?", a: ["Strait of Gibraltar", "Bosphorus", "Suez Canal", "English Channel"], correct: 0, fact: "At its narrowest, only 13 km separate Spain from Morocco." },
-            { q: "Which country is both a continent and a country?", a: ["Australia", "Greenland", "Antarctica", "New Zealand"], correct: 0, fact: "Australia is the only country that is also a continent." }
+            { q: "Which country is both a continent and a country?", a: ["Australia", "Greenland", "Antarctica", "New Zealand"], correct: 0, fact: "Australia is the only country that is also a continent." },
+            { q: "What is the capital of Brazil?", a: ["Brasília", "São Paulo", "Rio de Janeiro", "Salvador"], correct: 0, fact: "Brasília replaced Rio de Janeiro as capital in 1960." },
+            { q: "Which country has the longest coastline?", a: ["Canada", "Russia", "Norway", "Australia"], correct: 0, fact: "Canada's coastline stretches over 202,000 km." },
+            { q: "What is the smallest continent?", a: ["Australia", "Europe", "Antarctica", "South America"], correct: 0, fact: "Australia is both the smallest continent and largest island." },
+            { q: "Through how many countries does the Amazon River flow?", a: ["9", "3", "5", "12"], correct: 0, fact: "The Amazon basin spans 9 South American countries." },
+            { q: "What is the capital of South Africa?", a: ["Pretoria", "Cape Town", "Johannesburg", "Durban"], correct: 0, fact: "South Africa has three capitals — Pretoria is the executive one." }
         ],
         fr: [
             { q: "Quelle est la capitale de la France ?", a: ["Paris", "Lyon", "Marseille", "Bordeaux"], correct: 0, fact: "Paris est connue comme la Ville Lumière." },
@@ -193,7 +238,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Sur quel continent se trouve la forêt amazonienne ?", a: ["Amérique du Sud", "Afrique", "Asie", "Australie"], correct: 0, fact: "L'Amazonie produit environ 6% de l'oxygène mondial." },
             { q: "Quelle est la capitale du Nigeria ?", a: ["Abuja", "Lagos", "Kano", "Ibadan"], correct: 0, fact: "Abuja a remplacé Lagos comme capitale en 1991." },
             { q: "Quel détroit sépare l'Europe et l'Afrique ?", a: ["Détroit de Gibraltar", "Bosphore", "Canal de Suez", "Manche"], correct: 0, fact: "Au plus étroit, seulement 13 km séparent l'Espagne du Maroc." },
-            { q: "Quel pays est à la fois un continent et un pays ?", a: ["Australie", "Groenland", "Antarctique", "Nouvelle-Zélande"], correct: 0, fact: "L'Australie est le seul pays qui est aussi un continent." }
+            { q: "Quel pays est à la fois un continent et un pays ?", a: ["Australie", "Groenland", "Antarctique", "Nouvelle-Zélande"], correct: 0, fact: "L'Australie est le seul pays qui est aussi un continent." },
+            { q: "Quelle est la capitale du Brésil ?", a: ["Brasília", "São Paulo", "Rio de Janeiro", "Salvador"], correct: 0, fact: "Brasília a remplacé Rio de Janeiro comme capitale en 1960." },
+            { q: "Quel pays a le littoral le plus long ?", a: ["Canada", "Russie", "Norvège", "Australie"], correct: 0, fact: "Le littoral canadien s'étend sur plus de 202 000 km." },
+            { q: "Quel est le plus petit continent ?", a: ["Australie", "Europe", "Antarctique", "Amérique du Sud"], correct: 0, fact: "L'Australie est à la fois le plus petit continent et la plus grande île." },
+            { q: "Combien de pays traverse le fleuve Amazone ?", a: ["9", "3", "5", "12"], correct: 0, fact: "Le bassin amazonien s'étend sur 9 pays d'Amérique du Sud." },
+            { q: "Quelle est la capitale de l'Afrique du Sud ?", a: ["Pretoria", "Le Cap", "Johannesburg", "Durban"], correct: 0, fact: "L'Afrique du Sud a trois capitales — Pretoria est la capitale exécutive." }
         ]
     },
     space: {
@@ -212,7 +262,12 @@ const TRIVIA_QUESTIONS = {
             { q: "What is the Sun mainly made of?", a: ["Hydrogen", "Oxygen", "Iron", "Carbon"], correct: 0, fact: "About 73% hydrogen, 25% helium." },
             { q: "How many planets are in our solar system?", a: ["8", "9", "7", "10"], correct: 0, fact: "Pluto was reclassified as a dwarf planet in 2006." },
             { q: "Which rover landed on Mars in 2021?", a: ["Perseverance", "Curiosity", "Opportunity", "Spirit"], correct: 0, fact: "Perseverance carries the Ingenuity helicopter." },
-            { q: "What force forms black holes?", a: ["Gravity collapsing a massive star", "Magnetic storms", "Solar flares", "Dark energy"], correct: 0, fact: "Not even light can escape a black hole's event horizon." }
+            { q: "What force forms black holes?", a: ["Gravity collapsing a massive star", "Magnetic storms", "Solar flares", "Dark energy"], correct: 0, fact: "Not even light can escape a black hole's event horizon." },
+            { q: "What is the name of NASA's most famous space telescope?", a: ["Hubble", "James Webb", "Spitzer", "Chandra"], correct: 0, fact: "The Hubble Space Telescope launched in 1990 and revolutionized astronomy." },
+            { q: "What planet is known for its Great Red Spot?", a: ["Jupiter", "Mars", "Saturn", "Neptune"], correct: 0, fact: "The Great Red Spot is a storm larger than Earth that has raged for centuries." },
+            { q: "What is the term for a star that explodes at the end of its life?", a: ["Supernova", "Pulsar", "Quasar", "Nebula"], correct: 0, fact: "A supernova can briefly outshine an entire galaxy." },
+            { q: "Which space agency landed humans on the Moon?", a: ["NASA", "ESA", "Roscosmos", "JAXA"], correct: 0, fact: "NASA's Apollo 11 was the first crewed Moon landing in 1969." },
+            { q: "What is the name of Mars's largest volcano?", a: ["Olympus Mons", "Mauna Kea", "Vesuvius", "Etna"], correct: 0, fact: "Olympus Mons is the tallest volcano in the solar system at 22 km." }
         ],
         fr: [
             { q: "Quelle est la planète la plus proche du Soleil ?", a: ["Mercure", "Vénus", "Terre", "Mars"], correct: 0, fact: "Mercure orbite autour du Soleil à 58 millions de km en moyenne." },
@@ -229,7 +284,12 @@ const TRIVIA_QUESTIONS = {
             { q: "De quoi le Soleil est-il principalement composé ?", a: ["Hydrogène", "Oxygène", "Fer", "Carbone"], correct: 0, fact: "Environ 73% d'hydrogène et 25% d'hélium." },
             { q: "Combien de planètes compte notre système solaire ?", a: ["8", "9", "7", "10"], correct: 0, fact: "Pluton a été reclassée planète naine en 2006." },
             { q: "Quel rover a atterri sur Mars en 2021 ?", a: ["Perseverance", "Curiosity", "Opportunity", "Spirit"], correct: 0, fact: "Perseverance transporte l'hélicoptère Ingenuity." },
-            { q: "Qu'est-ce qui forme un trou noir ?", a: ["L'effondrement gravitationnel d'une étoile massive", "Les tempêtes magnétiques", "Les éruptions solaires", "L'énergie sombre"], correct: 0, fact: "Même la lumière ne peut échapper à l'horizon d'un trou noir." }
+            { q: "Qu'est-ce qui forme un trou noir ?", a: ["L'effondrement gravitationnel d'une étoile massive", "Les tempêtes magnétiques", "Les éruptions solaires", "L'énergie sombre"], correct: 0, fact: "Même la lumière ne peut échapper à l'horizon d'un trou noir." },
+            { q: "Quel est le télescope spatial le plus célèbre de la NASA ?", a: ["Hubble", "James Webb", "Spitzer", "Chandra"], correct: 0, fact: "Le télescope Hubble a révolutionné l'astronomie depuis 1990." },
+            { q: "Quelle planète est connue pour sa Grande Tache Rouge ?", a: ["Jupiter", "Mars", "Saturne", "Neptune"], correct: 0, fact: "La Grande Tache Rouge est une tempête plus grande que la Terre." },
+            { q: "Comment appelle-t-on une étoile qui explose en fin de vie ?", a: ["Supernova", "Pulsar", "Quasar", "Nébuleuse"], correct: 0, fact: "Une supernova peut brièvement éclipser une galaxie entière." },
+            { q: "Quelle agence spatiale a posé des humains sur la Lune ?", a: ["NASA", "ESA", "Roscosmos", "JAXA"], correct: 0, fact: "L'Apollo 11 de la NASA fut le premier alunissage habité en 1969." },
+            { q: "Quel est le nom du plus grand volcan de Mars ?", a: ["Olympus Mons", "Mauna Kea", "Vésuve", "Etna"], correct: 0, fact: "Olympus Mons culmine à 22 km — le plus haut volcan du système solaire." }
         ]
     },
     animals: {
@@ -248,7 +308,12 @@ const TRIVIA_QUESTIONS = {
             { q: "What is a baby kangaroo called?", a: ["Joey", "Cub", "Calf", "Pup"], correct: 0, fact: "Joeys live in their mother's pouch for months." },
             { q: "Which sea creature is known for changing color?", a: ["Octopus", "Dolphin", "Seahorse", "Jellyfish"], correct: 0, fact: "Octopuses use chromatophores to change color instantly." },
             { q: "What is the largest bird in the world?", a: ["Ostrich", "Emu", "Albatross", "Condor"], correct: 0, fact: "Ostriches can weigh up to 150 kg and run 70 km/h." },
-            { q: "How many stomachs does a cow have?", a: ["4", "1", "2", "3"], correct: 0, fact: "The four compartments help digest tough grass." }
+            { q: "How many stomachs does a cow have?", a: ["4", "1", "2", "3"], correct: 0, fact: "The four compartments help digest tough grass." },
+            { q: "What is the fastest bird in the world?", a: ["Peregrine Falcon", "Golden Eagle", "Ostrich", "Swift"], correct: 0, fact: "The peregrine falcon dives at over 320 km/h." },
+            { q: "Which animal never sleeps?", a: ["Bullfrog", "Dolphin", "Elephant", "Giraffe"], correct: 0, fact: "Bullfrogs show no change in brain activity between rest and activity." },
+            { q: "How do sharks detect prey in dark water?", a: ["Electroreception", "Echolocation", "Infrared vision", "Smell alone"], correct: 0, fact: "Sharks sense electrical fields from muscle contractions via ampullae of Lorenzini." },
+            { q: "Which insect has the shortest lifespan?", a: ["Mayfly", "Mosquito", "Housefly", "Ant"], correct: 0, fact: "Adult mayflies live only 24 hours — just long enough to reproduce." },
+            { q: "What is the only venomous mammal?", a: ["Platypus", "Shrew", "Slow Loris", "Hedgehog"], correct: 0, fact: "The male platypus has venomous spurs on its hind legs." }
         ],
         fr: [
             { q: "Quel est le plus grand animal sur Terre ?", a: ["Baleine Bleue", "Éléphant d'Afrique", "Girafe", "Grand Requin Blanc"], correct: 0, fact: "Les baleines bleues peuvent atteindre 30 mètres et 180 tonnes." },
@@ -265,7 +330,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Comment s'appelle un bébé kangourou ?", a: ["Joey", "Ourson", "Veau", "Chiot"], correct: 0, fact: "Les joeys vivent dans la poche de leur mère pendant des mois." },
             { q: "Quelle créature marine change de couleur ?", a: ["Pieuvre", "Dauphin", "Hippocampe", "Méduse"], correct: 0, fact: "Les pieuvres utilisent des chromatophores pour changer de couleur." },
             { q: "Quel est le plus grand oiseau du monde ?", a: ["Autruche", "Émeu", "Albatros", "Condor"], correct: 0, fact: "Les autruches pèsent jusqu'à 150 kg et courent à 70 km/h." },
-            { q: "Combien d'estomacs a une vache ?", a: ["4", "1", "2", "3"], correct: 0, fact: "Les quatre compartiments aident à digérer l'herbe." }
+            { q: "Combien d'estomacs a une vache ?", a: ["4", "1", "2", "3"], correct: 0, fact: "Les quatre compartiments aident à digérer l'herbe." },
+            { q: "Quel est l'oiseau le plus rapide du monde ?", a: ["Faucon pèlerin", "Aigle royal", "Autruche", "Martinet"], correct: 0, fact: "Le faucon pèlerin plonge à plus de 320 km/h." },
+            { q: "Quel animal ne dort jamais ?", a: ["Grenouille-taureau", "Dauphin", "Éléphant", "Girafe"], correct: 0, fact: "La grenouille-taureau ne montre aucun changement d'activité cérébrale au repos." },
+            { q: "Comment les requins détectent-ils leurs proies dans l'obscurité ?", a: ["Électroréception", "Écholocation", "Vision infrarouge", "Odorat seul"], correct: 0, fact: "Les requins captent les champs électriques via les ampoules de Lorenzini." },
+            { q: "Quel insecte a la durée de vie la plus courte ?", a: ["Éphémère", "Moustique", "Mouche", "Fourmi"], correct: 0, fact: "L'éphémère adulte ne vit que 24 heures — juste assez pour se reproduire." },
+            { q: "Quel est le seul mammifère venimeux ?", a: ["Ornithorynque", "Musaraigne", "Loris paresseux", "Hérisson"], correct: 0, fact: "Le mâle ornithorynque possède des éperons venimeux sur les pattes arrière." }
         ]
     },
     sports: {
@@ -284,7 +354,12 @@ const TRIVIA_QUESTIONS = {
             { q: "What does NBA stand for?", a: ["National Basketball Association", "National Ball Arena", "North Basketball Alliance", "National Boxing Association"], correct: 0, fact: "The NBA was founded in 1946 as the BAA." },
             { q: "How long is an Olympic swimming pool?", a: ["50 meters", "25 meters", "100 meters", "75 meters"], correct: 0, fact: "Olympic pools are 50 m long and 25 m wide." },
             { q: "Which athlete is known as the fastest man alive?", a: ["Usain Bolt", "Carl Lewis", "Mo Farah", "Tyson Gay"], correct: 0, fact: "Bolt ran 100m in 9.58 seconds in 2009." },
-            { q: "In which sport is the Ryder Cup contested?", a: ["Golf", "Tennis", "Sailing", "Cricket"], correct: 0, fact: "The Ryder Cup pits Team USA against Team Europe." }
+            { q: "In which sport is the Ryder Cup contested?", a: ["Golf", "Tennis", "Sailing", "Cricket"], correct: 0, fact: "The Ryder Cup pits Team USA against Team Europe." },
+            { q: "Which country invented basketball?", a: ["USA", "Canada", "Brazil", "UK"], correct: 0, fact: "Dr. James Naismith invented basketball in Massachusetts in 1891 — he was Canadian." },
+            { q: "How many players are on a volleyball team on court?", a: ["6", "5", "7", "9"], correct: 0, fact: "Six players per side — three front row, three back row." },
+            { q: "What is the diameter of a basketball hoop in inches?", a: ["18 inches", "15 inches", "20 inches", "22 inches"], correct: 0, fact: "The rim is 18 inches in diameter — just wide enough for two balls." },
+            { q: "Which country has won the most Olympic gold medals overall?", a: ["USA", "Russia", "China", "UK"], correct: 0, fact: "The USA leads with over 1,000 gold medals all-time." },
+            { q: "In football, what does VAR stand for?", a: ["Video Assistant Referee", "Virtual Action Review", "Video Action Replay", "Verified Assist Rule"], correct: 0, fact: "VAR was introduced to help referees review key decisions." }
         ],
         fr: [
             { q: "Combien de joueurs dans une équipe de football ?", a: ["11", "10", "12", "9"], correct: 0, fact: "Chaque équipe a 11 joueurs sur le terrain." },
@@ -301,7 +376,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Que signifie NBA ?", a: ["National Basketball Association", "National Ball Arena", "North Basketball Alliance", "National Boxing Association"], correct: 0, fact: "La NBA a été fondée en 1946 sous le nom de BAA." },
             { q: "Quelle est la longueur d'une piscine olympique ?", a: ["50 mètres", "25 mètres", "100 mètres", "75 mètres"], correct: 0, fact: "Les piscines olympiques font 50 m de long et 25 m de large." },
             { q: "Quel athlète est l'homme le plus rapide du monde ?", a: ["Usain Bolt", "Carl Lewis", "Mo Farah", "Tyson Gay"], correct: 0, fact: "Bolt a couru le 100 m en 9,58 secondes en 2009." },
-            { q: "Dans quel sport se dispute la Ryder Cup ?", a: ["Golf", "Tennis", "Voile", "Cricket"], correct: 0, fact: "La Ryder Cup oppose les équipes des USA et d'Europe." }
+            { q: "Dans quel sport se dispute la Ryder Cup ?", a: ["Golf", "Tennis", "Voile", "Cricket"], correct: 0, fact: "La Ryder Cup oppose les équipes des USA et d'Europe." },
+            { q: "Quel pays a inventé le basketball ?", a: ["USA", "Canada", "Brésil", "UK"], correct: 0, fact: "Le Dr James Naismith a inventé le basketball en 1891 — il était Canadien." },
+            { q: "Combien de joueurs sont sur le terrain au volleyball ?", a: ["6", "5", "7", "9"], correct: 0, fact: "Six joueurs par équipe — trois en avant, trois en arrière." },
+            { q: "Quel est le diamètre du panier de basketball en cm ?", a: ["45 cm", "38 cm", "50 cm", "55 cm"], correct: 0, fact: "Le cercle mesure 45 cm de diamètre — juste assez pour deux ballons." },
+            { q: "Quel pays a remporté le plus de médailles d'or olympiques ?", a: ["USA", "Russie", "Chine", "UK"], correct: 0, fact: "Les USA mènent avec plus de 1 000 médailles d'or." },
+            { q: "Dans le football, que signifie VAR ?", a: ["Vidéo-Assistant Arbitre", "Vérification d'Action en Réalité", "Vidéo d'Action Rejouée", "Validation d'Assistance Réglementaire"], correct: 0, fact: "Le VAR aide les arbitres à revoir les décisions clés." }
         ]
     },
     literature: {
@@ -320,7 +400,12 @@ const TRIVIA_QUESTIONS = {
             { q: "What genre is 'The Hobbit'?", a: ["Fantasy", "Science Fiction", "Horror", "Mystery"], correct: 0, fact: "Tolkien wrote The Hobbit in 1937, before The Lord of the Rings." },
             { q: "Who wrote 'Pride and Prejudice'?", a: ["Jane Austen", "Charlotte Brontë", "Emily Dickinson", "Mary Shelley"], correct: 0, fact: "Austen published it anonymously in 1813." },
             { q: "Which play features the line 'To be or not to be'?", a: ["Hamlet", "Macbeth", "Othello", "King Lear"], correct: 0, fact: "Hamlet's soliloquy is the most quoted in English literature." },
-            { q: "Who wrote the 'A Song of Ice and Fire' series?", a: ["George R.R. Martin", "J.R.R. Tolkien", "Brandon Sanderson", "Patrick Rothfuss"], correct: 0, fact: "The series inspired the TV show Game of Thrones." }
+            { q: "Who wrote the 'A Song of Ice and Fire' series?", a: ["George R.R. Martin", "J.R.R. Tolkien", "Brandon Sanderson", "Patrick Rothfuss"], correct: 0, fact: "The series inspired the TV show Game of Thrones." },
+            { q: "What is the name of the whale in Moby Dick?", a: ["Moby Dick", "White Fang", "Leviathan", "Pequod"], correct: 0, fact: "Moby Dick is the great white sperm whale hunted by Captain Ahab." },
+            { q: "Who wrote 'The Alchemist'?", a: ["Paulo Coelho", "Gabriel García Márquez", "Jorge Amado", "Isabel Allende"], correct: 0, fact: "The Alchemist has sold over 65 million copies worldwide." },
+            { q: "In which country is 'Crime and Punishment' set?", a: ["Russia", "France", "Germany", "Poland"], correct: 0, fact: "Dostoevsky set it in St. Petersburg in the 1860s." },
+            { q: "What was the pen name of author Mary Ann Evans?", a: ["George Eliot", "George Sand", "Currer Bell", "Ellis Bell"], correct: 0, fact: "She used a male pen name to be taken seriously as a writer." },
+            { q: "Which Shakespeare play features the character Shylock?", a: ["The Merchant of Venice", "Othello", "The Tempest", "A Midsummer Night's Dream"], correct: 0, fact: "Shylock is the moneylender who demands a pound of flesh." }
         ],
         fr: [
             { q: "Qui a écrit 'Roméo et Juliette' ?", a: ["William Shakespeare", "Charles Dickens", "Jane Austen", "Mark Twain"], correct: 0, fact: "Shakespeare a écrit Roméo et Juliette vers 1596." },
@@ -337,7 +422,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Quel est le genre du 'Hobbit' ?", a: ["Fantasy", "Science-fiction", "Horreur", "Policier"], correct: 0, fact: "Tolkien a écrit Le Hobbit en 1937." },
             { q: "Qui a écrit 'Orgueil et Préjugés' ?", a: ["Jane Austen", "Charlotte Brontë", "Emily Dickinson", "Mary Shelley"], correct: 0, fact: "Austen l'a publié anonymement en 1813." },
             { q: "Quelle pièce contient 'Être ou ne pas être' ?", a: ["Hamlet", "Macbeth", "Othello", "Le Roi Lear"], correct: 0, fact: "Le monologue d'Hamlet est le plus cité de la littérature anglaise." },
-            { q: "Qui a écrit la saga 'Le Trône de fer' ?", a: ["George R.R. Martin", "J.R.R. Tolkien", "Brandon Sanderson", "Patrick Rothfuss"], correct: 0, fact: "La saga a inspiré la série Game of Thrones." }
+            { q: "Qui a écrit la saga 'Le Trône de fer' ?", a: ["George R.R. Martin", "J.R.R. Tolkien", "Brandon Sanderson", "Patrick Rothfuss"], correct: 0, fact: "La saga a inspiré la série Game of Thrones." },
+            { q: "Comment s'appelle la baleine dans Moby Dick ?", a: ["Moby Dick", "Croc-Blanc", "Léviathan", "Pequod"], correct: 0, fact: "Moby Dick est le grand cachalot blanc chassé par le capitaine Achab." },
+            { q: "Qui a écrit 'L'Alchimiste' ?", a: ["Paulo Coelho", "Gabriel García Márquez", "Jorge Amado", "Isabel Allende"], correct: 0, fact: "L'Alchimiste s'est vendu à plus de 65 millions d'exemplaires." },
+            { q: "Dans quel pays se déroule 'Crime et Châtiment' ?", a: ["Russie", "France", "Allemagne", "Pologne"], correct: 0, fact: "Dostoïevski l'a situé à Saint-Pétersbourg dans les années 1860." },
+            { q: "Quel était le pseudonyme de l'auteure Mary Ann Evans ?", a: ["George Eliot", "George Sand", "Currer Bell", "Ellis Bell"], correct: 0, fact: "Elle utilisait un nom masculin pour être prise au sérieux." },
+            { q: "Quelle pièce de Shakespeare met en scène Shylock ?", a: ["Le Marchand de Venise", "Othello", "La Tempête", "Le Songe d'une nuit d'été"], correct: 0, fact: "Shylock est le prêteur qui réclame une livre de chair." }
         ]
     },
     mali: {
@@ -356,7 +446,12 @@ const TRIVIA_QUESTIONS = {
             { q: "What is the name of Mali's national football team?", a: ["Les Aigles", "Les Lions", "Les Éléphants", "Les Étalons"], correct: 0, fact: "Les Aigles (The Eagles) represent Mali in international football." },
             { q: "Who founded the Mali Empire in the 13th century?", a: ["Sundiata Keita", "Mansa Musa", "Askia Muhammad", "Sonni Ali"], correct: 0, fact: "Sundiata, the 'Lion King', united the Manden kingdoms around 1235." },
             { q: "Which legendary Malian singer is called the 'Golden Voice of Africa'?", a: ["Oumou Sangaré", "Salif Keita", "Rokia Traoré", "Fatoumata Diawara"], correct: 0, fact: "Oumou Sangaré is a Wassoulou music icon and women's rights advocate." },
-            { q: "The epic of Sundiata is preserved by which hereditary storytellers?", a: ["Griots", "Marabouts", "Fulanis", "Dogons"], correct: 0, fact: "Griots (jeli) have passed down oral history for centuries." }
+            { q: "The epic of Sundiata is preserved by which hereditary storytellers?", a: ["Griots", "Marabouts", "Fulanis", "Dogons"], correct: 0, fact: "Griots (jeli) have passed down oral history for centuries." },
+            { q: "What is the name of Mali's currency union?", a: ["UEMOA", "ECOWAS", "AU", "CEN-SAD"], correct: 0, fact: "Mali is part of the West African Economic and Monetary Union." },
+            { q: "Which Malian city is known as the 'City of 333 Saints'?", a: ["Timbuktu", "Djenné", "Gao", "Mopti"], correct: 0, fact: "Timbuktu's 333 saints are honoured in an annual festival." },
+            { q: "What instrument is Toumani Diabaté famous for playing?", a: ["Kora", "Djembe", "Balafon", "Ngoni"], correct: 0, fact: "Toumani Diabaté is a Grammy-winning kora virtuoso." },
+            { q: "What does the name 'Bamako' mean in Bambara?", a: ["Crocodile River", "City of Gold", "Place of Peace", "Great River"], correct: 0, fact: "'Bama' means crocodile and 'ko' means river in Bambara." },
+            { q: "Which Malian empire controlled trans-Saharan gold and salt trade routes?", a: ["Songhai Empire", "Mali Empire", "Ghana Empire", "Kanem-Bornu"], correct: 0, fact: "The Songhai Empire was the largest in West African history." }
         ],
         fr: [
             { q: "Quelle est la capitale du Mali ?", a: ["Bamako", "Ségou", "Mopti", "Kayes"], correct: 0, fact: "Bamako est située sur le fleuve Niger." },
@@ -373,7 +468,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Quel est le nom de l'équipe de football du Mali ?", a: ["Les Aigles", "Les Lions", "Les Éléphants", "Les Étalons"], correct: 0, fact: "Les Aigles représentent le Mali dans le football international." },
             { q: "Qui a fondé l'Empire du Mali au 13ème siècle ?", a: ["Soundiata Keïta", "Mansa Moussa", "Askia Muhammad", "Sonni Ali"], correct: 0, fact: "Soundiata, le 'Roi Lion', a uni les royaumes du Manden vers 1235." },
             { q: "Quelle chanteuse malienne est la 'Voix d'Or de l'Afrique' ?", a: ["Oumou Sangaré", "Salif Keita", "Rokia Traoré", "Fatoumata Diawara"], correct: 0, fact: "Oumou Sangaré est une icône de la musique Wassoulou." },
-            { q: "Quels conteurs héréditaires préservent l'épopée de Soundiata ?", a: ["Griots", "Marabouts", "Peuls", "Dogons"], correct: 0, fact: "Les griots (jeli) transmettent l'histoire orale depuis des siècles." }
+            { q: "Quels conteurs héréditaires préservent l'épopée de Soundiata ?", a: ["Griots", "Marabouts", "Peuls", "Dogons"], correct: 0, fact: "Les griots (jeli) transmettent l'histoire orale depuis des siècles." },
+            { q: "Quel est le nom de l'union monétaire du Mali ?", a: ["UEMOA", "CEDEAO", "UA", "CEN-SAD"], correct: 0, fact: "Le Mali fait partie de l'Union Économique et Monétaire Ouest-Africaine." },
+            { q: "Quelle ville malienne est connue comme la 'Cité des 333 Saints' ?", a: ["Tombouctou", "Djenné", "Gao", "Mopti"], correct: 0, fact: "Les 333 saints de Tombouctou sont honorés lors d'un festival annuel." },
+            { q: "Pour quel instrument Toumani Diabaté est-il célèbre ?", a: ["Kora", "Djembe", "Balafon", "Ngoni"], correct: 0, fact: "Toumani Diabaté est un virtuose de la kora primé aux Grammy." },
+            { q: "Que signifie le nom 'Bamako' en bambara ?", a: ["Fleuve aux crocodiles", "Cité de l'or", "Lieu de paix", "Grand fleuve"], correct: 0, fact: "'Bama' signifie crocodile et 'ko' signifie fleuve en bambara." },
+            { q: "Quel empire malien contrôlait les routes commerciales transsahariennes ?", a: ["Empire Songhaï", "Empire du Mali", "Empire du Ghana", "Kanem-Bornou"], correct: 0, fact: "L'Empire Songhaï fut le plus grand de l'histoire ouest-africaine." }
         ]
     },
     general: {
@@ -392,7 +492,12 @@ const TRIVIA_QUESTIONS = {
             { q: "How many letters are in the English alphabet?", a: ["26", "24", "25", "27"], correct: 0, fact: "From A to Z — 26 letters." },
             { q: "In which direction does the sun rise?", a: ["East", "West", "North", "South"], correct: 0, fact: "Earth rotates west to east, so the sun appears in the east." },
             { q: "How many sides does a hexagon have?", a: ["6", "5", "7", "8"], correct: 0, fact: "'Hexa' means six in Greek." },
-            { q: "Which festival marks the Islamic holy month of fasting?", a: ["Ramadan", "Eid al-Adha", "Hajj", "Mawlid"], correct: 0, fact: "Ramadan is the 9th month of the Islamic calendar." }
+            { q: "Which festival marks the Islamic holy month of fasting?", a: ["Ramadan", "Eid al-Adha", "Hajj", "Mawlid"], correct: 0, fact: "Ramadan is the 9th month of the Islamic calendar." },
+            { q: "How many seconds are in one hour?", a: ["3,600", "1,000", "6,000", "3,000"], correct: 0, fact: "60 seconds × 60 minutes = 3,600 seconds." },
+            { q: "What is the most widely spoken language in Africa?", a: ["Swahili", "Arabic", "Hausa", "Zulu"], correct: 0, fact: "Swahili is spoken by over 200 million people across East Africa." },
+            { q: "Which ocean is the saltiest?", a: ["Atlantic", "Pacific", "Indian", "Arctic"], correct: 0, fact: "The Atlantic Ocean has the highest average salinity." },
+            { q: "How many strings does a standard guitar have?", a: ["6", "4", "8", "12"], correct: 0, fact: "Standard guitars have 6 strings tuned E-A-D-G-B-e." },
+            { q: "What is the name of the longest wall ever built by humans?", a: ["Great Wall of China", "Hadrian's Wall", "Aurelian Wall", "Berlin Wall"], correct: 0, fact: "The Great Wall stretches over 21,000 km across northern China." }
         ],
         fr: [
             { q: "Combien de jours dans une année bissextile ?", a: ["366", "365", "364", "367"], correct: 0, fact: "Les années bissextiles ont lieu tous les 4 ans." },
@@ -409,7 +514,12 @@ const TRIVIA_QUESTIONS = {
             { q: "Combien de lettres dans l'alphabet français ?", a: ["26", "24", "25", "27"], correct: 0, fact: "De A à Z — 26 lettres." },
             { q: "De quel côté le soleil se lève-t-il ?", a: ["Est", "Ouest", "Nord", "Sud"], correct: 0, fact: "La Terre tourne d'ouest en est." },
             { q: "Combien de côtés a un hexagone ?", a: ["6", "5", "7", "8"], correct: 0, fact: "'Hexa' signifie six en grec." },
-            { q: "Quel mois sacré marque le jeûne islamique ?", a: ["Ramadan", "Aïd al-Adha", "Hajj", "Mawlid"], correct: 0, fact: "Le Ramadan est le 9ème mois du calendrier islamique." }
+            { q: "Quel mois sacré marque le jeûne islamique ?", a: ["Ramadan", "Aïd al-Adha", "Hajj", "Mawlid"], correct: 0, fact: "Le Ramadan est le 9ème mois du calendrier islamique." },
+            { q: "Combien de secondes dans une heure ?", a: ["3 600", "1 000", "6 000", "3 000"], correct: 0, fact: "60 secondes × 60 minutes = 3 600 secondes." },
+            { q: "Quelle est la langue la plus parlée en Afrique ?", a: ["Swahili", "Arabe", "Haoussa", "Zoulou"], correct: 0, fact: "Le swahili est parlé par plus de 200 millions de personnes en Afrique de l'Est." },
+            { q: "Quel océan est le plus salé ?", a: ["Atlantique", "Pacifique", "Indien", "Arctique"], correct: 0, fact: "L'Atlantique a la salinité moyenne la plus élevée." },
+            { q: "Combien de cordes a une guitare standard ?", a: ["6", "4", "8", "12"], correct: 0, fact: "Les guitares standard ont 6 cordes accordées Mi-La-Ré-Sol-Si-Mi." },
+            { q: "Quel est le nom du plus long mur jamais construit par l'homme ?", a: ["Grande Muraille de Chine", "Mur d'Hadrien", "Mur Aurélien", "Mur de Berlin"], correct: 0, fact: "La Grande Muraille s'étend sur plus de 21 000 km." }
         ]
     }
 };
@@ -434,6 +544,9 @@ const DIFFICULTIES = {
     medium: { emoji: '🟡', color: '#f1c40f', name: { en: 'Medium', fr: 'Moyen' }, questions: 7, baseReward: 100, timeLimit: 15, bet: 100 },
     hard: { emoji: '🔴', color: '#e74c3c', name: { en: 'Hard', fr: 'Difficile' }, questions: 10, baseReward: 200, timeLimit: 10, bet: 200 }
 };
+
+// ================= SESSION LOCK =================
+const activeTrivaSessions = new Set();
 
 // ================= TRANSLATIONS =================
 const texts = {
@@ -479,10 +592,26 @@ function shuffleAnswers(question) {
     return { q: question.q, a: answers.map(a => a.text), correct: answers.findIndex(a => a.isCorrect), fact: question.fact };
 }
 
-function getRandomQuestions(category, lang, count) {
+const sessionQuestionHistory = new Map();
+
+function getRandomQuestions(category, lang, count, sessionKey) {
     const pool = TRIVIA_QUESTIONS[category]?.[lang] || TRIVIA_QUESTIONS.general[lang];
     if (!pool?.length) return [];
-    return [...pool].sort(() => Math.random() - 0.5).slice(0, Math.min(count, pool.length)).map(shuffleAnswers);
+    const historyKey = `${sessionKey}:${category}:${lang}`;
+    const seen = sessionQuestionHistory.get(historyKey) || new Set();
+    // Filter out recently seen questions
+    let available = pool.filter((_, i) => !seen.has(i));
+    // If pool exhausted, reset
+    if (available.length < count) { seen.clear(); available = [...pool]; }
+    const shuffled = available
+        .map((q, i) => ({ q, originalIndex: pool.indexOf(q) }))
+        .sort(() => Math.random() - 0.5)
+        .slice(0, Math.min(count, available.length));
+    shuffled.forEach(({ originalIndex }) => seen.add(originalIndex));
+    sessionQuestionHistory.set(historyKey, seen);
+    // Clean up old sessions after 2 hours
+    setTimeout(() => sessionQuestionHistory.delete(historyKey), 7200000);
+    return shuffled.map(({ q }) => shuffleAnswers(q));
 }
 
 function progressBar(current, total, size = 10) {
@@ -574,6 +703,13 @@ function buildResultEmbed(ctx, category, q, outcome, streak, correctSoFar, answe
 
 // ================= SESSION ENGINE (linear, awaitMessageComponent-based) =================
 async function runTriviaSession(client, msg, db, serverSettings, lang) {
+    const sessionKey = `${msg.author.id}:${msg.guild?.id || 'DM'}`;
+    if (activeTrivaSessions.has(sessionKey)) {
+        const busy = await msg.reply({ content: '⚠️ You already have an active trivia session running. Finish it first!', flags: 64 }).catch(() => null);
+        return;
+    }
+    activeTrivaSessions.add(sessionKey);
+
     const t = texts[lang];
     const guildName = msg.guild?.name?.toUpperCase() || 'NEURAL NODE';
     const guildIcon = msg.guild?.iconURL() || client.user.displayAvatarURL();
@@ -670,7 +806,7 @@ async function runTriviaSession(client, msg, db, serverSettings, lang) {
     if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...currentData, credits: (currentData.credits || 0) - diff.bet, username: userName });
     else db.prepare("UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?").run(diff.bet, userId, guildId);
 
-    const questions = getRandomQuestions(category, lang, diff.questions);
+    const questions = getRandomQuestions(category, lang, diff.questions, sessionKey);
     if (!questions.length) {
         const errEmbed = new EmbedBuilder().setColor('#ED4245')
             .setDescription(lang === 'fr' ? '## ❌ Aucune question disponible.' : '## ❌ No questions available.')
@@ -790,6 +926,7 @@ async function runTriviaSession(client, msg, db, serverSettings, lang) {
     await sessionMsg.edit({ embeds: [finalEmbed], components: [finalRow] }).catch(() => {});
 
     const f = await sessionMsg.awaitMessageComponent({ time: 60000 }).catch(() => null);
+    activeTrivaSessions.delete(sessionKey);
     if (!f) return sessionMsg.edit({ components: [] }).catch(() => {});
     if (await denyOthers(f)) return;
     const freshMsg = { author: f.user, guild: f.guild, channel: f.channel, member: f.member, reply: o => f.followUp(o), react: () => Promise.resolve() };

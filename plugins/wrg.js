@@ -290,6 +290,9 @@ const CATEGORIES = {
 // ── Default category mapping per tier if no category selected ──
 const DEFAULT_CATEGORY = 'tech';
 
+// ── Active game lock (per channel) ──
+const activeGames = new Set();
+
 // ── Streak storage (per guild+user, in memory) ──
 const streaks = new Map();
 function getStreak(userId, guildId) { return streaks.get(`${userId}:${guildId}`) || 0; }
@@ -360,6 +363,15 @@ async function runGame(client, message, args, db, lang) {
             }
         }
 
+        // ── Channel lock ──
+        const channelId = message.channel.id;
+        if (activeGames.has(channelId)) {
+            const busy = await message.channel.send({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription('`⚔️ A game is already running in this channel. Wait for it to finish.`')] }).catch(()=>null);
+            if (busy) setTimeout(() => busy.delete().catch(()=>{}), 4000);
+            return;
+        }
+        activeGames.add(channelId);
+
         const tier = TIERS[tierKey];
         const cat = CATEGORIES[categoryKey] || CATEGORIES.tech;
         const tierWords = cat.words[lang]?.[tierKey] || cat.words.en[tierKey] || cat.words.en.rookie;
@@ -413,7 +425,8 @@ async function runGame(client, message, args, db, lang) {
             .setFooter({ text: `${guildName} · NEURAL WRG v3.0 · BAMAKO_223 🇲🇱` })
             .setTimestamp();
 
-        await message.channel.send({ embeds: [startEmbed] });
+        const startMsg = await message.channel.send({ embeds: [startEmbed] }).catch(()=>null);
+        if (startMsg) setTimeout(() => startMsg.delete().catch(()=>{}), 5000);
 
         const gameStart = Date.now();
         let winnerDeclared = false;
@@ -432,7 +445,8 @@ async function runGame(client, message, args, db, lang) {
                         `\n*${tier.emoji} Still scrambled: \`${scrambled}\`*`
                     )
                     .setFooter({ text: `${tier.timeLimit/2000}s elapsed · Hint revealed` });
-                await message.channel.send({ embeds: [hintEmbed] }).catch(() => {});
+                const hintMsg = await message.channel.send({ embeds: [hintEmbed] }).catch(() => null);
+                if (hintMsg) setTimeout(() => hintMsg.delete().catch(() => {}), 15000);
             }
         }, tier.timeLimit / 2);
 
@@ -448,6 +462,7 @@ async function runGame(client, message, args, db, lang) {
             if (guess !== targetWord) return;
 
             winnerDeclared = true;
+            activeGames.delete(message.channel.id);
             clearTimeout(hintTimer);
             collector.stop('winner');
 
@@ -543,6 +558,7 @@ async function runGame(client, message, args, db, lang) {
         });
 
         collector.on('end', (_, reason) => {
+            activeGames.delete(message.channel.id);
             clearTimeout(hintTimer);
             if (!winnerDeclared && reason !== 'winner') {
                 resetStreak(message.author.id, guildId);
@@ -557,7 +573,9 @@ async function runGame(client, message, args, db, lang) {
                         `\`\`\``
                     )
                     .setFooter({ text: `${guildName} · NEURAL WRG v3.0 · BAMAKO_223 🇲🇱` });
-                message.channel.send({ embeds: [failEmbed] }).catch(()=>{});
+                message.channel.send({ embeds: [failEmbed] }).then(m => {
+                    if (m) setTimeout(() => m.delete().catch(()=>{}), 8000);
+                }).catch(()=>{});
             }
         });
 
@@ -565,6 +583,7 @@ async function runGame(client, message, args, db, lang) {
 
     } catch(err) {
         console.error('[WRG v3] Fatal:', err.message);
+        activeGames.delete(message.channel?.id);
         message.reply({ embeds: [new EmbedBuilder().setColor('#ED4245').setTitle('❌ GAME ERROR').setDescription('An error occurred. Please try again.').setFooter({ text: 'ARCHON CG-223' })] }).catch(()=>{});
     }
 }
@@ -619,7 +638,7 @@ module.exports = {
     execute: async (interaction, client) => {
         const tier = interaction.options.getString('tier') || 'rookie';
         const category = interaction.options.getString('category') || 'tech';
-        await interaction.deferReply();
+        await interaction.deferReply({ ephemeral: true });
         const fakeMessage = {
             author: interaction.user,
             guild: interaction.guild,
