@@ -4,14 +4,46 @@ const { SlashCommandBuilder } = require('discord.js');
 
 const BG_DIR = path.join(__dirname, '../assets/backgrounds');
 const BG_PRESETS = [
-    path.join(BG_DIR, 'bg1.jpg'),
-    path.join(BG_DIR, 'bg2.jpg'),
-    path.join(BG_DIR, 'bg3.jpg'),
-    path.join(BG_DIR, 'bg4.jpg'),
-    path.join(BG_DIR, 'bg5.jpg'),
+    { file: path.join(BG_DIR, 'bg1.jpg'), name: 'Manga Eye' },
+    { file: path.join(BG_DIR, 'bg2.jpg'), name: 'Ninja' },
+    { file: path.join(BG_DIR, 'bg3.jpg'), name: 'Dark Warrior' },
+    { file: path.join(BG_DIR, 'bg4.jpg'), name: 'Shadow' },
+    { file: path.join(BG_DIR, 'bg5.jpg'), name: 'Phantom' },
 ];
 
-async function downloadFile(url, dest) {
+const RESPONSES = {
+    saved: [
+        '✅ Looking sharp! Background saved — run `.profile` to see it.',
+        '🎨 Done! Your profile just got an upgrade. Try `.profile`.',
+        '💾 Saved. Run `.profile` and see the magic.',
+        '✅ Background locked in. `.profile` to preview.',
+    ],
+    preset: (name) => [
+        `✅ Preset **${name}** set as your background!`,
+        `🖼️ **${name}** looks clean — check it with \`.profile\`.`,
+        `💠 Background switched to **${name}**. Run \`.profile\` to see it.`,
+    ],
+    reset: [
+        '🔄 Background cleared — back to your default.',
+        '✅ Reset done. Your profile is back to its original look.',
+    ],
+    noInput: [
+        '📎 Send an image with this command to set it as your background.',
+        '🖼️ Attach an image, or pick a preset: `.setbg 1` through `.setbg 5`.\nReset anytime with `.setbg reset`.',
+    ],
+    failed: [
+        '❌ Could not save that image — make sure it\'s a valid jpg, png, or webp.',
+        '⚠️ Something went wrong grabbing that image. Try again or use a preset.',
+    ],
+    badUrl: [
+        '❌ That doesn\'t look like a valid image URL.',
+        '⚠️ Couldn\'t read that URL. Attach the image directly instead.',
+    ],
+};
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+async function downloadToFile(url, dest) {
     const res = await fetch(url, {
         headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; ARCHON-Bot/2.0)',
@@ -19,90 +51,128 @@ async function downloadFile(url, dest) {
         }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.startsWith('image/')) throw new Error(`Not an image: ${ct}`);
     const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length < 1000) throw new Error('File too small — likely not a valid image');
     fs.writeFileSync(dest, buffer);
     return dest;
+}
+
+function getUserBgPath(userId, guildId) {
+    const dir = path.join(BG_DIR, 'users', guildId);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return path.join(dir, `${userId}.jpg`);
+}
+
+function clearOldBg(userId, guildId) {
+    const dest = getUserBgPath(userId, guildId);
+    if (fs.existsSync(dest)) {
+        try { fs.unlinkSync(dest); } catch(e) {}
+    }
+}
+
+function saveBgToDB(db, userId, guildId, bgPath) {
+    // Try UPDATE first, then INSERT OR IGNORE as fallback
+    const updated = db.prepare(
+        'UPDATE users SET profile_bg = ? WHERE id = ? AND guild_id = ?'
+    ).run(bgPath, userId, guildId);
+    if (updated.changes === 0) {
+        // User row doesn't exist — insert minimal row
+        db.prepare(
+            'INSERT OR IGNORE INTO users (id, guild_id, username, xp, credits, level, profile_bg) VALUES (?, ?, ?, 0, 0, 1, ?)'
+        ).run(userId, guildId, userId, bgPath);
+    }
+}
+
+async function handleSetBg(client, message, args, db) {
+    try {
+        const guildId = message.guild?.id || 'DM';
+        const userId = message.author.id;
+        const attachment = message.attachments?.first();
+        const urlArg = args[0]?.trim();
+
+        // No input at all
+        if (!attachment && !urlArg) {
+            return message.reply(pick(RESPONSES.noInput)).catch(() => {});
+        }
+
+        // Reset
+        if (urlArg === 'reset') {
+            clearOldBg(userId, guildId);
+            saveBgToDB(db, userId, guildId, null);
+            return message.reply(pick(RESPONSES.reset)).catch(() => {});
+        }
+
+        // Preset number 1-5
+        if (urlArg && /^[1-5]$/.test(urlArg)) {
+            const preset = BG_PRESETS[parseInt(urlArg) - 1];
+            clearOldBg(userId, guildId);
+            saveBgToDB(db, userId, guildId, preset.file);
+            return message.reply(pick(RESPONSES.preset(preset.name))).catch(() => {});
+        }
+
+        // Custom image — attachment takes priority over URL arg
+        let srcUrl = null;
+        if (attachment) {
+            // Validate it's an image
+            const ct = attachment.contentType || '';
+            if (!ct.startsWith('image/') && !attachment.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+                return message.reply(pick(RESPONSES.badUrl)).catch(() => {});
+            }
+            srcUrl = attachment.url;
+        } else if (urlArg?.startsWith('http')) {
+            srcUrl = urlArg;
+        } else {
+            return message.reply(pick(RESPONSES.badUrl)).catch(() => {});
+        }
+
+        await message.react('⏳').catch(() => {});
+
+        // Clear old file first
+        clearOldBg(userId, guildId);
+
+        const dest = getUserBgPath(userId, guildId);
+        await downloadToFile(srcUrl, dest);
+
+        saveBgToDB(db, userId, guildId, dest);
+
+        await message.reply(pick(RESPONSES.saved)).catch(() => {});
+    } catch(err) {
+        console.error('[SETBG]', err.message);
+        message.reply(pick(RESPONSES.failed)).catch(() => {});
+    }
 }
 
 module.exports = {
     name: 'setbg',
     aliases: ['profilebg', 'setbackground', 'bg'],
-    description: '🖼️ Set your profile card background.',
+    description: '🖼️ Set your profile card background image.',
     category: 'PROFILE',
-    usage: '.setbg [1-5] OR .setbg + attach image',
+    usage: '.setbg [1-5 | reset] OR .setbg + attach image',
     cooldown: 10000,
 
     data: new SlashCommandBuilder()
         .setName('setbg')
         .setDescription('🖼️ Set your profile card background')
+        .addAttachmentOption(o => o
+            .setName('image')
+            .setDescription('Upload your custom background image')
+            .setRequired(false))
         .addIntegerOption(o => o
             .setName('preset')
             .setDescription('Choose a preset background (1-5)')
             .setRequired(false)
-            .addChoices(
-                { name: '1 — Manga Eye', value: 1 },
-                { name: '2 — Ninja', value: 2 },
-                { name: '3 — Background 3', value: 3 },
-                { name: '4 — Background 4', value: 4 },
-                { name: '5 — Background 5', value: 5 }
-            )),
+            .setMinValue(1)
+            .setMaxValue(5))
+        .addStringOption(o => o
+            .setName('action')
+            .setDescription('Reset your background to default')
+            .setRequired(false)
+            .addChoices({ name: 'Reset to default', value: 'reset' })),
 
     run: async (client, message, args, db) => {
-        try {
-            const guildId = message.guild?.id || 'DM';
-            const userId = message.author.id;
-            const attachment = message.attachments?.first();
-            const urlArg = args[0];
-
-            // No args — show help
-            if (!attachment && !urlArg) {
-                return message.reply(
-                    '🖼️ **Set your profile background:**\n' +
-                    '• `.setbg 1` to `.setbg 5` — choose a preset\n' +
-                    '• `.setbg` + attach any image — use your own\n' +
-                    '• `.setbg reset` — back to default'
-                ).catch(() => {});
-            }
-
-            // Reset
-            if (urlArg === 'reset') {
-                db.prepare('UPDATE users SET profile_bg = NULL WHERE id = ? AND guild_id = ?').run(userId, guildId);
-                return message.reply('✅ Background reset to default.').catch(() => {});
-            }
-
-            // Preset number
-            if (urlArg && /^[1-5]$/.test(urlArg.trim())) {
-                const presetPath = BG_PRESETS[parseInt(urlArg) - 1];
-                db.prepare('UPDATE users SET profile_bg = ? WHERE id = ? AND guild_id = ?').run(presetPath, userId, guildId);
-                return message.reply(`✅ Background set to preset **#${urlArg}**! Run \`.profile\` to see it.`).catch(() => {});
-            }
-
-            // Custom image attachment
-            const srcUrl = attachment ? attachment.url : urlArg;
-
-            if (!srcUrl?.startsWith('http')) {
-                return message.reply('❌ Invalid URL or argument.').catch(() => {});
-            }
-
-            // Check file type
-            const ext = srcUrl.split('.').pop()?.toLowerCase().split('?')[0];
-            if (!['jpg','jpeg','png','webp','gif'].includes(ext) && !attachment) {
-                return message.reply('❌ Only jpg, png, webp or gif images allowed.').catch(() => {});
-            }
-
-            const userBgDir = path.join(BG_DIR, 'users');
-            if (!fs.existsSync(userBgDir)) fs.mkdirSync(userBgDir, { recursive: true });
-            const dest = path.join(userBgDir, `${userId}.jpg`);
-
-            await message.react('⏳').catch(() => {});
-            await downloadFile(srcUrl, dest);
-
-            db.prepare('UPDATE users SET profile_bg = ? WHERE id = ? AND guild_id = ?').run(dest, userId, guildId);
-            await message.reply('✅ Background saved! Run `.profile` to see it. 🎨').catch(() => {});
-        } catch(err) {
-            console.error('[SETBG]', err);
-            message.reply('❌ Failed to save background. Make sure the image URL is accessible.').catch(() => {});
-        }
+        await handleSetBg(client, message, args, db);
     },
 
     execute: async (interaction, client) => {
@@ -111,24 +181,44 @@ module.exports = {
             const userId = interaction.user.id;
             const db = client.db;
             const preset = interaction.options.getInteger('preset');
+            const action = interaction.options.getString('action');
+            const attachment = interaction.options.getAttachment('image');
 
             await interaction.deferReply({ flags: 64 });
 
-            if (preset) {
-                const presetPath = BG_PRESETS[preset - 1];
-                db.prepare('UPDATE users SET profile_bg = ? WHERE id = ? AND guild_id = ?').run(presetPath, userId, guildId);
-                return interaction.editReply(`✅ Background set to preset **#${preset}**! Run \`/profile\` to see it.`);
+            // Reset
+            if (action === 'reset') {
+                clearOldBg(userId, guildId);
+                saveBgToDB(db, userId, guildId, null);
+                return interaction.editReply(pick(RESPONSES.reset));
             }
 
-            return interaction.editReply(
-                '🖼️ **Set your profile background:**\n' +
-                '• `/setbg preset:1-5` — choose a preset\n' +
-                '• `.setbg` (prefix) + attach image — use your own\n' +
-                '• `.setbg reset` — back to default'
-            );
+            // Preset
+            if (preset) {
+                const bg = BG_PRESETS[preset - 1];
+                clearOldBg(userId, guildId);
+                saveBgToDB(db, userId, guildId, bg.file);
+                return interaction.editReply(pick(RESPONSES.preset(bg.name)));
+            }
+
+            // Custom attachment
+            if (attachment) {
+                const ct = attachment.contentType || '';
+                if (!ct.startsWith('image/')) {
+                    return interaction.editReply(pick(RESPONSES.badUrl));
+                }
+                clearOldBg(userId, guildId);
+                const dest = getUserBgPath(userId, guildId);
+                await downloadToFile(attachment.url, dest);
+                saveBgToDB(db, userId, guildId, dest);
+                return interaction.editReply(pick(RESPONSES.saved));
+            }
+
+            // Nothing provided
+            return interaction.editReply(pick(RESPONSES.noInput));
         } catch(err) {
             console.error('[SETBG SLASH]', err);
-            interaction.editReply('❌ Failed.').catch(() => {});
+            interaction.editReply(pick(RESPONSES.failed)).catch(() => {});
         }
     }
 };

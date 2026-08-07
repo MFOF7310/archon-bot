@@ -258,12 +258,15 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
 
     // Background
     let bgPath = null;
-    // Check user custom bg
+    // Check user custom bg (per-server isolation)
+    const userBgPath = path.join(BG_DIR, 'users', guildId, `${target.id}.jpg`);
     if (userData.profile_bg && fs.existsSync(userData.profile_bg)) {
         bgPath = userData.profile_bg;
+    } else if (fs.existsSync(userBgPath)) {
+        bgPath = userBgPath;
     } else {
-        // Seeded default from presets
-        const seed = parseInt(target.id.slice(-2), 16) % BG_PRESETS.length;
+        // Seeded preset — same user always gets same bg, different per user
+        const seed = parseInt(target.id.slice(-4), 16) % BG_PRESETS.length;
         bgPath = BG_PRESETS[seed];
     }
     try {
@@ -350,6 +353,15 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     ctx.fillText(`#${serverRank}/${totalUsers}`, rkX + 32, rkY - 3);
     ctx.textAlign = 'left';
 
+    // ── Top right dark backing ──
+    roundRect(ctx, 230, 30, W - 260, 340, 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fill();
+    roundRect(ctx, 230, 30, W - 260, 340, 10);
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
     // ── Username ──
     const nameX = 240, nameY = 65;
     ctx.font = 'bold 28px DejaVuBold';
@@ -424,6 +436,15 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     stats.forEach((s, i) => {
         drawStatBox(ctx, statsStartX + i * (boxW + boxGap), statsY, boxW, boxH, s.label, s.value, rankColor);
     });
+
+    // ── Left panel dark backing ──
+    roundRect(ctx, 18, 200, 195, 280, 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fill();
+    roundRect(ctx, 18, 200, 195, 280, 10);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
     // ── Left panel: Identity + Gaming ──
     const leftX = 30, leftY = 210;
