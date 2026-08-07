@@ -154,12 +154,12 @@ module.exports = {
         
         // 🔥 RAM-FIRST CREDIT CHECK
         const challengerData = client.getUserData 
-            ? client.getUserData(challenger.id) 
-            : db.prepare("SELECT credits FROM users WHERE id = ?").get(challenger.id);
+            ? client.getUserData(challenger.id, guildId)
+            : db.prepare("SELECT credits FROM users WHERE id = ? AND guild_id = ?").get(challenger.id, guildId);
         
         const opponentData = client.getUserData 
-            ? client.getUserData(opponent.id) 
-            : db.prepare("SELECT credits FROM users WHERE id = ?").get(opponent.id);
+            ? client.getUserData(opponent.id, guildId)
+            : db.prepare("SELECT credits FROM users WHERE id = ? AND guild_id = ?").get(opponent.id, guildId);
         
         if (!challengerData || (challengerData.credits || 0) < entryFee) {
             const errorEmbed = new EmbedBuilder()

@@ -253,7 +253,7 @@ function panelMenu(s) {
     getCats(s).forEach(c=>sel.addOptions({label:`${c.emoji} ${c.label}`,description:c.desc.substring(0,100),value:c.value,emoji:c.emoji}));
     return sel;
 }
-async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false) {
+async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null) {
     const t=TX[lang]||TX.en, cl=typeof cat==='object'?`${cat.emoji} ${cat.label}`:'🎫 Support';
     const e=new EmbedBuilder()
         .setColor(isPremium ? 0xf1c40f : 0x00f0ff)
@@ -278,8 +278,8 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false) {
         new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t.close).setStyle(ButtonStyle.Danger).setEmoji('🔒'),
         new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t.transcript).setStyle(ButtonStyle.Secondary).setEmoji('📄')
     );
-    const staffPing = staffMention ? `${staffMention}` : '';
-await ch.send({content:`Hey <@${u.id}>! 👋 Your ticket is live — our team has been notified and someone will be right with you. No need to ping anyone, we see you! 💙\n\n${staffPing}`,embeds:[e],components:[r]});
+    const staffPing = s?.ticketStaffRole ? `<@&${s.ticketStaffRole}>` : '';
+    await ch.send({content:`Hey <@${u.id}>! 👋 Your ticket is live — our team has been notified and someone will be right with you. No need to ping anyone, we see you! 💙\n\n${staffPing}`,embeds:[e],components:[r]});
 }
 function cfgEmbed(s, g, c, lang='en') {
     const t=TX[lang]||TX.en, io=g.id===process.env.GUILD_ID;
@@ -320,7 +320,7 @@ module.exports = {
 
     // ================= PREFIX =================
     run: async(client,msg,args,db,ss)=>{
-    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
+    const guildId = msg.guild?.id ?? 'DM';
         const lang=client.detectLanguage?client.detectLanguage(args[0]||''):'en', t=TX[lang]||TX.en, sub=args[0]?.toLowerCase(), g=msg.guild, p=ss?.prefix||'.';
         if(!g)return msg.reply('❌ Servers only.').catch(()=>{});
         const adm=msg.member.permissions.has(PermissionFlagsBits.Administrator);
@@ -430,7 +430,7 @@ module.exports = {
                 const n=counters.get(g.id)||1;
                 const td={creatorId:u.id,creatorTag:u.tag,createdAt:Date.now(),claimedBy:null,category:`${cat.emoji} ${cat.label}`,categoryValue:cat.value,guildId:g.id,number:n,participants:[u.id]};
                 active.set(tc.id,td); saveTicket(db,tc.id,td);
-                await welcomeMsg(tc,u,cat,n,lang);
+                await welcomeMsg(tc,u,cat,n,lang,false,ss);
                 resetACTimer(tc.id,client,ss);
                 const e=new EmbedBuilder().setColor('#2ecc71').setDescription(`${t.made}\n👉 <#${tc.id}>`).setTimestamp();
                 await ix.editReply({embeds:[e]}).catch(()=>{});
