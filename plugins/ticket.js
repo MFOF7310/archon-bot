@@ -27,6 +27,30 @@ function setupTicketDB(db) {
         ['status','priority','closed_at','closed_by','transcript'].forEach(col => { try { db.prepare(`ALTER TABLE tickets ADD COLUMN ${col} TEXT`).run(); } catch(e) { /* column exists */ } });
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_tg ON tickets(guild_id)`).run();
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_tc ON tickets(creator_id)`).run();
+        db.prepare(`CREATE TABLE IF NOT EXISTS ticket_ratings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            ticket_id TEXT,
+            staff_id TEXT,
+            rater_id TEXT NOT NULL,
+            stars INTEGER NOT NULL,
+            comment TEXT,
+            created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )`).run();
+        db.prepare(`CREATE INDEX IF NOT EXISTS idx_tr_guild ON ticket_ratings(guild_id)`).run();
+        db.prepare(`CREATE INDEX IF NOT EXISTS idx_tr_staff ON ticket_ratings(staff_id)`).run();
+        db.prepare(`CREATE TABLE IF NOT EXISTS ticket_ratings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            ticket_id TEXT,
+            staff_id TEXT,
+            rater_id TEXT NOT NULL,
+            stars INTEGER NOT NULL,
+            comment TEXT,
+            created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )`).run();
+        db.prepare(`CREATE INDEX IF NOT EXISTS idx_tr_guild ON ticket_ratings(guild_id)`).run();
+        db.prepare(`CREATE INDEX IF NOT EXISTS idx_tr_staff ON ticket_ratings(staff_id)`).run();
     } catch(e) { if (!e.message.includes('duplicate column')) console.error('[TDB] setup:', e.message); }
 }
 function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets (channel_id, guild_id, creator_id, creator_tag, created_at, claimed_by, category, category_value, ticket_number, participants, status, priority, closed_at, closed_by, transcript) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy||null, t.category||null, t.categoryValue||null, t.number||0, JSON.stringify(t.participants||[t.creatorId]), t.status||'open', t.priority||'normal', t.closedAt||null, t.closedBy||null, t.transcript||null); } catch(e) { console.error('[TDB] save:', e.message); } }
@@ -58,7 +82,7 @@ const TX = {
         claimed:u=>`🙋 <@${u}> claimed this.`, already:'❌ Already claimed.', staffOnlyClaim:'❌ Staff only.',
         closeQ:'🔒 Close ticket?', closeD:'This cannot be undone.', closeY:'Yes, Close', closeN:'Cancel',
         closing:'🔒 Closing in 5s...', closedBy:u=>`🔒 Closed by <@${u}>`,
-        closedLog:(u,c,cat)=>`Ticket #${c} closed | Creator: <@${u}> | ${cat}`,
+        closedLog:(u,c,cat)=>`Ticket #${c} wrapped up | Started by <@${u}> | ${cat} | Hope we helped! 💙`,
         txSaved:'📄 Log saved!', noPerm:'❌ Staff or creator only.', staffOnly:'❌ Staff only.',
         notSet:'⚠️ **Not configured.** Use `/ticket setup` → `/channels set` and `/roles set` to configure.',
         createErr:'❌ Failed to create ticket.', maxT:l=>`❌ Max ${l} ticket(s).`,
@@ -254,7 +278,8 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false) {
         new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t.close).setStyle(ButtonStyle.Danger).setEmoji('🔒'),
         new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t.transcript).setStyle(ButtonStyle.Secondary).setEmoji('📄')
     );
-    await ch.send({content:`Hey <@${u.id}>! We'll be with you shortly. 💙`,embeds:[e],components:[r]});
+    const staffPing = staffMention ? `${staffMention}` : '';
+await ch.send({content:`Hey <@${u.id}>! 👋 Your ticket is live — our team has been notified and someone will be right with you. No need to ping anyone, we see you! 💙\n\n${staffPing}`,embeds:[e],components:[r]});
 }
 function cfgEmbed(s, g, c, lang='en') {
     const t=TX[lang]||TX.en, io=g.id===process.env.GUILD_ID;
@@ -288,7 +313,10 @@ module.exports = {
         addSubcommand(s=>s.setName('setstaffrole').setDescription('Set staff role').addRoleOption(o=>o.setName('role').setDescription('Staff role').setRequired(true))).
         addSubcommand(s=>s.setName('settranscript').setDescription('Set log channel').addChannelOption(o=>o.setName('channel').setDescription('Log channel').setRequired(true).addChannelTypes(ChannelType.GuildText,5))).
         addSubcommand(s=>s.setName('setautoclose').setDescription('Auto-close hours').addIntegerOption(o=>o.setName('hours').setDescription('Hours (0=off)').setRequired(true).setMinValue(0).setMaxValue(168))).
-        addSubcommand(s=>s.setName('setlimit').setDescription('Max tickets per user').addIntegerOption(o=>o.setName('limit').setDescription('1-10').setRequired(true).setMinValue(1).setMaxValue(10))),
+        addSubcommand(s=>s.setName('setlimit').setDescription('Max tickets per user').addIntegerOption(o=>o.setName('limit').setDescription('1-10').setRequired(true).setMinValue(1).setMaxValue(10))).
+        addSubcommand(s=>s.setName('leaderboard').setDescription('🏆 Top staff by rating')).
+        addSubcommand(s=>s.setName('stats').setDescription('📊 Ticket system analytics')).
+        addSubcommand(s=>s.setName('myrating').setDescription('⭐ Your rating history')),
 
     // ================= PREFIX =================
     run: async(client,msg,args,db,ss)=>{
@@ -338,6 +366,52 @@ module.exports = {
         if(sc==='setup'){const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.sTitle}`,iconURL:client.user.displayAvatarURL()}).setDescription(t.sDesc+'\n\n'+t.sUsage('/')).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();return ix.reply({embeds:[e],flags:1<<6});}
         if(sc==='panel'){const e=panelEmbed(ss,g.name,lang),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);await ix.reply({content:'Posting...',flags:1<<6});const s=await ix.channel.send({embeds:[e],components:[r]}).catch(()=>null);if(s){await ix.editReply({content:'✅ Posted!'}).catch(()=>{});try{db.prepare(`UPDATE server_settings SET ticket_panel_channel=? WHERE guild_id=?`).run(s.id,g.id);}catch(e){}}else await ix.editReply({content:'❌ Failed.'}).catch(()=>{});return;}
         if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:'❌ Not a ticket.',flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t.noPerm,flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t.closing}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
+        if(sc==='leaderboard'){
+            await ix.deferReply({flags:1<<6});
+            try {
+                const rows = db.prepare('SELECT staff_id, AVG(stars) as avg, COUNT(*) as total FROM ticket_ratings WHERE guild_id = ? GROUP BY staff_id ORDER BY avg DESC, total DESC LIMIT 10').all(guildId);
+                if(!rows.length) return ix.editReply({content:'🎫 No ratings yet — be the first to rate a ticket!'});
+                const desc = rows.map((r,i) => {
+                    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'•';
+                    const stars = '⭐'.repeat(Math.round(r.avg));
+                    return `${medal} <@${r.staff_id}> — ${stars} \`${r.avg.toFixed(1)}\` (${r.total} reviews)`;
+                }).join('\n');
+                const embed = new EmbedBuilder().setColor(0xffd700).setTitle('🏆 Support Leaderboard').setDescription(desc).setFooter({text:'BAMAKO_223 🇲🇱 • Ratings make us better'});
+                return ix.editReply({embeds:[embed]});
+            }catch(e){return ix.editReply({content:'❌ Could not load leaderboard.'});}
+        }
+        if(sc==='stats'){
+            await ix.deferReply({flags:1<<6});
+            try {
+                const total = db.prepare('SELECT COUNT(*) as c FROM tickets WHERE guild_id = ?').get(guildId)?.c || 0;
+                const open = db.prepare('SELECT COUNT(*) as c FROM tickets WHERE guild_id = ? AND status = ?').get(guildId, 'open')?.c || 0;
+                const rated = db.prepare('SELECT COUNT(*) as c FROM ticket_ratings WHERE guild_id = ?').get(guildId)?.c || 0;
+                const avg = db.prepare('SELECT AVG(stars) as a FROM ticket_ratings WHERE guild_id = ?').get(guildId)?.a || 0;
+                const embed = new EmbedBuilder().setColor(0x00f0ff).setTitle('📊 Ticket Analytics')
+                    .addFields(
+                        {name:'🎫 Total Tickets',value:`\`${total}\``,inline:true},
+                        {name:'📊 Rated',value:`\`${rated}\``,inline:true},
+                        {name:'⭐ Avg Rating',value:`\`${avg.toFixed(1)}\``,inline:true},
+                        {name:'🟢 Open',value:`\`${open}\``,inline:true}
+                    ).setFooter({text:'BAMAKO_223 🇲🇱 • ARCHON Support Desk'});
+                return ix.editReply({embeds:[embed]});
+            }catch(e){return ix.editReply({content:'❌ Could not load stats.'});}
+        }
+        if(sc==='myrating'){
+            await ix.deferReply({flags:1<<6});
+            try {
+                const rows = db.prepare('SELECT stars, comment, created_at FROM ticket_ratings WHERE rater_id = ? ORDER BY created_at DESC LIMIT 10').all(u.id);
+                if(!rows.length) return ix.editReply({content:"🌟 You haven't rated any tickets yet — close a ticket and share your feedback!"});
+                const desc = rows.map(r => {
+                    const stars = '⭐'.repeat(r.stars);
+                    const note = r.comment ? `\n> *"${r.comment.substring(0,60)}${r.comment.length>60?'...':''}"*` : '';
+                    return `${stars}${note}`;
+                }).join('\n\n');
+                const embed = new EmbedBuilder().setColor(0x9b59b6).setTitle('⭐ Your Rating History').setDescription(desc).setFooter({text:'BAMAKO_223 🇲🇱 • Thanks for the feedback!'});
+                return ix.editReply({embeds:[embed]});
+            }catch(e){return ix.editReply({content:'❌ Could not load your ratings.'});}
+        }
+
     },
 
     // ================= COMPONENT HANDLER =================
