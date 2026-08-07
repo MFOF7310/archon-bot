@@ -289,7 +289,7 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
 
     // ── Avatar ──
     try {
-        const avatarURL = target.displayAvatarURL({ extension: 'png', size: 256 });
+        const avatarURL = target.displayAvatarURL({ extension: 'png', size: 512 });
         const avatar = await loadImage(avatarURL);
 
         // Rank glow behind avatar
