@@ -128,7 +128,7 @@ module.exports = {
         } catch (err) {
             console.error(`[DAILY SLASH ERROR] ${err.message}`);
             return interaction.editReply({
-                content: '${EMOJIS.error} Something went wrong. Try again in a moment.',
+                content: '❌ Something went wrong. Try again in a moment.',
                 flags: 64
             }).catch(() => {});
         }

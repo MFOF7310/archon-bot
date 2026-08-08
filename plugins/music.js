@@ -1353,7 +1353,7 @@ module.exports = {
         // ── PLAY ──
         if (sub === 'play') {
             const query = interaction.options.getString('query');
-            await interaction.editReply({ content: '${EMOJIS.loading} Loading...' });
+            await interaction.editReply({ content: '⏳ Loading...' });
             await handlePlay(
                 guildId, interaction.guild, vc, interaction.channel,
                 query, interaction.user.username, client,
