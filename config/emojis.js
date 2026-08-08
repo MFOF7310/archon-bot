@@ -40,6 +40,16 @@ module.exports = {
     check:   '<a:check:1505715312773959731>',
     level:   '<a:level:1535637044527636531>',
 
+    // ── Music ──
+    library:  '<:library:1535660079821357208>',
+    folder:   '<:folder:1535653451374268496>',
+    queue:    '<:queue:1535653763493269535>',
+    volume:   '<:volume:1535662889799520268>',
+    playlist: '<:playlist:1535658270465986560>',
+    stop:     '<:stop:1535658674054373386>',
+    pause:    '<a:pause:1535657804730212545>',
+    shuffle:  '<:shuffle:1535662585481789470>',
+
     // ── Crowns (use for different rank tiers) ──
     crown:    '<:Crown:1156715118990725230>',
     blCrown:  '<:bl_crown:1108129039094386750>',

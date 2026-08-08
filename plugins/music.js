@@ -137,7 +137,7 @@ const PLATFORM_EMOJI = {
     spotify:    EMOJIS.spotify,
     soundcloud: EMOJIS.soundcloud,
     youtube:    EMOJIS.youtube,
-    local:      '📂',
+    local:      EMOJIS.folder,
 };
 function getPlatformEmoji(track) {
     if (track?.spotifyUrl)              return PLATFORM_EMOJI.spotify;
@@ -1074,7 +1074,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         try {
             const lib = require('../data/music-library.json');
             const tracks = lib.filter(t => t.folder === folderName);
-            if (!tracks.length) return replyFn({ content: `📂 Folder **${folderName}** is empty.` });
+            if (!tracks.length) return replyFn({ content: `${EMOJIS.folder} Folder **${folderName}** is empty.` });
 
             // Use existing handlePlay flow for first track to properly join voice
             const shuffled = [...tracks].sort(() => Math.random() - 0.5);
@@ -1082,7 +1082,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             const rest = shuffled.slice(1);
 
             // Queue the rest first so they're ready after first track loads
-            await replyFn({ content: `📂 Loading **${tracks.length} tracks** from **${folderName}**… 🎶` });
+            await replyFn({ content: `${EMOJIS.folder} Loading **${tracks.length} tracks** from **${folderName}**… 🎶` });
 
             // Play first track through normal flow (handles voice join + player setup)
             await handlePlay(guildId, guild, voiceChannel, textChannel, firstTrack.query, requestedBy, client,
@@ -1274,7 +1274,7 @@ module.exports = {
                     const folders = [...new Set(lib.map(t => t.folder).filter(Boolean))];
                     for (const folder of folders) {
                         const count = lib.filter(t => t.folder === folder).length;
-                        push(`📂 ${folder} (${count} tracks)`, `__folder__${folder}`);
+                        push(`${EMOJIS.folder} ${folder} (${count} tracks)`, `__folder__${folder}`);
                     }
                     // Fill remaining slots with top songs
                     const remaining = 25 - results.length;
