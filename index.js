@@ -2359,11 +2359,46 @@ client.once(Events.ClientReady, async () => {
                     if (!channel) continue;
 
                     const { EmbedBuilder } = require('discord.js');
+
+                    // ── AI-powered commit summary ──
+                    let friendlyNotes = commits;
+                    try {
+                        const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                                'anthropic-version': '2023-06-01'
+                            },
+                            body: JSON.stringify({
+                                model: 'claude-haiku-4-5',
+                                max_tokens: 300,
+                                messages: [{
+                                    role: 'user',
+                                    content: `Convert these git commits into 3-5 short, friendly bullet points for Discord server members (non-technical, no jargon, no prefixes like feat/fix). Each bullet starts with an emoji. Keep it concise and exciting. Commits:\n${commits}`
+                                }]
+                            })
+                        });
+                        const aiData = await aiRes.json();
+                        const aiText = aiData?.content?.[0]?.text?.trim();
+                        if (aiText && aiText.length > 10) friendlyNotes = aiText;
+                    } catch(aiErr) {
+                        // Fallback to raw commits if AI fails
+                        console.log('[UPDATE BROADCAST] AI summary failed, using raw commits');
+                    }
+
                     const embed = new EmbedBuilder()
-                        .setColor('#00d4ff')
-                        .setAuthor({ name: '🦅 ARCHON just got an update', iconURL: client.user.displayAvatarURL() })
-                        .setDescription(`Hey — the bot was just updated to **v${currentVersion}** (\`${shortHash}\`). Here's what's new:\n\n${commits}`)
-                        .setFooter({ text: 'Bamako Neural Grid 🇲🇱 — always cooking' })
+                        .setColor('#00f0ff')
+                        .setAuthor({ name: 'ARCHON CG-223 — New Update', iconURL: client.user.displayAvatarURL() })
+                        .setTitle(`🚀 Version ${currentVersion} is live!`)
+                        .setDescription(friendlyNotes)
+                        .addFields(
+                            { name: '🔖 Build', value: `\`${shortHash}\``, inline: true },
+                            { name: '📅 Released', value: `<t:${Math.floor(Date.now()/1000)}:R>`, inline: true },
+                            { name: '🌍 Origin', value: 'Bamako 🇲🇱', inline: true }
+                        )
+                        .setThumbnail(client.user.displayAvatarURL())
+                        .setFooter({ text: 'ARCHON CG-223 • Always cooking 🍳', iconURL: client.user.displayAvatarURL() })
                         .setTimestamp();
 
                     await channel.send({ embeds: [embed] });
