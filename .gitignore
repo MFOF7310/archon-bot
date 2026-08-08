@@ -88,3 +88,4 @@ Lavalink.jar
 start-lavalink.sh
 dist-public/
 data/cookies.txt
+bot.db
