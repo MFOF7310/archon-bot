@@ -1067,6 +1067,25 @@ async function ensureConnection(q) {
 // PLAY HELPER
 // ═══════════════════════════════════════════════════════
 async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requestedBy, client, replyFn, requestedById) {
+    // Handle folder selection from autocomplete
+    if (query.startsWith('__folder__')) {
+        const folderName = query.replace('__folder__', '');
+        try {
+            const lib = require('../data/music-library.json');
+            const tracks = lib.filter(t => t.folder === folderName);
+            if (!tracks.length) return replyFn({ content: `📂 Folder **${folderName}** is empty.` });
+            const q = getQueue(guildId) || createQueue(guild, voiceChannel, textChannel, client);
+            const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+            for (const t of shuffled) {
+                q.tracks.push({ title: t.title, query: t.query, artist: t.artist || 'Unknown', source: 'Local', duration: t.duration || 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: null });
+            }
+            await replyFn({ content: `📂 Queued **${tracks.length} tracks** from **${folderName}** 🎶` });
+            if (!q.currentTrack) playNext(q);
+        } catch(e) {
+            replyFn({ content: `❌ Could not load folder: ${e.message}` });
+        }
+        return;
+    }
     let q = getQueue(guildId) || createQueue(guild, voiceChannel, textChannel, client);
     q.textChannel = textChannel;
     q._client = client;
@@ -1206,7 +1225,7 @@ module.exports = {
     // PREFIX — .play <query>
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         const query = args.join(' ');
-        if (!query) return message.reply('❌ Provide a song name! Usage: `.play <song>`').catch(() => {});
+        if (!query) return message.reply('❌ Provide a song name or use `/music library` to browse folders!').catch(() => {});
         const vc = message.member?.voice?.channel;
         if (!vc) return message.reply('🎤 Join a voice channel first — then I\'ll bring the music!').catch(() => {});
         await handlePlay(
@@ -1233,15 +1252,21 @@ module.exports = {
             const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄', FrenchRap: '🇫🇷', AfroTrap: '🌴', Arabic: '🌙' };
 
             if (focused.length === 0) {
-                // ══ DEFAULT POPOUT — ready-to-pick library + recent history ══
-                const history = client.db?.prepare(
-                    'SELECT title, query FROM music_history WHERE guild_id = ? ORDER BY play_count DESC, played_at DESC LIMIT 5'
-                ).all(interaction.guild?.id) || [];
-                for (const r of history) push(`🕐 ${r.title}`, r.query);
+                // ══ DEFAULT POPOUT — folders first, then recent history ══
                 try {
                     const lib = require('../data/music-library.json');
-                    for (const t of lib.slice(0, 15)) {
-                        push(`${genreEmoji[t.genre] || '🎵'} ${t.title}`, t.query);
+                    // All unique folders
+                    const folders = [...new Set(lib.map(t => t.folder).filter(Boolean))];
+                    for (const folder of folders) {
+                        const count = lib.filter(t => t.folder === folder).length;
+                        push(`📂 ${folder} (${count} tracks)`, `__folder__${folder}`);
+                    }
+                    // Fill remaining slots with top songs
+                    const remaining = 25 - results.length;
+                    if (remaining > 0) {
+                        for (const t of lib.slice(0, remaining)) {
+                            push(`🎵 ${t.title}`, t.query);
+                        }
                     }
                 } catch(e) {}
             } else {
