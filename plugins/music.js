@@ -250,7 +250,7 @@ function buildPanelEmbed(q, client) {
 
     return new EmbedBuilder()
         .setColor(isPaused ? ARCHON.gold : 0x5865F2)
-        .setTitle(isPaused ? `${EMOJIS.pause} Paused` : 'Now playing')
+        .setTitle(isPaused ? '⏸️ Paused' : 'Now playing')
         .setDescription(
             `${trackLink}\n\n` +
             `• Added by ${requester}\n` +
@@ -943,7 +943,7 @@ async function playNext(q) {
                         } catch (e) {}
                         const isShortQuery = track.title.toLowerCase().includes('short') || track.title.toLowerCase().includes('clip') || track.title.toLowerCase().includes('tiktok');
                         if (ytDuration > 0 && ytDuration < 45 && !isShortQuery) {
-                            console.log(`[MUSIC] ${EMOJIS.warning} Search result too short (${ytDuration}s) — skipping:`, attemptQuery);
+                            console.log(`[MUSIC] ⚠️ Search result too short (${ytDuration}s) — skipping:`, attemptQuery);
                             continue;
                         }
 
@@ -971,7 +971,7 @@ async function playNext(q) {
                             const isTruncated = expectedDur > 60 && fileDur > 0 && fileDur < expectedDur * 0.7;
                             const isSuspiciouslyShort = fileDur > 0 && fileDur < 45 && !isShortQuery;
                             if (isTruncated || isSuspiciouslyShort) {
-                                console.log(`[MUSIC] ${EMOJIS.warning} ${isTruncated ? 'Truncated' : 'Too short'} download (${fileDur}s of expected ~${expectedDur}s) — retrying:`, track.title);
+                                console.log(`[MUSIC] ⚠️ ${isTruncated ? 'Truncated' : 'Too short'} download (${fileDur}s of expected ~${expectedDur}s) — retrying:`, track.title);
                                 try { require('fs').unlinkSync(tmpFile); } catch(e) {}
                                 continue; // next attempt
                             }
@@ -1061,7 +1061,7 @@ async function ensureConnection(q) {
             // Diagnostic: stream starved (ended in <5s) — source delivered no audio
             const alive = q.startTime ? (Date.now() - q.startTime - q.totalPaused) / 1000 : 0;
             if (q.currentTrack && alive < 5) {
-                console.log(`[MUSIC] ${EMOJIS.warning} Stream starved after ${alive.toFixed(1)}s (${q.currentTrack.source}): ${q.currentTrack.title} — check yt-dlp/play-dl versions`);
+                console.log(`[MUSIC] ⚠️ Stream starved after ${alive.toFixed(1)}s (${q.currentTrack.source}): ${q.currentTrack.title} — check yt-dlp/play-dl versions`);
             }
             if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
             else cleanTemp(q.currentTrack); // delete downloaded file once done (loop keeps it)
@@ -1240,7 +1240,7 @@ module.exports = {
                     {name: '🐰 Nightcore', value: 'nightcore'},
                     {name: '🌴 Vaporwave', value: 'vaporwave'},
                     {name: '📊 Normalize (default)', value: 'normalize'},
-                    {name: '${EMOJIS.error} Off', value: 'off'}
+                    {name: '❌ Off', value: 'off'}
                 )))
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')
             .addStringOption(o => o.setName('search').setDescription('🔍 Search inside the library (optional)').setRequired(false).setAutocomplete(true))),
@@ -1248,7 +1248,7 @@ module.exports = {
     // PREFIX — .play <query>
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         const query = args.join(' ');
-        if (!query) return message.reply('${EMOJIS.error} Provide a song name or use `/music library` to browse folders!').catch(() => {});
+        if (!query) return message.reply('❌ Provide a song name or use `/music library` to browse folders!').catch(() => {});
         const vc = message.member?.voice?.channel;
         if (!vc) return message.reply('🎤 Join a voice channel first — then I\'ll bring the music!').catch(() => {});
         await handlePlay(
@@ -1445,9 +1445,9 @@ module.exports = {
             const effect = interaction.options.getString('effect');
             const qNow = getQueue(guildId);
             if (qNow) { qNow.audioFilter = effect === 'off' ? '' : effect; await updatePersistentPanel(qNow).catch(() => {}); }
-            const names = {bassboost: '🔊 Bass Boost', nightcore: '🐰 Nightcore', vaporwave: '🌴 Vaporwave', normalize: '📊 Normalize', '': '${EMOJIS.error} Off'};
+            const names = {bassboost: '🔊 Bass Boost', nightcore: '🐰 Nightcore', vaporwave: '🌴 Vaporwave', normalize: '📊 Normalize', '': '❌ Off'};
             const embed = new EmbedBuilder().setColor(ARCHON.purple)
-                .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ FILTER\u001b[0m ${names[effect === 'off' ? '' : effect] || '${EMOJIS.error} Off'}\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ FILTER\u001b[0m ${names[effect === 'off' ? '' : effect] || '❌ Off'}\n\`\`\``);
             return interaction.editReply({embeds: [embed]});
         }
 
