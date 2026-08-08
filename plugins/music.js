@@ -1175,7 +1175,9 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         components.push(new ActionRowBuilder().addComponents(menu));
     }
 
-    const msg = await replyFn({ embeds: [embed], components });
+    // Loading state is ephemeral — only caller sees it, disappears automatically
+    const msgFlags = (!isPlaying && components.length === 0) ? { flags: 64 } : {};
+    const msg = await replyFn({ embeds: [embed], components, ...msgFlags });
 
     if (suggestions.length > 0 && msg) {
         const collector = msg.createMessageComponentCollector({ time: 30000 });
