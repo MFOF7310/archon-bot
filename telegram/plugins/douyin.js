@@ -3,6 +3,9 @@
 // ═══════════════════════════════════════════
 
 const https = require('https');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -44,21 +47,29 @@ module.exports = {
 
         await ctx.action('upload_video');
         const proc = await ctx.replyHTML(`🎬 <i>On it! Grabbing that ${platform} video...</i>`);
+        const deleteProc = () => { try { ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {}); } catch(e) {} };
 
         try {
             let info = await fetchTikWM(url);
+            console.log('[TIKTOK] TikWM result:', info ? 'got data' : 'null', info?.url?.substring(0,50));
             if (!info && platform === 'Douyin') info = await douyinFallback(url);
             if (!info) info = await neuralGridFallback(url);
+            console.log('[TIKTOK] Final info:', info?.url?.substring(0,50));
             if (!info?.url) throw new Error('All methods failed');
 
             const caption = (info.title ? `🎬 ${escapeHTML(info.title.substring(0, 120))}\n` : '') +
                 (info.uploader ? `👤 @${escapeHTML(info.uploader)}` : '') +
                 `\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
 
+            // Download to buffer — TikTok CDN blocks direct Telegram fetches
             try {
-                await ctx.sendVideo(info.url, { caption, parse_mode: 'HTML' });
-            } catch {
-                await ctx.sendDoc(info.url, { caption, parse_mode: 'HTML' });
+                const buffer = await downloadBuffer(info.url);
+                await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
+                deleteProc();
+            } catch(dlErr) {
+                console.error('[TIKTOK] Send error:', dlErr.message);
+                deleteProc();
+                await ctx.replyHTML(`❌ Couldn't deliver that video — try again or use a different link.`);
             }
         } catch (err) {
             ctx.replyHTML(`❌ Couldn't grab that one — might be private or region-locked. Try a different video!`);
@@ -114,6 +125,25 @@ async function followRedirect(url, maxHops = 5) {
         url = next;
     }
     return url;
+}
+
+function downloadBuffer(url, maxRedirects = 5) {
+    return new Promise((resolve, reject) => {
+        const get = (u, hops) => {
+            if (hops > maxRedirects) return reject(new Error('Too many redirects'));
+            const lib = u.startsWith('https:') ? https : require('http');
+            lib.get(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36', 'Referer': 'https://www.tiktok.com/' } }, res => {
+                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    return get(res.headers.location, hops + 1);
+                }
+                if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+                const chunks = [];
+                res.on('data', chunk => chunks.push(chunk));
+                res.on('end', () => resolve(Buffer.concat(chunks)));
+            }).on('error', reject);
+        };
+        get(url, 0);
+    });
 }
 
 async function fetchTikWM(url) {
