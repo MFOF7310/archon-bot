@@ -594,7 +594,7 @@ async function getSpotifyToken() {
         const data = await res.json();
         spotifyToken = data.access_token;
         spotifyExpiry = Date.now() + (data.expires_in - 60) * 1000;
-        console.log('[MUSIC] Spotify token refreshed ${EMOJIS.check}');
+        console.log('[MUSIC] Spotify token refreshed ✅');
         return spotifyToken;
     } catch(e) {
         console.error('[MUSIC] Spotify token error:', e.message);
@@ -653,7 +653,7 @@ let scReady = false;
         const id = await playdl.getFreeClientID();
         await playdl.setToken({ soundcloud: { client_id: id } });
         scReady = true;
-        console.log('[MUSIC] SoundCloud ready ${EMOJIS.check}');
+        console.log('[MUSIC] SoundCloud ready ✅');
     } catch (e) { console.error('[MUSIC] SoundCloud init failed:', e.message); }
 })();
 setInterval(async () => {
@@ -823,7 +823,7 @@ async function playNext(q) {
                 track.duration = spotifyData.duration || track.duration;
                 track.album = spotifyData.album;
                 track.spotifyUrl = spotifyData.spotifyUrl;
-                console.log('[MUSIC] Spotify metadata ${EMOJIS.check}:', track.title, 'by', track.artist);
+                console.log('[MUSIC] Spotify metadata ✅:', track.title, 'by', track.artist);
             }
         } catch(e) {}
 
@@ -834,7 +834,7 @@ async function playNext(q) {
                 if (it?.thumbnail) {
                     track.thumbnail = it.thumbnail;
                     if (track.artist === 'Unknown' && it.artist) track.artist = it.artist;
-                    console.log('[MUSIC] iTunes artwork ${EMOJIS.check} for:', track.title);
+                    console.log('[MUSIC] iTunes artwork ✅ for:', track.title);
                 }
             } catch(e) {}
         }
@@ -1037,7 +1037,7 @@ async function ensureConnection(q) {
         q.connection = conn;
         if (isStage) {
             setTimeout(async () => {
-                try { await q.guild.members.me?.voice.setSuppressed(false); console.log('[MUSIC] Stage speaker ${EMOJIS.check}'); } catch(e) {}
+                try { await q.guild.members.me?.voice.setSuppressed(false); console.log('[MUSIC] Stage speaker ✅'); } catch(e) {}
             }, 1500);
         }
         conn.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -1282,7 +1282,7 @@ module.exports = {
                     const folders = [...new Set(lib.map(t => t.folder).filter(Boolean))];
                     for (const folder of folders) {
                         const count = lib.filter(t => t.folder === folder).length;
-                        push(`${EMOJIS.folder} ${folder} (${count} tracks)`, `__folder__${folder}`);
+                        push(`📂 ${folder} (${count} tracks)`, `__folder__${folder}`);
                     }
                     // Fill remaining slots with top songs
                     const remaining = 25 - results.length;
