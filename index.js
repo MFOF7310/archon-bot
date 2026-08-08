@@ -5388,13 +5388,14 @@ apiApp.post('/api/admin/dashboard-users/upsert', (req, res) => {
 
         const isOwner = discord_id === process.env.OWNER_ID ? 1 : 0;
         db.prepare(`
-            INSERT INTO dashboard_users (discord_id, username, avatar, is_owner, login_count, updated_at, created_at)
-            VALUES (?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+            INSERT INTO dashboard_users (discord_id, username, avatar, is_owner, login_count, last_login, updated_at, created_at)
+            VALUES (?, ?, ?, ?, 1, datetime('now'), datetime('now'), datetime('now'))
             ON CONFLICT(discord_id) DO UPDATE SET
                 username = excluded.username,
                 avatar = excluded.avatar,
                 is_owner = excluded.is_owner,
                 login_count = login_count + 1,
+                last_login = datetime('now'),
                 updated_at = datetime('now')
         `).run(discord_id, username || 'Unknown', avatar || null, isOwner);
 
