@@ -2320,6 +2320,38 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 
 // ================= BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
+    // ── Dynamic emoji resolver — update emojis.js on disk at boot ──
+    try {
+        const mainGuild = client.guilds.cache.get(process.env.GUILD_ID);
+        if (mainGuild) {
+            const guildEmojis = await mainGuild.emojis.fetch();
+            const emojiPath = require('path').join(__dirname, 'config/emojis.js');
+            let emojiFile = require('fs').readFileSync(emojiPath, 'utf8');
+            let updated = 0;
+
+            for (const emoji of guildEmojis.values()) {
+                const newStr = emoji.animated
+                    ? `<a:${emoji.name}:${emoji.id}>`
+                    : `<:${emoji.name}:${emoji.id}>`;
+                // Match by name — replace old ID with new one
+                const pattern = new RegExp(`(<a?:${emoji.name}:\d+>)`, 'g');
+                const newFile = emojiFile.replace(pattern, newStr);
+                if (newFile !== emojiFile) {
+                    emojiFile = newFile;
+                    updated++;
+                }
+            }
+
+            if (updated > 0) {
+                require('fs').writeFileSync(emojiPath, emojiFile, 'utf8');
+                console.log(`[EMOJIS] ✅ Auto-updated ${updated} emoji IDs on disk`);
+            } else {
+                console.log('[EMOJIS] All emoji IDs up to date');
+            }
+        }
+    } catch(e) {
+        console.error('[EMOJIS] Dynamic resolve failed:', e.message);
+    }
     const isPM2 = process.env.pm_id !== undefined || process.env.name === 'Architect-CG223';
     
     if (!isPM2) {
