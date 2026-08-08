@@ -49,6 +49,8 @@ module.exports = {
     stop:     '<:stop:1535658674054373386>',
     pause:    '<a:pause:1535657804730212545>',
     shuffle:  '<:shuffle:1535662585481789470>',
+    loop:     '<a:loop:1535659008403312640>',
+    skip:     '<:skip:1535664559816441956>',
 
     // ── Crowns (use for different rank tiers) ──
     crown:    '<:Crown:1156715118990725230>',
