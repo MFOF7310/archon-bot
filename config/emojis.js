@@ -28,4 +28,19 @@ module.exports = {
     online:  '<a:online:1535637137624530944>',
     loading: '<a:loading:1535637155253198989>',
     trophy:  '<:trophy:1535637016065212478>',
+
+    // ── ARCHON Branding ──
+    bamako: '<:bamako:1535640587498291240>',
+    eagle:  '<:eagle:1535640693652070541>',
+
+    // ── Gaming & Actions ──
+    music:   '<:music:1535641832933822464>',
+    shield:  '<:shield:1535642169032048730>',
+    xp:      '<:XP:1535642631139364984>',
+    check:   '<a:check:1505715312773959731>',
+    level:   '<a:level:1535637044527636531>',
+
+    // ── Crowns (use for different rank tiers) ──
+    crown:    '<:Crown:1156715118990725230>',
+    blCrown:  '<:bl_crown:1108129039094386750>',
 };
