@@ -131,6 +131,21 @@ function formatTime(s) {
     return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 }
 
+// Platform emoji map
+const PLATFORM_EMOJI = {
+    spotify:    '<:spotify:1535456890702528544>',
+    soundcloud: '<:soundcloud:1535456930171064340>',
+    youtube:    '<:youtube:1535456930317991946>',
+    local:      '📂',
+};
+function getPlatformEmoji(track) {
+    if (track?.spotifyUrl)              return PLATFORM_EMOJI.spotify;
+    if (track?.source === 'SoundCloud') return PLATFORM_EMOJI.soundcloud;
+    if (track?.source === 'YouTube')    return PLATFORM_EMOJI.youtube;
+    if (track?.source === 'Local')      return PLATFORM_EMOJI.local;
+    return '🎵';
+}
+
 // Always-clickable title — real Spotify URL when we have it, YouTube search as fallback
 function trackLinkFor(t, maxLen = 120) {
     const name = (t.artist && t.artist !== 'Unknown' && !t.title.includes(t.artist))
@@ -247,27 +262,27 @@ function buildPanelRows(q) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
 
-    // Row 1 — Transport (FlaviBot style: labeled buttons)
+    // Row 1 — Core (4 buttons max — no wrapping on mobile CV2)
     const rowTransport = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_voldown').setLabel('Down').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
-        new ButtonBuilder().setCustomId('mc_prev').setLabel('Previous').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
         new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
         new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Secondary).setEmoji('⏭️'),
-        new ButtonBuilder().setCustomId('mc_volup').setLabel('Up').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 100),
-    );
-
-    // Row 2 — Session controls
-    const rowSession = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_loop').setLabel('Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
-        new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
         new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+        new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
     );
 
-    // Row 3 — Taste (FlaviBot: Like / Not for me / What's next)
+    // Row 2 — Extras (emoji only — no labels to avoid wrapping)
+    const rowSession = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('mc_voldown').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
+        new ButtonBuilder().setCustomId('mc_prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_volup').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 100),
+    );
+
+    // Row 3 — Taste + Queue
     const rowTaste = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
         new ButtonBuilder().setCustomId('mc_dislike').setLabel('Not for me').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
     );
 
     return [rowTransport, rowSession, rowTaste];
@@ -1103,7 +1118,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     const embed = new EmbedBuilder().setColor(isPlaying ? 0x1DB954 : ARCHON.cyan);
     if (isPlaying) {
         embed.setAuthor({ name: 'Added to the queue', iconURL: SPOTIFY_ICON })
-            .setDescription(`Added **${nameMd}**${durMd} to the queue.\n> Position **#${q.tracks.length}** • Added by **${requestedBy}**`);
+            .setDescription(`${getPlatformEmoji(track)} Added **${nameMd}**${durMd} to the queue.\n> Position **#${q.tracks.length}** • Added by **${requestedBy}**`);
         if (track.thumbnail) embed.setThumbnail(track.thumbnail);
     } else {
         embed.setDescription(`🎵 **${query.substring(0,60)}**\n> On it — warming up the decks… 🎚️`);
