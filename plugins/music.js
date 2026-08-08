@@ -265,25 +265,25 @@ function buildPanelRows(q) {
 
     // Row 1 — Core (4 buttons max — no wrapping on mobile CV2)
     const rowTransport = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
-        new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Secondary).setEmoji('⏭️'),
-        new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔀'),
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : EMOJIS.pause),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Secondary).setEmoji(EMOJIS.skip),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji(EMOJIS.stop),
+        new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(EMOJIS.shuffle),
     );
 
     // Row 2 — Extras (emoji only — no labels to avoid wrapping)
     const rowSession = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_voldown').setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
+        new ButtonBuilder().setCustomId('mc_voldown').setStyle(ButtonStyle.Secondary).setEmoji(EMOJIS.volume).setDisabled(q.volume <= 0),
         new ButtonBuilder().setCustomId('mc_prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
-        new ButtonBuilder().setCustomId('mc_loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
-        new ButtonBuilder().setCustomId('mc_volup').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 100),
+        new ButtonBuilder().setCustomId('mc_loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(EMOJIS.loop),
+        new ButtonBuilder().setCustomId('mc_volup').setStyle(ButtonStyle.Secondary).setEmoji(EMOJIS.volume).setDisabled(q.volume >= 100),
     );
 
     // Row 3 — Taste + Queue
     const rowTaste = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
         new ButtonBuilder().setCustomId('mc_dislike').setLabel('Not for me').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
-        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji(EMOJIS.queue),
     );
 
     return [rowTransport, rowSession, rowTaste];
