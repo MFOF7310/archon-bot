@@ -122,7 +122,7 @@ module.exports = {
             const type = interaction.options.getString('type');
             const channel = interaction.options.getChannel('channel');
             const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: '${EMOJIS.error} Unknown channel type.', flags: 64 });
+            if (!def) return interaction.reply({ content: '❌ Unknown channel type.', flags: 64 });
 
             const ok = client.updateServerSetting?.(guildId, def.dbcol, channel.id);
             client.settings?.delete(guildId);
@@ -141,7 +141,7 @@ module.exports = {
         if (sub === 'remove') {
             const type = interaction.options.getString('type');
             const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: '${EMOJIS.error} Unknown channel type.', flags: 64 });
+            if (!def) return interaction.reply({ content: '❌ Unknown channel type.', flags: 64 });
 
             client.updateServerSetting?.(guildId, def.dbcol, null);
             client.settings?.delete(guildId);

@@ -315,7 +315,7 @@ module.exports = {
         addSubcommand(s=>s.setName('settranscript').setDescription('Set log channel').addChannelOption(o=>o.setName('channel').setDescription('Log channel').setRequired(true).addChannelTypes(ChannelType.GuildText,5))).
         addSubcommand(s=>s.setName('setautoclose').setDescription('Auto-close hours').addIntegerOption(o=>o.setName('hours').setDescription('Hours (0=off)').setRequired(true).setMinValue(0).setMaxValue(168))).
         addSubcommand(s=>s.setName('setlimit').setDescription('Max tickets per user').addIntegerOption(o=>o.setName('limit').setDescription('1-10').setRequired(true).setMinValue(1).setMaxValue(10))).
-        addSubcommand(s=>s.setName('leaderboard').setDescription('${EMOJIS.trophy} Top staff by rating')).
+        addSubcommand(s=>s.setName('leaderboard').setDescription('🏆 Top staff by rating')).
         addSubcommand(s=>s.setName('stats').setDescription('📊 Ticket system analytics')).
         addSubcommand(s=>s.setName('myrating').setDescription('⭐ Your rating history')),
 

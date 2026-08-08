@@ -313,7 +313,7 @@ module.exports = {
     usage: '.leaderboard [xp|credits|messages|streak|wins]',
     cooldown: 8000,
 
-    data: new SlashCommandBuilder().setName('leaderboard').setDescription('${EMOJIS.trophy} Neural Leaderboard')
+    data: new SlashCommandBuilder().setName('leaderboard').setDescription('🏆 Neural Leaderboard')
         .addStringOption(o => o.setName('type').setDescription('Sort by').setRequired(false)
             .addChoices(
                 { name: 'XP',          value: 'xp'       },
