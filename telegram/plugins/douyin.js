@@ -89,28 +89,31 @@ function requestJSON(url, opts = {}) {
     });
 }
 
-async function followRedirect(url) {
-    return new Promise((resolve) => {
-        const lib = url.startsWith('https:') ? https : require('http');
-        const req = lib.request(url, {
-            method: 'GET',
-            timeout: 10000,
-            headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
-        }, (res) => {
-            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                // Follow one more redirect if needed
-                const loc = res.headers.location;
-                if (loc.startsWith('http')) resolve(loc);
-                else resolve(url);
-            } else {
-                resolve(url);
-            }
-            res.resume(); // drain response
+async function followRedirect(url, maxHops = 5) {
+    for (let i = 0; i < maxHops; i++) {
+        const next = await new Promise((resolve) => {
+            const lib = url.startsWith('https:') ? https : require('http');
+            const req = lib.request(url, {
+                method: 'GET',
+                timeout: 10000,
+                headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
+            }, (res) => {
+                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    const loc = res.headers.location;
+                    resolve(loc.startsWith('http') ? loc : url);
+                } else {
+                    resolve(null); // no more redirects
+                }
+                res.resume();
+            });
+            req.on('error', () => resolve(null));
+            req.on('timeout', () => { req.destroy(); resolve(null); });
+            req.end();
         });
-        req.on('error', () => resolve(url));
-        req.on('timeout', () => { req.destroy(); resolve(url); });
-        req.end();
-    });
+        if (!next || next === url) break;
+        url = next;
+    }
+    return url;
 }
 
 async function fetchTikWM(url) {
