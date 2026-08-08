@@ -407,7 +407,7 @@ function attachCollector(q, msg) {
             const prev = qNow.trackHistory.shift();
             if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
             qNow.tracks.unshift(prev);
-            await i.followUp({ content: `${EMOJIS.shuffle} Going back to **${prev.title?.substring(0,50)}**…`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.mc_autoplay} Going back to **${prev.title?.substring(0,50)}**…`, flags: 64 }).catch(() => {});
             qNow.player.stop(); // Triggers Idle → playNext
         } else if (i.customId === 'mc_pause') {
             if (qNow.player.state.status === AudioPlayerStatus.Paused) {
@@ -418,11 +418,11 @@ function attachCollector(q, msg) {
             } else {
                 qNow.player.pause();
                 qNow.pausedAt = Date.now();
-                await i.followUp({ content: `${EMOJIS.pause} Paused`, flags: 64 }).catch(() => {});
+                await i.followUp({ content: `${EMOJIS.mc_pause} Paused`, flags: 64 }).catch(() => {});
             }
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_skip') {
-            await i.followUp({ content: `${EMOJIS.skip} Skipping **${qNow.currentTrack?.title?.substring(0,50) || 'track'}**…`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.mc_skip} Skipping **${qNow.currentTrack?.title?.substring(0,50) || 'track'}**…`, flags: 64 }).catch(() => {});
             qNow.player.stop();
         } else if (i.customId === 'mc_stop') {
             if (qNow.persistentMsg) {
@@ -436,16 +436,16 @@ function attachCollector(q, msg) {
         } else if (i.customId === 'mc_voldown' || i.customId === 'mc_volup') {
             qNow.volume = Math.max(0, Math.min(100, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
             try { qNow.player?.state?.resource?.volume?.setVolume(qNow.volume / 100); } catch(e) {}
-            await i.followUp({ content: `${EMOJIS.volume} Volume set to \`${qNow.volume}%\``, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.mc_volume_up} Volume set to \`${qNow.volume}%\``, flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_loop') {
             qNow.loop = !qNow.loop;
             // NOTE: do NOT unshift here — AudioPlayerStatus.Idle handler does it
-            await i.followUp({ content: `${EMOJIS.loop} Loop **${qNow.loop ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.mc_loop} Loop **${qNow.loop ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_autoplay') {
             qNow.autoplay = !qNow.autoplay;
-            await i.followUp({ content: `${EMOJIS.shuffle} AutoPlay **${qNow.autoplay ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.mc_autoplay} AutoPlay **${qNow.autoplay ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_like') {
             const t = qNow.currentTrack;
@@ -1082,7 +1082,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         try {
             const lib = require('../data/music-library.json');
             const tracks = lib.filter(t => t.folder === folderName);
-            if (!tracks.length) return replyFn({ content: `${EMOJIS.folder} Folder **${folderName}** is empty.` });
+            if (!tracks.length) return replyFn({ content: `${EMOJIS.mc_folder} Folder **${folderName}** is empty.` });
 
             // Use existing handlePlay flow for first track to properly join voice
             const shuffled = [...tracks].sort(() => Math.random() - 0.5);
@@ -1090,7 +1090,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             const rest = shuffled.slice(1);
 
             // Queue the rest first so they're ready after first track loads
-            await replyFn({ content: `${EMOJIS.folder} Loading **${tracks.length} tracks** from **${folderName}**… 🎶` });
+            await replyFn({ content: `${EMOJIS.mc_folder} Loading **${tracks.length} tracks** from **${folderName}**… 🎶` });
 
             // Play first track through normal flow (handles voice join + player setup)
             await handlePlay(guildId, guild, voiceChannel, textChannel, firstTrack.query, requestedBy, client,
