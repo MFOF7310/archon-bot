@@ -250,7 +250,7 @@ function buildPanelEmbed(q, client) {
 
     return new EmbedBuilder()
         .setColor(isPaused ? ARCHON.gold : 0x5865F2)
-        .setTitle(isPaused ? '⏸️ Paused' : 'Now playing')
+        .setTitle(isPaused ? `${EMOJIS.pause} Paused` : 'Now playing')
         .setDescription(
             `${trackLink}\n\n` +
             `• Added by ${requester}\n` +
@@ -407,22 +407,22 @@ function attachCollector(q, msg) {
             const prev = qNow.trackHistory.shift();
             if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
             qNow.tracks.unshift(prev);
-            await i.followUp({ content: `⏮️ Going back to **${prev.title?.substring(0,50)}**…`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.shuffle} Going back to **${prev.title?.substring(0,50)}**…`, flags: 64 }).catch(() => {});
             qNow.player.stop(); // Triggers Idle → playNext
         } else if (i.customId === 'mc_pause') {
             if (qNow.player.state.status === AudioPlayerStatus.Paused) {
                 qNow.player.unpause();
                 qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
                 qNow.pausedAt = null;
-                await i.followUp({ content: '▶️ Resumed', flags: 64 }).catch(() => {});
+                await i.followUp({ content: `${EMOJIS.check} Resumed`, flags: 64 }).catch(() => {});
             } else {
                 qNow.player.pause();
                 qNow.pausedAt = Date.now();
-                await i.followUp({ content: '⏸️ Paused', flags: 64 }).catch(() => {});
+                await i.followUp({ content: `${EMOJIS.pause} Paused`, flags: 64 }).catch(() => {});
             }
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_skip') {
-            await i.followUp({ content: `⏭️ Skipping **${qNow.currentTrack?.title?.substring(0,50) || 'track'}**…`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.skip} Skipping **${qNow.currentTrack?.title?.substring(0,50) || 'track'}**…`, flags: 64 }).catch(() => {});
             qNow.player.stop();
         } else if (i.customId === 'mc_stop') {
             if (qNow.persistentMsg) {
@@ -436,16 +436,16 @@ function attachCollector(q, msg) {
         } else if (i.customId === 'mc_voldown' || i.customId === 'mc_volup') {
             qNow.volume = Math.max(0, Math.min(100, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
             try { qNow.player?.state?.resource?.volume?.setVolume(qNow.volume / 100); } catch(e) {}
-            await i.followUp({ content: `🔊 Volume set to \`${qNow.volume}%\``, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.volume} Volume set to \`${qNow.volume}%\``, flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_loop') {
             qNow.loop = !qNow.loop;
             // NOTE: do NOT unshift here — AudioPlayerStatus.Idle handler does it
-            await i.followUp({ content: `🔁 Loop **${qNow.loop ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.loop} Loop **${qNow.loop ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_autoplay') {
             qNow.autoplay = !qNow.autoplay;
-            await i.followUp({ content: `🔀 AutoPlay **${qNow.autoplay ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.shuffle} AutoPlay **${qNow.autoplay ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_like') {
             const t = qNow.currentTrack;
