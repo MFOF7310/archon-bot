@@ -15,10 +15,9 @@ module.exports = {
     soundcloud: '<:soundcloud:1535456930171064340>',
     youtube:    '<:youtube:1535456930317991946>',
 
-    // ── Placeholders for future emojis ──
-    // discord:  '<:discord:ID>',
-    // premium:  '<:premium:ID>',
-    // verified: '<:verified:ID>',
-    // coin:     '<:coin:ID>',
-    // xp:       '<:xp:ID>',
+    // ── Status & badges ──
+    premium:  '<:premium:1535622705787699220>',
+    discord:  '<:discord:1535620919081312360>',
+    coins:    '<a:coins:1535620839897309315>',
+    verified: '<a:verified:1535620889998270544>',
 };
