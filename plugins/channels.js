@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 const CHANNEL_DEFS = {
     general:   { col: 'generalChannel',            dbcol: 'general_channel',            env: 'GENERAL_CHANNEL_ID',            emoji: '🏠', label: 'General Channel' },
@@ -121,7 +122,7 @@ module.exports = {
             const type = interaction.options.getString('type');
             const channel = interaction.options.getChannel('channel');
             const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: '❌ Unknown channel type.', flags: 64 });
+            if (!def) return interaction.reply({ content: '${EMOJIS.error} Unknown channel type.', flags: 64 });
 
             const ok = client.updateServerSetting?.(guildId, def.dbcol, channel.id);
             client.settings?.delete(guildId);
@@ -140,7 +141,7 @@ module.exports = {
         if (sub === 'remove') {
             const type = interaction.options.getString('type');
             const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: '❌ Unknown channel type.', flags: 64 });
+            if (!def) return interaction.reply({ content: '${EMOJIS.error} Unknown channel type.', flags: 64 });
 
             client.updateServerSetting?.(guildId, def.dbcol, null);
             client.settings?.delete(guildId);
@@ -155,7 +156,7 @@ module.exports = {
 
     run: async (client, message, args, db, ss) => {
         if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply('❌ Administrator permission required.').catch(() => {});
+            return message.reply('${EMOJIS.error} Administrator permission required.').catch(() => {});
         }
         const sub = args[0]?.toLowerCase();
         const guildId = message.guild.id;
@@ -189,13 +190,13 @@ module.exports = {
             const type = args[1]?.toLowerCase();
             const channelId = args[2]?.replace(/[<#>]/g, '');
             const def = CHANNEL_DEFS[type];
-            if (!def) return message.reply(`❌ Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
-            if (!channelId) return message.reply(`❌ Usage: \`.channels set ${type} #channel\``).catch(() => {});
+            if (!def) return message.reply(`${EMOJIS.error} Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
+            if (!channelId) return message.reply(`${EMOJIS.error} Usage: \`.channels set ${type} #channel\``).catch(() => {});
             const ch = message.guild.channels.cache.get(channelId);
-            if (!ch) return message.reply('❌ Channel not found.').catch(() => {});
+            if (!ch) return message.reply('${EMOJIS.error} Channel not found.').catch(() => {});
             client.updateServerSetting?.(guildId, def.dbcol, channelId);
             client.settings?.delete(guildId);
-            return message.reply(`✅ **${def.label}** set to <#${channelId}>`).catch(() => {});
+            return message.reply(`${EMOJIS.check} **${def.label}** set to <#${channelId}>`).catch(() => {});
         }
     }
 };

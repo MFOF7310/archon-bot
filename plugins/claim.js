@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ================= UNIFIED LEVEL CALCULATION =================
 function calculateLevel(xp) { 
@@ -9,9 +10,9 @@ function calculateLevel(xp) {
 const claimTranslations = {
     en: {
         title: '⚡ NEURAL CLAIM PROTOCOL',
-        successTitle: '✅ RESOURCES INJECTED',
+        successTitle: '${EMOJIS.check} RESOURCES INJECTED',
         cooldownTitle: '🔒 ACCESS DENIED',
-        cooldownDesc: (name, time, prefix) => `**Agent ${name}**, your neural cycle is still processing.\n\n⏳ **Cooldown Remaining:** \`${time}\`\n\n💡 Use \`${prefix}daily\` to view your full dashboard.`,
+        cooldownDesc: (name, time, prefix) => `**Agent ${name}**, your neural cycle is still processing.\n\n${EMOJIS.loading} **Cooldown Remaining:** \`${time}\`\n\n💡 Use \`${prefix}daily\` to view your full dashboard.`,
         successDesc: (credits, xp, streak) =>
             '```ansi\n' +
             '\u001b[1;36m\u25b8 CREDITS  \u001b[0m\u001b[1;32m+' + credits.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
@@ -29,17 +30,17 @@ const claimTranslations = {
         currentStats: '📊 CURRENT STATISTICS',
         viewDashboard: '📊 Dashboard',
         myProfile: '👤 My Profile',
-        error: '❌ An error occurred during claim processing.',
-        accessDenied: '❌ These controls are locked to your session.',
+        error: '${EMOJIS.error} An error occurred during claim processing.',
+        accessDenied: '${EMOJIS.error} These controls are locked to your session.',
         channelRestricted: (channelId) => `📊 The claim protocol is restricted to <#${channelId}>.`,
         dashboardOpened: '📊 Dashboard displayed above!',
         profileOpened: '👤 Profile displayed above!'
     },
     fr: {
         title: '⚡ PROTOCOLE DE RÉCLAMATION NEURALE',
-        successTitle: '✅ RESSOURCES INJECTÉES',
+        successTitle: '${EMOJIS.check} RESSOURCES INJECTÉES',
         cooldownTitle: '🔒 ACCÈS REFUSÉ',
-        cooldownDesc: (name, time, prefix) => `**Agent ${name}**, votre cycle neural est toujours en cours.\n\n⏳ **Temps restant:** \`${time}\`\n\n💡 Utilisez \`${prefix}daily\` pour voir votre tableau de bord.`,
+        cooldownDesc: (name, time, prefix) => `**Agent ${name}**, votre cycle neural est toujours en cours.\n\n${EMOJIS.loading} **Temps restant:** \`${time}\`\n\n💡 Utilisez \`${prefix}daily\` pour voir votre tableau de bord.`,
         successDesc: (credits, xp, streak) =>
             '```ansi\n' +
             '\u001b[1;36m\u25b8 CRÉDITS  \u001b[0m\u001b[1;32m+' + credits.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
@@ -57,8 +58,8 @@ const claimTranslations = {
         currentStats: '📊 STATISTIQUES ACTUELLES',
         viewDashboard: '📊 Tableau de Bord',
         myProfile: '👤 Mon Profil',
-        error: '❌ Une erreur est survenue lors de la réclamation.',
-        accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
+        error: '${EMOJIS.error} Une erreur est survenue lors de la réclamation.',
+        accessDenied: '${EMOJIS.error} Ces commandes sont verrouillées à votre session.',
         channelRestricted: (channelId) => `📊 Le protocole est restreint au canal <#${channelId}>.`,
         dashboardOpened: '📊 Tableau de bord affiché !',
         profileOpened: '👤 Profil affiché !'
@@ -71,7 +72,7 @@ const AGENT_RANKS = [
     { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
     { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
     { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
+    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "${EMOJIS.crown}" }
 ];
 
 function getRank(level) { 
@@ -198,10 +199,10 @@ async function deliverDailyReminder(client, reminder, database) {
         if (user) {
             await user.send({ embeds: [embed] });
             delivered = true;
-            console.log(`[DAILY REMINDER] ✅ DM sent to ${reminder.user_tag || reminder.user_id}`);
+            console.log(`[DAILY REMINDER] ${EMOJIS.check} DM sent to ${reminder.user_tag || reminder.user_id}`);
         }
     } catch (dmErr) {
-        console.log(`[DAILY REMINDER] ❌ DM failed for ${reminder.user_tag || reminder.user_id}: ${dmErr.message}`);
+        console.log(`[DAILY REMINDER] ${EMOJIS.error} DM failed for ${reminder.user_tag || reminder.user_id}: ${dmErr.message}`);
     }
 
     // Fallback: channel mention
@@ -216,7 +217,7 @@ async function deliverDailyReminder(client, reminder, database) {
                 console.log(`[DAILY REMINDER] 📢 Channel fallback for ${reminder.user_tag || reminder.user_id}`);
             }
         } catch (chErr) {
-            console.log(`[DAILY REMINDER] ❌ Channel fallback failed: ${chErr.message}`);
+            console.log(`[DAILY REMINDER] ${EMOJIS.error} Channel fallback failed: ${chErr.message}`);
         }
     }
 
@@ -841,7 +842,7 @@ module.exports = {
         } catch (error) {
             console.error(`[CLAIM SLASH] FATAL ERROR:`, error);
             const _lang = client.detectLanguage ? client.detectLanguage('claim', interaction.guild?.id || 'DM') : 'en';
-            const errorMsg = { content: claimTranslations[_lang]?.error || '❌ An error occurred during claim processing.', flags: 64 };
+            const errorMsg = { content: claimTranslations[_lang]?.error || '${EMOJIS.error} An error occurred during claim processing.', flags: 64 };
             if (interaction.deferred || interaction.replied) {
                 return interaction.editReply(errorMsg).catch(() => {});
             }
