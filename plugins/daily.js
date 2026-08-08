@@ -83,7 +83,7 @@ module.exports = {
     .setName('daily')
     .setDescription('📅 View your daily status and statistics')
     .addSubcommand(sub =>
-        sub.setName('check').setDescription('${EMOJIS.check} Check if your daily reward is ready')
+        sub.setName('check').setDescription('✅ Check if your daily reward is ready')
     )
     .addSubcommand(sub =>
         sub.setName('stats').setDescription('📊 View your daily streak statistics')
@@ -94,6 +94,7 @@ module.exports = {
         // Priority: 1) French aliases (quotidien, journalier), 2) guild locale, 3) detectLanguage
         const frenchAliases = ['quotidien', 'journalier', 'journalière', 'qotd'];
         const isFrenchAlias = usedCommand && frenchAliases.some(a => usedCommand.toLowerCase().includes(a));
+        const guildId = message.guild?.id || 'DM';
         lang = isFrenchAlias ? 'fr' :
                      (message.guild?.preferredLocale?.startsWith('fr') ? 'fr' :
                      (client.detectLanguage ? client.detectLanguage('daily', guildId) : 'en'));
