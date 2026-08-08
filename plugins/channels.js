@@ -48,6 +48,7 @@ module.exports = {
                     { name: '📜 Rules', value: 'rules' },
                     { name: '🎫 Ticket Logs', value: 'ticket' },
                     { name: '📊 Level-Up', value: 'levelup' },
+                    { name: '🔔 Bot Updates', value: 'updates' },
                 )
             )
             .addChannelOption(o => o
@@ -76,6 +77,7 @@ module.exports = {
                     { name: '📜 Rules', value: 'rules' },
                     { name: '🎫 Ticket Logs', value: 'ticket' },
                     { name: '📊 Level-Up', value: 'levelup' },
+                    { name: '🔔 Bot Updates', value: 'updates' },
                 )
             )
         ),
