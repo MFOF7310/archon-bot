@@ -1074,14 +1074,28 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             const lib = require('../data/music-library.json');
             const tracks = lib.filter(t => t.folder === folderName);
             if (!tracks.length) return replyFn({ content: `📂 Folder **${folderName}** is empty.` });
-            const q = getQueue(guildId) || createQueue(guild, voiceChannel, textChannel, client);
+
+            // Use existing handlePlay flow for first track to properly join voice
             const shuffled = [...tracks].sort(() => Math.random() - 0.5);
-            for (const t of shuffled) {
-                q.tracks.push({ title: t.title, query: t.query, artist: t.artist || 'Unknown', source: 'SoundCloud', duration: t.duration || 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: null });
+            const firstTrack = shuffled[0];
+            const rest = shuffled.slice(1);
+
+            // Queue the rest first so they're ready after first track loads
+            await replyFn({ content: `📂 Loading **${tracks.length} tracks** from **${folderName}**… 🎶` });
+
+            // Play first track through normal flow (handles voice join + player setup)
+            await handlePlay(guildId, guild, voiceChannel, textChannel, firstTrack.query, requestedBy, client,
+                () => {}, requestedById);
+
+            // Then add the rest to the queue
+            const q = getQueue(guildId);
+            if (q) {
+                for (const t of rest) {
+                    q.tracks.push({ title: t.title, query: t.query, artist: t.artist || 'Unknown', source: 'SoundCloud', duration: t.duration || 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: null });
+                }
             }
-            await replyFn({ content: `📂 Queued **${tracks.length} tracks** from **${folderName}** 🎶` });
-            if (!q.currentTrack) playNext(q);
         } catch(e) {
+            console.error('[MUSIC FOLDER]', e.message);
             replyFn({ content: `❌ Could not load folder: ${e.message}` });
         }
         return;
