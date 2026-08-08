@@ -131,11 +131,11 @@ function formatTime(s) {
     return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 }
 
-// Platform emoji map
+// Platform emoji map — sourced from centralized config
 const PLATFORM_EMOJI = {
-    spotify:    '<:spotify:1535456890702528544>',
-    soundcloud: '<:soundcloud:1535456930171064340>',
-    youtube:    '<:youtube:1535456930317991946>',
+    spotify:    EMOJIS.spotify,
+    soundcloud: EMOJIS.soundcloud,
+    youtube:    EMOJIS.youtube,
     local:      '📂',
 };
 function getPlatformEmoji(track) {
