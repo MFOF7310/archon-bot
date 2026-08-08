@@ -1,4 +1,5 @@
 const { AttachmentBuilder, SlashCommandBuilder } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
@@ -18,7 +19,7 @@ const AGENT_RANKS = [
     { minLevel: 6,  maxLevel: 15,       color: '#3498db', emoji: '🔹', title: 'AGENT'      },
     { minLevel: 16, maxLevel: 30,       color: '#9b59b6', emoji: '💠', title: 'SPECIALIST' },
     { minLevel: 31, maxLevel: 50,       color: '#e67e22', emoji: '⚜️', title: 'COMMANDER'  },
-    { minLevel: 51, maxLevel: Infinity, color: '#e74c3c', emoji: '👑', title: 'ARCHITECT'  },
+    { minLevel: 51, maxLevel: Infinity, color: '#e74c3c', emoji: '${EMOJIS.crown}', title: 'ARCHITECT'  },
 ];
 
 function getRank(level) {
@@ -103,7 +104,7 @@ async function buildLeaderboardCanvas(entries, guildName, sortType, userRank, st
     ctx.font = 'bold 36px DejaVuBold';
     ctx.fillStyle = '#f1c40f';
     ctx.textAlign = 'left';
-    ctx.fillText('🏆', 30, 65);
+    ctx.fillText('${EMOJIS.trophy}', 30, 65);
 
     // Title
     ctx.font = 'bold 28px DejaVuBold';
@@ -307,12 +308,12 @@ async function buildLeaderboardCanvas(entries, guildName, sortType, userRank, st
 module.exports = {
     name: 'leaderboard',
     aliases: ['lb', 'top', 'classement', 'rich', 'richest', 'winners', 'gainers'],
-    description: '🏆 Neural Leaderboard — canvas image with top 10 agents.',
+    description: '${EMOJIS.trophy} Neural Leaderboard — canvas image with top 10 agents.',
     category: 'ECONOMY',
     usage: '.leaderboard [xp|credits|messages|streak|wins]',
     cooldown: 8000,
 
-    data: new SlashCommandBuilder().setName('leaderboard').setDescription('🏆 Neural Leaderboard')
+    data: new SlashCommandBuilder().setName('leaderboard').setDescription('${EMOJIS.trophy} Neural Leaderboard')
         .addStringOption(o => o.setName('type').setDescription('Sort by').setRequired(false)
             .addChoices(
                 { name: 'XP',          value: 'xp'       },
@@ -324,7 +325,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
-            if (!message.guild) return message.reply('❌ Server only.').catch(() => {});
+            if (!message.guild) return message.reply('${EMOJIS.error} Server only.').catch(() => {});
 
             const guildId   = message.guild.id;
             const guildName = message.guild.name?.toUpperCase() || 'NEURAL NODE';
@@ -366,7 +367,7 @@ module.exports = {
 
         } catch(err) {
             console.error('[LEADERBOARD]', err);
-            message.reply('❌ Failed to generate leaderboard.').catch(() => {});
+            message.reply('${EMOJIS.error} Failed to generate leaderboard.').catch(() => {});
         }
     },
 
@@ -411,7 +412,7 @@ module.exports = {
 
         } catch(err) {
             console.error('[LEADERBOARD SLASH]', err);
-            interaction.editReply('❌ Failed to generate leaderboard.').catch(() => {});
+            interaction.editReply('${EMOJIS.error} Failed to generate leaderboard.').catch(() => {});
         }
     }
 };

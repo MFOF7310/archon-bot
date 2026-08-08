@@ -1,10 +1,11 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const dailyTranslations = {
     en: {
         title: '📅 DAILY REWARD',
-        claimed: '✅ DAILY REWARD CLAIMED!',
+        claimed: '${EMOJIS.check} DAILY REWARD CLAIMED!',
         alreadyClaimed: '⏰ ALREADY CLAIMED',
         comeBack: 'Come back in',
         hours: 'hours',
@@ -24,7 +25,7 @@ const dailyTranslations = {
         bonusAdded: 'Bonus added',
         levelUp: '🎉 LEVEL UP!',
         reachedLevel: 'You reached level',
-        noAccount: '❌ No data found. Use /claim to start!',
+        noAccount: '${EMOJIS.error} No data found. Use /claim to start!',
         readyToClaim: 'Ready to claim!',
         onCooldown: 'On cooldown',
         useClaim: 'Use `/claim`',
@@ -36,7 +37,7 @@ const dailyTranslations = {
     },
     fr: {
         title: '📅 RÉCOMPENSE QUOTIDIENNE',
-        claimed: '✅ RÉCOMPENSE QUOTIDIENNE RÉCLAMÉE !',
+        claimed: '${EMOJIS.check} RÉCOMPENSE QUOTIDIENNE RÉCLAMÉE !',
         alreadyClaimed: '⏰ DÉJÀ RÉCLAMÉ',
         comeBack: 'Revenez dans',
         hours: 'heures',
@@ -56,7 +57,7 @@ const dailyTranslations = {
         bonusAdded: 'Bonus ajouté',
         levelUp: '🎉 NIVEAU SUPÉRIEUR !',
         reachedLevel: 'Vous avez atteint le niveau',
-        noAccount: '❌ Aucune donnée trouvée. Utilisez /claim pour commencer!',
+        noAccount: '${EMOJIS.error} Aucune donnée trouvée. Utilisez /claim pour commencer!',
         readyToClaim: 'Prêt à réclamer!',
         onCooldown: 'En cooldown',
         useClaim: 'Utilisez `/claim`',
@@ -82,7 +83,7 @@ module.exports = {
     .setName('daily')
     .setDescription('📅 View your daily status and statistics')
     .addSubcommand(sub =>
-        sub.setName('check').setDescription('✅ Check if your daily reward is ready')
+        sub.setName('check').setDescription('${EMOJIS.check} Check if your daily reward is ready')
     )
     .addSubcommand(sub =>
         sub.setName('stats').setDescription('📊 View your daily streak statistics')
@@ -126,7 +127,7 @@ module.exports = {
         } catch (err) {
             console.error(`[DAILY SLASH ERROR] ${err.message}`);
             return interaction.editReply({
-                content: '❌ Something went wrong. Try again in a moment.',
+                content: '${EMOJIS.error} Something went wrong. Try again in a moment.',
                 flags: 64
             }).catch(() => {});
         }
@@ -165,7 +166,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#f1c40f')
                 .setAuthor({ name: `👏 Daily Check: @${username}`, iconURL: user.displayAvatarURL() })
-                .setDescription(`## ❌ ${t.noAccount}`)
+                .setDescription(`## ${EMOJIS.error} ${t.noAccount}`)
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             return reply({ embeds: [embed] });
@@ -183,7 +184,7 @@ module.exports = {
 
         let statusEmoji, statusText, timeInfo;
         if (canClaim) {
-            statusEmoji = '✅';
+            statusEmoji = '${EMOJIS.check}';
             statusText = t.readyToClaim;
             timeInfo = t.useClaim;
         } else {
@@ -245,7 +246,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#f1c40f')
                 .setAuthor({ name: `👏 Daily Stats: @${username}`, iconURL: user.displayAvatarURL() })
-                .setDescription(`❌ ${t.noAccount}`)
+                .setDescription(`${EMOJIS.error} ${t.noAccount}`)
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             return reply({ embeds: [embed] });

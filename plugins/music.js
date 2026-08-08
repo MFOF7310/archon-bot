@@ -5,6 +5,7 @@ const {
     ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags
 } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 const {
     joinVoiceChannel, createAudioPlayer, createAudioResource,
     AudioPlayerStatus, VoiceConnectionStatus, entersState,
@@ -585,7 +586,7 @@ async function getSpotifyToken() {
         const data = await res.json();
         spotifyToken = data.access_token;
         spotifyExpiry = Date.now() + (data.expires_in - 60) * 1000;
-        console.log('[MUSIC] Spotify token refreshed ✅');
+        console.log('[MUSIC] Spotify token refreshed ${EMOJIS.check}');
         return spotifyToken;
     } catch(e) {
         console.error('[MUSIC] Spotify token error:', e.message);
@@ -644,7 +645,7 @@ let scReady = false;
         const id = await playdl.getFreeClientID();
         await playdl.setToken({ soundcloud: { client_id: id } });
         scReady = true;
-        console.log('[MUSIC] SoundCloud ready ✅');
+        console.log('[MUSIC] SoundCloud ready ${EMOJIS.check}');
     } catch (e) { console.error('[MUSIC] SoundCloud init failed:', e.message); }
 })();
 setInterval(async () => {
@@ -814,7 +815,7 @@ async function playNext(q) {
                 track.duration = spotifyData.duration || track.duration;
                 track.album = spotifyData.album;
                 track.spotifyUrl = spotifyData.spotifyUrl;
-                console.log('[MUSIC] Spotify metadata ✅:', track.title, 'by', track.artist);
+                console.log('[MUSIC] Spotify metadata ${EMOJIS.check}:', track.title, 'by', track.artist);
             }
         } catch(e) {}
 
@@ -825,7 +826,7 @@ async function playNext(q) {
                 if (it?.thumbnail) {
                     track.thumbnail = it.thumbnail;
                     if (track.artist === 'Unknown' && it.artist) track.artist = it.artist;
-                    console.log('[MUSIC] iTunes artwork ✅ for:', track.title);
+                    console.log('[MUSIC] iTunes artwork ${EMOJIS.check} for:', track.title);
                 }
             } catch(e) {}
         }
@@ -934,7 +935,7 @@ async function playNext(q) {
                         } catch (e) {}
                         const isShortQuery = track.title.toLowerCase().includes('short') || track.title.toLowerCase().includes('clip') || track.title.toLowerCase().includes('tiktok');
                         if (ytDuration > 0 && ytDuration < 45 && !isShortQuery) {
-                            console.log(`[MUSIC] ⚠️ Search result too short (${ytDuration}s) — skipping:`, attemptQuery);
+                            console.log(`[MUSIC] ${EMOJIS.warning} Search result too short (${ytDuration}s) — skipping:`, attemptQuery);
                             continue;
                         }
 
@@ -962,7 +963,7 @@ async function playNext(q) {
                             const isTruncated = expectedDur > 60 && fileDur > 0 && fileDur < expectedDur * 0.7;
                             const isSuspiciouslyShort = fileDur > 0 && fileDur < 45 && !isShortQuery;
                             if (isTruncated || isSuspiciouslyShort) {
-                                console.log(`[MUSIC] ⚠️ ${isTruncated ? 'Truncated' : 'Too short'} download (${fileDur}s of expected ~${expectedDur}s) — retrying:`, track.title);
+                                console.log(`[MUSIC] ${EMOJIS.warning} ${isTruncated ? 'Truncated' : 'Too short'} download (${fileDur}s of expected ~${expectedDur}s) — retrying:`, track.title);
                                 try { require('fs').unlinkSync(tmpFile); } catch(e) {}
                                 continue; // next attempt
                             }
@@ -1028,7 +1029,7 @@ async function ensureConnection(q) {
         q.connection = conn;
         if (isStage) {
             setTimeout(async () => {
-                try { await q.guild.members.me?.voice.setSuppressed(false); console.log('[MUSIC] Stage speaker ✅'); } catch(e) {}
+                try { await q.guild.members.me?.voice.setSuppressed(false); console.log('[MUSIC] Stage speaker ${EMOJIS.check}'); } catch(e) {}
             }, 1500);
         }
         conn.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -1052,7 +1053,7 @@ async function ensureConnection(q) {
             // Diagnostic: stream starved (ended in <5s) — source delivered no audio
             const alive = q.startTime ? (Date.now() - q.startTime - q.totalPaused) / 1000 : 0;
             if (q.currentTrack && alive < 5) {
-                console.log(`[MUSIC] ⚠️ Stream starved after ${alive.toFixed(1)}s (${q.currentTrack.source}): ${q.currentTrack.title} — check yt-dlp/play-dl versions`);
+                console.log(`[MUSIC] ${EMOJIS.warning} Stream starved after ${alive.toFixed(1)}s (${q.currentTrack.source}): ${q.currentTrack.title} — check yt-dlp/play-dl versions`);
             }
             if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
             else cleanTemp(q.currentTrack); // delete downloaded file once done (loop keeps it)
@@ -1096,7 +1097,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             }
         } catch(e) {
             console.error('[MUSIC FOLDER]', e.message);
-            replyFn({ content: `❌ Could not load folder: ${e.message}` });
+            replyFn({ content: `${EMOJIS.error} Could not load folder: ${e.message}` });
         }
         return;
     }
@@ -1177,7 +1178,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             if (qNow) {
                 const sel = i.values[0];
                 qNow.tracks.push({ title: sel, query: sel, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy: i.user.username, requestedById: i.user.id, url: null });
-                await i.followUp({ content: `✅ Added **${sel.substring(0,50)}** to queue!`, flags: 64 }).catch(() => {});
+                await i.followUp({ content: `${EMOJIS.check} Added **${sel.substring(0,50)}** to queue!`, flags: 64 }).catch(() => {});
             }
             collector.stop();
         });
@@ -1186,7 +1187,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
 
     if (!isPlaying) {
         try { await ensureConnection(q); await playNext(q); }
-        catch(err) { destroyQueue(guildId); replyFn({ content: `❌ ${err.message}`, embeds: [], components: [] }).catch(() => {}); }
+        catch(err) { destroyQueue(guildId); replyFn({ content: `${EMOJIS.error} ${err.message}`, embeds: [], components: [] }).catch(() => {}); }
     }
 }
 
@@ -1231,7 +1232,7 @@ module.exports = {
                     {name: '🐰 Nightcore', value: 'nightcore'},
                     {name: '🌴 Vaporwave', value: 'vaporwave'},
                     {name: '📊 Normalize (default)', value: 'normalize'},
-                    {name: '❌ Off', value: 'off'}
+                    {name: '${EMOJIS.error} Off', value: 'off'}
                 )))
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')
             .addStringOption(o => o.setName('search').setDescription('🔍 Search inside the library (optional)').setRequired(false).setAutocomplete(true))),
@@ -1239,7 +1240,7 @@ module.exports = {
     // PREFIX — .play <query>
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         const query = args.join(' ');
-        if (!query) return message.reply('❌ Provide a song name or use `/music library` to browse folders!').catch(() => {});
+        if (!query) return message.reply('${EMOJIS.error} Provide a song name or use `/music library` to browse folders!').catch(() => {});
         const vc = message.member?.voice?.channel;
         if (!vc) return message.reply('🎤 Join a voice channel first — then I\'ll bring the music!').catch(() => {});
         await handlePlay(
@@ -1352,7 +1353,7 @@ module.exports = {
         // ── PLAY ──
         if (sub === 'play') {
             const query = interaction.options.getString('query');
-            await interaction.editReply({ content: '⏳ Loading...' });
+            await interaction.editReply({ content: '${EMOJIS.loading} Loading...' });
             await handlePlay(
                 guildId, interaction.guild, vc, interaction.channel,
                 query, interaction.user.username, client,
@@ -1408,7 +1409,7 @@ module.exports = {
             if (!added.length) {
                 return interaction.editReply({
                     embeds: [new EmbedBuilder().setColor(ARCHON.red)
-                        .setDescription(`❌ No valid audio files! Supported: ${validExts.join(', ')}`)]
+                        .setDescription(`${EMOJIS.error} No valid audio files! Supported: ${validExts.join(', ')}`)]
                 });
             }
 
@@ -1436,9 +1437,9 @@ module.exports = {
             const effect = interaction.options.getString('effect');
             const qNow = getQueue(guildId);
             if (qNow) { qNow.audioFilter = effect === 'off' ? '' : effect; await updatePersistentPanel(qNow).catch(() => {}); }
-            const names = {bassboost: '🔊 Bass Boost', nightcore: '🐰 Nightcore', vaporwave: '🌴 Vaporwave', normalize: '📊 Normalize', '': '❌ Off'};
+            const names = {bassboost: '🔊 Bass Boost', nightcore: '🐰 Nightcore', vaporwave: '🌴 Vaporwave', normalize: '📊 Normalize', '': '${EMOJIS.error} Off'};
             const embed = new EmbedBuilder().setColor(ARCHON.purple)
-                .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ FILTER\u001b[0m ${names[effect === 'off' ? '' : effect] || '❌ Off'}\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ FILTER\u001b[0m ${names[effect === 'off' ? '' : effect] || '${EMOJIS.error} Off'}\n\`\`\``);
             return interaction.editReply({embeds: [embed]});
         }
 

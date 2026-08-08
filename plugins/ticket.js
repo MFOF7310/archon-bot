@@ -2,6 +2,7 @@ const {
     EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder,
     ButtonStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder
 } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ================= ENV FALLBACK (owner server only) =================
 function effectiveSettings(ss, gid) {
@@ -76,46 +77,46 @@ const TX = {
         sTitle:'🎫 TICKET SYSTEM', sDesc:'**Configure your ticket system.**',
         sUsage:p=>`\`/channels set\` — Set ticket category & log channel\n\`/roles set type:Staff/Ticket Role\` — Set staff role\n\`/ticket setautoclose\` — Auto-close hours\n\`/ticket setlimit\` — Max tickets per user\n\`/ticket config\` — View config`,
         pTitle:'🎫 Support', pDesc:g=>`Need help? Select a category below to open a private ticket.`, pFooter:'🦅 ARCHON CG-223',
-        made:'✅ Ticket created', welcome:'🎫 NEW TICKET',
+        made:'${EMOJIS.check} Ticket created', welcome:'🎫 NEW TICKET',
         wDesc:(u,c)=>`Hi <@${u}>, staff will assist you shortly.\n**Category:** ${c}`,
         claim:'🙋 Claim', close:'🔒 Close', transcript:'📄 Log',
-        claimed:u=>`🙋 <@${u}> claimed this.`, already:'❌ Already claimed.', staffOnlyClaim:'❌ Staff only.',
+        claimed:u=>`🙋 <@${u}> claimed this.`, already:'${EMOJIS.error} Already claimed.', staffOnlyClaim:'${EMOJIS.error} Staff only.',
         closeQ:'🔒 Close ticket?', closeD:'This cannot be undone.', closeY:'Yes, Close', closeN:'Cancel',
         closing:'🔒 Closing in 5s...', closedBy:u=>`🔒 Closed by <@${u}>`,
         closedLog:(u,c,cat)=>`Ticket #${c} wrapped up | Started by <@${u}> | ${cat} | Hope we helped! 💙`,
-        txSaved:'📄 Log saved!', noPerm:'❌ Staff or creator only.', staffOnly:'❌ Staff only.',
-        notSet:'⚠️ **Not configured.** Use `/ticket setup` → `/channels set` and `/roles set` to configure.',
-        createErr:'❌ Failed to create ticket.', maxT:l=>`❌ Max ${l} ticket(s).`,
+        txSaved:'📄 Log saved!', noPerm:'${EMOJIS.error} Staff or creator only.', staffOnly:'${EMOJIS.error} Staff only.',
+        notSet:'${EMOJIS.warning} **Not configured.** Use `/ticket setup` → `/channels set` and `/roles set` to configure.',
+        createErr:'${EMOJIS.error} Failed to create ticket.', maxT:l=>`${EMOJIS.error} Max ${l} ticket(s).`,
         by:'By', at:'Created', claimed:'Claimed', cat:'Category', st:'Status',
         open:'🟢 Open', claimed2:'🟡 Claimed', closing2:'🔴 Closing',
-        acWarn:'⚠️ Auto-closing in 1h.', acDone:'🔒 Auto-closed.',
+        acWarn:'${EMOJIS.warning} Auto-closing in 1h.', acDone:'🔒 Auto-closed.',
         cfgTitle:'🎫 TICKET CONFIG', cfgCat:'📁 Category', cfgStaff:'🛡️ Staff Role',
         cfgTx:'📄 Log Channel', cfgLog:'📋 Extra Log', cfgAC:'⏰ Auto-Close', cfgLim:'🔢 Limit',
         cfgNS:'Not set', cfgOff:'Off', cfgFoot:'🦅 ARCHON CG-223',
-        setOK:(s,v)=>`✅ **${s}** → ${v}`, badCh:'❌ Channel not found.', badRole:'❌ Role not found.', badNum:'❌ Invalid number.', needAdmin:'❌ Admin required.',
+        setOK:(s,v)=>`${EMOJIS.check} **${s}** → ${v}`, badCh:'${EMOJIS.error} Channel not found.', badRole:'${EMOJIS.error} Role not found.', badNum:'${EMOJIS.error} Invalid number.', needAdmin:'${EMOJIS.error} Admin required.',
         helpCmds:p=>`\`${p}ticket panel\` — Post panel\n\`${p}ticket close\` — Close\n\`${p}ticket config\` — View config\n\`/channels set\` — Set ticket channels\n\`/roles set\` — Set staff role\n\`/ticket setautoclose\` — Auto-close hours\n\`/ticket setlimit\` — Max tickets per user`,
     },
     fr: {
         sTitle:'🎫 SYSTÈME DE TICKETS', sDesc:'**Configurez votre système.**',
         sUsage:p=>`\`${p}//channels set type:Ticket category\` — Catégorie\n\`${p}/roles set type:Staff/Ticket Role <id>\` — Rôle staff\n\`${p}/channels set type:Ticket Logs <id>\` — Salon log\n\`${p}ticket setautoclose <h>\` — Fermeture auto\n\`${p}ticket setlimit <1-10>\` — Max par user\n\`${p}ticket config\` — Voir config`,
         pTitle:'🎫 Support', pDesc:g=>`Besoin d'aide ? Sélectionnez une catégorie ci-dessous.`, pFooter:'🦅 ARCHON CG-223',
-        made:'✅ Ticket créé', welcome:'🎫 NOUVEAU TICKET',
+        made:'${EMOJIS.check} Ticket créé', welcome:'🎫 NOUVEAU TICKET',
         wDesc:(u,c)=>`Bonjour <@${u}>, un staff va vous aider.\n**Catégorie :** ${c}`,
         claim:'🙋 Prendre', close:'🔒 Fermer', transcript:'📄 Log',
-        claimed:u=>`🙋 <@${u}> a pris ce ticket.`, already:'❌ Déjà pris.', staffOnlyClaim:'❌ Staff uniquement.',
+        claimed:u=>`🙋 <@${u}> a pris ce ticket.`, already:'${EMOJIS.error} Déjà pris.', staffOnlyClaim:'${EMOJIS.error} Staff uniquement.',
         closeQ:'🔒 Fermer ?', closeD:'Action irréversible.', closeY:'Oui, Fermer', closeN:'Annuler',
         closing:'🔒 Fermeture dans 5s...', closedBy:u=>`🔒 Fermé par <@${u}>`,
         closedLog:(u,c,cat)=>`Ticket #${c} fermé | Créateur : <@${u}> | ${cat}`,
-        txSaved:'📄 Log enregistré !', noPerm:'❌ Staff ou créateur.', staffOnly:'❌ Staff uniquement.',
-        notSet:'⚠️ **Non configuré.** Utilisez `.ticket setup` puis `.//channels set type:Ticket category`',
-        createErr:'❌ Échec.', maxT:l=>`❌ Max ${l} ticket(s).`,
+        txSaved:'📄 Log enregistré !', noPerm:'${EMOJIS.error} Staff ou créateur.', staffOnly:'${EMOJIS.error} Staff uniquement.',
+        notSet:'${EMOJIS.warning} **Non configuré.** Utilisez `.ticket setup` puis `.//channels set type:Ticket category`',
+        createErr:'${EMOJIS.error} Échec.', maxT:l=>`${EMOJIS.error} Max ${l} ticket(s).`,
         by:'Créé par', at:'Créé', claimed:'Pris par', cat:'Catégorie', st:'Statut',
         open:'🟢 Ouvert', claimed2:'🟡 Pris', closing2:'🔴 Fermeture',
-        acWarn:'⚠️ Fermeture auto dans 1h.', acDone:'🔒 Fermé automatiquement.',
+        acWarn:'${EMOJIS.warning} Fermeture auto dans 1h.', acDone:'🔒 Fermé automatiquement.',
         cfgTitle:'🎫 CONFIG', cfgCat:'📁 Catégorie', cfgStaff:'🛡️ Rôle Staff',
         cfgTx:'📄 Salon Log', cfgLog:'📋 Log Extra', cfgAC:'⏰ Fermeture Auto', cfgLim:'🔢 Limite',
         cfgNS:'Non défini', cfgOff:'Désactivé', cfgFoot:'🦅 ARCHON CG-223',
-        setOK:(s,v)=>`✅ **${s}** → ${v}`, badCh:'❌ Salon introuvable.', badRole:'❌ Rôle introuvable.', badNum:'❌ Nombre invalide.', needAdmin:'❌ Admin requis.',
+        setOK:(s,v)=>`${EMOJIS.check} **${s}** → ${v}`, badCh:'${EMOJIS.error} Salon introuvable.', badRole:'${EMOJIS.error} Rôle introuvable.', badNum:'${EMOJIS.error} Nombre invalide.', needAdmin:'${EMOJIS.error} Admin requis.',
         helpCmds:p=>`\`${p}ticket panel\` — Panel\n\`${p}ticket close\` — Fermer\n\`${p}ticket config\` — Config\n\`${p}//channels set type:Ticket category\` — Catégorie\n\`${p}/roles set type:Staff/Ticket Role <id>\` — Rôle staff\n\`${p}/channels set type:Ticket Logs <id>\` — Salon log\n\`${p}ticket setautoclose <h>\` — Auto-close\n\`${p}ticket setlimit <1-10>\` — Max par user`,
     }
 };
@@ -286,9 +287,9 @@ function cfgEmbed(s, g, c, lang='en') {
     const fch=(id,ek)=>id?`<#${id}>`:(io&&process.env[ek]?`<#${process.env[ek]}> 🔹 env`:`*${t.cfgNS}*`);
     const fr=(id,ek)=>id?`<@&${id}>`:(io&&process.env[ek]?`<@&${process.env[ek]}> 🔹 env`:`*${t.cfgNS}*`);
     const ac=s?.ticketAutoCloseHours??24, lm=s?.ticketLimitPerUser??1;
-    return new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.cfgTitle}`,iconURL:g.iconURL({dynamic:true})||c.user.displayAvatarURL()}).setThumbnail(g.iconURL({dynamic:true,size:256})).addFields({name:t.cfgCat,value:fch(s?.ticketCategory,'TICKET_CATEGORY_ID'),inline:true},{name:t.cfgStaff,value:fr(s?.ticketStaffRole,'TICKET_STAFF_ROLE_ID'),inline:true},{name:t.cfgTx,value:fch(s?.ticketTranscriptChannel,'TICKET_TRANSCRIPT_CHANNEL_ID'),inline:true},{name:t.cfgLog,value:fch(s?.ticketLogChannel,'TICKET_LOG_CHANNEL_ID'),inline:true},{name:t.cfgAC,value:ac===0?`❌ ${t.cfgOff}`:`\`${ac}h\``,inline:true},{name:t.cfgLim,value:`\`${lm}\` / user`,inline:true}).setFooter({text:`${t.cfgFoot} • ${g.name}`,iconURL:c.user.displayAvatarURL()}).setTimestamp();
+    return new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.cfgTitle}`,iconURL:g.iconURL({dynamic:true})||c.user.displayAvatarURL()}).setThumbnail(g.iconURL({dynamic:true,size:256})).addFields({name:t.cfgCat,value:fch(s?.ticketCategory,'TICKET_CATEGORY_ID'),inline:true},{name:t.cfgStaff,value:fr(s?.ticketStaffRole,'TICKET_STAFF_ROLE_ID'),inline:true},{name:t.cfgTx,value:fch(s?.ticketTranscriptChannel,'TICKET_TRANSCRIPT_CHANNEL_ID'),inline:true},{name:t.cfgLog,value:fch(s?.ticketLogChannel,'TICKET_LOG_CHANNEL_ID'),inline:true},{name:t.cfgAC,value:ac===0?`${EMOJIS.error} ${t.cfgOff}`:`\`${ac}h\``,inline:true},{name:t.cfgLim,value:`\`${lm}\` / user`,inline:true}).setFooter({text:`${t.cfgFoot} • ${g.name}`,iconURL:c.user.displayAvatarURL()}).setTimestamp();
 }
-async function saveSetting(client, gid, key, val, lang='en') { const t=TX[lang]||TX.en; try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t.setOK(key,val)};} return{ok:false,err:'❌ DB error.'};}catch(e){return{ok:false,err:'❌ DB error.'};} }
+async function saveSetting(client, gid, key, val, lang='en') { const t=TX[lang]||TX.en; try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t.setOK(key,val)};} return{ok:false,err:'${EMOJIS.error} DB error.'};}catch(e){return{ok:false,err:'${EMOJIS.error} DB error.'};} }
 
 // ================= MODULE =================
 
@@ -314,7 +315,7 @@ module.exports = {
         addSubcommand(s=>s.setName('settranscript').setDescription('Set log channel').addChannelOption(o=>o.setName('channel').setDescription('Log channel').setRequired(true).addChannelTypes(ChannelType.GuildText,5))).
         addSubcommand(s=>s.setName('setautoclose').setDescription('Auto-close hours').addIntegerOption(o=>o.setName('hours').setDescription('Hours (0=off)').setRequired(true).setMinValue(0).setMaxValue(168))).
         addSubcommand(s=>s.setName('setlimit').setDescription('Max tickets per user').addIntegerOption(o=>o.setName('limit').setDescription('1-10').setRequired(true).setMinValue(1).setMaxValue(10))).
-        addSubcommand(s=>s.setName('leaderboard').setDescription('🏆 Top staff by rating')).
+        addSubcommand(s=>s.setName('leaderboard').setDescription('${EMOJIS.trophy} Top staff by rating')).
         addSubcommand(s=>s.setName('stats').setDescription('📊 Ticket system analytics')).
         addSubcommand(s=>s.setName('myrating').setDescription('⭐ Your rating history')),
 
@@ -322,16 +323,16 @@ module.exports = {
     run: async(client,msg,args,db,ss)=>{
     const guildId = msg.guild?.id ?? 'DM';
         const lang=client.detectLanguage?client.detectLanguage(args[0]||''):'en', t=TX[lang]||TX.en, sub=args[0]?.toLowerCase(), g=msg.guild, p=ss?.prefix||'.';
-        if(!g)return msg.reply('❌ Servers only.').catch(()=>{});
+        if(!g)return msg.reply('${EMOJIS.error} Servers only.').catch(()=>{});
         const adm=msg.member.permissions.has(PermissionFlagsBits.Administrator);
         const needAdm=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel'].includes(sub);
         if(needAdm&&!adm)return msg.reply(t.needAdmin).catch(()=>{});
         const es=effectiveSettings(ss,g.id);
 
         // Config setters
-        if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply('⚠️ `.//channels set type:Ticket category`').catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketcategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
-        if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply('⚠️ `./roles set type:Staff/Ticket Role <id>`').catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t.badRole).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketstaffrole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
-        if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply('⚠️ `./channels set type:Ticket Logs <id>`').catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'tickettranscriptchannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply('${EMOJIS.warning} `.//channels set type:Ticket category`').catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketcategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply('${EMOJIS.warning} `./roles set type:Staff/Ticket Role <id>`').catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t.badRole).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketstaffrole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
+        if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply('${EMOJIS.warning} `./channels set type:Ticket Logs <id>`').catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'tickettranscriptchannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setautoclose'){const h=parseInt(args[1]);if(isNaN(h)||h<0||h>168)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketautoclose',String(h),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setlimit'){const l=parseInt(args[1]);if(isNaN(l)||l<1||l>10)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketlimit',String(l),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='config'){const e=cfgEmbed(es,g,client,lang);return msg.reply({embeds:[e]}).catch(()=>{});}
@@ -339,8 +340,8 @@ module.exports = {
         if(!es?.ticketCategory&&sub!=='setup')return msg.reply(t.notSet).catch(()=>{});
 
         if(sub==='setup'){const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.sTitle}`,iconURL:client.user.displayAvatarURL()}).setDescription(t.sDesc+'\n\n'+t.sUsage(p)).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();return msg.reply({embeds:[e]}).catch(()=>{});}
-        if(sub==='panel'){const e=panelEmbed(es,g.name,lang),m=panelMenu(es),r=new ActionRowBuilder().addComponents(m);const s=await msg.channel.send({embeds:[e],components:[r]}).catch(()=>null);if(s){await msg.react('✅').catch(()=>{});try{db.prepare(`INSERT OR REPLACE INTO server_settings (guild_id,ticket_panel_channel) VALUES (?,?)`).run(g.id,s.id);}catch(e){}}return;}
-        if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply('❌ Not a ticket.').catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t.noPerm).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t.closing).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
+        if(sub==='panel'){const e=panelEmbed(es,g.name,lang),m=panelMenu(es),r=new ActionRowBuilder().addComponents(m);const s=await msg.channel.send({embeds:[e],components:[r]}).catch(()=>null);if(s){await msg.react('${EMOJIS.check}').catch(()=>{});try{db.prepare(`INSERT OR REPLACE INTO server_settings (guild_id,ticket_panel_channel) VALUES (?,?)`).run(g.id,s.id);}catch(e){}}return;}
+        if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply('${EMOJIS.error} Not a ticket.').catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t.noPerm).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t.closing).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
 
         // Help
         const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.pTitle}`,iconURL:client.user.displayAvatarURL()}).setDescription(`**🎫 Commands**\n\n${t.helpCmds(p)}\n\nUsers create tickets via the panel.`).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();
@@ -350,7 +351,7 @@ module.exports = {
     // ================= SLASH =================
     execute: async(ix,client)=>{
         const lang=ix.locale?.startsWith('fr')?'fr':'en', t=TX[lang]||TX.en, sc=ix.options.getSubcommand(), g=ix.guild,u=ix.user,db=client.db,ss=effectiveSettings(client.getServerSettings?.(g?.id)||{},g?.id);
-        if(!g)return ix.reply({content:'❌ Servers only.',flags:1<<6});
+        if(!g)return ix.reply({content:'${EMOJIS.error} Servers only.',flags:1<<6});
         const adm=ix.member.permissions?.has(PermissionFlagsBits.Administrator);
         const need=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel'].includes(sc);
         if(need&&!adm)return ix.reply({content:t.needAdmin,flags:1<<6});
@@ -364,8 +365,8 @@ module.exports = {
         if(!ss?.ticketCategory&&sc!=='setup')return ix.reply({content:t.notSet,flags:1<<6});
 
         if(sc==='setup'){const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.sTitle}`,iconURL:client.user.displayAvatarURL()}).setDescription(t.sDesc+'\n\n'+t.sUsage('/')).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();return ix.reply({embeds:[e],flags:1<<6});}
-        if(sc==='panel'){const e=panelEmbed(ss,g.name,lang),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);await ix.reply({content:'Posting...',flags:1<<6});const s=await ix.channel.send({embeds:[e],components:[r]}).catch(()=>null);if(s){await ix.editReply({content:'✅ Posted!'}).catch(()=>{});try{db.prepare(`UPDATE server_settings SET ticket_panel_channel=? WHERE guild_id=?`).run(s.id,g.id);}catch(e){}}else await ix.editReply({content:'❌ Failed.'}).catch(()=>{});return;}
-        if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:'❌ Not a ticket.',flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t.noPerm,flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t.closing}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
+        if(sc==='panel'){const e=panelEmbed(ss,g.name,lang),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);await ix.reply({content:'Posting...',flags:1<<6});const s=await ix.channel.send({embeds:[e],components:[r]}).catch(()=>null);if(s){await ix.editReply({content:'${EMOJIS.check} Posted!'}).catch(()=>{});try{db.prepare(`UPDATE server_settings SET ticket_panel_channel=? WHERE guild_id=?`).run(s.id,g.id);}catch(e){}}else await ix.editReply({content:'${EMOJIS.error} Failed.'}).catch(()=>{});return;}
+        if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:'${EMOJIS.error} Not a ticket.',flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t.noPerm,flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t.closing}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
         if(sc==='leaderboard'){
             await ix.deferReply({flags:1<<6});
             try {
@@ -376,9 +377,9 @@ module.exports = {
                     const stars = '⭐'.repeat(Math.round(r.avg));
                     return `${medal} <@${r.staff_id}> — ${stars} \`${r.avg.toFixed(1)}\` (${r.total} reviews)`;
                 }).join('\n');
-                const embed = new EmbedBuilder().setColor(0xffd700).setTitle('🏆 Support Leaderboard').setDescription(desc).setFooter({text:'BAMAKO_223 🇲🇱 • Ratings make us better'});
+                const embed = new EmbedBuilder().setColor(0xffd700).setTitle('${EMOJIS.trophy} Support Leaderboard').setDescription(desc).setFooter({text:'BAMAKO_223 🇲🇱 • Ratings make us better'});
                 return ix.editReply({embeds:[embed]});
-            }catch(e){return ix.editReply({content:'❌ Could not load leaderboard.'});}
+            }catch(e){return ix.editReply({content:'${EMOJIS.error} Could not load leaderboard.'});}
         }
         if(sc==='stats'){
             await ix.deferReply({flags:1<<6});
@@ -395,7 +396,7 @@ module.exports = {
                         {name:'🟢 Open',value:`\`${open}\``,inline:true}
                     ).setFooter({text:'BAMAKO_223 🇲🇱 • ARCHON Support Desk'});
                 return ix.editReply({embeds:[embed]});
-            }catch(e){return ix.editReply({content:'❌ Could not load stats.'});}
+            }catch(e){return ix.editReply({content:'${EMOJIS.error} Could not load stats.'});}
         }
         if(sc==='myrating'){
             await ix.deferReply({flags:1<<6});
@@ -409,7 +410,7 @@ module.exports = {
                 }).join('\n\n');
                 const embed = new EmbedBuilder().setColor(0x9b59b6).setTitle('⭐ Your Rating History').setDescription(desc).setFooter({text:'BAMAKO_223 🇲🇱 • Thanks for the feedback!'});
                 return ix.editReply({embeds:[embed]});
-            }catch(e){return ix.editReply({content:'❌ Could not load your ratings.'});}
+            }catch(e){return ix.editReply({content:'${EMOJIS.error} Could not load your ratings.'});}
         }
 
     },
@@ -441,14 +442,14 @@ module.exports = {
         if(!ix.isButton()||!ix.customId.startsWith('ticket_'))return false;
         const p=ix.customId.split('_'),act=p[1],cid=p[2],crid=p[3],uid=ix.user.id;
         let tk=active.get(cid); if(!tk&&db){tk=loadTicket(db,cid);if(tk)active.set(cid,tk);}
-        if(tk&&ix.guildId!==tk.guildId)return ix.reply({content:'❌ Wrong server.',flags:1<<6}).catch(()=>{});
+        if(tk&&ix.guildId!==tk.guildId)return ix.reply({content:'${EMOJIS.error} Wrong server.',flags:1<<6}).catch(()=>{});
         const isC=uid===crid, isS=isStaff(ix.member,ss);
 
         // CLAIM
-        if(act==='claim'){if(!isS)return ix.reply({content:t.staffOnlyClaim,flags:1<<6}).catch(()=>{});if(tk?.claimedBy)return ix.reply({content:t.already,flags:1<<6}).catch(()=>{});tk.claimedBy=uid;if(db)saveTicket(db,cid,tk);try{const msgs=await ix.channel.messages.fetch({limit:10});const wm=msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));if(wm&&wm.embeds[0]){const ne=EmbedBuilder.from(wm.embeds[0]).spliceFields(3,1,{name:t.st,value:`${t.claimed2}\n${t.claimed}: <@${uid}>`,inline:true});await wm.edit({embeds:[ne]}).catch(()=>{});}}catch(e){}await ix.channel.send(typeof t.claimed === 'function' ? t.claimed(uid) : `🙋 <@${uid}> claimed this ticket.`);await ix.reply({content:'✅ Claimed.',flags:1<<6}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
+        if(act==='claim'){if(!isS)return ix.reply({content:t.staffOnlyClaim,flags:1<<6}).catch(()=>{});if(tk?.claimedBy)return ix.reply({content:t.already,flags:1<<6}).catch(()=>{});tk.claimedBy=uid;if(db)saveTicket(db,cid,tk);try{const msgs=await ix.channel.messages.fetch({limit:10});const wm=msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));if(wm&&wm.embeds[0]){const ne=EmbedBuilder.from(wm.embeds[0]).spliceFields(3,1,{name:t.st,value:`${t.claimed2}\n${t.claimed}: <@${uid}>`,inline:true});await wm.edit({embeds:[ne]}).catch(()=>{});}}catch(e){}await ix.channel.send(typeof t.claimed === 'function' ? t.claimed(uid) : `🙋 <@${uid}> claimed this ticket.`);await ix.reply({content:'${EMOJIS.check} Claimed.',flags:1<<6}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
 
         // CLOSE (confirm)
-        if(act==='close'){if(!isC&&!isS)return ix.reply({content:t.noPerm,flags:1<<6}).catch(()=>{});const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t.closeQ).setDescription(t.closeD);const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t.closeY).setStyle(ButtonStyle.Danger).setEmoji('✅'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t.closeN).setStyle(ButtonStyle.Secondary).setEmoji('❌'));await ix.reply({embeds:[e],components:[r],flags:1<<6}).catch(()=>{});return true;}
+        if(act==='close'){if(!isC&&!isS)return ix.reply({content:t.noPerm,flags:1<<6}).catch(()=>{});const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t.closeQ).setDescription(t.closeD);const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t.closeY).setStyle(ButtonStyle.Danger).setEmoji('${EMOJIS.check}'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t.closeN).setStyle(ButtonStyle.Secondary).setEmoji('${EMOJIS.error}'));await ix.reply({embeds:[e],components:[r],flags:1<<6}).catch(()=>{});return true;}
 
         // CONFIRM CLOSE
         if(act==='confirmclose'){
@@ -497,7 +498,7 @@ module.exports = {
         if(act==='cancelclose'){await ix.deleteReply().catch(()=>{});return true;}
 
         // TRANSCRIPT
-        if(act==='transcript'){if(!isC&&!isS)return ix.reply({content:t.noPerm,flags:1<<6}).catch(()=>{});await ix.deferReply({flags:1<<6});const ch=ix.channel;if(!tk)return ix.editReply({content:'❌ Data not found.'}).catch(()=>{});const r=await saveTx(ch,tk,null,client,ss);if(r===true)await ix.editReply({content:t.txSaved}).catch(()=>{});else if(r&&r.buffer)await ix.editReply({content:t.txSaved,files:[{attachment:r.buffer,name:r.filename}]}).catch(()=>{});else await ix.editReply({content:'❌ Failed.'}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
+        if(act==='transcript'){if(!isC&&!isS)return ix.reply({content:t.noPerm,flags:1<<6}).catch(()=>{});await ix.deferReply({flags:1<<6});const ch=ix.channel;if(!tk)return ix.editReply({content:'${EMOJIS.error} Data not found.'}).catch(()=>{});const r=await saveTx(ch,tk,null,client,ss);if(r===true)await ix.editReply({content:t.txSaved}).catch(()=>{});else if(r&&r.buffer)await ix.editReply({content:t.txSaved,files:[{attachment:r.buffer,name:r.filename}]}).catch(()=>{});else await ix.editReply({content:'${EMOJIS.error} Failed.'}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
 
         // RATING
         if(act==='rate'){
@@ -506,7 +507,7 @@ module.exports = {
             const starEmoji = '⭐'.repeat(stars);
             await ix.update({ 
                 embeds: [new EmbedBuilder().setColor(0x2ecc71)
-                    .setDescription(`✅ **Thank you for your feedback!**
+                    .setDescription(`${EMOJIS.check} **Thank you for your feedback!**
 
 You rated: ${starEmoji}
 
