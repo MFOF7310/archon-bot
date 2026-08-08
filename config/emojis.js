@@ -59,13 +59,8 @@ module.exports = {
     library:  '<:library:1535660079821357208>',
     folder:   '<:folder:1535653451374268496>',
     queue:    '<:queue:1535653763493269535>',
-    volume:   '<:volume:1535662889799520268>',
     playlist: '<:playlist:1535658270465986560>',
     stop:     '<:stop:1535658674054373386>',
-    pause:    '<a:pause:1535657804730212545>',
-    shuffle:  '<:shuffle:1535662585481789470>',
-    loop:     '<a:loop:1535659008403312640>',
-    skip:     '<:skip:1535664559816441956>',
 
     // ── Crowns (use for different rank tiers) ──
     crown:    '<:Crown:1156715118990725230>',
