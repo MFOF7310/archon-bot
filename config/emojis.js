@@ -20,4 +20,12 @@ module.exports = {
     discord:  '<:discord:1535620919081312360>',
     coins:    '<a:coins:1535620839897309315>',
     verified: '<a:verified:1535620889998270544>',
+
+    // ── Indicators ──
+    warning: '<:warning:1535637269317160970>',
+    error:   '<a:error:1535637250870747168>',
+    offline: '<a:offline:1535637151562211398>',
+    online:  '<a:online:1535637137624530944>',
+    loading: '<a:loading:1535637155253198989>',
+    trophy:  '<:trophy:1535637016065212478>',
 };
