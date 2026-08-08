@@ -967,7 +967,7 @@ function getServerSettings(guildId) {
             generalChannel: settings.general_channel,
             goodbyeChannel: settings.goodbye_channel,
             levelChannel: settings.level_channel,
-            updatesChannel: env('updates_channel', 'UPDATES_CHANNEL_ID'),
+            updatesChannel: settings.updates_channel || env('updates_channel', 'UPDATES_CHANNEL_ID'),
             modLogChannel: settings.mod_log_channel,
             autoModLogChannel: settings.automod_log_channel || null,
             
@@ -1098,6 +1098,9 @@ function updateServerSetting(guildId, setting, value) {
         goodbyemsg: 'goodbye_message',
         welcomeChannel: 'welcome_channel',
         goodbyeChannel: 'goodbye_channel',
+        updates: 'updates_channel',
+        updatesChannel: 'updates_channel',
+        updates_channel: 'updates_channel',
         logChannel: 'log_channel',
         modLogChannel: 'mod_log_channel',
         dailyChannel: 'daily_channel',
