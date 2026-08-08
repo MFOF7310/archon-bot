@@ -33,6 +33,21 @@ module.exports = {
     bamako: '<:bamako:1535640587498291240>',
     eagle:  '<:eagle:1535640693652070541>',
 
+    // ── Music Controls ──
+    mc_pause:       '<:pause:1535739788391485441>',
+    mc_skip:        '<:skip:1535785326470107157>',
+    mc_stop:        '<:STOP:1535782602038845671>',
+    mc_autoplay:    '<:AutoPlay:1535777726341062678>',
+    mc_previous:    '<:previous:1535740961135665262>',
+    mc_loop:        '<:LOOP:1535783619170406460>',
+    mc_volume_down: '<:volume_down:1535780020948172970>',
+    mc_volume_up:   '<:volume_up:1535779843222798386>',
+    mc_love_this:   '<:Love_This:1535778666892755036>',
+    mc_not_for_me:  '<:Not_For_Me:1535779165280673903>',
+    mc_queue:       '<:QUEUE:1535784206087626873>',
+    mc_folder:      '<:FOLDER:1535786179276963961>',
+    mc_library:     '<:LIBRARY:1535785831804047390>',
+
     // ── Gaming & Actions ──
     music:   '<:music:1535641832933822464>',
     shield:  '<:shield:1535642169032048730>',
