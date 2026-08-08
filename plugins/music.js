@@ -1077,7 +1077,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             const q = getQueue(guildId) || createQueue(guild, voiceChannel, textChannel, client);
             const shuffled = [...tracks].sort(() => Math.random() - 0.5);
             for (const t of shuffled) {
-                q.tracks.push({ title: t.title, query: t.query, artist: t.artist || 'Unknown', source: 'Local', duration: t.duration || 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: null });
+                q.tracks.push({ title: t.title, query: t.query, artist: t.artist || 'Unknown', source: 'SoundCloud', duration: t.duration || 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: null });
             }
             await replyFn({ content: `📂 Queued **${tracks.length} tracks** from **${folderName}** 🎶` });
             if (!q.currentTrack) playNext(q);
