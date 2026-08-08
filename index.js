@@ -2375,7 +2375,7 @@ client.once(Events.ClientReady, async () => {
                                 max_tokens: 300,
                                 messages: [{
                                     role: 'user',
-                                    content: `Convert these git commits into 3-5 short, friendly bullet points for Discord server members (non-technical, no jargon, no prefixes like feat/fix). Each bullet starts with an emoji. Keep it concise and exciting. Commits:\n${commits}`
+                                    content: `You are writing update notes for a Discord bot called ARCHON CG-223. Convert these technical git commits into 3-5 SHORT, friendly bullet points for regular Discord users. Rules: NO technical jargon, NO feat/fix prefixes, NO code terms. Use simple language. Each line starts with a relevant emoji. Max 10 words per bullet. Make it sound exciting.\n\nCommits:\n${commits}\n\nRespond with ONLY the bullet points, nothing else.`
                                 }]
                             })
                         });
