@@ -278,9 +278,8 @@ function buildPanelRows(q) {
         new ButtonBuilder().setCustomId('mc_volup').setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 100),
     );
 
-    // Row 3 — Taste + Queue
+    // Row 3 — Taste + Queue (Like moved above progress bar)
     const rowTaste = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_like').setLabel('Like').setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
         new ButtonBuilder().setCustomId('mc_dislike').setLabel('Not for me').setStyle(ButtonStyle.Secondary).setEmoji('👎'),
         new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
     );
@@ -353,14 +352,19 @@ function buildPanelContainer(q, client) {
         `-# BAMAKO_223 🇲🇱 • Auto: ${q.autoplay ? 'On' : 'Off'} • ${q.silentPanel ? '🔕' : '🔔'} • ${filterIcon} ${q.audioFilter || 'Normal'}`
     );
 
+    // FlaviBot-style order: header → stats → like → progress → transport → extras → footer
+    const rowLike = new (require('discord.js').ActionRowBuilder)().addComponents(
+        new (require('discord.js').ButtonBuilder)().setCustomId('mc_like').setLabel('Like').setStyle(require('discord.js').ButtonStyle.Secondary).setEmoji('❤️'),
+    );
+
     return new ContainerBuilder()
         .setAccentColor(isPaused ? 0xF1C40F : accentForTrack(t))
         .addSectionComponents(header)
         .addTextDisplayComponents(statsLine)
+        .addActionRowComponents(rowLike)
         .addTextDisplayComponents(progress)
         .addActionRowComponents(rowTransport)
         .addActionRowComponents(rowSession)
-        .addActionRowComponents(rowTaste)
         .addTextDisplayComponents(footer);
 }
 
