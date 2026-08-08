@@ -19,7 +19,7 @@ const AGENT_RANKS = [
     { minLevel: 6,  maxLevel: 15,       color: '#3498db', emoji: '🔹', title: 'AGENT'      },
     { minLevel: 16, maxLevel: 30,       color: '#9b59b6', emoji: '💠', title: 'SPECIALIST' },
     { minLevel: 31, maxLevel: 50,       color: '#e67e22', emoji: '⚜️', title: 'COMMANDER'  },
-    { minLevel: 51, maxLevel: Infinity, color: '#e74c3c', emoji: '${EMOJIS.crown}', title: 'ARCHITECT'  },
+    { minLevel: 51, maxLevel: Infinity, color: '#e74c3c', emoji: '👑', title: 'ARCHITECT'  },
 ];
 
 function getRank(level) {
@@ -104,7 +104,7 @@ async function buildLeaderboardCanvas(entries, guildName, sortType, userRank, st
     ctx.font = 'bold 36px DejaVuBold';
     ctx.fillStyle = '#f1c40f';
     ctx.textAlign = 'left';
-    ctx.fillText('${EMOJIS.trophy}', 30, 65);
+    ctx.fillText('🏆', 30, 65);
 
     // Title
     ctx.font = 'bold 28px DejaVuBold';
@@ -308,7 +308,7 @@ async function buildLeaderboardCanvas(entries, guildName, sortType, userRank, st
 module.exports = {
     name: 'leaderboard',
     aliases: ['lb', 'top', 'classement', 'rich', 'richest', 'winners', 'gainers'],
-    description: '${EMOJIS.trophy} Neural Leaderboard — canvas image with top 10 agents.',
+    description: '🏆 Neural Leaderboard — canvas image with top 10 agents.',
     category: 'ECONOMY',
     usage: '.leaderboard [xp|credits|messages|streak|wins]',
     cooldown: 8000,
