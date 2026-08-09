@@ -8,6 +8,7 @@ const {
     PermissionsBitField, AttachmentBuilder
 } = require('discord.js');
 const { generateCaptcha, randomCode } = require('./captcha.js');
+const EMOJIS = require('../config/emojis');
 
 const pending = new Map(); // userId:guildId => { timeout, messageId }
 
@@ -46,9 +47,9 @@ module.exports = {
             if (!isPremium(db, gid)) {
                 return interaction.reply({ embeds: [new EmbedBuilder()
                     .setColor(0xffd700)
-                    .setTitle('⭐ Premium Feature')
-                    .setDescription('Image captcha verification requires **ARCHON Premium**!\n\nGet it for just **$1.99/month**.')
-                    .addFields({ name: '🔑 Activate', value: 'Use `/premium status` to upgrade!' })
+                    .setTitle(`${EMOJIS.premium} Premium Feature`)
+                    .setDescription('Image captcha verification is a **Premium** feature — it keeps your server safe with zero false kicks.\n\nUnlock it for just **$1.99/month** and protect your community.')
+                    .addFields({ name: '🔑 How to activate', value: 'Run `/premium status` to upgrade — takes 30 seconds.' })
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                 ], flags: 64 });
             }
@@ -58,7 +59,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00cc44)
-                    .setTitle('✅ Verification Gate — ENABLED')
+                    .setTitle(`${EMOJIS.verified} Verification Gate — Active`)
                     .addFields(
                         { name: '🎭 Verified Role', value: role, inline: true },
                         { name: '⏰ Auto-kick', value: settings?.verify_kick_days ? `${settings.verify_kick_days} min` : 'Disabled', inline: true }
@@ -73,7 +74,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0xff3311)
-                    .setDescription('❌ Verification gate **disabled**. New members join freely.')],
+                    .setDescription(`${EMOJIS.warning} Verification gate **disabled** — new members join freely. Run \`/verify enable\` anytime to bring it back.`)],
                 flags: 64
             });
         }
@@ -84,7 +85,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00aaff)
-                    .setDescription(`🎭 Verified role set to ${role}`)],
+                    .setDescription(`${EMOJIS.check} Verified role set to ${role}\n\nMembers will receive this role automatically after passing the captcha.`)],
                 flags: 64
             });
         }
@@ -96,8 +97,8 @@ module.exports = {
                 embeds: [new EmbedBuilder()
                     .setColor(0x00aaff)
                     .setDescription(mins === 0 
-                        ? '⏰ Auto-kick **disabled** — members won\'t be kicked for not verifying.'
-                        : `⏰ Unverified members will be kicked after **${mins} minutes**.`)],
+                        ? `${EMOJIS.check} Auto-kick disabled — unverified members stay until they verify or leave on their own.`
+                        : `${EMOJIS.warning} Got it — unverified members will be removed after **${mins} minutes**. Make sure your captcha DM reaches them in time.`)],
                 flags: 64
             });
         }
@@ -109,9 +110,9 @@ module.exports = {
                 embeds: [new EmbedBuilder()
                     .setColor(0xff8800)
                     .setDescription(
-                        `🔒 Unverified role set to ${role}\n\n` +
-                        `Make sure this role has **no access** to your channels!\n` +
-                        `New members will get this role on join, removed after verification.`
+                        `${EMOJIS.shield} Unverified role set to ${role}\n\n` +
+                        `Make sure this role **cannot see your channels** — that's what creates the gate.\n` +
+                        `New members get it on join, it's removed the moment they verify. ✨`
                     )],
                 flags: 64
             });
@@ -122,7 +123,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(settings?.verify_enabled ? 0x00cc44 : 0x888888)
-                    .setTitle('📊 Verification Gate Status')
+                    .setTitle(`${EMOJIS.shield} Verification Gate — Status`)
                     .addFields(
                         { name: '🔘 Status', value: settings?.verify_enabled ? '🟢 Enabled' : '🔴 Disabled', inline: true },
                         { name: '🎭 Role', value: settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : 'Not set', inline: true },
@@ -159,10 +160,11 @@ module.exports = {
         // Store code in pending
         const captchaEmbed = new EmbedBuilder()
             .setColor(0x00aaff)
-            .setTitle(`👋 Welcome to ${member.guild.name}!`)
+            .setTitle(`👋 Hey, welcome to ${member.guild.name}!`)
             .setDescription(
-                `To get full access, **type the code shown in the image below.**\n\n` +
-                `⚠️ Case insensitive • You have **3 attempts** • Expires in **10 minutes**`
+                `Great to have you here! To unlock the server, **type the code shown in the image below** in this DM.\n\n` +
+                `${EMOJIS.warning} Case insensitive • **3 attempts** • Expires in **10 minutes**\n\n` +
+                `*Having trouble? Rejoin the server to get a fresh code.*`
             )
             .setImage('attachment://verify.png')
             .setThumbnail(member.guild.iconURL({ dynamic: true }))
@@ -215,8 +217,8 @@ module.exports = {
 
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x00cc44)
-                        .setTitle('✅ Verified!')
-                        .setDescription(`You're all set! Welcome to **${member.guild.name}** 🎉\n\nEnjoy your stay!`)
+                        .setTitle(`${EMOJIS.verified} You're in!`)
+                        .setDescription(`Welcome to **${member.guild.name}** 🎉 You're all verified and ready to go.\n\nHave fun and enjoy the community!`)
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ]}).catch(() => {});
                 } else {
@@ -225,8 +227,8 @@ module.exports = {
                         collector.stop('failed');
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff3311)
-                            .setTitle('❌ Too many wrong attempts!')
-                            .setDescription(`You've been removed from **${member.guild.name}**.\n\nYou can rejoin and try again!`)
+                            .setTitle(`${EMOJIS.warning} Too many attempts`)
+                            .setDescription(`No worries — you've been removed from **${member.guild.name}** for now.\n\nFeel free to rejoin and try again with a fresh code. 👋`)
                             .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                         ]}).catch(() => {});
                         await member.kick('Failed captcha verification').catch(() => {});
@@ -240,8 +242,8 @@ module.exports = {
 
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff8800)
-                            .setTitle(`❌ Wrong code — attempt ${attempts}/${maxAttempts}`)
-                            .setDescription(`That's not right! Try this new code:\n\n⚠️ **${maxAttempts - attempts} attempt(s) remaining**`)
+                            .setTitle(`${EMOJIS.warning} Not quite — attempt ${attempts}/${maxAttempts}`)
+                            .setDescription(`That code didn't match — here's a fresh one to try.\n\n**${maxAttempts - attempts} attempt(s) remaining** • You've got this 💪`)
                             .setImage('attachment://verify.png')
                             .setFooter({ text: 'ARCHON CG-223 • Type the code shown above' })
                         ], files: [newAttach]}).catch(() => {});
@@ -257,7 +259,7 @@ module.exports = {
                     pending.delete(key);
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x888888)
-                        .setDescription('⏰ Verification expired. Rejoin the server to try again!')
+                        .setDescription(`${EMOJIS.warning} Your verification window expired — no worries, just rejoin the server and we'll send a fresh code right away.`)
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ]}).catch(() => {});
                     // Kick if auto-kick enabled
