@@ -939,11 +939,17 @@ async function playNext(q) {
                     const safe = (track.query || track.title).replace(/"/g, '').replace(/'/g, '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                     const cookiesPath = require('path').join(__dirname, '../assets/cookies.txt');
                     const { stdout } = await execAsync(`yt-dlp --no-playlist --cookies "${cookiesPath}" --get-url "scsearch1:${safe}" 2>/dev/null`, { timeout: 20000 });
-                    if (stdout.trim().split('\n')[0]?.startsWith('http')) {
-                        const audioOut = pipeYtDlp(`scsearch1:${safe}`, null, 'SC');
-                        resource = createFilteredResource(audioOut, q);
-                        track.source = 'SoundCloud';
-                        console.log('[MUSIC] ▸ yt-dlp SoundCloud for:', track.title);
+                    const scUrl = stdout.trim().split('\n')[0];
+                    if (scUrl?.startsWith('http')) {
+                        // Reject SoundCloud preview URLs (30s clips)
+                        if (scUrl.includes('preview') || scUrl.includes('/preview/')) {
+                            console.log('[MUSIC] ⚠️ SC preview URL detected — skipping to YouTube');
+                        } else {
+                            const audioOut = pipeYtDlp(`scsearch1:${safe}`, null, 'SC');
+                            resource = createFilteredResource(audioOut, q);
+                            track.source = 'SoundCloud';
+                            console.log('[MUSIC] ▸ yt-dlp SoundCloud for:', track.title);
+                        }
                     }
                 } catch (e) { console.log('[MUSIC] yt-dlp SC error:', e.message); }
             }
