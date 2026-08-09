@@ -1167,7 +1167,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         await replyFn({ content: `${EMOJIS.loading} Fetching Spotify playlist...` });
         const playlist = await fetchSpotifyPlaylist(playlistId);
         if (!playlist || !playlist.tracks.length) {
-            return replyFn({ content: `${EMOJIS.error} Could not load that playlist — make sure it's public!` });
+            return replyFn({ content: `${EMOJIS.error} Could not load that playlist — Spotify editorial playlists are restricted. Use a public playlist you or a friend created.` });
         }
         // Queue all tracks
         let q = getQueue(guildId);
