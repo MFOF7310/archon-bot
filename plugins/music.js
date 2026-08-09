@@ -645,6 +645,41 @@ async function searchSpotify(query) {
 }
 
 // iTunes artwork fallback — free, no key, great non-Spotify coverage
+async function fetchSpotifyPlaylist(playlistId) {
+    try {
+        const token = await getSpotifyToken();
+        if (!token) return null;
+        const tracks = [];
+        let url = `https://api.spotify.com/v1/playlists/${playlistId}?fields=name,description,images,tracks(items(track(name,artists,duration_ms,external_urls)))`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const name = data.name || 'Spotify Playlist';
+        const image = data.images?.[0]?.url || null;
+        const description = data.description || '';
+        // Get first page tracks
+        for (const item of data.tracks?.items || []) {
+            const t = item.track;
+            if (!t || !t.name) continue;
+            const artist = t.artists?.[0]?.name || 'Unknown';
+            tracks.push({
+                title: `🎵 ${artist} - ${t.name}`,
+                query: `${t.name} ${artist}`,
+                artist,
+                duration: Math.floor((t.duration_ms || 0) / 1000),
+                spotifyUrl: t.external_urls?.spotify || null,
+                thumbnail: null,
+                source: 'SoundCloud',
+            });
+            if (tracks.length >= 50) break; // cap at 50
+        }
+        return { name, image, description, tracks };
+    } catch(e) {
+        console.error('[MUSIC] Spotify playlist fetch error:', e.message);
+        return null;
+    }
+}
+
 async function searchItunesArtwork(query) {
     try {
         const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=1`);
@@ -1125,6 +1160,63 @@ async function ensureConnection(q) {
 // PLAY HELPER
 // ═══════════════════════════════════════════════════════
 async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requestedBy, client, replyFn, requestedById) {
+    // ── SPOTIFY PLAYLIST IMPORT ──
+    const spotifyPlaylistMatch = query.match(/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/);
+    if (spotifyPlaylistMatch) {
+        const playlistId = spotifyPlaylistMatch[1];
+        await replyFn({ content: `${EMOJIS.loading} Fetching Spotify playlist...` });
+        const playlist = await fetchSpotifyPlaylist(playlistId);
+        if (!playlist || !playlist.tracks.length) {
+            return replyFn({ content: `${EMOJIS.error} Could not load that playlist — make sure it's public!` });
+        }
+        // Queue all tracks
+        let q = getQueue(guildId);
+        if (!q) {
+            q = createQueue(guild, voiceChannel, textChannel, client);
+            await ensureConnection(q);
+        }
+        q._client = client;
+        const requestedByLabel = requestedBy;
+        for (const track of playlist.tracks) {
+            q.tracks.push({
+                ...track,
+                requestedBy,
+                requestedById,
+                thumbnail: playlist.image,
+            });
+        }
+        // Build CV2 response
+        const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder, SeparatorBuilder } = require('discord.js');
+        const previewList = playlist.tracks.slice(0, 5).map((t, i) =>
+            `\`${String(i+1).padStart(2,'0')}\` ${t.title.replace(/^🎵\s*/,'')}`
+        ).join('\n');
+        const container = new ContainerBuilder()
+            .setAccentColor(0x1DB954)
+            .addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`${EMOJIS.spotify} **Spotify Playlist Queued**`),
+                        new TextDisplayBuilder().setContent(
+                            `**${playlist.name}**\n` +
+                            `${playlist.description ? playlist.description.substring(0,100) + '\n' : ''}` +
+                            `\n**${playlist.tracks.length}** tracks added to queue • Added by **${requestedByLabel}**`
+                        )
+                    )
+                    .setThumbnailAccessory(
+                        new ThumbnailBuilder().setURL(playlist.image || client.user.displayAvatarURL())
+                    )
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`**Up first:**\n${previewList}${playlist.tracks.length > 5 ? `\n*...and ${playlist.tracks.length - 5} more*` : ''}`)
+            );
+        await replyFn({
+            components: [container],
+            flags: (1 << 15)
+        });
+        if (!q.currentTrack) playNext(q);
+        return;
+    }
+
     // Handle folder selection from autocomplete
     if (query.startsWith('__folder__')) {
         const folderName = query.replace('__folder__', '');
