@@ -1177,7 +1177,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         const menu = new StringSelectMenuBuilder()
             .setCustomId(`ms_suggest_${Date.now()}`)
             .setPlaceholder('🎵 Queue a suggested track...')
-            .addOptions(suggestions.map(s => ({ label: s.title.substring(0,100), value: s.query.substring(0,100), emoji: '🎵' })));
+            .addOptions(suggestions.map(s => ({ label: s.title.replace(/^🎵s*/, '').substring(0,100), value: s.query.substring(0,100), emoji: '🎵' })));
         components.push(new ActionRowBuilder().addComponents(menu));
     }
 
