@@ -51,7 +51,7 @@ module.exports = {
     // ── Gaming & Actions ──
     music:   '<:music:1535641832933822464>',
     shield:  '<:shield:1535642169032048730>',
-    xp:      '<:XP:1535642631139364984>',
+    xp:      '<:XP:1535796679570362398>',
     check:   '<a:check:1505715312773959731>',
     level:   '<a:level:1535637044527636531>',
 
@@ -63,6 +63,6 @@ module.exports = {
     stop:     '<:stop:1535658674054373386>',
 
     // ── Crowns (use for different rank tiers) ──
-    crown:    '<:Crown:1156715118990725230>',
+    crown:    '<:Crown:1535796754719576094>',
     blCrown:  '<:bl_crown:1108129039094386750>',
 };
