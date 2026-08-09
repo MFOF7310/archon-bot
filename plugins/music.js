@@ -20,6 +20,23 @@ const {
     getVoiceConnection, StreamType
 } = require('@discordjs/voice');
 const playdl = require('play-dl');
+
+// ── SOUNDCLOUD CLIENT ID CACHE ──
+let _scClientId = null;
+let _scClientIdExpiry = 0;
+async function getSCClientId() {
+    const now = Date.now();
+    if (_scClientId && now < _scClientIdExpiry) return _scClientId;
+    try {
+        _scClientId = await playdl.getFreeClientID();
+        await playdl.setToken({ soundcloud: { client_id: _scClientId } });
+        _scClientIdExpiry = now + 20 * 60 * 1000; // refresh every 20 min
+        console.log('[MUSIC] SoundCloud client ID refreshed ✅');
+    } catch(e) {
+        console.error('[MUSIC] SoundCloud client ID refresh failed:', e.message);
+    }
+    return _scClientId;
+}
 const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 const { createWriteStream, unlinkSync } = require('fs');
@@ -651,16 +668,14 @@ const NO_COVER_ART = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/
 let scReady = false;
 (async () => {
     try {
-        const id = await playdl.getFreeClientID();
-        await playdl.setToken({ soundcloud: { client_id: id } });
+        await getSCClientId();
         scReady = true;
         console.log('[MUSIC] SoundCloud ready ✅');
     } catch (e) { console.error('[MUSIC] SoundCloud init failed:', e.message); }
 })();
 setInterval(async () => {
     try {
-        const id = await playdl.getFreeClientID();
-        await playdl.setToken({ soundcloud: { client_id: id } });
+        await getSCClientId();
     } catch (e) {}
 }, 12 * 60 * 60 * 1000);
 
@@ -868,8 +883,7 @@ async function playNext(q) {
 
             // SoundCloud primary
             try {
-                const id = await playdl.getFreeClientID();
-                await playdl.setToken({ soundcloud: { client_id: id } });
+                await getSCClientId();
                 const scQuery = (track.query || track.title).replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                 const results = await playdl.search(scQuery, { source: { soundcloud: 'tracks' }, limit: 1 });
                 if (results.length > 0) {
