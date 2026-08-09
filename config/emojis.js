@@ -33,6 +33,8 @@ module.exports = {
     bamako: '<:bamako:1535640587498291240>',
     eagle:  '<:eagle:1535640693652070541>',
 
+    dashboard: '<:dashboard:1536017261746327674>',
+
     // ── Music Controls ──
     mc_pause:       '<:pause:1535739788391485441>',
     mc_skip:        '<:skip:1535785326470107157>',

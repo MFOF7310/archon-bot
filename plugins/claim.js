@@ -1,5 +1,11 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+function parseEmoji(str) {
+    if (!str) return '📊';
+    const m = str.match(/<(a?):([^:]+):(\d+)>/);
+    if (!m) return str;
+    return { animated: !!m[1], name: m[2], id: m[3] };
+}
 
 // ================= UNIFIED LEVEL CALCULATION =================
 function calculateLevel(xp) { 
@@ -10,7 +16,7 @@ function calculateLevel(xp) {
 const claimTranslations = {
     en: {
         title: '⚡ NEURAL CLAIM PROTOCOL',
-        successTitle: `${EMOJIS.check} RESOURCES INJECTED`,
+        successTitle: `✅ RESOURCES INJECTED`,
         cooldownTitle: '🔒 ACCESS DENIED',
         cooldownDesc: (name, time, prefix) => `**Agent ${name}**, your neural cycle is still processing.\n\n${EMOJIS.loading} **Cooldown Remaining:** \`${time}\`\n\n💡 Use \`${prefix}daily\` to view your full dashboard.`,
         successDesc: (credits, xp, streak) =>
@@ -28,7 +34,7 @@ const claimTranslations = {
             '```',
         nextClaim: '⏰ NEXT CLAIM AVAILABLE',
         currentStats: '📊 CURRENT STATISTICS',
-        viewDashboard: '📊 Dashboard',
+        viewDashboard: 'Dashboard',
         myProfile: '👤 My Profile',
         error: `${EMOJIS.error} An error occurred during claim processing.`,
         accessDenied: `${EMOJIS.error} These controls are locked to your session.`,
@@ -38,7 +44,7 @@ const claimTranslations = {
     },
     fr: {
         title: '⚡ PROTOCOLE DE RÉCLAMATION NEURALE',
-        successTitle: `${EMOJIS.check} RESSOURCES INJECTÉES`,
+        successTitle: `✅ RESSOURCES INJECTÉES`,
         cooldownTitle: '🔒 ACCÈS REFUSÉ',
         cooldownDesc: (name, time, prefix) => `**Agent ${name}**, votre cycle neural est toujours en cours.\n\n${EMOJIS.loading} **Temps restant:** \`${time}\`\n\n💡 Utilisez \`${prefix}daily\` pour voir votre tableau de bord.`,
         successDesc: (credits, xp, streak) =>
@@ -56,7 +62,7 @@ const claimTranslations = {
             '```',
         nextClaim: '⏰ PROCHAINE RÉCLAMATION',
         currentStats: '📊 STATISTIQUES ACTUELLES',
-        viewDashboard: '📊 Tableau de Bord',
+        viewDashboard: 'Tableau de Bord',
         myProfile: '👤 Mon Profil',
         error: `${EMOJIS.error} Une erreur est survenue lors de la réclamation.`,
         accessDenied: `${EMOJIS.error} Ces commandes sont verrouillées à votre session.`,
@@ -396,7 +402,7 @@ module.exports = {
                             .setURL(`https://bamako-steel-dev.xyz/user/${message.author.id}?guild=${message.guild?.id || ""}`)
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Link)
-                            .setEmoji('📊')
+                            .setEmoji(parseEmoji(EMOJIS.dashboard))
                     );
                 
                 const cooldownReply = await message.reply({ embeds: [cooldownEmbed], components: [row] });
@@ -540,7 +546,7 @@ module.exports = {
                         .setURL(`https://bamako-steel-dev.xyz/user/${message.author.id}?guild=${message.guild?.id || ""}`)
                         .setLabel(t.viewDashboard)
                         .setStyle(ButtonStyle.Link)
-                        .setEmoji('📊'),
+                        .setEmoji(parseEmoji(EMOJIS.dashboard)),
                     new ButtonBuilder()
                         .setCustomId('claim_view_profile')
                         .setLabel(t.myProfile)
@@ -651,7 +657,7 @@ module.exports = {
                             .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}?guild=${interaction.guild?.id || ""}`)
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Link)
-                            .setEmoji('📊')
+                            .setEmoji(parseEmoji(EMOJIS.dashboard))
                     );
                 
                 await interaction.reply({ embeds: [cooldownEmbed], components: [row], flags: 64 });
@@ -791,7 +797,7 @@ module.exports = {
                         .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}?guild=${interaction.guild?.id || ""}`)
                         .setLabel(t.viewDashboard)
                         .setStyle(ButtonStyle.Link)
-                        .setEmoji('📊'),
+                        .setEmoji(parseEmoji(EMOJIS.dashboard)),
                     new ButtonBuilder()
                         .setCustomId('claim_slash_view_profile')
                         .setLabel(t.myProfile)
