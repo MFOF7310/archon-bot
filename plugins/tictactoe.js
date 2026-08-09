@@ -413,7 +413,10 @@ if (message.guild) {
                     finalRows.push(row);
                 }
                 
-                return i.editReply({ embeds: [resultEmbed], components: finalRows }).catch(() => {});
+                const pingContent = result === 'tie'
+                    ? `🤝 It's a draw, <@${challenger.id}> & <@${opponent.id}>!`
+                    : `🏆 <@${winnerId}> wins!`;
+                return i.editReply({ content: pingContent, embeds: [resultEmbed], components: finalRows }).catch(() => {});
             }
             
             // Switch turn
