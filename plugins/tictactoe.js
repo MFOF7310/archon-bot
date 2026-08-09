@@ -30,17 +30,17 @@ const tttTranslations = {
         title: '⚔️ NEURAL TIC-TAC-TOE',
         vs: 'vs',
         turn: '🎮 Current Turn',
-        win: '🏆 VICTORY!',
-        loss: '💔 DEFEAT!',
-        tie: '🤝 DRAW!',
-        tieDesc: 'The match ended in a tactical stalemate.',
-        winDesc: (winner) => `**${winner}** has claimed victory in the neural arena!`,
-        lossDesc: (loser) => `**${loser}** has been defeated. Better luck next time!`,
-        challenge: (challenger, opponent) => `⚔️ **${challenger}** (❌) challenges **${opponent}** (⭕) to a duel!`,
-        invalidTarget: '⚠️ **Invalid Target.** Mention a friend to challenge! (Ex: `.ttt @User`)',
-        alreadyPlaying: '⚠️ This player is already in an active game!',
+        win: '🏆 Victory is yours!',
+        loss: '💔 Better luck next time!',
+        tie: '🤝 Too evenly matched!',
+        tieDesc: 'Neither of you cracked — credits returned, rematch awaits.',
+        winDesc: (winner) => `**${winner}** outplayed the competition — well done! 🔥`,
+        lossDesc: (loser) => `**${loser}** fought hard — come back stronger! 💪`,
+        challenge: (challenger, opponent) => `⚔️ **${challenger}** just stepped into the arena and called out **${opponent}** — do you accept? 👀`,
+        invalidTarget: '👀 Mention someone to challenge — you can\'t play alone! (e.g. `.ttt @friend`)',
+        alreadyPlaying: '⏳ That player is already in a match — wait for them to finish!',
         notYourTurn: '🚫 It is not your turn!',
-        gameTimeout: '⏰ **Game Timeout.** The Architect has closed the match.',
+        gameTimeout: '⏰ Match timed out — took too long! Credits refunded to both players.',
         reward: '💰 Reward',
         xpGain: '📈 XP Gain',
         creditsGain: '💎 Credits',
@@ -49,7 +49,7 @@ const tttTranslations = {
         winRate: 'Win Rate',
         footer: 'Neural Arena • Challenge your friends!',
         betInfo: '💰 **Entry Fee:** 50 🪙 | **Winner Takes:** 100 🪙',
-        insufficientCredits: '❌ **Insufficient credits!** You need 50 🪙 to play. Use `.daily` to claim.',
+        insufficientCredits: '💸 You need **50 🪙** to enter the arena — claim your daily with `.daily` and come back!',
         opponentInsufficientCredits: (name) => `❌ **${name}** does not have enough credits (50 🪙 required)!`,
         levelUp: '🎉 AGENT PROMOTION!',
         levelUpDesc: (username, level, rank) => `**${username}** reached **Level ${level}**!\n${rank.emoji} **${rank.title.en}**`,
@@ -60,24 +60,24 @@ const tttTranslations = {
         playerStats: '📊 PLAYER STATS',
         credits: 'Credits',
         level: 'Level',
-        clickToPlay: 'Click a button to make your move!',
-        cellTaken: '⚠️ This cell is already taken!'
+        clickToPlay: 'Your move — choose wisely! 🧠',
+        cellTaken: '🚫 That spot is taken — pick another!'
     },
     fr: {
         title: '⚔️ TIC-TAC-TOE NEURAL',
         vs: 'contre',
         turn: '🎮 Tour Actuel',
-        win: '🏆 VICTOIRE!',
-        loss: '💔 DÉFAITE!',
-        tie: '🤝 ÉGALITÉ!',
-        tieDesc: 'Le match s\'est terminé par une impasse tactique.',
-        winDesc: (winner) => `**${winner}** a remporté la victoire dans l\'arène neurale!`,
-        lossDesc: (loser) => `**${loser}** a été vaincu. Meilleure chance la prochaine fois!`,
-        challenge: (challenger, opponent) => `⚔️ **${challenger}** (❌) défie **${opponent}** (⭕) en duel!`,
-        invalidTarget: '⚠️ **Cible invalide.** Mentionnez un ami pour le défier! (Ex: `.ttt @User`)',
-        alreadyPlaying: '⚠️ Ce joueur est déjà dans une partie active!',
+        win: '🏆 La victoire est à toi !',
+        loss: '💔 Pas de chance cette fois !',
+        tie: '🤝 Trop équilibrés !',
+        tieDesc: 'Ni l\'un ni l\'autre n\'a craqué — crédits remboursés, revanche en vue !',
+        winDesc: (winner) => `**${winner}** a dominé la partie — bravo ! 🔥`,
+        lossDesc: (loser) => `**${loser}** a bien combattu — reviens plus fort ! 💪`,
+        challenge: (challenger, opponent) => `⚔️ **${challenger}** entre dans l\'arène et défie **${opponent}** — tu acceptes ? 👀`,
+        invalidTarget: '👀 Mentionne quelqu\'un à défier — tu ne peux pas jouer seul ! (ex: `.ttt @ami`)',
+        alreadyPlaying: '⏳ Ce joueur est déjà en match — attends qu\'il termine !',
         notYourTurn: '🚫 Ce n\'est pas votre tour!',
-        gameTimeout: '⏰ **Temps écoulé.** L\'Architecte a fermé le match.',
+        gameTimeout: '⏰ Match expiré — trop lent ! Crédits remboursés aux deux joueurs.',
         reward: '💰 Récompense',
         xpGain: '📈 Gain XP',
         creditsGain: '💎 Crédits',
@@ -86,7 +86,7 @@ const tttTranslations = {
         winRate: 'Taux de Victoire',
         footer: 'Arène Neurale • Défiez vos amis!',
         betInfo: '💰 **Frais d\'entrée:** 50 🪙 | **Le Gagnant Remporte:** 100 🪙',
-        insufficientCredits: '❌ **Crédits insuffisants!** Vous avez besoin de 50 🪙. Utilisez `.daily`.',
+        insufficientCredits: '💸 Il te faut **50 🪙** pour entrer dans l\'arène — utilise `.daily` et reviens !',
         opponentInsufficientCredits: (name) => `❌ **${name}** n\'a pas assez de crédits (50 🪙 requis)!`,
         levelUp: '🎉 PROMOTION D\'AGENT!',
         levelUpDesc: (username, level, rank) => `**${username}** a atteint le **Niveau ${level}**!\n${rank.emoji} **${rank.title.fr}**`,
@@ -97,8 +97,8 @@ const tttTranslations = {
         playerStats: '📊 STATS DES JOUEURS',
         credits: 'Crédits',
         level: 'Niveau',
-        clickToPlay: 'Cliquez sur une case pour jouer!',
-        cellTaken: '⚠️ Cette case est déjà prise!'
+        clickToPlay: 'À toi de jouer — choisis bien ! 🧠',
+        cellTaken: '🚫 Cette case est prise — choisis-en une autre !'
     }
 };
 
@@ -115,7 +115,7 @@ module.exports = {
     examples: ['.ttt @friend'],
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
+    const guildId = message.guild?.id ?? 'DM';
         
         lang = client.detectLanguage ? client.detectLanguage('tictactoe', guildId) : 'en';
         
@@ -181,12 +181,12 @@ module.exports = {
         
         // 🔥 DEDUCT ENTRY FEES USING BATCH SYSTEM
         if (client.queueUserUpdate) {
-            client.queueUserUpdate(challenger.id, {
+            client.queueUserUpdate(challenger.id, guildId, {
                 ...challengerData,
                 credits: (challengerData.credits || 0) - entryFee,
                 username: challenger.username
             });
-            client.queueUserUpdate(opponent.id, {
+            client.queueUserUpdate(opponent.id, guildId, {
                 ...opponentData,
                 credits: (opponentData.credits || 0) - entryFee,
                 username: opponent.username
@@ -327,14 +327,13 @@ module.exports = {
                     if (client.queueUserUpdate) {
                         const cData = client.getUserData(challenger.id) || challengerData;
                         const oData = client.getUserData(opponent.id) || opponentData;
-                        client.queueUserUpdate(challenger.id, { ...cData, credits: (cData.credits || 0) + entryFee });
-                        client.queueUserUpdate(opponent.id, { ...oData, credits: (oData.credits || 0) + entryFee });
+                        client.queueUserUpdate(challenger.id, guildId, { ...cData, credits: (cData.credits || 0) + entryFee });
+                        client.queueUserUpdate(opponent.id, guildId, { ...oData, credits: (oData.credits || 0) + entryFee });
                     } else {
                         db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(entryFee, challenger.id);
                         db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(entryFee, opponent.id);
                     }
                     
-                    resultEmbed
                     resultEmbed
                         .setColor('#FEE75C')
                         .setAuthor({ name: '🤝 TACTICAL STALEMATE', iconURL: client.user.displayAvatarURL() })
@@ -349,7 +348,7 @@ module.exports = {
                     const loserData = client.getUserData(loserId) || (loserId === challenger.id ? challengerData : opponentData);
                     
                     if (client.queueUserUpdate) {
-                        client.queueUserUpdate(winnerId, {
+                        client.queueUserUpdate(winnerId, guildId, {
                             ...winnerData,
                             credits: (winnerData.credits || 0) + winnerReward,
                             xp: (winnerData.xp || 0) + 100,
@@ -357,7 +356,7 @@ module.exports = {
                             games_won: (winnerData.games_won || 0) + 1,
                             username: winner.username
                         });
-                        client.queueUserUpdate(loserId, {
+                        client.queueUserUpdate(loserId, guildId, {
                             ...loserData,
                             xp: (loserData.xp || 0) + 25,
                             games_played: (loserData.games_played || 0) + 1,
@@ -387,7 +386,6 @@ if (message.guild) {
         }
     } catch (e) {}
 }
-                    resultEmbed
                     resultEmbed
                         .setColor('#57F287')
                         .setAuthor({ name: '🏆 NEURAL ARENA — VICTORY!', iconURL: client.user.displayAvatarURL() })
@@ -452,8 +450,8 @@ if (message.guild) {
                 if (client.queueUserUpdate) {
                     const cData = client.getUserData(challenger.id) || challengerData;
                     const oData = client.getUserData(opponent.id) || opponentData;
-                    client.queueUserUpdate(challenger.id, { ...cData, credits: (cData.credits || 0) + entryFee });
-                    client.queueUserUpdate(opponent.id, { ...oData, credits: (oData.credits || 0) + entryFee });
+                    client.queueUserUpdate(challenger.id, guildId, { ...cData, credits: (cData.credits || 0) + entryFee });
+                    client.queueUserUpdate(opponent.id, guildId, { ...oData, credits: (oData.credits || 0) + entryFee });
                 } else {
                     db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(entryFee, challenger.id);
                     db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(entryFee, opponent.id);
