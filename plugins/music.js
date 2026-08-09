@@ -768,7 +768,13 @@ async function playNext(q) {
                     q.libraryIndex = (q.libraryIndex + 1) % lib.length;
                     const cand = lib[q.libraryIndex];
                     const hay = `${cand.title} ${cand.query}`.toLowerCase();
-                    if (!disliked.some(k => k && hay.includes(k))) { next = cand; break; }
+                    const isDisliked = disliked.some(k => {
+                        if (!k) return false;
+                        // Split compound keys like "wizkid, tems" and match first part
+                        const primary = k.split(/[,&]/)[0].trim();
+                        return hay.includes(primary);
+                    });
+                    if (!isDisliked) { next = cand; break; }
                 }
                 if (!next) next = lib[q.libraryIndex]; // everything disliked — play anyway rather than stall
                 q.tracks.push({
