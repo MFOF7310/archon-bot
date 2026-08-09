@@ -1,3 +1,4 @@
+const EMOJIS = require('../config/emojis');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 const C = { green: '\x1b[32m', red: '\x1b[31m', cyan: '\x1b[36m', reset: '\x1b[0m' };
@@ -207,7 +208,7 @@ async function classSelection(ctx, client, db, duel) {
       { name: '🎯 Sniper', value: `HP: 95 | DMG: 32 | Crit: 45% | Dodge: 10%\nSpecial: Headshot`, inline: true },
       { name: '💻 Hacker', value: `HP: 105 | DMG: 22 | Crit: 15% | Dodge: 15%\nSpecial: System Crash`, inline: true }
     )
-    .setFooter({ text: 'ARCHITECT CG-223 • Neural Arena', iconURL: client.user.displayAvatarURL() });
+    .setFooter({ text: 'ARCHON CG-223 • Neural Arena • BAMAKO_223 🇲🇱', iconURL: client.user.displayAvatarURL() });
 
   const classRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('duel_class_GHOST').setLabel('Ghost').setStyle(ButtonStyle.Primary).setEmoji('🥷'),
@@ -385,16 +386,16 @@ async function startDuel(ctx, client, db, opponent, bet) {
   const lang = ctx.isInteraction ? (ctx.source.locale?.startsWith('fr') ? 'fr' : 'en') : 'en';
 
   if (opponent.id === userId) {
-    return ctx.reply({ content: '❌ You cannot challenge yourself!', flags: 64 });
+    return ctx.reply({ content: `${EMOJIS.warning} You can't duel yourself — find a worthy opponent! 😄`, flags: 64 });
   }
   if (opponent.bot) {
-    return ctx.reply({ content: '❌ Cannot challenge a bot!', flags: 64 });
+    return ctx.reply({ content: `${EMOJIS.warning} Bots don't duel — they just win. Challenge a real player! 🤖`, flags: 64 });
   }
 
   const userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare(`SELECT credits FROM users WHERE id = ? AND guild_id = ?`).get(userId, guildId);
   const oppData = client.getUserData ? client.getUserData(opponent.id, guildId) : db.prepare(`SELECT credits FROM users WHERE id = ? AND guild_id = ?`).get(opponent.id, guildId);
-  if ((userData?.credits || 0) < bet) return ctx.reply({ content: `❌ You need ${bet} 🪙!`, flags: 64 });
-  if ((oppData?.credits || 0) < bet) return ctx.reply({ content: `❌ Opponent doesn't have ${bet} 🪙!`, flags: 64 });
+  if ((userData?.credits || 0) < bet) return ctx.reply({ content: `${EMOJIS.warning} You don't have enough credits for this bet — you need **${bet.toLocaleString()}** 🪙. Check your balance with \`/credit\`.`, flags: 64 });
+  if ((oppData?.credits || 0) < bet) return ctx.reply({ content: `${EMOJIS.warning} Your opponent doesn't have enough credits for this bet (**${bet.toLocaleString()}** 🪙). Try a lower amount.`, flags: 64 });
 
   // Deduct bets
   if (client.removeCredits) {
@@ -408,7 +409,7 @@ async function startDuel(ctx, client, db, opponent, bet) {
   const challengeEmbed = new EmbedBuilder().setColor('#e74c3c')
     .setAuthor({ name: '⚔️ NEURAL ARENA // CHALLENGE ISSUED', iconURL: client.user.displayAvatarURL() })
     .setDescription(`**${ctx.user.username}** challenges **${opponent.username}** to a Neural Duel!\n\`\`\`yaml\nBet: ${bet.toLocaleString()} 🪙\nMode: Class-based Combat\n\`\`\``)
-    .setFooter({ text: 'ARCHITECT CG-223 • Neural Arena', iconURL: client.user.displayAvatarURL() });
+    .setFooter({ text: 'ARCHON CG-223 • Neural Arena • BAMAKO_223 🇲🇱', iconURL: client.user.displayAvatarURL() });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('duel_accept').setLabel('ACCEPT').setStyle(ButtonStyle.Success).setEmoji('⚔️'),
@@ -427,7 +428,7 @@ async function startDuel(ctx, client, db, opponent, bet) {
       // Refund
       if (client.addCredits) { client.addCredits(userId, guildId, bet); client.addCredits(opponent.id, guildId, bet); }
       else { db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(bet, userId, guildId); db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(bet, opponent.id, guildId); }
-      return msg.edit({ content: '❌ Challenge declined.', embeds: [], components: [] }).catch(() => {});
+      return msg.edit({ content: `${EMOJIS.warning} **${opponent.username}** declined the challenge. Credits refunded. 👋`, embeds: [], components: [] }).catch(() => {});
     }
 
     await res.deferUpdate().catch(() => {});
@@ -444,7 +445,7 @@ async function startDuel(ctx, client, db, opponent, bet) {
     // Refund on timeout
     if (client.addCredits) { client.addCredits(userId, guildId, bet); client.addCredits(opponent.id, guildId, bet); }
     else { db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(bet, userId, guildId); db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(bet, opponent.id, guildId); }
-    msg.edit({ content: '⏰ Challenge timed out.', embeds: [], components: [] }).catch(() => {});
+    msg.edit({ content: `⏰ **${opponent.username}** didn't respond in time — challenge expired. Credits refunded.`, embeds: [], components: [] }).catch(() => {});
   }
 }
 
