@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ================= BILINGUAL =================
 const T = {
@@ -8,12 +9,12 @@ const T = {
         server: 'This Server',
         global: 'Global Network',
         total: 'Total',
-        dailyClaimed: '✅ Daily Claimed!',
-        dailyCooldown: '⏰ Already claimed! Next:',
+        dailyClaimed: '🎉 Daily Bonus Claimed!',
+        dailyCooldown: '⏰ You already grabbed today\'s bonus! Come back',
         streak: 'Streak',
-        transferSent: '✅ Transfer Sent',
-        transferReceived: '✅ Transfer Received',
-        transferError: '❌ Transfer Failed',
+        transferSent: '💸 Credits Sent!',
+        transferReceived: '💰 You Just Got Paid!',
+        transferError: '❌ Transfer Failed — something went wrong',
         leaderboard: '🏆 Global Leaderboard',
         network: '🌐 ARCHITECT Network',
         servers: 'Servers',
@@ -26,13 +27,13 @@ const T = {
         emptyInventory: '📭 Empty',
         shop: '🏪 Global Shop',
         footer: 'ARCHON CG-223 • Cross-Server Economy',
-        noFunds: '❌ Insufficient credits',
+        noFunds: '❌ Not enough credits — check your balance with `/global balance`',
         invalidAmount: '❌ Invalid amount',
-        selfTransfer: '❌ Cannot send to yourself',
+        selfTransfer: '😅 You can\'t send credits to yourself!',
         tax: 'Network Tax (5%)',
         networkBonus: '🌐 Network Bonus',
         levelSync: '✅ Level synced to global network',
-        firstTimeWelcome: '🎉 Welcome to the Global Economy! You\'ve been awarded **500** starter credits.'
+        firstTimeWelcome: '🎉 Welcome to the ARCHON Global Economy! You\'ve been gifted **500** starter credits — claim your daily bonus to start stacking!'
     },
     fr: {
         title: '🌐 Économie Globale',
@@ -40,11 +41,11 @@ const T = {
         server: 'Ce Serveur',
         global: 'Réseau Global',
         total: 'Total',
-        dailyClaimed: '✅ Quotidien Réclamé !',
-        dailyCooldown: '⏰ Déjà réclamé ! Prochain :',
+        dailyClaimed: '🎉 Bonus Quotidien Réclamé !',
+        dailyCooldown: '⏰ Bonus déjà réclamé aujourd\'hui ! Prochain dans',
         streak: 'Série',
-        transferSent: '✅ Transfert Envoyé',
-        transferReceived: '✅ Transfert Reçu',
+        transferSent: '💸 Crédits Envoyés !',
+        transferReceived: '💰 Tu Viens de Recevoir des Crédits !',
         transferError: '❌ Transfert Échoué',
         leaderboard: '🏆 Classement Global',
         network: '🌐 Réseau ARCHITECT',
@@ -58,9 +59,9 @@ const T = {
         emptyInventory: '📭 Vide',
         shop: '🏪 Boutique Globale',
         footer: 'ARCHON CG-223 • Économie Inter-Serveurs',
-        noFunds: '❌ Crédits insuffisants',
+        noFunds: '❌ Pas assez de crédits — vérifie ton solde avec `/global balance`',
         invalidAmount: '❌ Montant invalide',
-        selfTransfer: '❌ Impossible de s\'envoyer à soi-même',
+        selfTransfer: '😅 Tu ne peux pas t\'envoyer des crédits à toi-même !',
         tax: 'Taxe Réseau (5%)',
         networkBonus: '🌐 Bonus Réseau',
         levelSync: '✅ Niveau synchronisé au réseau global',
@@ -630,7 +631,7 @@ function buildLeaderboardEmbed(db, client, t) {
     return new EmbedBuilder()
         .setColor('#ffd700')
         .setTitle('🏆 ' + t.leaderboard)
-        .setDescription('*Elite Performers Across the ARCHITECT Network*')
+        .setDescription('*The biggest earners across the entire ARCHON network — where do you rank?*')
         .addFields(fields)
         .setFooter({ 
             text: `${t.footer} • Rankings update in real-time`, 
@@ -762,8 +763,8 @@ module.exports = {
                 return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(`${t.dailyCooldown} <t:${result.nextClaim}:R>`)] });
             }
             const embed = new EmbedBuilder().setColor('#2ecc71').setTitle(t.dailyClaimed)
-                .setDescription(`**+${result.total.toLocaleString()}** credits (${result.base} base + ${result.bonus} bonus)\n🔥 ${t.streak}: **${result.streak}** days`)
-                .addFields({ name: t.dailyCooldown, value: `<t:${result.nextClaim}:R>`, inline: false })
+                .setDescription(`${EMOJIS.coins} **+${result.total.toLocaleString()}** credits landed in your account!\n> ${result.base} base + ${result.bonus} streak bonus\n\n🔥 ${t.streak}: **${result.streak}** days${result.streak >= 7 ? ' — you\'re on fire!' : ' — keep it going!'}`)
+                .addFields({ name: '⏰ Next bonus', value: `<t:${result.nextClaim}:R>`, inline: false })
                 .setFooter({ text: t.footer }).setTimestamp();
             return interaction.editReply({ embeds: [embed] });
         }
@@ -778,11 +779,11 @@ module.exports = {
             const result = transferGlobal(client.db, uid, target.id, amount);
             if (!result.success) return interaction.editReply(t.noFunds);
             const embed = new EmbedBuilder().setColor('#2ecc71').setTitle(t.transferSent)
-                .setDescription(`**${result.amount.toLocaleString()}** credits to **${target.username}**\n${t.tax}: ${result.tax}`)
+                .setDescription(`${EMOJIS.coins} **${result.amount.toLocaleString()}** credits sent to **${target.username}** 🤝\n> Network fee: ${result.tax} credits (5%)`)
                 .setFooter({ text: t.footer }).setTimestamp();
             interaction.editReply({ embeds: [embed] });
             // DM recipient
-            target.send({ embeds: [new EmbedBuilder().setColor('#2ecc71').setTitle(t.transferReceived).setDescription(`**+${result.amount.toLocaleString()}** credits from ${interaction.user.username}\nUse \`/global balance\` to check`).setFooter({ text: t.footer })] }).catch(() => {});
+            target.send({ embeds: [new EmbedBuilder().setColor('#2ecc71').setTitle(t.transferReceived).setDescription(`${EMOJIS.coins} **${interaction.user.username}** just sent you **+${result.amount.toLocaleString()}** credits! 🎉\n\nCheck your wallet with \`/global balance\`.`).setFooter({ text: t.footer })] }).catch(() => {});
             return;
         }
 
