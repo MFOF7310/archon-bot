@@ -35,7 +35,7 @@ const claimTranslations = {
         nextClaim: '⏰ NEXT CLAIM AVAILABLE',
         currentStats: '📊 CURRENT STATISTICS',
         viewDashboard: 'Dashboard',
-        myProfile: '👤 My Profile',
+        myProfile: 'My Profile',
         error: `${EMOJIS.error} An error occurred during claim processing.`,
         accessDenied: `${EMOJIS.error} These controls are locked to your session.`,
         channelRestricted: (channelId) => `📊 The claim protocol is restricted to <#${channelId}>.`,
@@ -63,7 +63,7 @@ const claimTranslations = {
         nextClaim: '⏰ PROCHAINE RÉCLAMATION',
         currentStats: '📊 STATISTIQUES ACTUELLES',
         viewDashboard: 'Tableau de Bord',
-        myProfile: '👤 Mon Profil',
+        myProfile: 'Mon Profil',
         error: `${EMOJIS.error} Une erreur est survenue lors de la réclamation.`,
         accessDenied: `${EMOJIS.error} Ces commandes sont verrouillées à votre session.`,
         channelRestricted: (channelId) => `📊 Le protocole est restreint au canal <#${channelId}>.`,
@@ -551,7 +551,7 @@ module.exports = {
                         .setCustomId('claim_view_profile')
                         .setLabel(t.myProfile)
                         .setStyle(ButtonStyle.Primary)
-                        .setEmoji('👤')
+                        .setEmoji(parseEmoji(EMOJIS.myprofile))
                 );
             
             const successReply = await message.reply({ embeds: [successEmbed], components: [actionRow] });
@@ -802,7 +802,7 @@ module.exports = {
                         .setCustomId('claim_slash_view_profile')
                         .setLabel(t.myProfile)
                         .setStyle(ButtonStyle.Primary)
-                        .setEmoji('👤')
+                        .setEmoji(parseEmoji(EMOJIS.myprofile))
                 );
             
             await interaction.reply({ embeds: [successEmbed], components: [actionRow], ephemeral: false });
