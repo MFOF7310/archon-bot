@@ -1006,6 +1006,7 @@ async function playNext(q) {
 
         resource.volume?.setVolume(q.volume / 100);
         q.player.play(resource);
+        q._consecutiveErrors = 0; // reset on successful play
 
         // New track starting → panel relocates to the bottom of chat
         await updatePersistentPanel(q, { resend: true });
@@ -1016,9 +1017,22 @@ async function playNext(q) {
 
     } catch (err) {
         console.error('[MUSIC] Error:', err.message);
+
+        // ── SKIP GUARD: stop infinite loop on consecutive failures ──
+        q._consecutiveErrors = (q._consecutiveErrors || 0) + 1;
+        if (q._consecutiveErrors >= 5) {
+            q._consecutiveErrors = 0;
+            const giveUpEmbed = new EmbedBuilder().setColor(ARCHON.red)
+                .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
+                .setDescription(`⚠️ **Too many tracks failed in a row** — pausing autoplay. Use \`/music play\` to queue something manually.`);
+            await q.textChannel?.send({ embeds: [giveUpEmbed] }).catch(() => {});
+            q.autoplay = false;
+            return;
+        }
+
         const errEmbed = new EmbedBuilder().setColor(ARCHON.red)
             .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
-            .setDescription(`😤 **That track glitched out** — flipping to the next one…`);
+            .setDescription(`😤 **That track glitched out** — flipping to the next one… (${q._consecutiveErrors}/5)`);
         if (q.persistentMsg) {
             await q.persistentMsg.delete().catch(() => {});
             q.persistentMsg = null; q.panelMsgId = null;
