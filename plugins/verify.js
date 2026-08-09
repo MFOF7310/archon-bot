@@ -121,12 +121,12 @@ module.exports = {
         const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
             return interaction.reply({
                 embeds: [new EmbedBuilder()
-                    .setColor(s?.verify_enabled ? 0x00cc44 : 0x888888)
+                    .setColor(settings?.verify_enabled ? 0x00cc44 : 0x888888)
                     .setTitle('📊 Verification Gate Status')
                     .addFields(
-                        { name: '🔘 Status', value: s?.verify_enabled ? '🟢 Enabled' : '🔴 Disabled', inline: true },
-                        { name: '🎭 Role', value: s?.verify_role_id ? `<@&${s.verify_role_id}>` : 'Not set', inline: true },
-                        { name: '⏰ Auto-kick', value: s?.verify_kick_days ? `${s.verify_kick_days} min` : 'Disabled', inline: true }
+                        { name: '🔘 Status', value: settings?.verify_enabled ? '🟢 Enabled' : '🔴 Disabled', inline: true },
+                        { name: '🎭 Role', value: settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : 'Not set', inline: true },
+                        { name: '⏰ Auto-kick', value: settings?.verify_kick_days ? `${settings.verify_kick_days} min` : 'Disabled', inline: true }
                     )
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                 flags: 64
@@ -194,6 +194,7 @@ module.exports = {
         let attempts = 0;
         const maxAttempts = 3;
         const expireMs = 10 * 60 * 1000; // 10 min
+        const codeRef = { current: code }; // mutable ref so retries work
 
         // Listen for reply in DM
         if (dmChannel) {
@@ -202,7 +203,7 @@ module.exports = {
 
             collector.on('collect', async m => {
                 const guess = m.content.trim().toUpperCase();
-                if (guess === code) {
+                if (guess === codeRef.current) {
                     // ✅ Correct!
                     collector.stop('verified');
                     pending.delete(key);
@@ -234,9 +235,8 @@ module.exports = {
                         const newCode = randomCode(6);
                         const newBuf = generateCaptcha(newCode);
                         const newAttach = new AttachmentBuilder(newBuf, { name: 'verify.png' });
-                        // Update stored code
-                        const p = pending.get(key);
-                        if (p) p.code = newCode;
+                        // Update codeRef so collector validates new code
+                        codeRef.current = newCode;
 
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff8800)
