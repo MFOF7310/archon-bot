@@ -422,7 +422,7 @@ function attachCollector(q, msg) {
             }
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_skip') {
-            await i.followUp({ content: `${EMOJIS.mc_skip} Skipping **${qNow.currentTrack?.title?.substring(0,50) || 'track'}**…`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.mc_skip} Skipping **${(qNow.currentTrack?.title || 'track').replace(/^🎵\s*/, '').substring(0,50)}**…`, flags: 64 }).catch(() => {});
             qNow.player.stop();
         } else if (i.customId === 'mc_stop') {
             if (qNow.persistentMsg) {
@@ -436,7 +436,7 @@ function attachCollector(q, msg) {
         } else if (i.customId === 'mc_voldown' || i.customId === 'mc_volup') {
             qNow.volume = Math.max(0, Math.min(100, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
             try { qNow.player?.state?.resource?.volume?.setVolume(qNow.volume / 100); } catch(e) {}
-            await i.followUp({ content: `${EMOJIS.mc_volume_up} Volume set to \`${qNow.volume}%\``, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${i.customId === 'mc_volup' ? EMOJIS.mc_volume_up : EMOJIS.mc_volume_down} Volume set to \`${qNow.volume}%\``, flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_loop') {
             qNow.loop = !qNow.loop;
@@ -471,7 +471,8 @@ function attachCollector(q, msg) {
                 if (list.length > 50) list.pop();
                 saveDislikes(all);
             }
-            await i.followUp({ content: `👎 **${t.title.substring(0, 50)}** skipped — noted!\nI'll keep **${artist.substring(0, 40)}** off your autoplay from now on 🎧`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: `${EMOJIS.mc_not_for_me} **${t.title.replace(/^🎵\s*/, '').substring(0, 50)}** skipped — noted!
+I'll keep **${artist.substring(0, 40)}** off your autoplay from now on ${EMOJIS.mc_skip}`, flags: 64 }).catch(() => {});
             qNow.player.stop(); // Triggers Idle → playNext
         } else if (i.customId === 'mc_queue') {
             await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
