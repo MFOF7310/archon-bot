@@ -25,7 +25,7 @@ const T = {
         inventory: '🎒 Global Inventory',
         emptyInventory: '📭 Empty',
         shop: '🏪 Global Shop',
-        footer: 'ARCHITECT CG-223 • Cross-Server Economy',
+        footer: 'ARCHON CG-223 • Cross-Server Economy',
         noFunds: '❌ Insufficient credits',
         invalidAmount: '❌ Invalid amount',
         selfTransfer: '❌ Cannot send to yourself',
@@ -57,7 +57,7 @@ const T = {
         inventory: '🎒 Inventaire Global',
         emptyInventory: '📭 Vide',
         shop: '🏪 Boutique Globale',
-        footer: 'ARCHITECT CG-223 • Économie Inter-Serveurs',
+        footer: 'ARCHON CG-223 • Économie Inter-Serveurs',
         noFunds: '❌ Crédits insuffisants',
         invalidAmount: '❌ Montant invalide',
         selfTransfer: '❌ Impossible de s\'envoyer à soi-même',
@@ -287,7 +287,7 @@ function buildBalanceEmbed(db, userId, username, avatar, serverBalance, client, 
         .setAuthor({ 
             name: `💰 ${username}'s Portfolio`, 
             iconURL: avatar,
-            url: 'https://discord.gg/architect'
+            url: 'https://discord.gg/archon-cg223'
         })
         .setDescription(
             '```ansi\n' +
@@ -417,7 +417,7 @@ function buildNetworkEmbed(db, client, t) {
         .setAuthor({ 
             name: '🌐 ARCHITECT Global Network', 
             iconURL: client.user?.displayAvatarURL(),
-            url: 'https://discord.gg/architect'
+            url: 'https://discord.gg/archon-cg223'
         })
         .setDescription(
             '```ansi\n' +
@@ -663,7 +663,7 @@ module.exports = {
 
     // ================= PREFIX =================
     run: async (client, message, args, db, ss, used) => {
-    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
+    const guildId = message.guild?.id ?? 'DM';
         setupDB(db);
         
         // SYNC SERVER STATS
