@@ -887,14 +887,22 @@ async function playNext(q) {
                 const scQuery = (track.query || track.title).replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                 const results = await playdl.search(scQuery, { source: { soundcloud: 'tracks' }, limit: 1 });
                 if (results.length > 0) {
-                    const url = results[0].permalink || results[0].url;
-                    stream = await playdl.stream(url);
-                    track.source = 'SoundCloud';
-                    track.duration = results[0].durationInSec || 0;
-                    track.thumbnail = results[0].thumbnail?.url;
-                    track.artist = results[0].publisher?.artist || results[0].user?.name;
-                    track.title = results[0].title || track.title;
-                    console.log('[MUSIC] ▸ SoundCloud:', track.title);
+                    const scDuration = results[0].durationInSec || 0;
+                    const expectedDuration = track.duration || 0;
+                    // Reject if SC result is >60s shorter than Spotify metadata
+                    const durationMismatch = expectedDuration > 60 && scDuration > 0 && (expectedDuration - scDuration) > 60;
+                    if (durationMismatch) {
+                        console.log(`[MUSIC] ⚠️ SC duration mismatch: expected ${expectedDuration}s got ${scDuration}s — falling back to yt-dlp`);
+                    } else {
+                        const url = results[0].permalink || results[0].url;
+                        stream = await playdl.stream(url);
+                        track.source = 'SoundCloud';
+                        track.duration = scDuration;
+                        track.thumbnail = results[0].thumbnail?.url;
+                        track.artist = results[0].publisher?.artist || results[0].user?.name;
+                        track.title = results[0].title || track.title;
+                        console.log('[MUSIC] ▸ SoundCloud:', track.title);
+                    }
                 }
             } catch (e) { console.log('[MUSIC] SoundCloud error:', e.message); }
 
