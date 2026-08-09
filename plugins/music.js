@@ -1412,7 +1412,7 @@ module.exports = {
         // ── PLAY ──
         if (sub === 'play') {
             const query = interaction.options.getString('query');
-            await interaction.editReply({ content: '⏳ Loading...' });
+            await interaction.editReply({ content: `${EMOJIS.loading} Warming up the decks...` });
             await handlePlay(
                 guildId, interaction.guild, vc, interaction.channel,
                 query, interaction.user.username, client,
@@ -1435,7 +1435,7 @@ module.exports = {
 
             await interaction.editReply({
                 embeds: [new EmbedBuilder().setColor(ARCHON.gold)
-                    .setDescription(`📥 Downloading **${atts.length}** file(s)...`)]
+                    .setDescription(`${EMOJIS.loading} Downloading **${atts.length}** file(s) — hang tight...`)]
             });
 
             const added = [];
