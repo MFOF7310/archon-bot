@@ -5,7 +5,7 @@ const EMOJIS = require('../config/emojis');
 const dailyTranslations = {
     en: {
         title: '📅 DAILY REWARD',
-        claimed: '${EMOJIS.check} DAILY REWARD CLAIMED!',
+        claimed: `${EMOJIS.check} DAILY REWARD CLAIMED!`,
         alreadyClaimed: '⏰ ALREADY CLAIMED',
         comeBack: 'Come back in',
         hours: 'hours',
@@ -25,7 +25,7 @@ const dailyTranslations = {
         bonusAdded: 'Bonus added',
         levelUp: '🎉 LEVEL UP!',
         reachedLevel: 'You reached level',
-        noAccount: '${EMOJIS.error} No data found. Use /claim to start!',
+        noAccount: `${EMOJIS.error} No data found — use \`/claim\` to get started!`,
         readyToClaim: 'Ready to claim!',
         onCooldown: 'On cooldown',
         useClaim: 'Use `/claim`',
@@ -37,7 +37,7 @@ const dailyTranslations = {
     },
     fr: {
         title: '📅 RÉCOMPENSE QUOTIDIENNE',
-        claimed: '${EMOJIS.check} RÉCOMPENSE QUOTIDIENNE RÉCLAMÉE !',
+        claimed: `${EMOJIS.check} RÉCOMPENSE QUOTIDIENNE RÉCLAMÉE !`,
         alreadyClaimed: '⏰ DÉJÀ RÉCLAMÉ',
         comeBack: 'Revenez dans',
         hours: 'heures',
@@ -57,7 +57,7 @@ const dailyTranslations = {
         bonusAdded: 'Bonus ajouté',
         levelUp: '🎉 NIVEAU SUPÉRIEUR !',
         reachedLevel: 'Vous avez atteint le niveau',
-        noAccount: '${EMOJIS.error} Aucune donnée trouvée. Utilisez /claim pour commencer!',
+        noAccount: `${EMOJIS.error} Aucune donnée trouvée — utilisez \`/claim\` pour commencer !`,
         readyToClaim: 'Prêt à réclamer!',
         onCooldown: 'En cooldown',
         useClaim: 'Utilisez `/claim`',
