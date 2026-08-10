@@ -912,11 +912,9 @@ function buildEmbed(reply, message, options = {}) {
     // Footer only on last embed
     if (i === chunks.length - 1 || i === CFG.MAX_EMBEDS_PER_MSG - 1) {
       const footerParts = [];
-      if (model) footerParts.push(`Model: ${model.name}`);
-      if (latency) footerParts.push(`${latency}ms`);
-      footerParts.push(`ARCHON CG-223`);
-      if (lang === 'fr') footerParts.push('FR');
-      else footerParts.push('EN');
+      footerParts.push(`ARCHON CG-223 • Lydia AI`);
+      if (lang === 'fr') footerParts.push('🇫🇷');
+      else footerParts.push('🌐');
 
       embed.setFooter({
         text: footerParts.join(' \u2022 '),
