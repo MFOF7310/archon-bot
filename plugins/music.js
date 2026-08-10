@@ -645,44 +645,6 @@ async function searchSpotify(query) {
 }
 
 // iTunes artwork fallback — free, no key, great non-Spotify coverage
-async function fetchSpotifyPlaylist(playlistId) {
-    try {
-        const token = await getSpotifyToken();
-        if (!token) return null;
-        const tracks = [];
-        let url = `https://api.spotify.com/v1/playlists/${playlistId}`;
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) {
-            const errText = await res.text();
-            console.error('[MUSIC] Spotify playlist API error:', res.status, errText.substring(0, 200));
-            return null;
-        }
-        const data = await res.json();
-        const name = data.name || 'Spotify Playlist';
-        const image = data.images?.[0]?.url || null;
-        const description = data.description || '';
-        // Get first page tracks
-        for (const item of data.tracks?.items || []) {
-            const t = item.track;
-            if (!t || !t.name) continue;
-            const artist = t.artists?.[0]?.name || 'Unknown';
-            tracks.push({
-                title: `🎵 ${artist} - ${t.name}`,
-                query: `${t.name} ${artist}`,
-                artist,
-                duration: Math.floor((t.duration_ms || 0) / 1000),
-                spotifyUrl: t.external_urls?.spotify || null,
-                thumbnail: null,
-                source: 'SoundCloud',
-            });
-            if (tracks.length >= 50) break; // cap at 50
-        }
-        return { name, image, description, tracks };
-    } catch(e) {
-        console.error('[MUSIC] Spotify playlist fetch error:', e.message);
-        return null;
-    }
-}
 
 async function searchItunesArtwork(query) {
     try {
@@ -1333,8 +1295,6 @@ module.exports = {
                     {name: '📊 Normalize (default)', value: 'normalize'},
                     {name: '❌ Off', value: 'off'}
                 )))
-        .addSubcommand(s => s.setName('playlist').setDescription('🎵 Queue a Spotify playlist by ID')
-            .addStringOption(o => o.setName('id').setDescription('Spotify playlist ID (from the share link)').setRequired(true)))
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')
             .addStringOption(o => o.setName('search').setDescription('🔍 Search inside the library (optional)').setRequired(false).setAutocomplete(true))),
 
@@ -1868,79 +1828,6 @@ module.exports = {
             });
         }
 
-        if (sub === 'playlist') {
-            const rawId = interaction.options.getString('id')?.trim() || '';
-            // Accept full URL or bare ID
-            const playlistIdMatch = rawId.match(/playlist\/([a-zA-Z0-9]+)/);
-            const playlistId = playlistIdMatch ? playlistIdMatch[1] : rawId.split('?')[0].trim();
-            if (!playlistId || playlistId.length < 10) return interaction.editReply({
-                content: `${EMOJIS.error} Invalid playlist ID.\n\n**How to get it:**\n1. Open Spotify → go to a playlist you created\n2. Tap ··· → Share → Copy link\n3. Paste the full link or just the ID after \`/playlist/\``
-            });
-            // Reject user profile URLs
-            if (rawId.includes('/user/') && !rawId.includes('/playlist/')) return interaction.editReply({
-                content: `${EMOJIS.error} That's a user profile link, not a playlist.\n\nOpen a **playlist** you created → Share → Copy link.`
-            });
-
-            await interaction.editReply({ content: `${EMOJIS.loading} Fetching your Spotify playlist...` });
-
-            const playlist = await fetchSpotifyPlaylist(playlistId);
-            if (!playlist || !playlist.tracks.length) {
-                return interaction.editReply({ content: `${EMOJIS.error} Could not load that playlist — make sure it's **public** and not a Spotify-generated one (Daily Mix, Top Tracks etc).` });
-            }
-
-            let q = getQueue(guildId);
-            if (!q) {
-                q = createQueue(interaction.guild, vc, interaction.channel, client);
-                await ensureConnection(q);
-            }
-            q._client = client;
-
-            for (const track of playlist.tracks) {
-                q.tracks.push({
-                    ...track,
-                    requestedBy: interaction.user.username,
-                    requestedById: interaction.user.id,
-                    thumbnail: track.thumbnail || playlist.image,
-                });
-            }
-
-            const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder } = require('discord.js');
-            const previewList = playlist.tracks.slice(0, 5).map((t, i) =>
-                `\`${String(i+1).padStart(2,'0')}\` ${t.title.replace(/^🎵\s*/,'')}`
-            ).join('\n');
-
-            const container = new ContainerBuilder()
-                .setAccentColor(0x1DB954)
-                .addSectionComponents(
-                    new SectionBuilder()
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`${EMOJIS.spotify} **Playlist Queued!**`),
-                            new TextDisplayBuilder().setContent(
-                                `**${playlist.name}**\n` +
-                                `${playlist.description ? playlist.description.substring(0,100) + '\n' : ''}` +
-                                `\n${EMOJIS.mc_queue} **${playlist.tracks.length} tracks** added • By **${interaction.user.username}**`
-                            )
-                        )
-                        .setThumbnailAccessory(
-                            new ThumbnailBuilder().setURL(playlist.image || client.user.displayAvatarURL())
-                        )
-                )
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `**Up first:**\n${previewList}` +
-                        `${playlist.tracks.length > 5 ? `\n*...and ${playlist.tracks.length - 5} more tracks*` : ''}`
-                    )
-                );
-
-            await interaction.editReply({
-                content: null,
-                components: [container],
-                flags: (1 << 15)
-            });
-
-            if (!q.currentTrack) playNext(q);
-            return;
-        }
     }
 };
 
