@@ -3,7 +3,7 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const EMOJIS = require('../config/emojis');
 
 // ── CANVAS CONSTANTS ──
-const W = 900, H = 400, SCALE = 2;
+const W = 1000, H = 450, SCALE = 2;
 const CW = W * SCALE, CH = H * SCALE;
 
 function s(n) { return n * SCALE; }
@@ -150,7 +150,7 @@ async function renderWhoisCard(member, userData, allServers, warnings, premium) 
     // XP label
     ctx.font = `${s(10)}px Sans`;
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText(`${xp.toLocaleString()} / ${Math.floor(xpNeeded).toLocaleString()} XP to Level ${level + 1}`, barX, barY - s(6));
+    ctx.fillText(`${xp.toLocaleString()} / ${Math.floor(xpNeeded).toLocaleString()} XP  →  Level ${level + 1}`, barX, barY - s(6));
 
     // ── PREMIUM BADGE ──
     if (isPremium) {
@@ -177,7 +177,7 @@ async function renderWhoisCard(member, userData, allServers, warnings, premium) 
     ctx.fillRect(0, CH - s(30), CW, s(30));
     ctx.font = `${s(10)}px Sans`;
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.fillText('ARCHON CG-223 • NEURAL SCAN • BAMAKO_223 🇲🇱', s(10), CH - s(10));
+    ctx.fillText('ARCHON CG-223  •  NEURAL SCAN  •  BAMAKO_223 [MLI]', s(10), CH - s(10));
 
     // ── SCAN LINES EFFECT ──
     for (let y = 0; y < CH; y += s(4)) {
