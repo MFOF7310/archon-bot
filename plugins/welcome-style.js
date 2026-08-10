@@ -4,6 +4,7 @@
 // ╚══════════════════════════════════════════════════════════════════════╝
 
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
 const path = require('path');
@@ -525,7 +526,7 @@ function getWelcomeButtons(cfg, member) {
     // Rules button — use configured channel if set, else fallback to system channel
     const rulesId = cfg.rulesChannel || null;
     buttons.push({
-        label: 'Rules', emoji: '📜', style: 'Link',
+        label: 'Rules', emoji: EMOJIS.rules, style: 'Link',
         url: `https://discord.com/channels/${guildId}/${rulesId || fallbackId}`,
         customId: null
     });
@@ -533,13 +534,13 @@ function getWelcomeButtons(cfg, member) {
     // General button — use configured channel if set, else fallback to system channel
     const generalId = cfg.generalChannel || null;
     buttons.push({
-        label: 'General', emoji: '💬', style: 'Link',
+        label: 'General', emoji: EMOJIS.general, style: 'Link',
         url: `https://discord.com/channels/${guildId}/${generalId || fallbackId}`,
         customId: null
     });
 
-    buttons.push({ label: 'AI Assistant', emoji: '🤖', style: 'Primary', url: null, customId: 'welcome_help' });
-    buttons.push({ label: 'My Profile',   emoji: '👤', style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
+    buttons.push({ label: 'AI Assistant', emoji: EMOJIS.ai_assistant, style: 'Primary', url: null, customId: 'welcome_help' });
+    buttons.push({ label: 'My Profile', emoji: EMOJIS.myprofile, style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
 
     return buttons;
 }
