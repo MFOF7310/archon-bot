@@ -1869,7 +1869,10 @@ module.exports = {
         }
 
         if (sub === 'playlist') {
-            const playlistId = interaction.options.getString('id')?.trim();
+            const rawId = interaction.options.getString('id')?.trim() || '';
+            // Accept full URL or bare ID
+            const playlistIdMatch = rawId.match(/playlist\/([a-zA-Z0-9]+)/);
+            const playlistId = playlistIdMatch ? playlistIdMatch[1] : rawId.split('?')[0].trim();
             if (!playlistId) return interaction.editReply({ content: `${EMOJIS.error} Please provide a Spotify playlist ID.` });
 
             await interaction.editReply({ content: `${EMOJIS.loading} Fetching your Spotify playlist...` });
