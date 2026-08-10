@@ -5,7 +5,6 @@
 
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const canvafy = require('canvafy');
 const fs = require('fs');
 const path = require('path');
 
@@ -137,7 +136,7 @@ function roundRect(ctx, x, y, w, h, r) {
 // ================= CANVAS: WELCOME CARD v4 (landscape 500x150 @ 2x) =================
 async function renderWelcomeCard(member, count, cfg) {
     const SCALE = 2;
-    const CW = 500 * SCALE, CH = 150 * SCALE;
+    const CW = 800 * SCALE, CH = 250 * SCALE;
     const c = createCanvas(CW, CH);
     const ctx = c.getContext('2d');
     ctx.imageSmoothingEnabled = true;
@@ -241,6 +240,30 @@ async function renderWelcomeCard(member, count, cfg) {
         tx, CH * 0.76
     );
 
+    // Server icon — top right
+    try {
+        const iconUrl = member.guild.iconURL({ extension: 'png', size: 128 });
+        if (iconUrl) {
+            const icon = await loadImage(iconUrl);
+            const ir = 28 * SCALE;
+            const ix = CW - ir * 2 - 14 * SCALE;
+            const iy = 14 * SCALE;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(ix + ir, iy + ir, ir, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(icon, ix, iy, ir * 2, ir * 2);
+            ctx.restore();
+            // Icon border
+            ctx.beginPath();
+            ctx.arc(ix + ir, iy + ir, ir + 2, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0,251,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    } catch(e) {}
+
     // Bottom right — server name
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
     ctx.font = `${6.5 * SCALE}px "Liberation Sans", Arial, sans-serif`;
@@ -252,15 +275,14 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Bottom left — Mali watermark
     ctx.textAlign = 'left';
-    ctx.fillText('\uD83C\uDDF2\uD83C\uDDF1 BAMAKO_223', 14 * SCALE, CH - 12 * SCALE);
+    ctx.fillText('BAMAKO_223 [MLI]', 14 * SCALE, CH - 12 * SCALE);
 
-    // Output at 500x150
     return c.encode('png');
 }
 // ================= CANVAS: GOODBYE CARD v4 (landscape 500x150 @ 2x) =================
 async function renderGoodbyeCard(member, duration, roleCount) {
     const SCALE = 2;
-    const CW = 500 * SCALE, CH = 150 * SCALE;
+    const CW = 800 * SCALE, CH = 250 * SCALE;
     const c = createCanvas(CW, CH);
     const ctx = c.getContext('2d');
     ctx.imageSmoothingEnabled = true;
@@ -370,7 +392,30 @@ async function renderGoodbyeCard(member, duration, roleCount) {
         : member.guild.name;
     ctx.fillText(sName, CW - 14 * SCALE, CH - 12 * SCALE);
     ctx.textAlign = 'left';
-    ctx.fillText('\uD83C\uDDF2\uD83C\uDDF1 BAMAKO_223', 14 * SCALE, CH - 12 * SCALE);
+    ctx.fillText('BAMAKO_223 [MLI]', 14 * SCALE, CH - 12 * SCALE);
+
+    // Server icon — top right
+    try {
+        const iconUrl = member.guild.iconURL({ extension: 'png', size: 128 });
+        if (iconUrl) {
+            const icon = await loadImage(iconUrl);
+            const ir = 28 * SCALE;
+            const ix = CW - ir * 2 - 14 * SCALE;
+            const iy = 14 * SCALE;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(ix + ir, iy + ir, ir, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(icon, ix, iy, ir * 2, ir * 2);
+            ctx.restore();
+            ctx.beginPath();
+            ctx.arc(ix + ir, iy + ir, ir + 2, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(231,76,60,0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    } catch(e) {}
 
     return c.encode('png');
 }
@@ -395,10 +440,11 @@ function warmWelcomeText(member, count, cfg) {
 // ================= GOODBYE TEXT =================
 function goodbyeText(member, duration, roleCount) {
     const farewells = [
-        `👋 **${member.user.username}** has left the server.`,
-        `🚪 **${member.user.username}** departed after ${duration || 'a brief visit'}.`,
-        `💫 **${member.user.username}** is no longer with us.`,
-        `🌙 **${member.user.username}** has disconnected from the grid.`,
+        `👋 **${member.user.username}** has left — hope to see them again someday.`,
+        `🚪 **${member.user.username}** stepped out after ${duration || 'a brief visit'}. Safe travels!`,
+        `💫 **${member.user.username}** has moved on. Wishing them well out there.`,
+        `🌙 **${member.user.username}** signed off. The grid remembers them fondly.`,
+        `✈️ **${member.user.username}** flew the nest after ${duration || 'a visit'}. Until next time!`,
     ];
     const farewell = farewells[Math.floor(Math.random() * farewells.length)];
     return `${farewell}\n> ⏱️ Stayed: **${duration || 'N/A'}** · Roles removed: **${roleCount}**`;
