@@ -217,28 +217,28 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Username — big and bold
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${26 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${34 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.textAlign = 'left';
     const name = member.user.username.length > 18
         ? member.user.username.substring(0, 17) + '\u2026'
         : member.user.username;
-    ctx.fillText(name, tx, CH * 0.35);
+    ctx.fillText(name, tx, CH * 0.32);
 
     // WELCOME TO THE GRID label — cyan below username
     ctx.fillStyle = '#00fbff';
-    ctx.font = `bold ${8 * SCALE}px "Liberation Sans", Arial, sans-serif`;
-    ctx.letterSpacing = `${1.5 * SCALE}px`;
-    ctx.fillText('WELCOME TO THE GRID', tx, CH * 0.57);
+    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.letterSpacing = `${2 * SCALE}px`;
+    ctx.fillText('WELCOME TO THE GRID', tx, CH * 0.52);
     ctx.letterSpacing = '0px';
 
     // Member + age subtitle
     const age = accountAgeShort(member.user.createdTimestamp);
     const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = `${8 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.fillText(
-        `${ordinal(count)} member  \u00b7  ${isNew ? '\uD83C\uDD95 ' : ''}${age} old account`,
-        tx, CH * 0.76
+        `${ordinal(count)} member  \u00b7  ${isNew ? '[NEW] ' : ''}${age} old account`,
+        tx, CH * 0.72
     );
 
     // Server icon — top right
@@ -361,27 +361,27 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 
     // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${26 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${34 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.textAlign = 'left';
     const name = member.user.username.length > 18
         ? member.user.username.substring(0, 17) + '\u2026'
         : member.user.username;
-    ctx.fillText(name, tx, CH * 0.35);
+    ctx.fillText(name, tx, CH * 0.32);
 
     // DEPARTURE LOG label
     ctx.fillStyle = '#e74c3c';
-    ctx.font = `bold ${8 * SCALE}px "Liberation Sans", Arial, sans-serif`;
-    ctx.letterSpacing = `${1.5 * SCALE}px`;
-    ctx.fillText('DEPARTURE LOG', tx, CH * 0.57);
+    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.letterSpacing = `${2 * SCALE}px`;
+    ctx.fillText('DEPARTURE LOG', tx, CH * 0.52);
     ctx.letterSpacing = '0px';
 
     // Duration + roles
     const dur = duration || '< 1 min';
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = `${8 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.fillText(
         `Stayed: ${dur}  \u00b7  ${roleCount} role${roleCount !== 1 ? 's' : ''} removed`,
-        tx, CH * 0.76
+        tx, CH * 0.72
     );
 
     // Watermarks
