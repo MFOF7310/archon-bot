@@ -40,17 +40,6 @@ module.exports = {
     examples: ['.setprefix !', '.setprefix ?', '.setprefix .'],
 
     // ================= SLASH COMMAND DATA =================
-    data: new SlashCommandBuilder()
-        .setName('setprefix')
-        .setDescription('🔧 Change the bot command prefix for this server')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-        .addStringOption(option =>
-            option.setName('prefix')
-                .setDescription('New command prefix (1-5 characters)')
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(5)
-        ),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const guildId = message.guild?.id ?? 'DM';

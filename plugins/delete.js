@@ -187,41 +187,7 @@ module.exports = {
     examples: ['.dlt 10', '.dlt @user', '.dlt', '.clear 20'],
 
     // ================= SLASH COMMAND BUILDER =================
-    data: new SlashCommandBuilder()
-        .setName('dlt')
-        .setDescription('Delete messages with various targeting options')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-        .addSubcommand(sub =>
-            sub.setName('bulk')
-                .setDescription('Bulk delete recent messages')
-                .addIntegerOption(opt =>
-                    opt.setName('amount')
-                        .setDescription('Number of messages (1-100)')
-                        .setRequired(true)
-                        .setMinValue(1)
-                        .setMaxValue(100)))
-        .addSubcommand(sub =>
-            sub.setName('user')
-                .setDescription('Delete recent messages from a specific user')
-                .addUserOption(opt =>
-                    opt.setName('target')
-                        .setDescription('Target user')
-                        .setRequired(true))
-                .addIntegerOption(opt =>
-                    opt.setName('amount')
-                        .setDescription('Number of messages (1-50, default 10)')
-                        .setRequired(false)
-                        .setMinValue(1)
-                        .setMaxValue(50)))
-        .addSubcommand(sub =>
-            sub.setName('message')
-                .setDescription('Delete a specific message by ID')
-                .addStringOption(opt =>
-                    opt.setName('message_id')
-                        .setDescription('The message ID to delete')
-                        .setRequired(true))),
 
-    // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         const t = translations[lang];

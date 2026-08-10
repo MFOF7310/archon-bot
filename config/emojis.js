@@ -48,7 +48,7 @@ module.exports = {
     mc_loop:        '<:LOOP:1535783619170406460>',
     mc_volume_down: '<:volume_down:1535780020948172970>',
     mc_volume_up:   '<:volume_up:1535779843222798386>',
-    mc_love_this:   '<:Love_This:1535778666892755036>',
+    mc_love_this:   '<:Love_This:1536339503114096671>',
     mc_not_for_me:  '<:Not_For_Me:1535779165280673903>',
     mc_queue:       '<:QUEUE:1535784206087626873>',
     mc_folder:      '<:FOLDER:1535786179276963961>',

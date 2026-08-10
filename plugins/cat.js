@@ -200,11 +200,7 @@ module.exports = {
     usage: '.cat',
     examples: ['.cat', '/cat'],
 
-    data: new SlashCommandBuilder()
-        .setName('cat')
-        .setDescription('🐱 Get a high-quality random cat picture with breed info'),
 
-    // ================= PREFIX =================
     run: async (client, message, args, db, ss, used) => {
         const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
         const t = T[lang] || T.en;

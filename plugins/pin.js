@@ -240,29 +240,6 @@ module.exports = {
     cooldown: 3000,
 
     // ================= SLASH COMMAND DATA =================
-    data: new SlashCommandBuilder()
-        .setName('pin')
-        .setDescription('📌 Pin a message to the Neural Gallery')
-        .addSubcommand(sub => sub
-            .setName('pin')
-            .setDescription('Pin a message')
-            .addStringOption(option => option
-                .setName('message_id')
-                .setDescription('ID of the message to pin (optional if replying)')
-                .setRequired(false))
-        )
-        .addSubcommand(sub => sub
-            .setName('unpin')
-            .setDescription('Unpin a message')
-            .addStringOption(option => option
-                .setName('message_id')
-                .setDescription('ID of the message to unpin')
-                .setRequired(false))
-        )
-        .addSubcommand(sub => sub
-            .setName('list')
-            .setDescription('View all pinned messages in this channel')
-        ),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const guildId = message.guild?.id ?? 'DM';

@@ -163,19 +163,7 @@ module.exports = {
     examples: ['.owner', '.owner status', '.owner restart', '.owner backup', '.owner logs 30'],
 
     // ================= SLASH COMMAND DATA (ENHANCED) =================
-    data: new SlashCommandBuilder()
-        .setName('owner')
-        .setDescription('👑 Executive hub & system controls (owner only)')
-        .addSubcommand(sub => sub.setName('hub').setDescription('Social links & community hub'))
-        .addSubcommand(sub => sub.setName('status').setDescription('System health & performance'))
-        .addSubcommand(sub => sub.setName('restart').setDescription('Restart the engine (auto-recovers)'))
-        .addSubcommand(sub => sub.setName('backup').setDescription('Run database backup'))
-        .addSubcommand(sub => 
-            sub.setName('logs')
-               .setDescription('View recent console logs')
-               .addIntegerOption(opt => opt.setName('lines').setDescription('Lines (default: 20)').setRequired(false))),
 
-    // ================= PREFIX HANDLER =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         const t = translations[lang];

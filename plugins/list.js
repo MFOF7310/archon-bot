@@ -431,13 +431,6 @@ module.exports = {
     cooldown: 2000,
     examples: ['.list', '.list gaming', '.list profile', '.list shop'],
 
-    data: new SlashCommandBuilder()
-        .setName('list')
-        .setDescription('📋 Display a professional, organized list of all available commands')
-        .addStringOption(opt => opt
-            .setName('query')
-            .setDescription('Category, command, or search term')
-            .setRequired(false)),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {

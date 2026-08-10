@@ -283,46 +283,7 @@ module.exports = {
     examples: ['.slowmode 5s', '.slowmode 30s', '.slowmode off', '/slowmode 1m', '/slowmode off'],
 
     // ================= SLASH COMMAND BUILDER =================
-    data: new SlashCommandBuilder()
-        .setName('slowmode')
-        .setDescription('🐢 Set slowmode for a channel')
-        .setDescriptionLocalizations({
-            fr: '🐢 Définir le mode lent pour un salon'
-        })
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels)
-        .addStringOption(option =>
-            option.setName('duration')
-                .setDescription('Duration (e.g., 5s, 30s, 1m, 2h, off)')
-                .setDescriptionLocalizations({
-                    fr: 'Durée (ex: 5s, 30s, 1m, 2h, off)'
-                })
-                .setRequired(true)
-                .setAutocomplete(true)
-        )
-        .addChannelOption(option =>
-            option.setName('channel')
-                .setDescription('Channel to apply slowmode to (defaults to current)')
-                .setDescriptionLocalizations({
-                    fr: 'Salon où appliquer le mode lent (défaut: salon actuel)'
-                })
-                .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-                .setRequired(false)
-        ),
 
-    // ================= AUTOCOMPLETE =================
-    async autocomplete(interaction) {
-        const focusedValue = interaction.options.getFocused().toLowerCase();
-        const choices = ['5s', '10s', '15s', '30s', '1m', '5m', '1h', '6h', 'off'];
-        const filtered = choices.filter(choice => choice.startsWith(focusedValue));
-        await interaction.respond(
-            filtered.map(choice => ({ 
-                name: `🐢 ${choice}`, 
-                value: choice 
-            }))
-        );
-    },
-
-    // ================= SLASH COMMAND (CORRECT METHOD NAME) =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
         const t = translations[lang];

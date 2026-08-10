@@ -8,22 +8,6 @@ module.exports = {
     usage: '.myroles [@user]',
     
     // ⚡ SLASH COMMAND DEFINITION
-    data: new SlashCommandBuilder()
-        .setName('myroles')
-        .setDescription('🔍 View your bot-assigned role registry')
-        .setDescriptionLocalizations({
-            fr: '🔍 Consultez votre registre de rôles attribués par le bot'
-        })
-        .addUserOption(option =>
-            option.setName('agent')
-                .setDescription('Target agent to investigate (admin only)')
-                .setDescriptionLocalizations({
-                    fr: 'Agent cible à investiguer (admin uniquement)'
-                })
-                .setRequired(false)
-        )
-        .setDefaultMemberPermissions(PermissionFlagsBits.UseApplicationCommands)
-        .setDMPermission(false),
     
     // ⚡ SLASH COMMAND EXECUTION
     async execute(interaction, client) {

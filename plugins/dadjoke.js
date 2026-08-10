@@ -11,10 +11,7 @@ module.exports = {
     category: 'Fun',
     cooldown: 2,
     
-    data: new SlashCommandBuilder()
-        .setName('dadjoke')
-        .setDescription('Get a random dad joke'),
-    
+
     run: async (client, message) => {
         try {
             const embed = await createJokeEmbed();
