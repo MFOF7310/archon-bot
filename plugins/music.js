@@ -650,9 +650,13 @@ async function fetchSpotifyPlaylist(playlistId) {
         const token = await getSpotifyToken();
         if (!token) return null;
         const tracks = [];
-        let url = `https://api.spotify.com/v1/playlists/${playlistId}?fields=name,description,images,tracks(items(track(name,artists,duration_ms,external_urls)))`;
+        let url = `https://api.spotify.com/v1/playlists/${playlistId}`;
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) return null;
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error('[MUSIC] Spotify playlist API error:', res.status, errText.substring(0, 200));
+            return null;
+        }
         const data = await res.json();
         const name = data.name || 'Spotify Playlist';
         const image = data.images?.[0]?.url || null;
@@ -1160,62 +1164,6 @@ async function ensureConnection(q) {
 // PLAY HELPER
 // ═══════════════════════════════════════════════════════
 async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requestedBy, client, replyFn, requestedById) {
-    // ── SPOTIFY PLAYLIST IMPORT ──
-    const spotifyPlaylistMatch = query.match(/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/);
-    if (spotifyPlaylistMatch) {
-        const playlistId = spotifyPlaylistMatch[1];
-        await replyFn({ content: `${EMOJIS.loading} Fetching Spotify playlist...` });
-        const playlist = await fetchSpotifyPlaylist(playlistId);
-        if (!playlist || !playlist.tracks.length) {
-            return replyFn({ content: `${EMOJIS.error} Could not load that playlist — Spotify editorial playlists are restricted. Use a public playlist you or a friend created.` });
-        }
-        // Queue all tracks
-        let q = getQueue(guildId);
-        if (!q) {
-            q = createQueue(guild, voiceChannel, textChannel, client);
-            await ensureConnection(q);
-        }
-        q._client = client;
-        const requestedByLabel = requestedBy;
-        for (const track of playlist.tracks) {
-            q.tracks.push({
-                ...track,
-                requestedBy,
-                requestedById,
-                thumbnail: playlist.image,
-            });
-        }
-        // Build CV2 response
-        const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder, SeparatorBuilder } = require('discord.js');
-        const previewList = playlist.tracks.slice(0, 5).map((t, i) =>
-            `\`${String(i+1).padStart(2,'0')}\` ${t.title.replace(/^🎵\s*/,'')}`
-        ).join('\n');
-        const container = new ContainerBuilder()
-            .setAccentColor(0x1DB954)
-            .addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`${EMOJIS.spotify} **Spotify Playlist Queued**`),
-                        new TextDisplayBuilder().setContent(
-                            `**${playlist.name}**\n` +
-                            `${playlist.description ? playlist.description.substring(0,100) + '\n' : ''}` +
-                            `\n**${playlist.tracks.length}** tracks added to queue • Added by **${requestedByLabel}**`
-                        )
-                    )
-                    .setThumbnailAccessory(
-                        new ThumbnailBuilder().setURL(playlist.image || client.user.displayAvatarURL())
-                    )
-            )
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`**Up first:**\n${previewList}${playlist.tracks.length > 5 ? `\n*...and ${playlist.tracks.length - 5} more*` : ''}`)
-            );
-        await replyFn({
-            components: [container],
-            flags: (1 << 15)
-        });
-        if (!q.currentTrack) playNext(q);
-        return;
-    }
 
     // Handle folder selection from autocomplete
     if (query.startsWith('__folder__')) {
@@ -1385,6 +1333,8 @@ module.exports = {
                     {name: '📊 Normalize (default)', value: 'normalize'},
                     {name: '❌ Off', value: 'off'}
                 )))
+        .addSubcommand(s => s.setName('playlist').setDescription('🎵 Queue a Spotify playlist by ID')
+            .addStringOption(o => o.setName('id').setDescription('Spotify playlist ID (from the share link)').setRequired(true)))
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')
             .addStringOption(o => o.setName('search').setDescription('🔍 Search inside the library (optional)').setRequired(false).setAutocomplete(true))),
 
@@ -1916,6 +1866,71 @@ module.exports = {
                     msg.edit({ embeds: r.embeds, components: r.components }).catch(() => {});
                 } catch (e) {}
             });
+        }
+
+        if (sub === 'playlist') {
+            const playlistId = interaction.options.getString('id')?.trim();
+            if (!playlistId) return interaction.editReply({ content: `${EMOJIS.error} Please provide a Spotify playlist ID.` });
+
+            await interaction.editReply({ content: `${EMOJIS.loading} Fetching your Spotify playlist...` });
+
+            const playlist = await fetchSpotifyPlaylist(playlistId);
+            if (!playlist || !playlist.tracks.length) {
+                return interaction.editReply({ content: `${EMOJIS.error} Could not load that playlist — make sure it's **public** and not a Spotify-generated one (Daily Mix, Top Tracks etc).` });
+            }
+
+            let q = getQueue(guildId);
+            if (!q) {
+                q = createQueue(interaction.guild, vc, interaction.channel, client);
+                await ensureConnection(q);
+            }
+            q._client = client;
+
+            for (const track of playlist.tracks) {
+                q.tracks.push({
+                    ...track,
+                    requestedBy: interaction.user.username,
+                    requestedById: interaction.user.id,
+                    thumbnail: track.thumbnail || playlist.image,
+                });
+            }
+
+            const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder } = require('discord.js');
+            const previewList = playlist.tracks.slice(0, 5).map((t, i) =>
+                `\`${String(i+1).padStart(2,'0')}\` ${t.title.replace(/^🎵\s*/,'')}`
+            ).join('\n');
+
+            const container = new ContainerBuilder()
+                .setAccentColor(0x1DB954)
+                .addSectionComponents(
+                    new SectionBuilder()
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`${EMOJIS.spotify} **Playlist Queued!**`),
+                            new TextDisplayBuilder().setContent(
+                                `**${playlist.name}**\n` +
+                                `${playlist.description ? playlist.description.substring(0,100) + '\n' : ''}` +
+                                `\n${EMOJIS.mc_queue} **${playlist.tracks.length} tracks** added • By **${interaction.user.username}**`
+                            )
+                        )
+                        .setThumbnailAccessory(
+                            new ThumbnailBuilder().setURL(playlist.image || client.user.displayAvatarURL())
+                        )
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `**Up first:**\n${previewList}` +
+                        `${playlist.tracks.length > 5 ? `\n*...and ${playlist.tracks.length - 5} more tracks*` : ''}`
+                    )
+                );
+
+            await interaction.editReply({
+                content: null,
+                components: [container],
+                flags: (1 << 15)
+            });
+
+            if (!q.currentTrack) playNext(q);
+            return;
         }
     }
 };
