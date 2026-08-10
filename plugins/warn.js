@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionsBitField, SlashCommandBuilder } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
@@ -11,9 +12,9 @@ const translations = {
         dmTitle: '⚠️ WARNING RECEIVED',
         dmDescription: (guild, reason) => `You have been warned in **${guild}**.\n\n**Reason:** ${reason}`,
         warnSuccess: (user, count) => `✅ **${user}** has been warned. They now have **${count}** warning(s).`,
-        cannotWarnSelf: '❌ You cannot warn yourself.',
-        cannotWarnBot: '❌ You cannot warn bots.',
-        cannotWarnHigher: '❌ You cannot warn someone with a higher or equal role.',
+        cannotWarnSelf: '😅 You can\'t warn yourself — find someone else to moderate!',
+        cannotWarnBot: '🤖 Bots don\'t take warnings — they just ignore them!',
+        cannotWarnHigher: '⛔ That member outranks you — you can\'t warn them.',
         noReason: 'No reason provided.',
         warningsTitle: (user) => `📋 WARNINGS FOR ${user.toUpperCase()}`,
         noWarnings: (user) => `✅ **${user}** has no warnings.`,
@@ -28,20 +29,20 @@ const translations = {
         never: 'Never',
         clearTitle: '🧹 CLEAR WARNINGS',
         clearSuccess: (user, count) => `✅ Cleared **${count}** warning(s) from **${user}**.`,
-        confirmClear: '⚠️ Clear all warnings from this user?',
-        confirm: '✅ Confirm',
-        cancel: '❌ Cancel',
+        confirmClear: '🧹 Are you sure? This will clear all warnings from this user.',
+        confirm: '✅ Yes, clear them',
+        cancel: '✖️ Cancel',
         removeSuccess: (id) => `✅ Warning \`${id}\` removed.`,
-        removeNotFound: '❌ Warning not found.',
+        removeNotFound: '🔍 That warning ID doesn\'t exist — double check and try again.',
         modlogsTitle: (user) => `📋 MODERATION LOGS - ${user.toUpperCase()}`,
         noModlogs: (user) => `✅ **${user}** has no moderation history.`,
         type: 'Type',
         moderator: 'Moderator',
         date: 'Date',
         actions: { warn: '⚠️ Warn', clear: '🧹 Clear', remove: '🗑️ Remove', mute: '🔇 Mute', kick: '👢 Kick', ban: '🔨 Ban', unban: '🔓 Unban' },
-        accessDenied: '❌ This menu is not yours.',
-        noPermission: '❌ You need **Moderate Members** permission.',
-        footer: 'ARCHITECT CG-223 • Neural Moderation',
+        accessDenied: '🔒 This menu belongs to someone else.',
+        noPermission: '⛔ You need the **Moderate Members** permission to do that.',
+        footer: 'ARCHON CG-223 • Neural Moderation',
         page: 'Page',
         of: 'of',
         delete: '🗑️ Delete',
@@ -57,9 +58,9 @@ const translations = {
         dmTitle: '⚠️ AVERTISSEMENT REÇU',
         dmDescription: (guild, reason) => `Vous avez reçu un avertissement sur **${guild}**.\n\n**Raison:** ${reason}`,
         warnSuccess: (user, count) => `✅ **${user}** a été averti. Il a maintenant **${count}** avertissement(s).`,
-        cannotWarnSelf: '❌ Vous ne pouvez pas vous avertir.',
-        cannotWarnBot: '❌ Vous ne pouvez pas avertir les bots.',
-        cannotWarnHigher: '❌ Vous ne pouvez pas avertir un rôle supérieur ou égal.',
+        cannotWarnSelf: '😅 Vous ne pouvez pas vous avertir vous-même !',
+        cannotWarnBot: '🤖 Les bots ne reçoivent pas d\'avertissements !',
+        cannotWarnHigher: '⛔ Ce membre a un rang supérieur — vous ne pouvez pas l\'avertir.',
         noReason: 'Aucune raison fournie.',
         warningsTitle: (user) => `📋 AVERTISSEMENTS - ${user.toUpperCase()}`,
         noWarnings: (user) => `✅ **${user}** n'a aucun avertissement.`,
@@ -74,20 +75,20 @@ const translations = {
         never: 'Jamais',
         clearTitle: '🧹 EFFACER AVERTISSEMENTS',
         clearSuccess: (user, count) => `✅ **${count}** avertissement(s) effacé(s) de **${user}**.`,
-        confirmClear: '⚠️ Effacer tous les avertissements de cet utilisateur ?',
-        confirm: '✅ Confirmer',
-        cancel: '❌ Annuler',
+        confirmClear: '🧹 Vous êtes sûr ? Tous les avertissements de cet utilisateur seront effacés.',
+        confirm: '✅ Oui, effacer',
+        cancel: '✖️ Annuler',
         removeSuccess: (id) => `✅ Avertissement \`${id}\` supprimé.`,
-        removeNotFound: '❌ Avertissement introuvable.',
+        removeNotFound: '🔍 Cet ID d\'avertissement n\'existe pas — vérifiez et réessayez.',
         modlogsTitle: (user) => `📋 HISTORIQUE - ${user.toUpperCase()}`,
         noModlogs: (user) => `✅ **${user}** n'a aucun historique.`,
         type: 'Type',
         moderator: 'Modérateur',
         date: 'Date',
         actions: { warn: '⚠️ Avertir', clear: '🧹 Effacer', remove: '🗑️ Supprimer', mute: '🔇 Mute', kick: '👢 Expulser', ban: '🔨 Bannir', unban: '🔓 Débannir' },
-        accessDenied: '❌ Ce menu ne vous appartient pas.',
-        noPermission: '❌ Permission **Modérer les Membres** requise.',
-        footer: 'ARCHITECT CG-223 • Modération Neurale',
+        accessDenied: '🔒 Ce menu appartient à quelqu\'un d\'autre.',
+        noPermission: '⛔ Il vous faut la permission **Modérer les Membres** pour ça.',
+        footer: 'ARCHON CG-223 • Modération Neurale',
         page: 'Page',
         of: 'sur',
         delete: '🗑️ Supprimer',
@@ -231,7 +232,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
             db.prepare(`CREATE INDEX IF NOT EXISTS idx_modlogs_guild_user ON moderation_logs(guild_id, user_id)`).run();
         } catch (err) {
             console.error('[WARN] Table error:', err);
-            return message.reply({ content: '❌ Database error.', flags: 64 }).catch(() => {});
+            return message.reply({ content: `${EMOJIS.error} Something went wrong — try again in a moment.`, flags: 64 }).catch(() => {});
         }
         
         const subCommand = args[0]?.toLowerCase();
@@ -289,7 +290,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // ================= CLEAR WARNINGS =================
         if (subCommand === 'clear' || subCommand === 'clearwarn' || subCommand === 'effacer') {
             const target = message.mentions.users.first();
-            if (!target) return message.reply({ content: lang === 'fr' ? '❌ Mentionnez un utilisateur.' : '❌ Mention a user.', flags: 64 }).catch(() => {});
+            if (!target) return message.reply({ content: lang === 'fr' ? '👤 Mentionnez un utilisateur à modérer.' : '👤 Mention a user to moderate.', flags: 64 }).catch(() => {});
             
             const warnings = getUserWarnings(db, guildId, target.id);
             const now = Math.floor(Date.now() / 1000);
@@ -337,7 +338,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // ================= REMOVE WARNING =================
         if (subCommand === 'remove' || subCommand === 'removewarn' || subCommand === 'supprimer') {
             const warningId = args[1];
-            if (!warningId) return message.reply({ content: lang === 'fr' ? '❌ Fournissez un ID.' : '❌ Provide a warning ID.', flags: 64 }).catch(() => {});
+            if (!warningId) return message.reply({ content: lang === 'fr' ? '🔍 Fournissez l\'ID de l\'avertissement.' : '🔍 Provide the warning ID to remove.', flags: 64 }).catch(() => {});
             
             const warning = db.prepare(`SELECT * FROM warnings WHERE id = ? AND guild_id = ?`).get(warningId, guildId);
             if (!warning) return message.reply({ content: t.removeNotFound, flags: 64 }).catch(() => {});
@@ -453,7 +454,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
             db.prepare(`CREATE TABLE IF NOT EXISTS warnings (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER DEFAULT (strftime('%s', 'now')), expires_at INTEGER, active BOOLEAN DEFAULT 1)`).run();
             db.prepare(`CREATE TABLE IF NOT EXISTS moderation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, warning_id TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`).run();
         } catch (err) {
-            return interaction.reply({ content: '❌ Database error.', flags: 64 });
+            return interaction.reply({ content: `${EMOJIS.error} Something went wrong — try again in a moment.`, flags: 64 });
         }
         
         await interaction.deferReply().catch(() => {});
