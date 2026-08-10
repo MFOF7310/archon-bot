@@ -487,17 +487,24 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 // ================= ROLE MANAGER =================
-async function assignRoles(member, newLevel) {
+async function assignRoles(member, newLevel, db) {
     const added = [];
     const milestones = [5, 10, 15, 20, 25];
+    const guildId = member.guild.id;
+
+    // Per-guild roles from DB
+    let settings = null;
+    try {
+        settings = db?.prepare('SELECT level_5_role, level_10_role, level_15_role, level_20_role, level_25_role FROM server_settings WHERE guild_id = ?').get(guildId);
+    } catch(e) {}
+
     for (const lvl of milestones) {
         if (newLevel >= lvl) {
-            const ids = process.env[`LEVEL_${lvl}_ROLES`]?.split(',').filter(Boolean) || [];
-            for (const rid of ids) {
-                const role = member.guild.roles.cache.get(rid.trim());
-                if (role && !member.roles.cache.has(rid.trim()) && member.guild.members.me.roles.highest.position > role.position) {
-                    try { await member.roles.add(role); added.push(role.name); } catch { }
-                }
+            const roleId = settings?.[`level_${lvl}_role`];
+            if (!roleId) continue;
+            const role = member.guild.roles.cache.get(roleId);
+            if (role && !member.roles.cache.has(roleId) && member.guild.members.me.roles.highest.position > role.position) {
+                try { await member.roles.add(role); added.push(role.name); } catch(e) {}
             }
         }
     }
@@ -539,7 +546,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
         if (msg) setTimeout(() => msg.delete().catch(() => {}), 15000);
         return;
     }
-    const added = await assignRoles(member, newLevel);
+    const added = await assignRoles(member, newLevel, db);
     const customTheme = db ? getThemeDB(db, member.guild.id) : null;
     const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme);
     const theme = getTheme(newLevel, customTheme);
@@ -589,6 +596,14 @@ module.exports = {
     data: new SlashCommandBuilder().setName('leveling').setDescription('📈 Leveling system').
         addSubcommand(s => s.setName('rank').setDescription('View rank card').addUserOption(o => o.setName('user').setDescription('User (default: you)').setRequired(false))).
         addSubcommand(s => s.setName('config').setDescription('View leveling configuration')).
+        addSubcommand(s => s.setName('setrole').setDescription('Set auto-role for level milestone')
+            .addIntegerOption(o => o.setName('level').setDescription('Level milestone (5/10/15/20/25)').setRequired(true).addChoices(
+                {name: 'Level 5', value: 5}, {name: 'Level 10', value: 10},
+                {name: 'Level 15', value: 15}, {name: 'Level 20', value: 20},
+                {name: 'Level 25', value: 25}
+            ))
+            .addRoleOption(o => o.setName('role').setDescription('Role to assign (leave empty to clear)').setRequired(false))).
+
         addSubcommandGroup(sg => sg.setName('theme').setDescription('Customize banner theme').
             addSubcommand(s => s.setName('level').setDescription('Level banner colors').addStringOption(o => o.setName('bg1').setDescription('Background start color (#hex)').setRequired(false)).addStringOption(o => o.setName('bg2').setDescription('Background end color (#hex)').setRequired(false)).addStringOption(o => o.setName('accent').setDescription('Accent color (#hex)').setRequired(false))).
             addSubcommand(s => s.setName('welcome').setDescription('Welcome banner colors').addStringOption(o => o.setName('bg1').setDescription('Background start color (#hex)').setRequired(false)).addStringOption(o => o.setName('bg2').setDescription('Background end color (#hex)').setRequired(false)).addStringOption(o => o.setName('accent').setDescription('Accent color (#hex)').setRequired(false))).
@@ -686,6 +701,23 @@ module.exports = {
 
             if (db) saveThemeDB(db, ix.guild.id, data);
             await ix.reply({ content: `✅ **${type}** theme updated.`, flags: 1 << 6 });
+        }
+
+        if (sc === 'setrole') {
+            const adm = ix.member.permissions.has(PermissionFlagsBits.ManageGuild);
+            if (!adm) return ix.reply({ content: '⛔ You need **Manage Server** permission to set level roles.', flags: 1 << 6 });
+            const level = ix.options.getInteger('level');
+            const role = ix.options.getRole('role');
+            const col = `level_${level}_role`;
+            if (db) {
+                db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(ix.guild.id);
+                db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(role?.id || null, ix.guild.id);
+            }
+            if (role) {
+                return ix.reply({ content: `✅ Members who reach **Level ${level}** will automatically receive ${role}.`, flags: 1 << 6 });
+            } else {
+                return ix.reply({ content: `✅ Level **${level}** role cleared.`, flags: 1 << 6 });
+            }
         }
     },
 
