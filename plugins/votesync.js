@@ -23,12 +23,12 @@ const T = {
         milestone7: '🏆 7-DAY MILESTONE! +2,000 BONUS!', milestone7desc: '```ansi\n\u001b[1;32m+2,000 BONUS CREDITS!\u001b[0m\n```',
         milestone30: '👑 30-DAY LEGENDARY! +5,000 BONUS!', milestone30desc: '```ansi\n\u001b[1;35m+5,000 BONUS CREDITS!\u001b[0m\n```',
         milestone100: '🌟 100-DAY MYTHIC! +10,000 BONUS!', milestone100desc: '```ansi\n\u001b[1;33m+10,000 BONUS + LEGENDARY TITLE!\u001b[0m\n```',
-        footer: 'ARCHITECT CG-223 • Top.gg Certified',
+        footer: 'ARCHON CG-223 • Top.gg Certified',
         voteAgain: '⭐ Vote Again', noVote: '❌ You have not voted yet!',
         checkError: '❌ Could not check vote status. Try again later.',
         alreadyClaimed: '⏰ Already claimed! Next vote: {time}',
         publicTitle: '🗳️ VOTE RECEIVED', publicDesc: '**{user}** voted!\n💰 **Reward:** +{reward} Credits\n🔥 **Streak:** {streak} days\n📊 **Total:** {total} votes',
-        publicFooter: 'ARCHITECT CG-223 • Top.gg Verified'
+        publicFooter: 'ARCHON CG-223 • Top.gg Verified'
     },
     fr: {
         dmTitle: ['🌟 RÉSEAU NEURAL SYNCHRONISÉ 🌟', '⚡ ÉNERGIE COSMIQUE REÇUE ⚡', '🦅 L\'ARCHITECTE VOUS SALUE 🦅'],
@@ -41,12 +41,12 @@ const T = {
         milestone7: '🏆 OBJECTIF 7 JOURS! +2 000 BONUS!', milestone7desc: '```ansi\n\u001b[1;32m+2 000 CRÉDITS BONUS!\u001b[0m\n```',
         milestone30: '👑 LÉGENDAIRE 30 JOURS! +5 000 BONUS!', milestone30desc: '```ansi\n\u001b[1;35m+5 000 CRÉDITS BONUS!\u001b[0m\n```',
         milestone100: '🌟 MYTHIQUE 100 JOURS! +10 000 BONUS!', milestone100desc: '```ansi\n\u001b[1;33m+10 000 BONUS + TITRE LÉGENDAIRE!\u001b[0m\n```',
-        footer: 'ARCHITECT CG-223 • Certifié Top.gg',
+        footer: 'ARCHON CG-223 • Certifié Top.gg',
         voteAgain: '⭐ Voter à nouveau', noVote: '❌ Vous n\'avez pas encore voté!',
         checkError: '❌ Impossible de vérifier. Réessayez.',
         alreadyClaimed: '⏰ Déjà réclamé! Prochain vote: {time}',
         publicTitle: '🗳️ VOTE REÇU', publicDesc: '**{user}** a voté!\n💰 **Récompense:** +{reward} Crédits\n🔥 **Série:** {streak} jours\n📊 **Total:** {total} votes',
-        publicFooter: 'ARCHITECT CG-223 • Top.gg Vérifié'
+        publicFooter: 'ARCHON CG-223 • Top.gg Vérifié'
     }
 };
 
@@ -222,7 +222,7 @@ function buildDMEmbed(client, user, result, stats, t, lang) {
     const title = titles[Math.floor(Math.random() * titles.length)];
 
     const embed = new EmbedBuilder().setColor('#ffd700')
-        .setAuthor({ name: 'ARCHITECT CG-223 • TOP.GG VERIFIED', iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ name: 'ARCHON CG-223 • TOP.GG VERIFIED', iconURL: client.user.displayAvatarURL() })
         .setTitle(title)
         .setDescription(`\`\`\`ansi\n\u001b[1;33m${t.dear}\u001b[0m\n\n\u001b[1;37m${t.thanks}\u001b[0m\n\u001b[1;36m${t.support}\u001b[0m\n\`\`\``)
         .addFields(
