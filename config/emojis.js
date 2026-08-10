@@ -35,6 +35,9 @@ module.exports = {
 
     dashboard:  '<:dashboard:1536017261746327674>',
     myprofile:  '<:myprofile:1536021845214498816>',
+    rules:      '<:rules:1536334584558391336>',
+    general:    '<:general:1536335057235615804>',
+    ai_assistant: '<:ai_assitant:1536335362052587570>',
 
     // ── Music Controls ──
     mc_pause:       '<:pause:1535739788391485441>',
