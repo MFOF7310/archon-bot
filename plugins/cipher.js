@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ================= NEURAL CIPHER v1.0 — GUILD SLASH ONLY =================
 // Decrypt shifting codes before neural link collapses
@@ -183,7 +184,7 @@ function buildCipherEmbed(game, phase, extra = {}) {
         '🎯 **OBJECTIVE:** Decrypt the intercepted transmissions.\n' +
         '🔥 **STREAK BONUS:** Consecutive correct decryptions multiply rewards!\n' +
         '💀 **FAILURE:** Wrong answer or timeout = neural link severed.';
-      footer = 'ARCHITECT CG-223 • Neural Cipher Division • BAMAKO_223 🇲🇱';
+      footer = 'ARCHON CG-223 • Neural Cipher Division • BAMAKO_223 🇲🇱';
       break;
 
     case 'round': {
@@ -266,7 +267,7 @@ function buildCipherEmbed(game, phase, extra = {}) {
         '```\n\n' +
         (extra.bonus > 0 ? `💰 **PERFECT RUN BONUS:** +${extra.bonus} 🪙!\n` : '') +
         `🎖️ **RANK:** ${extra.rank}`;
-      footer = 'ARCHITECT CG-223 • Neural Cipher Division • Mission Accomplished';
+      footer = 'ARCHON CG-223 • Neural Cipher Division • Mission Accomplished';
       break;
   }
 
@@ -378,7 +379,7 @@ async function startCipherGame(interaction, database, difficulty) {
 
   if (activeGames.has(userId)) {
     return interaction.reply({
-      content: '❌ **MISSION IN PROGRESS** — You already have an active Neural Cipher session!',
+      content: `${EMOJIS.warning} You already have an active cipher mission — finish it first!`,
       flags: 64
     });
   }
@@ -533,7 +534,7 @@ function buildCipherLeaderboardEmbed(database, guild, client, global = false) {
     .setColor(color)
     .setAuthor({ name: `🦅 NEURAL CIPHER // ${title}`, iconURL: client.user?.displayAvatarURL() })
     .setDescription(description)
-    .setFooter({ text: 'ARCHITECT CG-223 • Neural Cipher Division • BAMAKO_223 🇲🇱', iconURL: client.user?.displayAvatarURL() })
+    .setFooter({ text: 'ARCHON CG-223 • Neural Cipher Division • BAMAKO_223 🇲🇱', iconURL: client.user?.displayAvatarURL() })
     .setTimestamp();
 }
 
@@ -580,7 +581,7 @@ async function showCipherProfile(interaction, database) {
       )
       .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
       .setFooter({ 
-        text: 'ARCHITECT CG-223 • Neural Cipher Division • BAMAKO_223 🇲🇱', 
+        text: 'ARCHON CG-223 • Neural Cipher Division • BAMAKO_223 🇲🇱', 
         iconURL: interaction.client.user?.displayAvatarURL() 
       })
       .setTimestamp();
@@ -589,7 +590,7 @@ async function showCipherProfile(interaction, database) {
 
   } catch (e) {
     console.error(`${C.red}[CIPHER PROFILE]${C.reset} ${e.message}`);
-    await interaction.reply({ content: '❌ Failed to load operative dossier.', flags: 64 });
+    await interaction.reply({ content: `${EMOJIS.error} Could not load your dossier — try again in a moment.`, flags: 64 });
   }
 }
 
@@ -631,7 +632,7 @@ const slashCommand = new SlashCommandBuilder()
 async function executeSlashCommand(interaction, client) {
   const database = client.db;
   if (!database) {
-    return interaction.reply({ content: '❌ Database unavailable.', flags: 64 });
+    return interaction.reply({ content: `${EMOJIS.error} Something went wrong on our end — try again in a moment.`, flags: 64 });
   }
 
   setupCipherDB(database);
