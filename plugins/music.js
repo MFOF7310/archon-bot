@@ -1873,7 +1873,13 @@ module.exports = {
             // Accept full URL or bare ID
             const playlistIdMatch = rawId.match(/playlist\/([a-zA-Z0-9]+)/);
             const playlistId = playlistIdMatch ? playlistIdMatch[1] : rawId.split('?')[0].trim();
-            if (!playlistId) return interaction.editReply({ content: `${EMOJIS.error} Please provide a Spotify playlist ID.` });
+            if (!playlistId || playlistId.length < 10) return interaction.editReply({
+                content: `${EMOJIS.error} Invalid playlist ID.\n\n**How to get it:**\n1. Open Spotify → go to a playlist you created\n2. Tap ··· → Share → Copy link\n3. Paste the full link or just the ID after \`/playlist/\``
+            });
+            // Reject user profile URLs
+            if (rawId.includes('/user/') && !rawId.includes('/playlist/')) return interaction.editReply({
+                content: `${EMOJIS.error} That's a user profile link, not a playlist.\n\nOpen a **playlist** you created → Share → Copy link.`
+            });
 
             await interaction.editReply({ content: `${EMOJIS.loading} Fetching your Spotify playlist...` });
 
