@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ================= NEURAL HACKER v1.0 — GLOBAL SLASH ONLY =================
 // A pattern-recognition, code-breaking mini-game with police/intel styling
@@ -126,7 +127,7 @@ function buildHackerEmbed(game, phase, extra = {}) {
         '🎯 **OBJECTIVE:** Memorize the color sequence and reproduce it.\n' +
         '⚡ **STREAK BONUS:** Consecutive correct answers multiply rewards!\n' +
         '💀 **FAILURE:** Wrong sequence or timeout = mission aborted.';
-      footer = 'ARCHITECT CG-223 • Neural Hacker Division • BAMAKO_223 🇲🇱';
+      footer = 'ARCHON CG-223 • Neural Hacker Division • BAMAKO_223 🇲🇱';
       break;
 
     case 'reveal':
@@ -209,7 +210,7 @@ function buildHackerEmbed(game, phase, extra = {}) {
         '```\n\n' +
         (extra.bonus > 0 ? `💰 **PERFECT RUN BONUS:** +${extra.bonus} 🪙!\n` : '') +
         `🎖️ **RANK:** ${extra.rank}`;
-      footer = 'ARCHITECT CG-223 • Neural Hacker Division • Mission Accomplished';
+      footer = 'ARCHON CG-223 • Neural Hacker Division • Mission Accomplished';
       break;
   }
 
@@ -368,7 +369,7 @@ async function startGame(interaction, database, difficulty) {
   // Check if already playing
   if (activeGames.has(userId)) {
     return interaction.reply({
-      content: '❌ **MISSION IN PROGRESS** — You already have an active Neural Hacker session!',
+      content: `${EMOJIS.warning} You already have an active mission running — finish it first!`,
       flags: 64
     });
   }
@@ -549,7 +550,7 @@ function buildLeaderboardEmbed(database, guild, client, global = false) {
     .setColor(color)
     .setAuthor({ name: `🦅 NEURAL HACKER // ${title}`, iconURL: client.user?.displayAvatarURL() })
     .setDescription(description)
-    .setFooter({ text: 'ARCHITECT CG-223 • Neural Hacker Division • BAMAKO_223 🇲🇱', iconURL: client.user?.displayAvatarURL() })
+    .setFooter({ text: 'ARCHON CG-223 • Neural Hacker Division • BAMAKO_223 🇲🇱', iconURL: client.user?.displayAvatarURL() })
     .setTimestamp();
 }
 
@@ -590,7 +591,7 @@ const slashCommand = new SlashCommandBuilder()
 async function executeSlashCommand(interaction, client) {
   const database = client.db;
   if (!database) {
-    return interaction.reply({ content: '❌ Database unavailable.', flags: 64 });
+    return interaction.reply({ content: `${EMOJIS.error} Something went wrong on our end — try again in a moment.`, flags: 64 });
   }
 
   setupHackerDB(database);
@@ -655,7 +656,7 @@ async function showProfile(interaction, database) {
       )
       .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
       .setFooter({ 
-        text: 'ARCHITECT CG-223 • Neural Hacker Division • BAMAKO_223 🇲🇱', 
+        text: 'ARCHON CG-223 • Neural Hacker Division • BAMAKO_223 🇲🇱', 
         iconURL: client.user?.displayAvatarURL() 
       })
       .setTimestamp();
@@ -664,7 +665,7 @@ async function showProfile(interaction, database) {
 
   } catch (e) {
     console.error(`${C.red}[HACKER PROFILE]${C.reset} ${e.message}`);
-    await interaction.reply({ content: '❌ Failed to load profile.', flags: 64 });
+    await interaction.reply({ content: `${EMOJIS.error} Could not load your profile — try again in a moment.`, flags: 64 });
   }
 }
 
