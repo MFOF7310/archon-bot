@@ -5728,19 +5728,7 @@ apiApp.post('/api/vote', (req, res) => {
         if (guild && votesync.processVote) {
             votesync.processVote(user, guild.id, client).catch(e => console.error('[VOTE] processVote:', e.message));
         }
-        client.users.fetch(user).then(async u => {
-            try {
-                await u.send({
-                    embeds: [{
-                        color: 0x00ff88,
-                        title: 'Vote Received - Thank You!',
-                        description: 'Your Top.gg vote has been recorded! Credits added.' + (isWeekend ? ' Weekend bonus: 2x!' : ''),
-                        footer: { text: 'ARCHON CG-223 - Vote Rewards' },
-                        timestamp: new Date().toISOString()
-                    }]
-                });
-            } catch(e) { console.log('[VOTE] DM failed:', e.message); }
-        }).catch(() => {});
+        // DM handled by votesync.processVote above
         res.json({ success: true, user, type });
     } catch(err) {
         console.error('[VOTE] Error:', err.message);
