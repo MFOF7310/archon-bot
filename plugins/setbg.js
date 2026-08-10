@@ -152,24 +152,6 @@ module.exports = {
     usage: '.setbg [1-5 | reset] OR .setbg + attach image',
     cooldown: 10000,
 
-    data: new SlashCommandBuilder()
-        .setName('setbg')
-        .setDescription('🖼️ Set your profile card background')
-        .addAttachmentOption(o => o
-            .setName('image')
-            .setDescription('Upload your custom background image')
-            .setRequired(false))
-        .addIntegerOption(o => o
-            .setName('preset')
-            .setDescription('Choose a preset background (1-5)')
-            .setRequired(false)
-            .setMinValue(1)
-            .setMaxValue(5))
-        .addStringOption(o => o
-            .setName('action')
-            .setDescription('Reset your background to default')
-            .setRequired(false)
-            .addChoices({ name: 'Reset to default', value: 'reset' })),
 
     run: async (client, message, args, db) => {
         await handleSetBg(client, message, args, db);

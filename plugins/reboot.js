@@ -10,18 +10,6 @@ module.exports = {
     usage: '.reboot [update]',
     examples: ['.reboot', '.reboot update', '.restart'],
 
-    data: new SlashCommandBuilder()
-        .setName('reboot')
-        .setDescription('🔄 Restart the neural engine (Owner only)')
-        .addStringOption(option =>
-            option.setName('mode')
-                .setDescription('Restart mode')
-                .setRequired(false)
-                .addChoices(
-                    { name: '🔄 Normal Restart', value: 'restart' },
-                    { name: '📦 Update & Restart (git pull)', value: 'update' }
-                )
-        ),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // Only bot owner

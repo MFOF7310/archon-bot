@@ -11,10 +11,7 @@ module.exports = {
     category: 'Fun',
     cooldown: 2,
     
-    data: new SlashCommandBuilder()
-        .setName('fact')
-        .setDescription('Get a random fun fact'),
-    
+
     run: async (client, message) => {
         try {
             const embed = await createFactEmbed();

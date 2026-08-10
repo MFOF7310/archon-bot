@@ -8,25 +8,6 @@ module.exports = {
     cooldown: 3000,
     hidden: true,
 
-    data: new SlashCommandBuilder()
-        .setName('lookup')
-        .setDescription('🔍 Deep scan a user across all databases')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addUserOption(o => o
-            .setName('user')
-            .setDescription('User to lookup')
-            .setRequired(true)
-        )
-        .addStringOption(o => o
-            .setName('scope')
-            .setDescription('Lookup scope')
-            .addChoices(
-                { name: '📊 Full Profile', value: 'full' },
-                { name: '💰 Economy', value: 'economy' },
-                { name: '⚠️ Moderation', value: 'mod' },
-                { name: '🤖 AI Memory', value: 'ai' },
-            )
-        ),
 
     run: async (client, message, args, db, serverSettings) => {
         const OWNER_ID = process.env.OWNER_ID || process.env.OWNER_DISCORD_ID;

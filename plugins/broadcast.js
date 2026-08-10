@@ -360,40 +360,6 @@ module.exports = {
     examples: ['.broadcast Server update!', '.broadcast New features! https://imgur.com/example.png'],
 
 // ================= SLASH COMMAND DATA =================
-data: new SlashCommandBuilder()
-    .setName('broadcast')
-    .setDescription('📢 Send a global announcement to all servers (Architect only)')
-    .addStringOption(option =>
-        option.setName('message')
-            .setDescription('The announcement message to broadcast')
-            .setRequired(true)
-    )
-    .addStringOption(option =>
-        option.setName('image')
-            .setDescription('Image URL to attach (optional)')
-            .setRequired(false)
-    )
-    .addStringOption(option =>
-        option.setName('mention')
-            .setDescription('Mention type')
-            .setRequired(false)
-            .addChoices(
-                { name: '@everyone', value: 'everyone' },
-                { name: '@here', value: 'here' },
-                { name: 'None', value: 'none' }
-            )
-    )
-    .addStringOption(option =>
-        option.setName('channel')
-            .setDescription('Channel strategy')
-            .setRequired(false)
-            .addChoices(
-                { name: '💬 General Chat (Recommended)', value: 'general' },
-                { name: '⚙️ System Channel', value: 'system' },
-                { name: '📢 Announcements', value: 'announcements' },
-                { name: '📝 First Available', value: 'first' }
-            )
-    ),
 
     run: async (client, message, args, database, serverSettings, usedCommand) => {
     const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';

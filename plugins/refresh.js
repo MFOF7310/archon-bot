@@ -38,27 +38,6 @@ module.exports = {
     usage: '.refresh',
     examples: ['.refresh', '.wipe'],
 
-    data: new SlashCommandBuilder()
-        .setName('refresh')
-        .setDescription('☢️ ARCHITECT ONLY: Selective database purge')
-        .addStringOption(option =>
-            option.setName('type')
-                .setDescription('Purge type')
-                .setRequired(true)
-                .addChoices(
-    { name: '🧠 XP/Levels Only', value: 'xp' },
-    { name: '💰 Credits Only', value: 'credits' },
-    { name: '🫧 Light Log Purge + VACUUM', value: 'light' },
-    { name: '☢️ FULL PURGE', value: 'full' },
-    { name: '🧹 Lydia Memory Wipe', value: 'lydia' },
-    { name: '🗑️ Delete User Data (GDPR)', value: 'gdpr' }
-)
-        )
-        .addUserOption(option =>
-            option.setName('target')
-                .setDescription('Target user (required for GDPR deletion)')
-                .setRequired(false)
-        ),
 
     execute: async (interaction, client) => {
         if (interaction.user.id !== process.env.OWNER_ID) {
