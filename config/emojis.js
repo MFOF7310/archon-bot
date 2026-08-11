@@ -11,7 +11,7 @@
 
 module.exports = {
     // ── Platform emojis ──
-    spotify:    '<:spotify:1296097300392968222>',
+    spotify:    '<:spotify:1535686609696067696>',
     soundcloud: '<:soundcloud:1535456930171064340>',
     youtube:    '<:youtube:1535456930317991946>',
 
