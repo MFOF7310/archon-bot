@@ -1182,23 +1182,36 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         const lib = require('../data/music-library.json');
         libIdx = lib.findIndex(t => t.query === query || t.title === query);
     } catch(e) {}
-    // Extract real title for YouTube URLs
+    // Extract real title for YouTube URLs via YouTube Data API
     let trackTitle = query;
     let trackSource = 'SoundCloud';
     let trackUrl = null;
     if (/youtu\.be\/|youtube\.com\/watch/i.test(query)) {
         try {
-            const cookiesPath = require('path').join(__dirname, '../assets/cookies.txt');
-            const proxyFlag = process.env.WEBSHARE_PROXY
-                ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies`
-                : `--cookies "${cookiesPath}"`;
-            const { stdout: ytTitle } = await execAsync(
-                `yt-dlp --no-playlist ${proxyFlag} --get-title "${query}"`,
-                { timeout: 15000 }
-            );
-            if (ytTitle.trim()) trackTitle = ytTitle.trim();
+            const videoIdMatch = query.match(/(?:youtu\.be\/|v=|v\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+            const videoId = videoIdMatch?.[1];
+            const ytApiKey = process.env.YOUTUBE_API_KEY;
+            if (videoId && ytApiKey) {
+                const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails&key=${ytApiKey}`;
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+                const item = data.items?.[0];
+                if (item) {
+                    trackTitle = item.snippet?.title || query;
+                    const thumbnail = item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url;
+                    if (thumbnail) trackUrl = thumbnail;
+                    // Parse duration ISO 8601
+                    const dur = item.contentDetails?.duration || '';
+                    const durMatch = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+                    if (durMatch) {
+                        const h = parseInt(durMatch[1] || 0);
+                        const m = parseInt(durMatch[2] || 0);
+                        const s = parseInt(durMatch[3] || 0);
+                        trackUrl = thumbnail; // store thumbnail separately below
+                    }
+                }
+            }
             trackSource = 'YouTube';
-            trackUrl = query;
         } catch(e) {}
     }
     const track = { title: trackTitle, query, artist: 'Unknown', source: trackSource, duration: 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: trackUrl, _libraryIndex: libIdx };
