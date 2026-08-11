@@ -744,7 +744,8 @@ async function prefetchNext(q) {
         const cookiesPath = require('path').join(__dirname, '../assets/cookies.txt');
         const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
         const tmpBase = require('path').join(require('os').tmpdir(), `archon_pre_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-        await execAsync(`yt-dlp --no-playlist --cookies "${cookiesPath}" -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 300000 });
+        const proxyFlag1 = process.env.WEBSHARE_PROXY ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies` : `--cookies "${cookiesPath}"`;
+        await execAsync(`yt-dlp --no-playlist ${proxyFlag1} -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 300000 });
         const tmpFile = `${tmpBase}.opus`;
         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
             if (!track.tempFile) {
@@ -984,7 +985,8 @@ async function playNext(q) {
                         }
 
                         const tmpBase = require('path').join(require('os').tmpdir(), `archon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-                        await execAsync(`yt-dlp --no-playlist --cookies "${cookiesPath}" -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 300000 });
+                        const proxyFlag2 = process.env.WEBSHARE_PROXY ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies` : `--cookies "${cookiesPath}"`;
+                        await execAsync(`yt-dlp --no-playlist ${proxyFlag2} -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 300000 });
                         const tmpFile = `${tmpBase}.opus`;
                         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
                             // ── Defense 2: real duration from the file (format + stream fallback) ──
