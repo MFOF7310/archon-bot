@@ -1236,6 +1236,10 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     }
 
     const SPOTIFY_ICON = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/512px-Spotify_logo_without_text.svg.png';
+    // Clean raw URL titles before display
+    if (track.title && /^https?:\/\//i.test(track.title)) {
+        track.title = track.source === "YouTube" ? "YouTube Track" : track.title.substring(0, 60);
+    }
     const nameMd = trackLinkFor(track);
     const durMd = track.duration > 0 ? ` - \`${formatTime(track.duration)}\`` : '';
 
