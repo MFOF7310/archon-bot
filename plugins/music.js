@@ -1249,6 +1249,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     }
 
     const SPOTIFY_ICON = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/512px-Spotify_logo_without_text.svg.png';
+    const isYouTubeUrl = /youtu\.be\/|youtube\.com\/watch/i.test(query);
     // Clean raw URL titles before display
     if (track.title && /^https?:\/\//i.test(track.title)) {
         track.title = track.source === "YouTube" ? "YouTube Track" : track.title.substring(0, 60);
@@ -1277,6 +1278,24 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     // Loading state is ephemeral — only caller sees it, disappears automatically
     const msgFlags = (!isPlaying && components.length === 0) ? { flags: 64 } : {};
     const msg = await replyFn({ embeds: [embed], components, ...msgFlags });
+
+    // Edit embed with real YouTube title after API responds
+    if (isYouTubeUrl && msg && track.title && !track.title.startsWith('http')) {
+        try {
+            const updatedEmbed = new EmbedBuilder().setColor(isPlaying ? 0x1DB954 : ARCHON.cyan);
+            const updatedNameMd = trackLinkFor(track);
+            if (isPlaying) {
+                updatedEmbed.setAuthor({ name: 'Added to the queue', iconURL: SPOTIFY_ICON })
+                    .setDescription(`${getPlatformEmoji(track)} Added **${updatedNameMd}**${durMd} to the queue.
+> Position **#${q.tracks.length}** • Added by **${requestedBy}**`);
+                if (track.thumbnail) updatedEmbed.setThumbnail(track.thumbnail);
+            } else {
+                updatedEmbed.setDescription(`🎵 **${track.title.substring(0,60)}**
+> On it — warming up the decks… 🎚️`);
+            }
+            await msg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+        } catch(e) {}
+    }
 
     if (suggestions.length > 0 && msg) {
         const collector = msg.createMessageComponentCollector({ time: 30000 });
