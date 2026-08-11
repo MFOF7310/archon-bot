@@ -1182,7 +1182,26 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         const lib = require('../data/music-library.json');
         libIdx = lib.findIndex(t => t.query === query || t.title === query);
     } catch(e) {}
-    const track = { title: query, query, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: null, _libraryIndex: libIdx };
+    // Extract real title for YouTube URLs
+    let trackTitle = query;
+    let trackSource = 'SoundCloud';
+    let trackUrl = null;
+    if (/youtu\.be\/|youtube\.com\/watch/i.test(query)) {
+        try {
+            const cookiesPath = require('path').join(__dirname, '../assets/cookies.txt');
+            const proxyFlag = process.env.WEBSHARE_PROXY
+                ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies`
+                : `--cookies "${cookiesPath}"`;
+            const { stdout: ytTitle } = await execAsync(
+                `yt-dlp --no-playlist ${proxyFlag} --get-title "${query}"`,
+                { timeout: 15000 }
+            );
+            if (ytTitle.trim()) trackTitle = ytTitle.trim();
+            trackSource = 'YouTube';
+            trackUrl = query;
+        } catch(e) {}
+    }
+    const track = { title: trackTitle, query, artist: 'Unknown', source: trackSource, duration: 0, thumbnail: null, requestedBy, requestedById: requestedById || null, url: trackUrl, _libraryIndex: libIdx };
     if (libIdx >= 0) {
         let q2 = getQueue(guildId);
         if (q2) q2.libraryIndex = libIdx;
