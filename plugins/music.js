@@ -1036,6 +1036,10 @@ async function playNext(q) {
         resource.volume?.setVolume(q.volume / 100);
         q.player.play(resource);
         q._consecutiveErrors = 0; // reset on successful play
+        if (q._errorMsg) {
+            q._errorMsg.delete().catch(() => {});
+            q._errorMsg = null;
+        }
 
         // New track starting → panel relocates to the bottom of chat
         await updatePersistentPanel(q, { resend: true });
@@ -1066,7 +1070,13 @@ async function playNext(q) {
             await q.persistentMsg.delete().catch(() => {});
             q.persistentMsg = null; q.panelMsgId = null;
         }
-        await q.textChannel?.send({ embeds: [errEmbed] }).catch(() => {});
+        // Edit existing error message instead of spamming new ones
+        if (q._errorMsg) {
+            await q._errorMsg.edit({ embeds: [errEmbed] }).catch(() => { q._errorMsg = null; });
+        }
+        if (!q._errorMsg) {
+            q._errorMsg = await q.textChannel?.send({ embeds: [errEmbed] }).catch(() => null);
+        }
         setTimeout(() => playNext(q), 2000);
     }
 }
