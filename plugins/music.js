@@ -34,6 +34,11 @@ async function getSCClientId() {
         console.log('[MUSIC] SoundCloud client ID refreshed ✅');
     } catch(e) {
         console.error('[MUSIC] SoundCloud client ID refresh failed:', e.message);
+        // Keep old cached ID if available — extend expiry to avoid hammering
+        if (_scClientId) {
+            _scClientIdExpiry = now + 5 * 60 * 1000; // retry in 5 min
+            console.log('[MUSIC] Using cached SoundCloud ID as fallback');
+        }
     }
     return _scClientId;
 }
