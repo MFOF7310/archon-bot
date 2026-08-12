@@ -645,7 +645,7 @@ module.exports = {
     execute: async (interaction, client) => {
         const tier = interaction.options.getString('tier') || 'rookie';
         const category = interaction.options.getString('category') || 'tech';
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
         const fakeMessage = {
             author: interaction.user,
             guild: interaction.guild,

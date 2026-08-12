@@ -939,8 +939,13 @@ async function handleUpdate(update, bridge, client) {
         if (cmd?.handler) {
             if (cmd.ownerOnly && !ctx.isOwner()) return ctx.replyHTML(`⛔ <b>Owner only</b>`);
             if (cmd.adminOnly && !(await ctx.isAdmin())) return ctx.replyHTML(`⛔ <b>Admin only</b>`);
-            try { await cmd.handler(ctx); bridge.stats.commandsUsed++; } catch (err) {
-                console.error(`${red}[TG]${reset} /${cmdName}: ${err.message}`);
+            try {
+                const uname = ctx.from?.username || ctx.from?.first_name || ctx.from?.id || 'unknown';
+                console.log(`${cyan}[TG CMD]${reset} /${cmdName} by @${uname} in ${ctx.chat?.title || 'DM'}`);
+                await cmd.handler(ctx);
+                bridge.stats.commandsUsed++;
+            } catch (err) {
+                console.error(`${red}[TG ERROR]${reset} /${cmdName}: ${err.message}`);
                 ctx.replyHTML(`❌ Error. Try again.`);
             }
             return;

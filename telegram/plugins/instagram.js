@@ -56,7 +56,7 @@ module.exports = {
                 parse_mode: 'HTML'
             });
         } catch(e) {
-            console.error('[INSTA]', e.message);
+            console.error('[INSTAGRAM]', e.message);
             await edit(
                 '😔 <b>Couldn\'t download this post!</b>\n\n' +
                 '• Account may be private\n' +

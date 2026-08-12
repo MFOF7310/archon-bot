@@ -75,7 +75,7 @@ module.exports = {
                 parse_mode: 'HTML'
             });
         } catch(e) {
-            console.error('[FB]', e.message);
+            console.error('[FACEBOOK]', e.message);
             await edit(
                 '😔 <b>Couldn\'t download this video!</b>\n\n' +
                 'This could be because:\n' +
