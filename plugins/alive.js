@@ -32,7 +32,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('alive', guildId) : 'en';
         
-        const t = translations[lang];
+        const t = ns('alive', lang);
         const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
