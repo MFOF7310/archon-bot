@@ -20,5 +20,22 @@
     "commands": "Commandes",
     "status": "🎮 Kɛcogoyaw",
     "operational": "A bɛ baara la"
+  },
+  "ping": {
+    "title": "🏓 PING LAJƐLI",
+    "excellent": "🟢 A ƝƐNA KOJUGU",
+    "good": "🟡 A KAƝI",
+    "poor": "🔴 A MAƝI",
+    "apiLatency": "📡 API Latence",
+    "messageLatency": "💬 Message Latence",
+    "databaseLatency": "🗄️ Database Latence",
+    "overall": "📊 SCORE",
+    "refresh": "🔄 Ka la kura ya ka ɲɛ",
+    "scoreExcellent": "A ɲɛ kojugu - Sira bɛɛ bɛ baara la",
+    "scoreGood": "A kaɲi - Latence dɔɔnin",
+    "scorePoor": "A maɲi - Latence caman",
+    "recommendation": "Ladili",
+    "recExcellent": "Sira bɛ baara kɛ ka ɲɛ",
+    "accessDenied": "🙏 Nteri, menu in tɛ i ta ye, hakɛto."
   }
 }

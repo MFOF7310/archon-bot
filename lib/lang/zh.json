@@ -46,5 +46,22 @@
     "healthy": "健康",
     "degraded": "降级",
     "critical": "严重"
+  },
+  "ping": {
+    "title": "🏓 网络延迟分析",
+    "excellent": "🟢 优秀",
+    "good": "🟡 良好",
+    "poor": "🔴 较差",
+    "apiLatency": "📡 API延迟",
+    "messageLatency": "💬 消息延迟",
+    "databaseLatency": "🗄️ 数据库延迟",
+    "overall": "📊 综合评分",
+    "refresh": "🔄 刷新",
+    "scoreExcellent": "优秀 - 所有系统正常",
+    "scoreGood": "良好 - 轻微延迟",
+    "scorePoor": "较差 - 高延迟",
+    "recommendation": "建议",
+    "recExcellent": "系统运行在最佳性能",
+    "accessDenied": "❌ 这个菜单不属于你。"
   }
 }
