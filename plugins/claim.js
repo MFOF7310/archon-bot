@@ -1,3 +1,4 @@
+const { ns } = require('../lib/lang');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 function parseEmoji(str) {
@@ -13,64 +14,6 @@ function calculateLevel(xp) {
 }
 
 // ================= BILINGUAL TRANSLATIONS =================
-const claimTranslations = {
-    en: {
-        title: '⚡ NEURAL CLAIM PROTOCOL',
-        successTitle: `✅ RESOURCES INJECTED`,
-        cooldownTitle: '🔒 ACCESS DENIED',
-        cooldownDesc: (name, time, prefix) => `**Agent ${name}**, your neural cycle is still processing.\n\n${EMOJIS.loading} **Cooldown Remaining:** \`${time}\`\n\n💡 Use \`${prefix}daily\` to view your full dashboard.`,
-        successDesc: (credits, xp, streak) =>
-            '```ansi\n' +
-            '\u001b[1;36m\u25b8 CREDITS  \u001b[0m\u001b[1;32m+' + credits.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
-            '\u001b[1;36m\u25b8 XP       \u001b[0m\u001b[1;32m+' + xp.toLocaleString() + '\u001b[0m\n' +
-            '\u001b[1;36m\u25b8 STREAK   \u001b[0m\u001b[1;33m' + streak + ' day' + (streak > 1 ? 's' : '') + ' \uD83D\uDD25\u001b[0m\n' +
-            '```',
-        streakBonus: '🔥 STREAK BONUS ACTIVE',
-        streakInfo: (streak, bonusXP, bonusCredits) =>
-            '```ansi\n' +
-            '\u001b[1;33m\u25b8 STREAK   \u001b[0m\u001b[1;37m' + streak + ' days \uD83D\uDD25\u001b[0m\n' +
-            '\u001b[1;33m\u25b8 BONUS XP \u001b[0m\u001b[1;32m+' + bonusXP + '\u001b[0m\n' +
-            '\u001b[1;33m\u25b8 BONUS \uD83E\uDE99 \u001b[0m\u001b[1;32m+' + bonusCredits + '\u001b[0m\n' +
-            '```',
-        nextClaim: '⏰ NEXT CLAIM AVAILABLE',
-        currentStats: '📊 CURRENT STATISTICS',
-        viewDashboard: 'Dashboard',
-        myProfile: 'My Profile',
-        error: `${EMOJIS.error} An error occurred during claim processing.`,
-        accessDenied: `${EMOJIS.error} These controls are locked to your session.`,
-        channelRestricted: (channelId) => `📊 The claim protocol is restricted to <#${channelId}>.`,
-        dashboardOpened: '📊 Dashboard displayed above!',
-        profileOpened: '👤 Profile displayed above!'
-    },
-    fr: {
-        title: '⚡ PROTOCOLE DE RÉCLAMATION NEURALE',
-        successTitle: `✅ RESSOURCES INJECTÉES`,
-        cooldownTitle: '🔒 ACCÈS REFUSÉ',
-        cooldownDesc: (name, time, prefix) => `**Agent ${name}**, votre cycle neural est toujours en cours.\n\n${EMOJIS.loading} **Temps restant:** \`${time}\`\n\n💡 Utilisez \`${prefix}daily\` pour voir votre tableau de bord.`,
-        successDesc: (credits, xp, streak) =>
-            '```ansi\n' +
-            '\u001b[1;36m\u25b8 CRÉDITS  \u001b[0m\u001b[1;32m+' + credits.toLocaleString() + ' \uD83E\uDE99\u001b[0m\n' +
-            '\u001b[1;36m\u25b8 XP       \u001b[0m\u001b[1;32m+' + xp.toLocaleString() + '\u001b[0m\n' +
-            '\u001b[1;36m\u25b8 SÉRIE    \u001b[0m\u001b[1;33m' + streak + ' jour' + (streak > 1 ? 's' : '') + ' \uD83D\uDD25\u001b[0m\n' +
-            '```',
-        streakBonus: '🔥 BONUS DE SÉRIE ACTIF',
-        streakInfo: (streak, bonusXP, bonusCredits) =>
-            '```ansi\n' +
-            '\u001b[1;33m\u25b8 SÉRIE    \u001b[0m\u001b[1;37m' + streak + ' jours \uD83D\uDD25\u001b[0m\n' +
-            '\u001b[1;33m\u25b8 BONUS XP \u001b[0m\u001b[1;32m+' + bonusXP + '\u001b[0m\n' +
-            '\u001b[1;33m\u25b8 BONUS \uD83E\uDE99 \u001b[0m\u001b[1;32m+' + bonusCredits + '\u001b[0m\n' +
-            '```',
-        nextClaim: '⏰ PROCHAINE RÉCLAMATION',
-        currentStats: '📊 STATISTIQUES ACTUELLES',
-        viewDashboard: 'Tableau de Bord',
-        myProfile: 'Mon Profil',
-        error: `${EMOJIS.error} Une erreur est survenue lors de la réclamation.`,
-        accessDenied: `${EMOJIS.error} Ces commandes sont verrouillées à votre session.`,
-        channelRestricted: (channelId) => `📊 Le protocole est restreint au canal <#${channelId}>.`,
-        dashboardOpened: '📊 Tableau de bord affiché !',
-        profileOpened: '👤 Profil affiché !'
-    }
-};
 
 // ================= RANK TITLES =================
 const AGENT_RANKS = [
@@ -88,7 +31,7 @@ function getRank(level) {
 // ================= INLINE MINI DASHBOARD =================
 // Builds a quick dashboard embed directly — avoids calling daily.js with stale context
 function buildMiniDashboard(userData, lang, prefix, guildName, guildIcon, version) {
-    const t = claimTranslations[lang];
+    const t = ns('daily', lang);
     const streak = userData.streak_days || 0;
     const credits = userData.credits || 0;
     const xp = userData.xp || 0;
@@ -345,7 +288,7 @@ module.exports = {
 
             // Language detection
             const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
-            const t = claimTranslations[lang];
+            const t = ns('daily', lang);
             const version = client.version || '2.0.0';
             
             // Channel restriction
@@ -586,7 +529,7 @@ module.exports = {
         } catch (error) {
             console.error(`[CLAIM] FATAL ERROR:`, error);
             const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
-            return message.reply({ content: claimTranslations[lang].error }).catch(() => {});
+            return message.reply({ content: ns('daily', lang).error }).catch(() => {});
         }
     },
 
@@ -598,7 +541,7 @@ module.exports = {
             const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
             
             const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
-            const t = claimTranslations[lang];
+            const t = ns('daily', lang);
             
             const version = client.version || '2.0.0';
             const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -848,7 +791,7 @@ module.exports = {
         } catch (error) {
             console.error(`[CLAIM SLASH] FATAL ERROR:`, error);
             const _lang = client.detectLanguage ? client.detectLanguage('claim', interaction.guild?.id || 'DM') : 'en';
-            const errorMsg = { content: claimTranslations[_lang]?.error || `${EMOJIS.error} An error occurred during claim processing.`, flags: 64 };
+            const errorMsg = { content: ns('daily', _lang).error || `${EMOJIS.error} An error occurred during claim processing.`, flags: 64 };
             if (interaction.deferred || interaction.replied) {
                 return interaction.editReply(errorMsg).catch(() => {});
             }

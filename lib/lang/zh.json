@@ -62,6 +62,23 @@
     "scorePoor": "较差 - 高延迟",
     "recommendation": "建议",
     "recExcellent": "系统运行在最佳性能",
-    "accessDenied": "❌ 这个菜单不属于你。"
+    "accessDenied": "❌ 这个菜单不属于你。",
+    "author": "ARCHON CG-223 // 延迟分析"
+  },
+  "daily": {
+    "claimed": "🎉 每日奖励已领取！",
+    "alreadyClaimed": "⏰ 今天已领取 — {time}后再来",
+    "streakBonus": "🔥 连签奖励激活",
+    "levelUp": "🎉 等级提升！",
+    "reachedLevel": "你达到了第 {n} 级",
+    "baseReward": "基础奖励",
+    "streakBonusLabel": "连签奖励",
+    "totalEarned": "总获得",
+    "xpEarned": "获得XP",
+    "newBalance": "新余额",
+    "currentStreak": "当前连签",
+    "nextClaim": "下次领取",
+    "days": "天",
+    "footer": "NEURAL DAILY • 每24小时领取"
   }
 }

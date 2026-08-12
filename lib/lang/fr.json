@@ -62,6 +62,23 @@
     "scorePoor": "Mauvais - Haute latence détectée",
     "recommendation": "Recommandation",
     "recExcellent": "Système fonctionnant à performance optimale",
-    "accessDenied": "❌ Ce menu n'est pas pour vous."
+    "accessDenied": "❌ Ce menu n'est pas pour vous.",
+    "author": "ARCHON CG-223 // ANALYSE PING"
+  },
+  "daily": {
+    "claimed": "🎉 Bonus Quotidien Réclamé !",
+    "alreadyClaimed": "⏰ Déjà réclamé aujourd'hui — revenez dans {time}",
+    "streakBonus": "🔥 Bonus de série actif",
+    "levelUp": "🎉 Niveau Supérieur !",
+    "reachedLevel": "Vous avez atteint le niveau {n}",
+    "baseReward": "Récompense de Base",
+    "streakBonusLabel": "Bonus de Série",
+    "totalEarned": "Total Gagné",
+    "xpEarned": "XP Gagnés",
+    "newBalance": "Nouveau Solde",
+    "currentStreak": "Série Actuelle",
+    "nextClaim": "Prochain Bonus",
+    "days": "jours",
+    "footer": "NEURAL DAILY • RÉCLAMEZ TOUTES LES 24H"
   }
 }
