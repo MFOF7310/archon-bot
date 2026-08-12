@@ -940,7 +940,7 @@ async function handleUpdate(update, bridge, client) {
             if (cmd.ownerOnly && !ctx.isOwner()) return ctx.replyHTML(`⛔ <b>Owner only</b>`);
             if (cmd.adminOnly && !(await ctx.isAdmin())) return ctx.replyHTML(`⛔ <b>Admin only</b>`);
             try {
-                const uname = ctx.from?.username || ctx.from?.first_name || ctx.from?.id || 'unknown';
+                const uname = ctx.from?.username ? '@' + ctx.from.username : (ctx.from?.first_name || ctx.from?.id || 'unknown');
                 console.log(`${cyan}[TG CMD]${reset} /${cmdName} by @${uname} in ${ctx.chat?.title || 'DM'}`);
                 await cmd.handler(ctx);
                 bridge.stats.commandsUsed++;

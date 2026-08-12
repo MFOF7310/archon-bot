@@ -85,19 +85,69 @@ module.exports = {
 
         if (!quality) {
             const key = storeUrl(url);
+            // Fetch available qualities dynamically
+            let buttons = [
+                [{ text: '📱 360p', callback_data: 'ytdl:v:360:' + key },
+                 { text: '🎬 720p', callback_data: 'ytdl:v:720:' + key },
+                 { text: '🔥 1080p', callback_data: 'ytdl:v:1080:' + key }]
+            ];
+            try {
+                const { execSync } = require('child_process');
+                const formatsRaw = execSync(
+                    `yt-dlp --no-playlist -F "${url}" 2>/dev/null | grep -E "^[0-9]+" | grep "mp4|webm" | awk '{print $4}' | grep -E "^[0-9]+p$" | sort -t'p' -k1 -n | uniq`,
+                    { timeout: 15000, encoding: 'utf8' }
+                ).trim();
+                const available = [...new Set(formatsRaw.split('\n').filter(Boolean))];
+                const qualityMap = {
+                    '144p': '🔹 144p', '240p': '📱 240p', '360p': '📱 360p',
+                    '480p': '🎥 480p', '720p': '🎬 720p', '1080p': '🔥 1080p',
+                    '1440p': '💎 1440p', '2160p': '🌟 4K'
+                };
+                const filtered = available.filter(q => qualityMap[q]);
+                if (filtered.length > 0) {
+                    // Group into rows of 3
+                    const row = [];
+                    filtered.forEach((q, i) => {
+                        if (i % 3 === 0) row.push([]);
+                        row[row.length-1].push({
+                            text: qualityMap[q],
+                            callback_data: 'ytdl:v:' + q.replace('p','') + ':' + key
+                        });
+                    });
+                    buttons = row;
+                }
+            } catch(e) {}
+
+            // Get video title for display
+            let title = 'YouTube Video';
+            try {
+                const { execSync } = require('child_process');
+                title = execSync(`yt-dlp --no-playlist --get-title "${url}" 2>/dev/null`, { timeout: 10000, encoding: 'utf8' }).trim().substring(0, 60);
+            } catch(e) {}
+
             return ctx.sendHTML(
-                '🎬 <b>Pick a quality to download!</b>\n\n' +
-                '<i>Larger = better quality but slower.\n' +
-                'Files over 50MB get a direct download link instead.</i>',
-                { extra: { reply_markup: { inline_keyboard: [[
-                    { text: '📱 360p', callback_data: 'ytdl:v:360:' + key },
-                    { text: '🎬 720p', callback_data: 'ytdl:v:720:' + key },
-                    { text: '🔥 1080p', callback_data: 'ytdl:v:1080:' + key }
-                ]] } } }
+                `🎬 <b>${title}</b>\n\n` +
+                `📊 <b>Pick a quality:</b>\n` +
+                `<i>Under 50MB → sent directly\nOver 50MB → instant download link</i>\n\n` +
+                `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`,
+                { extra: { reply_markup: { inline_keyboard: buttons } } }
             );
         }
 
-        const proc = await ctx.replyHTML('🎬 <i>Downloading ' + quality + 'p — hang tight...</i>');
+        // Check approximate file size before downloading
+        let approxSize = 0;
+        try {
+            const { execSync } = require('child_process');
+            const sizeRaw = execSync(
+                `yt-dlp --no-playlist -f "bestvideo[height<=${quality}][ext=mp4]+bestaudio/best[height<=${quality}]/best" --print filesize_approx "${url}" 2>/dev/null`,
+                { timeout: 15000, encoding: 'utf8' }
+            ).trim();
+            approxSize = parseInt(sizeRaw) || 0;
+        } catch(e) {}
+        const sizeMB = Math.round(approxSize / 1024 / 1024);
+        const sizeInfo = sizeMB > 0 ? ` (~${sizeMB}MB)` : '';
+
+        const proc = await ctx.replyHTML('🎬 <i>Downloading ' + quality + 'p' + sizeInfo + ' — hang tight...</i>');
         const edit = (t) => ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, t, { parse_mode: 'HTML' }).catch(() => {});
         await ctx.action('upload_video');
 
