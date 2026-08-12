@@ -2,6 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('disc
 const EMOJIS = require('../config/emojis');
 
 const LANGUAGES = {
+    auto: { name: 'Auto-detect', flag: '🌐', native: 'Auto' },
     en: { name: 'English', flag: '🇬🇧', native: 'English' },
     fr: { name: 'French', flag: '🇫🇷', native: 'Français' },
     ar: { name: 'Arabic', flag: '🇸🇦', native: 'العربية' },
@@ -54,6 +55,8 @@ module.exports = {
     },
 
     async execute(interaction, client) {
+        if (!interaction.member?.permissions.has(PermissionFlagsBits.ManageGuild))
+            return interaction.reply({ content: '⛔ You need **Manage Server** permission to change the server language.', flags: 64 });
         const code = interaction.options.getString('language');
         await setLanguage(client, interaction.guild.id, code, interaction.guild.name);
         return interaction.reply({ embeds: [buildEmbed(code)], flags: 64 });

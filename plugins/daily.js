@@ -1,3 +1,4 @@
+const { ns } = require('../lib/lang');
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 

@@ -36,6 +36,23 @@
     "scorePoor": "A maɲi - Latence caman",
     "recommendation": "Ladili",
     "recExcellent": "Sira bɛ baara kɛ ka ɲɛ",
-    "accessDenied": "🙏 Nteri, menu in tɛ i ta ye, hakɛto."
+    "accessDenied": "🙏 Nteri, menu in tɛ i ta ye, hakɛto.",
+    "author": "ARCHON CG-223 // PING LAJƐLI"
+  },
+  "daily": {
+    "claimed": "🎉 I ye don bonus minɛ!",
+    "alreadyClaimed": "⏰ Hakɛto, don bonus minɛ la kaban — i hakili to a la i ka segin ka na nin waati ko fɔ len na {time}",
+    "streakBonus": "🔥 I ka don streak bonus dayɛlɛ la",
+    "levelUp": "🎉 I ye niveau supérieur kura sɔrɔ!",
+    "reachedLevel": "I sera nin niveau hakɛ in ma {n}",
+    "baseReward": "Recompense de base",
+    "streakBonusLabel": "Streak Bonus",
+    "totalEarned": "Jummɛ sɔrɔlen",
+    "xpEarned": "XP sɔrɔlen",
+    "newBalance": "Wari kura",
+    "currentStreak": "Streak sisan",
+    "nextClaim": "Don bonus kɔnɔ",
+    "days": "don",
+    "footer": "NEURAL DAILY • Don o don"
   }
 }

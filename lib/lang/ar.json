@@ -62,6 +62,23 @@
     "scorePoor": "ضعيف - زمن استجابة عالي",
     "recommendation": "توصية",
     "recExcellent": "النظام يعمل بأداء ذروة",
-    "accessDenied": "❌ هذه القائمة ليست لك."
+    "accessDenied": "❌ هذه القائمة ليست لك.",
+    "author": "ARCHON CG-223 // تحليل البينغ"
+  },
+  "daily": {
+    "claimed": "🎉 تم استلام المكافأة اليومية!",
+    "alreadyClaimed": "⏰ تم الاستلام اليوم — عد بعد {time}",
+    "streakBonus": "🔥 مكافأة السلسلة نشطة",
+    "levelUp": "🎉 ترقية المستوى!",
+    "reachedLevel": "وصلت إلى المستوى {n}",
+    "baseReward": "المكافأة الأساسية",
+    "streakBonusLabel": "مكافأة السلسلة",
+    "totalEarned": "المجموع المكتسب",
+    "xpEarned": "XP المكتسب",
+    "newBalance": "الرصيد الجديد",
+    "currentStreak": "السلسلة الحالية",
+    "nextClaim": "الاستلام التالي",
+    "days": "أيام",
+    "footer": "NEURAL DAILY • كل 24 ساعة"
   }
 }
