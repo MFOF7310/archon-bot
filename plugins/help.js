@@ -261,7 +261,24 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
     const commandList = sortedCmds.map(cmd => {
         const aliasesText = cmd.aliases?.length ? ` \`(${cmd.aliases.slice(0, 3).join(', ')})\`` : '';
         const examples = cmd.examples?.length ? `\n> 📝 ${lang === 'fr' ? 'Ex' : 'Ex'}: \`${cmd.examples.map(ex => formatExample(ex, prefix, cmd.name, cmd.aliases)).join('`, `')}\`` : '';
-        return `\`▸ ${prefix}${cmd.name}\`${aliasesText}\n> ${cmd.description || t.noDescription}${examples}`;
+        const hasSlash = !!(cmd.data || cmd.execute);
+        const slashBadge = hasSlash ? ' `[/]`' : '';
+        // Get subcommands from slash data
+        let subcommandText = '';
+        if (cmd.data?.options) {
+            try {
+                const subs = cmd.data.options.filter(o => o.toJSON?.()?.type === 1);
+                if (subs.length > 0) {
+                    const subList = subs.slice(0, 5).map(s => {
+                        const sub = s.toJSON?.() || {};
+                        return `\`/${cmd.name} ${sub.name}\``;
+                    }).join(' · ');
+                    const more = subs.length > 5 ? ` +${subs.length - 5}` : '';
+                    subcommandText = `\n> 🔹 ${subList}${more}`;
+                }
+            } catch(e) {}
+        }
+        return `\`▸ ${prefix}${cmd.name}\`${slashBadge}${aliasesText}\n> ${cmd.description || t.noDescription}${subcommandText}${examples}`;
     }).join('\n\n');
 
     return new EmbedBuilder()
