@@ -2187,97 +2187,58 @@ client.loadPlugins = async () => {
     }
     
     // ═══════════════════════════════════════════════════════════════════
-    //  NEURAL GRID DISPLAY — CATEGORY MATRIX
-    // ═══════════════════════════════════════════════════════════════════
-    loadedCommands.sort((a, b) => {
-        if (a.category !== b.category) return a.category.localeCompare(b.category);
-        return a.name.localeCompare(b.name);
-    });
     
-    const categories = [...new Set(loadedCommands.map(c => c.category))].sort();
-    
-    // Header separator
-    console.log(`\x1b[38;5;39m    ╔══════════════════════════════════════════════════════════════════════╗\x1b[0m`);
-    
-    for (const category of categories) {
-        const categoryCommands = loadedCommands.filter(c => c.category === category);
-        const discordCmds = categoryCommands.filter(c => c.source === 'DISCORD');
-        const telegramCmds = categoryCommands.filter(c => c.source === 'TELEGRAM');
-        
-        const catEmoji = getCategoryEmoji(category);
-        const totalCmds = categoryCommands.length;
-        const aliasCount = categoryCommands.reduce((sum, c) => sum + c.aliases, 0);
-        const slashCount = categoryCommands.filter(c => c.hasSlash).length;
-        
-        // Category header
-        console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
-        console.log(`\x1b[38;5;39m    ║\x1b[0m  ${catEmoji} \x1b[1;33m${category.padEnd(12)}\x1b[0m  \x1b[32m${String(totalCmds).padStart(2)} CMDS\x1b[0m  \x1b[34m${String(aliasCount).padStart(2)} ALIAS\x1b[0m  \x1b[35m${String(slashCount).padStart(2)} SLASH\x1b[0m  ${discordCmds.length > 0 ? '\x1b[36m💬\x1b[0m' : '  '} ${telegramCmds.length > 0 ? '\x1b[36m🌉\x1b[0m' : '  '}                    \x1b[38;5;39m║\x1b[0m`);
-        console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
-        
-        // Discord modules
-        if (discordCmds.length > 0) {
-            const itemsPerRow = 3;
-            for (let i = 0; i < discordCmds.length; i += itemsPerRow) {
-                const row = discordCmds.slice(i, i + itemsPerRow);
-                let rowText = `\x1b[38;5;39m    ║\x1b[0m  \x1b[36m💬\x1b[0m `;
-                
-                row.forEach(cmd => {
-                    const displayName = cmd.name.length > 11 ? cmd.name.substring(0, 9) + '..' : cmd.name.padEnd(11);
-                    const aliasInfo = cmd.aliases > 0 ? `\x1b[33m[${cmd.aliases}]\x1b[0m` : '   ';
-                    const slashBadge = cmd.hasSlash ? '\x1b[32m/\x1b[0m' : ' ';
-                    rowText += `\x1b[32m${displayName}\x1b[0m${aliasInfo}${slashBadge} `.padEnd(26);
-                });
-                
-                const emptySlots = itemsPerRow - row.length;
-                if (emptySlots > 0) rowText += ' '.repeat(emptySlots * 26);
-                
-                console.log(`${rowText}\x1b[38;5;39m║\x1b[0m`);
-            }
-        }
-        
-        // Telegram modules
-        if (telegramCmds.length > 0) {
-            const itemsPerRow = 3;
-            for (let i = 0; i < telegramCmds.length; i += itemsPerRow) {
-                const row = telegramCmds.slice(i, i + itemsPerRow);
-                let rowText = `\x1b[38;5;39m    ║\x1b[0m  \x1b[36m🌉\x1b[0m `;
-                
-                row.forEach(cmd => {
-                    const displayName = cmd.name.length > 11 ? cmd.name.substring(0, 9) + '..' : cmd.name.padEnd(11);
-                    const aliasInfo = cmd.aliases > 0 ? `\x1b[33m[${cmd.aliases}]\x1b[0m` : '   ';
-                    const slashBadge = cmd.hasSlash ? '\x1b[32m/\x1b[0m' : ' ';
-                    rowText += `\x1b[36m${displayName}\x1b[0m${aliasInfo}${slashBadge} `.padEnd(26);
-                });
-                
-                const emptySlots = itemsPerRow - row.length;
-                if (emptySlots > 0) rowText += ' '.repeat(emptySlots * 26);
-                
-                console.log(`${rowText}\x1b[38;5;39m║\x1b[0m`);
-            }
-        }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════
-    //  NEURAL GRID FOOTER — STATISTICS MATRIX
-    // ═══════════════════════════════════════════════════════════════════
-    console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
-    console.log(`\x1b[38;5;39m    ║\x1b[0m  \x1b[32m💬 DISCORD:\x1b[0m ${String(moduleStats.discord).padEnd(4)}  \x1b[36m🌉 TELEGRAM:\x1b[0m ${String(moduleStats.telegram).padEnd(4)}  \x1b[33m🔗 ALIASES:\x1b[0m ${String(moduleStats.aliases).padEnd(4)}  \x1b[35m📊 CATEGORIES:\x1b[0m ${String(categories.length).padEnd(3)}  \x1b[32m⚡ SLASH:\x1b[0m ${String(moduleStats.slash).padEnd(3)}  \x1b[38;5;39m║\x1b[0m`);
-    console.log(`\x1b[38;5;39m    ║\x1b[0m  \x1b[32m✅ LOADED:\x1b[0m ${String(moduleStats.total).padEnd(5)}  \x1b[31m❌ FAILED:\x1b[0m ${String(failedCommands.length).padEnd(5)}  \x1b[34m📡 SERVERS:\x1b[0m ${String(client.guilds.cache.size).padEnd(5)}  \x1b[33m🧠 STATUS:\x1b[0m \x1b[5;32mONLINE\x1b[0m                    \x1b[38;5;39m║\x1b[0m`);
-    
-    if (failedCommands.length > 0) {
-        console.log(`\x1b[38;5;39m    ╠══════════════════════════════════════════════════════════════════════╣\x1b[0m`);
-        failedCommands.forEach(f => {
-            const sourceTag = f.source === 'TELEGRAM' ? '\x1b[36m🌉' : '\x1b[32m💬';
-            const errTrunc = f.error.substring(0, 40).padEnd(40);
-            console.log(`\x1b[38;5;39m    ║\x1b[0m  \x1b[31m❌\x1b[0m ${sourceTag} ${f.file}\x1b[0m \x1b[33m→\x1b[0m ${errTrunc} \x1b[38;5;39m║\x1b[0m`);
+
+    // ── CLEAN BOOT SUMMARY ──
+    const _ver = (() => { try { return require('fs').readFileSync('./version.txt','utf8').trim(); } catch(e) { return '?'; } })();
+    const _W = 68;
+    const _C = '\x1b[38;5;45m', _G = '\x1b[1;32m', _Y = '\x1b[1;33m',
+          _R = '\x1b[1;31m', _W2 = '\x1b[1;37m', _X = '\x1b[0m', _P = '\x1b[35m';
+    const _line = '═'.repeat(_W);
+    const _pad = (str, len) => {
+        const clean = str.replace(/\x1b\[[\d;]*m/g, '');
+        return str + ' '.repeat(Math.max(0, len - clean.length));
+    };
+    const _center = (str, len) => {
+        const clean = str.replace(/\x1b\[[\d;]*m/g, '');
+        const total = Math.max(0, len - clean.length);
+        return ' '.repeat(Math.floor(total/2)) + str + ' '.repeat(total - Math.floor(total/2));
+    };
+    console.log('');
+    console.log(`${_C}  ╔${_line}╗${_X}`);
+    console.log(`${_C}  ║${_X}${_center(`${_Y}⚡ ARCHON CG-223  •  NEURAL GRID ONLINE${_X}`, _W)}${_C}║${_X}`);
+    console.log(`${_C}  ╠${_line}╣${_X}`);
+    const _srv = String(client.guilds.cache.size);
+    const _mods = String(moduleStats.total);
+    const _slsh = String(moduleStats.slash);
+    const _fail = failedCommands.length;
+    const _statsLine =
+        `${_W2}MODULES${_X} ${_G}${_mods}${_X}   ` +
+        `${_W2}SLASH${_X} ${_G}${_slsh}${_X}   ` +
+        `${_W2}SERVERS${_X} ${_G}${_srv}${_X}   ` +
+        `${_W2}FAILED${_X} ${_fail > 0 ? _R + _fail : _G + '0'}${_X}   ` +
+        `${_W2}v${_X}${_G}${_ver}${_X}`;
+    console.log(`${_C}  ║${_X}  ${_pad(_statsLine, _W - 2)}${_C}║${_X}`);
+    console.log(`${_C}  ╠${_line}╣${_X}`);
+    const _tg  = client.telegramBridge?.enabled ? `${_G}✓ TELEGRAM${_X}` : `${_R}✗ TELEGRAM${_X}`;
+    const _db2 = client.db ? `${_G}✓ DATABASE${_X}` : `${_R}✗ DATABASE${_X}`;
+    const _sc2 = `${_G}✓ SOUNDCLOUD${_X}`;
+    const _ai2 = process.env.OPENROUTER_API_KEY ? `${_G}✓ LYDIA AI${_X}` : `${_Y}~ LYDIA AI${_X}`;
+    const _srvLine = `${_tg}   ${_db2}   ${_sc2}   ${_ai2}   ${_P}BAMAKO_223 🇲🇱${_X}`;
+    console.log(`${_C}  ║${_X}  ${_pad(_srvLine, _W - 2)}${_C}║${_X}`);
+    if (_fail > 0) {
+        console.log(`${_C}  ╠${_line}╣${_X}`);
+        failedCommands.slice(0, 3).forEach(f => {
+            const _tag = f.source === 'TELEGRAM' ? '🌉' : '💬';
+            const _fl = `${_R}✗${_X} ${_tag} ${f.file} → ${f.error.substring(0, 40)}`;
+            console.log(`${_C}  ║${_X}  ${_pad(_fl, _W - 2)}${_C}║${_X}`);
         });
+        if (_fail > 3) console.log(`${_C}  ║${_X}  ${_Y}... and ${_fail - 3} more failures${_X}${' '.repeat(20)}${_C}║${_X}`);
     }
-    
-    console.log(`\x1b[38;5;39m    ╚══════════════════════════════════════════════════════════════════════╝\x1b[0m\n`);
-    
-        // Final status line
-    const statusColor = failedCommands.length === 0 ? '\x1b[32m' : '\x1b[33m';
-    console.log(`${statusColor}[NEURAL GRID]\x1b[0m ${moduleStats.total} modules synchronized • ${moduleStats.slash} slash-enabled • ${failedCommands.length > 0 ? failedCommands.length + ' failures' : 'All systems nominal'}`);
+    console.log(`${_C}  ╚${_line}╝${_X}`);
+    console.log('');
+    console.log(`${_G}[NEURAL GRID]${_X} ${_mods} modules • ${_slsh} slash • ${_fail > 0 ? _R + _fail + ' failures' + _X : _G + 'All systems nominal' + _X}`);
+
 };
 
 // ================= SMART PLUGIN EXECUTION WRAPPER =================
