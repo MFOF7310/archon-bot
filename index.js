@@ -184,8 +184,7 @@ function detectLanguage(usedCommand, guildId = null) {
     if (guildId) {
         const serverLang = client.settings?.get(guildId)?.language || 
                           client.getServerSettings?.(guildId)?.language;
-        if (serverLang === 'fr') return 'fr';
-        if (serverLang === 'en') return 'en';
+        if (['fr', 'en', 'ar', 'bm', 'zh'].includes(serverLang)) return serverLang;
         // 'auto' falls through to detection below
     }
 
