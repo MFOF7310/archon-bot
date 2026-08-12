@@ -27,7 +27,7 @@ module.exports = {
                 permissions: '🔐 KEY PERMISSIONS',
                 none: 'None',
                 noRole: '❌ Role not found. Please mention a role, provide an ID, or specify a name.',
-                footer: 'ARCHITECT CG-223 • Neural Intelligence'
+                footer: 'ARCHON CG-223 • Neural Intelligence'
             },
             fr: {
                 title: 'ℹ️ INFORMATIONS DU RÔLE',
@@ -43,7 +43,7 @@ module.exports = {
                 permissions: '🔐 PERMISSIONS CLÉS',
                 none: 'Aucune',
                 noRole: '❌ Rôle introuvable. Mentionnez un rôle, fournissez un ID ou spécifiez un nom.',
-                footer: 'ARCHITECT CG-223 • Intelligence Neurale'
+                footer: 'ARCHON CG-223 • Intelligence Neurale'
             }
         }[lang];
 

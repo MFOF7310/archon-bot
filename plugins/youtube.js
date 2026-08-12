@@ -70,7 +70,7 @@ module.exports = {
                         '**Examples:**\n' +
                         '└ `.yt lofi hip hop`\n' +
                         '└ `.yt info https://youtube.com/watch?v=dQw4w9WgXcQ`')
-                    .setFooter({ text: 'ARCHITECT CG-223 • YouTube Integration' })
+                    .setFooter({ text: 'ARCHON CG-223 • YouTube Integration' })
                 ]
             });
         }
@@ -467,7 +467,7 @@ async function handleVideoInfo(context, input, isSlash) {
             inline: false
         })
         .setFooter({ 
-            text: 'ARCHITECT CG-223 • YouTube Neural Parser • Real-time Data',
+            text: 'ARCHON CG-223 • YouTube Neural Parser • Real-time Data',
             iconURL: context.client?.user?.displayAvatarURL?.() || '' 
         })
         .setTimestamp();
@@ -503,7 +503,7 @@ async function handleYouTubeSearch(context, query, maxResults, isSlash) {
         })
         .setDescription(`Showing **${results.length}** result${results.length > 1 ? 's' : ''}`)
         .setFooter({ 
-            text: `ARCHITECT CG-223 • YouTube Neural Search • Cached for 5min`,
+            text: `ARCHON CG-223 • YouTube Neural Search • Cached for 5min`,
             iconURL: context.client?.user?.displayAvatarURL?.() || '' 
         })
         .setTimestamp();

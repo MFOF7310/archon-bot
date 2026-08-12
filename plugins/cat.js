@@ -14,7 +14,7 @@ const T = {
         weight: '⚖️ Weight',
         breedInfo: '📋 Breed Info',
         randomKitty: 'Random Kitty',
-        footer: 'ARCHITECT CG-223 • TheCatAPI',
+        footer: 'ARCHON CG-223 • TheCatAPI',
         another: '🐱 Another Cat',
         highRes: '✨ High Resolution'
     },
@@ -29,7 +29,7 @@ const T = {
         weight: '⚖️ Poids',
         breedInfo: '📋 Info sur la race',
         randomKitty: 'Chat Aléatoire',
-        footer: 'ARCHITECT CG-223 • TheCatAPI',
+        footer: 'ARCHON CG-223 • TheCatAPI',
         another: '🐱 Autre Chat',
         highRes: '✨ Haute Résolution'
     }

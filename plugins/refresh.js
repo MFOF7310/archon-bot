@@ -116,7 +116,7 @@ const embed = new EmbedBuilder()
     .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
     .setTitle(t.desc)
     .setDescription(t.preview(xpUsers, creditUsers, totalUsers) + '\n' + healthPreview)
-            .setFooter({ text: 'ARCHITECT CG-223 • Neural Override System' })
+            .setFooter({ text: 'ARCHON CG-223 • Neural Override System' })
             .setTimestamp();
 
         const select = new StringSelectMenuBuilder()
@@ -478,7 +478,7 @@ async function executeGdprDelete(interaction, userId, t, client, db) {
         const embed = new EmbedBuilder().setColor(totalDeleted > 0 ? '#2ecc71' : '#f39c12')
             .setTitle(totalDeleted > 0 ? '✅ DATA PERMANENTLY ERASED' : '⚠️ NO DATA FOUND')
             .setDescription(desc)
-            .setFooter({ text: 'ARCHITECT CG-223 • GDPR Compliance' })
+            .setFooter({ text: 'ARCHON CG-223 • GDPR Compliance' })
             .setTimestamp();
 
         await interaction.editReply({ embeds: [embed], components: [] }).catch(() => {});

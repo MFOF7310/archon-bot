@@ -32,7 +32,7 @@ const shopTranslations = {
         accessDenied: '❌ These controls are locked to your session.',
         itemNotFound: '❌ Item not found.',
         purchaseError: '❌ An error occurred during purchase.',
-        footer: 'ARCHITECT CG-223 • Neural Marketplace',
+        footer: 'ARCHON CG-223 • Neural Marketplace',
         purchaseComplete: '✅ PURCHASE COMPLETE',
         newBalance: 'New Balance',
         verifyWith: 'Verify with',
@@ -70,7 +70,7 @@ const shopTranslations = {
         accessDenied: '❌ Ces commandes sont verrouillées à votre session.',
         itemNotFound: '❌ Article introuvable.',
         purchaseError: '❌ Une erreur est survenue lors de l\'achat.',
-        footer: 'ARCHITECT CG-223 • Marché Neural',
+        footer: 'ARCHON CG-223 • Marché Neural',
         purchaseComplete: '✅ ACHAT RÉUSSI',
         newBalance: 'Nouveau Solde',
         verifyWith: 'Vérifiez avec',
@@ -311,7 +311,7 @@ if (selectedItem.effect?.streak_protection) {
                                         `💰 **Price:** ${selectedItem.price.toLocaleString()} 🪙\n` +
                                         `📊 **New Balance:** ${newCredits.toLocaleString()} 🪙`
                                     )
-                                    .setFooter({ text: `${guildName} • ARCHITECT CG-223`, iconURL: guildIcon })
+                                    .setFooter({ text: `${guildName} • ARCHON CG-223`, iconURL: guildIcon })
                                     .setTimestamp();
                                 await shopChannel.send({ embeds: [notifEmbed] }).catch(() => {});
                             }

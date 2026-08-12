@@ -191,7 +191,7 @@ module.exports = {
                 .setColor('#2ecc71')
                 .setAuthor({ name: t.afkStatus, iconURL: message.author.displayAvatarURL() })
                 .setDescription(t.afkRemoved(message.author.username))
-                .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                .setFooter({ text: `ARCHON CG-223 • v${version}` })
                 .setTimestamp();
             
             return message.reply({ embeds: [embed] });
@@ -216,7 +216,7 @@ module.exports = {
                         .setColor('#3498db')
                         .setAuthor({ name: t.afkStatus, iconURL: message.author.displayAvatarURL() })
                         .setDescription(t.afkAutoRemoved(message.author.username))
-                        .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                        .setFooter({ text: `ARCHON CG-223 • v${version}` })
                         .setTimestamp();
                     
                     message.channel.send({ embeds: [autoEmbed] }).catch(() => {});
@@ -239,7 +239,7 @@ module.exports = {
                 { name: `⏰ ${t.autoReturn}`, value: timeDisplay || t.permanent, inline: true }
             )
             .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+            .setFooter({ text: `ARCHON CG-223 • v${version}` })
             .setTimestamp();
         
         // Create buttons for others to interact
@@ -341,7 +341,7 @@ module.exports = {
                 .setColor('#2ecc71')
                 .setAuthor({ name: t.afkStatus, iconURL: interaction.user.displayAvatarURL() })
                 .setDescription(t.afkRemoved(interaction.user.username))
-                .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                .setFooter({ text: `ARCHON CG-223 • v${version}` })
                 .setTimestamp();
             
             return interaction.reply({ embeds: [embed], flags: ephemeral ? 1 << 6 : 0 });
@@ -378,7 +378,7 @@ module.exports = {
                 { name: `⏰ ${t.autoReturn}`, value: timeDisplay || t.permanent, inline: true }
             )
             .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+            .setFooter({ text: `ARCHON CG-223 • v${version}` })
             .setTimestamp();
         
         await interaction.reply({ embeds: [embed], flags: ephemeral ? 1 << 6 : 0 });

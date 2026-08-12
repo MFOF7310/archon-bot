@@ -9,7 +9,7 @@ const translations = {
         boosters: '🌟 Boosters',
         noBoosters: '❌ This server has no boosters.',
         since: 'Boosting since',
-        footer: 'ARCHITECT CG-223 • Neural Recognition'
+        footer: 'ARCHON CG-223 • Neural Recognition'
     },
     fr: {
         title: (name) => `🚀 Boosters du Serveur - ${name}`,
@@ -18,7 +18,7 @@ const translations = {
         boosters: '🌟 Boosters',
         noBoosters: '❌ Ce serveur n\'a pas de boosters.',
         since: 'Booste depuis',
-        footer: 'ARCHITECT CG-223 • Reconnaissance Neurale'
+        footer: 'ARCHON CG-223 • Reconnaissance Neurale'
     }
 };
 

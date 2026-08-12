@@ -4,7 +4,7 @@ const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, Butt
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     en: {
-        author: '⚡ ARCHITECT CG-223 | NEURAL LATENCY',
+        author: '⚡ ARCHON CG-223 | NEURAL LATENCY',
         title: '🏓 SYSTEM PULSE',
         responseTime: 'Response Time',
         roundTrip: '📡 ROUND TRIP',
@@ -42,7 +42,7 @@ const translations = {
         accessDenied: '❌ This menu is not for you.'
     },
     fr: {
-        author: '⚡ ARCHITECT CG-223 | LATENCE NEURALE',
+        author: '⚡ ARCHON CG-223 | LATENCE NEURALE',
         title: '🏓 POULS SYSTÈME',
         responseTime: 'Temps de réponse',
         roundTrip: '📡 ALLER-RETOUR',

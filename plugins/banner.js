@@ -18,14 +18,14 @@ module.exports = {
             en: { 
                 title: (user) => `🎨 ${user}'s Banner`, 
                 noBanner: '❌ This user does not have a banner.',
-                footer: 'ARCHITECT CG-223 • Neural Imaging'
+                footer: 'ARCHON CG-223 • Neural Imaging'
             },
             fr: { 
                 title: (user) => `🎨 Bannière de ${user}`, 
                 noBanner: '❌ Cet utilisateur n\'a pas de bannière.',
-                footer: 'ARCHITECT CG-223 • Imagerie Neurale'
+                footer: 'ARCHON CG-223 • Imagerie Neurale'
             }
-        }[lang] || { title: (u) => `${u}'s Banner`, noBanner: '❌ No banner.', footer: 'ARCHITECT CG-223' };
+        }[lang] || { title: (u) => `${u}'s Banner`, noBanner: '❌ No banner.', footer: 'ARCHON CG-223' };
 
         // Fetch user with banner
         const user = await client.users.fetch(target.id, { force: true });

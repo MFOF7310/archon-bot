@@ -6,13 +6,13 @@ const translations = {
         title: (name) => `🖼️ ${name} Server Icon`,
         noIcon: '❌ This server has no icon.',
         formats: 'Formats',
-        footer: 'ARCHITECT CG-223 • Neural Imaging'
+        footer: 'ARCHON CG-223 • Neural Imaging'
     },
     fr: {
         title: (name) => `🖼️ Icône du Serveur - ${name}`,
         noIcon: '❌ Ce serveur n\'a pas d\'icône.',
         formats: 'Formats',
-        footer: 'ARCHITECT CG-223 • Imagerie Neurale'
+        footer: 'ARCHON CG-223 • Imagerie Neurale'
     }
 };
 

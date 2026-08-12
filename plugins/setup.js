@@ -13,7 +13,7 @@ const {
 const t = {
     fr: {
         title: '🧙‍♂️ ASSISTANT DE CONFIGURATION',
-        welcome: '👋 Bienvenue dans l\'assistant de configuration ARCHITECT CG-223 !\n\nJe vais vous guider à travers les **5 étapes essentielles** pour configurer votre serveur.\n\nCliquez sur **Démarrer** pour commencer.',
+        welcome: '👋 Bienvenue dans l\'assistant de configuration ARCHON CG-223 !\n\nJe vais vous guider à travers les **5 étapes essentielles** pour configurer votre serveur.\n\nCliquez sur **Démarrer** pour commencer.',
         step1_title: '📜 Étape 1/5 : Salon des Règles',
         step1_desc: 'Sélectionnez le salon où vos règles sont affichées.\nLes nouveaux membres verront un bouton pour y accéder.',
         step2_title: '👋 Étape 2/5 : Salon de Bienvenue',
@@ -35,11 +35,11 @@ const t = {
         cancelled: '❌ Configuration annulée.',
         error: '❌ Une erreur est survenue.',
         saved: '✅ Paramètre enregistré !',
-        footer: 'ARCHITECT CG-223 • Assistant de Configuration'
+        footer: 'ARCHON CG-223 • Assistant de Configuration'
     },
     en: {
         title: '🧙‍♂️ SETUP WIZARD',
-        welcome: '👋 Welcome to the ARCHITECT CG-223 setup wizard!\n\nI\'ll guide you through the **5 essential steps** to configure your server.\n\nClick **Start** to begin.',
+        welcome: '👋 Welcome to the ARCHON CG-223 setup wizard!\n\nI\'ll guide you through the **5 essential steps** to configure your server.\n\nClick **Start** to begin.',
         step1_title: '📜 Step 1/5: Rules Channel',
         step1_desc: 'Select the channel where your rules are displayed.\nNew members will see a button to access them.',
         step2_title: '👋 Step 2/5: Welcome Channel',
@@ -61,7 +61,7 @@ const t = {
         cancelled: '❌ Setup cancelled.',
         error: '❌ An error occurred.',
         saved: '✅ Setting saved!',
-        footer: 'ARCHITECT CG-223 • Setup Wizard'
+        footer: 'ARCHON CG-223 • Setup Wizard'
     }
 };
 

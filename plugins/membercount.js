@@ -13,7 +13,7 @@ const translations = {
         offline: '⚫ Offline',
         boosters: '🚀 Boosters',
         roles: '📋 Roles',
-        footer: 'ARCHITECT CG-223 • Neural Census'
+        footer: 'ARCHON CG-223 • Neural Census'
     },
     fr: {
         title: (name) => `👥 Statistiques des Membres - ${name}`,
@@ -26,7 +26,7 @@ const translations = {
         offline: '⚫ Hors ligne',
         boosters: '🚀 Boosters',
         roles: '📋 Rôles',
-        footer: 'ARCHITECT CG-223 • Recensement Neural'
+        footer: 'ARCHON CG-223 • Recensement Neural'
     }
 };
 

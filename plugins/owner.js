@@ -7,7 +7,7 @@ const path = require('path');
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     en: {
-        title: '🛰️ ARCHITECT CG-223 | EXECUTIVE HUB',
+        title: '🛰️ ARCHON CG-223 | EXECUTIVE HUB',
         description: 'Community management and support frequency active.',
         facebook: 'Facebook',
         facebookDesc: 'Community Hub',
@@ -40,7 +40,7 @@ const translations = {
         backupFailed: '❌ Backup failed'
     },
     fr: {
-        title: '🛰️ ARCHITECT CG-223 | HUB EXÉCUTIF',
+        title: '🛰️ ARCHON CG-223 | HUB EXÉCUTIF',
         description: 'Gestion communautaire et fréquence de support active.',
         facebook: 'Facebook',
         facebookDesc: 'Hub Communautaire',
