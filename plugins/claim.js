@@ -334,8 +334,8 @@ module.exports = {
                 
                 const cooldownEmbed = new EmbedBuilder()
                     .setColor('#ff4444')
-                    .setAuthor({ name: t.cooldownTitle, iconURL: avatarURL })
-                    .setDescription(t.cooldownDesc.replace('{name}', userName).replace('{time}', timeString).replace('{prefix}', prefix))
+                    .setAuthor({ name: `🔒 ${t.cooldownTitle}`, iconURL: avatarURL })
+                    .setDescription(t.cooldownDesc.replace('{name}', userName).replace('{time}', timeString).replace('{prefix}', prefix).replace('{loading}', EMOJIS.loading).replace('{loading}', EMOJIS.loading))
                     .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
@@ -589,8 +589,8 @@ module.exports = {
                 
                 const cooldownEmbed = new EmbedBuilder()
                     .setColor('#ff4444')
-                    .setAuthor({ name: t.cooldownTitle, iconURL: avatarURL })
-                    .setDescription(t.cooldownDesc.replace('{name}', userName).replace('{time}', timeString).replace('{prefix}', prefix))
+                    .setAuthor({ name: `🔒 ${t.cooldownTitle}`, iconURL: avatarURL })
+                    .setDescription(t.cooldownDesc.replace('{name}', userName).replace('{time}', timeString).replace('{prefix}', prefix).replace('{loading}', EMOJIS.loading).replace('{loading}', EMOJIS.loading))
                     .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 

@@ -2282,7 +2282,8 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 client.once(Events.ClientReady, async () => {
     // ── Dynamic emoji resolver — update emojis.js on disk at boot ──
     try {
-        const mainGuild = client.guilds.cache.get(process.env.GUILD_ID);
+        const mainGuild = client.guilds.cache.get(process.env.GUILD_ID)
+            || await client.guilds.fetch(process.env.GUILD_ID).catch((err) => { console.error('[EMOJIS] fetch failed:', err.message); return null; });
         if (mainGuild) {
             const guildEmojis = await mainGuild.emojis.fetch();
             const emojiPath = require('path').join(__dirname, 'config/emojis.js');
@@ -2304,13 +2305,25 @@ client.once(Events.ClientReady, async () => {
 
             if (updated > 0) {
                 require('fs').writeFileSync(emojiPath, emojiFile, 'utf8');
-                console.log(`[EMOJIS] ✅ Auto-updated ${updated} emoji IDs on disk`);
+                // Mutate the live exported object so all plugins see fresh IDs instantly
+                const liveEmojis = require('./config/emojis');
+                for (const emoji of guildEmojis.values()) {
+                    const key = Object.keys(liveEmojis).find(k =>
+                        liveEmojis[k].includes(`:${emoji.name}:`)
+                    );
+                    if (key) {
+                        liveEmojis[key] = emoji.animated
+                            ? `<a:${emoji.name}:${emoji.id}>`
+                            : `<:${emoji.name}:${emoji.id}>`;
+                    }
+                }
+                console.log(`[EMOJIS] ✅ Auto-updated ${updated} emoji IDs on disk + live memory`);
             } else {
                 console.log('[EMOJIS] All emoji IDs up to date');
             }
         }
     } catch(e) {
-        console.error('[EMOJIS] Dynamic resolve failed:', e.message);
+        console.error('[EMOJIS] Dynamic resolve failed:', e.message, e.stack);
     }
     const isPM2 = process.env.pm_id !== undefined || process.env.name === 'Architect-CG223';
     
