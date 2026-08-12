@@ -136,7 +136,7 @@ async function deliverDailyReminder(client, reminder, database) {
     const embed = new EmbedBuilder()
         .setColor('#00fbff')
         .setAuthor({ name: t.title, iconURL: client.user?.displayAvatarURL() })
-        .setDescription(t.desc(reminder.guildName || 'the server'))
+        .setDescription(t.desc.replace('{guild}', reminder.guildName || 'the server'))
         .setFooter({ text: t.footer })
         .setTimestamp();
 
@@ -160,7 +160,7 @@ async function deliverDailyReminder(client, reminder, database) {
             const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
             if (channel && channel.send) {
                 const fbEmbed = EmbedBuilder.from(embed)
-                    .setDescription(`<@${reminder.user_id}> ${t.desc(reminder.guildName || 'the server')}`);
+                    .setDescription(`<@${reminder.user_id}> ${t.desc.replace('{guild}', reminder.guildName || 'the server')}`);
                 await channel.send({ content: `<@${reminder.user_id}>`, embeds: [fbEmbed] });
                 delivered = true;
                 console.log(`[DAILY REMINDER] 📢 Channel fallback for ${reminder.user_tag || reminder.user_id}`);
@@ -293,7 +293,7 @@ module.exports = {
             
             // Channel restriction
             if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
-                return message.reply({ content: t.channelRestricted(serverSettings.dailyChannel) });
+                return message.reply({ content: t.channelRestricted.replace('{channel}', serverSettings.dailyChannel) });
             }
             
             const userId = message.author.id;
@@ -335,7 +335,7 @@ module.exports = {
                 const cooldownEmbed = new EmbedBuilder()
                     .setColor('#ff4444')
                     .setAuthor({ name: t.cooldownTitle, iconURL: avatarURL })
-                    .setDescription(t.cooldownDesc(userName, timeString, prefix))
+                    .setDescription(t.cooldownDesc.replace('{name}', userName).replace('{time}', timeString).replace('{prefix}', prefix))
                     .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
@@ -465,7 +465,7 @@ module.exports = {
             const successEmbed = new EmbedBuilder()
                 .setColor('#00fbff')
                 .setAuthor({ name: t.successTitle, iconURL: avatarURL })
-                .setDescription(t.successDesc(totalCredits, totalXP, streak))
+                .setDescription(t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak))
                 .addFields(
                     { name: t.nextClaim, value: `<t:${Math.floor((now + oneDay) / 1000)}:R>`, inline: true },
                     { name: t.currentStats, value: `\`\`\`yaml\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${currentLevel}\n${lang === 'fr' ? 'XP Total' : 'Total XP'}: ${currentXP.toLocaleString()}\n${lang === 'fr' ? 'Crédits' : 'Credits'}: ${currentCredits.toLocaleString()}\`\`\``, inline: true }
@@ -474,7 +474,7 @@ module.exports = {
             if (streakBonusXP > 25 || streakBonusCredits > 10) {
                 successEmbed.addFields({
                     name: t.streakBonus,
-                    value: t.streakInfo(streak, streakBonusXP, streakBonusCredits),
+                    value: t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits),
                     inline: false
                 });
             }
@@ -550,7 +550,7 @@ module.exports = {
             
             // Channel restriction
             if (serverSettings?.dailyChannel && interaction.channel.id !== serverSettings.dailyChannel) {
-                return interaction.reply({ content: t.channelRestricted(serverSettings.dailyChannel), flags: 64 });
+                return interaction.reply({ content: t.channelRestricted.replace('{channel}', serverSettings.dailyChannel), flags: 64 });
             }
             
             const userId = interaction.user.id;
@@ -590,7 +590,7 @@ module.exports = {
                 const cooldownEmbed = new EmbedBuilder()
                     .setColor('#ff4444')
                     .setAuthor({ name: t.cooldownTitle, iconURL: avatarURL })
-                    .setDescription(t.cooldownDesc(userName, timeString, prefix))
+                    .setDescription(t.cooldownDesc.replace('{name}', userName).replace('{time}', timeString).replace('{prefix}', prefix))
                     .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
                     .setTimestamp();
                 
@@ -716,7 +716,7 @@ module.exports = {
             const successEmbed = new EmbedBuilder()
                 .setColor('#00fbff')
                 .setAuthor({ name: t.successTitle, iconURL: avatarURL })
-                .setDescription(t.successDesc(totalCredits, totalXP, streak))
+                .setDescription(t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak))
                 .addFields(
                     { name: t.nextClaim, value: `<t:${Math.floor((now + oneDay) / 1000)}:R>`, inline: true },
                     { name: t.currentStats, value: `\`\`\`yaml\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${currentLevel}\n${lang === 'fr' ? 'XP Total' : 'Total XP'}: ${currentXP.toLocaleString()}\n${lang === 'fr' ? 'Crédits' : 'Credits'}: ${currentCredits.toLocaleString()}\`\`\``, inline: true }
@@ -725,7 +725,7 @@ module.exports = {
             if (streakBonusXP > 25 || streakBonusCredits > 10) {
                 successEmbed.addFields({
                     name: t.streakBonus,
-                    value: t.streakInfo(streak, streakBonusXP, streakBonusCredits),
+                    value: t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits),
                     inline: false
                 });
             }

@@ -1,5 +1,6 @@
 const { performance } = require('perf_hooks');
 const { ns } = require('../lib/lang');
+const EMOJIS = require('../config/emojis');
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
@@ -66,7 +67,7 @@ module.exports = {
         
         // ================= MEASURE LATENCIES =================
         const start = performance.now();
-        const pingMsg = await message.reply(t.ping).catch(() => null);
+        const pingMsg = await message.reply(`${EMOJIS.loading} ${t.ping}`).catch(() => null);
         const end = performance.now();
         const messageLatency = Math.round(end - start);
         const apiPing = Math.round(client.ws.ping);
