@@ -4,8 +4,8 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommand
 const translations = {
     en: {
         title: '🔮 MYTHIC INVOCATION PORTAL',
-        desc: 'Summon **ARCHITECT CG-223** to your realm!',
-        botName: 'ARCHITECT CG-223',
+        desc: 'Summon **ARCHON CG-223** to your realm!',
+        botName: 'ARCHON CG-223',
         permissions: 'Administrator • Slash Commands',
         inviteHint: 'Click the button below to invite the Architect',
         inviteButton: '✨ INVITE NOW ✨',
@@ -27,7 +27,7 @@ const translations = {
     },
     fr: {
         title: '🔮 PORTAIL D\'INVOCATION MYTHIQUE',
-        desc: 'Invoquez **ARCHITECT CG-223** dans votre royaume!',
+        desc: 'Invoquez **ARCHON CG-223** dans votre royaume!',
         botName: 'ARCHITECTE CG-223',
         permissions: 'Administrateur • Commandes Slash',
         inviteHint: 'Cliquez sur le bouton ci-dessous pour inviter l\'Architecte',
@@ -84,7 +84,7 @@ module.exports = {
     // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('invite')
-        .setDescription('🔮 Summon ARCHITECT CG-223 to your server!'),
+        .setDescription('🔮 Summon ARCHON CG-223 to your server!'),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         

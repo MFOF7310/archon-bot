@@ -4,7 +4,7 @@ const os = require('os');
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     en: {
-        author: 'ARCHITECT CG-223 | NEURAL OVERLINK',
+        author: 'ARCHON CG-223 | NEURAL OVERLINK',
         title: '─ ARCHITECT SYSTEM DIAGNOSTICS ─',
         node: 'Node',
         integrity: 'Integrity',
@@ -42,7 +42,7 @@ const translations = {
         total: 'Total'
     },
     fr: {
-        author: 'ARCHITECT CG-223 | LIAISON NEURALE',
+        author: 'ARCHON CG-223 | LIAISON NEURALE',
         title: '─ DIAGNOSTICS SYSTÈME ARCHITECT ─',
         node: 'Nœud',
         integrity: 'Intégrité',

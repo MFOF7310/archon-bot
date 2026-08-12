@@ -39,9 +39,9 @@ module.exports = {
 // ================= SHARED HELPER =================
 async function sendAvatarEmbed(context, target, lang, client) {
     const t = {
-        en: { title: (user) => `🖼️ ${user}'s Avatar`, footer: 'ARCHITECT CG-223 • Neural Imaging' },
-        fr: { title: (user) => `🖼️ Avatar de ${user}`, footer: 'ARCHITECT CG-223 • Imagerie Neurale' }
-    }[lang] || { title: (u) => `${u}'s Avatar`, footer: 'ARCHITECT CG-223' };
+        en: { title: (user) => `🖼️ ${user}'s Avatar`, footer: 'ARCHON CG-223 • Neural Imaging' },
+        fr: { title: (user) => `🖼️ Avatar de ${user}`, footer: 'ARCHON CG-223 • Imagerie Neurale' }
+    }[lang] || { title: (u) => `${u}'s Avatar`, footer: 'ARCHON CG-223' };
 
     const formats = ['png', 'jpg', 'webp', 'gif'];
 

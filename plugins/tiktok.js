@@ -2,7 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommand
 const axios = require('axios');
 
 // ═══════════════════════════════════════════════════════════════════
-//  ARCHITECT CG-223  •  TIKTOK NOTIFICATION ENGINE v2.0
+//  ARCHON CG-223  •  TIKTOK NOTIFICATION ENGINE v2.0
 //  Handles: Live Stream Alerts + New Video Upload Notifications
 //  Polling: Every 5 minutes via self-healing interval
 //  Security: Server Owner ONLY for configuration
@@ -84,8 +84,8 @@ function isGuildOwner(message) {
 
 function buildOwnerErrorEmbed(client, guild, lang = 'en') {
     const t = {
-        fr: { title: '🔒 ACCÈS RESTREINT', desc: 'Seul le **propriétaire du serveur** peut gérer les notifications TikTok.', footer: 'ARCHITECT CG-223 • Sécurité Propriétaire' },
-        en: { title: '🔒 RESTRICTED ACCESS', desc: 'Only the **server owner** can manage TikTok notifications.', footer: 'ARCHITECT CG-223 • Owner Security' }
+        fr: { title: '🔒 ACCÈS RESTREINT', desc: 'Seul le **propriétaire du serveur** peut gérer les notifications TikTok.', footer: 'ARCHON CG-223 • Sécurité Propriétaire' },
+        en: { title: '🔒 RESTRICTED ACCESS', desc: 'Only the **server owner** can manage TikTok notifications.', footer: 'ARCHON CG-223 • Owner Security' }
     }[lang] || t.en;
 
     return new EmbedBuilder().setColor('#e74c3c').setAuthor({ name: '🛡️ ' + t.title, iconURL: guild.iconURL() || client.user.displayAvatarURL() }).setDescription(t.desc).setFooter({ text: t.footer }).setTimestamp();
@@ -468,7 +468,7 @@ if (data.stats.followers > 0 || data.stats.likes > 0) {
         .setDescription(inviteLines.join('\n'))
         .setThumbnail(data.avatar || null)
         .setImage(bannerImage)
-        .setFooter({ text: `ARCHITECT CG-223  •  TikTok Live  •  @${data.username}  •  Started`, iconURL: client.user.displayAvatarURL() })
+        .setFooter({ text: `ARCHON CG-223  •  TikTok Live  •  @${data.username}  •  Started`, iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
     return { embed, row };
@@ -497,7 +497,7 @@ function buildVideoEmbed(data, guild, client) {
         )
         .setThumbnail(data.avatar || null)
         .setImage(video.cover)
-        .setFooter({ text: `ARCHITECT CG-223  •  TikTok Video Detection  •  @${data.username}`, iconURL: client.user.displayAvatarURL() })
+        .setFooter({ text: `ARCHON CG-223  •  TikTok Video Detection  •  @${data.username}`, iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
     return { embed, row };
@@ -716,7 +716,7 @@ function buildListEmbed(tracks, guild, client, lang = 'en') {
 
     const embed = new EmbedBuilder().setColor('#FF0050')
         .setAuthor({ name: t.title, iconURL: guild.iconURL() || client.user.displayAvatarURL() })
-        .setFooter({ text: 'ARCHITECT CG-223 • TikTok Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
+        .setFooter({ text: 'ARCHON CG-223 • TikTok Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
 
     if (tracks.length === 0) { embed.setDescription(t.empty); return embed; }
 
@@ -813,7 +813,7 @@ module.exports = {
                 .addFields(
                     { name: '📊 Combined Result', value: fullData ? `✅ All layers resolved\n👤 **${fullData.nickname}**\n🔴 **Live:** ${fullData.isLive ? 'YES' : 'No'}\n🎬 **Latest Video:** ${fullData.latestVideo ? fullData.latestVideo.desc.substring(0, 50) + '...' : 'None'}` : `❌ All layers failed.\n\n⚠️ TikTok is likely blocking this server's IP.\nTry: \`.tiktok set ${username} #channel --force\``, inline: false }
                 )
-                .setFooter({ text: 'ARCHITECT CG-223 • TikTok Debug', iconURL: guildIcon })
+                .setFooter({ text: 'ARCHON CG-223 • TikTok Debug', iconURL: guildIcon })
                 .setTimestamp();
 
             return statusMsg.edit({ embeds: [embed] });
@@ -908,7 +908,7 @@ if (action === 'test' || action === 'simulate') {
                     : `**${username}** tracked.\n\n📢 <#${channelId}>\n🔴 Live Alerts\n🎬 Video Alerts\n👥 \`${Number(testData.stats.followers).toLocaleString()}\``
                 )
                 .setThumbnail(testData?.avatar || null)
-                .setFooter({ text: `${guildName} • ARCHITECT CG-223 • TikTok Engine`, iconURL: guildIcon }).setTimestamp();
+                .setFooter({ text: `${guildName} • ARCHON CG-223 • TikTok Engine`, iconURL: guildIcon }).setTimestamp();
 
             return statusMsg.edit({ content: null, embeds: [embed] });
         }
@@ -923,7 +923,7 @@ if (action === 'test' || action === 'simulate') {
 
             const embed = new EmbedBuilder().setColor('#e74c3c').setAuthor({ name: '🗑️ TRACKING REMOVED', iconURL: guildIcon })
                 .setDescription(`**${username}** removed.`)
-                .setFooter({ text: 'ARCHITECT CG-223', iconURL: client.user.displayAvatarURL() }).setTimestamp();
+                .setFooter({ text: 'ARCHON CG-223', iconURL: client.user.displayAvatarURL() }).setTimestamp();
             return message.reply({ embeds: [embed] });
         }
 
@@ -933,7 +933,7 @@ if (action === 'test' || action === 'simulate') {
             .setDescription((lang === 'fr'
                 ? '**Propriétaire:**\n`.tiktok set <user> <#ch> [--force]` — Suivre\n`.tiktok remove <user>` — Retirer\n`.tiktok check <user>` — Debug\n`.tiktok test <user>` — Test notification\n\n**Public:**\n`.tiktok list` — Voir les suivis\n\n⚠️ *TikTok bloque les IPs datacenter. `--force` si vérification échoue.*'
                 : '**Owner:**\n`.tiktok set <user> <#ch> [--force]` — Track\n`.tiktok remove <user>` — Remove\n`.tiktok check <user>` — Debug\n`.tiktok test <user>` — Test notification\n\n**Public:**\n`.tiktok list` — View tracked\n\n⚠️ *TikTok blocks datacenter IPs. Use `--force` if verification fails.*'))
-            .setFooter({ text: 'ARCHITECT CG-223', iconURL: client.user.displayAvatarURL() }).setTimestamp();
+            .setFooter({ text: 'ARCHON CG-223', iconURL: client.user.displayAvatarURL() }).setTimestamp();
         return message.reply({ embeds: [helpEmbed] });
     },
 

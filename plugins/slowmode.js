@@ -136,7 +136,7 @@ async function checkSlowmodePermission(context, t, lang) {
                     inline: false 
                 }
             )
-            .setFooter({ text: `ARCHITECT CG-223 • BAMAKO_223 🇲🇱` })
+            .setFooter({ text: `ARCHON CG-223 • BAMAKO_223 🇲🇱` })
             .setTimestamp();
 
         if (isSlash) {
@@ -193,7 +193,7 @@ async function checkSlowmodePermission(context, t, lang) {
                 }
             )
             .setFooter({ 
-                text: `${t.dmFallbackNote} • ARCHITECT CG-223` 
+                text: `${t.dmFallbackNote} • ARCHON CG-223` 
             })
             .setTimestamp();
 
@@ -521,7 +521,7 @@ async function sendUsageEmbed(message, t, lang) {
             }
         )
         .setFooter({ 
-            text: `ARCHITECT CG-223 • v${version} • BAMAKO_223 🇲🇱` 
+            text: `ARCHON CG-223 • v${version} • BAMAKO_223 🇲🇱` 
         })
         .setTimestamp();
 

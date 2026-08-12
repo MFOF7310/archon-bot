@@ -43,7 +43,7 @@ module.exports = {
                     : '```yaml\n💾 Flushing database...\n🔄 Restarting engine...\n```',
                 inline: false
             })
-            .setFooter({ text: 'ARCHITECT CG-223 • Neural Engine • Maintenance Protocol' })
+            .setFooter({ text: 'ARCHON CG-223 • Neural Engine • Maintenance Protocol' })
             .setTimestamp();
 
         const reply = await message.reply({ embeds: [prepEmbed] }).catch(() => {});
@@ -71,7 +71,7 @@ module.exports = {
                     '\u001b[1;31m═══════════════════════════════\u001b[0m\n' +
                     '```'
                 )
-                .setFooter({ text: 'ARCHITECT CG-223 • Engine restarting in 2 seconds...' })
+                .setFooter({ text: 'ARCHON CG-223 • Engine restarting in 2 seconds...' })
                 .setTimestamp();
 
             await reply.edit({ embeds: [finalEmbed] }).catch(() => {});
@@ -124,7 +124,7 @@ module.exports = {
                 '\u001b[1;33m═══════════════════════════════\u001b[0m\n' +
                 '```'
             )
-            .setFooter({ text: 'ARCHITECT CG-223 • Neural Engine • Maintenance Protocol' })
+            .setFooter({ text: 'ARCHON CG-223 • Neural Engine • Maintenance Protocol' })
             .setTimestamp();
 
         await interaction.editReply({ embeds: [prepEmbed] });
@@ -150,7 +150,7 @@ module.exports = {
                 '\u001b[1;31m═══════════════════════════════\u001b[0m\n' +
                 '```'
             )
-            .setFooter({ text: 'ARCHITECT CG-223 • Engine restarting...' })
+            .setFooter({ text: 'ARCHON CG-223 • Engine restarting...' })
             .setTimestamp();
 
         await interaction.editReply({ embeds: [finalEmbed] }).catch(() => {});

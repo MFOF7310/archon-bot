@@ -132,8 +132,8 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
         badge = '🔴 AWAITING FIRST VOTE';
         subtitle = lang === 'fr' ? '🌟 **BIENVENUE AU PORTAIL DE VOTE**' : '🌟 **WELCOME TO THE VOTE PORTAL**';
         body = lang === 'fr'
-            ? `Votre soutien alimente l'écosystème **ARCHITECT CG-223**.\nLancez votre premier vote pour activer votre dossier opérationnel et commencer à gagner des crédits.`
-            : `Your support powers the **ARCHITECT CG-223** ecosystem.\nCast your first vote to activate your operative record and begin earning credits.`;
+            ? `Votre soutien alimente l'écosystème **ARCHON CG-223**.\nLancez votre premier vote pour activer votre dossier opérationnel et commencer à gagner des crédits.`
+            : `Your support powers the **ARCHON CG-223** ecosystem.\nCast your first vote to activate your operative record and begin earning credits.`;
     } else if (status.canVote) {
         color = '#2ecc71';
         badge = lang === 'fr' ? '🟢 AUTORISÉ — ACCÈS PERMI' : '🟢 VOTE AUTHORIZED — CLEARANCE GRANTED';
@@ -216,7 +216,7 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
     }
 
     embed.setFooter({
-        text: `${guild?.name || 'ARCHITECT CG-223'} • ${t.footer}`,
+        text: `${guild?.name || 'ARCHON CG-223'} • ${t.footer}`,
         iconURL: guild?.iconURL() || client.user.displayAvatarURL()
     }).setTimestamp();
 
@@ -473,7 +473,7 @@ module.exports = {
                         `**${lang === 'fr' ? 'Autorisation complète' : 'Full Authorization'}:** <t:${nextVote}:F>\n\n` +
                         t.cooldownLive
                     )
-                    .setFooter({ text: 'ARCHITECT CG-223 • Vote Command' });
+                    .setFooter({ text: 'ARCHON CG-223 • Vote Command' });
 
                 i.followUp({ embeds: [ce], flags: MessageFlags.Ephemeral }).catch(() => {});
                 return;
@@ -623,7 +623,7 @@ module.exports = {
                     `**${lang === 'fr' ? 'Autorisation complète' : 'Full Authorization'}:** <t:${nextVote}:F>\n\n` +
                     t.cooldownLive
                 )
-                .setFooter({ text: 'ARCHITECT CG-223 • Vote Command' });
+                .setFooter({ text: 'ARCHON CG-223 • Vote Command' });
 
             return interaction.editReply({ embeds: [ce] });
         }

@@ -88,7 +88,7 @@ const t = {
         timeout: 'Time is up! Moving to next question...',
         startButton: 'Start Quiz',
         quizEnded: 'Quiz ended.',
-        footer: 'ARCHITECT CG-223 • Malian Cuisine Quiz'
+        footer: 'ARCHON CG-223 • Malian Cuisine Quiz'
     },
     fr: {
         title: 'QUIZ CUISINE MALIENNE',
@@ -109,7 +109,7 @@ const t = {
         timeout: 'Temps écoulé ! Passage à la question suivante...',
         startButton: 'Commencer le Quiz',
         quizEnded: 'Quiz terminé.',
-        footer: 'ARCHITECT CG-223 • Quiz Cuisine Malienne'
+        footer: 'ARCHON CG-223 • Quiz Cuisine Malienne'
     }
 };
 

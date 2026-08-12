@@ -167,7 +167,7 @@ function buildArenaEmbed(duel, phase = 'battle', extra = {}) {
       `\`\`\``;
   }
 
-  return new EmbedBuilder().setColor(color).setAuthor({ name: title, iconURL: extra.client?.user?.displayAvatarURL() }).setDescription(desc).setFooter({ text: 'ARCHITECT CG-223 • Neural Arena • BAMAKO_223 🇲🇱', iconURL: extra.client?.user?.displayAvatarURL() }).setTimestamp();
+  return new EmbedBuilder().setColor(color).setAuthor({ name: title, iconURL: extra.client?.user?.displayAvatarURL() }).setDescription(desc).setFooter({ text: 'ARCHON CG-223 • Neural Arena • BAMAKO_223 🇲🇱', iconURL: extra.client?.user?.displayAvatarURL() }).setTimestamp();
 }
 
 // ================= ACTION BUTTONS =================

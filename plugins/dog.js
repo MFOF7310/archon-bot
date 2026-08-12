@@ -16,7 +16,7 @@ const T = {
         breedGroup: '🏷️ Group',
         breedInfo: '📋 Breed Info',
         randomPup: 'Random Pup',
-        footer: 'ARCHITECT CG-223 • TheDogAPI',
+        footer: 'ARCHON CG-223 • TheDogAPI',
         another: '🐶 Another Dog',
         highRes: '✨ High Resolution'
     },
@@ -33,7 +33,7 @@ const T = {
         breedGroup: '🏷️ Groupe',
         breedInfo: '📋 Info sur la race',
         randomPup: 'Chiot Aléatoire',
-        footer: 'ARCHITECT CG-223 • TheDogAPI',
+        footer: 'ARCHON CG-223 • TheDogAPI',
         another: '🐶 Autre Chien',
         highRes: '✨ Haute Résolution'
     }

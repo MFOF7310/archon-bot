@@ -264,7 +264,7 @@ module.exports = {
                         `💾 Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\n` +
                         `\`\`\``
                     )
-                    .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                    .setFooter({ text: `ARCHON CG-223 • v${version}` })
                     .setTimestamp();
                 
                 await i.reply({ embeds: [statsEmbed], flags: 64 });
@@ -273,7 +273,7 @@ module.exports = {
             if (i.customId === 'socials_invite') {
                 const inviteEmbed = new EmbedBuilder()
                     .setColor('#5865F2')
-                    .setAuthor({ name: '🔗 INVITE ARCHITECT CG-223', iconURL: client.user.displayAvatarURL() })
+                    .setAuthor({ name: '🔗 INVITE ARCHON CG-223', iconURL: client.user.displayAvatarURL() })
                     .setDescription(
                         `**Add the bot to your server!**\n\n` +
                         `🔗 **Invite Link:**\nhttps://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot%20applications.commands\n\n` +
@@ -284,7 +284,7 @@ module.exports = {
                         `• Gaming Commands\n` +
                         `• And much more!`
                     )
-                    .setFooter({ text: `ARCHITECT CG-223 • v${version}` })
+                    .setFooter({ text: `ARCHON CG-223 • v${version}` })
                     .setTimestamp();
                 
                 await i.reply({ embeds: [inviteEmbed], flags: 64 });

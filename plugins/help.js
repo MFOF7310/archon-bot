@@ -3,7 +3,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     en: {
-        directoryTitle: '⚙️ ARCHITECT CG-223 | NEURAL DIRECTORY',
+        directoryTitle: '⚙️ ARCHON CG-223 | NEURAL DIRECTORY',
         commandExtract: 'COMMAND DATA_EXTRACT',
         module: 'MODULE',
         category: 'CATEGORY',
@@ -12,7 +12,7 @@ const translations = {
         examples: 'EXAMPLES',
         cooldown: 'COOLDOWN',
         seconds: 'seconds',
-        noDescription: 'No description encrypted. Use .help for module list.',
+        noDescription: 'No description available.',
         noExamples: 'No examples available',
         none: 'NONE',
         systemStatus: 'SYSTEM STATUS',
@@ -56,7 +56,7 @@ const translations = {
         signalLost: '❌ SIGNAL LOST',
         commandNotFound: 'Command Not Found',
         notFoundDesc: (arg, prefix) => `\`\`\`diff\n- Command or category "${arg}" not found in neural database\n- Use ${prefix}help to view all available modules\`\`\``,
-        checkSpelling: 'ARCHITECT CG-223 • Check your spelling and try again',
+        checkSpelling: 'ARCHON CG-223 • Check your spelling and try again',
         accessDenied: '⛔ Access Denied. This directory is locked to the requesting agent.',
         footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY',
         bamakoNode: 'Bamako Node',
@@ -71,7 +71,7 @@ const translations = {
         ]
     },
     fr: {
-        directoryTitle: '⚙️ ARCHITECT CG-223 | RÉPERTOIRE NEURAL',
+        directoryTitle: '⚙️ ARCHON CG-223 | RÉPERTOIRE NEURAL',
         commandExtract: 'EXTRAIT DE COMMANDE',
         module: 'MODULE',
         category: 'CATÉGORIE',
@@ -80,7 +80,7 @@ const translations = {
         examples: 'EXEMPLES',
         cooldown: 'REFROIDISSEMENT',
         seconds: 'secondes',
-        noDescription: 'Aucune description cryptée. Utilisez .help pour la liste des modules.',
+        noDescription: 'Aucune description disponible.',
         noExamples: 'Aucun exemple disponible',
         none: 'AUCUN',
         systemStatus: 'ÉTAT DU SYSTÈME',
@@ -124,7 +124,7 @@ const translations = {
         signalLost: '❌ SIGNAL PERDU',
         commandNotFound: 'Commande Introuvable',
         notFoundDesc: (arg, prefix) => `\`\`\`diff\n- La commande ou catégorie "${arg}" est introuvable dans la base neurale\n- Utilisez ${prefix}help pour voir tous les modules\`\`\``,
-        checkSpelling: 'ARCHITECT CG-223 • Vérifiez votre orthographe et réessayez',
+        checkSpelling: 'ARCHON CG-223 • Vérifiez votre orthographe et réessayez',
         accessDenied: '⛔ Accès Refusé. Ce répertoire est verrouillé pour l\'agent demandeur.',
         footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE',
         bamakoNode: 'Nœud Bamako',
@@ -302,13 +302,13 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
 module.exports = {
     name: 'help',
     aliases: ['h', 'menu', 'docs', 'aide', 'commandes', 'commands'],
-    description: 'Access the ARCHITECT Neural Directory and command database with advanced navigation.',
+    description: 'Browse all ARCHON CG-223 commands, modules and subcommands.',
     category: 'SYSTEM',
     cooldown: 3000,
 
     data: new SlashCommandBuilder()
         .setName('help')
-        .setDescription('Access the ARCHITECT Neural Directory and command database')
+        .setDescription('Browse all ARCHON CG-223 commands and modules')
         .addStringOption(option =>
             option.setName('query')
                 .setDescription('Command or category to view')
@@ -596,7 +596,7 @@ module.exports = {
                     name: lang === 'fr' ? '📡 TRANSMISSION NEURALE DIRECTE' : '📡 DIRECT NEURAL TRANSMISSION', 
                     iconURL: client.user.displayAvatarURL() 
                 })
-                .setTitle(lang === 'fr' ? '🦅 ARCHITECT CG-223 // MODE DM' : '🦅 ARCHITECT CG-223 // DM MODE')
+                .setTitle(lang === 'fr' ? '🦅 ARCHON CG-223 // MODE DM' : '🦅 ARCHON CG-223 // DM MODE')
                 .setDescription(
                     lang === 'fr' 
                         ? `*Connexion neurale directe établie.*\n\n**Commandes disponibles en DM :**\n\n` +

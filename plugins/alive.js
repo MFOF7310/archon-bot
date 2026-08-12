@@ -4,7 +4,7 @@ const os = require('os');
 // ================= BILINGUAL TRANSLATIONS =================
 const translations = {
     en: {
-        author: '🟢 ARCHITECT CG-223 // SYSTEM ONLINE',
+        author: '🟢 ARCHON CG-223 // SYSTEM ONLINE',
         title: '🚀 SYSTEM STATUS REPORT',
         botInfo: '📡 BOT INFORMATION',
         name: 'Name',
@@ -41,7 +41,7 @@ const translations = {
         critical: 'CRITICAL'
     },
     fr: {
-        author: '🟢 ARCHITECT CG-223 // SYSTÈME EN LIGNE',
+        author: '🟢 ARCHON CG-223 // SYSTÈME EN LIGNE',
         title: '🚀 RAPPORT D\'ÉTAT SYSTÈME',
         botInfo: '📡 INFORMATIONS BOT',
         name: 'Nom',
@@ -193,7 +193,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
                 }
             )
             .setFooter({ 
-                text: `${guildName} • ARCHITECT CG-223 • v${version}`,
+                text: `${guildName} • ARCHON CG-223 • v${version}`,
                 iconURL: guildIcon
             })
             .setTimestamp();

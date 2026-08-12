@@ -8,7 +8,7 @@ const translations = {
         joined: 'Joined',
         accountCreated: 'Account Created',
         daysAgo: (days) => `${days} days ago`,
-        footer: 'ARCHITECT CG-223 • Neural Archive'
+        footer: 'ARCHON CG-223 • Neural Archive'
     },
     fr: {
         title: (name) => `👴 Membres les Plus Anciens - ${name}`,
@@ -16,7 +16,7 @@ const translations = {
         joined: 'Rejoint',
         accountCreated: 'Compte Créé',
         daysAgo: (days) => `il y a ${days} jours`,
-        footer: 'ARCHITECT CG-223 • Archive Neurale'
+        footer: 'ARCHON CG-223 • Archive Neurale'
     }
 };
 

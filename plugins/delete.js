@@ -83,7 +83,7 @@ async function checkDeletePermission(context, t, lang) {
                 { name: '📍 Action Required', value: `Run this command in any server channel.`, inline: false },
                 { name: '💡 Tip', value: `Use \`/help\` to see DM-compatible commands.`, inline: false }
             )
-            .setFooter({ text: `ARCHITECT CG-223 • BAMAKO_223 🇲🇱` })
+            .setFooter({ text: `ARCHON CG-223 • BAMAKO_223 🇲🇱` })
             .setTimestamp();
 
         if (isSlash) {
@@ -116,7 +116,7 @@ async function checkDeletePermission(context, t, lang) {
                 { name: '❌ Your Status', value: t.permYourRole, inline: false },
                 { name: '🤖 Bot Status', value: t.permBotRole, inline: false }
             )
-            .setFooter({ text: `${t.dmFallbackNote} • ARCHITECT CG-223` })
+            .setFooter({ text: `${t.dmFallbackNote} • ARCHON CG-223` })
             .setTimestamp();
 
         try {
@@ -390,7 +390,7 @@ function showHelp(message, lang) {
             { name: '🛡️ Permission', value: '`ManageMessages` required per server', inline: true },
             { name: '⚡ Slash', value: '`/dlt bulk` • `/dlt user` • `/dlt message`', inline: true }
         )
-        .setFooter({ text: `ARCHITECT CG-223 • v${version} • BAMAKO_223 🇲🇱` })
+        .setFooter({ text: `ARCHON CG-223 • v${version} • BAMAKO_223 🇲🇱` })
         .setTimestamp();
 
     message.channel.send({ embeds: [helpEmbed] }).then(msg => {

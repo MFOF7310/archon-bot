@@ -9,7 +9,7 @@ const T = {
         error: '❌ Could not fetch a car picture right now. Try again!',
         category: '🏷️ Category',
         unknown: 'Mystery Machine',
-        footer: 'ARCHITECT CG-223 • Car Gallery',
+        footer: 'ARCHON CG-223 • Car Gallery',
         another: '🚗 Another Car',
         highRes: '✨ High Resolution',
         sources: ['Sports Car', 'Supercar', 'Classic Car', 'Luxury Car', 'Muscle Car', 'Exotic Car']
@@ -20,7 +20,7 @@ const T = {
         error: '❌ Impossible de récupérer une image de voiture. Réessayez !',
         category: '🏷️ Catégorie',
         unknown: 'Machine Mystère',
-        footer: 'ARCHITECT CG-223 • Galerie Auto',
+        footer: 'ARCHON CG-223 • Galerie Auto',
         another: '🚗 Autre Voiture',
         highRes: '✨ Haute Résolution',
         sources: ['Voiture de Sport', 'Supercar', 'Voiture Classique', 'Voiture de Luxe', 'Muscle Car', 'Voiture Exotique']

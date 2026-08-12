@@ -236,7 +236,7 @@ async function bridgeToTrivia(interaction, client) {
         const embed = new EmbedBuilder().setColor('#9b59b6')
             .setAuthor({ name: '🧠 NEURAL TRIVIA BRIDGE', iconURL: client.user.displayAvatarURL() })
             .setDescription(`⚡ ${t.triviaBridge || 'Use /trivia to play!'}`)
-            .setFooter({ text: 'ARCHITECT CG-223 • Game Center' });
+            .setFooter({ text: 'ARCHON CG-223 • Game Center' });
         return interaction.reply({ embeds: [embed], flags: 64 });
     }
 }
@@ -657,7 +657,7 @@ async function run(client, message, args, db, serverSettings, usedCommand) {
     const embed = new EmbedBuilder().setColor('#00d4ff')
         .setAuthor({ name: t.hubTitle, iconURL: client.user.displayAvatarURL() })
         .setDescription(`⚡ **${lang === 'fr' ? 'Le centre de jeux est disponible en slash.' : 'The game center is available via slash.'}**\n\`\`\`\n/game menu\n/game codm\n/game slots\n/game tictactoe @user\n/game blackjack\n/game roulette\n/game trivia\n\`\`\``)
-        .setFooter({ text: 'ARCHITECT CG-223 • Game Center' });
+        .setFooter({ text: 'ARCHON CG-223 • Game Center' });
     return message.reply({ embeds: [embed] }).catch(() => {});
 }
 

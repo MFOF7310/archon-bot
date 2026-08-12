@@ -5,12 +5,12 @@ const translations = {
     en: {
         title: (name) => `🎨 ${name} Server Banner`,
         noBanner: '❌ This server has no banner.',
-        footer: 'ARCHITECT CG-223 • Neural Imaging'
+        footer: 'ARCHON CG-223 • Neural Imaging'
     },
     fr: {
         title: (name) => `🎨 Bannière du Serveur - ${name}`,
         noBanner: '❌ Ce serveur n\'a pas de bannière.',
-        footer: 'ARCHITECT CG-223 • Imagerie Neurale'
+        footer: 'ARCHON CG-223 • Imagerie Neurale'
     }
 };
 
