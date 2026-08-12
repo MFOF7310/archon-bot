@@ -1,0 +1,82 @@
+const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const EMOJIS = require('../config/emojis');
+
+const LANGUAGES = {
+    en: { name: 'English', flag: '🇬🇧', native: 'English' },
+    fr: { name: 'French', flag: '🇫🇷', native: 'Français' },
+    ar: { name: 'Arabic', flag: '🇸🇦', native: 'العربية' },
+    bm: { name: 'Bambara', flag: '🇲🇱', native: 'Bamanankan' },
+    zh: { name: 'Chinese', flag: '🇨🇳', native: '中文' },
+};
+
+module.exports = {
+    name: 'setlang',
+    aliases: ['setlanguage', 'language', 'lang'],
+    description: 'Set the bot language for this server.',
+    category: 'CONFIG',
+    cooldown: 3000,
+    usage: '.setlang <en|fr|ar|bm|zh>',
+
+    data: new SlashCommandBuilder()
+        .setName('setlang')
+        .setDescription('🌐 Set the bot language for this server')
+        .addStringOption(o => o
+            .setName('language')
+            .setDescription('Choose a language')
+            .setRequired(true)
+            .addChoices(
+                { name: '🇬🇧 English', value: 'en' },
+                { name: '🇫🇷 Français', value: 'fr' },
+                { name: '🇸🇦 العربية', value: 'ar' },
+                { name: '🇲🇱 Bamanankan', value: 'bm' },
+                { name: '🇨🇳 中文', value: 'zh' },
+            ))
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+    async run(client, message, args) {
+        if (!message.member?.permissions.has(PermissionFlagsBits.ManageGuild))
+            return message.reply({ content: `⛔ You need **Manage Server** permission.`, flags: 64 });
+
+        const code = args[0]?.toLowerCase();
+        if (!code || !LANGUAGES[code]) {
+            const list = Object.entries(LANGUAGES).map(([k,v]) => `\`${k}\` ${v.flag} ${v.native}`).join('\n');
+            return message.reply({
+                embeds: [new EmbedBuilder().setColor('#00f0ff')
+                    .setTitle('🌐 Available Languages')
+                    .setDescription(list + '\n\nUsage: `.setlang fr`')]
+            });
+        }
+        await setLanguage(client, message.guild.id, code, message.guild.name);
+        return message.reply({
+            embeds: [buildEmbed(code)]
+        });
+    },
+
+    async execute(interaction, client) {
+        const code = interaction.options.getString('language');
+        await setLanguage(client, interaction.guild.id, code, interaction.guild.name);
+        return interaction.reply({ embeds: [buildEmbed(code)], flags: 64 });
+    }
+};
+
+async function setLanguage(client, guildId, code, guildName) {
+    try {
+        const db = client.db;
+        db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(guildId);
+        db.prepare(`UPDATE server_settings SET language = ? WHERE guild_id = ?`).run(code, guildId);
+        // Clear settings cache so detectLanguage picks up new value
+        client.settings?.delete(guildId);
+        console.log(`[LANG] ${guildName} → ${code}`);
+    } catch(e) {
+        console.error('[LANG] Error:', e.message);
+    }
+}
+
+function buildEmbed(code) {
+    const lang = LANGUAGES[code];
+    return new EmbedBuilder()
+        .setColor('#00f0ff')
+        .setTitle(`${lang.flag} Language Updated`)
+        .setDescription(`Server language set to **${lang.native}** (${lang.name})\n\nAll bot responses will now appear in **${lang.native}**.`)
+        .setFooter({ text: 'ARCHON CG-223 • Language Settings' });
+}
