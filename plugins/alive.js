@@ -1,83 +1,13 @@
 const { EmbedBuilder, version: discordVersion, SlashCommandBuilder } = require('discord.js');
 const os = require('os');
+const { ns } = require('../lib/lang');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        author: '🟢 ARCHON CG-223 // SYSTEM ONLINE',
-        title: '🚀 SYSTEM STATUS REPORT',
-        botInfo: '📡 BOT INFORMATION',
-        name: 'Name',
-        id: 'ID',
-        version: 'Version',
-        uptime: 'Uptime',
-        latency: 'Latency',
-        apiPing: 'API Ping',
-        systemResources: '💾 SYSTEM RESOURCES',
-        platform: 'Platform',
-        cpu: 'CPU',
-        cores: 'Cores',
-        memory: 'Memory',
-        systemRam: 'System RAM',
-        statistics: '📊 STATISTICS',
-        servers: 'Servers',
-        users: 'Users',
-        channels: 'Channels',
-        dbUsers: 'Database Users',
-        commands: 'Commands',
-        status: '🎮 STATUS',
-        botStatus: 'Bot Status',
-        discordVersion: 'Discord.js',
-        system: 'System',
-        operational: 'Operational',
-        latencyDetails: '⏱️ LATENCY DETAILS',
-        apiResponse: 'API Response',
-        webSocket: 'WebSocket',
-        message: 'Message',
-        node: 'Node',
-        online: 'ONLINE',
-        healthy: 'HEALTHY',
-        degraded: 'DEGRADED',
-        critical: 'CRITICAL'
-    },
-    fr: {
-        author: '🟢 ARCHON CG-223 // SYSTÈME EN LIGNE',
-        title: '🚀 RAPPORT D\'ÉTAT SYSTÈME',
-        botInfo: '📡 INFORMATIONS BOT',
-        name: 'Nom',
-        id: 'ID',
-        version: 'Version',
-        uptime: 'Disponibilité',
-        latency: 'Latence',
-        apiPing: 'Ping API',
-        systemResources: '💾 RESSOURCES SYSTÈME',
-        platform: 'Plateforme',
-        cpu: 'CPU',
-        cores: 'Cœurs',
-        memory: 'Mémoire',
-        systemRam: 'RAM Système',
-        statistics: '📊 STATISTIQUES',
-        servers: 'Serveurs',
-        users: 'Utilisateurs',
-        channels: 'Salons',
-        dbUsers: 'Utilisateurs DB',
-        commands: 'Commandes',
-        status: '🎮 ÉTAT',
-        botStatus: 'État Bot',
-        discordVersion: 'Discord.js',
-        system: 'Système',
-        operational: 'Opérationnel',
-        latencyDetails: '⏱️ DÉTAILS LATENCE',
-        apiResponse: 'Réponse API',
-        webSocket: 'WebSocket',
-        message: 'Message',
-        node: 'Nœud',
-        online: 'EN LIGNE',
-        healthy: 'SAIN',
-        degraded: 'DÉGRADÉ',
-        critical: 'CRITIQUE'
-    }
-};
+
+// ================= LANG SYSTEM =================
+// Translations now loaded from lib/lang/*.json
+// Usage: const t = ns('alive', lang);
+
 
 module.exports = {
     name: 'alive',

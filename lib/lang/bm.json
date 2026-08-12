@@ -1,0 +1,24 @@
+{
+  "common": {
+    "error": "Fili dɔ kɛra. Aw ye a lajɛ.",
+    "noPermission": "Aw tena se ka nin kɛ.",
+    "cooldown": "A bɛ cooldown na fɔlɔ.",
+    "loading": "A bɛ ka munu munu...",
+    "success": "A ye ɲɛ sɔrɔ!",
+    "cancelled": "A bɔra ma.",
+    "notFound": "A ma sɔrɔ."
+  },
+  "alive": {
+    "title": "🚀 TITRE",
+    "botInfo": "📡 BOT KUNNAFONI",
+    "name": "Tɔgɔ",
+    "id": "ID",
+    "version": "Version",
+    "uptime": "Waati",
+    "servers": "Serveurs",
+    "users": "Mɔgɔw",
+    "commands": "Commandes",
+    "status": "🎮 Kɛcogoyaw",
+    "operational": "A bɛ baara la"
+  }
+}
