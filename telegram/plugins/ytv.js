@@ -24,12 +24,14 @@ function dlVideoSmart(url, quality) {
     return new Promise((res, rej) => {
         const ts = Date.now();
         const out = path.join(TMP, 'vid_' + ts + '.%(ext)s');
+        const proxyFlag = process.env.WEBSHARE_PROXY
+            ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies`
+            : '--extractor-args "youtube:player_client=android,web"';
         const cmd = [
-            'yt-dlp ' + COOKIES + ' --no-playlist',
+            'yt-dlp --no-playlist ' + proxyFlag,
             '-o "' + out + '"',
             '-f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=' + quality + ']+bestaudio/best[height<=' + quality + ']"',
             '--merge-output-format mp4',
-            '--postprocessor-args "ffmpeg:-c:v libx264 -c:a aac -movflags +faststart"',
             '--max-filesize 48M',
             '"' + url + '"'
         ].join(' ');
@@ -47,7 +49,7 @@ function dlVideoSmart(url, quality) {
 function getDirectVideoUrl(url, quality) {
     return new Promise((res, rej) => {
         exec(
-            'yt-dlp ' + COOKIES + ' --no-playlist -f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio/best[height<=' + quality + ']/best" --get-url "' + url + '"',
+            'yt-dlp --no-playlist --extractor-args "youtube:player_client=android,web" -f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio/best[height<=' + quality + ']/best" --get-url "' + url + '"',
             { timeout: 30000 },
             (err, stdout) => {
                 if (err || !stdout.trim()) return rej(new Error('No URL'));
