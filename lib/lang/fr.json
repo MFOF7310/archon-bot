@@ -46,5 +46,22 @@
     "healthy": "SAIN",
     "degraded": "DÉGRADÉ",
     "critical": "CRITIQUE"
+  },
+  "ping": {
+    "title": "🏓 ANALYSE PING NEURALE",
+    "excellent": "🟢 EXCELLENT",
+    "good": "🟡 BON",
+    "poor": "🔴 MAUVAIS",
+    "apiLatency": "📡 LATENCE API",
+    "messageLatency": "💬 LATENCE MESSAGE",
+    "databaseLatency": "🗄️ LATENCE BD",
+    "overall": "📊 SCORE GLOBAL",
+    "refresh": "🔄 Actualiser",
+    "scoreExcellent": "Excellent - Tous les systèmes sont nominaux",
+    "scoreGood": "Bon - Latence mineure détectée",
+    "scorePoor": "Mauvais - Haute latence détectée",
+    "recommendation": "Recommandation",
+    "recExcellent": "Système fonctionnant à performance optimale",
+    "accessDenied": "❌ Ce menu n'est pas pour vous."
   }
 }

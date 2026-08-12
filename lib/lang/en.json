@@ -46,5 +46,22 @@
     "healthy": "HEALTHY",
     "degraded": "DEGRADED",
     "critical": "CRITICAL"
+  },
+  "ping": {
+    "title": "🏓 NEURAL PING ANALYSIS",
+    "excellent": "🟢 EXCELLENT",
+    "good": "🟡 GOOD",
+    "poor": "🔴 POOR",
+    "apiLatency": "📡 API LATENCY",
+    "messageLatency": "💬 MESSAGE LATENCY",
+    "databaseLatency": "🗄️ DATABASE LATENCY",
+    "overall": "📊 OVERALL SCORE",
+    "refresh": "🔄 Refresh",
+    "scoreExcellent": "Excellent - All systems nominal",
+    "scoreGood": "Good - Minor latency detected",
+    "scorePoor": "Poor - High latency detected",
+    "recommendation": "Recommendation",
+    "recExcellent": "System operating at peak performance",
+    "accessDenied": "❌ This menu is not for you."
   }
 }

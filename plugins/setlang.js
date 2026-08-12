@@ -25,6 +25,7 @@ module.exports = {
             .setDescription('Choose a language')
             .setRequired(true)
             .addChoices(
+                { name: '🌐 Auto-detect', value: 'auto' },
                 { name: '🇬🇧 English', value: 'en' },
                 { name: '🇫🇷 Français', value: 'fr' },
                 { name: '🇸🇦 العربية', value: 'ar' },

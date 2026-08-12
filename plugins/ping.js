@@ -1,85 +1,11 @@
 const { performance } = require('perf_hooks');
+const { ns } = require('../lib/lang');
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        author: '⚡ ARCHON CG-223 | NEURAL LATENCY',
-        title: '🏓 SYSTEM PULSE',
-        responseTime: 'Response Time',
-        roundTrip: '📡 ROUND TRIP',
-        apiHeartbeat: '🌐 API HEARTBEAT',
-        signalStatus: '📶 SIGNAL QUALITY',
-        excellent: '🟢 EXCELLENT',
-        good: '🟡 GOOD',
-        slow: '🔴 SLOW',
-        optimal: '✅ OPTIMAL',
-        degraded: '⚠️ DEGRADED',
-        messageLatency: '💬 MESSAGE LATENCY',
-        databaseLatency: '🗄️ DATABASE LATENCY',
-        node: 'Node',
-        core: 'Core',
-        footer: 'Neural Engine • Real-time Telemetry',
-        ping: '🏓 Pinging neural network...',
-        refresh: '🔄 Refresh',
-        export: '📊 Export Stats',
-        help: '❓ Help',
-        systemHealth: 'SYSTEM HEALTH',
-        statusOnline: '🟢 ONLINE',
-        statusWarning: '🟡 WARNING',
-        statusCritical: '🔴 CRITICAL',
-        lastUpdated: 'Last updated',
-        websocket: 'WebSocket',
-        restApi: 'REST API',
-        overallHealth: 'OVERALL HEALTH SCORE',
-        scoreExcellent: 'Excellent - All systems nominal',
-        scoreGood: 'Good - Minor latency detected',
-        scorePoor: 'Poor - High latency detected',
-        recommendation: 'Recommendation',
-        recExcellent: 'System operating at peak performance',
-        recGood: 'Consider moving bot closer to Discord API region',
-        recPoor: '⚠️ Check hosting provider or upgrade server',
-        accessDenied: '❌ This menu is not for you.'
-    },
-    fr: {
-        author: '⚡ ARCHON CG-223 | LATENCE NEURALE',
-        title: '🏓 POULS SYSTÈME',
-        responseTime: 'Temps de réponse',
-        roundTrip: '📡 ALLER-RETOUR',
-        apiHeartbeat: '🌐 BATTEMENT API',
-        signalStatus: '📶 QUALITÉ SIGNAL',
-        excellent: '🟢 EXCELLENT',
-        good: '🟡 BON',
-        slow: '🔴 LENT',
-        optimal: '✅ OPTIMAL',
-        degraded: '⚠️ DÉGRADÉ',
-        messageLatency: '💬 LATENCE MESSAGE',
-        databaseLatency: '🗄️ LATENCE BD',
-        node: 'Nœud',
-        core: 'Noyau',
-        footer: 'Moteur Neural • Télémétrie Temps Réel',
-        ping: '🏓 Ping du réseau neural...',
-        refresh: '🔄 Actualiser',
-        export: '📊 Exporter Stats',
-        help: '❓ Aide',
-        systemHealth: 'SANTÉ SYSTÈME',
-        statusOnline: '🟢 EN LIGNE',
-        statusWarning: '🟡 ATTENTION',
-        statusCritical: '🔴 CRITIQUE',
-        lastUpdated: 'Dernière mise à jour',
-        websocket: 'WebSocket',
-        restApi: 'API REST',
-        overallHealth: 'SCORE DE SANTÉ GLOBAL',
-        scoreExcellent: 'Excellent - Tous les systèmes sont nominaux',
-        scoreGood: 'Bon - Latence mineure détectée',
-        scorePoor: 'Mauvais - Haute latence détectée',
-        recommendation: 'Recommandation',
-        recExcellent: 'Système fonctionne à performance maximale',
-        recGood: 'Envisagez de rapprocher le bot de la région API Discord',
-        recPoor: '⚠️ Vérifiez votre hébergeur ou upgradez le serveur',
-        accessDenied: '❌ Ce menu n\'est pas pour vous.'
-    }
-};
+
+// Translations loaded from lib/lang/*.json
+
 
 // ================= DYNAMIC PROGRESS BAR =================
 function createProgressBar(value, max = 300, length = 12) {
@@ -131,7 +57,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = ns('ping', lang);
         const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
@@ -291,7 +217,7 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const t = translations[lang];
+        const t = ns('ping', lang);
         const version = client.version || '1.8.0';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();

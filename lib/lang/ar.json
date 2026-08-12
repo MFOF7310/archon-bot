@@ -46,5 +46,22 @@
     "healthy": "سليم",
     "degraded": "متدهور",
     "critical": "حرج"
+  },
+  "ping": {
+    "title": "🏓 تحليل بينغ النظام",
+    "excellent": "🟢 ممتاز",
+    "good": "🟡 جيد",
+    "poor": "🔴 ضعيف",
+    "apiLatency": "📡 زمن استجابة API",
+    "messageLatency": "💬 زمن استجابة الرسائل",
+    "databaseLatency": "🗄️ زمن استجابة قاعدة البيانات",
+    "overall": "📊 التقييم العام",
+    "refresh": "🔄 تحديث",
+    "scoreExcellent": "ممتاز - جميع الأنظمة تعمل بشكل طبيعي",
+    "scoreGood": "جيد - زمن استجابة بسيط",
+    "scorePoor": "ضعيف - زمن استجابة عالي",
+    "recommendation": "توصية",
+    "recExcellent": "النظام يعمل بأداء ذروة",
+    "accessDenied": "❌ هذه القائمة ليست لك."
   }
 }
