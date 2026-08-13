@@ -101,8 +101,8 @@
     "cooldownDesc": "**Agent {name}**, votre cycle neural est toujours en cours.\n\n{loading} **Temps restant:** `{time}`\n\n💡 Utilisez `{prefix}claim` quand vous êtes prêt.",
     "currentStats": "📊 Tes Stats",
     "channelRestricted": "❌ Cette commande marche uniquement dans <#{channel}>. Vas-y !",
-    "viewDashboard": "🖥️ Voir Dashboard",
-    "myProfile": "👤 Mon Profil",
+    "viewDashboard": "Voir Dashboard",
+    "myProfile": "Mon Profil",
     "streakInfo": "🔥 Série de {streak} jours — bonus : +{xp} XP & +{credits} crédits",
     "desc": "Ton bonus quotidien est disponible dans **{guild}** !\n\nUtilise `/claim` ou `.claim` pour le récupérer.\n🔥 Ne brise pas ta série !"
   }

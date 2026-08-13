@@ -101,8 +101,8 @@
     "cooldownDesc": "**Agent {name}**, your neural cycle is still processing.\n\n{loading} **Cooldown Remaining:** `{time}`\n\n💡 Use `{prefix}claim` when ready.",
     "currentStats": "📊 Your Stats",
     "channelRestricted": "❌ This command only works in <#{channel}>. Head over there!",
-    "viewDashboard": "🖥️ View Dashboard",
-    "myProfile": "👤 My Profile",
+    "viewDashboard": "View Dashboard",
+    "myProfile": "My Profile",
     "streakInfo": "🔥 {streak} day streak — bonus: +{xp} XP & +{credits} credits",
     "desc": "Your daily reward is ready in **{guild}**!\n\nUse `/claim` or `.claim` to collect it.\n🔥 Don't break your streak!"
   }
