@@ -73,7 +73,7 @@
     "successTitle": "I ka bonus minɛ na!",
     "cooldownTitle": "I ka cooldown ma ban fɔlɔ!",
     "successDesc": "I ye **{xp} XP** ni **{credits} kɔlɔsi** sɔrɔ — {streak} tile kuntigi",
-    "cooldownDesc": "**Agent {name}**, i ka neural cycle bɛ sen na.\n\n{loading} **Waati tɔ:** `{time}`\n\n💡 I bɛ `{prefix}claim`ta, n'i labɛn nen do waati min na.",
+    "cooldownDesc": "**Agent {name}**, i ka neural cycle bɛ sen na.\n\n{loading} **Waati tɔ:** `{time}`\n\n💡 I bɛ `/claim` ta, n'i labɛn nen do waati min na.",
     "currentStats": "I ka statistiques filɛ",
     "channelRestricted": "Nin baara bɛ se ka kɛ <#{channel}> dɔrɔn de kɔnɔn! Hakɛto",
     "viewDashboard": "Dashboard filɛ",

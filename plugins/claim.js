@@ -131,12 +131,19 @@ async function deliverDailyReminder(client, reminder, database) {
             footer: 'Architect CG-223 • Rappel Quotidien'
         }
     };
+    if (!dmT['bm']) {
+        dmT['bm'] = {
+            title: 'I ka tile bonus labɛn sabatilen do!',
+            desc: (guild) => `I ka tile bonus nana **${guild}** kɔnɔ!\n\nI bɛ se ka \`/claim\` walima \`.claim\` ta, k'a mara i ka compte la.\n🔥 Ka na to i ka Streak ka tiyɛn!`,
+            footer: 'Architect CG-223 • Daily Reminder'
+        };
+    }
     const t = dmT[lang] || dmT['en'];
 
     const embed = new EmbedBuilder()
         .setColor('#00fbff')
         .setAuthor({ name: t.title, iconURL: client.user?.displayAvatarURL() })
-        .setDescription(t.desc.replace('{guild}', reminder.guildName || 'the server'))
+        .setDescription((typeof t.desc === 'function' ? t.desc(reminder.guildName || 'the server') : t.desc.replace('{guild}', reminder.guildName || 'the server')))
         .setFooter({ text: t.footer })
         .setTimestamp();
 
@@ -160,7 +167,7 @@ async function deliverDailyReminder(client, reminder, database) {
             const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
             if (channel && channel.send) {
                 const fbEmbed = EmbedBuilder.from(embed)
-                    .setDescription(`<@${reminder.user_id}> ${t.desc.replace('{guild}', reminder.guildName || 'the server')}`);
+                    .setDescription(`<@${reminder.user_id}> ${(typeof t.desc === 'function' ? t.desc(reminder.guildName || 'the server') : t.desc.replace('{guild}', reminder.guildName || 'the server'))}`);
                 await channel.send({ content: `<@${reminder.user_id}>`, embeds: [fbEmbed] });
                 delivered = true;
                 console.log(`[DAILY REMINDER] 📢 Channel fallback for ${reminder.user_tag || reminder.user_id}`);
