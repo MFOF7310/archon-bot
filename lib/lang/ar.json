@@ -101,8 +101,8 @@
     "cooldownDesc": "**العميل {name}**، دورتك العصبية لا تزال تعالج.\n\n{loading} **الوقت المتبقي:** `{time}`\n\n💡 استخدم `{prefix}claim` عندما تكون جاهزاً.",
     "currentStats": "📊 إحصائياتك",
     "channelRestricted": "❌ هذا الأمر يعمل فقط في <#{channel}>. توجه إلى هناك!",
-    "viewDashboard": "🖥️ عرض لوحة التحكم",
-    "myProfile": "👤 ملفي الشخصي",
+    "viewDashboard": "عرض لوحة التحكم",
+    "myProfile": "ملفي الشخصي",
     "streakInfo": "🔥 سلسلة {streak} أيام — مكافأة: +{xp} XP و+{credits} كريدت",
     "desc": "مكافأتك اليومية جاهزة في **{guild}**!\n\nاستخدم `/claim` أو `.claim` لاستلامها.\n🔥 لا تكسر سلسلتك!"
   }

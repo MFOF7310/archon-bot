@@ -101,8 +101,8 @@
     "cooldownDesc": "**特工 {name}**，你的神经周期仍在处理中。\n\n{loading} **剩余冷却时间:** `{time}`\n\n💡 准备好后使用 `{prefix}claim`。",
     "currentStats": "📊 你的数据",
     "channelRestricted": "❌ 此命令只能在 <#{channel}> 中使用，快去那里！",
-    "viewDashboard": "🖥️ 查看面板",
-    "myProfile": "👤 我的档案",
+    "viewDashboard": "查看面板",
+    "myProfile": "我的档案",
     "streakInfo": "🔥 连签 {streak} 天 — 奖励: +{xp} XP 和 +{credits} 积分",
     "desc": "你在 **{guild}** 的每日奖励已就绪！\n\n使用 `/claim` 或 `.claim` 领取。\n🔥 别断签！"
   }
