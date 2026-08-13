@@ -2,22 +2,237 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommand
 
 // ================= ENGINE IMPORT =================
 const voteSync = require('./votesync.js');
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+const fs = require('fs');
+const nodePath = require('path');
+const EMOJIS = require('../config/emojis');
+
+// ================= VOTE LEADERBOARD CANVAS =================
+const VOTE_LB_BG = nodePath.join(__dirname, '../assets/backgrounds/lb_bg.jpg');
+const VOTE_FONTS_DIR = nodePath.join(__dirname, '../assets/fonts');
+
+function loadVoteFonts() {
+    try {
+        GlobalFonts.registerFromPath(nodePath.join(VOTE_FONTS_DIR, 'DejaVuSans-Bold.ttf'), 'DejaVuBold');
+        GlobalFonts.registerFromPath(nodePath.join(VOTE_FONTS_DIR, 'DejaVuSansMono.ttf'), 'DejaVuMono');
+        GlobalFonts.registerFromPath(nodePath.join(VOTE_FONTS_DIR, 'DejaVuSansMono-Bold.ttf'), 'DejaVuMonoBold');
+    } catch(e) {}
+}
+loadVoteFonts();
+
+function roundRectVote(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+
+async function buildVoteLBCanvas(entries, guildName, botAvatarURL) {
+    const W = 820;
+    const HEADER_H = 100;
+    const ROW_H = 52;
+    const FOOTER_H = 50;
+    const TOP = Math.min(entries.length, 10);
+    const H = HEADER_H + TOP * ROW_H + FOOTER_H;
+    const SCALE = 2;
+
+    const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
+    const MEDAL_LABELS = ['#1', '#2', '#3'];
+
+    const canvas = createCanvas(W * SCALE, H * SCALE);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(SCALE, SCALE);
+
+    // Background
+    try {
+        const bgImg = await loadImage(VOTE_LB_BG);
+        const scale = Math.max(W / bgImg.width, H / bgImg.height);
+        const bw = bgImg.width * scale, bh = bgImg.height * scale;
+        const bx = (W - bw) / 2, by = (H - bh) / 2;
+        ctx.drawImage(bgImg, bx, by, bw, bh);
+    } catch(e) {
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    // Dark warm overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Warm grid lines
+    ctx.strokeStyle = 'rgba(255,215,0,0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 45) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 45) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // Header gradient — warm gold
+    const headerGrad = ctx.createLinearGradient(0, 0, W, 0);
+    headerGrad.addColorStop(0, 'rgba(255,215,0,0.06)');
+    headerGrad.addColorStop(0.5, 'rgba(255,215,0,0.14)');
+    headerGrad.addColorStop(1, 'rgba(255,215,0,0.06)');
+    ctx.fillStyle = headerGrad;
+    ctx.fillRect(0, 0, W, HEADER_H);
+
+    // Top accent line — gold
+    const accentGrad = ctx.createLinearGradient(0, 0, W, 0);
+    accentGrad.addColorStop(0, 'transparent');
+    accentGrad.addColorStop(0.3, '#FFD700');
+    accentGrad.addColorStop(0.7, '#FFD700');
+    accentGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = accentGrad;
+    ctx.fillRect(0, 0, W, 3);
+
+    // Bot avatar in header
+    try {
+        const avatarImg = await loadImage(botAvatarURL);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(45, 50, 30, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(avatarImg, 15, 20, 60, 60);
+        ctx.restore();
+        // Gold ring around avatar
+        ctx.beginPath();
+        ctx.arc(45, 50, 31, 0, Math.PI * 2);
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    } catch(e) {
+        ctx.font = 'bold 36px DejaVuBold';
+        ctx.fillStyle = '#FFD700';
+        ctx.textAlign = 'left';
+        ctx.fillText('#', 25, 65);
+    }
+
+    // Title
+    ctx.font = 'bold 26px DejaVuBold';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Top Voters', 90, 52);
+
+    // Subtitle
+    ctx.font = '13px DejaVuMono';
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText(`${guildName.substring(0, 35)} · Top ${TOP} supporters`, 90, 78);
+
+    // Right side — voter count
+    ctx.textAlign = 'right';
+    ctx.font = '12px DejaVuMono';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillText(`${TOP} voters`, W - 25, 55);
+    ctx.fillText('BAMAKO_223 [ML]', W - 25, 75);
+    ctx.textAlign = 'left';
+
+    // Column headers
+    const colY = HEADER_H - 14;
+    ctx.font = '10px DejaVuMono';
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillText('RANK', 15, colY);
+    ctx.fillText('VOTER', 110, colY);
+    ctx.fillText('VOTES', 490, colY);
+    ctx.fillText('STREAK', 590, colY);
+    ctx.fillText('EARNED', 710, colY);
+
+    // Rows
+    for (let i = 0; i < TOP; i++) {
+        const entry = entries[i];
+        const rowY = HEADER_H + i * ROW_H;
+        const centerY = rowY + ROW_H / 2;
+
+        // Row bg
+        if (i < 3) {
+            roundRectVote(ctx, 8, rowY + 4, W - 16, ROW_H - 8, 8);
+            ctx.fillStyle = `rgba(${i===0?'255,215,0':i===1?'192,192,192':'205,127,50'},0.08)`;
+            ctx.fill();
+            roundRectVote(ctx, 8, rowY + 4, W - 16, ROW_H - 8, 8);
+            ctx.strokeStyle = `rgba(${i===0?'255,215,0':i===1?'192,192,192':'205,127,50'},0.3)`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        } else if (i % 2 === 0) {
+            ctx.fillStyle = 'rgba(255,255,255,0.02)';
+            ctx.fillRect(8, rowY + 4, W - 16, ROW_H - 8);
+        }
+
+        // Rank medal
+        if (i < 3) {
+            ctx.font = 'bold 16px DejaVuBold';
+            ctx.fillStyle = MEDAL_COLORS[i];
+            ctx.textAlign = 'center';
+            ctx.fillText(MEDAL_LABELS[i], 42, centerY + 6);
+        } else {
+            ctx.font = '12px DejaVuMono';
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.textAlign = 'center';
+            ctx.fillText(`#${i+1}`, 42, centerY + 5);
+        }
+        ctx.textAlign = 'left';
+
+        // Username
+        const nameColor = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#ffffff';
+        ctx.font = i < 3 ? 'bold 14px DejaVuBold' : '13px DejaVuMono';
+        ctx.fillStyle = nameColor;
+        const displayName = (entry.username || 'Unknown').substring(0, 20);
+        ctx.fillText(displayName, 110, centerY + 5);
+
+        // Votes
+        ctx.font = 'bold 13px DejaVuMonoBold';
+        ctx.fillStyle = '#FFD700';
+        ctx.fillText(`${entry.total_votes}`, 490, centerY + 5);
+
+        // Streak
+        ctx.font = '12px DejaVuMono';
+        ctx.fillStyle = entry.current_streak > 0 ? '#ff6b35' : 'rgba(255,255,255,0.3)';
+        ctx.fillText(`${entry.current_streak}d`, 590, centerY + 5);
+
+        // Earned credits
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText(`${(entry.total_rewards || 0).toLocaleString()}`, 710, centerY + 5);
+    }
+
+    // Footer
+    const footerY = HEADER_H + TOP * ROW_H;
+    ctx.fillStyle = 'rgba(255,215,0,0.06)';
+    ctx.fillRect(0, footerY, W, FOOTER_H);
+
+    const footerAccent = ctx.createLinearGradient(0, 0, W, 0);
+    footerAccent.addColorStop(0, 'transparent');
+    footerAccent.addColorStop(0.3, 'rgba(255,215,0,0.4)');
+    footerAccent.addColorStop(0.7, 'rgba(255,215,0,0.4)');
+    footerAccent.addColorStop(1, 'transparent');
+    ctx.fillStyle = footerAccent;
+    ctx.fillRect(0, footerY, W, 1);
+
+    ctx.font = '11px DejaVuMono';
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.textAlign = 'center';
+    ctx.fillText(`ARCHON CG-223 • Vote Leaderboard • ${new Date().toLocaleDateString()}`, W/2, footerY + 30);
+
+    return canvas.toBuffer('image/png');
+}
+
 
 // ================= BILINGUAL =================
 const T = {
     en: {
-        title: '\u2b50 VOTE PORTAL', voteBtn: '\u2b50 VOTE ON TOP.GG', claimBtn: '\ud83d\udcb0 CLAIM REWARD',
-        checkBtn: '\ud83d\udcca MY STATS', lbBtn: '\ud83c\udfc6 LEADERBOARD', footer: 'Architect CG-223',
+        title: '\u2b50 VOTE PORTAL', voteBtn: 'Vote on Top.gg', claimBtn: 'Claim Reward',
+        checkBtn: 'My Stats', lbBtn: 'Leaderboard', footer: 'Architect CG-223',
         noVote: '\u274c You haven\'t voted yet!', voteFirst: 'Vote on [Top.gg]({link}), then click **Claim Reward**.',
         claimed: '\u2705 REWARD CLAIMED!', gotReward: '**+{reward}** credits | Streak: **{streak}** \ud83d\udd25',
         milestone7: '\ud83c\udfc6 7-Day Milestone! +2,000 bonus!', milestone30: '\ud83d\udc51 30-Day Legend! +5,000 bonus!',
         milestone100: '\ud83c\udf1f 100-Day Mythic! +10,000 bonus!', ready: '\u2705 Ready to vote!',
         nextIn: 'Next vote: {time}', streak: '\ud83d\udd25 Streak: **{days}** days', best: '\ud83c\udfc5 Best: **{days}**',
         total: '\ud83d\udcca Total: **{n}** votes', rewards: '\ud83d\udcb0 Earned: **{n}** credits',
-        lbTitle: '\ud83c\udfc6 VOTING LEGENDS', rankEmoji: ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc'],
+        lbTitle: '🏆 Top Voters', rankEmoji: ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc'],
         checkError: '\u274c Could not check vote status. Try again later.',
         adminTest: '\u2705 Admin test vote processed for {user}.',
-        statusTitle: '\ud83d\udce3 VOTE SYSTEM STATUS', statusOnline: '\u2705 Online', statusOffline: '\u274c Offline',
+        statusTitle: '📣 Vote System', statusOnline: '\u2705 Online', statusOffline: '\u274c Offline',
         statusMode: '**Mode:** {mode}', statusWebhook: '**Webhook:** {status}', statusApi: '**Top.gg API:** {status}',
         modeWebhook: 'Webhook (instant)', modePoll: 'API Check (on claim)', modeFallback: 'Manual only',
         alreadyClaimed: '\u23f0 Already claimed! Next vote: {time}',
@@ -25,15 +240,15 @@ const T = {
         nextReward: '\ud83d\udca1 Next reward: **{n}** credits at {milestone} days',
         voteLink: 'https://top.gg/bot/{botId}/vote',
         dmSuccess: '\ud83d\udce9 Check your DMs for a detailed reward breakdown!',
-        cooldownTitle: '⏰ COOLDOWN REPORT',
+        cooldownTitle: '⏰ Not Yet!',
         cooldownExact: 'Exact Remaining Time',
         cooldownLive: '*This countdown updates automatically in your Discord client.*',
-        firstVoteBtn: '🌟 CAST FIRST VOTE',
-        checkCooldownBtn: '⏰ CHECK COOLDOWN'
+        firstVoteBtn: 'Cast First Vote',
+        checkCooldownBtn: 'Check Cooldown'
     },
     fr: {
-        title: '\u2b50 PORTAIL DE VOTE', voteBtn: '\u2b50 VOTER SUR TOP.GG', claimBtn: '\ud83d\udcb0 R\u00c9CLAMER',
-        checkBtn: '\ud83d\udcca MES STATS', lbBtn: '\ud83c\udfc6 CLASSEMENT', footer: 'Architect CG-223',
+        title: '\u2b50 PORTAIL DE VOTE', voteBtn: 'Voter sur Top.gg', claimBtn: 'Réclamer',
+        checkBtn: 'Mes Stats', lbBtn: 'Classement', footer: 'Architect CG-223',
         noVote: '\u274c Vous n\'avez pas encore vot\u00e9 !', voteFirst: 'Votez sur [Top.gg]({link}), puis cliquez **R\u00e9clamer**.',
         claimed: '\u2705 R\u00c9COMPENSE R\u00c9CLAM\u00c9E !', gotReward: '**+{reward}** cr\u00e9dits | S\u00e9rie: **{streak}** \ud83d\udd25',
         milestone7: '\ud83c\udfc6 Objectif 7 jours ! +2 000 bonus !', milestone30: '\ud83d\udc51 L\u00e9gende 30 jours ! +5 000 bonus !',
@@ -43,7 +258,7 @@ const T = {
         lbTitle: '\ud83c\udfc6 L\u00c9GENDES DU VOTE', rankEmoji: ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc'],
         checkError: '\u274c Impossible de v\u00e9rifier le vote. R\u00e9essayez.',
         adminTest: '\u2705 Vote test admin pour {user}.',
-        statusTitle: '\ud83d\udce3 \u00c9TAT DU SYST\u00c8ME DE VOTE', statusOnline: '\u2705 En ligne', statusOffline: '\u274c Hors ligne',
+        statusTitle: '📣 Système de Vote', statusOnline: '\u2705 En ligne', statusOffline: '\u274c Hors ligne',
         statusMode: '**Mode:** {mode}', statusWebhook: '**Webhook:** {status}', statusApi: '**API Top.gg:** {status}',
         modeWebhook: 'Webhook (instantan\u00e9)', modePoll: 'V\u00e9rification API (au claim)', modeFallback: 'Manuel uniquement',
         alreadyClaimed: '\u23f0 D\u00e9j\u00e0 r\u00e9clam\u00e9 ! Prochain vote: {time}',
@@ -129,25 +344,25 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
     let color, badge, subtitle, body;
     if (status.isFirstTime) {
         color = '#e74c3c';
-        badge = '🔴 AWAITING FIRST VOTE';
-        subtitle = lang === 'fr' ? '🌟 **BIENVENUE AU PORTAIL DE VOTE**' : '🌟 **WELCOME TO THE VOTE PORTAL**';
+        badge = '🔴 First vote pending';
+        subtitle = lang === 'fr' ? '🌟 Bienvenue !' : '🌟 Welcome!';
         body = lang === 'fr'
             ? `Votre soutien alimente l'écosystème **ARCHON CG-223**.\nLancez votre premier vote pour activer votre dossier opérationnel et commencer à gagner des crédits.`
             : `Your support powers the **ARCHON CG-223** ecosystem.\nCast your first vote to activate your operative record and begin earning credits.`;
     } else if (status.canVote) {
         color = '#2ecc71';
-        badge = lang === 'fr' ? '🟢 AUTORISÉ — ACCÈS PERMI' : '🟢 VOTE AUTHORIZED — CLEARANCE GRANTED';
+        badge = lang === 'fr' ? '🟢 Prêt à voter !' : '🟢 Ready to vote!';
         const streakMsg = status.stats.current_streak > 0
             ? (lang === 'fr' ? `Série actuelle: **${status.stats.current_streak} jours** 🔥` : `Current streak: **${status.stats.current_streak} days** 🔥`)
             : (lang === 'fr' ? 'Aucune série active' : 'No active streak');
-        subtitle = lang === 'fr' ? '✅ **VOUS ÊTES ÉLIGIBLE**' : '✅ **YOU ARE ELIGIBLE TO VOTE**';
+        subtitle = lang === 'fr' ? '✅ Tu es prêt !' : '✅ You\'re all set!';
         body = lang === 'fr'
             ? `${streakMsg}\nMaintenez votre série pour débloquer des bonus de jalons. Chaque vote renforce le réseau.`
             : `${streakMsg}\nMaintain your streak to unlock milestone bonuses. Every vote strengthens the network.`;
     } else {
         color = '#f39c12';
-        badge = lang === 'fr' ? '🟡 COOLDOWN ACTIF — ATTENTE' : '🟡 COOLDOWN ACTIVE — STAND BY';
-        subtitle = lang === 'fr' ? '⏰ **PATIENCE, OPÉRATIF**' : '⏰ **PATIENCE, OPERATIVE**';
+        badge = lang === 'fr' ? '🟡 Reviens bientôt' : '🟡 Come back soon';
+        subtitle = lang === 'fr' ? '⏰ Pas encore, patience !' : '⏰ Not yet, hang tight!';
         body = lang === 'fr'
             ? `Vous avez déjà voté aujourd'hui. Votre dossier est à jour.\nLa prochaine fenêtre d'autorisation s'ouvre ci-dessous.`
             : `You have already supported us today. Your operative record is updated.\nNext authorization window opens below.`;
@@ -157,7 +372,7 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
 
     const embed = new EmbedBuilder()
         .setColor(color)
-        .setAuthor({ name: lang === 'fr' ? `OPÉRATIF: ${user.username}` : `OPERATIVE: ${user.username}`, iconURL: user.displayAvatarURL() })
+        .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
         .setTitle(greeting)
         .setDescription(
             `**${subtitle}**\n` +
@@ -173,8 +388,8 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
         `💰 ${t.rewards.replace('{n}', status.stats.total_rewards.toLocaleString())}`;
 
     embed.addFields(
-        { name: lang === 'fr' ? '📋 DOSSIER OPÉRATIONNEL' : '📋 OPERATIVE RECORD', value: recordValue, inline: false },
-        { name: lang === 'fr' ? '📊 SUIVI DE JALON' : '📊 MILESTONE TRACKER', value:
+        { name: lang === 'fr' ? `${EMOJIS.vote} Ton Historique` : `${EMOJIS.vote} Your Vote Record`, value: recordValue, inline: false },
+        { name: lang === 'fr' ? `${EMOJIS.milestones} Progression` : `${EMOJIS.milestones} Milestone Progress`, value:
             t.progress.replace('{milestone}', status.stats.current_streak < 7 ? '7' : status.stats.current_streak < 30 ? '30' : '100') + '\n' +
             t.progressBar.replace('{bar}', bar).replace('{percent}', percent).replace('{current}', status.stats.current_streak).replace('{target}', status.stats.current_streak < 7 ? '7' : status.stats.current_streak < 30 ? '30' : '100'),
             inline: false }
@@ -182,7 +397,7 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
 
     if (status.onCooldown && !status.isFirstTime) {
         embed.addFields({
-            name: lang === 'fr' ? '⏰ PROCHAINE AUTORISATION' : '⏰ NEXT AUTHORIZATION',
+            name: lang === 'fr' ? '⏰ Prochain vote' : '⏰ Next vote opens',
             value: `<t:${status.nextVote}:R>\n*(<<t:${status.nextVote}:f>)*`,
             inline: false
         });
@@ -191,7 +406,7 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
     // Dynamic briefing based on streak
     if (status.stats.current_streak > 0 && status.stats.current_streak < 7) {
         embed.addFields({
-            name: lang === 'fr' ? '💡 BRIEFING OPÉRATIONNEL' : '💡 OPERATIVE BRIEFING',
+            name: lang === 'fr' ? `${EMOJIS.streak} Continue !` : `${EMOJIS.streak} Keep it going!`,
             value: lang === 'fr'
                 ? `Maintenez votre série! Atteignez **7 jours** pour un bonus de **+2 000**.`
                 : `Keep your streak alive! Reach **7 days** for a **+2,000** bonus.`,
@@ -199,7 +414,7 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
         });
     } else if (status.stats.current_streak >= 7 && status.stats.current_streak < 30) {
         embed.addFields({
-            name: lang === 'fr' ? '💡 BRIEFING OPÉRATIONNEL' : '💡 OPERATIVE BRIEFING',
+            name: lang === 'fr' ? `${EMOJIS.streak} Continue !` : `${EMOJIS.streak} Keep it going!`,
             value: lang === 'fr'
                 ? `Jalon de 7 jours atteint! Poussez vers **30 jours** pour **+5 000**.`
                 : `7-day milestone achieved! Push to **30 days** for **+5,000**.`,
@@ -207,7 +422,7 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
         });
     } else if (status.stats.current_streak >= 30) {
         embed.addFields({
-            name: lang === 'fr' ? '💡 BRIEFING OPÉRATIONNEL' : '💡 OPERATIVE BRIEFING',
+            name: lang === 'fr' ? `${EMOJIS.streak} Continue !` : `${EMOJIS.streak} Keep it going!`,
             value: lang === 'fr'
                 ? `Statut légendaire! Le **Mythique 100 jours** attend avec **+10 000**.`
                 : `Legendary status! **100-day Mythic** awaits with **+10,000**.`,
@@ -342,15 +557,19 @@ module.exports = {
         // ---- LEADERBOARD ----
         if (sub === 'lb' || sub === 'leaderboard' || sub === 'top') {
             const lb = db.prepare(`SELECT user_id, total_votes, current_streak, best_streak, total_rewards FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 10`).all(gid);
-            let desc = '```yaml\n';
-            for (let i = 0; i < lb.length; i++) {
-                let name; try { name = (await client.users.fetch(lb[i].user_id)).username; } catch { name = 'Unknown'; }
-                desc += `${t.rankEmoji[i] || '\ud83d\udccc'} ${name.padEnd(18)} ${lb[i].total_votes} votes\n`;
+            const entries = await Promise.all(lb.map(async row => {
+                let username; try { username = (await client.users.fetch(row.user_id)).username; } catch { username = 'Unknown'; }
+                return { ...row, username };
+            }));
+            try {
+                const img = await buildVoteLBCanvas(entries, message.guild?.name || 'ARCHON', client.user.displayAvatarURL({ size: 128 }));
+                const { AttachmentBuilder } = require('discord.js');
+                const att = new AttachmentBuilder(img, { name: 'vote-leaderboard.png' });
+                return message.reply({ files: [att] }).catch(() => {});
+            } catch(e) {
+                console.error('[VOTE LB CANVAS]', e.message);
+                return message.reply('Could not generate leaderboard image.').catch(() => {});
             }
-            desc += '```';
-            const embed = new EmbedBuilder().setColor('#ffd700').setTitle(t.lbTitle).setDescription(desc)
-                .setFooter({ text: t.footer }).setTimestamp();
-            return message.reply({ embeds: [embed] }).catch(() => {});
         }
 
         // ---- ADMIN RAW BAL ----
@@ -429,7 +648,7 @@ module.exports = {
         // ---- ADMIN STATUS ----
         if (sub === 'status' && isAdmin) {
             const hasApi = !!process.env.TOPGG_API_TOKEN;
-            const hasWebhook = !!process.env.TOPGG_WEBHOOK_AUTH;
+            const hasWebhook = !!(process.env.TOPGG_WEBHOOK_SECRET || process.env.TOPGG_WEBHOOK_AUTH);
             const mode = hasWebhook ? t.modeWebhook : hasApi ? t.modePoll : t.modeFallback;
             const embed = new EmbedBuilder().setColor(hasApi ? '#2ecc71' : '#e74c3c').setTitle(t.statusTitle)
                 .addFields(
@@ -503,11 +722,19 @@ module.exports = {
                 i.followUp({ embeds: [se], flags: MessageFlags.Ephemeral }).catch(() => {});
             } else if (i.customId === 'vote_lb') {
                 const lb = db.prepare(`SELECT user_id, total_votes, current_streak, best_streak, total_rewards FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 10`).all(gid);
-                let desc = '```yaml\n';
-                for (let j = 0; j < lb.length; j++) { let n; try { n = (await client.users.fetch(lb[j].user_id)).username; } catch { n = 'Unknown'; } desc += `${t.rankEmoji[j] || '\ud83d\udccc'} ${n.padEnd(18)} ${lb[j].total_votes} votes\n`; }
-                desc += '```';
-                const le = new EmbedBuilder().setColor('#ffd700').setTitle(t.lbTitle).setDescription(desc).setFooter({ text: t.footer }).setTimestamp();
-                i.followUp({ embeds: [le], flags: MessageFlags.Ephemeral }).catch(() => {});
+                const entries = await Promise.all(lb.map(async row => {
+                    let username; try { username = (await client.users.fetch(row.user_id)).username; } catch { username = 'Unknown'; }
+                    return { ...row, username };
+                }));
+                try {
+                    const img = await buildVoteLBCanvas(entries, guild?.name || 'ARCHON', i.client.user.displayAvatarURL({ size: 128 }));
+                    const { AttachmentBuilder } = require('discord.js');
+                    const att = new AttachmentBuilder(img, { name: 'vote-leaderboard.png' });
+                    i.followUp({ files: [att], flags: MessageFlags.Ephemeral }).catch(() => {});
+                } catch(e) {
+                    console.error('[VOTE LB CANVAS]', e.message);
+                    i.followUp({ content: 'Could not generate leaderboard image.', flags: MessageFlags.Ephemeral }).catch(() => {});
+                }
             }
         });
     },
@@ -558,11 +785,19 @@ module.exports = {
         if (sub === 'leaderboard') {
             await interaction.deferReply();
             const lb = client.db.prepare(`SELECT user_id, total_votes, current_streak, best_streak, total_rewards FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 10`).all(gid);
-            let desc = '```yaml\n';
-            for (let i = 0; i < lb.length; i++) { let n; try { n = (await client.users.fetch(lb[i].user_id)).username; } catch { n = 'Unknown'; } desc += `${t.rankEmoji[i] || '\ud83d\udccc'} ${n.padEnd(18)} ${lb[i].total_votes} votes\n`; }
-            desc += '```';
-            const embed = new EmbedBuilder().setColor('#ffd700').setTitle(t.lbTitle).setDescription(desc).setFooter({ text: t.footer }).setTimestamp();
-            return interaction.editReply({ embeds: [embed] });
+            const entries = await Promise.all(lb.map(async row => {
+                let username; try { username = (await client.users.fetch(row.user_id)).username; } catch { username = 'Unknown'; }
+                return { ...row, username };
+            }));
+            try {
+                const img = await buildVoteLBCanvas(entries, interaction.guild?.name || 'ARCHON', interaction.client.user.displayAvatarURL({ size: 128 }));
+                const { AttachmentBuilder } = require('discord.js');
+                const att = new AttachmentBuilder(img, { name: 'vote-leaderboard.png' });
+                return interaction.editReply({ files: [att] });
+            } catch(e) {
+                console.error('[VOTE LB CANVAS]', e.message);
+                return interaction.editReply({ content: 'Could not generate leaderboard image.' });
+            }
         }
 
         // ---- STATUS (admin) ----
@@ -571,7 +806,7 @@ module.exports = {
                 return interaction.reply({ content: '\u274c Admin only.', flags: MessageFlags.Ephemeral });
             }
             const hasApi = !!process.env.TOPGG_API_TOKEN;
-            const hasWebhook = !!process.env.TOPGG_WEBHOOK_AUTH;
+            const hasWebhook = !!(process.env.TOPGG_WEBHOOK_SECRET || process.env.TOPGG_WEBHOOK_AUTH);
             const mode = hasWebhook ? t.modeWebhook : hasApi ? t.modePoll : t.modeFallback;
             const embed = new EmbedBuilder().setColor(hasApi ? '#2ecc71' : '#e74c3c').setTitle(t.statusTitle)
                 .addFields(

@@ -71,4 +71,9 @@ module.exports = {
     // ── Crowns (use for different rank tiers) ──
     crown:    '<:Crown:1535796754719576094>',
     blCrown:  '<:bl_crown:1108129039094386750>',
+
+    // ── Vote system ──
+    vote:       '<:vote:1537482225950654476>',
+    streak:     '<:Streak:1537482275204370475>',
+    milestones: '<:milestones:1537482386294706337>',
 };
