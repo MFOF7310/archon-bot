@@ -2280,6 +2280,31 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 
 // ================= BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
+    // ── Bot presence rotation ──
+    const { ActivityType } = require('discord.js');
+    const statusMessages = [
+        { state: '🌍 bamako-steel-dev.xyz' },
+        { state: `🦅 ${client.guilds.cache.size} servers | ARCHON CG-223` },
+        { state: '🎵 530+ tracks | /music' },
+        { state: '⚔️ Bamako Steel 🇲🇱' },
+        { state: '🎮 /help | Try ARCHON' },
+    ];
+    let statusIndex = 0;
+    function rotateStatus() {
+        const s = statusMessages[statusIndex % statusMessages.length];
+        client.user.setPresence({
+            status: 'online',
+            activities: [{
+                name: 'customstatus',
+                type: ActivityType.Custom,
+                state: s.state,
+            }]
+        });
+        statusIndex++;
+    }
+    rotateStatus();
+    setInterval(rotateStatus, 30 * 1000);
+
     // ── Dynamic emoji resolver — update emojis.js on disk at boot ──
     try {
         const mainGuild = client.guilds.cache.get(process.env.GUILD_ID)
