@@ -108,5 +108,29 @@
     "statLevel": "等级",
     "statXP": "总XP",
     "statCredits": "积分"
+  },
+  "invest": {
+    "stakeTitle": "投资确认！",
+    "claimTitle": "收益已领取！",
+    "statusTitle": "你的投资",
+    "noInvestYet": "暂无活跃投资！",
+    "noInvestHint": "使用 `.invest <金额>` 开始赚取收益。",
+    "noInvest": "没有活跃投资，请先使用 `.invest <金额>`。",
+    "minInvest": "最低投资额为 **100** 积分。",
+    "insufficient": "你只有 **{bal}** 积分。",
+    "useClaim": "6小时后使用 `{prefix}invest claim` 领取收益。",
+    "footer": "BAMAKO INVEST",
+    "hours": "小时",
+    "rate": "收益率",
+    "held": "持有时间",
+    "invested": "已投资",
+    "returned": "已返还",
+    "profit": "利润",
+    "loss": "亏损",
+    "oldBal": "原余额",
+    "newBal": "新余额",
+    "roi": "投资回报率",
+    "total": "总计",
+    "tip": "持有越久收益越高 — 每6小时8%，最高48%"
   }
 }

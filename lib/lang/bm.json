@@ -83,5 +83,29 @@
     "statLevel": "Niveau",
     "statXP": "XP Lajɛlen",
     "statCredits": "Crédits"
+  },
+  "invest": {
+    "stakeTitle": "Investissement confirmé",
+    "claimTitle": "Nafolo minɛlenw",
+    "statusTitle": "Vos investissements",
+    "noInvestYet": "Lafiɲɛ si tɛ yen fɔlɔ!",
+    "noInvestHint": "Utilisez `.invest <stake>` pour commencer.",
+    "noInvest": "Lafiɲɛ tɛ yen. `.invest <hakɛ>` baara kɛ fɔlɔ.",
+    "minInvest": "Lafiɲɛ fitini ye **100** crédits ye.",
+    "insufficient": "I ka crédits ye **{bal}** dɔrɔn de ye.",
+    "useClaim": "`{prefix}invest claim` utiliser heure wɔrɔ kɔfɛ, walasa ka sen ka i ka don ta labɔ.",
+    "footer": "BAMAKO INVEST",
+    "hours": "loon",
+    "rate": "Taux",
+    "held": "Maintenu",
+    "invested": "Investi",
+    "returned": "Seginnen",
+    "profit": "Sɔrɔta",
+    "loss": "Tiɲɛlen",
+    "oldBal": "Wari Kɔrɔ",
+    "newBal": "Wari Kura",
+    "roi": "ROI",
+    "total": "Jɛlen bɛɛ",
+    "tip": "I bɛ a minɛlen to ka se waati jan ma — 8% heure wɔrɔ kɔnɔ, a caya len ye 48% 24 heures kɔnɔ"
   }
 }
