@@ -4,7 +4,7 @@ const fs = require('fs');
 module.exports = {
     name: 'snapchat',
     aliases: ['snap', 'sc', 'snp'],
-    description: 'Download Snapchat stories & spotlights',
+    description: 'Download Snapchat Spotlight videos',
     category: 'Media',
     usage: '/snap <url>',
 
@@ -13,10 +13,20 @@ module.exports = {
 
         if (!url || !url.includes('snapchat.com'))
             return ctx.replyHTML(
-                `👻 Just send me a Snapchat link and I'll grab it!\n\n` +
+                `👻 Send me a Snapchat Spotlight link and I'll grab it!\n\n` +
                 `<code>/snap &lt;url&gt;</code>\n\n` +
-                `Works with stories, spotlights and public snaps 🎬`
+                `✅ Works with <b>Spotlight</b> videos only\n` +
+                `❌ Stories, add-friend and short links are not supported`
             );
+
+        // Reject non-spotlight URLs early
+        if (!url.includes('/spotlight/')) {
+            return ctx.replyHTML(
+                `❌ <b>Unsupported link type</b>\n\n` +
+                `Only <b>Spotlight</b> videos are supported.\n` +
+                `Share a Spotlight video from Snapchat and try again! 👻`
+            );
+        }
 
         await ctx.action('upload_video');
 
@@ -31,7 +41,7 @@ module.exports = {
             });
         } catch(e) {
             console.error('[SNAP]', e.message);
-            await ctx.replyHTML(`❌ Couldn't grab that one — it might be private or already expired!`);
+            await ctx.replyHTML(`❌ Couldn't download that Spotlight — it may have expired or been removed.`);
         }
     }
 };
