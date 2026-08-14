@@ -1,14 +1,15 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 const ROLE_DEFS = {
-    member:           { col: 'memberRole',         env: 'MEMBER_ROLE',              emoji: '👤', label: 'Member Role' },
-    mute:             { col: 'muteRoleId',          env: 'MUTE_ROLE_ID',             emoji: '🔇', label: 'Mute Role' },
+    member:           { col: 'memberRole',         env: 'MEMBER_ROLE',              emoji: () => EMOJIS.member, label: 'Member Role' },
+    mute:             { col: 'muteRoleId',          env: 'MUTE_ROLE_ID',             emoji: () => EMOJIS.mute, label: 'Mute Role' },
     autorole:         { col: 'autoRoleId',          env: 'AUTO_ROLE_ID',             emoji: '🤖', label: 'Auto Role' },
-    staff:            { col: 'ticketStaffRole',     env: 'TICKET_STAFF_ROLE_ID',     emoji: '🛡️', label: 'Staff/Ticket Role' },
-    investor:         { col: 'investorRoleId',      env: 'INVESTOR_ROLE_ID',         emoji: '📈', label: 'Investor Role' },
-    gamer:            { col: 'gamerRoleId',         env: 'GAMER_ROLE_ID',            emoji: '🎮', label: 'Gamer Role' },
-    quizmaster:       { col: 'quizMasterRoleId',    env: 'QUIZ_MASTER_ROLE_ID',      emoji: '🧠', label: 'Quiz Master Role' },
-    duelist:          { col: 'duelistRoleId',       env: 'DUELIST_ROLE_ID',          emoji: '⚔️', label: 'Duelist Role' },
+    staff:            { col: 'ticketStaffRole',     env: 'TICKET_STAFF_ROLE_ID',     emoji: () => EMOJIS.shield, label: 'Staff/Ticket Role' },
+    investor:         { col: 'investorRoleId',      env: 'INVESTOR_ROLE_ID',         emoji: () => EMOJIS.investors, label: 'Investor Role' },
+    gamer:            { col: 'gamerRoleId',         env: 'GAMER_ROLE_ID',            emoji: () => EMOJIS.gamer, label: 'Gamer Role' },
+    quizmaster:       { col: 'quizMasterRoleId',    env: 'QUIZ_MASTER_ROLE_ID',      emoji: () => EMOJIS.quizmaster, label: 'Quiz Master Role' },
+    duelist:          { col: 'duelistRoleId',       env: 'DUELIST_ROLE_ID',          emoji: () => EMOJIS.duelist, label: 'Duelist Role' },
     dailyinitiate:    { col: 'dailyInitiateRoleId', env: 'DAILY_INITIATE_ROLE_ID',   emoji: '🌱', label: 'Daily Initiate (3d)' },
     dailywarrior:     { col: 'dailyWarriorRoleId',  env: 'DAILY_WARRIOR_ROLE_ID',    emoji: '🔥', label: 'Daily Warrior (7d)' },
     dailychampion:    { col: 'dailyChampionRoleId', env: 'DAILY_CHAMPION_ROLE_ID',   emoji: '⚔️', label: 'Daily Champion (30d)' },
@@ -104,13 +105,34 @@ module.exports = {
                 .setColor(0x9b59b6)
                 .setAuthor({ name: '🦅 ARCHON ENGINE • ROLE CONFIG', iconURL: client.user.displayAvatarURL() })
                 .setTitle(`🎭 ${guild.name} — Roles`)
-                .setDescription(
-                    Object.entries(ROLE_DEFS).map(([key, def]) => {
+                .setDescription((() => {
+                    const r = (key) => {
+                        const def = ROLE_DEFS[key];
                         const id = freshSettings[def.col];
-                        const val = id ? `<@&${id}>` : (isOwnerGuild && process.env[def.env] ? `<@&${process.env[def.env]}> 🔹 .env` : '\`Not set\`');
-                        return `${def.emoji} **${def.label}** — ${val}`;
-                    }).join('\n')
-                )
+                        const val = id ? `<@&${id}>` : (isOwnerGuild && process.env[def.env] ? `<@&${process.env[def.env]}> 🔹 .env` : '`Not set`');
+                        const emoji = typeof def.emoji === 'function' ? def.emoji() : def.emoji;
+                        return `${emoji} **${def.label}** — ${val}`;
+                    };
+                    return [
+                        `${EMOJIS.role} __Core Roles__`,
+                        r('member'),
+                        r('mute'),
+                        r('autorole'),
+                        r('staff'),
+                        '',
+                        `${EMOJIS.charts} __Economy Roles__`,
+                        r('investor'),
+                        r('gamer'),
+                        r('quizmaster'),
+                        r('duelist'),
+                        '',
+                        `🌱 __Daily Milestones__`,
+                        r('dailyinitiate'),
+                        r('dailywarrior'),
+                        r('dailychampion'),
+                        r('dailylegend'),
+                    ].join('\n');
+                })())
                 .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /roles set to configure` })
                 .setTimestamp();
             return interaction.reply({ embeds: [embed], flags: 64 });
