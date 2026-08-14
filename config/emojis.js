@@ -44,7 +44,7 @@ module.exports = {
     mc_skip:        '<:skip:1535785326470107157>',
     mc_stop:        '<:STOP:1535782602038845671>',
     mc_autoplay:    '<:AutoPlay:1535777726341062678>',
-    mc_previous:    '<:previous:1535740961135665262>',
+    mc_previous:    '<:previous:1537887487739822221>',
     mc_loop:        '<:LOOP:1535783619170406460>',
     mc_volume_down: '<:volume_down:1535780020948172970>',
     mc_volume_up:   '<:volume_up:1535779843222798386>',
@@ -71,6 +71,15 @@ module.exports = {
     // ── Crowns (use for different rank tiers) ──
     crown:    '<:Crown:1535796754719576094>',
     blCrown:  '<:bl_crown:1108129039094386750>',
+
+    // ── Role system ──
+    member:    '<:member:1537884865821806654>',
+    role:      '<:role:1537884810108993556>',
+    investors: '<:INVESTORS:1537884669289439302>',
+    mute:      '<:MUTE_3:1537884740760117348>',
+    gamer:     '<:gamer:1537886643573366936>',
+    quizmaster:'<:quiz_master:1537886775995793539>',
+    duelist:   '<:duelist:1537886970934460536>',
 
     // ── Economy & Invest ──
     charts:  '<:charts:1537826551884943420>',
