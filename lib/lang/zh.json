@@ -104,6 +104,9 @@
     "viewDashboard": "查看面板",
     "myProfile": "我的档案",
     "streakInfo": "🔥 连签 {streak} 天 — 奖励: +{xp} XP 和 +{credits} 积分",
-    "desc": "你在 **{guild}** 的每日奖励已就绪！\n\n使用 `/claim` 或 `.claim` 领取。\n🔥 别断签！"
+    "desc": "你在 **{guild}** 的每日奖励已就绪！\n\n使用 `/claim` 或 `.claim` 领取。\n🔥 别断签！",
+    "statLevel": "等级",
+    "statXP": "总XP",
+    "statCredits": "积分"
   }
 }

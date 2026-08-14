@@ -79,6 +79,9 @@
     "viewDashboard": "Dashboard filɛ",
     "myProfile": "N ka profil",
     "streakInfo": "Tile {streak} kuntigi — bonus: +{xp} XP ni +{credits} crédits",
-    "desc": "I ka don bonus ɲɛna **{guild}** kɔnɔ!\n\n`/claim` walima `.claim` baara kɛ a minɛ.\n I ka kuntigi jɔ tɛ!"
+    "desc": "I ka don bonus ɲɛna **{guild}** kɔnɔ!\n\n`/claim` walima `.claim` baara kɛ a minɛ.\n I ka kuntigi jɔ tɛ!",
+    "statLevel": "Niveau",
+    "statXP": "XP Lajɛlen",
+    "statCredits": "Crédits"
   }
 }

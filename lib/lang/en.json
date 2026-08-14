@@ -104,6 +104,9 @@
     "viewDashboard": "View Dashboard",
     "myProfile": "My Profile",
     "streakInfo": "🔥 {streak} day streak — bonus: +{xp} XP & +{credits} credits",
-    "desc": "Your daily reward is ready in **{guild}**!\n\nUse `/claim` or `.claim` to collect it.\n🔥 Don't break your streak!"
+    "desc": "Your daily reward is ready in **{guild}**!\n\nUse `/claim` or `.claim` to collect it.\n🔥 Don't break your streak!",
+    "statLevel": "Level",
+    "statXP": "Total XP",
+    "statCredits": "Credits"
   }
 }
