@@ -17,7 +17,13 @@ function dlFacebook(url) {
             '"' + url + '"'
         ].join(' ');
         exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
-            if (err) return rej(new Error(stderr?.substring(0, 200) || err.message));
+            if (err) {
+                const msg = stderr?.substring(0, 200) || err.message;
+                if (msg.includes('Cannot parse data') || msg.includes('Unsupported URL')) {
+                    return rej(new Error('❌ This Facebook video cannot be downloaded. It may be private, a Reel, or temporarily unsupported.'));
+                }
+                return rej(new Error(msg));
+            }
             const files = fs.readdirSync(TMP).filter(f => f.startsWith('fb_' + ts));
             if (!files.length) return rej(new Error('No file found'));
             const found = path.join(TMP, files[0]);
