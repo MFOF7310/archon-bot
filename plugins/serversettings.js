@@ -1,3 +1,4 @@
+const EMOJIS = require('../config/emojis');
 const { 
     EmbedBuilder, 
     PermissionFlagsBits, 
@@ -288,8 +289,7 @@ async execute(interaction, client) {
             .setAuthor({ 
                 name: t.title, 
                 iconURL: guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL() 
-            })
-            .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }));
+            });
 
         const isArchitectServer = guild.id === process.env.GUILD_ID;
 
@@ -308,84 +308,108 @@ async execute(interaction, client) {
         const boolStr = (val) => val ? t.enabled : t.disabled;
 
         const sections = {
-            general: () => embed.addFields({
-                name: t.general,
-                value: `\`\`\`yaml\n${t.prefix}: ${settings.prefix || '.'}\n\`\`\``,
-                inline: false
-            }),
-            welcome: () => embed.addFields({
-                name: t.welcome,
-                value: [
-                    `**${t.welcomeChannel}:** ${channelMention(settings.welcomeChannel, 'WELCOME_CHANNEL_ID')}`,
-                    `**${t.welcomeMessage}:** ${settings.welcomeMessage ? '\u2705 Custom' : '\ud83d\udccb System Default'}`,
-                    `**${t.goodbyeChannel}:** ${channelMention(settings.goodbyeChannel, 'GOODBYE_CHANNEL_ID')}`,
-                    `**${t.goodbyeMessage}:** ${settings.goodbyeMessage ? '\u2705 Custom' : '\ud83d\udccb System Default'}`,
-                ].join('\n'),
-                inline: false
-            }),
-            leveling: () => embed.addFields({
-                name: t.leveling,
-                value: [
-                    `**${t.xpMultiplier}:** \`${settings.xpMultiplier || 1.0}x\``,
-                    `**${t.levelChannel}:** ${channelMention(settings.levelChannel, 'LEVEL_CHANNEL_ID')}`
-                ].join('\n'),
-                inline: false
-            }),
-            economy: () => embed.addFields({
-                name: t.economy,
-                value: `**${t.marketEnabled}:** ${boolStr(settings.marketEnabled)}`,
-                inline: false
-            }),
-            features: () => embed.addFields({
-                name: t.features,
-                value: [
-                    `**${t.afkEnabled}:** ${boolStr(settings.afkEnabled)}`,
-                    `**${t.aiEnabled}:** ${boolStr(settings.aiEnabled)}`
-                ].join('\n'),
-                inline: false
-            }),
-            moderation: () => embed.addFields({
-                name: t.moderation,
-                value: [
-                    `**${t.logChannel}:** ${channelMention(settings.logChannel, 'LOG_CHANNEL_ID')}`,
-                    `**${t.modLogChannel}:** ${channelMention(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID')}`,
-                    `**${t.muteRole}:** ${roleMention(settings.muteRoleId, 'MUTE_ROLE_ID')}`
-                ].join('\n'),
-                inline: false
-            }),
-            roles: () => embed.addFields({
-                name: t.roles,
-                value: [
-                    `**${t.memberRole}:** ${roleMention(settings.memberRole, 'MEMBER_ROLE')}`,
-                    `**${t.autoRole}:** ${roleMention(settings.autoRoleId, 'AUTO_ROLE_ID')}`
-                ].join('\n'),
-                inline: false
-            }),
+            general: () => embed.addFields(
+                {
+                    name: `🏠 General`,
+                    value: `${EMOJIS.shield} **Prefix:** \`${settings.prefix || '.'}\``,
+                    inline: true
+                },
+                {
+                    name: `${EMOJIS.xp} Leveling`,
+                    value: [
+                        `**XP Multiplier:** \`${settings.xpMultiplier || 1.0}x\``,
+                        `**Level-Up:** ${channelMention(settings.levelChannel, 'LEVEL_CHANNEL_ID')}`
+                    ].join('\n'),
+                    inline: true
+                }
+            ),
+            welcome: () => embed.addFields(
+                {
+                    name: `👋 Welcome`,
+                    value: [
+                        `**Channel:** ${channelMention(settings.welcomeChannel, 'WELCOME_CHANNEL_ID')}`,
+                        `**Message:** ${settings.welcomeMessage ? '✅ Custom' : '📋 Default'}`,
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: `👋 Goodbye`,
+                    value: [
+                        `**Channel:** ${channelMention(settings.goodbyeChannel, 'GOODBYE_CHANNEL_ID')}`,
+                        `**Message:** ${settings.goodbyeMessage ? '✅ Custom' : '📋 Default'}`,
+                    ].join('\n'),
+                    inline: true
+                }
+            ),
+            economy: () => embed.addFields(
+                {
+                    name: `${EMOJIS.coins} Economy`,
+                    value: [
+                        `**Market:** ${boolStr(settings.marketEnabled)}`,
+                        `**Market Channel:** ${channelMention(settings.marketChannel, 'MARKET_CHANNEL_ID')}`,
+                        `**Shop:** ${channelMention(settings.shopChannel, 'SHOP_CHANNEL_ID')}`,
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: `${EMOJIS.ai_assistant} Features`,
+                    value: [
+                        `**AFK:** ${boolStr(settings.afkEnabled)}`,
+                        `**Lydia AI:** ${boolStr(settings.aiEnabled)}`
+                    ].join('\n'),
+                    inline: true
+                }
+            ),
+            moderation: () => embed.addFields(
+                {
+                    name: `${EMOJIS.shield} Moderation`,
+                    value: [
+                        `**Log:** ${channelMention(settings.logChannel, 'LOG_CHANNEL_ID')}`,
+                        `**Mod Log:** ${channelMention(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID')}`,
+                        `**Mute Role:** ${roleMention(settings.muteRoleId, 'MUTE_ROLE_ID')}`
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: `${EMOJIS.member} Core Roles`,
+                    value: [
+                        `**Member:** ${roleMention(settings.memberRole, 'MEMBER_ROLE')}`,
+                        `**Auto Role:** ${roleMention(settings.autoRoleId, 'AUTO_ROLE_ID')}`
+                    ].join('\n'),
+                    inline: true
+                }
+            ),
             channels: () => embed.addFields({
-                name: t.channels,
+                name: `${EMOJIS.general} Channels`,
                 value: [
-                    `**${t.rulesChannel}:** ${channelMention(settings.rulesChannel, 'RULES_CHANNEL_ID')}`,
-                    `**${t.generalChannel}:** ${channelMention(settings.generalChannel, 'GENERAL_CHANNEL_ID')}`,
-                    `**${t.dailyChannel}:** ${channelMention(settings.dailyChannel, 'DAILY_CHANNEL_ID')}`,
-                    `**${t.shopChannel}:** ${channelMention(settings.shopChannel, 'SHOP_CHANNEL_ID')}`,
-                    `**\ud83d\udcca Market Channel:** ${channelMention(settings.marketChannel, 'MARKET_CHANNEL_ID')}`,
+                    `**Rules:** ${channelMention(settings.rulesChannel, 'RULES_CHANNEL_ID')}`,
+                    `**General:** ${channelMention(settings.generalChannel, 'GENERAL_CHANNEL_ID')}`,
+                    `**Daily:** ${channelMention(settings.dailyChannel, 'DAILY_CHANNEL_ID')}`,
                 ].join('\n'),
                 inline: false
             }),
-            specialRoles: () => embed.addFields({
-                name: '\ud83c\udf94 GAMING & REWARD ROLES',
-                value: [
-                    `**\ud83d\udcc8 Investor:** ${roleMention(settings.investorRoleId, 'INVESTOR_ROLE_ID')}`,
-                    `**\ud83c\udfae Gamer:** ${roleMention(settings.gamerRoleId, 'GAMER_ROLE_ID')}`,
-                    `**\ud83e\udde0 Quiz Master:** ${roleMention(settings.quizMasterRoleId, 'QUIZ_MASTER_ROLE_ID')}`,
-                    `**\u2694\ufe0f Duelist:** ${roleMention(settings.duelistRoleId, 'DUELIST_ROLE_ID')}`,
-                    `**\ud83c\udf31 Daily Initiate (3d):** ${roleMention(settings.dailyInitiateRoleId, 'DAILY_INITIATE_ROLE_ID')}`,
-                    `**\ud83d\udd25 Daily Warrior (7d):** ${roleMention(settings.dailyWarriorRoleId, 'DAILY_WARRIOR_ROLE_ID')}`,
-                    `**\u2694\ufe0f Daily Champion (30d):** ${roleMention(settings.dailyChampionRoleId, 'DAILY_CHAMPION_ROLE_ID')}`,
-                    `**\ud83d\udc8e Daily Legend (100d):** ${roleMention(settings.dailyLegendRoleId, 'DAILY_LEGEND_ROLE_ID')}`,
-                ].join('\n'),
-                inline: false
-            }),
+            specialRoles: () => embed.addFields(
+                {
+                    name: `${EMOJIS.investors} Economy Roles`,
+                    value: [
+                        `**Investor:** ${roleMention(settings.investorRoleId, 'INVESTOR_ROLE_ID')}`,
+                        `**Gamer:** ${roleMention(settings.gamerRoleId, 'GAMER_ROLE_ID')}`,
+                        `**Quiz Master:** ${roleMention(settings.quizMasterRoleId, 'QUIZ_MASTER_ROLE_ID')}`,
+                        `**Duelist:** ${roleMention(settings.duelistRoleId, 'DUELIST_ROLE_ID')}`,
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: `🌱 Daily Roles`,
+                    value: [
+                        `**Initiate (3d):** ${roleMention(settings.dailyInitiateRoleId, 'DAILY_INITIATE_ROLE_ID')}`,
+                        `**Warrior (7d):** ${roleMention(settings.dailyWarriorRoleId, 'DAILY_WARRIOR_ROLE_ID')}`,
+                        `**Champion (30d):** ${roleMention(settings.dailyChampionRoleId, 'DAILY_CHAMPION_ROLE_ID')}`,
+                        `**Legend (100d):** ${roleMention(settings.dailyLegendRoleId, 'DAILY_LEGEND_ROLE_ID')}`,
+                    ].join('\n'),
+                    inline: true
+                }
+            ),
         };
 
         // ================= CATEGORY =================
