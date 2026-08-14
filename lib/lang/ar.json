@@ -104,6 +104,9 @@
     "viewDashboard": "عرض لوحة التحكم",
     "myProfile": "ملفي الشخصي",
     "streakInfo": "🔥 سلسلة {streak} أيام — مكافأة: +{xp} XP و+{credits} كريدت",
-    "desc": "مكافأتك اليومية جاهزة في **{guild}**!\n\nاستخدم `/claim` أو `.claim` لاستلامها.\n🔥 لا تكسر سلسلتك!"
+    "desc": "مكافأتك اليومية جاهزة في **{guild}**!\n\nاستخدم `/claim` أو `.claim` لاستلامها.\n🔥 لا تكسر سلسلتك!",
+    "statLevel": "المستوى",
+    "statXP": "إجمالي XP",
+    "statCredits": "الرصيد"
   }
 }

@@ -475,7 +475,7 @@ module.exports = {
                 .setDescription(t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak))
                 .addFields(
                     { name: t.nextClaim, value: `<t:${Math.floor((now + oneDay) / 1000)}:R>`, inline: true },
-                    { name: t.currentStats, value: `\`\`\`yaml\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${currentLevel}\n${lang === 'fr' ? 'XP Total' : 'Total XP'}: ${currentXP.toLocaleString()}\n${lang === 'fr' ? 'Crédits' : 'Credits'}: ${currentCredits.toLocaleString()}\`\`\``, inline: true }
+                    { name: t.currentStats, value: `\`\`\`yaml\n${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}\`\`\``, inline: true }
                 );
             
             if (streakBonusXP > 25 || streakBonusCredits > 10) {
@@ -726,7 +726,7 @@ module.exports = {
                 .setDescription(t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak))
                 .addFields(
                     { name: t.nextClaim, value: `<t:${Math.floor((now + oneDay) / 1000)}:R>`, inline: true },
-                    { name: t.currentStats, value: `\`\`\`yaml\n${lang === 'fr' ? 'Niveau' : 'Level'}: ${currentLevel}\n${lang === 'fr' ? 'XP Total' : 'Total XP'}: ${currentXP.toLocaleString()}\n${lang === 'fr' ? 'Crédits' : 'Credits'}: ${currentCredits.toLocaleString()}\`\`\``, inline: true }
+                    { name: t.currentStats, value: `\`\`\`yaml\n${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}\`\`\``, inline: true }
                 );
             
             if (streakBonusXP > 25 || streakBonusCredits > 10) {
