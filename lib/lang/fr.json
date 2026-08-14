@@ -108,5 +108,29 @@
     "statLevel": "Niveau",
     "statXP": "XP Total",
     "statCredits": "Crédits"
+  },
+  "invest": {
+    "stakeTitle": "Investissement Confirmé !",
+    "claimTitle": "Rendements Réclamés !",
+    "statusTitle": "Vos Investissements",
+    "noInvestYet": "Aucun investissement actif !",
+    "noInvestHint": "Utilisez `.invest <montant>` pour commencer.",
+    "noInvest": "Aucun investissement actif. Utilisez `.invest <montant>` d'abord.",
+    "minInvest": "Investissement minimum de **100** crédits.",
+    "insufficient": "Vous avez seulement **{bal}** crédits.",
+    "useClaim": "Utilisez `{prefix}invest claim` après 6h pour récupérer vos rendements.",
+    "footer": "BAMAKO INVEST",
+    "hours": "heures",
+    "rate": "Taux",
+    "held": "Durée",
+    "invested": "Investi",
+    "returned": "Retourné",
+    "profit": "Profit",
+    "loss": "Perte",
+    "oldBal": "Solde Précédent",
+    "newBal": "Nouveau Solde",
+    "roi": "ROI",
+    "total": "Total",
+    "tip": "Maintenez plus longtemps — 8% par 6h, max 48% à 24h"
   }
 }

@@ -1,11 +1,13 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const { ns } = require('../lib/lang');
+const EMOJIS = require('../config/emojis');
 
-// ================= FIXED RETURN RATE (no market dependency) =================
+// ================= FIXED RETURN RATE =================
 // 8% per 6 hours held, capped at 48% (24h max bonus)
 function calculateReturn(amount, investedAt) {
     const hoursHeld = Math.max(0, (Date.now() - investedAt) / (1000 * 60 * 60));
     const periods = Math.floor(hoursHeld / 6);
-    const rate = Math.min(0.08 * periods, 0.48); // 8% per 6h, max 48%
+    const rate = Math.min(0.08 * periods, 0.48);
     const bonus = Math.floor(amount * rate);
     return {
         returnAmount: amount + bonus,
@@ -16,63 +18,39 @@ function calculateReturn(amount, investedAt) {
     };
 }
 
-// ================= BILINGUAL =================
-const T = {
-    en: {
-        stakeTitle: '📈 INVESTMENT CONFIRMED',
-        claimTitle: '💰 INVESTMENT CLAIMED',
-        noInvest: '❌ No active investments. Use `.invest <amount>` first.',
-        minInvest: '❌ Minimum investment is **100 🪙**.',
-        insufficient: (bal) => `❌ Insufficient credits. You have **${bal.toLocaleString()} 🪙**.`,
-        useClaim: (prefix) => `Use \`${prefix}invest claim\` after 6h for returns.`,
-        footer: 'BAMAKO INVEST • NEURAL ECONOMY',
-        hours: 'hours',
-        rate: 'Return Rate',
-        held: 'Time Held',
-        invested: 'Invested',
-        returned: 'Returned',
-        profit: 'Profit',
-        loss: 'Loss',
-        oldBal: 'Previous Balance',
-        newBal: 'New Balance',
-        roi: 'ROI',
-        tip: 'Hold longer for higher returns (8% per 6h, max 48%)',
-    },
-    fr: {
-        stakeTitle: '📈 INVESTISSEMENT CONFIRMÉ',
-        claimTitle: '💰 INVESTISSEMENT RÉCUPÉRÉ',
-        noInvest: '❌ Aucun investissement actif. Utilisez `.invest <montant>` d\'abord.',
-        minInvest: '❌ Investissement minimum de **100 🪙**.',
-        insufficient: (bal) => `❌ Crédits insuffisants. Vous avez **${bal.toLocaleString()} 🪙**.`,
-        useClaim: (prefix) => `Utilisez \`${prefix}invest claim\` après 6h pour les rendements.`,
-        footer: 'BAMAKO INVEST • ÉCONOMIE NEURALE',
-        hours: 'heures',
-        rate: 'Taux de Rendement',
-        held: 'Durée',
-        invested: 'Investi',
-        returned: 'Retourné',
-        profit: 'Profit',
-        loss: 'Perte',
-        oldBal: 'Solde Précédent',
-        newBal: 'Nouveau Solde',
-        roi: 'ROI',
-        tip: 'Maintenez plus longtemps pour plus de rendement (8% par 6h, max 48%)',
-    }
-};
+// ================= ENSURE TABLE EXISTS WITH guild_id =================
+function ensureInvestTable(db) {
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS investments (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL DEFAULT 'DM',
+            amount INTEGER NOT NULL,
+            invested_at INTEGER NOT NULL,
+            claimed INTEGER DEFAULT 0,
+            total_profit INTEGER DEFAULT 0,
+            platform TEXT DEFAULT 'discord'
+        )
+    `).run();
+    // Add guild_id column if missing (migration for existing tables)
+    try {
+        db.prepare("ALTER TABLE investments ADD COLUMN guild_id TEXT NOT NULL DEFAULT 'DM'").run();
+    } catch(e) {} // Column already exists
+}
 
 module.exports = {
     name: 'invest',
     aliases: ['stake', 'investir', 'miser'],
-    description: '📈 Invest your credits for fixed returns.',
+    description: 'Invest your credits for fixed returns.',
     category: 'ECONOMY',
     cooldown: 3000,
 
     data: new SlashCommandBuilder()
         .setName('invest')
-        .setDescription('📈 Invest your credits for fixed returns')
+        .setDescription('Invest your credits for fixed returns')
         .addSubcommand(sub => sub
             .setName('stake')
-            .setDescription('💰 Invest credits (min 100)')
+            .setDescription('Invest credits (min 100)')
             .addIntegerOption(o => o
                 .setName('amount')
                 .setDescription('Amount to invest (min 100)')
@@ -82,18 +60,19 @@ module.exports = {
         )
         .addSubcommand(sub => sub
             .setName('claim')
-            .setDescription('💸 Claim your investment returns')
+            .setDescription('Claim your investment returns')
         )
         .addSubcommand(sub => sub
             .setName('status')
-            .setDescription('📊 View your active investments')
+            .setDescription('View your active investments')
         ),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        const t = T[lang] || T.en;
+        ensureInvestTable(db);
+
+        const t = ns('invest', lang);
         const version = client.version || '3.1.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name || 'ARCHON';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         const prefix = serverSettings?.prefix || '.';
         const userId = message.author.id;
@@ -108,42 +87,49 @@ module.exports = {
 
         // ── STATUS ──
         if (!action || action === 'status' || action === 'statut') {
-            const investments = db.prepare('SELECT * FROM investments WHERE user_id = ? AND claimed = 0 ORDER BY invested_at DESC').all(userId);
+            const investments = db.prepare(
+                'SELECT * FROM investments WHERE user_id = ? AND guild_id = ? AND claimed = 0 ORDER BY invested_at DESC'
+            ).all(userId, guildId);
             const totalInvested = investments.reduce((s, i) => s + i.amount, 0);
 
             if (investments.length === 0) {
                 return message.reply({
                     embeds: [new EmbedBuilder()
                         .setColor('#f1c40f')
-                        .setDescription('```ansi\n\u001b[1;33m▸ No active investments\u001b[0m\n\u001b[0;37m▸ Use .invest <amount> to start\u001b[0m\n```')
-                        .setFooter({ text: `${guildName} • ${t.footer}` })]
+                        .setAuthor({ name: t.statusTitle || 'Your Investments', iconURL: client.user.displayAvatarURL() })
+                        .setDescription(
+                            `${EMOJIS.invest} **${t.noInvestYet || 'No active investments yet!'}**\n\n` +
+                            `${EMOJIS.coins} ${t.noInvestHint || 'Use .invest <amount> to start earning returns.'}`
+                        )
+                        .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'}` })]
                 }).catch(() => {});
             }
 
             const lines = investments.slice(0, 5).map(inv => {
                 const r = calculateReturn(inv.amount, inv.invested_at);
-                return `\u001b[1;36m▸\u001b[0m ${inv.amount.toLocaleString()} 🪙 · ${r.hoursHeld}h held · \u001b[1;32m+${r.rate}%\u001b[0m`;
+                return `${EMOJIS.charts} **${inv.amount.toLocaleString()}** ${EMOJIS.coins} · ${r.hoursHeld}h · **+${r.rate}%**`;
             }).join('\n');
 
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#00f0ff')
-                    .setAuthor({ name: '📊 ACTIVE INVESTMENTS', iconURL: client.user.displayAvatarURL() })
+                    .setAuthor({ name: t.statusTitle || 'Active Investments', iconURL: client.user.displayAvatarURL() })
                     .setDescription(
-                        '```ansi\n' + lines + '\n' +
-                        `\u001b[1;35m▸ TOTAL    \u001b[0m${totalInvested.toLocaleString()} 🪙\n` +
-                        `\u001b[0;37m▸ TIP      \u001b[0m${t.tip}\n` +
-                        '```'
+                        lines + '\n\n' +
+                        `${EMOJIS.coins} **${t.total || 'Total'}:** ${totalInvested.toLocaleString()}\n` +
+                        `${EMOJIS.warning} ${t.tip || 'Hold longer for higher returns (8% per 6h, max 48%)'}`
                     )
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                    .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                     .setTimestamp()]
             }).catch(() => {});
         }
 
         // ── CLAIM ──
         if (action === 'claim' || action === 'réclamer' || action === 'reclamer') {
-            const investments = db.prepare('SELECT * FROM investments WHERE user_id = ? AND claimed = 0').all(userId);
-            if (investments.length === 0) return message.reply(t.noInvest);
+            const investments = db.prepare(
+                'SELECT * FROM investments WHERE user_id = ? AND guild_id = ? AND claimed = 0'
+            ).all(userId, guildId);
+            if (investments.length === 0) return message.reply(t.noInvest || 'No active investments!');
 
             let totalInvested = 0, totalReturn = 0, oldestAt = Date.now();
             const updateStmt = db.prepare('UPDATE investments SET claimed = 1, total_profit = ? WHERE id = ?');
@@ -168,36 +154,39 @@ module.exports = {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(profit >= 0 ? '#2ecc71' : '#e74c3c')
-                    .setAuthor({ name: t.claimTitle, iconURL: message.author.displayAvatarURL() })
+                    .setAuthor({ name: t.claimTitle || 'Investment Claimed!', iconURL: message.author.displayAvatarURL() })
                     .setDescription(
-                        '```ansi\n' +
-                        `\u001b[1;36m▸ ${t.invested.padEnd(9)}\u001b[0m${totalInvested.toLocaleString()} 🪙\n` +
-                        `\u001b[1;36m▸ ${t.returned.padEnd(9)}\u001b[0m${totalReturn.toLocaleString()} 🪙\n` +
+                        `${EMOJIS.invest} **${t.invested || 'Invested'}:** ${totalInvested.toLocaleString()} ${EMOJIS.coins}\n` +
+                        `${EMOJIS.charts} **${t.returned || 'Returned'}:** ${totalReturn.toLocaleString()} ${EMOJIS.coins}\n` +
                         (profit >= 0
-                            ? `\u001b[1;32m▸ ${t.profit.padEnd(9)}\u001b[0m\u001b[1;32m+${profit.toLocaleString()} 🪙\u001b[0m\n`
-                            : `\u001b[1;31m▸ ${t.loss.padEnd(9)}\u001b[0m\u001b[1;31m${profit.toLocaleString()} 🪙\u001b[0m\n`) +
-                        `\u001b[1;33m▸ ${t.held.padEnd(9)}\u001b[0m${hoursHeld} ${t.hours}\n` +
-                        `\u001b[1;35m▸ ${t.roi.padEnd(9)}\u001b[0m${roi}%\n` +
-                        `\u001b[1;36m▸ ${t.oldBal.padEnd(9)}\u001b[0m${oldBalance.toLocaleString()} 🪙\n` +
-                        `\u001b[1;32m▸ ${t.newBal.padEnd(9)}\u001b[0m\u001b[1;32m${newCredits.toLocaleString()} 🪙\u001b[0m\n` +
-                        '```'
+                            ? `${EMOJIS.check} **${t.profit || 'Profit'}:** +${profit.toLocaleString()} ${EMOJIS.coins}\n`
+                            : `${EMOJIS.error} **${t.loss || 'Loss'}:** ${profit.toLocaleString()} ${EMOJIS.coins}\n`) +
+                        `⏱️ **${t.held || 'Time Held'}:** ${hoursHeld}h\n` +
+                        `📊 **${t.roi || 'ROI'}:** ${roi}%\n\n` +
+                        `${EMOJIS.coins} **${t.oldBal || 'Previous'}:** ${oldBalance.toLocaleString()}\n` +
+                        `${EMOJIS.check} **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}`
                     )
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                    .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                     .setTimestamp()]
             }).catch(() => {});
         }
 
         // ── STAKE ──
         const amount = parseInt(action);
-        if (isNaN(amount) || amount < 100) return message.reply(t.minInvest);
-        if (oldBalance < amount) return message.reply(t.insufficient(oldBalance));
+        if (isNaN(amount) || amount < 100) return message.reply(t.minInvest || 'Minimum investment is **100** credits.');
+        if (oldBalance < amount) return message.reply(
+            t.insufficient
+                ? (typeof t.insufficient === 'function' ? t.insufficient(oldBalance) : t.insufficient.replace('{bal}', oldBalance.toLocaleString()))
+                : `You only have **${oldBalance.toLocaleString()}** credits.`
+        );
 
         const newCredits = oldBalance - amount;
         db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(newCredits, userId, guildId);
         if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...userData, credits: newCredits });
         if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
-        db.prepare("INSERT INTO investments (id, user_id, amount, invested_at, claimed, platform) VALUES (?, ?, ?, ?, 0, 'discord')")
-            .run(`${userId}_${Date.now()}`, userId, amount, Date.now());
+
+        db.prepare('INSERT INTO investments (id, user_id, guild_id, amount, invested_at, claimed, platform) VALUES (?, ?, ?, ?, ?, 0, \'discord\')'
+        ).run(`${userId}_${guildId}_${Date.now()}`, userId, guildId, amount, Date.now());
 
         // Assign investor role
         if (message.guild) {
@@ -212,23 +201,21 @@ module.exports = {
                         }
                     }
                 }
-            } catch (e) {}
+            } catch(e) {}
         }
 
         return message.reply({
             embeds: [new EmbedBuilder()
                 .setColor('#00fbff')
-                .setAuthor({ name: t.stakeTitle, iconURL: message.author.displayAvatarURL() })
+                .setAuthor({ name: t.stakeTitle || 'Investment Confirmed!', iconURL: message.author.displayAvatarURL() })
                 .setDescription(
-                    '```ansi\n' +
-                    `\u001b[1;32m▸ INVESTED \u001b[0m\u001b[1;32m${amount.toLocaleString()} 🪙\u001b[0m\n` +
-                    `\u001b[1;36m▸ OLD BAL  \u001b[0m${oldBalance.toLocaleString()} 🪙\n` +
-                    `\u001b[1;31m▸ NEW BAL  \u001b[0m${newCredits.toLocaleString()} 🪙\n` +
-                    `\u001b[0;37m▸ TIP      \u001b[0m${t.useClaim(prefix)}\n` +
-                    `\u001b[0;37m▸ RATE     \u001b[0m8% per 6h · max 48% at 24h\n` +
-                    '```'
+                    `${EMOJIS.invest} **${t.invested || 'Invested'}:** ${amount.toLocaleString()} ${EMOJIS.coins}\n` +
+                    `${EMOJIS.coins} **${t.oldBal || 'Previous Balance'}:** ${oldBalance.toLocaleString()}\n` +
+                    `${EMOJIS.warning} **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}\n\n` +
+                    `${EMOJIS.charts} **${t.rate || 'Rate'}:** 8% per 6h · max 48% at 24h\n` +
+                    `${EMOJIS.check} ${t.useClaim ? (typeof t.useClaim === 'function' ? t.useClaim(prefix) : t.useClaim.replace('{prefix}', prefix)) : `Use \`${prefix}invest claim\` after 6h to collect returns.`}`
                 )
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                 .setTimestamp()]
         }).catch(() => {});
     },
@@ -241,6 +228,9 @@ module.exports = {
         else if (subcommand === 'claim') args = ['claim'];
         else if (subcommand === 'status') args = ['status'];
 
+        const guildId = interaction.guild?.id || 'DM';
+        const lang = client.detectLanguage ? client.detectLanguage('invest', guildId) : 'en';
+
         const fakeMessage = {
             author: interaction.user,
             guild: interaction.guild,
@@ -249,6 +239,6 @@ module.exports = {
             react: () => Promise.resolve()
         };
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'invest');
+        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'invest', lang);
     }
 };

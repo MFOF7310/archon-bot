@@ -72,6 +72,10 @@ module.exports = {
     crown:    '<:Crown:1535796754719576094>',
     blCrown:  '<:bl_crown:1108129039094386750>',
 
+    // ── Economy & Invest ──
+    charts:  '<:charts:1537826551884943420>',
+    invest:  '<:invest:1537826499569127525>',
+
     // ── Vote system ──
     vote:       '<:vote:1537482225950654476>',
     streak:     '<:Streak:1537482275204370475>',
