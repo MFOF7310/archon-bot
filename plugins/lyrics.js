@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 module.exports = {
     name: 'lyrics',
@@ -110,22 +111,44 @@ function paginateLyrics(lyrics, maxLen = 1800) {
 
 // ── Build embed ───────────────────────────────────────
 function buildLyricsEmbed(result, pages, page, client) {
+    const albumLine = result.album ? ('\nἻc ' + result.album) : '';
+    const separator = pages.length > 1 ? '\n\n─────────────────────\n' : '\n\n';
+    const description = '👤 **' + result.artist + '**' + albumLine + separator + pages[page];
+
     return new EmbedBuilder()
-        .setColor(0x00f0ff)
-        .setAuthor({ name: '📝 ARCHON LYRICS ENGINE', iconURL: client.user.displayAvatarURL() })
-        .setTitle(`${result.title}`)
-        .setDescription(`*by **${result.artist}**${result.album ? ` • ${result.album}` : ''}*\n\n${pages[page]}`)
-        .setFooter({ text: `BAMAKO_223 🇲🇱 • Page ${page + 1}/${pages.length} • Powered by lrclib` })
+        .setColor(0x9b59b6)
+        .setAuthor({
+            name: '🎵 ' + result.title,
+            iconURL: client.user.displayAvatarURL()
+        })
+        .setDescription(description)
+        .setFooter({
+            text: pages.length > 1
+                ? ('Page ' + (page + 1) + ' of ' + pages.length + ' • lrclib.net • 🇲🇱 ARCHON CG-223')
+                : 'lrclib.net • 🇲🇱 ARCHON CG-223',
+            iconURL: client.user.displayAvatarURL()
+        })
         .setTimestamp();
 }
 
 // ── Build pagination buttons ──────────────────────────
 function buildPaginationRow(page, total) {
     return new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('lyrics_prev').setLabel('◀️ Prev').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
-        new ButtonBuilder().setCustomId('lyrics_next').setLabel('Next ▶️').setStyle(ButtonStyle.Primary).setDisabled(page === total - 1),
+        new ButtonBuilder()
+            .setCustomId('lyrics_prev')
+            .setLabel('Back')
+            .setEmoji(EMOJIS.parseEmoji ? EMOJIS.parseEmoji(EMOJIS.mc_previous) : { id: '1537887487739822221', name: 'previous' })
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page === 0),
+        new ButtonBuilder()
+            .setCustomId('lyrics_next')
+            .setLabel('Next')
+            .setEmoji(EMOJIS.parseEmoji ? EMOJIS.parseEmoji(EMOJIS.mc_skip) : { id: '1535785326470107157', name: 'skip' })
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page === total - 1),
     );
 }
+
 
 // ── Send paginated lyrics (prefix) ───────────────────
 async function sendLyricsEmbed(channel, result, pages, page, client, existingMsg) {
