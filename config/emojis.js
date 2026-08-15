@@ -10,6 +10,8 @@
  */
 
 module.exports = {
+    tiktok_logo:    '<a:tiktok_logo:1538163540006010941>',
+    livestream:     '<:livestream:1538164890324172851>',
     // ── Platform emojis ──
     spotify:    '<:spotify:1535686609696067696>',
     soundcloud: '<:soundcloud:1535456930171064340>',
