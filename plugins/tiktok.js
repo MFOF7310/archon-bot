@@ -1,4 +1,5 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 const axios = require('axios');
 
 // ═══════════════════════════════════════════════════════════════════
@@ -421,56 +422,47 @@ function buildResult(user, stats, latestVideo, isLive, liveRoomInfo, username, l
  * and invitation-style messaging
  */
 function buildLiveEmbed(data, guild, client) {
+    const tt = EMOJIS.tiktok_logo || '📱';
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-            .setLabel('🔗 Watch Stream')
+            .setLabel('Watch Live')
             .setStyle(ButtonStyle.Link)
-            .setURL(`https://www.tiktok.com/@${data.username}/live`)
+            .setURL('https://www.tiktok.com/@' + data.username + '/live')
             .setEmoji('🔴'),
         new ButtonBuilder()
-            .setLabel(`@${data.username} on TikTok`)
+            .setLabel('@' + data.username + ' on TikTok')
             .setStyle(ButtonStyle.Link)
-            .setURL(`https://www.tiktok.com/@${data.username}`)
+            .setURL('https://www.tiktok.com/@' + data.username)
             .setEmoji('👤')
     );
 
-    // Use real stream cover if available, else avatar as banner, else placeholder
-    const bannerImage = data.liveCover || data.avatar || 'https://cdn-icons-png.flaticon.com/512/3046/3046126.png';
-   
-    // Professional invitation copy
-const inviteLines = [
-    `🔴 **${data.nickname}** is streaming LIVE on TikTok right now!`,
-    ``,
-    `Come hang out and join the chat — don't miss out! 🎉`
-];
-
-// Only show stats if they're real (not zeroed out from oEmbed fallback)
-if (data.stats.followers > 0 || data.stats.likes > 0) {
-    inviteLines.push(``);
-    inviteLines.push(
-        `👥 **Followers:** \`${Number(data.stats.followers).toLocaleString()}\`  ` +
-        `❤️ **Likes:** \`${Number(data.stats.likes).toLocaleString()}\``
-    );
-}
-    // Add bio quote only if it's meaningful (not the generic "Creator Profile" text)
+    const bannerImage = data.liveCover || data.avatar || null;
+    const lines = [
+        tt + ' 🔴 **' + data.nickname + '** just went live — come hang out!',
+        ''
+    ];
     if (data.bio && data.bio.length > 5 && !data.bio.includes('Creator Profile')) {
-        inviteLines.splice(2, 0, `> *"${data.bio.substring(0, 120)}${data.bio.length > 120 ? '...' : ''}"*`);
-        inviteLines.splice(3, 0, ``);
+        lines.push('> *"' + data.bio.substring(0, 120) + (data.bio.length > 120 ? '...' : '') + '"*');
+        lines.push('');
+    }
+    if (data.stats.followers > 0 || data.stats.likes > 0) {
+        lines.push('👥 **' + Number(data.stats.followers).toLocaleString() + '** followers  •  ❤️ **' + Number(data.stats.likes).toLocaleString() + '** likes');
     }
 
-    const embed = new EmbedBuilder().setColor('#FF0050')
+    const embed = new EmbedBuilder()
+        .setColor('#FF0050')
         .setAuthor({
-            name: `🔴 LIVE NOW  •  @${data.username.toUpperCase()}`,
+            name: '📱 TikTok Live  •  @' + data.username,
             iconURL: data.avatar || client.user.displayAvatarURL(),
-            url: `https://www.tiktok.com/@${data.username}/live`
+            url: 'https://www.tiktok.com/@' + data.username + '/live'
         })
-        .setTitle(`${data.verified ? '✅ ' : ''}Join the Live Stream!`)
-        .setDescription(inviteLines.join('\n'))
+        .setTitle((data.verified ? '✅ ' : '') + data.nickname + ' is live right now!')
+        .setDescription(lines.join('\n'))
         .setThumbnail(data.avatar || null)
-        .setImage(bannerImage)
-        .setFooter({ text: `ARCHON CG-223  •  TikTok Live  •  @${data.username}  •  Started`, iconURL: client.user.displayAvatarURL() })
+        .setFooter({ text: 'ARCHON CG-223  •  TikTok Live Alert', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
+    if (bannerImage) embed.setImage(bannerImage);
     return { embed, row };
 }
 
@@ -478,28 +470,33 @@ function buildVideoEmbed(data, guild, client) {
     const video = data.latestVideo;
     if (!video) return null;
 
+    const tt = EMOJIS.tiktok_logo || '📱';
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('▶️ Watch Video').setStyle(ButtonStyle.Link).setURL(video.url).setEmoji('🎬')
+        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(video.url).setEmoji('🎬')
     );
 
-    const postedAgo = video.createTime ? `<t:${video.createTime}:R>` : 'Recently';
+    const postedAgo = video.createTime ? '<t:' + video.createTime + ':R>' : 'just now';
+    const desc = video.desc ? video.desc.substring(0, 280) + (video.desc.length > 280 ? '...' : '') : '';
+    const lines = [];
+    if (desc) { lines.push('> ' + desc); lines.push(''); }
+    lines.push('📅 Posted ' + postedAgo);
+    lines.push('');
+    lines.push('▶️ `' + Number(video.playCount).toLocaleString() + '` views  •  ❤️ `' + Number(video.likeCount).toLocaleString() + '` likes  •  💬 `' + Number(video.commentCount).toLocaleString() + '` comments');
 
-    const embed = new EmbedBuilder().setColor('#00F2FE')
-        .setAuthor({ name: `🎬 NEW TIKTOK VIDEO  •  @${data.username.toUpperCase()}`, iconURL: data.avatar || client.user.displayAvatarURL(), url: video.url })
-        .setTitle(`${data.verified ? '✅ ' : ''}${data.nickname}`)
-        .setDescription(
-            `> ${video.desc.substring(0, 300)}${video.desc.length > 300 ? '...' : ''}\n\n` +
-            `📅 **Posted:** ${postedAgo}\n` +
-            `▶️ **Views:** \`${Number(video.playCount).toLocaleString()}\`  ` +
-            `❤️ **Likes:** \`${Number(video.likeCount).toLocaleString()}\`  ` +
-            `💬 **Comments:** \`${Number(video.commentCount).toLocaleString()}\`  ` +
-            `🔄 **Shares:** \`${Number(video.shareCount).toLocaleString()}\``
-        )
+    const embed = new EmbedBuilder()
+        .setColor('#00F2FE')
+        .setAuthor({
+            name: '📱 New TikTok  •  @' + data.username,
+            iconURL: data.avatar || client.user.displayAvatarURL(),
+            url: video.url
+        })
+        .setTitle((data.verified ? '✅ ' : '') + data.nickname + ' posted a new video!')
+        .setDescription(lines.join('\n'))
         .setThumbnail(data.avatar || null)
-        .setImage(video.cover)
-        .setFooter({ text: `ARCHON CG-223  •  TikTok Video Detection  •  @${data.username}`, iconURL: client.user.displayAvatarURL() })
+        .setFooter({ text: 'ARCHON CG-223  •  TikTok Video Alert', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
+    if (video.cover) embed.setImage(video.cover);
     return { embed, row };
 }
 
@@ -554,41 +551,10 @@ async function sendNotification(client, db, guildId, username, data, type) {
             contentMessage = `🎬 **NEW VIDEO** from @${data.username}!`;
         } 
         else if (type === 'system_test') {
-            // ─── LE BEAU LAYOUT DE TEST (STYLE FÉVRIER) ───
-            rowToSend = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setLabel('🔗 Layout Link Check')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(`https://www.tiktok.com/@${data.username}`),
-                new ButtonBuilder()
-                    .setLabel('👤 Profile')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(`https://www.tiktok.com/@${data.username}`)
-            );
-
-            embedToSend = new EmbedBuilder()
-                .setColor('#FF0050')
-                .setAuthor({ 
-                    name: `📱 ${data.username.toUpperCase()} (SYSTEM TEST)`, 
-                    iconURL: data.avatar || client.user.displayAvatarURL() 
-                })
-                .setTitle('🔴 LIVE ON TIKTOK')
-                .setDescription(
-    `**${data.nickname}** is now live! *(This is a system test to check the layout)*\n\n` +
-    `📊 **Platform:** \`TikTok Live\`\n` +
-    `⚡ **Status:** \`Testing ⚡\`` +
-    (data.stats.followers > 0 || data.stats.likes > 0 
-        ? `\n\n👥 **Followers:** \`${Number(data.stats.followers).toLocaleString()}\` | ❤️ **Likes:** \`${Number(data.stats.likes).toLocaleString()}\`` 
-        : '')
-)
-                .setThumbnail(data.avatar || null)
-                .setFooter({ 
-                    text: `Cloud Gaming-223 Test Suite | ${new Date().toLocaleDateString()}`, 
-                    iconURL: client.user.displayAvatarURL() 
-                })
-                .setTimestamp();
-
-            contentMessage = `📢 **TEST:** @${data.username} layout verification suite.`;
+            const testResult = buildLiveEmbed(data, guild, client);
+            embedToSend = testResult.embed;
+            rowToSend = testResult.row;
+            contentMessage = null;
         }
 
         await channel.send({
@@ -709,23 +675,27 @@ async function processUserForGuild(client, db, track, data) {
 
 // ================= COMMANDS =================
 function buildListEmbed(tracks, guild, client, lang = 'en') {
+    const tt = EMOJIS.tiktok_logo || '📱';
     const t = {
-        fr: { title: '📋 SUIVI TIKTOK', desc: 'Comptes suivis:', empty: 'Aucun compte suivi.', live: '🔴 EN DIRECT', notLive: '⚫ Hors ligne' },
-        en: { title: '📋 TIKTOK TRACKING', desc: 'Tracked accounts:', empty: 'No TikTok accounts tracked.', live: '🔴 LIVE', notLive: '⚫ Offline' }
-    }[lang] || t.en;
+        fr: { title: 'Comptes TikTok suivis', empty: 'Aucun compte TikTok suivi pour le moment.', live: '🔴 En direct', notLive: '⚫ Hors ligne' },
+        en: { title: 'TikTok Tracked Accounts', empty: 'No TikTok accounts are being tracked yet.', live: '🔴 Live', notLive: '⚫ Offline' }
+    }[lang] || { title: 'TikTok Tracked Accounts', empty: 'No TikTok accounts are being tracked yet.', live: '🔴 Live', notLive: '⚫ Offline' };
 
-    const embed = new EmbedBuilder().setColor('#FF0050')
-        .setAuthor({ name: t.title, iconURL: guild.iconURL() || client.user.displayAvatarURL() })
-        .setFooter({ text: 'ARCHON CG-223 • TikTok Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
+    const embed = new EmbedBuilder()
+        .setColor('#FF0050')
+        .setAuthor({ name: '📱 ' + t.title, iconURL: guild.iconURL() || client.user.displayAvatarURL() })
+        .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() })
+        .setTimestamp();
 
-    if (tracks.length === 0) { embed.setDescription(t.empty); return embed; }
+    if (tracks.length === 0) { embed.setDescription('> ' + t.empty); return embed; }
 
-    let desc = t.desc + '\n\n';
+    let desc = '';
     tracks.forEach((track, i) => {
-        const liveStatus = track.is_live === 1 ? t.live : t.notLive;
-        const forceTag = track.force_mode === 1 ? ' ⚠️FORCED' : '';
-        const lastVideo = track.last_video_id ? `🎬 \`${track.last_video_id.slice(-8)}\`` : '📭 No video';
-        desc += `**${i + 1}.** @${track.tiktok_username}${forceTag} ${liveStatus}\n   ↳ <#${track.target_channel_id}> | ${lastVideo}\n\n`;
+        const liveStatus = track.is_live === 1 ? (EMOJIS.online + ' Live') : (EMOJIS.offline + ' Offline');
+        const forceTag = track.force_mode === 1 ? ' ⚠️' : '';
+        const lastVideo = track.last_video_id ? '🎬 `...' + track.last_video_id.slice(-6) + '`' : '📭 no video yet';
+        desc += (i + 1) + '. **@' + track.tiktok_username + '**' + forceTag + '  ' + liveStatus + '\n';
+        desc += '   ↳ <#' + track.target_channel_id + '>  •  ' + lastVideo + '\n\n';
     });
     embed.setDescription(desc.substring(0, 4000));
     return embed;
@@ -748,7 +718,7 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(sub => sub.setName('set').setDescription('Add/update TikTok tracking')
             .addStringOption(o => o.setName('username').setDescription('TikTok username (without @)').setRequired(true))
-            .addChannelOption(o => o.setName('channel').setDescription('Channel for notifications').setRequired(true))
+            .addChannelOption(o => o.setName('channel').setDescription('Channel for notifications').setRequired(true).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
             .addBooleanOption(o => o.setName('force').setDescription('Skip validation if TikTok blocks verification').setRequired(false)))
         .addSubcommand(sub => sub.setName('remove').setDescription('Remove TikTok tracking')
             .addStringOption(o => o.setName('username').setDescription('Username to remove').setRequired(true)))
@@ -878,7 +848,10 @@ if (action === 'test' || action === 'simulate') {
             }
 
             const channelId = channelMention.replace(/[<#>]/g, '').trim();
-            const channel = message.guild.channels.cache.get(channelId);
+            let channel = message.guild.channels.cache.get(channelId);
+            if (!channel) {
+                try { channel = await message.guild.channels.fetch(channelId); } catch {}
+            }
             if (!channel) return message.reply(lang === 'fr' ? '❌ Salon introuvable.' : '❌ Channel not found.');
 
             const statusMsg = await message.reply(lang === 'fr' ? `🔍 Vérification de **${username}**...` : `🔍 Verifying **${username}**...`);
@@ -992,10 +965,12 @@ if (action === 'test' || action === 'simulate') {
 }
 
         if (subcommand === 'set') {
-            const username = interaction.options.getString('username').replace(/^@/, '').trim();
-            const channel = interaction.options.getChannel('channel');
-            const forceMode = interaction.options.getBoolean('force') || false;
             await interaction.deferReply();
+            const username = interaction.options.getString('username').replace(/^@/, '').trim();
+            const forceMode = interaction.options.getBoolean('force') || false;
+            const channelOption = interaction.options.getChannel('channel');
+            if (!channelOption) return interaction.editReply('❌ Channel not found.');
+            const channelId = channelOption.id;
 
             const testData = await fetchTikTokUser(username);
             if (!testData && !forceMode) {
@@ -1013,17 +988,22 @@ if (action === 'test' || action === 'simulate') {
                     target_channel_id = excluded.target_channel_id,
                     last_video_id = COALESCE(tiktok_notifications.last_video_id, excluded.last_video_id),
                     force_mode = excluded.force_mode
-            `).run(guildId, username.toLowerCase(), channel.id, lastVideoId, testData?.isLive ? 1 : 0, forceMode ? 1 : 0);
+            `).run(guildId, username.toLowerCase(), channelId, lastVideoId, testData?.isLive ? 1 : 0, forceMode ? 1 : 0);
 
             const embed = new EmbedBuilder().setColor(forceMode ? '#f39c12' : '#2ecc71')
                 .setAuthor({ name: forceMode ? '⚠️ TIKTOK TRACKING (FORCED)' : '✅ TIKTOK TRACKING', iconURL: testData?.avatar || client.user.displayAvatarURL() })
                 .setTitle(testData ? `${testData.verified ? '✅ ' : ''}${testData.nickname}` : `@${username}`)
                 .setDescription(forceMode
-                    ? `**${username}** tracked *(bypassed)*.\n📢 ${channel}\n🔴/🎬 Polling every 5min`
-                    : `**${username}** tracked.\n📢 ${channel}\n🔴 Live + 🎬 Video alerts`
+                    ? `**${username}** tracked *(bypassed)*.\n📢 <#${channelId}>\n🔴/🎬 Polling every 5min`
+                    : `**${username}** tracked.\n📢 <#${channelId}>\n🔴 Live + 🎬 Video alerts`
                 )
                 .setThumbnail(testData?.avatar || null).setTimestamp();
-            return interaction.editReply({ embeds: [embed] });
+            try {
+                return await interaction.editReply({ embeds: [embed] });
+            } catch (err) {
+                console.error('[TIKTOK SET] editReply error:', err.message, '| channel.id:', channel?.id, '| channel.type:', channel?.type);
+                return await interaction.editReply({ content: `✅ **${username}** tracked in <#${channel.id}>` });
+            }
         }
 
         if (subcommand === 'remove') {
