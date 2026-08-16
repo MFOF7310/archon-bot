@@ -730,6 +730,7 @@ module.exports = {
 
     // ─── PREFIX COMMAND HANDLER ───
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        const prefix = serverSettings?.prefix || '.';
         lang = client.detectLanguage ? client.detectLanguage('tiktok', message.guild?.id) : 'en';
         const guildId = message.guild?.id;
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -908,12 +909,33 @@ if (action === 'test' || action === 'simulate') {
         }
 
         // ─── HELP ───
+        const tt = EMOJIS.tiktok_logo || '📱';
+        const p = prefix;
         const helpEmbed = new EmbedBuilder().setColor('#FF0050')
-            .setAuthor({ name: '📱 TIKTOK NOTIFICATION ENGINE', iconURL: client.user.displayAvatarURL() })
-            .setDescription((lang === 'fr'
-                ? '**Propriétaire:**\n`.tiktok set <user> <#ch> [--force]` — Suivre\n`.tiktok remove <user>` — Retirer\n`.tiktok check <user>` — Debug\n`.tiktok test <user>` — Test notification\n\n**Public:**\n`.tiktok list` — Voir les suivis\n\n⚠️ *TikTok bloque les IPs datacenter. `--force` si vérification échoue.*'
-                : '**Owner:**\n`.tiktok set <user> <#ch> [--force]` — Track\n`.tiktok remove <user>` — Remove\n`.tiktok check <user>` — Debug\n`.tiktok test <user>` — Test notification\n\n**Public:**\n`.tiktok list` — View tracked\n\n⚠️ *TikTok blocks datacenter IPs. Use `--force` if verification fails.*'))
-            .setFooter({ text: 'ARCHON CG-223', iconURL: client.user.displayAvatarURL() }).setTimestamp();
+            .setAuthor({ name: '📱 TikTok Notifications', iconURL: client.user.displayAvatarURL() })
+            .setDescription(lang === 'fr'
+                ? (tt + ' **Commandes serveur** *(propriétaire uniquement)*\n' +
+                  '`' + p + 'tiktok set <user> <#salon>` — Suivre un compte\n' +
+                  '`' + p + 'tiktok remove <user>` — Arrêter le suivi\n' +
+                  '`' + p + 'tiktok check <user>` — Vérifier un compte\n' +
+                  '`' + p + 'tiktok test <user>` — Tester la notification\n\n' +
+                  '👥 **Commandes publiques**\n' +
+                  '`' + p + 'tiktok list` — Voir les comptes suivis\n\n' +
+                  '💡 *Pour le salon, mentionnez-le avec* `#` *ou collez son ID.*\n' +
+                  '*(Clic droit sur le salon → Copier l\'ID)*\n\n' +
+                  '⚠️ *TikTok bloque les IPs datacenter. Ajoutez* `--force` *si la vérification échoue.*')
+                : (tt + ' **Server Commands** *(owner only)*\n' +
+                  '`' + p + 'tiktok set <user> <#channel>` — Track a TikTok account\n' +
+                  '`' + p + 'tiktok remove <user>` — Stop tracking\n' +
+                  '`' + p + 'tiktok check <user>` — Debug an account\n' +
+                  '`' + p + 'tiktok test <user>` — Send a test notification\n\n' +
+                  '👥 **Public Commands**\n' +
+                  '`' + p + 'tiktok list` — View tracked accounts\n\n' +
+                  '💡 *For the channel, mention it with* `#` *or paste its ID.*\n' +
+                  '*(Right-click the channel → Copy Channel ID)*\n\n' +
+                  '⚠️ *TikTok blocks datacenter IPs. Add* `--force` *if verification fails.*'))
+            .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() })
+            .setTimestamp();
         return message.reply({ embeds: [helpEmbed] });
     },
 
