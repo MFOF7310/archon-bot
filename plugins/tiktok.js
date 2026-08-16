@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { ns } = require('../lib/lang');
 const EMOJIS = require('../config/emojis');
 const axios = require('axios');
 
@@ -676,24 +677,20 @@ async function processUserForGuild(client, db, track, data) {
 // ================= COMMANDS =================
 function buildListEmbed(tracks, guild, client, lang = 'en') {
     const tt = EMOJIS.tiktok_logo || '📱';
-    const t = {
-        fr: { title: 'Comptes TikTok suivis', empty: 'Aucun compte TikTok suivi pour le moment.', live: '🔴 En direct', notLive: '⚫ Hors ligne' },
-        en: { title: 'TikTok Tracked Accounts', empty: 'No TikTok accounts are being tracked yet.', live: '🔴 Live', notLive: '⚫ Offline' }
-    }[lang] || { title: 'TikTok Tracked Accounts', empty: 'No TikTok accounts are being tracked yet.', live: '🔴 Live', notLive: '⚫ Offline' };
 
     const embed = new EmbedBuilder()
         .setColor('#FF0050')
-        .setAuthor({ name: '📱 ' + t.title, iconURL: guild.iconURL() || client.user.displayAvatarURL() })
+        .setAuthor({ name: '📱 ' + ns('tiktok.trackedAccounts', lang), iconURL: guild.iconURL() || client.user.displayAvatarURL() })
         .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
-    if (tracks.length === 0) { embed.setDescription('> ' + t.empty); return embed; }
+    if (tracks.length === 0) { embed.setDescription('> ' + ns('tiktok.noAccounts', lang)); return embed; }
 
     let desc = '';
     tracks.forEach((track, i) => {
-        const liveStatus = track.is_live === 1 ? (EMOJIS.online + ' Live') : (EMOJIS.offline + ' Offline');
+        const liveStatus = track.is_live === 1 ? (EMOJIS.online + ' ' + ns('tiktok.liveStatus', lang).replace('🔴 ', '')) : (EMOJIS.offline + ' ' + ns('tiktok.offlineStatus', lang).replace('⚫ ', ''));
         const forceTag = track.force_mode === 1 ? ' ⚠️' : '';
-        const lastVideo = track.last_video_id ? '🎬 `...' + track.last_video_id.slice(-6) + '`' : '📭 no video yet';
+        const lastVideo = track.last_video_id ? '🎬 `...' + track.last_video_id.slice(-6) + '`' : ns('tiktok.noVideoYet', lang);
         desc += (i + 1) + '. **@' + track.tiktok_username + '**' + forceTag + '  ' + liveStatus + '\n';
         desc += '   ↳ <#' + track.target_channel_id + '>  •  ' + lastVideo + '\n\n';
     });
@@ -843,9 +840,7 @@ if (action === 'test' || action === 'simulate') {
             const forceMode = args.includes('--force') || args.includes('-f');
 
             if (!username || !channelMention) {
-                return message.reply(lang === 'fr'
-                    ? '❌ **Usage:** `.tiktok set <username> <#salon>`\n*Ex: `.tiktok set charlidamelio #social-media`*'
-                    : '❌ **Usage:** `.tiktok set <username> <#channel>`\n*Ex: `.tiktok set charlidamelio #social-media`*');
+                return message.reply('❌ **Usage:** `' + prefix + 'tiktok set <username> <#channel>`\n*Ex: `' + prefix + 'tiktok set charlidamelio #social-media`*');
             }
 
             const channelRaw = channelMention.replace(/[<#>]/g, '').trim();
@@ -860,15 +855,13 @@ if (action === 'test' || action === 'simulate') {
                 );
             }
             const channelId = channel?.id || channelRaw;
-            if (!channel) return message.reply(lang === 'fr' ? '❌ Salon introuvable.' : '❌ Channel not found.');
+            if (!channel) return message.reply(ns('tiktok.channelNotFound', lang));
 
-            const statusMsg = await message.reply(lang === 'fr' ? `🔍 Vérification de **${username}**...` : `🔍 Verifying **${username}**...`);
+            const statusMsg = await message.reply(ns('tiktok.verifying', lang).replace('{username}', username));
 
             const testData = await fetchTikTokUser(username);
             if (!testData && !forceMode) {
-                return statusMsg.edit(lang === 'fr'
-                    ? `❌ **${username}** introuvable.\n\nTikTok bloque le scraping serveur. Réessayez avec :\n\`.tiktok set ${username} ${channelMention} --force\``
-                    : `❌ **${username}** could not be verified.\n\nTikTok blocks server requests.\nTo track anyway:\n\`.tiktok set ${username} ${channelMention} --force\``);
+                return statusMsg.edit(ns('tiktok.notFound', lang).replace('{username}', username).replace('{prefix}', prefix).replace('{channel}', channelMention));
             }
 
             const lastVideoId = testData?.latestVideo?.id ? String(testData.latestVideo.id) : null;
@@ -882,11 +875,11 @@ if (action === 'test' || action === 'simulate') {
             `).run(guildId, username.toLowerCase(), channelId, lastVideoId, testData?.isLive ? 1 : 0, forceMode ? 1 : 0);
 
             const embed = new EmbedBuilder().setColor(forceMode ? '#f39c12' : '#2ecc71')
-                .setAuthor({ name: forceMode ? '⚠️ TIKTOK TRACKING ACTIVE (FORCED)' : '✅ TIKTOK TRACKING ACTIVE', iconURL: testData?.avatar || client.user.displayAvatarURL() })
+                .setAuthor({ name: forceMode ? ns('tiktok.forcedTracking', lang) : ns('tiktok.normalTracking', lang), iconURL: testData?.avatar || client.user.displayAvatarURL() })
                 .setTitle(testData ? `${testData.verified ? '✅ ' : ''}${testData.nickname}` : `@${username}`)
                 .setDescription(forceMode
-                    ? `**${username}** tracked *(validation bypassed)*.\n\n📢 <#${channelId}>\n🔴 Live alerts every 5min\n⚠️ Uses layered fallback detection.`
-                    : `**${username}** tracked.\n\n📢 <#${channelId}>\n🔴 Live Alerts\n👥 \`${Number(testData.stats.followers).toLocaleString()}\``
+                    ? ns('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
+                    : ns('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId) + '\n' + ns('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString())
                 )
                 .setThumbnail(testData?.avatar || null)
                 .setFooter({ text: `${guildName} • ARCHON CG-223 • TikTok Engine`, iconURL: guildIcon }).setTimestamp();
@@ -902,9 +895,10 @@ if (action === 'test' || action === 'simulate') {
             const result = db.prepare('DELETE FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').run(guildId, username);
             if (result.changes === 0) return message.reply(`❌ **${username}** not tracked.`);
 
-            const embed = new EmbedBuilder().setColor('#e74c3c').setAuthor({ name: '🗑️ TRACKING REMOVED', iconURL: guildIcon })
-                .setDescription(`**${username}** removed.`)
-                .setFooter({ text: 'ARCHON CG-223', iconURL: client.user.displayAvatarURL() }).setTimestamp();
+            const embed = new EmbedBuilder().setColor('#e74c3c')
+                .setAuthor({ name: EMOJIS.tiktok_logo + ' Tracking Removed', iconURL: guildIcon })
+                .setDescription('**@' + username + '** — ' + (lang === 'bm' ? 'A bɔra.' : lang === 'fr' ? 'Suivi supprimé.' : lang === 'ar' ? 'تمت الإزالة.' : lang === 'zh' ? '已取消追踪。' : 'Removed.'))
+                .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
             return message.reply({ embeds: [embed] });
         }
 
@@ -913,27 +907,17 @@ if (action === 'test' || action === 'simulate') {
         const p = prefix;
         const helpEmbed = new EmbedBuilder().setColor('#FF0050')
             .setAuthor({ name: '📱 TikTok Notifications', iconURL: client.user.displayAvatarURL() })
-            .setDescription(lang === 'fr'
-                ? (tt + ' **Commandes serveur** *(propriétaire uniquement)*\n' +
-                  '`' + p + 'tiktok set <user> <#salon>` — Suivre un compte\n' +
-                  '`' + p + 'tiktok remove <user>` — Arrêter le suivi\n' +
-                  '`' + p + 'tiktok check <user>` — Vérifier un compte\n' +
-                  '`' + p + 'tiktok test <user>` — Tester la notification\n\n' +
-                  '👥 **Commandes publiques**\n' +
-                  '`' + p + 'tiktok list` — Voir les comptes suivis\n\n' +
-                  '💡 *Pour le salon, mentionnez-le avec* `#` *ou collez son ID.*\n' +
-                  '*(Clic droit sur le salon → Copier l\'ID)*\n\n' +
-                  '⚠️ *TikTok bloque les IPs datacenter. Ajoutez* `--force` *si la vérification échoue.*')
-                : (tt + ' **Server Commands** *(owner only)*\n' +
-                  '`' + p + 'tiktok set <user> <#channel>` — Track a TikTok account\n' +
-                  '`' + p + 'tiktok remove <user>` — Stop tracking\n' +
-                  '`' + p + 'tiktok check <user>` — Debug an account\n' +
-                  '`' + p + 'tiktok test <user>` — Send a test notification\n\n' +
-                  '👥 **Public Commands**\n' +
-                  '`' + p + 'tiktok list` — View tracked accounts\n\n' +
-                  '💡 *For the channel, mention it with* `#` *or paste its ID.*\n' +
-                  '*(Right-click the channel → Copy Channel ID)*\n\n' +
-                  '⚠️ *TikTok blocks datacenter IPs. Add* `--force` *if verification fails.*'))
+            .setDescription(
+                ns('tiktok.ownerCmds', lang).replace('{tt}', tt) + '\n' +
+                '`' + p + 'tiktok set <user> <#channel>` — ' + ns('tiktok.trackCmd', lang) + '\n' +
+                '`' + p + 'tiktok remove <user>` — ' + ns('tiktok.stopTracking', lang) + '\n' +
+                '`' + p + 'tiktok check <user>` — Debug\n' +
+                '`' + p + 'tiktok test <user>` — Test notification\n\n' +
+                ns('tiktok.publicCmds', lang) + '\n' +
+                '`' + p + 'tiktok list` — ' + ns('tiktok.viewTracked', lang) + '\n\n' +
+                ns('tiktok.channelTip', lang) + '\n\n' +
+                ns('tiktok.datacenterWarning', lang)
+            )
             .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() })
             .setTimestamp();
         return message.reply({ embeds: [helpEmbed] });
@@ -944,7 +928,7 @@ if (action === 'test' || action === 'simulate') {
         const subcommand = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
         const db = client.db;
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage('tiktok', interaction.guild?.id) : 'en';
         initDatabase(db);
         const isOwner = interaction.user.id === interaction.guild.ownerId;
 
@@ -1003,10 +987,7 @@ if (action === 'test' || action === 'simulate') {
 
             const testData = await fetchTikTokUser(username);
             if (!testData && !forceMode) {
-                return interaction.editReply(lang === 'fr'
-                    ? `❌ **${username}** introuvable. Réessayez avec **Force**.`
-                    : `❌ **${username}** not found. Retry with **Force** enabled.`
-                );
+                return interaction.editReply(ns('tiktok.notFoundForce', lang).replace('{username}', username));
             }
 
             const lastVideoId = testData?.latestVideo?.id ? String(testData.latestVideo.id) : null;
@@ -1020,11 +1001,11 @@ if (action === 'test' || action === 'simulate') {
             `).run(guildId, username.toLowerCase(), channelId, lastVideoId, testData?.isLive ? 1 : 0, forceMode ? 1 : 0);
 
             const embed = new EmbedBuilder().setColor(forceMode ? '#f39c12' : '#2ecc71')
-                .setAuthor({ name: forceMode ? '⚠️ TIKTOK TRACKING (FORCED)' : '✅ TIKTOK TRACKING', iconURL: testData?.avatar || client.user.displayAvatarURL() })
+                .setAuthor({ name: forceMode ? ns('tiktok.forcedTracking', lang) : ns('tiktok.normalTracking', lang), iconURL: testData?.avatar || client.user.displayAvatarURL() })
                 .setTitle(testData ? `${testData.verified ? '✅ ' : ''}${testData.nickname}` : `@${username}`)
                 .setDescription(forceMode
-                    ? `**${username}** tracked *(bypassed)*.\n📢 <#${channelId}>\n🔴 Live alerts every 5min`
-                    : `**${username}** tracked.\n📢 <#${channelId}>\n🔴 Live alerts`
+                    ? ns('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
+                    : ns('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId) + (testData?.stats?.followers ? '\n' + ns('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString()) : '')
                 )
                 .setThumbnail(testData?.avatar || null).setTimestamp();
             try {
