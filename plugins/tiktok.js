@@ -847,11 +847,18 @@ if (action === 'test' || action === 'simulate') {
                     : '❌ **Usage:** `.tiktok set <username> <#channel>`\n*Ex: `.tiktok set charlidamelio #social-media`*');
             }
 
-            const channelId = channelMention.replace(/[<#>]/g, '').trim();
-            let channel = message.guild.channels.cache.get(channelId);
-            if (!channel) {
-                try { channel = await message.guild.channels.fetch(channelId); } catch {}
+            const channelRaw = channelMention.replace(/[<#>]/g, '').trim();
+            // Try as ID first, then fall back to name match
+            let channel = message.guild.channels.cache.get(channelRaw);
+            if (!channel && /^\d+$/.test(channelRaw)) {
+                try { channel = await message.guild.channels.fetch(channelRaw).catch(() => null); } catch {}
             }
+            if (!channel) {
+                channel = message.guild.channels.cache.find(c =>
+                    c.name.toLowerCase() === channelRaw.toLowerCase()
+                );
+            }
+            const channelId = channel?.id || channelRaw;
             if (!channel) return message.reply(lang === 'fr' ? '❌ Salon introuvable.' : '❌ Channel not found.');
 
             const statusMsg = await message.reply(lang === 'fr' ? `🔍 Vérification de **${username}**...` : `🔍 Verifying **${username}**...`);
