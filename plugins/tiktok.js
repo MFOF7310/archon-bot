@@ -885,8 +885,8 @@ if (action === 'test' || action === 'simulate') {
                 .setAuthor({ name: forceMode ? '⚠️ TIKTOK TRACKING ACTIVE (FORCED)' : '✅ TIKTOK TRACKING ACTIVE', iconURL: testData?.avatar || client.user.displayAvatarURL() })
                 .setTitle(testData ? `${testData.verified ? '✅ ' : ''}${testData.nickname}` : `@${username}`)
                 .setDescription(forceMode
-                    ? `**${username}** tracked *(validation bypassed)*.\n\n📢 <#${channelId}>\n🔴 Polling every 5min\n🎬 Polling every 5min\n⚠️ Uses layered fallback detection.`
-                    : `**${username}** tracked.\n\n📢 <#${channelId}>\n🔴 Live Alerts\n🎬 Video Alerts\n👥 \`${Number(testData.stats.followers).toLocaleString()}\``
+                    ? `**${username}** tracked *(validation bypassed)*.\n\n📢 <#${channelId}>\n🔴 Live alerts every 5min\n⚠️ Uses layered fallback detection.`
+                    : `**${username}** tracked.\n\n📢 <#${channelId}>\n🔴 Live Alerts\n👥 \`${Number(testData.stats.followers).toLocaleString()}\``
                 )
                 .setThumbnail(testData?.avatar || null)
                 .setFooter({ text: `${guildName} • ARCHON CG-223 • TikTok Engine`, iconURL: guildIcon }).setTimestamp();
@@ -1023,8 +1023,8 @@ if (action === 'test' || action === 'simulate') {
                 .setAuthor({ name: forceMode ? '⚠️ TIKTOK TRACKING (FORCED)' : '✅ TIKTOK TRACKING', iconURL: testData?.avatar || client.user.displayAvatarURL() })
                 .setTitle(testData ? `${testData.verified ? '✅ ' : ''}${testData.nickname}` : `@${username}`)
                 .setDescription(forceMode
-                    ? `**${username}** tracked *(bypassed)*.\n📢 <#${channelId}>\n🔴/🎬 Polling every 5min`
-                    : `**${username}** tracked.\n📢 <#${channelId}>\n🔴 Live + 🎬 Video alerts`
+                    ? `**${username}** tracked *(bypassed)*.\n📢 <#${channelId}>\n🔴 Live alerts every 5min`
+                    : `**${username}** tracked.\n📢 <#${channelId}>\n🔴 Live alerts`
                 )
                 .setThumbnail(testData?.avatar || null).setTimestamp();
             try {
