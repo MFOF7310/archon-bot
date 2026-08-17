@@ -439,7 +439,7 @@ async execute(interaction, client) {
                     inline: true
                 },
                 {
-                    name: `${EMOJIS.goodbye} ${t.goodbyeChannel.split(' ')[0]}`,
+                    name: `${EMOJIS.goodbye} Goodbye`,
                     value: [
                         `**Channel:** ${channelMention(settings.goodbyeChannel, 'GOODBYE_CHANNEL_ID')}`,
                         `**Message:** ${settings.goodbyeMessage ? '✅ Custom' : '📋 Default'}`,
