@@ -52,7 +52,7 @@ async function handleWelcome(member, client, db) {
     if (!ch) return;
 
     const count = member.guild.memberCount;
-    const lang  = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
+    const lang = (ssRaw.language && ssRaw.language !== 'auto') ? ssRaw.language : (client.detectLanguage ? client.detectLanguage('welcome', member.guild.id) : 'en');
 
     // Proxy ensures avatar URL works in all contexts
     const safeMember = createMemberProxy(member);
