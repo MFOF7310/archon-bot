@@ -10,6 +10,7 @@
  */
 
 module.exports = {
+    globe:          '<:globe:1538856006329827348>',
     tiktok_logo:    '<a:tiktok_logo:1538163540006010941>',
     livestream:     '<:livestream:1538164890324172851>',
     // ── Platform emojis ──
