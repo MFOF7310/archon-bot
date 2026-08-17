@@ -47,15 +47,15 @@ module.exports = {
 
         const code = args[0]?.toLowerCase();
         if (!code || !LANGUAGES[code]) {
-            const list = Object.entries(LANGUAGES).map(([k,v]) => `\`${k}\` ${v.flag} ${v.native}`).join('\n');
+            const list = Object.entries(LANGUAGES).map(([k,v]) => `\`${k}\` ${v.flag} ${v.native}`).join('\n\n');
             const currentLang = client.getServerSettings?.(message.guild.id)?.language || 'auto';
             const current = LANGUAGES[currentLang] || LANGUAGES['auto'];
             return message.reply({
                 embeds: [new EmbedBuilder().setColor('#00f0ff')
                     .setTitle('🌐 Server Language')
                     .setDescription(
-                        `${EMOJIS.globe} **Current:** ${current.flag} ${current.native} (\`${currentLang}\`)\n\n` +
-                        `**Available:**\n${list}\n\n` +
+                        `**Current:** ${EMOJIS.globe} ${current.native} (\`${currentLang}\`)\n\n` +
+                        `**Available:**\n\n${list}`
                         `Usage: \`.setlang fr\``
                     )]
             });
@@ -75,13 +75,13 @@ module.exports = {
         if (subcommand === 'show') {
             const currentLang = client.getServerSettings?.(interaction.guild.id)?.language || 'auto';
             const current = LANGUAGES[currentLang] || LANGUAGES['auto'];
-            const list = Object.entries(LANGUAGES).map(([k,v]) => `\`${k}\` ${v.flag} ${v.native}`).join('\n');
+            const list = Object.entries(LANGUAGES).map(([k,v]) => `\`${k}\` ${v.flag} ${v.native}`).join('\n\n');
             return interaction.reply({
                 embeds: [new EmbedBuilder().setColor('#00f0ff')
                     .setTitle('🌐 Server Language')
                     .setDescription(
-                        `**Current:** ${current.flag} ${current.native} (\`${currentLang}\`)\n\n` +
-                        `**Available:**\n${list}`
+                        `**Current:** ${EMOJIS.globe} ${current.native} (\`${currentLang}\`)\n\n` +
+                        `**Available:**\n\n${list}`
                     )],
                 flags: 64
             });
