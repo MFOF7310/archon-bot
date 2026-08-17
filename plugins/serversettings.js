@@ -211,32 +211,32 @@ async execute(interaction, client) {
 
     // ================= BUILD SETTINGS EMBED =================
     buildSettingsEmbed(settings, guild, client, lang, category) {
-        const t = {
+        const translations = {
             fr: {
-                title: '🦅 CONFIGURATION DU SERVEUR',
-                general: '🏠 GÉNÉRAL',
+                title: 'Configuration du serveur',
+                general: 'Général',
                 prefix: 'Préfixe',
-                welcome: '👋 BIENVENUE',
+                welcome: 'Bienvenue',
                 welcomeChannel: 'Salon de Bienvenue',
                 welcomeMessage: 'Message de Bienvenue',
                 goodbyeChannel: 'Salon d\'Au Revoir',
                 goodbyeMessage: 'Message d\'Au Revoir',
-                leveling: '📈 NIVEAUX',
+                leveling: 'Niveaux',
                 xpMultiplier: 'Multiplicateur XP',
                 levelChannel: 'Salon des Niveaux',
-                economy: '💰 ÉCONOMIE',
+                economy: 'Économie',
                 marketEnabled: 'Marché Activé',
-                features: '🤖 FONCTIONNALITÉS',
+                features: 'Fonctionnalités',
                 afkEnabled: 'Système AFK',
                 aiEnabled: 'Lydia AI',
-                moderation: '🛡️ MODÉRATION',
+                moderation: 'Modération',
                 logChannel: 'Salon de Logs',
                 muteRole: 'Rôle Muet',
                 modLogChannel: 'Salon Logs Modération',
-                roles: '👤 RÔLES',
+                roles: 'Rôles',
                 memberRole: 'Rôle Membre',
                 autoRole: 'Rôle Automatique',
-                channels: '📡 SALONS',
+                channels: 'Salons',
                 rulesChannel: 'Salon Règles',
                 generalChannel: 'Salon Général',
                 dailyChannel: 'Salon Quotidien',
@@ -244,34 +244,34 @@ async execute(interaction, client) {
                 enabled: '✅ Activé',
                 disabled: '❌ Désactivé',
                 notSet: '⚠️ Non défini',
-                footer: '🦅 ARCHON CG-223 • Configuration par serveur',
+                footer: 'ARCHON CG-223 • Configuration par serveur',
                 tip: '💡 Utilisez `/serversettings set` pour modifier'
             },
             en: {
-                title: '🦅 SERVER CONFIGURATION',
-                general: '🏠 GENERAL',
+                title: 'Server Configuration',
+                general: 'General',
                 prefix: 'Prefix',
-                welcome: '👋 WELCOME',
+                welcome: 'Welcome',
                 welcomeChannel: 'Welcome Channel',
                 welcomeMessage: 'Welcome Message',
                 goodbyeChannel: 'Goodbye Channel',
                 goodbyeMessage: 'Goodbye Message',
-                leveling: '📈 LEVELING',
+                leveling: 'Leveling',
                 xpMultiplier: 'XP Multiplier',
                 levelChannel: 'Level-Up Channel',
-                economy: '💰 ECONOMY',
+                economy: 'Economy',
                 marketEnabled: 'Market Enabled',
-                features: '🤖 FEATURES',
+                features: 'Features',
                 afkEnabled: 'AFK System',
                 aiEnabled: 'Lydia AI',
-                moderation: '🛡️ MODERATION',
+                moderation: 'Moderation',
                 logChannel: 'Log Channel',
                 muteRole: 'Mute Role',
                 modLogChannel: 'Mod Log Channel',
-                roles: '👤 ROLES',
+                roles: 'Roles',
                 memberRole: 'Member Role',
                 autoRole: 'Auto Role',
-                channels: '📡 CHANNELS',
+                channels: 'Channels',
                 rulesChannel: 'Rules Channel',
                 generalChannel: 'General Channel',
                 dailyChannel: 'Daily Channel',
@@ -279,10 +279,116 @@ async execute(interaction, client) {
                 enabled: '✅ Enabled',
                 disabled: '❌ Disabled',
                 notSet: '⚠️ Not set',
-                footer: '🦅 ARCHON CG-223 • Per-Server Configuration',
+                footer: 'ARCHON CG-223 • Per-Server Configuration',
                 tip: '💡 Use `/serversettings set` to modify'
+            },
+            bm: {
+                title: 'Configuration du serveur',
+                general: 'Général',
+                prefix: 'Préfixe',
+                welcome: 'Aw bisimila',
+                welcomeChannel: 'Aw bisimila salon',
+                welcomeMessage: 'Aw bisimila message',
+                goodbyeChannel: 'Aw kanbɛ salon',
+                goodbyeMessage: 'Aw kanbɛ message',
+                leveling: 'Niveau yɛlɛnni',
+                xpMultiplier: 'XP Multiplicateur',
+                levelChannel: 'Niveau salon',
+                economy: 'Maara',
+                marketEnabled: 'Marché dayɛlɛ len',
+                features: 'Fonctionnalités',
+                afkEnabled: 'AFK système',
+                aiEnabled: 'Lydia AI',
+                moderation: 'Modération',
+                logChannel: 'Log salon',
+                muteRole: 'Mute rôle',
+                modLogChannel: 'Mod log salon',
+                roles: 'Rôles',
+                memberRole: 'Membre rôle',
+                autoRole: 'Auto rôle',
+                channels: 'Salons',
+                rulesChannel: 'Règles salon',
+                generalChannel: 'Général salon',
+                dailyChannel: 'Quotidien salon',
+                shopChannel: 'Boutique salon',
+                enabled: '✅ Dayɛlɛ len',
+                disabled: '❌ Datugulen',
+                notSet: '⚠️ A ma réglé',
+                footer: 'ARCHON CG-223 • Configuration du serveur',
+                tip: '💡 I bɛ `/serversettings set` ta, ka yɛlɛma do a la'
+            },
+            ar: {
+                title: 'إعدادات السيرفر',
+                general: 'عام',
+                prefix: 'البادئة',
+                welcome: 'الترحيب',
+                welcomeChannel: 'قناة الترحيب',
+                welcomeMessage: 'رسالة الترحيب',
+                goodbyeChannel: 'قناة الوداع',
+                goodbyeMessage: 'رسالة الوداع',
+                leveling: 'المستويات',
+                xpMultiplier: 'مضاعف XP',
+                levelChannel: 'قناة الترقية',
+                economy: 'الاقتصاد',
+                marketEnabled: 'السوق مفعّل',
+                features: 'الميزات',
+                afkEnabled: 'نظام AFK',
+                aiEnabled: 'Lydia AI',
+                moderation: 'الإدارة',
+                logChannel: 'قناة السجلات',
+                muteRole: 'رتبة الكتم',
+                modLogChannel: 'قناة سجلات الإدارة',
+                roles: 'الرتب',
+                memberRole: 'رتبة العضو',
+                autoRole: 'رتبة تلقائية',
+                channels: 'القنوات',
+                rulesChannel: 'قناة القواعد',
+                generalChannel: 'القناة العامة',
+                dailyChannel: 'القناة اليومية',
+                shopChannel: 'قناة المتجر',
+                enabled: '✅ مفعّل',
+                disabled: '❌ معطّل',
+                notSet: '⚠️ غير محدد',
+                footer: 'ARCHON CG-223 • إعدادات السيرفر',
+                tip: '💡 استخدم `/serversettings set` للتعديل'
+            },
+            zh: {
+                title: '服务器配置',
+                general: '通用',
+                prefix: '前缀',
+                welcome: '欢迎',
+                welcomeChannel: '欢迎频道',
+                welcomeMessage: '欢迎消息',
+                goodbyeChannel: '告别频道',
+                goodbyeMessage: '告别消息',
+                leveling: '等级系统',
+                xpMultiplier: 'XP 倍率',
+                levelChannel: '升级频道',
+                economy: '经济',
+                marketEnabled: '市场已启用',
+                features: '功能',
+                afkEnabled: 'AFK 系统',
+                aiEnabled: 'Lydia AI',
+                moderation: '管理',
+                logChannel: '日志频道',
+                muteRole: '禁言身份组',
+                modLogChannel: '管理日志频道',
+                roles: '身份组',
+                memberRole: '成员身份组',
+                autoRole: '自动身份组',
+                channels: '频道',
+                rulesChannel: '规则频道',
+                generalChannel: '通用频道',
+                dailyChannel: '每日频道',
+                shopChannel: '商店频道',
+                enabled: '✅ 已启用',
+                disabled: '❌ 已禁用',
+                notSet: '⚠️ 未设置',
+                footer: 'ARCHON CG-223 • 服务器配置',
+                tip: '💡 使用 `/serversettings set` 进行修改'
             }
-        }[lang];
+        };
+        const t = translations[lang] || translations['en'];
 
         const embed = new EmbedBuilder()
             .setColor('#2ecc71')
@@ -310,12 +416,12 @@ async execute(interaction, client) {
         const sections = {
             general: () => embed.addFields(
                 {
-                    name: `🏠 General`,
+                    name: `${EMOJIS.general} ${t.general}`,
                     value: `${EMOJIS.shield} **Prefix:** \`${settings.prefix || '.'}\``,
                     inline: true
                 },
                 {
-                    name: `${EMOJIS.xp} Leveling`,
+                    name: `${EMOJIS.xp} ${t.leveling}`,
                     value: [
                         `**XP Multiplier:** \`${settings.xpMultiplier || 1.0}x\``,
                         `**Level-Up:** ${channelMention(settings.levelChannel, 'LEVEL_CHANNEL_ID')}`
@@ -325,7 +431,7 @@ async execute(interaction, client) {
             ),
             welcome: () => embed.addFields(
                 {
-                    name: `👋 Welcome`,
+                    name: `${EMOJIS.welcome} ${t.welcome}`,
                     value: [
                         `**Channel:** ${channelMention(settings.welcomeChannel, 'WELCOME_CHANNEL_ID')}`,
                         `**Message:** ${settings.welcomeMessage ? '✅ Custom' : '📋 Default'}`,
@@ -333,7 +439,7 @@ async execute(interaction, client) {
                     inline: true
                 },
                 {
-                    name: `👋 Goodbye`,
+                    name: `${EMOJIS.goodbye} ${t.goodbyeChannel.split(' ')[0]}`,
                     value: [
                         `**Channel:** ${channelMention(settings.goodbyeChannel, 'GOODBYE_CHANNEL_ID')}`,
                         `**Message:** ${settings.goodbyeMessage ? '✅ Custom' : '📋 Default'}`,
@@ -343,7 +449,7 @@ async execute(interaction, client) {
             ),
             economy: () => embed.addFields(
                 {
-                    name: `${EMOJIS.coins} Economy`,
+                    name: `${EMOJIS.coins} ${t.economy}`,
                     value: [
                         `**Market:** ${boolStr(settings.marketEnabled)}`,
                         `**Market Channel:** ${channelMention(settings.marketChannel, 'MARKET_CHANNEL_ID')}`,
@@ -352,7 +458,7 @@ async execute(interaction, client) {
                     inline: true
                 },
                 {
-                    name: `${EMOJIS.ai_assistant} Features`,
+                    name: `${EMOJIS.ai_assistant} ${t.features}`,
                     value: [
                         `**AFK:** ${boolStr(settings.afkEnabled)}`,
                         `**Lydia AI:** ${boolStr(settings.aiEnabled)}`
@@ -362,7 +468,7 @@ async execute(interaction, client) {
             ),
             moderation: () => embed.addFields(
                 {
-                    name: `${EMOJIS.shield} Moderation`,
+                    name: `${EMOJIS.shield} ${t.moderation}`,
                     value: [
                         `**Log:** ${channelMention(settings.logChannel, 'LOG_CHANNEL_ID')}`,
                         `**Mod Log:** ${channelMention(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID')}`,
@@ -371,7 +477,7 @@ async execute(interaction, client) {
                     inline: true
                 },
                 {
-                    name: `${EMOJIS.member} Core Roles`,
+                    name: `${EMOJIS.member} ${t.roles}`,
                     value: [
                         `**Member:** ${roleMention(settings.memberRole, 'MEMBER_ROLE')}`,
                         `**Auto Role:** ${roleMention(settings.autoRoleId, 'AUTO_ROLE_ID')}`
@@ -380,7 +486,7 @@ async execute(interaction, client) {
                 }
             ),
             channels: () => embed.addFields({
-                name: `${EMOJIS.general} Channels`,
+                name: `${EMOJIS.general} ${t.channels}`,
                 value: [
                     `**Rules:** ${channelMention(settings.rulesChannel, 'RULES_CHANNEL_ID')}`,
                     `**General:** ${channelMention(settings.generalChannel, 'GENERAL_CHANNEL_ID')}`,
@@ -390,7 +496,7 @@ async execute(interaction, client) {
             }),
             specialRoles: () => embed.addFields(
                 {
-                    name: `${EMOJIS.investors} Economy Roles`,
+                    name: `${EMOJIS.investors} ${t.economy} ${t.roles}`,
                     value: [
                         `**Investor:** ${roleMention(settings.investorRoleId, 'INVESTOR_ROLE_ID')}`,
                         `**Gamer:** ${roleMention(settings.gamerRoleId, 'GAMER_ROLE_ID')}`,
@@ -400,7 +506,7 @@ async execute(interaction, client) {
                     inline: true
                 },
                 {
-                    name: `🌱 Daily Roles`,
+                    name: `🌱 Daily ${t.roles}`,
                     value: [
                         `**Initiate (3d):** ${roleMention(settings.dailyInitiateRoleId, 'DAILY_INITIATE_ROLE_ID')}`,
                         `**Warrior (7d):** ${roleMention(settings.dailyWarriorRoleId, 'DAILY_WARRIOR_ROLE_ID')}`,
