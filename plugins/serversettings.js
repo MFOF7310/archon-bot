@@ -97,7 +97,7 @@ async execute(interaction, client) {
     if (!isOwner && !isAdmin) {
         const owner = await interaction.guild.fetchOwner().catch(() => null);
         const ownerName = owner ? `**${owner.user.username}**` : 'the server owner';
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = client.detectLanguage ? client.detectLanguage('serversettings', interaction.guild?.id) : 'en';
         
         const msg = lang === 'fr'
             ? `🔒 **ACCÈS RESTREINT**\n\nCette commande est réservée aux **administrateurs** du serveur.\n\n👑 **Propriétaire :** ${ownerName}`
@@ -145,7 +145,7 @@ async execute(interaction, client) {
 
             const embed = new EmbedBuilder()
                 .setColor('#e74c3c')
-                .setAuthor({ name: '🛡️ ARCHON CG-223 • SECURITY LAYER', iconURL: message.guild.iconURL() || client.user.displayAvatarURL() })
+                .setAuthor({ name: EMOJIS.shield + ' Access Restricted', iconURL: message.guild.iconURL() || client.user.displayAvatarURL() })
                 .setDescription(msg)
                 .setFooter({ text: `${message.guild.name} • Server Configuration Protected` })
                 .setTimestamp();
@@ -245,7 +245,11 @@ async execute(interaction, client) {
                 disabled: '❌ Désactivé',
                 notSet: '⚠️ Non défini',
                 footer: 'ARCHON CG-223 • Configuration par serveur',
-                tip: '💡 Utilisez `/serversettings set` pour modifier'
+                tip: '💡 Utilisez `/serversettings set` pour modifier',
+                resetConfirmError: '❌ Tapez `{word}` pour confirmer la réinitialisation.',
+                resetSuccess: '🔄 **Tous les paramètres réinitialisés** aux valeurs par défaut.\n💡 Tapez `/serversettings view` pour vérifier.',
+                resetConfirmError: '❌ Tapez `{word}` pour confirmer la réinitialisation.',
+                resetSuccess: '🔄 **Tous les paramètres ont été réinitialisés** aux valeurs par défaut.\n💡 Tapez `/serversettings view` pour vérifier.'
             },
             en: {
                 title: 'Server Configuration',
@@ -280,7 +284,11 @@ async execute(interaction, client) {
                 disabled: '❌ Disabled',
                 notSet: '⚠️ Not set',
                 footer: 'ARCHON CG-223 • Per-Server Configuration',
-                tip: '💡 Use `/serversettings set` to modify'
+                tip: '💡 Use `/serversettings set` to modify',
+                resetConfirmError: '❌ Type `{word}` to confirm reset.',
+                resetSuccess: '🔄 **All settings reset** to default values.\n💡 Type `/serversettings view` to verify.',
+                resetConfirmError: '❌ Type `{word}` to confirm reset.',
+                resetSuccess: '🔄 **All settings have been reset** to default values.\n💡 Type `/serversettings view` to verify.'
             },
             bm: {
                 title: 'Configuration du serveur',
@@ -315,7 +323,9 @@ async execute(interaction, client) {
                 disabled: '❌ Datugulen',
                 notSet: '⚠️ A ma réglé',
                 footer: 'ARCHON CG-223 • Configuration du serveur',
-                tip: '💡 I bɛ `/serversettings set` ta, ka yɛlɛma do a la'
+                tip: '💡 I bɛ `/serversettings set` ta, ka yɛlɛma do a la',
+                resetConfirmError: '❌ {word} sɛbɛn, ka reset kɛ.',
+                resetSuccess: '🔄 **Paramètres bɛɛ kɛlen don** default cogoya la.\n💡 `/serversettings view` ta ka filɛ.'
             },
             ar: {
                 title: 'إعدادات السيرفر',
@@ -350,7 +360,9 @@ async execute(interaction, client) {
                 disabled: '❌ معطّل',
                 notSet: '⚠️ غير محدد',
                 footer: 'ARCHON CG-223 • إعدادات السيرفر',
-                tip: '💡 استخدم `/serversettings set` للتعديل'
+                tip: '💡 استخدم `/serversettings set` للتعديل',
+                resetConfirmError: '❌ اكتب `{word}` لتأكيد إعادة الضبط.',
+                resetSuccess: '🔄 **تم إعادة ضبط جميع الإعدادات**.\n💡 اكتب `/serversettings view` للتحقق.'
             },
             zh: {
                 title: '服务器配置',
@@ -385,7 +397,9 @@ async execute(interaction, client) {
                 disabled: '❌ 已禁用',
                 notSet: '⚠️ 未设置',
                 footer: 'ARCHON CG-223 • 服务器配置',
-                tip: '💡 使用 `/serversettings set` 进行修改'
+                tip: '💡 使用 `/serversettings set` 进行修改',
+                resetConfirmError: '❌ 输入 `{word}` 确认重置。',
+                resetSuccess: '🔄 **所有设置已重置**为默认值。\n💡 输入 `/serversettings view` 查看。'
             }
         };
         const t = translations[lang] || translations['en'];
@@ -761,19 +775,12 @@ async execute(interaction, client) {
         const confirmWord = lang === 'fr' ? 'CONFIRMER' : 'CONFIRM';
         
         if (confirm.toUpperCase() !== confirmWord) {
-            const msg = lang === 'fr'
-                ? `❌ Tapez \`${confirmWord}\` pour confirmer la réinitialisation.`
-                : `❌ Type \`${confirmWord}\` to confirm reset.`;
-            return interaction.reply({ content: msg, flags: 1 << 6 });
+            return interaction.reply({ content: (t.resetConfirmError || '❌ Type `{word}` to confirm reset.').replace('{word}', confirmWord), flags: 1 << 6 });
         }
 
         this.performReset(interaction.guild.id, client);
-        
-        const msg = lang === 'fr'
-            ? '🔄 **Tous les paramètres ont été réinitialisés** aux valeurs par défaut.\n💡 Tapez `/serversettings view` pour vérifier.'
-            : '🔄 **All settings have been reset** to default values.\n💡 Type `/serversettings view` to verify.';
-        
-        await interaction.reply({ content: msg });
+
+        await interaction.reply({ content: t.resetSuccess || '🔄 **All settings reset** to default values.' });
     },
 
     // ================= RESET SETTINGS (PREFIX) =================
