@@ -10,6 +10,8 @@
  */
 
 module.exports = {
+    welcome:        '<:welcome:1538864542728069171>',
+    goodbye:        '<:goodbye:1538864566220488715>',
     globe:          '<:globe:1538856006329827348>',
     tiktok_logo:    '<a:tiktok_logo:1538163540006010941>',
     livestream:     '<:livestream:1538164890324172851>',
