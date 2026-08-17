@@ -118,7 +118,7 @@ function buildEmbed(code) {
         .setAuthor({ name: '🌐 Language Updated' })
         .setTitle(`${lang.flag} ${lang.native} (${lang.name})`)
         .setDescription(
-            check + ' Server language set to **' + lang.native + '**\n\n' +
+            globe + ' ' + check + ' Server language set to **' + lang.native + '**\n\n' +
             'All bot responses will now appear in **' + lang.native + '**.'
         )
         .setFooter({ text: 'ARCHON CG-223  •  Language Settings' });
