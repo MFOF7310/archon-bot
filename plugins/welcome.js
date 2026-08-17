@@ -62,6 +62,11 @@ async function handleWelcome(member, client, db) {
     const attachment = new AttachmentBuilder(png, { name: 'welcome-card.png' });
 
     // Welcome text (greeting + member count + account age)
+    const EMOJIS = require('../config/emojis');
+    cfg.lang = lang;
+    cfg.party = EMOJIS.party || '🎉';
+    cfg.wave = EMOJIS.wave || '👋';
+    cfg.memberEmoji = EMOJIS.xp || '📊';
     let content = Style.warmWelcomeText(safeMember, count, cfg);
 
     // Prepend custom server message if set
@@ -71,12 +76,19 @@ async function handleWelcome(member, client, db) {
 
     // 3–5 random pro-tips
     const tips = Style.buildRandomTips(cfg, lang);
-    const tipLabel = lang === 'fr' ? '💡 **Commandes essentielles :**' : '💡 **Essential commands :**';
+    const tipLabels = {
+        en: '💡 **Essential commands :**',
+        fr: '💡 **Commandes essentielles :**',
+        bm: '💡 **Commandes dɔw :**',
+        ar: '💡 **الأوامر الأساسية :**',
+        zh: '💡 **基本命令 :**',
+    };
+    const tipLabel = tipLabels[lang] || tipLabels.en;
     content += `\n> ${tipLabel}\n${tips.map(t => `> • ${t}`).join('\n')}`;
 
     // Embed uses attachment:// reference — NOT a base64 data URL
     const embed = new EmbedBuilder()
-        .setColor(0x00fbff)
+        .setColor(0xFFD700)
         .setImage('attachment://welcome-card.png')
         .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Member #${count}` })
         .setTimestamp();
