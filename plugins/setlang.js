@@ -42,10 +42,16 @@ module.exports = {
         const code = args[0]?.toLowerCase();
         if (!code || !LANGUAGES[code]) {
             const list = Object.entries(LANGUAGES).map(([k,v]) => `\`${k}\` ${v.flag} ${v.native}`).join('\n');
+            const currentLang = client.getServerSettings?.(message.guild.id)?.language || 'auto';
+            const current = LANGUAGES[currentLang] || LANGUAGES['auto'];
             return message.reply({
                 embeds: [new EmbedBuilder().setColor('#00f0ff')
-                    .setTitle('🌐 Available Languages')
-                    .setDescription(list + '\n\nUsage: `.setlang fr`')]
+                    .setTitle('🌐 Server Language')
+                    .setDescription(
+                        `**Current:** ${current.flag} ${current.native} (\`${currentLang}\`)\n\n` +
+                        `**Available:**\n${list}\n\n` +
+                        `Usage: \`.setlang fr\``
+                    )]
             });
         }
         await setLanguage(client, message.guild.id, code, message.guild.name);
