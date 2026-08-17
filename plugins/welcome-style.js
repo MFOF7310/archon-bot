@@ -425,7 +425,6 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 // ================= WARM WELCOME TEXT =================
 function warmWelcomeText(member, count, cfg) {
     const lang = cfg.lang || 'en';
-    const EMOJIS = require('./emojis-placeholder'); // resolved below
     const party = cfg.party || '<a:party:1538963206871973928>';
     const wave = cfg.wave || '<a:wave:1538963063036842134>';
     const memberEmoji = cfg.memberEmoji || '📊';
