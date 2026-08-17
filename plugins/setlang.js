@@ -2,7 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('disc
 const EMOJIS = require('../config/emojis');
 
 const LANGUAGES = {
-    auto: { name: 'Auto-detect', flag: '🌐', native: 'Auto' },
+    auto: { name: 'Auto-detect', flag: EMOJIS.globe || '🌐', native: 'Auto' },
     en: { name: 'English', flag: '🇬🇧', native: 'English' },
     fr: { name: 'French', flag: '🇫🇷', native: 'Français' },
     ar: { name: 'Arabic', flag: '🇸🇦', native: 'العربية' },
