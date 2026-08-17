@@ -52,9 +52,9 @@ module.exports = {
             const current = LANGUAGES[currentLang] || LANGUAGES['auto'];
             return message.reply({
                 embeds: [new EmbedBuilder().setColor('#00f0ff')
-                    .setTitle(EMOJIS.globe + '  Server Language')
+                    .setTitle('🌐 Server Language')
                     .setDescription(
-                        `**Current:** ${current.flag} ${current.native} (\`${currentLang}\`)\n\n` +
+                        `${EMOJIS.globe} **Current:** ${current.flag} ${current.native} (\`${currentLang}\`)\n\n` +
                         `**Available:**\n${list}\n\n` +
                         `Usage: \`.setlang fr\``
                     )]
@@ -115,7 +115,7 @@ function buildEmbed(code) {
     const check = EMOJIS.check || '✅';
     return new EmbedBuilder()
         .setColor('#00f0ff')
-        .setAuthor({ name: globe + '  Language Updated' })
+        .setAuthor({ name: '🌐 Language Updated' })
         .setTitle(`${lang.flag} ${lang.native} (${lang.name})`)
         .setDescription(
             check + ' Server language set to **' + lang.native + '**\n\n' +
