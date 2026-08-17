@@ -81,7 +81,8 @@ function initDatabase(db) {
 
 // ================= OWNER SECURITY CHECK =================
 function isGuildOwner(message) {
-    return message.author.id === message.guild.ownerId;
+    return message.author.id === message.guild.ownerId ||
+        message.member?.permissions.has('Administrator');
 }
 
 function buildOwnerErrorEmbed(client, guild, lang = 'en') {
@@ -930,7 +931,7 @@ if (action === 'test' || action === 'simulate') {
         const db = client.db;
         const lang = client.detectLanguage ? client.detectLanguage('tiktok', interaction.guild?.id) : 'en';
         initDatabase(db);
-        const isOwner = interaction.user.id === interaction.guild.ownerId;
+        const isOwner = interaction.user.id === interaction.guild.ownerId || interaction.member?.permissions.has('Administrator');
 
         if (subcommand === 'list') {
             const tracks = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ?').all(guildId);

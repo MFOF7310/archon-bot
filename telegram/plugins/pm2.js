@@ -86,12 +86,29 @@ if (String(ctx.userId) !== String(tgOwnerId) && !ctx.isOwner()) return ctx.reply
         // ── RESTART ──
         if (sub === 'restart' || sub === 'rs') {
             if (!proc) return ctx.replyHTML(`💡 Usage: <code>/pm2 restart arch|dash|lava|wa</code>`);
-            const msg = await ctx.replyHTML(`🔄 <i>Restarting ${escapeHTML(proc)}...</i>`);
-            const { out, err } = await run(`pm2 restart ${proc} --update-env 2>&1`);
-            const success = out.includes('✓') || out.includes('online') || !err;
+            await ctx.replyHTML(`🔄 <i>Restarting ${escapeHTML(proc)}...</i>`);
+            // Use correct working directory for env loading
+            const dirs = {
+                'Architect-CG223': '/root/cloud-gaming-223-digital-engine',
+                'architect-dashboard': '/opt/dashboard',
+                'levanter': '/root/levanter',
+                'neo-afriquiz': '/root/neo-bot',
+                'openclaw-gateway': '/root'
+            };
+            const cwd = dirs[proc] || '/root';
+            const { out, err } = await run(`cd ${cwd} && pm2 restart ${proc} --update-env 2>&1`);
+            // Wait 3s then verify it's actually online
+            await new Promise(r => setTimeout(r, 3000));
+            const { out: check } = await run(`pm2 jlist`);
+            let online = false;
+            try {
+                const list = JSON.parse(check);
+                const p = list.find(p => p.name === proc);
+                online = p?.pm2_env?.status === 'online';
+            } catch {}
             return ctx.replyHTML(
-                `${success ? '✅' : '❌'} <b>Restart ${escapeHTML(proc)}</b>\n\n` +
-                `<pre>${escapeHTML((out + err).substring(0, 1000))}</pre>`
+                `${online ? '✅' : '❌'} <b>${escapeHTML(proc)}</b> is ${online ? 'online' : 'NOT online — check logs!'}\n\n` +
+                `<pre>${escapeHTML((out + err).substring(0, 800))}</pre>`
             );
         }
 
