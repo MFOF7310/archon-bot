@@ -20,19 +20,25 @@ module.exports = {
 
     data: new SlashCommandBuilder()
         .setName('setlang')
-        .setDescription('🌐 Set the bot language for this server')
-        .addStringOption(o => o
-            .setName('language')
-            .setDescription('Choose a language')
-            .setRequired(true)
-            .addChoices(
-                { name: '🌐 Auto-detect', value: 'auto' },
-                { name: '🇬🇧 English', value: 'en' },
-                { name: '🇫🇷 Français', value: 'fr' },
-                { name: '🇸🇦 العربية', value: 'ar' },
-                { name: '🇲🇱 Bamanankan', value: 'bm' },
-                { name: '🇨🇳 中文', value: 'zh' },
-            ))
+        .setDescription('🌐 Manage the bot language for this server')
+        .addSubcommand(sub => sub
+            .setName('set')
+            .setDescription('Set the bot language for this server')
+            .addStringOption(o => o
+                .setName('language')
+                .setDescription('Choose a language')
+                .setRequired(true)
+                .addChoices(
+                    { name: '🌐 Auto-detect', value: 'auto' },
+                    { name: '🇬🇧 English', value: 'en' },
+                    { name: '🇫🇷 Français', value: 'fr' },
+                    { name: '🇸🇦 العربية', value: 'ar' },
+                    { name: '🇲🇱 Bamanankan', value: 'bm' },
+                    { name: '🇨🇳 中文', value: 'zh' },
+                )))
+        .addSubcommand(sub => sub
+            .setName('show')
+            .setDescription('Show the current server language'))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
     async run(client, message, args) {
@@ -46,7 +52,7 @@ module.exports = {
             const current = LANGUAGES[currentLang] || LANGUAGES['auto'];
             return message.reply({
                 embeds: [new EmbedBuilder().setColor('#00f0ff')
-                    .setTitle('🌐 Server Language')
+                    .setTitle(EMOJIS.globe + '  Server Language')
                     .setDescription(
                         `**Current:** ${current.flag} ${current.native} (\`${currentLang}\`)\n\n` +
                         `**Available:**\n${list}\n\n` +
@@ -62,10 +68,31 @@ module.exports = {
 
     async execute(interaction, client) {
         if (!interaction.member?.permissions.has(PermissionFlagsBits.ManageGuild))
-            return interaction.reply({ content: '⛔ You need **Manage Server** permission to change the server language.', flags: 64 });
-        const code = interaction.options.getString('language');
-        await setLanguage(client, interaction.guild.id, code, interaction.guild.name);
-        return interaction.reply({ embeds: [buildEmbed(code)], flags: 64 });
+            return interaction.reply({ content: '⛔ You need **Manage Server** permission.', flags: 64 });
+
+        const subcommand = interaction.options.getSubcommand();
+
+        if (subcommand === 'show') {
+            const currentLang = client.getServerSettings?.(interaction.guild.id)?.language || 'auto';
+            const current = LANGUAGES[currentLang] || LANGUAGES['auto'];
+            const list = Object.entries(LANGUAGES).map(([k,v]) => `\`${k}\` ${v.flag} ${v.native}`).join('\n');
+            return interaction.reply({
+                embeds: [new EmbedBuilder().setColor('#00f0ff')
+                    .setTitle('🌐 Server Language')
+                    .setDescription(
+                        `**Current:** ${current.flag} ${current.native} (\`${currentLang}\`)\n\n` +
+                        `**Available:**\n${list}`
+                    )],
+                flags: 64
+            });
+        }
+
+        if (subcommand === 'set') {
+            const code = interaction.options.getString('language');
+            if (!code || !LANGUAGES[code]) return interaction.reply({ content: '❌ Invalid language.', flags: 64 });
+            await setLanguage(client, interaction.guild.id, code, interaction.guild.name);
+            return interaction.reply({ embeds: [buildEmbed(code)], flags: 64 });
+        }
     }
 };
 
@@ -83,10 +110,16 @@ async function setLanguage(client, guildId, code, guildName) {
 }
 
 function buildEmbed(code) {
-    const lang = LANGUAGES[code];
+    const lang = LANGUAGES[code] || LANGUAGES['en'];
+    const globe = EMOJIS.globe || '🌐';
+    const check = EMOJIS.check || '✅';
     return new EmbedBuilder()
         .setColor('#00f0ff')
-        .setTitle(`${lang.flag} Language Updated`)
-        .setDescription(`Server language set to **${lang.native}** (${lang.name})\n\nAll bot responses will now appear in **${lang.native}**.`)
-        .setFooter({ text: 'ARCHON CG-223 • Language Settings' });
+        .setAuthor({ name: globe + '  Language Updated' })
+        .setTitle(`${lang.flag} ${lang.native} (${lang.name})`)
+        .setDescription(
+            check + ' Server language set to **' + lang.native + '**\n\n' +
+            'All bot responses will now appear in **' + lang.native + '**.'
+        )
+        .setFooter({ text: 'ARCHON CG-223  •  Language Settings' });
 }

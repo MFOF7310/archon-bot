@@ -37,13 +37,8 @@ for (const file of commandFiles) {
         if (command.data && typeof command.data.toJSON === 'function') {
             commands.push(command.data.toJSON());
             console.log(`\x1b[32m[DEPLOY]\x1b[0m ✅ ${command.data.name || file}`);
-        } else if (command.name && command.description) {
-            const { SlashCommandBuilder } = require('discord.js');
-            const slashCmd = new SlashCommandBuilder()
-                .setName(command.name)
-                .setDescription(command.description);
-            commands.push(slashCmd.toJSON());
-            console.log(`\x1b[33m[DEPLOY]\x1b[0m ⚠️ ${command.name} (legacy fallback)`);
+        } else {
+            console.log(`\x1b[90m[DEPLOY]\x1b[0m ⏭️  ${command.name || file} (prefix-only, skipped)`);
         }
     } catch (err) {
         console.error(`\x1b[31m[ERROR]\x1b[0m ${file}: ${err.message}`);
