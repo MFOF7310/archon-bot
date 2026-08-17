@@ -113,13 +113,18 @@ function buildEmbed(code) {
     const lang = LANGUAGES[code] || LANGUAGES['en'];
     const globe = EMOJIS.globe || '🌐';
     const check = EMOJIS.check || '✅';
+    const confirmMsg = {
+        en: `Server language set to **${lang.native}**\n\nAll bot responses will now appear in **${lang.native}**.`,
+        fr: `Langue du serveur définie sur **${lang.native}**\n\nToutes les réponses apparaîtront en **${lang.native}**.`,
+        bm: `Serveur ka kan sɛbɛnni bɛ **${lang.native}** na\n\nJaabiw bɛɛ bɛna kɛ **${lang.native}** na.`,
+        ar: `تم تعيين لغة السيرفر إلى **${lang.native}**\n\nستظهر جميع الردود باللغة **${lang.native}**.`,
+        zh: `服务器语言已设置为 **${lang.native}**\n\n所有回复将以 **${lang.native}** 显示。`,
+    }[code] || `Server language set to **${lang.native}**\n\nAll bot responses will now appear in **${lang.native}**.`;
+
     return new EmbedBuilder()
         .setColor('#00f0ff')
         .setAuthor({ name: '🌐 Language Updated' })
         .setTitle(`${lang.flag} ${lang.native} (${lang.name})`)
-        .setDescription(
-            globe + ' ' + check + ' Server language set to **' + lang.native + '**\n\n' +
-            'All bot responses will now appear in **' + lang.native + '**.'
-        )
+        .setDescription(globe + ' ' + check + ' ' + confirmMsg)
         .setFooter({ text: 'ARCHON CG-223  •  Language Settings' });
 }
