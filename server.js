@@ -454,4 +454,24 @@ app.post('/api/guilds/:guildId/settings', async (req, res) => {
     }
 });
 
+
+// Internal endpoint — called by Cloudflare after OAuth
+app.post('/api/internal/user-login', (req, res) => {
+    const secret = req.headers['x-internal-secret'];
+    if (secret !== process.env.INTERNAL_SECRET) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { id, username, avatar } = req.body;
+    if (!id || !username) return res.status(400).json({ error: 'Missing fields' });
+    try {
+        const db = getDB();
+        db.prepare(`INSERT INTO discord_users (id, username, avatar, last_login) VALUES (?, ?, ?, strftime('%s', 'now')) ON CONFLICT(id) DO UPDATE SET username=excluded.username, avatar=excluded.avatar, last_login=strftime('%s', 'now')`).run(id, username, avatar || null);
+        console.log('[DASHBOARD] User login recorded:', username);
+        return res.json({ ok: true });
+    } catch (err) {
+        console.error('[DASHBOARD] Failed to record login:', err);
+        return res.status(500).json({ error: 'DB error' });
+    }
+});
+
 module.exports = app;
