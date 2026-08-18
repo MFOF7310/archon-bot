@@ -148,21 +148,6 @@ async function renderWelcomeCard(member, count, cfg) {
     ctx.fillStyle = '#0a1a0a';
     ctx.fillRect(0, 0, CW, CH);
 
-    // Chevron pattern
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,215,0,0.07)';
-    ctx.lineWidth = 1.5;
-    const cv = 24 * SCALE;
-    for (let y = -cv; y < CH + cv; y += cv) {
-        for (let x = -CW; x < CW * 2; x += cv * 2) {
-            ctx.beginPath();
-            ctx.moveTo(x, y + cv);
-            ctx.lineTo(x + cv, y);
-            ctx.lineTo(x + cv * 2, y + cv);
-            ctx.stroke();
-        }
-    }
-    ctx.restore();
 
     // Left cyan accent bar
     const barGrad = ctx.createLinearGradient(0, 0, 0, CH);
@@ -291,38 +276,23 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     ctx.textBaseline = 'middle';
 
     // Background
-    ctx.fillStyle = '#110a0a';
+    ctx.fillStyle = '#0a0a1a';
     ctx.fillRect(0, 0, CW, CH);
 
-    // Chevron pattern
-    ctx.save();
-    ctx.strokeStyle = 'rgba(231,76,60,0.06)';
-    ctx.lineWidth = 1.5;
-    const cv = 24 * SCALE;
-    for (let y = -cv; y < CH + cv; y += cv) {
-        for (let x = -CW; x < CW * 2; x += cv * 2) {
-            ctx.beginPath();
-            ctx.moveTo(x, y + cv);
-            ctx.lineTo(x + cv, y);
-            ctx.lineTo(x + cv * 2, y + cv);
-            ctx.stroke();
-        }
-    }
-    ctx.restore();
 
     // Left red accent bar
     const barGrad = ctx.createLinearGradient(0, 0, 0, CH);
-    barGrad.addColorStop(0, 'rgba(231,76,60,0.0)');
-    barGrad.addColorStop(0.5, 'rgba(231,76,60,0.9)');
-    barGrad.addColorStop(1, 'rgba(231,76,60,0.0)');
+    barGrad.addColorStop(0, 'rgba(180,120,0,0.0)');
+    barGrad.addColorStop(0.5, 'rgba(180,120,0,0.9)');
+    barGrad.addColorStop(1, 'rgba(180,120,0,0.0)');
     ctx.fillStyle = barGrad;
     ctx.fillRect(0, 0, 4 * SCALE, CH);
 
     // Glow border
     ctx.save();
-    ctx.shadowColor = '#e74c3c';
+    ctx.shadowColor = '#B8860B';
     ctx.shadowBlur = 20 * SCALE;
-    ctx.strokeStyle = '#e74c3c';
+    ctx.strokeStyle = '#B8860B';
     ctx.lineWidth = 3;
     roundRect(ctx, 2, 2, CW - 4, CH - 4, 14 * SCALE);
     ctx.stroke();
@@ -338,11 +308,11 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     const ay = CH / 2;
 
     ctx.save();
-    ctx.shadowColor = '#e74c3c';
+    ctx.shadowColor = '#B8860B';
     ctx.shadowBlur = 18 * SCALE;
     ctx.beginPath();
     ctx.arc(ax + ar, ay, ar + 4, 0, Math.PI * 2);
-    ctx.strokeStyle = '#e74c3c';
+    ctx.strokeStyle = '#B8860B';
     ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
@@ -369,10 +339,10 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     ctx.fillText(name, tx, CH * 0.32);
 
     // DEPARTURE LOG label
-    ctx.fillStyle = '#e74c3c';
+    ctx.fillStyle = '#B8860B';
     ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.letterSpacing = `${2 * SCALE}px`;
-    ctx.fillText('DEPARTURE LOG', tx, CH * 0.52);
+    ctx.fillText('AW KANBE [MLI] -- ARCHON CG-223', tx, CH * 0.52);
     ctx.letterSpacing = '0px';
 
     // Duration + roles
@@ -412,7 +382,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
             ctx.restore();
             ctx.beginPath();
             ctx.arc(ix + ir, iy + ir, ir + 2, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(231,76,60,0.5)';
+            ctx.strokeStyle = 'rgba(184,134,11,0.6)';
             ctx.lineWidth = 2;
             ctx.stroke();
         }
