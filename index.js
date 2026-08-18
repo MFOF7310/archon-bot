@@ -348,6 +348,14 @@ const requiredTables = {
         updated_at INTEGER DEFAULT (strftime('%s', 'now'))
     )`,
 
+    discord_users: `CREATE TABLE IF NOT EXISTS discord_users (
+        id TEXT PRIMARY KEY,
+        username TEXT,
+        avatar TEXT,
+        last_login INTEGER DEFAULT (strftime('%s', 'now')),
+        created_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )`,
+
     users: `CREATE TABLE IF NOT EXISTS users (
         id TEXT NOT NULL, 
         guild_id TEXT NOT NULL,
