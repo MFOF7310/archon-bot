@@ -455,15 +455,51 @@ function warmWelcomeText(member, count, cfg) {
 }
 
 // ================= GOODBYE TEXT =================
-function goodbyeText(member, duration, roleCount) {
-    const farewells = [
-        `👋 **${member.user.username}** has left — hope to see them again someday.`,
-        `🚪 **${member.user.username}** stepped out after ${duration || 'a brief visit'}. Safe travels!`,
-        `💫 **${member.user.username}** has moved on. Wishing them well out there.`,
-        `🌙 **${member.user.username}** signed off. The grid remembers them fondly.`,
-        `✈️ **${member.user.username}** flew the nest after ${duration || 'a visit'}. Until next time!`,
-    ];
-    const farewell = farewells[Math.floor(Math.random() * farewells.length)];
+function goodbyeText(member, duration, roleCount, lang = 'en') {
+    const wave = '<a:wave:1538963063036842134>';
+    const dur = duration || 'a brief visit';
+    const u = `**${member.user.username}**`;
+
+    const farewells = {
+        en: [
+            `${wave} ${u} has left — hope to see them again someday.`,
+            `🚪 ${u} stepped out after ${dur}. Safe travels!`,
+            `💫 ${u} has moved on. Wishing them well out there.`,
+            `🌙 ${u} signed off. The grid remembers them fondly.`,
+            `✈️ ${u} flew the nest after ${dur}. Until next time!`,
+        ],
+        fr: [
+            `${wave} ${u} a quitté le serveur — espérons se revoir un jour.`,
+            `🚪 ${u} est parti après ${dur}. Bon voyage !`,
+            `💫 ${u} a tourné la page. Nous lui souhaitons le meilleur.`,
+            `🌙 ${u} s'est déconnecté. Le serveur garde un bon souvenir.`,
+            `✈️ ${u} a pris son envol après ${dur}. À la prochaine !`,
+        ],
+        bm: [
+            `${wave} ${u} ye serveur bla — nda len b'a la an bɛna ɲɔgɔn ye tugun waati dɔ la.`,
+            `🚪 ${u} ka serveur bilali waati kɛrɛnkɛrɛn ka bɛn ni sanga **${dur}** ye. Ka fiɲɛ k'i yɛlɛn sen ye nteri!`,
+            `💫 ${u} y'a ɲɛsin ko wɛrɛ ma. An bɛ dugawu k'a ye yen fɛ.`,
+            `🌙 ${u} jiginna kaban. An bɛ an hakili to a la kosɛbɛ.`,
+            `✈️ ${u} panna ka bɔ serveur kɔnɔ, ni sanga **${dur}** tɛmɛnen kɔ. Kanbɛ fo waati wɛrɛ nteri!`,
+        ],
+        ar: [
+            `${wave} ${u} غادر السيرفر — نأمل أن نراه مجدداً يوماً ما.`,
+            `🚪 ${u} غادر بعد ${dur}. سافر بأمان!`,
+            `💫 ${u} مضى في طريقه. نتمنى له التوفيق.`,
+            `🌙 ${u} أوقف الاتصال. السيرفر يتذكره بخير.`,
+            `✈️ ${u} غادر بعد ${dur}. إلى اللقاء!`,
+        ],
+        zh: [
+            `${wave} ${u} 已离开服务器 — 希望有一天能再相见。`,
+            `🚪 ${u} 在 ${dur} 后离开了。一路顺风！`,
+            `💫 ${u} 已经离开。祝他一切顺利。`,
+            `🌙 ${u} 已下线。服务器会记得他的。`,
+            `✈️ ${u} 在 ${dur} 后飞走了。下次见！`,
+        ],
+    };
+
+    const pool = farewells[lang] || farewells.en;
+    const farewell = pool[Math.floor(Math.random() * pool.length)];
     return `${farewell}\n> ⏱️ Stayed: **${duration || 'N/A'}** · Roles removed: **${roleCount}**`;
 }
 

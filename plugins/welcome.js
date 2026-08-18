@@ -146,7 +146,9 @@ async function handleGoodbye(member, client, db) {
     const png = await Style.renderGoodbyeCard(safeMember, duration, roles.length);
     const attachment = new AttachmentBuilder(png, { name: 'goodbye-card.png' });
 
-    let content = Style.goodbyeText(safeMember, duration, roles.length);
+    const ssRawGoodbye = client.getServerSettings?.(member.guild.id) || {};
+    const goodbyeLang = (ssRawGoodbye.language && ssRawGoodbye.language !== 'auto') ? ssRawGoodbye.language : (client.detectLanguage ? client.detectLanguage('welcome', member.guild.id) : 'en');
+    let content = Style.goodbyeText(safeMember, duration, roles.length, goodbyeLang);
 
     if (cfg.goodbyeMessage) {
         content = `${Style.formatTemplate(cfg.goodbyeMessage, safeMember, member.guild.memberCount)}\n${content}`;
