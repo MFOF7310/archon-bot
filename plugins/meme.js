@@ -10,8 +10,8 @@ const T = {
         errorNsfw: '🛡️ All results were filtered. Try again!',
         errorNetwork: '🌐 Meme sources are temporarily slow. Try again!',
         footer: 'r/{sub} • u/{author} • SFW Only',
-        source: '🔗 View on Reddit',
-        another: '🔄 Another Meme',
+        source: 'View on Reddit',
+        another: 'Another Meme',
         upvotes: '👍 Upvotes',
         comments: '💬 Comments',
         subreddit: '📍 Posted in',
@@ -26,8 +26,8 @@ const T = {
         errorNsfw: '🛡️ Tous les résultats ont été filtrés (NSFW). Réessayez !',
         errorNetwork: '🌐 Reddit est lent. Tentative avec source alternative...',
         footer: 'r/{sub} • u/{author} • SFW Uniquement',
-        source: '🔗 Voir sur Reddit',
-        another: '🔄 Autre Meme',
+        source: 'Voir sur Reddit',
+        another: 'Autre Meme',
         upvotes: '👍 Votes',
         comments: '💬 Commentaires',
         subreddit: '📍 Posté dans',
@@ -185,6 +185,9 @@ function buildMemeEmbed(meme, sub, client, t, user) {
     const timeAgo = formatTimeAgo(meme.created_utc);
     const color = meme.score > 10000 ? '#FFD700' : meme.score > 5000 ? '#FF6B6B' : '#00D4AA';
     
+    const score = meme.score || meme.ups || 0;
+    const stats = `${score.toLocaleString()} upvotes  •  ${(meme.num_comments || 0).toLocaleString()} comments  •  ${timeAgo}`;
+
     return new EmbedBuilder()
         .setColor(color)
         .setAuthor({
@@ -193,19 +196,11 @@ function buildMemeEmbed(meme, sub, client, t, user) {
             url: `https://reddit.com/r/${sub}`
         })
         .setTitle(meme.title.substring(0, 256))
-        .setImage(meme.url)
         .setURL(`https://reddit.com${meme.permalink}`)
-        .addFields(
-            { name: `\u200b`, value: '\u2501'.repeat(20), inline: false },
-            { name: t.upvotes, value: `**${meme.ups?.toLocaleString() || '0'}**`, inline: true },
-            { name: t.comments, value: `**${meme.num_comments?.toLocaleString() || '0'}**`, inline: true },
-            { name: t.subreddit, value: `**r/${sub}**`, inline: true },
-            { name: t.postedAgo, value: `**${timeAgo}**`, inline: true },
-            { name: t.sfwBadge, value: '\u2705 Safe for Work', inline: true },
-            { name: `\u200b`, value: `*by u/${meme.author}*`, inline: true }
-        )
+        .setImage(meme.url)
+        .addFields({ name: '\u200b', value: stats, inline: false })
         .setFooter({
-            text: `${t.footer.replace('{sub}', sub).replace('{author}', meme.author)}`,
+            text: `u/${meme.author}  •  SFW Only`,
             iconURL: user?.displayAvatarURL() || client.user?.displayAvatarURL()
         })
         .setTimestamp();
@@ -260,12 +255,12 @@ function buildButtons(meme, t, userId, isSlash = false) {
             .setCustomId(`meme_${suffix}_${userId}`)
             .setLabel(t.another)
             .setStyle(ButtonStyle.Primary)
-            .setEmoji('🔄'),
+            .setEmoji({ id: '1535783619170406460', name: 'LOOP' }),
         new ButtonBuilder()
             .setURL(`https://reddit.com${meme.permalink}`)
             .setLabel(t.source)
             .setStyle(ButtonStyle.Link)
-            .setEmoji('🔗')
+            .setEmoji({ id: '1539643330978123776', name: 'reddit' })
     );
 }
 
