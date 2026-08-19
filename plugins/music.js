@@ -600,11 +600,12 @@ function startPanelUpdater(q) {
 // ═══════════════════════════════════════════════════════
 // SPOTIFY TOKEN MANAGER
 // ═══════════════════════════════════════════════════════
-let spotifyToken = null;
-let spotifyExpiry = 0;
+global.spotifyToken = global.spotifyToken || null;
+global.spotifyExpiry = global.spotifyExpiry || 0;
+global.spotifyRetryAfter = global.spotifyRetryAfter || 0;
 
 async function getSpotifyToken() {
-    if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
+    if (global.spotifyToken && Date.now() < global.spotifyExpiry) return global.spotifyToken;
     try {
         const id = process.env.SPOTIFY_CLIENT_ID;
         const secret = process.env.SPOTIFY_CLIENT_SECRET;
@@ -615,10 +616,10 @@ async function getSpotifyToken() {
             body: `grant_type=client_credentials&client_id=${id}&client_secret=${secret}`
         });
         const data = await res.json();
-        spotifyToken = data.access_token;
-        spotifyExpiry = Date.now() + (data.expires_in - 60) * 1000;
+        global.spotifyToken = data.access_token;
+        global.spotifyExpiry = Date.now() + (data.expires_in - 60) * 1000;
         console.log('[MUSIC] Spotify token refreshed ✅');
-        return spotifyToken;
+        return global.spotifyToken;
     } catch(e) {
         console.error('[MUSIC] Spotify token error:', e.message);
         return null;
@@ -1420,7 +1421,7 @@ module.exports = {
             } else {
                 // 1. Guild history (personalized)
                 const history = client.db?.prepare(
-                    'SELECT title, query FROM music_history WHERE guild_id = ? AND (LOWER(title) LIKE ? OR LOWER(query) LIKE ?) ORDER BY play_count DESC, played_at DESC LIMIT 3'
+                    'SELECT title, query FROM music_history WHERE guild_id = ? AND (LOWER(title) LIKE ? OR LOWER(query) LIKE ?) ORDER BY play_count DESC, played_at DESC LIMIT 1'
                 ).all(interaction.guild?.id, `%${focusedLower}%`, `%${focusedLower}%`) || [];
                 for (const r of history) push(`🕐 ${r.title}`, r.query);
 
