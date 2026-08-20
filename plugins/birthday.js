@@ -259,12 +259,12 @@ async function checkAndAnnounceBirthdays(client) {
                 
                 const row = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
-                        .setCustomId(`bday_wish_${userId}`)
+                        .setCustomId(`bday_celebrate_${userId}`)
                         .setLabel('Wish Happy Birthday')
                         .setEmoji({ id: '1539977057432240128', name: 'celebration' })
                         .setStyle(ButtonStyle.Success),
                     new ButtonBuilder()
-                        .setCustomId(`bday_gift_${userId}`)
+                        .setCustomId(`bday_celebrate_${userId}`)
                         .setLabel('Send Virtual Gift')
                         .setEmoji({ id: '1539977940962377859', name: 'argift' })
                         .setStyle(ButtonStyle.Primary)
