@@ -270,7 +270,7 @@ async function takeAction(message, violations, client, db) {
     else if (wc === 3) { action = 'timeout'; duration = 604800000; }
     else { action = 'ban'; duration = 0; }
     if (hasMalicious && wc >= 2) { action = 'ban'; duration = 0; }
-    if (hasEveryoneSpam && wc >= 1) { action = 'timeout'; duration = 86400000; }
+    // @everyone no longer triggers timeout — warning only
 
     // ── FIX 1 continued: Store action taken for tribunal context ──
     entry.lastAction = action;
