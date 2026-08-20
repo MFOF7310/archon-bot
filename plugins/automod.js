@@ -313,34 +313,32 @@ async function takeAction(message, violations, client, db) {
     try {
         const guildOwner = await message.guild.fetchOwner().catch(() => null);
         const appealContact = guildOwner ? `<@${guildOwner.id}>` : 'a server administrator';
+        const actionEmoji = action === 'ban' ? '<a:BAN:1540115967428796466>' : action === 'timeout' ? '<a:lock:1540115656035401778>' : '<:warning:1535637269317160970>';
+        const strikeNext = displayWc >= 4 ? 'Maximum reached' : ['1-day timeout', '7-day timeout', 'Ban', 'Ban'][displayWc];
         const dm = new EmbedBuilder()
             .setColor(actionColor)
-            .setAuthor({ name: 'AutoMod', iconURL: message.guild.iconURL({ size: 64 }) || ICON })
-            .setTitle(action === 'ban' ? 'You were banned' : action === 'timeout' ? 'You were timed out' : 'Action taken on your account')
-            .setDescription(`Your message in **${message.guild.name}** was removed by AutoMod.`)
-            .addFields(
-                { name: 'Rule', value: violations[0].type, inline: true },
-                { name: 'Action', value: actionText, inline: true },
-                { name: 'Violation', value: violations[0].reason, inline: false }
+            .setAuthor({ name: message.guild.name, iconURL: message.guild.iconURL({ size: 64 }) || ICON })
+            .setDescription(
+                `${actionEmoji} **${action === 'ban' ? 'You were banned' : action === 'timeout' ? 'You were timed out' : 'Warning issued'}**\n\n` +
+                `Your message was caught by our moderation system.\n` +
+                `This isn't personal — we keep things clean for everyone.\n\n` +
+                `**Rule:** ${violations[0].type}\n` +
+                `**Violation:** ${violations[0].reason}\n` +
+                `**Action:** ${actionText}\n\n` +
+                `**Strike:** ${strikeBar(displayWc)} ${displayWc} of 4\n` +
+                `**Next offense:** ${strikeNext}\n\n` +
+                `Think this was a mistake? Hit **Appeal** below.\n` +
+                `Or contact ${appealContact} directly.`
             )
-            .setFooter({ text: `Strike ${displayWc} of 4` })
+            .setFooter({ text: `ARCHON CG-223 • You get 1 appeal per server per day`, iconURL: ICON })
             .setTimestamp();
-        dm.addFields({
-            name: 'Allowed link domains include',
-            value: 'youtube.com, youtu.be, github.com, twitter.com, x.com, instagram.com, reddit.com, wikipedia.org\nContact an admin to request additions.',
-            inline: false
-        });
-        dm.addFields({
-            name: 'Think this was a mistake?',
-            value: `Click the button below, or reply here with:\n"appeal ${message.guild.name} | your reason"\n\nOr contact ${appealContact} directly.\n⚠️ You get **1 appeal per server every 24 hours**.`,
-            inline: false
-        });
 
         // ── FIX 2: Appeal button in the punishment DM ──
         const appealRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`automod_appeal_${uid}_${gid}`)
-                .setLabel('📝 Appeal This Action')
+                .setLabel('Appeal This Action')
+                .setEmoji({ id: '1534872816099528725', name: 'mod_abuse_bean_sign' })
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setLabel('Server Rules')
@@ -355,7 +353,9 @@ async function takeAction(message, violations, client, db) {
 
     try {
         const notif = await message.channel.send({
-            embeds: [new EmbedBuilder().setColor(actionColor).setDescription(`**${message.author.tag}** — ${actionText} by AutoMod\n**Rule:** ${violations[0].type}`)]
+            embeds: [new EmbedBuilder()
+                .setColor(actionColor)
+                .setDescription(`<:shield:1535642169032048730> Message removed • **${message.author.username}** • Rule: ${violations[0].type}`)]
         }).catch(() => {});
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
@@ -369,15 +369,15 @@ async function takeAction(message, violations, client, db) {
             const next = displayWc >= 4 ? 'None — maximum reached' : ['1 hour timeout', '1 day timeout', '7 day timeout', 'Ban'][displayWc];
             const log = new EmbedBuilder()
                 .setColor(actionColor)
-                .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
-                .setTitle(actionText)
-                .addFields(
-                    { name: 'Member', value: `${message.author} \`${uid}\``, inline: false },
-                    { name: 'Rule', value: violations[0].type, inline: true },
-                    { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
-                    { name: 'Violation', value: violations[0].reason, inline: true }
+                .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+                .setDescription(
+                    `<a:mod_abuse_bean_sign:1534872816099528725> **${actionText}**\n\n` +
+                    `**Member:** ${message.author} \`${uid}\`\n` +
+                    `**Rule:** ${violations[0].type}\n` +
+                    `**Violation:** ${violations[0].reason}\n` +
+                    `**Channel:** <#${message.channel.id}>`
                 )
-                .setFooter({ text: `${bar}  Strike ${displayWc} of 4  •  Next: ${next}` })
+                .setFooter({ text: `${bar}  Strike ${displayWc} of 4  •  Next: ${next}`, iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();
             if (repeatV?.channels?.length > 1) log.addFields({ name: 'Cross-channel', value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
             await logCh.send({ embeds: [log] }).catch(() => {});
