@@ -178,6 +178,8 @@ function getAgeCategory(age) {
 }
 
 // ================= ANNOUNCEMENT PROTOCOL — CLASSIFIED =================
+const announcedToday = new Set();
+
 async function checkAndAnnounceBirthdays(client) {
     const today = new Date();
     const currentDay = today.getDate();
@@ -186,6 +188,8 @@ async function checkAndAnnounceBirthdays(client) {
     
     for (const [userId, bday] of birthdays) {
         if (bday.day === currentDay && bday.month === currentMonth) {
+            const todayKey = `${userId}-${currentDay}-${currentMonth}-${currentYear}`;
+            if (announcedToday.has(todayKey)) continue;
             for (const [guildId, guild] of client.guilds.cache) {
                 const member = await guild.members.fetch(userId).catch(() => null);
                 if (!member) continue;
@@ -267,7 +271,7 @@ async function checkAndAnnounceBirthdays(client) {
                 );
                 
                 await channel.send({ 
-                    content: `<a:party_2:1539977059273539716> **@everyone** — ${member}'s special day! Let's celebrate! <a:celebration:1539977057432240128>`,
+                    content: `<a:party_2:1539977059273539716> <a:cake:1539977063056937082> — ${member}'s special day! Let's celebrate!`,
                     embeds: [embed],
                     components: [row]
                 }).catch(() => {});
@@ -285,7 +289,7 @@ function scheduleDailyCheck(client) {
         const now = new Date();
         if (now.getHours() === 8 && now.getMinutes() === 0) checkAndAnnounceBirthdays(client);
     }, 60000);
-    setTimeout(() => checkAndAnnounceBirthdays(client), 5000);
+    // Boot-time check removed — announces only at 8:00 AM to prevent restart spam
 }
 
 // ================= MAIN COMMAND =================
