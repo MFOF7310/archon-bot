@@ -255,16 +255,18 @@ async function checkAndAnnounceBirthdays(client) {
                 const row = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
                         .setCustomId(`bday_wish_${userId}`)
-                        .setLabel('🎂 Wish Happy Birthday')
+                        .setLabel('Wish Happy Birthday')
+                        .setEmoji({ id: '1539977057432240128', name: 'celebration' })
                         .setStyle(ButtonStyle.Success),
                     new ButtonBuilder()
                         .setCustomId(`bday_gift_${userId}`)
-                        .setLabel('🎁 Send Virtual Gift')
+                        .setLabel('Send Virtual Gift')
+                        .setEmoji({ id: '1539977940962377859', name: 'argift' })
                         .setStyle(ButtonStyle.Primary)
                 );
                 
                 await channel.send({ 
-                    content: `🚨 **@everyone** BIRTHDAY ALERT — ${member}'s special day! Let's celebrate! 🎂🎈`,
+                    content: `<a:party_2:1539977059273539716> **@everyone** — ${member}'s special day! Let's celebrate! <a:celebration:1539977057432240128>`,
                     embeds: [embed],
                     components: [row]
                 }).catch(() => {});
