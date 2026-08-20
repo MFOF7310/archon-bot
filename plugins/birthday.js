@@ -190,12 +190,13 @@ async function checkAndAnnounceBirthdays(client) {
                 const member = await guild.members.fetch(userId).catch(() => null);
                 if (!member) continue;
                 
-                let channel = guild.systemChannel;
-                if (!channel) {
-                    channel = guild.channels.cache.find(c => 
-                        c.type === 0 && c.permissionsFor(guild.members.me).has('SendMessages')
-                    );
-                }
+                const ss = client.getServerSettings?.(guildId) || {};
+                const configuredChannelId = ss.birthday_channel || ss.level_channel || ss.daily_channel;
+                let channel = configuredChannelId ? guild.channels.cache.get(configuredChannelId) : null;
+                if (!channel) channel = guild.systemChannel;
+                if (!channel) channel = guild.channels.cache.find(c =>
+                    c.type === 0 && c.permissionsFor(guild.members.me)?.has('SendMessages')
+                );
                 if (!channel) continue;
                 
                 const lang = guild.preferredLocale === 'fr' ? 'fr' : 'en';
