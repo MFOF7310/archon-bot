@@ -314,7 +314,7 @@ async function takeAction(message, violations, client, db) {
         const guildOwner = await message.guild.fetchOwner().catch(() => null);
         const appealContact = guildOwner ? `<@${guildOwner.id}>` : 'a server administrator';
         const actionEmoji = action === 'ban' ? '<a:BAN:1540115967428796466>' : action === 'timeout' ? '<a:lock:1540115656035401778>' : '<:warning:1535637269317160970>';
-        const strikeNext = displayWc >= 4 ? 'Maximum reached' : ['1-day timeout', '7-day timeout', 'Ban', 'Ban'][displayWc];
+        const strikeNext = displayWc >= 4 ? 'Maximum reached' : ['1-day timeout', '7-day timeout', 'Ban', 'Ban'][displayWc - 1] || 'Ban';
         const dm = new EmbedBuilder()
             .setColor(actionColor)
             .setAuthor({ name: message.guild.name, iconURL: message.guild.iconURL({ size: 64 }) || ICON })
