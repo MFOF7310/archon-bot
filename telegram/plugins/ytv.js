@@ -165,26 +165,27 @@ module.exports = {
                     parse_mode: 'HTML'
                 });
             } else {
-                await edit('📦 <i>Too large — grabbing direct link...</i>');
+                await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
                 try {
                     const directUrl = await getDirectVideoUrl(url, quality);
-                    await edit(
+                    await ctx.replyHTML(
                         '🎬 <b>Your ' + quality + 'p video is ready!</b>\n\n' +
                         '📦 Too large to send directly — tap below:\n' +
                         '<a href="' + directUrl + '">⬇️ Download ' + quality + 'p Video</a>\n\n' +
                         '<i>⚠️ Link expires soon!\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
                     );
                 } catch {
-                    await edit(
-                        '😔 <b>Couldn\'t grab this one.</b>\n\n' +
-                        'Try a lower quality or come back later!\n' +
+                    await ctx.replyHTML(
+                        '😔 <b>YouTube downloads are unavailable.</b>\n\n' +
+                        'YouTube blocks direct downloads from our servers.\n' +
                         '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
                     );
                 }
             }
         } catch(e) {
             console.error('[YTV]', e.message);
-            await edit('😔 <b>Something went wrong!</b>\n\nTry again in a bit.\n<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>');
+            await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+            await ctx.replyHTML('😔 <b>YouTube downloads are unavailable.</b>\n\nYouTube blocks direct downloads from our servers.\n<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>');
         }
     }
 };
