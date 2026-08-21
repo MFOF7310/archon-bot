@@ -492,20 +492,22 @@ async function scanMessage(message, client, db) {
         seen.add('mention');
     }
 
-    // ── FIX 3: @everyone/@here — check both content text AND Discord's resolved mention flag ──
+    // ── FIX 3: @everyone/@here — only flag when combined with 2+ attachments (spam pattern) ──
     if (isRestrictedChannel && !seen.has('everyone')) {
         const hasEveryoneText = message.content.includes('@everyone') || message.content.includes('@here');
-        const hasEveryoneResolved = message.mentions.everyone === true; // Discord sets this when it actually resolves
+        const hasEveryoneResolved = message.mentions.everyone === true;
         const hasEveryone = hasEveryoneText || hasEveryoneResolved;
+        const attachmentCount = message.attachments.size;
 
-        if (hasEveryone && !isElevated(member)) {
+        // Only flag if @everyone + 2 or more images/attachments = spam pattern
+        if (hasEveryone && attachmentCount >= 2 && !isElevated(member)) {
             const lastEveryone = everyoneCooldowns.get(gid) || 0;
             if (now - lastEveryone > EVERYONE_COOLDOWN) {
                 everyoneCooldowns.set(gid, now);
-                violations.push({ type: 'everyone/here spam', reason: 'Unauthorized @everyone/@here ping', source: 'everyone' });
+                violations.push({ type: 'everyone/here spam', reason: '@everyone with mass attachments', source: 'everyone' });
                 seen.add('everyone');
             } else {
-                violations.push({ type: 'rapid everyone spam', reason: 'Multiple @everyone/@here pings in short window', source: 'everyone' });
+                violations.push({ type: 'rapid everyone spam', reason: 'Repeated @everyone spam with attachments', source: 'everyone' });
                 seen.add('everyone');
             }
         }
