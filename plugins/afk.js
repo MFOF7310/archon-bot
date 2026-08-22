@@ -1,4 +1,5 @@
-const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, parseEmoji } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ================= 🔥 STOCKAGE AFK (RAM) - DÉFINI EN HAUT =================
 const afkUsers = new Map(); // userId -> { reason, timestamp, username, avatar, originalNickname }
@@ -189,8 +190,8 @@ module.exports = {
             
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setAuthor({ name: t.afkStatus, iconURL: message.author.displayAvatarURL() })
-                .setDescription(t.afkRemoved(message.author.username))
+                .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+                .setDescription(`${EMOJIS.away} **${message.author.username} is back!** Welcome back 👋`)
                 .setFooter({ text: `ARCHON CG-223 • v${version}` })
                 .setTimestamp();
             
@@ -214,8 +215,8 @@ module.exports = {
                     
                     const autoEmbed = new EmbedBuilder()
                         .setColor('#3498db')
-                        .setAuthor({ name: t.afkStatus, iconURL: message.author.displayAvatarURL() })
-                        .setDescription(t.afkAutoRemoved(message.author.username))
+                        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+                        .setDescription(`${EMOJIS.zzz} **${message.author.username}'s AFK has expired** — they should be back soon!`)
                         .setFooter({ text: `ARCHON CG-223 • v${version}` })
                         .setTimestamp();
                     
@@ -229,31 +230,27 @@ module.exports = {
         
         // Create embed
         const embed = new EmbedBuilder()
-            .setColor('#f1c40f')
-            .setAuthor({ name: t.afkStatus, iconURL: message.author.displayAvatarURL() })
-            .setDescription(timeDisplay 
-                ? t.afkSetWithTime(message.author.username, reason, timeDisplay)
-                : t.afkSet(message.author.username, reason))
-            .addFields(
-                { name: `📝 ${t.reason}`, value: reason, inline: true },
-                { name: `⏰ ${t.autoReturn}`, value: timeDisplay || t.permanent, inline: true }
+            .setColor('#5865F2')
+            .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+            .setDescription(
+                `${EMOJIS.afk} **${message.author.username} is now AFK**\n\n` +
+                `**Reason:** ${reason}\n` +
+                `**Returns:** ${timeDisplay || 'When they come back'}`
             )
             .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
             .setFooter({ text: `ARCHON CG-223 • v${version}` })
             .setTimestamp();
-        
-        // Create buttons for others to interact
         const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`afk_remind_${message.author.id}`)
                 .setLabel(t.remindButton)
                 .setStyle(ButtonStyle.Primary)
-                .setEmoji('🔔'),
+                .setEmoji(parseEmoji(EMOJIS.sleep)),
             new ButtonBuilder()
                 .setCustomId(`afk_extend_${message.author.id}`)
                 .setLabel(t.extendButton)
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji('⏰')
+                .setEmoji(parseEmoji(EMOJIS.moon))
         );
         
         const reply = await message.reply({ embeds: [embed], components: [buttonRow] });
