@@ -336,8 +336,8 @@ module.exports = {
             
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setAuthor({ name: t.afkStatus, iconURL: interaction.user.displayAvatarURL() })
-                .setDescription(t.afkRemoved(interaction.user.username))
+                .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
+                .setDescription(`${EMOJIS.away} **${interaction.user.username} is back!** Welcome back 👋`)
                 .setFooter({ text: `ARCHON CG-223 • v${version}` })
                 .setTimestamp();
             
@@ -365,14 +365,12 @@ module.exports = {
         afkUsers.set(interaction.user.id, afkData);
         
         const embed = new EmbedBuilder()
-            .setColor('#f1c40f')
-            .setAuthor({ name: t.afkStatus, iconURL: interaction.user.displayAvatarURL() })
-            .setDescription(timeDisplay 
-                ? t.afkSetWithTime(interaction.user.username, reason, timeDisplay)
-                : t.afkSet(interaction.user.username, reason))
-            .addFields(
-                { name: `📝 ${t.reason}`, value: reason, inline: true },
-                { name: `⏰ ${t.autoReturn}`, value: timeDisplay || t.permanent, inline: true }
+            .setColor('#5865F2')
+            .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
+            .setDescription(
+                `${EMOJIS.afk} **${interaction.user.username} is now AFK**\n\n` +
+                `**Reason:** ${reason}\n` +
+                `**Returns:** ${timeDisplay || 'When they come back'}`
             )
             .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setFooter({ text: `ARCHON CG-223 • v${version}` })
