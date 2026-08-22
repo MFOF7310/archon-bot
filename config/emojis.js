@@ -96,4 +96,10 @@ module.exports = {
     vote:       '<:vote:1537482225950654476>',
     streak:     '<:Streak:1537482275204370475>',
     milestones: '<:milestones:1537482386294706337>',
+
+    // ── Ticket system ──
+    ticket:  '<:ticket:1535642408753168414>',
+    staff:   '<:staff:1535637114509598750>',
+    claim:   '<:claim:1540673777061466192>',
+    lock:    '<a:lock:1540115656035401778>',
 };
