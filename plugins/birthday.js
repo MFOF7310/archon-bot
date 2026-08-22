@@ -250,7 +250,7 @@ async function checkAndAnnounceBirthdays(client) {
                             inline: false
                         }
                     )
-                    .setImage('https://i.imgur.com/JLbHZ5P.png')
+                    
                     .setFooter({ 
                         text: `🎂 ${guild.name} • Birthday Intelligence Division • v${client.version || '2.0.0'}`, 
                         iconURL: guild.iconURL() 
