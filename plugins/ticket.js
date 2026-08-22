@@ -3,6 +3,7 @@ const {
     ButtonStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder
 } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+const { parseEmoji } = require('discord.js');
 
 // ================= ENV FALLBACK (owner server only) =================
 function effectiveSettings(ss, gid) {
@@ -275,12 +276,12 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null) {
         .setFooter({text:'BAMAKO_223 🇲🇱 • Here for you, always 💙'})
         .setTimestamp();
     const r=new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t.claim).setStyle(ButtonStyle.Primary).setEmoji('🙋'),
-        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t.close).setStyle(ButtonStyle.Danger).setEmoji('🔒'),
-        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t.transcript).setStyle(ButtonStyle.Secondary).setEmoji('📄')
+        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t.claim).setStyle(ButtonStyle.Primary).setEmoji(parseEmoji(EMOJIS.claim)),
+        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t.close).setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.lock)),
+        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t.transcript).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.ticket))
     );
     const staffPing = s?.ticketStaffRole ? `<@&${s.ticketStaffRole}>` : '';
-    await ch.send({content:`Hey <@${u.id}>! 👋 Your ticket is live — our team has been notified and someone will be right with you. No need to ping anyone, we see you! 💙\n\n${staffPing}`,embeds:[e],components:[r]});
+    await ch.send({content:`Hey <@${u.id}>! 👋 Your ticket is live — our team has been notified and someone will be right with you. No need to ping anyone, we see you! 💙\n\n${staffPing}`,embeds:[e],components:[r]}).catch(err => console.error('[TICKET] welcomeMsg send failed:', err.message));
 }
 function cfgEmbed(s, g, c, lang='en') {
     const t=TX[lang]||TX.en, io=g.id===process.env.GUILD_ID;
