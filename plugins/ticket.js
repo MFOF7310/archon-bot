@@ -86,7 +86,7 @@ const TX = {
         closing:'🔒 Closing in 5s...', closedBy:u=>`🔒 Closed by <@${u}>`,
         closedLog:(u,c,cat)=>`Ticket #${c} wrapped up | Started by <@${u}> | ${cat} | Hope we helped! 💙`,
         txSaved:'📄 Log saved!', noPerm:`${EMOJIS.error} Staff or creator only.`, staffOnly:`${EMOJIS.error} Staff only.`,
-        notSet:`${EMOJIS.warning} **Not configured.** Use `/ticket setup` → `/channels set` and `/roles set` to configure.`,
+        notSet:`${EMOJIS.warning} **Not configured.** Use \`/ticket setup\` → \`/channels set\` and \`/roles set\` to configure.`,
         createErr:`${EMOJIS.error} Failed to create ticket.`, maxT:l=>`${EMOJIS.error} Max ${l} ticket(s).`,
         by:'By', at:'Created', claimed:'Claimed', cat:'Category', st:'Status',
         open:'🟢 Open', claimed2:'🟡 Claimed', closing2:'🔴 Closing',
@@ -109,7 +109,7 @@ const TX = {
         closing:'🔒 Fermeture dans 5s...', closedBy:u=>`🔒 Fermé par <@${u}>`,
         closedLog:(u,c,cat)=>`Ticket #${c} fermé | Créateur : <@${u}> | ${cat}`,
         txSaved:'📄 Log enregistré !', noPerm:`${EMOJIS.error} Staff ou créateur.`, staffOnly:`${EMOJIS.error} Staff uniquement.`,
-        notSet:`${EMOJIS.warning} **Non configuré.** Utilisez `.ticket setup` puis `.//channels set type:Ticket category``,
+        notSet:`${EMOJIS.warning} **Not configured.** Use \`/ticket setup\` → \`/channels set\` and \`/roles set\` to configure.`,
         createErr:`${EMOJIS.error} Échec.`, maxT:l=>`${EMOJIS.error} Max ${l} ticket(s).`,
         by:'Créé par', at:'Créé', claimed:'Pris par', cat:'Catégorie', st:'Statut',
         open:'🟢 Ouvert', claimed2:'🟡 Pris', closing2:'🔴 Fermeture',
@@ -331,9 +331,9 @@ module.exports = {
         const es=effectiveSettings(ss,g.id);
 
         // Config setters
-        if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} `.//channels set type:Ticket category``).catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketcategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
-        if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} `./roles set type:Staff/Ticket Role <id>``).catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t.badRole).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketstaffrole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
-        if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} `./channels set type:Ticket Logs <id>``).catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'tickettranscriptchannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`.//channels set type:Ticket category\``).catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketcategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`./roles set type:Staff/Ticket Role <id>\``).catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t.badRole).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketstaffrole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
+        if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`./channels set type:Ticket Logs <id>\``).catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'tickettranscriptchannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setautoclose'){const h=parseInt(args[1]);if(isNaN(h)||h<0||h>168)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketautoclose',String(h),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setlimit'){const l=parseInt(args[1]);if(isNaN(l)||l<1||l>10)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketlimit',String(l),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='config'){const e=cfgEmbed(es,g,client,lang);return msg.reply({embeds:[e]}).catch(()=>{});}
