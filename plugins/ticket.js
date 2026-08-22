@@ -78,7 +78,7 @@ const TX = {
         sTitle:'🎫 TICKET SYSTEM', sDesc:'**Configure your ticket system.**',
         sUsage:p=>`\`/channels set\` — Set ticket category & log channel\n\`/roles set type:Staff/Ticket Role\` — Set staff role\n\`/ticket setautoclose\` — Auto-close hours\n\`/ticket setlimit\` — Max tickets per user\n\`/ticket config\` — View config`,
         pTitle:'🎫 Support', pDesc:g=>`Need help? Select a category below to open a private ticket.`, pFooter:'🦅 ARCHON CG-223',
-        made:'${EMOJIS.check} Ticket created', welcome:'🎫 NEW TICKET',
+        made:`${EMOJIS.check} Ticket created`, welcome:'🎫 NEW TICKET',
         wDesc:(u,c)=>`Hi <@${u}>, staff will assist you shortly.\n**Category:** ${c}`,
         claim:'Claim', close:'Close', transcript:'Log',
         claimed:u=>`🙋 <@${u}> claimed this.`, already:'${EMOJIS.error} Already claimed.', staffOnlyClaim:'${EMOJIS.error} Staff only.',
@@ -101,7 +101,7 @@ const TX = {
         sTitle:'🎫 SYSTÈME DE TICKETS', sDesc:'**Configurez votre système.**',
         sUsage:p=>`\`${p}//channels set type:Ticket category\` — Catégorie\n\`${p}/roles set type:Staff/Ticket Role <id>\` — Rôle staff\n\`${p}/channels set type:Ticket Logs <id>\` — Salon log\n\`${p}ticket setautoclose <h>\` — Fermeture auto\n\`${p}ticket setlimit <1-10>\` — Max par user\n\`${p}ticket config\` — Voir config`,
         pTitle:'🎫 Support', pDesc:g=>`Besoin d'aide ? Sélectionnez une catégorie ci-dessous.`, pFooter:'🦅 ARCHON CG-223',
-        made:'${EMOJIS.check} Ticket créé', welcome:'🎫 NOUVEAU TICKET',
+        made:`${EMOJIS.check} Ticket created`, welcome:'🎫 NOUVEAU TICKET',
         wDesc:(u,c)=>`Bonjour <@${u}>, un staff va vous aider.\n**Catégorie :** ${c}`,
         claim:'Prendre', close:'Fermer', transcript:'Log',
         claimed:u=>`🙋 <@${u}> a pris ce ticket.`, already:'${EMOJIS.error} Déjà pris.', staffOnlyClaim:'${EMOJIS.error} Staff uniquement.',
@@ -223,7 +223,7 @@ async function createCh(g, uid, uname, cat, s, client) {
 
 // ================= UI BUILDERS =================
 function panelEmbed(s, gn, lang='en') {
-    const t=TX[lang]||TX.en, cats=getCats(s);
+    const t=TX['en'], cats=getCats(s);
     return new EmbedBuilder()
         .setColor(0x00f0ff)
         .setAuthor({ name: '🦅 ARCHON ENGINE • SUPPORT PROTOCOL', iconURL: 'https://cdn.discordapp.com/emojis/1234567890123456789.webp' })
@@ -256,7 +256,7 @@ function panelMenu(s) {
     return sel;
 }
 async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null) {
-    const t=TX[lang]||TX.en, cl=typeof cat==='object'?`${cat.emoji} ${cat.label}`:'🎫 Support';
+    const t=TX['en'], cl=typeof cat==='object'?`${cat.emoji} ${cat.label}`:'🎫 Support';
     const e=new EmbedBuilder()
         .setColor(isPremium ? 0xf1c40f : 0x00f0ff)
         .setAuthor({name:`🦅 ARCHON SUPPORT • TICKET #${n}`,iconURL:u.displayAvatarURL()})
@@ -284,13 +284,13 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null) {
     await ch.send({content:`Hey <@${u.id}>! 👋 Your ticket is live — our team has been notified and someone will be right with you. No need to ping anyone, we see you! 💙\n\n${staffPing}`,embeds:[e],components:[r]}).catch(err => console.error('[TICKET] welcomeMsg send failed:', err.message));
 }
 function cfgEmbed(s, g, c, lang='en') {
-    const t=TX[lang]||TX.en, io=g.id===process.env.GUILD_ID;
+    const t=TX['en'], io=g.id===process.env.GUILD_ID;
     const fch=(id,ek)=>id?`<#${id}>`:(io&&process.env[ek]?`<#${process.env[ek]}> 🔹 env`:`*${t.cfgNS}*`);
     const fr=(id,ek)=>id?`<@&${id}>`:(io&&process.env[ek]?`<@&${process.env[ek]}> 🔹 env`:`*${t.cfgNS}*`);
     const ac=s?.ticketAutoCloseHours??24, lm=s?.ticketLimitPerUser??1;
     return new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t.cfgTitle}`,iconURL:g.iconURL({dynamic:true})||c.user.displayAvatarURL()}).setThumbnail(g.iconURL({dynamic:true,size:256})).addFields({name:t.cfgCat,value:fch(s?.ticketCategory,'TICKET_CATEGORY_ID'),inline:true},{name:t.cfgStaff,value:fr(s?.ticketStaffRole,'TICKET_STAFF_ROLE_ID'),inline:true},{name:t.cfgTx,value:fch(s?.ticketTranscriptChannel,'TICKET_TRANSCRIPT_CHANNEL_ID'),inline:true},{name:t.cfgLog,value:fch(s?.ticketLogChannel,'TICKET_LOG_CHANNEL_ID'),inline:true},{name:t.cfgAC,value:ac===0?`${EMOJIS.error} ${t.cfgOff}`:`\`${ac}h\``,inline:true},{name:t.cfgLim,value:`\`${lm}\` / user`,inline:true}).setFooter({text:`${t.cfgFoot} • ${g.name}`,iconURL:c.user.displayAvatarURL()}).setTimestamp();
 }
-async function saveSetting(client, gid, key, val, lang='en') { const t=TX[lang]||TX.en; try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t.setOK(key,val)};} return{ok:false,err:'${EMOJIS.error} DB error.'};}catch(e){return{ok:false,err:'${EMOJIS.error} DB error.'};} }
+async function saveSetting(client, gid, key, val, lang='en') { const t=TX['en']; try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t.setOK(key,val)};} return{ok:false,err:'${EMOJIS.error} DB error.'};}catch(e){return{ok:false,err:'${EMOJIS.error} DB error.'};} }
 
 // ================= MODULE =================
 
