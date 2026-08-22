@@ -3494,10 +3494,15 @@ if (message.content && message.content.length > 4000) {
                 const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
                 const timeText = minutes === 0 ? (lang === 'fr' ? 'à l\'instant' : 'just now') : `${minutes} min`;
                 
-                const mentionMsg = lang === 'fr'
-                    ? `💤 **${user.username}** est AFK (${timeText}): *${afkData.reason}*`
-                    : `💤 **${user.username}** is AFK (${timeText}): *${afkData.reason}*`;
-                
+                const { EmbedBuilder: AfkEmbed } = require('discord.js');
+                const afkPingEmbed = new AfkEmbed()
+                    .setColor('#5865F2')
+                    .setDescription(
+                        `<a:Afk:1540774870827409501> **${user.username} is AFK** (${timeText})\n` +
+                        `**Reason:** ${afkData.reason}`
+                    )
+                    .setFooter({ text: 'ARCHON CG-223' });
+                await message.reply({ embeds: [afkPingEmbed], allowedMentions: { repliedUser: false } }).catch(() => {});
                 await message.reply({ content: mentionMsg, allowedMentions: { repliedUser: true } }).catch(() => {});
                 break;
             }
@@ -3513,10 +3518,15 @@ if (message.content && message.content.length > 4000) {
         const messageContent = message.content || '';
         const lang = detectLanguage(messageContent);
         
-        const welcomeMsg = lang === 'fr'
-            ? `👋 Bon retour **${message.author.username}**! AFK retiré (${minutes} min).`
-            : `👋 Welcome back **${message.author.username}**! AFK removed (${minutes} min).`;
-        
+        const { EmbedBuilder: ReturnEmbed } = require('discord.js');
+        const returnEmbed = new ReturnEmbed()
+            .setColor('#2ecc71')
+            .setDescription(
+                `<a:away:1540773743343829002> **${message.author.username} is back!** Welcome back 👋\n` +
+                `Away for ${minutes} min`
+            )
+            .setFooter({ text: 'ARCHON CG-223' });
+        await message.reply({ embeds: [returnEmbed] }).catch(() => {});
         await message.reply({ content: welcomeMsg }).catch(() => {});
         console.log(`[AFK] ${message.author.tag} returned after ${minutes} min`);
     }
