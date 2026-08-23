@@ -26,7 +26,7 @@
 
 ## ✨ Features
 
-### 🎮 Discord (110 plugins · 96 slash commands)
+### 🎮 Discord (110 plugins · 85+ slash commands)
 - 🧠 **Lydia AI** — Smart assistant, 28 languages, multi-agent system
 - 💰 **Economy** — Credits, leveling, XP, daily rewards, shop, investments
 - 🛡️ **Moderation** — AutoMod, warnings, tickets, audit logs
