@@ -14,7 +14,7 @@ If you discover a security vulnerability in ARCHON CG-223 or its dashboard, plea
 ### Contact
 
 Report vulnerabilities privately via:
-- **Discord:** mfof7559
+- **Discord:** [mfof7559](https://discord.gg/5EGZTUb6) — Send me friend request 
 - **Telegram:** [@architect223bot](https://t.me/architect223bot) — DM the owner
 - **Email:** (via Discord DM for email address)
 
