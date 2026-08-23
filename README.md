@@ -89,7 +89,7 @@
 ## 🚀 Self-Hosting
 
 ```Bash
-git clone https://github.com/MFOF7310/cloud-gaming-223-digital-engine.git
+git clone https://github.com/MFOF7310/archon-bot.git
 cd cloud-gaming-223-digital-engine
 npm install
 cp .env.example .env
