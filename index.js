@@ -5635,7 +5635,7 @@ apiApp.get('/api/warnings/:guildId?', (req, res) => {
     }
 });
 
-apiApp.post('/api/warnings/:guildId', (req, res) => {
+apiApp.post('/api/warnings/:guildId', requireAdmin, (req, res) => {
     const { guildId } = req.params;
     const { user_id, reason, moderator_id } = req.body;
     if (!user_id || !reason) return res.status(400).json({ error: 'Missing fields' });
@@ -5680,7 +5680,7 @@ apiApp.get('/api/settings/:guildId', (req, res) => {
 });
 
 // ─── UPDATE CONFIG ─────────────────────────────────────
-apiApp.post('/api/update-config', (req, res) => {
+apiApp.post('/api/update-config', requireAdmin, (req, res) => {
     const { guildId, settings } = req.body;
     if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
 
@@ -5762,7 +5762,7 @@ apiApp.post('/api/vote', (req, res) => {
 });
 
 // Broadcast endpoint
-apiApp.post("/api/broadcast", (req, res) => {
+apiApp.post("/api/broadcast", requireAdmin, (req, res) => {
     const { message, target, guildIds } = req.body;
     if (!message) return res.status(400).json({ error: "Message required" });
     let count = 0;
@@ -5805,7 +5805,7 @@ async function getSessionManager() {
 
 // ================= WHATSAPP SESSION API =================
 // Create new session with phone number
-apiApp.post('/api/whatsapp/create', async (req, res) => {
+apiApp.post('/api/whatsapp/create', requireAdmin, async (req, res) => {
     try {
         const { phoneNumber, customName } = req.body;
         if (!phoneNumber) return res.status(400).json({ error: 'Phone number required' });
@@ -5818,7 +5818,7 @@ apiApp.post('/api/whatsapp/create', async (req, res) => {
 });
 
 // Create QR session
-apiApp.post('/api/whatsapp/qr', async (req, res) => {
+apiApp.post('/api/whatsapp/qr', requireAdmin, async (req, res) => {
     try {
         const { phoneNumber, customName } = req.body;
         const mgr = await getSessionManager();
