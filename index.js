@@ -5055,6 +5055,15 @@ apiApp.use(cors({
 
 apiApp.use(express.json());
 
+// Admin auth middleware
+const API_ADMIN_SECRET = process.env.API_ADMIN_SECRET || '';
+function requireAdmin(req, res, next) {
+    if (!API_ADMIN_SECRET || req.get('x-api-key') !== API_ADMIN_SECRET) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+}
+
 // ================= API ROUTES =================
 
 // ── DODO PAYMENTS WEBHOOK ──────────────────────────────
@@ -5176,7 +5185,7 @@ apiApp.post('/api/premium/activate', (req, res) => {
     }
 });
 
-apiApp.post('/api/premium/generate', (req, res) => {
+apiApp.post('/api/premium/generate', requireAdmin, (req, res) => {
     try {
         const ownerId = process.env.OWNER_ID || process.env.OWNER_DISCORD_ID || '';
         const { days = 30, amount = 1 } = req.body;
@@ -5397,7 +5406,7 @@ apiApp.get('/api/admin/dashboard-users', (req, res) => {
     }
 });
 
-apiApp.post('/api/admin/dashboard-users/upsert', (req, res) => {
+apiApp.post('/api/admin/dashboard-users/upsert', requireAdmin, (req, res) => {
     try {
         const { discord_id, username, avatar } = req.body;
         if (!discord_id) return res.json({ ok: false });
