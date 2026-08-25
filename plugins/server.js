@@ -104,7 +104,7 @@ data: new SlashCommandBuilder()
 
 // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
 run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
+    const guildId = message.guild?.id ?? 'DM';
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('server', guildId) : 'en';
