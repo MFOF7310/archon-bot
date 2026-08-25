@@ -5854,7 +5854,7 @@ apiApp.get('/api/whatsapp/poll/:token', async (req, res) => {
 });
 
 // Clean up session
-apiApp.delete('/api/whatsapp/session/:token', async (req, res) => {
+apiApp.delete('/api/whatsapp/session/:token', requireAdmin, async (req, res) => {
     try {
         const mgr = await getSessionManager();
         mgr.cleanSession(req.params.token);
