@@ -185,7 +185,7 @@ async function generateDashboardEmbed(client, message, db, showServerStats = tru
     }
     
     // ================= DISCORD STATS =================
-    const serverCount = client.guilds.cache.size;
+    const serverCount = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size);
     const userCount = client.users.cache.size;
     const channelCount = client.channels.cache.size;
     const emojiCount = client.emojis.cache.size;
@@ -401,7 +401,7 @@ module.exports = {
                 }
             });
             
-            console.log(`[DASHBOARD] ${message.author.tag} | Servers: ${client.guilds.cache.size} | Commands: ${client.commands.size}`);
+            console.log(`[DASHBOARD] ${message.author.tag} | Servers: ${(client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size)} | Commands: ${client.commands.size}`);
             
         } catch (error) {
             console.error('[DASHBOARD] Error:', error);

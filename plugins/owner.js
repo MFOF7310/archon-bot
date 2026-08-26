@@ -93,7 +93,7 @@ async function handleSystemCommand(client, interaction, subcommand, args, lang) 
             .setThumbnail(client.user.displayAvatarURL())
             .addFields(
                 { name: '⏱️ Uptime', value: `${h}h ${m}m ${s}s`, inline: true },
-                { name: '📊 Servers', value: `${client.guilds.cache.size}`, inline: true },
+                { name: '📊 Servers', value: `${(client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size)}`, inline: true },
                 { name: '👥 Users', value: `${client.users.cache.size}`, inline: true },
                 { name: '🏓 Ping', value: `${Math.round(client.ws.ping)}ms`, inline: true },
                 { name: '💾 Memory', value: `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)} MB`, inline: true },

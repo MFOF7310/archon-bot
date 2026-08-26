@@ -94,28 +94,7 @@ function displayPM2Banner(serverCount = 0) {
     const R = '\x1b[0m';
     const B = '\x1b[1m';
 
-    const banner = [
-        '',
-        logoColor + '    ██████╗ ███╗   ███╗██████╗' + R,
-        logoColor + '    ██╔══██╗████╗ ████║╚════██╗' + R,
-        primary   + '    ██████╔╝██╔████╔██║ █████╔╝' + R,
-        primary   + '    ██╔═══╝ ██║╚██╔╝██║██╔═══╝' + R,
-        logoColor + '    ██║     ██║ ╚═╝ ██║███████╗' + R,
-        logoColor + '    ╚═╝     ╚═╝     ╚═╝╚══════╝' + R,
-        '',
-        primary + '╔══════════════════════════════════════════════════════════════════╗' + R,
-        primary + '║' + R + '  ' + B + accent + '  ARCHON CG-223' + R + ' | ' + primary + 'AI-POWERED SERVER ARCHITECT' + R + '  ' + accent + timeLabel + R + '     ' + primary + '║' + R,
-        primary + '╠══════════════════════════════════════════════════════════════════╣' + R,
-        primary + '║' + R + '  ' + secondary + 'NODE:' + R + ' BAMAKO_223 🇲🇱  ' + accent + 'SERVERS:' + R + ' ' + String(serverCount).padEnd(6) + '     ' + accent + 'BY:' + R + ' MFOF7310         ' + primary + '║' + R,
-        primary + '║' + R + '  ' + secondary + 'VERSION:' + R + ' v' + version.padEnd(8) + '        ' + accent + 'PM2 ID:' + R + ' ' + (process.env.pm_id || '0').padEnd(8) + '        ' + primary + '║' + R,
-        primary + '║' + R + '  ' + secondary + 'STATUS:' + R + ' ' + primary + '● ONLINE' + R + '   ' + accent + 'MEMORY:' + R + ' ' + memory.padEnd(5) + ' MB                ' + primary + '║' + R,
-        primary + '╠══════════════════════════════════════════════════════════════════╣' + R,
-        primary + '║' + R + '  ' + accent + 'TELEGRAM:' + R + ' Bridge ' + secondary + 'ACTIVE' + R + '      ' + accent + 'LYDIA AI:' + R + ' ' + secondary + 'CONNECTED' + R + '               ' + primary + '║' + R,
-        primary + '║' + R + '  ' + accent + 'DATABASE:' + R + ' WAL+Partitioned   ' + accent + 'CIRCUIT:' + R + ' ' + secondary + 'READY' + R + '                   ' + primary + '║' + R,
-        primary + '╚══════════════════════════════════════════════════════════════════╝' + R,
-        ''
-    ].join('\n\n');
-    console.log(banner);
+    console.log(`\x1b[36m[ARCHON]\x1b[0m v${client.version || '3.1.0'} • BAMAKO_223 🇲🇱 • Online`);
 }
 const client = new Client({
     intents: [
@@ -2105,15 +2084,7 @@ client.loadPlugins = async () => {
 );
     
     // ═══════════════════════════════════════════════════════════════════
-    //  NEURAL GRID BOOT SEQUENCE — MODULE SYNCHRONIZATION
-    // ═══════════════════════════════════════════════════════════════════
-    const banner = `
-\x1b[38;5;39m    ╔══════════════════════════════════════════════════════════════════════╗
-\x1b[38;5;45m    ║  \x1b[1;33m  ARCHON CG-223\x1b[0m  \x1b[38;5;45m║  \x1b[1;32mNEURAL SYNAPSE // MODULE SYNCHRONIZATION\x1b[0m  \x1b[38;5;45m║
-\x1b[38;5;51m    ╠══════════════════════════════════════════════════════════════════════╣
-\x1b[38;5;51m    ║  \x1b[36mEstablishing neural links to command modules...\x1b[0m                      \x1b[38;5;51m║
-\x1b[38;5;45m    ╚══════════════════════════════════════════════════════════════════════╝\x1b[0m`;
-    console.log(banner);
+    // Module sync
 
     const loadedCommands = [];
     const failedCommands = [];
@@ -2212,39 +2183,10 @@ client.loadPlugins = async () => {
         return ' '.repeat(Math.floor(total/2)) + str + ' '.repeat(total - Math.floor(total/2));
     };
     console.log('');
-    console.log(`${_C}  ╔${_line}╗${_X}`);
-    console.log(`${_C}  ║${_X}${_center(`${_Y}⚡ ARCHON CG-223  •  NEURAL GRID ONLINE${_X}`, _W)}${_C}║${_X}`);
-    console.log(`${_C}  ╠${_line}╣${_X}`);
-    const _srv = String(client.guilds.cache.size);
     const _mods = String(moduleStats.total);
     const _slsh = String(moduleStats.slash);
     const _fail = failedCommands.length;
-    const _statsLine =
-        `${_W2}MODULES${_X} ${_G}${_mods}${_X}   ` +
-        `${_W2}SLASH${_X} ${_G}${_slsh}${_X}   ` +
-        `${_W2}SERVERS${_X} ${_G}${_srv}${_X}   ` +
-        `${_W2}FAILED${_X} ${_fail > 0 ? _R + _fail : _G + '0'}${_X}   ` +
-        `${_W2}v${_X}${_G}${_ver}${_X}`;
-    console.log(`${_C}  ║${_X}  ${_pad(_statsLine, _W - 2)}${_C}║${_X}`);
-    console.log(`${_C}  ╠${_line}╣${_X}`);
-    const _tg  = client.telegramBridge?.enabled ? `${_G}✓ TELEGRAM${_X}` : `${_R}✗ TELEGRAM${_X}`;
-    const _db2 = client.db ? `${_G}✓ DATABASE${_X}` : `${_R}✗ DATABASE${_X}`;
-    const _sc2 = `${_G}✓ SOUNDCLOUD${_X}`;
-    const _ai2 = process.env.OPENROUTER_API_KEY ? `${_G}✓ LYDIA AI${_X}` : `${_Y}~ LYDIA AI${_X}`;
-    const _srvLine = `${_tg}   ${_db2}   ${_sc2}   ${_ai2}   ${_P}BAMAKO_223 🇲🇱${_X}`;
-    console.log(`${_C}  ║${_X}  ${_pad(_srvLine, _W - 2)}${_C}║${_X}`);
-    if (_fail > 0) {
-        console.log(`${_C}  ╠${_line}╣${_X}`);
-        failedCommands.slice(0, 3).forEach(f => {
-            const _tag = f.source === 'TELEGRAM' ? '🌉' : '💬';
-            const _fl = `${_R}✗${_X} ${_tag} ${f.file} → ${f.error.substring(0, 40)}`;
-            console.log(`${_C}  ║${_X}  ${_pad(_fl, _W - 2)}${_C}║${_X}`);
-        });
-        if (_fail > 3) console.log(`${_C}  ║${_X}  ${_Y}... and ${_fail - 3} more failures${_X}${' '.repeat(20)}${_C}║${_X}`);
-    }
-    console.log(`${_C}  ╚${_line}╝${_X}`);
-    console.log('');
-    console.log(`${_G}[NEURAL GRID]${_X} ${_mods} modules • ${_slsh} slash • ${_fail > 0 ? _R + _fail + ' failures' + _X : _G + 'All systems nominal' + _X}`);
+    console.log(`\x1b[36m[NEURAL GRID]\x1b[0m ${_mods} modules • ${_slsh} slash • ${(()=>{try{return client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"]||client.guilds.cache.size}catch(e){return client.guilds.cache.size}})()} servers • ${_fail > 0 ? _fail + ' failures' : 'All systems nominal'}`);
 
 };
 
@@ -2288,11 +2230,25 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 
 // ================= BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
+    // Cache missing guild names from DB
+    setTimeout(async () => {
+        try {
+            const dbGuilds = client.db.prepare(
+                "SELECT DISTINCT guild_id FROM users WHERE guild_id NOT IN ('DM','telegram')"
+            ).all().map(r => r.guild_id);
+            for (const guildId of dbGuilds) {
+                if (!client.guilds.cache.has(guildId)) {
+                    const guild = await client.guilds.fetch(guildId).catch(() => null);
+                    if (guild) console.log(`[GUILD CACHE] Fetched missing guild: ${guild.name} (${guildId})`);
+                }
+            }
+        } catch(e) { console.error('[GUILD CACHE] Error:', e.message); }
+    }, 10000);
     // ── Bot presence rotation ──
     const { ActivityType } = require('discord.js');
     const statusMessages = [
         { state: '🌍 bamako-steel-dev.xyz' },
-        { state: `🦅 ${client.guilds.cache.size} servers | ARCHON CG-223` },
+        { state: `🦅 ${(()=>{try{return client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"]||client.guilds.cache.size}catch(e){return client.guilds.cache.size}})()} servers | ARCHON CG-223` },
         { state: '🎵 530+ tracks | /music' },
         { state: '⚔️ Bamako Steel 🇲🇱' },
         { state: '🎮 /help | Try ARCHON' },
@@ -2575,7 +2531,7 @@ buildAliasLanguageMap();
         const timestamp = Math.floor(now.getTime() / 1000);
         
         // ================= GATHER COMPREHENSIVE METRICS =================
-        const totalGuilds = client.guilds.cache.size;
+        const totalGuilds = (()=>{try{return client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"]||client.guilds.cache.size}catch(e){return client.guilds.cache.size}})();
         const totalUsers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
         const totalCommands = client.commands.size;
         const totalAliases = client.aliases.size;
@@ -2955,7 +2911,7 @@ buildAliasLanguageMap();
         console.log(`${green}[CHANGELOG]${reset}   Report saved to ./changelog.md (${((md.length / 1024).toFixed(1))} KB)`);
         console.log(`${green}[CHANGELOG]${reset}   Per-server partitions: ${dbStats.totalUserPartitions.toLocaleString()} total, ${dbStats.totalUniqueUsers.toLocaleString()} unique users`);
         if (serverStats.length > 0) {
-            console.log(`${green}[CHANGELOG]${reset}   Server intelligence: ${serverStats.length} servers analyzed`);
+            console.log(`${green}[CHANGELOG]${reset}   Server intelligence: ${totalGuilds} servers analyzed`);
         }
         
     } catch(e) {

@@ -61,7 +61,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const freeMem = (os.freemem() / 1024 / 1024 / 1024).toFixed(2);
         
         // ================= SERVER STATS =================
-        const serverCount = client.guilds.cache.size;
+        const serverCount = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size);
         const userCount = client.users.cache.size;
         const channelCount = client.channels.cache.size;
         const dbUserCount = db.prepare("SELECT COUNT(*) as count FROM users").get().count;

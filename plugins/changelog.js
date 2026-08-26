@@ -41,7 +41,7 @@ function getLiveStats(client) {
         ping,
         pingEmoji: ping < 100 ? '\u{1F7E2}' : ping < 200 ? '\u{1F7E1}' : '\u{1F534}',
         memMB,
-        guilds: client.guilds.cache.size,
+        guilds: (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size),
         users: client.guilds.cache.reduce((a, g) => a + (g.memberCount || 0), 0).toLocaleString(),
         commands: client.commands?.size || 0,
         version
