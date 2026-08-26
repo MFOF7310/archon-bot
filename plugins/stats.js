@@ -191,7 +191,7 @@ module.exports = {
             const totalUsers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
             const totalCommands = client.commands?.size || 0;
             const totalAliases = client.aliases?.size || 0;
-            const totalGuilds = client.guilds.cache.size;
+            const totalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size);
             // ================= PER-SERVER STATS =================
 const currentGuild = message?.guild;
 let guildStats = '';
@@ -303,7 +303,7 @@ try {
                     },
                     { 
                         name: `🌐 ${t.networkHealth}`, 
-                        value: `\`\`\`\n${networkGraph}\n${t.eventLoop}: ${eventLoopLag}ms\n${t.connectionPool}: ${client.guilds.cache.size} active\`\`\``, 
+                        value: `\`\`\`\n${networkGraph}\n${t.eventLoop}: ${eventLoopLag}ms\n${t.connectionPool}: ${(client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size)} active\`\`\``, 
                         inline: false 
                     }
                 );

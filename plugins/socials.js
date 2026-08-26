@@ -95,7 +95,7 @@ module.exports = {
         
         // ================= QUICK STATS =================
         const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
-        const totalGuilds = client.guilds.cache.size;
+        const totalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size);
         const totalCommands = client.commands?.size || 0;
         const uptime = process.uptime();
         const days = Math.floor(uptime / 86400);
@@ -257,7 +257,7 @@ module.exports = {
                     .setAuthor({ name: '📊 LIVE SYSTEM STATS', iconURL: client.user.displayAvatarURL() })
                     .setDescription(
                         `\`\`\`yaml\n` +
-                        `🏠 Servers: ${client.guilds.cache.size}\n` +
+                        `🏠 Servers: ${(client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size)}\n` +
                         `👥 Users: ${client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0).toLocaleString()}\n` +
                         `⚡ Ping: ${freshPing}ms\n` +
                         `⏱️ Uptime: ${freshUptimeStr}\n` +
@@ -305,7 +305,7 @@ module.exports = {
         
         const ping = Math.round(client.ws.ping);
         const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
-        const totalGuilds = client.guilds.cache.size;
+        const totalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size);
         const totalCommands = client.commands?.size || 0;
         const uptime = process.uptime();
         const days = Math.floor(uptime / 86400);

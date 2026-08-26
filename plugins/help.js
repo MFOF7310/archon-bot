@@ -346,7 +346,7 @@ module.exports = {
         const hours = Math.floor((uptimeSec % 86400) / 3600);
         const minutes = Math.floor((uptimeSec % 3600) / 60);
         const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
-        const totalGuilds = client.guilds.cache.size || 0;
+        const totalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size) || 0;
 
         let uptimeString = '';
         if (days > 0) uptimeString += `${days}${lang === 'fr' ? 'j' : 'd'} `;
@@ -497,7 +497,7 @@ module.exports = {
                     const freshHours = Math.floor((freshUptimeSec % 86400) / 3600);
                     const freshMinutes = Math.floor((freshUptimeSec % 3600) / 60);
                     const freshTotalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
-                    const freshTotalGuilds = client.guilds.cache.size || 0;
+                    const freshTotalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size) || 0;
 
                     let freshUptimeString = '';
                     if (freshDays > 0) freshUptimeString += `${freshDays}${lang === 'fr' ? 'j' : 'd'} `;

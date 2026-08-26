@@ -12,7 +12,7 @@ function getSystemStats(client) {
     return {
         uptimeString: uptimeString.trim() || '0m',
         totalMembers: client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0),
-        totalGuilds: client.guilds.cache.size,
+        totalGuilds: (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size),
         totalCommands: client.commands?.size || 0,
         memoryUsage: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1),
         ping: Math.round(client.ws.ping),
