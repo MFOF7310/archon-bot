@@ -2334,7 +2334,12 @@ client.once(Events.ClientReady, async () => {
         const metaRow = db.prepare("SELECT value FROM bot_meta WHERE key = 'last_commit'").get();
         const lastHash = metaRow?.value || null;
 
-        if (lastHash && lastHash !== currentHash) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const lastBroadcastRow = db.prepare("SELECT value FROM bot_meta WHERE key = 'last_broadcast_date'").get();
+        const lastBroadcastDate = lastBroadcastRow?.value || null;
+        const alreadyBroadcastToday = lastBroadcastDate === todayStr;
+
+        if (lastHash && lastHash !== currentHash && !alreadyBroadcastToday) {
             console.log(`${green}[UPDATE BROADCAST]${reset} New deploy: ${lastHash.substring(0,7)} → ${shortHash}`);
 
             const commits = execSync('git log --oneline -5', { cwd: __dirname })
@@ -2410,6 +2415,7 @@ client.once(Events.ClientReady, async () => {
         }
 
         db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_commit', ?)").run(currentHash);
+        if (!alreadyBroadcastToday) db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_broadcast_date', ?)").run(todayStr);
     } catch (e) {
         console.error('[UPDATE BROADCAST] Error:', e.message);
     } }, 15000); // 15s delay
