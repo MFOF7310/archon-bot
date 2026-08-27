@@ -168,6 +168,10 @@ module.exports = {
         .addStringOption(opt =>
             opt.setName('reset')
                 .setDescription('Type reset to remove your background')
+                .setRequired(false))
+        .addAttachmentOption(opt =>
+            opt.setName('image')
+                .setDescription('Upload a custom image (jpg, png, webp)')
                 .setRequired(false)),
 
 
