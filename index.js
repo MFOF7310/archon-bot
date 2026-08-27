@@ -5655,6 +5655,25 @@ apiApp.post('/api/update-config', requireAdmin, (req, res) => {
 
 
 
+// ─── LANGUAGES ───────────────────────────────────────────────────────────────
+apiApp.get('/api/languages', (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const langDir = path.join(__dirname, 'lib/lang');
+        const files = fs.readdirSync(langDir).filter(f => f.endsWith('.json'));
+        const languages = files.map(f => {
+            const code = f.replace('.json', '');
+            const names = { en: '🇬🇧 English', fr: '🇫🇷 French', ar: '🇸🇦 Arabic', bm: '🇲🇱 Bambara', zh: '🇨🇳 Chinese' };
+            return { code, label: names[code] || code };
+        });
+        languages.unshift({ code: 'auto', label: '🌐 Auto Detect' });
+        res.json({ languages });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── MODERATION LOGS ──────────────────────────────────────────────────────────
 apiApp.get('/api/modlogs/:guildId', (req, res) => {
     const { guildId } = req.params;
