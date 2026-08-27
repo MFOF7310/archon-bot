@@ -5225,6 +5225,18 @@ apiApp.get('/api/music', (req, res) => {
     } catch(e) { res.json([]); }
 });
 
+apiApp.get('/api/music/stats/:guildId?', (req, res) => {
+    try {
+        const guildId = req.params.guildId;
+        const where = guildId ? 'WHERE guild_id = ?' : '';
+        const p = guildId ? [guildId] : [];
+        const topTracks = db.prepare(`SELECT title, query, SUM(play_count) as play_count FROM music_history ${where} GROUP BY query ORDER BY play_count DESC LIMIT 20`).all(...p);
+        const totalPlays = db.prepare(`SELECT SUM(play_count) as total FROM music_history ${where}`).get(...p)?.total || 0;
+        const totalTracks = db.prepare(`SELECT COUNT(DISTINCT query) as count FROM music_history ${where}`).get(...p)?.count || 0;
+        res.json({ topTracks, totalPlays, totalTracks });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 apiApp.get('/api/music/:guildId', (req, res) => {
     try {
         const musicPlugin = client.commands?.get('music');
@@ -5256,6 +5268,8 @@ apiApp.get('/api/music/:guildId', (req, res) => {
         });
     } catch(e) { res.json({ playing: false }); }
 });
+
+// ─── MUSIC STATS ──────────────────────────────────────────────────────────────
 
 // Health check simple
 apiApp.get('/api/health', (req, res) => {

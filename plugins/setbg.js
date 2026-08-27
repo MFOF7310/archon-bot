@@ -151,6 +151,24 @@ module.exports = {
     category: 'PROFILE',
     usage: '.setbg [1-5 | reset] OR .setbg + attach image',
     cooldown: 10000,
+    data: new SlashCommandBuilder()
+        .setName('setbg')
+        .setDescription('Set your profile card background image')
+        .addIntegerOption(opt =>
+            opt.setName('preset')
+                .setDescription('Pick a preset background (1-5)')
+                .setRequired(false)
+                .addChoices(
+                    { name: 'Manga Eye', value: 1 },
+                    { name: 'Ninja', value: 2 },
+                    { name: 'Dark Warrior', value: 3 },
+                    { name: 'Shadow', value: 4 },
+                    { name: 'Phantom', value: 5 }
+                ))
+        .addStringOption(opt =>
+            opt.setName('reset')
+                .setDescription('Type reset to remove your background')
+                .setRequired(false)),
 
 
     run: async (client, message, args, db) => {
