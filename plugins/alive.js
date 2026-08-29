@@ -72,9 +72,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const pendingWrites = client.pendingUserUpdates?.size || 0;
         
         // ================= LATENCY =================
-        const sentMsg = await message.channel.send('...');
         const apiLatency = Date.now() - startTime;
-        await sentMsg.delete().catch(() => {});
         const wsPing = Math.round(client.ws.ping);
         
         // ================= SYSTEM HEALTH =================
