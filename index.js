@@ -2244,7 +2244,7 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 
 // ================= BOOT SEQUENCE =================
 client.once(Events.ClientReady, async () => {
-    // Cache missing guild names from DB
+    // Cache missing guild names from DB + bulk stats sync
     setTimeout(async () => {
         try {
             const dbGuilds = client.db.prepare(
@@ -2256,6 +2256,22 @@ client.once(Events.ClientReady, async () => {
                     if (guild) console.log(`[GUILD CACHE] Fetched missing guild: ${guild.name} (${guildId})`);
                 }
             }
+            // ── Bulk sync all cached guilds ──
+            let synced = 0;
+            for (const [, guild] of client.guilds.cache) {
+                try {
+                    db.prepare(`
+                        UPDATE global_server_stats
+                        SET guild_name = ?, total_members = ?, last_active = CASE
+                            WHEN last_active IS NULL THEN strftime('%s','now')
+                            ELSE last_active
+                        END
+                        WHERE guild_id = ?
+                    `).run(guild.name, guild.memberCount, guild.id);
+                    synced++;
+                } catch (_) {}
+            }
+            console.log(`[GUILD SYNC] Synced ${synced} guilds on boot`);
         } catch(e) { console.error('[GUILD CACHE] Error:', e.message); }
     }, 10000);
     // ── Bot presence rotation ──
@@ -4770,6 +4786,14 @@ safeOn(Events.GuildDelete, async (guild) => {
 safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
     if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
+    // ── Sync guild stats ──
+    try {
+        db.prepare(`
+            UPDATE global_server_stats
+            SET total_members = ?, guild_name = ?, last_active = strftime('%s','now')
+            WHERE guild_id = ?
+        `).run(member.guild.memberCount, member.guild.name, member.guild.id);
+    } catch (_) {}
 
     // ── RAID DETECTION (Premium) ──
     try {
@@ -4866,6 +4890,14 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
 safeOn(Events.GuildMemberRemove, async (member) => {
     if (member.user.bot) return;
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
+    // ── Sync guild stats ──
+    try {
+        db.prepare(`
+            UPDATE global_server_stats
+            SET total_members = ?, guild_name = ?, last_active = strftime('%s','now')
+            WHERE guild_id = ?
+        `).run(member.guild.memberCount, member.guild.name, member.guild.id);
+    } catch (_) {}
 
         // ── WELCOME PLUGIN: ON MEMBER REMOVE (goodbye handler) ──
     const Style = require('./plugins/welcome-style.js');
