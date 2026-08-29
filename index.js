@@ -2256,18 +2256,17 @@ client.once(Events.ClientReady, async () => {
                     if (guild) console.log(`[GUILD CACHE] Fetched missing guild: ${guild.name} (${guildId})`);
                 }
             }
-            // ── Bulk sync all cached guilds ──
+            // ── Bulk sync all cached guilds (INSERT missing, UPDATE existing) ──
             let synced = 0;
             for (const [, guild] of client.guilds.cache) {
                 try {
                     db.prepare(`
-                        UPDATE global_server_stats
-                        SET guild_name = ?, total_members = ?, last_active = CASE
-                            WHEN last_active IS NULL THEN strftime('%s','now')
-                            ELSE last_active
-                        END
-                        WHERE guild_id = ?
-                    `).run(guild.name, guild.memberCount, guild.id);
+                        INSERT INTO global_server_stats (guild_id, guild_name, total_members, last_active)
+                        VALUES (?, ?, ?, strftime('%s','now'))
+                        ON CONFLICT(guild_id) DO UPDATE SET
+                            guild_name = excluded.guild_name,
+                            total_members = excluded.total_members
+                    `).run(guild.id, guild.name, guild.memberCount);
                     synced++;
                 } catch (_) {}
             }
@@ -4657,6 +4656,18 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 // ╚══════════════════════════════════════════════════════════════════════╝
 safeOn(Events.GuildCreate, async (guild) => {
     try {
+        // ── Sync global_server_stats ──
+        try {
+            db.prepare(`
+                INSERT INTO global_server_stats (guild_id, guild_name, total_members, last_active)
+                VALUES (?, ?, ?, strftime('%s','now'))
+                ON CONFLICT(guild_id) DO UPDATE SET
+                    guild_name = excluded.guild_name,
+                    total_members = excluded.total_members,
+                    last_active = strftime('%s','now')
+            `).run(guild.id, guild.name, guild.memberCount);
+            console.log(`[GUILD SYNC] Registered new guild: ${guild.name} (${guild.id})`);
+        } catch (_) {}
         // Skip owner's test guild — they already know the bot
         if (guild.id === process.env.GUILD_ID) return;
 
@@ -4757,6 +4768,8 @@ safeOn(Events.GuildDelete, async (guild) => {
         
         // Clean up command settings
         db.prepare('DELETE FROM server_command_settings WHERE guild_id = ?').run(gid);
+        // Clean up global server stats
+        db.prepare('DELETE FROM global_server_stats WHERE guild_id = ?').run(gid);
         
         // Clean up economy settings
         db.prepare('DELETE FROM server_economy_settings WHERE guild_id = ?').run(gid);
