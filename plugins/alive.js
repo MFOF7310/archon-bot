@@ -78,10 +78,10 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // ================= SYSTEM HEALTH =================
         let systemHealth = t.healthy;
         let healthColor = '#2ecc71';
-        if (wsPing > 250) {
+        if (wsPing > 400) {
             systemHealth = t.critical;
             healthColor = '#e74c3c';
-        } else if (wsPing > 100) {
+        } else if (wsPing > 200) {
             systemHealth = t.degraded;
             healthColor = '#f1c40f';
         }
