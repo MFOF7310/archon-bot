@@ -2226,15 +2226,17 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     
     const filteredArgs = paramOrder.map(param => argsMap[param]).filter(arg => arg !== undefined);
     const result = await command.run(...filteredArgs);
-    // ── Guild activity tracker ──
+    // ── Guild activity + stats tracker ──
     try {
-        const gid = message?.guild?.id;
-        if (gid && db) {
+        const g = message?.guild;
+        if (g && db) {
             db.prepare(`
                 UPDATE global_server_stats
-                SET last_active = strftime('%s', 'now')
+                SET last_active = strftime('%s', 'now'),
+                    guild_name = ?,
+                    total_members = ?
                 WHERE guild_id = ?
-            `).run(gid);
+            `).run(g.name, g.memberCount, g.id);
         }
     } catch (_) {}
     return result;
