@@ -36,6 +36,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
 
     const candidates = getGhostCandidates(db);
 
+    // ── LIST ──
     if (subcommand === 'list') {
         if (candidates.length === 0) {
             return reply({
@@ -47,22 +48,47 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
             });
         }
 
-        const lines = candidates.map((r, i) => {
+        const fields = candidates.map((r, i) => {
             const inCache = client.guilds.cache.has(r.guild_id);
             const dot = inCache ? EMOJIS.online : EMOJIS.offline;
-            return `**${i + 1}.** \`${r.guild_id}\`\n└ ${dot} **${r.guild_name}** • ${r.total_members} members • ${r.days_inactive}d inactive`;
-        }).join('\n\n');
+            return {
+                name: `${i + 1}. ${dot} ${r.guild_name}`,
+                value: `\`\`${r.guild_id}\`\` • ${r.total_members} members • ${r.days_inactive}d inactive`,
+                inline: false
+            };
+        });
 
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#e67e22')
                 .setTitle(`${EMOJIS.warning} Ghost Servers — ${candidates.length} candidates`)
-                .setDescription(lines)
+                .addFields(fields)
                 .setFooter({ text: `Threshold: ${GHOST_DAYS}+ days • /ghostclean leave <id> | /ghostclean leaveall` })],
             flags: 64
         });
     }
 
+    // ── SERVERS (name + ID only) ──
+    if (subcommand === 'servers') {
+        if (candidates.length === 0) {
+            return reply({ content: `${EMOJIS.online} No ghost servers found.`, flags: 64 });
+        }
+        const fields = candidates.map((r, i) => ({
+            name: `${i + 1}. ${r.guild_name}`,
+            value: `\`${r.guild_id}\``,
+            inline: true
+        }));
+        return reply({
+            embeds: [new EmbedBuilder()
+                .setColor('#3498db')
+                .setTitle(`${EMOJIS.eagle} Ghost Server IDs`)
+                .addFields(fields)
+                .setFooter({ text: 'Tap an ID to copy • Use /ghostclean leave <id> to remove' })],
+            flags: 64
+        });
+    }
+
+    // ── LEAVE <guild_id> ──
     if (subcommand === 'leave') {
         const targetId = args[1];
         if (!targetId) return reply({ content: '❌ Provide a guild ID.', flags: 64 });
@@ -82,6 +108,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         });
     }
 
+    // ── LEAVEALL ──
     if (subcommand === 'leaveall') {
         const inCache = candidates.filter(r => client.guilds.cache.has(r.guild_id));
         if (inCache.length === 0) return reply({ content: '⚠️ No ghost candidates in cache.', flags: 64 });
@@ -124,7 +151,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         });
     }
 
-    return reply({ content: '❓ Usage: `list | leave <id> | leaveall [confirm]`', flags: 64 });
+    return reply({ content: '❓ Usage: `list | servers | leave <id> | leaveall [confirm]`', flags: 64 });
 }
 
 module.exports = {
@@ -132,7 +159,7 @@ module.exports = {
     aliases: ['ghostservers', 'cleanghosts'],
     description: '👻 Ghost server management (owner only).',
     category: 'OWNER',
-    usage: '.ghostclean [list | leave <guild_id> | leaveall]',
+    usage: '.ghostclean [list | servers | leave <guild_id> | leaveall]',
     cooldown: 5000,
 
     data: new SlashCommandBuilder()
@@ -144,17 +171,37 @@ module.exports = {
                 .setRequired(false)
                 .addChoices(
                     { name: 'List ghost servers', value: 'list' },
-                    { name: 'Leave all ghosts', value: 'leaveall' },
-                    { name: 'Leave one server', value: 'leave' }
+                    { name: 'Show IDs only', value: 'servers' },
+                    { name: 'Leave one server', value: 'leave' },
+                    { name: 'Leave all ghosts', value: 'leaveall' }
                 ))
         .addStringOption(opt =>
             opt.setName('guild_id')
-                .setDescription('Guild ID (for leave action)')
+                .setDescription('Guild ID to leave')
+                .setAutocomplete(true)
                 .setRequired(false))
         .addStringOption(opt =>
             opt.setName('confirm')
                 .setDescription('Type confirm for leaveall')
                 .setRequired(false)),
+
+    async autocomplete(interaction, client) {
+        const focusedValue = interaction.options.getFocused();
+        const db = client.db;
+        const candidates = getGhostCandidates(db);
+        const filtered = candidates
+            .filter(r =>
+                r.guild_name.toLowerCase().includes(focusedValue.toLowerCase()) ||
+                r.guild_id.includes(focusedValue)
+            )
+            .slice(0, 25);
+        await interaction.respond(
+            filtered.map(r => ({
+                name: `${r.guild_name} (${r.days_inactive}d inactive)`,
+                value: r.guild_id
+            }))
+        );
+    },
 
     run: async (client, message, args, db) => {
         const isOwner = message.author.id === process.env.OWNER_ID;
