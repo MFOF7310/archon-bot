@@ -2225,7 +2225,19 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     }
     
     const filteredArgs = paramOrder.map(param => argsMap[param]).filter(arg => arg !== undefined);
-    return await command.run(...filteredArgs);
+    const result = await command.run(...filteredArgs);
+    // ── Guild activity tracker ──
+    try {
+        const gid = message?.guild?.id;
+        if (gid && db) {
+            db.prepare(`
+                UPDATE global_server_stats
+                SET last_active = strftime('%s', 'now')
+                WHERE guild_id = ?
+            `).run(gid);
+        }
+    } catch (_) {}
+    return result;
 } // 🌟
 
 // ================= BOOT SEQUENCE =================
