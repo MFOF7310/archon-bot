@@ -62,7 +62,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         // ================= SERVER STATS =================
         const serverCount = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size);
-        const userCount = client.users.cache.size;
+        const userCount = dbUserCount;
         const channelCount = client.channels.cache.size;
         const dbUserCount = db.prepare("SELECT COUNT(*) as count FROM users").get().count;
         const totalCommands = client.commands.size;
@@ -72,7 +72,9 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const pendingWrites = client.pendingUserUpdates?.size || 0;
         
         // ================= LATENCY =================
+        const sentMsg = await message.channel.send('...');
         const apiLatency = Date.now() - startTime;
+        await sentMsg.delete().catch(() => {});
         const wsPing = Math.round(client.ws.ping);
         
         // ================= SYSTEM HEALTH =================
