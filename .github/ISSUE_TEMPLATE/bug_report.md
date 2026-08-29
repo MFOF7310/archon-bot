@@ -1,27 +1,43 @@
 ---
-name: "\U0001F41B Bug Report"
-about: Create a report to help us improve the engine.
+name: "🐛 Bug Report"
+about: Report a bug or unexpected behavior in ARCHON CG-223.
 title: "[BUG] "
-labels: bug, question
-assignees: ''
-
+labels: bug
+assignees: MFOF7310
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## 🐛 Bug Description
+A clear and concise description of what went wrong.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. See error
+## 📍 Platform
+- [ ] Discord (prefix command)
+- [ ] Discord (slash command)
+- [ ] Telegram
+- [ ] Dashboard (bamako-steel-dev.xyz)
 
-**Expected behavior**
-A clear description of what you expected to happen.
+## 🔧 Command / Feature
+Command used (e.g. `.rank`, `/music`, `.profile`):
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## 🔁 Steps to Reproduce
+1. 
+2. 
+3. 
 
-**Environment:**
- - OS: (e.g. Android, Windows)
- - Version: (e.g. 1.0.2)
+## ✅ Expected Behavior
+What you expected to happen.
+
+## ❌ Actual Behavior
+What actually happened. Include any error message shown.
+
+## 📸 Screenshots
+If applicable, add screenshots.
+
+## 🌍 Environment
+- Bot Version: (check with `.alive` or `/alive`)
+- Platform/OS: (e.g. Android, Windows, iOS)
+- Discord Client: (Desktop / Mobile / Web)
+- Server Region: (e.g. EU, US, Africa)
+
+## 📝 Additional Context
+Any other relevant information.
+

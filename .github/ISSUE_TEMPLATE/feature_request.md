@@ -1,20 +1,43 @@
 ---
-name: "\U0001F680 Feature Request"
-about: Suggest an idea for this project.
+name: "🚀 Feature Request"
+about: Suggest a new feature or improvement for ARCHON CG-223.
 title: "[FEATURE] "
 labels: enhancement
-assignees: ''
-
+assignees: MFOF7310
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear description of what the problem is.
+## 🚀 Feature Summary
+A brief description of the feature you'd like to see.
 
-**Describe the solution you'd like**
-A clear description of what you want to happen.
+## 📍 Target Platform
+- [ ] Discord
+- [ ] Telegram
+- [ ] Dashboard
+- [ ] All platforms
 
-**Describe alternatives you've considered**
-Any other solutions or features you've thought of.
+## 🧩 Which Category?
+- [ ] Economy / Leveling
+- [ ] Moderation
+- [ ] Music
+- [ ] AI / Lydia
+- [ ] Games
+- [ ] Profile / Rank
+- [ ] Social (Welcome, Giveaway, Birthday)
+- [ ] Dashboard / Web
+- [ ] Other
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+## 💡 Problem It Solves
+What problem does this feature address? What's missing right now?
+
+## 🛠️ Proposed Solution
+Describe how you imagine the feature working.
+
+## 🔄 Alternatives Considered
+Any other approaches you've thought of?
+
+## 📸 Examples / References
+Screenshots, links, or examples from other bots that do something similar.
+
+## 📝 Additional Context
+Anything else that would help understand the request.
+
