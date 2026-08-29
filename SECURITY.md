@@ -4,48 +4,42 @@
 
 | Version | Supported |
 |---------|-----------|
-| 1.0.x   | ✅ Yes    |
-| < 1.0   | ❌ No     |
+| v3.x    | ✅ Active |
+| v2.x    | ⚠️ Critical fixes only |
+| < v2.0  | ❌ No longer supported |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in ARCHON CG-223 or its dashboard, please **do not** open a public GitHub issue.
+**Do NOT open a public GitHub issue for security vulnerabilities.**
 
-### Contact
+If you discover a security vulnerability in ARCHON CG-223, please report it privately:
 
-Report vulnerabilities privately via:
-- **Discord:** [mfof7559](https://discord.gg/5EGZTUb6) — Send me friend request 
-- **Telegram:** [@architect223bot](https://t.me/architect223bot) — DM the owner
-- **Email:** (via Discord DM for email address)
-
-### What to Include
+- **Discord:** Join [Eagle Community](https://discord.gg/NFSMFJajp9) and DM `mfof7559`
+- **GitHub:** Use [GitHub's private vulnerability reporting](https://github.com/MFOF7310/archon-bot/security/advisories/new)
 
 Please include:
-1. Description of the vulnerability
-2. Steps to reproduce
-3. Potential impact
-4. Suggested fix (if any)
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Your Discord tag or email for follow-up
 
-### Response Time
+You can expect an initial response within **48 hours**.
 
-- **Acknowledgement:** Within 48 hours
-- **Fix timeline:** Within 7 days for critical issues
+## Scope
 
-### Scope
+The following are in scope:
+- Token or credential exposure
+- Authentication bypass on the dashboard
+- Privilege escalation via bot commands
+- SQL injection via user inputs
+- Data leakage between guilds (IDOR)
 
-In scope:
-- Authentication bypass
-- Data exposure (user credentials, tokens)
-- SQL/NoSQL injection
-- XSS vulnerabilities
-- CSRF vulnerabilities
-- Unauthorized access to admin functions
+The following are out of scope:
+- Rate limiting / spam (handled by Discord)
+- Third-party service outages (SoundCloud, YouTube, Telegram)
+- Self-hosted deployment issues
 
-Out of scope:
-- Rate limiting issues
-- Denial of service
-- Social engineering
+## Disclosure Policy
 
----
+We follow a responsible disclosure model. Once a fix is confirmed and deployed, we will acknowledge the reporter in the changelog unless they prefer to remain anonymous.
 
-🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱
