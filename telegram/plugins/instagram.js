@@ -1,5 +1,5 @@
 const { TMP, COOKIES } = require('./_media.js');
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -21,7 +21,6 @@ function dlInstagram(url) {
             'yt-dlp --no-playlist',
             '-o "' + out + '"',
             '-f "bestvideo+bestaudio/best"',
-            '--max-filesize 48M',
             '--merge-output-format mp4',
             '"' + url + '"'
         ].join(' ');
@@ -32,6 +31,19 @@ function dlInstagram(url) {
             res(path.join(TMP, files[0]));
         });
     });
+}
+
+function compressVideo(inputPath, outputPath, targetMB = 45) {
+    try {
+        const durationOutput = execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`).toString().trim();
+        const duration = parseFloat(durationOutput) || 30;
+        const targetBitrate = Math.floor((targetMB * 8192) / duration);
+        execSync(`ffmpeg -y -i "${inputPath}" -b:v ${targetBitrate}k -bufsize ${targetBitrate * 2}k -maxrate ${Math.floor(targetBitrate * 1.2)}k -c:a copy -movflags +faststart "${outputPath}"`, { stdio: 'pipe', timeout: 120000 });
+        return fs.existsSync(outputPath);
+    } catch (e) {
+        console.error('[INSTAGRAM] Compress error:', e.message);
+        return false;
+    }
 }
 
 module.exports = {
@@ -52,8 +64,13 @@ module.exports = {
             );
 
         await ctx.action('upload_video');
-        const proc = await ctx.replyHTML('📸 <i>Fetching Instagram content...</i>');
-        const edit = (t) => ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, t, { parse_mode: 'HTML' }).catch(() => {});
+        const proc = await ctx.bridge.sendTo(ctx.chatId, '⏳ <b>Fetching Instagram content...</b>', { parse_mode: 'HTML' });
+        const statusId = proc?.data?.message_id;
+        const edit = (t) => ctx.bridge.editMessage(ctx.chatId, statusId, t, { parse_mode: 'HTML' }).catch(() => {});
+
+        const uid = Date.now() + '_' + Math.floor(Math.random() * 10000);
+        const rawPath = path.join(TMP, 'ig_' + uid + '_raw.mp4');
+        const compressedPath = path.join(TMP, 'ig_' + uid + '_out.mp4');
 
         try {
             await edit('📸 <i>Downloading... hang tight!</i>');
@@ -62,20 +79,37 @@ module.exports = {
                 dlInstagram(url)
             ]);
 
-            const buf = fs.readFileSync(filePath);
-            try { fs.unlinkSync(filePath); } catch {}
+            fs.renameSync(filePath, rawPath);
+            const sizeMB = fs.statSync(rawPath).size / 1024 / 1024;
+            console.log('[INSTAGRAM] Downloaded size:', sizeMB.toFixed(2), 'MB');
+
+            let sendPath = rawPath;
+            if (sizeMB >= 48) {
+                await edit('🗜️ <b>Compressing...</b> (' + sizeMB.toFixed(0) + 'MB → ~45MB)\n<i>This may take a moment</i>');
+                console.log('[INSTAGRAM] Compressing...');
+                const ok = compressVideo(rawPath, compressedPath, 45);
+                if (ok && fs.existsSync(compressedPath)) {
+                    const newSize = fs.statSync(compressedPath).size / 1024 / 1024;
+                    console.log('[INSTAGRAM] Compressed size:', newSize.toFixed(2), 'MB');
+                    sendPath = compressedPath;
+                } else {
+                    throw new Error('Compression failed');
+                }
+            }
+
+            await edit('📤 <b>Sending...</b>');
+            const buf = fs.readFileSync(sendPath);
 
             const desc = meta?.description || meta?.title || null;
             const uploader = meta?.uploader || meta?.channel || null;
             const caption =
-                (desc ? `📸 ${desc.substring(0, 180)}\n` : '📸 <b>Instagram</b>\n') +
-                (uploader ? `👤 @${uploader}
-` : '') +
-                `
-🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+                (desc ? '📸 ' + desc.substring(0, 180) + '\n' : '📸 <b>Instagram</b>\n') +
+                (uploader ? '👤 @' + uploader + '\n' : '') +
+                '\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
 
-            await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+            await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
             await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
+
         } catch(e) {
             console.error('[INSTAGRAM]', e.message);
             await edit(
@@ -85,6 +119,9 @@ module.exports = {
                 '• Try with a direct public reel link\n\n' +
                 '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
             );
+        } finally {
+            try { if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath); } catch {}
+            try { if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath); } catch {}
         }
     }
 };
