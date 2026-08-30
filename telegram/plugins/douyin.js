@@ -69,6 +69,13 @@ module.exports = {
                 const rawPath = path.join(tmpDir, `tt_${uid}_raw.mp4`);
                 const compressedPath = path.join(tmpDir, `tt_${uid}_out.mp4`);
 
+                // Status message — will be edited through the process, deleted after send
+                const statusMsg = await ctx.bridge.sendMessage(ctx.chatId, '⏳ <b>Downloading video...</b>', { parse_mode: 'HTML' });
+                const statusId = statusMsg?.data?.message_id;
+                const updateStatus = async (text) => {
+                    if (statusId) await ctx.bridge.editMessage(ctx.chatId, statusId, text, { parse_mode: 'HTML' }).catch(() => {});
+                };
+
                 let result;
                 try {
                     await downloadToFile(info.url, rawPath);
@@ -78,6 +85,8 @@ module.exports = {
 
                     let sendPath = rawPath;
                     if (sizeMB >= 48) {
+                        await updateStatus(`🗜️ <b>Compressing...</b> (${sizeMB.toFixed(0)}MB → ~45MB)
+<i>This may take a moment</i>`);
                         console.log('[TIKTOK] Compressing to fit Telegram limit...');
                         const ok = compressVideo(rawPath, compressedPath, 45);
                         if (ok && fs.existsSync(compressedPath)) {
@@ -89,9 +98,13 @@ module.exports = {
                         }
                     }
 
+                    await updateStatus('📤 <b>Sending video...</b>');
                     const buffer = fs.readFileSync(sendPath);
                     result = await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
                     console.log('[TIKTOK] Send result:', result?.success, result?.data?.message_id);
+
+                    // Clean up status message — video is here, no need for it
+                    if (statusId && result?.success) await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
                 } finally {
                     // Always clean up temp files
                     try { if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath); } catch {}
