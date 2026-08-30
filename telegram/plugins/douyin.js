@@ -63,15 +63,41 @@ module.exports = {
 
             // Download to buffer — TikTok CDN blocks direct Telegram fetches
             try {
-                const buffer = await downloadBuffer(info.url);
-                await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
+                const sizeMB = await getRemoteFileSize(info.url);
+                console.log('[TIKTOK] Remote size:', sizeMB.toFixed(2), 'MB');
+
+                let result;
+                if (sizeMB > 0 && sizeMB < 48) {
+                    // Under 48MB — buffer and send (faster, more reliable)
+                    const buffer = await downloadBuffer(info.url);
+                    result = await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
+                } else {
+                    // Large or unknown size — send URL directly, Telegram fetches it
+                    console.log('[TIKTOK] Large file — using direct URL method');
+                    result = await ctx.bridge.sendVideo(ctx.chatId, info.url, { caption, parse_mode: 'HTML' });
+                }
+
+                if (!result?.success) {
+                    // Final fallback — try the other method
+                    console.log('[TIKTOK] Primary send failed — trying fallback method');
+                    if (sizeMB < 48) {
+                        result = await ctx.bridge.sendVideo(ctx.chatId, info.url, { caption, parse_mode: 'HTML' });
+                    } else {
+                        const buffer = await downloadBuffer(info.url);
+                        result = await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
+                    }
+                }
+
+                console.log('[TIKTOK] Send result:', result?.success, result?.data?.message_id);
+                if (!result?.success) throw new Error('All send methods failed');
                 deleteProc();
             } catch(dlErr) {
-                console.error('[TIKTOK] Send error:', dlErr.message);
+                console.error('[TIKTOK] Send error:', dlErr.message, dlErr.stack?.split('\n')[1]);
                 deleteProc();
                 await ctx.replyHTML(`❌ Couldn't deliver that video — try again or use a different link.`);
             }
         } catch (err) {
+            console.error('[TIKTOK] Outer error:', err.message);
             ctx.replyHTML(`❌ Couldn't grab that one — might be private or region-locked. Try a different video!`);
         }
     }
@@ -144,6 +170,21 @@ function downloadBuffer(url, maxRedirects = 5) {
         };
         get(url, 0);
     });
+}
+
+async function getRemoteFileSize(url, maxRedirects = 5) {
+    try {
+        const followed = await followRedirect(url, maxRedirects);
+        return new Promise((resolve) => {
+            const req = require('https').request(followed, { method: 'HEAD', timeout: 8000 }, (res) => {
+                const len = parseInt(res.headers['content-length'] || '0');
+                resolve(len / 1024 / 1024);
+            });
+            req.on('error', () => resolve(0));
+            req.on('timeout', () => { req.destroy(); resolve(0); });
+            req.end();
+        });
+    } catch { return 0; }
 }
 
 async function fetchTikWM(url) {
