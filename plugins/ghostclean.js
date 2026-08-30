@@ -209,7 +209,7 @@ module.exports = {
     },
 
     execute: async (interaction, client) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
         const isOwner = interaction.user.id === process.env.OWNER_ID;
         const action = interaction.options.getString('action') || 'list';
         const guildId = interaction.options.getString('guild_id') || '';
