@@ -940,11 +940,10 @@ async function handleUpdate(update, bridge, client) {
             if (cmd.ownerOnly && !ctx.isOwner()) return ctx.replyHTML(`⛔ <b>Owner only</b>`);
             if (cmd.adminOnly && !(await ctx.isAdmin())) return ctx.replyHTML(`⛔ <b>Admin only</b>`);
             try {
-                const _name = ctx.from?.first_name || ctx.from?.username || 'Unknown';
-                const _user = ctx.from?.username ? `${_name} (@${ctx.from.username})` : `${_name} (id:${ctx.from?.id || '?'})`;
-                const _chat = ctx.chat?.type === 'private' ? 'DM' :
-                              ctx.chat?.type === 'channel' ? `Channel: ${ctx.chat.title}` :
-                              ctx.chat?.type === 'supergroup' || ctx.chat?.type === 'group' ? `Group: ${ctx.chat.title}` : 'Unknown';
+                const _user = ctx.username + (ctx.userId ? ` (id:${ctx.userId})` : '');
+                const _chat = ctx.isPrivate ? 'DM' :
+                              ctx.isChannel ? `Channel: ${ctx.message?.chat?.title || ctx.chatId}` :
+                              ctx.isGroup ? `Group: ${ctx.message?.chat?.title || ctx.chatId}` : `id:${ctx.chatId}`;
                 const _time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 console.log(`${cyan}[TG CMD]${reset} /${cmdName} • ${_user} • ${_chat} • ${_time}`);
                 await cmd.handler(ctx);
