@@ -116,7 +116,7 @@ app.get('/dashboard', isAuthenticated, async (req, res) => {
 
 app.get('/dashboard/admin', isOwner, (req, res) => {
     res.render('admin', {
-        version: require('../package.json').version || '1.6.1',
+        version: (() => { try { return require('fs').readFileSync(require('path').join(__dirname, '..', 'version.txt'), 'utf8').trim(); } catch(e) { return '1.6.1'; } })(),
         nodeVersion: process.version,
         platform: process.platform
     });

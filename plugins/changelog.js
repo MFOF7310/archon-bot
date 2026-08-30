@@ -33,8 +33,8 @@ function getLiveStats(client) {
     const memMB = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
     let version = '2.0.0';
     try {
-        const pkg = path.join(ROOT_DIR, 'package.json');
-        if (fs.existsSync(pkg)) version = JSON.parse(fs.readFileSync(pkg, 'utf8')).version || version;
+        const versionFile = path.join(ROOT_DIR, 'version.txt');
+        if (fs.existsSync(versionFile)) version = fs.readFileSync(versionFile, 'utf8').trim() || version;
     } catch (e) {}
     return {
         uptime: days > 0 ? `${days}d ${hours}h ${mins}m` : `${hours}h ${mins}m`,
