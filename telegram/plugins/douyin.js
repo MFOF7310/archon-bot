@@ -70,7 +70,7 @@ module.exports = {
                 const compressedPath = path.join(tmpDir, `tt_${uid}_out.mp4`);
 
                 // Status message — will be edited through the process, deleted after send
-                const statusMsg = await ctx.bridge.sendMessage(ctx.chatId, '⏳ <b>Downloading video...</b>', { parse_mode: 'HTML' });
+                const statusMsg = await ctx.bridge.sendTo(ctx.chatId, '⏳ <b>Downloading video...</b>', { parse_mode: 'HTML' });
                 const statusId = statusMsg?.data?.message_id;
                 const updateStatus = async (text) => {
                     if (statusId) await ctx.bridge.editMessage(ctx.chatId, statusId, text, { parse_mode: 'HTML' }).catch(() => {});
