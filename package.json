@@ -1,6 +1,6 @@
 {
   "name": "archon-bot",
-  "version": "v9.0.1",
+  "version": "3.1.0",
   "description": "Feature-rich Discord bot from Bamako, Mali. 85+ commands, AI chat, economy, music, automod & Telegram bridge.",
   "main": "index.js",
   "scripts": {
