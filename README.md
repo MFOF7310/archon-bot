@@ -7,7 +7,7 @@
 **The Neural Architect — Multi-Platform Discord & Telegram Bot**
 
 [![Discord](https://img.shields.io/badge/Discord-Eagle%20Community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/NFSMFJajp9)
-[![Telegram](https://img.shields.io/badge/Telegram-archon223-26A5E4?style=flat&logo=telegram&logoColor=white)](https://t.me/architect223bot)
+[![Telegram](https://img.shields.io/badge/Telegram-archon223-26A5E4?style=flat&logo=telegram&logoColor=white)](https://t.me/architect223bot?start=_tgr_TUbY9E0wZjBk)
 [![Dashboard](https://img.shields.io/badge/Dashboard-Live-00f0ff?style=flat&logo=vercel&logoColor=white)](https://bamako-steel-dev.xyz)
 [![Version](https://img.shields.io/badge/Version-v3.1.0-00ff88?style=flat)](#)
 [![Servers](https://img.shields.io/badge/Servers-25+-f1c40f?style=flat)](#)
