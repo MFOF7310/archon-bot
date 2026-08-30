@@ -6,6 +6,7 @@ const https = require('https');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execSync } = require('child_process');
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -63,33 +64,41 @@ module.exports = {
 
             // Download to buffer — TikTok CDN blocks direct Telegram fetches
             try {
-                const sizeMB = await getRemoteFileSize(info.url);
-                console.log('[TIKTOK] Remote size:', sizeMB.toFixed(2), 'MB');
+                const tmpDir = '/tmp';
+                const uid = Date.now() + '_' + Math.floor(Math.random() * 10000);
+                const rawPath = path.join(tmpDir, `tt_${uid}_raw.mp4`);
+                const compressedPath = path.join(tmpDir, `tt_${uid}_out.mp4`);
 
                 let result;
-                if (sizeMB > 0 && sizeMB < 48) {
-                    // Under 48MB — buffer and send (faster, more reliable)
-                    const buffer = await downloadBuffer(info.url);
-                    result = await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
-                } else {
-                    // Large or unknown size — send URL directly, Telegram fetches it
-                    console.log('[TIKTOK] Large file — using direct URL method');
-                    result = await ctx.bridge.sendVideo(ctx.chatId, info.url, { caption, parse_mode: 'HTML' });
-                }
+                try {
+                    await downloadToFile(info.url, rawPath);
+                    const stat = fs.statSync(rawPath);
+                    const sizeMB = stat.size / 1024 / 1024;
+                    console.log('[TIKTOK] Downloaded size:', sizeMB.toFixed(2), 'MB');
 
-                if (!result?.success) {
-                    // Final fallback — try the other method
-                    console.log('[TIKTOK] Primary send failed — trying fallback method');
-                    if (sizeMB < 48) {
-                        result = await ctx.bridge.sendVideo(ctx.chatId, info.url, { caption, parse_mode: 'HTML' });
-                    } else {
-                        const buffer = await downloadBuffer(info.url);
-                        result = await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
+                    let sendPath = rawPath;
+                    if (sizeMB >= 48) {
+                        console.log('[TIKTOK] Compressing to fit Telegram limit...');
+                        const ok = compressVideo(rawPath, compressedPath, 45);
+                        if (ok && fs.existsSync(compressedPath)) {
+                            const newSize = fs.statSync(compressedPath).size / 1024 / 1024;
+                            console.log('[TIKTOK] Compressed size:', newSize.toFixed(2), 'MB');
+                            sendPath = compressedPath;
+                        } else {
+                            throw new Error('Compression failed');
+                        }
                     }
+
+                    const buffer = fs.readFileSync(sendPath);
+                    result = await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
+                    console.log('[TIKTOK] Send result:', result?.success, result?.data?.message_id);
+                } finally {
+                    // Always clean up temp files
+                    try { if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath); } catch {}
+                    try { if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath); } catch {}
                 }
 
-                console.log('[TIKTOK] Send result:', result?.success, result?.data?.message_id);
-                if (!result?.success) throw new Error('All send methods failed');
+                if (!result?.success) throw new Error('Send failed after download/compress');
                 deleteProc();
             } catch(dlErr) {
                 console.error('[TIKTOK] Send error:', dlErr.message, dlErr.stack?.split('\n')[1]);
@@ -170,6 +179,35 @@ function downloadBuffer(url, maxRedirects = 5) {
         };
         get(url, 0);
     });
+}
+
+async function downloadToFile(url, filepath, maxRedirects = 5) {
+    const followed = await followRedirect(url, maxRedirects);
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(filepath);
+        require('https').get(followed, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                file.close();
+                fs.unlinkSync(filepath);
+                return downloadToFile(res.headers.location, filepath, maxRedirects - 1).then(resolve).catch(reject);
+            }
+            res.pipe(file);
+            file.on('finish', () => { file.close(); resolve(filepath); });
+        }).on('error', (err) => { file.close(); fs.unlink(filepath, () => {}); reject(err); });
+    });
+}
+
+function compressVideo(inputPath, outputPath, targetMB = 45) {
+    try {
+        const durationOutput = execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`).toString().trim();
+        const duration = parseFloat(durationOutput) || 30;
+        const targetBitrate = Math.floor((targetMB * 8192) / duration);
+        execSync(`ffmpeg -y -i "${inputPath}" -b:v ${targetBitrate}k -bufsize ${targetBitrate * 2}k -maxrate ${Math.floor(targetBitrate * 1.2)}k -c:a copy -movflags +faststart "${outputPath}"`, { stdio: 'pipe', timeout: 120000 });
+        return fs.existsSync(outputPath);
+    } catch (e) {
+        console.error('[TIKTOK] Compress error:', e.message);
+        return false;
+    }
 }
 
 async function getRemoteFileSize(url, maxRedirects = 5) {
