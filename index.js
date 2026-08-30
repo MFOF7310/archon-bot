@@ -1417,9 +1417,24 @@ async function runWeeklyDatabasePurge() {
                 `${green}[PURGE]${reset} Cleaned: ` +
                 `${lydiaPurge.changes} AI msgs, ` +
                 `${modPurge.changes} mod logs, ` +
-                `${reminderPurge.changes} old reminders`
+                `${reminderPurge.changes} old reminders, ` +
+                `${ghostPurge} ghost guilds`
             );
         })();
+
+        // ── Ghost guild purge (not in transaction — reads cache) ──
+        const ninetyDaysAgo = now - (90 * 24 * 60 * 60);
+        const cachedIds = client.guilds?.cache ? [...client.guilds.cache.keys()] : [];
+        const ghostRows = db.prepare(
+            "SELECT guild_id FROM global_server_stats WHERE guild_id != 'DM' AND last_active < ?"
+        ).all(ninetyDaysAgo);
+        let ghostPurge = 0;
+        for (const row of ghostRows) {
+            if (!cachedIds.includes(row.guild_id)) {
+                db.prepare("DELETE FROM global_server_stats WHERE guild_id = ?").run(row.guild_id);
+                ghostPurge++;
+            }
+        }
 
         console.log(`${cyan}[PURGE]${reset} Compacting database file...`);
         db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
