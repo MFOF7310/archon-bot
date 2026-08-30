@@ -3,6 +3,16 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+function dlInstagramMeta(url) {
+    return new Promise((res, rej) => {
+        const cmd = 'yt-dlp --no-playlist --dump-json "' + url + '"';
+        exec(cmd, { timeout: 30000 }, (err, stdout) => {
+            if (err || !stdout) return res(null);
+            try { res(JSON.parse(stdout.trim())); } catch { res(null); }
+        });
+    });
+}
+
 function dlInstagram(url) {
     return new Promise((res, rej) => {
         const ts = Date.now();
@@ -10,17 +20,16 @@ function dlInstagram(url) {
         const cmd = [
             'yt-dlp --no-playlist',
             '-o "' + out + '"',
-            '-f "1/best"',
+            '-f "bestvideo+bestaudio/best"',
             '--max-filesize 48M',
+            '--merge-output-format mp4',
             '"' + url + '"'
         ].join(' ');
         exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
             if (err) return rej(new Error(stderr?.substring(0, 200) || err.message));
             const files = fs.readdirSync(TMP).filter(f => f.startsWith('ig_' + ts));
             if (!files.length) return rej(new Error('No file found'));
-            const found = path.join(TMP, files[0]);
-            setTimeout(() => { try { fs.unlinkSync(found); } catch {} }, 300000);
-            res(found);
+            res(path.join(TMP, files[0]));
         });
     });
 }
@@ -48,13 +57,25 @@ module.exports = {
 
         try {
             await edit('📸 <i>Downloading... hang tight!</i>');
-            const filePath = await dlInstagram(url);
+            const [meta, filePath] = await Promise.all([
+                dlInstagramMeta(url),
+                dlInstagram(url)
+            ]);
+
             const buf = fs.readFileSync(filePath);
+            try { fs.unlinkSync(filePath); } catch {}
+
+            const desc = meta?.description || meta?.title || null;
+            const uploader = meta?.uploader || meta?.channel || null;
+            const caption =
+                (desc ? `📸 ${desc.substring(0, 180)}\n` : '📸 <b>Instagram</b>\n') +
+                (uploader ? `👤 @${uploader}
+` : '') +
+                `
+🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+
             await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-            await ctx.sendVideoBuffer(buf, {
-                caption: '📸 <b>Instagram</b>\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱',
-                parse_mode: 'HTML'
-            });
+            await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
         } catch(e) {
             console.error('[INSTAGRAM]', e.message);
             await edit(
