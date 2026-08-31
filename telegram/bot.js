@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════
 
 const fs = require('fs');
+const bot_version = (() => { try { return require('fs').readFileSync('/root/cloud-gaming-223-digital-engine/version.txt', 'utf8').trim(); } catch { return '3.1.0'; } })();
 const path = require('path');
 const https = require('https');
 const os = require('os');
@@ -179,7 +180,7 @@ Also: <code>/id</code> · <code>/ping</code> · <code>/alive</code> · <code>/cr
 
 ━━━━━━━━━━━━━━━━━━━━━━
   <b>Node</b>     · BAMAKO_223 🇲🇱
-  <b>Version</b>  · v3.0.0
+  <b>Version</b>  · ${bot_version}
   <b>CPU</b>      · ${os.cpus()[0].model.split('@')[0].trim()}
   <b>Cores</b>    · ${os.cpus().length}
   <b>Uptime</b>   · {{UPTIME}}
@@ -761,7 +762,7 @@ async function handleBuiltin(ctx, cmdName, bridge) {
             const ramU = Math.round(mem.rss/1024/1024);
             let health = 'EXCELLENT', bar = healthBar(Math.max(0, 500-ping), 500);
             if (ping > 300) health = 'POOR'; else if (ping > 200) health = 'FAIR'; else if (ping > 100) health = 'GOOD';
-            await ctx.replyHTML(`📊 <b>STATISTICS</b>\n━━━━━━━━━━━━━━━━━━━━\n\nUptime · ${formatUptime(process.uptime())}\nRAM    · ${ramUMB}\nPing   · ${ping}ms\nTG Cmds· ${bridge.commands.size}\nLydia  · ${bridge.lydiaActiveChats.size} chats\n\nHealth · ${bar} ${health}\n\n<i>v3.0.0</i>`);
+            await ctx.replyHTML(`📊 <b>STATISTICS</b>\n━━━━━━━━━━━━━━━━━━━━\n\nUptime · ${formatUptime(process.uptime())}\nRAM    · ${ramUMB}\nPing   · ${ping}ms\nTG Cmds· ${bridge.commands.size}\nLydia  · ${bridge.lydiaActiveChats.size} chats\n\nHealth · ${bar} ${health}\n\n<i>${bot_version}</i>`);
             return true;
         }
 
@@ -1044,7 +1045,7 @@ async function sendBoot(bridge, client) {
     if (!owner || !bridge.enabled) return;
     const g = client?.guilds?.cache?.size || 0;
     const u = client?.guilds?.cache?.reduce((a,g) => a+(g.memberCount||0), 0) || 0;
-    const msg = `⚡ <b>ARCHON CG-223 ONLINE</b>\n━━━━━━━━━━━━━━━━━━━━\n\n🟢 System Active\nEngine  · Architect-CG-223\nNode    · BAMAKO_223 🇲🇱\nVersion · v3.0.0\n\n📡 Connections\nDiscord  · ${g} servers · ${formatNumber(u)} members\nTelegram · ${bridge.commands.size} commands\n\n🕐 ${new Date().toLocaleString()}\n· @mfof7310 ·`;
+    const msg = `⚡ <b>ARCHON CG-223 ONLINE</b>\n━━━━━━━━━━━━━━━━━━━━\n\n🟢 System Active\nEngine  · Architect-CG-223\nNode    · BAMAKO_223 🇲🇱\nVersion · ${bot_version}\n\n📡 Connections\nDiscord  · ${g} servers · ${formatNumber(u)} members\nTelegram · ${bridge.commands.size} commands\n\n🕐 ${new Date().toLocaleString()}\n· @mfof7310 ·`;
     await bridge.sendTo(owner, msg, { parse_mode: 'HTML' }).catch(()=>{});
 }
 
