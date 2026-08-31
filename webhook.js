@@ -58,6 +58,16 @@ http.createServer((req, res) => {
         const tgToken = process.env.TELEGRAM_BOT_TOKEN;
         const tgOwner = process.env.TELEGRAM_CHAT_ID || process.env.OWNER_TELEGRAM_ID;
 
+        // Push notification to PWA subscribers
+        async function pushNotify(title, body) {
+            try {
+                const { sendPushToAll } = await import('/opt/dashboard/dist/boot.js');
+                await sendPushToAll(title, body, '/');
+            } catch(e) {
+                console.log('[WEBHOOK] Push notify skipped:', e.message);
+            }
+        }
+
         function tgNotify(msg) {
             if (!tgToken || !tgOwner) return;
             const body = JSON.stringify({ chat_id: tgOwner, text: msg, parse_mode: 'HTML' });
@@ -79,6 +89,7 @@ http.createServer((req, res) => {
             } else {
                 console.log('[WEBHOOK] Deploy success — commit', commit);
                 tgNotify(`🚀 <b>Deploy success</b>\nCommit: <code>${commit}</code> by ${author}\nARCHON CG-223 restarted ✓`);
+                pushNotify('🚀 Deploy success', `Commit ${commit} by ${author} — ARCHON restarted`);
             }
         });
     });

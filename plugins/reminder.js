@@ -1,27 +1,28 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 const T = {
     en: {
-        title: '🔔 Reminder',
-        set: '✅ Reminder set!',
-        remindYou: 'Reminder',
+        title: () => `${EMOJIS.alarm} Reminder`,
+        set: (msg, time, ts) => `${EMOJIS.check} Got it! I'll remind you about **${msg}** in **${time}** — that's <t:${ts}:F> 🦅`,
+        remindYou: () => `${EMOJIS.notification} Hey, you asked me to remind you!`,
         at: 'at',
-        footer: 'Architect CG-223 • Reminder',
-        usage: '`.remind 1h Take a break` or `.remind 30m Call mom`',
-        invalid: '❌ Invalid time. Use: `30m`, `1h`, `2h30m`, `1d`',
-        dmBlocked: '⚠️ I couldn\'t DM you — your DMs may be closed. I\'ll remind you here instead!',
-        dmFailed: '⚠️ Reminder delivery failed. Here it is:',
+        footer: 'ARCHON CG-223 • BAMAKO_223 🇲🇱',
+        usage: (p) => `${EMOJIS.clock} **Reminder Usage**\n\n\`${p}remind 1h Take a break\`\n\`${p}remind 30m Call mom\`\n\`${p}remind 2h30m Meeting\``,
+        invalid: () => `${EMOJIS.warning} Invalid time format — use \`30m\`, \`1h\`, \`2h30m\` or \`1d\``,
+        dmBlocked: () => `${EMOJIS.warning} Couldn't slide into your DMs — make sure they're open! Dropping it here instead.`,
+        dmFailed: () => `${EMOJIS.warning} Reminder delivery hiccup — here it is anyway:`,
     },
     fr: {
-        title: '🔔 Rappel',
-        set: '✅ Rappel défini !',
-        remindYou: 'Rappel',
+        title: () => `${EMOJIS.alarm} Rappel`,
+        set: (msg, time, ts) => `${EMOJIS.check} Noté ! Je te rappellerai **${msg}** dans **${time}** — soit <t:${ts}:F> 🦅`,
+        remindYou: () => `${EMOJIS.notification} Hey, tu m'avais demandé de te rappeler ça !`,
         at: 'à',
-        footer: 'Architect CG-223 • Rappel',
-        usage: '`.remind 1h Prendre une pause` ou `.remind 30m Appeler maman`',
-        invalid: '❌ Temps invalide. Formats : `30m`, `1h`, `2h30m`, `1d`',
-        dmBlocked: '⚠️ Je n\'ai pas pu t\'envoyer de MP — tes MP sont peut-être fermés. Je te rappellerai ici !',
-        dmFailed: '⚠️ Échec de livraison du rappel. Le voici :',
+        footer: 'ARCHON CG-223 • BAMAKO_223 🇲🇱',
+        usage: (p) => `${EMOJIS.clock} **Utilisation**\n\n\`${p}remind 1h Pause café\`\n\`${p}remind 30m Appeler maman\`\n\`${p}remind 2h30m Réunion\``,
+        invalid: () => `${EMOJIS.warning} Format invalide — utilise \`30m\`, \`1h\`, \`2h30m\` ou \`1d\``,
+        dmBlocked: () => `${EMOJIS.warning} Impossible de t'envoyer un MP — vérifie que tes MP sont ouverts ! Je te rappelle ici.`,
+        dmFailed: () => `${EMOJIS.warning} Problème de livraison — voilà ton rappel quand même :`,
     }
 };
 
