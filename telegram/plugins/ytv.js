@@ -186,7 +186,11 @@ module.exports = {
                 await edit2('🔗 <b>Video too large to send directly — getting download link...</b>');
                 try {
                     const directUrl = await getDirectVideoUrl(url, quality);
-                    const videoTitle = meta?.title || 'YouTube Video';
+                    let videoTitle = 'YouTube Video';
+                    try {
+                        const { execSync } = require('child_process');
+                        videoTitle = execSync('yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt --get-title "' + url + '" 2>/dev/null', { timeout: 10000, encoding: 'utf8' }).trim().substring(0, 80);
+                    } catch {}
                     await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
                     await ctx.replyHTML(
                         '🎬 <b>Your video is ready!</b>\n\n' +
@@ -194,7 +198,8 @@ module.exports = {
                         '⚠️ <i>Link expires in ~6 hours</i>\n' +
                         '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱'
                     );
-                } catch {
+                } catch(linkErr) {
+                    console.error('[YTV] Direct link error:', linkErr.message);
                     await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
                     await ctx.replyHTML('😔 <b>Could not get download link.</b>\nTry a lower quality like 360p or 480p.\n<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>');
                 }
