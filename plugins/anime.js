@@ -123,7 +123,7 @@ module.exports = {
     name: 'anime',
     aliases: ['animechar', 'character', 'summon'],
     description: '🎌 Summon an anime character with style',
-    category: 'Fun',
+    category: 'FUN',
     cooldown: 5,
     
     data: new SlashCommandBuilder()

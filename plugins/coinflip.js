@@ -4,7 +4,7 @@ module.exports = {
     name: 'coinflip',
     aliases: ['coin', 'flip'],
     description: '🪙 Flip a coin',
-    category: 'Fun',
+    category: 'FUN',
     cooldown: 1,
     
     data: new SlashCommandBuilder()

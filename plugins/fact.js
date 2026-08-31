@@ -8,7 +8,7 @@ module.exports = {
     name: 'fact',
     aliases: ['facts', 'randomfact'],
     description: '💡 Get a random fun fact',
-    category: 'Fun',
+    category: 'FUN',
     cooldown: 2,
     
 

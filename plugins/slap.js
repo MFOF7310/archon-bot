@@ -19,7 +19,7 @@ module.exports = {
     name: 'slap',
     aliases: ['smack', 'hit'],
     description: '👋 Slap someone interactively',
-    category: 'Fun',
+    category: 'FUN',
     cooldown: 3,
     
     data: new SlashCommandBuilder()

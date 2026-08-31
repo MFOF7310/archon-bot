@@ -27,7 +27,7 @@ module.exports = {
     name: '8ball',
     aliases: ['eightball', 'ask'],
     description: '🎱 Ask the magic 8-ball a question',
-    category: 'Fun',
+    category: 'FUN',
     cooldown: 2,
     
 

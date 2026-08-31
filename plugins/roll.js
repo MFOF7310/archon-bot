@@ -4,7 +4,7 @@ module.exports = {
     name: 'roll',
     aliases: ['dice'],
     description: '🎲 Roll dice (NdN format: 2d6, 1d20)',
-    category: 'Fun',
+    category: 'FUN',
     cooldown: 1,
     
     data: new SlashCommandBuilder()
