@@ -153,39 +153,62 @@ module.exports = {
         const edit = (t) => ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, t, { parse_mode: 'HTML' }).catch(() => {});
         await ctx.action('upload_video');
 
-        try {
-            let filePath;
-            try { filePath = await dlVideoSmart(url, quality); } catch {}
+        const { execSync } = require('child_process');
+        const uid = Date.now() + '_' + Math.floor(Math.random() * 10000);
+        const rawPath = path.join(TMP, 'ytv_' + uid + '_raw.mp4');
+        const compressedPath = path.join(TMP, 'ytv_' + uid + '_out.mp4');
+        const edit2 = (t) => ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, t, { parse_mode: 'HTML' }).catch(() => {});
 
-            if (filePath) {
-                const buf = fs.readFileSync(filePath);
-                await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-                await ctx.sendVideoBuffer(buf, {
-                    caption: '🎬 <b>' + quality + 'p</b> • 🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱',
-                    parse_mode: 'HTML'
+        try {
+            await new Promise((res, rej) => {
+                const proxyFlag = process.env.WEBSHARE_PROXY
+                    ? '--proxy "' + process.env.WEBSHARE_PROXY + '" --extractor-args "youtube:player_client=android,web" --no-cookies'
+                    : '--extractor-args "youtube:player_client=android,web"';
+                const cmd = [
+                    'yt-dlp --no-playlist ' + proxyFlag,
+                    '-o "' + rawPath + '"',
+                    '-f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=' + quality + ']+bestaudio/best[height<=' + quality + ']"',
+                    '--merge-output-format mp4',
+                    '"' + url + '"'
+                ].join(' ');
+                require('child_process').exec(cmd, { timeout: 300000 }, (err, stdout, stderr) => {
+                    if (err || !fs.existsSync(rawPath)) return rej(new Error(stderr?.substring(0, 200) || 'Download failed'));
+                    res();
                 });
-            } else {
-                await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-                try {
-                    const directUrl = await getDirectVideoUrl(url, quality);
-                    await ctx.replyHTML(
-                        '🎬 <b>Your ' + quality + 'p video is ready!</b>\n\n' +
-                        '📦 Too large to send directly — tap below:\n' +
-                        '<a href="' + directUrl + '">⬇️ Download ' + quality + 'p Video</a>\n\n' +
-                        '<i>⚠️ Link expires soon!\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
-                    );
-                } catch {
-                    await ctx.replyHTML(
-                        '😔 <b>YouTube downloads are unavailable.</b>\n\n' +
-                        'YouTube blocks direct downloads from our servers.\n' +
-                        '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
-                    );
+            });
+
+            const sizeMB = fs.statSync(rawPath).size / 1024 / 1024;
+            console.log('[YTV] Downloaded size:', sizeMB.toFixed(2), 'MB');
+
+            let sendPath = rawPath;
+            if (sizeMB >= 48) {
+                await edit2('🗜️ <b>Compressing...</b> (' + sizeMB.toFixed(0) + 'MB → ~45MB)\n<i>This may take a moment</i>');
+                const durationOutput = execSync('ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "' + rawPath + '"').toString().trim();
+                const duration = parseFloat(durationOutput) || 30;
+                const targetBitrate = Math.floor((45 * 8192) / duration);
+                execSync('ffmpeg -y -i "' + rawPath + '" -b:v ' + targetBitrate + 'k -bufsize ' + (targetBitrate * 2) + 'k -maxrate ' + Math.floor(targetBitrate * 1.2) + 'k -c:a copy -movflags +faststart "' + compressedPath + '"', { stdio: 'pipe', timeout: 180000 });
+                if (fs.existsSync(compressedPath)) {
+                    const newSize = fs.statSync(compressedPath).size / 1024 / 1024;
+                    console.log('[YTV] Compressed size:', newSize.toFixed(2), 'MB');
+                    sendPath = compressedPath;
                 }
             }
+
+            await edit2('📤 <b>Sending...</b>');
+            const buf = fs.readFileSync(sendPath);
+            await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+            await ctx.sendVideoBuffer(buf, {
+                caption: '🎬 <b>' + quality + 'p</b> • 🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱',
+                parse_mode: 'HTML'
+            });
+
         } catch(e) {
             console.error('[YTV]', e.message);
             await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-            await ctx.replyHTML('😔 <b>YouTube downloads are unavailable.</b>\n\nYouTube blocks direct downloads from our servers.\n<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>');
+            await ctx.replyHTML('😔 <b>Could not download this video.</b>\n\n' + (e.message.includes('private') ? 'Video is private or unavailable.' : 'Try a different quality or shorter video.') + '\n<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>');
+        } finally {
+            try { if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath); } catch {}
+            try { if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath); } catch {}
         }
     }
 };
