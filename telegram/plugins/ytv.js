@@ -49,7 +49,7 @@ function dlVideoSmart(url, quality) {
 function getDirectVideoUrl(url, quality) {
     return new Promise((res, rej) => {
         exec(
-            'yt-dlp --no-playlist  -f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio/best[height<=' + quality + ']/best" --get-url "' + url + '"',
+            'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt -f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio/best[height<=' + quality + ']/best" --get-url "' + url + '"',
             { timeout: 30000 },
             (err, stdout) => {
                 if (err || !stdout.trim()) return rej(new Error('No URL'));
@@ -180,22 +180,29 @@ module.exports = {
             const sizeMB = fs.statSync(rawPath).size / 1024 / 1024;
             console.log('[YTV] Downloaded size:', sizeMB.toFixed(2), 'MB');
 
-            let sendPath = rawPath;
             if (sizeMB >= 48) {
-                await edit2('🗜️ <b>Compressing...</b> (' + sizeMB.toFixed(0) + 'MB → ~45MB)\n<i>This may take a moment</i>');
-                const durationOutput = execSync('ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "' + rawPath + '"').toString().trim();
-                const duration = parseFloat(durationOutput) || 30;
-                const targetBitrate = Math.floor((45 * 8192) / duration);
-                execSync('ffmpeg -y -i "' + rawPath + '" -b:v ' + targetBitrate + 'k -bufsize ' + (targetBitrate * 2) + 'k -maxrate ' + Math.floor(targetBitrate * 1.2) + 'k -c:a copy -movflags +faststart "' + compressedPath + '"', { stdio: 'pipe', timeout: 180000 });
-                if (fs.existsSync(compressedPath)) {
-                    const newSize = fs.statSync(compressedPath).size / 1024 / 1024;
-                    console.log('[YTV] Compressed size:', newSize.toFixed(2), 'MB');
-                    sendPath = compressedPath;
+                // Too large — get direct link instead of compressing
+                fs.unlinkSync(rawPath);
+                await edit2('🔗 <b>Video too large to send directly — getting download link...</b>');
+                try {
+                    const directUrl = await getDirectVideoUrl(url, quality);
+                    const videoTitle = meta?.title || 'YouTube Video';
+                    await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+                    await ctx.replyHTML(
+                        '🎬 <b>Your video is ready!</b>\n\n' +
+                        '<a href="' + directUrl + '">' + videoTitle.substring(0, 80) + ' (' + quality + 'p)</a>\n\n' +
+                        '⚠️ <i>Link expires in ~6 hours</i>\n' +
+                        '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱'
+                    );
+                } catch {
+                    await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+                    await ctx.replyHTML('😔 <b>Could not get download link.</b>\nTry a lower quality like 360p or 480p.\n<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>');
                 }
+                return;
             }
 
             await edit2('📤 <b>Sending...</b>');
-            const buf = fs.readFileSync(sendPath);
+            const buf = fs.readFileSync(rawPath);
             await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
             await ctx.sendVideoBuffer(buf, {
                 caption: '🎬 <b>' + quality + 'p</b> • 🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱',
