@@ -17,12 +17,12 @@ module.exports = {
             // If Spotify URL, use yt-dlp spotify support; otherwise search YouTube
             const query = input.includes('spotify.com') ? input : `ytsearch1:${input.replace(/["\']/g, '')}`;
             const streamUrl = await new Promise((res, rej) =>
-                exec(`yt-dlp --no-playlist -f "bestaudio[ext=m4a]/bestaudio" -g "${query}"`,
+                exec(`yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt -f "bestaudio[ext=m4a]/bestaudio" -g "${query}"`,
                     { timeout: 30000 }, (err, stdout) => err ? rej(err) : res(stdout.trim().split('\n')[0]))
             );
 
             const titleRes = await new Promise((res) =>
-                exec(`yt-dlp --no-playlist --print "%(title)s|||%(uploader)s" "${query}"`,
+                exec(`yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt --print "%(title)s|||%(uploader)s" "${query}"`,
                     { timeout: 20000 }, (err, stdout) => {
                         if (err) return res({ title: input, uploader: '' });
                         const [title, uploader] = stdout.trim().split('|||');
