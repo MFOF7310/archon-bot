@@ -55,13 +55,30 @@ http.createServer((req, res) => {
             'pm2 restart Architect-CG223 --update-env'
         ].join(' && ');
 
+        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+        const tgOwner = process.env.TELEGRAM_CHAT_ID || process.env.OWNER_TELEGRAM_ID;
+
+        function tgNotify(msg) {
+            if (!tgToken || !tgOwner) return;
+            const body = JSON.stringify({ chat_id: tgOwner, text: msg, parse_mode: 'HTML' });
+            const req = require('https').request({
+                hostname: 'api.telegram.org',
+                path: `/bot${tgToken}/sendMessage`,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+            });
+            req.write(body);
+            req.end();
+        }
+
         exec(cmd, (err, stdout, stderr) => {
             if (err) {
                 console.error('[WEBHOOK] Deploy failed:', err.message);
                 console.error(stderr?.substring(0, 300));
+                tgNotify(`❌ <b>Deploy failed</b>\nCommit: <code>${commit}</code> by ${author}\n\n<code>${err.message.substring(0, 200)}</code>`);
             } else {
                 console.log('[WEBHOOK] Deploy success — commit', commit);
-                console.log(stdout?.substring(0, 200));
+                tgNotify(`🚀 <b>Deploy success</b>\nCommit: <code>${commit}</code> by ${author}\nARCHON CG-223 restarted ✓`);
             }
         });
     });
