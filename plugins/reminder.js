@@ -3,9 +3,9 @@ const EMOJIS = require('../config/emojis');
 
 const T = {
     en: {
-        title: () => `${EMOJIS.alarm} Reminder`,
+        title: () => `⏰ Reminder`,
         set: (msg, time, ts) => `${EMOJIS.check} Got it! I'll remind you about **${msg}** in **${time}** — that's <t:${ts}:F> 🦅`,
-        remindYou: () => `${EMOJIS.notification} Hey, you asked me to remind you!`,
+        remindYou: () => `🔔 Hey, you asked me to remind you!`,
         at: 'at',
         footer: 'ARCHON CG-223 • BAMAKO_223 🇲🇱',
         usage: (p) => `${EMOJIS.clock} **Reminder Usage**\n\n\`${p}remind 1h Take a break\`\n\`${p}remind 30m Call mom\`\n\`${p}remind 2h30m Meeting\``,
@@ -14,9 +14,9 @@ const T = {
         dmFailed: () => `${EMOJIS.warning} Reminder delivery hiccup — here it is anyway:`,
     },
     fr: {
-        title: () => `${EMOJIS.alarm} Rappel`,
+        title: () => `⏰ Rappel`,
         set: (msg, time, ts) => `${EMOJIS.check} Noté ! Je te rappellerai **${msg}** dans **${time}** — soit <t:${ts}:F> 🦅`,
-        remindYou: () => `${EMOJIS.notification} Hey, tu m'avais demandé de te rappeler ça !`,
+        remindYou: () => `🔔 Hey, tu m'avais demandé de te rappeler ça !`,
         at: 'à',
         footer: 'ARCHON CG-223 • BAMAKO_223 🇲🇱',
         usage: (p) => `${EMOJIS.clock} **Utilisation**\n\n\`${p}remind 1h Pause café\`\n\`${p}remind 30m Appeler maman\`\n\`${p}remind 2h30m Réunion\``,
