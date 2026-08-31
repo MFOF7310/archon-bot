@@ -104,7 +104,7 @@ async function deliverReminder(client, reminder, database) {
 
     const embed = new EmbedBuilder()
         .setColor('#f1c40f')
-        .setAuthor({ name: `🔔 ${t.remindYou}`, iconURL: client.user?.displayAvatarURL() })
+        .setAuthor({ name: t.remindYou(), iconURL: client.user?.displayAvatarURL() })
         .setDescription(`**${reminder.message}**`)
         .setFooter({ text: t.footer })
         .setTimestamp();
@@ -239,8 +239,8 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor('#00fbff')
-            .setAuthor({ name: `🔔 ${t.title}`, iconURL: client.user?.displayAvatarURL() })
-            .setDescription(`**${remindText}**\n⏰ In: **${formatTime(durationMs)}**\n🔔 <t:${executeAt}:F>`)
+            .setAuthor({ name: t.title(), iconURL: client.user?.displayAvatarURL() })
+            .setDescription(t.set(remindText, formatTime(durationMs), executeAt))
             .setFooter({ text: t.footer })
             .setTimestamp();
         message.reply({ embeds: [embed] }).catch(() => {});
@@ -287,8 +287,8 @@ module.exports = {
         await interaction.deferReply();
         const embed = new EmbedBuilder()
             .setColor('#00fbff')
-            .setAuthor({ name: `🔔 ${t.title}`, iconURL: client.user?.displayAvatarURL() })
-            .setDescription(`**${remindText}**\n⏰ In: **${formatTime(durationMs)}**\n🔔 <t:${executeAt}:F>`)
+            .setAuthor({ name: t.title(), iconURL: client.user?.displayAvatarURL() })
+            .setDescription(t.set(remindText, formatTime(durationMs), executeAt))
             .setFooter({ text: t.footer })
             .setTimestamp();
         await interaction.editReply({ embeds: [embed] });
