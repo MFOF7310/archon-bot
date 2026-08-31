@@ -1,3 +1,4 @@
+const EMOJIS = require('../config/emojis');
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
@@ -609,13 +610,13 @@ module.exports = {
                           `*Les commandes d'économie, de modération et de profil nécessitent d'être dans un serveur.*\n\n` +
                           `✨ *Utilisez le menu déroulant ci-dessous pour explorer les commandes serveur !*`
                         : `*Direct neural connection established.*\n\n**Available in DMs:**\n\n` +
-                          `⚙️ **/help** - This help menu\n` +
-                          `📊 **/stats** - System statistics\n` +
-                          `📖 **/about** - Architect information\n` +
-                          `🎮 **/wrg** - Word guessing game\n` +
-                          `🔍 **/whois** - Scan an agent\n\n` +
+                          `⚙️ **/help** — This help menu\n` +
+                          `📊 **/stats** — System statistics\n` +
+                          `📖 **/about** — Architect information\n` +
+                          `🎮 **/wrg** — Word guessing game\n` +
+                          `🔍 **/whois** — Scan an agent\n\n` +
                           `🌐 **Server-Only Commands:**\n` +
-                          `*Economy, moderation, and profile commands require being in a server.*\n\n` +
+                          `*Economy, moderation, and profile commands require a server.*\n\n` +
                           `✨ *Use the dropdown below to explore server commands!*`
                 )
                 .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
