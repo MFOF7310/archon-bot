@@ -66,6 +66,9 @@ module.exports = {
     shield:  '<:shield:1535642169032048730>',
     xp:      '<:XP:1535796679570362398>',
     check:   '<a:check:1505715312773959731>',
+    alarm:        '<a:alarm:1544006390706872540>',
+    clock:        '<a:clock:1544006364622491748>',
+    notification: '<a:notification:1544006390329376779>',
     level:   '<a:level:1535637044527636531>',
 
     // ── Music ──
