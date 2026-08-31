@@ -142,16 +142,32 @@ module.exports = {
         }
 
         if (sub === 'status') {
-        const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
+            const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
+            const enabled = settings?.verify_enabled;
+            const verifiedRole = settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : '`Not configured`';
+            const unverifiedRole = settings?.verify_unverified_role_id ? `<@&${settings.verify_unverified_role_id}>` : '`Not configured`';
+            const autokick = settings?.verify_kick_days ? `${settings.verify_kick_days} minutes` : 'Disabled';
+
+            const desc = [
+                `### ${enabled ? `${EMOJIS.online} Gate is Active` : `${EMOJIS.offline} Gate is Inactive`}`,
+                `> ${enabled ? 'New members must verify before accessing channels.' : 'Verification is currently off — all members join freely.'}`,
+                ``,
+                `### ${EMOJIS.shield} Configuration`,
+                `**Verified role** — ${verifiedRole}`,
+                `**Unverified role** — ${unverifiedRole}`,
+                `**Auto-kick** — ${autokick}`,
+                ``,
+                `### ${EMOJIS.shield} Quick Setup`,
+                `\`/verify setrole\` — role to give after passing`,
+                `\`/verify setunverified\` — role that blocks channels`,
+                `\`/verify setkick\` — auto-remove if they ghost`,
+            ].join('\n');
+
             return interaction.reply({
                 embeds: [new EmbedBuilder()
-                    .setColor(settings?.verify_enabled ? 0x00cc44 : 0x888888)
-                    .setTitle(`${EMOJIS.shield} Verification Gate — Status`)
-                    .addFields(
-                        { name: '🔘 Status', value: settings?.verify_enabled ? '🟢 Enabled' : '🔴 Disabled', inline: true },
-                        { name: '🎭 Role', value: settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : 'Not set', inline: true },
-                        { name: '⏰ Auto-kick', value: settings?.verify_kick_days ? `${settings.verify_kick_days} min` : 'Disabled', inline: true }
-                    )
+                    .setColor(enabled ? 0x00cc44 : 0x888888)
+                    .setTitle(`${EMOJIS.shield} Verification Gate`)
+                    .setDescription(desc)
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                 flags: 64
             });
