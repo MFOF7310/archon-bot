@@ -610,11 +610,11 @@ module.exports = {
                           `*Les commandes d'économie, de modération et de profil nécessitent d'être dans un serveur.*\n\n` +
                           `✨ *Utilisez le menu déroulant ci-dessous pour explorer les commandes serveur !*`
                         : `*Direct neural connection established.*\n\n**Available in DMs:**\n\n` +
-                          `⚙️ **/help** — This help menu\n` +
-                          `📊 **/stats** — System statistics\n` +
-                          `📖 **/about** — Architect information\n` +
-                          `🎮 **/wrg** — Word guessing game\n` +
-                          `🔍 **/whois** — Scan an agent\n\n` +
+                          `${EMOJIS.shield} **/help** — This help menu\n` +
+                          `${EMOJIS.charts} **/stats** — System statistics\n` +
+                          `${EMOJIS.eagle} **/about** — Architect information\n` +
+                          `${EMOJIS.gamer} **/wrg** — Word guessing game\n` +
+                          `${EMOJIS.dashboard} **/whois** — Scan an agent\n\n` +
                           `🌐 **Server-Only Commands:**\n` +
                           `*Economy, moderation, and profile commands require a server.*\n\n` +
                           `✨ *Use the dropdown below to explore server commands!*`
