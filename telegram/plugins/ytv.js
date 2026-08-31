@@ -25,8 +25,8 @@ function dlVideoSmart(url, quality) {
         const ts = Date.now();
         const out = path.join(TMP, 'vid_' + ts + '.%(ext)s');
         const proxyFlag = process.env.WEBSHARE_PROXY
-            ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies`
-            : '--extractor-args "youtube:player_client=android,web"';
+            ? `--proxy "${process.env.WEBSHARE_PROXY}" `
+            : '';
         const cmd = [
             'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ' + proxyFlag,
             '-o "' + out + '"',
@@ -49,7 +49,7 @@ function dlVideoSmart(url, quality) {
 function getDirectVideoUrl(url, quality) {
     return new Promise((res, rej) => {
         exec(
-            'yt-dlp --no-playlist --extractor-args "youtube:player_client=android,web" -f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio/best[height<=' + quality + ']/best" --get-url "' + url + '"',
+            'yt-dlp --no-playlist  -f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio/best[height<=' + quality + ']/best" --get-url "' + url + '"',
             { timeout: 30000 },
             (err, stdout) => {
                 if (err || !stdout.trim()) return rej(new Error('No URL'));
@@ -162,8 +162,8 @@ module.exports = {
         try {
             await new Promise((res, rej) => {
                 const proxyFlag = process.env.WEBSHARE_PROXY
-                    ? '--proxy "' + process.env.WEBSHARE_PROXY + '" --extractor-args "youtube:player_client=android,web" --no-cookies'
-                    : '--extractor-args "youtube:player_client=android,web"';
+                    ? '--proxy "' + process.env.WEBSHARE_PROXY + '" '
+                    : '';
                 const cmd = [
                     'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ' + proxyFlag,
                     '-o "' + rawPath + '"',
