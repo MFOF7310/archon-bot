@@ -28,7 +28,7 @@ function dlVideoSmart(url, quality) {
             ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies`
             : '--extractor-args "youtube:player_client=android,web"';
         const cmd = [
-            'yt-dlp --no-playlist ' + proxyFlag,
+            'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ' + proxyFlag,
             '-o "' + out + '"',
             '-f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=' + quality + ']+bestaudio/best[height<=' + quality + ']"',
             '--merge-output-format mp4',
@@ -165,7 +165,7 @@ module.exports = {
                     ? '--proxy "' + process.env.WEBSHARE_PROXY + '" --extractor-args "youtube:player_client=android,web" --no-cookies'
                     : '--extractor-args "youtube:player_client=android,web"';
                 const cmd = [
-                    'yt-dlp --no-playlist ' + proxyFlag,
+                    'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ' + proxyFlag,
                     '-o "' + rawPath + '"',
                     '-f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=' + quality + ']+bestaudio/best[height<=' + quality + ']"',
                     '--merge-output-format mp4',
