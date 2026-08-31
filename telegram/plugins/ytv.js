@@ -181,28 +181,15 @@ module.exports = {
             console.log('[YTV] Downloaded size:', sizeMB.toFixed(2), 'MB');
 
             if (sizeMB >= 48) {
-                // Too large — get direct link instead of compressing
                 fs.unlinkSync(rawPath);
-                await edit2('🔗 <b>Video too large to send directly — getting download link...</b>');
-                try {
-                    const directUrl = await getDirectVideoUrl(url, quality);
-                    let videoTitle = 'YouTube Video';
-                    try {
-                        const { execSync } = require('child_process');
-                        videoTitle = execSync('yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt --get-title "' + url + '" 2>/dev/null', { timeout: 10000, encoding: 'utf8' }).trim().substring(0, 80);
-                    } catch {}
-                    await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-                    await ctx.replyHTML(
-                        '🎬 <b>Your video is ready!</b>\n\n' +
-                        '<a href="' + directUrl + '">' + videoTitle.substring(0, 80) + ' (' + quality + 'p)</a>\n\n' +
-                        '⚠️ <i>Link expires in ~6 hours</i>\n' +
-                        '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱'
-                    );
-                } catch(linkErr) {
-                    console.error('[YTV] Direct link error:', linkErr.message);
-                    await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-                    await ctx.replyHTML('😔 <b>Could not get download link.</b>\nTry a lower quality like 360p or 480p.\n<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>');
-                }
+                await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+                await ctx.replyHTML(
+                    '📦 <b>Video too large to send (' + sizeMB.toFixed(0) + 'MB)</b>\n\n' +
+                    'Pick a lower quality and try again:\n' +
+                    '• <b>480p</b> — good balance\n' +
+                    '• <b>360p</b> — smallest, fastest\n\n' +
+                    '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
+                );
                 return;
             }
 
