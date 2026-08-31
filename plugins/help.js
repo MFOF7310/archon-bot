@@ -625,7 +625,7 @@ module.exports = {
                 })
                 .setTimestamp();
 
-            const categories = [...new Set(client.commands.map(cmd => cmd.category || 'GENERAL'))].sort();
+            const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))].sort();
             const categoryOptions = categories.slice(0, 25).map(cat => ({
                 label: cat.toUpperCase().substring(0, 100),
                 value: cat,
