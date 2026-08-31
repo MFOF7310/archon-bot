@@ -73,7 +73,10 @@ module.exports = {
 async function fetchLyrics(query) {
     try {
         const encoded = encodeURIComponent(query.trim());
-        const res = await fetch(`https://lrclib.net/api/search?q=${encoded}`);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(`https://lrclib.net/api/search?q=${encoded}`, { signal: controller.signal });
+        clearTimeout(timeout);
         const data = await res.json();
         if (!data || data.length === 0) return null;
         const track = data[0];
