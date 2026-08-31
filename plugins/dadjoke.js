@@ -8,7 +8,7 @@ module.exports = {
     name: 'dadjoke',
     aliases: ['joke', 'dad'],
     description: '😂 Get a random dad joke',
-    category: 'Fun',
+    category: 'FUN',
     cooldown: 2,
     
 
