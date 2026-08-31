@@ -5,7 +5,7 @@ const path = require('path');
 
 function dlInstagramMeta(url) {
     return new Promise((res, rej) => {
-        const cmd = 'yt-dlp --no-playlist --dump-json "' + url + '"';
+        const cmd = 'yt-dlp --no-playlist ' + COOKIES + ' --dump-json "' + url + '"';
         exec(cmd, { timeout: 30000 }, (err, stdout) => {
             if (err || !stdout) return res(null);
             try { res(JSON.parse(stdout.trim())); } catch { res(null); }
@@ -18,7 +18,7 @@ function dlInstagram(url) {
         const ts = Date.now();
         const out = path.join(TMP, 'ig_' + ts + '.%(ext)s');
         const cmd = [
-            'yt-dlp --no-playlist',
+            'yt-dlp --no-playlist ' + COOKIES,
             '-o "' + out + '"',
             '-f "bestvideo+bestaudio/best"',
             '--merge-output-format mp4',
