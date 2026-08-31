@@ -106,15 +106,38 @@ module.exports = {
         if (sub === 'setunverified') {
             const role = interaction.options.getRole('role');
             db.prepare(`UPDATE server_settings SET verify_unverified_role_id = ? WHERE guild_id = ?`).run(role.id, gid);
-            return interaction.reply({
+
+            await interaction.deferReply({ flags: 64 });
+
+            // Auto-configure channel permissions — deny ViewChannel for unverified role on all channels
+            const guild = interaction.guild;
+            let locked = 0, skipped = 0, failed = 0;
+
+            for (const [, channel] of guild.channels.cache) {
+                // Skip categories and thread channels
+                if (channel.isThread?.() || channel.type === 4) continue;
+                try {
+                    await channel.permissionOverwrites.edit(role, {
+                        ViewChannel: false,
+                        SendMessages: false
+                    });
+                    locked++;
+                } catch {
+                    failed++;
+                }
+            }
+
+            return interaction.editReply({
                 embeds: [new EmbedBuilder()
-                    .setColor(0xff8800)
+                    .setColor(0x00cc44)
+                    .setTitle(`${EMOJIS.shield} Verification Gate Configured`)
                     .setDescription(
-                        `${EMOJIS.shield} Unverified role set to ${role}\n\n` +
-                        `Make sure this role **cannot see your channels** — that's what creates the gate.\n` +
-                        `New members get it on join, it's removed the moment they verify. ✨`
-                    )],
-                flags: 64
+                        `Unverified role set to ${role}\n\n` +
+                        `**${locked}** channels locked — unverified members can\'t see them.\n` +
+                        (failed > 0 ? `**${failed}** channels couldn\'t be updated — check my role is above the unverified role.\n\n` : '\n') +
+                        `New members get this role on join, removed the moment they verify. ✨`
+                    )
+                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
             });
         }
 
