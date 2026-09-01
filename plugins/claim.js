@@ -221,7 +221,7 @@ function scheduleDailyReminder(client, db, userId, userTag, guildId, channelId, 
         }, db);
     }, oneDay);
 
-    console.log(`[DAILY REMINDER] Scheduled for ${userTag || userId} in ${guildName || guildId} — ${new Date(executeAt * 1000).toLocaleString('en-GB', { hour12: false })}`);
+    console.log(`[DAILY REMINDER] Scheduled for ${userTag || userId} in ${guildName || guildId} — <t:${executeAt}:R>`);
 }
 
 // Rehydrate reminders on bot startup (survives restarts)
