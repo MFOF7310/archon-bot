@@ -5519,11 +5519,11 @@ apiApp.get('/api/stats', (req, res) => {
                 slashCommands: client.commands.filter(c => !!c.data && c.category !== 'TELEGRAM').size,
                 telegramPlugins: client.telegramCommandCount || 0,
                 totalModules: client.commands.size,
-                servers: db.prepare('SELECT COUNT(DISTINCT guild_id) FROM users').get()['COUNT(DISTINCT guild_id)'] || guildCache.size,
+                servers: guildCache.size,
                 users: guildCache.reduce((acc, g) => acc + (g.memberCount || 0), 0)
             },
             servers: {
-                total: db.prepare('SELECT COUNT(DISTINCT guild_id) FROM users').get()['COUNT(DISTINCT guild_id)'] || guildCache.size,
+                total: guildCache.size,
                 list: servers
             },
             database: {
