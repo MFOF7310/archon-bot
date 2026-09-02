@@ -5441,7 +5441,7 @@ apiApp.get('/api/user/:userId', (req, res) => {
 });
 
 // ── ADMIN ENDPOINTS ──────────────────────────────────────────
-apiApp.get('/api/admin/dashboard-users', (req, res) => {
+apiApp.get('/api/admin/dashboard-users', requireAdmin, (req, res) => {
     try {
         const users = db.prepare(`
             SELECT discord_id, username, avatar, is_owner, login_count, updated_at, created_at
@@ -6050,7 +6050,7 @@ if (process.env.KEEPALIVE_URL) {
 }
 
 // ================= LANCEMENT DU SERVEUR API =================
-apiApp.listen(5000, '0.0.0.0', () => {
+apiApp.listen(5000, '127.0.0.1', () => {
     console.log('\x1b[32m[API]\x1b[0m Bridge active on port 5000 (0.0.0.0)');
 });
 
