@@ -953,7 +953,34 @@ function buildEmbed(reply, message, options = {}) {
 // SYSTEM PROMPT BUILDER (Updated — formatting instructions added)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.', lang = 'en', pluginCount = 0) {
+
+// ── Relevant-command lookup: inject only what the question touches (cost-bounded, always current) ──
+const STOP = new Set(['the','a','an','to','of','in','on','for','and','or','is','it','my','me','i','you','how','do','can','what','with','this','that','set','use']);
+function relevantCommands(userMessage, commands, limit = 8) {
+  if (!commands || !commands.size) return '';
+  const words = String(userMessage || '').toLowerCase().match(/[a-z0-9]{3,}/g) || [];
+  const terms = [...new Set(words.filter(w => !STOP.has(w)))];
+  if (!terms.length) return '';
+  const scored = [];
+  for (const [, cmd] of commands) {
+    if (!cmd?.name || cmd.category === 'TELEGRAM') continue;
+    const hay = `${cmd.name} ${(cmd.aliases || []).join(' ')} ${cmd.description || ''} ${cmd.category || ''}`.toLowerCase();
+    let score = 0;
+    for (const t of terms) {
+      if (cmd.name.toLowerCase() === t) score += 5;
+      else if ((cmd.aliases || []).some(a => String(a).toLowerCase() === t)) score += 4;
+      else if (hay.includes(t)) score += 1;
+    }
+    if (score > 0) scored.push({ score, cmd });
+  }
+  if (!scored.length) return '';
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit)
+    .map(({ cmd }) => `- ${cmd.name}${cmd.aliases?.length ? ` (aliases: ${cmd.aliases.join(', ')})` : ''} — ${String(cmd.description || '').replace(/^[^\w]+/, '')}${cmd.category ? ` [${cmd.category}]` : ''}`)
+    .join('\n');
+}
+
+function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.', lang = 'en', pluginCount = 0, userMessage = '', commands = null) {
   const bamakoTime = new Date().toLocaleTimeString('en-US', {
     timeZone: 'Africa/Bamako', hour12: false, hour: '2-digit', minute: '2-digit'
   });
@@ -975,6 +1002,7 @@ LIVE CONTEXT:
 - Mode: ${theme.name}
 - Prefix: ${prefix} (or use slash commands)
 - Language: respond in ${langName} — follow the user, always
+${(() => { const rc = relevantCommands(userMessage, commands); return rc ? `\nRELEVANT COMMANDS (from the live registry — only these exist; if a command is not listed here or in the ecosystem summary, say so instead of inventing one):\n${rc}` : ''; })()}
 
 RECENT CHANGES:
 ${changelogSummary}
@@ -1113,7 +1141,7 @@ async function handleLydiaMessage(message, client, database) {
     const isOwner = ownerInfo && message.author.id === ownerInfo.id;
     const serverPrefix = client.getServerSettings?.(message.guild.id)?.prefix || process.env.PREFIX || '.';
 
-    const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0);
+    const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands);
 
     const fullSystem = memories.length > 0
       ? `${systemPrompt}\n\n[Your memories about this user]:\n${memories.map(m => `\u2022 ${m.memory_key}: ${m.memory_value}`).join('\n')}`
