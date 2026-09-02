@@ -9,7 +9,6 @@ const crypto = require('crypto');
 const { exec } = require('child_process');
 
 const SECRET = process.env.WEBHOOK_SECRET || 'changeme';
-const GIT_PAT = process.env.GIT_PAT || '';
 const PORT = process.env.WEBHOOK_PORT || 9001;
 const BRANCH = 'main';
 
