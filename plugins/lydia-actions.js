@@ -65,7 +65,7 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated 
 
   const gid = message.guild?.id;
   const spec = ALLOWED[intent.key];
-  const note = (s) => `${text}\n\n> ${s}`;
+  const note = (s) => `> ${s}`;  // on refusal, drop her 'requesting…' line — nothing to confirm
 
   // 1. allowlist
   if (!gid || !spec) return note(`⚙️ I can't change \`${intent.key}\` — it's not a setting I'm allowed to touch. Use the dashboard for that.`);
