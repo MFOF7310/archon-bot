@@ -78,7 +78,8 @@
     "statusOnline": "所有系统正常",
     "statusWarning": "检测到轻微问题",
     "statusCritical": "严重 — 高延迟",
-    "recPoor": "高延迟 — 请检查您的连接"
+    "recPoor": "高延迟 — 请检查您的连接",
+    "recGood": "轻微延迟 — 性能良好"
   },
   "daily": {
     "claimed": "🎉 每日奖励已领取！",

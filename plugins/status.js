@@ -97,7 +97,7 @@ module.exports = {
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('status', guildId) : 'en';
         
-        const t = translations[lang];
+        const t = translations[lang] || translations.en || Object.values(translations)[0];
         const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();

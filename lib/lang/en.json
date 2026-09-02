@@ -78,7 +78,8 @@
     "statusOnline": "All Systems Online",
     "statusWarning": "Minor Issues Detected",
     "statusCritical": "Critical — High Latency",
-    "recPoor": "High latency — check your connection"
+    "recPoor": "High latency — check your connection",
+    "recGood": "Minor latency — performance is fine"
   },
   "daily": {
     "claimed": "🎉 Daily Bonus Claimed!",
