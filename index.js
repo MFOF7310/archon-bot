@@ -5706,9 +5706,17 @@ apiApp.get('/api/moderation-logs/:guildId?', (req, res) => {
     try {
         let logs;
         if (guildId && validateSnowflake(guildId)) {
-            logs = db.prepare('SELECT * FROM moderation_logs WHERE guild_id = ? ORDER BY timestamp DESC').all(guildId);
+            logs = db.prepare(`SELECT m.*, u.username AS target_username, mod.username AS moderator_username
+                FROM moderation_logs m
+                LEFT JOIN users u   ON u.id = m.user_id      AND u.guild_id = m.guild_id
+                LEFT JOIN users mod ON mod.id = m.moderator_id AND mod.guild_id = m.guild_id
+                WHERE m.guild_id = ? ORDER BY m.timestamp DESC`).all(guildId);
         } else {
-            logs = db.prepare('SELECT * FROM moderation_logs ORDER BY timestamp DESC LIMIT 100').all();
+            logs = db.prepare(`SELECT m.*, u.username AS target_username, mod.username AS moderator_username
+                FROM moderation_logs m
+                LEFT JOIN users u   ON u.id = m.user_id      AND u.guild_id = m.guild_id
+                LEFT JOIN users mod ON mod.id = m.moderator_id AND mod.guild_id = m.guild_id
+                ORDER BY m.timestamp DESC LIMIT 100`).all();
         }
         res.json({ success: true, logs, count: logs.length });
     } catch (err) {
