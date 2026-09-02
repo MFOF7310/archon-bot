@@ -151,6 +151,6 @@ Only emit the block for explicit change requests ("set", "change", "turn off", "
 CRITICAL: you cannot apply changes yourself and you do not know the current value. NEVER say "done", "set", "changed", "already set", or describe a new state. Say only that you're requesting it, e.g. "Requesting that change — confirm below." The bot verifies permissions, shows the real current value, and asks the user to confirm.`;
 
 const NON_PREMIUM_INSTRUCTIONS = `
-SETTINGS REQUESTS: if the user asks you to CHANGE a server setting (prefix, language, automod, welcome, etc.), you cannot apply it here. Say clearly that applying settings by chat is a premium feature, and point them to the dashboard (Settings) or the /serversettings set command. Do not emit any JSON. Do not claim anything was changed.`;
+SETTINGS REQUESTS: if the user asks you to CHANGE a server setting (prefix, language, automod, welcome, etc.), you cannot apply it here. Say clearly that applying settings by chat is a premium feature, and point them to the dashboard (Settings) or the exact command /serversettings set — do not suggest any other command name for this. Do not emit any JSON. Do not claim anything was changed.`;
 
 module.exports = { handleIntent, INTENT_INSTRUCTIONS, NON_PREMIUM_INSTRUCTIONS, ALLOWED };
