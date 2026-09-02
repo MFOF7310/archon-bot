@@ -457,7 +457,7 @@ async function scanMessage(message, client, db) {
     if (message.content.length > 15) {
         const letters = (message.content.match(/[A-Za-z]/g) || []).length;
         const caps = (message.content.match(/[A-Z]/g) || []).length;
-        if (letters > 0 && caps / letters > CAPS_RATIO && !seen.has('caps')) {
+        if (letters >= 15 && caps / letters > CAPS_RATIO && !seen.has('caps')) {
             violations.push({ type: 'caps flood', reason: `${Math.round(caps/letters*100)}% uppercase`, source: 'caps' });
             seen.add('caps');
         }
@@ -466,8 +466,9 @@ async function scanMessage(message, client, db) {
     // 3. Emoji flood
     if (message.content.length > 20) {
         const emojis = (message.content.match(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu) || []).length;
-        if (emojis / message.content.length > EMOJI_RATIO && !seen.has('emoji')) {
-            violations.push({ type: 'emoji flood', reason: `${Math.round(emojis/message.content.length*100)}% emoji`, source: 'emoji' });
+        const nonSpace = message.content.replace(/\s/g, '').length || 1;
+        if (emojis >= 8 && emojis / nonSpace > EMOJI_RATIO && !seen.has('emoji')) {
+            violations.push({ type: 'emoji flood', reason: `${emojis} emoji (${Math.round(emojis/nonSpace*100)}%)`, source: 'emoji' });
             seen.add('emoji');
         }
     }
