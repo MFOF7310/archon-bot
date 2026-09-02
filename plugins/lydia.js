@@ -13,6 +13,9 @@ function isPremium(db, guildId) {
   } catch { return false; }
 }
 
+const lydiaActions = require('./lydia-actions');
+const { isElevated: _isElevated } = (() => { try { return require('./automod'); } catch { return { isElevated: () => false }; } })();
+
 // Per-guild custom API keys (premium) — falls back to global .env when unset
 function getGuildKey(database, guildId, service) {
   try {
@@ -980,7 +983,7 @@ function relevantCommands(userMessage, commands, limit = 8) {
     .join('\n');
 }
 
-function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.', lang = 'en', pluginCount = 0, userMessage = '', commands = null) {
+function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.', lang = 'en', pluginCount = 0, userMessage = '', commands = null, premiumActions = false) {
   const bamakoTime = new Date().toLocaleTimeString('en-US', {
     timeZone: 'Africa/Bamako', hour12: false, hour: '2-digit', minute: '2-digit'
   });
@@ -1007,7 +1010,7 @@ ${(() => { const rc = relevantCommands(userMessage, commands); return rc ? `\nRE
 RECENT CHANGES:
 ${changelogSummary}
 
-Cite web sources as [1], [2] when search results are provided.`;
+Cite web sources as [1], [2] when search results are provided.${premiumActions ? lydiaActions.INTENT_INSTRUCTIONS : lydiaActions.NON_PREMIUM_INSTRUCTIONS}`;
 
 }
 
@@ -1141,7 +1144,7 @@ async function handleLydiaMessage(message, client, database) {
     const isOwner = ownerInfo && message.author.id === ownerInfo.id;
     const serverPrefix = client.getServerSettings?.(message.guild.id)?.prefix || process.env.PREFIX || '.';
 
-    const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands);
+    const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)));
 
     const fullSystem = memories.length > 0
       ? `${systemPrompt}\n\n[Your memories about this user]:\n${memories.map(m => `\u2022 ${m.memory_key}: ${m.memory_value}`).join('\n')}`
@@ -1212,10 +1215,16 @@ async function handleLydiaMessage(message, client, database) {
       return;
     }
 
-    const { content: aiReply, model, latency, tokens } = aiResult;
+    let { content: aiReply, model, latency, tokens } = aiResult;
 
     const validation = validateResponse(aiReply);
-    let safeReply = validation.ok ? validation.cleaned : validation.cleaned;
+    let safeReply = validation.cleaned;
+    if (validation.ok !== false && message.guild && typeof safeReply === 'string') {
+      try {
+        console.log('[LYDIA ACTION] checking reply for intent…');
+        safeReply = await lydiaActions.handleIntent({ reply: safeReply, message, client, db: database, isPremium, isElevated: _isElevated });
+      } catch (e) { console.log('[LYDIA ACTION] error:', e.message); }
+    }
     if (!validation.ok) {
       console.log(`${C.yellow}[HALLUCINATION REPLACED]${C.reset} Reason: ${validation.reason}`);
     }

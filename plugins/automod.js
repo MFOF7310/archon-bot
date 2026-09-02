@@ -1051,6 +1051,7 @@ function formatPendingAppeals(guildId) {
 }
 
 module.exports = {
+    isElevated,
     name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
     description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, domain-based link blocking, image spam detection, @everyone protection, and appeals.',
     usage: '.automod [status|enable|disable|sensitivity|whitelist|domains|log|channels|appeals]',
