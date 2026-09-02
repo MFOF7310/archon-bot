@@ -13,6 +13,14 @@ function dlInstagramMeta(url) {
     });
 }
 
+
+// True when Instagram served no audio stream at all (region-licensed music) — video will be silent.
+function igHasAudio(meta) {
+    const f = meta?.formats || [];
+    if (!f.length) return true; // unknown → don't claim silence
+    return f.some(x => x.acodec && x.acodec !== 'none');
+}
+
 function dlInstagram(url) {
     return new Promise((res, rej) => {
         const ts = Date.now();
@@ -105,6 +113,7 @@ module.exports = {
             const caption =
                 (desc ? '📸 ' + desc.substring(0, 180) + '\n' : '📸 <b>Instagram</b>\n') +
                 (uploader ? '👤 @' + uploader + '\n' : '') +
+                (igHasAudio(meta) ? '' : '🔇 <i>Audio not available for this reel in this region</i>\n') +
                 '\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
 
             await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
