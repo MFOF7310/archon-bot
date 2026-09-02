@@ -5231,6 +5231,10 @@ apiApp.post('/api/premium/generate', requireAdmin, (req, res) => {
             db.prepare('INSERT OR IGNORE INTO premium_codes (code, days) VALUES (?,?)').run(code, days);
             codes.push(code);
         }
+        try {
+            db.prepare(`INSERT INTO moderation_logs (guild_id,user_id,moderator_id,action,reason,timestamp) VALUES (?,?,?,?,?,?)`)
+              .run('GLOBAL', ownerId || 'owner', client.user?.id || 'bot', 'config', `Generated ${codes.length} premium code(s), ${Number(days) === 0 ? 'lifetime' : days + 'd'}`, Date.now());
+        } catch {}
         res.json({ success: true, codes });
     } catch(e) {
         res.status(500).json({ error: e.message });
