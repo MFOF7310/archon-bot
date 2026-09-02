@@ -78,7 +78,8 @@
     "statusOnline": "Tous les systèmes en ligne",
     "statusWarning": "Problèmes mineurs détectés",
     "statusCritical": "Critique — Latence élevée",
-    "recPoor": "Latence élevée — vérifiez votre connexion"
+    "recPoor": "Latence élevée — vérifiez votre connexion",
+    "recGood": "Latence mineure — les performances sont bonnes"
   },
   "daily": {
     "claimed": "🎉 Bonus Quotidien Réclamé !",
