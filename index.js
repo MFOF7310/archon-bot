@@ -2955,6 +2955,11 @@ buildAliasLanguageMap();
         md += `**Last System Boot:** ${dateStr} | **Report ID:** ${timestamp}\n`;
         md += `*ARCHON CG-223 Neural Changelog Engine v4.0 — 100% Automated*\n`;
         
+        try {
+            const { execSync: _es } = require('child_process');
+            const _commits = _es('git log --oneline -8 --no-merges', { cwd: __dirname, encoding: 'utf8' }).trim();
+            md += '\n## 8. RECENT COMMITS\n\n```\n' + _commits + '\n```\n';
+        } catch {}
         safeWriteFile('changelog.md', md);
         
         console.log(`${green}[CHANGELOG]${reset}   Registry v4.0 generated: ${totalCommands} commands, ${totalGuilds} servers, ${totalUsers.toLocaleString()} users`);
