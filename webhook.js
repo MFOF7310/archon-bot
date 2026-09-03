@@ -89,7 +89,7 @@ http.createServer((req, res) => {
             } else {
                 console.log('[WEBHOOK] Deploy success — commit', commit);
                 tgNotify(`🚀 <b>Deploy success</b>\nCommit: <code>${commit}</code> by ${author}\nARCHON CG-223 restarted ✓`);
-                pushNotify('🚀 Deploy success', `Commit ${commit} by ${author} — ARCHON restarted`);
+
             }
         });
     });
