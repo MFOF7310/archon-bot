@@ -88,22 +88,13 @@ module.exports = {
 
         if (sub === 'features') {
             const premium = isPremium(db, gid);
+            const features = require('../lib/premium-features');
             const embed = new EmbedBuilder()
                 .setColor(0xffd700)
                 .setTitle('⭐ ARCHON Premium Features')
-                .setDescription('Everything included in the $1.99/month plan:')
-                .addFields(
-                    { name: '🤖 Lydia AI', value: 'Unlimited AI conversations, 28 languages', inline: true },
-                    { name: '🛡️ Raid Detection', value: 'Auto-detect & alert on coordinated raids', inline: true },
-                    { name: '🖼️ Image Captcha', value: 'Anti-bot verification on join', inline: true },
-                    { name: '📊 Advanced AutoMod', value: 'AI-powered content moderation', inline: true },
-                    { name: '🎵 Music', value: 'SoundCloud streaming + queue', inline: true },
-                    { name: '📈 Dashboard', value: 'Full web dashboard access', inline: true },
-                    { name: '🎨 Custom Welcome', value: 'Custom welcome cards & messages', inline: true },
-                    { name: '💰 Economy+', value: 'Advanced economy features', inline: true },
-                    { name: '⭐ Priority Support', value: 'Direct support from MFOF7310', inline: true }
-                )
-                .setFooter({ text: `Status: ${premium ? '✅ Active on this server' : '❌ Not active — /premium status to upgrade'} • ARCHON CG-223` });
+                .setDescription('Everything included in the $1.99/server plan:')
+                .addFields(features.map(f => ({ name: `${f.emoji} ${f.name}`, value: f.value, inline: true })))
+                .setFooter({ text: `Status: ${premium ? '✅ Active on this server' : '❌ Not active'} • ARCHON CG-223 • bamako-steel-dev.xyz/premium` });
             return interaction.reply({ embeds: [embed], flags: 64 });
         }
 
