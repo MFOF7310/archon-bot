@@ -2418,7 +2418,7 @@ client.once(Events.ClientReady, async () => {
                                 max_tokens: 300,
                                 messages: [{
                                     role: 'user',
-                                    content: `You are writing update notes for a Discord bot called ARCHON CG-223. Convert these technical git commits into 3-5 SHORT, friendly bullet points for regular Discord users. Rules: NO technical jargon, NO feat/fix prefixes, NO code terms. Use simple language. Each line starts with a relevant emoji. Max 10 words per bullet. Make it sound exciting.\n\nCommits:\n${commits}\n\nRespond with ONLY the bullet points, nothing else.`
+                                    content: `You are writing update notes for a Discord bot called ARCHON CG-223. Convert these git commits into 3-5 clear bullet points for Discord server members. Plain language only, no technical terms, no feat/fix prefixes. Each line starts with a relevant emoji. Max 12 words per bullet. Be factual and clear, not hype.\n\nCommits:\n${commits}\n\nRespond with ONLY the bullet points, nothing else.`
                                 }]
                             })
                         });
@@ -2437,7 +2437,7 @@ client.once(Events.ClientReady, async () => {
                         .setDescription(friendlyNotes)
                         .addFields(
                             { name: '🔖 Build', value: `\`${shortHash}\``, inline: true },
-                            { name: '📅 Released', value: `<t:${Math.floor(Date.now()/1000)}:R>`, inline: true },
+                            { name: '📅 Released', value: `<t:${Math.floor(Date.now()/1000)}:D>`, inline: true },
                             { name: '🌍 Origin', value: 'Bamako 🇲🇱', inline: true }
                         )
                         .setThumbnail(client.user.displayAvatarURL())
