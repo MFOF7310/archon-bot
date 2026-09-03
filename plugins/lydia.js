@@ -151,7 +151,7 @@ const path = require('path');
 
 function getChangelogSummary() {
     try {
-        const changelogPath = path.join(__dirname, '..', 'changelog.md');
+        const changelogPath = path.join(__dirname, '..', 'data', 'changelog.md');
         if (!fs.existsSync(changelogPath)) return 'No changelog available yet.';
         const raw = fs.readFileSync(changelogPath, 'utf8');
         const lines = raw.split('\n');
