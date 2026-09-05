@@ -44,11 +44,9 @@ async function handleWelcome(member, client, db) {
     let cfg = Style.normalizeWelcomeConfig(ssRaw);
     cfg = applyOwnerEnvFallback(cfg, member.guild.id);
 
-    if (!cfg.welcomeEnabled) return;
+    if (!cfg.welcomeEnabled || !cfg.welcomeChannel) return;
 
-    const ch = cfg.welcomeChannel
-        ? member.guild.channels.cache.get(cfg.welcomeChannel)
-        : member.guild.systemChannel;
+    const ch = member.guild.channels.cache.get(cfg.welcomeChannel);
     if (!ch) return;
 
     const count = member.guild.memberCount;
