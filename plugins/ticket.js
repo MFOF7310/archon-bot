@@ -331,11 +331,11 @@ module.exports = {
         const es=effectiveSettings(ss,g.id);
 
         // Config setters
-        if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`.//channels set type:Ticket category\``).catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketcategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
-        if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`./roles set type:Staff/Ticket Role <id>\``).catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t.badRole).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketstaffrole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
-        if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`./channels set type:Ticket Logs <id>\``).catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'tickettranscriptchannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
-        if(sub==='setautoclose'){const h=parseInt(args[1]);if(isNaN(h)||h<0||h>168)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketautoclose',String(h),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
-        if(sub==='setlimit'){const l=parseInt(args[1]);if(isNaN(l)||l<1||l>10)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketlimit',String(l),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`.//channels set type:Ticket category\``).catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketCategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`./roles set type:Staff/Ticket Role <id>\``).catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t.badRole).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketStaffRole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
+        if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} \`./channels set type:Ticket Logs <id>\``).catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t.badCh).catch(()=>{});const r=await saveSetting(client,g.id,'ticketTranscriptChannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setautoclose'){const h=parseInt(args[1]);if(isNaN(h)||h<0||h>168)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketAutoCloseHours',String(h),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
+        if(sub==='setlimit'){const l=parseInt(args[1]);if(isNaN(l)||l<1||l>10)return msg.reply(t.badNum).catch(()=>{});const r=await saveSetting(client,g.id,'ticketLimitPerUser',String(l),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='config'){const e=cfgEmbed(es,g,client,lang);return msg.reply({embeds:[e]}).catch(()=>{});}
 
         if(!es?.ticketCategory&&sub!=='setup')return msg.reply(t.notSet).catch(()=>{});
@@ -357,11 +357,11 @@ module.exports = {
         const need=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel'].includes(sc);
         if(need&&!adm)return ix.reply({content:t.needAdmin,flags:1<<6});
 
-        if(sc==='setcategory'){const c=ix.options.getChannel('category');if(!c||c.type!==ChannelType.GuildCategory)return ix.reply({content:t.badCh,flags:1<<6});const r=await saveSetting(client,g.id,'ticketcategory',c.id,lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
-        if(sc==='setstaffrole'){const r=ix.options.getRole('role');if(!r)return ix.reply({content:t.badRole,flags:1<<6});const rs=await saveSetting(client,g.id,'ticketstaffrole',r.id,lang);return ix.reply({content:rs.ok?rs.msg:rs.err,flags:1<<6});}
-        if(sc==='settranscript'){const c=ix.options.getChannel('channel');if(!c)return ix.reply({content:t.badCh,flags:1<<6});const r=await saveSetting(client,g.id,'tickettranscriptchannel',c.id,lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
-        if(sc==='setautoclose'){const h=ix.options.getInteger('hours');const r=await saveSetting(client,g.id,'ticketautoclose',String(h),lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
-        if(sc==='setlimit'){const l=ix.options.getInteger('limit');const r=await saveSetting(client,g.id,'ticketlimit',String(l),lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
+        if(sc==='setcategory'){const c=ix.options.getChannel('category');if(!c||c.type!==ChannelType.GuildCategory)return ix.reply({content:t.badCh,flags:1<<6});const r=await saveSetting(client,g.id,'ticketCategory',c.id,lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
+        if(sc==='setstaffrole'){const r=ix.options.getRole('role');if(!r)return ix.reply({content:t.badRole,flags:1<<6});const rs=await saveSetting(client,g.id,'ticketStaffRole',r.id,lang);return ix.reply({content:rs.ok?rs.msg:rs.err,flags:1<<6});}
+        if(sc==='settranscript'){const c=ix.options.getChannel('channel');if(!c)return ix.reply({content:t.badCh,flags:1<<6});const r=await saveSetting(client,g.id,'ticketTranscriptChannel',c.id,lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
+        if(sc==='setautoclose'){const h=ix.options.getInteger('hours');const r=await saveSetting(client,g.id,'ticketAutoCloseHours',String(h),lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
+        if(sc==='setlimit'){const l=ix.options.getInteger('limit');const r=await saveSetting(client,g.id,'ticketLimitPerUser',String(l),lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
         if(sc==='config'){const e=cfgEmbed(ss,g,client,lang);return ix.reply({embeds:[e],flags:1<<6});}
         if(!ss?.ticketCategory&&sc!=='setup')return ix.reply({content:t.notSet,flags:1<<6});
 
