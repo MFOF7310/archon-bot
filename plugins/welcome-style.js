@@ -144,12 +144,21 @@ async function renderWelcomeCard(member, count, cfg) {
     ctx.imageSmoothingQuality = 'high';
     ctx.textBaseline = 'middle';
 
+    // Milestone accent — 1000th cyan, 500th purple, 100th yellow, else default gold
+    const isMilestone1000 = count % 1000 === 0;
+    const isMilestone500  = count % 500  === 0;
+    const isMilestone100  = count % 100  === 0;
+    const accent = cfg.welcomeAccent
+        || (isMilestone1000 ? '#00f0ff'
+        : isMilestone500  ? '#9b59b6'
+        : isMilestone100  ? '#f1c40f'
+        : '#FFD700');
+
     // Background
     ctx.fillStyle = '#0a1a0a';
     ctx.fillRect(0, 0, CW, CH);
 
-
-    // Left cyan accent bar
+    // Left accent bar
     const barGrad = ctx.createLinearGradient(0, 0, 0, CH);
     barGrad.addColorStop(0, 'rgba(255,215,0,0.0)');
     barGrad.addColorStop(0.5, 'rgba(255,215,0,0.9)');
@@ -159,9 +168,9 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Glow border
     ctx.save();
-    ctx.shadowColor = '#FFD700';
+    ctx.shadowColor = accent;
     ctx.shadowBlur = 20 * SCALE;
-    ctx.strokeStyle = '#FFD700';
+    ctx.strokeStyle = accent;
     ctx.lineWidth = 3;
     roundRect(ctx, 2, 2, CW - 4, CH - 4, 14 * SCALE);
     ctx.stroke();
@@ -178,11 +187,11 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Glow behind avatar
     ctx.save();
-    ctx.shadowColor = '#FFD700';
+    ctx.shadowColor = accent;
     ctx.shadowBlur = 18 * SCALE;
     ctx.beginPath();
     ctx.arc(ax + ar, ay, ar + 4, 0, Math.PI * 2);
-    ctx.strokeStyle = '#FFD700';
+    ctx.strokeStyle = accent;
     ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
@@ -200,7 +209,7 @@ async function renderWelcomeCard(member, count, cfg) {
     // Text start x
     const tx = ax + ar * 2 + 22 * SCALE;
 
-    // Username — big and bold
+    // Username
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold ${34 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.textAlign = 'left';
@@ -209,8 +218,8 @@ async function renderWelcomeCard(member, count, cfg) {
         : member.user.username;
     ctx.fillText(name, tx, CH * 0.32);
 
-    // AW BISIMILA [MLI] -- ARCHON CG-223 label — cyan below username
-    ctx.fillStyle = '#FFD700';
+    // Label
+    ctx.fillStyle = accent;
     ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
     ctx.letterSpacing = `${2 * SCALE}px`;
     ctx.fillText('AW BISIMILA [MLI] -- ARCHON CG-223', tx, CH * 0.52);
@@ -225,6 +234,13 @@ async function renderWelcomeCard(member, count, cfg) {
         `${ordinal(count)} member  \u00b7  ${isNew ? '[NEW] ' : ''}${age} old account`,
         tx, CH * 0.72
     );
+
+    // Milestone badge
+    if (isMilestone100 || isMilestone500 || isMilestone1000) {
+        ctx.fillStyle = accent;
+        ctx.font = `bold ${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+        ctx.fillText(`\uD83C\uDF96\uFE0F ${ordinal(count).toUpperCase()} MEMBER`, tx, CH * 0.86);
+    }
 
     // Server icon — top right
     try {
@@ -241,7 +257,6 @@ async function renderWelcomeCard(member, count, cfg) {
             ctx.clip();
             ctx.drawImage(icon, ix, iy, ir * 2, ir * 2);
             ctx.restore();
-            // Icon border
             ctx.beginPath();
             ctx.arc(ix + ir, iy + ir, ir + 2, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255,215,0,0.6)';
@@ -265,6 +280,7 @@ async function renderWelcomeCard(member, count, cfg) {
 
     return c.encode('png');
 }
+
 // ================= CANVAS: GOODBYE CARD v4 (landscape 500x150 @ 2x) =================
 async function renderGoodbyeCard(member, duration, roleCount) {
     const SCALE = 2;
