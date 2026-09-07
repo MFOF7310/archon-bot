@@ -9,6 +9,7 @@ const {
     EmbedBuilder, AttachmentBuilder, ActionRowBuilder,
     ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits
 } = require('discord.js');
+const { t } = require('../lib/i18n');
 const Style = require('./welcome-style.js');
 
 // ================= HELPERS =================
@@ -74,21 +75,14 @@ async function handleWelcome(member, client, db) {
 
     // 3–5 random pro-tips
     const tips = Style.buildRandomTips(cfg, lang);
-    const tipLabels = {
-        en: '💡 **Essential commands :**',
-        fr: '💡 **Commandes essentielles :**',
-        bm: '💡 **Commandes dɔw :**',
-        ar: '💡 **الأوامر الأساسية :**',
-        zh: '💡 **基本命令 :**',
-    };
-    const tipLabel = tipLabels[lang] || tipLabels.en;
+    const tipLabel = t('welcome.tip_label_' + (['en','fr','bm','zh','ar'].includes(lang) ? lang : 'en'), lang);
     content += `\n> ${tipLabel}\n${tips.map(t => `> • ${t}`).join('\n')}`;
 
     // Embed uses attachment:// reference — NOT a base64 data URL
     const embed = new EmbedBuilder()
         .setColor(0xFFD700)
         .setImage('attachment://welcome-card.png')
-        .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Member #${count}` })
+        .setFooter({ text: t('welcome.welcome_footer', lang, { guild: member.guild.name, count }) })
         .setTimestamp();
 
     // Build action buttons
@@ -155,7 +149,7 @@ async function handleGoodbye(member, client, db) {
     const embed = new EmbedBuilder()
         .setColor(0xe74c3c)
         .setImage('attachment://goodbye-card.png')
-        .setFooter({ text: `ARCHON CG-223 | ${member.guild.name} | Departure Log` })
+        .setFooter({ text: t('welcome.goodbye_footer', goodbyeLang, { guild: member.guild.name }) })
         .setTimestamp();
 
     await ch.send({
@@ -194,7 +188,7 @@ module.exports = {
 
         if (sub === 'test') {
             await message.reply({
-                embeds: [new EmbedBuilder().setColor(0x00fbff).setDescription('**Sending test welcome...**').setFooter({ text: 'ARCHON CG-223' })]
+                embeds: [new EmbedBuilder().setColor(0x00fbff).setDescription(`**${t('welcome.test_sending', lang)}**`).setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
             await handleWelcome(message.member, client, db);
             return;
@@ -202,48 +196,42 @@ module.exports = {
 
         if (sub === 'message' || sub === 'msg') {
             if (!message.member.permissions.has(PermissionFlagsBits.Administrator))
-                return message.reply('🔒 Admin only.').catch(() => {});
+                return message.reply(t('welcome.admin_only', lang)).catch(() => {});
 
             const customMsg = args.slice(1).join(' ');
             if (!customMsg) {
-                return message.reply(
-                    `⚠️ **Usage:** \`${prefix}welcome message <text>\`\n` +
-                    `Placeholders: \`{user}\` \`{server}\` \`{count}\` \`{age}\``
-                ).catch(() => {});
+                return message.reply(t('welcome.usage_message', lang, { prefix })).catch(() => {});
             }
             client.updateServerSetting(message.guild.id, 'welcome_message', customMsg);
             client.settings.delete(message.guild.id);
 
             const preview = Style.formatTemplate(customMsg, message.member, message.guild.memberCount);
             return message.reply({
-                embeds: [new EmbedBuilder().setColor(0x00fbff).setTitle('✅ Welcome Message Updated')
+                embeds: [new EmbedBuilder().setColor(0x00fbff).setTitle(t('welcome.welcome_updated', lang))
                     .addFields(
-                        { name: 'Template Saved', value: `\`${customMsg}\``, inline: false },
-                        { name: 'Preview', value: preview, inline: false }
+                        { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
+                        { name: t('welcome.field_preview', lang), value: preview, inline: false }
                     ).setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
 
         if (sub === 'goodbyemsg' || sub === 'goodbye' || sub === 'leavemsg') {
             if (!message.member.permissions.has(PermissionFlagsBits.Administrator))
-                return message.reply('🔒 Admin only.').catch(() => {});
+                return message.reply(t('welcome.admin_only', lang)).catch(() => {});
 
             const customMsg = args.slice(1).join(' ');
             if (!customMsg) {
-                return message.reply(
-                    `⚠️ **Usage:** \`${prefix}welcome goodbyemsg <text>\`\n` +
-                    `Placeholders: \`{user}\` \`{server}\` \`{count}\` \`{age}\``
-                ).catch(() => {});
+                return message.reply(t('welcome.usage_goodbyemsg', lang, { prefix })).catch(() => {});
             }
             client.updateServerSetting(message.guild.id, 'goodbye_message', customMsg);
             client.settings.delete(message.guild.id);
 
             const preview = Style.formatTemplate(customMsg, message.member, message.guild.memberCount);
             return message.reply({
-                embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle('✅ Goodbye Message Updated')
+                embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle(t('welcome.goodbye_updated', lang))
                     .addFields(
-                        { name: 'Template Saved', value: `\`${customMsg}\``, inline: false },
-                        { name: 'Preview', value: preview, inline: false }
+                        { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
+                        { name: t('welcome.field_preview', lang), value: preview, inline: false }
                     ).setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -259,16 +247,12 @@ module.exports = {
                 .setColor(0x00fbff)
                 .setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() })
                 .addFields(
-                    { name: 'Welcome Channel', value: wCh ? `<#${wCh}>` : '*Not set*', inline: true },
-                    { name: 'Goodbye Channel', value: gCh ? `<#${gCh}>` : '*Not set*', inline: true },
-                    { name: 'Welcome Message', value: `\`${wMsg}\``, inline: false },
-                    { name: 'Goodbye Message', value: `\`${gMsg}\``, inline: false },
-                    { name: 'Setup', value:
-                        `\`${prefix}welcome message <text>\` — Set welcome text\n` +
-                        `\`${prefix}welcome goodbyemsg <text>\` — Set goodbye text\n` +
-                        `\`${prefix}/channels set type:Welcome_channel #channel\`\n` +
-                        `\`${prefix}serversettings set goodbye_channel #channel\``, inline: false },
-                    { name: 'Test', value: `\`${prefix}welcome test\` — Simulate welcome`, inline: false }
+                    { name: t('welcome.field_welcome_channel', lang), value: wCh ? `<#${wCh}>` : t('welcome.not_set', lang), inline: true },
+                    { name: t('welcome.field_goodbye_channel', lang), value: gCh ? `<#${gCh}>` : t('welcome.not_set', lang), inline: true },
+                    { name: t('welcome.field_welcome_message', lang), value: `\`${wMsg}\``, inline: false },
+                    { name: t('welcome.field_goodbye_message', lang), value: `\`${gMsg}\``, inline: false },
+                    { name: t('welcome.field_setup', lang), value: t('welcome.setup_value', lang, { prefix }), inline: false },
+                    { name: t('welcome.field_test', lang), value: t('welcome.test_value', lang, { prefix }), inline: false }
                 )
                 .setFooter({ text: 'ARCHON CG-223' })
                 .setTimestamp()]
@@ -291,6 +275,8 @@ module.exports = {
         const db   = client.db;
         let cfg = Style.normalizeWelcomeConfig(client.getServerSettings?.(ix.guild.id) || {});
         cfg = applyOwnerEnvFallback(cfg, ix.guild.id);
+        const _ssW = client.getServerSettings?.(ix.guild?.id) || {};
+        const lang = _ssW.language && _ssW.language !== 'auto' ? _ssW.language : (ix.locale?.startsWith('fr') ? 'fr' : 'en');
 
         if (sc === 'config') {
             return ix.reply({
@@ -298,11 +284,11 @@ module.exports = {
                     .setColor(0x00fbff)
                     .setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() })
                     .addFields(
-                        { name: 'Welcome Channel', value: cfg.welcomeChannel ? `<#${cfg.welcomeChannel}>` : '*Not set*', inline: true },
-                        { name: 'Goodbye Channel', value: cfg.goodbyeChannel ? `<#${cfg.goodbyeChannel}>` : '*Not set*', inline: true },
-                        { name: 'Welcome Message', value: `\`${cfg.welcomeMessage || 'Default'}\``, inline: false },
-                        { name: 'Goodbye Message', value: `\`${cfg.goodbyeMessage || 'Default'}\``, inline: false },
-                        { name: 'Setup', value: '`/welcome message` · `/welcome goodbyemsg`', inline: false }
+                        { name: t('welcome.field_welcome_channel', lang), value: cfg.welcomeChannel ? `<#${cfg.welcomeChannel}>` : t('welcome.not_set', lang), inline: true },
+                        { name: t('welcome.field_goodbye_channel', lang), value: cfg.goodbyeChannel ? `<#${cfg.goodbyeChannel}>` : t('welcome.not_set', lang), inline: true },
+                        { name: t('welcome.field_welcome_message', lang), value: `\`${cfg.welcomeMessage || t('welcome.default_label', lang)}\``, inline: false },
+                        { name: t('welcome.field_goodbye_message', lang), value: `\`${cfg.goodbyeMessage || t('welcome.default_label', lang)}\``, inline: false },
+                        { name: t('welcome.field_setup', lang), value: '`/welcome message` · `/welcome goodbyemsg`', inline: false }
                     ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp()],
                 flags: 1 << 6
             });
@@ -310,9 +296,9 @@ module.exports = {
 
         if (sc === 'test') {
             if (!ix.member.permissions.has(PermissionFlagsBits.Administrator))
-                return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+                return ix.reply({ content: t('welcome.admin_only', lang), flags: 1 << 6 });
 
-            await ix.reply({ content: 'Sending test welcome...', flags: 1 << 6 });
+            await ix.reply({ content: t('welcome.test_sending', lang), flags: 1 << 6 });
             // Fetch real GuildMember so canvas gets full properties
             const realMember = await ix.guild.members.fetch(ix.user.id).catch(() => ix.member);
             await handleWelcome(realMember, client, db);
@@ -321,17 +307,17 @@ module.exports = {
 
         if (sc === 'message') {
             if (!ix.member.permissions.has(PermissionFlagsBits.Administrator))
-                return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+                return ix.reply({ content: t('welcome.admin_only', lang), flags: 1 << 6 });
 
             const customMsg = ix.options.getString('text');
             client.updateServerSetting(ix.guild.id, 'welcome_message', customMsg);
             client.settings.delete(ix.guild.id);
             const preview = Style.formatTemplate(customMsg, ix.member, ix.guild.memberCount);
             return ix.reply({
-                embeds: [new EmbedBuilder().setColor(0x00fbff).setTitle('✅ Welcome Message Updated')
+                embeds: [new EmbedBuilder().setColor(0x00fbff).setTitle(t('welcome.welcome_updated', lang))
                     .addFields(
-                        { name: 'Template Saved', value: `\`${customMsg}\``, inline: false },
-                        { name: 'Preview', value: preview, inline: false }
+                        { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
+                        { name: t('welcome.field_preview', lang), value: preview, inline: false }
                     ).setFooter({ text: 'ARCHON CG-223' })],
                 flags: 1 << 6
             });
@@ -339,17 +325,17 @@ module.exports = {
 
         if (sc === 'goodbyemsg') {
             if (!ix.member.permissions.has(PermissionFlagsBits.Administrator))
-                return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+                return ix.reply({ content: t('welcome.admin_only', lang), flags: 1 << 6 });
 
             const customMsg = ix.options.getString('text');
             client.updateServerSetting(ix.guild.id, 'goodbye_message', customMsg);
             client.settings.delete(ix.guild.id);
             const preview = Style.formatTemplate(customMsg, ix.member, ix.guild.memberCount);
             return ix.reply({
-                embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle('✅ Goodbye Message Updated')
+                embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle(t('welcome.goodbye_updated', lang))
                     .addFields(
-                        { name: 'Template Saved', value: `\`${customMsg}\``, inline: false },
-                        { name: 'Preview', value: preview, inline: false }
+                        { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
+                        { name: t('welcome.field_preview', lang), value: preview, inline: false }
                     ).setFooter({ text: 'ARCHON CG-223' })],
                 flags: 1 << 6
             });
