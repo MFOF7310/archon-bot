@@ -6,6 +6,7 @@ const {
     MessageFlags
 } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+const { t } = require('../lib/i18n');
 
 // Parse emoji string to Discord button-compatible object
 function parseEmoji(emojiStr) {
@@ -62,12 +63,14 @@ function resetInactivityTimer(q) {
     q.inactivityTimer = setTimeout(async () => {
         const qNow = queues.get(q.guild.id);
         if (!qNow) return;
+        const _ssI = q._client?.getServerSettings?.(q.guild?.id) || {};
+        const lang = _ssI.language && _ssI.language !== 'auto' ? _ssI.language : 'en';
         if (qNow.player?.state?.status === AudioPlayerStatus.Playing) { resetInactivityTimer(qNow); return; }
         try {
             await qNow.textChannel?.send({ embeds: [new EmbedBuilder()
                 .setColor(0xFEE75C)
                 .setAuthor({ name: '💤 Auto-Disconnect' })
-                .setDescription('I left the voice channel due to inactivity.\nUse `/music play` to bring me back anytime.')
+                .setDescription(t('music.inactivity_disconnect', lang))
             ] });
         } catch(e) {}
         destroyQueue(q.guild.id);
@@ -237,9 +240,11 @@ function buildControls(q) {
 }
 
 function buildQueueEmbed(q, client) {
+    const _ssQ = client?.getServerSettings?.(q.guild?.id) || {};
+    const lang = _ssQ.language && _ssQ.language !== 'auto' ? _ssQ.language : 'en';
     const list = q.tracks.slice(0, 10).map((t, i) =>
         `\u001b[0;37m${(i+1).toString().padStart(2)}.\u001b[0m \u001b[1;36m${t.title.substring(0,40)}\u001b[0m`
-    ).join('\n') || '\u001b[0;37m  Queue is empty\u001b[0m';
+    ).join('\n') || '\u001b[0;37m  ' + t('music.queue_empty', lang) + '\u001b[0m';
     return new EmbedBuilder()
         .setColor(ARCHON.purple)
         .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
@@ -406,11 +411,13 @@ function attachCollector(q, msg) {
     const collector = msg.createMessageComponentCollector({ time: 0 });
     q._panelCollector = collector;
     collector.on('collect', async (i) => {
+        const _ssC = client?.getServerSettings?.(q.guild?.id) || {};
+        const lang = _ssC.language && _ssC.language !== 'auto' ? _ssC.language : 'en';
         // ── ZOMBIE GUARD: if this click is on an old panel, tell user to scroll down ──
         if (i.message.id !== q.panelMsgId) {
-            return i.reply({ content: '💡 This panel is outdated — scroll down for the live one!', flags: 64 }).catch(() => {});
+            return i.reply({ content: t('music.outdated_panel', lang), flags: 64 }).catch(() => {});
         }
-        if (!i.member?.voice?.channel) return i.reply({ content: '🎤 Hop into a voice channel first — I need a stage!', flags: 64 }).catch(() => {});
+        if (!i.member?.voice?.channel) return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
         let deferred = true;
         await i.deferUpdate().catch(() => { deferred = false; });
         const qNow = getQueue(q.guild.id);
@@ -423,68 +430,68 @@ function attachCollector(q, msg) {
 
         if (i.customId === 'mc_prev') {
             if (!qNow.trackHistory || qNow.trackHistory.length === 0) {
-                await i.followUp({ content: '🤷 Nothing behind this one — it\'s the opening act!', flags: 64 }).catch(() => {});
+                await i.followUp({ content: t('music.prev_nothing', lang), flags: 64 }).catch(() => {});
                 return;
             }
             const prev = qNow.trackHistory.shift();
             if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
             qNow.tracks.unshift(prev);
-            await i.followUp({ content: `${EMOJIS.mc_autoplay} Going back to **${prev.title?.substring(0,50)}**…`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: t('music.going_back', lang, { emoji: EMOJIS.mc_autoplay, title: prev.title?.substring(0,50) }), flags: 64 }).catch(() => {});
             qNow.player.stop(); // Triggers Idle → playNext
         } else if (i.customId === 'mc_pause') {
             if (qNow.player.state.status === AudioPlayerStatus.Paused) {
                 qNow.player.unpause();
                 qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
                 qNow.pausedAt = null;
-                await i.followUp({ content: `${EMOJIS.check} Resumed`, flags: 64 }).catch(() => {});
+                await i.followUp({ content: t('music.resumed', lang, { emoji: EMOJIS.check }), flags: 64 }).catch(() => {});
             } else {
                 qNow.player.pause();
                 qNow.pausedAt = Date.now();
-                await i.followUp({ content: `${EMOJIS.mc_pause} Paused`, flags: 64 }).catch(() => {});
+                await i.followUp({ content: t('music.paused', lang, { emoji: EMOJIS.mc_pause }), flags: 64 }).catch(() => {});
             }
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_skip') {
-            await i.followUp({ content: `${EMOJIS.mc_skip} Skipping **${(qNow.currentTrack?.title || 'track').replace(/^🎵\s*/, '').substring(0,50)}**…`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: t('music.skipped', lang, { emoji: EMOJIS.mc_skip, title: (qNow.currentTrack?.title || 'track').replace(/^🎵\s*/, '').substring(0,50) }), flags: 64 }).catch(() => {});
             qNow.player.stop();
         } else if (i.customId === 'mc_stop') {
             if (qNow.persistentMsg) {
                 await qNow.persistentMsg.delete().catch(() => {});
                 qNow.persistentMsg = null; qNow.panelMsgId = null;
                 const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                    .setDescription('⏹️ **Music stopped** — the stage is yours whenever you\'re ready. `/music play` brings me back 🎧');
+                    .setDescription(t('music.stopped', lang));
                 await qNow.textChannel?.send({ embeds: [stoppedEmbed] }).catch(() => {});
             }
             destroyQueue(q.guild.id);
         } else if (i.customId === 'mc_voldown' || i.customId === 'mc_volup') {
             qNow.volume = Math.max(0, Math.min(100, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
             try { qNow.player?.state?.resource?.volume?.setVolume(qNow.volume / 100); } catch(e) {}
-            await i.followUp({ content: `${i.customId === 'mc_volup' ? EMOJIS.mc_volume_up : EMOJIS.mc_volume_down} Volume set to \`${qNow.volume}%\``, flags: 64 }).catch(() => {});
+            await i.followUp({ content: t('music.volume_set', lang, { emoji: i.customId === 'mc_volup' ? EMOJIS.mc_volume_up : EMOJIS.mc_volume_down, vol: qNow.volume }), flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_loop') {
             qNow.loop = !qNow.loop;
             // NOTE: do NOT unshift here — AudioPlayerStatus.Idle handler does it
-            await i.followUp({ content: `${EMOJIS.mc_loop} Loop **${qNow.loop ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: t(qNow.loop ? 'music.loop_on' : 'music.loop_off', lang, { emoji: EMOJIS.mc_loop }), flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_autoplay') {
             qNow.autoplay = !qNow.autoplay;
-            await i.followUp({ content: `${EMOJIS.mc_autoplay} AutoPlay **${qNow.autoplay ? 'enabled' : 'disabled'}**`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: t(qNow.autoplay ? 'music.autoplay_on' : 'music.autoplay_off', lang, { emoji: EMOJIS.mc_autoplay }), flags: 64 }).catch(() => {});
             updatePersistentPanel(qNow).catch(() => {});
         } else if (i.customId === 'mc_like') {
-            const t = qNow.currentTrack;
-            if (!t) return i.followUp({ content: '🤔 Nothing\'s playing right now — start something and I\'ll save it for you!', flags: 64 }).catch(() => {});
+            const trk = qNow.currentTrack;
+            if (!trk) return i.followUp({ content: t('music.nothing_playing_like', lang), flags: 64 }).catch(() => {});
             const all = loadLikes();
             const mine = all[i.user.id] = all[i.user.id] || [];
-            const key = (t.query || t.title).toLowerCase();
+            const key = (trk.query || trk.title).toLowerCase();
             if (mine.some(x => (x.query || x.title).toLowerCase() === key)) {
-                return i.followUp({ content: `❤️ **${t.title.substring(0, 50)}** is already living in your Liked Songs! 🎧`, flags: 64 }).catch(() => {});
+                return i.followUp({ content: t('music.like_already_saved', lang, { title: trk.title.substring(0, 50) }), flags: 64 }).catch(() => {});
             }
-            mine.unshift({ title: t.title.replace(/^🎵\s*/, ''), query: t.query || t.title, folder: '❤️ Liked Songs', likedAt: Date.now() });
+            mine.unshift({ title: trk.title.replace(/^🎵\s*/, ''), query: trk.query || trk.title, folder: '❤️ Liked Songs', likedAt: Date.now() });
             saveLikes(all);
-            await i.followUp({ content: `❤️ Saved **${t.title.substring(0, 50)}** — you now have \`${mine.length}\` liked song${mine.length > 1 ? 's' : ''}.\nFind them in \`/music library\` → **❤️ My Liked Songs**!`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: t('music.like_saved', lang, { title: trk.title.substring(0, 50), count: mine.length }), flags: 64 }).catch(() => {});
         } else if (i.customId === 'mc_dislike') {
-            const t = qNow.currentTrack;
-            if (!t) return i.followUp({ content: '🤔 Nothing\'s playing to skip — queue something up first!', flags: 64 }).catch(() => {});
-            const artist = (t.artist && t.artist !== 'Unknown') ? t.artist : t.title.replace(/^🎵\s*/, '');
+            const trk = qNow.currentTrack;
+            if (!trk) return i.followUp({ content: t('music.nothing_playing_dislike', lang), flags: 64 }).catch(() => {});
+            const artist = (trk.artist && trk.artist !== 'Unknown') ? trk.artist : trk.title.replace(/^🎵\s*/, '');
             const all = loadDislikes();
             const list = all[qNow.guild.id] = all[qNow.guild.id] || [];
             const key = artist.toLowerCase();
@@ -493,8 +500,7 @@ function attachCollector(q, msg) {
                 if (list.length > 50) list.pop();
                 saveDislikes(all);
             }
-            await i.followUp({ content: `${EMOJIS.mc_not_for_me} **${t.title.replace(/^🎵\s*/, '').substring(0, 50)}** skipped — noted!
-I'll keep **${artist.substring(0, 40)}** off your autoplay from now on ${EMOJIS.mc_skip}`, flags: 64 }).catch(() => {});
+            await i.followUp({ content: t('music.dislike_noted', lang, { emoji: EMOJIS.mc_not_for_me, title: trk.title.replace(/^🎵\s*/, '').substring(0, 50), artist: artist.substring(0, 40), emoji2: EMOJIS.mc_skip }), flags: 64 }).catch(() => {});
             qNow.player.stop(); // Triggers Idle → playNext
         } else if (i.customId === 'mc_queue') {
             await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
@@ -778,6 +784,8 @@ async function prefetchNext(q) {
 // ═══════════════════════════════════════════════════════
 async function playNext(q) {
     const client = q._client;
+    const _ssP = client?.getServerSettings?.(q.guild?.id) || {};
+    const lang = _ssP.language && _ssP.language !== 'auto' ? _ssP.language : 'en';
     if (!q || !q.guild || q.destroyed) return; // Guard: queue destroyed
     if (queues.get(q.guild.id) !== q) return; // Guard: stale queue reference
     if (q.tracks.length > 0 && !q.tracks[0]) { q.tracks = q.tracks.filter(Boolean); }
@@ -884,7 +892,7 @@ async function playNext(q) {
         let resource;
 
         if (track.source === 'file') {
-            if (!require('fs').existsSync(track.url)) throw new Error('Uploaded file expired — re-upload it');
+            if (!require('fs').existsSync(track.url)) throw new Error(t('music.upload_expired', lang));
             resource = createFilteredResource(track.url, q);
         } else {
             let stream = null;
@@ -1065,7 +1073,7 @@ async function playNext(q) {
             q._consecutiveErrors = 0;
             const giveUpEmbed = new EmbedBuilder().setColor(ARCHON.red)
                 .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
-                .setDescription(`⚠️ **Too many tracks failed in a row** — pausing autoplay. Use \`/music play\` to queue something manually.`);
+                .setDescription(t('music.too_many_errors', lang));
             await q.textChannel?.send({ embeds: [giveUpEmbed] }).catch(() => {});
             q.autoplay = false;
             return;
@@ -1073,7 +1081,7 @@ async function playNext(q) {
 
         const errEmbed = new EmbedBuilder().setColor(ARCHON.red)
             .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
-            .setDescription(`😤 **That track glitched out** — flipping to the next one… (${q._consecutiveErrors}/5)`);
+            .setDescription(t('music.track_error', lang, { count: q._consecutiveErrors }));
         if (q.persistentMsg) {
             await q.persistentMsg.delete().catch(() => {});
             q.persistentMsg = null; q.panelMsgId = null;
@@ -1144,6 +1152,8 @@ async function ensureConnection(q) {
 // PLAY HELPER
 // ═══════════════════════════════════════════════════════
 async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requestedBy, client, replyFn, requestedById) {
+    const _ssH = client?.getServerSettings?.(guildId) || {};
+    const lang = _ssH.language && _ssH.language !== 'auto' ? _ssH.language : 'en';
 
     // Handle folder selection from autocomplete
     if (query.startsWith('__folder__')) {
@@ -1226,7 +1236,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         if (q2) q2.libraryIndex = libIdx;
     }
     if (q.tracks.length >= 50) {
-        await replyFn({ content: '🎧 The queue is packed — 50 tracks max! `/music skip` a few or `/music stop` to make room.' });
+        await replyFn({ content: t('music.queue_full', lang) });
         return;
     }
     q.tracks.push(track);
@@ -1312,7 +1322,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             if (qNow) {
                 const sel = i.values[0];
                 qNow.tracks.push({ title: sel, query: sel, artist: 'Unknown', source: 'SoundCloud', duration: 0, thumbnail: null, requestedBy: i.user.username, requestedById: i.user.id, url: null });
-                await i.followUp({ content: `${EMOJIS.check} Added **${sel.substring(0,50)}** to queue!`, flags: 64 }).catch(() => {});
+                await i.followUp({ content: t('music.queue_added', lang, { emoji: EMOJIS.check, title: sel.substring(0,50) }), flags: 64 }).catch(() => {});
             }
             collector.stop();
         });
@@ -1373,10 +1383,11 @@ module.exports = {
 
     // PREFIX — .play <query>
     run: async (client, message, args, db, serverSettings, usedCommand) => {
+        const lang = serverSettings?.language && serverSettings.language !== 'auto' ? serverSettings.language : 'en';
         const query = args.join(' ');
-        if (!query) return message.reply('❌ Provide a song name or use `/music library` to browse folders!').catch(() => {});
+        if (!query) return message.reply(t('music.no_query', lang)).catch(() => {});
         const vc = message.member?.voice?.channel;
-        if (!vc) return message.reply('🎤 Join a voice channel first — then I\'ll bring the music!').catch(() => {});
+        if (!vc) return message.reply(t('music.join_voice', lang)).catch(() => {});
         await handlePlay(
             message.guild.id, message.guild, vc, message.channel,
             query, message.author.username, client,
@@ -1472,13 +1483,15 @@ module.exports = {
     },
 
     execute: async (interaction, client) => {
+        const ss = client.getServerSettings?.(interaction.guild?.id) || {};
+        const lang = ss.language && ss.language !== 'auto' ? ss.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild?.id;
         const vc = interaction.member?.voice?.channel;
 
         // Commands that need voice channel
         if (['play', 'file'].includes(sub) && !vc) {
-            return interaction.reply({ content: '🎤 Join a voice channel first — then I\'ll bring the music!', flags: 64 });
+            return interaction.reply({ content: t('music.join_voice', lang), flags: 64 });
         }
 
         const isLibrary = sub === 'library';
@@ -1510,7 +1523,7 @@ module.exports = {
 
             await interaction.editReply({
                 embeds: [new EmbedBuilder().setColor(ARCHON.gold)
-                    .setDescription(`${EMOJIS.loading} Downloading **${atts.length}** file(s) — hang tight...`)]
+                    .setDescription(t('music.downloading_files', lang, { emoji: EMOJIS.loading, count: atts.length }))]
             });
 
             const added = [];
@@ -1543,14 +1556,14 @@ module.exports = {
             if (!added.length) {
                 return interaction.editReply({
                     embeds: [new EmbedBuilder().setColor(ARCHON.red)
-                        .setDescription(`${EMOJIS.error} No valid audio files! Supported: ${validExts.join(', ')}`)]
+                        .setDescription(t('music.no_valid_files', lang, { emoji: EMOJIS.error, exts: validExts.join(', ') }))]
                 });
             }
 
             const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
             await interaction.editReply({
                 embeds: [new EmbedBuilder().setColor(isPlaying ? 0x1DB954 : ARCHON.cyan)
-                    .setDescription(`🎵 Added **${added.length}** file(s) to queue:\n${added.map(a => `> ${a}`).join('\n')}`)]
+                    .setDescription(t('music.files_added', lang, { count: added.length, list: added.map(a => `> ${a}`).join('\n') }))]
             });
 
             if (!isPlaying) {
@@ -1563,7 +1576,7 @@ module.exports = {
         // Commands that need active queue
         const q = getQueue(guildId);
         if (!q && !['play','file','library'].includes(sub)) {
-            return interaction.editReply({ content: '🦗 All quiet right now — kick something off with `/music play`!' });
+            return interaction.editReply({ content: t('music.not_playing', lang) });
         }
 
         // ── FILTER ── 🎚️
@@ -1604,12 +1617,12 @@ module.exports = {
                 await q.persistentMsg.delete().catch(() => {});
                 q.persistentMsg = null; q.panelMsgId = null;
                 const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                    .setDescription('⏹️ **Music stopped** — the stage is yours whenever you\'re ready. `/music play` brings me back 🎧');
+                    .setDescription(t('music.stopped', lang));
                 await q.textChannel?.send({ embeds: [stoppedEmbed] }).catch(() => {});
             }
             destroyQueue(guildId);
             const embed = new EmbedBuilder().setColor(ARCHON.red)
-                .setDescription('⏹️ **Music stopped** — the stage is yours whenever you\'re ready. `/music play` brings me back 🎧');
+                .setDescription(t('music.stopped', lang));
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -1620,7 +1633,7 @@ module.exports = {
 
         // ── NOW PLAYING ── (CV2 card, same style as the live panel)
         if (sub === 'nowplaying') {
-            if (!q.currentTrack) return interaction.editReply({ content: '🦗 All quiet right now — kick something off with `/music play`!' });
+            if (!q.currentTrack) return interaction.editReply({ content: t('music.not_playing', lang) });
             const reply = await interaction.editReply({
                 components: [buildPanelContainer(q, client)],
                 flags: MessageFlags.IsComponentsV2,
@@ -1630,9 +1643,9 @@ module.exports = {
                 const msg = await interaction.fetchReply();
                 const col = msg.createMessageComponentCollector({ time: 300000 });
                 col.on('collect', async (i) => {
-                    if (!i.member?.voice?.channel) return i.reply({ content: '🎤 Hop into a voice channel first — I need a stage!', flags: 64 }).catch(() => {});
+                    if (!i.member?.voice?.channel) return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
                     const qNow = getQueue(guildId);
-                    if (!qNow) return i.reply({ content: '⏹️ The show already ended — `/music play` starts a new one!', flags: 64 }).catch(() => {});
+                    if (!qNow) return i.reply({ content: t('music.no_active_queue', lang), flags: 64 }).catch(() => {});
                     await i.deferUpdate().catch(() => {});
                     if (i.customId === 'mc_pause') {
                         if (qNow.player.state.status === AudioPlayerStatus.Paused) { qNow.player.unpause(); qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now()); qNow.pausedAt = null; }
@@ -1703,7 +1716,7 @@ module.exports = {
                 await updatePersistentPanel(q, { resend: true });
             }
             const embed = new EmbedBuilder().setColor(q.silentPanel ? ARCHON.gold : ARCHON.green)
-                .setDescription(`\`\`\`ansi\n[1;${q.silentPanel?'33':'32'}m▸ SILENT PANEL ${q.silentPanel?'ENABLED 🔕':'DISABLED 🔔'}\u001b[0m\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n[1;${q.silentPanel?'33':'32'}m${t(q.silentPanel ? 'music.silent_on' : 'music.silent_off', lang)}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -1711,7 +1724,7 @@ module.exports = {
         if (sub === 'library') {
             let lib;
             try { lib = require('../data/music-library.json'); }
-            catch(e) { return interaction.editReply({ content: '📚 Can\'t reach the music library right now — give it another shot in a moment.' }); }
+            catch(e) { return interaction.editReply({ content: t('music.library_unavailable', lang) }); }
 
             const { StringSelectMenuBuilder: SSM, ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = require('discord.js');
             const PER_PAGE = 10;
@@ -1787,7 +1800,7 @@ module.exports = {
                         : state.folder === '__search__' ? `🔍 "${state.search}" — ${tracks.length} result${tracks.length !== 1 ? 's' : ''}`
                         : state.folder;
                     embed.setTitle(viewTitle)
-                        .setDescription(tracks.length ? list : '*Nothing here yet — hit the ❤️ Like button while listening!*')
+                        .setDescription(tracks.length ? list : t('music.liked_empty', lang))
                         .addFields(
                             { name: 'Tracks', value: `\`${tracks.length}\``, inline: true },
                             { name: 'Page', value: `\`${state.page}/${totalPages}\``, inline: true },
@@ -1839,7 +1852,7 @@ module.exports = {
                         await i.update(renderLibrary()).catch(() => {});
                     } else if (i.customId === 'mlb_pick') {
                         if (!i.member?.voice?.channel) {
-                            return i.reply({ content: '🎤 Hop into a voice channel first — I need a stage!', flags: 64 }).catch(() => {});
+                            return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
                         }
                         await i.deferUpdate().catch(() => {});
                         let first = true;
@@ -1859,10 +1872,10 @@ module.exports = {
                         }
                     } else if (i.customId === 'mlb_shuffle') {
                         if (!i.member?.voice?.channel) {
-                            return i.reply({ content: '🎤 Hop into a voice channel first — I need a stage!', flags: 64 }).catch(() => {});
+                            return i.reply({ content: t('music.shuffle_voice_first', lang), flags: 64 }).catch(() => {});
                         }
                         const tracks = [...resolveTracks()];
-                        if (!tracks.length) return i.reply({ content: '🤷 This one\'s empty — pick another folder!', flags: 64 }).catch(() => {});
+                        if (!tracks.length) return i.reply({ content: t('music.folder_empty', lang), flags: 64 }).catch(() => {});
                         // Fisher-Yates
                         for (let x = tracks.length - 1; x > 0; x--) {
                             const y = Math.floor(Math.random() * (x + 1));
@@ -1871,18 +1884,18 @@ module.exports = {
                         const qNow = getQueue(interaction.guild.id);
                         const cap = Math.max(0, 50 - (qNow?.tracks.length || 0));
                         const batch = tracks.slice(0, cap);
-                        if (!batch.length) return i.reply({ content: '🎧 Queue\'s full (50 max)! Skip or stop something to make room.', flags: 64 }).catch(() => {});
+                        if (!batch.length) return i.reply({ content: t('music.shuffle_queue_full', lang), flags: 64 }).catch(() => {});
                         await i.deferUpdate().catch(() => {});
                         let first = true;
-                        for (const t of batch) {
+                        for (const trk of batch) {
                             await handlePlay(
                                 interaction.guild.id, interaction.guild,
                                 i.member.voice.channel, interaction.channel,
-                                t.query || t.title, i.user.username, client,
+                                trk.query || trk.title, i.user.username, client,
                                 async (opts) => {
                                     if (first) {
                                         first = false;
-                                        await i.followUp({ content: `🔀 Shuffled **${batch.length} tracks** from ${state.folder === '__liked__' ? '❤️ My Liked Songs' : state.folder === '__all__' ? '🎵 All Tracks' : state.folder} into the queue!`, flags: 64 }).catch(() => {});
+                                        await i.followUp({ content: t('music.shuffle_loaded', lang, { count: batch.length, folder: state.folder === '__liked__' ? '❤️ My Liked Songs' : state.folder === '__all__' ? '🎵 All Tracks' : state.folder }), flags: 64 }).catch(() => {});
                                     }
                                     return null;
                                 },
