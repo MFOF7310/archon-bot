@@ -115,7 +115,7 @@
   "gameText": "Game",
   "modeText": "Mode",
   "xpGained": "XP Gained",
-  "levelUp": "🎉 LEVEL UP!",
+  "levelUp": "🏆 NEURAL LEVEL UP!",
   "reachedLevel": "You reached level",
   "roundText": "ROUND",
   "matchText": "MATCH",
@@ -141,5 +141,8 @@
   "hubDesc": "Select a neural challenge below. All games are per-server isolated.",
   "db_unavailable": "❌ Database unavailable.",
   "ttt_use_slash": "❌ Use `/game tictactoe @user` to challenge someone!",
-  "slash_redirect": "⚡ The game center is available via slash."
+  "slash_redirect": "⚡ The game center is available via slash.",
+  "spinning": "🌀 Spinning...",
+  "your_pick": "YOUR PICK",
+  "result_label": "RESULT"
 }

@@ -141,5 +141,8 @@
   "hubDesc": "",
   "db_unavailable": "",
   "ttt_use_slash": "",
-  "slash_redirect": ""
+  "slash_redirect": "",
+  "spinning": "",
+  "your_pick": "",
+  "result_label": ""
 }

@@ -115,7 +115,7 @@
   "gameText": "Jeu",
   "modeText": "Mode",
   "xpGained": "XP Gagné",
-  "levelUp": "🎉 NIVEAU SUPÉRIEUR !",
+  "levelUp": "🏆 NIVEAU NEURAL SUPÉRIEUR !",
   "reachedLevel": "Vous avez atteint le niveau",
   "roundText": "MANCHE",
   "matchText": "MATCH",
@@ -141,5 +141,8 @@
   "hubDesc": "Sélectionnez un défi neural ci-dessous. Tous les jeux sont isolés par serveur.",
   "db_unavailable": "❌ Base de données indisponible.",
   "ttt_use_slash": "❌ Utilisez `/game tictactoe @user` pour défier quelqu'un !",
-  "slash_redirect": "⚡ Le centre de jeux est disponible en slash."
+  "slash_redirect": "⚡ Le centre de jeux est disponible en slash.",
+  "spinning": "🌀 La roue tourne...",
+  "your_pick": "VOTRE CHOIX",
+  "result_label": "RÉSULTAT"
 }
