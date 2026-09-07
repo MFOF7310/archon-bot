@@ -1,94 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
+const { t } = require('../lib/i18n');
 
-// ================= TRANSLATIONS =================
-const gameTranslations = {
-    en: {
-        title: '🎮 NEURAL GAME CENTER', subtitle: 'Choose your neural challenge!',
-        availableGames: 'Available Games', yourStats: 'Your Stats',
-        gamesPlayed: 'Games Played', gamesWon: 'Games Won', totalWinnings: 'Total Winnings', winRate: 'Win Rate',
-        footer: 'NEURAL GAME CENTER',
-        codm: 'CALL OF DUTY MOBILE', slots: '🎰 SLOTS', tictactoe: '⭕ TIC TAC TOE', blackjack: '🃏 BLACKJACK', roulette: '🎲 ROULETTE', trivia: '🧠 TRIVIA',
-        codmDesc: 'Simulate CODM ranked matches', slotsDesc: 'Spin the neural slots', tictactoeDesc: 'Classic Tic Tac Toe (2 players)',
-        blackjackDesc: 'Beat the dealer', rouletteDesc: 'Bet on your number', triviaDesc: 'Test your knowledge',
-        usage: (prefix) => `Usage: \`${prefix}game <codm/slots/tictactoe/blackjack/roulette/trivia> [bet]\``,
-        invalidGame: '❌ **INVALID GAME**',
-        betRequired: '❌ **BET REQUIRED**', insufficientCredits: '❌ **INSUFFICIENT CREDITS!** You have',
-        gameStarted: '✅ **GAME STARTED!**', results: '🎮 RESULTS', youWon: '✅ YOU WON!', youLost: '❌ YOU LOST!',
-        winnings: 'Winnings', loss: 'Loss', newBalance: 'New Balance', bet: 'BET', spin: 'SPIN', jackpot: '💎 JACKPOT!',
-        matchLost: 'Match Lost', matchWon: 'Match Won', rankUp: 'RANK UP!', currentRank: 'Current Rank',
-        draw: '🤝 DRAW!', notYourTurn: '❌ **NOT YOUR TURN!**', challenge: (user) => `**${user}** challenges you to Tic Tac Toe! Click to accept.`,
-        accept: 'ACCEPT', decline: 'DECLINE', gameFull: '❌ **GAME IS FULL!**', yourTurn: '🎯 YOUR TURN', opponentTurn: '⏳ OPPONENT\'S TURN',
-        waitForOpponent: '⏳ Waiting for opponent...', selectSquare: 'Select a square', challengeSent: 'Challenge sent!',
-        hit: 'HIT', stand: 'STAND', youBusted: '💥 BUSTED!', dealerBusted: '💥 DEALER BUSTED!',
-        yourHand: 'Your Hand', dealerHand: 'Dealer Hand', total: 'Total', blackjackWin: '🎉 BLACKJACK!',
-        chooseNumber: 'Choose your number', invalidBet: '❌ **INVALID BET!**', minBet: 'Minimum bet is 10 🪙', maxBet: 'Maximum bet is 10,000 🪙',
-        betPlaced: '✅ Bet placed! Spinning...', notEnoughCredits: '❌ Not enough credits!', invalidNumber: '❌ Invalid number!',
-        rouletteResult: (number, color) => `**${number}** ${color}`, rouletteRed: '🔴 RED', rouletteBlack: '⚫ BLACK', rouletteGreen: '🟢 GREEN',
-        slotsWin: '💰 SLOTS WIN!', slotsLoss: '🎰 SLOTS', slotsResult: (line) => `**${line.join(' ')}**`,
-        credits: 'credits', you: 'YOU', opponent: 'OPPONENT', win: 'WIN', lose: 'LOSE', creditsEmoji: '🪙',
-        gameOver: '🎮 GAME OVER', playAgain: 'PLAY AGAIN', backToMenu: 'BACK TO MENU', processing: '⏳ Processing...',
-        noActiveGame: '❌ **NO ACTIVE GAME!**', alreadyInGame: '❌ **ALREADY IN A GAME!**',
-        exit: 'EXIT', confirmExit: 'Exit?', yes: 'YES', no: 'NO', exitCanceled: 'Exit canceled.', exitConfirmed: 'Game exited.',
-        error: '❌ **ERROR!**', tryAgain: 'Try again.', timeout: '⏰ **TIMEOUT!**',
-        neuralChips: (amount) => `${amount} 🪙`, viewStats: '📊 VIEW STATS', leaderboard: '🏆 LEADERBOARD',
-        invalidMove: '❌ Invalid move!', spotTaken: '❌ Spot taken!', wonTicTacToe: (winner) => `🎉 **${winner} WINS!**`,
-        newTicTacToe: '⭕ NEW TIC TAC TOE', challengeUser: 'CHALLENGE @USER', placeMark: 'PLACE MARK',
-        rankText: 'Rank', tierText: 'Tier', gameText: 'Game', modeText: 'Mode', xpGained: 'XP Gained',
-        levelUp: '🎉 LEVEL UP!', reachedLevel: 'You reached level', roundText: 'ROUND', matchText: 'MATCH',
-        victory: '🏆 VICTORY!', defeat: '💀 DEFEAT!', codmMatch: 'CODM MATCH', codmVictory: '🏆 MATCH WON!',
-        codmDefeat: '💀 MATCH LOST!', codmStats: 'Match Stats', codmScore: 'SCORE', codmKills: 'KILLS',
-        codmDeaths: 'DEATHS', codmKDRatio: 'K/D RATIO', codmMVP: '🌟 MVP!', neuralVictory: '🏆 NEURAL VICTORY!',
-        challengeAccepted: '✅ Challenge accepted! Starting...', challengeDeclined: '❌ Challenge declined.',
-        noSelfChallenge: '❌ Cannot challenge yourself!', cannotChallengeBot: '❌ Cannot challenge a bot!',
-        triviaBridge: '🧠 **Neural Trivia** is available as a standalone command.\nUse `/trivia` to begin your knowledge challenge!',
-        triviaLaunching: '🧠 Launching Neural Trivia...',
-        hubTitle: '🎮 NEURAL GAME CENTER // BAMAKO_223',
-        hubDesc: 'Select a neural challenge below. All games are per-server isolated.',
-    },
-    fr: {
-        title: '🎮 CENTRE DE JEUX NEURAL', subtitle: 'Choisissez votre défi neural !',
-        availableGames: 'Jeux Disponibles', yourStats: 'Vos Statistiques',
-        gamesPlayed: 'Parties Jouées', gamesWon: 'Parties Gagnées', totalWinnings: 'Gains Totaux', winRate: 'Taux de Victoire',
-        footer: 'CENTRE DE JEUX NEURAL',
-        codm: 'CALL OF DUTY MOBILE', slots: '🎰 SLOTS', tictactoe: '⭕ MORPION', blackjack: '🃏 BLACKJACK', roulette: '🎲 ROULETTE', trivia: '🧠 TRIVIA',
-        codmDesc: 'Simulez des matchs CODM', slotsDesc: 'Tournez les slots neuraux', tictactoeDesc: 'Morpion classique (2 joueurs)',
-        blackjackDesc: 'Battez le croupier', rouletteDesc: 'Pariez sur votre numéro', triviaDesc: 'Testez vos connaissances',
-        usage: (prefix) => `Utilisation : \`${prefix}game <codm/slots/tictactoe/blackjack/roulette/trivia> [mise]\``,
-        invalidGame: '❌ **JEU INVALIDE**',
-        betRequired: '❌ **MISE REQUISE**', insufficientCredits: '❌ **CRÉDITS INSUFFISANTS !** Vous avez',
-        gameStarted: '✅ **JEU LANCÉ !**', results: '🎮 RÉSULTATS', youWon: '✅ VOUS AVEZ GAGNÉ !', youLost: '❌ VOUS AVEZ PERDU !',
-        winnings: 'Gains', loss: 'Perte', newBalance: 'Nouveau Solde', bet: 'MISE', spin: 'TOUR', jackpot: '💎 JACKPOT !',
-        matchLost: 'Match Perdu', matchWon: 'Match Gagné', rankUp: 'PROMOTION !', currentRank: 'Rang Actuel',
-        draw: '🤝 ÉGALITÉ !', notYourTurn: '❌ **CE N\'EST PAS VOTRE TOUR !**', challenge: (user) => `**${user}** vous défie au Morpion ! Cliquez pour accepter.`,
-        accept: 'ACCEPTER', decline: 'REFUSER', gameFull: '❌ **PARTIE PLEINE !**', yourTurn: '🎯 VOTRE TOUR', opponentTurn: '⏳ TOUR DE L\'ADVERSAIRE',
-        waitForOpponent: '⏳ En attente de l\'adversaire...', selectSquare: 'Sélectionnez une case', challengeSent: 'Défi envoyé !',
-        hit: 'TIRER', stand: 'RESTER', youBusted: '💥 DÉPASSÉ !', dealerBusted: '💥 CROUPIER DÉPASSÉ !',
-        yourHand: 'Votre Main', dealerHand: 'Main du Croupier', total: 'Total', blackjackWin: '🎉 BLACKJACK !',
-        chooseNumber: 'Choisissez votre numéro', invalidBet: '❌ **MISE INVALIDE !**', minBet: 'Mise minimum : 10 🪙', maxBet: 'Mise maximum : 10 000 🪙',
-        betPlaced: '✅ Mise placée ! Lancement...', notEnoughCredits: '❌ Pas assez de crédits !', invalidNumber: '❌ Numéro invalide !',
-        rouletteResult: (number, color) => `**${number}** ${color}`, rouletteRed: '🔴 ROUGE', rouletteBlack: '⚫ NOIR', rouletteGreen: '🟢 VERT',
-        slotsWin: '💰 GAIN SLOTS !', slotsLoss: '🎰 SLOTS', slotsResult: (line) => `**${line.join(' ')}**`,
-        credits: 'crédits', you: 'VOUS', opponent: 'ADVERSAIRE', win: 'GAGNÉ', lose: 'PERDU', creditsEmoji: '🪙',
-        gameOver: '🎮 PARTIE TERMINÉE', playAgain: 'REJOUER', backToMenu: 'MENU', processing: '⏳ Traitement...',
-        noActiveGame: '❌ **AUCUNE PARTIE ACTIVE !**', alreadyInGame: '❌ **DÉJÀ EN JEU !**',
-        exit: 'QUITTER', confirmExit: 'Quitter ?', yes: 'OUI', no: 'NON', exitCanceled: 'Annulé.', exitConfirmed: 'Partie quittée.',
-        error: '❌ **ERREUR !**', tryAgain: 'Réessayez.', timeout: '⏰ **TEMPS ÉCOULÉ !**',
-        neuralChips: (amount) => `${amount} 🪙`, viewStats: '📊 VOIR STATS', leaderboard: '🏆 CLASSEMENT',
-        invalidMove: '❌ Coup invalide !', spotTaken: '❌ Case prise !', wonTicTacToe: (winner) => `🎉 **${winner} GAGNE !**`,
-        newTicTacToe: '⭕ NOUVEAU MORPION', challengeUser: 'DEFIER @USER', placeMark: 'PLACER',
-        rankText: 'Rang', tierText: 'Tier', gameText: 'Jeu', modeText: 'Mode', xpGained: 'XP Gagné',
-        levelUp: '🎉 NIVEAU SUPÉRIEUR !', reachedLevel: 'Vous avez atteint le niveau', roundText: 'MANCHE', matchText: 'MATCH',
-        victory: '🏆 VICTOIRE !', defeat: '💀 DÉFAITE !', codmMatch: 'MATCH CODM', codmVictory: '🏆 MATCH GAGNÉ !',
-        codmDefeat: '💀 MATCH PERDU !', codmStats: 'Stats du Match', codmScore: 'SCORE', codmKills: 'ÉLIMINATIONS',
-        codmDeaths: 'MORTS', codmKDRatio: 'RATIO K/D', codmMVP: '🌟 MVP !', neuralVictory: '🏆 VICTOIRE NEURALE !',
-        challengeAccepted: '✅ Défi accepté ! Lancement...', challengeDeclined: '❌ Défi refusé.',
-        noSelfChallenge: '❌ Vous ne pouvez pas vous défier vous-même !', cannotChallengeBot: '❌ Impossible de défier un bot !',
-        triviaBridge: '🧠 **Neural Trivia** est disponible en commande autonome.\nUtilisez `/trivia` pour commencer votre défi de connaissances !',
-        triviaLaunching: '🧠 Lancement de Neural Trivia...',
-        hubTitle: '🎮 CENTRE DE JEUX NEURAL // BAMAKO_223',
-        hubDesc: 'Sélectionnez un défi neural ci-dessous. Tous les jeux sont isolés par serveur.',
-    }
-};
 
 // ================= RANKS =================
 const RANKS = [
@@ -160,7 +72,7 @@ function deductBet(db, client, userId, guildId, bet, userData) {
     return newBal;
 }
 
-function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx, t, lang, gameType) {
+function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx, lang, gameType) {
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) {
         db.prepare("INSERT INTO users (id, guild_id, username, xp, level, credits, streak_days, last_daily, total_dailies, highest_streak, games_played, games_won, total_winnings) VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0)").run(userId, guildId, ctx.user.username);
@@ -180,26 +92,25 @@ function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx
     if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
 
     if (newLevel > (userData.level || 1) && ctx.channel) {
-        const lw = Math.max(t.xpGained.length, t.gamesPlayed.length, t.gamesWon.length, t.gameText.length);
+        const lw = Math.max(t('game.xpGained', lang).length, t('game.gamesPlayed', lang).length, t('game.gamesWon', lang).length, t('game.gameText', lang).length);
         const lvlEmbed = new EmbedBuilder().setColor('#00fbff')
-            .setAuthor({ name: t.levelUp, iconURL: ctx.user.displayAvatarURL() })
+            .setAuthor({ name: t('game.levelUp', lang), iconURL: ctx.user.displayAvatarURL() })
             .setDescription(
-                `## ${t.reachedLevel} **${newLevel}**!\n` +
+                `## ${t('game.reachedLevel', lang)} **${newLevel}**!\n` +
                 '```ansi\n' +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.gameText.padEnd(lw)}\u001b[0m  \u001b[1;35m${gameType.toUpperCase()}\u001b[0m\n` +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.xpGained.padEnd(lw)}\u001b[0m  \u001b[1;33m+${xpGain} XP\u001b[0m\n` +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.gamesPlayed.padEnd(lw)}\u001b[0m  \u001b[1;36m${gamesPlayed}\u001b[0m\n` +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.gamesWon.padEnd(lw)}\u001b[0m  \u001b[1;32m${gamesWon}\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.gameText', lang).padEnd(lw)}\u001b[0m  \u001b[1;35m${gameType.toUpperCase()}\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.xpGained', lang).padEnd(lw)}\u001b[0m  \u001b[1;33m+${xpGain} XP\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.gamesPlayed', lang).padEnd(lw)}\u001b[0m  \u001b[1;36m${gamesPlayed}\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.gamesWon', lang).padEnd(lw)}\u001b[0m  \u001b[1;32m${gamesWon}\u001b[0m\n` +
                 '```'
             )
-            .setFooter({ text: `${t.footer} • v${ctx.client.version || '2.0.0'}` }).setTimestamp();
+            .setFooter({ text: `${t('game.footer', lang)} • v${ctx.client.version || '2.0.0'}` }).setTimestamp();
         ctx.channel.send({ content: `<@${userId}>`, embeds: [lvlEmbed] }).catch(() => {});
     }
 }
 
 // ================= HUB BUILDER =================
 function buildHub(client, lang, guildName) {
-    const t = gameTranslations[lang];
     const dw = s => [...s].reduce((n, c) => {
         const cp = c.codePointAt(0);
         if (cp === 0xFE0F) return n;
@@ -218,23 +129,23 @@ function buildHub(client, lang, guildName) {
         return `\u001b[1;36m║\u001b[0m${shown}${gap}\u001b[1;32mAVAILABLE\u001b[0m\u001b[1;36m║\u001b[0m\n`;
     };
     const embed = new EmbedBuilder().setColor('#00d4ff')
-        .setAuthor({ name: t.hubTitle, iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ name: t('game.hubTitle', lang), iconURL: client.user.displayAvatarURL() })
         .setDescription(
             '```ansi\n' +
             border('╔', '╗') +
             head +
             border('╠', '╣') +
-            gameLine('🔫', t.codm) +
-            gameLine(null, t.slots) +
-            gameLine(null, t.tictactoe) +
-            gameLine(null, t.blackjack) +
-            gameLine(null, t.roulette) +
-            gameLine(null, t.trivia) +
+            gameLine('🔫', t('game.codm', lang)) +
+            gameLine(null, t('game.slots', lang)) +
+            gameLine(null, t('game.tictactoe', lang)) +
+            gameLine(null, t('game.blackjack', lang)) +
+            gameLine(null, t('game.roulette', lang)) +
+            gameLine(null, t('game.trivia', lang)) +
             border('╚', '╝') +
             '```\n' +
-            `> ${t.hubDesc}`
+            `> ${t('game.hubDesc', lang)}`
         )
-        .setFooter({ text: `${t.footer} • ${guildName || 'NEURAL NODE'} • v${client.version || '2.0.0'}`, iconURL: client.user.displayAvatarURL() })
+        .setFooter({ text: `${t('game.footer', lang)} • ${guildName || 'NEURAL NODE'} • v${client.version || '2.0.0'}`, iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
     const row1 = new ActionRowBuilder().addComponents(
@@ -261,10 +172,9 @@ async function bridgeToTrivia(interaction, client) {
         console.error('[TRIVIA BRIDGE]', e.message);
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
         const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
-        const t = gameTranslations[lang];
         const embed = new EmbedBuilder().setColor('#9b59b6')
             .setAuthor({ name: '🧠 NEURAL TRIVIA BRIDGE', iconURL: client.user.displayAvatarURL() })
-            .setDescription(`⚡ ${t.triviaBridge || 'Use /trivia to play!'}`)
+            .setDescription(`⚡ ${t('game.triviaBridge', lang)}`)
             .setFooter({ text: 'ARCHON CG-223 • Game Center' });
         return interaction.reply({ embeds: [embed], flags: 64 });
     }
@@ -272,11 +182,10 @@ async function bridgeToTrivia(interaction, client) {
 
 // ================= CODM =================
 async function playCODM(ctx, client, db, lang, guildId, userId, bet) {
-    const t = gameTranslations[lang];
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
         return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
@@ -295,31 +204,30 @@ async function playCODM(ctx, client, db, lang, guildId, userId, bet) {
     const nextPoints = nextRankPoints(currentRP);
 
     const embed = new EmbedBuilder().setColor(won ? '#2ecc71' : '#e74c3c')
-        .setAuthor({ name: `${won ? t.codmVictory : t.codmDefeat}`, iconURL: ctx.user.displayAvatarURL() })
+        .setAuthor({ name: `${won ? t('game.codmVictory', lang) : t('game.codmDefeat', lang)}`, iconURL: ctx.user.displayAvatarURL() })
         .setDescription(
             '```ansi\n' +
-            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.codmScore.padEnd(12)}\u001b[0m \u001b[1;33m${score}\u001b[0m\n` +
-            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.codmKills.padEnd(12)}\u001b[0m \u001b[1;32m${kills}\u001b[0m\n` +
-            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.codmDeaths.padEnd(12)}\u001b[0m \u001b[1;31m${deaths}\u001b[0m\n` +
-            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.codmKDRatio.padEnd(12)}\u001b[0m \u001b[1;36m${kd}\u001b[0m\n` +
-            '```' + (isMVP ? `\n${t.codmMVP}` : '')
+            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.codmScore', lang).padEnd(12)}\u001b[0m \u001b[1;33m${score}\u001b[0m\n` +
+            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.codmKills', lang).padEnd(12)}\u001b[0m \u001b[1;32m${kills}\u001b[0m\n` +
+            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.codmDeaths', lang).padEnd(12)}\u001b[0m \u001b[1;31m${deaths}\u001b[0m\n` +
+            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.codmKDRatio', lang).padEnd(12)}\u001b[0m \u001b[1;36m${kd}\u001b[0m\n` +
+            '```' + (isMVP ? `\n${t('game.codmMVP', lang)}` : '')
         )
         .addFields(
-            { name: `💰 ${won ? t.winnings : t.loss}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true },
-            { name: `🏆 ${t.currentRank}`, value: `**${rank.name}**${nextPoints !== 'MAX' ? `\nNext: ${nextPoints.toLocaleString()} RP` : ''}`, inline: true }
+            { name: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true },
+            { name: `🏆 ${t('game.currentRank', lang)}`, value: `**${rank.name}**${nextPoints !== 'MAX' ? `\nNext: ${nextPoints.toLocaleString()} RP` : ''}`, inline: true }
         )
-        .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
+        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
     await ctx.reply({ embeds: [embed] });
-    updateGameStats(db, client, userId, guildId, won, winnings, 50, ctx, t, lang, 'codm');
+    updateGameStats(db, client, userId, guildId, won, winnings, 50, ctx, lang, 'codm');
 }
 
 // ================= SLOTS =================
 async function playSlots(ctx, client, db, lang, guildId, userId, bet) {
-    const t = gameTranslations[lang];
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
         return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
@@ -334,55 +242,54 @@ async function playSlots(ctx, client, db, lang, guildId, userId, bet) {
     const winnings = isJackpot ? bet * 10 : allSame ? bet * 5 : twoMatch ? bet * 2 : 0;
 
     const embed = new EmbedBuilder().setColor(isJackpot ? '#f1c40f' : won ? '#2ecc71' : '#e74c3c')
-        .setAuthor({ name: `${isJackpot ? t.jackpot : won ? t.slotsWin : t.slotsLoss}`, iconURL: ctx.user.displayAvatarURL() })
+        .setAuthor({ name: `${isJackpot ? t('game.jackpot', lang) : won ? t('game.slotsWin', lang) : t('game.slotsLoss', lang)}`, iconURL: ctx.user.displayAvatarURL() })
         .setDescription(
             '```ansi\n' +
             `\u001b[1;36m╔${'═'.repeat(16)}╗\u001b[0m\n` +
             `\u001b[1;36m║\u001b[0m  ${line.map(s => `\u001b[1;33m${s}\u001b[0m`).join(' \u001b[1;36m│\u001b[0m ')}  \u001b[1;36m║\u001b[0m\n` +
             `\u001b[1;36m╚${'═'.repeat(16)}╝\u001b[0m\n` +
-            '```' + (isJackpot ? `\n## ${t.jackpot}` : '')
+            '```' + (isJackpot ? `\n## ${t('game.jackpot', lang)}` : '')
         )
         .addFields(
-            { name: `💰 ${won ? t.winnings : t.loss}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true },
-            { name: `💰 ${t.newBalance}`, value: `${(userData.credits - bet + winnings).toLocaleString()} 🪙`, inline: true }
+            { name: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true },
+            { name: `💰 ${t('game.newBalance', lang)}`, value: `${(userData.credits - bet + winnings).toLocaleString()} 🪙`, inline: true }
         )
-        .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
+        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
     await ctx.reply({ embeds: [embed] });
-    updateGameStats(db, client, userId, guildId, won, winnings, 25, ctx, t, lang, 'slots');
+    updateGameStats(db, client, userId, guildId, won, winnings, 25, ctx, lang, 'slots');
 }
 
 // ================= TIC TAC TOE =================
 async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, opponent) {
-    const t = gameTranslations[lang];
     if (!opponent) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`❌ ${t.usage(ctx.client.PREFIX || '.')}`);
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`❌ ${t('game.usage', lang, { prefix: ctx.client.PREFIX || '.' })}`);
         return ctx.reply({ embeds: [embed], flags: 64 });
     }
     if (opponent.id === userId) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(t.noSelfChallenge);
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(t('game.noSelfChallenge', lang));
         return ctx.reply({ embeds: [embed], flags: 64 });
     }
     if (opponent.bot) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(t.cannotChallengeBot);
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(t('game.cannotChallengeBot', lang));
         return ctx.reply({ embeds: [embed], flags: 64 });
     }
 
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
         return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
 
     const challengeEmbed = new EmbedBuilder().setColor('#9b59b6')
-        .setAuthor({ name: `⭕ ${t.newTicTacToe}`, iconURL: ctx.client.user.displayAvatarURL() })
-        .setDescription(t.challenge(ctx.user.username))
-        .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
+        .setAuthor({ name: `⭕ ${t('game.newTicTacToe', lang)}`, iconURL: ctx.client.user.displayAvatarURL() })
+        .setDescription(t('game.challenge', lang, { user: ctx.user.username }))
+        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('ttt_accept').setLabel(t.accept).setStyle(ButtonStyle.Success).setEmoji('✅'),
-        new ButtonBuilder().setCustomId('ttt_decline').setLabel(t.decline).setStyle(ButtonStyle.Danger).setEmoji('❌')
+        new ButtonBuilder().setCustomId('ttt_accept').setLabel(t('game.accept', lang)).setStyle(ButtonStyle.Success).setEmoji('✅'),
+        new ButtonBuilder().setCustomId('ttt_decline').setLabel(t('game.decline', lang)).setStyle(ButtonStyle.Danger).setEmoji('❌')
     );
 
     const sent = await ctx.reply({ content: `<@${opponent.id}>`, embeds: [challengeEmbed], components: [row] });
@@ -395,7 +302,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
         await response.deferUpdate().catch(() => {});
 
         if (response.customId === 'ttt_decline') {
-            return sent.edit({ content: t.challengeDeclined, embeds: [], components: [] }).catch(() => {});
+            return sent.edit({ content: t('game.challengeDeclined', lang), embeds: [], components: [] }).catch(() => {});
         }
 
         // Game starts
@@ -414,7 +321,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
         const turnHeader = () => {
             const you = currentPlayer === userId;
             const p = players[currentPlayer];
-            const mark = you ? `\u001b[1;32m${t.yourTurn}\u001b[0m` : `\u001b[1;33m${t.opponentTurn}\u001b[0m`;
+            const mark = you ? `\u001b[1;32m${t('game.yourTurn', lang)}\u001b[0m` : `\u001b[1;33m${t('game.opponentTurn', lang)}\u001b[0m`;
             return '```ansi\n' + `${mark} \u001b[1;37m— ${p.name} (${p.symbol})\u001b[0m` + '\n```\n';
         };
 
@@ -436,7 +343,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
             return rows;
         };
 
-        await sent.edit({ content: t.challengeAccepted, embeds: [new EmbedBuilder().setColor('#9b59b6').setAuthor({ name: t.newTicTacToe, iconURL: ctx.client.user.displayAvatarURL() }).setDescription(turnHeader() + renderBoard()).setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()], components: makeButtons() }).catch(() => {});
+        await sent.edit({ content: t('game.challengeAccepted', lang), embeds: [new EmbedBuilder().setColor('#9b59b6').setAuthor({ name: t('game.newTicTacToe', lang), iconURL: ctx.client.user.displayAvatarURL() }).setDescription(turnHeader() + renderBoard()).setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()], components: makeButtons() }).catch(() => {});
 
         while (true) {
             try {
@@ -445,7 +352,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
                     time: 60000
                 });
                 const idx = parseInt(move.customId.split('_')[1]);
-                if (board[idx] !== ' ') { await move.reply({ content: t.spotTaken, flags: 64 }).catch(() => {}); continue; }
+                if (board[idx] !== ' ') { await move.reply({ content: t('game.spotTaken', lang), flags: 64 }).catch(() => {}); continue; }
 
                 board[idx] = players[currentPlayer].symbol;
                 await move.deferUpdate().catch(() => {});
@@ -457,34 +364,33 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
                     const winnings = won ? bet * 2 : 0;
 
                     const embed = new EmbedBuilder().setColor(won ? '#2ecc71' : '#f1c40f')
-                        .setAuthor({ name: won ? t.wonTicTacToe(winnerName) : t.draw, iconURL: ctx.user.displayAvatarURL() })
+                        .setAuthor({ name: won ? t('game.wonTicTacToe', lang, { winner: winnerName }) : t('game.draw', lang), iconURL: ctx.user.displayAvatarURL() })
                         .setDescription(renderBoard());
-                    if (won) embed.addFields({ name: `💰 ${t.winnings}`, value: `${winnings.toLocaleString()} 🪙`, inline: true });
+                    if (won) embed.addFields({ name: `💰 ${t('game.winnings', lang)}`, value: `${winnings.toLocaleString()} 🪙`, inline: true });
                     await sent.edit({ content: null, embeds: [embed], components: makeButtons(true) }).catch(() => {});
 
-                    updateGameStats(db, client, userId, guildId, won && currentPlayer === userId, won && currentPlayer === userId ? winnings : 0, won ? 75 : 25, ctx, t, lang, 'ttt');
-                    if (won && currentPlayer !== userId) updateGameStats(db, client, opponent.id, guildId, true, winnings, 75, { ...ctx, user: opponent }, t, lang, 'ttt');
+                    updateGameStats(db, client, userId, guildId, won && currentPlayer === userId, won && currentPlayer === userId ? winnings : 0, won ? 75 : 25, ctx, lang, 'ttt');
+                    if (won && currentPlayer !== userId) updateGameStats(db, client, opponent.id, guildId, true, winnings, 75, { ...ctx, user: opponent }, lang, 'ttt');
                     break;
                 }
 
                 currentPlayer = currentPlayer === userId ? opponent.id : userId;
-                await sent.edit({ embeds: [new EmbedBuilder().setColor('#9b59b6').setAuthor({ name: t.newTicTacToe, iconURL: ctx.client.user.displayAvatarURL() }).setDescription(turnHeader() + renderBoard()).setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()], components: makeButtons() }).catch(() => {});
+                await sent.edit({ embeds: [new EmbedBuilder().setColor('#9b59b6').setAuthor({ name: t('game.newTicTacToe', lang), iconURL: ctx.client.user.displayAvatarURL() }).setDescription(turnHeader() + renderBoard()).setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()], components: makeButtons() }).catch(() => {});
 
             } catch (e) {
-                await sent.edit({ content: t.timeout, embeds: [], components: makeButtons(true) }).catch(() => {});
+                await sent.edit({ content: t('game.timeout', lang), embeds: [], components: makeButtons(true) }).catch(() => {});
                 break;
             }
         }
-    } catch (e) { await sent.edit({ content: t.challengeDeclined, embeds: [], components: [] }).catch(() => {}); }
+    } catch (e) { await sent.edit({ content: t('game.challengeDeclined', lang), embeds: [], components: [] }).catch(() => {}); }
 }
 
 // ================= BLACKJACK =================
 async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
-    const t = gameTranslations[lang];
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
         return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
@@ -501,24 +407,24 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     const formatHand = (hand) => hand.map(c => `${c.card}${c.suit}`).join(' ');
     const fmtCard = c => (c.suit === '♥' || c.suit === '♦') ? `\u001b[1;31m${c.card}${c.suit}\u001b[0m` : `\u001b[1;37m${c.card}${c.suit}\u001b[0m`;
     const fmtHand = h => h.map(fmtCard).join(' ');
-    const labelW = Math.max(t.yourHand.length, t.dealerHand.length);
+    const labelW = Math.max(t('game.yourHand', lang).length, t('game.dealerHand', lang).length);
     const bjDesc = (reveal) =>
         '```ansi\n' +
-        `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.yourHand.padEnd(labelW)}\u001b[0m  ${fmtHand(playerHand)}  \u001b[1;33m(${handValue(playerHand)})\u001b[0m\n` +
-        `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.dealerHand.padEnd(labelW)}\u001b[0m  ${reveal ? fmtHand(dealerHand) : fmtCard(dealerHand[0]) + ' \u001b[1;30m??\u001b[0m'}  \u001b[1;33m(${reveal ? handValue(dealerHand) : '?'})\u001b[0m\n` +
+        `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.yourHand', lang).padEnd(labelW)}\u001b[0m  ${fmtHand(playerHand)}  \u001b[1;33m(${handValue(playerHand)})\u001b[0m\n` +
+        `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.dealerHand', lang).padEnd(labelW)}\u001b[0m  ${reveal ? fmtHand(dealerHand) : fmtCard(dealerHand[0]) + ' \u001b[1;30m??\u001b[0m'}  \u001b[1;33m(${reveal ? handValue(dealerHand) : '?'})\u001b[0m\n` +
         '```';
 
     let playerHand = [drawCard(), drawCard()];
     let dealerHand = [drawCard(), drawCard()];
 
     const embed = new EmbedBuilder().setColor('#9b59b6')
-        .setAuthor({ name: t.blackjack, iconURL: ctx.user.displayAvatarURL() })
+        .setAuthor({ name: t('game.blackjack', lang), iconURL: ctx.user.displayAvatarURL() })
         .setDescription(bjDesc(false))
-        .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
+        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_hit').setLabel(t.hit).setStyle(ButtonStyle.Primary).setEmoji('🃏'),
-        new ButtonBuilder().setCustomId('bj_stand').setLabel(t.stand).setStyle(ButtonStyle.Secondary).setEmoji('✋')
+        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji('🃏'),
+        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji('✋')
     );
 
     const sent = await ctx.reply({ embeds: [embed], components: [row] });
@@ -540,9 +446,9 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
 
             if (!playerDone || handValue(playerHand) <= 21) {
                 await sent.edit({ embeds: [new EmbedBuilder().setColor('#9b59b6')
-                    .setAuthor({ name: t.blackjack, iconURL: ctx.user.displayAvatarURL() })
+                    .setAuthor({ name: t('game.blackjack', lang), iconURL: ctx.user.displayAvatarURL() })
                     .setDescription(bjDesc(false))
-                    .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()],
+                    .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()],
                     components: playerDone ? [] : [row]
                 }).catch(() => {});
             }
@@ -562,25 +468,24 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     const winnings = blackjack ? Math.floor(bet * 2.5) : won ? bet * 2 : draw ? bet : 0;
 
     const resultEmbed = new EmbedBuilder().setColor(won ? '#2ecc71' : draw ? '#f1c40f' : '#e74c3c')
-        .setAuthor({ name: `${blackjack ? t.blackjackWin : won ? t.youWon : draw ? t.draw : t.youLost}`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(bjDesc(true) + (playerBust ? `\n${t.youBusted}` : dealerBust ? `\n${t.dealerBusted}` : ''))
+        .setAuthor({ name: `${blackjack ? t('game.blackjackWin', lang) : won ? t('game.youWon', lang) : draw ? t('game.draw', lang) : t('game.youLost', lang)}`, iconURL: ctx.user.displayAvatarURL() })
+        .setDescription(bjDesc(true) + (playerBust ? `\n${t('game.youBusted', lang)}` : dealerBust ? `\n${t('game.dealerBusted', lang)}` : ''))
         .addFields(
-            { name: `💰 ${t.bet}`, value: `${bet.toLocaleString()} 🪙`, inline: true },
-            { name: `💰 ${won ? t.winnings : t.loss}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true }
+            { name: `💰 ${t('game.bet', lang)}`, value: `${bet.toLocaleString()} 🪙`, inline: true },
+            { name: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true }
         )
-        .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
+        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
 
     await sent.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
-    updateGameStats(db, client, userId, guildId, won, winnings, won ? 100 : 50, ctx, t, lang, 'blackjack');
+    updateGameStats(db, client, userId, guildId, won, winnings, won ? 100 : 50, ctx, lang, 'blackjack');
 }
 
 // ================= ROULETTE =================
 async function playRoulette(ctx, client, db, lang, guildId, userId, bet) {
-    const t = gameTranslations[lang];
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t.insufficientCredits} **${userData.credits.toLocaleString()} 🪙**`);
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
         return ctx.reply({ embeds: [embed], flags: 64 });
     }
     deductBet(db, client, userId, guildId, bet, userData);
@@ -592,8 +497,8 @@ async function playRoulette(ctx, client, db, lang, guildId, userId, bet) {
 
     const embed = new EmbedBuilder().setColor('#e74c3c')
         .setAuthor({ name: `🎲 ROULETTE`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(`## 💰 ${t.bet}: ${bet.toLocaleString()} 🪙\n${t.chooseNumber} (0-36):`)
-        .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
+        .setDescription(`## 💰 ${t('game.bet', lang)}: ${bet.toLocaleString()} 🪙\n${t('game.chooseNumber', lang)} (0-36):`)
+        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
 
     const rows = [];
     for (let r = 0; r < 4; r++) {
@@ -619,44 +524,44 @@ async function playRoulette(ctx, client, db, lang, guildId, userId, bet) {
 
         const result = numbers[Math.floor(Math.random() * numbers.length)];
         const resultRed = isRed(result);
-        const resultColor = result === 0 ? t.rouletteGreen : resultRed ? t.rouletteRed : t.rouletteBlack;
+        const resultColor = result === 0 ? t('game.rouletteGreen', lang) : resultRed ? t('game.rouletteRed', lang) : t('game.rouletteBlack', lang);
         const won = result === chosenNum;
         const winnings = won ? bet * 35 : 0;
 
         // spinning animation — cosmetic frames, result already decided above
         for (let i = 0; i < 3; i++) {
             const n = numbers[Math.floor(Math.random() * numbers.length)];
-            const nc = n === 0 ? t.rouletteGreen : isRed(n) ? t.rouletteRed : t.rouletteBlack;
+            const nc = n === 0 ? t('game.rouletteGreen', lang) : isRed(n) ? t('game.rouletteRed', lang) : t('game.rouletteBlack', lang);
             const spinEmbed = new EmbedBuilder().setColor('#95a5a6')
-                .setAuthor({ name: t.spinning, iconURL: ctx.user.displayAvatarURL() })
+                .setAuthor({ name: t('game.spinning', lang), iconURL: ctx.user.displayAvatarURL() })
                 .setDescription(`## 🎲 ${n} ${nc}`)
-                .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() });
+                .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() });
             await sent.edit({ embeds: [spinEmbed], components: [] }).catch(() => {});
             await new Promise(r => setTimeout(r, 700));
         }
 
         const accent = result === 0 ? '#2ecc71' : resultRed ? '#e74c3c' : '#2b2d31';
         const numColor = result === 0 ? '\u001b[1;32m' : resultRed ? '\u001b[1;31m' : '\u001b[1;37m';
-        const pw = Math.max(t.your_pick.length, t.result_label.length);
+        const pw = Math.max(t('game.your_pick', lang).length, t('game.result_label', lang).length);
         const resultEmbed = new EmbedBuilder().setColor(accent)
-            .setAuthor({ name: `${won ? t.youWon : t.youLost}`, iconURL: ctx.user.displayAvatarURL() })
+            .setAuthor({ name: `${won ? t('game.youWon', lang) : t('game.youLost', lang)}`, iconURL: ctx.user.displayAvatarURL() })
             .setDescription(
-                `## ${t.rouletteResult(result, resultColor)}\n` +
+                `## ${t('game.rouletteResult', lang, { number: result, color: resultColor })}\n` +
                 '```ansi\n' +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.your_pick.padEnd(pw)}\u001b[0m \u001b[1;33m${chosenNum}\u001b[0m\n` +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.result_label.padEnd(pw)}\u001b[0m ${numColor}${result}\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.your_pick', lang).padEnd(pw)}\u001b[0m \u001b[1;33m${chosenNum}\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.result_label', lang).padEnd(pw)}\u001b[0m ${numColor}${result}\u001b[0m\n` +
                 '```'
             )
             .addFields(
-                { name: `💰 ${t.bet}`, value: `${bet.toLocaleString()} 🪙`, inline: true },
-                { name: `💰 ${won ? t.winnings : t.loss}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true }
+                { name: `💰 ${t('game.bet', lang)}`, value: `${bet.toLocaleString()} 🪙`, inline: true },
+                { name: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true }
             )
-            .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
+            .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
 
         await sent.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
-        updateGameStats(db, client, userId, guildId, won, winnings, won ? 150 : 25, ctx, t, lang, 'roulette');
+        updateGameStats(db, client, userId, guildId, won, winnings, won ? 150 : 25, ctx, lang, 'roulette');
 
-    } catch (e) { await sent.edit({ content: t.timeout, embeds: [], components: [] }).catch(() => {}); }
+    } catch (e) { await sent.edit({ content: t('game.timeout', lang), embeds: [], components: [] }).catch(() => {}); }
 }
 
 // ================= SLASH COMMAND =================
@@ -673,11 +578,12 @@ const slashCommand = new SlashCommandBuilder()
 // ================= EXECUTE =================
 async function executeSlashCommand(interaction, client) {
     const db = client.db;
-    if (!db) return interaction.reply({ content: '❌ Database unavailable.', flags: 64 });
+    const ss = client.getServerSettings?.(interaction.guild?.id) || {};
+    const lang = ss.language && ss.language !== 'auto' ? ss.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+    if (!db) return interaction.reply({ content: t('game.db_unavailable', lang), flags: 64 });
     setupGameDB(db);
 
     const sub = interaction.options.getSubcommand();
-    const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
     const guildId = interaction.guildId || 'DM';
     const userId = interaction.user.id;
     const ctx = new GameContext(interaction);
@@ -688,8 +594,8 @@ async function executeSlashCommand(interaction, client) {
     }
 
     const bet = interaction.options.getInteger('bet') || 100;
-    if (bet < 10) return interaction.reply({ content: gameTranslations[lang].invalidBet + '\n*' + gameTranslations[lang].minBet + '*', flags: 64 });
-    if (bet > 10000) return interaction.reply({ content: gameTranslations[lang].invalidBet + '\n*' + gameTranslations[lang].maxBet + '*', flags: 64 });
+    if (bet < 10) return interaction.reply({ content: t('game.invalidBet', lang) + '\n*' + t('game.minBet', lang) + '*', flags: 64 });
+    if (bet > 10000) return interaction.reply({ content: t('game.invalidBet', lang) + '\n*' + t('game.maxBet', lang) + '*', flags: 64 });
 
     if (sub === 'codm') return playCODM(ctx, client, db, lang, guildId, userId, bet);
     if (sub === 'slots') return playSlots(ctx, client, db, lang, guildId, userId, bet);
@@ -705,7 +611,6 @@ async function executeSlashCommand(interaction, client) {
 // ================= PREFIX FALLBACK =================
 async function run(client, message, args, db, serverSettings, usedCommand) {
     const lang = client.detectLanguage ? client.detectLanguage('game', message.guild?.id) : 'en';
-    const t = gameTranslations[lang];
     const guildId = message.guild?.id || 'DM';
     const userId = message.author.id;
     const prefix = serverSettings?.prefix || '.';
@@ -718,8 +623,8 @@ async function run(client, message, args, db, serverSettings, usedCommand) {
 
     if (directGame) {
         const bet = parseInt(args[0]) || 100;
-        if (bet < 10) return message.reply(`${t.invalidBet}\n*${t.minBet}*`).catch(() => {});
-        if (bet > 10000) return message.reply(`${t.invalidBet}\n*${t.maxBet}*`).catch(() => {});
+        if (bet < 10) return message.reply(`${t('game.invalidBet', lang)}\n*${t('game.minBet', lang)}*`).catch(() => {});
+        if (bet > 10000) return message.reply(`${t('game.invalidBet', lang)}\n*${t('game.maxBet', lang)}*`).catch(() => {});
         if (directGame === 'codm') return playCODM(ctx, client, db, lang, guildId, userId, bet);
         if (directGame === 'slots') return playSlots(ctx, client, db, lang, guildId, userId, bet);
         if (directGame === 'tictactoe') {
@@ -732,8 +637,8 @@ async function run(client, message, args, db, serverSettings, usedCommand) {
 
     // Default: show hub redirect
     const embed = new EmbedBuilder().setColor('#00d4ff')
-        .setAuthor({ name: t.hubTitle, iconURL: client.user.displayAvatarURL() })
-        .setDescription(`⚡ **${lang === 'fr' ? 'Le centre de jeux est disponible en slash.' : 'The game center is available via slash.'}**\n\`\`\`\n/game menu\n/game codm\n/game slots\n/game tictactoe @user\n/game blackjack\n/game roulette\n/game trivia\n\`\`\``)
+        .setAuthor({ name: t('game.hubTitle', lang), iconURL: client.user.displayAvatarURL() })
+        .setDescription(`**${t('game.slash_redirect', lang)}**\n\`\`\`\n/game menu\n/game codm\n/game slots\n/game tictactoe @user\n/game blackjack\n/game roulette\n/game trivia\n\`\`\``)
         .setFooter({ text: 'ARCHON CG-223 • Game Center' });
     return message.reply({ embeds: [embed] }).catch(() => {});
 }
@@ -742,7 +647,9 @@ async function run(client, message, args, db, serverSettings, usedCommand) {
 async function handleComponent(interaction, client) {
     if (!interaction.customId.startsWith('game_')) return false;
     const db = client.db;
-    if (!db) return interaction.reply({ content: '❌ Database unavailable.', flags: 64 });
+    const ss = client.getServerSettings?.(interaction.guild?.id) || {};
+    const lang = ss.language && ss.language !== 'auto' ? ss.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+    if (!db) return interaction.reply({ content: t('game.db_unavailable', lang), flags: 64 });
 
     const parts = interaction.customId.split('_');
     const action = parts[1];
@@ -750,7 +657,6 @@ async function handleComponent(interaction, client) {
 
     if (action !== 'play') return false;
 
-    const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
     const guildId = interaction.guildId || 'DM';
     const userId = interaction.user.id;
     const bet = 100;
@@ -760,7 +666,7 @@ async function handleComponent(interaction, client) {
 
     // Tic-tac-toe needs an opponent — quick reply
     if (game === 'tictactoe') {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription('❌ Use `/game tictactoe @user` to challenge someone!');
+        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(t('game.ttt_use_slash', lang));
         return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
