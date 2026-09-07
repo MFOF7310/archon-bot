@@ -180,10 +180,19 @@ function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx
     if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
 
     if (newLevel > (userData.level || 1) && ctx.channel) {
+        const lw = Math.max(t.xpGained.length, t.gamesPlayed.length, t.gamesWon.length, t.gameText.length);
         const lvlEmbed = new EmbedBuilder().setColor('#00fbff')
-            .setAuthor({ name: `🎉 ${t.levelUp}`, iconURL: ctx.user.displayAvatarURL() })
-            .setDescription(`## ${t.reachedLevel} **${newLevel}**!\n\`\`\`yaml\nXP: ${newXP.toLocaleString()}\n${t.gamesPlayed}: ${gamesPlayed}\n${t.gamesWon}: ${gamesWon}\`\`\``)
-            .setFooter({ text: `NEURAL GAME CENTER • v${ctx.client.version || '2.0.0'}` }).setTimestamp();
+            .setAuthor({ name: t.levelUp, iconURL: ctx.user.displayAvatarURL() })
+            .setDescription(
+                `## ${t.reachedLevel} **${newLevel}**!\n` +
+                '```ansi\n' +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.gameText.padEnd(lw)}\u001b[0m  \u001b[1;35m${gameType.toUpperCase()}\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.xpGained.padEnd(lw)}\u001b[0m  \u001b[1;33m+${xpGain} XP\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.gamesPlayed.padEnd(lw)}\u001b[0m  \u001b[1;36m${gamesPlayed}\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.gamesWon.padEnd(lw)}\u001b[0m  \u001b[1;32m${gamesWon}\u001b[0m\n` +
+                '```'
+            )
+            .setFooter({ text: `${t.footer} • v${ctx.client.version || '2.0.0'}` }).setTimestamp();
         ctx.channel.send({ content: `<@${userId}>`, embeds: [lvlEmbed] }).catch(() => {});
     }
 }
@@ -191,19 +200,39 @@ function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx
 // ================= HUB BUILDER =================
 function buildHub(client, lang, guildName) {
     const t = gameTranslations[lang];
+    const dw = s => [...s].reduce((n, c) => {
+        const cp = c.codePointAt(0);
+        if (cp === 0xFE0F) return n;
+        return n + ((cp > 0xFFFF || (cp >= 0x2600 && cp <= 0x27BF) || (cp >= 0x2B00 && cp <= 0x2BFF)) ? 2 : 1);
+    }, 0);
+    const W = 40;
+    const border = (l, r) => `\u001b[1;36m${l}${'═'.repeat(W)}${r}\u001b[0m\n`;
+    const headText = `  ◈ ${guildName || 'NEURAL NODE'}`;
+    const head = `\u001b[1;36m║\u001b[0m  ◈ \u001b[1;33m${guildName || 'NEURAL NODE'}\u001b[0m${' '.repeat(Math.max(1, W - dw(headText)))}\u001b[1;36m║\u001b[0m\n`;
+    const gameLine = (emoji, name) => {
+        const left = emoji ? `  ▸ ${emoji} ${name}` : `  ▸ ${name}`;
+        const gap = ' '.repeat(Math.max(1, W - dw(left) - 9));
+        const shown = emoji
+            ? `  \u001b[1;36m▸\u001b[0m ${emoji} \u001b[1;37m${name}\u001b[0m`
+            : `  \u001b[1;36m▸\u001b[0m \u001b[1;37m${name}\u001b[0m`;
+        return `\u001b[1;36m║\u001b[0m${shown}${gap}\u001b[1;32mAVAILABLE\u001b[0m\u001b[1;36m║\u001b[0m\n`;
+    };
     const embed = new EmbedBuilder().setColor('#00d4ff')
         .setAuthor({ name: t.hubTitle, iconURL: client.user.displayAvatarURL() })
         .setDescription(
-            '```ansi\n\u001b[1;36m╔══════════════════════════════════════════╗\u001b[0m\n' +
-            `\u001b[1;36m║\u001b[0m  \u001b[1;33m${t.hubDesc}\u001b[0m\u001b[1;36m║\u001b[0m\n` +
-            '\u001b[1;36m╠══════════════════════════════════════════╣\u001b[0m\n' +
-            `\u001b[1;36m║\u001b[0m  🔫 ${t.codm.padEnd(23)}\u001b[1;36m║\u001b[0m\n` +
-            `\u001b[1;36m║\u001b[0m  🎰 ${t.slots.padEnd(23)}\u001b[1;36m║\u001b[0m\n` +
-            `\u001b[1;36m║\u001b[0m  ⭕ ${t.tictactoe.padEnd(23)}\u001b[1;36m║\u001b[0m\n` +
-            `\u001b[1;36m║\u001b[0m  🃏 ${t.blackjack.padEnd(23)}\u001b[1;36m║\u001b[0m\n` +
-            `\u001b[1;36m║\u001b[0m  🎲 ${t.roulette.padEnd(23)}\u001b[1;36m║\u001b[0m\n` +
-            `\u001b[1;36m║\u001b[0m  🧠 ${t.trivia.padEnd(23)}\u001b[1;36m║\u001b[0m\n` +
-            '\u001b[1;36m╚══════════════════════════════════════════╝\u001b[0m\n```'
+            '```ansi\n' +
+            border('╔', '╗') +
+            head +
+            border('╠', '╣') +
+            gameLine('🔫', t.codm) +
+            gameLine(null, t.slots) +
+            gameLine(null, t.tictactoe) +
+            gameLine(null, t.blackjack) +
+            gameLine(null, t.roulette) +
+            gameLine(null, t.trivia) +
+            border('╚', '╝') +
+            '```\n' +
+            `> ${t.hubDesc}`
         )
         .setFooter({ text: `${t.footer} • ${guildName || 'NEURAL NODE'} • v${client.version || '2.0.0'}`, iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
@@ -267,7 +296,14 @@ async function playCODM(ctx, client, db, lang, guildId, userId, bet) {
 
     const embed = new EmbedBuilder().setColor(won ? '#2ecc71' : '#e74c3c')
         .setAuthor({ name: `${won ? t.codmVictory : t.codmDefeat}`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(`\`\`\`yaml\n${t.codmScore}: ${score}\n${t.codmKills}: ${kills}\n${t.codmDeaths}: ${deaths}\n${t.codmKDRatio}: ${kd}${isMVP ? '\n🌟 MVP!' : ''}\n\`\`\``)
+        .setDescription(
+            '```ansi\n' +
+            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.codmScore.padEnd(12)}\u001b[0m \u001b[1;33m${score}\u001b[0m\n` +
+            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.codmKills.padEnd(12)}\u001b[0m \u001b[1;32m${kills}\u001b[0m\n` +
+            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.codmDeaths.padEnd(12)}\u001b[0m \u001b[1;31m${deaths}\u001b[0m\n` +
+            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.codmKDRatio.padEnd(12)}\u001b[0m \u001b[1;36m${kd}\u001b[0m\n` +
+            '```' + (isMVP ? `\n${t.codmMVP}` : '')
+        )
         .addFields(
             { name: `💰 ${won ? t.winnings : t.loss}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true },
             { name: `🏆 ${t.currentRank}`, value: `**${rank.name}**${nextPoints !== 'MAX' ? `\nNext: ${nextPoints.toLocaleString()} RP` : ''}`, inline: true }
@@ -297,9 +333,15 @@ async function playSlots(ctx, client, db, lang, guildId, userId, bet) {
     const won = allSame || twoMatch;
     const winnings = isJackpot ? bet * 10 : allSame ? bet * 5 : twoMatch ? bet * 2 : 0;
 
-    const embed = new EmbedBuilder().setColor(won ? '#2ecc71' : '#e74c3c')
-        .setAuthor({ name: `${won ? t.slotsWin : t.slotsLoss}`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(`\`\`\`\n[ ${line.join(' | ')} ]\n\`\`\`\n${isJackpot ? `## 💎 ${t.jackpot}` : ''}`)
+    const embed = new EmbedBuilder().setColor(isJackpot ? '#f1c40f' : won ? '#2ecc71' : '#e74c3c')
+        .setAuthor({ name: `${isJackpot ? t.jackpot : won ? t.slotsWin : t.slotsLoss}`, iconURL: ctx.user.displayAvatarURL() })
+        .setDescription(
+            '```ansi\n' +
+            `\u001b[1;36m╔${'═'.repeat(16)}╗\u001b[0m\n` +
+            `\u001b[1;36m║\u001b[0m  ${line.map(s => `\u001b[1;33m${s}\u001b[0m`).join(' \u001b[1;36m│\u001b[0m ')}  \u001b[1;36m║\u001b[0m\n` +
+            `\u001b[1;36m╚${'═'.repeat(16)}╝\u001b[0m\n` +
+            '```' + (isJackpot ? `\n## ${t.jackpot}` : '')
+        )
         .addFields(
             { name: `💰 ${won ? t.winnings : t.loss}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true },
             { name: `💰 ${t.newBalance}`, value: `${(userData.credits - bet + winnings).toLocaleString()} 🪙`, inline: true }
@@ -369,6 +411,12 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
         };
 
         const renderBoard = () => `\`\`\`\n ${board[0]} │ ${board[1]} │ ${board[2]} \n───┼───┼───\n ${board[3]} │ ${board[4]} │ ${board[5]} \n───┼───┼───\n ${board[6]} │ ${board[7]} │ ${board[8]} \n\`\`\``;
+        const turnHeader = () => {
+            const you = currentPlayer === userId;
+            const p = players[currentPlayer];
+            const mark = you ? `\u001b[1;32m${t.yourTurn}\u001b[0m` : `\u001b[1;33m${t.opponentTurn}\u001b[0m`;
+            return '```ansi\n' + `${mark} \u001b[1;37m— ${p.name} (${p.symbol})\u001b[0m` + '\n```\n';
+        };
 
         const makeButtons = (disabled = false) => {
             const rows = [];
@@ -388,7 +436,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
             return rows;
         };
 
-        await sent.edit({ content: t.challengeAccepted, embeds: [new EmbedBuilder().setColor('#9b59b6').setDescription(renderBoard()).setFooter({ text: `${players[currentPlayer].name}'s turn (${players[currentPlayer].symbol})` })], components: makeButtons() }).catch(() => {});
+        await sent.edit({ content: t.challengeAccepted, embeds: [new EmbedBuilder().setColor('#9b59b6').setAuthor({ name: t.newTicTacToe, iconURL: ctx.client.user.displayAvatarURL() }).setDescription(turnHeader() + renderBoard()).setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()], components: makeButtons() }).catch(() => {});
 
         while (true) {
             try {
@@ -420,7 +468,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
                 }
 
                 currentPlayer = currentPlayer === userId ? opponent.id : userId;
-                await sent.edit({ embeds: [new EmbedBuilder().setColor('#9b59b6').setDescription(renderBoard()).setFooter({ text: `${players[currentPlayer].name}'s turn (${players[currentPlayer].symbol})` })], components: makeButtons() }).catch(() => {});
+                await sent.edit({ embeds: [new EmbedBuilder().setColor('#9b59b6').setAuthor({ name: t.newTicTacToe, iconURL: ctx.client.user.displayAvatarURL() }).setDescription(turnHeader() + renderBoard()).setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()], components: makeButtons() }).catch(() => {});
 
             } catch (e) {
                 await sent.edit({ content: t.timeout, embeds: [], components: makeButtons(true) }).catch(() => {});
@@ -451,13 +499,21 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
         return val;
     };
     const formatHand = (hand) => hand.map(c => `${c.card}${c.suit}`).join(' ');
+    const fmtCard = c => (c.suit === '♥' || c.suit === '♦') ? `\u001b[1;31m${c.card}${c.suit}\u001b[0m` : `\u001b[1;37m${c.card}${c.suit}\u001b[0m`;
+    const fmtHand = h => h.map(fmtCard).join(' ');
+    const labelW = Math.max(t.yourHand.length, t.dealerHand.length);
+    const bjDesc = (reveal) =>
+        '```ansi\n' +
+        `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.yourHand.padEnd(labelW)}\u001b[0m  ${fmtHand(playerHand)}  \u001b[1;33m(${handValue(playerHand)})\u001b[0m\n` +
+        `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.dealerHand.padEnd(labelW)}\u001b[0m  ${reveal ? fmtHand(dealerHand) : fmtCard(dealerHand[0]) + ' \u001b[1;30m??\u001b[0m'}  \u001b[1;33m(${reveal ? handValue(dealerHand) : '?'})\u001b[0m\n` +
+        '```';
 
     let playerHand = [drawCard(), drawCard()];
     let dealerHand = [drawCard(), drawCard()];
 
     const embed = new EmbedBuilder().setColor('#9b59b6')
-        .setAuthor({ name: `🃏 BLACKJACK`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(`\`\`\`yaml\n${t.yourHand}: ${formatHand(playerHand)} (${handValue(playerHand)})\n${t.dealerHand}: ${dealerHand[0].card}${dealerHand[0].suit} ?\n\`\`\``)
+        .setAuthor({ name: t.blackjack, iconURL: ctx.user.displayAvatarURL() })
+        .setDescription(bjDesc(false))
         .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
@@ -484,8 +540,8 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
 
             if (!playerDone || handValue(playerHand) <= 21) {
                 await sent.edit({ embeds: [new EmbedBuilder().setColor('#9b59b6')
-                    .setAuthor({ name: `🃏 BLACKJACK`, iconURL: ctx.user.displayAvatarURL() })
-                    .setDescription(`\`\`\`yaml\n${t.yourHand}: ${formatHand(playerHand)} (${handValue(playerHand)})\n${t.dealerHand}: ${dealerHand[0].card}${dealerHand[0].suit} ?\n\`\`\``)
+                    .setAuthor({ name: t.blackjack, iconURL: ctx.user.displayAvatarURL() })
+                    .setDescription(bjDesc(false))
                     .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()],
                     components: playerDone ? [] : [row]
                 }).catch(() => {});
@@ -507,7 +563,7 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
 
     const resultEmbed = new EmbedBuilder().setColor(won ? '#2ecc71' : draw ? '#f1c40f' : '#e74c3c')
         .setAuthor({ name: `${blackjack ? t.blackjackWin : won ? t.youWon : draw ? t.draw : t.youLost}`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(`\`\`\`yaml\n${t.yourHand}: ${formatHand(playerHand)} (${pVal})\n${t.dealerHand}: ${formatHand(dealerHand)} (${dVal})\n\`\`\``)
+        .setDescription(bjDesc(true) + (playerBust ? `\n${t.youBusted}` : dealerBust ? `\n${t.dealerBusted}` : ''))
         .addFields(
             { name: `💰 ${t.bet}`, value: `${bet.toLocaleString()} 🪙`, inline: true },
             { name: `💰 ${won ? t.winnings : t.loss}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true }
@@ -567,9 +623,30 @@ async function playRoulette(ctx, client, db, lang, guildId, userId, bet) {
         const won = result === chosenNum;
         const winnings = won ? bet * 35 : 0;
 
-        const resultEmbed = new EmbedBuilder().setColor(won ? '#2ecc71' : '#e74c3c')
+        // spinning animation — cosmetic frames, result already decided above
+        for (let i = 0; i < 3; i++) {
+            const n = numbers[Math.floor(Math.random() * numbers.length)];
+            const nc = n === 0 ? t.rouletteGreen : isRed(n) ? t.rouletteRed : t.rouletteBlack;
+            const spinEmbed = new EmbedBuilder().setColor('#95a5a6')
+                .setAuthor({ name: t.spinning, iconURL: ctx.user.displayAvatarURL() })
+                .setDescription(`## 🎲 ${n} ${nc}`)
+                .setFooter({ text: `${t.footer} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() });
+            await sent.edit({ embeds: [spinEmbed], components: [] }).catch(() => {});
+            await new Promise(r => setTimeout(r, 700));
+        }
+
+        const accent = result === 0 ? '#2ecc71' : resultRed ? '#e74c3c' : '#2b2d31';
+        const numColor = result === 0 ? '\u001b[1;32m' : resultRed ? '\u001b[1;31m' : '\u001b[1;37m';
+        const pw = Math.max(t.your_pick.length, t.result_label.length);
+        const resultEmbed = new EmbedBuilder().setColor(accent)
             .setAuthor({ name: `${won ? t.youWon : t.youLost}`, iconURL: ctx.user.displayAvatarURL() })
-            .setDescription(`## ${t.rouletteResult(result, resultColor)}\n\n**${t.yourHand || 'Your Number'}:** ${chosenNum}\n**${t.result}:** ${result}`)
+            .setDescription(
+                `## ${t.rouletteResult(result, resultColor)}\n` +
+                '```ansi\n' +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.your_pick.padEnd(pw)}\u001b[0m \u001b[1;33m${chosenNum}\u001b[0m\n` +
+                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t.result_label.padEnd(pw)}\u001b[0m ${numColor}${result}\u001b[0m\n` +
+                '```'
+            )
             .addFields(
                 { name: `💰 ${t.bet}`, value: `${bet.toLocaleString()} 🪙`, inline: true },
                 { name: `💰 ${won ? t.winnings : t.loss}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true }
