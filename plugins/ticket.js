@@ -371,7 +371,7 @@ module.exports = {
         if(sc==='leaderboard'){
             await ix.deferReply({flags:1<<6});
             try {
-                const rows = db.prepare('SELECT staff_id, AVG(stars) as avg, COUNT(*) as total FROM ticket_ratings WHERE guild_id = ? GROUP BY staff_id ORDER BY avg DESC, total DESC LIMIT 10').all(guildId);
+                const rows = db.prepare('SELECT staff_id, AVG(stars) as avg, COUNT(*) as total FROM ticket_ratings WHERE guild_id = ? GROUP BY staff_id ORDER BY avg DESC, total DESC LIMIT 10').all(g.id);
                 if(!rows.length) return ix.editReply({content:'🎫 No ratings yet — be the first to rate a ticket!'});
                 const desc = rows.map((r,i) => {
                     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'•';
