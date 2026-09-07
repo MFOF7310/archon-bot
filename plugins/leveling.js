@@ -1,4 +1,5 @@
 const { EmbedBuilder, AttachmentBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { t } = require('../lib/i18n');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
 const path = require('path');
@@ -571,11 +572,11 @@ async function handleWelcome(member, client, db) {
     await ch.send({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'welcome.png' })] }).catch(() => { });
 }
 
-async function handleRank(message, args, client, db) {
+async function handleRank(message, args, client, db, lang = 'en') {
     const target = message.mentions.users.first() || message.author;
     // Fetch from users table (ARCHON CG-223 schema)
     const row = db?.prepare(`SELECT level, xp FROM users WHERE guild_id = ? AND id = ?`)?.get(message.guild.id, target.id);
-    if (!row) return message.reply('❌ No XP data found. Chat to earn XP!').catch(() => { });
+    if (!row) return message.reply(t('leveling.no_xp', lang)).catch(() => { });
     const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(message.guild.id, row.xp);
     const rank = rankRow?.rank || '?';
     const customTheme = getThemeDB(db, message.guild.id);
@@ -611,8 +612,9 @@ module.exports = {
 
     // ================= PREFIX =================
     run: async (client, message, args, db, ss) => {
+        const lang = ss?.language && ss.language !== 'auto' ? ss.language : 'en';
         const sub = args[0]?.toLowerCase() || 'rank';
-        if (sub === 'rank') return handleRank(message, args, client, db);
+        if (sub === 'rank') return handleRank(message, args, client, db, lang);
         if (sub === 'config') {
             const t = db ? getThemeDB(db, message.guild.id) : null;
             const e = new EmbedBuilder().setColor(0x5865f2).setAuthor({ name: '📈 Leveling Config', iconURL: client.user.displayAvatarURL() }).
@@ -625,13 +627,13 @@ module.exports = {
         }
         if (sub === 'theme') {
             const adm = message.member.permissions.has(PermissionFlagsBits.Administrator);
-            if (!adm) return message.reply('🔒 Admin only.').catch(() => { });
+            if (!adm) return message.reply(t('leveling.admin_only', lang)).catch(() => { });
             const type = args[1]?.toLowerCase();
-            if (type === 'reset') { if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(message.guild.id); return message.reply('✅ Theme reset to default.').catch(() => { }); }
+            if (type === 'reset') { if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(message.guild.id); return message.reply(t('leveling.theme_reset', lang)).catch(() => { }); }
             if (!type || !['level', 'welcome'].includes(type)) return message.reply('⚠️ Usage: `.leveling theme <level|welcome> [#bg1] [#bg2] [#accent]`').catch(() => { });
             const hexRegex = /^#?[0-9A-Fa-f]{6}$/;
             const bg1 = args[2], bg2 = args[3], accent = args[4];
-            if (bg1 && !hexRegex.test(bg1)) return message.reply('❌ Invalid hex color. Use format: `#5865f2`').catch(() => { });
+            if (bg1 && !hexRegex.test(bg1)) return message.reply(t('leveling.invalid_hex', lang)).catch(() => { });
             const data = {};
             if (type === 'level') { if (bg1) data.levelBg1 = bg1.startsWith('#') ? bg1 : '#' + bg1; if (bg2) data.levelBg2 = bg2.startsWith('#') ? bg2 : '#' + bg2; if (accent) data.levelAccent = accent.startsWith('#') ? accent : '#' + accent; }
             else { if (bg1) data.welcomeBg1 = bg1.startsWith('#') ? bg1 : '#' + bg1; if (bg2) data.welcomeBg2 = bg2.startsWith('#') ? bg2 : '#' + bg2; if (accent) data.welcomeAccent = accent.startsWith('#') ? accent : '#' + accent; }
@@ -644,10 +646,10 @@ module.exports = {
             g.addColorStop(1, data.levelBg2 || data.welcomeBg2 || '#2d3a8c');
             tCtx.fillStyle = g; tCtx.fillRect(0, 0, 200, 80);
             const preview = await testCanvas.encode('png');
-            const embed = new EmbedBuilder().setColor(parseInt((data.levelAccent || data.welcomeAccent || '#8b9aff').replace('#', ''), 16)).setDescription(`✅ **${type}** theme updated.`).setImage('attachment://preview.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+            const embed = new EmbedBuilder().setColor(parseInt((data.levelAccent || data.welcomeAccent || '#8b9aff').replace('#', ''), 16)).setDescription(t('leveling.theme_updated', lang, { type })).setImage('attachment://preview.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
             return message.reply({ embeds: [embed], files: [new AttachmentBuilder(preview, { name: 'preview.png' })] }).catch(() => { });
         }
-        return handleRank(message, args, client, db);
+        return handleRank(message, args, client, db, lang);
     },
 
     // ================= SLASH =================
@@ -655,12 +657,14 @@ module.exports = {
         const sc = ix.options.getSubcommand();
         const group = ix.options.getSubcommandGroup(false);
         const db = client.db;
+        const ss = client.getServerSettings?.(ix.guild?.id) || {};
+        const lang = ss.language && ss.language !== 'auto' ? ss.language : (ix.locale?.startsWith('fr') ? 'fr' : 'en');
 
         if (sc === 'rank') {
             await ix.deferReply();
             const target = ix.options.getUser('user') || ix.user;
             const row = db?.prepare(`SELECT level, xp FROM users WHERE guild_id = ? AND id = ?`)?.get(ix.guild.id, target.id);
-            if (!row) return ix.editReply({ content: '❌ No XP data found. Chat to earn XP!' }).catch(() => { });
+            if (!row) return ix.editReply({ content: t('leveling.no_xp', lang) }).catch(() => { });
             const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(ix.guild.id, row.xp);
             const rank = rankRow?.rank || '?';
             const customTheme = db ? getThemeDB(db, ix.guild.id) : null;
@@ -681,11 +685,11 @@ module.exports = {
 
         if (group === 'theme') {
             const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
-            if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+            if (!adm) return ix.reply({ content: t('leveling.admin_only', lang), flags: 1 << 6 });
 
             if (sc === 'reset') {
                 if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(ix.guild.id);
-                return ix.reply({ content: '✅ Theme reset to default.', flags: 1 << 6 });
+                return ix.reply({ content: t('leveling.theme_reset', lang), flags: 1 << 6 });
             }
 
             const bg1 = ix.options.getString('bg1');
@@ -700,12 +704,12 @@ module.exports = {
             else { if (bg1) { if (!hexRe.test(bg1)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.welcomeBg1 = clean(bg1); } if (bg2) { if (!hexRe.test(bg2)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.welcomeBg2 = clean(bg2); } if (accent) { if (!hexRe.test(accent)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.welcomeAccent = clean(accent); } }
 
             if (db) saveThemeDB(db, ix.guild.id, data);
-            await ix.reply({ content: `✅ **${type}** theme updated.`, flags: 1 << 6 });
+            await ix.reply({ content: t('leveling.theme_updated', lang, { type }), flags: 1 << 6 });
         }
 
         if (sc === 'setrole') {
             const adm = ix.member.permissions.has(PermissionFlagsBits.ManageGuild);
-            if (!adm) return ix.reply({ content: '⛔ You need **Manage Server** permission to set level roles.', flags: 1 << 6 });
+            if (!adm) return ix.reply({ content: t('leveling.manage_only', lang), flags: 1 << 6 });
             const level = ix.options.getInteger('level');
             const role = ix.options.getRole('role');
             const col = `level_${level}_role`;
@@ -714,9 +718,9 @@ module.exports = {
                 db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(role?.id || null, ix.guild.id);
             }
             if (role) {
-                return ix.reply({ content: `✅ Members who reach **Level ${level}** will automatically receive ${role}.`, flags: 1 << 6 });
+                return ix.reply({ content: t('leveling.role_set', lang, { level, role }), flags: 1 << 6 });
             } else {
-                return ix.reply({ content: `✅ Level **${level}** role cleared.`, flags: 1 << 6 });
+                return ix.reply({ content: t('leveling.role_cleared', lang, { level }), flags: 1 << 6 });
             }
         }
     },
