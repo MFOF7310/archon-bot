@@ -19,7 +19,7 @@
   "opt_level": "1-100",
   "opt_effect": "Choisir l'effet audio",
   "opt_search": "🔍 Rechercher dans la bibliothèque (optionnel)",
-  "no_query": "❌ Donne un nom de morceau ou utilise `/music library` pour parcourir les dossiers !",
+  "no_query": "{error} Donne un nom de morceau ou utilise `/music library` pour parcourir les dossiers !",
   "join_voice": "🎤 Rejoins d'abord un salon vocal — j'apporte la musique !",
   "queue_full": "🎧 La file est pleine — 50 morceaux max ! `/music skip` quelques morceaux ou `/music stop` pour faire de la place.",
   "queue_empty": "La file d'attente est vide",
@@ -59,7 +59,7 @@
   "liked_empty": "*Rien ici pour l'instant — appuie sur le bouton ❤️ Like en écoutant !*",
   "queue_added": "{emoji} **{title}** ajouté à la file !",
   "track_error": "😤 **Ce morceau a planté** — je passe au suivant… ({count}/5)",
-  "too_many_errors": "⚠️ **Trop de morceaux ont échoué d'affilée** — autoplay en pause. Utilise `/music play` pour ajouter quelque chose manuellement.",
-  "autoplay_paused": "⚠️ Autoplay mis en pause — trop d'erreurs. Utilise `/music play` pour relancer manuellement.",
+  "too_many_errors": "{warning} **Trop de morceaux ont échoué d'affilée** — autoplay en pause. Utilise `/music play` pour ajouter quelque chose manuellement.",
+  "autoplay_paused": "{warning} Autoplay mis en pause — trop d'erreurs. Utilise `/music play` pour relancer manuellement.",
   "inactivity_disconnect": "J'ai quitté le salon vocal pour inactivité.\nUtilise `/music play` pour me ramener quand tu veux."
 }
