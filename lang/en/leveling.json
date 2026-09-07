@@ -13,12 +13,12 @@
   "opt_bg1": "Background start color (#hex)",
   "opt_bg2": "Background end color (#hex)",
   "opt_accent": "Accent color (#hex)",
-  "no_xp": "❌ No XP data found. Chat to earn XP!",
+  "no_xp": "{error} No XP data found. Chat to earn XP!",
   "admin_only": "🔒 Admin only.",
   "manage_only": "⛔ You need **Manage Server** permission to set level roles.",
-  "invalid_hex": "❌ Invalid hex color. Use format: `#5865f2`",
-  "theme_updated": "✅ **{type}** theme updated.",
-  "theme_reset": "✅ Theme reset to default.",
-  "role_set": "✅ Members who reach **Level {level}** will automatically receive {role}.",
-  "role_cleared": "✅ Level **{level}** role cleared."
+  "invalid_hex": "{error} Invalid hex color. Use format: `#5865f2`",
+  "theme_updated": "{check} **{type}** theme updated.",
+  "theme_reset": "{check} Theme reset to default.",
+  "role_set": "{check} Members who reach **Level {level}** will automatically receive {role}.",
+  "role_cleared": "{check} Level **{level}** role cleared."
 }

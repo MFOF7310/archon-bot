@@ -13,12 +13,12 @@
   "opt_bg1": "Couleur de fond de début (#hex)",
   "opt_bg2": "Couleur de fond de fin (#hex)",
   "opt_accent": "Couleur d'accent (#hex)",
-  "no_xp": "❌ Aucune donnée d'XP trouvée. Discute pour gagner de l'XP !",
+  "no_xp": "{error} Aucune donnée d'XP trouvée. Discute pour gagner de l'XP !",
   "admin_only": "🔒 Réservé aux admins.",
   "manage_only": "⛔ Tu as besoin de la permission **Gérer le serveur** pour définir les rôles de niveau.",
-  "invalid_hex": "❌ Couleur hex invalide. Utilise le format : `#5865f2`",
-  "theme_updated": "✅ Thème **{type}** mis à jour.",
-  "theme_reset": "✅ Thème rétabli par défaut.",
-  "role_set": "✅ Les membres qui atteignent le **Niveau {level}** recevront automatiquement {role}.",
-  "role_cleared": "✅ Rôle du niveau **{level}** retiré."
+  "invalid_hex": "{error} Couleur hex invalide. Utilise le format : `#5865f2`",
+  "theme_updated": "{check} Thème **{type}** mis à jour.",
+  "theme_reset": "{check} Thème rétabli par défaut.",
+  "role_set": "{check} Les membres qui atteignent le **Niveau {level}** recevront automatiquement {role}.",
+  "role_cleared": "{check} Rôle du niveau **{level}** retiré."
 }
