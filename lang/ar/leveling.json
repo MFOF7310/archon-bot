@@ -1,1 +1,24 @@
-{}
+{
+  "desc": "",
+  "usage": "",
+  "sub_rank": "",
+  "sub_config": "",
+  "sub_setrole": "",
+  "sub_theme_level": "",
+  "sub_theme_welcome": "",
+  "sub_theme_reset": "",
+  "opt_user": "",
+  "opt_level": "",
+  "opt_role": "",
+  "opt_bg1": "",
+  "opt_bg2": "",
+  "opt_accent": "",
+  "no_xp": "",
+  "admin_only": "",
+  "manage_only": "",
+  "invalid_hex": "",
+  "theme_updated": "",
+  "theme_reset": "",
+  "role_set": "",
+  "role_cleared": ""
+}

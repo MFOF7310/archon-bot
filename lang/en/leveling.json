@@ -1,1 +1,24 @@
-{}
+{
+  "desc": "📈 Dynamic canvas leveling with per-server themes, rank cards, welcome banners, and milestone auto-roles.",
+  "usage": ".leveling [rank @user] | .leveling theme <color> | .leveling config",
+  "sub_rank": "View rank card",
+  "sub_config": "View leveling configuration",
+  "sub_setrole": "Set auto-role for level milestone",
+  "sub_theme_level": "Level banner colors",
+  "sub_theme_welcome": "Welcome banner colors",
+  "sub_theme_reset": "Reset to default theme",
+  "opt_user": "User (default: you)",
+  "opt_level": "Level milestone (5/10/15/20/25)",
+  "opt_role": "Role to assign (leave empty to clear)",
+  "opt_bg1": "Background start color (#hex)",
+  "opt_bg2": "Background end color (#hex)",
+  "opt_accent": "Accent color (#hex)",
+  "no_xp": "❌ No XP data found. Chat to earn XP!",
+  "admin_only": "🔒 Admin only.",
+  "manage_only": "⛔ You need **Manage Server** permission to set level roles.",
+  "invalid_hex": "❌ Invalid hex color. Use format: `#5865f2`",
+  "theme_updated": "✅ **{type}** theme updated.",
+  "theme_reset": "✅ Theme reset to default.",
+  "role_set": "✅ Members who reach **Level {level}** will automatically receive {role}.",
+  "role_cleared": "✅ Level **{level}** role cleared."
+}
