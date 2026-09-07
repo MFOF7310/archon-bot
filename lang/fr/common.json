@@ -1,0 +1,20 @@
+{
+  "admin_only": "Reserve aux admins — demande a un admin du serveur.",
+  "owner_only": "Reserve au proprietaire du bot.",
+  "server_only": "Ca ne marche que dans un serveur.",
+  "no_dm": "Cette commande n'est pas dispo en messages prives.",
+  "error_generic": "Oups, un souci — reessaie dans un instant.",
+  "cancel": "Annuler",
+  "confirm": "Confirmer",
+  "cancelled": "Annule.",
+  "back": "Retour",
+  "next": "Suivant",
+  "previous": "Precedent",
+  "cooldown": "Patiente un peu",
+  "yes": "Oui",
+  "no": "Non",
+  "done": "C'est fait !",
+  "loading": "Un instant...",
+  "premium_feature": "Fonctionnalite Premium",
+  "page": "{page} / {total}"
+}
