@@ -19,7 +19,7 @@
   "opt_level": "1-100",
   "opt_effect": "Choose audio effect",
   "opt_search": "🔍 Search inside the library (optional)",
-  "no_query": "{error} Provide a song name or use `/music library` to browse folders!",
+  "no_query": "❌ Provide a song name or use `/music library` to browse folders!",
   "join_voice": "🎤 Join a voice channel first — then I'll bring the music!",
   "queue_full": "🎧 The queue is packed — 50 tracks max! `/music skip` a few or `/music stop` to make room.",
   "queue_empty": "Queue is empty",
@@ -59,7 +59,7 @@
   "liked_empty": "*Nothing here yet — hit the ❤️ Like button while listening!*",
   "queue_added": "{emoji} Added **{title}** to queue!",
   "track_error": "😤 **That track glitched out** — flipping to the next one… ({count}/5)",
-  "too_many_errors": "{warning} **Too many tracks failed in a row** — pausing autoplay. Use `/music play` to queue something manually.",
+  "too_many_errors": "⚠️ **Too many tracks failed in a row** — pausing autoplay. Use `/music play` to queue something manually.",
   "autoplay_paused": "{warning} Autoplay paused — too many errors. Use `/music play` to queue something manually.",
   "inactivity_disconnect": "I left the voice channel due to inactivity.\nUse `/music play` to bring me back anytime."
 }
