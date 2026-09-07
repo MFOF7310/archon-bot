@@ -1,1 +1,24 @@
-{}
+{
+  "desc": "📈 Niveaux dynamiques sur canvas avec thèmes par serveur, cartes de rang, bannières de bienvenue et rôles automatiques aux paliers.",
+  "usage": ".leveling [rank @user] | .leveling theme <color> | .leveling config",
+  "sub_rank": "Voir la carte de rang",
+  "sub_config": "Voir la configuration des niveaux",
+  "sub_setrole": "Définir le rôle automatique d'un palier de niveau",
+  "sub_theme_level": "Couleurs de la bannière de niveau",
+  "sub_theme_welcome": "Couleurs de la bannière de bienvenue",
+  "sub_theme_reset": "Rétablir le thème par défaut",
+  "opt_user": "Utilisateur (par défaut : toi)",
+  "opt_level": "Palier de niveau (5/10/15/20/25)",
+  "opt_role": "Rôle à attribuer (laisser vide pour retirer)",
+  "opt_bg1": "Couleur de fond de début (#hex)",
+  "opt_bg2": "Couleur de fond de fin (#hex)",
+  "opt_accent": "Couleur d'accent (#hex)",
+  "no_xp": "❌ Aucune donnée d'XP trouvée. Discute pour gagner de l'XP !",
+  "admin_only": "🔒 Réservé aux admins.",
+  "manage_only": "⛔ Tu as besoin de la permission **Gérer le serveur** pour définir les rôles de niveau.",
+  "invalid_hex": "❌ Couleur hex invalide. Utilise le format : `#5865f2`",
+  "theme_updated": "✅ Thème **{type}** mis à jour.",
+  "theme_reset": "✅ Thème rétabli par défaut.",
+  "role_set": "✅ Les membres qui atteignent le **Niveau {level}** recevront automatiquement {role}.",
+  "role_cleared": "✅ Rôle du niveau **{level}** retiré."
+}
