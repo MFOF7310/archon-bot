@@ -1,6 +1,7 @@
 'use strict';
 
 const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
+const { t } = require('../lib/i18n');
 let axios = null;
 try { axios = require('axios'); }
 catch (e) { console.warn('[LYDIA] axios not installed — AI/web features degraded, but /lydia still registers. Fix: npm i axios'); }
@@ -1063,14 +1064,14 @@ async function handleLydiaMessage(message, client, database) {
   let searchUsed = false;
   let searchSources = [];
 
+  const detectedLang = detectUserLanguage(message.content || '');
+  const lang = detectedLang;
+
   try {
     const botName = (getBotName(message) || 'Lydia').toLowerCase();
     const userName = message.member?.displayName || message.author?.username || 'Unknown';
     const content = (message.content || '').toLowerCase();
 
-    const rawContent = message.content || '';
-    const detectedLang = detectUserLanguage(rawContent);
-    const lang = detectedLang;
 
     const addressed = content.startsWith(botName.toLowerCase()) || message.mentions?.has(client.user);
     if (!addressed) { messageProcessingLocks.delete(key); return; }
@@ -1099,14 +1100,13 @@ async function handleLydiaMessage(message, client, database) {
 
     if (!userPrompt.trim()) {
       const greetings = {
-        en: `Hey ${userName}! I'm here and ready to help. What would you like to know?`,
-        fr: `Salut ${userName}! Je suis l\u00E0 et pr\u00EAt \u00E0 aider. Que souhaites-tu savoir?`,
         es: `\u00A1Hola ${userName}! Estoy aqu\u00ED y lista para ayudar. \u00BFQu\u00E9 te gustar\u00EDa saber?`,
         ar: `\u0645\u0631\u062D\u0628\u0627\u064B ${userName}! \u0623\u0646\u0627 \u0647\u0646\u0627 \u0648\u0645\u0633\u062A\u0639\u062F\u0629 \u0644\u0644\u0645\u0633\u0627\u0639\u062F\u0629. \u0645\u0627\u0630\u0627 \u062A\u0648\u062F \u0623\u0646 \u062A\u0639\u0631\u0641\u061F`,
         zh: `\u55E8 ${userName}! \u6211\u5728\u8FD9\u91CC\uFF0C\u968F\u65F6\u51C6\u5907\u5E2E\u5FD9\u3002\u4F60\u60F3\u77E5\u9053\u4EC0\u4E48\uFF1F`,
         ja: `\u3053\u3093\u306B\u3061\u306F ${userName}\u3055\u3093! \u304A\u624B\u4F1D\u3044\u3067\u304D\u308B\u3053\u3068\u304C\u3042\u308C\u3070\u3001\u304A\u6C17\u8EFD\u306B\u3069\u3046\u305E\u3002`,
       };
-      const staticMsg = greetings[lang] || greetings.en;
+      const staticMsg = lang === 'fr' ? t('lydia.greeting_fr', lang, { user: userName })
+        : (greetings[lang] || t('lydia.greeting_en', lang, { user: userName }));
       const staticEmbeds = buildEmbed(staticMsg, message, { isError: false, theme, lang });
       if (thinkingMsg) await thinkingMsg.edit({ embeds: staticEmbeds });
       else await message.reply({ embeds: staticEmbeds });
@@ -1200,15 +1200,8 @@ async function handleLydiaMessage(message, client, database) {
     const aiResult = await generateAIResponse(fullSystem, finalPrompt, history, imageUrl, theme, message.guild?.id ?? null);
 
     if (!aiResult) {
-      const errors = {
-        en: !process.env.OPENROUTER_API_KEY
-          ? '\u26A0\uFE0F **OPENROUTER_API_KEY** not detected in environment variables'
-          : '\u26A0\uFE0F **AI temporarily unavailable.** Please try again in a moment.',
-        fr: !process.env.OPENROUTER_API_KEY
-          ? '\u26A0\uFE0F **OPENROUTER_API_KEY** non d\u00E9tect\u00E9e dans les variables d\u2019environnement'
-          : '\u26A0\uFE0F **IA temporairement indisponible.** Veuillez r\u00E9essayer dans un moment.',
-      };
-      const errorEmbeds = buildEmbed(errors[lang] || errors.en, message, { isError: true, theme, lang });
+      const errorMsg = !process.env.OPENROUTER_API_KEY ? t('lydia.ai_no_key', lang) : t('lydia.ai_unavailable', lang);
+      const errorEmbeds = buildEmbed(errorMsg, message, { isError: true, theme, lang });
       if (thinkingMsg) await thinkingMsg.edit({ embeds: errorEmbeds });
       else await message.reply({ embeds: errorEmbeds });
       messageProcessingLocks.delete(key);
@@ -1266,7 +1259,7 @@ async function handleLydiaMessage(message, client, database) {
 
   } catch (err) {
     console.error(`${C.red}[LYDIA]${C.reset} ${err.message}`);
-    const errorEmbeds = buildEmbed('Something went wrong. Please try again!', message, { isError: true });
+    const errorEmbeds = buildEmbed(t('lydia.ai_error', lang), message, { isError: true });
     if (thinkingMsg) await thinkingMsg.edit({ embeds: errorEmbeds }).catch(() => {});
     else await message.reply({ embeds: errorEmbeds }).catch(() => {});
   } finally {
@@ -1304,11 +1297,13 @@ function pruneOldConversations(database) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleLydiaToggle(client, channelId, guildId, userId, action, respondFn = null) {
+  const _ssT = client.getServerSettings?.(guildId) || {};
+  const lang = _ssT.language && _ssT.language !== 'auto' ? _ssT.language : 'en';
   if (!client.lydiaChannels) client.lydiaChannels = {};
 
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel?.guild) {
-    if (respondFn) await respondFn({ content: '🧐 I can\'t find this channel anymore — was it deleted?', flags: 64 });
+    if (respondFn) await respondFn({ content: t('lydia.lydia_channel_missing', lang), flags: 64 });
     return;
   }
 
@@ -1349,7 +1344,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   if (action === 'on') {
     if (client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: `🎧 I'm already awake and listening right here — just talk to me!`, flags: 64 });
+      if (respondFn) await respondFn({ content: t('lydia.lydia_on_already', lang), flags: 64 });
       return;
     }
 
@@ -1378,7 +1373,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   if (action === 'off') {
     if (!client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: '😴 I\'m not active in this channel yet — wake me up with `/lydia on` first!', flags: 64 });
+      if (respondFn) await respondFn({ content: t('lydia.lydia_off_already', lang), flags: 64 });
       return;
     }
 
@@ -1405,7 +1400,9 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 // MEMORY SUBCOMMAND
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function handleMemorySubcommand(interactionOrMessage, database, isSlash = false) {
+async function handleMemorySubcommand(interactionOrMessage, database, isSlash = false, client = null) {
+  const _ssM = client?.getServerSettings?.(interactionOrMessage.guild?.id) || {};
+  const lang = _ssM.language && _ssM.language !== 'auto' ? _ssM.language : (isSlash ? (interactionOrMessage.locale?.startsWith('fr') ? 'fr' : 'en') : 'en');
   let userId, username, respond;
   if (isSlash) {
     userId = interactionOrMessage.user.id;
@@ -1431,10 +1428,10 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
           iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL()
         })
         .setDescription(
-          `\`\`\`ansi\n\u001b[1;33m[ ARCHIVE EMPTY ]\u001b[0m\n\u001b[33mNo stored memories found.\u001b[0m\n\`\`\`\n` +
-          `**How to save:** While chatting, include:\n\`[MEMORY: key | value]\`\n\n**Example:**\n\`Remember my favorite color is blue\`\n\u2192 Stores \`favorite_color: blue\``
+          `\`\`\`ansi\n\u001b[1;33m[ ARCHIVE EMPTY ]\u001b[0m\n\u001b[33m${t('lydia.memory_empty', lang)}\u001b[0m\n\`\`\`\n` +
+          t('lydia.memory_empty_hint', lang) + `\n\n**Example:**\n\`Remember my favorite color is blue\`\n\u2192 Stores \`favorite_color: blue\``
         )
-        .setFooter({ text: 'Memories persist across conversations' })
+        .setFooter({ text: t('lydia.memory_footer', lang) })
         .setTimestamp();
       await respond({ embeds: [embed], flags: 64 });
       return;
@@ -1453,7 +1450,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
       })
       .setDescription(`\`\`\`ansi\n\u001b[1;32m[ ${memories.length} RECORD(S) FOUND ]\u001b[0m\n\`\`\``)
       .addFields(memoryFields)
-      .setFooter({ text: memories.length > 25 ? `Showing 25 of ${memories.length}` : 'Memories persist across conversations' })
+      .setFooter({ text: memories.length > 25 ? t('lydia.memory_showing', lang, { count: 25, total: memories.length }) : t('lydia.memory_footer', lang) })
       .setTimestamp();
 
     await respond({ embeds: [embed], flags: 64 });
@@ -1462,7 +1459,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
     const errorEmbed = new EmbedBuilder()
       .setColor('#e74c3c')
       .setAuthor({ name: '\u{1F534} SYSTEM ALERT', iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL() })
-      .setDescription('\u274C Could not retrieve memories. Please try again later.')
+      .setDescription(t('lydia.memory_error', lang))
       .setTimestamp();
     await respond({ embeds: [errorEmbed], flags: 64 });
   }
@@ -1606,14 +1603,15 @@ function setupLydia(client, database) {
 async function runLydiaCommand(client, message, args, database, serverSettings, usedCommand) {
     const guildId = message.guild?.id ?? 'DM';
   if (!message.guild) return;
+  const lang = serverSettings?.language && serverSettings.language !== 'auto' ? serverSettings.language : 'en';
   if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
     return message.reply({
-      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription('\u{1F534} **ACCESS DENIED** \u2014 Administrator privileges required')]
+      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription(t('lydia.admin_only', lang))]
     }).catch(() => {});
   }
 
   const sub = args[0]?.toLowerCase() || 'status';
-  if (sub === 'memory') return await handleMemorySubcommand(message, database, false);
+  if (sub === 'memory') return await handleMemorySubcommand(message, database, false, client);
   if (!['on', 'off', 'status'].includes(sub)) return;
   await handleLydiaToggle(client, message.channel.id, message.guild.id, message.author.id, sub, async (payload) => message.reply(payload));
 }
@@ -1632,10 +1630,12 @@ const slashCommand = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('delkey').setDescription('\u{1F5D1}\u{FE0F} Remove this server\'s custom keys'));
 
 async function executeSlashCommand(interaction, client) {
-  if (!interaction.guild) return interaction.reply({ content: '🏰 I only do my magic inside servers — DMs make me shy. Try me in a channel!', flags: 64 });
+  const _ssX = client.getServerSettings?.(interaction.guild?.id) || {};
+  const lang = _ssX.language && _ssX.language !== 'auto' ? _ssX.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+  if (!interaction.guild) return interaction.reply({ content: t('lydia.no_guild', lang), flags: 64 });
   if (!interaction.member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription('🛡️ **Hold up** — only server admins can flip my switches. Grab one of them and try again!')],
+      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription(t('lydia.admin_only_slash', lang))],
       flags: 64
     });
   }
@@ -1645,20 +1645,20 @@ async function executeSlashCommand(interaction, client) {
   if (sub === 'memory') {
     // memory uses its own reply — no defer needed
     const database = client.db;
-    if (!database) return interaction.reply({ content: '😵 My memory bank is offline right now — give me a minute and try again.', flags: 64 });
-    return await handleMemorySubcommand(interaction, database, true);
+    if (!database) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
+    return await handleMemorySubcommand(interaction, database, true, client);
   }
 
   if (sub === 'setkey') {
     const database = client.db;
-    if (!database) return interaction.reply({ content: '😵 My memory bank is offline right now — give me a minute and try again.', flags: 64 });
+    if (!database) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
     if (!isPremium(database, interaction.guildId)) {
-      return interaction.reply({ content: '🔑 **Custom API keys are a Premium perk** — but no worries, I already run on the bot\'s shared keys for free!\nUpgrade this server to Premium to bring your own quota ✨', flags: 64 });
+      return interaction.reply({ content: t('lydia.premium_required', lang), flags: 64 });
     }
     const service = interaction.options.getString('service', true);
     const key = (interaction.options.getString('key', true) || '').trim();
     if (key.length < 20 || /\s/.test(key)) {
-      return interaction.reply({ content: '🤔 That doesn\'t look like a valid API key — double-check and paste the full thing (no spaces).', flags: 64 });
+      return interaction.reply({ content: t('lydia.key_invalid', lang), flags: 64 });
     }
     // One key per server — a new key always replaces the previous one
     let replaced = null;
@@ -1670,24 +1670,24 @@ async function executeSlashCommand(interaction, client) {
         VALUES (?, ?, ?, ?, strftime('%s','now'))`)
         .run(String(interaction.guildId), service, key, interaction.user.id);
     } catch (e) {
-      return interaction.reply({ content: '😵 Couldn\'t save the key — my database hiccupped. Try again?', flags: 64 });
+      return interaction.reply({ content: t('lydia.key_db_error', lang), flags: 64 });
     }
     const label = service === 'openrouter' ? 'AI brain (OpenRouter)' : 'web search (Brave)';
-    const replacedNote = replaced ? `\n♻️ Your previous **${replaced === 'openrouter' ? 'OpenRouter' : 'Brave'}** key was replaced — one key per server keeps things clean.`
+    const replacedNote = replaced ? t('lydia.key_replaced_note', lang, { service: replaced === 'openrouter' ? 'OpenRouter' : 'Brave' })
       : '';
-    return interaction.reply({ content: `🔑 **Done!** This server now powers my **${label}** with your own key.\nYour quota, your rules ✨${replacedNote}\n-# Tip: your key is stored server-side only and never shown in chat.`, flags: 64 });
+    return interaction.reply({ content: t('lydia.key_saved', lang, { label }) + replacedNote + '\n-# Tip: your key is stored server-side only and never shown in chat.', flags: 64 });
   }
 
   if (sub === 'delkey') {
     const database = client.db;
-    if (!database) return interaction.reply({ content: '😵 My memory bank is offline right now — give me a minute and try again.', flags: 64 });
+    if (!database) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
     try {
       const r = database.prepare('DELETE FROM lydia_keys WHERE guild_id = ?').run(String(interaction.guildId));
       return interaction.reply({ content: r.changes > 0
-        ? '🗑️ **Custom keys removed** — I\'m back on the bot\'s shared keys. Smooth transition, zero downtime 🎧'
-        : '🤷 This server had no custom keys — already running on the shared ones!', flags: 64 });
+        ? t('lydia.key_removed', lang)
+        : t('lydia.key_none', lang), flags: 64 });
     } catch (e) {
-      return interaction.reply({ content: '😵 Couldn\'t remove the keys — try again in a moment.', flags: 64 });
+      return interaction.reply({ content: t('lydia.key_db_error_remove', lang), flags: 64 });
     }
   }
 
