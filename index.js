@@ -2,6 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, REST, Routes, MessageFlags } = require('discord.js');
+const { t } = require('./lib/i18n');
 
 // ================= MALI-OPTIMIZED ASSET CACHE =================
 const AssetCache = require('./plugins/asset-cache.js');
@@ -3848,9 +3849,7 @@ if (message.content && message.content.length > 4000) {
 const cooldownCheck = checkCooldown(message.author.id, cmdName, cooldownMs);
 if (cooldownCheck.blocked) {
     const lang = commandLang || 'en';
-    const msg = lang === 'fr' 
-        ? `⏳ Ralentissez ! Réessayez dans ${cooldownCheck.remaining}s`
-        : `⏳ Slow down! Try again in ${cooldownCheck.remaining}s`;
+    const msg = t('index.cooldown', lang, { remaining: cooldownCheck.remaining });
     return message.reply(msg).catch(() => {});
 }
     
@@ -3865,7 +3864,7 @@ if (cooldownCheck.blocked) {
             } catch (e) { 
                 console.error(`${red}[COMMAND ERROR]${reset} ${cmdName}:`, e);
                 const lang = detectLanguage(usedCommand || cmdName);
-                const errorMsg = lang === 'fr' ? "⚠️ **Echec de l'execution de la commande.**" : "⚠️ **Command execution failed.**";
+                const errorMsg = t('index.cmd_error', lang);
                 return message.reply(errorMsg).catch(() => {});
             }
         }
@@ -3904,26 +3903,20 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         // Get user's preferred language from locale or fallback
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
         
-        const title = lang === 'fr' ? '🦅 ACCÈS RESTREINT — COMMANDE SERVEUR UNIQUEMENT' : '🦅 RESTRICTED ACCESS — SERVER-ONLY COMMAND';
-        const description = lang === 'fr'
-            ? `\`\`\`ansi\n\u001b[1;33m⚠️ ZONE DE COMMANDE INVALIDE\u001b[0m\n\nCette commande nécessite un \u001b[1;36mcontexte serveur\u001b[0m pour accéder aux données du guilde.\n\`\`\``
-            : `\`\`\`ansi\n\u001b[1;33m⚠️ INVALID COMMAND ZONE\u001b[0m\n\nThis command requires a \u001b[1;36mserver context\u001b[0m to access guild-specific data.\n\`\`\``;
+        const title = t('index.restricted_title', lang);
+        const description = t('index.restricted_desc', lang);
         
-        const actionRequired = lang === 'fr'
-            ? `**Exécutez \`/${command.name}\` dans n'importe quel canal serveur où ${client.user.username} est présent.**\n\n🔹 *Les commandes de profil, économie et modération ne fonctionnent pas en messages privés.*`
-            : `**Run \`/${command.name}\` in any server channel where ${client.user.username} is present.**\n\n🔹 *Profile, economy, and moderation commands do not work in DMs.*`;
+        const actionRequired = t('index.restricted_action', lang, { command: command.name, botname: client.user.username });
         
-        const suggestion = lang === 'fr'
-            ? `💡 **Alternative :** Utilisez \`/help\` pour voir les commandes disponibles en DM.`
-            : `💡 **Alternative:** Use \`/help\` to see commands available in DMs.`;
+        const suggestion = t('index.restricted_suggestion', lang);
         
         const fallbackEmbed = new EmbedBuilder()
             .setColor('#f1c40f')
             .setAuthor({ name: title, iconURL: client.user.displayAvatarURL() })
             .setDescription(description)
             .addFields(
-                { name: lang === 'fr' ? '📍 ACTION REQUISE' : '📍 ACTION REQUIRED', value: actionRequired, inline: false },
-                { name: lang === 'fr' ? '💡 SUGGESTION' : '💡 SUGGESTION', value: suggestion, inline: false }
+                { name: t('index.restricted_action_label', lang), value: actionRequired, inline: false },
+                { name: t('index.restricted_suggestion_label', lang), value: suggestion, inline: false }
             )
             .setFooter({ text: `BAMAKO-223 NODE • ${client.user.username} v${client.version}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
@@ -4180,29 +4173,21 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'welcome_help') {
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : null;
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const _ssG = interaction.guild ? (client.getServerSettings?.(interaction.guild.id) || {}) : {};
+        const lang = _ssG.language && _ssG.language !== 'auto' ? _ssG.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
         
         const helpEmbed = new EmbedBuilder()
             .setColor('#2ecc71')
-            .setTitle(lang === 'fr' ? '🦅 ASSISTANCE GUARDIAN' : '🦅 GUARDIAN ASSISTANCE')
+            .setTitle(t('index.guardian_title', lang))
             .setDescription(
                 `\`\`\`ansi\n` +
-                (lang === 'fr'
-                    ? `\u001b[1;36mBienvenue sur ${interaction.guild?.name || 'notre serveur'}!\u001b[0m\n\n` +
-                      `\u001b[1;33mCommandes essentielles:\u001b[0m\n` +
-                      `\u001b[1;32m${prefix}help\u001b[0m - Voir toutes les commandes\n` +
-                      `\u001b[1;32m${prefix}profile\u001b[0m - Votre profil\n` +
-                      `\u001b[1;32m${prefix}daily\u001b[0m - Recompense quotidienne\n` +
-                      `\u001b[1;32m${prefix}shop\u001b[0m - Boutique\n` +
-                      `\u001b[1;32m${prefix}lydia [message]\u001b[0m - Parler a l'IA\n`
-                    : `\u001b[1;36mWelcome to ${interaction.guild?.name || 'our server'}!\u001b[0m\n\n` +
-                      `\u001b[1;33mEssential commands:\u001b[0m\n` +
-                      `\u001b[1;32m${prefix}help\u001b[0m - View all commands\n` +
-                      `\u001b[1;32m${prefix}profile\u001b[0m - Your profile\n` +
-                      `\u001b[1;32m${prefix}daily\u001b[0m - Daily reward\n` +
-                      `\u001b[1;32m${prefix}shop\u001b[0m - Shop\n` +
-                      `\u001b[1;32m${prefix}lydia [message]\u001b[0m - Talk to AI\n`
-                ) +
+`[1;36m${t('index.guardian_welcome', lang, { server: interaction.guild?.name || (lang === 'fr' ? 'notre serveur' : 'our server') })}[0m\n\n` +
+                `[1;33m${t('index.guardian_cmds_label', lang)}[0m\n` +
+                `[1;32m${t('index.guardian_help', lang, { prefix })}[0m\n` +
+                `[1;32m${t('index.guardian_profile', lang, { prefix })}[0m\n` +
+                `[1;32m${t('index.guardian_daily', lang, { prefix })}[0m\n` +
+                `[1;32m${t('index.guardian_shop', lang, { prefix })}[0m\n` +
+                `[1;32m${t('index.guardian_lydia', lang, { prefix })}[0m\n`
                 `\`\`\``
             )
             .setFooter({ text: `${interaction.guild?.name || 'Neural Network'} • ${prefix} = prefix • v${client.version}` });
@@ -4213,7 +4198,8 @@ safeOn(Events.InteractionCreate, async (interaction) => {
 
     // ================= PROFILE BUTTON HANDLER (COMPOSITE KEY AWARE) =================
     if (interaction.isButton() && interaction.customId.startsWith('welcome_profile_')) {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const _ssP = interaction.guild ? (client.getServerSettings?.(interaction.guild.id) || {}) : {};
+        const lang = _ssP.language && _ssP.language !== 'auto' ? _ssP.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
         
         try {
             const clicker = interaction.user;
@@ -4276,35 +4262,35 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             const profileEmbed = new EmbedBuilder()
                 .setColor('#3498db')
                 .setAuthor({ 
-                    name: lang === 'fr' ? `👤 PROFIL • ${clicker.username}` : `👤 PROFILE • ${clicker.username}`,
+                    name: t('index.profile_title', lang, { username: clicker.username }),
                     iconURL: clicker.displayAvatarURL() 
                 })
                 .setDescription(
-                    `### 📊 ${lang === 'fr' ? 'Statistiques Neurales' : 'Neural Statistics'}\n` +
+                    `${t('index.profile_stats_header', lang)}\n` +
                     `\`\`\`yaml\n` +
-                    `${lang === 'fr' ? 'Niveau' : 'Level'}: ${level}\n` +
+                    `${t('index.stat_level', lang)}: ${level}\n` +
                     `XP: ${xp.toLocaleString()} / ${Math.floor(nextLevelXP).toLocaleString()}\n` +
-                    `${lang === 'fr' ? 'Progression' : 'Progress'}: ${progressBar} ${progressPercent}%\n` +
-                    `${lang === 'fr' ? 'Credits' : 'Credits'}: ${credits.toLocaleString()} 🪙\n` +
-                    `${lang === 'fr' ? 'Serie Quotidienne' : 'Daily Streak'}: ${streakDays} 🔥\n` +
-                    `${lang === 'fr' ? 'Record de Serie' : 'Best Streak'}: ${highestStreak} 💎\n` +
-                    `${lang === 'fr' ? 'Total Quotidiens' : 'Total Dailies'}: ${totalDailies}\n` +
-                    `${lang === 'fr' ? 'Messages' : 'Messages'}: ${totalMessages.toLocaleString()}\n` +
-                    `${lang === 'fr' ? 'Parties Jouees' : 'Games Played'}: ${gamesPlayed}\n` +
-                    `${lang === 'fr' ? 'Victoires' : 'Wins'}: ${gamesWon}\n` +
+                    `${t('index.stat_progress', lang)}: ${progressBar} ${progressPercent}%\n` +
+                    `${t('index.stat_credits', lang)}: ${credits.toLocaleString()} 🪙\n` +
+                    `${t('index.stat_daily_streak', lang)}: ${streakDays} 🔥\n` +
+                    `${t('index.stat_best_streak', lang)}: ${highestStreak} 💎\n` +
+                    `${t('index.stat_total_dailies', lang)}: ${totalDailies}\n` +
+                    `${t('index.stat_messages', lang)}: ${totalMessages.toLocaleString()}\n` +
+                    `${t('index.stat_games_played', lang)}: ${gamesPlayed}\n` +
+                    `${t('index.stat_wins', lang)}: ${gamesWon}\n` +
                     `\`\`\``
                 )
                 .addFields(
                     {
-                        name: `📅 **${lang === 'fr' ? 'Compte Cree' : 'Account Created'}**`,
-                        value: `<t:${creationUnix}:D> (${ageDays} ${lang === 'fr' ? 'jours' : 'days'})`,
+                        name: t('index.stat_account_created', lang),
+                        value: `<t:${creationUnix}:D> (${ageDays} ${t('index.stat_days', lang)})`,
                         inline: true
                     },
                     {
-                        name: `🏛️ **${lang === 'fr' ? 'Rejoint le Serveur' : 'Joined Server'}**`,
+                        name: t('index.stat_joined_server', lang),
                         value: joinUnix 
-                            ? `<t:${joinUnix}:D> (${joinDays} ${lang === 'fr' ? 'jours' : 'days'})` 
-                            : (lang === 'fr' ? 'Non disponible' : 'N/A'),
+                            ? `<t:${joinUnix}:D> (${joinDays} ${t('index.stat_days', lang)})` 
+                            : t('index.stat_na', lang),
                         inline: true
                     },
                     {
@@ -4324,7 +4310,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         } catch (err) {
             console.error('[PROFILE BUTTON ERROR]', err);
             await interaction.reply({ 
-                content: lang === 'fr' ? "❌ Erreur lors du chargement du profil." : "❌ Error loading profile.", 
+                content: t('index.profile_error', lang), 
                 flags: 1 << 6 
             });
         }
@@ -4406,10 +4392,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         });
         afkUsers.set(targetId, afkData);
         
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const replyMsg = lang === 'fr' 
-            ? `🔔 Rappel envoye! ${afkData.username} le verra a son retour.`
-            : `🔔 Reminder sent! ${afkData.username} will see it when they return.`;
+        const _ssA = interaction.guild ? (client.getServerSettings?.(interaction.guild.id) || {}) : {};
+        const lang = _ssA.language && _ssA.language !== 'auto' ? _ssA.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+        const replyMsg = t('index.afk_reminder', lang, { username: afkData.username });
         
         await interaction.reply({ content: replyMsg, flags: 1 << 6 });
         return;
@@ -4925,9 +4910,7 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
     const ansi = Style.ansiWelcome(member, count);
     const tips = Style.buildProTips(cfg, lang);
     
-    const tipBlock = lang === 'fr'
-        ? `\n> 💡 **Pour bien démarrer :**\n${tips.map(t => `> • ${t}`).join('\n')}`
-        : `\n> 💡 **Quick start :**\n${tips.map(t => `> • ${t}`).join('\n')}`;
+    const tipBlock = `\n> ${t('index.tip_block_label', lang)}\n${tips.map(t => `> • ${t}`).join('\n')}`;
 
     await ch.send({
         content: ansi + tipBlock,
