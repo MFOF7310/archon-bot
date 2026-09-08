@@ -275,13 +275,7 @@ const HALLUCINATION_PATTERNS = [
   /\b(\/plugins\/|\/src\/|\/config\/|\/data\/database|\.env\b|\.json\b|\/telegram\/|\/node_modules\/)/gi,
 ];
 
-const HALLUCINATION_FALLBACKS = [
-  "I'm not certain about that. I can help you with the features I have access to \u2014 try asking about economy, leveling, moderation, or use \`.help\` to see available commands.",
-  "I don't have information about that specifically. Would you like me to search the web, or can I help with something related to the bot's features?",
-  "That's outside my current knowledge base. I'm focused on helping with ARCHON CG-223's systems. What would you like to know about?",
-];
-
-function validateResponse(response) {
+function validateResponse(response, lang = 'en') {
   if (!response) return { ok: false, cleaned: null, reason: 'empty' };
 
   let score = 0;
@@ -308,7 +302,7 @@ function validateResponse(response) {
   const cleaned = scrubSecrets(response);
 
   if (score >= 3) {
-    const fallback = HALLUCINATION_FALLBACKS[Math.floor(Math.random() * HALLUCINATION_FALLBACKS.length)];
+    const fallback = t('lydia.fallback_' + (1 + Math.floor(Math.random() * 3)), lang);
     console.log(`${C.red}[HALLUCINATION BLOCKED]${C.reset} Score: ${score} | ${reasons.join(', ')}`);
     return { ok: false, cleaned: fallback, reason: reasons.join('; ') };
   }
@@ -1210,7 +1204,7 @@ async function handleLydiaMessage(message, client, database) {
 
     let { content: aiReply, model, latency, tokens } = aiResult;
 
-    const validation = validateResponse(aiReply);
+    const validation = validateResponse(aiReply, lang);
     let safeReply = validation.cleaned;
     if (validation.ok !== false && message.guild && typeof safeReply === 'string') {
       try {
@@ -1429,7 +1423,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
         })
         .setDescription(
           `\`\`\`ansi\n\u001b[1;33m[ ARCHIVE EMPTY ]\u001b[0m\n\u001b[33m${t('lydia.memory_empty', lang)}\u001b[0m\n\`\`\`\n` +
-          t('lydia.memory_empty_hint', lang) + `\n\n**Example:**\n\`Remember my favorite color is blue\`\n\u2192 Stores \`favorite_color: blue\``
+          t('lydia.memory_empty_hint', lang) + '\n\n' + t('lydia.memory_example', lang)
         )
         .setFooter({ text: t('lydia.memory_footer', lang) })
         .setTimestamp();
@@ -1675,7 +1669,7 @@ async function executeSlashCommand(interaction, client) {
     const label = service === 'openrouter' ? 'AI brain (OpenRouter)' : 'web search (Brave)';
     const replacedNote = replaced ? t('lydia.key_replaced_note', lang, { service: replaced === 'openrouter' ? 'OpenRouter' : 'Brave' })
       : '';
-    return interaction.reply({ content: t('lydia.key_saved', lang, { label }) + replacedNote + '\n-# Tip: your key is stored server-side only and never shown in chat.', flags: 64 });
+    return interaction.reply({ content: t('lydia.key_saved', lang, { label }) + replacedNote + '\n-# ' + t('lydia.key_saved_tip', lang), flags: 64 });
   }
 
   if (sub === 'delkey') {
