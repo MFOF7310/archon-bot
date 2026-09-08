@@ -268,7 +268,10 @@ module.exports = {
         const itemsMap = new Map(shopItems.map(item => [item.id, item]));
         const guildId = interaction.guild?.id || 'DM';
 
-        const lang = { fr: 'fr', zh: 'zh', ar: 'ar', bm: 'bm' }[(interaction.locale || '').slice(0, 2).toLowerCase()] || 'en';
+        const ss = client.getServerSettings?.(guildId)
+            || client.settings?.get(guildId)
+            || {};
+        const lang = ss.language || 'en';
 
         const getUsableItems = () => {
             return db.prepare(`
