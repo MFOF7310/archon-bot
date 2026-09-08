@@ -34,5 +34,10 @@
   "key_removed": "🗑️ **Custom keys removed** — I'm back on the bot's shared keys. Smooth transition, zero downtime 🎧",
   "key_none": "🤷 This server had no custom keys — already running on the shared ones!",
   "key_db_error_remove": "😵 Couldn't remove the keys — try again in a moment.",
-  "db_offline": "😵 My memory bank is offline right now — give me a minute and try again."
+  "db_offline": "😵 My memory bank is offline right now — give me a minute and try again.",
+  "fallback_1": "I'm not certain about that. I can help you with the features I have access to — try asking about economy, leveling, moderation, or use `.help` to see available commands.",
+  "fallback_2": "I don't have information about that specifically. Would you like me to search the web, or can I help with something related to the bot's features?",
+  "fallback_3": "That's outside my current knowledge base. I'm focused on helping with ARCHON CG-223's systems. What would you like to know about?",
+  "memory_example": "**Example:**\n`Remember my favorite color is blue`\n→ Stores `favorite_color: blue`",
+  "key_saved_tip": "Tip: your key is stored server-side only and never shown in chat."
 }

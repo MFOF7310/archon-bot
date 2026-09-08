@@ -144,5 +144,8 @@
   "slash_redirect": "⚡ The game center is available via slash.",
   "spinning": "🌀 Spinning...",
   "your_pick": "YOUR PICK",
-  "result_label": "RESULT"
+  "result_label": "RESULT",
+  "roulette_author": "🎲 ROULETTE",
+  "trivia_bridge_author": "🧠 NEURAL TRIVIA BRIDGE",
+  "footer_center": "ARCHON CG-223 • Game Center"
 }

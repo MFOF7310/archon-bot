@@ -33,5 +33,10 @@
   "tip_label_ar": "💡 **الأوامر الأساسية :**",
   "tip_label_zh": "💡 **基本命令 :**",
   "goodbye_footer": "ARCHON CG-223 | {guild} | Journal des départs",
-  "welcome_footer": "ARCHON CG-223 | {guild} | Membre #{count}"
+  "welcome_footer": "ARCHON CG-223 | {guild} | Membre #{count}",
+  "author": "Système de Bienvenue",
+  "footer": "ARCHON CG-223",
+  "default_welcome_msg": "Bienvenue {user} sur {server} ! Tu es le membre n°{count}.",
+  "default_goodbye_msg": "Au revoir {user}, merci d’avoir fait partie de {server} !",
+  "setup_slash": "`/welcome message` · `/welcome goodbyemsg`"
 }

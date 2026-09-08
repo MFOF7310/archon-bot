@@ -34,5 +34,10 @@
   "key_removed": "🗑️ **Clés personnalisées supprimées** — je repasse sur les clés partagées du bot. Transition en douceur, zéro interruption 🎧",
   "key_none": "🤷 Ce serveur n'avait aucune clé personnalisée — il tournait déjà sur les clés partagées !",
   "key_db_error_remove": "😵 Impossible de supprimer les clés — réessaie dans un instant.",
-  "db_offline": "😵 Ma banque de mémoire est hors ligne pour le moment — donne-moi une minute et réessaie."
+  "db_offline": "😵 Ma banque de mémoire est hors ligne pour le moment — donne-moi une minute et réessaie.",
+  "fallback_1": "Je n'en suis pas certain. Je peux t'aider avec les fonctionnalités auxquelles j'ai accès — essaie l'économie, les niveaux, la modération, ou utilise `.help` pour voir les commandes disponibles.",
+  "fallback_2": "Je n'ai pas d'information précise là-dessus. Tu veux que je fasse une recherche sur le web, ou je peux t'aider avec quelque chose lié aux fonctionnalités du bot ?",
+  "fallback_3": "C'est en dehors de ma base de connaissances actuelle. Je me concentre sur l'aide aux systèmes d'ARCHON CG-223. Sur quoi veux-tu en savoir plus ?",
+  "memory_example": "**Exemple :**\n`Retiens que ma couleur préférée est le bleu`\n→ Stocke `favorite_color: blue`",
+  "key_saved_tip": "Astuce : ta clé est stockée côté serveur uniquement et n'apparaît jamais dans le chat."
 }
