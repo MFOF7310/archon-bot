@@ -144,5 +144,8 @@
   "slash_redirect": "⚡ Le centre de jeux est disponible en slash.",
   "spinning": "🌀 La roue tourne...",
   "your_pick": "VOTRE CHOIX",
-  "result_label": "RÉSULTAT"
+  "result_label": "RÉSULTAT",
+  "roulette_author": "🎲 ROULETTE",
+  "trivia_bridge_author": "🧠 PONT TRIVIA NEURAL",
+  "footer_center": "ARCHON CG-223 • Centre de Jeux"
 }

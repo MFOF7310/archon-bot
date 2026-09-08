@@ -32,5 +32,9 @@
   "stat_na": "Non disponible",
   "profile_error": "❌ Erreur lors du chargement du profil.",
   "afk_reminder": "🔔 Rappel envoye! {username} le verra a son retour.",
-  "tip_block_label": "💡 **Pour bien démarrer :**"
+  "tip_block_label": "💡 **Pour bien démarrer :**",
+  "afk_just_now": "à l'instant",
+  "afk_ping_desc": "<a:Afk:1540774870827409501> **{user} est AFK** ({time})\n**Raison :** {reason}",
+  "afk_return_desc": "<a:away:1540773743343829002> **{user} est de retour !** Bon retour 👋\nAbsent depuis {minutes} min",
+  "footer": "ARCHON CG-223"
 }
