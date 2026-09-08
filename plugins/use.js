@@ -128,7 +128,7 @@ module.exports = {
             const noItemsEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
                 .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t('use.noItems', lang)}\u001b[0m\n\`\`\``)
+                .setTitle(`${t('use.noItems', lang)}`)
                 .setDescription(
                     `\`\`\`ansi\n` +
                     `\u001b[1;33m  ${t('use.neuralInventoryEmpty', lang)}\u001b[0m\n\n` +
@@ -211,7 +211,7 @@ module.exports = {
         const useEmbed = new EmbedBuilder()
             .setColor(ARCHON.purple)
             .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: avatarURL })
-            .setTitle(`\`\`\`ansi\n\u001b[1;35m  ${t('use.interfaceTitle', lang)}\u001b[0m\n\`\`\``)
+            .setTitle(`${t('use.interfaceTitle', lang)}`)
             .setDescription(
                 `\`\`\`ansi\n` +
                 `\u001b[1;36m  ${t('use.usableItems', lang, { count: usableItems.length })}\u001b[0m\n\n` +
@@ -290,7 +290,7 @@ module.exports = {
             const noItemsEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
                 .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t('use.noItems', lang)}\u001b[0m\n\`\`\``)
+                .setTitle(`${t('use.noItems', lang)}`)
                 .setDescription(
                     `\`\`\`ansi\n` +
                     `\u001b[1;33m  ${t('use.neuralInventoryEmpty', lang)}\u001b[0m\n\n` +
@@ -343,7 +343,7 @@ module.exports = {
         const useEmbed = new EmbedBuilder()
             .setColor(ARCHON.purple)
             .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
-            .setTitle(`\`\`\`ansi\n\u001b[1;35m  ${t('use.interfaceTitle', lang)}\u001b[0m\n\`\`\``)
+            .setTitle(`${t('use.interfaceTitle', lang)}`)
             .setDescription(
                 `\`\`\`ansi\n` +
                 `\u001b[1;36m  ${t('use.usableItems', lang, { count: usableItems.length })}\u001b[0m\n\n` +
@@ -413,7 +413,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
         const alreadyEmbed = new EmbedBuilder()
             .setColor(ARCHON.gold)
             .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-            .setTitle(`\`\`\`ansi\n\u001b[1;33m  ⚠️ ${t('use.badgeAlreadyEquipped', lang)}\u001b[0m\n\`\`\``)
+            .setTitle(`⚠️ ${t('use.badgeAlreadyEquipped', lang)}`)
             .setDescription(
                 `\`\`\`ansi\n` +
                 `\u001b[1;36m  ${t('use.currentBadge', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n\n` +
@@ -454,7 +454,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
                 const removedEmbed = new EmbedBuilder()
                     .setColor(ARCHON.green)
                     .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                    .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✅ ${t('use.badgeRemoved', lang)}\u001b[0m\n\`\`\``)
+                    .setTitle(`✅ ${t('use.badgeRemoved', lang)}`)
                     .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('use.badgeRemovedDesc', lang)}\u001b[0m\n\`\`\``)
                     .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
 
@@ -473,7 +473,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
     const confirmEmbed = new EmbedBuilder()
         .setColor(ARCHON.neural)
         .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.confirmEquip', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-        .setTitle(`\`\`\`ansi\n\u001b[1;32m  🎖️ ${t('use.badgePreview', lang)}\u001b[0m\n\`\`\``)
+        .setTitle(`🎖️ ${t('use.badgePreview', lang)}`)
         .setDescription(
             `\`\`\`ansi\n` +
             `\u001b[1;36m  ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
@@ -523,7 +523,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
             const equippedEmbed = new EmbedBuilder()
                 .setColor(ARCHON.green)
                 .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✅ ${t('use.badgeEquipped', lang)}\u001b[0m\n\`\`\``)
+                .setTitle(`✅ ${t('use.badgeEquipped', lang)}`)
                 .setDescription(
                     `\`\`\`ansi\n` +
                     `\u001b[1;36m  🎖️ ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
@@ -652,7 +652,7 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
     const resultEmbed = new EmbedBuilder()
         .setColor(newRank.color)
         .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
-        .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✨ ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!\u001b[0m\n\`\`\``)
+        .setTitle(`✨ ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!`)
         .setDescription(`\`\`\`yaml\n${effectMessage}\n\`\`\``)
         .addFields(
             { name: t('use.neuralStats', lang), value: `\`\`\`ansi\n\u001b[1;36mXP:\u001b[0m  ${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\n\u001b[1;33m${t('use.creditsField', lang)}\u001b[0m  ${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\n\`\`\``, inline: false },
@@ -788,7 +788,7 @@ async function processItemUse(client, message, db, userId, itemId, itemsMap, lan
     const resultEmbed = new EmbedBuilder()
         .setColor(newRank.color)
         .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
-        .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✨ ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!\u001b[0m\n\`\`\``)
+        .setTitle(`✨ ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!`)
         .setDescription(`\`\`\`yaml\n${effectMessage}\n\`\`\``)
         .addFields(
             { name: t('use.neuralStats', lang), value: `\`\`\`ansi\n\u001b[1;36mXP:\u001b[0m  ${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\n\u001b[1;33m${t('use.creditsField', lang)}\u001b[0m  ${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\n\`\`\``, inline: false },
