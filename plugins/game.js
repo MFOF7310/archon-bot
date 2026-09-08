@@ -173,9 +173,9 @@ async function bridgeToTrivia(interaction, client) {
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
         const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
         const embed = new EmbedBuilder().setColor('#9b59b6')
-            .setAuthor({ name: '🧠 NEURAL TRIVIA BRIDGE', iconURL: client.user.displayAvatarURL() })
+            .setAuthor({ name: t('game.trivia_bridge_author', lang), iconURL: client.user.displayAvatarURL() })
             .setDescription(`⚡ ${t('game.triviaBridge', lang)}`)
-            .setFooter({ text: 'ARCHON CG-223 • Game Center' });
+            .setFooter({ text: t('game.footer_center', lang) });
         return interaction.reply({ embeds: [embed], flags: 64 });
     }
 }
@@ -496,7 +496,7 @@ async function playRoulette(ctx, client, db, lang, guildId, userId, bet) {
     const isBlack = (n) => n !== 0 && !isRed(n);
 
     const embed = new EmbedBuilder().setColor('#e74c3c')
-        .setAuthor({ name: `🎲 ROULETTE`, iconURL: ctx.user.displayAvatarURL() })
+        .setAuthor({ name: t('game.roulette_author', lang), iconURL: ctx.user.displayAvatarURL() })
         .setDescription(`## 💰 ${t('game.bet', lang)}: ${bet.toLocaleString()} 🪙\n${t('game.chooseNumber', lang)} (0-36):`)
         .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
 
@@ -639,7 +639,7 @@ async function run(client, message, args, db, serverSettings, usedCommand) {
     const embed = new EmbedBuilder().setColor('#00d4ff')
         .setAuthor({ name: t('game.hubTitle', lang), iconURL: client.user.displayAvatarURL() })
         .setDescription(`**${t('game.slash_redirect', lang)}**\n\`\`\`\n/game menu\n/game codm\n/game slots\n/game tictactoe @user\n/game blackjack\n/game roulette\n/game trivia\n\`\`\``)
-        .setFooter({ text: 'ARCHON CG-223 • Game Center' });
+        .setFooter({ text: t('game.footer_center', lang) });
     return message.reply({ embeds: [embed] }).catch(() => {});
 }
 
