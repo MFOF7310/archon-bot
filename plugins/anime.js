@@ -1,7 +1,6 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
 
-const FETCH_TIMEOUT = 5000;
 const ANIME_API = 'https://api.jikan.moe/v4';
 
 const CHARACTERS = {
@@ -17,7 +16,8 @@ const CHARACTERS = {
             "If you don't like your destiny, don't accept it. Instead, have the courage to change it!",
             "When people are protecting something truly special to them, they truly can become as strong as they can be."
         ],
-        funFact: '🍜 Loves ramen more than anything!'
+        funFact: '🍜 Loves ramen more than anything!',
+        fallbackImage: 'https://cdn.myanimelist.net/images/characters/2/284121.jpg'
     },
     'luffy': { 
         id: 40, 
@@ -31,7 +31,8 @@ const CHARACTERS = {
             "Power isn't determined by your size, but by the size of your heart and dreams!",
             "If you don't take risks, you can't create a future!"
         ],
-        funFact: '🍖 Can eat his body weight in meat!'
+        funFact: '🍖 Can eat his body weight in meat!',
+        fallbackImage: 'https://cdn.myanimelist.net/images/characters/9/310307.jpg'
     },
     'goku': { 
         id: 214, 
@@ -45,7 +46,8 @@ const CHARACTERS = {
             "I'd rather be a brainless monkey than a heartless monster!",
             "You can't control your fear. It comes from the heart."
         ],
-        funFact: '🍚 Can eat 50 bowls of rice in one sitting!'
+        funFact: '🍚 Can eat 50 bowls of rice in one sitting!',
+        fallbackImage: 'https://cdn.myanimelist.net/images/characters/14/319011.jpg'
     },
     'levi': { 
         id: 45627, 
@@ -59,7 +61,8 @@ const CHARACTERS = {
             "No one knows what the outcome will be. So, as much as you can, choose whatever you'll regret the least.",
             "I choose the hell of humans fighting until they die."
         ],
-        funFact: '🧹 Obsessed with cleaning and hates dirt!'
+        funFact: '🧹 Obsessed with cleaning and hates dirt!',
+        fallbackImage: 'https://cdn.myanimelist.net/images/characters/2/241413.jpg'
     },
     'tanjiro': { 
         id: 164533, 
@@ -73,7 +76,8 @@ const CHARACTERS = {
             "I will never give up! No matter what happens, I will never give up!",
             "Protect the people you love, protect the weak."
         ],
-        funFact: '👃 Has an incredibly sensitive nose!'
+        funFact: '👃 Has an incredibly sensitive nose!',
+        fallbackImage: 'https://cdn.myanimelist.net/images/characters/4/392103.jpg'
     },
     'gojo': { 
         id: 127691, 
@@ -87,7 +91,8 @@ const CHARACTERS = {
             "Love is the most twisted curse of all.",
             "It's not about whether I can. I just do it."
         ],
-        funFact: '🕶️ Wears a blindfold to control his immense power!'
+        funFact: '🕶️ Wears a blindfold to control his immense power!',
+        fallbackImage: 'https://cdn.myanimelist.net/images/characters/8/424605.jpg'
     },
     'deku': { 
         id: 133676, 
@@ -101,7 +106,8 @@ const CHARACTERS = {
             "Sometimes I do feel like I'm a failure. Like there's no hope for me. But even so, I'm not gonna give up. Ever!",
             "I have to work harder than anyone else to make it!"
         ],
-        funFact: '📓 Mutters analysis of heroes in his notebook!'
+        funFact: '📓 Mutters analysis of heroes in his notebook!',
+        fallbackImage: 'https://cdn.myanimelist.net/images/characters/5/331563.jpg'
     },
     'light': { 
         id: 80, 
@@ -115,7 +121,8 @@ const CHARACTERS = {
             "In this world, there are very few people who actually trust each other.",
             "I am the god of this new world!"
         ],
-        funFact: '✍️ Can write names at incredible speed!'
+        funFact: '✍️ Can write names at incredible speed!',
+        fallbackImage: 'https://cdn.myanimelist.net/images/characters/2/63824.jpg'
     },
 };
 
@@ -227,6 +234,30 @@ module.exports = {
     }
 };
 
+
+async function fetchCharacterImage(charData) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+            const res = await axios.get(`${ANIME_API}/characters/${charData.id}`, {
+                timeout: 3000
+            });
+            if (res.status === 429) {
+                await new Promise(r => setTimeout(r, 1000 * attempt));
+                continue;
+            }
+            const url = res.data?.data?.images?.jpg?.image_url;
+            if (url) return url;
+        } catch (err) {
+            if (attempt === 2) console.error(`[ANIME] Jikan unavailable for ${charData.name}: ${err.message}`);
+        }
+    }
+    if (charData.fallbackImage) {
+        console.log(`[ANIME] Using fallback image for ${charData.name}`);
+        return charData.fallbackImage;
+    }
+    return null;
+}
+
 async function createAnimeResponse(choice, user) {
     let charData;
     
@@ -256,24 +287,8 @@ const summonerMessages = [
 const summonMessage = summonerMessages[Math.floor(Math.random() * summonerMessages.length)];
 
     // Fetch character image - try multiple sources
-let imageUrl = null;
-const charKey = Object.keys(CHARACTERS).find(key => CHARACTERS[key].id === charData.id);
-
-// Try Jikan API first
-try {
-    const response = await axios.get(`${ANIME_API}/characters/${charData.id}`, { 
-        timeout: FETCH_TIMEOUT 
-    });
-    imageUrl = response.data?.data?.images?.jpg?.image_url || null;
-    if (imageUrl) console.log(`✅ Image loaded from Jikan for ${charData.name}`);
-} catch (err) {
-    console.error('Jikan API fetch error:', err.message);
-}
-
-// If Jikan fails, skip image entirely and show a nice placeholder
-if (!imageUrl) {
-    console.log(`⚠️ No image found for ${charData.name}, using text-only display`);
-}
+    // Fetch character image
+    const imageUrl = await fetchCharacterImage(charData);
     
     // Stats for fun
     const stats = {

@@ -72,6 +72,26 @@ const MYTHIC_QUOTES = {
     ]
 };
 
+
+// ================= SHARED STATS BUILDER =================
+function buildStatsEmbed(client, t, version) {
+    const ping = Math.round(client.ws.ping);
+    const uptime = process.uptime();
+    return new EmbedBuilder()
+        .setColor('#9b59b6')
+        .setTitle('📊 **REALM TELEMETRY**')
+        .addFields(
+            { name: '🌍 Connected Realms', value: `\`${client.guilds.cache.size}\``, inline: true },
+            { name: '👥 Total Agents', value: `\`${client.guilds.cache.reduce((a, g) => a + g.memberCount, 0).toLocaleString()}\``, inline: true },
+            { name: '⚡ Arcane Spells', value: `\`${client.commands?.size || 0}\``, inline: true },
+            { name: '🕐 Uptime', value: `\`${Math.floor(uptime / 86400)}d ${Math.floor((uptime % 86400) / 3600)}h ${Math.floor((uptime % 3600) / 60)}m\``, inline: true },
+            { name: '⚡ Neural Latency', value: `\`${ping}ms\``, inline: true },
+            { name: '💾 Memory', value: `\`${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\``, inline: true }
+        )
+        .setFooter({ text: t.footer.replace('{version}', version) })
+        .setTimestamp();
+}
+
 module.exports = {
     name: 'invite',
     aliases: ['inv', 'link', 'inviter', 'lien', 'summon', 'invoke'],
@@ -206,31 +226,7 @@ module.exports = {
             }
             
             if (interaction.customId === 'invite_stats') {
-                const freshPing = Math.round(client.ws.ping);
-                const freshGuilds = client.guilds.cache.size;
-                const freshUsers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
-                const freshCommands = client.commands?.size || 0;
-                const uptime = process.uptime();
-                const uptimeDays = Math.floor(uptime / 86400);
-                const uptimeHours = Math.floor((uptime % 86400) / 3600);
-                const uptimeMinutes = Math.floor((uptime % 3600) / 60);
-                
-                const statsEmbed = new EmbedBuilder()
-                    .setColor('#9b59b6')
-                    .setTitle('📊 **REALM TELEMETRY**')
-                    .setDescription(`\`\`\`yaml\n${t.surprise}\n\`\`\``)
-                    .addFields(
-                        { name: '🌍 Connected Realms', value: `\`${freshGuilds}\``, inline: true },
-                        { name: '👥 Total Agents', value: `\`${freshUsers.toLocaleString()}\``, inline: true },
-                        { name: '⚡ Arcane Spells', value: `\`${freshCommands}\``, inline: true },
-                        { name: '🕐 Uptime', value: `\`${uptimeDays}d ${uptimeHours}h ${uptimeMinutes}m\``, inline: true },
-                        { name: '⚡ Neural Latency', value: `\`${freshPing}ms\``, inline: true },
-                        { name: '💾 Memory Usage', value: `\`${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\``, inline: true }
-                    )
-                    .setFooter({ text: t.footer.replace('{version}', version) })
-                    .setTimestamp();
-                
-                await interaction.reply({ embeds: [statsEmbed], flags: 64 }).catch(() => {});
+                await interaction.reply({ embeds: [buildStatsEmbed(client, t, version)], flags: 64 }).catch(() => {});
             }
         });
         
@@ -292,39 +288,17 @@ module.exports = {
         
         await interaction.reply({ embeds: [embed], components: [row1, row2], ephemeral: false });
         
-        const collector = interaction.channel.createMessageComponentCollector({ 
-            filter: i => i.user.id === interaction.user.id && i.customId === 'invite_stats_slash',
-            time: 60000,
-            max: 1
-        });
-        
-        collector.on('collect', async (btnInteraction) => {
-            const freshPing = Math.round(client.ws.ping);
-            const freshGuilds = client.guilds.cache.size;
-            const freshUsers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
-            const freshCommands = client.commands?.size || 0;
-            const uptime = process.uptime();
-            const uptimeDays = Math.floor(uptime / 86400);
-            const uptimeHours = Math.floor((uptime % 86400) / 3600);
-            const uptimeMinutes = Math.floor((uptime % 3600) / 60);
-            
-            const statsEmbed = new EmbedBuilder()
-                .setColor('#9b59b6')
-                .setTitle('📊 **REALM TELEMETRY**')
-                .setDescription(`\`\`\`yaml\n${t.surprise}\n\`\`\``)
-                .addFields(
-                    { name: '🌍 Connected Realms', value: `\`${freshGuilds}\``, inline: true },
-                    { name: '👥 Total Agents', value: `\`${freshUsers.toLocaleString()}\``, inline: true },
-                    { name: '⚡ Arcane Spells', value: `\`${freshCommands}\``, inline: true },
-                    { name: '🕐 Uptime', value: `\`${uptimeDays}d ${uptimeHours}h ${uptimeMinutes}m\``, inline: true },
-                    { name: '⚡ Neural Latency', value: `\`${freshPing}ms\``, inline: true },
-                    { name: '💾 Memory Usage', value: `\`${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\``, inline: true }
-                )
-                .setFooter({ text: t.footer.replace('{version}', version) })
-                .setTimestamp();
-            
-            await btnInteraction.reply({ embeds: [statsEmbed], flags: 64 }).catch(() => {});
-        });
+        const safeChannel = interaction.channel ?? null;
+        if (safeChannel) {
+            const collector = safeChannel.createMessageComponentCollector({
+                filter: i => i.user.id === interaction.user.id && i.customId === 'invite_stats_slash',
+                time: 60000,
+                max: 1
+            });
+            collector.on('collect', async (btn) => {
+                await btn.reply({ embeds: [buildStatsEmbed(client, t, version)], flags: 64 }).catch(() => {});
+            });
+        }
         
         console.log(`[INVITE] ${interaction.user.tag} used slash invite | Lang: ${lang}`);
     }
