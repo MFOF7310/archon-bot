@@ -225,7 +225,7 @@ module.exports = {
 
         if (sub === 'test') {
             await message.reply({
-                embeds: [new EmbedBuilder().setColor(0x00fbff).setDescription(`**${t('welcome.test_sending', lang)}**`).setFooter({ text: 'ARCHON CG-223' })]
+                embeds: [new EmbedBuilder().setColor(0x00fbff).setDescription(`**${t('welcome.test_sending', lang)}**`).setFooter({ text: t('welcome.footer', lang) })]
             }).catch(() => {});
             await handleWelcome(message.member, client, db);
             return;
@@ -248,7 +248,7 @@ module.exports = {
                     .addFields(
                         { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
                         { name: t('welcome.field_preview', lang), value: preview, inline: false }
-                    ).setFooter({ text: 'ARCHON CG-223' })]
+                    ).setFooter({ text: t('welcome.footer', lang) })]
             }).catch(() => {});
         }
 
@@ -269,20 +269,20 @@ module.exports = {
                     .addFields(
                         { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
                         { name: t('welcome.field_preview', lang), value: preview, inline: false }
-                    ).setFooter({ text: 'ARCHON CG-223' })]
+                    ).setFooter({ text: t('welcome.footer', lang) })]
             }).catch(() => {});
         }
 
         // Default: config display
         const wCh  = cfg.welcomeChannel;
         const gCh  = cfg.goodbyeChannel;
-        const wMsg = cfg.welcomeMessage || 'Welcome {user} to {server}! You are member #{count}.';
-        const gMsg = cfg.goodbyeMessage || 'Goodbye {user}, thanks for being part of {server}!';
+        const wMsg = cfg.welcomeMessage || t('welcome.default_welcome_msg', lang);
+        const gMsg = cfg.goodbyeMessage || t('welcome.default_goodbye_msg', lang);
 
         return message.reply({
             embeds: [new EmbedBuilder()
                 .setColor(0x00fbff)
-                .setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() })
+                .setAuthor({ name: t('welcome.author', lang), iconURL: client.user.displayAvatarURL() })
                 .addFields(
                     { name: t('welcome.field_welcome_channel', lang), value: wCh ? `<#${wCh}>` : t('welcome.not_set', lang), inline: true },
                     { name: t('welcome.field_goodbye_channel', lang), value: gCh ? `<#${gCh}>` : t('welcome.not_set', lang), inline: true },
@@ -291,7 +291,7 @@ module.exports = {
                     { name: t('welcome.field_setup', lang), value: t('welcome.setup_value', lang, { prefix }), inline: false },
                     { name: t('welcome.field_test', lang), value: t('welcome.test_value', lang, { prefix }), inline: false }
                 )
-                .setFooter({ text: 'ARCHON CG-223' })
+                .setFooter({ text: t('welcome.footer', lang) })
                 .setTimestamp()]
         }).catch(() => {});
     },
@@ -319,14 +319,14 @@ module.exports = {
             return ix.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00fbff)
-                    .setAuthor({ name: 'Welcome System', iconURL: client.user.displayAvatarURL() })
+                    .setAuthor({ name: t('welcome.author', lang), iconURL: client.user.displayAvatarURL() })
                     .addFields(
                         { name: t('welcome.field_welcome_channel', lang), value: cfg.welcomeChannel ? `<#${cfg.welcomeChannel}>` : t('welcome.not_set', lang), inline: true },
                         { name: t('welcome.field_goodbye_channel', lang), value: cfg.goodbyeChannel ? `<#${cfg.goodbyeChannel}>` : t('welcome.not_set', lang), inline: true },
                         { name: t('welcome.field_welcome_message', lang), value: `\`${cfg.welcomeMessage || t('welcome.default_label', lang)}\``, inline: false },
                         { name: t('welcome.field_goodbye_message', lang), value: `\`${cfg.goodbyeMessage || t('welcome.default_label', lang)}\``, inline: false },
-                        { name: t('welcome.field_setup', lang), value: '`/welcome message` · `/welcome goodbyemsg`', inline: false }
-                    ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp()],
+                        { name: t('welcome.field_setup', lang), value: t('welcome.setup_slash', lang), inline: false }
+                    ).setFooter({ text: t('welcome.footer', lang) }).setTimestamp()],
                 flags: 1 << 6
             });
         }
@@ -355,7 +355,7 @@ module.exports = {
                     .addFields(
                         { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
                         { name: t('welcome.field_preview', lang), value: preview, inline: false }
-                    ).setFooter({ text: 'ARCHON CG-223' })],
+                    ).setFooter({ text: t('welcome.footer', lang) })],
                 flags: 1 << 6
             });
         }
@@ -373,7 +373,7 @@ module.exports = {
                     .addFields(
                         { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
                         { name: t('welcome.field_preview', lang), value: preview, inline: false }
-                    ).setFooter({ text: 'ARCHON CG-223' })],
+                    ).setFooter({ text: t('welcome.footer', lang) })],
                 flags: 1 << 6
             });
         }
