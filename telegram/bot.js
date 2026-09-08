@@ -390,7 +390,9 @@ Tap a category:
         answerCBQ(bridge, cbq.id);
         await bridge.editMessage(chatId, msgId,
             mediaType === 'v'
-                ? `🎬 <i>Starting ${quality}p download...</i>`
+                ? (quality === 'best'
+                    ? `🎬 <i>Starting BEST quality download...</i>`
+                    : (quality ? `🎬 <i>Starting ${quality}p download...</i>` : `🎬 <i>Opening quality picker...</i>`))
                 : `🎵 <i>Starting audio download...</i>`,
             { parse_mode: 'HTML' }
         ).catch(() => {});

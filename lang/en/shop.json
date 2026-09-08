@@ -1,0 +1,131 @@
+{
+  "title": "═ ARCHON NEURAL MARKETPLACE ═",
+  "desc": "Exchange your earned credits for system upgrades.",
+  "placeholder": "Select an upgrade to purchase...",
+  "balance": "Current Balance",
+  "alreadyOwned": "⚠️ You already possess this upgrade.",
+  "inventory": "📦 My Inventory",
+  "refresh": "🔄 Refresh",
+  "price": "Price",
+  "type": "Type",
+  "consumable": "Consumable",
+  "role": "Role",
+  "badge": "Badge",
+  "boost": "Boost",
+  "permanent": "Permanent",
+  "level": "Level",
+  "expires": "Expires",
+  "permanentItem": "Permanent",
+  "owned": "OWNED",
+  "locked": "LVL",
+  "accessDenied": "❌ These controls are locked to your session.",
+  "itemNotFound": "❌ Item not found.",
+  "purchaseError": "❌ An error occurred during purchase.",
+  "footer": "ARCHON CG-223 • Neural Marketplace",
+  "purchaseComplete": "✅ PURCHASE COMPLETE",
+  "newBalance": "New Balance",
+  "verifyWith": "Verify with",
+  "processing": "⚡ Processing transaction...",
+  "loadingInventory": "⚡ Loading inventory...",
+  "purchaseDetails": "PURCHASE DETAILS",
+  "itemPurchased": "Item Purchased",
+  "pricePaid": "Price Paid",
+  "bonusReceived": "Bonus Received",
+  "previousBalance": "Previous Balance",
+  "insufficientFunds": "❌ **Insufficient Credits!**\nRequired: `{price}` 🪙\nYour Balance: `{balance}` 🪙",
+  "levelRequirement": "⚠️ **Level Requirement Not Met**\nRequired Level: `{level}`\nYour Level: `{current}`",
+  "checkBalance": "Check your balance anytime with `{prefix}bal` or `{prefix}credits`",
+  "authorShop": "🏪 NEURAL MARKETPLACE",
+  "streakProtections": "Streak Protections",
+  "creditsLabel": "Credits",
+  "streakProtectionLine": "🛡️ Streak Protection: +1",
+  "xpBonusLine": "XP Bonus: +{amount} XP",
+  "notifAuthor": "🛒 NEURAL MARKETPLACE • PURCHASE",
+  "notifPurchased": "**{user}** purchased **{item}** {emoji}",
+  "notifPrice": "💰 **Price:** {price} 🪙",
+  "notifNewBalance": "📊 **New Balance:** {balance} 🪙",
+  "lockedShort": "🔒 Lv.{level}",
+  "requiresLevel": "🔒 Requires level {level}",
+  "insufficientShort": "❌ Insufficient funds! Need {price} but have {balance}",
+  "purchaseSuccessful": "✅ **PURCHASE SUCCESSFUL**",
+  "acquiredLine": "{emoji} **{name}** acquired!",
+  "newBalanceLine": "💰 New balance: `{balance}` {credits}",
+  "ownedShort": "✅ Owned",
+  "items": {
+    "starter_pack": {
+      "name": "New Recruit Pack",
+      "desc": "A small boost for new agents.",
+      "perk": "+100 XP & +50 Credits"
+    },
+    "xp_boost_small": {
+      "name": "XP Boost (Small)",
+      "desc": "Quick neural enhancement.",
+      "perk": "+250 XP"
+    },
+    "xp_boost_large": {
+      "name": "Quantum XP Overdrive",
+      "desc": "Massive XP injection.",
+      "perk": "+1000 XP instantly"
+    },
+    "credit_boost_small": {
+      "name": "Credit Injection",
+      "desc": "Small credit boost.",
+      "perk": "+200 Credits"
+    },
+    "credit_boost_large": {
+      "name": "Credit Surge",
+      "desc": "Major credit injection.",
+      "perk": "+1000 Credits"
+    },
+    "vip_role": {
+      "name": "VIP Status",
+      "desc": "Exclusive VIP role and perks.",
+      "perk": "VIP Role + Special Channel Access"
+    },
+    "badge_eagle": {
+      "name": "Eagle Badge",
+      "desc": "Elite Eagle Community emblem.",
+      "perk": "Display on profile"
+    },
+    "badge_neural": {
+      "name": "Neural Grid Badge",
+      "desc": "Neural grid operative emblem.",
+      "perk": "Display on profile"
+    },
+    "badge_architect": {
+      "name": "Architect Badge",
+      "desc": "Supreme architect emblem.",
+      "perk": "Display on profile"
+    },
+    "badge_steel": {
+      "name": "Steel Node Badge",
+      "desc": "BAMAKO-STEEL-NODE operative badge.",
+      "perk": "Display on profile"
+    },
+    "verified_role": {
+      "name": "Verified Agent",
+      "desc": "Verified status in the community.",
+      "perk": "Verified Role + Trust Badge"
+    },
+    "badge_pioneer": {
+      "name": "Pioneer Badge",
+      "desc": "Shows on your profile.",
+      "perk": "🏅 Pioneer Badge"
+    },
+    "badge_bamako": {
+      "name": "Bamako Pride Badge",
+      "desc": "Mali heritage badge.",
+      "perk": "🇲🇱 Bamako Pride Badge"
+    },
+    "mystery_box_bronze": {
+      "name": "Bronze Mystery Box",
+      "desc": "Contains random rewards!",
+      "perk": "Random XP or Credits"
+    },
+    "daily_streak_shield": {
+      "name": "Streak Shield",
+      "desc": "Protects your daily streak if missed.",
+      "perk": "1x Streak Protection"
+    }
+  }
+}

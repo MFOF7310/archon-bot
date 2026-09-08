@@ -1,0 +1,131 @@
+{
+  "title": "",
+  "desc": "",
+  "placeholder": "",
+  "balance": "",
+  "alreadyOwned": "",
+  "inventory": "",
+  "refresh": "",
+  "price": "",
+  "type": "",
+  "consumable": "",
+  "role": "",
+  "badge": "",
+  "boost": "",
+  "permanent": "",
+  "level": "",
+  "expires": "",
+  "permanentItem": "",
+  "owned": "",
+  "locked": "",
+  "accessDenied": "",
+  "itemNotFound": "",
+  "purchaseError": "",
+  "footer": "",
+  "purchaseComplete": "",
+  "newBalance": "",
+  "verifyWith": "",
+  "processing": "",
+  "loadingInventory": "",
+  "purchaseDetails": "",
+  "itemPurchased": "",
+  "pricePaid": "",
+  "bonusReceived": "",
+  "previousBalance": "",
+  "insufficientFunds": "",
+  "levelRequirement": "",
+  "checkBalance": "",
+  "authorShop": "",
+  "streakProtections": "",
+  "creditsLabel": "",
+  "streakProtectionLine": "",
+  "xpBonusLine": "",
+  "notifAuthor": "",
+  "notifPurchased": "",
+  "notifPrice": "",
+  "notifNewBalance": "",
+  "lockedShort": "",
+  "requiresLevel": "",
+  "insufficientShort": "",
+  "purchaseSuccessful": "",
+  "acquiredLine": "",
+  "newBalanceLine": "",
+  "ownedShort": "",
+  "items": {
+    "starter_pack": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "xp_boost_small": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "xp_boost_large": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "credit_boost_small": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "credit_boost_large": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "vip_role": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "badge_eagle": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "badge_neural": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "badge_architect": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "badge_steel": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "verified_role": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "badge_pioneer": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "badge_bamako": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "mystery_box_bronze": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    },
+    "daily_streak_shield": {
+      "name": "",
+      "desc": "",
+      "perk": ""
+    }
+  }
+}

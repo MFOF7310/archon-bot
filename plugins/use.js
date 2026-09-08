@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
+const { t } = require('../lib/i18n');
 
 // ================= UNIFIED LEVEL CALCULATION =================
 function calculateLevel(xp) {
@@ -32,73 +33,7 @@ const ARCHON = {
     alert: '#ff3333'
 };
 
-// ================= USE COMMAND TRANSLATIONS =================
-const useTranslations = {
-    en: {
-        title: '⚡ NEURAL ITEM ACTIVATION',
-        selectPrompt: 'Select an item to activate',
-        selectPlaceholder: 'Choose from your inventory',
-        noItems: '❌ INVENTORY EMPTY',
-        noItemsDesc: 'Your neural inventory contains no usable items. Visit the shop to acquire consumables, boosts, or badges.',
-        shopHint: '🛒 ACQUIRE ITEMS',
-        useSuccess: '✅ ACTIVATION COMPLETE',
-        used: 'ACTIVATED',
-        xpGain: '💪 NEURAL XP SURGE\n└─ +{amount} XP infused',
-        creditGain: '🪙 CREDIT INJECTION\n└─ +{amount} Credits deposited',
-        mysteryReward: '🎁 MYSTERY PROTOCOL EXECUTED\n└─ Reward: +{amount} {type}',
-        levelUp: '🎉 NEURAL ASCENSION\n└─ Level {level} achieved — {rank}',
-        newRank: '🏅 RANK ELEVATION\n└─ {oldRank} → {newRank}',
-        remaining: '📦 Stock: {quantity} remaining',
-        error: '❌ ACTIVATION FAILED\n└─ Item incompatible or corrupted.',
-        footer: 'ARCHON CG-223 • Neural Item System',
-        accessDenied: '❌ UNAUTHORIZED — This interface is biometrically locked to another agent.',
-        itemNotFound: '❌ ITEM NOT FOUND — Verify your inventory and retry.',
-        alreadyUsed: '❌ ITEM EXPIRED — This item has degraded beyond usability.',
-        backToInventory: '📦 RETURN TO INVENTORY',
-        close: '❌ ABORT',
-        badgeEquipped: '🎖️ BADGE EQUIPPED',
-        badgeEquippedDesc: 'Your profile badge has been updated. Other agents will see this emblem.',
-        badgeAlreadyEquipped: '⚠️ BADGE ALREADY ACTIVE — This badge is already displayed on your profile.',
-        badgeRemoved: '🔓 BADGE UNEQUIPPED',
-        badgeRemovedDesc: 'Profile badge cleared. Default neural signature restored.',
-        equipBadge: '🎖️ EQUIP BADGE',
-        unequipBadge: '🔓 UNEQUIP',
-        confirmEquip: 'CONFIRM EQUIPMENT',
-        badgePreview: 'Preview your new neural signature'
-    },
-    fr: {
-        title: '⚡ ACTIVATION NEURALE D\'ARTICLE',
-        selectPrompt: 'Sélectionnez un article à activer',
-        selectPlaceholder: 'Choisissez dans votre inventaire',
-        noItems: '❌ INVENTAIRE VIDE',
-        noItemsDesc: 'Votre inventaire neural ne contient aucun article utilisable. Visitez la boutique pour acquérir des consommables, boosts ou badges.',
-        shopHint: '🛒 ACQUÉRIR DES ARTICLES',
-        useSuccess: '✅ ACTIVATION TERMINÉE',
-        used: 'ACTIVÉ',
-        xpGain: '💪 SURGE NEURAL XP\n└─ +{amount} XP infusé',
-        creditGain: '🪙 INJECTION DE CRÉDITS\n└─ +{amount} Crédits déposés',
-        mysteryReward: '🎁 PROTOCOLE MYSTÈRE EXÉCUTÉ\n└─ Récompense: +{amount} {type}',
-        levelUp: '🎉 ASCENSION NEURALE\n└─ Niveau {level} atteint — {rank}',
-        newRank: '🏅 ÉLÉVATION DE RANG\n└─ {oldRank} → {newRank}',
-        remaining: '📦 Stock: {quantity} restant(s)',
-        error: '❌ ACTIVATION ÉCHOUÉE\n└─ Article incompatible ou corrompu.',
-        footer: 'ARCHON CG-223 • Système Neural d\'Articles',
-        accessDenied: '❌ NON AUTORISÉ — Cette interface est verrouillée biométriquement pour un autre agent.',
-        itemNotFound: '❌ ARTICLE INTROUVABLE — Vérifiez votre inventaire et réessayez.',
-        alreadyUsed: '❌ ARTICLE EXPIRÉ — Cet article s\'est dégradé au-delà de l\'utilisabilité.',
-        backToInventory: '📦 RETOURNER À L\'INVENTAIRE',
-        close: '❌ ABANDONNER',
-        badgeEquipped: '🎖️ BADGE ÉQUIPÉ',
-        badgeEquippedDesc: 'Votre badge de profil a été mis à jour. Les autres agents verront cet emblème.',
-        badgeAlreadyEquipped: '⚠️ BADGE DÉJÀ ACTIF — Ce badge est déjà affiché sur votre profil.',
-        badgeRemoved: '🔓 BADGE RETIRÉ',
-        badgeRemovedDesc: 'Badge de profil effacé. Signature neurale par défaut restaurée.',
-        equipBadge: '🎖️ ÉQUIPER LE BADGE',
-        unequipBadge: '🔓 DÉSÉQUIPER',
-        confirmEquip: 'CONFIRMER L\'ÉQUIPEMENT',
-        badgePreview: 'Aperçu de votre nouvelle signature neurale'
-    }
-};
+// Translations: lang/{en,fr,bm,zh,ar}/use.json
 
 module.exports = {
     name: 'use',
@@ -162,7 +97,6 @@ module.exports = {
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = useTranslations[lang];
         const userId = message.author.id;
         const userName = message.author.username;
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
@@ -193,21 +127,21 @@ module.exports = {
         if (usableItems.length === 0) {
             const noItemsEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.noItems}\u001b[0m\n\`\`\``)
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t('use.noItems', lang)}\u001b[0m\n\`\`\``)
                 .setDescription(
                     `\`\`\`ansi\n` +
-                    `\u001b[1;33m  ⚠️  NEURAL INVENTORY EMPTY\u001b[0m\n\n` +
-                    `\u001b[0;37m  ${t.noItemsDesc}\u001b[0m\n` +
+                    `\u001b[1;33m  ${t('use.neuralInventoryEmpty', lang)}\u001b[0m\n\n` +
+                    `\u001b[0;37m  ${t('use.noItemsDesc', lang)}\u001b[0m\n` +
                     `\`\`\``
                 )
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: message.guild?.iconURL() })
+                .setFooter({ text: `${guildName} • ${t('use.footer', lang)} • v${version}`, iconURL: message.guild?.iconURL() })
                 .setTimestamp();
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId('use_shop')
-                    .setLabel(t.shopHint)
+                    .setLabel(t('use.shopHint', lang))
                     .setStyle(ButtonStyle.Success)
                     .setEmoji('🛒')
             );
@@ -217,7 +151,7 @@ module.exports = {
 
             const collector = reply.createMessageComponentCollector({ time: 30000 });
             collector.on('collect', async (i) => {
-                if (i.user.id !== userId) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
+                if (i.user.id !== userId) return i.reply({ content: t('use.accessDenied', lang), flags: 64 }).catch(() => {});
                 if (i.customId === 'use_shop') {
                     collector.stop();
                     await reply.delete().catch(() => {});
@@ -234,13 +168,13 @@ module.exports = {
         if (directItemId) {
             const targetItem = usableItems.find(i => i.item_id === directItemId);
             if (!targetItem) {
-                return message.reply({ content: t.itemNotFound }).catch(() => {});
+                return message.reply({ content: t('use.itemNotFound', lang) }).catch(() => {});
             }
             const item = itemsMap.get(targetItem.item_id);
             if (item?.type === 'badge') {
-                await processBadgeEquip(client, message, db, userId, targetItem.item_id, itemsMap, t, lang, guildName, version, guildId, false);
+                await processBadgeEquip(client, message, db, userId, targetItem.item_id, itemsMap, lang, guildName, version, guildId, false);
             } else {
-                await processItemUse(client, message, db, userId, targetItem.item_id, itemsMap, t, lang, guildName, version, guildId, false);
+                await processItemUse(client, message, db, userId, targetItem.item_id, itemsMap, lang, guildName, version, guildId, false);
             }
             return;
         }
@@ -250,7 +184,7 @@ module.exports = {
         // ═══════════════════════════════════════════════════════
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId(`use_select_${userId}_${Date.now()}`)
-            .setPlaceholder(t.selectPlaceholder)
+            .setPlaceholder(t('use.selectPlaceholder', lang))
             .setMinValues(1)
             .setMaxValues(1);
 
@@ -261,7 +195,7 @@ module.exports = {
                 const typeEmoji = item.type === 'badge' ? '🎖️' : item.type === 'consumable' ? '⚡' : '💪';
                 selectMenu.addOptions({
                     label: `${itemName} (x${inv.quantity})`.slice(0, 100),
-                    description: `${typeEmoji} ${(item.en?.desc || item.desc || 'Neural item').substring(0, 50)}`,
+                    description: `${typeEmoji} ${(item[lang]?.desc || item.en?.desc || item.desc || t('use.neuralItemFallback', lang)).substring(0, 50)}`,
                     value: inv.item_id,
                     emoji: typeEmoji
                 });
@@ -270,22 +204,22 @@ module.exports = {
 
         const actionRow = new ActionRowBuilder().addComponents(selectMenu);
         const backRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`use_cancel_${userId}`).setLabel(t.close).setStyle(ButtonStyle.Danger).setEmoji('❌'),
-            new ButtonBuilder().setCustomId(`use_inventory_${userId}`).setLabel(t.backToInventory).setStyle(ButtonStyle.Secondary).setEmoji('📦')
+            new ButtonBuilder().setCustomId(`use_cancel_${userId}`).setLabel(t('use.close', lang)).setStyle(ButtonStyle.Danger).setEmoji('❌'),
+            new ButtonBuilder().setCustomId(`use_inventory_${userId}`).setLabel(t('use.backToInventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji('📦')
         );
 
         const useEmbed = new EmbedBuilder()
             .setColor(ARCHON.purple)
-            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: avatarURL })
-            .setTitle(`\`\`\`ansi\n\u001b[1;35m  ⚡ NEURAL INVENTORY INTERFACE\u001b[0m\n\`\`\``)
+            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: avatarURL })
+            .setTitle(`\`\`\`ansi\n\u001b[1;35m  ${t('use.interfaceTitle', lang)}\u001b[0m\n\`\`\``)
             .setDescription(
                 `\`\`\`ansi\n` +
-                `\u001b[1;36m  📦 USABLE ITEMS: ${usableItems.length}\u001b[0m\n\n` +
-                `\u001b[0;37m  💡 Select an item from the dropdown to activate it.\u001b[0m\n` +
-                `\u001b[0;37m  ⚠️ Consumables will be consumed. Badges will be equipped.\u001b[0m\n` +
+                `\u001b[1;36m  ${t('use.usableItems', lang, { count: usableItems.length })}\u001b[0m\n\n` +
+                `\u001b[0;37m  ${t('use.selectHint', lang)}\u001b[0m\n` +
+                `\u001b[0;37m  ${t('use.consumeWarn', lang)}\u001b[0m\n` +
                 `\`\`\``
             )
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: message.guild?.iconURL() })
+            .setFooter({ text: `${guildName} • ${t('use.footer', lang)} • v${version}`, iconURL: message.guild?.iconURL() })
             .setTimestamp();
 
         const reply = await message.reply({ embeds: [useEmbed], components: [actionRow, backRow] }).catch(() => {});
@@ -305,9 +239,9 @@ module.exports = {
                 collector.stop();
                 await reply.delete().catch(() => {});
                 if (item?.type === 'badge') {
-                    await processBadgeEquip(client, message, db, userId, selectedItemId, itemsMap, t, lang, guildName, version, guildId, false);
+                    await processBadgeEquip(client, message, db, userId, selectedItemId, itemsMap, lang, guildName, version, guildId, false);
                 } else {
-                    await processItemUse(client, message, db, userId, selectedItemId, itemsMap, t, lang, guildName, version, guildId, false);
+                    await processItemUse(client, message, db, userId, selectedItemId, itemsMap, lang, guildName, version, guildId, false);
                 }
             } else if (i.customId.startsWith('use_inventory_')) {
                 collector.stop();
@@ -334,8 +268,7 @@ module.exports = {
         const itemsMap = new Map(shopItems.map(item => [item.id, item]));
         const guildId = interaction.guild?.id || 'DM';
 
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const t = useTranslations[lang];
+        const lang = { fr: 'fr', zh: 'zh', ar: 'ar', bm: 'bm' }[(interaction.locale || '').slice(0, 2).toLowerCase()] || 'en';
 
         const getUsableItems = () => {
             return db.prepare(`
@@ -353,15 +286,15 @@ module.exports = {
         if (usableItems.length === 0) {
             const noItemsEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.noItems}\u001b[0m\n\`\`\``)
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t('use.noItems', lang)}\u001b[0m\n\`\`\``)
                 .setDescription(
                     `\`\`\`ansi\n` +
-                    `\u001b[1;33m  ⚠️  NEURAL INVENTORY EMPTY\u001b[0m\n\n` +
-                    `\u001b[0;37m  ${t.noItemsDesc}\u001b[0m\n` +
+                    `\u001b[1;33m  ${t('use.neuralInventoryEmpty', lang)}\u001b[0m\n\n` +
+                    `\u001b[0;37m  ${t('use.noItemsDesc', lang)}\u001b[0m\n` +
                     `\`\`\``
                 )
-                .setFooter({ text: `NEURAL NODE • ${t.footer} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
+                .setFooter({ text: `NEURAL NODE • ${t('use.footer', lang)} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
             return interaction.reply({ embeds: [noItemsEmbed], flags: 64 });
         }
 
@@ -369,14 +302,14 @@ module.exports = {
         if (itemId) {
             const targetItem = usableItems.find(i => i.item_id === itemId);
             if (!targetItem) {
-                return interaction.reply({ content: t.itemNotFound, flags: 64 });
+                return interaction.reply({ content: t('use.itemNotFound', lang), flags: 64 });
             }
             const item = itemsMap.get(itemId);
             await interaction.deferReply().catch(() => {});
             if (item?.type === 'badge') {
-                await processBadgeEquip(client, interaction, db, userId, itemId, itemsMap, t, lang, interaction.guild?.name, client.version, guildId, true);
+                await processBadgeEquip(client, interaction, db, userId, itemId, itemsMap, lang, interaction.guild?.name, client.version, guildId, true);
             } else {
-                await processItemUseForSlash(client, interaction, db, userId, itemId, itemsMap, t, lang, interaction.guild?.name, client.version, guildId);
+                await processItemUseForSlash(client, interaction, db, userId, itemId, itemsMap, lang, interaction.guild?.name, client.version, guildId);
             }
             return;
         }
@@ -384,7 +317,7 @@ module.exports = {
         // Show selection menu for slash
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId(`use_select_slash_${userId}_${Date.now()}`)
-            .setPlaceholder(t.selectPlaceholder)
+            .setPlaceholder(t('use.selectPlaceholder', lang))
             .setMinValues(1)
             .setMaxValues(1);
 
@@ -395,7 +328,7 @@ module.exports = {
                 const typeEmoji = item.type === 'badge' ? '🎖️' : item.type === 'consumable' ? '⚡' : '💪';
                 selectMenu.addOptions({
                     label: `${itemName} (x${inv.quantity})`.slice(0, 100),
-                    description: `${typeEmoji} ${(item.en?.desc || item.desc || 'Neural item').substring(0, 50)}`,
+                    description: `${typeEmoji} ${(item[lang]?.desc || item.en?.desc || item.desc || t('use.neuralItemFallback', lang)).substring(0, 50)}`,
                     value: inv.item_id,
                     emoji: typeEmoji
                 });
@@ -406,16 +339,16 @@ module.exports = {
 
         const useEmbed = new EmbedBuilder()
             .setColor(ARCHON.purple)
-            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-            .setTitle(`\`\`\`ansi\n\u001b[1;35m  ⚡ NEURAL INVENTORY INTERFACE\u001b[0m\n\`\`\``)
+            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
+            .setTitle(`\`\`\`ansi\n\u001b[1;35m  ${t('use.interfaceTitle', lang)}\u001b[0m\n\`\`\``)
             .setDescription(
                 `\`\`\`ansi\n` +
-                `\u001b[1;36m  📦 USABLE ITEMS: ${usableItems.length}\u001b[0m\n\n` +
-                `\u001b[0;37m  💡 Select an item from the dropdown to activate it.\u001b[0m\n` +
-                `\u001b[0;37m  ⚠️ Consumables will be consumed. Badges will be equipped.\u001b[0m\n` +
+                `\u001b[1;36m  ${t('use.usableItems', lang, { count: usableItems.length })}\u001b[0m\n\n` +
+                `\u001b[0;37m  ${t('use.selectHint', lang)}\u001b[0m\n` +
+                `\u001b[0;37m  ${t('use.consumeWarn', lang)}\u001b[0m\n` +
                 `\`\`\``
             )
-            .setFooter({ text: `NEURAL NODE • ${t.footer} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
+            .setFooter({ text: `NEURAL NODE • ${t('use.footer', lang)} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
 
         await interaction.reply({ embeds: [useEmbed], components: [actionRow], flags: 64 });
 
@@ -432,9 +365,9 @@ module.exports = {
             const item = itemsMap.get(selectedItemId);
             await i.deferUpdate().catch(() => {});
             if (item?.type === 'badge') {
-                await processBadgeEquip(client, i, db, userId, selectedItemId, itemsMap, t, lang, interaction.guild?.name, client.version, guildId, true);
+                await processBadgeEquip(client, i, db, userId, selectedItemId, itemsMap, lang, interaction.guild?.name, client.version, guildId, true);
             } else {
-                await processItemUseForSlash(client, i, db, userId, selectedItemId, itemsMap, t, lang, interaction.guild?.name, client.version, guildId);
+                await processItemUseForSlash(client, i, db, userId, selectedItemId, itemsMap, lang, interaction.guild?.name, client.version, guildId);
             }
         });
 
@@ -447,10 +380,10 @@ module.exports = {
 // ═══════════════════════════════════════════════════════
 // BADGE EQUIPMENT SYSTEM
 // ═══════════════════════════════════════════════════════
-async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, t, lang, guildName, version, guildId, isSlash) {
+async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, lang, guildName, version, guildId, isSlash) {
     const item = itemsMap.get(itemId);
     if (!item) {
-        const msg = t.itemNotFound;
+        const msg = t('use.itemNotFound', lang);
         if (isSlash) return context.editReply({ content: msg }).catch(() => {});
         return context.reply({ content: msg }).catch(() => {});
     }
@@ -462,7 +395,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
     `).get(userId, itemId);
 
     if (!inventoryItem) {
-        const msg = t.itemNotFound;
+        const msg = t('use.itemNotFound', lang);
         if (isSlash) return context.editReply({ content: msg }).catch(() => {});
         return context.reply({ content: msg }).catch(() => {});
     }
@@ -476,25 +409,25 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
         // Already equipped — offer to unequip
         const alreadyEmbed = new EmbedBuilder()
             .setColor(ARCHON.gold)
-            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-            .setTitle(`\`\`\`ansi\n\u001b[1;33m  ⚠️ ${t.badgeAlreadyEquipped}\u001b[0m\n\`\`\``)
+            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
+            .setTitle(`\`\`\`ansi\n\u001b[1;33m  ⚠️ ${t('use.badgeAlreadyEquipped', lang)}\u001b[0m\n\`\`\``)
             .setDescription(
                 `\`\`\`ansi\n` +
-                `\u001b[1;36m  🎖️ CURRENT BADGE:\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n\n` +
-                `\u001b[0;37m  Would you like to remove this badge?\u001b[0m\n` +
+                `\u001b[1;36m  ${t('use.currentBadge', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n\n` +
+                `\u001b[0;37m  ${t('use.removeBadgeQ', lang)}\u001b[0m\n` +
                 `\`\`\``
             )
-            .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t.footer} • v${version}` });
+            .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`badge_unequip_${userId}`)
-                .setLabel(t.unequipBadge)
+                .setLabel(t('use.unequipBadge', lang))
                 .setStyle(ButtonStyle.Danger)
                 .setEmoji('🔓'),
             new ButtonBuilder()
                 .setCustomId(`badge_keep_${userId}`)
-                .setLabel(t.close)
+                .setLabel(t('use.close', lang))
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('❌')
         );
@@ -517,10 +450,10 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
 
                 const removedEmbed = new EmbedBuilder()
                     .setColor(ARCHON.green)
-                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                    .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✅ ${t.badgeRemoved}\u001b[0m\n\`\`\``)
-                    .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.badgeRemovedDesc}\u001b[0m\n\`\`\``)
-                    .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t.footer} • v${version}` });
+                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
+                    .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✅ ${t('use.badgeRemoved', lang)}\u001b[0m\n\`\`\``)
+                    .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('use.badgeRemovedDesc', lang)}\u001b[0m\n\`\`\``)
+                    .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
 
                 await i.editReply({ embeds: [removedEmbed], components: [] }).catch(() => {});
             } else {
@@ -536,28 +469,28 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
     // ═══════════════════════════════════════════════════════
     const confirmEmbed = new EmbedBuilder()
         .setColor(ARCHON.neural)
-        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.confirmEquip}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-        .setTitle(`\`\`\`ansi\n\u001b[1;32m  🎖️ ${t.badgePreview}\u001b[0m\n\`\`\``)
+        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.confirmEquip', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
+        .setTitle(`\`\`\`ansi\n\u001b[1;32m  🎖️ ${t('use.badgePreview', lang)}\u001b[0m\n\`\`\``)
         .setDescription(
             `\`\`\`ansi\n` +
-            `\u001b[1;36m  BADGE:\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
-            `\u001b[1;36m  TYPE:\u001b[0m ${item.type?.toUpperCase() || 'BADGE'}\n` +
-            `\u001b[1;36m  RARITY:\u001b[0m ${item.rarity?.toUpperCase() || 'STANDARD'}\n` +
-            `\u001b[1;36m  STOCK:\u001b[0m ${inventoryItem.quantity} remaining\n\n` +
-            `\u001b[0;37m  ${t.badgeEquippedDesc}\u001b[0m\n` +
+            `\u001b[1;36m  ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
+            `\u001b[1;36m  ${t('use.typeField', lang)}\u001b[0m ${item.type?.toUpperCase() || 'BADGE'}\n` +
+            `\u001b[1;36m  ${t('use.rarityField', lang)}\u001b[0m ${item.rarity?.toUpperCase() || 'STANDARD'}\n` +
+            `\u001b[1;36m  ${t('use.stockLabelPlain', lang)}\u001b[0m ${inventoryItem.quantity} ${t('use.remainingWord', lang)}\n\n` +
+            `\u001b[0;37m  ${t('use.badgeEquippedDesc', lang)}\u001b[0m\n` +
             `\`\`\``
         )
-        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t.footer} • v${version}` });
+        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId(`badge_confirm_${userId}`)
-            .setLabel(t.equipBadge)
+            .setLabel(t('use.equipBadge', lang))
             .setStyle(ButtonStyle.Success)
             .setEmoji('🎖️'),
         new ButtonBuilder()
             .setCustomId(`badge_cancel_${userId}`)
-            .setLabel(t.close)
+            .setLabel(t('use.close', lang))
             .setStyle(ButtonStyle.Danger)
             .setEmoji('❌')
     );
@@ -586,16 +519,16 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
 
             const equippedEmbed = new EmbedBuilder()
                 .setColor(ARCHON.green)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.useSuccess}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✅ ${t.badgeEquipped}\u001b[0m\n\`\`\``)
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
+                .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✅ ${t('use.badgeEquipped', lang)}\u001b[0m\n\`\`\``)
                 .setDescription(
                     `\`\`\`ansi\n` +
-                    `\u001b[1;36m  🎖️ BADGE:\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
-                    `\u001b[1;36m  📦 STOCK:\u001b[0m ${inventoryItem.quantity} remaining\n\n` +
-                    `\u001b[0;37m  ${t.badgeEquippedDesc}\u001b[0m\n` +
+                    `\u001b[1;36m  🎖️ ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
+                    `\u001b[1;36m  ${t('use.stockLabelBadge', lang)}\u001b[0m ${inventoryItem.quantity} ${t('use.remainingWord', lang)}\n\n` +
+                    `\u001b[0;37m  ${t('use.badgeEquippedDesc', lang)}\u001b[0m\n` +
                     `\`\`\``
                 )
-                .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t.footer} • v${version}` });
+                .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
 
             await i.editReply({ embeds: [equippedEmbed], components: [] }).catch(() => {});
         } else {
@@ -608,10 +541,10 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
 // ═══════════════════════════════════════════════════════
 // SLASH-SPECIFIC ITEM PROCESSING
 // ═══════════════════════════════════════════════════════
-async function processItemUseForSlash(client, interaction, db, userId, itemId, itemsMap, t, lang, guildName, version, guildId) {
+async function processItemUseForSlash(client, interaction, db, userId, itemId, itemsMap, lang, guildName, version, guildId) {
     const item = itemsMap.get(itemId);
     if (!item) {
-        return interaction.editReply({ content: t.itemNotFound }).catch(() => {});
+        return interaction.editReply({ content: t('use.itemNotFound', lang) }).catch(() => {});
     }
 
     const inventoryItem = db.prepare(`
@@ -621,12 +554,12 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
     `).get(userId, itemId);
 
     if (!inventoryItem) {
-        return interaction.editReply({ content: t.itemNotFound }).catch(() => {});
+        return interaction.editReply({ content: t('use.itemNotFound', lang) }).catch(() => {});
     }
 
     if (inventoryItem.expires_at && inventoryItem.expires_at < Math.floor(Date.now() / 1000)) {
         db.prepare(`UPDATE user_inventory SET active = 0 WHERE user_id = ? AND item_id = ?`).run(userId, itemId);
-        return interaction.editReply({ content: t.alreadyUsed }).catch(() => {});
+        return interaction.editReply({ content: t('use.alreadyUsed', lang) }).catch(() => {});
     }
 
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare(`SELECT * FROM users WHERE id = ? AND guild_id = ?`).get(userId, guildId);
@@ -645,13 +578,13 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
             newXP += item.effect.xp;
             rewardAmount = item.effect.xp;
             rewardType = 'XP';
-            effectMessage = t.xpGain.replace('{amount}', item.effect.xp);
+            effectMessage = t('use.xpGain', lang, { amount: item.effect.xp });
         }
         if (item.effect.credits) {
             newCredits += item.effect.credits;
             rewardAmount = item.effect.credits;
             rewardType = 'Credits';
-            effectMessage = t.creditGain.replace('{amount}', item.effect.credits);
+            effectMessage = t('use.creditGain', lang, { amount: item.effect.credits });
         }
         if (item.effect.random) {
             const randomReward = item.effect.random[Math.floor(Math.random() * item.effect.random.length)];
@@ -659,18 +592,18 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
                 newXP += randomReward.xp;
                 rewardAmount = randomReward.xp;
                 rewardType = 'XP';
-                effectMessage = t.mysteryReward.replace('{amount}', randomReward.xp).replace('{type}', 'XP');
+                effectMessage = t('use.mysteryReward', lang, { amount: randomReward.xp, type: 'XP' });
             } else if (randomReward.credits) {
                 newCredits += randomReward.credits;
                 rewardAmount = randomReward.credits;
                 rewardType = 'Credits';
-                effectMessage = t.mysteryReward.replace('{amount}', randomReward.credits).replace('{type}', 'Credits');
+                effectMessage = t('use.mysteryReward', lang, { amount: randomReward.credits, type: 'Credits' });
             }
         }
         if (item.effect.streak_protection) {
             rewardAmount = 1;
             rewardType = 'Streak Protection';
-            effectMessage = '🛡️ **Streak Protection Activated!**\n└─ Your streak is protected for 1 missed day.';
+            effectMessage = t('use.streakProtectionMsg', lang);
         }
     }
 
@@ -715,23 +648,23 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
     // ═══════════════════════════════════════════════════════
     const resultEmbed = new EmbedBuilder()
         .setColor(newRank.color)
-        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.useSuccess}`, iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
-        .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✨ ${item[lang]?.name || item.en?.name || item.name} ${t.used}!\u001b[0m\n\`\`\``)
+        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
+        .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✨ ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!\u001b[0m\n\`\`\``)
         .setDescription(`\`\`\`yaml\n${effectMessage}\n\`\`\``)
         .addFields(
-            { name: '📊 NEURAL STATS', value: `\`\`\`ansi\n\u001b[1;36mXP:\u001b[0m  ${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\n\u001b[1;33mCredits:\u001b[0m  ${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\n\`\`\``, inline: false },
-            { name: '🎯 LEVEL', value: `\`\`\`ansi\n\u001b[1;35m${oldLevel} → ${newLevel}\u001b[0m\n\`\`\``, inline: true },
-            { name: '🏅 RANK', value: `\`\`\`ansi\n\u001b[1;33m${oldRank.emoji} ${oldRank.title[lang]}\u001b[0m\n\u001b[1;32m↓\u001b[0m\n\u001b[1;33m${newRank.emoji} ${newRank.title[lang]}\u001b[0m\n\`\`\``, inline: true },
-            { name: '📦 STOCK', value: `\`\`\`ansi\n\u001b[1;36m${newQuantity > 0 ? newQuantity + ' remaining' : 'DEPLETED'}\u001b[0m\n\`\`\``, inline: true }
+            { name: t('use.neuralStats', lang), value: `\`\`\`ansi\n\u001b[1;36mXP:\u001b[0m  ${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\n\u001b[1;33m${t('use.creditsField', lang)}\u001b[0m  ${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\n\`\`\``, inline: false },
+            { name: t('use.levelField', lang), value: `\`\`\`ansi\n\u001b[1;35m${oldLevel} → ${newLevel}\u001b[0m\n\`\`\``, inline: true },
+            { name: t('use.rankField', lang), value: `\`\`\`ansi\n\u001b[1;33m${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)}\u001b[0m\n\u001b[1;32m↓\u001b[0m\n\u001b[1;33m${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: true },
+            { name: t('use.stockField', lang), value: `\`\`\`ansi\n\u001b[1;36m${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)}\u001b[0m\n\`\`\``, inline: true }
         )
-        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t.footer} • v${version}`, iconURL: interaction.guild?.iconURL() })
+        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}`, iconURL: interaction.guild?.iconURL() })
         .setTimestamp();
 
     if (newLevel > oldLevel) {
-        resultEmbed.addFields({ name: '🎉 NEURAL ASCENSION', value: `\`\`\`ansi\n\u001b[1;32m  Level ${newLevel} — ${newRank.title[lang]}\u001b[0m\n\`\`\``, inline: false });
+        resultEmbed.addFields({ name: t('use.ascensionTitle', lang), value: `\`\`\`ansi\n\u001b[1;32m  ${t('use.ascensionLine', lang, { level: newLevel, rank: (newRank.title[lang] || newRank.title.en) })}\u001b[0m\n\`\`\``, inline: false });
     }
-    if (oldRank.title[lang] !== newRank.title[lang]) {
-        resultEmbed.addFields({ name: '🏅 RANK ELEVATION', value: `\`\`\`ansi\n\u001b[1;33m  ${oldRank.emoji} ${oldRank.title[lang]} → ${newRank.emoji} ${newRank.title[lang]}\u001b[0m\n\`\`\``, inline: false });
+    if ((oldRank.title[lang] || oldRank.title.en) !== (newRank.title[lang] || newRank.title.en)) {
+        resultEmbed.addFields({ name: t('use.rankElevationTitle', lang), value: `\`\`\`ansi\n\u001b[1;33m  ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: false });
     }
 
     await interaction.editReply({ content: '', embeds: [resultEmbed], components: [] }).catch(err => {
@@ -744,10 +677,10 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
 // ═══════════════════════════════════════════════════════
 // CORE ITEM PROCESSING FUNCTION (PREFIX)
 // ═══════════════════════════════════════════════════════
-async function processItemUse(client, message, db, userId, itemId, itemsMap, t, lang, guildName, version, guildId, isSlash) {
+async function processItemUse(client, message, db, userId, itemId, itemsMap, lang, guildName, version, guildId, isSlash) {
     const item = itemsMap.get(itemId);
     if (!item) {
-        return message.reply({ content: t.itemNotFound }).catch(() => {});
+        return message.reply({ content: t('use.itemNotFound', lang) }).catch(() => {});
     }
 
     const inventoryItem = db.prepare(`
@@ -757,12 +690,12 @@ async function processItemUse(client, message, db, userId, itemId, itemsMap, t, 
     `).get(userId, itemId);
 
     if (!inventoryItem) {
-        return message.reply({ content: t.itemNotFound }).catch(() => {});
+        return message.reply({ content: t('use.itemNotFound', lang) }).catch(() => {});
     }
 
     if (inventoryItem.expires_at && inventoryItem.expires_at < Math.floor(Date.now() / 1000)) {
         db.prepare(`UPDATE user_inventory SET active = 0 WHERE user_id = ? AND item_id = ?`).run(userId, itemId);
-        return message.reply({ content: t.alreadyUsed }).catch(() => {});
+        return message.reply({ content: t('use.alreadyUsed', lang) }).catch(() => {});
     }
 
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare(`SELECT * FROM users WHERE id = ? AND guild_id = ?`).get(userId, guildId);
@@ -781,13 +714,13 @@ async function processItemUse(client, message, db, userId, itemId, itemsMap, t, 
             newXP += item.effect.xp;
             rewardAmount = item.effect.xp;
             rewardType = 'XP';
-            effectMessage = t.xpGain.replace('{amount}', item.effect.xp);
+            effectMessage = t('use.xpGain', lang, { amount: item.effect.xp });
         }
         if (item.effect.credits) {
             newCredits += item.effect.credits;
             rewardAmount = item.effect.credits;
             rewardType = 'Credits';
-            effectMessage = t.creditGain.replace('{amount}', item.effect.credits);
+            effectMessage = t('use.creditGain', lang, { amount: item.effect.credits });
         }
         if (item.effect.random) {
             const randomReward = item.effect.random[Math.floor(Math.random() * item.effect.random.length)];
@@ -795,18 +728,18 @@ async function processItemUse(client, message, db, userId, itemId, itemsMap, t, 
                 newXP += randomReward.xp;
                 rewardAmount = randomReward.xp;
                 rewardType = 'XP';
-                effectMessage = t.mysteryReward.replace('{amount}', randomReward.xp).replace('{type}', 'XP');
+                effectMessage = t('use.mysteryReward', lang, { amount: randomReward.xp, type: 'XP' });
             } else if (randomReward.credits) {
                 newCredits += randomReward.credits;
                 rewardAmount = randomReward.credits;
                 rewardType = 'Credits';
-                effectMessage = t.mysteryReward.replace('{amount}', randomReward.credits).replace('{type}', 'Credits');
+                effectMessage = t('use.mysteryReward', lang, { amount: randomReward.credits, type: 'Credits' });
             }
         }
         if (item.effect.streak_protection) {
             rewardAmount = 1;
             rewardType = 'Streak Protection';
-            effectMessage = '🛡️ **Streak Protection Activated!**\n└─ Your streak is protected for 1 missed day.';
+            effectMessage = t('use.streakProtectionMsg', lang);
         }
     }
 
@@ -851,23 +784,23 @@ async function processItemUse(client, message, db, userId, itemId, itemsMap, t, 
     // ═══════════════════════════════════════════════════════
     const resultEmbed = new EmbedBuilder()
         .setColor(newRank.color)
-        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.useSuccess}`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
-        .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✨ ${item[lang]?.name || item.en?.name || item.name} ${t.used}!\u001b[0m\n\`\`\``)
+        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✨ ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!\u001b[0m\n\`\`\``)
         .setDescription(`\`\`\`yaml\n${effectMessage}\n\`\`\``)
         .addFields(
-            { name: '📊 NEURAL STATS', value: `\`\`\`ansi\n\u001b[1;36mXP:\u001b[0m  ${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\n\u001b[1;33mCredits:\u001b[0m  ${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\n\`\`\``, inline: false },
-            { name: '🎯 LEVEL', value: `\`\`\`ansi\n\u001b[1;35m${oldLevel} → ${newLevel}\u001b[0m\n\`\`\``, inline: true },
-            { name: '🏅 RANK', value: `\`\`\`ansi\n\u001b[1;33m${oldRank.emoji} ${oldRank.title[lang]}\u001b[0m\n\u001b[1;32m↓\u001b[0m\n\u001b[1;33m${newRank.emoji} ${newRank.title[lang]}\u001b[0m\n\`\`\``, inline: true },
-            { name: '📦 STOCK', value: `\`\`\`ansi\n\u001b[1;36m${newQuantity > 0 ? newQuantity + ' remaining' : 'DEPLETED'}\u001b[0m\n\`\`\``, inline: true }
+            { name: t('use.neuralStats', lang), value: `\`\`\`ansi\n\u001b[1;36mXP:\u001b[0m  ${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\n\u001b[1;33m${t('use.creditsField', lang)}\u001b[0m  ${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\n\`\`\``, inline: false },
+            { name: t('use.levelField', lang), value: `\`\`\`ansi\n\u001b[1;35m${oldLevel} → ${newLevel}\u001b[0m\n\`\`\``, inline: true },
+            { name: t('use.rankField', lang), value: `\`\`\`ansi\n\u001b[1;33m${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)}\u001b[0m\n\u001b[1;32m↓\u001b[0m\n\u001b[1;33m${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: true },
+            { name: t('use.stockField', lang), value: `\`\`\`ansi\n\u001b[1;36m${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)}\u001b[0m\n\`\`\``, inline: true }
         )
-        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t.footer} • v${version}`, iconURL: message.guild?.iconURL() })
+        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}`, iconURL: message.guild?.iconURL() })
         .setTimestamp();
 
     if (newLevel > oldLevel) {
-        resultEmbed.addFields({ name: '🎉 NEURAL ASCENSION', value: `\`\`\`ansi\n\u001b[1;32m  Level ${newLevel} — ${newRank.title[lang]}\u001b[0m\n\`\`\``, inline: false });
+        resultEmbed.addFields({ name: t('use.ascensionTitle', lang), value: `\`\`\`ansi\n\u001b[1;32m  ${t('use.ascensionLine', lang, { level: newLevel, rank: (newRank.title[lang] || newRank.title.en) })}\u001b[0m\n\`\`\``, inline: false });
     }
-    if (oldRank.title[lang] !== newRank.title[lang]) {
-        resultEmbed.addFields({ name: '🏅 RANK ELEVATION', value: `\`\`\`ansi\n\u001b[1;33m  ${oldRank.emoji} ${oldRank.title[lang]} → ${newRank.emoji} ${newRank.title[lang]}\u001b[0m\n\`\`\``, inline: false });
+    if ((oldRank.title[lang] || oldRank.title.en) !== (newRank.title[lang] || newRank.title.en)) {
+        resultEmbed.addFields({ name: t('use.rankElevationTitle', lang), value: `\`\`\`ansi\n\u001b[1;33m  ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: false });
     }
 
     await message.reply({ embeds: [resultEmbed] }).catch(() => {});

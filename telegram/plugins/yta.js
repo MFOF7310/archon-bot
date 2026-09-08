@@ -28,8 +28,11 @@ function dlAudioSmart(query) {
 
 function getDirectAudioUrl(query) {
     return new Promise((res, rej) => {
+        const proxyFlag = process.env.WEBSHARE_PROXY
+            ? `--proxy "${process.env.WEBSHARE_PROXY}" `
+            : '';
         exec(
-            `yt-dlp --no-playlist -x --audio-format mp3 --get-url "${query}"`,
+            `yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ${proxyFlag}-f bestaudio --get-url "${query}"`,
             { timeout: 30000 },
             (err, stdout) => {
                 if (err || !stdout.trim()) return rej(new Error('No URL'));
@@ -94,8 +97,8 @@ module.exports = {
                     await edit(
                         `🎵 ${title}\n${meta}\n\n` +
                         `📦 <b>Too large to send directly!</b>\n\n` +
-                        `Tap below to download the MP3:\n` +
-                        `<a href="${url}">⬇️ Download Audio</a>\n\n` +
+                        `No worries — tap below to download your audio:\n` +
+                        `<a href="${url.replace(/&/g, '&amp;')}">⬇️ Download Audio</a>\n\n` +
                         `<i>⚠️ Link expires soon — save it quickly!\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>`
                     );
                 } catch {

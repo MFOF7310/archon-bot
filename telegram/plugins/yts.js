@@ -1,3 +1,5 @@
+const { storeUrl } = require('./ytv.js');
+
 module.exports = {
     name: 'yts',
     aliases: ['ytsearch', 'ysearch', 'ys'],
@@ -36,9 +38,10 @@ module.exports = {
                 const clean = (title || '?').substring(0, 55);
                 msg += `<b>${i + 1}.</b> <a href="${url}">${clean}</a>\n`;
                 msg += `   👤 ${uploader || '?'} • ⏱ ${duration || '?'}\n\n`;
+                const key = storeUrl(url);
                 buttons.push([
-                    { text: `🎬 ${i + 1}. Video`, callback_data: `ytdl:v:720:${url}` },
-                    { text: `🎵 ${i + 1}. Audio`, callback_data: `ytdl:a::${url}` }
+                    { text: `🎬 ${i + 1}. Video`, callback_data: `ytdl:v::${key}` },
+                    { text: `🎵 ${i + 1}. Audio`, callback_data: `ytdl:a::${key}` }
                 ]);
             });
 

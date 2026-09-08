@@ -1971,45 +1971,35 @@ client.shopItems = [
         price: 500, 
         emoji: '📦', 
         type: 'consumable', 
-        effect: { xp: 100, credits: 50 },
-        en: { name: 'New Recruit Pack', desc: 'A small boost for new agents.', perk: '+100 XP & +50 Credits' },
-        fr: { name: 'Pack Nouvelle Recrue', desc: 'Un petit boost pour les nouveaux agents.', perk: '+100 XP & +50 Credits' } 
+        effect: { xp: 100, credits: 50 }
     },
     { 
         id: 'xp_boost_small', 
         price: 500, 
         emoji: '⚡', 
         type: 'consumable', 
-        effect: { xp: 250 },
-        en: { name: 'XP Boost (Small)', desc: 'Quick neural enhancement.', perk: '+250 XP' },
-        fr: { name: 'Boost XP (Petit)', desc: 'Amélioration neurale rapide.', perk: '+250 XP' } 
+        effect: { xp: 250 }
     },
     { 
         id: 'xp_boost_large', 
         price: 2000, 
         emoji: '⚡', 
         type: 'consumable', 
-        effect: { xp: 1000 },
-        en: { name: 'Quantum XP Overdrive', desc: 'Massive XP injection.', perk: '+1000 XP instantly' },
-        fr: { name: 'Overdrive XP Quantique', desc: 'Injection massive d\'XP.', perk: '+1000 XP instantanement' } 
+        effect: { xp: 1000 }
     },
     { 
         id: 'credit_boost_small', 
         price: 300, 
         emoji: '🪙', 
         type: 'consumable', 
-        effect: { credits: 200 },
-        en: { name: 'Credit Injection', desc: 'Small credit boost.', perk: '+200 Credits' },
-        fr: { name: 'Injection de Credits', desc: 'Petit boost de credits.', perk: '+200 Credits' } 
+        effect: { credits: 200 }
     },
     { 
         id: 'credit_boost_large', 
         price: 1500, 
         emoji: '💰', 
         type: 'consumable', 
-        effect: { credits: 1000 },
-        en: { name: 'Credit Surge', desc: 'Major credit injection.', perk: '+1000 Credits' },
-        fr: { name: 'Afflux de Credits', desc: 'Injection majeure de credits.', perk: '+1000 Credits' } 
+        effect: { credits: 1000 }
     },
     { 
         id: 'vip_role', 
@@ -2017,30 +2007,20 @@ client.shopItems = [
         emoji: '💎', 
         type: 'role',
         roleId: process.env.VIP_ROLE_ID,
-        requirement: { level: 25 },
-        en: { name: 'VIP Status', desc: 'Exclusive VIP role and perks.', perk: 'VIP Role + Special Channel Access' },
-        fr: { name: 'Statut VIP', desc: 'Role VIP exclusif et avantages.', perk: 'Role VIP + Acces Salon Special' } 
+        requirement: { level: 25 }
     },
     // ── BADGES ──
     {
-        id: 'badge_eagle', price: 5000, emoji: '🦅', type: 'badge', rarity: 'rare',
-        en: { name: 'Eagle Badge', desc: 'Elite Eagle Community emblem.', perk: 'Display on profile' },
-        fr: { name: 'Badge Aigle', desc: 'Emblème élite communauté Eagle.', perk: 'Afficher sur le profil' }
+        id: 'badge_eagle', price: 5000, emoji: '🦅', type: 'badge', rarity: 'rare'
     },
     {
-        id: 'badge_neural', price: 3000, emoji: '🔮', type: 'badge', rarity: 'uncommon',
-        en: { name: 'Neural Grid Badge', desc: 'Neural grid operative emblem.', perk: 'Display on profile' },
-        fr: { name: 'Badge Réseau Neural', desc: 'Emblème opérateur neural.', perk: 'Afficher sur le profil' }
+        id: 'badge_neural', price: 3000, emoji: '🔮', type: 'badge', rarity: 'uncommon'
     },
     {
-        id: 'badge_architect', price: 50000, emoji: '👑', type: 'badge', rarity: 'legendary',
-        en: { name: 'Architect Badge', desc: 'Supreme architect emblem.', perk: 'Display on profile' },
-        fr: { name: 'Badge Architecte', desc: 'Emblème suprême architecte.', perk: 'Afficher sur le profil' }
+        id: 'badge_architect', price: 50000, emoji: '👑', type: 'badge', rarity: 'legendary'
     },
     {
-        id: 'badge_steel', price: 7500, emoji: '⚙️', type: 'badge', rarity: 'epic',
-        en: { name: 'Steel Node Badge', desc: 'BAMAKO-STEEL-NODE operative badge.', perk: 'Display on profile' },
-        fr: { name: 'Badge Nœud Acier', desc: 'Badge opérateur BAMAKO-STEEL-NODE.', perk: 'Afficher sur le profil' }
+        id: 'badge_steel', price: 7500, emoji: '⚙️', type: 'badge', rarity: 'epic'
     },
     { 
         id: 'verified_role', 
@@ -2048,27 +2028,21 @@ client.shopItems = [
         emoji: '✅', 
         type: 'role',
         roleId: process.env.VERIFIED_ROLE_ID,
-        requirement: { level: 10 },
-        en: { name: 'Verified Agent', desc: 'Verified status in the community.', perk: 'Verified Role + Trust Badge' },
-        fr: { name: 'Agent Verifie', desc: 'Statut verifie dans la communaute.', perk: 'Role Verifie + Badge de Confiance' } 
+        requirement: { level: 10 }
     },
     { 
         id: 'badge_pioneer', 
         price: 8000, 
         emoji: '🏅', 
         type: 'badge',
-        requirement: { level: 5 },
-        en: { name: 'Pioneer Badge', desc: 'Shows on your profile.', perk: '🏅 Pioneer Badge' },
-        fr: { name: 'Badge Pionnier', desc: 'Affiche sur votre profil.', perk: '🏅 Badge Pionnier' } 
+        requirement: { level: 5 }
     },
     { 
         id: 'badge_bamako', 
         price: 10000, 
         emoji: '🇲🇱', 
         type: 'badge',
-        requirement: { level: 15 },
-        en: { name: 'Bamako Pride Badge', desc: 'Mali heritage badge.', perk: '🇲🇱 Bamako Pride Badge' },
-        fr: { name: 'Badge Fierté Bamako', desc: 'Badge heritage malien.', perk: '🇲🇱 Badge Fierté Bamako' } 
+        requirement: { level: 15 }
     },
     { 
         id: 'mystery_box_bronze', 
@@ -2080,20 +2054,27 @@ client.shopItems = [
                 { xp: 100 }, { xp: 200 }, { credits: 100 }, 
                 { credits: 200 }, { xp: 50, credits: 50 }
             ] 
-        },
-        en: { name: 'Bronze Mystery Box', desc: 'Contains random rewards!', perk: 'Random XP or Credits' },
-        fr: { name: 'Boite Mystere Bronze', desc: 'Contient des recompenses aleatoires !', perk: 'XP ou Credits Aleatoires' } 
+        }
     },
     { 
         id: 'daily_streak_shield', 
         price: 2000, 
         emoji: '🛡️', 
         type: 'consumable',
-        effect: { streak_protection: true },
-        en: { name: 'Streak Shield', desc: 'Protects your daily streak if missed.', perk: '1x Streak Protection' },
-        fr: { name: 'Bouclier de Serie', desc: 'Protege votre serie quotidienne.', perk: '1x Protection de Serie' } 
+        effect: { streak_protection: true }
     }
 ];
+
+// Hydrate per-locale display strings from lang/*.json (shop.items.<id>)
+for (const __item of client.shopItems) {
+    for (const __L of ['en', 'fr', 'bm', 'zh', 'ar']) {
+        __item[__L] = {
+            name: t(`shop.items.${__item.id}.name`, __L),
+            desc: t(`shop.items.${__item.id}.desc`, __L),
+            perk: t(`shop.items.${__item.id}.perk`, __L)
+        };
+    }
+}
 
 client.getItem = (itemId) => client.shopItems.find(item => item.id === itemId);
 
