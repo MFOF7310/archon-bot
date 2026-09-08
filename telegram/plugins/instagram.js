@@ -33,7 +33,11 @@ function dlInstagram(url) {
             '"' + url + '"'
         ].join(' ');
         exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
-            if (err) return rej(new Error(stderr?.substring(0, 200) || err.message));
+            if (err) {
+                // remove partial files from the failed attempt before any retry
+                try { fs.readdirSync(TMP).filter(f => f.startsWith('ig_' + ts)).forEach(f => fs.unlinkSync(path.join(TMP, f))); } catch {}
+                return rej(new Error(stderr?.substring(0, 200) || err.message));
+            }
             const files = fs.readdirSync(TMP).filter(f => f.startsWith('ig_' + ts));
             if (!files.length) return rej(new Error('No file found'));
             res(path.join(TMP, files[0]));
@@ -66,6 +70,26 @@ function normalizeAudio(inputPath, outputPath) {
     }
 }
 
+// Instagram's guest API intermittently sends an empty media response (anti-bot
+// rate-limit). These failures are transient -> retry a few times before giving up.
+const sleepIg = (ms) => new Promise(r => setTimeout(r, ms));
+async function dlInstagramRetry(url, tries = 3) {
+    let last = null;
+    for (let i = 0; i < tries; i++) {
+        try { return await dlInstagram(url); }
+        catch (e) { last = e; console.log('[INSTAGRAM] attempt', i + 1, 'failed:', (e.message || '').substring(0, 80)); if (i < tries - 1) await sleepIg(2500); }
+    }
+    throw last;
+}
+async function dlInstagramMetaRetry(url, tries = 3) {
+    for (let i = 0; i < tries; i++) {
+        const m = await dlInstagramMeta(url);
+        if (m) return m;
+        if (i < tries - 1) await sleepIg(2500);
+    }
+    return null;
+}
+
 module.exports = {
     name: 'instagram',
     aliases: ['ig', 'insta', 'reel'],
@@ -96,8 +120,8 @@ module.exports = {
         try {
             await edit('📸 <i>Downloading... hang tight!</i>');
             const [meta, filePath] = await Promise.all([
-                dlInstagramMeta(url),
-                dlInstagram(url)
+                dlInstagramMetaRetry(url),
+                dlInstagramRetry(url)
             ]);
 
             fs.renameSync(filePath, rawPath);
@@ -138,13 +162,19 @@ module.exports = {
 
         } catch(e) {
             console.error('[INSTAGRAM]', e.message);
-            await edit(
-                '😔 <b>Couldn\'t download this post!</b>\n\n' +
-                '• Account may be private\n' +
-                '• Post may have been removed\n' +
-                '• Try with a direct public reel link\n\n' +
-                '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
-            );
+            // empty media / CSRF / 4xx = transient anti-bot rate-limit: ask for a retry, don't blame the link
+            const transient = /empty media|CSRF|429|rate.?limit|401|403/i.test(e.message || '');
+            const msg = transient
+                ? '⏳ <b>Instagram rate-limited this request!</b>\n\n' +
+                  '• Wait ~1 minute, then send the link again\n' +
+                  '• Your link is fine - this is temporary\n\n' +
+                  '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
+                : '😔 <b>Couldn\'t download this post!</b>\n\n' +
+                  '• Account may be private\n' +
+                  '• Post may have been removed\n' +
+                  '• Try with a direct public reel link\n\n' +
+                  '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>';
+            await edit(msg);
         } finally {
             try { if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath); } catch {}
             try { if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath); } catch {}
