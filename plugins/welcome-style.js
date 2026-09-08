@@ -5,6 +5,7 @@
 
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+const { t } = require('../lib/i18n');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
 const path = require('path');
@@ -629,6 +630,7 @@ function buildRandomTips(cfg, lang = 'en') {
 
 // ================= BUTTON DEFINITIONS =================
 function getWelcomeButtons(cfg, member) {
+    const lang = cfg.lang || 'en';
     const buttons = [];
     const guildId = member.guild.id;
     const fallbackId = member.guild.systemChannelId || guildId;
@@ -636,7 +638,7 @@ function getWelcomeButtons(cfg, member) {
     // Rules button — use configured channel if set, else fallback to system channel
     const rulesId = cfg.rulesChannel || null;
     buttons.push({
-        label: 'Rules', emoji: EMOJIS.rules, style: 'Link',
+        label: t('welcome.btn_rules', lang), emoji: EMOJIS.rules, style: 'Link',
         url: `https://discord.com/channels/${guildId}/${rulesId || fallbackId}`,
         customId: null
     });
@@ -644,13 +646,13 @@ function getWelcomeButtons(cfg, member) {
     // General button — use configured channel if set, else fallback to system channel
     const generalId = cfg.generalChannel || null;
     buttons.push({
-        label: 'General', emoji: EMOJIS.general, style: 'Link',
+        label: t('welcome.btn_general', lang), emoji: EMOJIS.general, style: 'Link',
         url: `https://discord.com/channels/${guildId}/${generalId || fallbackId}`,
         customId: null
     });
 
-    buttons.push({ label: 'AI Assistant', emoji: EMOJIS.ai_assistant, style: 'Primary', url: null, customId: 'welcome_help' });
-    buttons.push({ label: 'My Profile', emoji: EMOJIS.myprofile, style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
+    buttons.push({ label: t('welcome.btn_ai', lang), emoji: EMOJIS.ai_assistant, style: 'Primary', url: null, customId: 'welcome_help' });
+    buttons.push({ label: t('welcome.btn_profile', lang), emoji: EMOJIS.myprofile, style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
 
     return buttons;
 }
