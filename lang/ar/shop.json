@@ -1,131 +1,131 @@
 {
-  "title": "",
-  "desc": "",
-  "placeholder": "",
-  "balance": "",
-  "alreadyOwned": "",
-  "inventory": "",
-  "refresh": "",
-  "price": "",
-  "type": "",
-  "consumable": "",
-  "role": "",
-  "badge": "",
-  "boost": "",
-  "permanent": "",
-  "level": "",
-  "expires": "",
-  "permanentItem": "",
-  "owned": "",
-  "locked": "",
-  "accessDenied": "",
-  "itemNotFound": "",
-  "purchaseError": "",
-  "footer": "",
-  "purchaseComplete": "",
-  "newBalance": "",
-  "verifyWith": "",
-  "processing": "",
-  "loadingInventory": "",
-  "purchaseDetails": "",
-  "itemPurchased": "",
-  "pricePaid": "",
-  "bonusReceived": "",
-  "previousBalance": "",
-  "insufficientFunds": "",
-  "levelRequirement": "",
-  "checkBalance": "",
-  "authorShop": "",
-  "streakProtections": "",
-  "creditsLabel": "",
-  "streakProtectionLine": "",
-  "xpBonusLine": "",
-  "notifAuthor": "",
-  "notifPurchased": "",
-  "notifPrice": "",
-  "notifNewBalance": "",
-  "lockedShort": "",
-  "requiresLevel": "",
-  "insufficientShort": "",
-  "purchaseSuccessful": "",
-  "acquiredLine": "",
-  "newBalanceLine": "",
-  "ownedShort": "",
+  "title": "═ سوق ARCHON العصبي ═",
+  "desc": "بدّل نقاطك المكتسبة بترقيات للنظام.",
+  "placeholder": "اختر ترقية للشراء...",
+  "balance": "الرصيد الحالي",
+  "alreadyOwned": "⚠️ لديك هذه الترقية بالفعل.",
+  "inventory": "📦 مخزوني",
+  "refresh": "🔄 تحديث",
+  "price": "السعر",
+  "type": "النوع",
+  "consumable": "مستهلك",
+  "role": "دور",
+  "badge": "شارة",
+  "boost": "تعزيز",
+  "permanent": "دائم",
+  "level": "المستوى",
+  "expires": "تنتهي في",
+  "permanentItem": "دائم",
+  "owned": "مُقتنى",
+  "locked": "LVL",
+  "accessDenied": "❌ عناصر التحكم هذه مقفلة على جلستك.",
+  "itemNotFound": "❌ العنصر غير موجود.",
+  "purchaseError": "❌ حدث خطأ أثناء الشراء.",
+  "footer": "ARCHON CG-223 • السوق العصبي",
+  "purchaseComplete": "✅ اكتمل الشراء",
+  "newBalance": "الرصيد الجديد",
+  "verifyWith": "تحقق عبر",
+  "processing": "⚡ جارٍ معالجة العملية...",
+  "loadingInventory": "⚡ جارٍ تحميل المخزون...",
+  "purchaseDetails": "تفاصيل الشراء",
+  "itemPurchased": "العنصر المشترى",
+  "pricePaid": "السعر المدفوع",
+  "bonusReceived": "المكافأة المستلمة",
+  "previousBalance": "الرصيد السابق",
+  "insufficientFunds": "❌ **نقاط غير كافية!**\nالمطلوب: `{price}` 🪙\nرصيدك: `{balance}` 🪙",
+  "levelRequirement": "⚠️ **لم يتم استيفاء شرط المستوى**\nالمستوى المطلوب: `{level}`\nمستواك: `{current}`",
+  "checkBalance": "تحقق من رصيدك في أي وقت عبر `{prefix}bal` أو `{prefix}credits`",
+  "authorShop": "🏪 السوق العصبي",
+  "streakProtections": "حمايات السلسلة",
+  "creditsLabel": "النقاط",
+  "streakProtectionLine": "🛡️ حماية السلسلة: +1",
+  "xpBonusLine": "مكافأة XP: +{amount} XP",
+  "notifAuthor": "🛒 السوق العصبي • شراء",
+  "notifPurchased": "**{user}** اشترى **{item}** {emoji}",
+  "notifPrice": "💰 **السعر:** {price} 🪙",
+  "notifNewBalance": "📊 **الرصيد الجديد:** {balance} 🪙",
+  "lockedShort": "🔒 Lv.{level}",
+  "requiresLevel": "🔒 يتطلب المستوى {level}",
+  "insufficientShort": "❌ رصيد غير كافٍ! تحتاج {price} ولديك {balance}",
+  "purchaseSuccessful": "✅ **تم الشراء بنجاح**",
+  "acquiredLine": "{emoji} تم اقتناء **{name}**!",
+  "newBalanceLine": "💰 الرصيد الجديد: `{balance}` {credits}",
+  "ownedShort": "✅ مُقتنى",
   "items": {
     "starter_pack": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "حزمة المجند الجديد",
+      "desc": "دفعة صغيرة للعملاء الجدد.",
+      "perk": "+100 XP و+50 نقطة"
     },
     "xp_boost_small": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "تعزيز XP (صغير)",
+      "desc": "تعزيز عصبي سريع.",
+      "perk": "+250 XP"
     },
     "xp_boost_large": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "تسارع XP الكمّي",
+      "desc": "حقنة XP هائلة.",
+      "perk": "+1000 XP فورًا"
     },
     "credit_boost_small": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "حقنة نقاط",
+      "desc": "تعزيز نقاط صغير.",
+      "perk": "+200 نقطة"
     },
     "credit_boost_large": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "تدفق النقاط",
+      "desc": "حقنة نقاط كبيرة.",
+      "perk": "+1000 نقطة"
     },
     "vip_role": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "مكانة VIP",
+      "desc": "دور VIP حصري وامتيازات.",
+      "perk": "دور VIP + وصول إلى قناة خاصة"
     },
     "badge_eagle": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "شارة النسر",
+      "desc": "شعار مجتمع النسر النخبوي.",
+      "perk": "تُعرض على الملف الشخصي"
     },
     "badge_neural": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "شارة الشبكة العصبية",
+      "desc": "شعار عميل الشبكة العصبية.",
+      "perk": "تُعرض على الملف الشخصي"
     },
     "badge_architect": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "شارة المهندس",
+      "desc": "شعار المهندس الأعلى.",
+      "perk": "تُعرض على الملف الشخصي"
     },
     "badge_steel": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "شارة العقدة الفولاذية",
+      "desc": "شارة عميل BAMAKO-STEEL-NODE.",
+      "perk": "تُعرض على الملف الشخصي"
     },
     "verified_role": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "عميل موثّق",
+      "desc": "مكانة موثّقة في المجتمع.",
+      "perk": "دور موثّق + شارة ثقة"
     },
     "badge_pioneer": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "شارة الريادي",
+      "desc": "تظهر على ملفك الشخصي.",
+      "perk": "🏅 شارة الريادي"
     },
     "badge_bamako": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "شارة فخر باماكو",
+      "desc": "شارة التراث المالي.",
+      "perk": "🇲🇱 شارة فخر باماكو"
     },
     "mystery_box_bronze": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "صندوق الغموض البرونزي",
+      "desc": "يحتوي على مكافآت عشوائية!",
+      "perk": "XP أو نقاط عشوائية"
     },
     "daily_streak_shield": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "درع السلسلة",
+      "desc": "يحمي سلسلتك اليومية إذا فاتك يوم.",
+      "perk": "1x حماية سلسلة"
     }
   }
 }

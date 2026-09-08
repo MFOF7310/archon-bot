@@ -1,131 +1,131 @@
 {
-  "title": "",
-  "desc": "",
-  "placeholder": "",
-  "balance": "",
-  "alreadyOwned": "",
-  "inventory": "",
-  "refresh": "",
-  "price": "",
-  "type": "",
-  "consumable": "",
-  "role": "",
-  "badge": "",
-  "boost": "",
-  "permanent": "",
-  "level": "",
-  "expires": "",
-  "permanentItem": "",
-  "owned": "",
-  "locked": "",
-  "accessDenied": "",
-  "itemNotFound": "",
-  "purchaseError": "",
-  "footer": "",
-  "purchaseComplete": "",
-  "newBalance": "",
-  "verifyWith": "",
-  "processing": "",
-  "loadingInventory": "",
-  "purchaseDetails": "",
-  "itemPurchased": "",
-  "pricePaid": "",
-  "bonusReceived": "",
-  "previousBalance": "",
-  "insufficientFunds": "",
-  "levelRequirement": "",
-  "checkBalance": "",
-  "authorShop": "",
-  "streakProtections": "",
-  "creditsLabel": "",
-  "streakProtectionLine": "",
-  "xpBonusLine": "",
-  "notifAuthor": "",
-  "notifPurchased": "",
-  "notifPrice": "",
-  "notifNewBalance": "",
-  "lockedShort": "",
-  "requiresLevel": "",
-  "insufficientShort": "",
-  "purchaseSuccessful": "",
-  "acquiredLine": "",
-  "newBalanceLine": "",
-  "ownedShort": "",
+  "title": "═ ARCHON 神经商城 ═",
+  "desc": "用你赚取的积分兑换系统升级。",
+  "placeholder": "选择要购买的升级...",
+  "balance": "当前余额",
+  "alreadyOwned": "⚠️ 你已拥有此升级。",
+  "inventory": "📦 我的库存",
+  "refresh": "🔄 刷新",
+  "price": "价格",
+  "type": "类型",
+  "consumable": "消耗品",
+  "role": "身份组",
+  "badge": "徽章",
+  "boost": "加成",
+  "permanent": "永久",
+  "level": "等级",
+  "expires": "过期时间",
+  "permanentItem": "永久",
+  "owned": "已拥有",
+  "locked": "LVL",
+  "accessDenied": "❌ 这些控件仅限你的会话使用。",
+  "itemNotFound": "❌ 未找到该物品。",
+  "purchaseError": "❌ 购买过程中发生错误。",
+  "footer": "ARCHON CG-223 • 神经商城",
+  "purchaseComplete": "✅ 购买完成",
+  "newBalance": "新余额",
+  "verifyWith": "验证方式",
+  "processing": "⚡ 正在处理交易...",
+  "loadingInventory": "⚡ 正在加载库存...",
+  "purchaseDetails": "购买详情",
+  "itemPurchased": "已购物品",
+  "pricePaid": "支付价格",
+  "bonusReceived": "获得奖励",
+  "previousBalance": "原余额",
+  "insufficientFunds": "❌ **积分不足！**\n需要: `{price}` 🪙\n你的余额: `{balance}` 🪙",
+  "levelRequirement": "⚠️ **等级要求未达成**\n需要等级: `{level}`\n你的等级: `{current}`",
+  "checkBalance": "随时使用 `{prefix}bal` 或 `{prefix}credits` 查看余额",
+  "authorShop": "🏪 神经商城",
+  "streakProtections": "连签保护",
+  "creditsLabel": "积分",
+  "streakProtectionLine": "🛡️ 连签保护: +1",
+  "xpBonusLine": "XP 加成: +{amount} XP",
+  "notifAuthor": "🛒 神经商城 • 购买",
+  "notifPurchased": "**{user}** 购买了 **{item}** {emoji}",
+  "notifPrice": "💰 **价格:** {price} 🪙",
+  "notifNewBalance": "📊 **新余额:** {balance} 🪙",
+  "lockedShort": "🔒 Lv.{level}",
+  "requiresLevel": "🔒 需要等级 {level}",
+  "insufficientShort": "❌ 余额不足！需要 {price}，当前拥有 {balance}",
+  "purchaseSuccessful": "✅ **购买成功**",
+  "acquiredLine": "{emoji} 已获得 **{name}**!",
+  "newBalanceLine": "💰 新余额: `{balance}` {credits}",
+  "ownedShort": "✅ 已拥有",
   "items": {
     "starter_pack": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "新兵礼包",
+      "desc": "为新特工准备的小型助力。",
+      "perk": "+100 XP 和 +50 积分"
     },
     "xp_boost_small": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "XP 加成（小）",
+      "desc": "快速神经强化。",
+      "perk": "+250 XP"
     },
     "xp_boost_large": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "量子 XP 超频",
+      "desc": "海量 XP 注入。",
+      "perk": "+1000 XP，立即生效"
     },
     "credit_boost_small": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "积分注入",
+      "desc": "小额积分加成。",
+      "perk": "+200 积分"
     },
     "credit_boost_large": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "积分狂涌",
+      "desc": "大额积分注入。",
+      "perk": "+1000 积分"
     },
     "vip_role": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "VIP 身份",
+      "desc": "专属 VIP 身份组与特权。",
+      "perk": "VIP 身份组 + 专属频道权限"
     },
     "badge_eagle": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "雄鹰徽章",
+      "desc": "精英雄鹰社区徽记。",
+      "perk": "在个人资料展示"
     },
     "badge_neural": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "神经网格徽章",
+      "desc": "神经网格行动员徽记。",
+      "perk": "在个人资料展示"
     },
     "badge_architect": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "架构师徽章",
+      "desc": "至高架构师徽记。",
+      "perk": "在个人资料展示"
     },
     "badge_steel": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "钢节点徽章",
+      "desc": "BAMAKO-STEEL-NODE 行动员徽章。",
+      "perk": "在个人资料展示"
     },
     "verified_role": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "已认证特工",
+      "desc": "社区认证身份。",
+      "perk": "认证身份组 + 信任徽章"
     },
     "badge_pioneer": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "先锋徽章",
+      "desc": "展示在你的个人资料上。",
+      "perk": "🏅 先锋徽章"
     },
     "badge_bamako": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "巴马科骄傲徽章",
+      "desc": "马里传承徽章。",
+      "perk": "🇲🇱 巴马科骄傲徽章"
     },
     "mystery_box_bronze": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "青铜神秘盲盒",
+      "desc": "内含随机奖励！",
+      "perk": "随机 XP 或积分"
     },
     "daily_streak_shield": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "连签护盾",
+      "desc": "断签时保护你的每日连签。",
+      "perk": "1 次连签保护"
     }
   }
 }
