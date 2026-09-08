@@ -3524,18 +3524,14 @@ if (message.content && message.content.length > 4000) {
             if (afkUsers.has(mentionedId)) {
                 const afkData = afkUsers.get(mentionedId);
                 const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
-                const timeText = minutes === 0 ? (lang === 'fr' ? 'à l\'instant' : 'just now') : `${minutes} min`;
+                const timeText = minutes === 0 ? t('index.afk_just_now', lang) : `${minutes} min`;
                 
                 const { EmbedBuilder: AfkEmbed } = require('discord.js');
                 const afkPingEmbed = new AfkEmbed()
                     .setColor('#5865F2')
-                    .setDescription(
-                        `<a:Afk:1540774870827409501> **${user.username} is AFK** (${timeText})\n` +
-                        `**Reason:** ${afkData.reason}`
-                    )
-                    .setFooter({ text: 'ARCHON CG-223' });
+                    .setDescription(t('index.afk_ping_desc', lang, { user: user.username, time: timeText, reason: afkData.reason }))
+                    .setFooter({ text: t('index.footer', lang) });
                 await message.reply({ embeds: [afkPingEmbed], allowedMentions: { repliedUser: false } }).catch(() => {});
-                await message.reply({ content: mentionMsg, allowedMentions: { repliedUser: true } }).catch(() => {});
                 break;
             }
         }
@@ -3553,13 +3549,9 @@ if (message.content && message.content.length > 4000) {
         const { EmbedBuilder: ReturnEmbed } = require('discord.js');
         const returnEmbed = new ReturnEmbed()
             .setColor('#2ecc71')
-            .setDescription(
-                `<a:away:1540773743343829002> **${message.author.username} is back!** Welcome back 👋\n` +
-                `Away for ${minutes} min`
-            )
-            .setFooter({ text: 'ARCHON CG-223' });
+            .setDescription(t('index.afk_return_desc', lang, { user: message.author.username, minutes }))
+            .setFooter({ text: t('index.footer', lang) });
         await message.reply({ embeds: [returnEmbed] }).catch(() => {});
-        await message.reply({ content: welcomeMsg }).catch(() => {});
         console.log(`[AFK] ${message.author.tag} returned after ${minutes} min`);
     }
 
