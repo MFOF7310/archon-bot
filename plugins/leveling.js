@@ -322,8 +322,9 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
 // ================= CANVAS: WELCOME BANNER =================
 async function renderWelcomeBanner(member, count, theme = {}) {
     const bg1 = theme.welcomeBg1 || '#5865f2', bg2 = theme.welcomeBg2 || '#2d3a8c', accent = theme.welcomeAccent || '#8b9aff';
-    const c = createCanvas(W, H + 60);
+    const c = createCanvas(W * 2, (H + 60) * 2);
     const ctx = c.getContext('2d');
+    ctx.scale(2, 2);
 
     const grad = ctx.createLinearGradient(0, 0, W, H + 60);
     grad.addColorStop(0, bg1);
@@ -340,7 +341,7 @@ async function renderWelcomeBanner(member, count, theme = {}) {
     for (let i = 0; i < W; i += 50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H + 60); ctx.stroke(); }
 
     // Avatar
-    const av = await getAvatar(member.user, 128);
+    const av = await getAvatar(member.user, 256);
     const ax = 55, ay = (H + 60) / 2, ar = 62;
     if (av) {
         ctx.save();
@@ -382,93 +383,6 @@ async function renderWelcomeBanner(member, count, theme = {}) {
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText('ARCHON CG-223', W - 25, 25);
-
-    return c.encode('png');
-}
-
-// ================= CANVAS: RANK CARD =================
-async function renderRankCard(user, rank, level, totalXP, theme = {}) {
-    const t = getTheme(level, theme);
-    const c = createCanvas(W, H);
-    const ctx = c.getContext('2d');
-    const xpCur = xpInCurrentLevel(totalXP, level);
-    const xpNeed = xpNeededForLevel(level);
-    const prog = xpProgress(totalXP, level);
-
-    // Background
-    const grad = ctx.createLinearGradient(0, 0, W, H);
-    grad.addColorStop(0, t.bg1);
-    grad.addColorStop(1, t.bg2);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, 0, W, H);
-
-    // Pattern
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-    for (let i = -H; i < W + H; i += 40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - H, H); ctx.stroke(); }
-
-    // Avatar
-    const av = await getAvatar(user, 128);
-    const ax = 50, ay = H / 2, ar = 55;
-    if (av) {
-        ctx.save(); ctx.beginPath(); ctx.arc(ax + ar, ay, ar + 6, 0, Math.PI * 2); ctx.fillStyle = t.accent + '30'; ctx.fill(); ctx.restore();
-        ctx.save(); ctx.beginPath(); ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2); ctx.closePath(); ctx.clip(); ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2); ctx.restore();
-        ctx.beginPath(); ctx.arc(ax + ar, ay, ar + 2, 0, Math.PI * 2); ctx.strokeStyle = '#ffffff30'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.beginPath(); ctx.arc(ax + ar, ay, ar + 5, 0, Math.PI * 2); ctx.strokeStyle = t.accent; ctx.lineWidth = 3; ctx.stroke();
-    }
-
-    // Rank badge
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    roundRect(ctx, 20, 15, 80, 28, 6);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`RANK #${rank}`, 60, 33);
-
-    // Username
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 30px sans-serif';
-    ctx.textAlign = 'left';
-    const nm = user.username.length > 22 ? user.username.substring(0, 21) + '…' : user.username;
-    ctx.fillText(nm, 170, H / 2 - 35);
-
-    // Level
-    ctx.fillStyle = t.accent;
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(`Level ${level}`, 170, H / 2 - 5);
-
-    // XP in current level (main display)
-    const curXP = xpInCurrentLevel(totalXP, level);
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText(`${curXP.toLocaleString()} / ${xpNeed.toLocaleString()} XP`, 170, H / 2 + 22);
-
-    // Total XP (secondary, dimmer)
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.font = '11px sans-serif';
-    ctx.fillText(`Total: ${Math.floor(totalXP).toLocaleString()} XP`, 170, H / 2 + 42);
-
-    // Progress bar
-    const bx = 170, by = H - 40, bw = 420, bh = 10;
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    roundRect(ctx, bx, by, bw, bh, 5);
-    ctx.fill();
-    const fw = Math.max(bw * prog, 6);
-    const pg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-    pg.addColorStop(0, t.accent); pg.addColorStop(1, t.bg1);
-    ctx.fillStyle = pg;
-    roundRect(ctx, bx, by, fw, bh, 5);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(`${Math.round(prog * 100)}%`, bx + bw + 10, by + 8);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.textAlign = 'right';
-    ctx.font = '11px sans-serif';
-    ctx.fillText('ARCHON CG-223', W - 20, 25);
 
     return c.encode('png');
 }
