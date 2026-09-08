@@ -54,6 +54,18 @@ function compressVideo(inputPath, outputPath, targetMB = 45) {
     }
 }
 
+// Telegram cannot decode some audio codecs (e.g. Opus-in-MP4) -> video plays silent.
+// Remux with audio transcoded to AAC. Video stream is copied, so this is fast.
+function normalizeAudio(inputPath, outputPath) {
+    try {
+        execSync(`ffmpeg -y -i "${inputPath}" -c:v copy -c:a aac -b:a 160k -movflags +faststart "${outputPath}"`, { stdio: 'pipe', timeout: 60000 });
+        return fs.existsSync(outputPath);
+    } catch (e) {
+        console.error('[INSTAGRAM] Normalize error:', e.message);
+        return false;
+    }
+}
+
 module.exports = {
     name: 'instagram',
     aliases: ['ig', 'insta', 'reel'],
@@ -79,6 +91,7 @@ module.exports = {
         const uid = Date.now() + '_' + Math.floor(Math.random() * 10000);
         const rawPath = path.join(TMP, 'ig_' + uid + '_raw.mp4');
         const compressedPath = path.join(TMP, 'ig_' + uid + '_out.mp4');
+        const normPath = path.join(TMP, 'ig_' + uid + '_norm.mp4');
 
         try {
             await edit('📸 <i>Downloading... hang tight!</i>');
@@ -88,6 +101,10 @@ module.exports = {
             ]);
 
             fs.renameSync(filePath, rawPath);
+            if (normalizeAudio(rawPath, normPath)) {
+                fs.unlinkSync(rawPath);
+                fs.renameSync(normPath, rawPath);
+            }
             const sizeMB = fs.statSync(rawPath).size / 1024 / 1024;
             console.log('[INSTAGRAM] Downloaded size:', sizeMB.toFixed(2), 'MB');
 
@@ -131,6 +148,7 @@ module.exports = {
         } finally {
             try { if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath); } catch {}
             try { if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath); } catch {}
+            try { if (fs.existsSync(normPath)) fs.unlinkSync(normPath); } catch {}
         }
     }
 };

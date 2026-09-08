@@ -407,6 +407,8 @@ Tap a category:
                 ctx.args = [url];
                 await yta.handler(ctx);
             }
+            // Result stands on its own - clear the Starting/progress line
+            await bridge.deleteMessage(chatId, msgId).catch(() => {});
         } catch(e) {
             console.error('[YTDL CB]', e.message);
             await bridge.editMessage(chatId, msgId,
