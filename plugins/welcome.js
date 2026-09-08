@@ -12,6 +12,38 @@ const {
 const { t } = require('../lib/i18n');
 const Style = require('./welcome-style.js');
 
+// ================= JOIN-DATE PERSISTENCE =================
+// guildMemberRemove carries no join date: members not in cache (e.g. bot
+// restarted since they joined) arrive with joinedTimestamp = null, and the
+// goodbye card fell back to '< 1 min'. Persist join dates in SQLite so
+// "Stayed:" is always exact.
+let _joinTableReady = false;
+const _joinBackfilled = new Set();
+function ensureJoinTable(db) {
+    if (_joinTableReady || !db) return;
+    try {
+        db.prepare('CREATE TABLE IF NOT EXISTS member_joins (guild_id TEXT NOT NULL, user_id TEXT NOT NULL, joined_at INTEGER NOT NULL, PRIMARY KEY (guild_id, user_id))').run();
+        _joinTableReady = true;
+    } catch (e) { console.error('[WELCOME] member_joins init failed:', e.message); }
+}
+function recordJoin(db, guildId, userId, ts) {
+    if (!db || !ts) return;
+    try { db.prepare('INSERT OR REPLACE INTO member_joins (guild_id, user_id, joined_at) VALUES (?, ?, ?)').run(String(guildId), String(userId), ts); } catch (e) {}
+}
+function lookupJoin(db, guildId, userId) {
+    if (!db) return null;
+    try { const r = db.prepare('SELECT joined_at FROM member_joins WHERE guild_id = ? AND user_id = ?').get(String(guildId), String(userId)); return r ? r.joined_at : null; } catch (e) { return null; }
+}
+async function backfillJoins(db, guild) {
+    if (!db || !guild || _joinBackfilled.has(guild.id)) return;
+    _joinBackfilled.add(guild.id);
+    try {
+        const all = await guild.members.fetch();
+        const stmt = db.prepare('INSERT OR IGNORE INTO member_joins (guild_id, user_id, joined_at) VALUES (?, ?, ?)');
+        for (const m of all.values()) if (m.joinedTimestamp) stmt.run(String(guild.id), String(m.id), m.joinedTimestamp);
+    } catch (e) { console.error('[WELCOME] join backfill failed:', e.message); }
+}
+
 // ================= HELPERS =================
 function applyOwnerEnvFallback(cfg, guildId) {
     if (guildId === process.env.GUILD_ID) {
@@ -41,6 +73,9 @@ function createMemberProxy(member) {
 // ── THIS IS THE ONLY PLACE a welcome card is rendered and sent ──
 // index.js fallbackWelcome() is bypassed because client.welcome is set.
 async function handleWelcome(member, client, db) {
+    ensureJoinTable(db);
+    await backfillJoins(db, member.guild);
+    recordJoin(db, member.guild.id, member.id, member.joinedTimestamp || Date.now());
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
     let cfg = Style.normalizeWelcomeConfig(ssRaw);
     cfg = applyOwnerEnvFallback(cfg, member.guild.id);
@@ -129,7 +164,9 @@ async function handleGoodbye(member, client, db) {
     const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
     if (!ch) return;
 
-    const joinedAt  = member.joinedTimestamp;
+    ensureJoinTable(db);
+    await backfillJoins(db, member.guild);
+    const joinedAt  = member.joinedTimestamp || lookupJoin(db, member.guild.id, member.id);
     const duration  = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : '< 1 min';
     const roles     = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
     const safeMember = createMemberProxy(member);
