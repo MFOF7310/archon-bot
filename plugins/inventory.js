@@ -54,7 +54,7 @@ module.exports = {
         const serverSettings = interaction.guild ? client.getServerSettings?.(interaction.guild.id) || {} : {};
 
         const fakeMsg = { author: interaction.user, guild: interaction.guild, channel: interaction.channel,
-            reply: async (opts) => interaction.reply({ ...opts, fetchReply: true }).catch(() => null) };
+            reply: async (opts) => interaction.reply({ ...opts }).catch(() => null) };
 
         if (sub === 'buy') return handleBuy(fakeMsg, [interaction.options.getString('item')], client, client.db, serverSettings, lang, prefix, guildId, guildName, guildIcon, version);
         if (sub === 'inventory') return handleInventory(fakeMsg, client, client.db, lang, prefix, guildId, guildName, guildIcon, version);

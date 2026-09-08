@@ -136,7 +136,7 @@ module.exports = {
                 new ButtonBuilder().setCustomId('setup_cancel').setLabel(translations.skip).setStyle(ButtonStyle.Secondary).setEmoji('❌')
             );
 
-        const welcomeMsg = await reply({ embeds: [welcomeEmbed], components: [startRow], fetchReply: true });
+        const welcomeMsg = await reply({ embeds: [welcomeEmbed], components: [startRow] });
 
         const filter = (i) => i.user.id === userId;
         const collector = welcomeMsg.createMessageComponentCollector({ filter, time: COLLECTOR_TIME });
