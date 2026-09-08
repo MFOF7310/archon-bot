@@ -276,7 +276,7 @@ if (selectedItem.effect?.streak_protection) {
         await interaction.deferReply();
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
         const db = client.db;
-        const lang = ['fr', 'bm', 'zh', 'ar'].includes(serverSettings?.language) ? serverSettings.language : 'en';
+        const lang = serverSettings?.language && serverSettings.language !== 'auto' ? serverSettings.language : ({ fr: 'fr', zh: 'zh', ar: 'ar', bm: 'bm' }[(interaction.locale || '').slice(0, 2).toLowerCase()] || 'en');
         const version = client.version || '1.7.0';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();

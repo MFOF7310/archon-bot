@@ -42,9 +42,12 @@ module.exports = {
 
     execute: async (interaction, client) => {
         const sub = interaction.options.getSubcommand();
-        const lang = { fr: 'fr', zh: 'zh', ar: 'ar', bm: 'bm' }[(interaction.locale || '').slice(0, 2).toLowerCase()] || 'en';
-        const prefix = interaction.guild ? (client.getServerSettings?.(interaction.guild.id)?.prefix || '.') : '.';
         const guildId = interaction.guild?.id || 'DM';
+        const ss = client.getServerSettings?.(guildId)
+            || client.settings?.get(guildId)
+            || {};
+        const lang = ss.language || 'en';
+        const prefix = ss.prefix || '.';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
         const version = client.version || '2.0.0';

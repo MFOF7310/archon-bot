@@ -3943,7 +3943,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                 const guildId = interaction.guild?.id || 'DM';
                 const serverSettings = interaction.guild ? getServerSettings(interaction.guild.id) : DEFAULT_SETTINGS;
                 const usedCommand = interaction.commandName;
-                const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+                const lang = interaction.guild && serverSettings?.language && serverSettings.language !== 'auto' ? serverSettings.language : ({ fr: 'fr', zh: 'zh', ar: 'ar', bm: 'bm' }[(interaction.locale || '').slice(0, 2).toLowerCase()] || 'en');
 
                 // Create a message-like object that wraps the interaction
                 const repliedSet = { value: false };
