@@ -1,131 +1,131 @@
 {
-  "title": "",
-  "desc": "",
-  "placeholder": "",
-  "balance": "",
-  "alreadyOwned": "",
-  "inventory": "",
-  "refresh": "",
-  "price": "",
-  "type": "",
-  "consumable": "",
-  "role": "",
-  "badge": "",
-  "boost": "",
-  "permanent": "",
-  "level": "",
-  "expires": "",
-  "permanentItem": "",
-  "owned": "",
-  "locked": "",
-  "accessDenied": "",
-  "itemNotFound": "",
-  "purchaseError": "",
-  "footer": "",
-  "purchaseComplete": "",
-  "newBalance": "",
-  "verifyWith": "",
-  "processing": "",
-  "loadingInventory": "",
-  "purchaseDetails": "",
-  "itemPurchased": "",
-  "pricePaid": "",
-  "bonusReceived": "",
-  "previousBalance": "",
-  "insufficientFunds": "",
-  "levelRequirement": "",
-  "checkBalance": "",
-  "authorShop": "",
-  "streakProtections": "",
-  "creditsLabel": "",
-  "streakProtectionLine": "",
-  "xpBonusLine": "",
-  "notifAuthor": "",
-  "notifPurchased": "",
-  "notifPrice": "",
-  "notifNewBalance": "",
-  "lockedShort": "",
-  "requiresLevel": "",
-  "insufficientShort": "",
-  "purchaseSuccessful": "",
-  "acquiredLine": "",
-  "newBalanceLine": "",
-  "ownedShort": "",
+  "title": "═ ARCHON NEURAL SUUGU ═",
+  "desc": "I ka kreditaw sɔrɔlenw falen yan ka kɛ sitɛmu yɛlɛmaw ye.",
+  "placeholder": "Yɛlɛmani sugandi i b'a fɛ ka san...",
+  "balance": "I ka Kreditaw Sisan",
+  "alreadyOwned": "⚠️ I ye nin yɛlɛmani in sɔrɔ kaban.",
+  "inventory": "📦 N ka Fɛnw",
+  "refresh": "🔄 Kuraya",
+  "price": "Sanga",
+  "type": "Suguya",
+  "consumable": "Consommable",
+  "role": "Rolu",
+  "badge": "Baaji",
+  "boost": "Boost",
+  "permanent": "Permanent",
+  "level": "Niveau",
+  "expires": "A bɛ ban",
+  "permanentItem": "Permanent",
+  "owned": "I SƆRƆ A",
+  "locked": "NIV",
+  "accessDenied": "❌ Nin kɔlɔsilaw bɛ minɛ i kelen de ye.",
+  "itemNotFound": "❌ Fɛn in tɛ sɔrɔ.",
+  "purchaseError": "❌ Hali kɛra san kɛli kɔnɔ.",
+  "footer": "ARCHON CG-223 • Neural Suugu",
+  "purchaseComplete": "✅ SAN BANNA",
+  "newBalance": "Kreditaw Kura",
+  "verifyWith": "I k'a dantigɛ fɛ",
+  "processing": "⚡ San kɛli bɛ kɛ...",
+  "loadingInventory": "⚡ I ka fɛnw bɛ labɛn...",
+  "purchaseDetails": "SAN KƐLI KO",
+  "itemPurchased": "Fɛn Min Sanra",
+  "pricePaid": "Sanga Min Sarara",
+  "bonusReceived": "Bonus Min Sɔrɔra",
+  "previousBalance": "Kreditaw Kɔrɔ",
+  "insufficientFunds": "❌ **Kreditaw Tɛ Se!**\nA kan ka kɛ: `{price}` 🪙\nI bolo: `{balance}` 🪙",
+  "levelRequirement": "⚠️ **Niveau Tɛ Se**\nNiveau min mago bɛ: `{level}`\nI ka niveau: `{current}`",
+  "checkBalance": "I k'a lajɛ tuma bɛɛ fɛ `{prefix}bal` walima `{prefix}credits`",
+  "authorShop": "🏪 NEURAL SUUGU",
+  "streakProtections": "Streak Protections",
+  "creditsLabel": "Kreditaw",
+  "streakProtectionLine": "🛡️ Streak Protection: +1",
+  "xpBonusLine": "XP Bonus: +{amount} XP",
+  "notifAuthor": "🛒 NEURAL SUUGU • SAN",
+  "notifPurchased": "**{user}** ye **{item}** san {emoji}",
+  "notifPrice": "💰 **Sanga:** {price} 🪙",
+  "notifNewBalance": "📊 **Kreditaw Kura:** {balance} 🪙",
+  "lockedShort": "🔒 Niv.{level}",
+  "requiresLevel": "🔒 A mago bɛ niveau {level} na",
+  "insufficientShort": "❌ Kreditaw tɛ se! {price} de mago bɛ, nka i bolo {balance}",
+  "purchaseSuccessful": "✅ **SAN KƐRA KOSƐBƐ**",
+  "acquiredLine": "{emoji} **{name}** donna i bolo!",
+  "newBalanceLine": "💰 Kreditaw kura: `{balance}` {credits}",
+  "ownedShort": "✅ I sɔrɔ a",
   "items": {
     "starter_pack": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Sababukɛla Paki",
+      "desc": "Boost fitinin ajan kuraw ye.",
+      "perk": "+100 XP ani Kredi +50"
     },
     "xp_boost_small": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "XP Boost (Fitinin)",
+      "desc": "Neural fari teliya.",
+      "perk": "+250 XP"
     },
     "xp_boost_large": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "XP Overdrive (Quantum)",
+      "desc": "XP caman don o kelen na.",
+      "perk": "+1000 XP o kelen na"
     },
     "credit_boost_small": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Kredi Don",
+      "desc": "Kredi fari fitinin.",
+      "perk": "+200 Kredi"
     },
     "credit_boost_large": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Kredi Caman Don",
+      "desc": "Kredi caman don.",
+      "perk": "+1000 Kredi"
     },
     "vip_role": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "VIP Daraja",
+      "desc": "VIP rolu kelen ani a nafolo.",
+      "perk": "VIP Rolu + Salon Kɛrɛnkɛrɛnnen Don"
     },
     "badge_eagle": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Eagle Baaji",
+      "desc": "Eagle sigida elite taamasiyɛn.",
+      "perk": "A bɛra i ka profil kan"
     },
     "badge_neural": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Neural Grid Baaji",
+      "desc": "Neural grid kɛla taamasiyɛn.",
+      "perk": "A bɛra i ka profil kan"
     },
     "badge_architect": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Architect Baaji",
+      "desc": "Architect belebele taamasiyɛn.",
+      "perk": "A bɛra i ka profil kan"
     },
     "badge_steel": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Steel Node Baaji",
+      "desc": "BAMAKO-STEEL-NODE kɛla baaji.",
+      "perk": "A bɛra i ka profil kan"
     },
     "verified_role": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Ajan Dantigɛlen",
+      "desc": "Dantigɛlen daraja sigida kɔnɔ.",
+      "perk": "Rolu Dantigɛlen + Laɲini Baaji"
     },
     "badge_pioneer": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Pioneer Baaji",
+      "desc": "A bɛra i ka profil kan.",
+      "perk": "🏅 Pioneer Baaji"
     },
     "badge_bamako": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Bamako Pride Baaji",
+      "desc": "Mali kɔnɔnafolo baaji.",
+      "perk": "🇲🇱 Bamako Pride Baaji"
     },
     "mystery_box_bronze": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Gundo Kɛsɛ Bronze",
+      "desc": "Saraw bɛ a kɔnɔ minnu tɛ dɔn!",
+      "perk": "XP walima Kreditaw min tɛ dɔn"
     },
     "daily_streak_shield": {
-      "name": "",
-      "desc": "",
-      "perk": ""
+      "name": "Streak Shield",
+      "desc": "A bɛ i ka streak kisi n'i t'a kɛ don kelen.",
+      "perk": "1x Streak Protection"
     }
   }
 }
