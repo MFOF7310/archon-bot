@@ -1,0 +1,131 @@
+{
+  "title": "═ MARCHÉ NEURAL ARCHON ═",
+  "desc": "Échangez vos crédits contre des améliorations système.",
+  "placeholder": "Sélectionnez une amélioration...",
+  "balance": "Solde Actuel",
+  "alreadyOwned": "⚠️ Vous possédez déjà cette amélioration.",
+  "inventory": "📦 Mon Inventaire",
+  "refresh": "🔄 Actualiser",
+  "price": "Prix",
+  "type": "Type",
+  "consumable": "Consommable",
+  "role": "Rôle",
+  "badge": "Badge",
+  "boost": "Boost",
+  "permanent": "Permanent",
+  "level": "Niveau",
+  "expires": "Expire",
+  "permanentItem": "Permanent",
+  "owned": "POSSÉDÉ",
+  "locked": "NIV",
+  "accessDenied": "❌ Ces commandes sont verrouillées à votre session.",
+  "itemNotFound": "❌ Article introuvable.",
+  "purchaseError": "❌ Une erreur est survenue lors de l'achat.",
+  "footer": "ARCHON CG-223 • Marché Neural",
+  "purchaseComplete": "✅ ACHAT RÉUSSI",
+  "newBalance": "Nouveau Solde",
+  "verifyWith": "Vérifiez avec",
+  "processing": "⚡ Transaction en cours...",
+  "loadingInventory": "⚡ Chargement de l'inventaire...",
+  "purchaseDetails": "DÉTAILS DE L'ACHAT",
+  "itemPurchased": "Article Acheté",
+  "pricePaid": "Prix Payé",
+  "bonusReceived": "Bonus Reçu",
+  "previousBalance": "Solde Précédent",
+  "insufficientFunds": "❌ **Crédits Insuffisants !**\nRequis: `{price}` 🪙\nVotre Solde: `{balance}` 🪙",
+  "levelRequirement": "⚠️ **Niveau Requis Non Atteint**\nNiveau Requis: `{level}`\nVotre Niveau: `{current}`",
+  "checkBalance": "Vérifiez votre solde avec `{prefix}bal` ou `{prefix}credits`",
+  "authorShop": "🏪 MARCHÉ NEURAL",
+  "streakProtections": "Protections de Série",
+  "creditsLabel": "Crédits",
+  "streakProtectionLine": "🛡️ Protection de Série : +1",
+  "xpBonusLine": "Bonus XP : +{amount} XP",
+  "notifAuthor": "🛒 MARCHÉ NEURAL • ACHAT",
+  "notifPurchased": "**{user}** a acheté **{item}** {emoji}",
+  "notifPrice": "💰 **Prix :** {price} 🪙",
+  "notifNewBalance": "📊 **Nouveau Solde :** {balance} 🪙",
+  "lockedShort": "🔒 Nv.{level}",
+  "requiresLevel": "🔒 Niveau {level} requis",
+  "insufficientShort": "❌ Fonds insuffisants ! Il faut {price}, vous avez {balance}",
+  "purchaseSuccessful": "✅ **ACHAT RÉUSSI**",
+  "acquiredLine": "{emoji} **{name}** acquis !",
+  "newBalanceLine": "💰 Nouveau solde : `{balance}` {credits}",
+  "ownedShort": "✅ Possédé",
+  "items": {
+    "starter_pack": {
+      "name": "Pack Nouvelle Recrue",
+      "desc": "Un petit boost pour les nouveaux agents.",
+      "perk": "+100 XP & +50 Credits"
+    },
+    "xp_boost_small": {
+      "name": "Boost XP (Petit)",
+      "desc": "Amélioration neurale rapide.",
+      "perk": "+250 XP"
+    },
+    "xp_boost_large": {
+      "name": "Overdrive XP Quantique",
+      "desc": "Injection massive d'XP.",
+      "perk": "+1000 XP instantanement"
+    },
+    "credit_boost_small": {
+      "name": "Injection de Credits",
+      "desc": "Petit boost de credits.",
+      "perk": "+200 Credits"
+    },
+    "credit_boost_large": {
+      "name": "Afflux de Credits",
+      "desc": "Injection majeure de credits.",
+      "perk": "+1000 Credits"
+    },
+    "vip_role": {
+      "name": "Statut VIP",
+      "desc": "Role VIP exclusif et avantages.",
+      "perk": "Role VIP + Acces Salon Special"
+    },
+    "badge_eagle": {
+      "name": "Badge Aigle",
+      "desc": "Emblème élite communauté Eagle.",
+      "perk": "Afficher sur le profil"
+    },
+    "badge_neural": {
+      "name": "Badge Réseau Neural",
+      "desc": "Emblème opérateur neural.",
+      "perk": "Afficher sur le profil"
+    },
+    "badge_architect": {
+      "name": "Badge Architecte",
+      "desc": "Emblème suprême architecte.",
+      "perk": "Afficher sur le profil"
+    },
+    "badge_steel": {
+      "name": "Badge Nœud Acier",
+      "desc": "Badge opérateur BAMAKO-STEEL-NODE.",
+      "perk": "Afficher sur le profil"
+    },
+    "verified_role": {
+      "name": "Agent Verifie",
+      "desc": "Statut verifie dans la communaute.",
+      "perk": "Role Verifie + Badge de Confiance"
+    },
+    "badge_pioneer": {
+      "name": "Badge Pionnier",
+      "desc": "Affiche sur votre profil.",
+      "perk": "🏅 Badge Pionnier"
+    },
+    "badge_bamako": {
+      "name": "Badge Fierté Bamako",
+      "desc": "Badge heritage malien.",
+      "perk": "🇲🇱 Badge Fierté Bamako"
+    },
+    "mystery_box_bronze": {
+      "name": "Boite Mystere Bronze",
+      "desc": "Contient des recompenses aleatoires !",
+      "perk": "XP ou Credits Aleatoires"
+    },
+    "daily_streak_shield": {
+      "name": "Bouclier de Serie",
+      "desc": "Protege votre serie quotidienne.",
+      "perk": "1x Protection de Serie"
+    }
+  }
+}

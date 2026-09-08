@@ -13,6 +13,7 @@ function storeUrl(url) {
 }
 function getUrl(key) { return urlStore.get(key) || null; }
 module.exports.getUrl = getUrl;
+module.exports.storeUrl = storeUrl;
 
 function isChannelOrPlaylist(url) {
     return (url.includes('/channel/') || url.includes('/playlist') ||
@@ -27,10 +28,13 @@ function dlVideoSmart(url, quality) {
         const proxyFlag = process.env.WEBSHARE_PROXY
             ? `--proxy "${process.env.WEBSHARE_PROXY}" `
             : '';
+        const fmt = quality === 'best'
+            ? 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best'
+            : 'bestvideo[height<=' + quality + '][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=' + quality + ']+bestaudio/best[height<=' + quality + ']';
         const cmd = [
             'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ' + proxyFlag,
             '-o "' + out + '"',
-            '-f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=' + quality + ']+bestaudio/best[height<=' + quality + ']"',
+            '-f "' + fmt + '"',
             '--merge-output-format mp4',
             '--max-filesize 48M',
             '"' + url + '"'
@@ -48,8 +52,14 @@ function dlVideoSmart(url, quality) {
 
 function getDirectVideoUrl(url, quality) {
     return new Promise((res, rej) => {
+        const proxyFlag = process.env.WEBSHARE_PROXY
+            ? '--proxy "' + process.env.WEBSHARE_PROXY + '" '
+            : '';
+        const fmt = quality === 'best'
+            ? 'best[ext=mp4]/best'
+            : 'best[height<=' + quality + '][ext=mp4]/best[height<=' + quality + ']';
         exec(
-            'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt -f "best[height<=' + quality + '][ext=mp4]/best[height<=' + quality + ']" --get-url "' + url + '"',
+            'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ' + proxyFlag + '-f "' + fmt + '" --get-url "' + url + '"',
             { timeout: 30000 },
             (err, stdout) => {
                 if (err || !stdout.trim()) return rej(new Error('No URL'));
@@ -66,10 +76,12 @@ module.exports = {
     category: 'Media',
     usage: '/ytv <url>',
     getUrl,
+    storeUrl,
 
     handler: async (ctx) => {
         const url = ctx.args[0];
-        const quality = ctx.args[1] ? parseInt(ctx.args[1]) : null;
+        const quality = ctx.args[1] === 'best' ? 'best' : (ctx.args[1] ? parseInt(ctx.args[1]) : null);
+        const qualityLabel = quality === 'best' ? 'BEST' : quality + 'p';
 
         if (!url || (!url.includes('youtube') && !url.includes('youtu.be')))
             return ctx.replyHTML(
@@ -89,6 +101,7 @@ module.exports = {
             const key = storeUrl(url);
             // Fetch available qualities dynamically
             let buttons = [
+                [{ text: '⭐ Best quality', callback_data: 'ytdl:v:best:' + key }],
                 [{ text: '📱 360p', callback_data: 'ytdl:v:360:' + key },
                  { text: '🎬 720p', callback_data: 'ytdl:v:720:' + key },
                  { text: '🔥 1080p', callback_data: 'ytdl:v:1080:' + key }]
@@ -116,7 +129,7 @@ module.exports = {
                             callback_data: 'ytdl:v:' + q.replace('p','') + ':' + key
                         });
                     });
-                    buttons = row;
+                    buttons = [[{ text: '⭐ Best quality', callback_data: 'ytdl:v:best:' + key }], ...row];
                 }
             } catch(e) {}
 
@@ -140,8 +153,11 @@ module.exports = {
         let approxSize = 0;
         try {
             const { execSync } = require('child_process');
+            const sizeFmt = quality === 'best'
+                ? 'bestvideo[ext=mp4]+bestaudio/best'
+                : 'bestvideo[height<=' + quality + '][ext=mp4]+bestaudio/best[height<=' + quality + ']/best';
             const sizeRaw = execSync(
-                `yt-dlp --no-playlist -f "bestvideo[height<=${quality}][ext=mp4]+bestaudio/best[height<=${quality}]/best" --print filesize_approx "${url}" 2>/dev/null`,
+                `yt-dlp --no-playlist -f "${sizeFmt}" --print filesize_approx "${url}" 2>/dev/null`,
                 { timeout: 15000, encoding: 'utf8' }
             ).trim();
             approxSize = parseInt(sizeRaw) || 0;
@@ -149,7 +165,7 @@ module.exports = {
         const sizeMB = Math.round(approxSize / 1024 / 1024);
         const sizeInfo = sizeMB > 0 ? ` (~${sizeMB}MB)` : '';
 
-        const proc = await ctx.replyHTML('🎬 <i>Downloading ' + quality + 'p' + sizeInfo + ' — hang tight...</i>');
+        const proc = await ctx.replyHTML('🎬 <i>Downloading ' + qualityLabel + sizeInfo + ' — hang tight...</i>');
         const edit = (t) => ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, t, { parse_mode: 'HTML' }).catch(() => {});
         await ctx.action('upload_video');
 
@@ -158,16 +174,40 @@ module.exports = {
         const rawPath = path.join(TMP, 'ytv_' + uid + '_raw.mp4');
         const compressedPath = path.join(TMP, 'ytv_' + uid + '_out.mp4');
         const edit2 = (t) => ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, t, { parse_mode: 'HTML' }).catch(() => {});
+        const sendDirectLink = async (mbText) => {
+            const link = (await getDirectVideoUrl(url, quality)).replace(/&/g, '&amp;');
+            await ctx.replyHTML(
+                '📦 <b>' + qualityLabel + ' • ' + mbText + ' — too big to send here!</b>\n\n' +
+                'But hey — your video is still yours! 🎬 Tap below to grab it straight from the source:\n\n' +
+                '<a href="' + link + '">⬇️ Download the video now</a>\n\n' +
+                '<i>⚠️ Link stays fresh for a few hours — save it while it\'s hot!\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
+            );
+        };
+
+        // Estimate already too big? Skip the download, serve the link right away
+        if (sizeMB >= 46) {
+            try {
+                await edit2('📦 <b>~' + sizeMB + 'MB — too big for Telegram!</b>\n\n<i>Skipping the download, grabbing your direct link...</i>');
+                await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
+                await sendDirectLink('~' + sizeMB + 'MB');
+                return;
+            } catch(e2) {
+                // link failed - fall through and try the normal download anyway
+            }
+        }
 
         try {
             await new Promise((res, rej) => {
                 const proxyFlag = process.env.WEBSHARE_PROXY
                     ? '--proxy "' + process.env.WEBSHARE_PROXY + '" '
                     : '';
+                const fmt = quality === 'best'
+                    ? 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best'
+                    : 'bestvideo[height<=' + quality + '][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=' + quality + ']+bestaudio/best[height<=' + quality + ']';
                 const cmd = [
                     'yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ' + proxyFlag,
                     '-o "' + rawPath + '"',
-                    '-f "bestvideo[height<=' + quality + '][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=' + quality + ']+bestaudio/best[height<=' + quality + ']"',
+                    '-f "' + fmt + '"',
                     '--merge-output-format mp4',
                     '"' + url + '"'
                 ].join(' ');
@@ -183,13 +223,17 @@ module.exports = {
             if (sizeMB >= 48) {
                 fs.unlinkSync(rawPath);
                 await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-                await ctx.replyHTML(
-                    '📦 <b>Video too large to send (' + sizeMB.toFixed(0) + 'MB)</b>\n\n' +
-                    'Pick a lower quality and try again:\n' +
-                    '• <b>480p</b> — good balance\n' +
-                    '• <b>360p</b> — smallest, fastest\n\n' +
-                    '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
-                );
+                try {
+                    await sendDirectLink(sizeMB.toFixed(0) + 'MB');
+                } catch(e2) {
+                    await ctx.replyHTML(
+                        '📦 <b>Video too large to send (' + sizeMB.toFixed(0) + 'MB)</b>\n\n' +
+                        'Pick a lower quality and try again:\n' +
+                        '• <b>480p</b> — good balance\n' +
+                        '• <b>360p</b> — smallest, fastest\n\n' +
+                        '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
+                    );
+                }
                 return;
             }
 
@@ -197,7 +241,7 @@ module.exports = {
             const buf = fs.readFileSync(rawPath);
             await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
             await ctx.sendVideoBuffer(buf, {
-                caption: '🎬 <b>' + quality + 'p</b> • 🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱',
+                caption: '🎬 <b>' + qualityLabel + '</b> • 🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱',
                 parse_mode: 'HTML'
             });
 
