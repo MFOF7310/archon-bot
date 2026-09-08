@@ -462,7 +462,7 @@ async function executeSlashCommand(interaction, client) {
 
   const opponent = interaction.options.getUser('opponent');
   const bet = interaction.options.getInteger('bet') || 100;
-  await startDuel({ reply: async (o) => interaction.reply({ ...o, fetchReply: true }), user: interaction.user, guild: interaction.guild, isInteraction: true, source: interaction }, client, db, opponent, bet);
+  await startDuel({ reply: async (o) => interaction.reply({ ...o }), user: interaction.user, guild: interaction.guild, isInteraction: true, source: interaction }, client, db, opponent, bet);
 }
 
 async function run(client, message, args, db, serverSettings, usedCommand) {

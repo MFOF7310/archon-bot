@@ -170,8 +170,7 @@ module.exports = {
             const msg = await interaction.reply({
                 embeds: [new EmbedBuilder().setColor(0xff3333)
                     .setDescription(`\`\`\`ansi\n\u001b[1;31m▸ CONFIRM CLEAR\u001b[0m\n\u001b[0;37mThis will delete all ${count} auto-replies permanently.\u001b[0m\n\`\`\``)],
-                components: [row],
-                fetchReply: true
+                components: [row]
             });
 
             const collector = msg.createMessageComponentCollector({ time: 15000 });

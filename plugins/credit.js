@@ -208,7 +208,7 @@ module.exports = {
             const fakeMessage = {
                 author: interaction.user, guild: interaction.guild, channel: interaction.channel,
                 mentions: buildMentions(target),
-                reply: async (opts) => interaction.reply({ ...opts, fetchReply: true }).catch(() => null),
+                reply: async (opts) => interaction.reply({ ...opts }).catch(() => null),
                 react: () => Promise.resolve()
             };
             return handlePay(fakeMessage, fakeArgs, client, db, serverSettings, lang, t, prefix, guildId, economySettings, guildName, guildIcon, version);
@@ -217,7 +217,7 @@ module.exports = {
             const fakeMessage = {
                 author: interaction.user, guild: interaction.guild, channel: interaction.channel,
                 mentions: buildMentions(),
-                reply: async (opts) => interaction.reply({ ...opts, fetchReply: true }).catch(() => null)
+                reply: async (opts) => interaction.reply({ ...opts }).catch(() => null)
             };
             return handleLeaderboard(fakeMessage, client, db, lang, t, guildId, economySettings, guildName, guildIcon, version);
         }
@@ -225,7 +225,7 @@ module.exports = {
         const fakeMessage = {
             author: interaction.user, guild: interaction.guild, channel: interaction.channel,
             mentions: buildMentions(targetUser),
-            reply: async (opts) => interaction.reply({ ...opts, fetchReply: true }).catch(() => null)
+            reply: async (opts) => interaction.reply({ ...opts }).catch(() => null)
         };
         return handleBalance(fakeMessage, [], client, db, lang, t, guildId, economySettings, guildName, guildIcon, version);
     }

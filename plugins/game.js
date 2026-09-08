@@ -37,7 +37,7 @@ class GameContext {
         if (this.isInteraction) {
             if (this.source.deferred) return this.source.editReply(options);
             if (this.source.replied) return this.source.followUp(options);
-            return this.source.reply({ ...options, fetchReply: true });
+            return this.source.reply({ ...options });
         }
         return this.source.reply(options);
     }

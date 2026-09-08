@@ -480,7 +480,7 @@ try {
     author: interaction.user,
     guild: interaction.guild,
     channel: interaction.channel,
-    reply: async (options) => interaction.editReply({ ...options, fetchReply: true }),
+    reply: async (options) => interaction.editReply({ ...options }),
     react: () => Promise.resolve()
 };
 
