@@ -17,7 +17,7 @@ const CHARACTERS = {
             "When people are protecting something truly special to them, they truly can become as strong as they can be."
         ],
         funFact: '🍜 Loves ramen more than anything!',
-        fallbackImage: 'https://cdn.myanimelist.net/images/characters/2/284121.jpg'
+        fallbackImage: 'https://static.wikia.nocookie.net/naruto/images/d/d6/Naruto_newshot.png'
     },
     'luffy': { 
         id: 40, 
@@ -32,7 +32,7 @@ const CHARACTERS = {
             "If you don't take risks, you can't create a future!"
         ],
         funFact: '🍖 Can eat his body weight in meat!',
-        fallbackImage: 'https://cdn.myanimelist.net/images/characters/9/310307.jpg'
+        fallbackImage: 'https://static.wikia.nocookie.net/onepiece/images/6/6d/Monkey_D._Luffy_Anime_Post_Timeskip_Infobox.png'
     },
     'goku': { 
         id: 214, 
@@ -47,7 +47,7 @@ const CHARACTERS = {
             "You can't control your fear. It comes from the heart."
         ],
         funFact: '🍚 Can eat 50 bowls of rice in one sitting!',
-        fallbackImage: 'https://cdn.myanimelist.net/images/characters/14/319011.jpg'
+        fallbackImage: 'https://static.wikia.nocookie.net/dragonball/images/5/5b/Goku_Dragon_Ball_Super.png'
     },
     'levi': { 
         id: 45627, 
@@ -62,7 +62,7 @@ const CHARACTERS = {
             "I choose the hell of humans fighting until they die."
         ],
         funFact: '🧹 Obsessed with cleaning and hates dirt!',
-        fallbackImage: 'https://cdn.myanimelist.net/images/characters/2/241413.jpg'
+        fallbackImage: 'https://static.wikia.nocookie.net/shingekinokyojin/images/0/0d/Levi_character_image.png'
     },
     'tanjiro': { 
         id: 164533, 
@@ -77,7 +77,7 @@ const CHARACTERS = {
             "Protect the people you love, protect the weak."
         ],
         funFact: '👃 Has an incredibly sensitive nose!',
-        fallbackImage: 'https://cdn.myanimelist.net/images/characters/4/392103.jpg'
+        fallbackImage: 'https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/7/74/Tanjiro_Anime.png'
     },
     'gojo': { 
         id: 127691, 
@@ -92,7 +92,7 @@ const CHARACTERS = {
             "It's not about whether I can. I just do it."
         ],
         funFact: '🕶️ Wears a blindfold to control his immense power!',
-        fallbackImage: 'https://cdn.myanimelist.net/images/characters/8/424605.jpg'
+        fallbackImage: 'https://static.wikia.nocookie.net/jujutsu-kaisen/images/0/0f/Satoru_Gojo_anime.png'
     },
     'deku': { 
         id: 133676, 
@@ -107,7 +107,7 @@ const CHARACTERS = {
             "I have to work harder than anyone else to make it!"
         ],
         funFact: '📓 Mutters analysis of heroes in his notebook!',
-        fallbackImage: 'https://cdn.myanimelist.net/images/characters/5/331563.jpg'
+        fallbackImage: 'https://static.wikia.nocookie.net/bokunoheroacademia/images/5/59/Izuku_Midoriya_anime.png'
     },
     'light': { 
         id: 80, 
@@ -122,7 +122,7 @@ const CHARACTERS = {
             "I am the god of this new world!"
         ],
         funFact: '✍️ Can write names at incredible speed!',
-        fallbackImage: 'https://cdn.myanimelist.net/images/characters/2/63824.jpg'
+        fallbackImage: 'https://static.wikia.nocookie.net/deathnote/images/1/1c/Light_Yagami_anime.png'
     },
 };
 
