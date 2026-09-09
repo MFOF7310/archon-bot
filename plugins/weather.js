@@ -253,8 +253,10 @@ module.exports = {
     // ================= SLASH COMMAND =================
     execute: async (interaction, client) => {
         const city = interaction.options.getString('city') || 'Bamako';
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const usedCommand = lang === 'fr' ? 'meteo' : 'weather';
+        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { language: 'en' };
+        const lang = serverSettings?.language || 'en';
+        const wt = client.t ? client.t('weather', lang) : { command: lang === 'fr' ? 'meteo' : 'weather', locale: lang === 'fr' ? 'fr-FR' : 'en-US' };
+        const usedCommand = wt.command;
 
         await interaction.deferReply();
 
@@ -266,8 +268,7 @@ module.exports = {
             react: () => Promise.resolve()
         };
 
-        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-        await module.exports.run(client, fakeMessage, [city], client.db, serverSettings, usedCommand);
+        await module.exports.run(client, fakeMessage, [city], client.db, serverSettings, usedCommand, lang);
     },
 
     // ================= PREFIX COMMAND =================
@@ -334,7 +335,8 @@ module.exports = {
             if (forecastRes?.data?.list) {
                 const daily = {};
                 for (const item of forecastRes.data.list) {
-                    const day = new Date(item.dt * 1000).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'short' });
+                    const wt2 = client.t ? client.t('weather', lang) : { locale: lang === 'fr' ? 'fr-FR' : lang === 'zh' ? 'zh-CN' : lang === 'ar' ? 'ar-SA' : 'en-US' };
+                    const day = new Date(item.dt * 1000).toLocaleDateString(wt2.locale, { weekday: 'short' });
                     if (!daily[day]) daily[day] = { temps: [], desc: item.weather[0], dt: item.dt };
                     daily[day].temps.push(item.main.temp);
                 }
