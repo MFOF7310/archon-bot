@@ -5141,7 +5141,7 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
                         .setTitle('⭐ ARCHON Premium Activated!')
                         .setDescription(`Payment confirmed! Your server **${guild.name}** now has ARCHON Premium for 30 days!`)
                         .addFields(
-                            { name: '💰 Amount', value: '$1.99', inline: true },
+                            { name: '💰 Amount', value: '$3.40', inline: true },
                             { name: '⏰ Valid until', value: `<t:${expiresAt}:D>`, inline: true }
                         )
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱 • Thank you for supporting!' })
