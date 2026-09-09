@@ -30,7 +30,11 @@ const translations = {
         dmFallbackNote: '📩 *This message was sent privately to avoid public embarrassment.*',
         helpTitle: '🗑️ DELETE COMMAND',
         usage: 'Usage',
-        examples: 'Examples'
+        examples: 'Examples',
+        ex1: 'Delete 10 messages',
+        ex2: 'Delete messages from a user',
+        ex3: 'Delete a specific message',
+        ex4: 'Reply to any message with'
     },
     fr: {
         accessDeniedTitle: '🚫 ACCÈS REFUSÉ',
@@ -60,7 +64,11 @@ const translations = {
         dmFallbackNote: '📩 *Ce message vous a été envoyé en privé pour éviter l\'embarras public.*',
         helpTitle: '🗑️ COMMANDE DELETE',
         usage: 'Utilisation',
-        examples: 'Exemples'
+        examples: 'Exemples',
+        ex1: 'Supprime 10 messages',
+        ex2: 'Supprime les messages d\'un utilisateur',
+        ex3: 'Supprime un message spécifique',
+        ex4: 'Répondez à un message avec'
     }
 };
 
@@ -380,10 +388,10 @@ function showHelp(message, lang) {
         .setDescription(
             `### ${t.noTarget}\n\n` +
             `**${t.usage}:**\n` +
-            `\`.dlt 10\` — ${lang === 'fr' ? 'Supprime 10 messages' : 'Delete 10 messages'}\n` +
-            `\`.dlt @user\` — ${lang === 'fr' ? 'Supprime les messages d\'un utilisateur' : 'Delete user\'s messages'}\n` +
-            `\`.dlt [messageID]\` — ${lang === 'fr' ? 'Supprime un message spécifique' : 'Delete specific message'}\n` +
-            `*${lang === 'fr' ? 'Répondez à un message avec' : 'Reply to a message with'}* \`.dlt\``
+            `\`.dlt 10\` — ${t.ex1}\n` +
+            `\`.dlt @user\` — ${t.ex2}\n` +
+            `\`.dlt [messageID]\` — ${t.ex3}\n` +
+            `*${t.ex4}* \`.dlt\``
         )
         .addFields(
             { name: `📌 ${t.examples}`, value: '`.dlt 10` • `.dlt @user` • `.dlt 123456789`', inline: false },
