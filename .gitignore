@@ -92,3 +92,4 @@ bot.db
 assets/backgrounds/users/
 assets/loadouts/
 *.py
+kene-key.pem
