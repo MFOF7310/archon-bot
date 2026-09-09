@@ -5377,6 +5377,7 @@ apiApp.get('/api/user/:userId', (req, res) => {
         const totalClaims = allUserData.reduce((sum, u) => sum + (u.claim_count || 0), 0);
         const totalMessages = allUserData.reduce((sum, u) => sum + (u.message_count || 0), 0);
         const totalCommands = allUserData.reduce((sum, u) => sum + (u.commands_used || 0), 0);
+        const activeBadge = allUserData.find(u => u.active_badge)?.active_badge || null;
 
         // Get global rank by total XP
         let rank = null;
@@ -5416,6 +5417,7 @@ apiApp.get('/api/user/:userId', (req, res) => {
             commandsUsed: totalCommands,
             rank,
             badges,
+            activeBadge,
             servers: allGuildData.length,
             lastSeen: dashUser?.last_login || null,
         });
