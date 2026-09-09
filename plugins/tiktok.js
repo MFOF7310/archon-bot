@@ -898,7 +898,7 @@ if (action === 'test' || action === 'simulate') {
 
             const embed = new EmbedBuilder().setColor('#e74c3c')
                 .setAuthor({ name: EMOJIS.tiktok_logo + ' Tracking Removed', iconURL: guildIcon })
-                .setDescription('**@' + username + '** — ' + (lang === 'bm' ? 'A bɔra.' : lang === 'fr' ? 'Suivi supprimé.' : lang === 'ar' ? 'تمت الإزالة.' : lang === 'zh' ? '已取消追踪。' : 'Removed.'))
+                .setDescription('**@' + username + '** — ' + ({ bm: 'A bɔra.', fr: 'Suivi supprimé.', ar: 'تمت الإزالة.', zh: '已取消追踪。', en: 'Removed.' }[lang] || 'Removed.'))
                 .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
             return message.reply({ embeds: [embed] });
         }

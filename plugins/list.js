@@ -74,7 +74,12 @@ const translations = {
         statsSummary: '📊 STATS SUMMARY',
         mostPopularCategory: 'Most Popular',
         leastUsedCommand: 'Least Used',
-        totalExecutions: 'Total Executions (7d)'
+        totalExecutions: 'Total Executions (7d)',
+        noCommandsInCategory: 'No commands in this category.',
+        statistics: 'Statistics',
+        resultsFound: 'results found',
+        commandsWord: 'commands',
+        favoriteCommands: 'Your favorite commands'
     },
     fr: {
         title: '📋 REGISTRE DES COMMANDES NEURALES',
@@ -131,7 +136,12 @@ const translations = {
         statsSummary: '📊 RÉSUMÉ STATS',
         mostPopularCategory: 'Plus Populaire',
         leastUsedCommand: 'Moins Utilisée',
-        totalExecutions: 'Total Exécutions (7j)'
+        totalExecutions: 'Total Exécutions (7j)',
+        noCommandsInCategory: 'Aucune commande dans cette catégorie.',
+        statistics: 'Statistiques',
+        resultsFound: 'résultats trouvés',
+        commandsWord: 'commandes',
+        favoriteCommands: 'Vos commandes favorites'
     }
 };
 
@@ -315,7 +325,7 @@ function createCategoryEmbed(client, category, prefix, lang, t, version, guildNa
         .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }));
     
     if (cmds.length === 0) {
-        embed.setDescription(lang === 'fr' ? 'Aucune commande dans cette catégorie.' : 'No commands in this category.');
+        embed.setDescription(t.noCommandsInCategory);
     } else {
         let description = '';
         cmds.forEach((cmd, index) => {
@@ -327,7 +337,7 @@ function createCategoryEmbed(client, category, prefix, lang, t, version, guildNa
     }
     
     embed.addFields({
-        name: '📊 ' + (lang === 'fr' ? 'Statistiques' : 'Statistics'),
+        name: '📊 ' + t.statistics,
         value: `\`\`\`yaml\n${t.commands}: ${cmds.length}\n${t.aliases}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\n\`\`\``,
         inline: false
     });
@@ -347,7 +357,7 @@ function createSearchResultsEmbed(client, query, results, prefix, lang, t, versi
     if (results.length === 0) {
         embed.setDescription(t.noResults.replace('{query}', query));
     } else {
-        let description = `**${results.length}** ${lang === 'fr' ? 'résultats trouvés' : 'results found'}:\n\n`;
+        let description = `**${results.length}** ${t.resultsFound}:\n\n`;
         results.slice(0, 15).forEach(cmd => {
             const config = CATEGORY_CONFIG[cmd.category?.toUpperCase() || 'GENERAL'] || CATEGORY_CONFIG.GENERAL;
             description += `${config.emoji} **\`${prefix}${cmd.name}\`**\n└─ ${cmd.description || t.noDescription}\n\n`;
@@ -553,14 +563,14 @@ module.exports = {
                     .map(([key, config]) => ({
                         label: `${config.emoji} ${config.name[lang]}`.substring(0, 100),
                         value: key,
-                        description: `${categorized[key]?.length || 0} ${lang === 'fr' ? 'commandes' : 'commands'}`.substring(0, 100),
+                        description: `${categorized[key]?.length || 0} ${t.commandsWord}`.substring(0, 100),
                         emoji: config.emoji
                     }));
                 
                 categoryOptions.unshift({
                     label: `📚 ${t.allCommands}`.substring(0, 100),
                     value: 'ALL',
-                    description: `${client.commands.size} ${lang === 'fr' ? 'commandes' : 'commands'} total`.substring(0, 100),
+                    description: `${client.commands.size} ${t.commandsWord} total`.substring(0, 100),
                     emoji: '📚'
                 });
                 
@@ -568,7 +578,7 @@ module.exports = {
                     categoryOptions.unshift({
                         label: `⭐ ${t.favorites} (${favs.size})`.substring(0, 100),
                         value: 'FAVORITES',
-                        description: `${lang === 'fr' ? 'Vos commandes favorites' : 'Your favorite commands'}`.substring(0, 100),
+                        description: `${t.favoriteCommands}`.substring(0, 100),
                         emoji: '⭐'
                     });
                 }
@@ -841,7 +851,7 @@ module.exports = {
 
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = (interaction.guild ? client.getServerSettings(interaction.guild.id) : { language: 'en' })?.language || 'en';
         const query = interaction.options.getString('query');
         
         await interaction.deferReply();
