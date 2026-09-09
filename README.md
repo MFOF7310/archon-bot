@@ -271,6 +271,22 @@ Only plugins with a valid `SlashCommandBuilder` export are registered. Each plug
 
 ---
 
+## 🌍 Translations
+
+ARCHON CG-223 is fully internationalized across 5 locales:
+
+| Code | Language | Status |
+|------|----------|--------|
+| `en` | English | ✅ Complete |
+| `fr` | French | ✅ Complete |
+| `bm` | Bambara (Bamanankan) | ✅ Complete |
+| `zh` | Chinese (Simplified) | ✅ Complete |
+| `ar` | Arabic | ✅ Complete |
+
+Want to add a new language or improve an existing one? See [TRANSLATING.md](TRANSLATING.md) for the full guide.
+
+---
+
 ## 🌍 About
 
 ARCHON CG-223 is built by **Moussa Fofana** ([@MFOF7310](https://github.com/MFOF7310)) from **Bamako, Mali** 🇲🇱
