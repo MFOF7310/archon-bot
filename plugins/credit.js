@@ -81,7 +81,11 @@ const creditTranslations = {
         transferPrompt: 'Use `.pay @user <amount>` to transfer',
         dmsDisabled: '❌ Cannot DM this user.',
         transferReceived: '💸 Transfer Received!',
-        transferReceivedFrom: (from, amount, emoji) => `You received **${fmt(amount, emoji)}** from **${from}**!`
+        transferReceivedFrom: (from, amount, emoji) => `You received **${fmt(amount, emoji)}** from **${from}**!`,
+        levelField: 'Level',
+        rankField: 'Rank',
+        mentionUser: 'Mention a user',
+        newBalance: 'New Balance'
     },
     fr: {
         title: '💰 BANQUE NEURALE DE BAMAKO',
@@ -123,7 +127,11 @@ const creditTranslations = {
         transferPrompt: 'Utilisez `.pay @utilisateur <montant>` pour transférer',
         dmsDisabled: '❌ Impossible d\'envoyer un DM à cet utilisateur.',
         transferReceived: '💸 Transfert Reçu !',
-        transferReceivedFrom: (from, amount, emoji) => `Vous avez reçu **${fmt(amount, emoji)}** de **${from}** !`
+        transferReceivedFrom: (from, amount, emoji) => `Vous avez reçu **${fmt(amount, emoji)}** de **${from}** !`,
+        levelField: 'Niveau',
+        rankField: 'Rang',
+        mentionUser: 'Mentionnez un utilisateur',
+        newBalance: 'Nouveau Solde'
     }
 };
 
@@ -170,7 +178,7 @@ module.exports = {
     // ================= SLASH EXECUTION =================
     async execute(interaction, client) {
         const sub = interaction.options.getSubcommand();
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = (interaction.guild ? client.getServerSettings(interaction.guild.id) : { language: 'en' })?.language || 'en';
         const t = creditTranslations[lang];
         const prefix = interaction.guild ? (client.getServerSettings?.(interaction.guild.id)?.prefix || '.') : '.';
         const guildId = interaction.guild?.id || 'DM';
@@ -260,8 +268,8 @@ let userData = db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").g
             `\`\`\`yaml\n💰 ${credits.toLocaleString()} ${economySettings.currencyEmoji}\n\`\`\``
         )
         .addFields(
-            { name: `📊 ${lang === 'fr' ? 'Niveau' : 'Level'}`, value: `${level}`, inline: true },
-            { name: `🎖️ ${lang === 'fr' ? 'Rang' : 'Rank'}`, value: `${rank.emoji} ${rank.title[lang]}`, inline: true },
+            { name: `📊 ${t.levelField}`, value: `${level}`, inline: true },
+            { name: `🎖️ ${t.rankField}`, value: `${rank.emoji} ${rank.title[lang]}`, inline: true },
             { name: `📈 XP`, value: `${xp.toLocaleString()}`, inline: true }
         )
         .setFooter({ text: `${t.guildContext(guildName)} • ${t.embedFooter} • v${version}`, iconURL: guildIcon })
@@ -314,7 +322,7 @@ async function handlePay(message, args, client, db, serverSettings, lang, t, pre
     }
 
     const target = message.mentions.users.first();
-    if (!target) return message.reply(`❌ ${lang === 'fr' ? 'Mentionnez un utilisateur' : 'Mention a user'}. ${t.transferPrompt}`).catch(() => {});
+    if (!target) return message.reply(`❌ ${t.mentionUser}. ${t.transferPrompt}`).catch(() => {});
     if (target.id === senderId) return message.reply(t.selfTransfer).catch(() => {});
 
     const amount = parseInt(args[1]) || parseInt(args[2]);
@@ -374,7 +382,7 @@ async function handlePay(message, args, client, db, serverSettings, lang, t, pre
                 .setColor('#2ecc71')
                 .setAuthor({ name: t.transferReceived, iconURL: message.author.displayAvatarURL() })
                 .setDescription(t.transferReceivedFrom(senderName, amount, economySettings.currencyEmoji))
-                .addFields({ name: lang === 'fr' ? 'Nouveau Solde' : 'New Balance', value: fmt(receiverNewBal, economySettings.currencyEmoji), inline: true })
+                .addFields({ name: t.newBalance, value: fmt(receiverNewBal, economySettings.currencyEmoji), inline: true })
                 .setFooter({ text: `${guildName} • ${t.embedFooter}`, iconURL: guildIcon })
                 .setTimestamp();
             await target.send({ embeds: [dmEmbed] }).catch(() => {});
