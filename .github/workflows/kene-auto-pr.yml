@@ -9,7 +9,7 @@ jobs:
   create-pr:
     runs-on: ubuntu-latest
     steps:
-      - name: Create Pull Request
+      - name: Create or update PR
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -17,20 +17,20 @@ jobs:
             const { data: prs } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              head: 'kene',
+              head: `${context.repo.owner}:kene`,
               base: 'main',
               state: 'open'
             });
             if (prs.length === 0) {
-              await github.rest.pulls.create({
+              const pr = await github.rest.pulls.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: '🤖 Kene: ' + context.sha.substring(0, 7),
+                title: `🤖 Kene: ${context.payload.commits?.[0]?.message || context.sha.substring(0, 7)}`,
                 head: 'kene',
                 base: 'main',
-                body: 'Auto-generated PR from Kene OpenClaw assistant.'
+                body: '> Auto-generated PR from Kene OpenClaw assistant.\n\nReview and merge when ready.'
               });
-              console.log('PR created');
+              console.log('PR created:', pr.data.html_url);
             } else {
               console.log('PR already open:', prs[0].html_url);
             }
