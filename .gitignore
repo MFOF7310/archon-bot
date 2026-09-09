@@ -93,3 +93,4 @@ assets/backgrounds/users/
 assets/loadouts/
 *.py
 kene-key.pem
+kene-key-pkcs8.pem
