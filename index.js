@@ -5112,11 +5112,8 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
             const expectedSig = crypto.createHmac('sha256', secretBytes)
                 .update(signedPayload).digest('base64');
             const signatures = webhookSignature.split(' ');
-            console.log('[DODO DEBUG] Headers:', { webhookId: webhookId?.substring(0, 10), webhookTimestamp, webhookSignature: webhookSignature?.substring(0, 30) });
-            console.log('[DODO DEBUG] Payload length:', bodyStr.length, 'Expected sig:', expectedSig.substring(0, 20));
             const valid = signatures.some(sig => {
                 const sigValue = sig.startsWith('v1,') ? sig.slice(3) : sig;
-                console.log('[DODO DEBUG] Comparing sig:', sigValue.substring(0, 20), 'vs expected:', expectedSig.substring(0, 20), 'match:', sigValue === expectedSig);
                 const a = Buffer.from(expectedSig);
                 const b = Buffer.from(sigValue);
                 return a.length === b.length && crypto.timingSafeEqual(a, b);
@@ -5133,14 +5130,17 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
 
         // Extract guild ID: first from metadata, then from stored session
         const checkoutSessionId = event.data?.checkout_session_id;
-        let guildId = event.data?.metadata?.guild_id || event.data?.custom_data?.guild_id;
+        console.log("[DODO DEBUG] session_id from webhook:", checkoutSessionId);
+        let guildId = event.data?.metadata?.guild_id || event.data?.metadata?.metadata_guild_id || event.data?.custom_data?.guild_id || event.data?.metadata_guild_id;
         
-        if (!guildId && checkoutSessionId) {
-            const session = db.prepare('SELECT guild_id FROM premium_sessions WHERE session_id = ?').get(checkoutSessionId);
-            if (session) {
-                guildId = session.guild_id;
-                console.log(`[DODO] Found guild_id from session ${checkoutSessionId} → ${guildId}`);
-            }
+        const paymentLink = event.data?.payment_link || '';
+        const linkSlug = paymentLink.split('/').pop();
+        if (!guildId) {
+            try {
+                let session = checkoutSessionId ? db.prepare('SELECT guild_id FROM premium_sessions WHERE session_id = ?').get(checkoutSessionId) : null;
+                if (!session && linkSlug) session = db.prepare('SELECT guild_id FROM premium_sessions WHERE session_id = ?').get(linkSlug);
+                if (session) { guildId = session.guild_id; console.log('[DODO] Found guild_id:', guildId); }
+            } catch(e) { console.error('[DODO DEBUG] lookup error:', e.message); }
         }
         const customerId = event.data?.customer?.customer_id;
         const email = event.data?.customer?.email;
@@ -5269,7 +5269,8 @@ apiApp.post('/api/premium/store-session', (req, res) => {
             guildId,
             Math.floor(Date.now() / 1000)
         );
-        console.log(`[DODO] Stored session ${checkoutSessionId} → guild ${guildId}`);
+        console.log(`[DODO STORE-SESSION] ✅ Stored: ${checkoutSessionId} → guild ${guildId}`);
+        console.log('[DODO STORE-SESSION] DB verification:', db.prepare('SELECT * FROM premium_sessions WHERE session_id = ?').get(checkoutSessionId));
         return res.json({ ok: true });
     } catch(e) {
         console.error('[DODO STORE-SESSION] Error:', e.message);
@@ -5277,15 +5278,35 @@ apiApp.post('/api/premium/store-session', (req, res) => {
     }
 });
 
-apiApp.get('/api/premium/checkout-url', (req, res) => {
+apiApp.get('/api/premium/checkout-url', async (req, res) => {
     try {
         const guildId = req.query.guildId || '';
-        const baseUrl = process.env.DODO_PRODUCT_URL || '';
-        if (!baseUrl) return res.json({ url: null });
-        const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 
-            'metadata[guild_id]=' + guildId;
-        return res.json({ url });
+        const productId = process.env.DODO_PRODUCT_ID || '';
+        const apiKey = process.env.DODO_API_KEY || '';
+        if (!productId || !apiKey) return res.json({ url: null });
+
+        const isTest = productId.includes('0Ng');
+        const baseApi = isTest ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com';
+
+        const response = await fetch(`${baseApi}/payments`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                billing: { country: 'US' },
+                customer: { email: 'discord-user@archon.bot', name: 'Discord User' },
+                product_cart: [{ product_id: productId, quantity: 1 }],
+                metadata: { guild_id: String(guildId) },
+                payment_link: true
+            })
+        });
+
+        const data = await response.json();
+        console.log('[DODO] Payment created:', JSON.stringify(data).substring(0, 300));
+        if (data.payment_link) return res.json({ url: data.payment_link });
+        const fallback = process.env.DODO_PRODUCT_URL || '';
+        return res.json({ url: fallback || null });
     } catch(e) {
+        console.error('[DODO] checkout-url error:', e.message);
         return res.json({ url: null });
     }
 });
