@@ -12,6 +12,33 @@ function run(cmd, timeout = 15000) {
     );
 }
 
+// Format uptime from milliseconds → "Xh Ym"
+function formatUptime(uptimeMs) {
+    if (!uptimeMs || uptimeMs <= 0) return '0m';
+    const totalSeconds = Math.floor(uptimeMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+}
+
+// Detect warning conditions
+function getHealthStatus(p) {
+    const mem = (p.monit?.memory || 0) / 1024 / 1024;
+    const cpu = p.monit?.cpu || 0;
+    const restarts = p.pm2_env?.restart_time || 0;
+    
+    const warnings = [];
+    if (mem > 500) warnings.push(`high mem (${mem.toFixed(0)}MB)`);
+    if (cpu > 50) warnings.push(`high CPU (${cpu}%)`);
+    if (restarts > 10) warnings.push(`frequent restarts (${restarts})`);
+    
+    return {
+        level: warnings.length > 0 ? 'warning' : 'healthy',
+        warnings
+    };
+}
+
 const PROCESSES = {
     'arch': 'Architect-CG223',
     'bot': 'Architect-CG223',
@@ -43,20 +70,69 @@ if (String(ctx.userId) !== String(tgOwnerId) && !ctx.isOwner()) return ctx.reply
 
         // ── STATUS ──
         if (!sub || sub === 'status' || sub === 'list' || sub === 'ls') {
+            const verbose = ctx.args.includes('-v') || ctx.args.includes('--verbose');
             const { out } = await run('pm2 jlist');
             try {
                 const list = JSON.parse(out);
-                let msg = `🖥️ <b>PM2 Process Status</b>\n━━━━━━━━━━━━━━━━\n\n`;
+                const onlineCount = list.filter(p => p.pm2_env?.status === 'online').length;
+                const totalCount = list.length;
+                
+                // Detect global warnings
+                const allWarnings = [];
+                list.forEach(p => {
+                    const health = getHealthStatus(p);
+                    if (health.level === 'warning') {
+                        allWarnings.push(`${p.name}: ${health.warnings.join(', ')}`);
+                    }
+                });
+                
+                // ─── SUMMARY BANNER ───
+                let msg = `🖥️ <b>PM2 Process Status</b>\n`;
+                msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                
+                // Health summary
+                const healthEmoji = allWarnings.length === 0 ? '✅' : allWarnings.length === 1 ? '⚠️' : '🚨';
+                msg += `${healthEmoji} <b>${onlineCount}/${totalCount} online</b>`;
+                if (allWarnings.length > 0) {
+                    msg += ` | ${allWarnings.length} warning${allWarnings.length > 1 ? 's' : ''}`;
+                }
+                msg += `\n\n`;
+                
+                // ─── PROCESS LIST (Grouped Layout) ───
                 list.forEach(p => {
                     const status = p.pm2_env?.status;
-                    const emoji = status === 'online' ? '🟢' : status === 'stopped' ? '🔴' : '🟡';
+                    const statusEmoji = status === 'online' ? '🟢' : status === 'stopped' ? '🔴' : '🟡';
                     const mem = ((p.monit?.memory || 0) / 1024 / 1024).toFixed(1);
-                    const cpu = p.monit?.cpu || 0;
+                    const cpu = (p.monit?.cpu || 0).toFixed(1);
                     const restarts = p.pm2_env?.restart_time || 0;
-                    msg += `${emoji} <b>${escapeHTML(p.name)}</b> <code>[${p.pm_id}]</code>\n`;
-                    msg += `   📊 ${status} • 💾 ${mem}MB • ⚡ ${cpu}% • 🔄 ${restarts} restarts\n\n`;
+                    const uptimeMs = Date.now() - (p.pm2_env?.pm_uptime || Date.now());
+                    const uptime = formatUptime(uptimeMs);
+                    const health = getHealthStatus(p);
+                    const healthIndicator = health.level === 'warning' ? '⚠️' : '✓';
+                    
+                    // Process header
+                    msg += `${statusEmoji} <b>${escapeHTML(p.name)}</b> <code>[${p.pm_id}]</code> ${healthIndicator}\n`;
+                    
+                    // Grouped metrics (new layout)
+                    msg += `   ⏱️  ${uptime}`;
+                    msg += ` | 💾 ${mem}MB`;
+                    msg += ` | ⚡ ${cpu}%`;
+                    msg += ` | 🔄 ${restarts}\n`;
+                    
+                    // Warning details (if verbose or warning exists)
+                    if ((verbose || health.level === 'warning') && health.warnings.length > 0) {
+                        msg += `   <i>⚠️ ${health.warnings.join(', ')}</i>\n`;
+                    }
+                    msg += '\n';
                 });
-                msg += `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+                
+                // ─── FOOTER ───
+                const now = new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: 'UTC' });
+                msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                msg += `⏰ Last updated: ${now} UTC\n`;
+                if (!verbose) msg += `💡 Use <code>/pm2 status -v</code> for details\n`;
+                msg += `\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+                
                 return ctx.replyHTML(msg);
             } catch(e) {
                 return ctx.replyHTML(`<pre>${escapeHTML(out.substring(0, 3000))}</pre>`);
