@@ -94,7 +94,6 @@ assets/loadouts/
 *.py
 kene-push.log
 database.db
-index.obf.js
 kene-push.sh
 kene-token.js
 ecosystem.config.cjs
