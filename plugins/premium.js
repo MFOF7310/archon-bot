@@ -1,10 +1,11 @@
 const {
     SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle
 } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 // ═══════════════════════════════════════════════════════
 // ARCHON CG-223 — PREMIUM SYSTEM v1.0
-// Per-server subscription • $1.99/month
+// Per-server subscription • $3.40/month
 // ═══════════════════════════════════════════════════════
 
 function isPremium(db, guildId) {
@@ -54,14 +55,14 @@ module.exports = {
 
             const embed = new EmbedBuilder()
                 .setColor(premium ? 0xffd700 : 0x888888)
-                .setTitle(premium ? '⭐ ARCHON Premium — ACTIVE' : '🔒 ARCHON Premium — Not Active')
+                .setTitle(premium ? `${EMOJIS.premium} ARCHON Premium — ACTIVE` : `${EMOJIS.crown} ARCHON Premium — Not Active`)
                 .setDescription(premium
                     ? 'This server has full access to all premium features!'
                     : 'Upgrade to unlock AI, raid detection, image captcha, advanced automod and more!')
                 .addFields(
                     { name: '📊 Status', value: premium ? '🟢 Active' : '🔴 Inactive', inline: true },
                     { name: '⏰ Expires', value: days === null ? (premium ? '♾️ Lifetime' : 'N/A') : `${days} days`, inline: true },
-                    { name: '💰 Price', value: '$1.99/month', inline: true }
+                    { name: '💰 Price', value: '$3.40/month', inline: true }
                 );
 
             if (!premium) {
@@ -72,7 +73,7 @@ module.exports = {
                 });
                 const row2 = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
-                        .setLabel('💳 Subscribe — $1.99/mo')
+                        .setLabel('💳 Subscribe — $3.40/mo')
                         .setStyle(ButtonStyle.Link)
                         .setURL('https://bamako-steel-dev.xyz/premium'),
                     new ButtonBuilder()
@@ -91,8 +92,8 @@ module.exports = {
             const features = require('../lib/premium-features');
             const embed = new EmbedBuilder()
                 .setColor(0xffd700)
-                .setTitle('⭐ ARCHON Premium Features')
-                .setDescription('Everything included in the $1.99/server plan:')
+                .setTitle(`${EMOJIS.premium} ARCHON Premium Features`)
+                .setDescription('Everything included in the $3.40/server plan:')
                 .addFields(features.map(f => ({ name: `${f.emoji} ${f.name}`, value: f.value, inline: true })))
                 .setFooter({ text: `Status: ${premium ? '✅ Active on this server' : '❌ Not active'} • ARCHON CG-223 • bamako-steel-dev.xyz/premium` });
             return interaction.reply({ embeds: [embed], flags: 64 });
