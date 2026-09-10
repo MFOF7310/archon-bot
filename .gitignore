@@ -93,3 +93,5 @@ assets/backgrounds/users/
 assets/loadouts/
 *.py
 kene-push.log
+database.db
+index.obf.js
