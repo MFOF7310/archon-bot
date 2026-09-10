@@ -489,6 +489,12 @@ reminders: `CREATE TABLE IF NOT EXISTS reminders (
         UNIQUE(telegram_id, discord_id)
     )`,
     
+    premium_sessions: `CREATE TABLE IF NOT EXISTS premium_sessions (
+        session_id TEXT PRIMARY KEY,
+        guild_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    )`,
+    
     investments: `CREATE TABLE IF NOT EXISTS investments (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -5070,7 +5076,12 @@ apiApp.use(cors({
     credentials: true
 }));
 
-apiApp.use(express.json());
+// Capture raw body for webhook signature verification
+apiApp.use(express.json({
+    verify: (req, res, buf) => {
+        req.rawBody = buf.toString('utf8');
+    }
+}));
 
 // Admin auth middleware
 const API_ADMIN_SECRET = process.env.API_ADMIN_SECRET || '';
@@ -5095,13 +5106,20 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
         const webhookSignature = req.headers['webhook-signature'];
         
         if (webhookSecret && webhookSignature) {
-            const signedPayload = `${webhookId}.${webhookTimestamp}.${JSON.stringify(req.body)}`;
-            const expectedSig = crypto.createHmac('sha256', webhookSecret)
+            const secretBytes = Buffer.from(webhookSecret.replace('whsec_', ''), 'base64');
+            const bodyStr = req.rawBody || JSON.stringify(req.body);
+            const signedPayload = `${webhookId}.${webhookTimestamp}.${bodyStr}`;
+            const expectedSig = crypto.createHmac('sha256', secretBytes)
                 .update(signedPayload).digest('base64');
             const signatures = webhookSignature.split(' ');
+            console.log('[DODO DEBUG] Headers:', { webhookId: webhookId?.substring(0, 10), webhookTimestamp, webhookSignature: webhookSignature?.substring(0, 30) });
+            console.log('[DODO DEBUG] Payload length:', bodyStr.length, 'Expected sig:', expectedSig.substring(0, 20));
             const valid = signatures.some(sig => {
                 const sigValue = sig.startsWith('v1,') ? sig.slice(3) : sig;
-                return crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(sigValue));
+                console.log('[DODO DEBUG] Comparing sig:', sigValue.substring(0, 20), 'vs expected:', expectedSig.substring(0, 20), 'match:', sigValue === expectedSig);
+                const a = Buffer.from(expectedSig);
+                const b = Buffer.from(sigValue);
+                return a.length === b.length && crypto.timingSafeEqual(a, b);
             });
             if (!valid) {
                 console.error('[DODO] Invalid webhook signature');
@@ -5113,8 +5131,17 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
         const eventType = event.type;
         console.log(`[DODO] Event: ${eventType}`);
 
-        // Extract guild ID from metadata
-        const guildId = event.data?.metadata?.guild_id || event.data?.custom_data?.guild_id;
+        // Extract guild ID: first from metadata, then from stored session
+        const checkoutSessionId = event.data?.checkout_session_id;
+        let guildId = event.data?.metadata?.guild_id || event.data?.custom_data?.guild_id;
+        
+        if (!guildId && checkoutSessionId) {
+            const session = db.prepare('SELECT guild_id FROM premium_sessions WHERE session_id = ?').get(checkoutSessionId);
+            if (session) {
+                guildId = session.guild_id;
+                console.log(`[DODO] Found guild_id from session ${checkoutSessionId} → ${guildId}`);
+            }
+        }
         const customerId = event.data?.customer?.customer_id;
         const email = event.data?.customer?.email;
 
@@ -5228,6 +5255,26 @@ apiApp.get('/api/premium/info', (req, res) => {
         telegram: process.env.TELEGRAM_CONTACT || 'mfof7310',
         discord: 'cloudgaming223'
     });
+});
+
+// Store checkout session → guild_id mapping
+apiApp.post('/api/premium/store-session', (req, res) => {
+    try {
+        const { guildId, checkoutSessionId } = req.body;
+        if (!guildId || !checkoutSessionId) {
+            return res.status(400).json({ ok: false, error: 'Missing guildId or checkoutSessionId' });
+        }
+        db.prepare('INSERT OR REPLACE INTO premium_sessions (session_id, guild_id, created_at) VALUES (?, ?, ?)').run(
+            checkoutSessionId,
+            guildId,
+            Math.floor(Date.now() / 1000)
+        );
+        console.log(`[DODO] Stored session ${checkoutSessionId} → guild ${guildId}`);
+        return res.json({ ok: true });
+    } catch(e) {
+        console.error('[DODO STORE-SESSION] Error:', e.message);
+        return res.status(500).json({ ok: false, error: e.message });
+    }
 });
 
 apiApp.get('/api/premium/checkout-url', (req, res) => {
