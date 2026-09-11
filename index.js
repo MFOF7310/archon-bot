@@ -5360,26 +5360,23 @@ apiApp.get('/api/premium/checkout-url', async (req, res) => {
         const apiKey = process.env.DODO_API_KEY || '';
         if (!productId || !apiKey) return res.json({ url: null });
 
-        const isTest = productId.includes('0Ng');
-        const baseApi = isTest ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com';
+        const baseApi = 'https://live.dodopayments.com';
 
-        const response = await fetch(`${baseApi}/payments`, {
+        const response = await fetch(`${baseApi}/checkouts`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                billing: { country: 'US' },
-                customer: { email: 'discord-user@archon.bot', name: 'Discord User' },
                 product_cart: [{ product_id: productId, quantity: 1 }],
-                metadata: { guild_id: String(guildId) },
-                payment_link: true
+                customer: { email: 'discord-user@archon.bot', name: 'Discord User' },
+                metadata: { guild_id: String(guildId) }
             })
         });
 
         const data = await response.json();
-        console.log('[DODO] Payment created:', JSON.stringify(data).substring(0, 300));
-        if (data.payment_link) return res.json({ url: data.payment_link });
+        console.log('[DODO] Checkout created:', JSON.stringify(data).substring(0, 300));
+        if (data.session_id && data.checkout_url) return res.json({ url: data.checkout_url, sessionId: data.session_id });
         const fallback = process.env.DODO_PRODUCT_URL || '';
-        return res.json({ url: fallback || null });
+        return res.json({ url: fallback || null, sessionId: null });
     } catch(e) {
         console.error('[DODO] checkout-url error:', e.message);
         return res.json({ url: null });
