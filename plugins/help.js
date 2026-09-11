@@ -451,6 +451,7 @@ module.exports = {
                 { name: `\` 🏆 TOP CATEGORIES \``, value: topCategoriesDisplay || 'No data available', inline: true },
                 { name: `\` ${t.quickAccess} \``, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
                 { name: `\` ${t.aiAssistant} \``, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
+                { name: `${EMOJIS.website} Dashboard`, value: '[bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)', inline: true },
                 { name: `\` ${t.tip} \``, value: getRandomTip(t, effectivePrefix), inline: true }
             )
             .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow} • UNCLASSIFIED`, iconURL: guildIcon })
@@ -618,6 +619,9 @@ module.exports = {
                           `🌐 **Server-Only Commands:**\n` +
                           `*Economy, moderation, and profile commands require a server.*\n\n` +
                           `✨ *Use the dropdown below to explore server commands!*`
+                )
+                .addFields(
+                    { name: `${EMOJIS.website} Dashboard`, value: '[bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)', inline: true }
                 )
                 .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
                 .setFooter({ 
