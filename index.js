@@ -1022,6 +1022,10 @@ function getServerSettings(guildId) {
             disabledCommands: parseJSONSafe(settings.disabled_commands, []),
             disabledCategories: parseJSONSafe(settings.disabled_categories, []),
             customCategories: parseJSONSafe(settings.custom_categories, {}),
+            
+            lydia_model: settings.lydia_model || 'auto',
+            lydiaModel: settings.lydia_model || 'auto',
+            openrouter: settings.lydia_model || 'auto',
         };
         
         client.settings.set(guildId, result);
@@ -1189,6 +1193,7 @@ function updateServerSetting(guildId, setting, value) {
         raidMinAgeDays: 'raid_min_age_days',
         advancedAutomod: 'advanced_automod',
         lydiaModel: 'lydia_model',
+        openrouter: 'lydia_model',
         daily_bonus: 'daily_bonus',
         link_filter_enabled: 'link_filter_enabled',
         invite_filter_enabled: 'invite_filter_enabled',
