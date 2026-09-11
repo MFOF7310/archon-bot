@@ -26,6 +26,14 @@ function getGuildKey(database, guildId, service) {
   } catch { return null; }
 }
 
+function getGuildModel(database, guildId) {
+  try {
+    if (!database || !guildId) return null;
+    const row = database.prepare('SELECT lydia_model FROM server_settings WHERE guild_id = ?').get(String(guildId));
+    return row?.lydia_model || null;
+  } catch { return null; }
+}
+
 const CFG = {
   COOLDOWN_TIME: 3000,
   MAX_HISTORY: 8,
@@ -445,7 +453,18 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
   const isPremiumGuild = guildId ? isPremium(client?.db || null, guildId) : false;
 
   if (isPremiumGuild) {
-    console.log(`${C.cyan}[AI PREMIUM]${C.reset} Routing to ${PREMIUM_MODEL.emoji} ${PREMIUM_MODEL.name}...`);
+    const guildModel = getGuildModel(client?.db || null, guildId);
+    if (guildModel && guildModel !== 'auto') {
+      const chosenModel = MODEL_POOL.find(m => m.id === guildModel);
+      if (chosenModel) {
+        console.log(`${C.cyan}[AI PREMIUM]${C.reset} Guild model: ${chosenModel.emoji} ${chosenModel.name}...`);
+        const result = await tryModel(chosenModel, messages, CFG.RESPONSE_TIMEOUT, guildKey);
+        if (result) return result;
+        console.log(`${C.yellow}[AI PREMIUM]${C.reset} Guild model failed, falling back to ${PREMIUM_MODEL.name}...`);
+      }
+    } else {
+      console.log(`${C.cyan}[AI PREMIUM]${C.reset} Routing to ${PREMIUM_MODEL.emoji} ${PREMIUM_MODEL.name}...`);
+    }
     const result = await tryModel(PREMIUM_MODEL, messages, CFG.RESPONSE_TIMEOUT, guildKey);
     if (result) return result;
     console.log(`${C.yellow}[AI PREMIUM]${C.reset} Claude unavailable, falling back to free pool...`);
