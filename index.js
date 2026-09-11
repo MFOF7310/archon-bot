@@ -2002,6 +2002,18 @@ function pruneUserCache() {
  }
  }
 
+ // LRU cap: evict oldest entries if cache exceeds max size
+ const MAX_CACHE_ENTRIES = 2000;
+ if (client.userDataCache.size > MAX_CACHE_ENTRIES) {
+ const sorted = [...client.userDataCache.entries()]
+ .sort((a, b) => (a[1]._lastAccess || 0) - (b[1]._lastAccess || 0));
+ const toEvict = sorted.slice(0, client.userDataCache.size - MAX_CACHE_ENTRIES);
+ for (const [key] of toEvict) {
+ client.userDataCache.delete(key);
+ prunedCount++;
+ }
+ }
+
  if (prunedCount > 0 || premiumEvicted > 0) {
  console.log(
  `${yellow}[CACHE]${reset} Janitor: ${prunedCount} stale users` +
@@ -2015,6 +2027,18 @@ function startCacheJanitor() {
     client.cacheJanitorInterval = setInterval(() => pruneUserCache(), CACHE_CONFIG.CLEANUP_INTERVAL_MS);
     console.log(`${green}[CACHE]${reset} Janitor started (30min cleanup, 1h TTL)`);
 }
+
+client.invalidateGuildCache = (guildId) => {
+ let evicted = 0;
+ for (const [key] of client.userDataCache.entries()) {
+ if (key.endsWith(`:${guildId}`)) {
+ client.userDataCache.delete(key);
+ evicted++;
+ }
+ }
+ if (evicted > 0)
+ console.log(`${yellow}[CACHE]${reset} Invalidated ${evicted} entries for guild ${guildId}`);
+};
 
 client.queueUserUpdate = queueUserUpdate;
 client.flushUserUpdates = flushUserUpdates;
@@ -5855,6 +5879,7 @@ apiApp.post('/api/update-config', requireAdmin, (req, res) => {
             if (updateServerSetting(guildId, key, val)) updated++;
         }
         client.settings.delete(guildId);
+        client.invalidateGuildCache(guildId);
         res.json({ success: true, updated, guildId });
     } catch (err) {
         res.status(500).json({ error: err.message });
