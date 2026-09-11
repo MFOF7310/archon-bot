@@ -1434,50 +1434,81 @@ client.getDatabaseHealth = getDatabaseHealth;
 
 // ================= AUTOMATIC WEEKLY DATABASE PURGE =================
 async function runWeeklyDatabasePurge() {
-    const now = Math.floor(Date.now() / 1000);
-    const sevenDaysAgo = now - (7 * 24 * 60 * 60);
-    
-    try {
-        db.transaction(() => {
-            const lydiaPurge = db.prepare("DELETE FROM lydia_conversations WHERE timestamp < ?").run(sevenDaysAgo);
-            const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
-            const modPurge = db.prepare("DELETE FROM moderation_logs WHERE timestamp < ?").run(thirtyDaysAgo);
-            const reminderPurge = db.prepare("DELETE FROM reminders WHERE status != 'pending' AND execute_at < ?").run(sevenDaysAgo);
-            const warningPurge = db.prepare("UPDATE warnings SET active = 0 WHERE expires_at < ? AND active = 1").run(now);
+ const now = Math.floor(Date.now() / 1000);
+ const cachedIds = client.guilds?.cache ? [...client.guilds.cache.keys()] : [];
 
-            console.log(
-                `${green}[PURGE]${reset} Cleaned: ` +
-                `${lydiaPurge.changes} AI msgs, ` +
-                `${modPurge.changes} mod logs, ` +
-                `${reminderPurge.changes} old reminders, ` +
-                `${ghostPurge} ghost guilds`
-            );
-        })();
+ try {
+ // ── Orphan guild cleanup (all guild-scoped tables) ──
+ let orphanTotal = 0;
+ if (cachedIds.length > 0) {
+ const placeholders = cachedIds.map(() => '?').join(',');
+ const orphanTables = [
+ 'users', 'warnings', 'moderation_logs', 'tickets',
+ 'ticket_counters', 'auto_replies', 'lydia_conversations',
+ 'lydia_introductions', 'lydia_agents', 'auto_backup_settings',
+ 'reaction_panels', 'shop_items', 'server_economy_settings',
+ 'server_command_settings', 'tiktok_notifications',
+ 'birthday', 'birthdays', 'daily_reminders',
+ 'music_history', 'member_joins', 'group_settings'
+ ];
+ db.transaction(() => {
+ for (const table of orphanTables) {
+ try {
+ const r = db.prepare(
+ `DELETE FROM ${table} WHERE guild_id NOT IN (${placeholders})`
+ ).run(...cachedIds);
+ orphanTotal += r.changes;
+ } catch (e) {
+ // table may not have guild_id — skip silently
+ }
+ }
+ })();
+ }
 
-        // ── Ghost guild purge (not in transaction — reads cache) ──
-        const ninetyDaysAgo = now - (90 * 24 * 60 * 60);
-        const cachedIds = client.guilds?.cache ? [...client.guilds.cache.keys()] : [];
-        const ghostRows = db.prepare(
-            "SELECT guild_id FROM global_server_stats WHERE guild_id != 'DM' AND last_active < ?"
-        ).all(ninetyDaysAgo);
-        let ghostPurge = 0;
-        for (const row of ghostRows) {
-            if (!cachedIds.includes(row.guild_id)) {
-                db.prepare("DELETE FROM global_server_stats WHERE guild_id = ?").run(row.guild_id);
-                ghostPurge++;
-            }
-        }
+ // ── Time-based cleanup ──
+ const thirtyDaysAgo = now - (30 * 86400);
+ const sevenDaysAgo = now - (7 * 86400);
+ const ninetyDaysAgo = now - (90 * 86400);
 
-        console.log(`${cyan}[PURGE]${reset} Compacting database file...`);
-        db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
-        db.exec("VACUUM;");
-        
-        const dbSize = (fs.statSync(path.join(dataDir, 'database.sqlite')).size / 1024 / 1024).toFixed(2);
-        console.log(`${green}[PURGE]${reset} Complete! Database: ${dbSize} MB`);
-        
-    } catch (err) {
-        console.error(`${red}[PURGE ERROR]${reset}`, err.message);
-    }
+ let purgeStats = {};
+ db.transaction(() => {
+ purgeStats.lydia = db.prepare("DELETE FROM lydia_conversations WHERE timestamp < ?").run(thirtyDaysAgo).changes;
+ purgeStats.modLogs = db.prepare("DELETE FROM moderation_logs WHERE timestamp < ?").run(thirtyDaysAgo).changes;
+ purgeStats.reminder = db.prepare("DELETE FROM reminders WHERE status != 'pending' AND execute_at < ?").run(sevenDaysAgo).changes;
+ purgeStats.warnings = db.prepare("UPDATE warnings SET active = 0 WHERE expires_at < ? AND active = 1").run(now).changes;
+ purgeStats.premSess = db.prepare("DELETE FROM premium_sessions WHERE created_at < ?").run(thirtyDaysAgo).changes;
+ purgeStats.premCode = db.prepare("DELETE FROM premium_codes WHERE used = 1 AND used_at < ?").run(thirtyDaysAgo).changes;
+ })();
+
+ // ── Ghost guild purge (reads cache — outside transaction) ──
+ let ghostPurge = 0;
+ const ghostRows = db.prepare(
+ "SELECT guild_id FROM global_server_stats WHERE guild_id != 'DM' AND last_active < ?"
+ ).all(ninetyDaysAgo);
+ for (const row of ghostRows) {
+ if (!cachedIds.includes(row.guild_id)) {
+ db.prepare("DELETE FROM global_server_stats WHERE guild_id = ?").run(row.guild_id);
+ ghostPurge++;
+ }
+ }
+
+ console.log(
+ `${green}[PURGE]${reset} Orphans: ${orphanTotal} rows | ` +
+ `AI msgs: ${purgeStats.lydia} | Mod logs: ${purgeStats.modLogs} | ` +
+ `Reminders: ${purgeStats.reminder} | Ghost guilds: ${ghostPurge} | ` +
+ `Premium sessions: ${purgeStats.premSess} | Codes: ${purgeStats.premCode}`
+ );
+
+ console.log(`${cyan}[PURGE]${reset} Compacting...`);
+ db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+ db.exec("VACUUM;");
+
+ const dbSize = (fs.statSync(path.join(dataDir, 'database.sqlite')).size / 1024 / 1024).toFixed(2);
+ console.log(`${green}[PURGE]${reset} Complete. DB: ${dbSize} MB`);
+
+ } catch (err) {
+ console.error(`${red}[PURGE ERROR]${reset}`, err.message);
+ }
 }
 client.runWeeklyDatabasePurge = runWeeklyDatabasePurge;
 
@@ -1946,22 +1977,37 @@ function startReminderHeartbeat() {
 
 // Cache janitor uses composite keys for consistency
 function pruneUserCache() {
-    const now = Date.now();
-    let prunedCount = 0;
-    
-    for (const [compositeKey, userData] of client.userDataCache.entries()) {
-        if (client.pendingUserUpdates.has(compositeKey)) continue;
-        
-        const lastAccess = userData._lastAccess || userData._cachedAt || 0;
-        if (now - lastAccess > CACHE_CONFIG.MAX_AGE_MS) {
-            client.userDataCache.delete(compositeKey);
-            prunedCount++;
-        }
-    }
-    
-    if (prunedCount > 0) {
-        console.log(`${yellow}[CACHE]${reset} Janitor removed ${prunedCount} stale users`);
-    }
+ const now = Date.now();
+ const nowSec = Math.floor(now / 1000);
+ let prunedCount = 0;
+ let premiumEvicted = 0;
+
+ for (const [compositeKey, userData] of client.userDataCache.entries()) {
+ if (client.pendingUserUpdates.has(compositeKey)) continue;
+
+ const lastAccess = userData._lastAccess || userData._cachedAt || 0;
+ if (now - lastAccess > CACHE_CONFIG.MAX_AGE_MS) {
+ client.userDataCache.delete(compositeKey);
+ prunedCount++;
+ }
+ }
+
+ // Evict expired premium guilds from any in-memory premium cache
+ if (client.premiumCache instanceof Map) {
+ for (const [guildId, entry] of client.premiumCache.entries()) {
+ if (entry.expires_at && entry.expires_at < nowSec) {
+ client.premiumCache.delete(guildId);
+ premiumEvicted++;
+ }
+ }
+ }
+
+ if (prunedCount > 0 || premiumEvicted > 0) {
+ console.log(
+ `${yellow}[CACHE]${reset} Janitor: ${prunedCount} stale users` +
+ (premiumEvicted > 0 ? `, ${premiumEvicted} expired premium` : '')
+ );
+ }
 }
 
 function startCacheJanitor() {
