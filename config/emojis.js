@@ -40,8 +40,7 @@ module.exports = {
     bamako: '<:bamako:1535640587498291240>',
     eagle:  '<:eagle:1535640693652070541>',
 
-    dashboard:  '<:dashboard:1536017261746327674>',
-    website:    '<a:website:1548057811785617530>',
+    website:    '<a:website:1548058134361149590>',
     myprofile:  '<:myprofile:1536021845214498816>',
     rules:      '<:rules:1536334584558391336>',
     general:    '<:general:1536335057235615804>',
