@@ -5367,7 +5367,8 @@ apiApp.get('/api/premium/status', (req, res) => {
         if (!row) return res.json({ premium: false });
         const premium = !row.expires_at || Date.now()/1000 < row.expires_at;
         const daysLeft = row.expires_at ? Math.max(0, Math.floor((row.expires_at - Date.now()/1000) / 86400)) : null;
-        return res.json({ premium, daysLeft, lifetime: !row.expires_at });
+        console.log(`[PREMIUM-STATUS] guild=${guildId} premium=${premium} days=${daysLeft} ray=${req.headers['cf-ray'] || 'direct'} ip=${req.headers['cf-connecting-ip'] || req.ip}`);
+ return res.json({ premium, daysLeft, lifetime: !row.expires_at });
     } catch(e) {
         return res.json({ premium: false });
     }
