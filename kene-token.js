@@ -16,8 +16,8 @@ const env = fs.readFileSync(`${BASE}/.env`, 'utf8');
 const appId = env.match(/GITHUB_APP_ID=(.+)/)?.[1]?.trim();
 
 // Auto-regenerate PKCS8 from RSA if missing
-const pkcs8Path = `${BASE}/kene-key-pkcs8.pem`;
-const rsaPath = `${BASE}/kene-key.pem`;
+const pkcs8Path = `/root/.kene/kene-key-pkcs8.pem`;
+const rsaPath = `/root/.kene/kene-key.pem`;
 
 if (!fs.existsSync(pkcs8Path)) {
     log('PKCS8 key missing — regenerating from RSA key');
