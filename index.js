@@ -2371,30 +2371,6 @@ client.once(Events.ClientReady, async () => {
             console.log(`[GUILD SYNC] Synced ${synced} guilds on boot`);
         } catch(e) { console.error('[GUILD CACHE] Error:', e.message); }
     }, 10000);
-    // ── Bot presence rotation ──
-    const { ActivityType } = require('discord.js');
-    const statusMessages = [
-        { state: '🌍 bamako-steel-dev.xyz' },
-        { state: `🦅 ${(()=>{try{return client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"]||client.guilds.cache.size}catch(e){return client.guilds.cache.size}})()} servers | ARCHON CG-223` },
-        { state: '🎵 530+ tracks | /music' },
-        { state: '⚔️ Bamako Steel 🇲🇱' },
-        { state: '🎮 /help | Try ARCHON' },
-    ];
-    let statusIndex = 0;
-    function rotateStatus() {
-        const s = statusMessages[statusIndex % statusMessages.length];
-        client.user.setPresence({
-            status: 'online',
-            activities: [{
-                name: 'customstatus',
-                type: ActivityType.Custom,
-                state: s.state,
-            }]
-        });
-        statusIndex++;
-    }
-    rotateStatus();
-    setInterval(rotateStatus, 30 * 1000);
 
     // ── Dynamic emoji resolver — update emojis.js on disk at boot ──
     try {
@@ -6208,6 +6184,13 @@ const STATUS_MESSAGES = [
     { name: 'top.gg rankings 🏆', type: 5 },
     { name: 'Best Bot — Mali 🇲🇱', type: 5 },
     { name: 'Neural Grid Challenge', type: 5 },
+    // CUSTOM (type 4 — raw text, no verb prefix)
+    { name: '🌍 bamako-steel-dev.xyz', type: 4 },
+    { name: '🦅 {guilds} servers | ARCHON CG-223', type: 4 },
+    { name: '🎵 530+ tracks | /music', type: 4 },
+    { name: '⚔️ Bamako Steel 🇲🇱', type: 4 },
+    { name: '🛡️ Protecting {users} members', type: 4 },
+    { name: '🎮 /help | Try ARCHON', type: 4 },
 ];
 
 let statusIndex = 0;
@@ -6225,15 +6208,31 @@ function rotateStatus() {
             return;
         }
     }
-    // No music playing — continue normal rotation
     if (!client.user) return;
+    // Music takes priority over the rotation while something is actually playing
+    try {
+        const players = client.kazagumo?.players;
+        if (players?.size) {
+            const p = [...players.values()].find(x => x.playing && !x.paused);
+            const cur = p?.queue?.current;
+            const title = cur?.title || cur?.info?.title;
+            if (title) {
+                client.user.setPresence({ status: 'online',
+                    activities: [{ name: title.substring(0, 60), type: 2 }] });
+                return;
+            }
+        }
+    } catch (e) { /* fall through to normal rotation */ }
     const msg = STATUS_MESSAGES[statusIndex];
     let name = msg.name;
     // Replace dynamic placeholders
     if (name.includes('{guilds}')) name = name.replace('{guilds}', client.guilds.cache.size.toLocaleString());
     if (name.includes('{users}')) name = name.replace('{users}', client.guilds.cache.reduce((t, g) => t + g.memberCount, 0).toLocaleString());
     if (msg.dynamic === 'plugins') name = `${client.commands?.size || 0} plugins loaded ⚡`;
-    client.user.setActivity(name, { type: msg.type });
+    const activity = msg.type === 4
+        ? { name: 'customstatus', type: 4, state: name }
+        : { name, type: msg.type };
+    client.user.setPresence({ status: 'online', activities: [activity] });
     statusIndex = (statusIndex + 1) % STATUS_MESSAGES.length;
 }
 
@@ -6266,8 +6265,9 @@ client.once('clientReady', async () => {
 
     // Start status rotation
     rotateStatus();
-    setInterval(rotateStatus, 30 * 60 * 1000); // Every 30 minutes
-    console.log(`${green}[STATUS]${reset} Rotating status active (${STATUS_MESSAGES.length} messages, 30min interval)`);
+    setInterval(rotateStatus, 60 * 1000); // Every 60s
+ client.on('shardResume', () => rotateStatus()); // presence drops on reconnect
+    console.log(`${green}[STATUS]${reset} Rotating status active (${STATUS_MESSAGES.length} messages, 60s interval)`);
 });
 
 // ── Discord Login ──
