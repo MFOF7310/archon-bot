@@ -5228,7 +5228,7 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
             } catch(e) { console.error('[DODO] DM failed:', e.message); }
         }
 
-        if (eventType === 'subscription.cancelled' || eventType === 'subscription.failed') {
+        if (eventType === 'subscription.cancelled') {
             if (guildId) {
                 db.prepare('DELETE FROM premium WHERE guild_id = ?').run(guildId);
                 console.log(`[DODO] ❌ Premium cancelled for guild ${guildId}`);
@@ -5245,6 +5245,41 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
                         ]});
                     }
                 } catch {}
+            }
+        }
+
+        if (eventType === 'subscription.failed') {
+            if (guildId) {
+                // Grace period: 7 days before removing premium on a failed payment
+                // Dodo will retry the charge; don't punish the customer immediately
+                const GRACE_DAYS = 7;
+                const graceExpiry = Math.floor(Date.now()/1000) + (GRACE_DAYS * 86400);
+                const row = db.prepare('SELECT expires_at FROM premium WHERE guild_id = ?').get(guildId);
+                if (row && (!row.expires_at || row.expires_at > Math.floor(Date.now()/1000))) {
+                    // Still active — set expiry to grace period if it would expire sooner
+                    if (!row.expires_at || row.expires_at > graceExpiry) {
+                        db.prepare('UPDATE premium SET expires_at = ? WHERE guild_id = ?').run(graceExpiry, guildId);
+                    }
+                    console.log(`[DODO] ⚠️ Payment failed for guild ${guildId} — grace period until ${new Date(graceExpiry*1000).toISOString()}`);
+                    try {
+                        const guild = client.guilds.cache.get(guildId);
+                        if (guild) {
+                            const owner = await guild.fetchOwner();
+                            const { EmbedBuilder } = require('discord.js');
+                            await owner.send({ embeds: [new EmbedBuilder()
+                                .setColor(0xffaa00)
+                                .setTitle('⚠️ Payment Failed — Grace Period Active')
+                                .setDescription(`A payment for **${guild.name}** failed.\n\nYou have **${GRACE_DAYS} days** to update your payment method before premium is removed.`)
+                                .addFields({ name: '🔗 Update payment', value: 'bamako-steel-dev.xyz/premium', inline: true })
+                                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                            ]});
+                        }
+                    } catch {}
+                } else {
+                    // Already expired — remove immediately
+                    db.prepare('DELETE FROM premium WHERE guild_id = ?').run(guildId);
+                    console.log(`[DODO] ❌ Payment failed, premium already expired for guild ${guildId} — removed`);
+                }
             }
         }
 
@@ -6230,10 +6265,13 @@ function rotateStatus() {
     if (name.includes('{guilds}')) name = name.replace('{guilds}', client.guilds.cache.size.toLocaleString());
     if (name.includes('{users}')) name = name.replace('{users}', client.guilds.cache.reduce((t, g) => t + g.memberCount, 0).toLocaleString());
     if (msg.dynamic === 'plugins') name = `${client.commands?.size || 0} plugins loaded ⚡`;
+    if (!client.ws?.shards?.size || client.ws.status !== 0) return; // gateway down — skip
     const activity = msg.type === 4
         ? { name: 'customstatus', type: 4, state: name }
         : { name, type: msg.type };
-    client.user.setPresence({ status: 'online', activities: [activity] });
+    try {
+        client.user.setPresence({ status: 'online', activities: [activity] });
+    } catch (e) { /* gateway mid-reconnect */ }
     statusIndex = (statusIndex + 1) % STATUS_MESSAGES.length;
 }
 
