@@ -439,12 +439,13 @@ module.exports = {
             if (message.guild) {
                 try {
                     const settings = serverSettings || client.getServerSettings(message.guild.id);
+                    const isMainGuild = message.guild.id === process.env.GUILD_ID;
                     
                     let streakRoleId = null;
-                    if (streak === 3) streakRoleId = settings?.dailyInitiateRoleId || process.env.DAILY_INITIATE_ROLE;
-                    else if (streak === 7) streakRoleId = settings?.dailyWarriorRoleId || process.env.DAILY_WARRIOR_ROLE;
-                    else if (streak === 30) streakRoleId = settings?.dailyChampionRoleId || process.env.DAILY_CHAMPION_ROLE;
-                    else if (streak === 100) streakRoleId = settings?.dailyLegendRoleId || process.env.DAILY_LEGEND_ROLE;
+                    if (streak === 3) streakRoleId = settings?.dailyInitiateRoleId || (isMainGuild ? process.env.DAILY_INITIATE_ROLE_ID : null);
+                    else if (streak === 7) streakRoleId = settings?.dailyWarriorRoleId || (isMainGuild ? process.env.DAILY_WARRIOR_ROLE_ID : null);
+                    else if (streak === 30) streakRoleId = settings?.dailyChampionRoleId || (isMainGuild ? process.env.DAILY_CHAMPION_ROLE_ID : null);
+                    else if (streak === 100) streakRoleId = settings?.dailyLegendRoleId || (isMainGuild ? process.env.DAILY_LEGEND_ROLE_ID : null);
                     
                     if (streakRoleId) {
                         const member = await message.guild.members.fetch(userId).catch(() => null);
@@ -691,11 +692,12 @@ module.exports = {
             if (interaction.guild) {
                 try {
                     const settings = serverSettings || client.getServerSettings(interaction.guild.id);
+                    const isMainGuild = interaction.guild.id === process.env.GUILD_ID;
                     let streakRoleId = null;
-                    if (streak === 3) streakRoleId = settings?.dailyInitiateRoleId || process.env.DAILY_INITIATE_ROLE;
-                    else if (streak === 7) streakRoleId = settings?.dailyWarriorRoleId || process.env.DAILY_WARRIOR_ROLE;
-                    else if (streak === 30) streakRoleId = settings?.dailyChampionRoleId || process.env.DAILY_CHAMPION_ROLE;
-                    else if (streak === 100) streakRoleId = settings?.dailyLegendRoleId || process.env.DAILY_LEGEND_ROLE;
+                    if (streak === 3) streakRoleId = settings?.dailyInitiateRoleId || (isMainGuild ? process.env.DAILY_INITIATE_ROLE_ID : null);
+                    else if (streak === 7) streakRoleId = settings?.dailyWarriorRoleId || (isMainGuild ? process.env.DAILY_WARRIOR_ROLE_ID : null);
+                    else if (streak === 30) streakRoleId = settings?.dailyChampionRoleId || (isMainGuild ? process.env.DAILY_CHAMPION_ROLE_ID : null);
+                    else if (streak === 100) streakRoleId = settings?.dailyLegendRoleId || (isMainGuild ? process.env.DAILY_LEGEND_ROLE_ID : null);
                     
                     if (streakRoleId) {
                         const member = await interaction.guild.members.fetch(userId).catch(() => null);
