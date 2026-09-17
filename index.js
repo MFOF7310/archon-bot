@@ -6092,7 +6092,7 @@ apiApp.get('/api/warnings/:guildId', (req, res) => {
 // TOP.GG VOTE WEBHOOK
 apiApp.post('/api/vote', (req, res) => {
     const auth = req.headers['authorization'];
-    const expectedAuth = process.env.TOPGG_WEBHOOK_SECRET || 'archon-vote-secret-2026';
+    const expectedAuth = process.env.TOPGG_WEBHOOK_SECRET || null; // no hardcoded fallback
     if (auth !== expectedAuth) {
         console.error('[VOTE] Unauthorized');
         return res.status(401).json({ error: 'Unauthorized' });
