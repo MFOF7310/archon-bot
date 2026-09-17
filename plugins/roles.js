@@ -133,7 +133,7 @@ module.exports = {
                         r('dailylegend'),
                     ].join('\n');
                 })())
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • Use `/roles set` to configure` })
+                .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /roles set to configure` })
                 .setTimestamp();
             return interaction.reply({ embeds: [embed], flags: 64 });
         }
