@@ -4864,7 +4864,7 @@ safeOn(Events.GuildDelete, async (guild) => {
 // ╚══════════════════════════════════════════════════════════════════════╝
 safeOn(Events.GuildMemberAdd, async (member) => {
     if (member.user.bot) return;
-    if (rateLimit(`welcome:${member.guild.id}`, 10, 30000)) return;
+    const welcomeLimited = rateLimit(`welcome:${member.guild.id}`, 10, 30000);
     // ── Sync guild stats ──
     try {
         db.prepare(`
@@ -4892,6 +4892,14 @@ safeOn(Events.GuildMemberAdd, async (member) => {
         }
     } catch(e) { console.error(`[VERIFY] join guild=${member.guild.id} user=${member.id}:`, e.stack || e.message); }
 
+    // ── MEMBER AUTO-ROLE (held until verification passes when the gate is active) ──
+    try {
+        const { isPremium } = require('./plugins/premium.js');
+        const vs = db.prepare('SELECT verify_enabled FROM server_settings WHERE guild_id = ?').get(member.guild.id);
+        const gated = !!vs?.verify_enabled && isPremium(db, member.guild.id);
+        if (!gated) await require('./lib/joinrole.js').applyJoinRole(member, db);
+    } catch (e) { console.error(`[JOINROLE] guild=${member.guild.id}:`, e.message); }
+
     // ── LEVELING PLUGIN (always runs, independent of welcome) ──
     if (client.leveling?.onMemberAdd) {
         await client.leveling.onMemberAdd(member, client, db);
@@ -4913,7 +4921,9 @@ safeOn(Events.GuildMemberAdd, async (member) => {
     // Determine if custom welcome is configured
     const hasCustomWelcome = cfg.welcomeChannel || cfg.welcomeMessage;
 
-if (client.welcome?.onMemberAdd) {
+if (welcomeLimited) {
+        // join burst: skip welcome cards only
+    } else if (client.welcome?.onMemberAdd) {
         // PLUGIN PATH: Plugin loaded → it handles everything, fallback skipped
         await client.welcome.onMemberAdd(member, client, db);
     } else if (hasCustomWelcome) {
@@ -6075,10 +6085,86 @@ apiApp.get('/api/overview-health/:guildId', requireAdmin, (req, res) => {
     }
 });
 
+// ── GENERAL SETTINGS API (dashboard) ──
+const GENERAL_FIELDS = {
+    joinRoleId: 'join_role_id',
+    modLogChannel: 'mod_log_channel',
+    logChannel: 'log_channel',
+    rulesChannel: 'rules_channel',
+    updatesChannel: 'updates_channel',
+};
+const isTextChan = c => c && (c.type === 0 || c.type === 5);
+
+apiApp.get('/api/general/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db;
+        const row = db.prepare('SELECT * FROM server_settings WHERE guild_id = ?').get(g.id) || {};
+        const settings = {};
+        for (const [k, col] of Object.entries(GENERAL_FIELDS)) settings[k] = row[col] ? String(row[col]) : null;
+        const channels = [...g.channels.cache.values()].filter(isTextChan)
+            .sort((x, y) => x.rawPosition - y.rawPosition)
+            .map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
+        const roles = [...g.roles.cache.values()]
+            .filter(r => r.id !== g.id && !r.managed)
+            .sort((x, y) => y.position - x.position)
+            .map(r => {
+                const reason = _vg.validateVerifyRole(g, r, a.member);
+                return { id: r.id, name: r.name, eligible: !reason, reason: reason ? _vg.GUARD_MSG[reason] : null };
+            });
+        res.json({ settings, channels, roles });
+    } catch (e) {
+        console.error(`[GENERAL-API] get guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
+apiApp.post('/api/general/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const { userId, settings } = req.body || {};
+        if (!settings || typeof settings !== 'object' || Array.isArray(settings))
+            return res.status(400).json({ error: 'settings_required' });
+        const unknown = Object.keys(settings).filter(k => !(k in GENERAL_FIELDS));
+        if (unknown.length) return res.status(400).json({ error: 'unknown_fields', fields: unknown });
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db;
+
+        const updates = [];
+        for (const [k, v] of Object.entries(settings)) {
+            if (v !== null && !/^\d{17,20}$/.test(String(v))) return res.status(400).json({ error: `${k}_invalid` });
+            if (v !== null) {
+                if (k === 'joinRoleId') {
+                    const reason = _vg.validateVerifyRole(g, g.roles.cache.get(String(v)), a.member);
+                    if (reason) return res.status(400).json({ error: `${k}_rejected`, reason: _vg.GUARD_MSG[reason] });
+                } else if (!isTextChan(g.channels.cache.get(String(v)))) {
+                    return res.status(400).json({ error: `${k}_not_text_channel` });
+                }
+            }
+            updates.push([GENERAL_FIELDS[k], v === null ? null : String(v)]);
+        }
+
+        db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(g.id);
+        const tx = db.transaction(() => {
+            for (const [col, val] of updates)
+                db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(val, g.id);
+        });
+        tx();
+        client.settings?.delete?.(g.id);
+        client.invalidateGuildCache?.(g.id);
+        console.log(`[GENERAL-API] update guild=${g.id} by=${a.member.id} ${JSON.stringify(settings)}`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error(`[GENERAL-API] post guild=${req.params.guildId}:`, e.stack || e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
 apiApp.post('/api/update-config', requireAdmin, (req, res) => {
     const { guildId, settings } = req.body;
     if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
-    const blockedKeys = Object.keys(settings).filter(k => /^verify_/i.test(k));
+    const blockedKeys = Object.keys(settings).filter(k => /^(verify_|join_?role)/i.test(k));
     if (blockedKeys.length) return res.status(400).json({ error: 'Use /api/verify for verification settings', blocked: blockedKeys });
 
     try {

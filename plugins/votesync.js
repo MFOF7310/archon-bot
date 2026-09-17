@@ -262,7 +262,7 @@ async function sendPublicLog(client, user, result, stats) {
 }
 
 // ================= PROCESS VOTE (Main Entry Point) =================
-const MAIN_GUILD = process.env.MAIN_GUILD_ID || '1289645978231640094';
+const MAIN_GUILD = process.env.GUILD_ID;
 let _homeReady = false;
 function ensureHome(db) {
     if (_homeReady) return;
