@@ -5423,8 +5423,9 @@ apiApp.get('/api/premium/checkout-url', async (req, res) => {
         const data = await response.json();
         console.log('[DODO] Checkout created:', JSON.stringify(data).substring(0, 300));
         if (data.session_id && data.checkout_url) return res.json({ url: data.checkout_url, sessionId: data.session_id });
-        const fallback = process.env.DODO_PRODUCT_URL || '';
-        return res.json({ url: fallback || null, sessionId: null });
+        // No silent fallback: a link without the guild attached would take money we can't apply
+        console.error(`[DODO] checkout failed (${plan}, http ${response.status}):`, JSON.stringify(data).substring(0, 300));
+        return res.json({ url: null, sessionId: null, error: 'checkout_unavailable' });
     } catch(e) {
         console.error('[DODO] checkout-url error:', e.message);
         return res.json({ url: null });
