@@ -3905,6 +3905,7 @@ if (cooldownCheck.blocked) {
 safeOn(Events.InteractionCreate, async (interaction) => {
     // ── VERIFY PANEL (buttons + modal) — must run before other routers ──
     if ((interaction.isButton?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('vpanel:')) {
+        console.log(`[VERIFY] panel hit ${interaction.customId} user=${interaction.user.id}`);
         try {
             await require('./plugins/verify.js').onPanelInteraction(interaction, client, db);
         } catch (e) {
@@ -5890,9 +5891,132 @@ apiApp.get('/api/settings/:guildId', (req, res) => {
 });
 
 // ─── UPDATE CONFIG ─────────────────────────────────────
+// ── VERIFY SETTINGS API (dashboard) ──
+const _vg = require('./lib/verify-guard.js');
+const VERIFY_COLS = 'verify_enabled, verify_role_id, verify_unverified_role_id, verify_kick_days';
+
+async function verifyActor(guildId, userId) {
+    const guild = client.guilds.cache.get(String(guildId));
+    if (!guild) return { code: 404, error: 'guild_not_found' };
+    if (!/^\d{17,20}$/.test(String(userId || ''))) return { code: 400, error: 'user_required' };
+    const member = await guild.members.fetch(String(userId)).catch(() => null);
+    if (!member) return { code: 403, error: 'not_member' };
+    const { PermissionsBitField } = require('discord.js');
+    if (guild.ownerId !== member.id && !member.permissions.has(PermissionsBitField.Flags.ManageGuild))
+        return { code: 403, error: 'forbidden' };
+    return { guild, member };
+}
+
+apiApp.get('/api/verify/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const db = client.db, gid = a.guild.id;
+        const { isPremium } = require('./plugins/premium.js');
+        const row = db.prepare(`SELECT ${VERIFY_COLS} FROM server_settings WHERE guild_id = ?`).get(gid) || {};
+        const roles = [...a.guild.roles.cache.values()]
+            .filter(r => r.id !== gid && !r.managed)
+            .sort((x, y) => y.position - x.position)
+            .map(r => {
+                const reason = _vg.validateVerifyRole(a.guild, r, a.member);
+                return { id: r.id, name: r.name, color: r.hexColor, eligible: !reason, reason: reason ? _vg.GUARD_MSG[reason] : null };
+            });
+        res.json({
+            guildId: gid,
+            premium: !!isPremium(db, gid),
+            settings: {
+                enabled: !!row.verify_enabled,
+                verifiedRoleId: row.verify_role_id || null,
+                unverifiedRoleId: row.verify_unverified_role_id || null,
+                kickMinutes: Number(row.verify_kick_days) || 0
+            },
+            roles
+        });
+    } catch (e) {
+        console.error(`[VERIFY-API] get guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
+apiApp.post('/api/verify/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const { userId, settings } = req.body || {};
+        if (!settings || typeof settings !== 'object' || Array.isArray(settings))
+            return res.status(400).json({ error: 'settings_required' });
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const db = client.db, gid = a.guild.id;
+        const { isPremium } = require('./plugins/premium.js');
+
+        const allowed = ['enabled', 'verifiedRoleId', 'unverifiedRoleId', 'kickMinutes'];
+        const unknown = Object.keys(settings).filter(k => !allowed.includes(k));
+        if (unknown.length) return res.status(400).json({ error: 'unknown_fields', fields: unknown });
+
+        const disableOnly = Object.keys(settings).length === 1 && settings.enabled === false;
+        if (!isPremium(db, gid) && !disableOnly) return res.status(402).json({ error: 'premium_required' });
+
+        if ('enabled' in settings && typeof settings.enabled !== 'boolean')
+            return res.status(400).json({ error: 'enabled_must_be_boolean' });
+        if ('kickMinutes' in settings && !(Number.isInteger(settings.kickMinutes) && settings.kickMinutes >= 0 && settings.kickMinutes <= 60))
+            return res.status(400).json({ error: 'kickMinutes_must_be_0_to_60' });
+
+        const roleField = (k) => {
+            if (!(k in settings)) return undefined;
+            const v = settings[k];
+            if (v === null) return null;
+            if (!/^\d{17,20}$/.test(String(v))) throw { code: 400, error: `${k}_invalid` };
+            const role = a.guild.roles.cache.get(String(v));
+            const reason = _vg.validateVerifyRole(a.guild, role, a.member);
+            if (reason) throw { code: 400, error: `${k}_rejected`, reason: _vg.GUARD_MSG[reason] };
+            return role.id;
+        };
+        const vr = roleField('verifiedRoleId');
+        const ur = roleField('unverifiedRoleId');
+
+        db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(gid);
+        const cur = db.prepare(`SELECT ${VERIFY_COLS} FROM server_settings WHERE guild_id = ?`).get(gid) || {};
+        const next = {
+            verify_enabled: 'enabled' in settings ? (settings.enabled ? 1 : 0) : (cur.verify_enabled ? 1 : 0),
+            verify_role_id: vr === undefined ? (cur.verify_role_id || null) : vr,
+            verify_unverified_role_id: ur === undefined ? (cur.verify_unverified_role_id || null) : ur,
+            verify_kick_days: 'kickMinutes' in settings ? settings.kickMinutes : (Number(cur.verify_kick_days) || 0)
+        };
+        if (next.verify_role_id && next.verify_role_id === next.verify_unverified_role_id)
+            return res.status(400).json({ error: 'roles_must_differ' });
+        if (next.verify_enabled && !next.verify_role_id && !next.verify_unverified_role_id)
+            return res.status(400).json({ error: 'role_required_to_enable' });
+
+        db.prepare('UPDATE server_settings SET verify_enabled = ?, verify_role_id = ?, verify_unverified_role_id = ?, verify_kick_days = ? WHERE guild_id = ?')
+            .run(next.verify_enabled, next.verify_role_id, next.verify_unverified_role_id, next.verify_kick_days, gid);
+        client.settings?.delete?.(gid);
+        client.invalidateGuildCache?.(gid);
+        console.log(`[VERIFY-API] update guild=${gid} by=${a.member.id} ${JSON.stringify(next)}`);
+
+        const warnings = [];
+        if (ur && ur !== cur.verify_unverified_role_id)
+            warnings.push('Unverified role changed — run /verify setunverified in Discord to lock channels.');
+        res.json({
+            success: true,
+            settings: {
+                enabled: !!next.verify_enabled,
+                verifiedRoleId: next.verify_role_id,
+                unverifiedRoleId: next.verify_unverified_role_id,
+                kickMinutes: next.verify_kick_days
+            },
+            warnings
+        });
+    } catch (e) {
+        if (e && e.code && e.error) return res.status(e.code).json({ error: e.error, reason: e.reason });
+        console.error(`[VERIFY-API] post guild=${req.params.guildId}:`, e.stack || e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
 apiApp.post('/api/update-config', requireAdmin, (req, res) => {
     const { guildId, settings } = req.body;
     if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
+    const blockedKeys = Object.keys(settings).filter(k => /^verify_/i.test(k));
+    if (blockedKeys.length) return res.status(400).json({ error: 'Use /api/verify for verification settings', blocked: blockedKeys });
 
     try {
         let updated = 0;
