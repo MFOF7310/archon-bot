@@ -36,8 +36,18 @@ function modlogCol(db) {
     return _modlogCol;
 }
 
+let _evReady = false;
 async function logVerify(guild, db, color, title, userId, detail = '') {
     try {
+        try {
+            if (!_evReady) {
+                db.prepare('CREATE TABLE IF NOT EXISTS verify_events (guild_id TEXT, user_id TEXT, kind TEXT, ts INTEGER)').run();
+                db.prepare('CREATE INDEX IF NOT EXISTS idx_verify_events ON verify_events (guild_id, ts)').run();
+                _evReady = true;
+            }
+            const kind = title.startsWith('✅') ? 'passed' : title.startsWith('👢') ? 'kicked' : title.startsWith('❌') ? 'failed' : 'spam';
+            db.prepare('INSERT INTO verify_events VALUES (?, ?, ?, ?)').run(guild.id, String(userId), kind, Math.floor(Date.now() / 1000));
+        } catch (e) { console.error('[VERIFY] event store:', e.message); }
         const col = modlogCol(db);
         if (!col) return;
         const row = db.prepare(`SELECT ${col} AS ch FROM server_settings WHERE guild_id = ?`).get(guild.id);

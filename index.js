@@ -6012,17 +6012,65 @@ apiApp.post('/api/verify/:guildId', requireAdmin, async (req, res) => {
 });
 
 // ── VOTE STATS API (dashboard) ──
-apiApp.get('/api/vote-stats/:guildId', requireAdmin, (req, res) => {
+apiApp.get('/api/vote-stats/:guildId', requireAdmin, async (req, res) => {
     try {
         const gid = String(req.params.guildId);
         if (!/^\d{17,20}$/.test(gid)) return res.status(400).json({ error: 'bad_guild' });
         const db = client.db;
         const agg = db.prepare('SELECT COUNT(*) AS voters, COALESCE(SUM(total_votes), 0) AS total FROM user_votes WHERE guild_id = ?').get(gid);
-        const top = db.prepare('SELECT user_id, total_votes FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 3').all(gid)
-            .map(r => ({ name: client.users.cache.get(r.user_id)?.username || 'Unknown', votes: r.total_votes }));
-        res.json({ voteUrl: `https://top.gg/bot/${client.user.id}/vote`, total: agg.total, voters: agg.voters, top });
+        const top = db.prepare('SELECT user_id, total_votes FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 3').all(gid);
+        const topNamed = await Promise.all(top.map(async r => ({
+            name: (client.users.cache.get(r.user_id) || await client.users.fetch(r.user_id).catch(() => null))?.username || 'Unknown',
+            votes: r.total_votes
+        })));
+        res.json({ voteUrl: `https://top.gg/bot/${client.user.id}/vote`, total: agg.total, voters: agg.voters, top: topNamed });
     } catch (e) {
         console.error(`[VOTE-API] guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
+// ── OVERVIEW HEALTH API (dashboard) ──
+apiApp.get('/api/overview-health/:guildId', requireAdmin, (req, res) => {
+    try {
+        const guild = client.guilds.cache.get(String(req.params.guildId));
+        if (!guild) return res.status(404).json({ error: 'guild_not_found' });
+        const db = client.db, gid = guild.id;
+        const { PermissionsBitField: P } = require('discord.js');
+        const { isPremium } = require('./plugins/premium.js');
+        const guard = require('./lib/verify-guard.js');
+        const s = db.prepare('SELECT * FROM server_settings WHERE guild_id = ?').get(gid) || {};
+        const me = guild.members.me;
+        const chan = id => (id ? guild.channels.cache.get(String(id)) : null);
+        const checks = [];
+        const add = (ok, label, fix) => checks.push({ ok: !!ok, label, fix: ok ? null : fix });
+
+        add(chan(s.mod_log_channel), 'Mod-log channel set', 'Pick a mod-log channel in Moderation settings.');
+        add(me?.permissions.has(P.Flags.ManageRoles), 'Bot can manage roles', 'Give the bot the Manage Roles permission.');
+
+        const premium = !!isPremium(db, gid);
+        const verifyOn = !!s.verify_enabled;
+        if (verifyOn) {
+            const roleOk = id => { const r = guild.roles.cache.get(String(id)); return r && !guard.validateVerifyRole(guild, r, null); };
+            add(premium, 'Premium active', 'Verification is paused: renew Premium.');
+            add(!s.verify_role_id || roleOk(s.verify_role_id), 'Verified role usable', 'The verified role is above the bot or has admin permissions. Pick another in Verification.');
+            add(!s.verify_unverified_role_id || roleOk(s.verify_unverified_role_id), 'Unverified role usable', 'The unverified role is above the bot or has admin permissions. Pick another in Verification.');
+            add(chan(s.verify_panel_channel_id), 'Verify panel posted', 'Run /verify panel so members with closed DMs can verify.');
+            if (Number(s.verify_kick_days) > 0)
+                add(me?.permissions.has(P.Flags.KickMembers), 'Bot can kick members', 'Auto-kick is on: give the bot the Kick Members permission.');
+        }
+
+        const stats = { passed: 0, failed: 0, kicked: 0, spam: 0 };
+        try {
+            const since = Math.floor(Date.now() / 1000) - 7 * 86400;
+            for (const r of db.prepare('SELECT kind, COUNT(*) AS n FROM verify_events WHERE guild_id = ? AND ts >= ? GROUP BY kind').all(gid, since))
+                if (r.kind in stats) stats[r.kind] = r.n;
+            db.prepare('DELETE FROM verify_events WHERE ts < ?').run(since - 23 * 86400);
+        } catch {} // table is created on the first verify event
+
+        res.json({ checks, verifyEnabled: verifyOn, premium, stats });
+    } catch (e) {
+        console.error(`[HEALTH-API] guild=${req.params.guildId}:`, e.message);
         res.status(500).json({ error: 'internal' });
     }
 });
