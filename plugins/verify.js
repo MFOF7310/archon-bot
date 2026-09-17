@@ -11,7 +11,9 @@ const { generateCaptcha, randomCode } = require('./captcha.js');
 const EMOJIS = require('../config/emojis');
 const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
 
-const pending = new Map(); // userId:guildId => { timeout, messageId }
+const pending = new Map(); // userId:guildId => { timer, dmMsg, code, collector }
+const joinHits = new Map(); // userId:guildId => [timestamps]
+const JOIN_LIMIT = 3, JOIN_WINDOW = 10 * 60 * 1000;
 
 module.exports = {
     name: 'verify',
@@ -49,7 +51,7 @@ module.exports = {
                 return interaction.reply({ embeds: [new EmbedBuilder()
                     .setColor(0xffd700)
                     .setTitle(`${EMOJIS.premium} Premium Feature`)
-                    .setDescription('Image captcha verification is a **Premium** feature — it keeps your server safe with zero false kicks.\n\nUnlock it for just **$1.99/month** and protect your community.')
+                    .setDescription('Image captcha verification is a **Premium** feature — it keeps your server safe with zero false kicks.\n\nUnlock it for just **$3.40/month** and protect your community.')
                     .addFields({ name: '🔑 How to activate', value: 'Run `/premium status` to upgrade — takes 30 seconds.' })
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                 ], flags: 64 });
@@ -125,6 +127,11 @@ module.exports = {
             for (const [, channel] of guild.channels.cache) {
                 // Skip categories and thread channels
                 if (channel.isThread?.() || channel.type === 4) continue;
+                // Captcha fallback channel must stay usable
+                if (channel.id === guild.systemChannelId) {
+                    await channel.permissionOverwrites.edit(role, { ViewChannel: true, SendMessages: true }).catch(() => { failed++; });
+                    continue;
+                }
                 try {
                     await channel.permissionOverwrites.edit(role, {
                         ViewChannel: false,
@@ -144,6 +151,7 @@ module.exports = {
                         `Unverified role set to ${role}\n\n` +
                         `**${locked}** channels locked — unverified members can\'t see them.\n` +
                         (failed > 0 ? `**${failed}** channels couldn\'t be updated — check my role is above the unverified role.\n\n` : '\n') +
+                        (guild.systemChannel ? `${guild.systemChannel} stays open for members with closed DMs.\n` : `⚠️ No system channel set — members with closed DMs can't verify.\n`) +
                         `New members get this role on join, removed the moment they verify. ✨`
                     )
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
@@ -216,6 +224,20 @@ module.exports = {
 
         // Auto-assign unverified role immediately
         if (unverifiedRole) await member.roles.add(unverifiedRole).catch(() => {});
+
+        // Join-spam limit — role stays applied, no new captcha
+        const hitKey = `${member.id}:${gid}`;
+        const now = Date.now();
+        const hits = (joinHits.get(hitKey) || []).filter(t => now - t < JOIN_WINDOW);
+        hits.push(now);
+        joinHits.set(hitKey, hits);
+        if (joinHits.size > 1000) {
+            for (const [k, arr] of joinHits) if (now - arr[arr.length - 1] > JOIN_WINDOW) joinHits.delete(k);
+        }
+        if (hits.length > JOIN_LIMIT) {
+            console.warn(`[VERIFY] join-spam guild=${gid} user=${member.id} (${hits.length} joins/10min) — captcha skipped`);
+            return;
+        }
         // Generate captcha
         const code = randomCode(6);
         const imgBuf = generateCaptcha(code);
@@ -227,7 +249,7 @@ module.exports = {
             .setTitle(`👋 Hey, welcome to ${member.guild.name}!`)
             .setDescription(
                 `Great to have you here! To unlock the server, **type the code shown in the image below** in this DM.\n\n` +
-                `${EMOJIS.warning} Case insensitive • **3 attempts** • Expires in **10 minutes**\n\n` +
+                `${EMOJIS.warning} Case insensitive • **3 attempts** • Expires in **${(settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10} minutes**\n\n` +
                 `*Having trouble? Rejoin the server to get a fresh code.*`
             )
             .setImage('attachment://verify.png')
@@ -255,11 +277,13 @@ module.exports = {
             }
         }
 
+        if (!dmChannel) console.warn(`[VERIFY] no delivery path guild=${gid} user=${member.id} (DMs closed, no system channel)`);
+
         // Store captcha code
         const key = `${member.id}:${gid}`;
         let attempts = 0;
         const maxAttempts = 3;
-        const expireMs = 10 * 60 * 1000; // 10 min
+        const expireMs = ((settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10) * 60 * 1000;
         const codeRef = { current: code }; // mutable ref so retries work
 
         let collector = null;
@@ -269,6 +293,7 @@ module.exports = {
             collector = dmChannel.createMessageCollector({ filter, time: expireMs });
 
             collector.on('collect', async m => {
+                if (!dmChannel.isDMBased?.()) m.delete().catch(() => {});
                 const guess = m.content.trim().toUpperCase();
                 if (guess === codeRef.current) {
                     // ✅ Correct!
@@ -292,13 +317,19 @@ module.exports = {
                     attempts++;
                     if (attempts >= maxAttempts) {
                         collector.stop('failed');
+                        const pf = pending.get(key);
+                        if (pf?.timer) clearTimeout(pf.timer);
+                        pending.delete(key);
+                        const kickOn = (settings.verify_kick_days || 0) > 0;
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff3311)
                             .setTitle(`${EMOJIS.warning} Too many attempts`)
-                            .setDescription(`No worries — you've been removed from **${member.guild.name}** for now.\n\nFeel free to rejoin and try again with a fresh code. 👋`)
+                            .setDescription(kickOn
+                                ? `No worries — you've been removed from **${member.guild.name}** for now.\n\nFeel free to rejoin and try again with a fresh code. 👋`
+                                : `Verification failed for **${member.guild.name}**.\n\nLeave and rejoin the server to get a fresh code. 👋`)
                             .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                         ]}).catch(() => {});
-                        await member.kick('Failed captcha verification').catch(() => {});
+                        if (kickOn) await member.kick('Failed captcha verification').catch(() => {});
                     } else {
                         // Wrong — send new captcha
                         const newCode = randomCode(6);
@@ -323,15 +354,14 @@ module.exports = {
 
             collector.on('end', async (_, reason) => {
                 if (reason === 'time') {
-                    pending.delete(key);
+                    // Keep entry if the kick timer still needs it
+                    if (!pending.get(key)?.timer) pending.delete(key);
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x888888)
                         .setDescription(`${EMOJIS.warning} Your verification window expired — no worries, just rejoin the server and we'll send a fresh code right away.`)
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ]}).catch(() => {});
-                    // Kick if auto-kick enabled
-                    const kickMins = settings.verify_kick_days || 0;
-                    if (kickMins > 0) await member.kick('Verification timed out').catch(() => {});
+                    // Kicking is handled by the auto-kick timer only
                 }
             });
         }
@@ -339,7 +369,9 @@ module.exports = {
         // Auto-kick timer
         const kickMins = settings.verify_kick_days || 0;
         const timer = kickMins > 0 ? setTimeout(async () => {
-            if (!pending.has(key)) return; // verified or replaced
+            const pk = pending.get(key);
+            if (!pk) return; // verified, failed or replaced
+            pk.collector?.stop('kicked');
             pending.delete(key);
             const freshMember = await member.guild.members.fetch(member.id).catch(() => null);
             if (!freshMember) return;

@@ -4879,7 +4879,7 @@ safeOn(Events.GuildMemberAdd, async (member) => {
             const verifyPlugin = require('./plugins/verify.js');
             await verifyPlugin.onMemberJoin(member, client, db);
         }
-    } catch(e) { console.error('[VERIFY]', e.message); }
+    } catch(e) { console.error(`[VERIFY] join guild=${member.guild.id} user=${member.id}:`, e.stack || e.message); }
 
     // ── LEVELING PLUGIN (always runs, independent of welcome) ──
     if (client.leveling?.onMemberAdd) {
@@ -4955,7 +4955,7 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
 // ╚══════════════════════════════════════════════════════════════════════╝
 safeOn(Events.GuildMemberRemove, async (member) => {
     // verify: free pending captcha timer + collector
-    try { const _vp = require('./plugins/verify.js'); _vp?.onMemberLeave?.(member); } catch {}
+    try { const _vp = require('./plugins/verify.js'); _vp?.onMemberLeave?.(member); } catch (e) { console.error(`[VERIFY] leave guild=${member.guild.id} user=${member.id}:`, e.message); }
     if (member.user.bot) return;
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
     // ── Sync guild stats ──
