@@ -399,6 +399,7 @@ module.exports = {
                     // Add verified role
                     if (verifyRole) await member.roles.add(verifyRole).catch(() => {});
                     logVerify(member.guild, db, 0x00cc44, '✅ Verified (DM)', member.id);
+                    require('../lib/joinrole.js').applyJoinRole(member, db);
 
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x00cc44)
@@ -559,6 +560,7 @@ module.exports = {
                 if (uRole) await member.roles.remove(uRole).catch(() => {});
                 if (vRole) await member.roles.add(vRole).catch(() => {});
                 logVerify(guild, db, 0x00cc44, '✅ Verified (panel)', uid);
+                await require('../lib/joinrole.js').applyJoinRole(member, db);
                 return eph(`✅ You're in! Welcome to **${guild.name}** 🎉`);
             }
             const attempts = sess.attempts + 1;
