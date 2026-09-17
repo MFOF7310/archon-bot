@@ -3,13 +3,14 @@
 // Distorted text image — no external service needed
 // ═══════════════════════════════════════════════════════
 const { createCanvas } = require('canvas');
+const crypto = require('crypto');
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function randomCode(len = 6) {
     let code = '';
     for (let i = 0; i < len; i++) {
-        code += CHARS[Math.floor(Math.random() * CHARS.length)];
+        code += CHARS[crypto.randomInt(CHARS.length)];
     }
     return code;
 }
@@ -85,7 +86,7 @@ function generateCaptcha(code) {
     ctx.fillStyle = '#334455';
     ctx.font = '11px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText('ARCHON CG-223 • BAMAKO_223 🇲🇱', W-8, H-8);
+    ctx.fillText('ARCHON CG-223 • BAMAKO_223', W-8, H-8);
 
     return canvas.toBuffer('image/png');
 }
