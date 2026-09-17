@@ -48,11 +48,8 @@ async function logVerify(guild, db, color, title, userId, detail = '') {
             const kind = title.startsWith('✅') ? 'passed' : title.startsWith('👢') ? 'kicked' : title.startsWith('❌') ? 'failed' : 'spam';
             db.prepare('INSERT INTO verify_events VALUES (?, ?, ?, ?)').run(guild.id, String(userId), kind, Math.floor(Date.now() / 1000));
         } catch (e) { console.error('[VERIFY] event store:', e.message); }
-        const col = modlogCol(db);
-        if (!col) return;
-        const row = db.prepare(`SELECT ${col} AS ch FROM server_settings WHERE guild_id = ?`).get(guild.id);
-        const ch = row?.ch ? guild.channels.cache.get(String(row.ch)) : null;
-        if (!ch?.isTextBased?.()) return;
+        const ch = require('../lib/modlog.js').resolveModLog(guild, db);
+        if (!ch) return;
         await ch.send({
             embeds: [new EmbedBuilder().setColor(color).setTitle(title)
                 .setDescription(`<@${userId}> \`${userId}\`${detail ? `\n${detail}` : ''}`)
