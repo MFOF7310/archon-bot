@@ -6107,26 +6107,57 @@ apiApp.get('/api/warnings/:guildId', (req, res) => {
 
 // TOP.GG VOTE WEBHOOK
 apiApp.post('/api/vote', (req, res) => {
-    const auth = req.headers['authorization'];
-    const expectedAuth = process.env.TOPGG_WEBHOOK_SECRET || null; // no hardcoded fallback
-    if (auth !== expectedAuth) {
-        console.error('[VOTE] Unauthorized', String(req.headers['x-topgg-signature'] || '').replace(/[0-9a-f]{16,}/gi, '<hex>'), JSON.stringify(req.body, (k, v) => typeof v === 'string' && /^\d{17,20}$/.test(v) ? '<id>' : v).slice(0, 300));
+    const secret = process.env.TOPGG_WEBHOOK_SECRET;
+    if (!secret) return res.status(503).json({ error: 'not_configured' });
+    const crypto = require('crypto');
+    const safeEq = (a, b) => {
+        const x = Buffer.from(String(a)), y = Buffer.from(String(b));
+        return x.length === y.length && crypto.timingSafeEqual(x, y);
+    };
+    const rb = req.rawBody;
+    const raw = Buffer.isBuffer(rb) ? rb.toString('utf8') : String(rb || '');
+    const sig = String(req.headers['x-topgg-signature'] || '');
+    const parts = {};
+    for (const kv of sig.split(',')) {
+        const k = kv.indexOf('=');
+        if (k > 0) parts[kv.slice(0, k).trim()] = kv.slice(k + 1).trim();
+    }
+
+    let ok = false;
+    if (parts.t && parts.v1 && raw) {
+        if (Math.abs(Date.now() / 1000 - Number(parts.t)) <= 300) {
+            const expected = crypto.createHmac('sha256', secret).update(`${parts.t}.${raw}`).digest('hex');
+            ok = safeEq(expected, parts.v1);
+        }
+    } else if (req.headers['authorization']) {
+        ok = safeEq(req.headers['authorization'], secret); // legacy v0
+    }
+    if (!ok) {
+        console.warn(`[VOTE] rejected (signed=${!!sig}, body=${raw.length}b)`);
         return res.status(401).json({ error: 'Unauthorized' });
     }
-    const { user, type, isWeekend } = req.body;
-    if (!user) return res.status(400).json({ error: 'Missing user' });
-    console.log('[VOTE] Received from user ' + user + ' | weekend: ' + isWeekend);
+
+    const body = req.body || {};
+    if (body.type === 'webhook.test') {
+        console.log('[VOTE] test webhook verified ✓');
+        return res.json({ success: true, test: true });
+    }
+
+    const user = String(body.data?.user?.platform_id || body.user || '');
+    if (!/^\d{17,20}$/.test(user)) return res.status(400).json({ error: 'Missing user' });
+    const isWeekend = (body.data?.weight ?? 1) > 1 || !!body.isWeekend;
+    console.log(`[VOTE] Received from user ${user} | weekend: ${isWeekend}`);
+
     try {
         const votesync = require('./plugins/votesync.js');
         const guild = client.guilds.cache.find(g => g.members.cache.has(user)) || client.guilds.cache.first();
         if (guild && votesync.processVote) {
             votesync.processVote(user, guild.id, client).catch(e => console.error('[VOTE] processVote:', e.message));
         }
-        // DM handled by votesync.processVote above
-        res.json({ success: true, user, type });
-    } catch(err) {
+        res.json({ success: true });
+    } catch (err) {
         console.error('[VOTE] Error:', err.message);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'internal' });
     }
 });
 
