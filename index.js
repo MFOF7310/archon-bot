@@ -3903,6 +3903,17 @@ if (cooldownCheck.blocked) {
 
 // ================= INTERACTION HANDLER =================
 safeOn(Events.InteractionCreate, async (interaction) => {
+    // ── VERIFY PANEL (buttons + modal) — must run before other routers ──
+    if ((interaction.isButton?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('vpanel:')) {
+        try {
+            await require('./plugins/verify.js').onPanelInteraction(interaction, client, db);
+        } catch (e) {
+            console.error(`[VERIFY] panel guild=${interaction.guildId} user=${interaction.user?.id}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred)
+                interaction.reply({ content: '❌ Something went wrong — try again.', flags: 64 }).catch(() => {});
+        }
+        return;
+    }
     // SLASH COMMAND EXECUTION
     // Autocomplete handler
     if (interaction.isAutocomplete()) {
@@ -4953,19 +4964,6 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
 // ║  Delegates to welcome.js plugin if loaded & configured.             ║
 // ║  Falls back to shared cinematic engine if no custom config.         ║
 // ╚══════════════════════════════════════════════════════════════════════╝
-// ── VERIFY PANEL (buttons + modal) ──
-safeOn(Events.InteractionCreate, async (interaction) => {
-    if (!(interaction.isButton?.() || interaction.isModalSubmit?.())) return;
-    if (!interaction.customId?.startsWith('vpanel:')) return;
-    try {
-        await require('./plugins/verify.js').onPanelInteraction(interaction, client, db);
-    } catch (e) {
-        console.error(`[VERIFY] panel guild=${interaction.guildId} user=${interaction.user?.id}:`, e.stack || e.message);
-        if (!interaction.replied && !interaction.deferred)
-            interaction.reply({ content: '❌ Something went wrong — try again.', flags: 64 }).catch(() => {});
-    }
-});
-
 safeOn(Events.GuildMemberRemove, async (member) => {
     // verify: free pending captcha timer + collector
     try { const _vp = require('./plugins/verify.js'); _vp?.onMemberLeave?.(member); } catch (e) { console.error(`[VERIFY] leave guild=${member.guild.id} user=${member.id}:`, e.message); }
