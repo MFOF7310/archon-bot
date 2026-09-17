@@ -1256,7 +1256,7 @@ function updateServerSetting(guildId, setting, value) {
     const column = columnMap[setting];
     
     // ✅ SECURE: Additional column name sanitization (defense in depth)
-    if (!/^[a-z_][a-z0-9_]*$/.test(column)) {
+    if (!column || !/^[a-z_][a-z0-9_]*$/.test(column)) {
         console.error(`[SETTINGS] Invalid column name pattern: ${column}`);
         return false;
     }
