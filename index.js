@@ -6173,11 +6173,13 @@ apiApp.post('/api/general/:guildId', requireAdmin, async (req, res) => {
 // ── COMMAND TOGGLES ──
 const LOCKED_COMMANDS = new Set(['help', 'verify', 'serversettings', 'settings', 'premium', 'dashboard', 'channels', 'roles']);
 const _toggleCache = new Map();
+const HIDDEN_CATS = new Set(['SYSTEM', 'OWNER']);
+const catOf = cmd => String(cmd?.category || 'GENERAL').toUpperCase();
 function getToggles(guildId) {
     let t = _toggleCache.get(guildId);
     if (!t) {
         const row = db.prepare('SELECT disabled_commands, disabled_categories FROM server_settings WHERE guild_id = ?').get(guildId) || {};
-        t = { cmds: new Set(parseJSONSafe(row.disabled_commands, [])), cats: new Set(parseJSONSafe(row.disabled_categories, [])) };
+        t = { cmds: new Set(parseJSONSafe(row.disabled_commands, [])), cats: new Set(parseJSONSafe(row.disabled_categories, []).map(c => String(c).toUpperCase())) };
         _toggleCache.set(guildId, t);
     }
     return t;
@@ -6185,14 +6187,15 @@ function getToggles(guildId) {
 function isCommandDisabled(guildId, command) {
     if (!guildId || !command || LOCKED_COMMANDS.has(command.name)) return false;
     const t = getToggles(guildId);
-    return t.cmds.has(command.name) || t.cats.has(command.category || 'GENERAL');
+    return t.cmds.has(command.name) || t.cats.has(catOf(command));
 }
 function listToggleable() {
     const out = [];
     for (const [name, cmd] of client.commands) {
-        if (cmd.hidden || cmd.ownerOnly || cmd.category === 'SYSTEM') continue;
-        if (/TELEGRAM|WHATSAPP|BRIDGE/i.test(cmd.category || '') || (cmd.platform && cmd.platform !== 'discord')) continue;
-        out.push({ name, description: cmd.description || '', category: cmd.category || 'GENERAL', locked: LOCKED_COMMANDS.has(name) });
+        const cat = catOf(cmd);
+        if (cmd.hidden || cmd.ownerOnly || HIDDEN_CATS.has(cat)) continue;
+        if (/TELEGRAM|WHATSAPP|BRIDGE/.test(cat) || (cmd.platform && cmd.platform !== 'discord')) continue;
+        out.push({ name, description: cmd.description || '', category: cat, locked: LOCKED_COMMANDS.has(name) });
     }
     return out.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 }
