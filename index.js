@@ -6241,6 +6241,21 @@ apiApp.post('/api/commands-config/:guildId', requireAdmin, async (req, res) => {
     }
 });
 
+// ── PUBLIC COMMAND LIST (website) ──
+apiApp.get('/api/public-commands', (req, res) => {
+    try {
+        const commands = listToggleable().map(c => ({
+            name: c.name, description: c.description, category: c.category,
+            slash: !!client.commands.get(c.name)?.data,
+        }));
+        res.set('Cache-Control', 'public, max-age=300');
+        res.json({ commands });
+    } catch (e) {
+        console.error('[PUBLIC-CMDS]', e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
 apiApp.post('/api/update-config', requireAdmin, (req, res) => {
     const { guildId, settings } = req.body;
     if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
