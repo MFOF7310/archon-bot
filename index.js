@@ -2223,7 +2223,8 @@ client.loadPlugins = async () => {
     
     // ── TELEGRAM BRIDGE MODULES ──
     const telegramPath = path.join(__dirname, 'telegram', 'plugins');
-    if (fs.existsSync(telegramPath)) {
+    // Telegram plugins are not Discord commands (opt-in only)
+    if (process.env.LOAD_TELEGRAM_INTO_DISCORD === '1' && fs.existsSync(telegramPath)) {
         const telegramFiles = fs.readdirSync(telegramPath).filter(file => 
             file.endsWith('.js') && file !== 'bridge.js' && file !== 'bot.js'
         );
