@@ -6191,6 +6191,7 @@ function listToggleable() {
     const out = [];
     for (const [name, cmd] of client.commands) {
         if (cmd.hidden || cmd.ownerOnly || cmd.category === 'SYSTEM') continue;
+        if (/TELEGRAM|WHATSAPP|BRIDGE/i.test(cmd.category || '') || (cmd.platform && cmd.platform !== 'discord')) continue;
         out.push({ name, description: cmd.description || '', category: cmd.category || 'GENERAL', locked: LOCKED_COMMANDS.has(name) });
     }
     return out.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
