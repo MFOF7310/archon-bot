@@ -8,7 +8,8 @@ const http = require('http');
 const crypto = require('crypto');
 const { exec } = require('child_process');
 
-const SECRET = process.env.WEBHOOK_SECRET || 'changeme';
+const SECRET = process.env.WEBHOOK_SECRET;
+if (!SECRET) { console.error('[WEBHOOK] WEBHOOK_SECRET missing — refusing to start'); process.exit(1); }
 const PORT = process.env.WEBHOOK_PORT || 9001;
 const BRANCH = 'main';
 
