@@ -5,8 +5,10 @@
 const { 
     SlashCommandBuilder, EmbedBuilder, 
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
-    PermissionsBitField, AttachmentBuilder
+    PermissionsBitField, AttachmentBuilder,
+    ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle
 } = require('discord.js');
+const crypto = require('crypto');
 const { generateCaptcha, randomCode } = require('./captcha.js');
 const EMOJIS = require('../config/emojis');
 const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
@@ -14,6 +16,47 @@ const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
 const pending = new Map(); // userId:guildId => { timer, dmMsg, code, collector }
 const joinHits = new Map(); // userId:guildId => [timestamps]
 const JOIN_LIMIT = 3, JOIN_WINDOW = 10 * 60 * 1000;
+const panelSessions = new Map(); // userId:guildId => { code, attempts, expires, nonce }
+const panelCooldown = new Map(); // userId:guildId => ts
+const PANEL_TTL = 5 * 60 * 1000, PANEL_COOLDOWN = 30 * 1000;
+
+let _colsReady = false;
+function ensureCols(db) {
+    if (_colsReady) return;
+    try { db.prepare('ALTER TABLE server_settings ADD COLUMN verify_panel_channel_id TEXT').run(); } catch {}
+    _colsReady = true;
+}
+
+let _modlogCol;
+function modlogCol(db) {
+    if (_modlogCol !== undefined) return _modlogCol;
+    const cols = db.prepare('PRAGMA table_info(server_settings)').all().map(r => r.name);
+    _modlogCol = cols.find(n => /mod.?log/i.test(n) && /chan/i.test(n)) || cols.find(n => /mod.?log/i.test(n)) || null;
+    console.log(`[VERIFY] mod-log column: ${_modlogCol || 'NONE — verify logs disabled'}`);
+    return _modlogCol;
+}
+
+async function logVerify(guild, db, color, title, userId, detail = '') {
+    try {
+        const col = modlogCol(db);
+        if (!col) return;
+        const row = db.prepare(`SELECT ${col} AS ch FROM server_settings WHERE guild_id = ?`).get(guild.id);
+        const ch = row?.ch ? guild.channels.cache.get(String(row.ch)) : null;
+        if (!ch?.isTextBased?.()) return;
+        await ch.send({
+            embeds: [new EmbedBuilder().setColor(color).setTitle(title)
+                .setDescription(`<@${userId}> \`${userId}\`${detail ? `\n${detail}` : ''}`)
+                .setFooter({ text: 'ARCHON CG-223 • Verification' }).setTimestamp()],
+            allowedMentions: { parse: [] }
+        });
+    } catch (e) { console.error(`[VERIFY] modlog guild=${guild.id}:`, e.message); }
+}
+
+function prunePanel(now) {
+    if (panelSessions.size + panelCooldown.size < 1000) return;
+    for (const [k, s] of panelSessions) if (s.expires < now) panelSessions.delete(k);
+    for (const [k, t] of panelCooldown) if (now - t > PANEL_COOLDOWN) panelCooldown.delete(k);
+}
 
 module.exports = {
     name: 'verify',
@@ -32,7 +75,10 @@ module.exports = {
             .addIntegerOption(o => o.setName('minutes').setDescription('Minutes before kick (0 to disable)').setRequired(true).setMinValue(0).setMaxValue(60)))
         .addSubcommand(s => s.setName('status').setDescription('📊 View current verification settings'))
         .addSubcommand(s => s.setName('setunverified').setDescription('🔒 Set role given to new members before verifying')
-            .addRoleOption(o => o.setName('role').setDescription('Role that blocks channel access until verified').setRequired(true))),
+            .addRoleOption(o => o.setName('role').setDescription('Role that blocks channel access until verified').setRequired(true)))
+        .addSubcommand(s => s.setName('panel').setDescription('🛡️ Post the verification panel')
+            .addChannelOption(o => o.setName('channel').setDescription('Channel unverified members can see')
+                .addChannelTypes(ChannelType.GuildText).setRequired(true))),
 
     execute: async (interaction, client) => {
         const db = client.db;
@@ -123,10 +169,17 @@ module.exports = {
             // Auto-configure channel permissions — deny ViewChannel for unverified role on all channels
             const guild = interaction.guild;
             let locked = 0, skipped = 0, failed = 0;
+            ensureCols(db);
+            const panelId = db.prepare('SELECT verify_panel_channel_id AS p FROM server_settings WHERE guild_id = ?').get(gid)?.p;
 
             for (const [, channel] of guild.channels.cache) {
                 // Skip categories and thread channels
                 if (channel.isThread?.() || channel.type === 4) continue;
+                // Panel channel: visible, read-only
+                if (panelId && channel.id === panelId) {
+                    await channel.permissionOverwrites.edit(role, { ViewChannel: true, SendMessages: false, ReadMessageHistory: true }).catch(() => { failed++; });
+                    continue;
+                }
                 // Captcha fallback channel must stay usable
                 if (channel.id === guild.systemChannelId) {
                     await channel.permissionOverwrites.edit(role, { ViewChannel: true, SendMessages: true }).catch(() => { failed++; });
@@ -155,6 +208,37 @@ module.exports = {
                         `New members get this role on join, removed the moment they verify. ✨`
                     )
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
+            });
+        }
+
+        if (sub === 'panel') {
+            const { isPremium } = require('./premium.js');
+            if (!isPremium(db, gid)) return interaction.reply({ content: '⛔ Verification is a Premium feature — see `/premium status`.', flags: 64 });
+            const guild = interaction.guild;
+            const ch = interaction.options.getChannel('channel');
+            const perms = ch.permissionsFor(guild.members.me);
+            if (!perms?.has([PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.EmbedLinks]))
+                return interaction.reply({ content: `⛔ I can't post in ${ch}.`, flags: 64 });
+
+            ensureCols(db);
+            db.prepare('UPDATE server_settings SET verify_panel_channel_id = ? WHERE guild_id = ?').run(ch.id, gid);
+
+            const s2 = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
+            const uRole = s2?.verify_unverified_role_id ? guild.roles.cache.get(s2.verify_unverified_role_id) : null;
+            if (uRole) await ch.permissionOverwrites.edit(uRole, { ViewChannel: true, SendMessages: false, ReadMessageHistory: true }).catch(() => {});
+
+            await ch.send({
+                embeds: [new EmbedBuilder()
+                    .setColor(0x00aaff)
+                    .setTitle('🛡️ Verification Required')
+                    .setDescription('Press **Start verification** to get your code.\n\nOnly you will see the captcha. Enter it in the popup — **3 attempts**, then a short cooldown.')
+                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
+                components: [new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('vpanel:start').setLabel('Start verification').setStyle(ButtonStyle.Success).setEmoji('🛡️'))]
+            });
+            return interaction.reply({
+                content: `✅ Panel posted in ${ch}.` + (uRole ? ` ${uRole} can see it.` : ' ⚠️ No unverified role set — run `/verify setunverified`.'),
+                flags: 64
             });
         }
 
@@ -236,6 +320,7 @@ module.exports = {
         }
         if (hits.length > JOIN_LIMIT) {
             console.warn(`[VERIFY] join-spam guild=${gid} user=${member.id} (${hits.length} joins/10min) — captcha skipped`);
+            if (hits.length === JOIN_LIMIT + 1) logVerify(member.guild, db, 0xff8800, '⚠️ Join spam — captcha paused', member.id, `${hits.length} joins in 10 min`);
             return;
         }
         // Generate captcha
@@ -306,6 +391,7 @@ module.exports = {
                     if (unverifiedRole) await member.roles.remove(unverifiedRole).catch(() => {});
                     // Add verified role
                     if (verifyRole) await member.roles.add(verifyRole).catch(() => {});
+                    logVerify(member.guild, db, 0x00cc44, '✅ Verified (DM)', member.id);
 
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x00cc44)
@@ -330,6 +416,7 @@ module.exports = {
                             .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                         ]}).catch(() => {});
                         if (kickOn) await member.kick('Failed captcha verification').catch(() => {});
+                        logVerify(member.guild, db, 0xff3311, kickOn ? '👢 Kicked — failed captcha' : '❌ Failed captcha', member.id, '3 wrong attempts');
                     } else {
                         // Wrong — send new captcha
                         const newCode = randomCode(6);
@@ -376,10 +463,106 @@ module.exports = {
             const freshMember = await member.guild.members.fetch(member.id).catch(() => null);
             if (!freshMember) return;
             const hasRole = verifyRole && freshMember.roles.cache.has(verifyRole.id);
-            if (!hasRole) await freshMember.kick('Failed to verify in time').catch(() => {});
+            if (!hasRole) {
+                await freshMember.kick('Failed to verify in time').catch(() => {});
+                logVerify(member.guild, db, 0xff8800, '👢 Kicked — verification timeout', member.id, `${kickMins} min`);
+            }
         }, kickMins * 60000) : null;
 
         pending.set(key, { timer, dmMsg, code, collector });
+    },
+
+    // Called from InteractionCreate for customId 'vpanel:*'
+    onPanelInteraction: async (interaction, client, db) => {
+        const guild = interaction.guild;
+        if (!guild) return;
+        const [, action, nonce] = interaction.customId.split(':');
+        const gid = guild.id, uid = interaction.user.id, key = `${uid}:${gid}`;
+        const now = Date.now();
+        const eph = (content) => interaction.reply({ content, flags: 64 });
+
+        const { isPremium } = require('./premium.js');
+        const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
+        if (!settings?.verify_enabled || !isPremium(db, gid)) return eph('🔒 Verification is not active on this server.');
+
+        const vRole = settings.verify_role_id ? guild.roles.cache.get(settings.verify_role_id) : null;
+        const uRole = settings.verify_unverified_role_id ? guild.roles.cache.get(settings.verify_unverified_role_id) : null;
+        if (!vRole && !uRole) return eph('⚠️ Verification is not configured — ask an admin.');
+        for (const r of [vRole, uRole]) {
+            const err = r && validateVerifyRole(guild, r, null);
+            if (err) {
+                console.warn(`[VERIFY] panel unsafe role guild=${gid} role=${r.id}: ${err}`);
+                return eph('⚠️ Verification is misconfigured — ask an admin.');
+            }
+        }
+
+        const member = await guild.members.fetch(uid).catch(() => null);
+        if (!member) return eph('❌ Could not find you in the server.');
+        const done = vRole ? member.roles.cache.has(vRole.id) : !member.roles.cache.has(uRole.id);
+        if (done) return eph('✅ You are already verified.');
+
+        const challenge = (attempts, note) => {
+            const code = randomCode(6);
+            const n = crypto.randomBytes(4).toString('hex');
+            panelSessions.set(key, { code, attempts, expires: now + PANEL_TTL, nonce: n });
+            prunePanel(now);
+            return {
+                content: note || undefined,
+                embeds: [new EmbedBuilder()
+                    .setColor(0x00aaff)
+                    .setTitle('🛡️ Enter the code in the image')
+                    .setDescription(`Case insensitive • Attempt ${attempts + 1}/3 • Expires in 5 minutes`)
+                    .setImage('attachment://verify.png')],
+                files: [new AttachmentBuilder(generateCaptcha(code), { name: 'verify.png' })],
+                components: [new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId(`vpanel:enter:${n}`).setLabel('Enter code').setStyle(ButtonStyle.Primary))],
+                flags: 64
+            };
+        };
+
+        if (action === 'start') {
+            const wait = PANEL_COOLDOWN - (now - (panelCooldown.get(key) || 0));
+            if (wait > 0) return eph(`⏳ Wait ${Math.ceil(wait / 1000)}s before requesting a new code.`);
+            panelCooldown.set(key, now);
+            return interaction.reply(challenge(0));
+        }
+
+        const sess = panelSessions.get(key);
+        if (!sess || sess.expires < now) {
+            panelSessions.delete(key);
+            return eph('⌛ Code expired — press **Start verification** again.');
+        }
+        if (sess.nonce !== nonce) return eph('⚠️ That code is outdated — use your latest one.');
+
+        if (action === 'enter') {
+            return interaction.showModal(new ModalBuilder()
+                .setCustomId(`vpanel:modal:${nonce}`)
+                .setTitle('Verification')
+                .addComponents(new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId('code').setLabel('Code from the image')
+                        .setStyle(TextInputStyle.Short).setMinLength(6).setMaxLength(6).setRequired(true))));
+        }
+
+        if (action === 'modal') {
+            const guess = interaction.fields.getTextInputValue('code').trim().toUpperCase();
+            if (guess === sess.code) {
+                panelSessions.delete(key);
+                const p = pending.get(key);
+                if (p) { if (p.timer) clearTimeout(p.timer); p.collector?.stop('verified'); pending.delete(key); }
+                if (uRole) await member.roles.remove(uRole).catch(() => {});
+                if (vRole) await member.roles.add(vRole).catch(() => {});
+                logVerify(guild, db, 0x00cc44, '✅ Verified (panel)', uid);
+                return eph(`✅ You're in! Welcome to **${guild.name}** 🎉`);
+            }
+            const attempts = sess.attempts + 1;
+            if (attempts >= 3) {
+                panelSessions.delete(key);
+                panelCooldown.set(key, now);
+                logVerify(guild, db, 0xff3311, '❌ Failed captcha (panel)', uid, '3 wrong attempts');
+                return eph('❌ Too many wrong attempts — try again in 30 seconds.');
+            }
+            return interaction.reply(challenge(attempts, "❌ Not quite — here's a new code."));
+        }
     },
 
     // Called from guildMemberRemove — frees timer + collector
