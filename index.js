@@ -6045,7 +6045,7 @@ apiApp.get('/api/overview-health/:guildId', requireAdmin, (req, res) => {
         const checks = [];
         const add = (ok, label, fix) => checks.push({ ok: !!ok, label, fix: ok ? null : fix });
 
-        add(chan(s.mod_log_channel), 'Mod-log channel set', 'Pick a mod-log channel in Moderation settings.');
+        add(require('./lib/modlog.js').resolveModLog(guild, db), 'Mod-log channel set', 'Pick a mod-log channel in Moderation settings.');
         add(me?.permissions.has(P.Flags.ManageRoles), 'Bot can manage roles', 'Give the bot the Manage Roles permission.');
 
         const premium = !!isPremium(db, gid);
