@@ -3828,6 +3828,11 @@ if (message.content && message.content.length > 4000) {
         const usedCommand = cmdName;
         
         let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
+        if (command && isCommandDisabled(message.guild?.id, command)) {
+            message.reply('🔒 This command is disabled on this server.')
+                .then(m => setTimeout(() => m.delete().catch(() => {}), 5000)).catch(() => {});
+            return;
+        }
         
         if (!command && (cmdName === 'lydia' || cmdName === 'ai' || cmdName === 'neural' || cmdName === 'ia')) {
             try {
@@ -3934,6 +3939,10 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         if (!command) {
             console.log(`${yellow}[SLASH]${reset} Unknown command: ${interaction.commandName}`);
             return interaction.reply({ content: '❌ Command not found.', flags: 1 << 6 }).catch(() => {});
+        }
+
+        if (interaction.guild && isCommandDisabled(interaction.guild.id, command)) {
+            return interaction.reply({ content: '🔒 This command is disabled on this server.', flags: 1 << 6 }).catch(() => {});
         }
 
         const restrictedCommands = ['profile', 'daily', 'shop', 'credits', 'balance', 'rank', 'leaderboard'];
@@ -6161,10 +6170,77 @@ apiApp.post('/api/general/:guildId', requireAdmin, async (req, res) => {
     }
 });
 
+// ── COMMAND TOGGLES ──
+const LOCKED_COMMANDS = new Set(['help', 'verify', 'serversettings', 'settings', 'premium', 'dashboard']);
+const _toggleCache = new Map();
+function getToggles(guildId) {
+    let t = _toggleCache.get(guildId);
+    if (!t) {
+        const row = db.prepare('SELECT disabled_commands, disabled_categories FROM server_settings WHERE guild_id = ?').get(guildId) || {};
+        t = { cmds: new Set(parseJSONSafe(row.disabled_commands, [])), cats: new Set(parseJSONSafe(row.disabled_categories, [])) };
+        _toggleCache.set(guildId, t);
+    }
+    return t;
+}
+function isCommandDisabled(guildId, command) {
+    if (!guildId || !command || LOCKED_COMMANDS.has(command.name)) return false;
+    const t = getToggles(guildId);
+    return t.cmds.has(command.name) || t.cats.has(command.category || 'GENERAL');
+}
+function listToggleable() {
+    const out = [];
+    for (const [name, cmd] of client.commands) {
+        if (cmd.hidden || cmd.ownerOnly || cmd.category === 'SYSTEM') continue;
+        out.push({ name, description: cmd.description || '', category: cmd.category || 'GENERAL', locked: LOCKED_COMMANDS.has(name) });
+    }
+    return out.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+}
+
+apiApp.get('/api/commands-config/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const t = getToggles(a.guild.id);
+        res.json({ commands: listToggleable(), disabledCommands: [...t.cmds], disabledCategories: [...t.cats] });
+    } catch (e) {
+        console.error(`[CMDS-API] get guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
+apiApp.post('/api/commands-config/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const { userId, disabledCommands, disabledCategories } = req.body || {};
+        const isStrArr = v => Array.isArray(v) && v.length <= 300 && v.every(x => typeof x === 'string' && x.length <= 64);
+        if (!isStrArr(disabledCommands) || !isStrArr(disabledCategories)) return res.status(400).json({ error: 'invalid_lists' });
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+
+        const all = listToggleable();
+        const names = new Set(all.filter(c => !c.locked).map(c => c.name));
+        const cats = new Set(all.map(c => c.category));
+        const cmdsOut = [...new Set(disabledCommands)].filter(n => names.has(n));
+        const catsOut = [...new Set(disabledCategories)].filter(c => cats.has(c));
+
+        const gid = a.guild.id;
+        db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(gid);
+        db.prepare('UPDATE server_settings SET disabled_commands = ?, disabled_categories = ? WHERE guild_id = ?')
+            .run(JSON.stringify(cmdsOut), JSON.stringify(catsOut), gid);
+        _toggleCache.delete(gid);
+        client.settings?.delete?.(gid);
+        client.invalidateGuildCache?.(gid);
+        console.log(`[CMDS-API] update guild=${gid} by=${a.member.id} cmds=${cmdsOut.length} cats=${catsOut.length}`);
+        res.json({ success: true, disabledCommands: cmdsOut, disabledCategories: catsOut });
+    } catch (e) {
+        console.error(`[CMDS-API] post guild=${req.params.guildId}:`, e.stack || e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
 apiApp.post('/api/update-config', requireAdmin, (req, res) => {
     const { guildId, settings } = req.body;
     if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
-    const blockedKeys = Object.keys(settings).filter(k => /^(verify_|join_?role)/i.test(k));
+    const blockedKeys = Object.keys(settings).filter(k => /^(verify_|join_?role|disabled)/i.test(k));
     if (blockedKeys.length) return res.status(400).json({ error: 'Use /api/verify for verification settings', blocked: blockedKeys });
 
     try {
