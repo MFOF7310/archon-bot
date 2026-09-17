@@ -6110,7 +6110,7 @@ apiApp.post('/api/vote', (req, res) => {
     const auth = req.headers['authorization'];
     const expectedAuth = process.env.TOPGG_WEBHOOK_SECRET || null; // no hardcoded fallback
     if (auth !== expectedAuth) {
-        console.error('[VOTE] Unauthorized');
+        console.error('[VOTE] Unauthorized', String(req.headers['x-topgg-signature'] || '').replace(/[0-9a-f]{16,}/gi, '<hex>'), JSON.stringify(req.body, (k, v) => typeof v === 'string' && /^\d{17,20}$/.test(v) ? '<id>' : v).slice(0, 300));
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const { user, type, isWeekend } = req.body;
