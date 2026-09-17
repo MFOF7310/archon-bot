@@ -3905,7 +3905,6 @@ if (cooldownCheck.blocked) {
 safeOn(Events.InteractionCreate, async (interaction) => {
     // ── VERIFY PANEL (buttons + modal) — must run before other routers ──
     if ((interaction.isButton?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('vpanel:')) {
-        console.log(`[VERIFY] panel hit ${interaction.customId} user=${interaction.user.id}`);
         try {
             await require('./plugins/verify.js').onPanelInteraction(interaction, client, db);
         } catch (e) {
