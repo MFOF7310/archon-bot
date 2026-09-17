@@ -6053,9 +6053,9 @@ apiApp.get('/api/overview-health/:guildId', requireAdmin, (req, res) => {
         const me = guild.members.me;
         const chan = id => (id ? guild.channels.cache.get(String(id)) : null);
         const checks = [];
-        const add = (ok, label, fix) => checks.push({ ok: !!ok, label, fix: ok ? null : fix });
+        const add = (ok, label, fix, section = null) => checks.push({ ok: !!ok, label, fix: ok ? null : fix, section: ok ? null : section });
 
-        add(require('./lib/modlog.js').resolveModLog(guild, db), 'Mod-log channel set', 'Pick a mod-log channel in Moderation settings.');
+        add(require('./lib/modlog.js').resolveModLog(guild, db), 'Mod-log channel set', 'Pick a mod-log channel in General settings.', 'general');
         add(me?.permissions.has(P.Flags.ManageRoles), 'Bot can manage roles', 'Give the bot the Manage Roles permission.');
 
         const premium = !!isPremium(db, gid);
@@ -6063,8 +6063,8 @@ apiApp.get('/api/overview-health/:guildId', requireAdmin, (req, res) => {
         if (verifyOn) {
             const roleOk = id => { const r = guild.roles.cache.get(String(id)); return r && !guard.validateVerifyRole(guild, r, null); };
             add(premium, 'Premium active', 'Verification is paused: renew Premium.');
-            add(!s.verify_role_id || roleOk(s.verify_role_id), 'Verified role usable', 'The verified role is above the bot or has admin permissions. Pick another in Verification.');
-            add(!s.verify_unverified_role_id || roleOk(s.verify_unverified_role_id), 'Unverified role usable', 'The unverified role is above the bot or has admin permissions. Pick another in Verification.');
+            add(!s.verify_role_id || roleOk(s.verify_role_id), 'Verified role usable', 'The verified role is above the bot or has admin permissions. Pick another in Verification.', 'verify');
+            add(!s.verify_unverified_role_id || roleOk(s.verify_unverified_role_id), 'Unverified role usable', 'The unverified role is above the bot or has admin permissions. Pick another in Verification.', 'verify');
             add(chan(s.verify_panel_channel_id), 'Verify panel posted', 'Run /verify panel so members with closed DMs can verify.');
             if (Number(s.verify_kick_days) > 0)
                 add(me?.permissions.has(P.Flags.KickMembers), 'Bot can kick members', 'Auto-kick is on: give the bot the Kick Members permission.');
