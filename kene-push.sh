@@ -24,7 +24,7 @@ log "Token OK"
 # Push with bot identity
 git -C "$BASE" \
     -c user.name="Kene-OpenClaw[bot]" \
-    -c user.email="kene-openclaw[bot]@users.noreply.github.com" \
+    -c user.email="326957431+k-n-openclaw[bot]@users.noreply.github.com" \
     -c "url.https://x-access-token:${TOKEN}@github.com/.insteadOf=git@github.com:" \
     push origin "$BRANCH" 2>>"$LOG"
 
