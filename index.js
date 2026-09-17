@@ -2237,7 +2237,7 @@ client.loadPlugins = async () => {
 
                 if (command.name && (command.run || command.handler)) {
                     // Don't overwrite Discord plugins with Telegram ones
-                    if (!client.commands.has(command.name)) client.commands.set(command.name, command);
+                    if (!client.commands.has(command.name)) { command._source = 'telegram'; client.commands.set(command.name, command); }
                     if (command.aliases && Array.isArray(command.aliases)) {
                         command.aliases.forEach(a => client.aliases.set(a, command.name));
                     }
@@ -6194,7 +6194,7 @@ function listToggleable() {
     for (const [name, cmd] of client.commands) {
         const cat = catOf(cmd);
         if (cmd.hidden || cmd.ownerOnly || HIDDEN_CATS.has(cat)) continue;
-        if (/TELEGRAM|WHATSAPP|BRIDGE/.test(cat) || (cmd.platform && cmd.platform !== 'discord')) continue;
+        if (/TELEGRAM|WHATSAPP|BRIDGE/.test(cat) || (cmd.platform && cmd.platform !== 'discord') || cmd._source === 'telegram') continue;
         out.push({ name, description: cmd.description || '', category: cat, locked: LOCKED_COMMANDS.has(name) });
     }
     return out.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
