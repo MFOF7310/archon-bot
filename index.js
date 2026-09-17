@@ -6198,10 +6198,12 @@ apiApp.post('/api/vote', (req, res) => {
 
     try {
         const votesync = require('./plugins/votesync.js');
-        const guild = client.guilds.cache.find(g => g.members.cache.has(user)) || client.guilds.cache.first();
-        if (guild && votesync.processVote) {
-            votesync.processVote(user, guild.id, client).catch(e => console.error('[VOTE] processVote:', e.message));
-        }
+        (async () => {
+            const gid = await votesync.resolveHomeGuild(user, client);
+            if (!gid) return console.warn(`[VOTE] no home server for ${user} — skipped`);
+            const r = await votesync.processVote(user, gid, client, { source: 'webhook' });
+            if (!r.success) console.warn(`[VOTE] ${user}@${gid}: ${r.error}`);
+        })().catch(e => console.error('[VOTE] processVote:', e.message));
         res.json({ success: true });
     } catch (err) {
         console.error('[VOTE] Error:', err.message);

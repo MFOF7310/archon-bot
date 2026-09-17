@@ -167,7 +167,7 @@ function updateDB(db, userId, guildId, result, stats) {
     // DISTRIBUTION GLOBALE DES CRÉDITS DE VOTE (WAL FIX)
     // =================================================================
     try {
-        const allUserRecords = db.prepare(`SELECT guild_id, credits FROM users WHERE id = ?`).all(userId);
+        const allUserRecords = db.prepare(`SELECT guild_id, credits FROM users WHERE id = ? AND guild_id = ?`).all(userId, guildId);
         
         if (allUserRecords.length > 0) {
             // Use transaction for atomic updates
@@ -262,10 +262,38 @@ async function sendPublicLog(client, user, result, stats) {
 }
 
 // ================= PROCESS VOTE (Main Entry Point) =================
-async function processVote(userId, guildId, client) {
+const MAIN_GUILD = process.env.MAIN_GUILD_ID || '1289645978231640094';
+let _homeReady = false;
+function ensureHome(db) {
+    if (_homeReady) return;
+    db.prepare('CREATE TABLE IF NOT EXISTS vote_home (user_id TEXT PRIMARY KEY, guild_id TEXT, ts INTEGER)').run();
+    _homeReady = true;
+}
+
+async function resolveHomeGuild(userId, client) {
+    const db = client.db;
+    ensureHome(db);
+    const isMember = async (gid) => {
+        const g = client.guilds.cache.get(String(gid));
+        if (!g) return false;
+        return !!(g.members.cache.get(userId) || await g.members.fetch(userId).catch(() => null));
+    };
+    const home = db.prepare('SELECT guild_id FROM vote_home WHERE user_id = ?').get(userId)?.guild_id;
+    if (home && await isMember(home)) return home;
+    if (await isMember(MAIN_GUILD)) return MAIN_GUILD;
+    const rows = db.prepare('SELECT guild_id FROM users WHERE id = ? ORDER BY xp DESC LIMIT 10').all(userId);
+    for (const r of rows) if (await isMember(r.guild_id)) return r.guild_id;
+    return null;
+}
+
+async function processVote(userId, guildId, client, opts = {}) {
     const db = client.db;
     if (!db) return { success: false, error: 'NO_DB' };
     setupDB(db);
+    if (opts.source !== 'webhook' && guildId) {
+        ensureHome(db);
+        db.prepare('INSERT OR REPLACE INTO vote_home (user_id, guild_id, ts) VALUES (?, ?, ?)').run(userId, guildId, Math.floor(Date.now() / 1000));
+    }
 
     // 1. Check Top.gg
     const voted = await checkTopGGVote(userId);
@@ -275,7 +303,8 @@ async function processVote(userId, guildId, client) {
     // 2. Check cooldown
     const stats = getStats(db, userId, guildId);
     const now = Math.floor(Date.now() / 1000);
-    const cooldown = (stats.last_vote_date || 0) + 43200;
+    const lastAny = db.prepare('SELECT MAX(last_vote_date) AS t FROM user_votes WHERE user_id = ?').get(userId)?.t || 0;
+    const cooldown = Math.max(stats.last_vote_date || 0, lastAny) + 43200;
     if (now < cooldown) return { success: false, error: 'COOLDOWN', nextVote: cooldown };
 
     // 3. Calculate reward
@@ -317,6 +346,7 @@ module.exports = {
     category: 'SYSTEM',
     hidden: true,
     processVote,
+    resolveHomeGuild,
     checkTopGGVote,
     setupDB,
     getStats,
