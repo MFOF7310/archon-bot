@@ -5235,12 +5235,15 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
                 console.error('[DODO] No guild_id in metadata');
                 return res.json({ received: true });
             }
-            // Activate premium — 30 days per payment
-            const expiresAt = Math.floor(Date.now()/1000) + (30 * 86400);
+            // Activate premium — 30 or 365 days depending on plan
+            const pid = event.data?.product_id || event.data?.product_cart?.[0]?.product_id || '';
+            const yearly = event.data?.metadata?.plan === 'yearly' || (!!process.env.DODO_PRODUCT_ID_YEARLY && pid === process.env.DODO_PRODUCT_ID_YEARLY);
+            const planName = yearly ? 'yearly' : 'monthly';
+            const expiresAt = Math.floor(Date.now()/1000) + ((yearly ? 365 : 30) * 86400);
             db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)').run(
-                guildId, expiresAt, 'monthly', 'dodo', event.data?.payment_id || 'dodo', email || 'dodo'
+                guildId, expiresAt, planName, 'dodo', event.data?.payment_id || 'dodo', email || 'dodo'
             );
-            console.log(`[DODO] ✅ Premium activated for guild ${guildId}`);
+            console.log(`[DODO] ✅ Premium activated for guild ${guildId} (${planName})`);
 
             // DM guild owner
             try {
@@ -5401,7 +5404,8 @@ apiApp.post('/api/premium/store-session', (req, res) => {
 apiApp.get('/api/premium/checkout-url', async (req, res) => {
     try {
         const guildId = req.query.guildId || '';
-        const productId = process.env.DODO_PRODUCT_ID || '';
+        const plan = req.query.plan === 'yearly' ? 'yearly' : 'monthly';
+        const productId = (plan === 'yearly' ? process.env.DODO_PRODUCT_ID_YEARLY : process.env.DODO_PRODUCT_ID) || '';
         const apiKey = process.env.DODO_API_KEY || '';
         if (!productId || !apiKey) return res.json({ url: null });
 
@@ -5412,8 +5416,7 @@ apiApp.get('/api/premium/checkout-url', async (req, res) => {
             headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 product_cart: [{ product_id: productId, quantity: 1 }],
-                customer: { email: 'discord-user@archon.bot', name: 'Discord User' },
-                metadata: { guild_id: String(guildId) }
+                metadata: { guild_id: String(guildId), plan }
             })
         });
 
