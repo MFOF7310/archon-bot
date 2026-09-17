@@ -9,6 +9,7 @@ const {
 } = require('discord.js');
 const { generateCaptcha, randomCode } = require('./captcha.js');
 const EMOJIS = require('../config/emojis');
+const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
 
 const pending = new Map(); // userId:guildId => { timeout, messageId }
 
@@ -81,6 +82,10 @@ module.exports = {
 
         if (sub === 'setrole') {
             const role = interaction.options.getRole('role');
+            const gErr = validateVerifyRole(interaction.guild, interaction.guild.roles.cache.get(role.id), interaction.member);
+            if (gErr) return interaction.reply({ content: `⛔ Can't use ${role}: ${GUARD_MSG[gErr]}`, flags: 64 });
+            const cur = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
+            if (cur?.verify_unverified_role_id === role.id) return interaction.reply({ content: '⛔ Verified and unverified roles must be different.', flags: 64 });
             db.prepare(`UPDATE server_settings SET verify_role_id = ? WHERE guild_id = ?`).run(role.id, gid);
             return interaction.reply({
                 embeds: [new EmbedBuilder()
@@ -105,6 +110,10 @@ module.exports = {
 
         if (sub === 'setunverified') {
             const role = interaction.options.getRole('role');
+            const gErr = validateVerifyRole(interaction.guild, interaction.guild.roles.cache.get(role.id), interaction.member);
+            if (gErr) return interaction.reply({ content: `⛔ Can't use ${role}: ${GUARD_MSG[gErr]}`, flags: 64 });
+            const cur = db.prepare('SELECT verify_role_id FROM server_settings WHERE guild_id = ?').get(gid);
+            if (cur?.verify_role_id === role.id) return interaction.reply({ content: '⛔ Verified and unverified roles must be different.', flags: 64 });
             db.prepare(`UPDATE server_settings SET verify_unverified_role_id = ? WHERE guild_id = ?`).run(role.id, gid);
 
             await interaction.deferReply({ flags: 64 });
@@ -179,6 +188,16 @@ module.exports = {
         const gid = member.guild.id;
         const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
         if (!settings?.verify_enabled) return; // Off by default
+        const { isPremium } = require('./premium.js');
+        if (!isPremium(db, gid)) return; // premium lapsed → gate off
+
+        const oldKey = `${member.id}:${gid}`;
+        const old = pending.get(oldKey);
+        if (old) {
+            if (old.timer) clearTimeout(old.timer);
+            old.collector?.stop('replaced');
+            pending.delete(oldKey);
+        }
 
         const verifyRole = settings.verify_role_id 
             ? member.guild.roles.cache.get(settings.verify_role_id)
@@ -188,6 +207,12 @@ module.exports = {
         const unverifiedRole = settings.verify_unverified_role_id
             ? member.guild.roles.cache.get(settings.verify_unverified_role_id)
             : null;
+
+        // Runtime guard — refuse unsafe roles already stored in DB
+        for (const r of [verifyRole, unverifiedRole]) {
+            const err = r && validateVerifyRole(member.guild, r, null);
+            if (err) { console.warn(`[VERIFY] ${gid} unsafe role ${r.id}: ${err} — gate skipped`); return; }
+        }
 
         // Auto-assign unverified role immediately
         if (unverifiedRole) await member.roles.add(unverifiedRole).catch(() => {});
@@ -237,16 +262,19 @@ module.exports = {
         const expireMs = 10 * 60 * 1000; // 10 min
         const codeRef = { current: code }; // mutable ref so retries work
 
+        let collector = null;
         // Listen for reply in DM
         if (dmChannel) {
             const filter = m => m.author.id === member.id && !m.author.bot;
-            const collector = dmChannel.createMessageCollector({ filter, time: expireMs });
+            collector = dmChannel.createMessageCollector({ filter, time: expireMs });
 
             collector.on('collect', async m => {
                 const guess = m.content.trim().toUpperCase();
                 if (guess === codeRef.current) {
                     // ✅ Correct!
                     collector.stop('verified');
+                    const pv = pending.get(key);
+                    if (pv?.timer) clearTimeout(pv.timer);
                     pending.delete(key);
 
                     // Remove unverified role
@@ -311,6 +339,7 @@ module.exports = {
         // Auto-kick timer
         const kickMins = settings.verify_kick_days || 0;
         const timer = kickMins > 0 ? setTimeout(async () => {
+            if (!pending.has(key)) return; // verified or replaced
             pending.delete(key);
             const freshMember = await member.guild.members.fetch(member.id).catch(() => null);
             if (!freshMember) return;
@@ -318,53 +347,24 @@ module.exports = {
             if (!hasRole) await freshMember.kick('Failed to verify in time').catch(() => {});
         }, kickMins * 60000) : null;
 
-        pending.set(key, { timer, dmMsg, code });
+        pending.set(key, { timer, dmMsg, code, collector });
     },
 
-    // Called from button interaction handler
-    onVerifyButton: async (interaction, client, db) => {
-        const parts = interaction.customId.split('_');
-        const gid = parts[1];
-        const uid = parts[2];
-
-        // Only the right user can click
-        if (interaction.user.id !== uid) {
-            return interaction.reply({ content: '⛔ This verification is not for you!', flags: 64 });
-        }
-
-        const settings = db.prepare('SELECT verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
-        const guild = client.guilds.cache.get(gid);
-        if (!guild) return interaction.reply({ content: '❌ Server not found.', flags: 64 });
-
-        const member = await guild.members.fetch(uid).catch(() => null);
-        if (!member) return interaction.reply({ content: '❌ Could not find you in the server.', flags: 64 });
-
-        // Remove unverified role
-        if (settings?.verify_unverified_role_id) {
-            const unverRole = guild.roles.cache.get(settings.verify_unverified_role_id);
-            if (unverRole) await member.roles.remove(unverRole).catch(() => {});
-        }
-
-        // Assign verified role
-        if (settings?.verify_role_id) {
-            const role = guild.roles.cache.get(settings.verify_role_id);
-            if (role) await member.roles.add(role).catch(() => {});
-        }
-
-        // Clear kick timer
-        const key = `${uid}:${gid}`;
+    // Called from guildMemberRemove — frees timer + collector
+    onMemberLeave: (member) => {
+        const key = `${member.id}:${member.guild.id}`;
         const p = pending.get(key);
-        if (p?.timer) clearTimeout(p.timer);
+        if (!p) return;
+        if (p.timer) clearTimeout(p.timer);
+        p.collector?.stop('left');
         pending.delete(key);
+    },
 
-        // Edit message — one clean response, no spam
-        await interaction.update({
-            embeds: [new EmbedBuilder()
-                .setColor(0x00cc44)
-                .setTitle('✅ Verified!')
-                .setDescription(`You're all set! Welcome to **${guild.name}** 🎉\n\nEnjoy your stay!`)
-                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
-            components: []
-        });
+    // SECURITY: legacy button granted roles without captcha — disabled
+    onVerifyButton: async (interaction) => {
+        return interaction.reply({
+            content: '🔒 This verification button is no longer valid. Rejoin the server to get a captcha.',
+            flags: 64
+        }).catch(() => {});
     }
 };
