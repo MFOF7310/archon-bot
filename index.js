@@ -4954,6 +4954,8 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
 // ║  Falls back to shared cinematic engine if no custom config.         ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 safeOn(Events.GuildMemberRemove, async (member) => {
+    // verify: free pending captcha timer + collector
+    try { const _vp = require('./plugins/verify.js'); _vp?.onMemberLeave?.(member); } catch {}
     if (member.user.bot) return;
     if (rateLimit(`goodbye:${member.guild.id}`, 10, 30000)) return;
     // ── Sync guild stats ──
