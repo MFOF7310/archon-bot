@@ -5254,7 +5254,7 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
                     await owner.send({ embeds: [new EmbedBuilder()
                         .setColor(0xffd700)
                         .setTitle('⭐ ARCHON Premium Activated!')
-                        .setDescription(`Payment confirmed! Your server **${guild.name}** now has ARCHON Premium for 30 days!`)
+                        .setDescription(`Payment confirmed! Your server **${guild.name}** now has ARCHON Premium for ${yearly ? '1 year' : '30 days'}!`)
                         .addFields(
                             { name: '💰 Amount', value: '$3.40', inline: true },
                             { name: '⏰ Valid until', value: `<t:${expiresAt}:D>`, inline: true }
