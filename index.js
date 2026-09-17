@@ -6171,7 +6171,7 @@ apiApp.post('/api/general/:guildId', requireAdmin, async (req, res) => {
 });
 
 // ── COMMAND TOGGLES ──
-const LOCKED_COMMANDS = new Set(['help', 'verify', 'serversettings', 'settings', 'premium', 'dashboard']);
+const LOCKED_COMMANDS = new Set(['help', 'verify', 'serversettings', 'settings', 'premium', 'dashboard', 'channels', 'roles']);
 const _toggleCache = new Map();
 function getToggles(guildId) {
     let t = _toggleCache.get(guildId);
