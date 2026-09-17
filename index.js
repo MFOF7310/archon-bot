@@ -6123,7 +6123,15 @@ apiApp.get('/api/general/:guildId', requireAdmin, async (req, res) => {
                 const reason = _vg.validateVerifyRole(g, r, a.member);
                 return { id: r.id, name: r.name, eligible: !reason, reason: reason ? _vg.GUARD_MSG[reason] : null };
             });
-        res.json({ settings, channels, roles });
+        const fallbacks = {};
+        if (g.id === process.env.GUILD_ID) {
+            const ENV = { modLogChannel: 'MOD_LOG_CHANNEL_ID', logChannel: 'LOG_CHANNEL_ID', rulesChannel: 'RULES_CHANNEL_ID', updatesChannel: 'UPDATES_CHANNEL_ID' };
+            for (const [k, e] of Object.entries(ENV)) {
+                const c = process.env[e] ? g.channels.cache.get(process.env[e]) : null;
+                if (c) fallbacks[k] = { id: c.id, name: c.name };
+            }
+        }
+        res.json({ settings, channels, roles, fallbacks });
     } catch (e) {
         console.error(`[GENERAL-API] get guild=${req.params.guildId}:`, e.message);
         res.status(500).json({ error: 'internal' });
