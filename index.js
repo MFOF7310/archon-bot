@@ -1114,6 +1114,7 @@ function updateServerSetting(guildId, setting, value) {
         goodbyeMessage: 'goodbye_message',
         goodbyeEnabled: 'goodbye_enabled',
         autoRoleId: 'auto_role_id',
+        joinRoleId: 'join_role_id',
         muteRoleId: 'mute_role_id',
         memberRole: 'member_role',
         automodEnabled: 'automod_enabled',

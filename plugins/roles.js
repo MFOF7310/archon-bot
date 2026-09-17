@@ -4,7 +4,7 @@ const EMOJIS = require('../config/emojis');
 const ROLE_DEFS = {
     member:           { col: 'memberRole',         env: 'MEMBER_ROLE',              emoji: () => EMOJIS.member, label: 'Member Role' },
     mute:             { col: 'muteRoleId',          env: 'MUTE_ROLE_ID',             emoji: () => EMOJIS.mute, label: 'Mute Role' },
-    autorole:         { col: 'autoRoleId',          env: 'AUTO_ROLE_ID',             emoji: '🤖', label: 'Auto Role' },
+    autorole:         { col: 'joinRoleId',          env: 'AUTO_ROLE_ID',             emoji: '🤖', label: 'Auto Role' },
     staff:            { col: 'ticketStaffRole',     env: 'TICKET_STAFF_ROLE_ID',     emoji: () => EMOJIS.shield, label: 'Staff/Ticket Role' },
     investor:         { col: 'investorRoleId',      env: 'INVESTOR_ROLE_ID',         emoji: () => EMOJIS.investors, label: 'Investor Role' },
     gamer:            { col: 'gamerRoleId',         env: 'GAMER_ROLE_ID',            emoji: () => EMOJIS.gamer, label: 'Gamer Role' },
@@ -144,6 +144,10 @@ module.exports = {
             const role = interaction.options.getRole('role');
             const def = ROLE_DEFS[type];
             if (!def) return interaction.reply({ content: '❌ Unknown role type.', flags: 64 });
+            if (type === 'autorole') {
+                const err = require('../lib/verify-guard').validateVerifyRole(guild, guild.roles.cache.get(role.id), interaction.member);
+                if (err) return interaction.reply({ content: `⛔ Can't use ${role} as auto-role: ${require('../lib/verify-guard').GUARD_MSG[err]}`, flags: 64 });
+            }
 
             client.updateServerSetting?.(guildId, def.col, role.id);
             client.settings?.delete(guildId);
@@ -212,6 +216,10 @@ module.exports = {
             if (!roleId) return message.reply(`❌ Usage: \`.roles set ${type} @role\``).catch(() => {});
             const role = message.guild.roles.cache.get(roleId);
             if (!role) return message.reply('❌ Role not found.').catch(() => {});
+            if (type === 'autorole') {
+                const err = require('../lib/verify-guard').validateVerifyRole(message.guild, role, message.member);
+                if (err) return message.reply(`⛔ Can't use that role as auto-role: ${require('../lib/verify-guard').GUARD_MSG[err]}`).catch(() => {});
+            }
             client.updateServerSetting?.(guildId, def.col, roleId);
             client.settings?.delete(guildId);
             return message.reply(`✅ **${def.label}** set to <@&${roleId}>`).catch(() => {});
