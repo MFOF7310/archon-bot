@@ -6317,6 +6317,20 @@ apiApp.get('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
                 ticketCategoriesConfig: cats,
             },
             channels, categories, roles,
+            fallbacks: (() => {
+                const f = {};
+                if (gid !== process.env.GUILD_ID) return f;
+                const chanEnv = { ticketCategory: 'TICKET_CATEGORY_ID', ticketTranscriptChannel: 'TICKET_TRANSCRIPT_CHANNEL_ID', ticketLogChannel: 'TICKET_LOG_CHANNEL_ID' };
+                for (const [k, e] of Object.entries(chanEnv)) {
+                    const c = process.env[e] ? g.channels.cache.get(process.env[e]) : null;
+                    if (c) f[k] = { id: c.id, name: c.name };
+                }
+                const r = process.env.TICKET_STAFF_ROLE_ID ? g.roles.cache.get(process.env.TICKET_STAFF_ROLE_ID) : null;
+                if (r) f.ticketStaffRole = { id: r.id, name: r.name };
+                if (process.env.TICKET_AUTO_CLOSE_HOURS) f.ticketAutoCloseHours = { name: `${process.env.TICKET_AUTO_CLOSE_HOURS}h` };
+                if (process.env.TICKET_LIMIT_PER_USER) f.ticketLimitPerUser = { name: process.env.TICKET_LIMIT_PER_USER };
+                return f;
+            })(),
             catLimits: { free: TICKET_CAT_LIMIT_FREE, premium: TICKET_CAT_LIMIT_PREMIUM },
         });
     } catch (e) { console.error(`[TICKET-API] get guild=${req.params.guildId}:`, e.message); res.status(500).json({ error: 'internal' }); }
