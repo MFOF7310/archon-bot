@@ -1242,6 +1242,7 @@ function updateServerSetting(guildId, setting, value) {
         ticketStaffRole: 'ticket_staff_role',
         ticketTranscriptChannel: 'ticket_transcript_channel',
         ticketPanelChannel: 'ticket_panel_channel',
+        ticketPanelChannelName: 'ticket_panel_channel_name',
         ticketLogChannel: 'ticket_log_channel',
         ticketAutoCloseHours: 'ticket_auto_close_hours',
         ticketCategoriesConfig: 'ticket_categories_config',
@@ -6312,9 +6313,7 @@ apiApp.get('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
                 ticketAutoCloseHours: Number(row.ticket_auto_close_hours ?? 24),
                 ticketLimitPerUser: Number(row.ticket_limit_per_user ?? 1),
                 ticketPanelChannel: row.ticket_panel_channel || null,
-                ticketPanelChannelName: row.ticket_panel_channel
-                    ? (g.channels.cache.get(String(row.ticket_panel_channel))?.name || `#${row.ticket_panel_channel}`)
-                    : null,
+                ticketPanelChannelName: row.ticket_panel_channel_name || row.ticket_panel_channel || null,
                 ticketCategoriesConfig: cats,
             },
             channels, categories, roles,
