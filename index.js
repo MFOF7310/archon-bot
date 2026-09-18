@@ -6312,6 +6312,9 @@ apiApp.get('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
                 ticketAutoCloseHours: Number(row.ticket_auto_close_hours ?? 24),
                 ticketLimitPerUser: Number(row.ticket_limit_per_user ?? 1),
                 ticketPanelChannel: row.ticket_panel_channel || null,
+                ticketPanelChannelName: row.ticket_panel_channel
+                    ? (g.channels.cache.get(String(row.ticket_panel_channel))?.name || `#${row.ticket_panel_channel}`)
+                    : null,
                 ticketCategoriesConfig: cats,
             },
             channels, categories, roles,
