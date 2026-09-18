@@ -58,7 +58,39 @@ function setupTicketDB(db) {
 }
 function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets (channel_id, guild_id, creator_id, creator_tag, created_at, claimed_by, category, category_value, ticket_number, participants, status, priority, closed_at, closed_by, transcript) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy||null, t.category||null, t.categoryValue||null, t.number||0, JSON.stringify(t.participants||[t.creatorId]), t.status||'open', t.priority||'normal', t.closedAt||null, t.closedBy||null, t.transcript||null); } catch(e) { console.error('[TDB] save:', e.message); } }
 function loadTicket(db, cid) { try { const r = db.prepare(`SELECT * FROM tickets WHERE channel_id=?`).get(cid); if(!r) return null; return { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]') }; } catch(e) { return null; } }
-function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph})`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]') })); const sk = db.prepare(`SELECT COUNT(*) as c FROM tickets WHERE guild_id NOT IN (${ph})`).get(...gids); if(sk?.c) { db.prepare(`DELETE FROM tickets WHERE guild_id NOT IN (${ph})`).run(...gids); console.log(`[TDB] cleaned ${sk.c} orphans`); } if(rows.length) console.log(`[TDB] restored ${rows.length} tickets`); } catch(e) {} }
+function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph})`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]') })); const sk = db.prepare(`SELECT COUNT(*) as c FROM tickets WHERE guild_id NOT IN (${ph})`).get(...gids); if(sk?.c) { db.prepare(`DELETE FROM tickets WHERE guild_id NOT IN (${ph})`).run(...gids); console.log(`[TDB] cleaned ${sk.c} orphans`); } if(rows.length) console.log(`[TDB] restored ${rows.length} tickets`); if (rows.length) setTimeout(() => rearmTimers(db, client), 60000); } catch(e) {} }
+
+// Re-arm auto-close after a restart: in-memory timers are lost on every boot
+async function rearmTimers(db, client) {
+    let armed = 0, closing = 0;
+    for (const [cid, tk] of active) {
+        try {
+            const guild = client.guilds.cache.get(tk.guildId);
+            if (!guild) continue;
+            const ch = await client.channels.fetch(cid).catch(() => null);
+            if (!ch) { active.delete(cid); try { db.prepare('DELETE FROM tickets WHERE channel_id=?').run(cid); } catch {} continue; }
+
+            const s = effectiveSettings(client.getServerSettings?.(tk.guildId) || {}, tk.guildId);
+            const h = s?.ticketAutoCloseHours || 24;
+            if (h <= 0) continue;
+
+            // Last activity: newest message in the channel, else ticket creation
+            const last = await ch.messages.fetch({ limit: 1 }).catch(() => null);
+            const lastAt = last?.first()?.createdTimestamp || (tk.createdAt ? tk.createdAt * 1000 : Date.now());
+            const idleMs = Date.now() - lastAt;
+
+            if (idleMs >= h * 3600000) {
+                // Already overdue — stagger closes so a restart doesn't dump them all at once
+                closing++;
+                setTimeout(() => resetACTimerAt(cid, client, s, 60000), closing * 30000);
+            } else {
+                armed++;
+                resetACTimerAt(cid, client, s, h * 3600000 - idleMs);
+            }
+        } catch (e) { console.error('[TDB] rearm:', e.message); }
+    }
+    if (armed || closing) console.log(`[TDB] auto-close re-armed: ${armed} pending, ${closing} overdue`);
+}
 function delTicket(db, cid) { try { db.prepare(`DELETE FROM tickets WHERE channel_id=?`).run(cid); } catch(e) {} }
 
 // ================= STATE =================
@@ -78,7 +110,11 @@ const getCats = (s) => s?.ticketCategoriesConfig?.length ? s.ticketCategoriesCon
 const isStaff = (m, s) => m && (m.permissions?.has(PermissionFlagsBits.Administrator) || m.permissions?.has(PermissionFlagsBits.ManageMessages) || (s?.ticketStaffRole && m.roles?.cache?.has(s.ticketStaffRole)));
 const countUserTix = (gid, uid) => { let c=0; for(const[,t]of active)if(t.guildId===gid&&t.creatorId===uid)c++; return c; };
 
-function resetACTimer(cid, client, s) {
+function resetACTimerAt(cid, client, s, remainingMs) {
+    return resetACTimer(cid, client, s, remainingMs);
+}
+
+function resetACTimer(cid, client, s, remainingMs) {
     const lang = ['en','fr','bm','zh','ar'].includes(s?.language) ? s.language : 'en';
     // Clear existing timers
     const existing = timers.get(cid);
@@ -90,7 +126,7 @@ function resetACTimer(cid, client, s) {
     const h = s?.ticketAutoCloseHours || 24;
     if (h <= 0) return;
 
-    const ms = h * 3600000;
+    const ms = (typeof remainingMs === 'number' && remainingMs > 0) ? remainingMs : h * 3600000;
     const warnMs = ms - 3600000; // 1 hour warning before close
 
     const timersForCid = {};
