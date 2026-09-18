@@ -6373,6 +6373,52 @@ apiApp.post('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
     } catch (e) { console.error(`[TICKET-API] post guild=${req.params.guildId}:`, e.stack || e.message); res.status(500).json({ error: 'internal' }); }
 });
 
+// ── TICKET CHANNEL AUTO-CREATE ──
+apiApp.post('/api/ticket-config/:guildId/create-channels', requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.body || {};
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db, gid = g.id;
+        const { PermissionsBitField: P, ChannelType } = require('discord.js');
+        const me = g.members.me;
+        if (!me?.permissions.has(P.Flags.ManageChannels)) return res.status(403).json({ error: 'bot_missing_manage_channels' });
+
+        const category = await g.channels.create({
+            name: '🛠️ STAFF & SUPPORT', type: ChannelType.GuildCategory,
+        });
+        const supportCh = await g.channels.create({
+            name: '🎫-・support-tickets', type: ChannelType.GuildText, parent: category.id,
+        });
+        const transcriptCh = await g.channels.create({
+            name: '📝-・transcript-logs', type: ChannelType.GuildText, parent: category.id,
+            permissionOverwrites: [
+                { id: g.roles.everyone.id, deny: [P.Flags.ViewChannel] },
+                { id: me.id, allow: [P.Flags.ViewChannel, P.Flags.SendMessages] },
+            ],
+        });
+        const row = db.prepare('SELECT ticket_staff_role FROM server_settings WHERE guild_id = ?').get(gid);
+        if (row?.ticket_staff_role) {
+            await transcriptCh.permissionOverwrites.edit(row.ticket_staff_role, { ViewChannel: true }).catch(() => {});
+        }
+
+        db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(gid);
+        db.prepare('UPDATE server_settings SET ticket_category = ?, ticket_transcript_channel = ? WHERE guild_id = ?')
+            .run(category.id, transcriptCh.id, gid);
+        client.settings?.delete?.(gid); client.invalidateGuildCache?.(gid);
+        console.log(`[TICKET-API] channels created guild=${gid} by=${a.member.id}`);
+        res.json({
+            success: true,
+            category: { id: category.id, name: category.name },
+            supportChannel: { id: supportCh.id, name: supportCh.name },
+            transcriptChannel: { id: transcriptCh.id, name: transcriptCh.name },
+        });
+    } catch (e) {
+        console.error(`[TICKET-API] create-channels guild=${req.params.guildId}:`, e.stack || e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
 apiApp.post('/api/update-config', requireAdmin, (req, res) => {
     const { guildId, settings } = req.body;
     if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
