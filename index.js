@@ -6278,6 +6278,99 @@ apiApp.get('/api/public-commands', (req, res) => {
     }
 });
 
+// ── TICKET SETTINGS API ──
+const TICKET_CAT_LIMIT_FREE = 3, TICKET_CAT_LIMIT_PREMIUM = 8;
+function validateCategory(c) {
+    if (typeof c !== 'object' || !c) return 'not an object';
+    if (!c.label || typeof c.label !== 'string' || c.label.length > 32) return 'label must be a string under 32 chars';
+    if (!c.value || typeof c.value !== 'string' || !/^[a-z0-9_-]{1,32}$/.test(c.value)) return 'value must be lowercase a-z, 0-9, _ or -';
+    if (!c.emoji || typeof c.emoji !== 'string' || c.emoji.length > 8) return 'emoji required';
+    if (c.desc && (typeof c.desc !== 'string' || c.desc.length > 100)) return 'desc must be under 100 chars';
+    return null;
+}
+
+apiApp.get('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db, gid = g.id;
+        const { isPremium } = require('./plugins/premium.js');
+        const row = db.prepare('SELECT * FROM server_settings WHERE guild_id = ?').get(gid) || {};
+        const cats = parseJSONSafe(row.ticket_categories_config, null);
+        const isTextChan = c => c && (c.type === 0 || c.type === 5);
+        const isCatChan = c => c && c.type === 4;
+        const channels = [...g.channels.cache.values()].filter(isTextChan).sort((x,y) => x.rawPosition - y.rawPosition).map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
+        const categories = [...g.channels.cache.values()].filter(isCatChan).sort((x,y) => x.rawPosition - y.rawPosition).map(c => ({ id: c.id, name: c.name }));
+        const roles = [...g.roles.cache.values()].filter(r => r.id !== gid && !r.managed).sort((x,y) => y.position - x.position).map(r => { const reason = _vg.validateVerifyRole(g, r, a.member); return { id: r.id, name: r.name, eligible: !reason, reason: reason ? _vg.GUARD_MSG[reason] : null }; });
+        res.json({
+            premium: !!isPremium(db, gid),
+            settings: {
+                ticketCategory: row.ticket_category || null,
+                ticketStaffRole: row.ticket_staff_role || null,
+                ticketTranscriptChannel: row.ticket_transcript_channel || null,
+                ticketLogChannel: row.ticket_log_channel || null,
+                ticketAutoCloseHours: Number(row.ticket_auto_close_hours ?? 24),
+                ticketLimitPerUser: Number(row.ticket_limit_per_user ?? 1),
+                ticketPanelChannel: row.ticket_panel_channel || null,
+                ticketCategoriesConfig: cats,
+            },
+            channels, categories, roles,
+            catLimits: { free: TICKET_CAT_LIMIT_FREE, premium: TICKET_CAT_LIMIT_PREMIUM },
+        });
+    } catch (e) { console.error(`[TICKET-API] get guild=${req.params.guildId}:`, e.message); res.status(500).json({ error: 'internal' }); }
+});
+
+apiApp.post('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const { userId, settings } = req.body || {};
+        if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return res.status(400).json({ error: 'settings_required' });
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db, gid = g.id;
+        const { isPremium } = require('./plugins/premium.js');
+        const premium = !!isPremium(db, gid);
+        const allowed = ['ticketCategory','ticketStaffRole','ticketTranscriptChannel','ticketLogChannel','ticketAutoCloseHours','ticketLimitPerUser','ticketCategoriesConfig'];
+        const unknown = Object.keys(settings).filter(k => !allowed.includes(k));
+        if (unknown.length) return res.status(400).json({ error: 'unknown_fields', fields: unknown });
+        const isTextChan = c => c && (c.type === 0 || c.type === 5);
+        const isCatChan = c => c && c.type === 4;
+        const updates = {};
+        for (const [k, v] of Object.entries(settings)) {
+            if (k === 'ticketCategoriesConfig') {
+                if (!Array.isArray(v)) return res.status(400).json({ error: 'categories_must_be_array' });
+                const limit = premium ? TICKET_CAT_LIMIT_PREMIUM : TICKET_CAT_LIMIT_FREE;
+                if (v.length > limit) return res.status(400).json({ error: `max_${limit}_categories` });
+                for (const c of v) { const err = validateCategory(c); if (err) return res.status(400).json({ error: 'invalid_category', reason: err }); }
+                const values = new Set(v.map(c => c.value));
+                if (values.size !== v.length) return res.status(400).json({ error: 'duplicate_category_values' });
+                updates['ticket_categories_config'] = v.length ? JSON.stringify(v) : null;
+            } else if (k === 'ticketAutoCloseHours') {
+                if (!Number.isInteger(v) || v < 0 || v > 168) return res.status(400).json({ error: 'autoclose_0_to_168' });
+                updates['ticket_auto_close_hours'] = v;
+            } else if (k === 'ticketLimitPerUser') {
+                if (!Number.isInteger(v) || v < 1 || v > 10) return res.status(400).json({ error: 'limit_1_to_10' });
+                updates['ticket_limit_per_user'] = v;
+            } else if (k === 'ticketStaffRole') {
+                if (v !== null) { if (!/^\d{17,20}$/.test(String(v))) return res.status(400).json({ error: 'staffRole_invalid' }); const reason = _vg.validateVerifyRole(g, g.roles.cache.get(String(v)), a.member); if (reason) return res.status(400).json({ error: 'staffRole_rejected', reason: _vg.GUARD_MSG[reason] }); }
+                updates['ticket_staff_role'] = v === null ? null : String(v);
+            } else if (k === 'ticketCategory') {
+                if (v !== null) { if (!/^\d{17,20}$/.test(String(v))) return res.status(400).json({ error: 'category_invalid' }); if (!isCatChan(g.channels.cache.get(String(v)))) return res.status(400).json({ error: 'must_be_category_channel' }); }
+                updates['ticket_category'] = v === null ? null : String(v);
+            } else {
+                if (v !== null && !/^\d{17,20}$/.test(String(v))) return res.status(400).json({ error: `${k}_invalid` });
+                if (v !== null && !isTextChan(g.channels.cache.get(String(v)))) return res.status(400).json({ error: `${k}_not_text_channel` });
+                updates[{ ticketTranscriptChannel:'ticket_transcript_channel', ticketLogChannel:'ticket_log_channel' }[k]] = v === null ? null : String(v);
+            }
+        }
+        db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(gid);
+        const tx = db.transaction(() => { for (const [col, val] of Object.entries(updates)) db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(val, gid); });
+        tx();
+        client.settings?.delete?.(gid); client.invalidateGuildCache?.(gid);
+        console.log(`[TICKET-API] update guild=${gid} by=${a.member.id}`);
+        res.json({ success: true });
+    } catch (e) { console.error(`[TICKET-API] post guild=${req.params.guildId}:`, e.stack || e.message); res.status(500).json({ error: 'internal' }); }
+});
+
 apiApp.post('/api/update-config', requireAdmin, (req, res) => {
     const { guildId, settings } = req.body;
     if (!guildId || !settings) return res.status(400).json({ error: 'Missing fields' });
