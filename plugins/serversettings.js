@@ -61,6 +61,7 @@ data: new SlashCommandBuilder()
             { name: '💬 Welcome Message', value: 'message' },
             { name: '📈 XP Multiplier (0.5-5.0)', value: 'xpboost' },
             { name: '💰 Market Enabled', value: 'marketenabled' },
+            { name: '📊 Market Channel', value: 'market' },
             { name: '💤 AFK System', value: 'afk' },
             { name: '🤖 Lydia AI', value: 'ai' },
         )

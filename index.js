@@ -3430,37 +3430,6 @@ setInterval(async () => {
         console.error(`${red}[TIKTOK]${reset} Engine failed to start: ${err.message}`);
     }
 
-    // ================= MARKET CHANNEL CONFIG CHECK =================
-    // Warn owner if market is active but no notification channel is set
-    setTimeout(async () => {
-        try {
-            const marketChConfigured = process.env.MARKET_CHANNEL_ID;
-            if (!marketChConfigured) {
-                const owner = await client.users.fetch(process.env.OWNER_ID).catch(() => null);
-                if (owner) {
-                    owner.send({
-                        embeds: [new EmbedBuilder()
-                            .setColor('#f39c12')
-                            .setTitle('📊 Market Notification Setup Required')
-                            .setDescription(
-                                'The **Bamako Market Engine** is running, but no notification channel is configured.\n\n' +
-                                '**To enable market shift notifications:**\n' +
-                                '1. Upload a banner image to any channel\n' +
-                                '2. Copy the image URL\n' +
-                                '3. Add to your `.env` file:\n' +
-                                '```\nMARKET_CHANNEL_ID=your_channel_id_here\n```\n\n' +
-                                '**Or use server settings:**\n' +
-                                '```\n.serversettings set market_channel #your-channel\n```\n\n' +
-                                '**Market updates every 6 hours automatically.**'
-                            )
-                            .setFooter({ text: '🦅 ARCHON CG-223 • Market Intelligence • bamako-steel-dev.xyz' })
-                            .setTimestamp()
-                        ]
-                    }).catch(() => {});
-                }
-            }
-        } catch (e) {}
-    }, 15000); // 15s delay so bot is fully ready
 
     if (client.telegramBridge && client.telegramBridge.status) {
         const status = client.telegramBridge.status();
