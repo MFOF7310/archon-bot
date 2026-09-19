@@ -828,7 +828,12 @@ const TABLE_SCHEMAS = {
         { name: 'spam_window', type: 'INTEGER', default: '5' },
         { name: 'mention_limit', type: 'INTEGER', default: '10' },
         { name: 'max_warnings', type: 'INTEGER', default: '3' },
-        { name: 'warning_action', type: 'TEXT', default: "'mute'" }
+        { name: 'warning_action', type: 'TEXT', default: "'mute'" },
+        { name: 'economy_enabled', type: 'INTEGER', default: '1' },
+        { name: 'leveling_enabled', type: 'INTEGER', default: '1' },
+        { name: 'music_enabled', type: 'INTEGER', default: '1' },
+        { name: 'tickets_enabled', type: 'INTEGER', default: '1' },
+        { name: 'moderation_enabled', type: 'INTEGER', default: '1' }
     ],
     lydia_conversations: [
         { name: 'guild_id', type: 'TEXT', default: 'NULL' }
@@ -2321,6 +2326,37 @@ const COMMAND_PARAM_MAP = {
 
 // VERSION ORIGINALE (avant notre modif)
 async function executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, lang = 'en') {
+    // ── MODULE GATE ──
+    const MODULE_MAP = {
+        economy:    ['daily','balance','credits','shop','transfer','claim','invest','credit','cross-economy','give','deposit','withdraw'],
+        leveling:   ['rank','leaderboard','level','setloadout','loadout','xp'],
+        tickets:    ['ticket','newticket','closeticket'],
+        music:      ['music','play','skip','stop','queue','loop','lyrics','nowplaying','pause','resume','volume'],
+        moderation: ['ban','kick','mute','unmute','warn','warnings','clear','slowmode','purge'],
+    };
+    const FLAG_MAP = {
+        economy:    'economy_enabled',
+        leveling:   'leveling_enabled',
+        tickets:    'tickets_enabled',
+        music:      'music_enabled',
+        moderation: 'moderation_enabled',
+    };
+    if (serverSettings && command?.name) {
+        for (const [module, cmds] of Object.entries(MODULE_MAP)) {
+            if (cmds.includes(command.name)) {
+                const flag = FLAG_MAP[module];
+                if (serverSettings[flag] === 0 || serverSettings[flag] === '0') {
+                    const reply = message?.reply || message?.editReply;
+                    if (reply) {
+                        await reply.call(message, { content: '❌ The **' + module + '** module is disabled on this server.', flags: 1 << 6 }).catch(() => {});
+                    }
+                    return;
+                }
+                break;
+            }
+        }
+    }
+    // ── END MODULE GATE ──
     const argsMap = { client, message, args, db, serverSettings, usedCommand, lang };
     
     let paramOrder;
