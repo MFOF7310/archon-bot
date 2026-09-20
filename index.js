@@ -413,6 +413,19 @@ const requiredTables = {
     updated_at INTEGER DEFAULT 0
 )`,
     
+    clan_wars: `CREATE TABLE IF NOT EXISTS clan_wars (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        opponent TEXT NOT NULL,
+        result TEXT NOT NULL,
+        score TEXT,
+        mode TEXT,
+        note TEXT,
+        recorded_by TEXT NOT NULL,
+        played_at INTEGER DEFAULT (strftime('%s','now')),
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+    )`,
+
     member_builds: `CREATE TABLE IF NOT EXISTS member_builds (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         guild_id TEXT NOT NULL,
@@ -887,7 +900,7 @@ const ALLOWED_TABLES = ['bot_state', 'users', 'shop_items', 'server_settings',
     'lydia_memory', 'lydia_agents', 'user_inventory', 'lydia_introductions',
     'lydia_conversations', 'reminders', 'tiktok_notifications', 'warnings',
     'moderation_logs', 'server_backups', 'auto_backup_settings', 'user_links',
-    'investments', 'birthdays', 'transfers', 'server_command_settings', 'scrims', 'scrim_signups', 'member_builds',
+    'investments', 'birthdays', 'transfers', 'server_command_settings', 'scrims', 'scrim_signups', 'member_builds', 'clan_wars',
     'server_economy_settings', 'bot_roles', 'user_premium'];
 
 function ensureTableColumns(db, tableName, expectedColumns) {
