@@ -206,13 +206,64 @@ module.exports = {
 
     data: new SlashCommandBuilder().setName('scrim').setDescription('🎯 Scrim scheduler').
         addSubcommand(s => s.setName('create').setDescription('Schedule a scrim (admin)').
-            addStringOption(o => o.setName('date').setDescription('YYYY-MM-DD').setRequired(true)).
-            addStringOption(o => o.setName('time').setDescription('HH:MM in the server timezone (24h)').setRequired(true)).
+            addStringOption(o => o.setName('date').setDescription('YYYY-MM-DD').setRequired(true).setAutocomplete(true)).
+            addStringOption(o => o.setName('time').setDescription('HH:MM in the server timezone (24h)').setRequired(true).setAutocomplete(true)).
             addStringOption(o => o.setName('title').setDescription('Name of the scrim')).
             addStringOption(o => o.setName('note').setDescription('Lobby code, mode, rules...'))).
         addSubcommand(s => s.setName('list').setDescription('Show upcoming scrims')).
         addSubcommand(s => s.setName('cancel').setDescription('Cancel a scrim (admin)').
             addIntegerOption(o => o.setName('id').setDescription('Scrim ID').setRequired(true))),
+
+    autocomplete: async (interaction, client) => {
+        const focused = interaction.options.getFocused(true);
+        const typed = (focused.value || '').trim();
+        const db = client?.db || interaction.client?.db;
+        const tz = interaction.guildId ? getTimezone(db, interaction.guildId) : 'UTC';
+
+        if (focused.name === 'date') {
+            const out = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(Date.now() + i * 86400000);
+                const iso = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit'
+                }).format(d);
+                const label = i === 0 ? 'Today'
+                    : i === 1 ? 'Tomorrow'
+                    : new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(d);
+                out.push({ name: `${iso} (${label})`, value: iso });
+            }
+            const filtered = typed ? out.filter(o => o.value.includes(typed)) : out;
+            return interaction.respond(filtered.slice(0, 25)).catch(() => {});
+        }
+
+        if (focused.name === 'time') {
+            const slots = [];
+            for (let h = 0; h < 24; h++) {
+                for (const m of ['00', '30']) {
+                    slots.push(`${String(h).padStart(2, '0')}:${m}`);
+                }
+            }
+            let picks;
+            if (!typed) {
+                // Next slots from the guild's current local time.
+                const nowLocal = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false
+                }).format(new Date());
+                const idx = slots.findIndex(s => s > nowLocal);
+                const start = idx === -1 ? 0 : idx;
+                picks = slots.slice(start, start + 12);
+                if (picks.length < 12) picks = picks.concat(slots.slice(0, 12 - picks.length));
+            } else {
+                const digits = typed.replace(/[^0-9]/g, '');
+                picks = slots.filter(s => s.replace(':', '').startsWith(digits) || s.startsWith(typed));
+            }
+            return interaction.respond(
+                picks.slice(0, 25).map(s => ({ name: s, value: s }))
+            ).catch(() => {});
+        }
+
+        return interaction.respond([]).catch(() => {});
+    },
 
     execute: async (interaction, client) => {
         if (!interaction.guild) {
