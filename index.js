@@ -413,6 +413,28 @@ const requiredTables = {
     updated_at INTEGER DEFAULT 0
 )`,
     
+    scrims: `CREATE TABLE IF NOT EXISTS scrims (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        channel_id TEXT NOT NULL,
+        message_id TEXT,
+        created_by TEXT NOT NULL,
+        title TEXT,
+        note TEXT,
+        scheduled_at INTEGER NOT NULL,
+        reminded INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'open',
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+    )`,
+
+    scrim_signups: `CREATE TABLE IF NOT EXISTS scrim_signups (
+        scrim_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        signed_at INTEGER DEFAULT (strftime('%s','now')),
+        PRIMARY KEY (scrim_id, user_id)
+    )`,
+
     user_inventory: `CREATE TABLE IF NOT EXISTS user_inventory (
         user_id TEXT, item_id TEXT, quantity INTEGER DEFAULT 1, 
         purchased_at INTEGER DEFAULT (strftime('%s', 'now')), 
@@ -853,7 +875,7 @@ const ALLOWED_TABLES = ['bot_state', 'users', 'shop_items', 'server_settings',
     'lydia_memory', 'lydia_agents', 'user_inventory', 'lydia_introductions',
     'lydia_conversations', 'reminders', 'tiktok_notifications', 'warnings',
     'moderation_logs', 'server_backups', 'auto_backup_settings', 'user_links',
-    'investments', 'birthdays', 'transfers', 'server_command_settings',
+    'investments', 'birthdays', 'transfers', 'server_command_settings', 'scrims', 'scrim_signups',
     'server_economy_settings', 'bot_roles', 'user_premium'];
 
 function ensureTableColumns(db, tableName, expectedColumns) {
@@ -3472,6 +3494,13 @@ setInterval(async () => {
     }
 
 
+    try {
+        require('./plugins/scrim.js').startScrimReminders(client);
+        console.log(`${green}[SCRIM]${reset} Reminder loop active (15min pre-start pings)`);
+    } catch (e) {
+        console.error(`${red}[SCRIM]${reset} Reminder loop failed: ${e.message}`);
+    }
+
     if (client.telegramBridge && client.telegramBridge.status) {
         const status = client.telegramBridge.status();
         if (status.configured) {
@@ -4283,6 +4312,16 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
 
     // ── VERIFY BUTTON ──
+    if (interaction.isButton() && interaction.customId.startsWith('scrim_')) {
+        try {
+            const scrimPlugin = require('./plugins/scrim.js');
+            await scrimPlugin.handleScrimButton(interaction, client);
+        } catch (e) {
+            console.error('[SCRIM]', e.message);
+        }
+        return;
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith('verify_')) {
         try {
             const verifyPlugin = require('./plugins/verify.js');
