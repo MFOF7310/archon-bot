@@ -97,7 +97,6 @@ const metaData = [
             fr: "Le choix du tireur d'élite. Potentiel mortel en deux balles à toute portée." 
         },
         specs: "Mip Light, No Stock, Owc Laser, 20 Round Mag, Granulated Grip",
-        image: "https://i.imgur.com/example_sks.png",
         stats: { fireRate: 60, damage: 85, accuracy: 90, range: 85, control: 80, mobility: 75 }
     },
     { 
