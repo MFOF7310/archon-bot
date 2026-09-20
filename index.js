@@ -4312,6 +4312,19 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
 
     // ── VERIFY BUTTON ──
+    if (interaction.isButton() && interaction.customId === 'meta_reroll') {
+        try {
+            const metaPlugin = require('./plugins/meta.js');
+            const embed = metaPlugin.randomPick(interaction.guild);
+            if (embed) {
+                await interaction.update({ embeds: [embed], components: [metaPlugin.rerollRow()] }).catch(() => {});
+            }
+        } catch (e) {
+            console.error('[META]', e.message);
+        }
+        return;
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith('scrim_')) {
         try {
             const scrimPlugin = require('./plugins/scrim.js');
