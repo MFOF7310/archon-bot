@@ -97,3 +97,9 @@ database.db
 kene-push.sh
 kene-token.js
 ecosystem.config.cjs
+
+# Internal tooling (VPS-only)
+kene-token.js
+kene-push.sh
+kene-push.log
+ecosystem.config.js
