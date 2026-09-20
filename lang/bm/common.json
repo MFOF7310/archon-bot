@@ -16,5 +16,14 @@
   "done": "",
   "loading": "",
   "premium_feature": "",
-  "page": ""
+  "page": "",
+  "moduleDisabled": "**{module}** fɔnkisiyɔnw ma dayɛlɛ nin sɛrivɛri in kan. Administrateur kelen bɛ se k'u dayɛlɛ [dashboard](https://bamako-steel-dev.xyz) san fɛ.",
+  "modules": {
+    "economy": "Marali",
+    "leveling": "Yɛlɛnni",
+    "music": "Dɔnkili",
+    "tickets": "Tikɛw",
+    "moderation": "Lakana sinsinli",
+    "ai": "IA / Lydia"
+  }
 }

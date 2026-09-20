@@ -16,5 +16,14 @@
   "done": "",
   "loading": "",
   "premium_feature": "",
-  "page": ""
+  "page": "",
+  "moduleDisabled": "ميزات **{module}** غير مفعّلة في هذا الخادم. يمكن لمسؤول تفعيلها من [لوحة التحكم](https://bamako-steel-dev.xyz).",
+  "modules": {
+    "economy": "الاقتصاد",
+    "leveling": "المستويات",
+    "music": "الموسيقى",
+    "tickets": "التذاكر",
+    "moderation": "الإشراف",
+    "ai": "الذكاء الاصطناعي / ليديا"
+  }
 }

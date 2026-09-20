@@ -16,5 +16,14 @@
   "done": "",
   "loading": "",
   "premium_feature": "",
-  "page": ""
+  "page": "",
+  "moduleDisabled": "本服务器未启用 **{module}** 功能。管理员可在[控制面板](https://bamako-steel-dev.xyz)中开启。",
+  "modules": {
+    "economy": "经济",
+    "leveling": "等级",
+    "music": "音乐",
+    "tickets": "工单",
+    "moderation": "管理",
+    "ai": "AI / Lydia"
+  }
 }

@@ -1000,6 +1000,12 @@ function getServerSettings(guildId) {
             goodbyeEnabled: settings.goodbye_enabled !== 0,
             afkEnabled: settings.afk_enabled !== 0,
             marketEnabled: settings.market_enabled !== 0,
+            economy_enabled: settings.economy_enabled !== 0 ? 1 : 0,
+            leveling_enabled: settings.leveling_enabled !== 0 ? 1 : 0,
+            music_enabled: settings.music_enabled !== 0 ? 1 : 0,
+            tickets_enabled: settings.tickets_enabled !== 0 ? 1 : 0,
+            moderation_enabled: settings.moderation_enabled !== 0 ? 1 : 0,
+            ai_enabled: settings.ai_enabled !== 0 ? 1 : 0,
             aiEnabled: settings.ai_enabled !== 0,
             autoModEnabled: settings.automod_enabled === 1,
             linkFilterEnabled: settings.link_filter_enabled === 1,
@@ -1142,6 +1148,12 @@ function updateServerSetting(guildId, setting, value) {
         aiEnabled: 'ai_enabled',
         afkEnabled: 'afk_enabled',
         marketEnabled: 'market_enabled',
+        economy_enabled: 'economy_enabled',
+        leveling_enabled: 'leveling_enabled',
+        music_enabled: 'music_enabled',
+        tickets_enabled: 'tickets_enabled',
+        moderation_enabled: 'moderation_enabled',
+        ai_enabled: 'ai_enabled',
         muterole: 'mute_role_id',
         modlog: 'mod_log_channel',
         autorole: 'auto_role_id',
@@ -2324,6 +2336,31 @@ const COMMAND_PARAM_MAP = {
     'interaction': 'interaction'
 };
 
+// ── MODULE GATE (shared by prefix and slash paths) ──
+const MODULE_MAP = {
+    economy:    ['daily','balance','credits','shop','transfer','claim','invest','credit','cross-economy','give','deposit','withdraw'],
+    leveling:   ['rank','leaderboard','level','setloadout','loadout','xp'],
+    tickets:    ['ticket','newticket','closeticket'],
+    music:      ['music','play','skip','stop','queue','loop','lyrics','nowplaying','pause','resume','volume'],
+    moderation: ['ban','kick','mute','unmute','warn','warnings','clear','slowmode','purge'],
+};
+const FLAG_MAP = {
+    economy: 'economy_enabled', leveling: 'leveling_enabled',
+    tickets: 'tickets_enabled', music: 'music_enabled',
+    moderation: 'moderation_enabled',
+};
+// Returns the module name if blocked, else null.
+function getBlockedModule(commandName, settings) {
+    if (!settings || !commandName) return null;
+    for (const [mod, cmds] of Object.entries(MODULE_MAP)) {
+        if (cmds.includes(commandName)) {
+            const v = settings[FLAG_MAP[mod]];
+            return (v === 0 || v === '0') ? mod : null;
+        }
+    }
+    return null;
+}
+
 // VERSION ORIGINALE (avant notre modif)
 async function executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, lang = 'en') {
     // ── MODULE GATE ──
@@ -2348,7 +2385,11 @@ async function executePluginCommand(command, client, message, args, db, usedComm
                 if (serverSettings[flag] === 0 || serverSettings[flag] === '0') {
                     const reply = message?.reply || message?.editReply;
                     if (reply) {
-                        await reply.call(message, { content: '❌ The **' + module + '** module is disabled on this server.', flags: 1 << 6 }).catch(() => {});
+                        const modName = t('modules.' + module, lang);
+                        await reply.call(message, { embeds: [new EmbedBuilder()
+                            .setColor('#e67e22')
+                            .setDescription(t('moduleDisabled', lang, { module: modName }))
+                        ] }).catch(() => {});
                     }
                     return;
                 }
@@ -4000,6 +4041,20 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             // This adapter bridges the gap by creating a message wrapper.
 
             if (command.execute) {
+                // MODULE GATE — native slash plugins bypass executePluginCommand
+                const gs = interaction.guild ? getServerSettings(interaction.guild.id) : null;
+                const blocked = getBlockedModule(command.name, gs);
+                if (blocked) {
+                    const blockLang = interaction.locale?.slice(0, 2) || 'en';
+                    const blockedName = t('modules.' + blocked, blockLang);
+                    return interaction.reply({
+                        embeds: [new EmbedBuilder()
+                            .setColor('#e67e22')
+                            .setDescription(t('moduleDisabled', blockLang, { module: blockedName }))
+                        ],
+                        flags: 1 << 6
+                    }).catch(() => {});
+                }
                 // Plugin has native slash support — use it directly
                 await command.execute(interaction, client);
 

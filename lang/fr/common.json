@@ -16,5 +16,14 @@
   "done": "C'est fait !",
   "loading": "Un instant...",
   "premium_feature": "Fonctionnalite Premium",
-  "page": "{page} / {total}"
+  "page": "{page} / {total}",
+  "moduleDisabled": "Les fonctions **{module}** ne sont pas activées sur ce serveur. Un admin peut les activer depuis le [tableau de bord](https://bamako-steel-dev.xyz).",
+  "modules": {
+    "economy": "Économie",
+    "leveling": "Niveaux",
+    "music": "Musique",
+    "tickets": "Tickets",
+    "moderation": "Modération",
+    "ai": "IA / Lydia"
+  }
 }

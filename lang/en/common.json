@@ -16,5 +16,14 @@
   "done": "Done!",
   "loading": "One sec...",
   "premium_feature": "Premium Feature",
-  "page": "{page} / {total}"
+  "page": "{page} / {total}",
+  "moduleDisabled": "**{module}** features aren't enabled on this server. An admin can turn them on from the [dashboard](https://bamako-steel-dev.xyz).",
+  "modules": {
+    "economy": "Economy",
+    "leveling": "Leveling",
+    "music": "Music",
+    "tickets": "Tickets",
+    "moderation": "Moderation",
+    "ai": "AI / Lydia"
+  }
 }
