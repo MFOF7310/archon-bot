@@ -155,7 +155,7 @@ function buildWeaponRows(cat, authorId, lang) {
 
 module.exports = {
     name: 'loadout',
-    aliases: ['loadouts', 'weapons', 'build', 'armes', 'armory', 'arsenal', 'configuration'],
+    aliases: ['loadouts', 'weapons', 'armes', 'armory', 'arsenal', 'configuration'],
     description: '🔫 Interactive weapon armory — browse by category with screenshots.',
     category: 'GAMING',
     cooldown: 3000,
