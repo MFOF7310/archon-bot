@@ -2362,7 +2362,19 @@ client.loadPlugins = async () => {
         return ' '.repeat(Math.floor(total/2)) + str + ' '.repeat(total - Math.floor(total/2));
     };
     console.log('');
-    const _mods = String(moduleStats.total);
+    // Telegram plugins run in the bridge, not the Discord registry — count
+    // them from disk so the reported number reflects what exists, not what
+    // LOAD_TELEGRAM_INTO_DISCORD happened to import.
+    let telegramOnDisk = 0;
+    try {
+        const tgDir = path.join(__dirname, 'telegram', 'plugins');
+        if (fs.existsSync(tgDir)) {
+            telegramOnDisk = fs.readdirSync(tgDir).filter(f => f.endsWith('.js')).length;
+        }
+    } catch (_) {}
+
+    client.moduleStats = { ...moduleStats, telegram: telegramOnDisk };
+    const _mods = `${moduleStats.discord} discord / ${client.moduleStats.telegram} telegram`;
     const _slsh = String(moduleStats.slash);
     const _fail = failedCommands.length;
     console.log(`\x1b[36m[NEURAL GRID]\x1b[0m ${_mods} modules • ${_slsh} slash • ${(()=>{try{return client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"]||client.guilds.cache.size}catch(e){return client.guilds.cache.size}})()} servers • ${_fail > 0 ? _fail + ' failures' : 'All systems nominal'}`);

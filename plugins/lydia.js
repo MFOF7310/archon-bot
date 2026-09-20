@@ -192,7 +192,7 @@ function getChangelogSummary() {
     }
 }
 
-const BOT_KNOWLEDGE = (pluginCount = 0) => `
+const BOT_KNOWLEDGE = (pluginCount = 0, pluginBreakdown = '') => `
 You are Lydia 🦅 — the embedded intelligence of ARCHON CG-223, engineered by Moussa Fofana from Bamako, Mali 🇲🇱.
 
 You are not a helpdesk bot. You are a sharp, warm presence who knows this ecosystem cold — every command, every economy value, every quirk. Think: brilliant team member who actually read every line of the codebase.
@@ -205,7 +205,7 @@ Your voice: direct, warm, occasionally dry. You push back when something is off.
 When Moussa (mfof7559) talks to you — he is the Architect. Acknowledge it naturally, not robotically.
 
 — THE ECOSYSTEM —
-ARCHON CG-223 runs ${pluginCount} active plugins across Discord and Telegram. Built on Node.js v20, Discord.js v14, SQLite WAL mode, per-server data isolation (composite key: user_id + guild_id). Every server is its own universe — zero cross-server leakage.
+ARCHON CG-223 runs ${pluginCount} active plugins across Discord and Telegram.${pluginBreakdown} Built on Node.js v20, Discord.js v14, SQLite WAL mode, per-server data isolation (composite key: user_id + guild_id). Every server is its own universe — zero cross-server leakage.
 
 Economy 🪙 — daily claims, streak system (milestones: 3/7/30/100/365 days), streak shields, shop, transfers, cross-economy
 Market 📈 — Bamako Market: 4 states (Steady/Bull/Bear/Volatile), updates every 6h, invest and claim profits
@@ -1000,7 +1000,13 @@ function relevantCommands(userMessage, commands, limit = 8) {
     .join('\n');
 }
 
-function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.', lang = 'en', pluginCount = 0, userMessage = '', commands = null, premiumActions = false) {
+function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.', lang = 'en', pluginCount = 0, userMessage = '', commands = null, premiumActions = false, moduleStats = null) {
+  let pluginBreakdown = '';
+  const ms = moduleStats;
+  console.log('[LYDIA-DEBUG] moduleStats:', JSON.stringify(ms));
+  if (ms) {
+    pluginBreakdown = ` That splits into ${ms.discord} Discord plugins and ${ms.telegram} Telegram plugins; ${ms.slash} of the Discord ones register slash commands, the rest are prefix-only. They expose ${ms.aliases} aliases in total.`;
+  }
   const bamakoTime = new Date().toLocaleTimeString('en-US', {
     timeZone: 'Africa/Bamako', hour12: false, hour: '2-digit', minute: '2-digit'
   });
@@ -1013,7 +1019,7 @@ function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.
 
   const changelogSummary = getChangelogSummary();
   const ownerTag = isOwner ? ' — the Architect 🦅' : '';
-  return `${BOT_KNOWLEDGE(pluginCount)}
+  return `${BOT_KNOWLEDGE(pluginCount, pluginBreakdown)}
 
 LIVE CONTEXT:
 - Server: ${guild.name}
@@ -1160,7 +1166,7 @@ async function handleLydiaMessage(message, client, database) {
     const isOwner = ownerInfo && message.author.id === ownerInfo.id;
     const serverPrefix = client.getServerSettings?.(message.guild.id)?.prefix || process.env.PREFIX || '.';
 
-    const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)));
+    const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)), client.moduleStats);
 
     const fullSystem = memories.length > 0
       ? `${systemPrompt}\n\n[Your memories about this user]:\n${memories.map(m => `\u2022 ${m.memory_key}: ${m.memory_value}`).join('\n')}`
