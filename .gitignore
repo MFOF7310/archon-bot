@@ -103,3 +103,6 @@ kene-token.js
 kene-push.sh
 kene-push.log
 ecosystem.config.js
+
+# User-uploaded build screenshots
+assets/builds/
