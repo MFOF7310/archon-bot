@@ -857,6 +857,9 @@ const TABLE_SCHEMAS = {
         { name: 'total_messages', type: 'INTEGER', default: '0' },
         { name: 'last_xp_gain', type: 'INTEGER', default: '0' }
     ],
+    member_builds: [
+        { name: 'image_path', type: 'TEXT', default: 'NULL' }
+    ],
     server_settings: [
         { name: 'prefix', type: 'TEXT', default: "'.'" },
         { name: 'language', type: 'TEXT', default: "'auto'" },
@@ -880,7 +883,8 @@ const TABLE_SCHEMAS = {
         { name: 'leveling_enabled', type: 'INTEGER', default: '1' },
         { name: 'music_enabled', type: 'INTEGER', default: '1' },
         { name: 'tickets_enabled', type: 'INTEGER', default: '1' },
-        { name: 'moderation_enabled', type: 'INTEGER', default: '1' }
+        { name: 'moderation_enabled', type: 'INTEGER', default: '1' },
+        { name: 'codm_enabled', type: 'INTEGER', default: '1' }
     ],
     lydia_conversations: [
         { name: 'guild_id', type: 'TEXT', default: 'NULL' }
@@ -1052,6 +1056,7 @@ function getServerSettings(guildId) {
             music_enabled: settings.music_enabled !== 0 ? 1 : 0,
             tickets_enabled: settings.tickets_enabled !== 0 ? 1 : 0,
             moderation_enabled: settings.moderation_enabled !== 0 ? 1 : 0,
+            codm_enabled: settings.codm_enabled !== 0 ? 1 : 0,
             ai_enabled: settings.ai_enabled !== 0 ? 1 : 0,
             aiEnabled: settings.ai_enabled !== 0,
             autoModEnabled: settings.automod_enabled === 1,
@@ -1200,6 +1205,7 @@ function updateServerSetting(guildId, setting, value) {
         music_enabled: 'music_enabled',
         tickets_enabled: 'tickets_enabled',
         moderation_enabled: 'moderation_enabled',
+        codm_enabled: 'codm_enabled',
         ai_enabled: 'ai_enabled',
         muterole: 'mute_role_id',
         modlog: 'mod_log_channel',
@@ -2390,11 +2396,12 @@ const MODULE_MAP = {
     tickets:    ['ticket','newticket','closeticket'],
     music:      ['music','play','skip','stop','queue','loop','lyrics','nowplaying','pause','resume','volume'],
     moderation: ['ban','kick','mute','unmute','warn','warnings','clear','slowmode','purge'],
+    codm:       ['scrim','scrims','meta','weapon','gun','tier','tierlist','randommeta','codm','pick','arme','build','builds','mybuild','classe','war','wars','clanwar','guerre'],
 };
 const FLAG_MAP = {
     economy: 'economy_enabled', leveling: 'leveling_enabled',
     tickets: 'tickets_enabled', music: 'music_enabled',
-    moderation: 'moderation_enabled',
+    moderation: 'moderation_enabled', codm: 'codm_enabled',
 };
 // Returns the module name if blocked, else null.
 function getBlockedModule(commandName, settings) {
@@ -2411,25 +2418,11 @@ function getBlockedModule(commandName, settings) {
 // VERSION ORIGINALE (avant notre modif)
 async function executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, lang = 'en') {
     // ── MODULE GATE ──
-    const MODULE_MAP = {
-        economy:    ['daily','balance','credits','shop','transfer','claim','invest','credit','cross-economy','give','deposit','withdraw'],
-        leveling:   ['rank','leaderboard','level','setloadout','loadout','xp'],
-        tickets:    ['ticket','newticket','closeticket'],
-        music:      ['music','play','skip','stop','queue','loop','lyrics','nowplaying','pause','resume','volume'],
-        moderation: ['ban','kick','mute','unmute','warn','warnings','clear','slowmode','purge'],
-    };
-    const FLAG_MAP = {
-        economy:    'economy_enabled',
-        leveling:   'leveling_enabled',
-        tickets:    'tickets_enabled',
-        music:      'music_enabled',
-        moderation: 'moderation_enabled',
-    };
     if (serverSettings && command?.name) {
         for (const [module, cmds] of Object.entries(MODULE_MAP)) {
             if (cmds.includes(command.name)) {
                 const flag = FLAG_MAP[module];
-                if (serverSettings[flag] === 0 || serverSettings[flag] === '0') {
+                if (!Number(serverSettings[flag])) {
                     const reply = message?.reply || message?.editReply;
                     if (reply) {
                         const modName = t('modules.' + module, lang);

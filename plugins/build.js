@@ -2,7 +2,31 @@ const { EmbedBuilder, SlashCommandBuilder, MessageFlags, ActionRowBuilder, Butto
 const W = require('../lib/weapons');
 const EMOJIS = require('../config/emojis');
 
+const fs = require('fs');
+const path = require('path');
+const { AttachmentBuilder } = require('discord.js');
+
 const MAX_PER_USER = 10;
+const BUILD_IMG_DIR = path.join(__dirname, '..', 'assets', 'builds');
+
+// Discord CDN urls expire after ~24h, so the screenshot is copied to disk.
+async function downloadToFile(url, dest) {
+    const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ARCHON-Bot/2.0)', 'Accept': 'image/*,*/*' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.startsWith('image/')) throw new Error('Not an image: ' + ct);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length < 1000) throw new Error('File too small');
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, buffer);
+    return dest;
+}
+
+function removeImage(p) {
+    try { if (p && fs.existsSync(p)) fs.unlinkSync(p); } catch (_) {}
+}
 
 function buildEmbed(build, member, guild) {
     const weapon = W.findWeapon(build.weapon);
@@ -29,11 +53,25 @@ function buildEmbed(build, member, guild) {
         });
     }
 
-    if (build.image_url && build.image_url.startsWith('http')) {
+    if (build.image_path && fs.existsSync(build.image_path)) {
+        embed.setImage(`attachment://build-${build.id}.jpg`);
+    } else if (build.image_url && build.image_url.startsWith('http')) {
         embed.setImage(build.image_url);
     }
 
     return embed;
+}
+
+// Local screenshots must be sent as attachments alongside the embed.
+function buildFiles(builds) {
+    const list = Array.isArray(builds) ? builds : [builds];
+    const files = [];
+    for (const b of list) {
+        if (b.image_path && fs.existsSync(b.image_path)) {
+            files.push(new AttachmentBuilder(b.image_path, { name: `build-${b.id}.jpg` }));
+        }
+    }
+    return files;
 }
 
 function countBuilds(db, gid, uid) {
@@ -119,10 +157,25 @@ module.exports = {
                 id = info.lastInsertRowid;
             }
 
+            let warn = '';
+            if (shot) {
+                const dest = require('path').join(BUILD_IMG_DIR, `${gid}-${id}.jpg`);
+                const prev = db.prepare('SELECT image_path FROM member_builds WHERE id = ?').get(id);
+                try {
+                    await downloadToFile(shot.url, dest);
+                    if (prev?.image_path && prev.image_path !== dest) removeImage(prev.image_path);
+                    db.prepare('UPDATE member_builds SET image_path = ? WHERE id = ?').run(dest, id);
+                } catch (e) {
+                    console.error('[BUILD] image download failed:', e.message);
+                    warn = '\n*The screenshot could not be stored, so it will stop showing in about a day.*';
+                }
+            }
+
             const build = db.prepare('SELECT * FROM member_builds WHERE id = ?').get(id);
             return interaction.reply({
-                content: existing ? 'Build updated.' : 'Build saved.',
+                content: (existing ? 'Build updated.' : 'Build saved.') + warn,
                 embeds: [buildEmbed(build, interaction.member, interaction.guild)],
+                files: buildFiles(build),
             });
         }
 
@@ -180,8 +233,9 @@ module.exports = {
             }
 
             const member = await interaction.guild.members.fetch(target.id).catch(() => null);
-            const embeds = rows.slice(0, 10).map(b => buildEmbed(b, member, interaction.guild));
-            return interaction.reply({ embeds });
+            const shown = rows.slice(0, 10);
+            const embeds = shown.map(b => buildEmbed(b, member, interaction.guild));
+            return interaction.reply({ embeds, files: buildFiles(shown) });
         }
 
         // ---- DELETE ----
@@ -198,6 +252,7 @@ module.exports = {
                 return interaction.reply({ content: 'You can only delete your own builds.', flags: MessageFlags.Ephemeral });
             }
 
+            removeImage(build.image_path);
             db.prepare('DELETE FROM member_builds WHERE id = ?').run(id);
             return interaction.reply({ content: `Build #${id} (${build.weapon}) deleted.`, flags: MessageFlags.Ephemeral });
         }
@@ -218,8 +273,10 @@ module.exports = {
             if (!rows.length) {
                 return message.reply('You have no builds saved here. Use `/build save` to add one.').catch(() => {});
             }
+            const shown = rows.slice(0, 10);
             return message.reply({
-                embeds: rows.slice(0, 10).map(b => buildEmbed(b, message.member, message.guild)),
+                embeds: shown.map(b => buildEmbed(b, message.member, message.guild)),
+                files: buildFiles(shown),
             }).catch(() => {});
         }
 
@@ -237,7 +294,7 @@ module.exports = {
             const m = await message.guild.members.fetch(b.user_id).catch(() => null);
             embeds.push(buildEmbed(b, m, message.guild));
         }
-        return message.reply({ embeds }).catch(() => {});
+        return message.reply({ embeds, files: buildFiles(rows) }).catch(() => {});
     },
 };
 
