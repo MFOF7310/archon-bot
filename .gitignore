@@ -106,3 +106,4 @@ ecosystem.config.js
 
 # User-uploaded build screenshots
 assets/builds/
+*.bak-*
