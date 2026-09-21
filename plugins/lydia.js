@@ -1610,6 +1610,7 @@ function setupLydia(client, database) {
 
   client.on('messageCreate', async (message) => {
     if (!message || message.author?.bot) return;
+    console.log(`[LYDIA-RAW] ch=${message.channel?.id} guild=${message.guild?.id} content=${message.content?.slice(0,30)}`);
     try {
       await handleLydiaMessage(message, client, database);
     } catch (eventErr) {

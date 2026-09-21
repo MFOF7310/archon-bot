@@ -6255,6 +6255,61 @@ const GENERAL_FIELDS = {
     updatesChannel: 'updates_channel',
 };
 const isTextChan = c => c && (c.type === 0 || c.type === 5);
+function canBotSend(guild, channel) {
+    const me = guild.members.me;
+    if (!me || !channel) return false;
+    const perms = channel.permissionsFor(me);
+    return !!perms && perms.has(['ViewChannel', 'SendMessages']);
+}
+
+function isMemberVisible(guild, channel) {
+    const everyone = channel.permissionsFor(guild.roles.everyone);
+    return !!everyone && everyone.has('ViewChannel');
+}
+
+
+apiApp.get('/api/lydia/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db;
+        const row = db.prepare('SELECT ai_enabled FROM server_settings WHERE guild_id = ?').get(g.id) || {};
+        const active = db.prepare('SELECT channel_id FROM lydia_agents WHERE channel_id IN (' +
+            [...g.channels.cache.keys()].map(() => '?').join(',') + ') AND is_active = 1')
+            .all(...g.channels.cache.keys()).map(r => r.channel_id);
+        const channels = [...g.channels.cache.values()].filter(c => c.type === 0 && canBotSend(g, c) && isMemberVisible(g, c))
+            .sort((x, y) => x.rawPosition - y.rawPosition)
+            .map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
+        res.json({ enabled: row.ai_enabled === 1, activeChannelIds: active, channels });
+    } catch (e) {
+        console.error(`[LYDIA-API] get guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
+apiApp.post('/api/lydia/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.body?.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db;
+        const { channelId, enabled } = req.body || {};
+        if (!channelId || typeof channelId !== 'string') return res.status(400).json({ error: 'channelId required' });
+        const ch = g.channels.cache.get(channelId);
+        if (!ch || ch.type !== 0) return res.status(400).json({ error: 'channel not found or not a text channel' });
+
+        db.prepare('INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at) VALUES (?, ?, ?, strftime(\'%s\',\'now\'))')
+            .run(channelId, 'default', enabled ? 1 : 0);
+
+        if (!client.lydiaChannels) client.lydiaChannels = {};
+        if (enabled) client.lydiaChannels[channelId] = true;
+        else delete client.lydiaChannels[channelId];
+
+        res.json({ success: true, channelId, enabled: !!enabled });
+    } catch (e) {
+        console.error(`[LYDIA-API] post guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
 
 apiApp.get('/api/general/:guildId', requireAdmin, async (req, res) => {
     try {
