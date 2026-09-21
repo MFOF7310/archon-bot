@@ -4884,6 +4884,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 // ╚══════════════════════════════════════════════════════════════════════╝
 safeOn(Events.GuildCreate, async (guild) => {
     try {
+        try { ensureDepartures(); db.prepare('DELETE FROM guild_departures WHERE guild_id = ?').run(guild.id); } catch (_) {}
         // ── Sync global_server_stats ──
         try {
             db.prepare(`
@@ -4899,72 +4900,61 @@ safeOn(Events.GuildCreate, async (guild) => {
         // Skip owner's test guild — they already know the bot
         if (guild.id === process.env.GUILD_ID) return;
 
-        const owner = await guild.fetchOwner().catch(() => null);
-        if (!owner || owner.user.bot) return;
-
-        const setupEmbed = new EmbedBuilder()
+        // WELCOME_V2 — CODM-first, FR/EN, DM then channel fallback
+        const fr = guild.preferredLocale === 'fr';
+        const WFR = {
+            title: `ARCHON est arrivé sur ${guild.name}`,
+            intro: 'Conçu pour les clans CODM :',
+            scrim: 'planifie un scrim, inscriptions par bouton, rappel 15 min avant',
+            meta: 'la méta armes de la saison',
+            build: 'chaque membre enregistre ses loadouts',
+            war: 'historique des guerres, winrate, rivaux',
+            step: "**Première étape :** `/serversettings` → règle le fuseau horaire (les scrims l'utilisent)",
+            other: 'Pas un serveur CODM ? ARCHON gère aussi niveaux, économie, tickets et modération — `/help`.',
+            mods: 'Trop de fonctions ? Désactive ce qui ne sert pas dans le [Dashboard](https://bamako-steel-dev.xyz) → Modules.'
+        };
+        const WEN = {
+            title: `ARCHON has joined ${guild.name}`,
+            intro: 'Built for CODM clans:',
+            scrim: 'schedule a scrim, button sign-ups, reminder 15 min before',
+            meta: "this season's weapon meta",
+            build: 'every member saves their loadouts',
+            war: 'war history, win rate, rivals',
+            step: '**First step:** `/serversettings` → set the timezone (scrims use it)',
+            other: 'Not a CODM server? ARCHON also runs leveling, economy, tickets and moderation — `/help`.',
+            mods: "Too many features? Turn off what you don't need in the [Dashboard](https://bamako-steel-dev.xyz) → Modules."
+        };
+        const block = W =>
+            `${W.intro}\n` +
+            `🎯 \`/scrim create\` — ${W.scrim}\n` +
+            `🔫 \`/meta\` — ${W.meta}\n` +
+            `🛠️ \`/build save\` — ${W.build}\n` +
+            `⚔️ \`/war record\` — ${W.war}\n\n` +
+            `${W.step}\n${W.mods}\n${W.other}`;
+        const body = fr ? block(WFR) : `🇫🇷 ${block(WFR)}\n\n🇬🇧 ${block(WEN)}`;
+        const welcome = new EmbedBuilder()
             .setColor('#2ecc71')
-            .setAuthor({ 
-                name: '🦅 ARCHON CG-223 — Neural Grid Expansion', 
-                iconURL: client.user.displayAvatarURL() 
-            })
-            .setTitle(`Welcome to ${guild.name}!`)
-            .setDescription(
-                `Thank you for adding **ARCHON CG-223** to your server.\n\n` +
-                `Your server data is **fully isolated** — per-server partitioning ensures nothing is shared with other guilds.\n\n` +
-                `\`\`\`ansi\n\u001b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n\`\`\``
-            )
-            .addFields(
-                { 
-                    name: '🛡️ AutoMod Protection', 
-                    value: 
-                        '```diff\n' +
-                        '- Status: OFF by default\n' +
-                        '+ Command: /automod enable\n' +
-                        '```\n' +
-                        'AutoMod blocks spam, malicious links, and unauthorized invites. It is **disabled until you explicitly enable it** — no surprises, no forced features.', 
-                    inline: false 
-                },
-                { 
-                    name: '⚡ Quick Setup Commands', 
-                    value: 
-                        '`/automod enable` — Activate protection\n' +
-                        '`/serversettings` — Configure your server\n' +
-                        '`/welcome` — Set welcome channel\n' +
-                        '`/leveling` — Configure XP & ranks\n' +
-                        '`/ticket setup` — Create support panel\n' +
-                        '`/lydia` — Talk to AI (28 languages)', 
-                    inline: false 
-                },
-                { 
-                    name: '📊 Included Systems', 
-                    value: 
-                        '🧠 Lydia AI · 28-language chat\n' +
-                        '💰 Economy · Credits, shop, market\n' +
-                        '📈 Leveling · Canvas rank cards\n' +
-                        '🎫 Tickets · 3 categories\n' +
-                        '🛡️ AutoMod · Domain whitelist\n' +
-                        '⚡ Daily · Streak rewards\n' +
-                        '📢 Broadcast · Smart updates', 
-                    inline: true 
-                },
-                { 
-                    name: '🌐 Links', 
-                    value: 
-                        '[Dashboard](https://bamako-steel-dev.xyz)\n' +
-                        '[Support Server](https://discord.gg/NFSMFJajp9)\n' +
-                        '[Website](https://bamako-steel-dev.xyz)', 
-                    inline: true 
-                }
-            )
-            .setFooter({ 
-                text: `ARCHON CG-223 v${client.version || '3.2'} • Server ID: ${guild.id} • MFOF7310 🇲🇱`, 
-                iconURL: client.user.displayAvatarURL() 
-            })
-            .setTimestamp();
+            .setTitle(fr ? WFR.title : `ARCHON · ${guild.name}`)
+            .setDescription(`${body}\n\n[Support](https://discord.gg/NFSMFJajp9)`);
 
-        await owner.send({ embeds: [setupEmbed] }).catch(() => {});
-        console.log(`\x1b[32m[GUILD CREATE]\x1b[0m Welcome DM sent to ${owner.user.tag} (${guild.name})`);
+        let via = null;
+        const owner = await guild.fetchOwner().catch(() => null);
+        if (owner && !owner.user.bot) {
+            const ok = await owner.send({ embeds: [welcome] }).then(() => true).catch(() => false);
+            if (ok) via = `DM ${owner.user.tag}`;
+        }
+        if (!via) {
+            const me = guild.members.me;
+            const text = [...guild.channels.cache.filter(c => c.type === 0).values()]
+                .sort((x, y) => x.rawPosition - y.rawPosition);
+            const ch = [guild.systemChannel, ...text].find(c =>
+                c && c.permissionsFor(me)?.has(['ViewChannel', 'SendMessages', 'EmbedLinks']));
+            if (ch) {
+                const ok = await ch.send({ embeds: [welcome] }).then(() => true).catch(() => false);
+                if (ok) via = `#${ch.name}`;
+            }
+        }
+        console.log(`[GUILD CREATE] Welcome ${via ? 'sent via ' + via : 'NOT delivered'} (${guild.name})`);
 
     } catch (e) {
         console.log(`\x1b[33m[GUILD CREATE]\x1b[0m Could not DM owner: ${e.message}`);
@@ -4975,49 +4965,54 @@ safeOn(Events.GuildCreate, async (guild) => {
 // ║  🗑️ GUILD DELETE — CLEANUP PROTOCOL                                ║
 // ║  Removes server data when ARCHON is kicked                         ║
 // ╚══════════════════════════════════════════════════════════════════════╝
+// GUILD_GRACE_V1 — keep data 7 days after a kick, purge later
+const GRACE_MS = 7 * 24 * 3600 * 1000;
+const ensureDepartures = () => db.prepare('CREATE TABLE IF NOT EXISTS guild_departures (guild_id TEXT PRIMARY KEY, left_at INTEGER)').run();
+const PURGE_SQL = [
+    'DELETE FROM scrim_signups WHERE scrim_id IN (SELECT id FROM scrims WHERE guild_id = ?)',
+    ...['scrims', 'member_builds', 'clan_wars', 'server_settings', 'users', 'warnings', 'moderation_logs',
+        'server_command_settings', 'global_server_stats', 'server_economy_settings']
+        .map(t => `DELETE FROM ${t} WHERE guild_id = ?`)
+];
+function purgeGuildData(gid) {
+    let n = 0;
+    for (const q of PURGE_SQL) {
+        try { n += db.prepare(q).run(gid).changes; } catch (_) {}
+    }
+    db.prepare('DELETE FROM guild_departures WHERE guild_id = ?').run(gid);
+    return n;
+}
+
 safeOn(Events.GuildDelete, async (guild) => {
     try {
-        const gid = guild.id;
-        
-        // Log the departure
-        console.log(`\x1b[33m[GUILD DELETE]\x1b[0m Left ${guild.name} (${gid}) — ${guild.memberCount} members`);
-
-        // Clean up server_settings row
-        db.prepare('DELETE FROM server_settings WHERE guild_id = ?').run(gid);
-        
-        // Clean up per-server user data
-        const deletedUsers = db.prepare('DELETE FROM users WHERE guild_id = ?').run(gid);
-        
-        // Clean up server-specific warnings
-        db.prepare('DELETE FROM warnings WHERE guild_id = ?').run(gid);
-        
-        // Clean up server-specific moderation logs
-        db.prepare('DELETE FROM moderation_logs WHERE guild_id = ?').run(gid);
-        
-        // Clean up command settings
-        db.prepare('DELETE FROM server_command_settings WHERE guild_id = ?').run(gid);
-        // Clean up global server stats
-        db.prepare('DELETE FROM global_server_stats WHERE guild_id = ?').run(gid);
-        
-        // Clean up economy settings
-        db.prepare('DELETE FROM server_economy_settings WHERE guild_id = ?').run(gid);
-        
-        // Remove from in-memory cache
-        client.settings.delete(gid);
-        
-        // Clear any cached user data for this guild
+        ensureDepartures();
+        db.prepare('INSERT OR REPLACE INTO guild_departures (guild_id, left_at) VALUES (?, ?)').run(guild.id, Date.now());
+        client.settings.delete(guild.id);
         if (client.userDataCache) {
-            for (const [key] of client.userDataCache) {
-                if (key.endsWith(`:${gid}`)) client.userDataCache.delete(key);
-            }
+            for (const [k] of client.userDataCache) if (k.endsWith(`:${guild.id}`)) client.userDataCache.delete(k);
         }
-        
-        console.log(`\x1b[32m[GUILD DELETE]\x1b[0m Cleanup complete: ${deletedUsers.changes} users removed`);
-
+        console.log(`[GUILD DELETE] Left ${guild.name} (${guild.id}) — data kept 7 days`);
     } catch (e) {
-        console.error(`\x1b[31m[GUILD DELETE]\x1b[0m Cleanup error for ${guild.id}: ${e.message}`);
+        console.error(`[GUILD DELETE] ${guild.id}: ${e.message}`);
     }
 });
+
+setInterval(() => {
+    if (!client.isReady()) return;
+    try {
+        ensureDepartures();
+        const old = db.prepare('SELECT guild_id FROM guild_departures WHERE left_at < ?').all(Date.now() - GRACE_MS);
+        for (const { guild_id } of old) {
+            if (client.guilds.cache.has(guild_id)) {
+                db.prepare('DELETE FROM guild_departures WHERE guild_id = ?').run(guild_id);
+                continue;
+            }
+            console.log(`[GUILD PURGE] ${guild_id}: ${purgeGuildData(guild_id)} rows removed`);
+        }
+    } catch (e) {
+        console.error(`[GUILD PURGE] ${e.message}`);
+    }
+}, 6 * 3600 * 1000);
 
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  🦅 GUILD MEMBER ADD — ORCHESTRATED WELCOME v6.0                    ║
@@ -6930,35 +6925,22 @@ apiApp.listen(5000, '127.0.0.1', () => {
 // ================= BOT PROFILE & STATUS =================
 const STATUS_MESSAGES = [
     // PLAYING
-    { name: '🦅 Architecting servers...', type: 0 },
+    { name: 'CODM scrims 🎯', type: 0 },
     { name: 'with Lydia AI 🧠', type: 0 },
-    { name: '⚡ {guilds} servers in the grid', type: 0 },
-    { name: 'defense protocols 🛡️', type: 0 },
-    { name: 'the economy engine 💰', type: 0 },
-    { name: `Neural Grid v${client.version || '3.1.0'} 🔮`, type: 0 },
-    { name: '⚡ plugins loaded', type: 0, dynamic: 'plugins' },
     // WATCHING
-    { name: 'over {guilds} servers 🌐', type: 3 },
-    { name: '{users} agents in the field', type: 3 },
-    { name: '📊 live market data', type: 3 },
-    { name: 'tickets resolve 🎫', type: 3 },
-    { name: 'daily streaks burn 🔥', type: 3 },
+    { name: 'the weapon meta 🔫', type: 3 },
     { name: 'BAMAKO_223 // ONLINE 🇲🇱', type: 3 },
     // LISTENING
-    { name: 'slash commands /', type: 2 },
-    { name: '{users} agents', type: 2 },
-    { name: 'the neural feed 🧠', type: 2 },
-    { name: 'Cloud Gaming-223 🎮', type: 2 },
+    { name: '/scrim /meta /build /war', type: 2 },
     // COMPETING
-    { name: 'top.gg rankings 🏆', type: 5 },
+    { name: 'clan wars ⚔️', type: 5 },
     { name: 'Best Bot — Mali 🇲🇱', type: 5 },
-    { name: 'Neural Grid Challenge', type: 5 },
     // CUSTOM (type 4 — raw text, no verb prefix)
     { name: '🌍 bamako-steel-dev.xyz', type: 4 },
-    { name: '🦅 {guilds} servers | ARCHON CG-223', type: 4 },
+    { name: '🎯 CODM clan bot | /scrim', type: 4 },
     { name: '🎵 530+ tracks | /music', type: 4 },
     { name: '⚔️ Bamako Steel 🇲🇱', type: 4 },
-    { name: '🛡️ Protecting {users} members', type: 4 },
+    { name: '⚔️ /war record | track your clan wars', type: 4 },
     { name: '🎮 /help | Try ARCHON', type: 4 },
 ];
 
