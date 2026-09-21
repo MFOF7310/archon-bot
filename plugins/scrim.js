@@ -6,7 +6,9 @@ const EMOJIS = require('../config/emojis');
 function getTimezone(db, guildId) {
     try {
         const row = db.prepare('SELECT timezone FROM server_settings WHERE guild_id = ?').get(guildId);
-        return row?.timezone || 'UTC';
+        const tz = row?.timezone || 'UTC';
+        new Intl.DateTimeFormat('en-US', { timeZone: tz }); // throws on an invalid zone
+        return tz;
     } catch { return 'UTC'; }
 }
 
