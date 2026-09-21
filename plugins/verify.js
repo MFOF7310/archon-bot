@@ -251,14 +251,18 @@ module.exports = {
 
         if (sub === 'status') {
             const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
-            const enabled = settings?.verify_enabled;
+            const { isPremium } = require('./premium.js');
+            const premiumOk = isPremium(db, gid);
+            const configured = !!settings?.verify_enabled;
+            const enabled = configured && premiumOk;
+            const paused = configured && !premiumOk;
             const verifiedRole = settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : '`Not configured`';
             const unverifiedRole = settings?.verify_unverified_role_id ? `<@&${settings.verify_unverified_role_id}>` : '`Not configured`';
             const autokick = settings?.verify_kick_days ? `${settings.verify_kick_days} minutes` : 'Disabled';
 
             const desc = [
-                `### ${enabled ? `${EMOJIS.online} Gate is Active` : `${EMOJIS.offline} Gate is Inactive`}`,
-                `> ${enabled ? 'New members must verify before accessing channels.' : 'Verification is currently off — all members join freely.'}`,
+                `### ${enabled ? `${EMOJIS.online} Gate is Active` : paused ? `${EMOJIS.offline} Gate is Paused` : `${EMOJIS.offline} Gate is Inactive`}`,
+                `> ${enabled ? 'New members must verify before accessing channels.' : paused ? 'Configured, but Premium has lapsed — renew to resume the gate.' : 'Verification is currently off — all members join freely.'}`,
                 ``,
                 `### ${EMOJIS.shield} Configuration`,
                 `**Verified role** — ${verifiedRole}`,
