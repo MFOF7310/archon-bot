@@ -323,6 +323,26 @@ function suggestZones(query, { preferred, locale, db } = {}) {
     return out.map(tz => ({ name: zoneLabel(tz, now, lang), value: tz }));
 }
 
+// Accepts a zone name, or the label of one of our own suggestions. Mobile
+// Discord sometimes submits the label text instead of the choice's value,
+// and people often type a city and press send without picking. Only an
+// unambiguous match is accepted — one city, or a country with one zone.
+function resolveTimezone(input) {
+    const raw = String(input || '').trim();
+    if (isValidTimezone(raw)) return raw;
+    const head = norm(raw.split('·')[0].split('—')[0]);
+    if (!head) return null;
+    const { zones, countries, byCode } = tzIndex();
+    const byCity = zones.filter(tz => norm((tz.split('/').pop() || '').replace(/_/g, ' ')) === head);
+    if (byCity.length === 1) return byCity[0];
+    const byCountry = countries.filter(ct => ct.keys.includes(head));
+    if (byCountry.length === 1) {
+        const list = byCode.get(byCountry[0].code) || [];
+        if (list.length === 1) return list[0];
+    }
+    return null;
+}
+
 // ================= ANNOUNCEMENT PROTOCOL — CLASSIFIED =================
 // last_announced_year in the database is the real guard against repeats —
 // it survives restarts. The Set only covers a moment with no database.
@@ -639,11 +659,12 @@ module.exports = {
             const day = interaction.options.getInteger('day');
             const month = interaction.options.getInteger('month');
             const year = interaction.options.getInteger('year');
-            const timezone = interaction.options.getString('timezone') || 'UTC';
-            if (!isValidTimezone(timezone)) {
+            const timezoneInput = interaction.options.getString('timezone') || 'UTC';
+            const timezone = resolveTimezone(timezoneInput);
+            if (!timezone) {
                 return interaction.editReply(lang === 'fr'
-                    ? `❌ Fuseau horaire inconnu : **${timezone}**. Choisissez une suggestion dans la liste.`
-                    : `❌ Unknown timezone: **${timezone}**. Pick one of the suggestions.`);
+                    ? `❌ Fuseau horaire inconnu : **${timezoneInput}**. Choisissez une suggestion dans la liste.`
+                    : `❌ Unknown timezone: **${timezoneInput}**. Pick one of the suggestions.`);
             }
             if (day < 1 || day > 31) return interaction.editReply(strings.invalidDay);
             if (month < 1 || month > 12) return interaction.editReply(strings.invalidMonth);
