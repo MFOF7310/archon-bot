@@ -107,7 +107,7 @@ function getZodiacSign(day, month) {
 
 // ================= DATABASE OPERATIONS =================
 function saveBirthday(db, userId, day, month, year, timezone = 'UTC') {
-    db.prepare(`INSERT OR REPLACE INTO birthday (user_id, day, month, year, timezone, created_at) VALUES (?, ?, ?, ?, ?, ?)`)
+    db.prepare(`INSERT INTO birthday (user_id, day, month, year, timezone, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET day = excluded.day, month = excluded.month, year = excluded.year, timezone = excluded.timezone`)
         .run(userId, day, month, year || null, timezone, Date.now());
     birthdays.set(userId, { day, month, year, timezone });
 }
@@ -177,19 +177,201 @@ function getAgeCategory(age) {
     return { msg: `⭐ Turning **${age}** — CENTENARIAN!`, color: '#FFD700' };
 }
 
+// ================= TIMEZONES =================
+// Stored zones are IANA names (Africa/Bamako) or the "UTC-5" offsets the old
+// fixed choice list produced. Both resolve to a local date here.
+const LEGACY_OFFSET = /^UTC\s*([+-])\s*(\d{1,2})(?::?(\d{2}))?$/i;
+
+function isValidTimezone(tz) {
+    if (!tz) return false;
+    if (tz === 'UTC' || LEGACY_OFFSET.test(tz)) return true;
+    try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
+}
+
+function isLeapYear(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+
+// The calendar date and hour right now in the given zone.
+function localParts(tz, now = new Date()) {
+    const m = LEGACY_OFFSET.exec(tz || '');
+    if (m) {
+        const mins = (m[1] === '-' ? -1 : 1) * (parseInt(m[2], 10) * 60 + parseInt(m[3] || '0', 10));
+        const d = new Date(now.getTime() + mins * 60000);
+        return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours() };
+    }
+    try {
+        const p = new Intl.DateTimeFormat('en-US', {
+            timeZone: isValidTimezone(tz) ? tz : 'UTC',
+            year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', hourCycle: 'h23',
+        }).formatToParts(now).reduce((a, x) => (a[x.type] = x.value, a), {});
+        return { year: +p.year, month: +p.month, day: +p.day, hour: +p.hour % 24 };
+    } catch {
+        return { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1, day: now.getUTCDate(), hour: now.getUTCHours() };
+    }
+}
+
+function offsetLabel(tz, now = new Date()) {
+    if (LEGACY_OFFSET.test(tz || '')) return tz.toUpperCase().replace(/\s/g, '');
+    try {
+        const v = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' })
+            .formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT';
+        return v === 'GMT' ? 'UTC+0' : v.replace('GMT', 'UTC');
+    } catch { return 'UTC+0'; }
+}
+
+// ================= TIMEZONE AUTOCOMPLETE =================
+// Nothing here is a hand-written list. Countries and their zones come from
+// the system tz database (zone.tab), names from Intl.DisplayNames in the
+// user's language, and empty-input suggestions from real signals: the
+// server's zone, the user's Discord locale, and zones members already use.
+const ZONE_TAB = '/usr/share/zoneinfo/zone.tab';
+
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9+:\-]+/g, ' ').trim();
+
+function tzIndex() {
+    if (tzIndex.cache) return tzIndex.cache;
+    const byCode = new Map();   // 'BR' -> ['America/Sao_Paulo', ...]
+    const info = new Map();     // tz -> { code, note }
+    try {
+        for (const line of require('fs').readFileSync(ZONE_TAB, 'utf8').split('\n')) {
+            if (!line || line[0] === '#') continue;
+            const [code, , tz, note = ''] = line.split('\t');
+            if (!code || !tz) continue;
+            if (!byCode.has(code)) byCode.set(code, []);
+            byCode.get(code).push(tz);
+            info.set(tz, { code, note });
+        }
+    } catch {}
+    // zone.tab lists every populated zone under its current name. The Intl
+    // list is only a fallback, since it also carries legacy aliases.
+    let zones = [...info.keys()];
+    if (!zones.length) { try { zones = Intl.supportedValuesOf('timeZone'); } catch {} }
+    zones = ['UTC', ...zones.filter(z => z !== 'UTC').sort()];
+
+    const displays = {};
+    for (const l of ['en', 'fr']) { try { displays[l] = new Intl.DisplayNames([l], { type: 'region' }); } catch {} }
+    const countries = [];       // { code, keys: normalised names in every language }
+    for (const code of byCode.keys()) {
+        const keys = new Set();
+        for (const d of Object.values(displays)) { try { const nm = d.of(code); if (nm) keys.add(norm(nm)); } catch {} }
+        countries.push({ code, keys: [...keys] });
+    }
+    return (tzIndex.cache = { zones, byCode, info, countries, displays });
+}
+
+function countryName(code, lang) {
+    const { displays } = tzIndex();
+    try { return (displays[lang] || displays.en)?.of(code) || code; } catch { return code; }
+}
+
+function zoneLabel(tz, now, lang) {
+    if (LEGACY_OFFSET.test(tz)) return tz;
+    const meta = tzIndex().info.get(tz);
+    const city = (tz.split('/').pop() || tz).replace(/_/g, ' ');
+    let time = '';
+    try { time = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now); } catch {}
+    const parts = [meta ? `${city} — ${countryName(meta.code, lang)}` : city, offsetLabel(tz, now)];
+    if (time) parts.push(time);
+    if (meta?.note) parts.push(meta.note);
+    return parts.join(' · ').slice(0, 100);
+}
+
+// Search order: country code, country name, UTC offset, city, then the
+// region notes from zone.tab ("Amazonas", "Pernambuco").
+function suggestZones(query, { preferred, locale, db } = {}) {
+    const { zones, byCode, info, countries } = tzIndex();
+    const lang = String(locale || '').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+    const q = norm(query);
+    const now = new Date();
+    const out = [];
+    const push = tz => { if (tz && out.length < 25 && !out.includes(tz) && isValidTimezone(tz)) out.push(tz); };
+    // Short queries show a few zones per country; a longer, deliberate one shows them all.
+    const pushCountry = code => (byCode.get(code) || []).slice(0, q.length < 4 ? 5 : 50).forEach(push);
+
+    if (!q) {
+        push(preferred);
+        // Discord locales like pt-BR or en-US carry a country.
+        const region = String(locale || '').split('-')[1];
+        if (region && /^[A-Z]{2}$/.test(region)) (byCode.get(region) || []).slice(0, 5).forEach(push);
+        // Zones the bot's members already chose.
+        try {
+            for (const r of db.prepare(`SELECT timezone FROM birthday WHERE timezone IS NOT NULL GROUP BY timezone ORDER BY COUNT(*) DESC LIMIT 8`).all()) push(r.timezone);
+        } catch {}
+        // Fill the rest with one zone per UTC offset, so every offset is reachable.
+        const minutes = o => { const m = /UTC([+-])(\d+)(?::(\d+))?/.exec(o); return m ? (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +(m[3] || 0)) : 0; };
+        const seen = new Set(out.map(tz => offsetLabel(tz, now)));
+        const spread = [];
+        for (const tz of zones) { const o = offsetLabel(tz, now); if (!seen.has(o)) { seen.add(o); spread.push([o, tz]); } }
+        spread.sort((a, b) => minutes(a[0]) - minutes(b[0])).forEach(([, tz]) => push(tz));
+    } else {
+        if (/^[a-z]{2}$/.test(q)) pushCountry(q.toUpperCase());
+        for (const ct of countries) if (ct.keys.some(k => k.startsWith(q))) pushCountry(ct.code);
+        for (const ct of countries) if (ct.keys.some(k => k.includes(q))) pushCountry(ct.code);
+        const off = q.replace(/^(utc|gmt)\s*/, '');
+        if (/^[+-]?\d{1,2}(:\d{2})?$/.test(off)) {
+            const want = (/^[+-]/.test(off) ? off : '+' + off).replace(/^([+-])0(\d)/, '$1$2');
+            for (const tz of zones) {
+                if (out.length >= 25) break;
+                const o = offsetLabel(tz, now).slice(3);
+                if (o === want || o.startsWith(want + ':')) push(tz);
+            }
+        }
+        for (const tz of zones) if (norm((tz.split('/').pop() || '').replace(/_/g, ' ')).startsWith(q)) push(tz);
+        for (const tz of zones) if (norm(tz.replace(/[_/]/g, ' ')).includes(q)) push(tz);
+        for (const tz of zones) if (norm(info.get(tz)?.note).includes(q)) push(tz);
+    }
+    return out.map(tz => ({ name: zoneLabel(tz, now, lang), value: tz }));
+}
+
 // ================= ANNOUNCEMENT PROTOCOL — CLASSIFIED =================
-const announcedToday = new Set();
+// last_announced_year in the database is the real guard against repeats —
+// it survives restarts. The Set only covers a moment with no database.
+const announcedMem = new Set();
+
+// Adds last_announced_year once. On the run that adds it, today's birthdays
+// are marked done if the old 08:00 check already announced them, so the
+// first pass after this upgrade doesn't repeat them.
+function ensureBirthdayColumns(db) {
+    if (ensureBirthdayColumns.done || !db) return;
+    try {
+        db.exec(`ALTER TABLE birthday ADD COLUMN last_announced_year INTEGER`);
+        const n = new Date();
+        if (n.getHours() >= 8) {
+            db.prepare('UPDATE birthday SET last_announced_year = ? WHERE day = ? AND month = ?')
+                .run(n.getFullYear(), n.getDate(), n.getMonth() + 1);
+        }
+        ensureBirthdayColumns.done = true;
+    } catch (e) {
+        if (/duplicate column/i.test(e.message)) ensureBirthdayColumns.done = true;
+    }
+}
+
+function alreadyAnnounced(db, userId, year) {
+    if (announcedMem.has(`${userId}:${year}`)) return true;
+    try {
+        return db.prepare('SELECT last_announced_year FROM birthday WHERE user_id = ?').get(userId)?.last_announced_year === year;
+    } catch { return false; }
+}
+
+function markAnnounced(db, userId, year) {
+    announcedMem.add(`${userId}:${year}`);
+    try { db.prepare('UPDATE birthday SET last_announced_year = ? WHERE user_id = ?').run(year, userId); } catch {}
+}
 
 async function checkAndAnnounceBirthdays(client) {
     const today = new Date();
-    const currentDay = today.getDate();
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
-    
+    const db = client.db;
+    ensureBirthdayColumns(db);
+
     for (const [userId, bday] of birthdays) {
-        if (bday.day === currentDay && bday.month === currentMonth) {
-            const todayKey = `${userId}-${currentDay}-${currentMonth}-${currentYear}`;
-            if (announcedToday.has(todayKey)) continue;
+        // The owner's own date and hour, from their timezone.
+        const local = localParts(bday.timezone);
+        const currentYear = local.year;
+        // Feb 29 birthdays are celebrated on Feb 28 in non-leap years.
+        const bDay = (bday.month === 2 && bday.day === 29 && !isLeapYear(local.year)) ? 28 : bday.day;
+        if (bDay === local.day && bday.month === local.month && local.hour >= 8 && !alreadyAnnounced(db, userId, local.year)) {
+            // Mark before sending, so a failed or slow send can never repeat.
+            markAnnounced(db, userId, local.year);
             for (const [guildId, guild] of client.guilds.cache) {
                 const member = await guild.members.fetch(userId).catch(() => null);
                 if (!member) continue;
@@ -285,11 +467,19 @@ async function checkAndAnnounceBirthdays(client) {
 
 // ================= SCHEDULE DAILY CHECK =================
 function scheduleDailyCheck(client) {
-    setInterval(() => {
-        const now = new Date();
-        if (now.getHours() === 8 && now.getMinutes() === 0) checkAndAnnounceBirthdays(client);
-    }, 60000);
-    // Boot-time check removed — announces only at 8:00 AM to prevent restart spam
+    // Every 5 minutes. A birthday is announced once its owner reaches 08:00 in
+    // their own timezone; the database guard stops repeats, so a restart or
+    // outage at 08:00 catches up later that day instead of skipping it.
+    let running = false;
+    const run = async () => {
+        if (running) return;
+        running = true;
+        try { await checkAndAnnounceBirthdays(client); }
+        catch (e) { console.error('[BIRTHDAY] check failed:', e.message); }
+        finally { running = false; }
+    };
+    setTimeout(run, 60000);
+    setInterval(run, 5 * 60000);
 }
 
 // ================= MAIN COMMAND =================
@@ -298,6 +488,15 @@ module.exports = {
     aliases: ['bday', 'anniversaire'],
     description: '🎂 Birthday intelligence system — set, check, and celebrate birthdays',
     category: 'UTILITY',
+
+    autocomplete: async (interaction, client) => {
+        const focused = interaction.options.getFocused(true);
+        if (focused.name !== 'timezone') return interaction.respond([]).catch(() => {});
+        let preferred = null;
+        try { preferred = client?.getServerSettings?.(interaction.guildId)?.timezone || null; } catch {}
+        const choices = suggestZones(focused.value, { preferred, locale: interaction.locale, db: client?.db });
+        return interaction.respond(choices).catch(() => {});
+    },
     cooldown: 3000,
 
     data: new SlashCommandBuilder()
@@ -309,22 +508,8 @@ module.exports = {
             .addIntegerOption(opt => opt.setName('day').setDescription('Day of birth (1-31)').setRequired(true).setMinValue(1).setMaxValue(31))
             .addIntegerOption(opt => opt.setName('month').setDescription('Month of birth (1-12)').setRequired(true).setMinValue(1).setMaxValue(12))
             .addIntegerOption(opt => opt.setName('year').setDescription('Year of birth (optional)').setRequired(false).setMinValue(1900).setMaxValue(2020))
-            .addStringOption(opt => opt.setName('timezone').setDescription('Your timezone (optional)').setRequired(false)
-                .addChoices(
-                    { name: '🌍 UTC-11', value: 'UTC-11' }, { name: '🌍 UTC-10', value: 'UTC-10' },
-                    { name: '🌍 UTC-9', value: 'UTC-9' }, { name: '🌎 UTC-8', value: 'UTC-8' },
-                    { name: '🌎 UTC-7', value: 'UTC-7' }, { name: '🌎 UTC-6', value: 'UTC-6' },
-                    { name: '🌎 UTC-5', value: 'UTC-5' }, { name: '🌎 UTC-4', value: 'UTC-4' },
-                    { name: '🌎 UTC-3', value: 'UTC-3' }, { name: '🌍 UTC-2', value: 'UTC-2' },
-                    { name: '🌍 UTC-1', value: 'UTC-1' }, { name: '🌍 UTC+0', value: 'UTC+0' },
-                    { name: '🌍 UTC+1', value: 'UTC+1' }, { name: '🌍 UTC+2', value: 'UTC+2' },
-                    { name: '🌍 UTC+3', value: 'UTC+3' }, { name: '🌍 UTC+4', value: 'UTC+4' },
-                    { name: '🌍 UTC+5', value: 'UTC+5' }, { name: '🌍 UTC+6', value: 'UTC+6' },
-                    { name: '🌍 UTC+7', value: 'UTC+7' }, { name: '🌍 UTC+8', value: 'UTC+8' },
-                    { name: '🌍 UTC+9', value: 'UTC+9' }, { name: '🌍 UTC+10', value: 'UTC+10' },
-                    { name: '🌍 UTC+11', value: 'UTC+11' }, { name: '🌍 UTC+12', value: 'UTC+12' },
-                    { name: '🌍 UTC+13', value: 'UTC+13' }
-                )))
+            .addStringOption(opt => opt.setName('timezone').setDescription('Your country, city or UTC offset — e.g. Mali, Brésil, +5:30').setRequired(false)
+                .setAutocomplete(true)))
         .addSubcommand(sub => sub.setName('remove').setDescription('Purge your birthday record from the database'))
         .addSubcommand(sub => sub.setName('check').setDescription('Query birthday intelligence on a target')
             .addUserOption(opt => opt.setName('user').setDescription('Target user to investigate').setRequired(false)))
@@ -455,6 +640,11 @@ module.exports = {
             const month = interaction.options.getInteger('month');
             const year = interaction.options.getInteger('year');
             const timezone = interaction.options.getString('timezone') || 'UTC';
+            if (!isValidTimezone(timezone)) {
+                return interaction.editReply(lang === 'fr'
+                    ? `❌ Fuseau horaire inconnu : **${timezone}**. Choisissez une suggestion dans la liste.`
+                    : `❌ Unknown timezone: **${timezone}**. Pick one of the suggestions.`);
+            }
             if (day < 1 || day > 31) return interaction.editReply(strings.invalidDay);
             if (month < 1 || month > 12) return interaction.editReply(strings.invalidMonth);
             if (year && (year < 1900 || year > 2020)) return interaction.editReply(strings.invalidYear);
@@ -467,7 +657,7 @@ module.exports = {
                 embeds: [new EmbedBuilder()
                     .setColor('#FF69B4')
                     .setAuthor({ name: strings.setTitle, iconURL: interaction.user.displayAvatarURL() })
-                    .setDescription(strings.setSuccess(dateStr) + `\n\n♈ **Zodiac:** ${zodiac}\n🕐 **Timezone:** ${timezone}`)
+                    .setDescription(strings.setSuccess(dateStr) + `\n\n♈ **Zodiac:** ${zodiac}\n🕐 **Timezone:** ${timezone} (${offsetLabel(timezone)})`)
                     .setFooter({ text: '🎂 Birthday Intelligence Division' })
                     .setTimestamp()
                 ] 
