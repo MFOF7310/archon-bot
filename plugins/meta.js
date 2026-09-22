@@ -114,7 +114,7 @@ module.exports = {
         if (focused.name === 'name') {
             const hits = W.searchWeapons(typed, 25);
             return interaction.respond(
-                hits.map(w => ({ name: `${w.name} [${w.tier}] · ${w.category || '—'}`, value: w.name }))
+                hits.map(w => ({ name: `${w.name}${w.tier ? ` [${w.tier}]` : ''} · ${w.category || '—'}`, value: w.name }))
             ).catch(() => {});
         }
 

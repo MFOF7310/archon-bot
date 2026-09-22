@@ -1,0 +1,195 @@
+{
+  "season": "S9-2026",
+  "updated": "2026-09-20",
+  "weapons": [
+    {
+      "name": "AK117",
+      "tier": "S",
+      "intel": {
+        "en": "The undisputed king of versatility. High fire rate and aggressive TTK.",
+        "fr": "Le roi incontesté de la polyvalence. Cadence élevée et TTK agressif."
+      },
+      "specs": "Owc Marksman, No Stock, Owc Laser, 40 Round Mag, Granulated Grip",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1479909018368741711/Screenshot_20260307_114446_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 85,
+        "damage": 75,
+        "accuracy": 80,
+        "range": 70,
+        "control": 75,
+        "mobility": 85
+      },
+      "category": "Assault Rifle"
+    },
+    {
+      "name": "DL Q33",
+      "tier": "S",
+      "intel": {
+        "en": "The sniper's standard. Unmatched consistency and wall-penetration.",
+        "fr": "Le standard du sniper. Constance et pénétration inégalées."
+      },
+      "specs": "Mip Light, Combat Stock, Owc Laser, FMJ, Maevwat Omega Mag",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1479909017387143430/Screenshot_20260307_114516_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 30,
+        "damage": 95,
+        "accuracy": 95,
+        "range": 100,
+        "control": 60,
+        "mobility": 40
+      },
+      "category": "Sniper"
+    },
+    {
+      "name": "BP50",
+      "tier": "GOD",
+      "intel": {
+        "en": "Current peak performance. Fire rate exceeds standard reaction times.",
+        "fr": "Performance maximale actuelle. Cadence dépasse les temps de réaction standards."
+      },
+      "specs": "Leroy Custom Barrel, No Stock, Aim Assist Laser, 60 Round Mag, Stippled Grip",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1479913616877555882/Screenshot_20260307_184241_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 95,
+        "damage": 80,
+        "accuracy": 75,
+        "range": 65,
+        "control": 70,
+        "mobility": 90
+      },
+      "category": "Assault Rifle"
+    },
+    {
+      "name": "SKS",
+      "tier": "GOD",
+      "intel": {
+        "en": "The marksman's choice. Lethal two-tap potential at any range.",
+        "fr": "Le choix du tireur d'élite. Potentiel mortel en deux balles à toute portée."
+      },
+      "specs": "Mip Light, No Stock, Owc Laser, 20 Round Mag, Granulated Grip",
+      "stats": {
+        "fireRate": 60,
+        "damage": 85,
+        "accuracy": 90,
+        "range": 85,
+        "control": 80,
+        "mobility": 75
+      },
+      "category": "Marksman"
+    },
+    {
+      "name": "LW3-TUNDRA",
+      "tier": "S",
+      "intel": {
+        "en": "Elite bolt-action mobility. Best-in-class ADS speed.",
+        "fr": "Mobilité élite à verrou. Meilleure vitesse ADS de sa catégorie."
+      },
+      "specs": "Tiger Team Barrel, Bandit Steady Stock, 7 Round Mag, Serpent Wrap",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1481256517700292722/Screenshot_20260311_114145_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 35,
+        "damage": 98,
+        "accuracy": 92,
+        "range": 95,
+        "control": 55,
+        "mobility": 50
+      },
+      "category": "Sniper"
+    },
+    {
+      "name": "RYTEC AMR",
+      "tier": "A",
+      "intel": {
+        "en": "Anti-material power. Ideal for disrupting enemy streaks.",
+        "fr": "Puissance anti-matériel. Idéal pour perturber les séries ennemies."
+      },
+      "specs": "Mip Light Barrel, Owc Skeleton Stock, Owc Laser, Explosive Mag, Stippled Grip",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1481256517347967017/Screenshot_20260311_114124_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 25,
+        "damage": 100,
+        "accuracy": 85,
+        "range": 90,
+        "control": 45,
+        "mobility": 30
+      },
+      "category": "Sniper"
+    },
+    {
+      "name": "KRM-262",
+      "tier": "A",
+      "intel": {
+        "en": "Devastating close-range shotgun. One-shot kill potential.",
+        "fr": "Fusil à pompe dévastateur à courte portée. Potentiel de kill en un coup."
+      },
+      "specs": "Marauder Suppressor, Extended Barrel, No Stock, OWC Laser",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1479913614772142111/Screenshot_20260307_184727_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 45,
+        "damage": 100,
+        "accuracy": 40,
+        "range": 20,
+        "control": 50,
+        "mobility": 80
+      },
+      "category": "Shotgun"
+    },
+    {
+      "name": "FFAR 1",
+      "tier": "S",
+      "intel": {
+        "en": "Aggressive assault rifle with blistering fire rate.",
+        "fr": "Fusil d'assaut agressif avec une cadence de tir fulgurante."
+      },
+      "specs": "Agency Suppressor, Task Force Barrel, Raider Stock, Speed Mag",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1479909018725126286/Screenshot_20260307_114435_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 90,
+        "damage": 70,
+        "accuracy": 75,
+        "range": 60,
+        "control": 65,
+        "mobility": 88
+      },
+      "category": "Assault Rifle"
+    },
+    {
+      "name": "HDR",
+      "tier": "A",
+      "intel": {
+        "en": "Heavy-duty bolt action. Extreme range and damage.",
+        "fr": "Fusil à verrou lourd. Portée et dégâts extrêmes."
+      },
+      "specs": "Monolithic Suppressor, 26.9 HDR Pro, FTAC Stalker-Scout, 9 Round Mags",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1481065011232112813/Screenshot_20260310_224049_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 25,
+        "damage": 99,
+        "accuracy": 98,
+        "range": 100,
+        "control": 40,
+        "mobility": 30
+      },
+      "category": "Sniper"
+    },
+    {
+      "name": "KN-44",
+      "tier": "A",
+      "intel": {
+        "en": "Reliable workhorse. Consistent performance at all ranges.",
+        "fr": "Cheval de bataille fiable. Performance constante à toutes les portées."
+      },
+      "specs": "OWC Marksman, No Stock, OWC Laser, 38 Rnd, Granulated Grip",
+      "image": "https://cdn.discordapp.com/attachments/1472176119540224010/1481065011530043442/Screenshot_20260310_223955_Call_of_Duty.jpg",
+      "stats": {
+        "fireRate": 70,
+        "damage": 75,
+        "accuracy": 80,
+        "range": 75,
+        "control": 80,
+        "mobility": 75
+      },
+      "category": "Assault Rifle"
+    }
+  ]
+}

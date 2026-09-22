@@ -138,7 +138,7 @@ module.exports = {
             out.push({ name: name.slice(0, 100), value: value.slice(0, 100) });
         };
         // meta weapons first, capped at 20 so server-saved names still fit
-        for (const w of W.searchWeapons(q.toLowerCase(), 20)) add(`${w.name} [${w.tier}]`, w.name);
+        for (const w of W.searchWeapons(q.toLowerCase(), 20)) add(w.tier ? `${w.name} [${w.tier}]` : `${w.name} · ${w.category || '—'}`, w.name);
         // weapons members already saved on this server, even if not in W
         try {
             const rows = interaction.client.db.prepare(

@@ -15,7 +15,9 @@ node_modules/
 package-lock.json
 # ==================== 💾 DATABASE & USER DATA ====================
 # SQLite database files (auto-generated at runtime)
-data/
+data/*
+!data/weapons.json
+!data/roster.json
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

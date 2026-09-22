@@ -1,0 +1,536 @@
+{
+ "updated": "2026-09-22",
+ "weapons": [
+  {
+   "name": "Cronen Squall",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "ISO Hemlock",
+   "category": "Assault Rifle",
+   "aliases": [
+    "Hemlock"
+   ]
+  },
+  {
+   "name": "BAL-27",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "RAM-7",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Lachmann-556",
+   "category": "Assault Rifle",
+   "aliases": [
+    "Lachmann"
+   ]
+  },
+  {
+   "name": "XM4",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Lag 53",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Vargo-S",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Type 19",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "BP50",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Grau 5.56",
+   "category": "Assault Rifle",
+   "aliases": [
+    "Grau"
+   ]
+  },
+  {
+   "name": "Groza",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Maddox",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "FFAR 1",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Krig 6",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "EM2",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Kilo 141",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Oden",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "M13",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Swordfish",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "AS VAL",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "CR-56 AMAX",
+   "category": "Assault Rifle",
+   "aliases": [
+    "AMAX"
+   ]
+  },
+  {
+   "name": "Peacekeeper MK2",
+   "category": "Assault Rifle",
+   "aliases": [
+    "Peacekeeper"
+   ]
+  },
+  {
+   "name": "FR .556",
+   "category": "Assault Rifle",
+   "aliases": [
+    "FR556"
+   ]
+  },
+  {
+   "name": "HVK-30",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "DR-H",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "KN-44",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "HBRa3",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "ICR-1",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Man-O-War",
+   "category": "Assault Rifle",
+   "aliases": [
+    "Manowar"
+   ]
+  },
+  {
+   "name": "BK57",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "LK24",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "ASM10",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "M4",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "AK117",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "AK-47",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Type 25",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "M16",
+   "category": "Assault Rifle"
+  },
+  {
+   "name": "Static HV",
+   "category": "SMG"
+  },
+  {
+   "name": "FSS Hurricane",
+   "category": "SMG",
+   "aliases": [
+    "Hurricane"
+   ]
+  },
+  {
+   "name": "Switchblade X9",
+   "category": "SMG",
+   "aliases": [
+    "Switchblade",
+    "X9"
+   ]
+  },
+  {
+   "name": "QQ9",
+   "category": "SMG"
+  },
+  {
+   "name": "VMP",
+   "category": "SMG"
+  },
+  {
+   "name": "CBR4",
+   "category": "SMG"
+  },
+  {
+   "name": "Fennec",
+   "category": "SMG"
+  },
+  {
+   "name": "MSMC",
+   "category": "SMG"
+  },
+  {
+   "name": "PDW-57",
+   "category": "SMG"
+  },
+  {
+   "name": "Chicom",
+   "category": "SMG"
+  },
+  {
+   "name": "RUS-79U",
+   "category": "SMG"
+  },
+  {
+   "name": "AKS-74U",
+   "category": "SMG"
+  },
+  {
+   "name": "HG 40",
+   "category": "SMG"
+  },
+  {
+   "name": "Razorback",
+   "category": "SMG"
+  },
+  {
+   "name": "GKS",
+   "category": "SMG"
+  },
+  {
+   "name": "Cordite",
+   "category": "SMG"
+  },
+  {
+   "name": "Pharo",
+   "category": "SMG"
+  },
+  {
+   "name": "QXR",
+   "category": "SMG"
+  },
+  {
+   "name": "MX9",
+   "category": "SMG"
+  },
+  {
+   "name": "Striker 45",
+   "category": "SMG"
+  },
+  {
+   "name": "KSP 45",
+   "category": "SMG"
+  },
+  {
+   "name": "CX-9",
+   "category": "SMG"
+  },
+  {
+   "name": "AGR 556",
+   "category": "SMG"
+  },
+  {
+   "name": "PP19 Bizon",
+   "category": "SMG"
+  },
+  {
+   "name": "LC10",
+   "category": "SMG"
+  },
+  {
+   "name": "OTs 9",
+   "category": "SMG"
+  },
+  {
+   "name": "PPSh-41",
+   "category": "SMG"
+  },
+  {
+   "name": "MAC-10",
+   "category": "SMG"
+  },
+  {
+   "name": "USS 9",
+   "category": "SMG"
+  },
+  {
+   "name": "Lapa",
+   "category": "SMG"
+  },
+  {
+   "name": "Tec-9",
+   "category": "SMG"
+  },
+  {
+   "name": "ISO",
+   "category": "SMG"
+  },
+  {
+   "name": "Owen Gun",
+   "category": "SMG"
+  },
+  {
+   "name": "DL Q33",
+   "category": "Sniper",
+   "aliases": [
+    "Q33",
+    "DLQ33"
+   ]
+  },
+  {
+   "name": "Locus",
+   "category": "Sniper"
+  },
+  {
+   "name": "Arctic .50",
+   "category": "Sniper",
+   "aliases": [
+    "Arctic50"
+   ]
+  },
+  {
+   "name": "XPR-50",
+   "category": "Sniper"
+  },
+  {
+   "name": "M21 EBR",
+   "category": "Sniper"
+  },
+  {
+   "name": "Outlaw",
+   "category": "Sniper"
+  },
+  {
+   "name": "NA-45",
+   "category": "Sniper"
+  },
+  {
+   "name": "Rytec AMR",
+   "category": "Sniper",
+   "aliases": [
+    "Rytec"
+   ]
+  },
+  {
+   "name": "SVD",
+   "category": "Sniper"
+  },
+  {
+   "name": "Koshka",
+   "category": "Sniper"
+  },
+  {
+   "name": "ZRG 20mm",
+   "category": "Sniper"
+  },
+  {
+   "name": "HDR",
+   "category": "Sniper"
+  },
+  {
+   "name": "LW3-Tundra",
+   "category": "Sniper",
+   "aliases": [
+    "Tundra"
+   ]
+  },
+  {
+   "name": "3-Line Rifle",
+   "category": "Sniper"
+  },
+  {
+   "name": "Kilo Bolt-Action",
+   "category": "Marksman",
+   "aliases": [
+    "Kilo Bolt"
+   ]
+  },
+  {
+   "name": "SKS",
+   "category": "Marksman"
+  },
+  {
+   "name": "SP-R 208",
+   "category": "Marksman"
+  },
+  {
+   "name": "MK2",
+   "category": "Marksman"
+  },
+  {
+   "name": "Type 63",
+   "category": "Marksman"
+  },
+  {
+   "name": "M1 Garand",
+   "category": "Marksman"
+  },
+  {
+   "name": "SO-14",
+   "category": "Marksman"
+  },
+  {
+   "name": "UL736",
+   "category": "LMG"
+  },
+  {
+   "name": "S36",
+   "category": "LMG"
+  },
+  {
+   "name": "RPD",
+   "category": "LMG"
+  },
+  {
+   "name": "M4LMG",
+   "category": "LMG"
+  },
+  {
+   "name": "Chopper",
+   "category": "LMG"
+  },
+  {
+   "name": "Holger 26",
+   "category": "LMG"
+  },
+  {
+   "name": "PKM",
+   "category": "LMG"
+  },
+  {
+   "name": "Bruen Mk9",
+   "category": "LMG",
+   "aliases": [
+    "Bruen"
+   ]
+  },
+  {
+   "name": "Hades",
+   "category": "LMG"
+  },
+  {
+   "name": "Dingo",
+   "category": "LMG"
+  },
+  {
+   "name": "MG42",
+   "category": "LMG"
+  },
+  {
+   "name": "BY15",
+   "category": "Shotgun"
+  },
+  {
+   "name": "HS0405",
+   "category": "Shotgun"
+  },
+  {
+   "name": "Striker",
+   "category": "Shotgun"
+  },
+  {
+   "name": "KRM-262",
+   "category": "Shotgun"
+  },
+  {
+   "name": "Echo",
+   "category": "Shotgun"
+  },
+  {
+   "name": "HS2126",
+   "category": "Shotgun"
+  },
+  {
+   "name": "R9-0",
+   "category": "Shotgun"
+  },
+  {
+   "name": "JAK-12",
+   "category": "Shotgun"
+  },
+  {
+   "name": "Argus",
+   "category": "Shotgun"
+  },
+  {
+   "name": "J358",
+   "category": "Pistol"
+  },
+  {
+   "name": ".50 GS",
+   "category": "Pistol"
+  },
+  {
+   "name": "MW11",
+   "category": "Pistol"
+  },
+  {
+   "name": "Renetti",
+   "category": "Pistol"
+  },
+  {
+   "name": "L-CAR 9",
+   "category": "Pistol"
+  },
+  {
+   "name": "Shorty",
+   "category": "Pistol"
+  },
+  {
+   "name": "Marshal",
+   "category": "Pistol"
+  },
+  {
+   "name": "FHJ-18",
+   "category": "Launcher"
+  },
+  {
+   "name": "SMRS",
+   "category": "Launcher"
+  }
+ ]
+}
