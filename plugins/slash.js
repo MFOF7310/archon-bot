@@ -51,10 +51,11 @@ function isDMCompatible(command) {
 
 // ================= SAFE INTERACTION DEFER =================
 async function safeDefer(interaction, context) {
+    if (interaction.deferred || interaction.replied) return false;
     try {
         await interaction.deferUpdate();
     } catch (error) {
-        if (error.code === 10062) {
+        if (error.code === 10062 || error.code === 40060 || error.code === 'InteractionAlreadyReplied') {
             console.log(`[SLASH] Interaction expired (${context})`);
             return false;
         }
@@ -463,7 +464,7 @@ module.exports = {
 
         if (!reply) return;
 
-        const collector = reply.createMessageComponentCollector({ time: 120000 });
+        const collector = reply.createMessageComponentCollector({ time: 120000, filter: i => ['close_', 'refresh_', 'slash_category'].includes(i.customId) });
 
         collector.on('collect', async (interaction) => {
             if (interaction.user.id !== message.author.id) {
@@ -569,14 +570,14 @@ module.exports = {
 
         const embed = buildMainEmbed(client, t, lang, slashCommands, categories, isDM, version, interaction.guild?.name || 'DIMENSIONAL VOID');
 
-        await interaction.reply({ 
-            embeds: [embed], 
-            components: [selectRow, controlRow], 
-            flags: 64 
-        });
+        const isEdit = interaction.replied || interaction.deferred;
+        const payload = { embeds: [embed], components: [selectRow, controlRow] };
+        // flags ne passe qu'à la réponse initiale
+        if (!isEdit) payload.flags = 64;
+        await interaction[isEdit ? 'editReply' : 'reply'](payload);
 
         const collector = interaction.channel?.createMessageComponentCollector({
-            filter: i => i.user.id === interaction.user.id,
+            filter: i => i.user.id === interaction.user.id && ['close_slash', 'refresh_slash', 'slash_category_slash'].includes(i.customId),
             time: 120000
         });
 
@@ -584,13 +585,15 @@ module.exports = {
 
         collector.on('collect', async (btn) => {
             if (btn.customId === 'close_slash') {
+                await btn.deferUpdate().catch(() => {});
                 await interaction.deleteReply().catch(() => {});
                 collector.stop();
                 return;
             }
 
             if (btn.customId === 'refresh_slash') {
-                await interaction.deleteReply().catch(() => {});
+                await btn.deferUpdate().catch(() => {});
+                collector.stop();
                 await module.exports.execute(interaction, client);
                 return;
             }
