@@ -67,7 +67,7 @@ function buildEmbed(build, member, guild) {
         .setTimestamp(new Date((build.updated_at || build.created_at) * 1000));
 
     const meta = weapon
-        ? `**${weapon.tier} tier** · ${weapon.category || '—'}`
+        ? [weapon.tier ? `**${weapon.tier} tier**` : null, weapon.category].filter(Boolean).join(' · ')
         : '';
     embed.setDescription([meta, build.note].filter(Boolean).join('\n\n') || null);
 
