@@ -24,6 +24,32 @@ async function downloadToFile(url, dest) {
     return dest;
 }
 
+// Deletes screenshots whose build row is gone (kicked servers, failed saves).
+// Runs at most every 6 hours, triggered by /build use.
+let lastSweep = 0;
+function sweepOrphanImages(db) {
+    if (Date.now() - lastSweep < 6 * 3600 * 1000) return;
+    lastSweep = Date.now();
+    try {
+        if (!fs.existsSync(BUILD_IMG_DIR)) return;
+        const keep = new Set(db.prepare(
+            'SELECT image_path FROM member_builds WHERE image_path IS NOT NULL'
+        ).all().map(r => path.resolve(r.image_path)));
+        let removed = 0;
+        for (const f of fs.readdirSync(BUILD_IMG_DIR)) {
+            if (!/^\d+-\d+\.jpg$/.test(f)) continue;
+            const fp = path.join(BUILD_IMG_DIR, f);
+            if (keep.has(path.resolve(fp))) continue;
+            if (Date.now() - fs.statSync(fp).mtimeMs < 10 * 60 * 1000) continue; // may still be downloading
+            fs.unlinkSync(fp);
+            removed++;
+        }
+        if (removed) console.log(`[BUILD] sweep removed ${removed} orphaned screenshot(s)`);
+    } catch (e) {
+        console.error('[BUILD] sweep failed:', e.message);
+    }
+}
+
 function removeImage(p) {
     try { if (p && fs.existsSync(p)) fs.unlinkSync(p); } catch (_) {}
 }
@@ -42,8 +68,8 @@ function buildEmbed(build, member, guild) {
 
     const meta = weapon
         ? `**${weapon.tier} tier** · ${weapon.category || '—'}`
-        : '*Not in the current meta list*';
-    embed.setDescription(meta + (build.note ? `\n\n${build.note}` : ''));
+        : '';
+    embed.setDescription([meta, build.note].filter(Boolean).join('\n\n') || null);
 
     if (build.attachments) {
         embed.addFields({
@@ -103,10 +129,30 @@ module.exports = {
     autocomplete: async (interaction) => {
         const focused = interaction.options.getFocused(true);
         if (focused.name !== 'weapon') return interaction.respond([]).catch(() => {});
-        const hits = W.searchWeapons((focused.value || '').toLowerCase(), 25);
-        return interaction.respond(
-            hits.map(w => ({ name: `${w.name} [${w.tier}]`, value: w.name }))
-        ).catch(() => {});
+        const q = (focused.value || '').trim();
+        const out = [];
+        const seen = new Set();
+        const add = (name, value) => {
+            if (!value || out.length >= 25 || seen.has(value.toLowerCase())) return;
+            seen.add(value.toLowerCase());
+            out.push({ name: name.slice(0, 100), value: value.slice(0, 100) });
+        };
+        // meta weapons first, capped at 20 so server-saved names still fit
+        for (const w of W.searchWeapons(q.toLowerCase(), 20)) add(`${w.name} [${w.tier}]`, w.name);
+        // weapons members already saved on this server, even if not in W
+        try {
+            const rows = interaction.client.db.prepare(
+                `SELECT weapon, COUNT(*) AS n FROM member_builds
+                 WHERE guild_id = ? AND LOWER(weapon) LIKE ?
+                 GROUP BY LOWER(weapon) ORDER BY n DESC LIMIT 25`
+            ).all(interaction.guildId, `%${q.toLowerCase()}%`);
+            for (const r of rows) add(`${r.weapon} (${r.n} saved)`, r.weapon);
+        } catch (_) {}
+        // nothing known matches on save: offer exactly what is typed
+        if (!out.length && q && interaction.options.getSubcommand(false) === 'save') {
+            add(`${q} (new)`, q.slice(0, 60));
+        }
+        return interaction.respond(out).catch(() => {});
     },
 
     execute: async (interaction, client) => {
@@ -114,6 +160,7 @@ module.exports = {
             return interaction.reply({ content: 'Server only.', flags: MessageFlags.Ephemeral });
         }
         const db = client.db;
+        sweepOrphanImages(db);
         const gid = interaction.guild.id;
         const uid = interaction.user.id;
         const sub = interaction.options.getSubcommand();
@@ -145,7 +192,7 @@ module.exports = {
             let id;
             if (existing) {
                 db.prepare(
-                    `UPDATE member_builds SET attachments = ?, image_url = ?, note = ?,
+                    `UPDATE member_builds SET attachments = COALESCE(?, attachments), image_url = COALESCE(?, image_url), note = COALESCE(?, note),
                      updated_at = strftime('%s','now') WHERE id = ?`
                 ).run(attachments, shot?.url || null, note, existing.id);
                 id = existing.id;
@@ -263,6 +310,7 @@ module.exports = {
     run: async (client, message, args) => {
         if (!message.guild) return message.reply('Server only.').catch(() => {});
         const db = client.db;
+        sweepOrphanImages(db);
         const gid = message.guild.id;
         const arg = args.join(' ').trim();
 
