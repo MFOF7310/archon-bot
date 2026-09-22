@@ -34,5 +34,10 @@
   "key_removed": "",
   "key_none": "",
   "key_db_error_remove": "",
-  "db_offline": ""
+  "db_offline": "",
+  "fallback_1": "N da len ba tɛ o la kɔsɛbɛ. N bɛ se ka i dɛmɛ ni fɛn min bɛ nka yamaruya kan — i bɛ sen ka ɲinikali kɛ ni economy, leveling, wala moderation kan, walima i ka `{prefix}help` ci walasa ka yamaruya kɔmandiw (commandes) ye.",
+  "fallback_2": "N ma kunnafoni jɔn sɔrɔ nin ko in kan. I b'a fɛ n ka ɲini interneti kan wa, walima n bɛ se ka i dɛmɛ ni fɛn wɛrɛ ye min bɛ bot ka kɔmandi (commandes) yamaruyalenw kɔnɔ?",
+  "fallback_3": "Nin tɛ n ka dɔnniya kɔnɔ. N bɛ n sinsin ARCHON CG-223 ka sistɛmuw dɛmɛ kan dɔrɔn. I b'a fɛ ka mun dɔn?",
+  "key_saved_tip": "Hakilina: i ka kile (clé) bɛ mara serveur ka dogoyɔrɔ ɲumanw kan, a tɛ jira baro kɔnɔ abada.",
+  "memory_example": "**Misali:**\n`Hakili to ne ka kulɛri kanuman ye bulama ye`\n→ A bɛ mara ka kɛ `favorite_color: blue`"
 }

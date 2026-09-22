@@ -32,5 +32,9 @@
   "stat_na": "",
   "profile_error": "",
   "afk_reminder": "",
-  "tip_block_label": ""
+  "tip_block_label": "",
+  "afk_just_now": "الآن",
+  "afk_ping_desc": "<a:Afk:1540774870827409501> **{user} غير متواجد** ({time})\n**السبب:** {reason}",
+  "afk_return_desc": "<a:away:1540773743343829002> **{user} عاد!** مرحباً بعودتك 👋\nغائب لمدة {minutes} دقيقة",
+  "footer": "ARCHON CG-223"
 }

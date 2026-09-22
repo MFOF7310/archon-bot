@@ -34,5 +34,10 @@
   "key_removed": "",
   "key_none": "",
   "key_db_error_remove": "",
-  "db_offline": ""
+  "db_offline": "",
+  "fallback_1": "我不太确定这个。我可以在我掌握的功能范围内帮助你——试着问问经济系统、等级系统、管理功能，或使用 `{prefix}help` 查看可用命令。",
+  "fallback_2": "我没有关于这个的具体信息。需要我搜索网络，还是我可以帮你处理与机器人功能相关的事情？",
+  "fallback_3": "这超出了我目前的知识范围。我专注于帮助你使用 ARCHON CG-223 的各项系统。你想了解什么？",
+  "key_saved_tip": "提示：你的密钥仅存储在服务器端，绝不会在聊天中显示。",
+  "memory_example": "**示例：**\n`记住我最喜欢的颜色是蓝色`\n→ 存储为 `favorite_color: blue`"
 }

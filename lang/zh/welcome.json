@@ -33,5 +33,10 @@
   "tip_label_ar": "",
   "tip_label_zh": "",
   "goodbye_footer": "",
-  "welcome_footer": ""
+  "welcome_footer": "",
+  "author": "欢迎系统",
+  "default_goodbye_msg": "再见 {user}，感谢你曾是 {server} 的一员！",
+  "default_welcome_msg": "欢迎 {user} 加入 {server}！你是第 #{count} 位成员。",
+  "footer": "ARCHON CG-223",
+  "setup_slash": "`/welcome message` · `/welcome goodbyemsg`"
 }
