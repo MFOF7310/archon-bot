@@ -189,7 +189,7 @@ function detectLanguage(usedCommand, guildId = null) {
     if (cmd.length >= 4 && frenchVerbEndings.test(cmd) && !/^(get|set|put|run|let|hit|sit|fit|bit|kit)$/i.test(cmd)) return 'fr';
     
     // 5. Very common English short words (manually curated but short, <10 entries)
-    const englishCore = /^(help|daily|profile|rank|level|xp|shop|buy|game|coin|fight|duel|ping|stats|uptime|vote|remind|ticket|report|whois|userinfo|about|alive|status|version|character|filter|hammer|banner|global|transmit|channel|setchannel|cipher|timer|event|credit|transfer|definition|pupper|arena|roulette|image|store|invest|invite|expel|loadout|weapons|configuration|lydia|neural|music|musique|owner|archive|agent|motivation|inspire|meta|reminder|server|configure|social|trivia|culture|questions|translation|weather|temperature|user|serial|modai|intel|diffusion|hacker|neuralhacker|specialisation|grimoire|registre|classement|shutdown|shut|lent)$/i;
+    const englishCore = /^(help|daily|profile|rank|level|xp|shop|buy|game|coin|fight|duel|ping|stats|uptime|vote|remind|ticket|report|whois|userinfo|about|alive|status|version|character|filter|hammer|banner|global|transmit|channel|setchannel|cipher|timer|event|credit|transfer|definition|pupper|arena|roulette|image|store|invest|invite|expel|loadout|weapons|lydia|neural|music|musique|owner|archive|agent|motivation|inspire|meta|reminder|server|configure|social|trivia|culture|questions|translation|weather|temperature|user|serial|modai|intel|diffusion|hacker|neuralhacker|specialisation|grimoire|registre|classement|shutdown|shut|lent)$/i;
     if (englishCore.test(cmd)) return 'en';
     
     // 6. English patterns (low weight, only if no French patterns matched)
@@ -2404,7 +2404,7 @@ const COMMAND_PARAM_MAP = {
 // ── MODULE GATE (shared by prefix and slash paths) ──
 const MODULE_MAP = {
     economy:    ['daily','balance','credits','shop','transfer','claim','invest','credit','cross-economy','give','deposit','withdraw'],
-    leveling:   ['rank','leaderboard','level','setloadout','loadout','xp'],
+    leveling:   ['rank','leaderboard','level','xp'],
     tickets:    ['ticket','newticket','closeticket'],
     music:      ['music','play','skip','stop','queue','loop','lyrics','nowplaying','pause','resume','volume'],
     moderation: ['ban','kick','mute','unmute','warn','warnings','clear','slowmode','purge'],

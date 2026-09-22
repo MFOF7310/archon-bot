@@ -87,7 +87,7 @@ function weaponEmbed(w, guild) {
 
 module.exports = {
     name: 'meta',
-    aliases: ['tier', 'tierlist', 'weapon', 'gun', 'randommeta', 'codm', 'pick', 'arme'],
+    aliases: ['tier', 'tierlist', 'weapon', 'gun', 'randommeta', 'codm', 'pick', 'arme', 'loadout', 'loadouts', 'weapons', 'armes'],
     description: 'CODM weapon meta tier list and detailed weapon specs.',
     category: 'GAMING',
     usage: '/meta [category] | /weapon <name>',
