@@ -434,7 +434,27 @@ module.exports = {
             option.setName('search')
                 .setDescription('Search for a specific command')
                 .setRequired(false)
+                .setAutocomplete(true)
         ),
+
+    autocomplete: async (interaction, client) => {
+        const focused = (interaction.options.getFocused() || '').toLowerCase();
+        try {
+            const cmds = getSlashCommands(client || interaction.client);
+            const hits = cmds
+                .filter(cmd => !focused
+                    || cmd.name.toLowerCase().includes(focused)
+                    || (cmd.category || '').toLowerCase().includes(focused))
+                .slice(0, 25)
+                .map(cmd => ({
+                    name: `/${cmd.name}${cmd.category ? ` · ${cmd.category}` : ''}`.slice(0, 100),
+                    value: cmd.name.slice(0, 100),
+                }));
+            return interaction.respond(hits).catch(() => {});
+        } catch (e) {
+            return interaction.respond([]).catch(() => {});
+        }
+    },
 
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
