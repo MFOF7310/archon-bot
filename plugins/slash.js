@@ -1,60 +1,14 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: 'MYTHIC COMMAND GRIMOIRE',
-        subtitle: 'The Architect\'s arcane spells await your command',
-        totalCommands: 'Total Arcane Spells',
-        categories: 'Categories',
-        context: 'Context',
-        howToUse: 'HOW TO USE',
-        howToUseDesc: 'Select a category from the dropdown below to view commands.',
-        tip: 'TIP',
-        tipDesc: 'Use `/slash search:<name>` to find a specific command.',
-        categoryPreview: 'CATEGORIES PREVIEW',
-        noCommands: 'No spells found in this realm.',
-        searchPlaceholder: 'Search for a spell...',
-        viewDetails: 'View Details',
-        backToList: 'Back to Grimoire',
-        close: 'Close',
-        refresh: 'Refresh Grimoire',
-        allCommands: 'ALL COMMANDS',
-        page: 'Page',
-        of: 'of',
-        dmCompatible: 'DM Compatible',
-        serverOnly: 'Server Only',
-        cooldown: 'Cooldown',
-        accessDenied: 'This grimoire is locked to your session.',
-        footer: 'Mythic Command Grimoire • v{version}'
-    },
-    fr: {
-        title: 'GRIMOIRE DES COMMANDES MYTHIQUES',
-        subtitle: 'Les sorts arcanes de l\'Architecte attendent votre commande',
-        totalCommands: 'Sorts Arcanes Totaux',
-        categories: 'Catégories',
-        context: 'Contexte',
-        howToUse: 'COMMENT UTILISER',
-        howToUseDesc: 'Sélectionnez une catégorie dans le menu déroulant pour voir les commandes.',
-        tip: 'ASTUCE',
-        tipDesc: 'Utilisez `/slash search:<nom>` pour trouver une commande spécifique.',
-        categoryPreview: 'APERÇU DES CATÉGORIES',
-        noCommands: 'Aucun sort trouvé dans ce royaume.',
-        searchPlaceholder: 'Rechercher un sort...',
-        viewDetails: 'Voir Détails',
-        backToList: 'Retour au Grimoire',
-        close: 'Fermer',
-        refresh: 'Actualiser le Grimoire',
-        allCommands: 'TOUTES LES COMMANDES',
-        page: 'Page',
-        of: 'sur',
-        dmCompatible: 'Compatible DM',
-        serverOnly: 'Serveur Uniquement',
-        cooldown: 'Rechargement',
-        accessDenied: 'Ce grimoire est verrouillé à votre session.',
-        footer: 'Grimoire des Commandes Mythiques • v{version}'
-    }
-};
+const i18n = require('../lib/i18n');
+const SLASH_KEYS = ["title", "subtitle", "totalCommands", "categories", "context", "howToUse", "howToUseDesc", "tip", "tipDesc", "categoryPreview", "noCommands", "searchPlaceholder", "viewDetails", "backToList", "close", "refresh", "allCommands", "page", "of", "dmCompatible", "serverOnly", "cooldown", "accessDenied", "footer"];
+// Keys live in lang/<locale>/slash.json; '' falls back to EN inside t().
+function loadT(lang) {
+    const o = {};
+    for (const k of SLASH_KEYS) o[k] = i18n.t(`slash.${k}`, lang);
+    return o;
+}
 
 // ================= CATEGORY CONFIGURATION =================
 const categoryConfig = {
@@ -461,7 +415,7 @@ module.exports = {
         // Language detection
         if (usedCommand?.toLowerCase() === 'grimoire') lang = 'fr';
         
-        const t = translations[lang] || translations.en;
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         const isDM = !message.guild;
         const guildName = message.guild?.name?.toUpperCase() || 'DIMENSIONAL VOID';
@@ -557,7 +511,7 @@ module.exports = {
         let lang = 'en';
         if (interaction.locale?.startsWith('fr')) lang = 'fr';
         
-        const t = translations[lang] || translations.en;
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         const isDM = !interaction.guild;
         const searchQuery = interaction.options.getString('search');
