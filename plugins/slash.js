@@ -367,7 +367,7 @@ async function showAllCommands(interaction, client, commands, t, lang, version, 
                     guild: interaction.guild,
                     channel: interaction.channel,
                     reply: async () => {}
-                }, [], client.db, null, prefix ? 'slash' : 'slash');
+                }, [], client.db, null, 'slash', lang);
                 break;
         }
     });
@@ -402,7 +402,7 @@ async function showCategory(interaction, client, commands, category, t, lang, ve
                 guild: interaction.guild,
                 channel: interaction.channel,
                 reply: async () => {}
-            }, [], client.db, null, prefix ? 'slash' : 'slash');
+            }, [], client.db, null, 'slash', lang);
         }
     });
 }
@@ -441,7 +441,7 @@ module.exports = {
         // Language detection
         if (usedCommand?.toLowerCase() === 'grimoire') lang = 'fr';
         
-        const t = translations[lang];
+        const t = translations[lang] || translations.en;
         const version = client.version || '1.8.0';
         const isDM = !message.guild;
         const guildName = message.guild?.name?.toUpperCase() || 'DIMENSIONAL VOID';
@@ -537,7 +537,7 @@ module.exports = {
         let lang = 'en';
         if (interaction.locale?.startsWith('fr')) lang = 'fr';
         
-        const t = translations[lang];
+        const t = translations[lang] || translations.en;
         const version = client.version || '1.8.0';
         const isDM = !interaction.guild;
         const searchQuery = interaction.options.getString('search');
