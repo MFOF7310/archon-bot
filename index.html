@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCHON CG-223 — Changelog</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --card: #141a24;
+    --border: #232b38;
+    --text: #e2e8f0;
+    --muted: #8b96a8;
+    --accent: #2ecc71;
+    --accent-soft: rgba(46, 204, 113, 0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+  }
+  header {
+    padding: 48px 20px 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    margin: 0 0 8px;
+    font-size: 1.8rem;
+  }
+  header p {
+    color: var(--muted);
+    margin: 0;
+  }
+  .flag { color: var(--accent); }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  #content h2 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin-top: 40px;
+  }
+  #content h3 {
+    font-size: 0.95rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+  #content ul {
+    padding-left: 20px;
+  }
+  #content li {
+    margin-bottom: 8px;
+  }
+  #content code {
+    background: var(--card);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  #content a {
+    color: var(--accent);
+  }
+  #content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+  .loading {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 0;
+  }
+  footer {
+    text-align: center;
+    padding: 24px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🦅 ARCHON CG-223</h1>
+  <p>Changelog <span class="flag">·</span> what's new, what's fixed</p>
+</header>
+
+<main>
+  <div id="content" class="loading">Loading changelog…</div>
+</main>
+
+<footer>
+  <a href="https://bamako-steel-dev.xyz/">Dashboard</a>
+  &nbsp;·&nbsp;
+  <a href="https://discord.gg/NFSMFJajp9">Support</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/MFOF7310/archon-bot">Source</a>
+</footer>
+
+<script>
+fetch('./CHANGELOG.md')
+  .then(r => {
+    if (!r.ok) throw new Error('not found');
+    return r.text();
+  })
+  .then(md => {
+    document.getElementById('content').className = '';
+    document.getElementById('content').innerHTML = marked.parse(md);
+  })
+  .catch(() => {
+    document.getElementById('content').innerHTML = '<p>Couldn\'t load the changelog right now.</p>';
+  });
+</script>
+
+</body>
+</html>
