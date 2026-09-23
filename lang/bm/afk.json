@@ -10,7 +10,7 @@
   "userIsAfkNoReason": "💤 **{user}** bɛ AFK la sisan sisan ({time})",
   "remindButton": "🔔 Hakili jigin",
   "clearAfkButton": "✅ AFK jɔsili",
-  "extendButton": "⏰ Waayi saama li",
+  "extendButton": "⏰ Waati saama li",
   "remindSent": "🔔 Hakili jigin ci la ! U bɛ a ye seginni waati la",
   "afkCleared": "✅ AFK statut bɔrala !",
   "afkExtended": "⏰ AFK waati jaɲana ni **{time}** ye !",
