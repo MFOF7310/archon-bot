@@ -3799,7 +3799,7 @@ if (message.content && message.content.length > 4000) {
                     client.ROLE_SOURCES.LEVELING,
                     `Level ${newLevel} reached`
                 );
-                if (!roleResult.ok) console.log(`[ROLE] Failed in ${message.guild?.name || guildId} for ${member?.user?.tag || userId}: ${roleResult.why} (roleId: ${roleResult.roleId || "unknown"})`);
+                if (!roleResult.ok) console.log(`[ROLE] Failed in ${message.guild?.name || message.guild?.id} for ${message.author?.tag || message.author?.id}: ${roleResult.why} (roleId: ${roleResult.roleId || "unknown"})`);
             }
 
             // ================= RESPECT levelup_channel SETTING =================
