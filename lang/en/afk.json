@@ -26,5 +26,7 @@
   "reasonOption": "Reason for being AFK",
   "timeOption": "Auto-return time (e.g., 30m, 2h)",
   "ephemeralReply": "Only visible to you",
-  "publicReply": "Visible to everyone"
+  "publicReply": "Visible to everyone",
+  "minute": "minute",
+  "hour": "hour"
 }

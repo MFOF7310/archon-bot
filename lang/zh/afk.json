@@ -26,5 +26,7 @@
   "reasonOption": "",
   "timeOption": "",
   "ephemeralReply": "",
-  "publicReply": ""
+  "publicReply": "",
+  "minute": "",
+  "hour": ""
 }

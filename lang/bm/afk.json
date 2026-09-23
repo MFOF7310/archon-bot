@@ -26,5 +26,7 @@
   "reasonOption": "I tɛ yan kun ɲɛfɔli",
   "timeOption": "Seginni otomatiki (misali: 30m, 2h)",
   "ephemeralReply": "Kana jɔrɔ nin bɛ ye i dɔrɔn de fɛ",
-  "publicReply": "Nin bɛ ye bɛɛ la jɛlen fɛ"
+  "publicReply": "Nin bɛ ye bɛɛ la jɛlen fɛ",
+  "minute": "sanga",
+  "hour": "nɛgɛjuru"
 }

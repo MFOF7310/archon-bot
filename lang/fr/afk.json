@@ -26,5 +26,7 @@
   "reasonOption": "Raison de l'absence",
   "timeOption": "Temps de retour auto (ex: 30m, 2h)",
   "ephemeralReply": "Visible uniquement par vous",
-  "publicReply": "Visible par tous"
+  "publicReply": "Visible par tous",
+  "minute": "minute",
+  "hour": "heure"
 }

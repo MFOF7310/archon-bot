@@ -6,7 +6,7 @@ const afkUsers = new Map(); // userId -> { reason, timestamp, username, avatar, 
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
-const I18N_KEYS = ["afkSet", "afkSetWithTime", "afkRemoved", "afkAutoRemoved", "justNow", "minutes", "hours", "userIsAfk", "userIsAfkNoReason", "remindButton", "clearAfkButton", "extendButton", "remindSent", "afkCleared", "afkExtended", "cannotClearOwn", "cannotClearOthers", "afkStatus", "reason", "since", "autoReturn", "none", "permanent", "slashDescription", "reasonOption", "timeOption", "ephemeralReply", "publicReply"];
+const I18N_KEYS = ["afkSet", "afkSetWithTime", "afkRemoved", "afkAutoRemoved", "justNow", "minutes", "minute", "hours", "hour", "userIsAfk", "userIsAfkNoReason", "remindButton", "clearAfkButton", "extendButton", "remindSent", "afkCleared", "afkExtended", "cannotClearOwn", "cannotClearOthers", "afkStatus", "reason", "since", "autoReturn", "none", "permanent", "slashDescription", "reasonOption", "timeOption", "ephemeralReply", "publicReply"];
 function loadT(lang) {
     const o = {};
     for (const k of I18N_KEYS) o[k] = i18n.t(`afk.${k}`, lang);
@@ -35,11 +35,11 @@ function formatTime(ms, lang) {
     if (hours > 0) {
         const remainingMins = minutes % 60;
         if (remainingMins > 0) {
-            return `${hours} ${t.hours} ${remainingMins} ${t.minutes}`;
+            return `${hours} ${hours === 1 ? t.hour : t.hours} ${remainingMins} ${remainingMins === 1 ? t.minute : t.minutes}`;
         }
-        return `${hours} ${t.hours}`;
+        return `${hours} ${hours === 1 ? t.hour : t.hours}`;
     }
-    return `${minutes} ${t.minutes}`;
+    return `${minutes} ${minutes === 1 ? t.minute : t.minutes}`;
 }
 
 function formatTimeAgo(timestamp, lang) {
@@ -114,7 +114,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
                 .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
-                .setDescription(`${EMOJIS.away} **${message.author.username} is back!** Welcome back 👋`)
+                .setDescription(i18n.t('afk.afkRemoved', lang, { user: message.author.username }))
                 .setFooter({ text: `ARCHON CG-223 • v${version}` })
                 .setTimestamp();
             
@@ -156,9 +156,8 @@ module.exports = {
             .setColor('#5865F2')
             .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
             .setDescription(
-                `${EMOJIS.afk} **${message.author.username} is now AFK**\n\n` +
-                `**Reason:** ${reason}\n` +
-                `**Returns:** ${timeDisplay || 'When they come back'}`
+                i18n.t('afk.afkSet', lang, { user: message.author.username, reason }) + '\n\n' +
+                `**${t.autoReturn}:** ${timeDisplay || t.permanent}`
             )
             .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
             .setFooter({ text: `ARCHON CG-223 • v${version}` })
@@ -260,7 +259,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
                 .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
-                .setDescription(`${EMOJIS.away} **${interaction.user.username} is back!** Welcome back 👋`)
+                .setDescription(i18n.t('afk.afkRemoved', lang, { user: interaction.user.username }))
                 .setFooter({ text: `ARCHON CG-223 • v${version}` })
                 .setTimestamp();
             
@@ -291,9 +290,8 @@ module.exports = {
             .setColor('#5865F2')
             .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
             .setDescription(
-                `${EMOJIS.afk} **${interaction.user.username} is now AFK**\n\n` +
-                `**Reason:** ${reason}\n` +
-                `**Returns:** ${timeDisplay || 'When they come back'}`
+                i18n.t('afk.afkSet', lang, { user: interaction.user.username, reason }) + '\n\n' +
+                `**${t.autoReturn}:** ${timeDisplay || t.permanent}`
             )
             .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setFooter({ text: `ARCHON CG-223 • v${version}` })
