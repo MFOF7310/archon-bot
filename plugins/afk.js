@@ -5,90 +5,13 @@ const EMOJIS = require('../config/emojis');
 const afkUsers = new Map(); // userId -> { reason, timestamp, username, avatar, originalNickname }
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        // AFK Set
-        afkSet: (user, reason) => `✅ **${user}** is now AFK: *${reason}*`,
-        afkSetWithTime: (user, reason, time) => `✅ **${user}** is now AFK: *${reason}*\n⏰ Will auto-return in **${time}**`,
-        afkRemoved: (user) => `👋 Welcome back **${user}**! Your AFK status has been removed.`,
-        afkAutoRemoved: (user) => `⏰ **${user}**'s AFK timer expired. Welcome back!`,
-        justNow: 'just now',
-        minutes: 'minutes',
-        hours: 'hours',
-        
-        // Mentions
-        userIsAfk: (user, reason, time) => `💤 **${user}** is currently AFK (${time}): *${reason}*`,
-        userIsAfkNoReason: (user, time) => `💤 **${user}** is currently AFK (${time})`,
-        
-        // Buttons
-        remindButton: '🔔 Remind Them',
-        clearAfkButton: '✅ Clear AFK',
-        extendButton: '⏰ Extend',
-        
-        // Messages
-        remindSent: '🔔 Reminder sent! They\'ll see it when they return.',
-        afkCleared: '✅ AFK status cleared!',
-        afkExtended: (time) => `⏰ AFK extended by **${time}**!`,
-        cannotClearOwn: '❌ You cannot clear your own AFK status!',
-        cannotClearOthers: '❌ You cannot clear someone else\'s AFK status!',
-        
-        // Embed
-        afkStatus: '💤 AFK STATUS',
-        reason: 'Reason',
-        since: 'Since',
-        autoReturn: 'Auto-Return',
-        none: 'None',
-        permanent: 'Permanent',
-        
-        // Slash
-        slashDescription: 'Set your AFK status',
-        reasonOption: 'Reason for being AFK',
-        timeOption: 'Auto-return time (e.g., 30m, 2h)',
-        ephemeralReply: 'Only visible to you',
-        publicReply: 'Visible to everyone'
-    },
-    fr: {
-        // AFK Set
-        afkSet: (user, reason) => `✅ **${user}** est maintenant AFK: *${reason}*`,
-        afkSetWithTime: (user, reason, time) => `✅ **${user}** est maintenant AFK: *${reason}*\n⏰ Retour automatique dans **${time}**`,
-        afkRemoved: (user) => `👋 Bon retour **${user}**! Votre statut AFK a été retiré.`,
-        afkAutoRemoved: (user) => `⏰ Le minuteur AFK de **${user}** a expiré. Bon retour !`,
-        justNow: 'à l\'instant',
-        minutes: 'minutes',
-        hours: 'heures',
-        
-        // Mentions
-        userIsAfk: (user, reason, time) => `💤 **${user}** est actuellement AFK (${time}): *${reason}*`,
-        userIsAfkNoReason: (user, time) => `💤 **${user}** est actuellement AFK (${time})`,
-        
-        // Buttons
-        remindButton: '🔔 Rappeler',
-        clearAfkButton: '✅ Retirer AFK',
-        extendButton: '⏰ Prolonger',
-        
-        // Messages
-        remindSent: '🔔 Rappel envoyé ! Ils le verront à leur retour.',
-        afkCleared: '✅ Statut AFK retiré !',
-        afkExtended: (time) => `⏰ AFK prolongé de **${time}** !`,
-        cannotClearOwn: '❌ Vous ne pouvez pas retirer votre propre statut AFK !',
-        cannotClearOthers: '❌ Vous ne pouvez pas retirer le statut AFK de quelqu\'un d\'autre !',
-        
-        // Embed
-        afkStatus: '💤 STATUT AFK',
-        reason: 'Raison',
-        since: 'Depuis',
-        autoReturn: 'Retour Auto',
-        none: 'Aucun',
-        permanent: 'Permanent',
-        
-        // Slash
-        slashDescription: 'Définir votre statut AFK',
-        reasonOption: 'Raison de l\'absence',
-        timeOption: 'Temps de retour auto (ex: 30m, 2h)',
-        ephemeralReply: 'Visible uniquement par vous',
-        publicReply: 'Visible par tous'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["afkSet", "afkSetWithTime", "afkRemoved", "afkAutoRemoved", "justNow", "minutes", "hours", "userIsAfk", "userIsAfkNoReason", "remindButton", "clearAfkButton", "extendButton", "remindSent", "afkCleared", "afkExtended", "cannotClearOwn", "cannotClearOthers", "afkStatus", "reason", "since", "autoReturn", "none", "permanent", "slashDescription", "reasonOption", "timeOption", "ephemeralReply", "publicReply"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`afk.${k}`, lang);
+    return o;
+}
 
 // ================= HELPER FUNCTIONS =================
 function parseTime(timeStr) {
@@ -105,7 +28,7 @@ function parseTime(timeStr) {
 }
 
 function formatTime(ms, lang) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const minutes = Math.floor(ms / 60000);
     const hours = Math.floor(minutes / 60);
     
@@ -120,7 +43,7 @@ function formatTime(ms, lang) {
 }
 
 function formatTimeAgo(timestamp, lang) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const diff = Date.now() - timestamp;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);
@@ -162,7 +85,7 @@ module.exports = {
     // ================= COMMANDE PRINCIPALE =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         
         // Parse time if present
@@ -291,12 +214,12 @@ module.exports = {
                 currentAfk.timer = setTimeout(() => {
                     if (afkUsers.has(targetId)) {
                         afkUsers.delete(targetId);
-                        i.channel.send({ content: t.afkAutoRemoved(currentAfk.username) }).catch(() => {});
+                        i.channel.send({ content: t.afkAutoRemoved.replace('{user}', currentAfk.username) }).catch(() => {});
                     }
                 }, extendMs);
                 
                 afkUsers.set(targetId, currentAfk);
-                await i.reply({ content: t.afkExtended('30 ' + t.minutes), flags: 64 });
+                await i.reply({ content: t.afkExtended.replace('{time}', '30 ' + t.minutes), flags: 64 });
             }
         });
         
@@ -311,7 +234,7 @@ module.exports = {
         if (afkServerSettings?.afk_enabled === 0 || afkServerSettings?.afkEnabled === false) {
             return interaction.reply({ content: lang === 'fr' ? '❌ Le système AFK est désactivé sur ce serveur.' : '❌ The AFK system is disabled on this server.', flags: 64 });
         }
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         
         const reason = interaction.options.getString('reason') || (lang === 'fr' ? 'Indisponible' : 'AFK');
