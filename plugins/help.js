@@ -2,144 +2,22 @@ const EMOJIS = require('../config/emojis');
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        directoryTitle: '⚙️ ARCHON CG-223 | NEURAL DIRECTORY',
-        commandExtract: 'COMMAND DATA_EXTRACT',
-        module: 'MODULE',
-        category: 'CATEGORY',
-        usage: 'USAGE',
-        aliases: 'ALIASES',
-        examples: 'EXAMPLES',
-        cooldown: 'COOLDOWN',
-        seconds: 'seconds',
-        noDescription: 'No description available.',
-        noExamples: 'No examples available',
-        none: 'NONE',
-        systemStatus: 'SYSTEM STATUS',
-        online: 'ONLINE',
-        node: 'NODE',
-        core: 'CORE',
-        uptime: 'UPTIME',
-        version: 'VERSION',
-        moduleStats: '📊 MODULE STATISTICS',
-        commands: 'Commands',
-        aliasesStat: 'Aliases',
-        categories: 'Categories',
-        agents: 'Agents',
-        guilds: 'Guilds',
-        quickAccess: '🎮 QUICK ACCESS',
-        aiAssistant: '🤖 AI ASSISTANT',
-        aiDesc: 'Mention @Lydia or use {prefix}ask\nReal-time web search enabled',
-        selectPlaceholder: '🔍 Select a System Module to Decrypt...',
-        viewAll: 'View all {category} commands and utilities',
-        mainMenu: '🏠 MAIN MENU',
-        backToMain: '🏠 MAIN MENU',
-        modulesTitle: 'NEURAL COMMAND DATABASE',
-        moduleStatsTitle: '📊 MODULE STATS',
-        totalCommands: 'Total Commands',
-        aliasesRegistered: 'Aliases Registered',
-        commandsAvailable: 'commands available',
-        useHelpForDetails: 'Use {prefix}help <command> for details',
-        selectModuleBelow: 'Select a module below',
-        categoryDescriptions: {
-            SYSTEM: 'Core system commands and utilities',
-            GAMING: 'Games, arcade, and entertainment',
-            ECONOMY: 'Credits, shop, and daily rewards',
-            PROFILE: 'Rank, stats, and leaderboards',
-            AI: 'Lydia AI and neural assistance',
-            MODERATION: 'Server management and moderation',
-            UTILITY: 'Useful tools and information',
-            FUN: 'Fun commands and interactions',
-            OWNER: 'Bot owner exclusive commands',
-            GENERAL: 'General purpose commands'
-        },
-        signalLost: '❌ SIGNAL LOST',
-        commandNotFound: 'Command Not Found',
-        notFoundDesc: (arg, prefix) => `\`\`\`diff\n- Command or category "${arg}" not found in neural database\n- Use ${prefix}help to view all available modules\`\`\``,
-        checkSpelling: 'ARCHON CG-223 • Check your spelling and try again',
-        accessDenied: '⛔ Access Denied. This directory is locked to the requesting agent.',
-        footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY',
-        bamakoNode: 'Bamako Node',
-        modulesOnline: 'modules online',
-        tip: '💡 TIP',
-        tips: [
-            'Use {prefix}help <command> for detailed information',
-            'Type {prefix}game menu to access the Neural Arcade',
-            'Claim daily rewards with {prefix}daily',
-            'Check your rank with {prefix}rank',
-            'Visit the shop with {prefix}shop'
-        ]
-    },
-    fr: {
-        directoryTitle: '⚙️ ARCHON CG-223 | RÉPERTOIRE NEURAL',
-        commandExtract: 'EXTRAIT DE COMMANDE',
-        module: 'MODULE',
-        category: 'CATÉGORIE',
-        usage: 'UTILISATION',
-        aliases: 'ALIAS',
-        examples: 'EXEMPLES',
-        cooldown: 'REFROIDISSEMENT',
-        seconds: 'secondes',
-        noDescription: 'Aucune description disponible.',
-        noExamples: 'Aucun exemple disponible',
-        none: 'AUCUN',
-        systemStatus: 'ÉTAT DU SYSTÈME',
-        online: 'EN LIGNE',
-        node: 'NŒUD',
-        core: 'CŒUR',
-        uptime: 'DISPONIBILITÉ',
-        version: 'VERSION',
-        moduleStats: '📊 STATISTIQUES DES MODULES',
-        commands: 'Commandes',
-        aliasesStat: 'Alias',
-        categories: 'Catégories',
-        agents: 'Agents',
-        guilds: 'Serveurs',
-        quickAccess: '🎮 ACCÈS RAPIDE',
-        aiAssistant: '🤖 ASSISTANT IA',
-        aiDesc: 'Mentionnez @Lydia ou utilisez {prefix}ask\nRecherche web en temps réel activée',
-        selectPlaceholder: '🔍 Sélectionnez un Module Système à Décrypter...',
-        viewAll: 'Voir toutes les commandes {category}',
-        mainMenu: '🏠 MENU PRINCIPAL',
-        backToMain: '🏠 MENU PRINCIPAL',
-        modulesTitle: 'BASE DE DONNÉES DE COMMANDES NEURALES',
-        moduleStatsTitle: '📊 STATS DU MODULE',
-        totalCommands: 'Total Commandes',
-        aliasesRegistered: 'Alias Enregistrés',
-        commandsAvailable: 'commandes disponibles',
-        useHelpForDetails: 'Utilisez {prefix}help <commande> pour plus de détails',
-        selectModuleBelow: 'Sélectionnez un module ci-dessous',
-        categoryDescriptions: {
-            SYSTEM: 'Commandes système principales',
-            GAMING: 'Jeux, arcade et divertissement',
-            ECONOMY: 'Crédits, boutique et récompenses',
-            PROFILE: 'Rang, statistiques et classements',
-            AI: 'Lydia IA et assistance neurale',
-            MODERATION: 'Gestion et modération du serveur',
-            UTILITY: 'Outils et informations utiles',
-            FUN: 'Commandes amusantes',
-            OWNER: 'Commandes exclusives du propriétaire',
-            GENERAL: 'Commandes générales'
-        },
-        signalLost: '❌ SIGNAL PERDU',
-        commandNotFound: 'Commande Introuvable',
-        notFoundDesc: (arg, prefix) => `\`\`\`diff\n- La commande ou catégorie "${arg}" est introuvable dans la base neurale\n- Utilisez ${prefix}help pour voir tous les modules\`\`\``,
-        checkSpelling: 'ARCHON CG-223 • Vérifiez votre orthographe et réessayez',
-        accessDenied: '⛔ Accès Refusé. Ce répertoire est verrouillé pour l\'agent demandeur.',
-        footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE',
-        bamakoNode: 'Nœud Bamako',
-        modulesOnline: 'modules en ligne',
-        tip: '💡 ASTUCE',
-        tips: [
-            'Utilisez {prefix}help <commande> pour plus de détails',
-            'Tapez {prefix}game menu pour accéder à l\'Arcade Neurale',
-            'Réclamez vos récompenses avec {prefix}daily',
-            'Vérifiez votre rang avec {prefix}rank',
-            'Visitez la boutique avec {prefix}shop'
-        ]
+const i18n = require('../lib/i18n');
+const HELP_FLAT = ["directoryTitle", "commandExtract", "module", "category", "usage", "aliases", "examples", "cooldown", "seconds", "noDescription", "noExamples", "none", "systemStatus", "online", "node", "core", "uptime", "version", "moduleStats", "commands", "aliasesStat", "categories", "agents", "guilds", "quickAccess", "aiAssistant", "aiDesc", "selectPlaceholder", "viewAll", "mainMenu", "backToMain", "modulesTitle", "moduleStatsTitle", "totalCommands", "aliasesRegistered", "commandsAvailable", "useHelpForDetails", "selectModuleBelow", "signalLost", "commandNotFound", "notFoundDesc", "checkSpelling", "accessDenied", "footer", "bamakoNode", "modulesOnline", "tip"];
+const HELP_NESTED = {"categoryDescriptions": ["SYSTEM", "GAMING", "ECONOMY", "PROFILE", "AI", "MODERATION", "UTILITY", "FUN", "OWNER", "GENERAL"], "tips": ["0", "1", "2", "3", "4"]};
+// Clés dans lang/<locale>/help.json ; '' retombe sur EN dans t().
+// tips est stocké indexé (dig() ne rend que des chaînes) et reconstruit en tableau.
+function loadT(lang) {
+    const o = {};
+    for (const k of HELP_FLAT) o[k] = i18n.t(`help.${k}`, lang);
+    for (const [k, subs] of Object.entries(HELP_NESTED)) {
+        const isArr = subs.every(s => /^\d+$/.test(s));
+        const box = isArr ? [] : {};
+        for (const s of subs) box[isArr ? Number(s) : s] = i18n.t(`help.${k}.${s}`, lang);
+        o[k] = box;
     }
-};
+    return o;
+}
 
 const emojiMap = {
     SYSTEM: '⚙️', GAMING: '🎮', AI: '🧠', PROFILE: '👤', OWNER: '👑',
@@ -336,7 +214,7 @@ module.exports = {
             else if (cmd === 'help' || cmd === 'commands') lang = 'en';
         }
 
-        const t = translations[lang];
+        const t = loadT(lang);
         const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const version = client.version || '3.1.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -415,7 +293,7 @@ module.exports = {
                 .setColor('#e94560')
                 .setAuthor({ name: t.signalLost, iconURL: client.user.displayAvatarURL() })
                 .setTitle(`\`[ ${t.commandNotFound} ]\``)
-                .setDescription(t.notFoundDesc(args[0], effectivePrefix))
+                .setDescription(i18n.t('help.notFoundDesc', lang, { arg: args[0], prefix: effectivePrefix }))
                 .setFooter({ text: `${guildName} • ${t.checkSpelling} • UNCLASSIFIED`, iconURL: guildIcon })
                 .setTimestamp();
             return message.reply({ embeds: [errorEmbed] }).catch(() => {});
@@ -590,7 +468,7 @@ module.exports = {
         // 🔥 DM FALLBACK
         if (!interaction.guild) {
             const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-            const t = translations[lang];
+            const t = loadT(lang);
 
             const dmEmbed = new EmbedBuilder()
                 .setColor(getIntelColor())
