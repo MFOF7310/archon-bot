@@ -1,24 +1,13 @@
 const { EmbedBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: (name) => `👴 Oldest Members - ${name}`,
-        member: 'Member',
-        joined: 'Joined',
-        accountCreated: 'Account Created',
-        daysAgo: (days) => `${days} days ago`,
-        footer: 'ARCHON CG-223 • Neural Archive'
-    },
-    fr: {
-        title: (name) => `👴 Membres les Plus Anciens - ${name}`,
-        member: 'Membre',
-        joined: 'Rejoint',
-        accountCreated: 'Compte Créé',
-        daysAgo: (days) => `il y a ${days} jours`,
-        footer: 'ARCHON CG-223 • Archive Neurale'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","member","joined","accountCreated","daysAgo","footer"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`oldest.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'oldest',
@@ -31,7 +20,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guild = message.guild;
         
@@ -54,7 +43,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor('#e67e22')
-            .setAuthor({ name: t.title(guild.name), iconURL: guild.iconURL({ dynamic: true }) })
+            .setAuthor({ name: i18n.t('oldest.title', lang, { name: guild.name }), iconURL: guild.iconURL({ dynamic: true }) })
             .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
             .setDescription(description)
             .setFooter({ text: `${guild.name} • ${t.footer} • v${version}` })

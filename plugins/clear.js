@@ -1,40 +1,14 @@
 const { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: '🧹 NEURAL PURGE',
-        sanitizing: '✨ SANITIZING',
-        complete: '✅ PURGE COMPLETE',
-        accessDenied: '❌ **Access Denied.**\nYou need `Manage Messages` permission.',
-        invalidAmount: (max) => `❌ **Invalid amount.**\nPlease specify a number between 1 and ${max}.`,
-        purgedMessages: (count, target) => `🧹 **Sanitization Complete!**\n\`${count}\` messages ${target ? `from **${target}** ` : ''}purged from the neural channel.`,
-        noMessages: '⚠️ **No deletable packets identified.**\nMessages must be under 14 days old and not pinned.',
-        error: '❌ **Error:** Could not purge messages.',
-        footer: 'ARCHON CG-223 • Neural Purge System',
-        packetsRemoved: 'packets removed',
-        fromNode: 'from node',
-        targetUser: 'Target User',
-        amount: 'Amount',
-        reason: 'Reason'
-    },
-    fr: {
-        title: '🧹 PURGE NEURALE',
-        sanitizing: '✨ NETTOYAGE',
-        complete: '✅ PURGE TERMINÉE',
-        accessDenied: '❌ **Accès Refusé.**\nVous avez besoin de la permission `Gérer les Messages`.',
-        invalidAmount: (max) => `❌ **Montant invalide.**\nVeuillez spécifier un nombre entre 1 et ${max}.`,
-        purgedMessages: (count, target) => `🧹 **Nettoyage Terminé!**\n\`${count}\` messages ${target ? `de **${target}** ` : ''}supprimés du canal neural.`,
-        noMessages: '⚠️ **Aucun paquet supprimable identifié.**\nLes messages doivent avoir moins de 14 jours et ne pas être épinglés.',
-        error: '❌ **Erreur:** Impossible de purger les messages.',
-        footer: 'ARCHON CG-223 • Système de Purge Neurale',
-        packetsRemoved: 'paquets supprimés',
-        fromNode: 'du nœud',
-        targetUser: 'Utilisateur Cible',
-        amount: 'Quantité',
-        reason: 'Raison'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title", "sanitizing", "complete", "accessDenied", "invalidAmount", "purgedMessages", "noMessages", "error", "footer", "packetsRemoved", "fromNode", "targetUser", "amount", "reason"];
+// Clés dans lang/<locale>/clear.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`clear.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'clear',
@@ -74,13 +48,13 @@ module.exports = {
         
         if (!isArchitect && !hasPerms) {
             const lang = serverSettings?.language || 'en';
-            const t = translations[lang] || translations['en'];
+            const t = loadT(lang);
             return message.reply({ content: t.accessDenied, flags: 64 });
         }
 
         // ================= LANGUAGE SETUP =================
         const lang = client.detectLanguage ? client.detectLanguage('clear', message.guild?.id) : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
 
         // Delete command message immediately
         await message.delete().catch(() => null);
@@ -97,7 +71,7 @@ module.exports = {
             amount = parseInt(amountArg);
             if (isNaN(amount) || amount < 1) amount = 10;
             if (amount > maxAmount) {
-                const errorMsg = await message.channel.send(t.invalidAmount(maxAmount));
+                const errorMsg = await message.channel.send(i18n.t('clear.invalidAmount', lang, { max: maxAmount }));
                 setTimeout(() => errorMsg.delete().catch(() => null), 4000);
                 return;
             }
@@ -117,7 +91,7 @@ module.exports = {
         const lang = interaction.client.detectLanguage 
             ? interaction.client.detectLanguage('/clear', interaction.guild?.language || 'en')
             : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
         
         try {
             await performPurge(interaction.channel, interaction.user, amount, targetUser, t, interaction.client, interaction.guild);

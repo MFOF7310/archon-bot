@@ -1,0 +1,12 @@
+{
+  "title": "☢️ OUTREPASSEMENT SYSTÈME NEURAL",
+  "desc": "Sélectionnez une opération, Architecte.",
+  "confirm": "⚠️ CONFIRMER",
+  "abort": "❌ ANNULER",
+  "security": "⛔ Accès restreint à l'Architecte.",
+  "aborted": "✅ Opération annulée. Base de données intacte.",
+  "timeout": "⏰ Autorisation expirée.",
+  "backupSent": "📡 Sauvegarde envoyée en MP.",
+  "success": "☢️ **{type}** terminé!\n```yaml\nAffectés: {count} enregistrements\nSauvegarde: ✅ Sauvée\nHorodatage: 2026-09-23T07:58:05.209Z\n```",
+  "preview": "```yaml\n🧠 Enregistrements XP: {xp}\n💰 Crédits Non-zéro: {credits}\n👥 Utilisateurs: {total}\n```"
+}

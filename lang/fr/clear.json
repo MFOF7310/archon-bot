@@ -1,0 +1,16 @@
+{
+  "title": "🧹 PURGE NEURALE",
+  "sanitizing": "✨ NETTOYAGE",
+  "complete": "✅ PURGE TERMINÉE",
+  "accessDenied": "❌ **Accès Refusé.**\nVous avez besoin de la permission `Gérer les Messages`.",
+  "invalidAmount": "❌ **Montant invalide.**\nVeuillez spécifier un nombre entre 1 et {max}.",
+  "purgedMessages": "🧹 **Nettoyage Terminé!**\n`{count}` messages de **{target}** supprimés du canal neural.",
+  "noMessages": "⚠️ **Aucun paquet supprimable identifié.**\nLes messages doivent avoir moins de 14 jours et ne pas être épinglés.",
+  "error": "❌ **Erreur:** Impossible de purger les messages.",
+  "footer": "ARCHON CG-223 • Système de Purge Neurale",
+  "packetsRemoved": "paquets supprimés",
+  "fromNode": "du nœud",
+  "targetUser": "Utilisateur Cible",
+  "amount": "Quantité",
+  "reason": "Raison"
+}

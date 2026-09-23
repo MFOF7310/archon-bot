@@ -2,32 +2,14 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBu
 const fs = require('fs');
 const path = require('path');
 
-const translations = {
-    en: {
-        title: '☢️ NEURAL SYSTEM OVERRIDE',
-        desc: 'Select a purge operation, Architect.',
-        confirm: '⚠️ CONFIRM',
-        abort: '❌ ABORT',
-        security: '⛔ Master Node access restricted to the Architect.',
-        aborted: '✅ Operation aborted. Database intact.',
-        timeout: '⏰ Authorization expired.',
-        backupSent: '📡 Backup sent to your DMs.',
-        success: (type, count) => `☢️ **${type}** complete!\n\`\`\`yaml\nAffected: ${count} records\nBackup: ✅ Saved\nTimestamp: ${new Date().toISOString()}\n\`\`\``,
-        preview: (xp, credits, total) => `\`\`\`yaml\n🧠 XP Records: ${xp}\n💰 Non-zero Credits: ${credits}\n👥 Total Users: ${total}\n\`\`\``,
-    },
-    fr: {
-        title: '☢️ OUTREPASSEMENT SYSTÈME NEURAL',
-        desc: 'Sélectionnez une opération, Architecte.',
-        confirm: '⚠️ CONFIRMER',
-        abort: '❌ ANNULER',
-        security: '⛔ Accès restreint à l\'Architecte.',
-        aborted: '✅ Opération annulée. Base de données intacte.',
-        timeout: '⏰ Autorisation expirée.',
-        backupSent: '📡 Sauvegarde envoyée en MP.',
-        success: (type, count) => `☢️ **${type}** terminé!\n\`\`\`yaml\nAffectés: ${count} enregistrements\nSauvegarde: ✅ Sauvée\nHorodatage: ${new Date().toISOString()}\n\`\`\``,
-        preview: (xp, credits, total) => `\`\`\`yaml\n🧠 Enregistrements XP: ${xp}\n💰 Crédits Non-zéro: ${credits}\n👥 Utilisateurs: ${total}\n\`\`\``,
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title", "desc", "confirm", "abort", "security", "aborted", "timeout", "backupSent", "success", "preview"];
+// Clés dans lang/<locale>/refresh.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`refresh.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'refresh',
@@ -46,7 +28,7 @@ module.exports = {
         const type = interaction.options.getString('type');
         const targetUser = interaction.options.getUser('target');
         const db = client.db;
-        const t = translations['en'];
+        const t = loadT('en');
         await interaction.deferReply({ flags: 64 });
         const fakeMessage = { author: interaction.user, reply: async () => {}, react: () => Promise.resolve() };
         await executeWipe(interaction, type, t, client, db, fakeMessage, targetUser?.id);
@@ -54,7 +36,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const ARCHITECT_ID = process.env.OWNER_ID;
 
         if (message.author.id !== ARCHITECT_ID) {
@@ -115,7 +97,7 @@ const embed = new EmbedBuilder()
     .setColor('#e74c3c')
     .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
     .setTitle(t.desc)
-    .setDescription(t.preview(xpUsers, creditUsers, totalUsers) + '\n' + healthPreview)
+    .setDescription(i18n.t('refresh.preview', lang, { xp: xpUsers, credits: creditUsers, total: totalUsers }) + '\n' + healthPreview)
             .setFooter({ text: 'ARCHON CG-223 • Neural Override System' })
             .setTimestamp();
 
@@ -266,7 +248,7 @@ if (type === 'light' && client.getDatabaseHealth) {
     const health = client.getDatabaseHealth();
     description = `🫧 **Light Log Purge Complete!**\n\`\`\`yaml\nDB Size: ${health.size}\nFragmentation: ${health.fragmentation} ${health.fragmentationStatus || ''}\nWasted: ${health.wastedMB || 'N/A'}\n\`\`\``;
 } else {
-    description = t.success(type.toUpperCase(), result.changes);
+    description = i18n.t('refresh.success', lang, { type: type.toUpperCase(), count: result.changes });
 }
 
 const successEmbed = new EmbedBuilder()
