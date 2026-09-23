@@ -1,0 +1,23 @@
+{
+  "guildOnly": "Cette commande ne marche que dans un serveur.",
+  "notAnImage": "Ce fichier n'est pas une image — envoie plutôt une capture.",
+  "limitReached": "Tu as atteint {max} builds ici. Libère une place avec `/build delete` et réessaie.",
+  "saved": "Build enregistré.",
+  "updated": "Build mis à jour.",
+  "imageWarning": "\n*La capture n'a pas pu être stockée, elle disparaîtra d'ici un jour.*",
+  "listEmptyWeapon": "Pas encore de build **{weapon}** ici — sois le premier avec `/build save`.",
+  "listEmpty": "Aucun build sur ce serveur pour l'instant. Lance-toi avec `/build save`.",
+  "listTitle": "Builds du clan",
+  "showNoneSelfWeapon": "Tu n'as pas encore de build **{weapon}** ici.",
+  "showNoneOtherWeapon": "<@{user}> n'a pas de build **{weapon}** ici.",
+  "showNoneSelf": "Rien d'enregistré ici — `/build save` et ça rejoint la liste du clan.",
+  "showNoneOther": "<@{user}> n'a encore rien posté ici.",
+  "deleteNotFound": "Pas de build #{id} sur ce serveur.",
+  "deleteNotYours": "Tu ne peux supprimer que tes propres builds.",
+  "deleted": "Build #{id} ({weapon}) supprimé.",
+  "prefixNoneSelf": "Rien d'enregistré ici — `/build save` et ça rejoint la liste du clan.",
+  "prefixNoneWeapon": "Pas encore de build **{weapon}** sur ce serveur.",
+  "notInMeta": "",
+  "listFooterOne": "1 build • /build show pour l'ouvrir",
+  "listFooterMany": "{count} builds • /build show pour en ouvrir un"
+}

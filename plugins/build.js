@@ -1,5 +1,6 @@
 const { EmbedBuilder, SlashCommandBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const W = require('../lib/weapons');
+const i18n = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
 
 const fs = require('fs');
@@ -171,8 +172,10 @@ module.exports = {
     },
 
     execute: async (interaction, client) => {
+        const lang = client.detectLanguage ? client.detectLanguage('build', interaction.guildId) : 'en';
+        const tr = (k, v) => i18n.t(`build.${k}`, lang, v);
         if (!interaction.guild) {
-            return interaction.reply({ content: 'Server only.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: tr('guildOnly'), flags: MessageFlags.Ephemeral });
         }
         const db = client.db;
         sweepOrphanImages(db);
@@ -190,7 +193,7 @@ module.exports = {
             const shot = interaction.options.getAttachment('screenshot');
 
             if (shot && !(shot.contentType || '').startsWith('image/')) {
-                return interaction.reply({ content: 'The screenshot has to be an image.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: tr('notAnImage'), flags: MessageFlags.Ephemeral });
             }
 
             const existing = db.prepare(
@@ -199,7 +202,7 @@ module.exports = {
 
             if (!existing && countBuilds(db, gid, uid) >= MAX_PER_USER) {
                 return interaction.reply({
-                    content: `You already have ${MAX_PER_USER} builds saved here. Delete one with \`/build delete\` first.`,
+                    content: tr('limitReached', { max: MAX_PER_USER }),
                     flags: MessageFlags.Ephemeral,
                 });
             }
@@ -229,13 +232,13 @@ module.exports = {
                     db.prepare('UPDATE member_builds SET image_path = ? WHERE id = ?').run(dest, id);
                 } catch (e) {
                     console.error('[BUILD] image download failed:', e.message);
-                    warn = '\n*The screenshot could not be stored, so it will stop showing in about a day.*';
+                    warn = tr('imageWarning');
                 }
             }
 
             const build = db.prepare('SELECT * FROM member_builds WHERE id = ?').get(id);
             return interaction.reply({
-                content: (existing ? 'Build updated.' : 'Build saved.') + warn,
+                content: (existing ? tr('updated') : tr('saved')) + warn,
                 embeds: [buildEmbed(build, interaction.member, interaction.guild)],
                 files: buildFiles(build),
             });
@@ -255,8 +258,8 @@ module.exports = {
             if (!rows.length) {
                 return interaction.reply({
                     content: filter
-                        ? `No builds saved for **${filter}** yet.`
-                        : 'No builds saved on this server yet. Add one with `/build save`.',
+                        ? tr('listEmptyWeapon', { weapon: filter })
+                        : tr('listEmpty'),
                     flags: MessageFlags.Ephemeral,
                 });
             }
@@ -271,9 +274,9 @@ module.exports = {
                 embeds: [new EmbedBuilder()
                     .setColor('#3498db')
                     .setAuthor({ name: `${interaction.guild.name} • Builds`, iconURL: interaction.guild.iconURL() || undefined })
-                    .setTitle(`${EMOJIS.gamer} Clan builds${filter ? ` — ${filter}` : ''}`)
+                    .setTitle(`${EMOJIS.gamer} ${tr('listTitle')}${filter ? ` — ${filter}` : ''}`)
                     .setDescription(lines.join('\n'))
-                    .setFooter({ text: `${rows.length} build${rows.length === 1 ? '' : 's'} • /build show to open one` })
+                    .setFooter({ text: (rows.length === 1 ? tr('listFooterOne') : tr('listFooterMany', { count: rows.length })) })
                 ],
             });
         }
@@ -293,8 +296,8 @@ module.exports = {
             if (only && !rows.length) {
                 return interaction.reply({
                     content: target.id === uid
-                        ? `You haven't saved a **${only}** build here.`
-                        : `<@${target.id}> hasn't saved a **${only}** build here.`,
+                        ? tr('showNoneSelfWeapon', { weapon: only })
+                        : tr('showNoneOtherWeapon', { user: target.id, weapon: only }),
                     flags: MessageFlags.Ephemeral,
                 });
             }
@@ -302,8 +305,8 @@ module.exports = {
             if (!rows.length) {
                 return interaction.reply({
                     content: target.id === uid
-                        ? "You haven't saved any builds here yet."
-                        : `<@${target.id}> hasn't saved any builds here.`,
+                        ? tr('showNoneSelf')
+                        : tr('showNoneOther', { user: target.id }),
                     flags: MessageFlags.Ephemeral,
                 });
             }
@@ -320,24 +323,26 @@ module.exports = {
             const build = db.prepare('SELECT * FROM member_builds WHERE id = ? AND guild_id = ?').get(id, gid);
 
             if (!build) {
-                return interaction.reply({ content: `No build #${id} on this server.`, flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: tr('deleteNotFound', { id }), flags: MessageFlags.Ephemeral });
             }
 
             const isMod = interaction.member.permissions.has(require('discord.js').PermissionFlagsBits.ManageMessages);
             if (build.user_id !== uid && !isMod) {
-                return interaction.reply({ content: 'You can only delete your own builds.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: tr('deleteNotYours'), flags: MessageFlags.Ephemeral });
             }
 
             removeImage(build.image_path);
             db.prepare('DELETE FROM member_builds WHERE id = ?').run(id);
-            return interaction.reply({ content: `Build #${id} (${build.weapon}) deleted.`, flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: tr('deleted', { id, weapon: build.weapon }), flags: MessageFlags.Ephemeral });
         }
     },
 
     // Prefix: .build  -> your own builds
     //         .build <weapon> -> clan builds for that weapon
     run: async (client, message, args) => {
-        if (!message.guild) return message.reply('Server only.').catch(() => {});
+        const lang = client.detectLanguage ? client.detectLanguage('build', message.guild?.id) : 'en';
+        const tr = (k, v) => i18n.t(`build.${k}`, lang, v);
+        if (!message.guild) return message.reply(tr('guildOnly')).catch(() => {});
         const db = client.db;
         sweepOrphanImages(db);
         const gid = message.guild.id;
@@ -348,7 +353,7 @@ module.exports = {
                 'SELECT * FROM member_builds WHERE guild_id = ? AND user_id = ? ORDER BY updated_at DESC'
             ).all(gid, message.author.id);
             if (!rows.length) {
-                return message.reply('You have no builds saved here. Use `/build save` to add one.').catch(() => {});
+                return message.reply(tr('prefixNoneSelf')).catch(() => {});
             }
             const shown = rows.slice(0, 10);
             return message.reply({
@@ -363,7 +368,7 @@ module.exports = {
         ).all(gid, `%${arg}%`);
 
         if (!rows.length) {
-            return message.reply(`No builds saved for **${arg}** on this server.`).catch(() => {});
+            return message.reply(tr('prefixNoneWeapon', { weapon: arg })).catch(() => {});
         }
 
         const embeds = [];

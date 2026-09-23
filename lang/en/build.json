@@ -1,0 +1,23 @@
+{
+  "guildOnly": "This one only works inside a server.",
+  "notAnImage": "That file isn't an image — send a screenshot instead.",
+  "limitReached": "You've hit {max} saved builds here. Free a slot with `/build delete` and try again.",
+  "saved": "Build saved.",
+  "updated": "Build updated.",
+  "imageWarning": "\n*The screenshot couldn't be stored, so it will stop showing in about a day.*",
+  "listEmptyWeapon": "No **{weapon}** build here yet — be the first with `/build save`.",
+  "listEmpty": "No builds on this server yet. Kick it off with `/build save`.",
+  "listTitle": "Clan builds",
+  "showNoneSelfWeapon": "You haven't saved a **{weapon}** build here yet.",
+  "showNoneOtherWeapon": "<@{user}> hasn't saved a **{weapon}** build here.",
+  "showNoneSelf": "Nothing saved here yet — `/build save` and it lands in the clan list.",
+  "showNoneOther": "<@{user}> hasn't posted any builds here yet.",
+  "deleteNotFound": "No build #{id} on this server.",
+  "deleteNotYours": "You can only delete your own builds.",
+  "deleted": "Build #{id} ({weapon}) deleted.",
+  "prefixNoneSelf": "Nothing saved here yet — `/build save` and it lands in the clan list.",
+  "prefixNoneWeapon": "No **{weapon}** build on this server yet.",
+  "notInMeta": "",
+  "listFooterOne": "1 build • /build show to open it",
+  "listFooterMany": "{count} builds • /build show to open one"
+}
