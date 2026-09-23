@@ -122,7 +122,8 @@ module.exports = {
         addSubcommand(s => s.setName('list').setDescription("Browse the clan's builds").
             addStringOption(o => o.setName('weapon').setDescription('Filter by weapon').setAutocomplete(true))).
         addSubcommand(s => s.setName('show').setDescription("Show a member's builds").
-            addUserOption(o => o.setName('member').setDescription('Whose builds to show'))).
+            addUserOption(o => o.setName('member').setDescription('Whose builds to show')).
+            addStringOption(o => o.setName('weapon').setDescription('Show only this weapon').setAutocomplete(true))).
         addSubcommand(s => s.setName('delete').setDescription('Delete one of your builds').
             addIntegerOption(o => o.setName('id').setDescription('Build ID').setRequired(true))),
 
@@ -140,7 +141,20 @@ module.exports = {
         // meta weapons first, capped at 20 so server-saved names still fit
         for (const w of W.searchWeapons(q.toLowerCase(), 20)) add(w.tier ? `${w.name} [${w.tier}]` : `${w.name} · ${w.category || '—'}`, w.name);
         // weapons members already saved on this server, even if not in W
+        const onShow = interaction.options.getSubcommand(false) === 'show';
+        const forUser = onShow
+            ? (interaction.options.getUser('member')?.id || interaction.user.id)
+            : null;
         try {
+            if (forUser) {
+                const mine = interaction.client.db.prepare(
+                    `SELECT weapon, COUNT(*) AS n FROM member_builds
+                     WHERE guild_id = ? AND user_id = ? AND LOWER(weapon) LIKE ?
+                     GROUP BY LOWER(weapon) ORDER BY n DESC LIMIT 25`
+                ).all(interaction.guildId, forUser, `%${q.toLowerCase()}%`);
+                for (const r of mine) add(`${r.weapon} (${r.n})`, r.weapon);
+                return interaction.respond(out).catch(() => {});
+            }
             const rows = interaction.client.db.prepare(
                 `SELECT weapon, COUNT(*) AS n FROM member_builds
                  WHERE guild_id = ? AND LOWER(weapon) LIKE ?
@@ -266,9 +280,23 @@ module.exports = {
         // ---- SHOW ----
         if (sub === 'show') {
             const target = interaction.options.getUser('member') || interaction.user;
-            const rows = db.prepare(
-                'SELECT * FROM member_builds WHERE guild_id = ? AND user_id = ? ORDER BY updated_at DESC'
-            ).all(gid, target.id);
+            const only = interaction.options.getString('weapon');
+            const rows = only
+                ? db.prepare(
+                    `SELECT * FROM member_builds WHERE guild_id = ? AND user_id = ?
+                     AND LOWER(weapon) = LOWER(?) ORDER BY updated_at DESC`).all(gid, target.id, only)
+                : db.prepare(
+                    'SELECT * FROM member_builds WHERE guild_id = ? AND user_id = ? ORDER BY updated_at DESC'
+                ).all(gid, target.id);
+
+            if (only && !rows.length) {
+                return interaction.reply({
+                    content: target.id === uid
+                        ? `You haven't saved a **${only}** build here.`
+                        : `<@${target.id}> hasn't saved a **${only}** build here.`,
+                    flags: MessageFlags.Ephemeral,
+                });
+            }
 
             if (!rows.length) {
                 return interaction.reply({
