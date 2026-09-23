@@ -437,6 +437,8 @@ module.exports = {
                 }
             } catch (err) {
                 console.error(`${red}[HELP ERROR]${reset} Interaction failed:`, err.message);
+                if (err.errors) for (const e of err.errors) console.error('  └─', e?.message || e);
+                else console.error(err.stack);
                 try {
                     if (!i.replied && !i.deferred) {
                         await i.reply({ 
