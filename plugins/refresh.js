@@ -248,7 +248,7 @@ if (type === 'light' && client.getDatabaseHealth) {
     const health = client.getDatabaseHealth();
     description = `🫧 **Light Log Purge Complete!**\n\`\`\`yaml\nDB Size: ${health.size}\nFragmentation: ${health.fragmentation} ${health.fragmentationStatus || ''}\nWasted: ${health.wastedMB || 'N/A'}\n\`\`\``;
 } else {
-    description = i18n.t('refresh.success', lang, { type: type.toUpperCase(), count: result.changes });
+    description = i18n.t('refresh.success', lang, { type: type.toUpperCase(), count: result.changes, ts: new Date().toISOString() });
 }
 
 const successEmbed = new EmbedBuilder()

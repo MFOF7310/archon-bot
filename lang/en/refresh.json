@@ -7,6 +7,6 @@
   "aborted": "✅ Operation aborted. Database intact.",
   "timeout": "⏰ Authorization expired.",
   "backupSent": "📡 Backup sent to your DMs.",
-  "success": "☢️ **{type}** complete!\n```yaml\nAffected: {count} records\nBackup: ✅ Saved\nTimestamp: 2026-09-23T07:58:05.209Z\n```",
+  "success": "☢️ **{type}** complete!\n```yaml\nAffected: {count} records\nBackup: ✅ Saved\nTimestamp: {ts}\n```",
   "preview": "```yaml\n🧠 XP Records: {xp}\n💰 Non-zero Credits: {credits}\n👥 Total Users: {total}\n```"
 }
