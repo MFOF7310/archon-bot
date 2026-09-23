@@ -1,0 +1,23 @@
+{
+  "title": "🔮 PORTAIL D'INVOCATION MYTHIQUE",
+  "desc": "Invoquez **ARCHON CG-223** dans votre royaume!",
+  "botName": "ARCHITECTE CG-223",
+  "permissions": "Administrateur • Commandes Slash",
+  "inviteHint": "Cliquez sur le bouton ci-dessous pour inviter l'Architecte",
+  "inviteButton": "✨ INVITER MAINTENANT ✨",
+  "supportButton": "🏛️ CHAMBRE DU CONSEIL",
+  "websiteButton": "🌐 PORTAIL DES ARCHIVES",
+  "statsButton": "📊 STATISTIQUES DU ROYAUME",
+  "serverCount": "Royaumes Connectés",
+  "userCount": "Agents Formés",
+  "commandCount": "Sorts Arcane",
+  "ping": "Latence Neurale",
+  "inviteSuccess": "✅ **Invocation Réussie!**\nL'Architecte CG-223 a été invoqué dans votre royaume.",
+  "alreadyInServer": "⚠️ **Déjà Présent**\nL'Architecte réside déjà dans ce royaume.",
+  "error": "❌ **Invocation Échouée**\nImpossible d'invoquer l'Architecte.",
+  "footer": "Invocation Mythique • v{version}",
+  "supportServer": "Rejoindre le Conseil",
+  "website": "Documentation",
+  "viewStats": "Voir les Stats",
+  "surprise": "✨ *\"Le réseau neuronal reconnaît votre présence...\"* ✨"
+}

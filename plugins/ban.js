@@ -4,156 +4,14 @@ const { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, ActionRowBuilder
 const OWNER_GUILD_INVITE = 'https://discord.gg/NFSMFJajp9';
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        banTitle: '⚖️ JUDGMENT RENDERED',
-        banEntity: '👤 ENTITY',
-        banAuthorizedBy: '🛡️ AUTHORIZED BY',
-        banReason: '📝 REASON',
-        banDuration: '⏱️ DURATION',
-        banPermanent: 'PERMANENT',
-        banCaseId: '🔖 CASE ID',
-        banFooter: 'ARCHON Security | Protocol: Ban',
-        banSuccess: '✅ **Ban Executed Successfully**',
-        banFailed: '❌ **Critical Failure.** Could not execute ban.',
-        confirmBanTitle: '⚠️ CONFIRM BAN',
-        confirmBanDesc: 'Are you sure you want to permanently ban **{user}**?',
-        confirmBanReason: 'Reason: {reason}',
-        confirmBanWarning: 'This action is **IRREVERSIBLE** and will be logged.',
-        confirmBanButton: '✅ Confirm Ban',
-        unbanTitle: '🔓 JUDGMENT OVERTURNED',
-        unbanEntity: '👤 ENTITY',
-        unbanAuthorizedBy: '🛡️ AUTHORIZED BY',
-        unbanReason: '📝 REASON',
-        unbanPreviousBan: '📜 PREVIOUS BAN',
-        unbanCaseId: '🔖 CASE ID',
-        unbanFooter: 'ARCHON Security | Protocol: Unban',
-        unbanSuccess: '✅ **Unban Executed Successfully**',
-        unbanFailed: '❌ **Critical Failure.** Could not execute unban.',
-        confirmUnbanTitle: '⚠️ CONFIRM UNBAN',
-        confirmUnbanDesc: 'Are you sure you want to unban **{user}**?',
-        confirmUnbanReason: 'Reason for unban: {reason}',
-        confirmUnbanWarning: 'This action will restore access to the user.',
-        confirmUnbanButton: '✅ Confirm Unban',
-        inviteTitle: '🔗 SERVER INVITE SET',
-        inviteSetSuccess: '✅ Server invite link has been set successfully.',
-        inviteSetFailed: '❌ Failed to set invite link.',
-        inviteGetTitle: '🔗 CURRENT SERVER INVITE',
-        inviteGetCustom: '**Custom Invite:** {invite}',
-        inviteGetDefault: '**Default Invite:** {invite} (owner server fallback)',
-        inviteGetNone: 'No invite configured. Set one with `.ban setinvite <link>` or `/ban setinvite`',
-        inviteInvalid: '❌ Invalid invite link. Must be a valid Discord invite URL.',
-        inviteUsage: 'Usage: `.ban setinvite <discord.gg/xxxx>` or `/ban setinvite`',
-        noPermission: '❌ **Access Denied.** Authority level insufficient.',
-        noTarget: '⚠️ **System Error:** Mention a user, provide an ID, or specify a user ID for unban.',
-        selfBan: '❌ Self-termination is not allowed.',
-        notBannable: '❌ **Error:** Target authority exceeds system permissions.',
-        notBanned: '❌ **Error:** This user is not banned.',
-        cancelButton: '❌ Cancel',
-        actionCancelled: '❌ Action cancelled.',
-        dmBanTitle: '🔨 You have been banned',
-        dmBanDesc: 'You have been permanently banned from **{guild}**',
-        dmBanReason: 'Reason: {reason}',
-        dmBanAppeal: 'If you believe this was a mistake, please contact the server staff.',
-        dmUnbanTitle: '🔓 You have been unbanned',
-        dmUnbanDesc: 'You have been unbanned from **{guild}**',
-        dmUnbanReason: 'Reason: {reason}',
-        dmUnbanWelcome: 'You are welcome to rejoin the server using the button below.',
-        dmUnbanFallback: 'Contact server staff for a rejoin invite.',
-        rejoinButton: '🔗 Rejoin Server',
-        modLog: '📋 MODERATION LOG',
-        actionBan: 'BAN',
-        actionUnban: 'UNBAN',
-        actionInvite: 'INVITE CONFIG',
-        userId: 'User ID',
-        bannedBy: 'Banned by',
-        unbannedBy: 'Unbanned by',
-        originalReason: 'Original Reason',
-        slashBanDesc: 'Permanently ban a member from the server',
-        slashUnbanDesc: 'Unban a previously banned member',
-        slashSetinviteDesc: 'Set the permanent server invite link for unbanned users',
-        slashGetinviteDesc: 'View the current server invite configuration',
-        slashUserDesc: 'The member to ban',
-        slashUserIdDesc: 'The User ID of the banned member',
-        slashReasonDesc: 'Reason for the action',
-        slashInviteDesc: 'Discord invite link (discord.gg/xxxx)',
-        slashActionDesc: 'Action to perform (ban or unban)'
-    },
-    fr: {
-        banTitle: '⚖️ JUGEMENT RENDU',
-        banEntity: '👤 ENTITÉ',
-        banAuthorizedBy: '🛡️ AUTORISÉ PAR',
-        banReason: '📝 RAISON',
-        banDuration: '⏱️ DURÉE',
-        banPermanent: 'PERMANENT',
-        banCaseId: '🔖 ID DU CAS',
-        banFooter: 'Sécurité ARCHON | Protocole: Bannissement',
-        banSuccess: '✅ **Bannissement Exécuté avec Succès**',
-        banFailed: '❌ **Échec Critique.** Impossible d\'exécuter le bannissement.',
-        confirmBanTitle: '⚠️ CONFIRMER LE BANNISSEMENT',
-        confirmBanDesc: 'Êtes-vous sûr de vouloir bannir **{user}** de façon permanente?',
-        confirmBanReason: 'Raison: {reason}',
-        confirmBanWarning: 'Cette action est **IRREVERSIBLE** et sera enregistrée.',
-        confirmBanButton: '✅ Confirmer le Bannissement',
-        unbanTitle: '🔓 JUGEMENT ANNULÉ',
-        unbanEntity: '👤 ENTITÉ',
-        unbanAuthorizedBy: '🛡️ AUTORISÉ PAR',
-        unbanReason: '📝 RAISON',
-        unbanPreviousBan: '📜 BANNISSEMENT PRÉCÉDENT',
-        unbanCaseId: '🔖 ID DU CAS',
-        unbanFooter: 'Sécurité ARCHON | Protocole: Débannissement',
-        unbanSuccess: '✅ **Débannissement Exécuté avec Succès**',
-        unbanFailed: '❌ **Échec Critique.** Impossible d\'exécuter le débannissement.',
-        confirmUnbanTitle: '⚠️ CONFIRMER LE DÉBANNISSEMENT',
-        confirmUnbanDesc: 'Êtes-vous sûr de vouloir débannir **{user}**?',
-        confirmUnbanReason: 'Raison du débannissement: {reason}',
-        confirmUnbanWarning: 'Cette action restaurera l\'accès à l\'utilisateur.',
-        confirmUnbanButton: '✅ Confirmer le Débannissement',
-        inviteTitle: '🔗 LIEN D\'INVITATION CONFIGURÉ',
-        inviteSetSuccess: '✅ Le lien d\'invitation a été configuré avec succès.',
-        inviteSetFailed: '❌ Échec de la configuration du lien.',
-        inviteGetTitle: '🔗 INVITATION ACTUELLE',
-        inviteGetCustom: '**Invitation personnalisée:** {invite}',
-        inviteGetDefault: '**Invitation par défaut:** {invite} (serveur propriétaire)',
-        inviteGetNone: 'Aucune invitation configurée. Utilisez `.ban setinvite <lien>` ou `/ban setinvite`',
-        inviteInvalid: '❌ Lien d\'invitation invalide. Doit être une URL Discord valide.',
-        inviteUsage: 'Usage: `.ban setinvite <discord.gg/xxxx>` ou `/ban setinvite`',
-        noPermission: '❌ **Accès Refusé.** Niveau d\'autorité insuffisant.',
-        noTarget: '⚠️ **Erreur Système:** Mentionnez un utilisateur, fournissez un ID, ou spécifiez un ID utilisateur pour débannir.',
-        selfBan: '❌ L\'auto-bannissement n\'est pas autorisé.',
-        notBannable: '❌ **Erreur:** Les autorités de la cible dépassent les permissions système.',
-        notBanned: '❌ **Erreur:** Cet utilisateur n\'est pas banni.',
-        cancelButton: '❌ Annuler',
-        actionCancelled: '❌ Action annulée.',
-        dmBanTitle: '🔨 Vous avez été banni',
-        dmBanDesc: 'Vous avez été banni définitivement de **{guild}**',
-        dmBanReason: 'Raison: {reason}',
-        dmBanAppeal: 'Si vous pensez qu\'il s\'agit d\'une erreur, veuillez contacter le personnel du serveur.',
-        dmUnbanTitle: '🔓 Vous avez été débanni',
-        dmUnbanDesc: 'Vous avez été débanni de **{guild}**',
-        dmUnbanReason: 'Raison: {reason}',
-        dmUnbanWelcome: 'Vous pouvez rejoindre le serveur en cliquant sur le bouton ci-dessous.',
-        dmUnbanFallback: 'Contactez le staff pour un lien de retour.',
-        rejoinButton: '🔗 Rejoindre le Serveur',
-        modLog: '📋 JOURNAL DE MODÉRATION',
-        actionBan: 'BANNISSEMENT',
-        actionUnban: 'DÉBANNISSEMENT',
-        actionInvite: 'CONFIG INVITATION',
-        userId: 'ID Utilisateur',
-        bannedBy: 'Banni par',
-        unbannedBy: 'Débanni par',
-        originalReason: 'Raison Originale',
-        slashBanDesc: 'Bannir définitivement un membre du serveur',
-        slashUnbanDesc: 'Débannir un membre précédemment banni',
-        slashSetinviteDesc: 'Définir le lien d\'invitation permanent pour les utilisateurs débannis',
-        slashGetinviteDesc: 'Voir la configuration d\'invitation actuelle',
-        slashUserDesc: 'Le membre à bannir',
-        slashUserIdDesc: 'L\'ID Utilisateur du membre banni',
-        slashReasonDesc: 'Raison de l\'action',
-        slashInviteDesc: 'Lien Discord (discord.gg/xxxx)',
-        slashActionDesc: 'Action à effectuer (ban ou unban)'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["banTitle","banEntity","banAuthorizedBy","banReason","banDuration","banPermanent","banCaseId","banFooter","banSuccess","banFailed","confirmBanTitle","confirmBanDesc","confirmBanReason","confirmBanWarning","confirmBanButton","unbanTitle","unbanEntity","unbanAuthorizedBy","unbanReason","unbanPreviousBan","unbanCaseId","unbanFooter","unbanSuccess","unbanFailed","confirmUnbanTitle","confirmUnbanDesc","confirmUnbanReason","confirmUnbanWarning","confirmUnbanButton","inviteTitle","inviteSetSuccess","inviteSetFailed","inviteGetTitle","inviteGetCustom","inviteGetDefault","inviteGetNone","inviteInvalid","inviteUsage","noPermission","noTarget","selfBan","notBannable","notBanned","cancelButton","actionCancelled","dmBanTitle","dmBanDesc","dmBanReason","dmBanAppeal","dmUnbanTitle","dmUnbanDesc","dmUnbanReason","dmUnbanWelcome","dmUnbanFallback","rejoinButton","modLog","actionBan","actionUnban","actionInvite","userId","bannedBy","unbannedBy","originalReason","slashBanDesc","slashUnbanDesc","slashSetinviteDesc","slashGetinviteDesc","slashUserDesc","slashUserIdDesc","slashReasonDesc","slashInviteDesc","slashActionDesc"];
+// Clés dans lang/<locale>/ban.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`ban.${k}`, lang);
+    return o;
+}
 
 // ================= DYNAMIC VERSION READER =================
 function getBotVersion(client) {
@@ -224,7 +82,7 @@ function ensureInviteColumn(db) {
 
 // ================= SEND DM (with rejoin button for unban) =================
 async function sendDM(user, guild, reason, action, lang, inviteData) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const isBan = action === 'BAN';
 
     try {
@@ -290,7 +148,7 @@ async function logToModChannel(guild, embed, client) {
 
 // ================= HANDLE INVITE SET/GET (shared) =================
 async function handleSetInvite(interaction, client, db, lang, isSlash) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const guildId = interaction.guild?.id;
     if (!guildId) return;
 
@@ -334,7 +192,7 @@ async function handleSetInvite(interaction, client, db, lang, isSlash) {
 }
 
 async function handleGetInvite(interaction, client, db, lang, isSlash) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const guildId = interaction.guild?.id;
     if (!guildId) return;
 
@@ -402,7 +260,7 @@ module.exports = {
         ensureInviteColumn(db);
 
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = getBotVersion(client);
         const action = usedCommand?.toLowerCase();
 
@@ -580,7 +438,7 @@ module.exports = {
         }
 
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = getBotVersion(client);
 
         // Handle invite subcommands

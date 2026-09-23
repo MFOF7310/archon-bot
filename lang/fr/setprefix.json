@@ -1,0 +1,13 @@
+{
+  "title": "⚙️ CONFIGURATION DU PREFIXE",
+  "current": "Préfixe Actuel",
+  "new": "Nouveau Préfixe",
+  "updated": "✅ Préfixe mis à jour avec succès!",
+  "updatedDesc": "Le préfixe de commande a été changé à `{prefix}`",
+  "example": "Exemple: `{prefix}help`",
+  "samePrefix": "❌ C'est déjà le préfixe actuel.",
+  "invalid": "❌ Préfixe invalide. Doit contenir 1 à 5 caractères.",
+  "noPermission": "❌ Vous avez besoin de la permission **Gérer le Serveur** pour changer le préfixe.",
+  "notConfigured": "Non configuré",
+  "footer": "Paramètres du serveur mis à jour"
+}

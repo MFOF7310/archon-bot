@@ -1,0 +1,17 @@
+{
+  "author": "🎙️ VOICE SYNTHESIS ENGINE",
+  "detected": "Detected Language",
+  "text": "Text",
+  "truncated": "Truncated",
+  "fullMessage": "Full message",
+  "processing": "⚙️ Processing neural voice synthesis...",
+  "noText": "💡 **Protocol:** Provide text or reply to a message.",
+  "usage": "Usage",
+  "fetchError": "❌ Could not fetch the replied message.",
+  "uplinkFailure": "⚠️ **Uplink Failure:** Voice synthesis engine unavailable.",
+  "node": "Bamako Node",
+  "characters": "characters",
+  "voice": "Voice",
+  "neuralVoice": "Neural Voice",
+  "clickToPlay": "🔊 Click to play the audio file above!"
+}

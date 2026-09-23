@@ -1,70 +1,14 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        author: '🦅 EAGLE COMMUNITY | NEURAL UPLINK',
-        title: '🔗 CONNECT WITH THE ARCHITECT',
-        description: 'Join our digital network for the latest CODM meta, live streams, and community events directly from **Bamako, Mali**.',
-        tiktok: '🎬 TikTok',
-        tiktokDesc: 'Live Streams & Clips',
-        instagram: '📸 Instagram',
-        instagramDesc: 'Gameplay Intel',
-        facebook: '🔵 Facebook',
-        facebookDesc: 'Community Hub',
-        whatsapp: '💬 WhatsApp',
-        whatsappDesc: 'Direct Support',
-        discord: '🎮 Discord',
-        discordDesc: 'Join our Server',
-        github: '💻 GitHub',
-        githubDesc: 'Open Source',
-        footer: 'Eagle Community • Digital Sovereignty 🇲🇱',
-        tip: '💡 TIP',
-        tipText: 'Click the buttons below to connect with us!',
-        nodeLocation: '📍 NODE LOCATION',
-        nodeStatus: '```yaml\nBAMAKO, MALI 🇲🇱\nStatus: 🟢 ONLINE\nCore: Groq LPU™ 70B\nPing: {ping}ms```',
-        quickStats: '📊 QUICK STATS',
-        members: 'Members',
-        servers: 'Servers',
-        commands: 'Commands',
-        uptime: 'Uptime',
-        voteLink: '🗳️ Vote for Us',
-        voteDesc: 'Support on Top.gg',
-        inviteLink: '🔗 Invite Bot',
-        inviteDesc: 'Add to your server'
-    },
-    fr: {
-        author: '🦅 EAGLE COMMUNITY | HUB NEURAL',
-        title: '🔗 CONNECTEZ-VOUS À L\'ARCHITECTE',
-        description: 'Rejoignez notre réseau numérique pour les dernières méta CODM, streams en direct et événements communautaires depuis **Bamako, Mali**.',
-        tiktok: '🎬 TikTok',
-        tiktokDesc: 'Streams & Clips',
-        instagram: '📸 Instagram',
-        instagramDesc: 'Intel Gameplay',
-        facebook: '🔵 Facebook',
-        facebookDesc: 'Hub Communautaire',
-        whatsapp: '💬 WhatsApp',
-        whatsappDesc: 'Support Direct',
-        discord: '🎮 Discord',
-        discordDesc: 'Rejoindre le Serveur',
-        github: '💻 GitHub',
-        githubDesc: 'Open Source',
-        footer: 'Eagle Community • Souveraineté Numérique 🇲🇱',
-        tip: '💡 ASTUCE',
-        tipText: 'Cliquez sur les boutons ci-dessous pour vous connecter !',
-        nodeLocation: '📍 LOCALISATION DU NŒUD',
-        nodeStatus: '```yaml\nBAMAKO, MALI 🇲🇱\nStatut: 🟢 EN LIGNE\nNoyau: Groq LPU™ 70B\nPing: {ping}ms```',
-        quickStats: '📊 STATS RAPIDES',
-        members: 'Membres',
-        servers: 'Serveurs',
-        commands: 'Commandes',
-        uptime: 'Disponibilité',
-        voteLink: '🗳️ Voter pour Nous',
-        voteDesc: 'Soutenir sur Top.gg',
-        inviteLink: '🔗 Inviter le Bot',
-        inviteDesc: 'Ajouter à votre serveur'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["author","title","description","tiktok","tiktokDesc","instagram","instagramDesc","facebook","facebookDesc","whatsapp","whatsappDesc","discord","discordDesc","github","githubDesc","footer","tip","tipText","nodeLocation","nodeStatus","quickStats","members","servers","commands","uptime","voteLink","voteDesc","inviteLink","inviteDesc"];
+// Clés dans lang/<locale>/socials.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`socials.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'socials',
@@ -87,7 +31,7 @@ module.exports = {
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('socials', guildId) : 'en';
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
@@ -297,7 +241,7 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION (LEGENDARY DM FALLBACK) =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         
         // 🔥 LEGENDARY DM FALLBACK - Works perfectly in DMs!

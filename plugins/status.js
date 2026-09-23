@@ -2,84 +2,14 @@ const { EmbedBuilder } = require('discord.js');
 const os = require('os');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        author: 'ARCHON CG-223 | NEURAL OVERLINK',
-        title: '─ ARCHITECT SYSTEM DIAGNOSTICS ─',
-        node: 'Node',
-        integrity: 'Integrity',
-        webIntelligence: 'Web Intelligence',
-        connectivityGrid: '📡 CONNECTIVITY GRID',
-        latency: 'Latency',
-        braveSearch: 'Brave Search',
-        webSocket: 'WebSocket',
-        active: 'ACTIVE',
-        online: 'ONLINE',
-        neuralCore: '🧠 NEURAL CORE (Groq LPU™)',
-        inference: 'Inference',
-        load: 'Load',
-        agents: 'Agents',
-        cache: 'Cache',
-        pending: 'Pending',
-        temporalUptime: '⏱️ TEMPORAL UPTIME',
-        systemResources: '💻 SYSTEM RESOURCES',
-        cpu: 'CPU',
-        platform: 'Platform',
-        nodeVersion: 'Node.js',
-        discordVersion: 'Discord.js',
-        stable: 'STABLE',
-        latencyWarning: 'LATENCY_WARNING',
-        synchronized: 'SYNCHRONIZED',
-        telemetry: '> **🔍 Telemetry handshake initiated...**',
-        footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY',
-        hours: 'Hours',
-        minutes: 'Minutes',
-        seconds: 'Seconds',
-        days: 'Days',
-        cores: 'Cores',
-        memory: 'Memory',
-        used: 'Used',
-        total: 'Total'
-    },
-    fr: {
-        author: 'ARCHON CG-223 | LIAISON NEURALE',
-        title: '─ DIAGNOSTICS SYSTÈME ARCHITECT ─',
-        node: 'Nœud',
-        integrity: 'Intégrité',
-        webIntelligence: 'Intelligence Web',
-        connectivityGrid: '📡 GRILLE DE CONNECTIVITÉ',
-        latency: 'Latence',
-        braveSearch: 'Brave Search',
-        webSocket: 'WebSocket',
-        active: 'ACTIF',
-        online: 'EN LIGNE',
-        neuralCore: '🧠 CŒUR NEURAL (Groq LPU™)',
-        inference: 'Inférence',
-        load: 'Charge',
-        agents: 'Agents',
-        cache: 'Cache',
-        pending: 'En attente',
-        temporalUptime: '⏱️ DISPONIBILITÉ TEMPORELLE',
-        systemResources: '💻 RESSOURCES SYSTÈME',
-        cpu: 'CPU',
-        platform: 'Plateforme',
-        nodeVersion: 'Node.js',
-        discordVersion: 'Discord.js',
-        stable: 'STABLE',
-        latencyWarning: 'ALERTE_LATENCE',
-        synchronized: 'SYNCHRONISÉ',
-        telemetry: '> **🔍 Initialisation de la poignée de main télémétrique...**',
-        footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE',
-        hours: 'Heures',
-        minutes: 'Minutes',
-        seconds: 'Secondes',
-        days: 'Jours',
-        cores: 'Cœurs',
-        memory: 'Mémoire',
-        used: 'Utilisé',
-        total: 'Total'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["author", "title", "node", "integrity", "webIntelligence", "connectivityGrid", "latency", "braveSearch", "webSocket", "active", "online", "neuralCore", "inference", "load", "agents", "cache", "pending", "temporalUptime", "systemResources", "cpu", "platform", "nodeVersion", "discordVersion", "stable", "latencyWarning", "synchronized", "telemetry", "footer", "hours", "minutes", "seconds", "days", "cores", "memory", "used", "total"];
+// Clés dans lang/<locale>/status.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`status.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'status',
@@ -97,7 +27,7 @@ module.exports = {
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('status', guildId) : 'en';
         
-        const t = translations[lang] || translations.en || Object.values(translations)[0];
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();

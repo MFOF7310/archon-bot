@@ -1,0 +1,23 @@
+{
+  "title": "😎 INTELLIGENCE EMOJI",
+  "name": "Nom",
+  "id": "ID",
+  "animated": "Animé",
+  "guild": "Serveur",
+  "url": "URL",
+  "unicode": "Unicode",
+  "type": "Type",
+  "customEmoji": "Emoji Personnalisé",
+  "standardEmoji": "Emoji Standard",
+  "raw": "Format Brut",
+  "footer": "EAGLE COMMUNITY • Intelligence Neurale",
+  "noEmoji": "❌ Veuillez fournir un emoji.",
+  "notFound": "❌ Emoji introuvable.",
+  "sizeNote": "🖼️ Haute Résolution",
+  "created": "Ajouté au Serveur",
+  "managed": "Géré",
+  "requireColons": "Nécessite :",
+  "available": "Disponible",
+  "rolesAllowed": "Rôles Autorisés",
+  "everyone": "Tout le monde"
+}

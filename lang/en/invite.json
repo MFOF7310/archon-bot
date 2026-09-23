@@ -1,0 +1,23 @@
+{
+  "title": "🔮 MYTHIC INVOCATION PORTAL",
+  "desc": "Summon **ARCHON CG-223** to your realm!",
+  "botName": "ARCHON CG-223",
+  "permissions": "Administrator • Slash Commands",
+  "inviteHint": "Click the button below to invite the Architect",
+  "inviteButton": "✨ INVITE NOW ✨",
+  "supportButton": "🏛️ COUNCIL CHAMBER",
+  "websiteButton": "🌐 ARCHIVE PORTAL",
+  "statsButton": "📊 REALM STATS",
+  "serverCount": "Connected Realms",
+  "userCount": "Agents Trained",
+  "commandCount": "Arcane Spells",
+  "ping": "Neural Latency",
+  "inviteSuccess": "✅ **Invocation Successful!**\nArchitect CG-223 has been summoned to your realm.",
+  "alreadyInServer": "⚠️ **Already Present**\nThe Architect already resides in this realm.",
+  "error": "❌ **Invocation Failed**\nCould not summon the Architect.",
+  "footer": "Mythic Invocation • v{version}",
+  "supportServer": "Join the Council",
+  "website": "Documentation",
+  "viewStats": "View Stats",
+  "surprise": "✨ *\"The neural network acknowledges your presence...\"* ✨"
+}

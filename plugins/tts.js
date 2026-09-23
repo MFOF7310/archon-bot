@@ -2,42 +2,14 @@ const googleTTS = require('google-tts-api');
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        author: '🎙️ VOICE SYNTHESIS ENGINE',
-        detected: 'Detected Language',
-        text: 'Text',
-        truncated: 'Truncated',
-        fullMessage: 'Full message',
-        processing: '⚙️ Processing neural voice synthesis...',
-        noText: '💡 **Protocol:** Provide text or reply to a message.',
-        usage: 'Usage',
-        fetchError: '❌ Could not fetch the replied message.',
-        uplinkFailure: '⚠️ **Uplink Failure:** Voice synthesis engine unavailable.',
-        node: 'Bamako Node',
-        characters: 'characters',
-        voice: 'Voice',
-        neuralVoice: 'Neural Voice',
-        clickToPlay: '🔊 Click to play the audio file above!'
-    },
-    fr: {
-        author: '🎙️ MOTEUR DE SYNTHÈSE VOCALE',
-        detected: 'Langue Détectée',
-        text: 'Texte',
-        truncated: 'Tronqué',
-        fullMessage: 'Message complet',
-        processing: '⚙️ Traitement de la synthèse vocale neurale...',
-        noText: '💡 **Protocole:** Fournissez du texte ou répondez à un message.',
-        usage: 'Utilisation',
-        fetchError: '❌ Impossible de récupérer le message répondu.',
-        uplinkFailure: '⚠️ **Échec de Liaison:** Moteur de synthèse vocale indisponible.',
-        node: 'Nœud Bamako',
-        characters: 'caractères',
-        voice: 'Voix',
-        neuralVoice: 'Voix Neurale',
-        clickToPlay: '🔊 Cliquez pour jouer le fichier audio ci-dessus !'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["author","detected","text","truncated","fullMessage","processing","noText","usage","fetchError","uplinkFailure","node","characters","voice","neuralVoice","clickToPlay"];
+// Clés dans lang/<locale>/tts.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`tts.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'tts',
@@ -64,7 +36,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('tts', message.guild?.id) : 'en';
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';

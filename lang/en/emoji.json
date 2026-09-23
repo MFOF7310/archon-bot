@@ -1,0 +1,23 @@
+{
+  "title": "😎 EMOJI INTELLIGENCE",
+  "name": "Name",
+  "id": "ID",
+  "animated": "Animated",
+  "guild": "Server",
+  "url": "URL",
+  "unicode": "Unicode",
+  "type": "Type",
+  "customEmoji": "Custom Emoji",
+  "standardEmoji": "Standard Emoji",
+  "raw": "Raw Format",
+  "footer": "EAGLE COMMUNITY • Neural Intelligence",
+  "noEmoji": "❌ Please provide an emoji.",
+  "notFound": "❌ Emoji not found.",
+  "sizeNote": "🖼️ High Resolution",
+  "created": "Added to Server",
+  "managed": "Managed",
+  "requireColons": "Requires Colons",
+  "available": "Available",
+  "rolesAllowed": "Roles Allowed",
+  "everyone": "Everyone"
+}

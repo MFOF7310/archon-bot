@@ -1,54 +1,14 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: '😎 EMOJI INTELLIGENCE',
-        name: 'Name',
-        id: 'ID',
-        animated: 'Animated',
-        guild: 'Server',
-        url: 'URL',
-        unicode: 'Unicode',
-        type: 'Type',
-        customEmoji: 'Custom Emoji',
-        standardEmoji: 'Standard Emoji',
-        raw: 'Raw Format',
-        footer: 'EAGLE COMMUNITY • Neural Intelligence',
-        noEmoji: '❌ Please provide an emoji.',
-        notFound: '❌ Emoji not found.',
-        sizeNote: '🖼️ High Resolution',
-        created: 'Added to Server',
-        managed: 'Managed',
-        requireColons: 'Requires Colons',
-        available: 'Available',
-        rolesAllowed: 'Roles Allowed',
-        everyone: 'Everyone'
-    },
-    fr: {
-        title: '😎 INTELLIGENCE EMOJI',
-        name: 'Nom',
-        id: 'ID',
-        animated: 'Animé',
-        guild: 'Serveur',
-        url: 'URL',
-        unicode: 'Unicode',
-        type: 'Type',
-        customEmoji: 'Emoji Personnalisé',
-        standardEmoji: 'Emoji Standard',
-        raw: 'Format Brut',
-        footer: 'EAGLE COMMUNITY • Intelligence Neurale',
-        noEmoji: '❌ Veuillez fournir un emoji.',
-        notFound: '❌ Emoji introuvable.',
-        sizeNote: '🖼️ Haute Résolution',
-        created: 'Ajouté au Serveur',
-        managed: 'Géré',
-        requireColons: 'Nécessite :',
-        available: 'Disponible',
-        rolesAllowed: 'Rôles Autorisés',
-        everyone: 'Tout le monde'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","name","id","animated","guild","url","unicode","type","customEmoji","standardEmoji","raw","footer","noEmoji","notFound","sizeNote","created","managed","requireColons","available","rolesAllowed","everyone"];
+// Clés dans lang/<locale>/emoji.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`emoji.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'emoji',
@@ -71,7 +31,7 @@ module.exports = {
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
 
         const input = args[0];
         if (!input) {
@@ -92,7 +52,7 @@ module.exports = {
         
         const input = interaction.options.getString('emoji');
         const lang = interaction.client.detectLanguage?.('/emoji', 'en') || 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
 
         const embed = await buildEmojiEmbed(input, t, interaction.client, interaction.guild);
         if (!embed) {

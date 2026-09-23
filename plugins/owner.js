@@ -5,78 +5,18 @@ const fs = require('fs');
 const path = require('path');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: '🛰️ ARCHON CG-223 | EXECUTIVE HUB',
-        description: 'Community management and support frequency active.',
-        facebook: 'Facebook',
-        facebookDesc: 'Community Hub',
-        tiktok: 'TikTok',
-        tiktokDesc: 'Live Streams & Clips',
-        instagram: 'Instagram',
-        instagramDesc: 'Gameplay Intel',
-        discord: 'Discord',
-        discordDesc: 'Join our Server',
-        whatsapp: 'WhatsApp',
-        whatsappDesc: 'Direct Support',
-        github: 'GitHub',
-        githubDesc: 'Open Source',
-        node: 'Node',
-        status: 'Status',
-        active: 'ACTIVE',
-        footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY',
-        securityBreach: '⛔ **SECURITY BREACH:** Executive Hub restricted to system Owner.',
-        accessGranted: '🔓 **ACCESS GRANTED:** Welcome, Architect.',
-        quickLinks: 'QUICK LINKS',
-        socialLinks: 'SOCIAL LINKS',
-        systemControls: '⚙️ SYSTEM CONTROLS',
-        sysStatus: 'System Status',
-        sysRestart: 'Restart Engine',
-        sysBackup: 'Database Backup',
-        sysLogs: 'View Logs',
-        restarting: '🔄 Restarting engine...',
-        backupRunning: '💾 Running database backup...',
-        backupDone: '✅ Backup completed',
-        backupFailed: '❌ Backup failed'
-    },
-    fr: {
-        title: '🛰️ ARCHON CG-223 | HUB EXÉCUTIF',
-        description: 'Gestion communautaire et fréquence de support active.',
-        facebook: 'Facebook',
-        facebookDesc: 'Hub Communautaire',
-        tiktok: 'TikTok',
-        tiktokDesc: 'Streams & Clips',
-        instagram: 'Instagram',
-        instagramDesc: 'Intel Gameplay',
-        discord: 'Discord',
-        discordDesc: 'Rejoindre le Serveur',
-        whatsapp: 'WhatsApp',
-        whatsappDesc: 'Support Direct',
-        github: 'GitHub',
-        githubDesc: 'Open Source',
-        node: 'Nœud',
-        status: 'Statut',
-        active: 'ACTIF',
-        footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE',
-        securityBreach: '⛔ **VIOLATION DE SÉCURITÉ:** Hub Exécutif réservé au Propriétaire.',
-        accessGranted: '🔓 **ACCÈS AUTORISÉ:** Bienvenue, Architecte.',
-        quickLinks: 'LIENS RAPIDES',
-        socialLinks: 'LIENS SOCIAUX',
-        systemControls: '⚙️ CONTRÔLES SYSTÈME',
-        sysStatus: 'Statut Système',
-        sysRestart: 'Redémarrer',
-        sysBackup: 'Sauvegarde DB',
-        sysLogs: 'Voir Logs',
-        restarting: '🔄 Redémarrage...',
-        backupRunning: '💾 Sauvegarde en cours...',
-        backupDone: '✅ Sauvegarde terminée',
-        backupFailed: '❌ Échec sauvegarde'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","description","facebook","facebookDesc","tiktok","tiktokDesc","instagram","instagramDesc","discord","discordDesc","whatsapp","whatsappDesc","github","githubDesc","node","status","active","footer","securityBreach","accessGranted","quickLinks","socialLinks","systemControls","sysStatus","sysRestart","sysBackup","sysLogs","restarting","backupRunning","backupDone","backupFailed"];
+// Clés dans lang/<locale>/owner.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`owner.${k}`, lang);
+    return o;
+}
 
 // ================= SUBCOMMAND ROUTER =================
 async function handleSystemCommand(client, interaction, subcommand, args, lang) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const ARCHITECT_ID = process.env.OWNER_ID;
     const userId = interaction?.user?.id || interaction?.author?.id;
 
@@ -166,7 +106,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
@@ -242,7 +182,7 @@ module.exports = {
     execute: async (interaction, client) => {
         const ARCHITECT_ID = process.env.OWNER_ID;
         const lang = client.detectLanguage ? client.detectLanguage('owner', message.guild?.id) : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
 
         if (interaction.user.id !== ARCHITECT_ID) {
             return interaction.reply({ content: t.securityBreach, flags: 64 });

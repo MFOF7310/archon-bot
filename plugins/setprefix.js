@@ -1,34 +1,14 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 // ================= TRANSLATIONS =================
-const translations = {
-    en: {
-        title: '⚙️ PREFIX CONFIGURATION',
-        current: 'Current Prefix',
-        new: 'New Prefix',
-        updated: '✅ Prefix updated successfully!',
-        updatedDesc: 'Command prefix has been changed to `{prefix}`',
-        example: 'Example: `{prefix}help`',
-        samePrefix: '❌ That is already the current prefix.',
-        invalid: '❌ Invalid prefix. Must be 1-5 characters long.',
-        noPermission: '❌ You need **Manage Server** permission to change the prefix.',
-        notConfigured: 'Not configured',
-        footer: 'Server settings updated'
-    },
-    fr: {
-        title: '⚙️ CONFIGURATION DU PREFIXE',
-        current: 'Préfixe Actuel',
-        new: 'Nouveau Préfixe',
-        updated: '✅ Préfixe mis à jour avec succès!',
-        updatedDesc: 'Le préfixe de commande a été changé à `{prefix}`',
-        example: 'Exemple: `{prefix}help`',
-        samePrefix: '❌ C\'est déjà le préfixe actuel.',
-        invalid: '❌ Préfixe invalide. Doit contenir 1 à 5 caractères.',
-        noPermission: '❌ Vous avez besoin de la permission **Gérer le Serveur** pour changer le préfixe.',
-        notConfigured: 'Non configuré',
-        footer: 'Paramètres du serveur mis à jour'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","current","new","updated","updatedDesc","example","samePrefix","invalid","noPermission","notConfigured","footer"];
+// Clés dans lang/<locale>/setprefix.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`setprefix.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'setprefix',
@@ -45,7 +25,7 @@ module.exports = {
         const guildId = message.guild?.id ?? 'DM';
         // Detect language
         
-        const t = translations[lang];
+        const t = loadT(lang);
         
         // Check permissions
         if (!message.member.permissions.has('ManageGuild')) {
@@ -110,7 +90,7 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
         
         // Check permissions
         if (!interaction.memberPermissions.has('ManageGuild')) {

@@ -1,0 +1,13 @@
+{
+  "title": "⚙️ PREFIX CONFIGURATION",
+  "current": "Current Prefix",
+  "new": "New Prefix",
+  "updated": "✅ Prefix updated successfully!",
+  "updatedDesc": "Command prefix has been changed to `{prefix}`",
+  "example": "Example: `{prefix}help`",
+  "samePrefix": "❌ That is already the current prefix.",
+  "invalid": "❌ Invalid prefix. Must be 1-5 characters long.",
+  "noPermission": "❌ You need **Manage Server** permission to change the prefix.",
+  "notConfigured": "Not configured",
+  "footer": "Server settings updated"
+}

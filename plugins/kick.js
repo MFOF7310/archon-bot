@@ -1,56 +1,14 @@
 const { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        accessDenied: '❌ **Access Denied.** `Kick Members` permission required.',
-        noTarget: '⚠️ **System Error:** Provide a valid target signature.',
-        selfTarget: '❌ Cannot disconnect own session.',
-        notKickable: '❌ **Error:** Target has administrative protection.',
-        success: '👢 MEMBER DISCONNECTED',
-        entity: '👤 ENTITY',
-        moderator: '🛡️ MODERATOR',
-        log: '📝 REASON',
-        reason: 'Operational necessity.',
-        error: '❌ **Failure:** Execution error during disconnect.',
-        dmTitle: '👢 YOU HAVE BEEN KICKED',
-        dmServer: 'Server',
-        dmModerator: 'Moderator',
-        dmReason: 'Reason',
-        dmFooter: 'This is an automated security notification.',
-        logChannelTitle: '👢 MEMBER KICKED',
-        logUser: 'User',
-        logModerator: 'Moderator',
-        logReason: 'Reason',
-        logChannel: 'Channel',
-        footer: 'Eagle Community | Security Module',
-        executed: 'Kick executed successfully.'
-    },
-    fr: {
-        accessDenied: '❌ **Accès Refusé.** Permission `Expulser des Membres` requise.',
-        noTarget: '⚠️ **Erreur Système:** Fournissez une signature cible valide.',
-        selfTarget: '❌ Impossible de déconnecter sa propre session.',
-        notKickable: '❌ **Erreur:** La cible a une protection administrative.',
-        success: '👢 MEMBRE DÉCONNECTÉ',
-        entity: '👤 ENTITÉ',
-        moderator: '🛡️ MODÉRATEUR',
-        log: '📝 RAISON',
-        reason: 'Nécessité opérationnelle.',
-        error: '❌ **Échec:** Erreur d\'exécution lors de la déconnexion.',
-        dmTitle: '👢 VOUS AVEZ ÉTÉ EXPULSÉ',
-        dmServer: 'Serveur',
-        dmModerator: 'Modérateur',
-        dmReason: 'Raison',
-        dmFooter: 'Ceci est une notification de sécurité automatisée.',
-        logChannelTitle: '👢 MEMBRE EXPULSÉ',
-        logUser: 'Utilisateur',
-        logModerator: 'Modérateur',
-        logReason: 'Raison',
-        logChannel: 'Salon',
-        footer: 'Eagle Community | Module de Sécurité',
-        executed: 'Expulsion exécutée avec succès.'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["accessDenied","noTarget","selfTarget","notKickable","success","entity","moderator","log","reason","error","dmTitle","dmServer","dmModerator","dmReason","dmFooter","logChannelTitle","logUser","logModerator","logReason","logChannel","footer","executed"];
+// Clés dans lang/<locale>/kick.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`kick.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'kick',
@@ -81,7 +39,7 @@ module.exports = {
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guildName = message.guild.name;
         const guildIcon = message.guild.iconURL();

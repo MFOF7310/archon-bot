@@ -1,54 +1,14 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: '🔮 MYTHIC INVOCATION PORTAL',
-        desc: 'Summon **ARCHON CG-223** to your realm!',
-        botName: 'ARCHON CG-223',
-        permissions: 'Administrator • Slash Commands',
-        inviteHint: 'Click the button below to invite the Architect',
-        inviteButton: '✨ INVITE NOW ✨',
-        supportButton: '🏛️ COUNCIL CHAMBER',
-        websiteButton: '🌐 ARCHIVE PORTAL',
-        statsButton: '📊 REALM STATS',
-        serverCount: 'Connected Realms',
-        userCount: 'Agents Trained',
-        commandCount: 'Arcane Spells',
-        ping: 'Neural Latency',
-        inviteSuccess: '✅ **Invocation Successful!**\nArchitect CG-223 has been summoned to your realm.',
-        alreadyInServer: '⚠️ **Already Present**\nThe Architect already resides in this realm.',
-        error: '❌ **Invocation Failed**\nCould not summon the Architect.',
-        footer: 'Mythic Invocation • v{version}',
-        supportServer: 'Join the Council',
-        website: 'Documentation',
-        viewStats: 'View Stats',
-        surprise: '✨ *"The neural network acknowledges your presence..."* ✨'
-    },
-    fr: {
-        title: '🔮 PORTAIL D\'INVOCATION MYTHIQUE',
-        desc: 'Invoquez **ARCHON CG-223** dans votre royaume!',
-        botName: 'ARCHITECTE CG-223',
-        permissions: 'Administrateur • Commandes Slash',
-        inviteHint: 'Cliquez sur le bouton ci-dessous pour inviter l\'Architecte',
-        inviteButton: '✨ INVITER MAINTENANT ✨',
-        supportButton: '🏛️ CHAMBRE DU CONSEIL',
-        websiteButton: '🌐 PORTAIL DES ARCHIVES',
-        statsButton: '📊 STATISTIQUES DU ROYAUME',
-        serverCount: 'Royaumes Connectés',
-        userCount: 'Agents Formés',
-        commandCount: 'Sorts Arcane',
-        ping: 'Latence Neurale',
-        inviteSuccess: '✅ **Invocation Réussie!**\nL\'Architecte CG-223 a été invoqué dans votre royaume.',
-        alreadyInServer: '⚠️ **Déjà Présent**\nL\'Architecte réside déjà dans ce royaume.',
-        error: '❌ **Invocation Échouée**\nImpossible d\'invoquer l\'Architecte.',
-        footer: 'Invocation Mythique • v{version}',
-        supportServer: 'Rejoindre le Conseil',
-        website: 'Documentation',
-        viewStats: 'Voir les Stats',
-        surprise: '✨ *"Le réseau neuronal reconnaît votre présence..."* ✨'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","desc","botName","permissions","inviteHint","inviteButton","supportButton","websiteButton","statsButton","serverCount","userCount","commandCount","ping","inviteSuccess","alreadyInServer","error","footer","supportServer","website","viewStats","surprise"];
+// Clés dans lang/<locale>/invite.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`invite.${k}`, lang);
+    return o;
+}
 
 // ================= MYTHIC QUOTES (SURPRISE!) =================
 const MYTHIC_QUOTES = {
@@ -108,7 +68,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         
         // ================= SURPRISE: Random Mythic Quote =================
@@ -236,7 +196,7 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.8.0';
         
         // Surprise random quote

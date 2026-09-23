@@ -16,90 +16,14 @@ function getVersion() {
 }
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        noPermission: '❌ Manage Messages permission required.',
-        noTarget: '❓ **Reply** to a message or provide a message ID to pin.',
-        messageNotFound: '❌ Message not found. It may have been deleted.',
-        pinLimitReached: '❌ This channel has reached the 50 pin limit.',
-        alreadyPinned: '⚠️ This message is already pinned.',
-        pinned: '✅ Message pinned successfully!',
-        pinnedAndArchived: '✅ Message pinned and archived to the Neural Gallery!',
-        archiveTitle: '📌 NEURAL ARCHIVE ENTRY',
-        archivedBy: 'Archived by',
-        origin: '📍 Origin',
-        jumpToMessage: '🔗 Jump to Message',
-        messageId: '🆔 Message ID',
-        author: '👤 Author',
-        pinnedAt: '📅 Pinned At',
-        attachments: '📎 Attachments',
-        content: '💬 Content',
-        noContent: '*[No text content]*',
-        jumpButton: '🔗 Jump to Original',
-        unpinButton: '📌 Unpin',
-        unpinned: '✅ Message unpinned.',
-        pinCount: '📊 Pin Count',
-        neuralArchive: 'NEURAL ARCHIVE SYSTEM',
-        noPins: '📌 No pinned messages in this channel.',
-        unpinFailed: '❌ Failed to unpin.',
-        fetchFailed: '❌ Could not fetch pinned messages.',
-        unpinPrompt: '**Reply** to a pinned message or provide an ID to unpin.',
-        notPinned: '⚠️ This message is not pinned.',
-        replyTip: '💡 **Tip:** Reply to a message and type `.pin` to pin it!',
-        cleanupTip: '🧹 **Tip:** Reply to a pinned message and type `.unpin` to remove it!',
-        slashDescription: '📌 Pin a message to the Neural Gallery',
-        slashUnpinDesc: '📌 Unpin a message from the channel',
-        slashListDesc: '📌 View all pinned messages in this channel',
-        optionMessageId: 'message_id',
-        optionMessageDesc: 'ID of the message to pin/unpin (optional if replying)',
-        noPinsInChannel: '📌 No pinned messages in this channel.',
-        pinsListTitle: '📌 PINNED MESSAGES',
-        archivedCount: 'Total Archived',
-        channelLimit: 'Channel Limit',
-        viewArchives: '📂 View Archives'
-    },
-    fr: {
-        noPermission: '❌ Autorisation de gérer les messages requise.',
-        noTarget: '❓ **Répondez** à un message ou fournissez un ID à épingler.',
-        messageNotFound: '❌ Message introuvable. Il a peut-être été supprimé.',
-        pinLimitReached: '❌ Ce salon a atteint la limite de 50 messages épinglés.',
-        alreadyPinned: '⚠️ Ce message est déjà épinglé.',
-        pinned: '✅ Message épinglé avec succès!',
-        pinnedAndArchived: '✅ Message épinglé et archivé dans la Galerie Neurale!',
-        archiveTitle: '📌 ENTRÉE D\'ARCHIVE NEURALE',
-        archivedBy: 'Archivé par',
-        origin: '📍 Origine',
-        jumpToMessage: '🔗 Aller au Message',
-        messageId: '🆔 ID du Message',
-        author: '👤 Auteur',
-        pinnedAt: '📅 Épinglé le',
-        attachments: '📎 Pièces jointes',
-        content: '💬 Contenu',
-        noContent: '*[Aucun contenu texte]*',
-        jumpButton: '🔗 Aller à l\'original',
-        unpinButton: '📌 Désépingler',
-        unpinned: '✅ Message désépinglé.',
-        pinCount: '📊 Nombre d\'épingles',
-        neuralArchive: 'SYSTÈME D\'ARCHIVE NEURALE',
-        noPins: '📌 Aucun message épinglé dans ce salon.',
-        unpinFailed: '❌ Échec du désépinglage.',
-        fetchFailed: '❌ Impossible de récupérer les messages épinglés.',
-        unpinPrompt: '**Répondez** à un message épinglé ou fournissez un ID à désépingler.',
-        notPinned: '⚠️ Ce message n\'est pas épinglé.',
-        replyTip: '💡 **Astuce:** Répondez à un message et tapez `.pin` pour l\'épingler!',
-        cleanupTip: '🧹 **Astuce:** Répondez à un message épinglé et tapez `.unpin` pour le retirer!',
-        slashDescription: '📌 Épingler un message dans la Galerie Neurale',
-        slashUnpinDesc: '📌 Désépingler un message du salon',
-        slashListDesc: '📌 Voir tous les messages épinglés dans ce salon',
-        optionMessageId: 'message_id',
-        optionMessageDesc: 'ID du message à épingler/désépingler (optionnel si vous répondez)',
-        noPinsInChannel: '📌 Aucun message épinglé dans ce salon.',
-        pinsListTitle: '📌 MESSAGES ÉPINGLÉS',
-        archivedCount: 'Total Archivé',
-        channelLimit: 'Limite du Salon',
-        viewArchives: '📂 Voir les Archives'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["noPermission","noTarget","messageNotFound","pinLimitReached","alreadyPinned","pinned","pinnedAndArchived","archiveTitle","archivedBy","origin","jumpToMessage","messageId","author","pinnedAt","attachments","content","noContent","jumpButton","unpinButton","unpinned","pinCount","neuralArchive","noPins","unpinFailed","fetchFailed","unpinPrompt","notPinned","replyTip","cleanupTip","slashDescription","slashUnpinDesc","slashListDesc","optionMessageId","optionMessageDesc","noPinsInChannel","pinsListTitle","archivedCount","channelLimit","viewArchives"];
+// Clés dans lang/<locale>/pin.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`pin.${k}`, lang);
+    return o;
+}
 
 // ================= HELPER FUNCTIONS =================
 function truncateText(text, maxLength = 1000) {
@@ -248,7 +172,7 @@ module.exports = {
         if (client.detectLanguage && usedCommand) {
             lang = client.detectLanguage('pin', guildId);
         }
-        const t = translations[lang];
+        const t = loadT(lang);
         
         // ================= PERMISSION CHECK =================
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
@@ -278,7 +202,7 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
         const db = client.db;
         
         // Check permissions

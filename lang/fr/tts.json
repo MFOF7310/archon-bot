@@ -1,0 +1,17 @@
+{
+  "author": "🎙️ MOTEUR DE SYNTHÈSE VOCALE",
+  "detected": "Langue Détectée",
+  "text": "Texte",
+  "truncated": "Tronqué",
+  "fullMessage": "Message complet",
+  "processing": "⚙️ Traitement de la synthèse vocale neurale...",
+  "noText": "💡 **Protocole:** Fournissez du texte ou répondez à un message.",
+  "usage": "Utilisation",
+  "fetchError": "❌ Impossible de récupérer le message répondu.",
+  "uplinkFailure": "⚠️ **Échec de Liaison:** Moteur de synthèse vocale indisponible.",
+  "node": "Nœud Bamako",
+  "characters": "caractères",
+  "voice": "Voix",
+  "neuralVoice": "Voix Neurale",
+  "clickToPlay": "🔊 Cliquez pour jouer le fichier audio ci-dessus !"
+}
