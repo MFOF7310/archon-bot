@@ -75,8 +75,10 @@ async function rearmTimers(db, client) {
             if (h <= 0) continue;
 
             // Last activity: newest message in the channel, else ticket creation
-            const last = await ch.messages.fetch({ limit: 1 }).catch(() => null);
-            const lastAt = last?.first()?.createdTimestamp || (tk.createdAt ? tk.createdAt * 1000 : Date.now());
+            // Bot messages (the close warning included) are not activity, or every restart pushes the deadline back
+            const recent = await ch.messages.fetch({ limit: 50 }).catch(() => null);
+            const human = recent?.find(m => !m.author.bot);
+            const lastAt = human?.createdTimestamp || (tk.createdAt ? tk.createdAt * 1000 : Date.now());
             const idleMs = Date.now() - lastAt;
 
             if (idleMs >= h * 3600000) {
@@ -285,6 +287,7 @@ async function saveSetting(client, gid, key, val, lang='en') { try { const ok=cl
 
 // Reset auto-close timer when there's activity in a ticket channel
 function onMessageActivity(message, client, s) {
+    if (message.author?.bot) return; // only humans count as activity
     const cid = message.channel.id;
     if (!active.has(cid)) return;
     resetACTimer(cid, client, s);
