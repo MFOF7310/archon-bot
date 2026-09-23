@@ -79,7 +79,7 @@ module.exports = {
         const isInServer = message.guild && client.guilds.cache.has(message.guild.id);
         
         // ================= Build Invite URL =================
-        const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot%20applications.commands`;
+        const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=2416249891&scope=bot%20applications.commands`;
         const supportUrl = 'https://discord.gg/NFSMFJajp9';
         const websiteUrl = 'https://github.com/MFOF7310';
         
@@ -203,7 +203,7 @@ module.exports = {
         const quotes = MYTHIC_QUOTES[lang];
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
         
-        const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot%20applications.commands`;
+        const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=2416249891&scope=bot%20applications.commands`;
         const supportUrl = 'https://discord.gg/NFSMFJajp9';
         const websiteUrl = 'https://github.com/MFOF7310';
         
