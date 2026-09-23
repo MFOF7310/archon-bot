@@ -52,7 +52,7 @@ http.createServer((req, res) => {
 
         const cmd = [
             'cd /root/cloud-gaming-223-digital-engine',
-            'git pull origin main',
+            'git pull --autostash origin main',
             'pm2 restart Architect-CG223 --update-env'
         ].join(' && ');
 
