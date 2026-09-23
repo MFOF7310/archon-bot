@@ -138,13 +138,14 @@ module.exports = {
             seen.add(value.toLowerCase());
             out.push({ name: name.slice(0, 100), value: value.slice(0, 100) });
         };
-        // meta weapons first, capped at 20 so server-saved names still fit
-        for (const w of W.searchWeapons(q.toLowerCase(), 20)) add(w.tier ? `${w.name} [${w.tier}]` : `${w.name} · ${w.category || '—'}`, w.name);
-        // weapons members already saved on this server, even if not in W
         const onShow = interaction.options.getSubcommand(false) === 'show';
         const forUser = onShow
             ? (interaction.options.getUser('member')?.id || interaction.user.id)
             : null;
+        // on /build show only real saved builds are offerable — no meta, no roster
+        if (!onShow) {
+            for (const w of W.searchWeapons(q.toLowerCase(), 20)) add(w.tier ? `${w.name} [${w.tier}]` : `${w.name} · ${w.category || '—'}`, w.name);
+        }
         try {
             if (forUser) {
                 const mine = interaction.client.db.prepare(
