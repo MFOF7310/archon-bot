@@ -140,7 +140,7 @@ module.exports = {
         };
         const onShow = interaction.options.getSubcommand(false) === 'show';
         const forUser = onShow
-            ? (interaction.options.getUser('member')?.id || interaction.user.id)
+            ? (interaction.options.get('member')?.value || interaction.user.id)
             : null;
         // on /build show only real saved builds are offerable — no meta, no roster
         if (!onShow) {
