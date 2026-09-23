@@ -115,8 +115,7 @@ module.exports = {
 
         // Use Discord's locale for slash commands (respects user's client language)
         // Fallback to detectLanguage for prefix-style detection
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' :
-                     (client.detectLanguage ? client.detectLanguage('daily', 'en') : 'en');
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = dailyTranslations[lang];
         const prefix = interaction.guild ? (client.getServerSettings(interaction.guild.id)?.prefix || '.') : '.';
         const subcommand = interaction.options.getSubcommand(false);

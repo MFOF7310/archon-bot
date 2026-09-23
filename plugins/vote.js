@@ -743,7 +743,7 @@ module.exports = {
     execute: async (interaction, client) => {
         if (!interaction.guild) return interaction.reply({ content: 'Server only.', flags: MessageFlags.Ephemeral });
         voteSync.setupDB(client.db);
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang] || T.en;
         const uid = interaction.user.id;
         const gid = interaction.guildId;
@@ -828,7 +828,7 @@ module.exports = {
     // ================= BUTTON HANDLER (for slash portal buttons) =================
     async handleSlashButton(interaction, client) {
         voteSync.setupDB(client.db);
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang] || T.en;
         const uid = interaction.user.id;
         const gid = interaction.guildId;

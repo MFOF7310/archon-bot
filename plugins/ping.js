@@ -218,7 +218,7 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const guildId = interaction.guild?.id || 'DM';
-        const lang = client.detectLanguage ? client.detectLanguage('ping', guildId) : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+        const lang = client.detectLanguage ? client.detectLanguage('ping', guildId) : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
         const t = ns('ping', lang);
         const version = client.version || '1.8.0';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';

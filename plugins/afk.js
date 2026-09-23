@@ -227,7 +227,7 @@ module.exports = {
 
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction);
         // Check if AFK system is enabled for this server
         const afkServerSettings = client.getServerSettings?.(interaction.guild?.id);
         if (afkServerSettings?.afk_enabled === 0 || afkServerSettings?.afkEnabled === false) {

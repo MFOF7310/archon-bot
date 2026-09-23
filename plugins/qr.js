@@ -24,7 +24,7 @@ module.exports = {
         } catch (e) { loadingMsg?.edit('❌ Failed to generate QR code.').catch(() => {}); }
     },
     execute: async (interaction) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang];
         const text = interaction.options.getString('text');
         const color = (interaction.options.getString('color') || '000000').replace('#', '');

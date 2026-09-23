@@ -982,7 +982,7 @@ module.exports = {
                 react: () => Promise.resolve()
             };
             const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
             await runTriviaSession(client, fakeMessage, client.db, serverSettings, lang);
         } catch (error) {
             console.error('[TRIVIA SLASH ERROR]', error);

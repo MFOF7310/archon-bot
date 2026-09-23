@@ -90,7 +90,7 @@ module.exports = {
         if (!isOwner && !isAdmin) {
             return interaction.reply({ content: '🔒 This command requires Administrator permissions.', flags: 1 << 6 }).catch(() => {});
         }
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         await module.exports.startWizard(interaction, client, lang, true);
     },
 

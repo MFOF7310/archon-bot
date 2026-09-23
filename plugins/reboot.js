@@ -107,7 +107,7 @@ module.exports = {
 
         const mode = interaction.options.getString('mode') || 'restart';
         const isUpdate = mode === 'update';
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
 
         await interaction.deferReply();
 

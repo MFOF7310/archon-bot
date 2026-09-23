@@ -131,7 +131,7 @@ module.exports = {
         const target = interaction.options.getMember('target');
         const settings = client.getServerSettings(interaction.guild.id);
         const muteRoleId = settings.muteRoleId || process.env.MUTE_ROLE_ID;
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
 
         if (!muteRoleId) {
             return interaction.reply({

@@ -1654,7 +1654,7 @@ const slashCommand = new SlashCommandBuilder()
 
 async function executeSlashCommand(interaction, client) {
   const _ssX = client.getServerSettings?.(interaction.guild?.id) || {};
-  const lang = _ssX.language && _ssX.language !== 'auto' ? _ssX.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+  const lang = _ssX.language && _ssX.language !== 'auto' ? _ssX.language : (require('../lib/i18n').slashLang(interaction));
   if (!interaction.guild) return interaction.reply({ content: t('lydia.no_guild', lang), flags: 64 });
   if (!interaction.member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({

@@ -571,7 +571,7 @@ module.exports = {
             const guildId = interaction.guild?.id || 'DM';
             const guild   = interaction.guild;
             const serverLang = client.getServerSettings?.(guildId)?.language;
-            const lang = serverLang === 'fr' ? 'fr' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+            const lang = serverLang === 'fr' ? 'fr' : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
             const db     = client.db;
             const target = interaction.options.getUser('agent') || interaction.user;
 

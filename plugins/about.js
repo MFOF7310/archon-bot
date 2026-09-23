@@ -196,7 +196,7 @@ module.exports = {
 
     execute: async (interaction, client) => {
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
-        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
         try { await interaction.deferReply(); } catch (e) { return; }
         const version = client.version || '3.0.6';
         const isArchitect = interaction.user.id === process.env.OWNER_ID;

@@ -171,7 +171,7 @@ async function bridgeToTrivia(interaction, client) {
     } catch (e) {
         console.error('[TRIVIA BRIDGE]', e.message);
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
-        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (require('../lib/i18n').slashLang(interaction));
         const embed = new EmbedBuilder().setColor('#9b59b6')
             .setAuthor({ name: t('game.trivia_bridge_author', lang), iconURL: client.user.displayAvatarURL() })
             .setDescription(`⚡ ${t('game.triviaBridge', lang)}`)
@@ -579,7 +579,7 @@ const slashCommand = new SlashCommandBuilder()
 async function executeSlashCommand(interaction, client) {
     const db = client.db;
     const ss = client.getServerSettings?.(interaction.guild?.id) || {};
-    const lang = ss.language && ss.language !== 'auto' ? ss.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+    const lang = ss.language && ss.language !== 'auto' ? ss.language : (require('../lib/i18n').slashLang(interaction));
     if (!db) return interaction.reply({ content: t('game.db_unavailable', lang), flags: 64 });
     setupGameDB(db);
 
@@ -648,7 +648,7 @@ async function handleComponent(interaction, client) {
     if (!interaction.customId.startsWith('game_')) return false;
     const db = client.db;
     const ss = client.getServerSettings?.(interaction.guild?.id) || {};
-    const lang = ss.language && ss.language !== 'auto' ? ss.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+    const lang = ss.language && ss.language !== 'auto' ? ss.language : (require('../lib/i18n').slashLang(interaction));
     if (!db) return interaction.reply({ content: t('game.db_unavailable', lang), flags: 64 });
 
     const parts = interaction.customId.split('_');

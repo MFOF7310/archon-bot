@@ -108,7 +108,7 @@ async execute(interaction, client) {
     }
     
     const subcommand = interaction.options.getSubcommand();
-    const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+    const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
     const guildId = interaction.guild.id;
     const settings = client.getServerSettings(guildId);
 

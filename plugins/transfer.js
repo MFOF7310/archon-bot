@@ -497,7 +497,7 @@ module.exports = {
     // ═══════════════════════════════════════════════════════
     execute: async (interaction, client) => {
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
-        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
         const t = transferTranslations[lang];
         const guildId = interaction.guild?.id || 'DM';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';

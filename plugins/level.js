@@ -42,7 +42,7 @@ module.exports = {
         message.reply({ embeds: [embed] }).catch(() => {});
     },
     execute: async (interaction, client) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang], guildId = interaction.guild?.id || 'DM';
         const target = interaction.options.getUser('user') || interaction.user;
         await interaction.deferReply();

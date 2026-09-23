@@ -741,7 +741,7 @@ module.exports = {
         // SYNC SERVER STATS
         syncServerStats(client.db, interaction.guildId, interaction.guild.name, interaction.guild.memberCount, 0);
         
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang] || T.en;
         const uid = interaction.user.id;
         const gid = interaction.guildId;

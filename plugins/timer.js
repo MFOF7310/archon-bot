@@ -78,7 +78,7 @@ module.exports = {
         }, durationMs);
     },
     execute: async (interaction) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang];
         const durationMs = parseTime(interaction.options.getString('duration'));
         if (!durationMs) return interaction.reply({ content: t.invalidTime, flags: 64 });

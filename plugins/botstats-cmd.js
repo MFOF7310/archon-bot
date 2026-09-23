@@ -106,7 +106,7 @@ module.exports = {
 
     execute: async (interaction, client) => {
         await interaction.deferReply().catch(() => {});
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         await showBotStats(client, interaction, client.db, lang, true);
     }
 };

@@ -195,7 +195,7 @@ module.exports = {
 
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = loadT(lang);
         const version = client.version || '1.8.0';
         

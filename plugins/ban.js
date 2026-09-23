@@ -437,7 +437,7 @@ module.exports = {
             return interaction.reply({ content: '❌ Use `/ban ban`, `/ban unban`, `/ban setinvite`, or `/ban getinvite`.', flags: 64 });
         }
 
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction);
         const t = loadT(lang);
         const version = getBotVersion(client);
 

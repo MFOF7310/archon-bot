@@ -176,7 +176,7 @@ execute: async (interaction, client) => {
         
         // DM Fallback
         if (!interaction.guild) {
-            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const lang = require('../lib/i18n').slashLang(interaction);
             const t = loadT(lang);
             return interaction.reply({ 
                 content: lang === 'fr' 
@@ -188,7 +188,7 @@ execute: async (interaction, client) => {
         
         await interaction.deferReply();
         
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction);
         const usedCommand = lang === 'fr' ? 'serveur' : 'server';
         
         const fakeMessage = {

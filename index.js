@@ -3992,6 +3992,14 @@ if (message.content && message.content.length > 4000) {
     if (!client.aliasLang.has(usedCommand.toLowerCase())) {
         commandLang = detectLanguage(usedCommand);
     }
+    // An explicit server language wins: en/fr for every plugin, other languages only
+    // for plugins that ship lang/<locale>/<name>.json (legacy ones index {en, fr} and crash).
+    const srvLang = serverSettings?.language;
+    if (srvLang && srvLang !== 'auto' &&
+        (srvLang === 'en' || srvLang === 'fr' ||
+         fs.existsSync(path.join(__dirname, 'lang', srvLang, `${command.name}.json`)))) {
+        commandLang = srvLang;
+    }
     // Store user's last used language for level‑up messages
     if (!client.userLastLang) client.userLastLang = new Map();
     client.userLastLang.set(message.author.id, commandLang);

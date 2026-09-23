@@ -257,7 +257,7 @@ module.exports = {
 
     // ================= SLASH =================
     execute: async (interaction, client) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang] || T.en;
         const uid = interaction.user.id;
 
@@ -286,7 +286,7 @@ module.exports = {
 
         await interaction.deferUpdate().catch(() => {});
 
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang] || T.en;
         const car = await getCar();
 

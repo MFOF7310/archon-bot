@@ -59,7 +59,7 @@ module.exports = {
         } catch (e) { message.reply(t.noPermission).catch(() => {}); }
     },
     execute: async (interaction, client) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang], guild = interaction.guild;
         if (!guild) return interaction.reply({ content: '❌ Server only.', flags: 64 });
         if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ content: t.noPermission, flags: 64 });

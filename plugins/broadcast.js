@@ -570,7 +570,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         
         // DM Fallback
         if (!interaction.guild) {
-            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
             const t = translations[lang];
             const errorEmbed = new EmbedBuilder()
                 .setColor('#ED4245')
@@ -581,7 +581,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         
         // Permission check
         if (interaction.user.id !== process.env.OWNER_ID) {
-            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
             const t = translations[lang];
             return interaction.reply({ content: t.restricted, flags: 64 });
         }
@@ -593,7 +593,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const mention = interaction.options.getString('mention') || 'none';
         const channelStrategy = interaction.options.getString('channel') || 'general';
         
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const usedCommand = lang === 'fr' ? 'diffusion' : 'broadcast';
         
         const fullArgs = imageUrl ? `${messageText} ${imageUrl}` : messageText;

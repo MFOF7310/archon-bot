@@ -51,7 +51,7 @@ module.exports = {
         } catch (e) { message.reply(t.error).catch(() => {}); }
     },
     execute: async (interaction) => {
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang], expr = interaction.options.getString('expression');
         await interaction.deferReply();
         try {

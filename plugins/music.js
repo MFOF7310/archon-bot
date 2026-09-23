@@ -1484,7 +1484,7 @@ module.exports = {
 
     execute: async (interaction, client) => {
         const ss = client.getServerSettings?.(interaction.guild?.id) || {};
-        const lang = ss.language && ss.language !== 'auto' ? ss.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
+        const lang = ss.language && ss.language !== 'auto' ? ss.language : (require('../lib/i18n').slashLang(interaction));
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild?.id;
         const vc = interaction.member?.voice?.channel;
