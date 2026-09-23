@@ -1,76 +1,13 @@
 const { PermissionFlagsBits, EmbedBuilder, SlashCommandBuilder, Colors } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        accessDeniedTitle: '🚫 ACCESS DENIED',
-        accessDeniedDesc: 'You lack the required `Manage Messages` permission in this server.',
-        serverContext: 'This command requires a **server context** to verify permissions.',
-        targetErased: '✅ **Target Packet Erased.**',
-        errorOld: '⚠️ **Error:** Message too old or missing permissions.',
-        noTarget: '❓ **No target signature found.**',
-        deletedBy: 'Deleted by',
-        messageId: 'Message ID',
-        author: 'Author',
-        channel: 'Channel',
-        reason: 'Reason',
-        logTitle: '🗑️ MESSAGE DELETED',
-        bulkDelete: '🧹 BULK DELETE',
-        bulkSuccess: (count) => `✅ Successfully deleted **${count}** messages.`,
-        invalidCount: '❌ Please provide a number between 1-100.',
-        provideCount: '❌ Please provide a number of messages to delete.',
-        fetching: '🔍 Fetching messages...',
-        noMessagesFound: '❌ No messages found to delete.',
-        userMessagesDeleted: (count, user) => `✅ Deleted **${count}** messages from **${user}**.`,
-        permCheckTitle: '🔐 PERMISSION AUDIT',
-        permCheckField: 'You need `ManageMessages` to use this command.',
-        permServerField: (guild) => `Server: **${guild}**`,
-        permYourRole: 'Your highest role lacks this permission.',
-        permBotRole: 'Bot role may also need elevation.',
-        dmFallbackNote: '📩 *This message was sent privately to avoid public embarrassment.*',
-        helpTitle: '🗑️ DELETE COMMAND',
-        usage: 'Usage',
-        examples: 'Examples',
-        ex1: 'Delete 10 messages',
-        ex2: 'Delete messages from a user',
-        ex3: 'Delete a specific message',
-        ex4: 'Reply to any message with'
-    },
-    fr: {
-        accessDeniedTitle: '🚫 ACCÈS REFUSÉ',
-        accessDeniedDesc: 'Vous n\'avez pas la permission `Gérer les Messages` sur ce serveur.',
-        serverContext: 'Cette commande nécessite un **contexte serveur** pour vérifier les permissions.',
-        targetErased: '✅ **Paquet Cible Effacé.**',
-        errorOld: '⚠️ **Erreur:** Message trop ancien ou permissions manquantes.',
-        noTarget: '❓ **Aucune signature cible trouvée.**',
-        deletedBy: 'Supprimé par',
-        messageId: 'ID Message',
-        author: 'Auteur',
-        channel: 'Salon',
-        reason: 'Raison',
-        logTitle: '🗑️ MESSAGE SUPPRIMÉ',
-        bulkDelete: '🧹 SUPPRESSION EN MASSE',
-        bulkSuccess: (count) => `✅ **${count}** messages supprimés avec succès.`,
-        invalidCount: '❌ Veuillez fournir un nombre entre 1-100.',
-        provideCount: '❌ Veuillez fournir un nombre de messages à supprimer.',
-        fetching: '🔍 Récupération des messages...',
-        noMessagesFound: '❌ Aucun message trouvé à supprimer.',
-        userMessagesDeleted: (count, user) => `✅ **${count}** messages de **${user}** supprimés.`,
-        permCheckTitle: '🔐 AUDIT DES PERMISSIONS',
-        permCheckField: 'Permission `ManageMessages` requise.',
-        permServerField: (guild) => `Serveur: **${guild}**`,
-        permYourRole: 'Votre rôle le plus élevé n\'a pas cette permission.',
-        permBotRole: 'Le rôle du bot peut aussi nécessiter une élévation.',
-        dmFallbackNote: '📩 *Ce message vous a été envoyé en privé pour éviter l\'embarras public.*',
-        helpTitle: '🗑️ COMMANDE DELETE',
-        usage: 'Utilisation',
-        examples: 'Exemples',
-        ex1: 'Supprime 10 messages',
-        ex2: 'Supprime les messages d\'un utilisateur',
-        ex3: 'Supprime un message spécifique',
-        ex4: 'Répondez à un message avec'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["accessDeniedTitle", "accessDeniedDesc", "serverContext", "targetErased", "errorOld", "noTarget", "deletedBy", "messageId", "author", "channel", "reason", "logTitle", "bulkDelete", "bulkSuccess", "invalidCount", "provideCount", "fetching", "noMessagesFound", "userMessagesDeleted", "permCheckTitle", "permCheckField", "permServerField", "permYourRole", "permBotRole", "dmFallbackNote", "helpTitle", "usage", "examples", "ex1", "ex2", "ex3", "ex4"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`delete.${k}`, lang);
+    return o;
+}
 
 // ================= PERMISSION CHECKER (PER-SERVER) =================
 async function checkDeletePermission(context, t, lang) {
@@ -198,7 +135,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
 
         // PER-SERVER PERMISSION CHECK
         const permCheck = await checkDeletePermission(message, t, lang);
@@ -247,7 +184,7 @@ module.exports = {
     execute: async (interaction, client) => {
         const subcommand = interaction.options.getSubcommand();
         const lang = interaction.client.detectLanguage ? interaction.client.detectLanguage('/dlt') : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
 
         // PER-SERVER PERMISSION CHECK
         const permCheck = await checkDeletePermission(interaction, t, lang);
@@ -267,7 +204,7 @@ module.exports = {
                     const target = interaction.options.getUser('target');
                     const amount = interaction.options.getInteger('amount') || 10;
                     await deleteUserMessages(interaction.channel, interaction.user, target, amount, t, lang, client);
-                    await interaction.editReply({ content: t.userMessagesDeleted(amount, target.username), flags: 64 });
+                    await interaction.editReply({ content: i18n.t('delete.userMessagesDeleted', lang, { count: amount, user: target.username }), flags: 64 });
                     break;
                 }
                 case 'message': {
@@ -304,7 +241,7 @@ async function bulkDeleteMessages(channel, moderator, amount, t, lang, client) {
 
         const deleted = await channel.bulkDelete(filtered, true);
 
-        const successMsg = await channel.send({ content: t.bulkSuccess(deleted.size), flags: 64 });
+        const successMsg = await channel.send({ content: i18n.t('delete.bulkSuccess', lang, { count: deleted.size }), flags: 64 });
         setTimeout(() => {
             successMsg.delete().catch(() => {});
             fetchingMsg.delete().catch(() => {});
@@ -340,7 +277,7 @@ async function deleteUserMessages(channel, moderator, targetUser, amount, t, lan
             await msg.delete().catch(() => {});
         }
 
-        const successMsg = await channel.send({ content: t.userMessagesDeleted(userMessages.length, targetUser.username), flags: 64 });
+        const successMsg = await channel.send({ content: i18n.t('delete.userMessagesDeleted', lang, { count: userMessages.length, user: targetUser.username }), flags: 64 });
         setTimeout(() => {
             successMsg.delete().catch(() => {});
             fetchingMsg.delete().catch(() => {});
@@ -379,7 +316,7 @@ async function deleteSingleMessage(channel, moderator, targetMsg, t, lang, clien
 }
 
 function showHelp(message, lang) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const version = message.client.version || PLUGIN_VERSION || '3.0.5';
 
     const helpEmbed = new EmbedBuilder()

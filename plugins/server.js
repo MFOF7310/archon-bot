@@ -1,74 +1,13 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        scanning: '> **🔍 Scanning sector frequencies...**',
-        author: (name) => `SECTOR DATA_SCAN: ${name.toUpperCase()}`,
-        commander: 'Commander',
-        established: 'Established',
-        sectorId: 'Sector ID',
-        populationMetrics: '📊 POPULATION METRICS',
-        total: 'Total',
-        voice: 'Voice',
-        active: 'Active',
-        roles: 'Roles',
-        networkGrid: '🛰️ NETWORK GRID',
-        tier: 'Tier',
-        node: 'Node',
-        uptime: 'Uptime',
-        stable: 'STABLE',
-        boostSync: '🚀 NITRO BOOST SYNCHRONIZATION',
-        securityProtocols: '🛡️ SECURITY PROTOCOLS',
-        verification: 'Verification',
-        integrity: 'Integrity',
-        synchronized: 'SYNCHRONIZED',
-        anniversaryTitle: (years) => `🎊 SECTOR ANNIVERSARY: ${years} YEARS 🎊`,
-        anniversaryAlert: (years) => `🎊 **ALERT: ${years} YEAR ANNIVERSARY DETECTED!** 🎊`,
-        anniversaryProtocol: '🎂 ANNIVERSARY PROTOCOL',
-        anniversaryDesc: 'CELEBRATION_MODE: ACTIVE\nObjective: Maintain Eagle Community sovereignty.',
-        maxLevel: 'MAX_LEVEL',
-        channels: 'Channels',
-        text: 'Text',
-        category: 'Categories',
-        emojis: 'Emojis',
-        stickers: 'Stickers',
-        footer: 'EAGLE COMMUNITY • DIGITAL SOVEREIGNTY • BKO-223'
-    },
-    fr: {
-        scanning: '> **🔍 Analyse des fréquences du secteur...**',
-        author: (name) => `ANALYSE SECTEUR: ${name.toUpperCase()}`,
-        commander: 'Commandant',
-        established: 'Établi',
-        sectorId: 'ID Secteur',
-        populationMetrics: '📊 MÉTRIQUES DE POPULATION',
-        total: 'Total',
-        voice: 'Voix',
-        active: 'Actifs',
-        roles: 'Rôles',
-        networkGrid: '🛰️ GRILLE RÉSEAU',
-        tier: 'Niveau',
-        node: 'Nœud',
-        uptime: 'Disponibilité',
-        stable: 'STABLE',
-        boostSync: '🚀 SYNCHRONISATION NITRO BOOST',
-        securityProtocols: '🛡️ PROTOCOLES DE SÉCURITÉ',
-        verification: 'Vérification',
-        integrity: 'Intégrité',
-        synchronized: 'SYNCHRONISÉ',
-        anniversaryTitle: (years) => `🎊 ANNIVERSAIRE DU SECTEUR: ${years} ANS 🎊`,
-        anniversaryAlert: (years) => `🎊 **ALERTE: ${years} ANS D'ANNIVERSAIRE DÉTECTÉS!** 🎊`,
-        anniversaryProtocol: '🎂 PROTOCOLE D\'ANNIVERSAIRE',
-        anniversaryDesc: 'MODE_CÉLÉBRATION: ACTIF\nObjectif: Maintenir la souveraineté Eagle Community.',
-        maxLevel: 'NIVEAU_MAX',
-        channels: 'Salons',
-        text: 'Texte',
-        category: 'Catégories',
-        emojis: 'Émojis',
-        stickers: 'Autocollants',
-        footer: 'EAGLE COMMUNITY • SOUVERAINETÉ NUMÉRIQUE • BKO-223'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["scanning", "author", "commander", "established", "sectorId", "populationMetrics", "total", "voice", "active", "roles", "networkGrid", "tier", "node", "uptime", "stable", "boostSync", "securityProtocols", "verification", "integrity", "synchronized", "anniversaryTitle", "anniversaryAlert", "anniversaryProtocol", "anniversaryDesc", "maxLevel", "channels", "text", "category", "emojis", "stickers", "footer"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`server.${k}`, lang);
+    return o;
+}
 
 // ================= HELPER FUNCTIONS =================
 function getVerificationLevel(level) {
@@ -108,9 +47,9 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = (client.detectLanguage ? client.detectLanguage('server', guildId) : 'en') || 'en';
-        if (!translations[lang]) lang = 'en';
         
-        const t = translations[lang];
+        
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const { guild } = message;
         const icon = guild.iconURL({ dynamic: true, size: 512 }) || client.user.displayAvatarURL();
@@ -138,13 +77,13 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         // ================= DYNAMIC THEMING =================
         const systemColor = isAnniversary ? '#f1c40f' : '#00fbff';
         const systemTitle = isAnniversary 
-            ? t.anniversaryTitle(sectorAge)
+            ? i18n.t('server.anniversaryTitle', lang, { years: sectorAge })
             : `─ ARCHITECT GUILD TELEMETRY ─`;
 
         // ================= MAIN EMBED =================
         const serverEmbed = new EmbedBuilder()
             .setColor(systemColor)
-            .setAuthor({ name: t.author(guild.name), iconURL: icon })
+            .setAuthor({ name: i18n.t('server.author', lang, { name: guild.name.toUpperCase() }), iconURL: icon })
             .setTitle(systemTitle)
             .setThumbnail(icon)
             .setDescription(
@@ -221,7 +160,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
 
     // ================= SEND RESPONSE =================
     const content = isAnniversary 
-        ? t.anniversaryAlert(sectorAge)
+        ? i18n.t('server.anniversaryAlert', lang, { years: sectorAge })
         : t.scanning;
 
     await message.reply({ 
@@ -238,7 +177,7 @@ execute: async (interaction, client) => {
         // DM Fallback
         if (!interaction.guild) {
             const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-            const t = translations[lang];
+            const t = loadT(lang);
             return interaction.reply({ 
                 content: lang === 'fr' 
                     ? '❌ Cette commande ne peut être utilisée que dans un serveur.' 
