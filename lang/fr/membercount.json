@@ -1,0 +1,13 @@
+{
+  "title": "👥 Statistiques des Membres - {name}",
+  "total": "👤 Total Membres",
+  "humans": "👨 Humains",
+  "bots": "🤖 Robots",
+  "online": "🟢 En ligne",
+  "idle": "🟡 Inactif",
+  "dnd": "🔴 Ne pas déranger",
+  "offline": "⚫ Hors ligne",
+  "boosters": "🚀 Boosters",
+  "roles": "📋 Rôles",
+  "footer": "ARCHON CG-223 • Recensement Neural"
+}

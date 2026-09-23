@@ -1,20 +1,14 @@
 const { EmbedBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: (name) => `🖼️ ${name} Server Icon`,
-        noIcon: '❌ This server has no icon.',
-        formats: 'Formats',
-        footer: 'ARCHON CG-223 • Neural Imaging'
-    },
-    fr: {
-        title: (name) => `🖼️ Icône du Serveur - ${name}`,
-        noIcon: '❌ Ce serveur n\'a pas d\'icône.',
-        formats: 'Formats',
-        footer: 'ARCHON CG-223 • Imagerie Neurale'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","noIcon","formats","footer"];
+// Clés dans lang/<locale>/servericon.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`servericon.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'servericon',
@@ -27,7 +21,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guild = message.guild;
         
@@ -39,7 +33,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor('#2ecc71')
-            .setAuthor({ name: t.title(guild.name), iconURL: icon })
+            .setAuthor({ name: i18n.t('servericon.title', lang, { name: guild.name }), iconURL: icon })
             .setImage(icon)
             .setDescription(
                 `**${t.formats}:** ` +

@@ -1,32 +1,14 @@
 const { EmbedBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: '✅ IDENTITY UPDATED',
-        oldDesignation: 'Old Designation',
-        newDesignation: 'New Designation',
-        usage: '❌ Usage: `.rename [New Name]`',
-        limit: '⚠️ Limit: 20 characters.',
-        noChange: '⚠️ New name is the same as your current name.',
-        success: (old, newName) => `Your identity has been updated from **${old}** to **${newName}**.`,
-        footer: 'Eagle Community • Digital Engine',
-        error: '❌ An error occurred while updating your name.',
-        updated: 'IDENTITY UPDATED'
-    },
-    fr: {
-        title: '✅ IDENTITÉ MISE À JOUR',
-        oldDesignation: 'Ancienne Désignation',
-        newDesignation: 'Nouvelle Désignation',
-        usage: '❌ Utilisation: `.rename [Nouveau Nom]`',
-        limit: '⚠️ Limite: 20 caractères.',
-        noChange: '⚠️ Le nouveau nom est identique à votre nom actuel.',
-        success: (old, newName) => `Votre identité a été mise à jour de **${old}** à **${newName}**.`,
-        footer: 'Eagle Community • Moteur Numérique',
-        error: '❌ Une erreur est survenue lors de la mise à jour de votre nom.',
-        updated: 'IDENTITÉ MISE À JOUR'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","oldDesignation","newDesignation","usage","limit","noChange","success","footer","error","updated"];
+// Clés dans lang/<locale>/rename.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`rename.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'rename',
@@ -43,7 +25,7 @@ module.exports = {
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('rename', guildId) : 'en';
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
@@ -131,7 +113,7 @@ module.exports = {
                     iconURL: message.author.displayAvatarURL() 
                 })
                 .setTitle(`✅ ${t.title}`)
-                .setDescription(t.success(oldName, newName))
+                .setDescription(i18n.t('rename.success', lang, { old: oldName, newName }))
                 .addFields(
                     { name: t.oldDesignation, value: `\`\`\`\n${oldName}\`\`\``, inline: true },
                     { name: t.newDesignation, value: `\`\`\`\n${newName}\`\`\``, inline: true }

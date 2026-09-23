@@ -1,0 +1,12 @@
+{
+  "title": "✅ IDENTITY UPDATED",
+  "oldDesignation": "Old Designation",
+  "newDesignation": "New Designation",
+  "usage": "❌ Usage: `.rename [New Name]`",
+  "limit": "⚠️ Limit: 20 characters.",
+  "noChange": "⚠️ New name is the same as your current name.",
+  "success": "Your identity has been updated from **{old}** to **{newName}**.",
+  "footer": "Eagle Community • Digital Engine",
+  "error": "❌ An error occurred while updating your name.",
+  "updated": "IDENTITY UPDATED"
+}

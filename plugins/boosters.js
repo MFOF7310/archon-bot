@@ -1,26 +1,14 @@
 const { EmbedBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: (name) => `🚀 ${name} Server Boosters`,
-        boostCount: 'Boost Count',
-        boostLevel: 'Boost Level',
-        boosters: '🌟 Boosters',
-        noBoosters: '❌ This server has no boosters.',
-        since: 'Boosting since',
-        footer: 'ARCHON CG-223 • Neural Recognition'
-    },
-    fr: {
-        title: (name) => `🚀 Boosters du Serveur - ${name}`,
-        boostCount: 'Nombre de Boosts',
-        boostLevel: 'Niveau de Boost',
-        boosters: '🌟 Boosters',
-        noBoosters: '❌ Ce serveur n\'a pas de boosters.',
-        since: 'Booste depuis',
-        footer: 'ARCHON CG-223 • Reconnaissance Neurale'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","boostCount","boostLevel","boosters","noBoosters","since","footer"];
+// Clés dans lang/<locale>/boosters.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`boosters.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'boosters',
@@ -33,7 +21,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guild = message.guild;
         
@@ -57,7 +45,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor('#f47fff')
-            .setAuthor({ name: t.title(guild.name), iconURL: guild.iconURL({ dynamic: true }) })
+            .setAuthor({ name: i18n.t('boosters.title', lang, { name: guild.name }), iconURL: guild.iconURL({ dynamic: true }) })
             .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
             .setDescription(
                 `\`\`\`yaml\n` +

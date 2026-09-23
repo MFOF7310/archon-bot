@@ -1,34 +1,14 @@
 const { EmbedBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: (name) => `👥 ${name} Member Statistics`,
-        total: '👤 Total Members',
-        humans: '👨 Humans',
-        bots: '🤖 Bots',
-        online: '🟢 Online',
-        idle: '🟡 Idle',
-        dnd: '🔴 DND',
-        offline: '⚫ Offline',
-        boosters: '🚀 Boosters',
-        roles: '📋 Roles',
-        footer: 'ARCHON CG-223 • Neural Census'
-    },
-    fr: {
-        title: (name) => `👥 Statistiques des Membres - ${name}`,
-        total: '👤 Total Membres',
-        humans: '👨 Humains',
-        bots: '🤖 Robots',
-        online: '🟢 En ligne',
-        idle: '🟡 Inactif',
-        dnd: '🔴 Ne pas déranger',
-        offline: '⚫ Hors ligne',
-        boosters: '🚀 Boosters',
-        roles: '📋 Rôles',
-        footer: 'ARCHON CG-223 • Recensement Neural'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title","total","humans","bots","online","idle","dnd","offline","boosters","roles","footer"];
+// Clés dans lang/<locale>/membercount.json ; '' retombe sur EN dans t().
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`membercount.${k}`, lang);
+    return o;
+}
 
 module.exports = {
     name: 'membercount',
@@ -41,7 +21,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guild = message.guild;
         
@@ -60,7 +40,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor('#3498db')
-            .setAuthor({ name: t.title(guild.name), iconURL: guild.iconURL({ dynamic: true }) })
+            .setAuthor({ name: i18n.t('membercount.title', lang, { name: guild.name }), iconURL: guild.iconURL({ dynamic: true }) })
             .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
             .setDescription(
                 `\`\`\`yaml\n` +

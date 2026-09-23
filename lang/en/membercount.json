@@ -1,0 +1,13 @@
+{
+  "title": "👥 {name} Member Statistics",
+  "total": "👤 Total Members",
+  "humans": "👨 Humans",
+  "bots": "🤖 Bots",
+  "online": "🟢 Online",
+  "idle": "🟡 Idle",
+  "dnd": "🔴 DND",
+  "offline": "⚫ Offline",
+  "boosters": "🚀 Boosters",
+  "roles": "📋 Roles",
+  "footer": "ARCHON CG-223 • Neural Census"
+}
