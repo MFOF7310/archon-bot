@@ -4345,9 +4345,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'meta_reroll') {
         try {
             const metaPlugin = require('./plugins/meta.js');
-            const embed = metaPlugin.randomPick(interaction.guild);
+            const embed = metaPlugin.randomPick(interaction.guild, client.detectLanguage('meta', interaction.guildId));
             if (embed) {
-                await interaction.update({ embeds: [embed], components: [metaPlugin.rerollRow()] }).catch(() => {});
+                await interaction.update({ embeds: [embed], components: [metaPlugin.rerollRow(client.detectLanguage('meta', interaction.guildId))] }).catch(() => {});
             }
         } catch (e) {
             console.error('[META]', e.message);

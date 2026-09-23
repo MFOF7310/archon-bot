@@ -1,0 +1,21 @@
+{
+  "metaTitle": "Méta des armes CODM — {season}",
+  "metaFooter": "Mis à jour : {updated} • /weapon <nom> pour la fiche complète",
+  "unknown": "inconnue",
+  "emptyCategory": "Pas encore d'arme **{cat}** dans la liste méta.",
+  "emptyList": "La liste méta est vide pour l'instant — repasse après la prochaine mise à jour.",
+  "armory": "Armurerie",
+  "unclassified": "Non classée",
+  "statsTitle": "📊 Statistiques",
+  "statFireRate": "Cadence",
+  "statDamage": "Dégâts",
+  "statAccuracy": "Précision",
+  "statRange": "Portée",
+  "statControl": "Contrôle",
+  "statMobility": "Mobilité",
+  "loadoutTitle": "🛠️ Loadout recommandé",
+  "weaponFooter": "Méta {season} • ARCHON CG-223",
+  "noMatch": "Je ne trouve pas **{q}** dans la liste méta.\nEssaie plutôt : {names}",
+  "noneYet": "aucune pour l'instant",
+  "reroll": "Relancer"
+}

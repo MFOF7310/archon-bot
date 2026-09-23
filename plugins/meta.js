@@ -1,5 +1,6 @@
 const { EmbedBuilder, SlashCommandBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const W = require('../lib/weapons');
+const i18n = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
 
 const TIER_LABEL = {
@@ -10,14 +11,15 @@ const TIER_LABEL = {
     C:   '📦 C TIER',
 };
 
-function metaEmbed(guild, filterCat) {
+function metaEmbed(guild, filterCat, lang = 'en') {
+    const tr = (k, v) => i18n.t(`meta.${k}`, lang, v);
     const { season, updated } = W.getSeason();
     const groups = W.byTier();
 
     const embed = new EmbedBuilder()
         .setColor('#ffd700')
         .setAuthor({ name: `${guild?.name || 'ARCHON'} • Meta`, iconURL: guild?.iconURL() || undefined })
-        .setTitle(`${EMOJIS.gamer} CODM Weapon Meta — ${season}`);
+        .setTitle(`${EMOJIS.gamer} ${tr('metaTitle', { season })}`);
 
     let any = false;
     for (const [tier, list] of groups) {
@@ -35,44 +37,48 @@ function metaEmbed(guild, filterCat) {
 
     if (!any) {
         embed.setDescription(filterCat
-            ? `No weapons listed under **${filterCat}** yet.`
-            : 'No weapons in the meta list yet.');
+            ? tr('emptyCategory', { cat: filterCat })
+            : tr('emptyList'));
     }
 
-    embed.setFooter({ text: `Updated ${updated || 'unknown'} • /weapon <name> for full specs` });
+    embed.setFooter({ text: tr('metaFooter', { updated: updated || tr('unknown') }) });
     return embed;
 }
 
-function weaponEmbed(w, guild) {
+function weaponEmbed(w, guild, lang = 'en') {
+    const tr = (k, v) => i18n.t(`meta.${k}`, lang, v);
+    const STAT_KEYS = ['statFireRate', 'statDamage', 'statAccuracy', 'statRange', 'statControl', 'statMobility'];
+    const pad = Math.max(...STAT_KEYS.map(k => tr(k).length)) + 2;
+    const lbl = k => tr(k).padEnd(pad);
     const s = w.stats || {};
     const bar = v => `\`${W.statBar(v)}\` ${String(v).padStart(3)}`;
 
     const embed = new EmbedBuilder()
         .setColor(W.tierColor(w.tier))
-        .setAuthor({ name: `${guild?.name || 'ARCHON'} • Armory`, iconURL: guild?.iconURL() || undefined })
+        .setAuthor({ name: `${guild?.name || 'ARCHON'} • ${tr('armory')}`, iconURL: guild?.iconURL() || undefined })
         .setTitle(`${w.name}`)
         .setDescription(
-            `**${TIER_LABEL[w.tier] || w.tier}** · ${w.category || 'Unclassified'}\n\n` +
-            (w.intel?.en || w.intel || '')
+            `**${TIER_LABEL[w.tier] || w.tier}** · ${w.category || tr('unclassified')}\n\n` +
+            (w.intel?.[lang] || w.intel?.en || (typeof w.intel === 'string' ? w.intel : ''))
         );
 
     if (Object.keys(s).length) {
         embed.addFields({
-            name: '📊 Stats',
+            name: tr('statsTitle'),
             value:
-                `Fire rate  ${bar(s.fireRate ?? 0)}\n` +
-                `Damage     ${bar(s.damage ?? 0)}\n` +
-                `Accuracy   ${bar(s.accuracy ?? 0)}\n` +
-                `Range      ${bar(s.range ?? 0)}\n` +
-                `Control    ${bar(s.control ?? 0)}\n` +
-                `Mobility   ${bar(s.mobility ?? 0)}`,
+                `${lbl('statFireRate')}${bar(s.fireRate ?? 0)}\n` +
+                `${lbl('statDamage')}${bar(s.damage ?? 0)}\n` +
+                `${lbl('statAccuracy')}${bar(s.accuracy ?? 0)}\n` +
+                `${lbl('statRange')}${bar(s.range ?? 0)}\n` +
+                `${lbl('statControl')}${bar(s.control ?? 0)}\n` +
+                `${lbl('statMobility')}${bar(s.mobility ?? 0)}`,
             inline: false,
         });
     }
 
     if (w.specs) {
         embed.addFields({
-            name: '🛠️ Recommended loadout',
+            name: tr('loadoutTitle'),
             value: w.specs.split(',').map(x => `• ${x.trim()}`).join('\n'),
             inline: false,
         });
@@ -81,7 +87,7 @@ function weaponEmbed(w, guild) {
     if (w.image && w.image.startsWith('http')) embed.setImage(w.image);
 
     const { season } = W.getSeason();
-    embed.setFooter({ text: `${season} meta • ARCHON CG-223` }).setTimestamp();
+    embed.setFooter({ text: tr('weaponFooter', { season }) }).setTimestamp();
     return embed;
 }
 
@@ -121,35 +127,37 @@ module.exports = {
         return interaction.respond([]).catch(() => {});
     },
 
-    rerollRow() {
+    rerollRow(lang = 'en') {
         return new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('meta_reroll')
-                .setLabel('Re-roll')
+                .setLabel(i18n.t('meta.reroll', lang))
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🎲')
         );
     },
 
-    randomPick(guild) {
+    randomPick(guild, lang = 'en') {
         const list = W.getWeapons();
         if (!list.length) return null;
-        return weaponEmbed(list[Math.floor(Math.random() * list.length)], guild);
+        return weaponEmbed(list[Math.floor(Math.random() * list.length)], guild, lang);
     },
 
     execute: async (interaction) => {
+        const lang = interaction.client.detectLanguage ? interaction.client.detectLanguage('meta', interaction.guildId) : 'en';
+        const tr = (k, v) => i18n.t(`meta.${k}`, lang, v);
         const sub = interaction.options.getSubcommand();
 
         if (sub === 'random') {
-            const embed = module.exports.randomPick(interaction.guild);
-            if (!embed) return interaction.reply({ content: 'No weapons in the meta list yet.', flags: MessageFlags.Ephemeral });
-            return interaction.reply({ embeds: [embed], components: [module.exports.rerollRow()] });
+            const embed = module.exports.randomPick(interaction.guild, lang);
+            if (!embed) return interaction.reply({ content: tr('emptyList'), flags: MessageFlags.Ephemeral });
+            return interaction.reply({ embeds: [embed], components: [module.exports.rerollRow(lang)] });
         }
 
 
         if (sub === 'list') {
             const cat = interaction.options.getString('category');
-            return interaction.reply({ embeds: [metaEmbed(interaction.guild, cat)] });
+            return interaction.reply({ embeds: [metaEmbed(interaction.guild, cat, lang)] });
         }
 
         if (sub === 'weapon') {
@@ -158,16 +166,18 @@ module.exports = {
             if (!w) {
                 const names = W.getWeapons().map(x => x.name).join(', ');
                 return interaction.reply({
-                    content: `No weapon matching **${q}**.\nAvailable: ${names || 'none yet'}`,
+                    content: tr('noMatch', { q, names: names || tr('noneYet') }),
                     flags: MessageFlags.Ephemeral,
                 });
             }
-            return interaction.reply({ embeds: [weaponEmbed(w, interaction.guild)] });
+            return interaction.reply({ embeds: [weaponEmbed(w, interaction.guild, lang)] });
         }
     },
 
     // Prefix: .meta | .meta sniper | .weapon ak117
     run: async (client, message, args, db, ss, used) => {
+        const lang = client.detectLanguage ? client.detectLanguage(used || 'meta', message.guild?.id) : 'en';
+        const tr = (k, v) => i18n.t(`meta.${k}`, lang, v);
         const cmd = (used || '').toLowerCase();
         const arg = args.join(' ').trim();
 
@@ -179,31 +189,31 @@ module.exports = {
             const w = W.findWeapon(arg);
             if (!w) {
                 const names = W.getWeapons().map(x => x.name).join(', ');
-                return message.reply(`No weapon matching **${arg}**.\nAvailable: ${names || 'none yet'}`).catch(() => {});
+                return message.reply(tr('noMatch', { q: arg, names: names || tr('noneYet') })).catch(() => {});
             }
-            return message.reply({ embeds: [weaponEmbed(w, message.guild)] }).catch(() => {});
+            return message.reply({ embeds: [weaponEmbed(w, message.guild, lang)] }).catch(() => {});
         }
 
         // .randommeta / .pick / .codm / .arme -> random pick with reroll
         if (['randommeta', 'pick', 'codm', 'arme'].includes(cmd)) {
-            const embed = module.exports.randomPick(message.guild);
-            if (!embed) return message.reply('No weapons in the meta list yet.').catch(() => {});
-            return message.reply({ embeds: [embed], components: [module.exports.rerollRow()] }).catch(() => {});
+            const embed = module.exports.randomPick(message.guild, lang);
+            if (!embed) return message.reply(tr('emptyList')).catch(() => {});
+            return message.reply({ embeds: [embed], components: [module.exports.rerollRow(lang)] }).catch(() => {});
         }
 
         // .meta with an argument: category filter, or a weapon name if it matches one
         if (arg) {
             const cat = W.categories().find(c => c.toLowerCase().includes(arg.toLowerCase()));
             if (cat) {
-                return message.reply({ embeds: [metaEmbed(message.guild, cat)] }).catch(() => {});
+                return message.reply({ embeds: [metaEmbed(message.guild, cat, lang)] }).catch(() => {});
             }
             const w = W.findWeapon(arg);
             if (w) {
-                return message.reply({ embeds: [weaponEmbed(w, message.guild)] }).catch(() => {});
+                return message.reply({ embeds: [weaponEmbed(w, message.guild, lang)] }).catch(() => {});
             }
         }
 
-        return message.reply({ embeds: [metaEmbed(message.guild, null)] }).catch(() => {});
+        return message.reply({ embeds: [metaEmbed(message.guild, null, lang)] }).catch(() => {});
     },
 };
 
