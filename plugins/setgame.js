@@ -23,14 +23,7 @@ const I18N_PLAIN = ["title", "success", "error", "incomplete", "desc", "instruct
 function loadT(lang) {
     const o = {};
     for (const k of I18N_PLAIN) o[k] = i18n.t(`setgame.${k}`, lang);
-    const _examples = {};
-    _examples['0'] = i18n.t(`setgame.examples_0`, lang);
-    _examples['1'] = i18n.t(`setgame.examples_1`, lang);
-    _examples['2'] = i18n.t(`setgame.examples_2`, lang);
-    _examples['3'] = i18n.t(`setgame.examples_3`, lang);
-    _examples['4'] = i18n.t(`setgame.examples_4`, lang);
-    _examples['title'] = i18n.t(`setgame.examples_title`, lang);
-    o.examples = _examples;
+    o.examples = [0,1,2,3,4].map(i => i18n.t(`setgame.examples_${i}`, lang));
     const _rankMessages = {};
     _rankMessages['bronze'] = i18n.t(`setgame.rankMessages_bronze`, lang);
     _rankMessages['silver'] = i18n.t(`setgame.rankMessages_silver`, lang);
