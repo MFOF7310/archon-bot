@@ -3595,7 +3595,28 @@ setInterval(async () => {
 });
 
 // ================= MESSAGE PROCESSING (PER-SERVER PARTITIONED) =================
+// Keep users.avatar (Discord avatar hash) fresh for the dashboard. Writes only
+// when the hash changes, and caches only once the row exists (new members get
+// their row later in this handler).
+const _avatarSeen = new Map();
+let _botAvatarDone = false;
+function syncAvatar(user, guildId) {
+    try {
+        if (!_botAvatarDone && client.user) {
+            db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(client.user.avatar || null, client.user.id);
+            _botAvatarDone = true;
+        }
+        if (!user || user.bot || !guildId) return;
+        const key = `${guildId}:${user.id}`;
+        const hash = user.avatar || null;
+        if (_avatarSeen.get(key) === hash) return;
+        const r = db.prepare('UPDATE users SET avatar = ? WHERE id = ? AND guild_id = ?').run(hash, user.id, guildId);
+        if (r.changes) _avatarSeen.set(key, hash);
+    } catch (e) {}
+}
+
 safeOn(Events.MessageCreate, async (message) => {
+    syncAvatar(message.author, message.guild?.id);
     if (!message || message.author?.bot || message.webhookId) return;
 
     // ================= AUTOMOD DM APPEAL HANDLER =================
@@ -6037,13 +6058,13 @@ apiApp.get('/api/moderation-logs/:guildId?', (req, res) => {
     try {
         let logs;
         if (guildId && validateSnowflake(guildId)) {
-            logs = db.prepare(`SELECT m.*, u.username AS target_username, mod.username AS moderator_username
+            logs = db.prepare(`SELECT m.*, u.username AS target_username, mod.username AS moderator_username, u.avatar AS target_avatar, mod.avatar AS moderator_avatar
                 FROM moderation_logs m
                 LEFT JOIN users u   ON u.id = m.user_id      AND u.guild_id = m.guild_id
                 LEFT JOIN users mod ON mod.id = m.moderator_id AND mod.guild_id = m.guild_id
                 WHERE m.guild_id = ? ORDER BY m.timestamp DESC`).all(guildId);
         } else {
-            logs = db.prepare(`SELECT m.*, u.username AS target_username, mod.username AS moderator_username
+            logs = db.prepare(`SELECT m.*, u.username AS target_username, mod.username AS moderator_username, u.avatar AS target_avatar, mod.avatar AS moderator_avatar
                 FROM moderation_logs m
                 LEFT JOIN users u   ON u.id = m.user_id      AND u.guild_id = m.guild_id
                 LEFT JOIN users mod ON mod.id = m.moderator_id AND mod.guild_id = m.guild_id
