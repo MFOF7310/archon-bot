@@ -18,118 +18,51 @@ function getAgentRank(level) {
 }
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: '🎮 COMBAT REGISTRATION',
-        success: '✅ NEURAL SPECIALIZATION LOCKED',
-        error: '⚠️ INPUT ERROR: MODE_UNDEFINED',
-        incomplete: '❌ INCOMPLETE COMBAT DATA',
-        desc: 'Neural interface requires complete synchronization.',
-        instruction: 'To register your specialization, define **Game**, **Mode**, and **Rank**.',
-        supportedGames: '🎮 SUPPORTED GAMES',
-        recognizedModes: '⚔️ RECOGNIZED MODES',
-        exampleUsage: '📝 EXAMPLE USAGE',
-        examples: [
-            'Call of Duty | Ranked | Diamond II',
-            'Valorant | Competitive | Platinum I',
-            'Apex Legends | BR | Master',
-            'Fortnite | Solo | Elite',
-            'CS:GO | Premier | Global Elite'
-        ],
-        quickSetup: '🚀 QUICK SETUP',
-        selectGame: 'Select a game...',
-        selectMode: 'Select a mode...',
-        enterRank: 'Enter your rank (e.g., Diamond II)',
-        primarySector: '🎯 PRIMARY SECTOR',
-        combatMode: '⚙️ COMBAT MODE',
-        rankTier: '🏆 RANK / TIER',
-        agentStatus: '📊 AGENT STATUS',
-        lastSync: '⏱️ LAST SYNC',
-        level: 'Level',
-        xp: 'XP',
-        messages: 'Messages',
-        credits: 'Credits',
-        rank: 'Rank',
-        rankMessages: {
-            bronze: '🌱 **Starting your journey. Keep grinding!**',
-            silver: '⚡ **Silver tier achieved. Progressing steadily!**',
-            gold: '✨ **Gold tier! You\'re becoming a formidable agent.**',
-            platinum: '💎 **Platinum tier! Elite skills detected.**',
-            diamond: '👑 **Diamond tier! A true warrior emerges.**',
-            master: '🔥 **MASTER TIER! Legendary status achieved!**',
-            grandmaster: '🏆 **GRANDMASTER! You stand among the elite!**',
-            predator: '⚡ **APEX PREDATOR! The hunt never ends!**',
-            radiant: '🌟 **RADIANT! You shine above all others!**',
-            global: '🌍 **GLOBAL ELITE! World-class operator!**',
-            default: '🎯 **Combat data synchronized. Ready for deployment!**'
-        },
-        footer: 'DIGITAL SOVEREIGNTY',
-        quickButtons: { cod: '🎯 CoD', val: '🔫 Valorant', apex: '🦅 Apex', fortnite: '🏗️ Fortnite', csgo: '🔪 CS:GO', lol: '🏆 LoL' },
-        modes: { mp: 'MP', br: 'BR', zm: 'ZM', dmz: 'DMZ', ranked: 'Ranked', competitive: 'Competitive', casual: 'Casual' },
-        accessDenied: '❌ This menu is not yours.',
-        manualFormat: 'MANUAL FORMAT',
-        examples_title: 'EXAMPLES',
-        interactiveSetup: 'INTERACTIVE SETUP',
-        chooseGame: 'Choose your game, mode, and rank using the menus below.',
-        selectedGame: (game) => `✅ **${game}** selected! Now enter your mode and rank:\n\`.setgame ${game} | [Mode] | [Rank]\``,
-        registered: (user) => `**Agent ${user}** has been successfully registered into the combat matrix.`
-    },
-    fr: {
-        title: '🎮 ENREGISTREMENT DE COMBAT',
-        success: '✅ SPÉCIALISATION NEURALE VERROUILLÉE',
-        error: '⚠️ ERREUR DE SAISIE: MODE_INDÉFINI',
-        incomplete: '❌ DONNÉES DE COMBAT INCOMPLÈTES',
-        desc: 'L\'interface neurale nécessite une synchronisation complète.',
-        instruction: 'Pour enregistrer votre spécialisation, définissez **Jeu**, **Mode**, et **Rang**.',
-        supportedGames: '🎮 JEUX SUPPORTÉS',
-        recognizedModes: '⚔️ MODES RECONNUS',
-        exampleUsage: '📝 EXEMPLE D\'UTILISATION',
-        examples: [
-            'Call of Duty | Classé | Diamant II',
-            'Valorant | Compétitif | Platine I',
-            'Apex Legends | BR | Maître',
-            'Fortnite | Solo | Élite',
-            'CS:GO | Premier | Élite Mondial'
-        ],
-        quickSetup: '🚀 CONFIGURATION RAPIDE',
-        selectGame: 'Sélectionnez un jeu...',
-        selectMode: 'Sélectionnez un mode...',
-        enterRank: 'Entrez votre rang (ex: Diamant II)',
-        primarySector: '🎯 SECTEUR PRINCIPAL',
-        combatMode: '⚙️ MODE DE COMBAT',
-        rankTier: '🏆 RANG / ÉCHELON',
-        agentStatus: '📊 STATUT DE L\'AGENT',
-        lastSync: '⏱️ DERNIÈRE SYNCHRO',
-        level: 'Niveau',
-        xp: 'XP',
-        messages: 'Messages',
-        credits: 'Crédits',
-        rank: 'Rang',
-        rankMessages: {
-            bronze: '🌱 **Début de votre parcours. Continuez à progresser !**',
-            silver: '⚡ **Niveau Argent atteint. Progression constante !**',
-            gold: '✨ **Niveau Or ! Vous devenez un agent redoutable.**',
-            platinum: '💎 **Niveau Platine ! Compétences d\'élite détectées.**',
-            diamond: '👑 **Niveau Diamant ! Un véritable guerrier émerge.**',
-            master: '🔥 **NIVEAU MAÎTRE ! Statut légendaire atteint !**',
-            grandmaster: '🏆 **GRAND MAÎTRE ! Vous êtes parmi l\'élite !**',
-            predator: '⚡ **PRÉDATEUR APEX ! La chasse ne s\'arrête jamais !**',
-            radiant: '🌟 **RADIANT ! Vous brillez au-dessus des autres !**',
-            global: '🌍 **ÉLITE MONDIALE ! Opérateur de classe mondiale !**',
-            default: '🎯 **Données de combat synchronisées. Prêt pour le déploiement !**'
-        },
-        footer: 'SOUVERAINETÉ NUMÉRIQUE',
-        quickButtons: { cod: '🎯 CoD', val: '🔫 Valorant', apex: '🦅 Apex', fortnite: '🏗️ Fortnite', csgo: '🔪 CS:GO', lol: '🏆 LoL' },
-        modes: { mp: 'MJ', br: 'BR', zm: 'ZM', dmz: 'DMZ', ranked: 'Classé', competitive: 'Compétitif', casual: 'Occasionnel' },
-        accessDenied: '❌ Ce menu ne vous appartient pas.',
-        manualFormat: 'FORMAT MANUEL',
-        examples_title: 'EXEMPLES',
-        interactiveSetup: 'CONFIGURATION INTERACTIVE',
-        chooseGame: 'Choisissez votre jeu, mode, et rang en utilisant les menus ci-dessous.',
-        selectedGame: (game) => `✅ **${game}** sélectionné! Maintenant, entrez votre mode et rang:\n\`.setgame ${game} | [Mode] | [Rang]\``,
-        registered: (user) => `**Agent ${user}** a été enregistré avec succès dans la matrice de combat.`
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_PLAIN = ["title", "success", "error", "incomplete", "desc", "instruction", "supportedGames", "recognizedModes", "exampleUsage", "quickSetup", "selectGame", "selectMode", "enterRank", "primarySector", "combatMode", "rankTier", "agentStatus", "lastSync", "level", "xp", "messages", "credits", "rank", "footer", "accessDenied", "manualFormat", "interactiveSetup", "chooseGame", "selectedGame", "registered"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_PLAIN) o[k] = i18n.t(`setgame.${k}`, lang);
+    const _examples = {};
+    _examples['0'] = i18n.t(`setgame.examples_0`, lang);
+    _examples['1'] = i18n.t(`setgame.examples_1`, lang);
+    _examples['2'] = i18n.t(`setgame.examples_2`, lang);
+    _examples['3'] = i18n.t(`setgame.examples_3`, lang);
+    _examples['4'] = i18n.t(`setgame.examples_4`, lang);
+    _examples['title'] = i18n.t(`setgame.examples_title`, lang);
+    o.examples = _examples;
+    const _rankMessages = {};
+    _rankMessages['bronze'] = i18n.t(`setgame.rankMessages_bronze`, lang);
+    _rankMessages['silver'] = i18n.t(`setgame.rankMessages_silver`, lang);
+    _rankMessages['gold'] = i18n.t(`setgame.rankMessages_gold`, lang);
+    _rankMessages['platinum'] = i18n.t(`setgame.rankMessages_platinum`, lang);
+    _rankMessages['diamond'] = i18n.t(`setgame.rankMessages_diamond`, lang);
+    _rankMessages['master'] = i18n.t(`setgame.rankMessages_master`, lang);
+    _rankMessages['grandmaster'] = i18n.t(`setgame.rankMessages_grandmaster`, lang);
+    _rankMessages['predator'] = i18n.t(`setgame.rankMessages_predator`, lang);
+    _rankMessages['radiant'] = i18n.t(`setgame.rankMessages_radiant`, lang);
+    _rankMessages['global'] = i18n.t(`setgame.rankMessages_global`, lang);
+    _rankMessages['default'] = i18n.t(`setgame.rankMessages_default`, lang);
+    o.rankMessages = _rankMessages;
+    const _quickButtons = {};
+    _quickButtons['cod'] = i18n.t(`setgame.quickButtons_cod`, lang);
+    _quickButtons['val'] = i18n.t(`setgame.quickButtons_val`, lang);
+    _quickButtons['apex'] = i18n.t(`setgame.quickButtons_apex`, lang);
+    _quickButtons['fortnite'] = i18n.t(`setgame.quickButtons_fortnite`, lang);
+    _quickButtons['csgo'] = i18n.t(`setgame.quickButtons_csgo`, lang);
+    _quickButtons['lol'] = i18n.t(`setgame.quickButtons_lol`, lang);
+    o.quickButtons = _quickButtons;
+    const _modes = {};
+    _modes['mp'] = i18n.t(`setgame.modes_mp`, lang);
+    _modes['br'] = i18n.t(`setgame.modes_br`, lang);
+    _modes['zm'] = i18n.t(`setgame.modes_zm`, lang);
+    _modes['dmz'] = i18n.t(`setgame.modes_dmz`, lang);
+    _modes['ranked'] = i18n.t(`setgame.modes_ranked`, lang);
+    _modes['competitive'] = i18n.t(`setgame.modes_competitive`, lang);
+    _modes['casual'] = i18n.t(`setgame.modes_casual`, lang);
+    o.modes = _modes;
+    return o;
+}
 
 // ================= GAME PATTERNS =================
 const GAME_PATTERNS = {
@@ -150,7 +83,7 @@ function detectGame(input) {
 }
 
 function getRankMessage(rank, lang) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const lowerRank = rank.toLowerCase();
     if (lowerRank.includes('bronze')) return t.rankMessages.bronze;
     if (lowerRank.includes('silver')) return t.rankMessages.silver;
@@ -166,7 +99,7 @@ function getRankMessage(rank, lang) {
 }
 
 function createQuickSetupRow(lang) {
-    const t = translations[lang];
+    const t = loadT(lang);
     return new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('quick_cod').setLabel(t.quickButtons.cod).setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('quick_val').setLabel(t.quickButtons.val).setStyle(ButtonStyle.Danger),
@@ -177,7 +110,7 @@ function createQuickSetupRow(lang) {
 }
 
 function createGameSelectMenu(lang) {
-    const t = translations[lang];
+    const t = loadT(lang);
     return new StringSelectMenuBuilder()
         .setCustomId('select_game')
         .setPlaceholder(t.selectGame)
@@ -206,7 +139,7 @@ module.exports = {
         
         // 🔥 NEURAL LANGUAGE BRIDGE
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -246,13 +179,13 @@ module.exports = {
                 if (i.isButton()) {
                     const gameMap = { quick_cod: 'CALL OF DUTY', quick_val: 'VALORANT', quick_apex: 'APEX LEGENDS', quick_fortnite: 'FORTNITE', quick_csgo: 'CS:GO' };
                     const selectedGame = gameMap[i.customId];
-                    if (selectedGame) await i.reply({ content: t.selectedGame(selectedGame), flags: 64 }).catch(() => {});
+                    if (selectedGame) await i.reply({ content: i18n.t('setgame.selectedGame', lang, { a: selectedGame }), flags: 64 }).catch(() => {});
                 }
                 
                 if (i.isStringSelectMenu() && i.customId === 'select_game') {
                     const gameMap = { cod: 'CALL OF DUTY', val: 'VALORANT', apex: 'APEX LEGENDS', fortnite: 'FORTNITE', csgo: 'CS:GO', lol: 'LEAGUE OF LEGENDS' };
                     const selectedGame = gameMap[i.values[0]];
-                    if (selectedGame) await i.reply({ content: t.selectedGame(selectedGame), flags: 64 }).catch(() => {});
+                    if (selectedGame) await i.reply({ content: i18n.t('setgame.selectedGame', lang, { a: selectedGame }), flags: 64 }).catch(() => {});
                 }
             });
             return;
@@ -308,7 +241,7 @@ module.exports = {
             .setColor('#00ff9d')
             .setAuthor({ name: `🎮 COMBAT PROFILE: ${message.author.username.toUpperCase()}`, iconURL: message.author.displayAvatarURL() })
             .setTitle(t.success)
-            .setDescription(t.registered(message.author.username))
+            .setDescription(i18n.t('setgame.registered', lang, { a: message.author.username }))
             .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
             .addFields(
                 { name: t.primarySector, value: `\`\`\`yaml\n${safeGame}\`\`\``, inline: true },

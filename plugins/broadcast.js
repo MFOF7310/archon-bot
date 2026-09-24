@@ -1,136 +1,19 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType, ComponentType, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        // Headers
-        title: '📢 NEURAL GLOBAL BROADCAST',
-        transmitting: '🛰️ TRANSMITTING',
-        complete: '✅ TRANSMISSION COMPLETE',
-        cancelled: '❌ BROADCAST CANCELLED',
-        
-        // Descriptions
-        broadcastDesc: 'This message will be transmitted across all connected neural nodes.',
-        confirmationRequired: '⚠️ **CONFIRMATION REQUIRED**',
-        confirmMessage: (servers) => `You are about to broadcast to **${servers}** servers.\nAre you sure you want to proceed?`,
-        
-        // Stats
-        totalNodes: 'Total Nodes',
-        activeNodes: 'Active Nodes',
-        failedNodes: 'Failed Nodes',
-        successRate: 'Success Rate',
-        transmissionTime: 'Transmission Time',
-        
-        // Buttons
-        confirm: '✅ CONFIRM BROADCAST',
-        cancel: '❌ CANCEL',
-        mentionEveryone: '📢 @everyone',
-        mentionHere: '📌 @here',
-        noMention: '🔕 No Mention',
-        schedule: '⏰ Schedule',
-        selectChannel: '📋 Select Channel Type',
-        
-        // Channel Types
-        systemChannel: '⚙️ System Channel',
-        generalChat: '💬 General Chat',
-        firstTextChannel: '📝 First Available',
-        announcementsChannel: '📢 Announcements',
-        
-        // Messages
-        restricted: '❌ **Restricted Access**\nThis command requires Architect-level clearance.',
-        usage: (prefix) => `❌ **Usage:** \`${prefix}broadcast [message] [image URL]\`\n\n**Examples:**\n\`${prefix}broadcast Server maintenance in 10 minutes!\`\n\`${prefix}broadcast New update! https://imgur.com/example.png\``,
-        noPermission: '❌ Only the **Architect** can use this command.',
-        preparing: '🔍 **Scanning neural network...**\nPreparing broadcast transmission...',
-        sending: (current, total) => `📡 **Transmitting...** (${current}/${total} nodes)`,
-        success: (success, fail, time) => `✅ **Broadcast Complete!**\n\n📊 **Transmission Report:**\n🟢 Active Nodes: **${success}**\n🔴 Failed Nodes: **${fail}**\n📈 Success Rate: **${success + fail > 0 ? ((success/(success+fail))*100).toFixed(1) : 0}%**\n⏱️ Time: **${time}ms**`,
-        footer: 'ARCHON CG-223 • Neural Broadcast System',
-        mentionWarning: (type) => `⚠️ This will send **${type}** to all servers!`,
-        noServers: '❌ No servers available for broadcast.',
-        channelStrategy: (strategy) => `📋 **Channel Strategy:** ${strategy}`,
-        
-        // Schedule
-        schedulePrompt: '⏰ **Schedule Broadcast**\nEnter time in format: `10s`, `5m`, `2h`, `1d`\nType `cancel` to abort.',
-        scheduled: (time) => `✅ **Broadcast Scheduled!**\nWill send in **${time}**.`,
-        invalidTime: '❌ Invalid time format. Use: `10s`, `5m`, `2h`, `1d`',
-        
-        // Channel Strategies
-        strategies: {
-            system: 'System Channel',
-            general: 'General Chat',
-            first: 'First Available',
-            announcements: 'Announcements'
-        },
-        
-        // New
-        broadcastSent: '📢 **BROADCAST RECEIVED**',
-        fromArchitect: 'Message from the Architect',
-        imageAttached: '🖼️ Image attached below'
-    },
-    fr: {
-        // Headers
-        title: '📢 DIFFUSION NEURALE GLOBALE',
-        transmitting: '🛰️ TRANSMISSION',
-        complete: '✅ TRANSMISSION TERMINÉE',
-        cancelled: '❌ DIFFUSION ANNULÉE',
-        
-        // Descriptions
-        broadcastDesc: 'Ce message sera transmis à travers tous les nœuds neuraux connectés.',
-        confirmationRequired: '⚠️ **CONFIRMATION REQUISE**',
-        confirmMessage: (servers) => `Vous allez diffuser vers **${servers}** serveurs.\nÊtes-vous sûr de vouloir continuer ?`,
-        
-        // Stats
-        totalNodes: 'Total Nœuds',
-        activeNodes: 'Nœuds Actifs',
-        failedNodes: 'Nœuds Échoués',
-        successRate: 'Taux de Réussite',
-        transmissionTime: 'Temps de Transmission',
-        
-        // Buttons
-        confirm: '✅ CONFIRMER',
-        cancel: '❌ ANNULER',
-        mentionEveryone: '📢 @everyone',
-        mentionHere: '📌 @here',
-        noMention: '🔕 Sans Mention',
-        schedule: '⏰ Planifier',
-        selectChannel: '📋 Choisir le Type de Canal',
-        
-        // Channel Types
-        systemChannel: '⚙️ Canal Système',
-        generalChat: '💬 Chat Général',
-        firstTextChannel: '📝 Premier Disponible',
-        announcementsChannel: '📢 Annonces',
-        
-        // Messages
-        restricted: '❌ **Accès Restreint**\nCette commande nécessite une autorisation de niveau Architecte.',
-        usage: (prefix) => `❌ **Utilisation:** \`${prefix}broadcast [message] [URL image]\`\n\n**Exemples:**\n\`${prefix}broadcast Maintenance du serveur dans 10 minutes!\`\n\`${prefix}broadcast Nouvelle mise à jour! https://imgur.com/example.png\``,
-        noPermission: '❌ Seul l\'**Architecte** peut utiliser cette commande.',
-        preparing: '🔍 **Analyse du réseau neural...**\nPréparation de la transmission...',
-        sending: (current, total) => `📡 **Transmission en cours...** (${current}/${total} nœuds)`,
-        success: (success, fail, time) => `✅ **Diffusion Terminée!**\n\n📊 **Rapport de Transmission:**\n🟢 Nœuds Actifs: **${success}**\n🔴 Nœuds Échoués: **${fail}**\n📈 Taux de Réussite: **${success + fail > 0 ? ((success/(success+fail))*100).toFixed(1) : 0}%**\n⏱️ Temps: **${time}ms**`,
-        footer: 'ARCHON CG-223 • Système de Diffusion Neurale',
-        mentionWarning: (type) => `⚠️ Ceci enverra **${type}** à tous les serveurs!`,
-        noServers: '❌ Aucun serveur disponible pour la diffusion.',
-        channelStrategy: (strategy) => `📋 **Stratégie de Canal:** ${strategy}`,
-        
-        // Schedule
-        schedulePrompt: '⏰ **Planifier la Diffusion**\nEntrez le temps au format: `10s`, `5m`, `2h`, `1j`\nTapez `cancel` pour annuler.',
-        scheduled: (time) => `✅ **Diffusion Planifiée!**\nSera envoyée dans **${time}**.`,
-        invalidTime: '❌ Format de temps invalide. Utilisez: `10s`, `5m`, `2h`, `1j`',
-        
-        // Channel Strategies
-        strategies: {
-            system: 'Canal Système',
-            general: 'Chat Général',
-            first: 'Premier Disponible',
-            announcements: 'Annonces'
-        },
-        
-        // New
-        broadcastSent: '📢 **DIFFUSION REÇUE**',
-        fromArchitect: 'Message de l\'Architecte',
-        imageAttached: '🖼️ Image ci-dessous'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_PLAIN = ["title", "transmitting", "complete", "cancelled", "broadcastDesc", "confirmationRequired", "confirmMessage", "totalNodes", "activeNodes", "failedNodes", "successRate", "transmissionTime", "confirm", "cancel", "mentionEveryone", "mentionHere", "noMention", "schedule", "selectChannel", "systemChannel", "generalChat", "firstTextChannel", "announcementsChannel", "restricted", "usage", "noPermission", "preparing", "sending", "success", "footer", "mentionWarning", "noServers", "channelStrategy", "schedulePrompt", "scheduled", "invalidTime", "broadcastSent", "fromArchitect", "imageAttached"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_PLAIN) o[k] = i18n.t(`broadcast.${k}`, lang);
+    const _strategies = {};
+    _strategies['system'] = i18n.t(`broadcast.strategies_system`, lang);
+    _strategies['general'] = i18n.t(`broadcast.strategies_general`, lang);
+    _strategies['first'] = i18n.t(`broadcast.strategies_first`, lang);
+    _strategies['announcements'] = i18n.t(`broadcast.strategies_announcements`, lang);
+    o.strategies = _strategies;
+    return o;
+}
 
 // ================= FIND BEST CHANNEL FOR BROADCAST (MAIN CHAT FOCUSED) =================
 function findBroadcastChannel(guild, strategy = 'first') {
@@ -206,7 +89,7 @@ function parseTime(timeStr, lang) {
     
     if (!multipliers[unit]) return null;
     
-    const t = translations[lang];
+    const t = loadT(lang);
     
     return {
         ms: value * multipliers[unit],
@@ -220,7 +103,7 @@ function parseTime(timeStr, lang) {
 
 // ================= CREATE CONFIRMATION EMBED =================
 function createConfirmEmbed(settings, lang, client) {
-    const t = translations[lang];
+    const t = loadT(lang);
     // ✅ DYNAMIC VERSION from client.version (reads from version.txt)
     const version = client.version || '1.5.0';
     const serverCount = client.guilds.cache.size;
@@ -228,7 +111,7 @@ function createConfirmEmbed(settings, lang, client) {
     let description = `**${t.broadcastDesc}**\n\n`;
     description += `\`\`\`\n${settings.message || '(No text provided)'}\`\`\`\n\n`;
     description += `📊 **${t.totalNodes}:** \`${serverCount}\`\n`;
-    description += `📋 **${t.channelStrategy(t.strategies[settings.channelStrategy] || settings.channelStrategy)}**\n`;
+    description += `📋 **${i18n.t('broadcast.channelStrategy', lang, { a: loadT(lang).strategies[settings.channelStrategy] || settings.channelStrategy })}**\n`;
     
     if (settings.mentionType !== 'none') {
         description += `📢 **Mention:** \`${settings.mentionType === 'everyone' ? '@everyone' : '@here'}\`\n`;
@@ -243,7 +126,7 @@ function createConfirmEmbed(settings, lang, client) {
     }
     
     if (settings.mentionType !== 'none') {
-        description += `\n⚠️ ${t.mentionWarning(settings.mentionType === 'everyone' ? '@everyone' : '@here')}`;
+        description += `\n⚠️ ${i18n.t('broadcast.mentionWarning', lang, { a: settings.mentionType === 'everyone' ? '@everyone' : '@here' })}`;
     }
     
     const embed = new EmbedBuilder()
@@ -263,7 +146,7 @@ function createConfirmEmbed(settings, lang, client) {
 
 // ================= CREATE CHANNEL STRATEGY MENU =================
 function createChannelStrategyMenu(lang) {
-    const t = translations[lang];
+    const t = loadT(lang);
     
     return new StringSelectMenuBuilder()
         .setCustomId('broadcast_channel')
@@ -278,7 +161,7 @@ function createChannelStrategyMenu(lang) {
 
 // ================= EXECUTE BROADCAST =================
 async function executeBroadcast(client, settings, lang, statusMsg) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const version = client.version || '1.8.0';
     const startTime = Date.now();
     
@@ -336,7 +219,7 @@ async function executeBroadcast(client, settings, lang, statusMsg) {
     let completed = 0;
     const updateInterval = setInterval(async () => {
         if (completed < total) {
-            await statusMsg.edit({ content: t.sending(completed, total) }).catch(() => {});
+            await statusMsg.edit({ content: i18n.t('broadcast.sending', lang, { a: completed, b: total }) }).catch(() => {});
         }
     }, 500);
     
@@ -368,13 +251,13 @@ module.exports = {
 // ================= PERMISSION CHECK =================
 if (message.author.id !== process.env.OWNER_ID) {
     const lang = client.detectLanguage ? client.detectLanguage('broadcast', guildId) : 'en';
-    const t = translations[lang];
+    const t = loadT(lang);
     return message.reply({ content: t.restricted });
 }
 
 // ================= LANGUAGE SETUP =================
 const lang = client.detectLanguage ? client.detectLanguage('broadcast', guildId) : 'en';
-const t = translations[lang];
+const t = loadT(lang);
 const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         
         const fullText = args.join(' ');
@@ -482,7 +365,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                     const successEmbed = new EmbedBuilder()
                         .setColor('#2ecc71')
                         .setAuthor({ name: t.complete, iconURL: client.user.displayAvatarURL() })
-                        .setDescription(t.success(result.success, result.fail, result.timeTaken))
+                        .setDescription(i18n.t('broadcast.success', lang, { a: result.success, b: result.fail, c: result.timeTaken }))
                         .setFooter({ text: `${t.footer} • v${client.version || '1.5.0'}` })
                         .setTimestamp();
                     
@@ -513,7 +396,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                         
                         settings.scheduledTime = timeData.text;
                         
-                        await m.reply({ content: t.scheduled(timeData.text), flags: 64 });
+                        await m.reply({ content: i18n.t('broadcast.scheduled', lang, { a: timeData.text }), flags: 64 });
                         await m.delete().catch(() => {});
                         
                         // Schedule the broadcast
@@ -523,7 +406,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                             const successEmbed = new EmbedBuilder()
                                 .setColor('#2ecc71')
                                 .setAuthor({ name: t.complete, iconURL: client.user.displayAvatarURL() })
-                                .setDescription(t.success(result.success, result.fail, result.timeTaken))
+                                .setDescription(i18n.t('broadcast.success', lang, { a: result.success, b: result.fail, c: result.timeTaken }))
                                 .setFooter({ text: `${t.footer} • v${client.version || '1.5.0'}` })
                                 .setTimestamp();
                             
@@ -533,7 +416,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                         const scheduledEmbed = new EmbedBuilder()
                             .setColor('#FEE75C')
                             .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-                            .setDescription(t.scheduled(timeData.text))
+                            .setDescription(i18n.t('broadcast.scheduled', lang, { a: timeData.text }))
                             .setFooter({ text: `${t.footer} • v${client.version || '1.5.0'}` })
                             .setTimestamp();
                         
@@ -571,7 +454,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         // DM Fallback
         if (!interaction.guild) {
             const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-            const t = translations[lang];
+            const t = loadT(lang);
             const errorEmbed = new EmbedBuilder()
                 .setColor('#ED4245')
                 .setDescription('❌ Broadcast commands can only be used in a server channel.')
@@ -582,7 +465,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         // Permission check
         if (interaction.user.id !== process.env.OWNER_ID) {
             const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-            const t = translations[lang];
+            const t = loadT(lang);
             return interaction.reply({ content: t.restricted, flags: 64 });
         }
         
