@@ -18,132 +18,13 @@ const CATEGORY_CONFIG = {
 };
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: '📋 NEURAL COMMAND REGISTRY',
-        description: 'Complete directory of all available system commands.',
-        selectCategory: '🔍 Select a Category',
-        allCommands: '📚 All Commands',
-        categories: 'Categories',
-        commands: 'Commands',
-        aliases: 'Aliases',
-        usage: 'Usage',
-        cooldown: 'Cooldown',
-        seconds: 's',
-        none: 'None',
-        noDescription: 'No description available.',
-        totalCommands: 'Total Commands',
-        totalAliases: 'Total Aliases',
-        selectCategoryPrompt: 'Select a category from the dropdown below.',
-        commandsInCategory: (count, category) => `**${count}** command${count !== 1 ? 's' : ''} in **${category}**`,
-        aliasesFor: 'Aliases for',
-        page: 'Page',
-        of: 'of',
-        footer: 'EAGLE COMMUNITY • NEURAL REGISTRY',
-        accessDenied: '⛔ This menu is locked to your session.',
-        back: '◀ Back',
-        refresh: '🔄 Refresh',
-        viewAll: 'View All Commands',
-        commandDetails: 'COMMAND DETAILS',
-        categoryLabel: 'Category',
-        cooldownLabel: 'Cooldown',
-        examples: 'Examples',
-        noExamples: 'No examples available',
-        tip: '💡 TIP: Use {prefix}help <command> for detailed information',
-        loading: '🔍 Accessing Neural Registry...',
-        // NEW SURPRISES!
-        searchPlaceholder: '🔎 Search commands...',
-        favorites: '⭐ Favorites',
-        addFavorite: '⭐ Add to Favorites',
-        removeFavorite: '❌ Remove from Favorites',
-        favoriteAdded: '✅ Added to favorites!',
-        favoriteRemoved: '✅ Removed from favorites!',
-        noFavorites: 'No favorite commands yet. Click ⭐ on any command!',
-        mostUsed: '📊 Most Used (7d)',
-        timesUsed: 'times used',
-        newCommand: '🆕 NEW',
-        commandOfDay: '🎯 Command of the Day',
-        tryItNow: 'Try it now!',
-        compactView: '📱 Compact View',
-        normalView: '📋 Normal View',
-        themeLight: '☀️ Light',
-        themeDark: '🌙 Dark',
-        themeNeural: '🧠 Neural',
-        searchResults: '🔍 Search Results',
-        noResults: 'No commands found matching "{query}"',
-        statsSummary: '📊 STATS SUMMARY',
-        mostPopularCategory: 'Most Popular',
-        leastUsedCommand: 'Least Used',
-        totalExecutions: 'Total Executions (7d)',
-        noCommandsInCategory: 'No commands in this category.',
-        statistics: 'Statistics',
-        resultsFound: 'results found',
-        commandsWord: 'commands',
-        favoriteCommands: 'Your favorite commands'
-    },
-    fr: {
-        title: '📋 REGISTRE DES COMMANDES NEURALES',
-        description: 'Répertoire complet de toutes les commandes système disponibles.',
-        selectCategory: '🔍 Sélectionner une Catégorie',
-        allCommands: '📚 Toutes les Commandes',
-        categories: 'Catégories',
-        commands: 'Commandes',
-        aliases: 'Alias',
-        usage: 'Utilisation',
-        cooldown: 'Délai',
-        seconds: 's',
-        none: 'Aucun',
-        noDescription: 'Aucune description disponible.',
-        totalCommands: 'Total Commandes',
-        totalAliases: 'Total Alias',
-        selectCategoryPrompt: 'Sélectionnez une catégorie dans le menu ci-dessous.',
-        commandsInCategory: (count, category) => `**${count}** commande${count !== 1 ? 's' : ''} dans **${category}**`,
-        aliasesFor: 'Alias pour',
-        page: 'Page',
-        of: 'sur',
-        footer: 'EAGLE COMMUNITY • REGISTRE NEURAL',
-        accessDenied: '⛔ Ce menu est verrouillé pour votre session.',
-        back: '◀ Retour',
-        refresh: '🔄 Actualiser',
-        viewAll: 'Voir Toutes les Commandes',
-        commandDetails: 'DÉTAILS DE LA COMMANDE',
-        categoryLabel: 'Catégorie',
-        cooldownLabel: 'Délai',
-        examples: 'Exemples',
-        noExamples: 'Aucun exemple disponible',
-        tip: '💡 ASTUCE : Utilisez {prefix}help <commande> pour plus de détails',
-        loading: '🔍 Accès au Registre Neural...',
-        // NEW SURPRISES!
-        searchPlaceholder: '🔎 Rechercher des commandes...',
-        favorites: '⭐ Favoris',
-        addFavorite: '⭐ Ajouter aux Favoris',
-        removeFavorite: '❌ Retirer des Favoris',
-        favoriteAdded: '✅ Ajouté aux favoris !',
-        favoriteRemoved: '✅ Retiré des favoris !',
-        noFavorites: 'Aucune commande favorite. Cliquez sur ⭐ !',
-        mostUsed: '📊 Les Plus Utilisées (7j)',
-        timesUsed: 'fois utilisée',
-        newCommand: '🆕 NOUVEAU',
-        commandOfDay: '🎯 Commande du Jour',
-        tryItNow: 'Essayez maintenant !',
-        compactView: '📱 Vue Compacte',
-        normalView: '📋 Vue Normale',
-        themeLight: '☀️ Clair',
-        themeDark: '🌙 Sombre',
-        themeNeural: '🧠 Neural',
-        searchResults: '🔍 Résultats de Recherche',
-        noResults: 'Aucune commande trouvée pour "{query}"',
-        statsSummary: '📊 RÉSUMÉ STATS',
-        mostPopularCategory: 'Plus Populaire',
-        leastUsedCommand: 'Moins Utilisée',
-        totalExecutions: 'Total Exécutions (7j)',
-        noCommandsInCategory: 'Aucune commande dans cette catégorie.',
-        statistics: 'Statistiques',
-        resultsFound: 'résultats trouvés',
-        commandsWord: 'commandes',
-        favoriteCommands: 'Vos commandes favorites'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title", "description", "selectCategory", "allCommands", "categories", "commands", "aliases", "usage", "cooldown", "seconds", "none", "noDescription", "totalCommands", "totalAliases", "selectCategoryPrompt", "commandsInCategoryOne", "commandsInCategoryMany", "aliasesFor", "page", "of", "footer", "accessDenied", "back", "refresh", "viewAll", "commandDetails", "categoryLabel", "cooldownLabel", "examples", "noExamples", "tip", "loading", "searchPlaceholder", "favorites", "addFavorite", "removeFavorite", "favoriteAdded", "favoriteRemoved", "noFavorites", "mostUsed", "timesUsed", "newCommand", "commandOfDay", "tryItNow", "compactView", "normalView", "themeLight", "themeDark", "themeNeural", "searchResults", "noResults", "statsSummary", "mostPopularCategory", "leastUsedCommand", "totalExecutions", "noCommandsInCategory", "statistics", "resultsFound", "commandsWord", "favoriteCommands"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`list.${k}`, lang);
+    return o;
+}
 
 // ================= HELPER FUNCTIONS =================
 function getAllCommandsAlphabetical(client) {
@@ -321,7 +202,7 @@ function createCategoryEmbed(client, category, prefix, lang, t, version, guildNa
     const embed = new EmbedBuilder()
         .setColor(config.color)
         .setAuthor({ name: `${config.emoji} ${config.name[lang].toUpperCase()} COMMANDS`, iconURL: client.user.displayAvatarURL() })
-        .setTitle(`═ ${t.commandsInCategory(cmds.length, config.name[lang])} ═`)
+        .setTitle(`═ ${(cmds.length === 1 ? i18n.t('list.commandsInCategoryOne', lang, { category: config.name[lang] }) : i18n.t('list.commandsInCategoryMany', lang, { category: config.name[lang] }))} ═`)
         .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }));
     
     if (cmds.length === 0) {
@@ -445,7 +326,7 @@ module.exports = {
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
             
-            const t = translations[lang];
+            const t = loadT(lang);
             const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
             const version = client.version || '1.8.0';
             const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';

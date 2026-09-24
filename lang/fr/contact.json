@@ -1,0 +1,18 @@
+{
+  "title": "TRANSMISSION NEURALE",
+  "selectPriority": "Sélectionnez la priorité:",
+  "confirmTitle": "CONFIRMER LA TRANSMISSION",
+  "confirmDesc": "",
+  "confirm": "Transmettre",
+  "cancel": "Annuler",
+  "cancelled": "Transmission annulée.",
+  "timeout": "Transmission expirée.",
+  "processing": "Routage de la transmission...",
+  "delivered": "Transmission livrée à l'Architecte.",
+  "failed": "Transmission échouée. Réessayez plus tard.",
+  "usage": "Utilisation: `{p}contact [message]`",
+  "maxLength": "Message trop long. Maximum 1900 caractères.",
+  "architectUnavailable": "ID de l'Architecte non configuré.",
+  "replyReceived": "L'Architecte a répondu à votre transmission:\n{msg}",
+  "incomingTitle": "TRANSMISSION NEURALE ENTRANTE"
+}

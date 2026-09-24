@@ -11,44 +11,13 @@ const PRIORITIES = {
     general:    { emoji: '🔵', label: { en: 'General',      fr: 'Général'         }, color: '#00f0ff', ansi: '\u001b[1;36m' }
 };
 
-const translations = {
-    en: {
-        title: 'NEURAL TRANSMISSION',
-        selectPriority: 'Select message priority:',
-        confirmTitle: 'CONFIRM TRANSMISSION',
-        confirmDesc: (msg, priority) => `Priority: ${PRIORITIES[priority].emoji} ${PRIORITIES[priority].label.en}\nMessage: ${msg}`,
-        confirm: 'Transmit',
-        cancel: 'Abort',
-        cancelled: 'Transmission aborted.',
-        timeout: 'Transmission timed out.',
-        processing: 'Routing transmission...',
-        delivered: 'Transmission delivered to the Architect.',
-        failed: 'Transmission failed. Try again later.',
-        usage: (p) => `Usage: \`${p}contact [message]\``,
-        maxLength: 'Message too long. Max 1900 characters.',
-        architectUnavailable: 'Architect ID not configured.',
-        replyReceived: (msg) => `The Architect replied to your transmission:\n${msg}`,
-        incomingTitle: 'INCOMING NEURAL TRANSMISSION',
-    },
-    fr: {
-        title: 'TRANSMISSION NEURALE',
-        selectPriority: 'Sélectionnez la priorité:',
-        confirmTitle: 'CONFIRMER LA TRANSMISSION',
-        confirmDesc: (msg, priority) => `Priorité: ${PRIORITIES[priority].emoji} ${PRIORITIES[priority].label.fr}\nMessage: ${msg}`,
-        confirm: 'Transmettre',
-        cancel: 'Annuler',
-        cancelled: 'Transmission annulée.',
-        timeout: 'Transmission expirée.',
-        processing: 'Routage de la transmission...',
-        delivered: 'Transmission livrée à l\'Architecte.',
-        failed: 'Transmission échouée. Réessayez plus tard.',
-        usage: (p) => `Utilisation: \`${p}contact [message]\``,
-        maxLength: 'Message trop long. Maximum 1900 caractères.',
-        architectUnavailable: 'ID de l\'Architecte non configuré.',
-        replyReceived: (msg) => `L\'Architecte a répondu à votre transmission:\n${msg}`,
-        incomingTitle: 'TRANSMISSION NEURALE ENTRANTE',
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["title", "selectPriority", "confirmTitle", "confirmDesc", "confirm", "cancel", "cancelled", "timeout", "processing", "delivered", "failed", "usage", "maxLength", "architectUnavailable", "replyReceived", "incomingTitle"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`contact.${k}`, lang);
+    return o;
+}
 
 // ── Active reply sessions (owner is replying to someone) ──
 const replySessions = new Map();
@@ -69,10 +38,10 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const feedback = args.join(' ');
-        if (!feedback) return message.reply({ content: t.usage(prefix) });
+        if (!feedback) return message.reply({ content: i18n.t('contact.usage', lang, { p: prefix }) });
         if (feedback.length > 1900) return message.reply({ content: t.maxLength });
         await handleContact(client, message, feedback, lang, false);
     },
@@ -92,7 +61,7 @@ module.exports = {
 //  SHARED CONTACT HANDLER
 // ═══════════════════════════════════════════════════════
 async function handleContact(client, context, feedback, lang, isSlash) {
-    const t = translations[lang];
+    const t = loadT(lang);
     const version = client.version || '2.0.0';
     const user = isSlash ? context.user : context.author;
     const guild = context.guild;

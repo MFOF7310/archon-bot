@@ -1,0 +1,18 @@
+{
+  "title": "NEURAL TRANSMISSION",
+  "selectPriority": "Select message priority:",
+  "confirmTitle": "CONFIRM TRANSMISSION",
+  "confirmDesc": "",
+  "confirm": "Transmit",
+  "cancel": "Abort",
+  "cancelled": "Transmission aborted.",
+  "timeout": "Transmission timed out.",
+  "processing": "Routing transmission...",
+  "delivered": "Transmission delivered to the Architect.",
+  "failed": "Transmission failed. Try again later.",
+  "usage": "Usage: `{p}contact [message]`",
+  "maxLength": "Message too long. Max 1900 characters.",
+  "architectUnavailable": "Architect ID not configured.",
+  "replyReceived": "The Architect replied to your transmission:\n{msg}",
+  "incomingTitle": "INCOMING NEURAL TRANSMISSION"
+}
