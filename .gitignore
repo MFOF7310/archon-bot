@@ -16,6 +16,8 @@ package-lock.json
 # ==================== 💾 DATABASE & USER DATA ====================
 # SQLite database files (auto-generated at runtime)
 data/*
+!data/weapons.example.json
+!data/music-library.example.json
 !data/weapons.json
 !data/roster.json
 *.sqlite
