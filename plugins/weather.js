@@ -2,106 +2,23 @@ const axios = require('axios');
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        title: (city, country) => `🌤️ ${city}, ${country}`,
-        temperature: '🌡️ Temperature',
-        feelsLike: 'Feels like',
-        atmosphere: '💧 Atmosphere',
-        humidity: 'Humidity',
-        pressure: 'Pressure',
-        visibility: 'Visibility',
-        wind: '🌬️ Wind',
-        speed: 'Speed',
-        direction: 'Direction',
-        extraInfo: '📊 Extra Info',
-        cloudiness: 'Cloudiness',
-        sunrise: '☀️ Sunrise',
-        sunset: '🌙 Sunset',
-        airQuality: '🛡️ Air Quality',
-        uvi: '☀️ UV Index',
-        dewPoint: '💧 Dew Point',
-        forecast: '📅 3-Day Forecast',
-        smartAdvice: '💡 Meteorological Briefing',
-        location: 'Location',
-        timezone: 'Timezone',
-        configError: '⚠️ **Configuration Error:** Weather API key not configured.',
-        notFound: (city) => `❌ **Location not found:** "${city}" doesn't exist.`,
-        apiError: '❌ **API Key Error:** Invalid weather API key.',
-        fetchError: '❌ **Error:** Failed to fetch weather data.',
-        weatherServiceError: '⚠️ Weather Service Error',
-        checkCity: 'Please check city name or try again later',
-        typing: '🔍 Fetching weather data...',
-        aqiLabels: ['🟢 Excellent', '🟢 Good', '🟡 Moderate', '🟠 Unhealthy (Sensitive)', '🔴 Unhealthy', '🟣 Hazardous'],
-        uviLabels: ['🟢 Low', '🟢 Low', '🟡 Moderate', '🟡 Moderate', '🟠 High', '🟠 High', '🔴 Very High', '🔴 Very High', '🔴 Very High', '🟣 Extreme'],
-        advice: {
-            extremeHeat: '🔥 **Heat Advisory** — Stay hydrated, avoid prolonged sun exposure. Light, breathable clothing recommended. Air conditioning advised for vulnerable populations.',
-            hotDay: '☀️ **Sunny & Dry** — High dehydration risk. Carry water, wear sunscreen SPF 30+, seek shade during peak hours (11:00–15:00).',
-            warmPleasant: '🌤️ **Pleasant Conditions** — Ideal for outdoor activities. Light clothing sufficient. UV protection still recommended during midday.',
-            mild: '⛅ **Mild Weather** — Comfortable temperatures. Layered clothing advised for variable conditions. Good for extended outdoor activities.',
-            cool: '🍃 **Cool Temperatures** — A jacket or sweater recommended. Good conditions for jogging and outdoor exercise.',
-            cold: '❄️ **Cold Advisory** — Dress warmly: coat, gloves, scarf. Limit exposed skin time. Watch for wind chill effects.',
-            freezing: '🥶 **Extreme Cold Warning** — Dangerous conditions. Multiple layers essential. Limit outdoor exposure. Check on elderly and pets.',
-            rainy: '🌧️ **Rain Expected** — Carry an umbrella or waterproof jacket. Roads may be slippery. Reduced visibility: drive carefully.',
-            stormy: '⛈️ **Thunderstorm Risk** — Seek shelter indoors. Avoid open areas, tall trees, and bodies of water. Postpone outdoor activities.',
-            foggy: '🌫️ **Low Visibility** — Fog conditions. Reduce driving speed, use low-beam headlights. Allow extra travel time.',
-            windy: '💨 **High Winds** — Secure loose outdoor objects. Difficult conditions for cycling. Watch for flying debris.',
-            perfect: '✨ **Perfect Conditions** — Temperature, humidity, and wind are all in optimal ranges. An exceptional day to be outside!',
-            uvHigh: '⚠️ **High UV Index** — Sunburn risk in 15-25 minutes. Broad-spectrum sunscreen, sunglasses, and hat essential between 10:00–16:00.',
-            uvExtreme: '🚨 **Extreme UV** — Sunburn in 10 minutes. Minimize sun exposure, full protective gear required.',
-            aqiBad: '😷 **Poor Air Quality** — Sensitive groups should limit outdoor exertion. Consider mask in heavily polluted areas. Keep windows closed.',
-        }
-    },
-    fr: {
-        title: (city, country) => `🌤️ ${city}, ${country}`,
-        temperature: '🌡️ Température',
-        feelsLike: 'Ressenti',
-        atmosphere: '💧 Atmosphère',
-        humidity: 'Humidité',
-        pressure: 'Pression',
-        visibility: 'Visibilité',
-        wind: '🌬️ Vent',
-        speed: 'Vitesse',
-        direction: 'Direction',
-        extraInfo: '📊 Infos Supplémentaires',
-        cloudiness: 'Nébulosité',
-        sunrise: '☀️ Lever',
-        sunset: '🌙 Coucher',
-        airQuality: '🛡️ Qualité de l\'Air',
-        uvi: '☀️ Indice UV',
-        dewPoint: '💧 Point de Rosée',
-        forecast: '📅 Prévisions 3 Jours',
-        smartAdvice: '💡 Bulletin Météorologique',
-        location: 'Localisation',
-        timezone: 'Fuseau horaire',
-        configError: '⚠️ **Erreur de Configuration:** Clé API météo non configurée.',
-        notFound: (city) => `❌ **Localisation introuvable:** "${city}" n'existe pas.`,
-        apiError: '❌ **Erreur Clé API:** Clé API météo invalide.',
-        fetchError: '❌ **Erreur:** Impossible de récupérer les données météo.',
-        weatherServiceError: '⚠️ Erreur Service Météo',
-        checkCity: 'Vérifiez le nom de la ville ou réessayez plus tard',
-        typing: '🔍 Récupération des données météo...',
-        aqiLabels: ['🟢 Excellente', '🟢 Bonne', '🟡 Modérée', '🟠 Malsaine (Sensibles)', '🔴 Malsaine', '🟣 Dangereuse'],
-        uviLabels: ['🟢 Faible', '🟢 Faible', '🟡 Modéré', '🟡 Modéré', '🟠 Élevé', '🟠 Élevé', '🔴 Très Élevé', '🔴 Très Élevé', '🔴 Très Élevé', '🟣 Extrême'],
-        advice: {
-            extremeHeat: '🔥 **Avis de Chaleur** — Hydratez-vous, évitez l\'exposition solaire prolongée. Vêtements légers et respirants recommandés.',
-            hotDay: '☀️ **Ensoleillé et Sec** — Risque élevé de déshydratation. Portez de l\'eau, crème solaire FPS 30+, cherchez l\'ombre (11h–15h).',
-            warmPleasant: '🌤️ **Conditions Agréables** — Idéal pour les activités extérieures. Vêtements légers suffisants.',
-            mild: '⛅ **Températures Douces** — Températures confortables. Vêtements en couches conseillés.',
-            cool: '🍃 **Températures Fraîches** — Un blouson ou pull recommandé. Bonnes conditions pour le jogging.',
-            cold: '❄️ **Avis de Froid** — Couvrez-vous chaudement: manteau, gants, écharpe. Limitez le temps dehors.',
-            freezing: '🥶 **Alerte Grand Froid** — Conditions dangereuses. Plusieurs couches essentielles. Vérifiez les personnes âgées.',
-            rainy: '🌧️ **Pluie Attendue** — Emportez un parapluie ou blouson imperméable. Routes glissantes: conduisez prudemment.',
-            stormy: '⛈️ **Risque d\'Orage** — Cherchez un abri intérieur. Évitez zones dégagées et arbres hauts.',
-            foggy: '🌫️ **Faible Visibilité** — Brouillard. Réduisez la vitesse, utilisez feux de croisement.',
-            windy: '💨 **Vents Forts** — Sécurisez les objets extérieurs. Conditions difficiles pour le vélo.',
-            perfect: '✨ **Conditions Parfaites** — Température, humidité et vent sont optimaux. Une journée exceptionnelle!',
-            uvHigh: '⚠️ **UV Élevé** — Coup de soleil en 15-25 min. Crème solaire, lunettes et chapeau essentiels (10h–16h).',
-            uvExtreme: '🚨 **UV Extrême** — Coup de soleil en 10 min. Minimisez l\'exposition, équipement complet requis.',
-            aqiBad: '😷 **Mauvaise Qualité de l\'Air** — Groupes sensibles: limitez les efforts extérieurs. Masque recommandé.',
-        }
-    }
-};
+const i18n = require('../lib/i18n');
+function loadT(lang) {
+    const t = (k, v) => i18n.t(`weather.${k}`, lang, v);
+    const ref = require('./lib/../lib/i18n'); // unused, just for clarity
+    // build advice object
+    const adviceKeys = ['extremeHeat','hotDay','warmPleasant','mild','cool','cold','freezing','rainy','stormy','foggy','windy','perfect','uvHigh','uvExtreme','aqiBad'];
+    const advice = {};
+    for (const k of adviceKeys) advice[k] = i18n.t(`weather.advice.${k}`, lang);
+    // build indexed arrays
+    const aqiLabels = [0,1,2,3,4,5].map(i => i18n.t(`weather.aqiLabels.${i}`, lang));
+    const uviLabels = [0,1,2,3,4,5,6,7,8,9].map(i => i18n.t(`weather.uviLabels.${i}`, lang));
+    // flat keys
+    const o = { advice, aqiLabels, uviLabels };
+    const flatKeys = ['temperature','feelsLike','atmosphere','humidity','pressure','visibility','wind','speed','direction','extraInfo','cloudiness','sunrise','sunset','airQuality','uvi','dewPoint','forecast','smartAdvice','location','timezone','configError','apiError','fetchError','weatherServiceError','checkCity','typing','title','notFound'];
+    for (const k of flatKeys) o[k] = i18n.t(`weather.${k}`, lang);
+    return o;
+}
 
 // ================= HELPER FUNCTIONS =================
 function getWindDirection(degrees) {
@@ -123,7 +40,7 @@ function capitalizeFirst(str) {
 
 // ================= SMART ADVISOR (Professional) =================
 function getSmartAdvice(condition, temp, humidity, windSpeed, uvi, aqi, lang) {
-    const a = translations[lang].advice;
+    const a = loadT(lang).advice;
     const pieces = [];
     const w = condition.toLowerCase();
 
@@ -274,7 +191,7 @@ module.exports = {
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const txt = translations[lang];
+        const txt = loadT(lang);
         const version = client.version || '2.0';
         const city = args.join(' ') || 'Bamako';
 
