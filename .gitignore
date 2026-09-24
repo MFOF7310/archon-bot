@@ -109,3 +109,7 @@ ecosystem.config.js
 # User-uploaded build screenshots
 assets/builds/
 *.bak-*
+
+# Personal data — see *.example.* for schema
+data/music-library.json
+config/emojis.js
