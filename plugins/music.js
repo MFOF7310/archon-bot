@@ -1425,7 +1425,7 @@ module.exports = {
                     const remaining = 25 - results.length;
                     if (remaining > 0) {
                         for (const t of lib.slice(0, remaining)) {
-                            push(`🎵 ${t.title}`, t.query);
+                            push(`🎵 ${t.title.replace(/^🎵\s*/, '')}`, t.query);
                         }
                     }
                 } catch(e) {}
