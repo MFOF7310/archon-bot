@@ -1,0 +1,22 @@
+{
+  "accessDeniedTitle": "🚫 ACCESS DENIED",
+  "accessDeniedDesc": "You lack the required `Manage Channels` permission in this server.",
+  "serverContext": "This command requires a **server context** to verify permissions.",
+  "dmFallbackNote": "📩 *This message was sent privately to avoid public embarrassment.*",
+  "noPerms": "❌ You need the `Manage Channels` permission to use this command.",
+  "botNoPerms": "❌ I don't have `Manage Channels` permission in {channel}.",
+  "enabledTitle": "🐢 Slowmode Activated",
+  "enabledDescription": "**Channel:** {channel}\n**Cooldown:** `{time}`\n\n⏱️ Members must wait this long between messages.\n🔒 Only members with `Manage Messages` permission are exempt.",
+  "disabledTitle": "✅ Slowmode Deactivated",
+  "disabledDescription": "**Channel:** {channel}\n\n💨 Members can now send messages freely without cooldown.",
+  "invalid": "❌ **Invalid Usage**\n\n**Correct Format:**\n`.slowmode <time>` or `/slowmode duration:<time>`\n\n**Examples:**\n🕐 `.slowmode 5s` — 5 seconds\n🕐 `.slowmode 30s` — 30 seconds\n🕐 `.slowmode 1m` — 1 minute\n🕐 `.slowmode 5m` — 5 minutes\n🕐 `.slowmode 2h` — 2 hours\n🛑 `.slowmode off` — disable\n\n💡 **Tip:** Use `/slowmode` for an interactive experience!",
+  "max": "❌ Maximum slowmode is **6 hours** (21600 seconds).\n⏱️ Discord limitation to prevent excessive restrictions.",
+  "min": "❌ Minimum slowmode is **1 second**.",
+  "alreadyOff": "💤 *Slowmode was already disabled.*",
+  "current": "",
+  "logTitle": "🐢 SLOWMODE CHANGED",
+  "permCheckField": "You need `ManageChannels` to use this command.",
+  "permYourRole": "Your highest role lacks this permission.",
+  "permBotRole": "Bot role may also need elevation.",
+  "helpTitle": "🐢 SLOWMODE COMMAND"
+}

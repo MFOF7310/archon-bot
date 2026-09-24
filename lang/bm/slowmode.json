@@ -1,0 +1,22 @@
+{
+  "accessDeniedTitle": "",
+  "accessDeniedDesc": "",
+  "serverContext": "",
+  "dmFallbackNote": "",
+  "noPerms": "",
+  "botNoPerms": "",
+  "enabledTitle": "",
+  "enabledDescription": "",
+  "disabledTitle": "",
+  "disabledDescription": "",
+  "invalid": "",
+  "max": "",
+  "min": "",
+  "alreadyOff": "",
+  "current": "",
+  "logTitle": "",
+  "permCheckField": "",
+  "permYourRole": "",
+  "permBotRole": "",
+  "helpTitle": ""
+}

@@ -1,0 +1,22 @@
+{
+  "accessDeniedTitle": "🚫 ACCÈS REFUSÉ",
+  "accessDeniedDesc": "Vous n'avez pas la permission `Gérer les Salons` sur ce serveur.",
+  "serverContext": "Cette commande nécessite un **contexte serveur** pour vérifier les permissions.",
+  "dmFallbackNote": "📩 *Ce message vous a été envoyé en privé pour éviter l'embarras public.*",
+  "noPerms": "❌ Vous avez besoin de la permission `Gérer les Salons` pour utiliser cette commande.",
+  "botNoPerms": "❌ Je n'ai pas la permission `Gérer les Salons` dans {channel}.",
+  "enabledTitle": "🐢 Mode Lent Activé",
+  "enabledDescription": "**Salon:** {channel}\n**Délai:** `{time}`\n\n⏱️ Les membres doivent attendre ce délai entre les messages.\n🔒 Seuls les membres avec la permission `Gérer les Messages` sont exemptés.",
+  "disabledTitle": "✅ Mode Lent Désactivé",
+  "disabledDescription": "**Salon:** {channel}\n\n💨 Les membres peuvent maintenant envoyer des messages librement sans délai.",
+  "invalid": "❌ **Utilisation Incorrecte**\n\n**Format Correct:**\n`.slowmode <temps>` ou `/slowmode duration:<temps>`\n\n**Exemples:**\n🕐 `.slowmode 5s` — 5 secondes\n🕐 `.slowmode 30s` — 30 secondes\n🕐 `.slowmode 1m` — 1 minute\n🕐 `.slowmode 5m` — 5 minutes\n🕐 `.slowmode 2h` — 2 heures\n🛑 `.slowmode off` — désactiver\n\n💡 **Astuce:** Utilisez `/slowmode` pour une expérience interactive!",
+  "max": "❌ Le mode lent maximum est de **6 heures** (21600 secondes).\n⏱️ Limitation Discord pour éviter les restrictions excessives.",
+  "min": "❌ Le mode lent minimum est de **1 seconde**.",
+  "alreadyOff": "💤 *Le mode lent était déjà désactivé.*",
+  "current": "",
+  "logTitle": "🐢 MODE LENT MODIFIÉ",
+  "permCheckField": "Permission `ManageChannels` requise.",
+  "permYourRole": "Votre rôle le plus élevé n'a pas cette permission.",
+  "permBotRole": "Le rôle du bot peut aussi nécessiter une élévation.",
+  "helpTitle": "🐢 COMMANDE MODE LENT"
+}

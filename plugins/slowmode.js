@@ -1,110 +1,13 @@
 const { EmbedBuilder, PermissionsBitField, SlashCommandBuilder, ChannelType, MessageFlags, Colors } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
-const translations = {
-    en: {
-        accessDeniedTitle: '🚫 ACCESS DENIED',
-        accessDeniedDesc: 'You lack the required `Manage Channels` permission in this server.',
-        serverContext: 'This command requires a **server context** to verify permissions.',
-        dmFallbackNote: '📩 *This message was sent privately to avoid public embarrassment.*',
-        noPerms: '❌ You need the `Manage Channels` permission to use this command.',
-        botNoPerms: (channel) => `❌ I don't have \`Manage Channels\` permission in ${channel}.`,
-        enabled: (channel, formattedTime) => ({
-            title: '🐢 Slowmode Activated',
-            description: [
-                `**Channel:** ${channel}`,
-                `**Cooldown:** \`${formattedTime}\``,
-                '',
-                '⏱️ Members must wait this long between messages.',
-                '🔒 Only members with `Manage Messages` permission are exempt.'
-            ].join('\n'),
-        }),
-        disabled: (channel) => ({
-            title: '✅ Slowmode Deactivated',
-            description: [
-                `**Channel:** ${channel}`,
-                '',
-                '💨 Members can now send messages freely without cooldown.'
-            ].join('\n'),
-        }),
-        invalid: [
-            '❌ **Invalid Usage**',
-            '',
-            '**Correct Format:**',
-            '`.slowmode <time>` or `/slowmode duration:<time>`',
-            '',
-            '**Examples:**',
-            '🕐 `.slowmode 5s` — 5 seconds',
-            '🕐 `.slowmode 30s` — 30 seconds',
-            '🕐 `.slowmode 1m` — 1 minute',
-            '🕐 `.slowmode 5m` — 5 minutes',
-            '🕐 `.slowmode 2h` — 2 hours',
-            '🛑 `.slowmode off` — disable',
-            '',
-            '💡 **Tip:** Use `/slowmode` for an interactive experience!'
-        ].join('\n'),
-        max: '❌ Maximum slowmode is **6 hours** (21600 seconds).\n⏱️ Discord limitation to prevent excessive restrictions.',
-        min: '❌ Minimum slowmode is **1 second**.',
-        alreadyOff: '💤 *Slowmode was already disabled.*',
-        current: (channel, seconds) => `ℹ️ Current slowmode in ${channel}: **${seconds === 0 ? 'Off' : formatTime(seconds)}**`,
-        logTitle: '🐢 SLOWMODE CHANGED',
-        permCheckField: 'You need `ManageChannels` to use this command.',
-        permYourRole: 'Your highest role lacks this permission.',
-        permBotRole: 'Bot role may also need elevation.',
-        helpTitle: '🐢 SLOWMODE COMMAND'
-    },
-    fr: {
-        accessDeniedTitle: '🚫 ACCÈS REFUSÉ',
-        accessDeniedDesc: 'Vous n\'avez pas la permission `Gérer les Salons` sur ce serveur.',
-        serverContext: 'Cette commande nécessite un **contexte serveur** pour vérifier les permissions.',
-        dmFallbackNote: '📩 *Ce message vous a été envoyé en privé pour éviter l\'embarras public.*',
-        noPerms: '❌ Vous avez besoin de la permission `Gérer les Salons` pour utiliser cette commande.',
-        botNoPerms: (channel) => `❌ Je n'ai pas la permission \`Gérer les Salons\` dans ${channel}.`,
-        enabled: (channel, formattedTime) => ({
-            title: '🐢 Mode Lent Activé',
-            description: [
-                `**Salon:** ${channel}`,
-                `**Délai:** \`${formattedTime}\``,
-                '',
-                '⏱️ Les membres doivent attendre ce délai entre les messages.',
-                '🔒 Seuls les membres avec la permission `Gérer les Messages` sont exemptés.'
-            ].join('\n'),
-        }),
-        disabled: (channel) => ({
-            title: '✅ Mode Lent Désactivé',
-            description: [
-                `**Salon:** ${channel}`,
-                '',
-                '💨 Les membres peuvent maintenant envoyer des messages librement sans délai.'
-            ].join('\n'),
-        }),
-        invalid: [
-            '❌ **Utilisation Incorrecte**',
-            '',
-            '**Format Correct:**',
-            '`.slowmode <temps>` ou `/slowmode duration:<temps>`',
-            '',
-            '**Exemples:**',
-            '🕐 `.slowmode 5s` — 5 secondes',
-            '🕐 `.slowmode 30s` — 30 secondes',
-            '🕐 `.slowmode 1m` — 1 minute',
-            '🕐 `.slowmode 5m` — 5 minutes',
-            '🕐 `.slowmode 2h` — 2 heures',
-            '🛑 `.slowmode off` — désactiver',
-            '',
-            '💡 **Astuce:** Utilisez `/slowmode` pour une expérience interactive!'
-        ].join('\n'),
-        max: '❌ Le mode lent maximum est de **6 heures** (21600 secondes).\n⏱️ Limitation Discord pour éviter les restrictions excessives.',
-        min: '❌ Le mode lent minimum est de **1 seconde**.',
-        alreadyOff: '💤 *Le mode lent était déjà désactivé.*',
-        current: (channel, seconds) => `ℹ️ Mode lent actuel dans ${channel}: **${seconds === 0 ? 'Désactivé' : formatTime(seconds, 'fr')}**`,
-        logTitle: '🐢 MODE LENT MODIFIÉ',
-        permCheckField: 'Permission `ManageChannels` requise.',
-        permYourRole: 'Votre rôle le plus élevé n\'a pas cette permission.',
-        permBotRole: 'Le rôle du bot peut aussi nécessiter une élévation.',
-        helpTitle: '🐢 COMMANDE MODE LENT'
-    }
-};
+const i18n = require('../lib/i18n');
+const I18N_KEYS = ["accessDeniedTitle", "accessDeniedDesc", "serverContext", "dmFallbackNote", "noPerms", "botNoPerms", "enabledTitle", "enabledDescription", "disabledTitle", "disabledDescription", "invalid", "max", "min", "alreadyOff", "current", "logTitle", "permCheckField", "permYourRole", "permBotRole", "helpTitle"];
+function loadT(lang) {
+    const o = {};
+    for (const k of I18N_KEYS) o[k] = i18n.t(`slowmode.${k}`, lang);
+    return o;
+}
 
 // ================= PERMISSION CHECKER (PER-SERVER) =================
 async function checkSlowmodePermission(context, t, lang) {
@@ -232,7 +135,7 @@ async function logSlowmode(guild, moderator, channel, seconds, wasActive, client
         if (!logChannel) return;
 
         const lang = guild.preferredLocale === 'fr' ? 'fr' : 'en';
-        const t = translations[lang];
+        const t = loadT(lang);
 
         const logEmbed = new EmbedBuilder()
             .setColor(seconds > 0 ? Colors.Yellow : Colors.Green)
@@ -286,7 +189,7 @@ module.exports = {
 
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = translations[lang];
+        const t = loadT(lang);
 
         // PER-SERVER PERMISSION CHECK
         const permCheck = await checkSlowmodePermission(interaction, t, lang);
@@ -298,7 +201,7 @@ module.exports = {
         // Check bot permissions for target channel
         if (!targetChannel.permissionsFor(interaction.guild.members.me).has(PermissionsBitField.Flags.ManageChannels)) {
             return interaction.reply({
-                content: t.botNoPerms(targetChannel.toString()),
+                content: i18n.t('slowmode.botNoPerms', lang, { channel: targetChannel.toString() }),
                 flags: MessageFlags.Ephemeral
             }).catch(() => {});
         }
@@ -328,7 +231,7 @@ module.exports = {
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = translations[lang];
+        const t = loadT(lang);
 
         // PER-SERVER PERMISSION CHECK
         const permCheck = await checkSlowmodePermission(message, t, lang);
@@ -372,10 +275,10 @@ async function applySlowmode(channel, input, t, user, lang = 'en') {
         const embed = new EmbedBuilder()
             .setColor(wasActive ? Colors.Green : Colors.Greyple)
             .setAuthor({ 
-                name: t.disabled(channel.toString()).title, 
+                name: i18n.t('slowmode.disabledTitle', lang), 
                 iconURL: 'https://cdn.discordapp.com/emojis/✅.png' 
             })
-            .setDescription(t.disabled(channel.toString()).description)
+            .setDescription(i18n.t('slowmode.disabledDescription', lang, { channel: channel.toString() }))
             .addFields(
                 { 
                     name: '🛠️ Moderator', 
@@ -432,10 +335,10 @@ async function applySlowmode(channel, input, t, user, lang = 'en') {
     const embed = new EmbedBuilder()
         .setColor(Colors.Yellow)
         .setAuthor({ 
-            name: t.enabled(channel.toString(), formattedTime).title, 
+            name: i18n.t('slowmode.enabledTitle', lang), 
             iconURL: 'https://cdn.discordapp.com/emojis/🐢.png' 
         })
-        .setDescription(t.enabled(channel.toString(), formattedTime).description)
+        .setDescription(i18n.t('slowmode.enabledDescription', lang, { channel: channel.toString(), time: formattedTime }))
         .addFields(
             { 
                 name: '🛠️ Moderator', 
