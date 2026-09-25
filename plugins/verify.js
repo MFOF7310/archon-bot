@@ -8,6 +8,7 @@ const {
     PermissionsBitField, AttachmentBuilder,
     ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle
 } = require('discord.js');
+const { applyUnverifiedLock, lockSummary } = require('../lib/verify-guard.js');
 const crypto = require('crypto');
 const { generateCaptcha, randomCode } = require('./captcha.js');
 const EMOJIS = require('../config/emojis');
@@ -173,47 +174,18 @@ module.exports = {
 
             await interaction.deferReply({ flags: 64 });
 
-            // Auto-configure channel permissions — deny ViewChannel for unverified role on all channels
-            const guild = interaction.guild;
-            let locked = 0, skipped = 0, failed = 0;
+            // Friendly waiting message while the channels are locked one by one
             ensureCols(db);
-            const panelId = db.prepare('SELECT verify_panel_channel_id AS p FROM server_settings WHERE guild_id = ?').get(gid)?.p;
+            const total = interaction.guild.channels.cache.filter(c => !c.isThread?.() && c.type !== 4).size;
+            await interaction.editReply({ content: `🛡️ Securing **${interaction.guild.name}**… locking ${total} channels for ${role}, one by one. Just a few seconds ⏳` }).catch(() => {});
 
-            for (const [, channel] of guild.channels.cache) {
-                // Skip categories and thread channels
-                if (channel.isThread?.() || channel.type === 4) continue;
-                // Panel channel: visible, read-only
-                if (panelId && channel.id === panelId) {
-                    await channel.permissionOverwrites.edit(role, { ViewChannel: true, SendMessages: false, ReadMessageHistory: true }).catch(() => { failed++; });
-                    continue;
-                }
-                // Captcha fallback channel must stay usable
-                if (channel.id === guild.systemChannelId) {
-                    await channel.permissionOverwrites.edit(role, { ViewChannel: true, SendMessages: true }).catch(() => { failed++; });
-                    continue;
-                }
-                try {
-                    await channel.permissionOverwrites.edit(role, {
-                        ViewChannel: false,
-                        SendMessages: false
-                    });
-                    locked++;
-                } catch {
-                    failed++;
-                }
-            }
-
+            const r = await applyUnverifiedLock(interaction.guild, role, db);
             return interaction.editReply({
+                content: '',
                 embeds: [new EmbedBuilder()
-                    .setColor(0x00cc44)
+                    .setColor(r.failed ? 0xf1c40f : 0x00cc44)
                     .setTitle(`${EMOJIS.shield} Verification Gate Configured`)
-                    .setDescription(
-                        `Unverified role set to ${role}\n\n` +
-                        `**${locked}** channels locked — unverified members can\'t see them.\n` +
-                        (failed > 0 ? `**${failed}** channels couldn\'t be updated — check my role is above the unverified role.\n\n` : '\n') +
-                        (guild.systemChannel ? `${guild.systemChannel} stays open for members with closed DMs.\n` : `⚠️ No system channel set — members with closed DMs can't verify.\n`) +
-                        `New members get this role on join, removed the moment they verify. ✨`
-                    )
+                    .setDescription(lockSummary(r, `${role}`))
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
             });
         }
@@ -232,7 +204,7 @@ module.exports = {
 
             const s2 = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
             const uRole = s2?.verify_unverified_role_id ? guild.roles.cache.get(s2.verify_unverified_role_id) : null;
-            if (uRole) await ch.permissionOverwrites.edit(uRole, { ViewChannel: true, SendMessages: false, ReadMessageHistory: true }).catch(() => {});
+            if (uRole) applyUnverifiedLock(guild, uRole, db).catch(() => {}); // background: with a panel, the system channel closes too
 
             await ch.send({
                 embeds: [new EmbedBuilder()

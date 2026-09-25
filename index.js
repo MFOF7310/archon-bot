@@ -3615,6 +3615,17 @@ function syncAvatar(user, guildId) {
     } catch (e) {}
 }
 
+// New channels get the verification lock too, otherwise unverified members would see them
+safeOn(Events.ChannelCreate, async (channel) => {
+    try {
+        if (!channel.guild || channel.isThread?.()) return;
+        const row = db.prepare('SELECT verify_enabled, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(channel.guild.id);
+        if (!row?.verify_enabled || !row.verify_unverified_role_id) return;
+        const role = channel.guild.roles.cache.get(row.verify_unverified_role_id);
+        if (role) await channel.permissionOverwrites.edit(role, { ViewChannel: false, SendMessages: false });
+    } catch (e) {}
+});
+
 safeOn(Events.MessageCreate, async (message) => {
     syncAvatar(message.author, message.guild?.id);
     if (!message || message.author?.bot || message.webhookId) return;
@@ -6197,8 +6208,23 @@ apiApp.post('/api/verify/:guildId', requireAdmin, async (req, res) => {
         console.log(`[VERIFY-API] update guild=${gid} by=${a.member.id} ${JSON.stringify(next)}`);
 
         const warnings = [];
-        if (ur && ur !== cur.verify_unverified_role_id)
-            warnings.push('Unverified role changed — run /verify setunverified in Discord to lock channels.');
+        // Lock channels right away when the gate is switched on or gets a new unverified role
+        let lock = null;
+        const enabling = !!next.verify_enabled && !cur.verify_enabled;
+        const roleChanged = !!next.verify_unverified_role_id && next.verify_unverified_role_id !== cur.verify_unverified_role_id;
+        if (next.verify_enabled && next.verify_unverified_role_id && (enabling || roleChanged)) {
+            const uRole = a.guild.roles.cache.get(next.verify_unverified_role_id);
+            if (uRole) {
+                const r = await _vg.applyUnverifiedLock(a.guild, uRole, db);
+                const chName = (id) => id ? `#${a.guild.channels.cache.get(id)?.name || id}` : null;
+                lock = { locked: r.locked, failed: r.failed, panel: chName(r.panelId), fallback: chName(r.fallbackId) };
+                if (r.failed) warnings.push(`${r.failed} channels couldn't be updated — check ARCHON's role is above the unverified role.`);
+                if (!r.panelId) warnings.push(r.fallbackId
+                    ? `No verification panel yet: ${lock.fallback} stays open, so members can skip verification there. Post one with /verify panel.`
+                    : `No verification panel: members with closed DMs can't verify. Post one with /verify panel.`);
+                console.log(`[VERIFY-API] lock guild=${gid} locked=${r.locked} failed=${r.failed} panel=${r.panelId || '-'}`);
+            }
+        }
         res.json({
             success: true,
             settings: {
@@ -6207,7 +6233,8 @@ apiApp.post('/api/verify/:guildId', requireAdmin, async (req, res) => {
                 unverifiedRoleId: next.verify_unverified_role_id,
                 kickMinutes: next.verify_kick_days
             },
-            warnings
+            warnings,
+            lock
         });
     } catch (e) {
         if (e && e.code && e.error) return res.status(e.code).json({ error: e.error, reason: e.reason });
