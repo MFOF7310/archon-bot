@@ -5615,7 +5615,12 @@ apiApp.get('/api/premium/status', (req, res) => {
         if (!row) return res.json({ premium: false });
         const premium = !row.expires_at || Date.now()/1000 < row.expires_at;
         const daysLeft = row.expires_at ? Math.max(0, Math.floor((row.expires_at - Date.now()/1000) / 86400)) : null;
-        console.log(`[PREMIUM-STATUS] guild=${guildId} premium=${premium} days=${daysLeft} ray=${req.headers['cf-ray'] || 'direct'} ip=${req.headers['cf-connecting-ip'] || req.ip}`);
+        // The dashboard polls this for every server: log external calls and status changes only
+        client._premiumSeen ??= new Map();
+        if (req.headers['cf-ray'] || client._premiumSeen.get(guildId) !== premium) {
+            client._premiumSeen.set(guildId, premium);
+            console.log(`[PREMIUM-STATUS] guild=${guildId} premium=${premium} days=${daysLeft} ray=${req.headers['cf-ray'] || 'direct'} ip=${req.headers['cf-connecting-ip'] || req.ip}`);
+        }
  return res.json({ premium, daysLeft, lifetime: !row.expires_at });
     } catch(e) {
         return res.json({ premium: false });
