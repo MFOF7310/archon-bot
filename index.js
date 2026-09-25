@@ -6108,7 +6108,7 @@ apiApp.get('/api/settings/:guildId', (req, res) => {
 // ─── UPDATE CONFIG ─────────────────────────────────────
 // ── VERIFY SETTINGS API (dashboard) ──
 const _vg = require('./lib/verify-guard.js');
-const VERIFY_COLS = 'verify_enabled, verify_role_id, verify_unverified_role_id, verify_kick_days';
+const VERIFY_COLS = 'verify_enabled, verify_role_id, verify_unverified_role_id, verify_kick_days, verify_panel_channel_id';
 
 async function verifyActor(guildId, userId) {
     const guild = client.guilds.cache.get(String(guildId));
