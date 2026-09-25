@@ -66,6 +66,21 @@ function prunePanel(now) {
     for (const [k, t] of panelCooldown) if (now - t > PANEL_COOLDOWN) panelCooldown.delete(k);
 }
 
+// Link button to the server's verification panel: members get a fresh code there
+// (private popup, works with closed DMs) instead of leaving and rejoining.
+function panelLink(guild, db) {
+    try {
+        const id = db.prepare('SELECT verify_panel_channel_id AS p FROM server_settings WHERE guild_id = ?').get(guild.id)?.p;
+        const ch = id && guild.channels.cache.get(id);
+        if (!ch) return null;
+        return {
+            id: ch.id,
+            row: new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
+                .setLabel(`Open #${ch.name}`.slice(0, 80)).setURL(`https://discord.com/channels/${guild.id}/${ch.id}`))
+        };
+    } catch { return null; }
+}
+
 module.exports = {
     name: 'verify',
     description: 'Verification gate system',
@@ -312,13 +327,15 @@ module.exports = {
         const attachment = new AttachmentBuilder(imgBuf, { name: 'verify.png' });
 
         // Store code in pending
+        const pl = panelLink(member.guild, db);
+        const plNoKick = (settings.verify_kick_days || 0) > 0 ? null : pl;
         const captchaEmbed = new EmbedBuilder()
             .setColor(0x00aaff)
             .setTitle(`👋 Hey, welcome to ${member.guild.name}!`)
             .setDescription(
                 `Great to have you here! To unlock the server, **type the code shown in the image below** in this DM.\n\n` +
                 `${EMOJIS.warning} Case insensitive • **3 attempts** • Expires in **${(settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10} minutes**\n\n` +
-                `*Having trouble? Rejoin the server to get a fresh code.*`
+                (pl ? `*Having trouble? Get a fresh code in the verification center — button below.*` : `*Having trouble? Rejoin the server to get a fresh code.*`)
             )
             .setImage('attachment://verify.png')
             .setThumbnail(member.guild.iconURL({ dynamic: true }))
@@ -329,10 +346,10 @@ module.exports = {
         let dmChannel = null;
         try {
             dmChannel = await member.createDM();
-            dmMsg = await dmChannel.send({ embeds: [captchaEmbed], files: [attachment] });
+            dmMsg = await dmChannel.send({ embeds: [captchaEmbed], files: [attachment], components: pl ? [pl.row] : [] });
         } catch {
             // DMs closed — try system channel
-            const sysCh = member.guild.systemChannel;
+            const sysCh = pl ? null : member.guild.systemChannel; // with a panel, the system channel is locked for them: they verify in the panel
             if (sysCh) {
                 try {
                     dmMsg = await sysCh.send({
@@ -396,9 +413,9 @@ module.exports = {
                             .setTitle(`${EMOJIS.warning} Too many attempts`)
                             .setDescription(kickOn
                                 ? `No worries — you've been removed from **${member.guild.name}** for now.\n\nFeel free to rejoin and try again with a fresh code. 👋`
-                                : `Verification failed for **${member.guild.name}**.\n\nLeave and rejoin the server to get a fresh code. 👋`)
+                                : (pl ? `Verification failed for **${member.guild.name}**.\n\nNo problem — get a fresh code in the verification center, button below. 👋` : `Verification failed for **${member.guild.name}**.\n\nLeave and rejoin the server to get a fresh code. 👋`))
                             .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-                        ]}).catch(() => {});
+                        ], components: (!kickOn && pl) ? [pl.row] : [] }).catch(() => {});
                         if (kickOn) await member.kick('Failed captcha verification').catch(() => {});
                         logVerify(member.guild, db, 0xff3311, kickOn ? '👢 Kicked — failed captcha' : '❌ Failed captcha', member.id, '3 wrong attempts');
                     } else {
@@ -429,9 +446,9 @@ module.exports = {
                     if (!pending.get(key)?.timer) pending.delete(key);
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x888888)
-                        .setDescription(`${EMOJIS.warning} Your verification window expired — no worries, just rejoin the server and we'll send a fresh code right away.`)
+                        .setDescription(`${EMOJIS.warning} ${plNoKick ? `Your verification window expired — no worries, get a fresh code in the verification center, button below.` : `Your verification window expired — no worries, just rejoin the server and we'll send a fresh code right away.`}`)
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-                    ]}).catch(() => {});
+                    ], components: plNoKick ? [plNoKick.row] : [] }).catch(() => {});
                     // Kicking is handled by the auto-kick timer only
                 }
             });
@@ -563,7 +580,7 @@ module.exports = {
     // SECURITY: legacy button granted roles without captcha — disabled
     onVerifyButton: async (interaction) => {
         return interaction.reply({
-            content: '🔒 This verification button is no longer valid. Rejoin the server to get a captcha.',
+            content: (() => { const pl = interaction.guild && panelLink(interaction.guild, interaction.client.db); return pl ? `🔒 This button is no longer valid — verify in <#${pl.id}> instead.` : '🔒 This verification button is no longer valid. Rejoin the server to get a captcha.'; })(),
             flags: 64
         }).catch(() => {});
     }
