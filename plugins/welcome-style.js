@@ -94,12 +94,13 @@ function normalizeWelcomeConfig(ss) {
         welcomeEnabled:  ss.welcomeEnabled !== false && ss.welcome_enabled !== 0,
         goodbyeEnabled:  ss.goodbyeEnabled !== false && ss.goodbye_enabled !== 0,
         prefix:          ss.prefix || '.',
-        levelingEnabled: !!(ss.levelChannel || ss.levelup_channel || ss.xpMultiplier > 0),
+        economyEnabled:  ss.economy_enabled !== 0 && ss.economyEnabled !== false,
+        levelingEnabled: ss.leveling_enabled !== 0 && !!(ss.levelChannel || ss.levelup_channel || ss.xpMultiplier > 0),
         dailyEnabled:    true,
         shopEnabled:     true,
         aiEnabled:       ss.aiEnabled !== false && ss.ai_enabled !== 0,
         marketEnabled:   ss.marketEnabled !== false && ss.market_enabled !== 0,
-        ticketEnabled:   !!(ss.ticketCategory || ss.ticket_category || ss.ticketStaffRole || ss.ticket_staff_role),
+        ticketEnabled:   ss.tickets_enabled !== 0 && !!(ss.ticketCategory || ss.ticket_category || ss.ticketStaffRole || ss.ticket_staff_role),
         rulesChannel:    ss.rulesChannel   || ss.rules_channel   || ss.rules   || null,
         generalChannel:  ss.generalChannel || ss.general_channel || ss.general || null,
         _raw: ss
@@ -602,6 +603,7 @@ function buildRandomTips(cfg, lang = 'en') {
     for (const [key, tip] of Object.entries(pool)) {
         let enabled = true;
         if (key === 'lydia'   && !cfg.aiEnabled)      enabled = false;
+        if (['daily', 'shop', 'credits', 'market'].includes(key) && !cfg.economyEnabled) enabled = false;
         if (key === 'market'  && !cfg.marketEnabled)   enabled = false;
         if (key === 'ticket'  && !cfg.ticketEnabled)   enabled = false;
         if (key === 'profile' && !cfg.levelingEnabled) enabled = false;
