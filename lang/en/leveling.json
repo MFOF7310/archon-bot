@@ -20,5 +20,7 @@
   "theme_updated": "{check} **{type}** theme updated.",
   "theme_reset": "{check} Theme reset to default.",
   "role_set": "{check} Members who reach **Level {level}** will automatically receive {role}.",
-  "role_cleared": "{check} Level **{level}** role cleared."
+  "role_cleared": "{check} Level **{level}** role cleared.",
+  "levelUpLine": "GG {user}, you reached **level {level}**!",
+  "levelUpRole": "New role: **{role}**"
 }

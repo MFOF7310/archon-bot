@@ -3844,115 +3844,30 @@ if (message.content && message.content.length > 4000) {
 
             // ================= MILESTONE CHECK =================
             const isMilestone = [5, 10, 15, 20, 25, 30, 35, 50, 75, 100].includes(newLevel) || (newLevel > 35 && newLevel % 5 === 0);
-            if (!isMilestone) return;
+            const tierChanged = [6, 11, 21].includes(newLevel); // tier roles change here, never on a milestone
+            const announce = isMilestone || tierChanged; // announce only these, but never exit: the sync and command handling below must run
 
-            // ================= CUSTOM levelup_message TEMPLATE =================
-            const customTemplate = serverSettings.levelupMessage;
-            if (customTemplate && customTemplate.trim()) {
-                const filled = customTemplate
-                    .replace(/{user}/gi, `<@${userId}>`)
-                    .replace(/{username}/gi, message.author.username)
-                    .replace(/{level}/gi, String(newLevel))
-                    .replace(/{xp}/gi, newXP.toLocaleString())
-                    .replace(/{server}/gi, guildName)
-                    .replace(/{tier}/gi, levelTier);
-                await targetChannel.send({ content: filled });
-            } else {
-                // ================= UNIFIED RICH LEVEL-UP EMBED =================
-                // XP progress calculation (square-root formula)
-                const currentLevelXP = Math.pow((newLevel - 1) / 0.1, 2);
-                const nextLevelXP = Math.pow(newLevel / 0.1, 2);
-                const xpProgress = newXP - currentLevelXP;
-                const xpNeeded = nextLevelXP - currentLevelXP;
-                const progressPercent = Math.min(100, Math.max(0, Math.floor((xpProgress / xpNeeded) * 100)));
-
-                // Visual progress bar (10 blocks)
-                const barLength = 10;
-                const filledBars = Math.floor((progressPercent / 100) * barLength);
-                const emptyBars = barLength - filledBars;
-                const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
-
-                // Achievement badge
-                const achievementText = roleResult?.role?.name
-                    ? `${tierEmoji} **${roleResult.role.name}** ${userLang === 'fr' ? 'DÉBLOQUÉ !' : 'UNLOCKED!'}`
-                    : `${tierEmoji} **${levelTier.toUpperCase()}** ${userLang === 'fr' ? 'ATTEINT !' : 'REACHED!'}`;
-
-                // Next milestone
-                const milestones = [5, 10, 15, 20, 25, 30, 35, 50, 75, 100];
-                const nextMilestone = milestones.find(m => m > newLevel) || 100;
-                const milestoneText = userLang === 'fr'
-                    ? `🎯 Prochain jalon: **${nextMilestone}** — Continuez !`
-                    : `🎯 Next milestone: **${nextMilestone}** — Keep going!`;
-
-                // Build unified embed
-                const levelUpEmbed = new EmbedBuilder()
-                    .setColor(levelTierColor)
-                    .setAuthor({
-                        name: userLang === 'fr'
-                            ? `🎉 NIVEAU ${newLevel} ATTEINT !`
-                            : `🎉 LEVEL ${newLevel} REACHED!`,
-                        iconURL: message.author.displayAvatarURL()
-                    })
-                    .setDescription(
-                        `### ${achievementText}\n` +
-                        (userLang === 'fr'
-                            ? `**${message.author.username}** progresse légendairement !\nMonte au **Niveau ${newLevel}** ! 👑`
-                            : `**${message.author.username}**'s legendary progression!\nAscends to **Level ${newLevel}**! 👑`
-                        )
-                    )
-                    .addFields(
-                        {
-                            name: userLang === 'fr' ? '📊 PROGRESSION' : '📊 PROGRESSION',
-                            value: [
-                                `\`\`\`ansi`,
-                                `\u001b[1;33mLEVEL ${newLevel - 1} → ${newLevel}\u001b[0m`,
-                                `${progressBar}`,
-                                `${progressPercent}%`,
-                                `XP: ${newXP.toLocaleString()}/${Math.floor(nextLevelXP).toLocaleString()}`,
-                                `\`\`\``
-                            ].join('\n'),
-                            inline: false
-                        },
-                        {
-                            name: userLang === 'fr' ? '🏆 RÉCOMPENSE' : '🏆 REWARD',
-                            value: milestoneText,
-                            inline: false
-                        },
-                        {
-                            name: userLang === 'fr' ? '🏛️ SERVEUR' : '🏛️ SERVER',
-                            value: guildName,
-                            inline: true
-                        },
-                        {
-                            name: '⚡ XP',
-                            value: `${newXP.toLocaleString()}`,
-                            inline: true
-                        },
-                        {
-                            name: userLang === 'fr' ? '💎 TITRE' : '💎 TITLE',
-                            value: levelTier,
-                            inline: true
-                        }
-                    )
-                    .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setFooter({
-                        text: `${guildName} • Architect Engine v${client.version || '2.0'}`,
-                        iconURL: guildIcon
-                    })
-                    .setTimestamp();
-
-                // Apply milestone banner if env URL exists
-                if (levelBannerUrl) {
-                    levelUpEmbed.setImage(levelBannerUrl);
+            if (announce) {
+                // ================= CUSTOM levelup_message TEMPLATE =================
+                const customTemplate = serverSettings.levelupMessage;
+                if (customTemplate && customTemplate.trim()) {
+                    const filled = customTemplate
+                        .replace(/{user}/gi, `<@${userId}>`)
+                        .replace(/{username}/gi, message.author.username)
+                        .replace(/{level}/gi, String(newLevel))
+                        .replace(/{xp}/gi, newXP.toLocaleString())
+                        .replace(/{server}/gi, guildName)
+                        .replace(/{tier}/gi, levelTier);
+                    await targetChannel.send({ content: filled });
+                } else {
+                    // ================= SIMPLE LEVEL-UP =================
+                    // One line like the big bots; a second one only on a real tier promotion
+                    const i18nT = require('./lib/i18n').t;
+                    const lines = [`🎉 ${i18nT('leveling.levelUpLine', userLang, { user: `<@${message.author.id}>`, level: newLevel })}`];
+                    if (tierChanged && roleResult?.ok && roleResult.role?.name)
+                        lines.push(`${tierEmoji} ${i18nT('leveling.levelUpRole', userLang, { role: roleResult.role.name })}`);
+                    await targetChannel.send({ content: lines.join('\n') });
                 }
-
-                // SEND WITH PING + EMBED
-                await targetChannel.send({
-                    content: userLang === 'fr'
-                        ? `🎉 **NIVEAU SUPÉRIEUR !** <@${message.author.id}>`
-                        : `🎉 **LEVEL UP!** <@${message.author.id}>`,
-                    embeds: [levelUpEmbed]
-                });
             }
 
             // ================= SYNC TO GLOBAL ECONOMY =================
