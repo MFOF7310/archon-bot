@@ -368,6 +368,7 @@ module.exports = {
         const key = `${member.id}:${gid}`;
         let attempts = 0;
         const maxAttempts = 3;
+        let lastHint = 0; // throttles the "not a code" reply
         const expireMs = ((settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10) * 60 * 1000;
         const codeRef = { current: code }; // mutable ref so retries work
 
@@ -379,7 +380,15 @@ module.exports = {
 
             collector.on('collect', async m => {
                 if (!dmChannel.isDMBased?.()) m.delete().catch(() => {});
-                const guess = m.content.trim().toUpperCase();
+                const guess = m.content.replace(/\s+/g, '').toUpperCase();
+                // Chat ("hi", a question) is not an attempt: only 6 letters/digits count
+                if (!/^[A-Z0-9]{6}$/.test(guess)) {
+                    if (Date.now() - lastHint > 60000) {
+                        lastHint = Date.now();
+                        dmChannel.send({ content: `That doesn't look like a code — type the **6 characters** from the image. Don't worry, it didn't count as an attempt.` }).catch(() => {});
+                    }
+                    return;
+                }
                 if (guess === codeRef.current) {
                     // ✅ Correct!
                     collector.stop('verified');
