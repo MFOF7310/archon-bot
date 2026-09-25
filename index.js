@@ -6959,6 +6959,7 @@ apiApp.listen(5000, '127.0.0.1', () => {
 
 // ================= BOT PROFILE & STATUS =================
 const STATUS_MESSAGES = [
+    { name: 'ARCHON CG-223 in action', type: 1, url: 'https://www.youtube.com/watch?v=rgl5NLBEAb4' },
     // PLAYING
     { name: 'CODM scrims 🎯', type: 0 },
     { name: 'with Lydia AI 🧠', type: 0 },
@@ -7018,7 +7019,7 @@ function rotateStatus() {
     if (!client.ws?.shards?.size || client.ws.status !== 0) return; // gateway down — skip
     const activity = msg.type === 4
         ? { name: 'customstatus', type: 4, state: name }
-        : { name, type: msg.type };
+        : { name, type: msg.type, ...(msg.url ? { url: msg.url } : {}) }; // Streaming needs a Twitch/YouTube url for the Watch button
     try {
         client.user.setPresence({ status: 'online', activities: [activity] });
     } catch (e) { /* gateway mid-reconnect */ }
