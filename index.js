@@ -6137,7 +6137,7 @@ apiApp.get('/api/verify/:guildId', requireAdmin, async (req, res) => {
                 return { id: r.id, name: r.name, color: r.hexColor, eligible: !reason, reason: reason ? _vg.GUARD_MSG[reason] : null };
             });
         const panelId = row.verify_panel_channel_id || null;
-        const hasPanelChannel = !!(panelId && a.guild.channels.cache.has(panelId));
+        const hasPanelChannel = !!(panelId && (a.guild.channels.cache.has(panelId) || await a.guild.channels.fetch(panelId).catch(() => null)));
         res.json({
             guildId: gid,
             premium: !!isPremium(db, gid),
