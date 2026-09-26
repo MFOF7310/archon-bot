@@ -266,7 +266,7 @@ module.exports = {
 
             const lines = rows.map(b => {
                 const w = W.findWeapon(b.weapon);
-                const tier = w ? `[${w.tier}] ` : '';
+                const tier = w?.tier ? `[${w.tier}] ` : ''; // roster-only weapons have no meta tier
                 return `**#${b.id}** ${tier}${b.weapon} — <@${b.user_id}>`;
             });
 
