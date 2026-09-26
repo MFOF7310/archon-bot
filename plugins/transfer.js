@@ -149,7 +149,7 @@ module.exports = {
     // ═══════════════════════════════════════════════════════
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = transferTranslations[lang];
+        const t = transferTranslations[lang] || transferTranslations['en'];
         const version = client.version || '1.7.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
@@ -498,7 +498,7 @@ module.exports = {
     execute: async (interaction, client) => {
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
         const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
-        const t = transferTranslations[lang];
+        const t = transferTranslations[lang] || transferTranslations['en'];
         const guildId = interaction.guild?.id || 'DM';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();

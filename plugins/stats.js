@@ -471,7 +471,7 @@ try {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
     const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-    const t = statsTranslations[lang];
+    const t = statsTranslations[lang] || statsTranslations['en'];
     
     await interaction.deferReply();
     

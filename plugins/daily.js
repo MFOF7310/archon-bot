@@ -99,7 +99,7 @@ module.exports = {
         lang = isFrenchAlias ? 'fr' :
                      (message.guild?.preferredLocale?.startsWith('fr') ? 'fr' :
                      (client.detectLanguage ? client.detectLanguage('daily', guildId) : 'en'));
-        const t = dailyTranslations[lang];
+        const t = dailyTranslations[lang] || dailyTranslations['en'];
         const prefix = serverSettings?.prefix || '.';
 
         if (args[0]?.toLowerCase() === 'stats') {
@@ -116,7 +116,7 @@ module.exports = {
         // Use Discord's locale for slash commands (respects user's client language)
         // Fallback to detectLanguage for prefix-style detection
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = dailyTranslations[lang];
+        const t = dailyTranslations[lang] || dailyTranslations['en'];
         const prefix = interaction.guild ? (client.getServerSettings(interaction.guild.id)?.prefix || '.') : '.';
         const subcommand = interaction.options.getSubcommand(false);
 

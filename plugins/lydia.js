@@ -203,6 +203,9 @@ You live inside Discord. You know how it renders. You write like someone who use
 Your voice: direct, warm, occasionally dry. You push back when something is off. You celebrate wins. You do not pad sentences with filler.
 
 When Moussa (mfof7559) talks to you — he is the Architect. Acknowledge it naturally, not robotically.
+Never claim you have corrected, updated or learned something permanently — you can't. If you got something wrong, just acknowledge it.
+Command syntax: only use the slash signatures listed under the relevant commands. If a command isn't listed or you're unsure, point to /help <command> instead of guessing.
+ARCHON is open source: https://github.com/MFOF7310/archon-bot — share it only when someone asks about the code, contributing or self-hosting.
 
 — THE ECOSYSTEM —
 ARCHON CG-223 runs ${pluginCount} active plugins across Discord and Telegram.${pluginBreakdown} Built on Node.js v20, Discord.js v14, SQLite WAL mode, per-server data isolation (composite key: user_id + guild_id). Every server is its own universe — zero cross-server leakage.
@@ -976,6 +979,24 @@ function buildEmbed(reply, message, options = {}) {
 
 // ── Relevant-command lookup: inject only what the question touches (cost-bounded, always current) ──
 const STOP = new Set(['the','a','an','to','of','in','on','for','and','or','is','it','my','me','i','you','how','do','can','what','with','this','that','set','use']);
+// Slash signatures read from the registry, so Lydia never guesses syntax: "/invest stake amount:<integer>"
+const OPT_TYPES = { 3: 'text', 4: 'integer', 5: 'true/false', 6: 'user', 7: 'channel', 8: 'role', 9: 'mention', 10: 'number', 11: 'file' };
+function slashSignatures(cmd) {
+  let j;
+  try { j = typeof cmd?.data?.toJSON === 'function' ? cmd.data.toJSON() : cmd?.data; } catch { return []; }
+  if (!j?.name) return [];
+  const args = (opts = []) => opts.filter(o => o.type > 2)
+    .map(o => { const a = `${o.name}:<${OPT_TYPES[o.type] || 'value'}>`; return o.required ? a : `[${a}]`; }).join(' ');
+  const subs = (j.options || []).filter(o => o.type === 1 || o.type === 2);
+  if (!subs.length) return [`/${j.name} ${args(j.options)}`.trim()];
+  const out = [];
+  for (const s of subs) {
+    if (s.type === 2) for (const ss of (s.options || []).filter(o => o.type === 1)) out.push(`/${j.name} ${s.name} ${ss.name} ${args(ss.options)}`.trim());
+    else out.push(`/${j.name} ${s.name} ${args(s.options)}`.trim());
+  }
+  return out;
+}
+
 function relevantCommands(userMessage, commands, limit = 8) {
   if (!commands || !commands.size) return '';
   const words = String(userMessage || '').toLowerCase().match(/[a-z0-9]{3,}/g) || [];
@@ -996,7 +1017,11 @@ function relevantCommands(userMessage, commands, limit = 8) {
   if (!scored.length) return '';
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, limit)
-    .map(({ cmd }) => `- ${cmd.name}${cmd.aliases?.length ? ` (aliases: ${cmd.aliases.join(', ')})` : ''} — ${String(cmd.description || '').replace(/^[^\w]+/, '')}${cmd.category ? ` [${cmd.category}]` : ''}`)
+    .map(({ cmd }) => {
+      const head = `- ${cmd.name}${cmd.aliases?.length ? ` (aliases: ${cmd.aliases.join(', ')})` : ''} — ${String(cmd.description || '').replace(/^[^\w]+/, '')}${cmd.category ? ` [${cmd.category}]` : ''}`;
+      const sigs = slashSignatures(cmd);
+      return sigs.length ? `${head}\n  slash: ${sigs.slice(0, 8).join(' | ')}${sigs.length > 8 ? ' | …' : ''}` : head;
+    })
     .join('\n');
 }
 

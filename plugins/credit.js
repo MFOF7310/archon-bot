@@ -155,7 +155,7 @@ module.exports = {
     // ================= TEXT COMMAND HANDLER =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = creditTranslations[lang];
+        const t = creditTranslations[lang] || creditTranslations['en'];
         const prefix = serverSettings?.prefix || '.';
 
         // PER-SERVER: Extract guildId for composite key lookups
@@ -179,7 +179,7 @@ module.exports = {
     async execute(interaction, client) {
         const sub = interaction.options.getSubcommand();
         const lang = (interaction.guild ? client.getServerSettings(interaction.guild.id) : { language: 'en' })?.language || 'en';
-        const t = creditTranslations[lang];
+        const t = creditTranslations[lang] || creditTranslations['en'];
         const prefix = interaction.guild ? (client.getServerSettings?.(interaction.guild.id)?.prefix || '.') : '.';
         const guildId = interaction.guild?.id || 'DM';
         const economySettings = getEconomySettings(guildId);

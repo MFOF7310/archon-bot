@@ -119,7 +119,7 @@ module.exports = {
         
         lang = client.detectLanguage ? client.detectLanguage('tictactoe', guildId) : 'en';
         
-        const t = tttTranslations[lang];
+        const t = tttTranslations[lang] || tttTranslations['en'];
         const version = client.version || '1.6.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
