@@ -8,21 +8,21 @@
     "opt_recipient": "接收者",
     "opt_user": "要查看的用户",
     "balance_title": "## {rank_emoji} 余额 — {user}\n",
-    "insufficient": "积分不足 — 你只有 **{balance} {currency}**。",
-    "mention_user": "❌ 请 @ 你要转账的用户。"
+    "insufficient": "❌ 积分不够啦 — 你只有 **{balance} {currency}**，先去赚点吧！",
+    "mention_user": "❌ @ 一下你要转账的人呀～"
   },
   "daily": {
     "sub_check": "✅ 检查你的每日奖励是否已就绪",
     "sub_status": "📅 查看你的每日状态与统计",
     "sub_stats": "📊 查看你的每日连击统计",
-    "no_account": "你还没有账户 — 领取你的第一个每日奖励即可加入！"
+    "no_account": "你还没有账户哦 — 领一次每日奖励就自动开户啦！"
   },
   "shop": {
     "desc": "💰 使用 Archon Credits 购买独家升级",
     "balance_label": "余额",
     "level_label": "等级",
     "line_protections": "🛡️ **连击保护：** `{protections}`",
-    "purchased": "**{user}** 购买了 **{item}** {emoji}\n"
+    "purchased": "**{user}** 入手了 **{item}** {emoji}，眼光不错！"
   },
   "inventory": {
     "title": "🛒 巴马科神经商店",
@@ -43,7 +43,7 @@
     "sub_view": "查看你的活跃投资",
     "opt_amount": "投资金额（最低 100）",
     "invested_line": "{emoji} **已投资：** {amount} {coins}\n",
-    "no_investments": "{emoji} **还没有活跃的投资！**\n\n"
+    "no_investments": "{emoji} 还没有任何投资 — 让积分替你打工吧！"
   },
   "transfer": {
     "desc": "💸 通过神经网络将积分转移给另一位特工",
@@ -56,11 +56,11 @@
     "invalid_target": "无效目标",
     "invalid_target_desc": "请 @ 一个有效的用户。",
     "min_transfer": "金额过低",
-    "min_transfer_desc": "最低转账金额为 10 积分。",
+    "min_transfer_desc": "最少要转 10 积分哦，再大方一点！",
     "no_account": "无账户",
     "no_account_desc": "该用户还没有账户。",
     "self_transfer": "自我转账",
-    "self_transfer_desc": "你不能将积分转给自己。",
+    "self_transfer_desc": "不能给自己转账啦，钱又不会变多 😄",
     "usage": "用法",
     "usage_desc": "`.transfer @user <amount>`",
     "insufficient": "余额不足",
@@ -77,12 +77,12 @@
     "sub_daily": "📅 领取全球每日奖励",
     "opt_amount": "发送金额",
     "opt_recipient": "接收者",
-    "dm_received": "{emoji} **{user}** 刚刚给你发送了 **+{amount}** 积分！🎉\n\n使用 `/global balance` 查看你的钱包。",
+    "dm_received": "{emoji} **{user}** 给你打了 **+{amount}** 积分！🎉\n\n用 `/global balance` 看看你的钱包～",
     "sent": "{emoji} 已向 **{user}** 发送 **{amount}** 积分 🤝\n> 网络手续费：{tax} 积分（5%）",
     "daily_claimed": "{emoji} **+{total}** 积分已到账！\n> {base} 基础 + {bonus} 连击奖励\n\n🔥 {streak_label}：**{streak}** 天{suffix}",
     "streak_label": "连击",
-    "streak_fire": " — 你势不可挡！",
-    "streak_keep": " — 继续保持！",
+    "streak_fire": " — 这也太稳了吧！",
+    "streak_keep": " — 明天也要来哦！",
     "cooldown_line": "下次领取 <t:{timestamp}:R>",
     "transfer_line": "**{amount}** 积分 → {user}\n{tax_label}：{tax}",
     "tax_label": "手续费",

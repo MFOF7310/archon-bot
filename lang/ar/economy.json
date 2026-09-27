@@ -8,21 +8,21 @@
     "opt_recipient": "المستلم",
     "opt_user": "المستخدم المراد فحصه",
     "balance_title": "## {rank_emoji} الرصيد — {user}\n",
-    "insufficient": "لا يوجد رصيد كافٍ — لديك **{balance} {currency}**.",
-    "mention_user": "❌ اذكر شخصًا لتحويل الرصيد إليه."
+    "insufficient": "❌ رصيدك ما يكفي — باقي لك **{balance} {currency}** بس! روّح اجمع شوي 💪",
+    "mention_user": "❌ اذكر الشخص اللي تبي تحوّل له أول 😉"
   },
   "daily": {
     "sub_check": "✅ تحقق مما إذا كانت مكافأتك اليومية جاهزة",
     "sub_status": "📅 عرض حالتك اليومية وإحصائياتك",
     "sub_stats": "📊 عرض إحصائيات سلسلة المكافآت اليومية",
-    "no_account": "ليس لديك حساب بعد — استلم مكافأتك اليومية الأولى وستنضم!"
+    "no_account": "ما عندك حساب بعد — استلم مكافأتك اليومية وبتنفتح لك تلقائيًا!"
   },
   "shop": {
     "desc": "💰 أنفق أرصدة أركون على ترقيات حصرية",
     "balance_label": "الرصيد",
     "level_label": "المستوى",
     "line_protections": "🛡️ **حمايات السلسلة:** `{protections}`",
-    "purchased": "**{user}** اشترى **{item}** {emoji}\n"
+    "purchased": "**{user}** اشترى **{item}** {emoji} — ذوق عالي!"
   },
   "inventory": {
     "title": "🛒 المتجر العصبي في باماكو",
@@ -43,7 +43,7 @@
     "sub_view": "عرض استثماراتك النشطة",
     "opt_amount": "المبلغ المراد استثماره (الحد الأدنى 100)",
     "invested_line": "{emoji} **المستثمر:** {amount} {coins}\n",
-    "no_investments": "{emoji} **لا توجد استثمارات نشطة بعد!**\n\n"
+    "no_investments": "{emoji} ما عندك استثمارات بعد — خل رصيدك يشتغل عنك!"
   },
   "transfer": {
     "desc": "💸 تحويل الرصيد إلى وكيل آخر عبر الشبكة العصبية",
@@ -56,11 +56,11 @@
     "invalid_target": "هدف غير صالح",
     "invalid_target_desc": "اذكر مستخدمًا صالحًا.",
     "min_transfer": "المبلغ منخفض جدًا",
-    "min_transfer_desc": "الحد الأدنى للتحويل هو 10 رصيد.",
+    "min_transfer_desc": "أقل مبلغ 10 رصيد، كبّرها شوي!",
     "no_account": "لا يوجد حساب",
     "no_account_desc": "هذا المستخدم ليس لديه حساب بعد.",
     "self_transfer": "تحويل لنفسك",
-    "self_transfer_desc": "لا يمكنك تحويل الرصيد إلى نفسك.",
+    "self_transfer_desc": "ما تقدر تحوّل لنفسك، الفلوس ما بتتضاعف كذا 😄",
     "usage": "الاستخدام",
     "usage_desc": "`.transfer @user <amount>`",
     "insufficient": "رصيد غير كافٍ",
@@ -77,12 +77,12 @@
     "sub_daily": "📅 استلام المكافأة اليومية العالمية",
     "opt_amount": "المبلغ المراد إرساله",
     "opt_recipient": "المستلم",
-    "dm_received": "{emoji} **{user}** أرسل لك للتو **+{amount}** رصيد! 🎉\n\nتحقق من محفظتك باستخدام `/global balance`.",
+    "dm_received": "{emoji} **{user}** أرسل لك **+{amount}** رصيد! 🎉\n\nشيك محفظتك بـ `/global balance`",
     "sent": "{emoji} تم إرسال **{amount}** رصيد إلى **{user}** 🤝\n> رسوم الشبكة: {tax} رصيد (5%)",
     "daily_claimed": "{emoji} هبط **+{total}** رصيد في حسابك!\n> {base} أساسي + {bonus} مكافأة سلسلة\n\n🔥 {streak_label}: **{streak}** يومًا{suffix}",
     "streak_label": "السلسلة",
-    "streak_fire": " — أنت مشتعل!",
-    "streak_keep": " — استمر على هذا النهج!",
+    "streak_fire": " — ناررر، كمّل!",
+    "streak_keep": " — لا تنقطع علينا!",
     "cooldown_line": "الاستلام التالي <t:{timestamp}:R>",
     "transfer_line": "**{amount}** رصيد إلى {user}\n{tax_label}: {tax}",
     "tax_label": "الرسوم",

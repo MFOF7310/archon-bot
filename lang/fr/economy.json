@@ -8,21 +8,21 @@
     "opt_recipient": "Destinataire",
     "opt_user": "Utilisateur à vérifier",
     "balance_title": "## {rank_emoji} Solde — {user}\n",
-    "insufficient": "Pas assez de crédits — tu as **{balance} {currency}**.",
-    "mention_user": "❌ Mentionne quelqu'un à qui transférer."
+    "insufficient": "❌ Pas assez de crédits — il te reste **{balance} {currency}**. Va en gratter un peu 😅",
+    "mention_user": "❌ Mentionne la personne à qui tu veux envoyer des crédits 😉"
   },
   "daily": {
     "sub_check": "✅ Vérifie si ta récompense quotidienne est prête",
     "sub_status": "📅 Voir ton statut quotidien et tes statistiques",
     "sub_stats": "📊 Voir les statistiques de ta série quotidienne",
-    "no_account": "Tu n'as pas encore de compte — réclame ton premier daily et te voilà !"
+    "no_account": "Pas encore de compte — récupère ta première récompense quotidienne et c'est réglé !"
   },
   "shop": {
     "desc": "💎 Dépense tes Crédits Archon en améliorations exclusives",
     "balance_label": "Solde",
     "level_label": "Niveau",
     "line_protections": "🛡️ **Protections de série :** `{protections}`",
-    "purchased": "**{user}** a acheté **{item}** {emoji}\n"
+    "purchased": "**{user}** a dégainé **{item}** {emoji} — excellent choix !"
   },
   "inventory": {
     "title": "🛒 Boutique Neurale Bamako",
@@ -43,7 +43,7 @@
     "sub_view": "Voir tes investissements actifs",
     "opt_amount": "Montant à investir (min 100)",
     "invested_line": "{emoji} **Investi :** {amount} {coins}\n",
-    "no_investments": "{emoji} **Aucun investissement actif pour le moment !**\n\n"
+    "no_investments": "{emoji} Aucun investissement pour le moment — fais bosser tes crédits !"
   },
   "transfer": {
     "desc": "💸 Transfère des crédits à un autre agent via le réseau neural",
@@ -56,11 +56,11 @@
     "invalid_target": "CIBLE INVALIDE",
     "invalid_target_desc": "Mentionne un utilisateur valide.",
     "min_transfer": "MONTANT TROP BAS",
-    "min_transfer_desc": "Le transfert minimum est de 10 crédits.",
+    "min_transfer_desc": "Minimum 10 crédits — sois un peu plus généreux !",
     "no_account": "AUCUN COMPTE",
     "no_account_desc": "Cet utilisateur n'a pas encore de compte.",
     "self_transfer": "AUTO-TRANSFERT",
-    "self_transfer_desc": "Tu ne peux pas te transférer des crédits à toi-même.",
+    "self_transfer_desc": "Impossible de te transférer à toi-même, l'argent ne se multiplie pas comme ça 😄",
     "usage": "UTILISATION",
     "usage_desc": "`.transfer @user <amount>`",
     "insufficient": "FONDS INSUFFISANTS",
@@ -77,12 +77,12 @@
     "sub_daily": "📅 Réclamer la récompense quotidienne globale",
     "opt_amount": "Montant à envoyer",
     "opt_recipient": "Destinataire",
-    "dm_received": "{emoji} **{user}** vient de t'envoyer **+{amount}** crédits ! 🎉\n\nVérifie ton portefeuille avec `/global balance`.",
+    "dm_received": "{emoji} **{user}** vient de t'envoyer **+{amount}** crédits ! 🎉\n\nJette un œil avec `/global balance`.",
     "sent": "{emoji} **{amount}** crédits envoyés à **{user}** 🤝\n> Frais de réseau : {tax} crédits (5%)",
     "daily_claimed": "{emoji} **+{total}** crédits viennent d'arriver sur ton compte !\n> {base} de base + {bonus} bonus de série\n\n🔥 {streak_label} : **{streak}** jours{suffix}",
     "streak_label": "Série",
-    "streak_fire": " — tu es en feu !",
-    "streak_keep": " — continue comme ça !",
+    "streak_fire": " — tu es en feu, continue !",
+    "streak_keep": " — reviens demain, ne casse pas le rythme !",
     "cooldown_line": "Prochaine réclamation <t:{timestamp}:R>",
     "transfer_line": "**{amount}** crédits pour {user}\n{tax_label} : {tax}",
     "tax_label": "Frais",
