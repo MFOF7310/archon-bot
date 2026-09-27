@@ -15,6 +15,25 @@ const EMOJIS = require('../config/emojis');
 const i18nV = require('../lib/i18n');
 const VL = (db, gid) => { try { const l = db.prepare('SELECT language FROM server_settings WHERE guild_id = ?').get(gid)?.language; return ['en','fr','bm','zh','ar'].includes(l) ? l : 'en'; } catch { return 'en'; } };
 const vt = (db, gid, k, v) => i18nV.t('verify.' + k, VL(db, gid), v);
+let _inviteCol;
+function inviteCol(db) {
+    if (_inviteCol !== undefined) return _inviteCol;
+    try {
+        const cols = db.prepare('PRAGMA table_info(server_settings)').all().map(r => r.name);
+        _inviteCol = cols.find(n => /invit/i.test(n)) || null;
+    } catch { _inviteCol = null; }
+    return _inviteCol;
+}
+function storedInviteRow(db, guild) {
+    try {
+        const col = inviteCol(db);
+        if (!col) return null;
+        const url = db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v;
+        if (!url || !/^https?:\/\//i.test(url)) return null;
+        return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
+            .setLabel(vt(db, guild.id, 'rejoinBtn')).setURL(url));
+    } catch { return null; }
+}
 const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
 
 const pending = new Map(); // userId:guildId => { timer, dmMsg, code, collector }
@@ -428,7 +447,7 @@ module.exports = {
                                 ? vt(db, gid, 'kickDm', { server: member.guild.name })
                                 : (pl ? vt(db, gid, 'failPanelDm', { server: member.guild.name }) : vt(db, gid, 'failRejoinDm', { server: member.guild.name })))
                             .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-                        ], components: (!kickOn && pl) ? [pl.row] : [] }).catch(() => {});
+                        ], components: kickOn ? (() => { const r = storedInviteRow(db, member.guild); return r ? [r] : []; })() : (pl ? [pl.row] : []) }).catch(() => {});
                         if (kickOn) await member.kick('Failed captcha verification').catch(() => {});
                         logVerify(member.guild, db, 0xff3311, kickOn ? vt(db, gid, 'logKickedFail') : vt(db, gid, 'logFailed'), member.id, '3 wrong attempts');
                     } else {
@@ -478,6 +497,17 @@ module.exports = {
             if (!freshMember) return;
             const hasRole = verifyRole && freshMember.roles.cache.has(verifyRole.id);
             if (!hasRole) {
+                try {
+                    const dmCh = await freshMember.createDM().catch(() => null);
+                    if (dmCh) {
+                        const invRow = storedInviteRow(db, member.guild);
+                        await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
+                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
+                            .setDescription(vt(db, gid, 'kickDm', { server: member.guild.name }))
+                            .setFooter({ text: vt(db, gid, 'bamakoFooter') })],
+                            components: invRow ? [invRow] : [] }).catch(() => {});
+                    }
+                } catch {}
                 await freshMember.kick('Failed to verify in time').catch(() => {});
                 logVerify(member.guild, db, 0xff8800, vt(db, gid, 'logKickedTimeout'), member.id, `${kickMins} min`);
             }
