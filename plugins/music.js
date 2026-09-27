@@ -7,6 +7,8 @@ const {
 } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
+const L = (q) => { const s = q?._client?.getServerSettings?.(q?.guild?.id) || {}; return (s.language && s.language !== 'auto') ? s.language : 'en'; };
+const tx = (k, lang, vars) => require('../lib/i18n').t(k, lang, vars);
 
 // Parse emoji string to Discord button-compatible object
 function parseEmoji(emojiStr) {
@@ -231,11 +233,11 @@ function buildControls(q) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
     return new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_prev').setLabel('Prev').setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
-        new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
-        new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
-        new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_prev').setLabel(t('music.btn_prev', L(q))).setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(t(isPaused ? 'music.btn_resume' : 'music.btn_pause', L(q))).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel(t('music.btn_skip', L(q))).setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel(t('music.btn_stop', L(q))).setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(t(q.loop ? 'music.btn_loop_on' : 'music.btn_loop', L(q))).setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
     );
 }
 
@@ -248,10 +250,10 @@ function buildQueueEmbed(q, client) {
     return new EmbedBuilder()
         .setColor(ARCHON.purple)
         .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
-        .setTitle('📋 NEURAL QUEUE')
+        .setTitle(t('music.queue_title', lang))
         .addFields(
-            { name: 'NOW PLAYING', value: `\`\`\`ansi\n\u001b[1;32m▸ ${q.currentTrack?.title?.substring(0,50) || 'Nothing'}\u001b[0m\n\`\`\``, inline: false },
-            { name: `UP NEXT (${q.tracks.length})`, value: `\`\`\`ansi\n${list}\n\`\`\``, inline: false }
+            { name: t('music.np_label', lang), value: `\`\`\`ansi\n\u001b[1;32m▸ ${q.currentTrack?.title?.substring(0,50) || 'Nothing'}\u001b[0m\n\`\`\``, inline: false },
+            { name: t('music.up_next', lang, { n: q.tracks.length }), value: `\`\`\`ansi\n${list}\n\`\`\``, inline: false }
         )
         .setFooter({ text: `BAMAKO_223 🇲🇱 • Vol: ${q.volume}% • Loop: ${q.loop ? 'ON' : 'OFF'}` });
 }
@@ -261,6 +263,7 @@ function buildQueueEmbed(q, client) {
 // ═══════════════════════════════════════════════════════
 function buildPanelEmbed(q, client) {
     const t = q.currentTrack;
+    const lang = L(q);
     const now = Date.now(); const currentPause = q.pausedAt ? now - q.pausedAt : 0; const elapsed = q.startTime ? Math.floor((now - q.startTime - q.totalPaused - currentPause) / 1000) : 0;
     const duration = t.duration || 0;
     const pct = duration > 0 ? Math.min(100, Math.round((elapsed / duration) * 100)) : 0;
@@ -277,12 +280,12 @@ function buildPanelEmbed(q, client) {
 
     return new EmbedBuilder()
         .setColor(isPaused ? ARCHON.gold : 0x5865F2)
-        .setTitle(isPaused ? '⏸️ Paused' : 'Now playing')
+        .setTitle(isPaused ? tx('music.paused_title', lang) : tx('music.now_playing', lang))
         .setDescription(
             `${trackLink}\n\n` +
-            `• Added by ${requester}\n` +
-            `• 🔊 ${q.voiceChannel?.name?.substring(0,22) || 'Voice'}\n\n` +
-            `Queue Size: \`${q.tracks.length}\` · Volume: \`${q.volume}%\` · Loop: \`${q.loop ? 'On' : 'Off'}\`\n\n` +
+            `• ${tx('music.added_by', lang)} ${requester}\n` +
+            `• 🔊 ${q.voiceChannel?.name?.substring(0,22) || tx('music.voice_label', lang)}\n\n` +
+            `${tx('music.stats_line', lang, { n: q.tracks.length, vol: q.volume, loop: q.loop ? tx('music.on_short', lang) : tx('music.off_short', lang) })}\n\n` +
             `${sliderBar(elapsed, duration)}\n` +
             `\`${formatTime(elapsed)}\` ――― \`${formatTime(duration)}\``
         )
@@ -300,25 +303,25 @@ function buildPanelRows(q) {
 
     // Row 1 — Core (4 buttons max — no wrapping on mobile CV2)
     const rowTransport = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_pause').setLabel(isPaused ? 'Resume' : 'Pause').setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : parseEmoji(EMOJIS.mc_pause)),
-        new ButtonBuilder().setCustomId('mc_skip').setLabel('Skip').setStyle(ButtonStyle.Primary).setEmoji(parseEmoji(EMOJIS.mc_skip)),
-        new ButtonBuilder().setCustomId('mc_stop').setLabel('Stop').setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.mc_stop)),
-        new ButtonBuilder().setCustomId('mc_autoplay').setLabel('AutoPlay').setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_autoplay)),
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(t(isPaused ? 'music.btn_resume' : 'music.btn_pause', L(q))).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : parseEmoji(EMOJIS.mc_pause)),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel(t('music.btn_skip', L(q))).setStyle(ButtonStyle.Primary).setEmoji(parseEmoji(EMOJIS.mc_skip)),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel(t('music.btn_stop', L(q))).setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.mc_stop)),
+        new ButtonBuilder().setCustomId('mc_autoplay').setLabel(t('music.btn_autoplay', L(q))).setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_autoplay)),
     );
 
     // Row 2 — Extras (with labels)
     const rowSession = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_voldown').setLabel('Vol -').setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_volume_down)).setDisabled(q.volume <= 0),
-        new ButtonBuilder().setCustomId('mc_prev').setLabel('Previous').setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_previous)).setDisabled(!hasPrev),
-        new ButtonBuilder().setCustomId('mc_loop').setLabel(q.loop ? 'Loop ON' : 'Loop').setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_loop)),
-        new ButtonBuilder().setCustomId('mc_volup').setLabel('Vol +').setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_volume_up)).setDisabled(q.volume >= 100),
+        new ButtonBuilder().setCustomId('mc_voldown').setLabel(t('music.btn_voldown', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_volume_down)).setDisabled(q.volume <= 0),
+        new ButtonBuilder().setCustomId('mc_prev').setLabel(t('music.btn_previous', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_previous)).setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(t(q.loop ? 'music.btn_loop_on' : 'music.btn_loop', L(q))).setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_loop)),
+        new ButtonBuilder().setCustomId('mc_volup').setLabel(t('music.btn_volup', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_volume_up)).setDisabled(q.volume >= 100),
     );
 
     // Row 3 — Taste + Queue
     const rowTaste = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_like').setLabel('Love This').setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_love_this)),
-        new ButtonBuilder().setCustomId('mc_dislike').setLabel('Not for me').setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_not_for_me)),
-        new ButtonBuilder().setCustomId('mc_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_queue)),
+        new ButtonBuilder().setCustomId('mc_like').setLabel(t('music.btn_love', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_love_this)),
+        new ButtonBuilder().setCustomId('mc_dislike').setLabel(t('music.btn_dislike', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_not_for_me)),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel(t('music.btn_queue', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_queue)),
     );
 
     return [rowTransport, rowSession, rowTaste];
@@ -344,6 +347,7 @@ function accentForTrack(t) {
 
 function buildPanelContainer(q, client) {
     const t = q.currentTrack;
+    const lang = L(q);
     const now = Date.now(); const currentPause = q.pausedAt ? now - q.pausedAt : 0; const elapsed = q.startTime ? Math.floor((now - q.startTime - q.totalPaused - currentPause) / 1000) : 0;
     const duration = t.duration || 0;
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
@@ -363,18 +367,18 @@ function buildPanelContainer(q, client) {
 
     const header = new SectionBuilder()
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(isPaused ? '## ⏸️ Paused' : '## Now playing'),
+            new TextDisplayBuilder().setContent(isPaused ? '## ' + tx('music.paused_title', lang) : '## ' + tx('music.now_playing', lang)),
             new TextDisplayBuilder().setContent(
                 `${displayTitle}\n` +
                 `[Open on ${t.spotifyUrl ? 'Spotify' : 'YouTube'}](${sourceUrl})\n\n` +
-                `• Added by ${requester}\n` +
-                `• 🔊 ${q.voiceChannel?.name?.substring(0, 22) || 'Voice'}`
+                `• ${tx('music.added_by', lang)} ${requester}\n` +
+                `• 🔊 ${q.voiceChannel?.name?.substring(0, 22) || tx('music.voice_label', lang)}`
             )
         )
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(t.thumbnail || client.user.displayAvatarURL()));
 
     const statsLine = new TextDisplayBuilder().setContent(
-        `Queue Size: \`${q.tracks.length}\` · Volume: \`${q.volume}%\` · Loop: \`${q.loop ? 'On' : 'Off'}\``
+        `${tx('music.stats_line', lang, { n: q.tracks.length, vol: q.volume, loop: q.loop ? tx('music.on_short', lang) : tx('music.off_short', lang) })}`
     );
 
     const [rowTransport, rowSession, rowTaste] = buildPanelRows(q);
@@ -1275,18 +1279,18 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
 
     const embed = new EmbedBuilder().setColor(isPlaying ? 0x1DB954 : ARCHON.cyan);
     if (isPlaying) {
-        embed.setAuthor({ name: 'Added to the queue', iconURL: SPOTIFY_ICON })
-            .setDescription(`${getPlatformEmoji(track)} Added **${nameMd}**${durMd} to the queue.\n> Position **#${q.tracks.length}** • Added by **${requestedBy}**`);
+        embed.setAuthor({ name: t('music.added_queue_title', lang), iconURL: SPOTIFY_ICON })
+            .setDescription(t('music.added_queue_desc', lang, { emoji: getPlatformEmoji(track), name: nameMd, dur: durMd, pos: q.tracks.length, by: requestedBy }));
         if (track.thumbnail) embed.setThumbnail(track.thumbnail);
     } else {
-        embed.setDescription(`🎵 **${query.substring(0,60)}**\n> On it — warming up the decks… 🎚️`);
+        embed.setDescription(t('music.on_it', lang, { q: query.substring(0, 60) }));
     }
 
     const components = [];
     if (suggestions.length > 0) {
         const menu = new StringSelectMenuBuilder()
             .setCustomId(`ms_suggest_${Date.now()}`)
-            .setPlaceholder('🎵 Queue a suggested track...')
+            .setPlaceholder(t('music.suggest_placeholder', lang))
             .addOptions(suggestions.map(s => ({ label: s.title.replace(/^🎵s*/, '').substring(0,100), value: s.query.substring(0,100), emoji: '🎵' })));
         components.push(new ActionRowBuilder().addComponents(menu));
     }
@@ -1301,9 +1305,8 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             const updatedEmbed = new EmbedBuilder().setColor(isPlaying ? 0x1DB954 : ARCHON.cyan);
             const updatedNameMd = trackLinkFor(track);
             if (isPlaying) {
-                updatedEmbed.setAuthor({ name: 'Added to the queue', iconURL: SPOTIFY_ICON })
-                    .setDescription(`${getPlatformEmoji(track)} Added **${updatedNameMd}**${durMd} to the queue.
-> Position **#${q.tracks.length}** • Added by **${requestedBy}**`);
+                updatedEmbed.setAuthor({ name: t('music.added_queue_title', lang), iconURL: SPOTIFY_ICON })
+                    .setDescription(t('music.added_queue_desc', lang, { emoji: getPlatformEmoji(track), name: updatedNameMd, dur: durMd, pos: q.tracks.length, by: requestedBy }));
                 if (track.thumbnail) updatedEmbed.setThumbnail(track.thumbnail);
             } else {
                 updatedEmbed.setDescription(`🎵 **${track.title.substring(0,60)}**
@@ -1500,7 +1503,7 @@ module.exports = {
         // ── PLAY ──
         if (sub === 'play') {
             const query = interaction.options.getString('query');
-            await interaction.editReply({ content: `${EMOJIS.loading} Warming up the decks...` });
+            await interaction.editReply({ content: `${EMOJIS.loading} ${t('music.warming', lang)}` });
             await handlePlay(
                 guildId, interaction.guild, vc, interaction.channel,
                 query, interaction.user.username, client,
@@ -1584,7 +1587,7 @@ module.exports = {
             const effect = interaction.options.getString('effect');
             const qNow = getQueue(guildId);
             if (qNow) { qNow.audioFilter = effect === 'off' ? '' : effect; await updatePersistentPanel(qNow).catch(() => {}); }
-            const names = {bassboost: '🔊 Bass Boost', nightcore: '🐰 Nightcore', vaporwave: '🌴 Vaporwave', normalize: '📊 Normalize', '': '❌ Off'};
+            const names = {bassboost: t('music.filter_bassboost', lang), nightcore: t('music.filter_nightcore', lang), vaporwave: t('music.filter_vaporwave', lang), normalize: t('music.filter_normalize', lang), '': t('music.filter_off', lang)};
             const embed = new EmbedBuilder().setColor(ARCHON.purple)
                 .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ FILTER\u001b[0m ${names[effect === 'off' ? '' : effect] || '❌ Off'}\n\`\`\``);
             return interaction.editReply({embeds: [embed]});
@@ -1598,7 +1601,7 @@ module.exports = {
             else q.pausedAt = Date.now();
             await updatePersistentPanel(q).catch(() => {});
             const embed = new EmbedBuilder().setColor(isPaused ? ARCHON.green : ARCHON.gold)
-                .setDescription(`\`\`\`ansi\n[1;${isPaused?'32':'33'}m▸ ${isPaused?'RESUMED':'PAUSED'}\u001b[0m\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n[1;${isPaused?'32':'33'}m▸ ${t(isPaused?'music.resumed_label':'music.paused_label', lang)}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -1607,7 +1610,7 @@ module.exports = {
             const title = q.currentTrack?.title || 'Unknown';
             q.player.stop();
             const embed = new EmbedBuilder().setColor(ARCHON.cyan)
-                .setDescription(`\`\`\`ansi\n\u001b[1;36m▸ SKIPPED\u001b[0m\n\u001b[0;37m${title.substring(0,60)}\u001b[0m\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n\u001b[1;36m▸ ${t('music.skipped_label', lang)}\u001b[0m\n\u001b[0;37m${title.substring(0,60)}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -1667,7 +1670,7 @@ module.exports = {
                             qNow.player.stop();
                         }
                     } else if (i.customId === 'mc_like' || i.customId === 'mc_dislike') {
-                        await i.followUp({ content: '💡 Use the buttons on the main panel for taste controls — it keeps everything in sync!', flags: 64 }).catch(() => {});
+                        await i.followUp({ content: t('music.use_main_panel', lang), flags: 64 }).catch(() => {});
                     }
                     await updatePersistentPanel(qNow).catch(() => {});
                 });
@@ -1693,7 +1696,7 @@ module.exports = {
             if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
             await updatePersistentPanel(q).catch(() => {});
             const embed = new EmbedBuilder().setColor(q.loop ? ARCHON.green : ARCHON.orange)
-                .setDescription(`\`\`\`ansi\n[1;${q.loop?'32':'33'}m▸ LOOP ${q.loop?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n[1;${q.loop?'32':'33'}m▸ ${t(q.loop?'music.loop_enabled':'music.loop_disabled', lang)}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -1702,7 +1705,7 @@ module.exports = {
             q.autoplay = !q.autoplay;
             await updatePersistentPanel(q).catch(() => {});
             const embed = new EmbedBuilder().setColor(q.autoplay ? ARCHON.green : ARCHON.orange)
-                .setDescription(`\`\`\`ansi\n[1;${q.autoplay?'32':'33'}m▸ AUTOPLAY ${q.autoplay?'ENABLED':'DISABLED'}\u001b[0m\n\`\`\``);
+                .setDescription(`\`\`\`ansi\n[1;${q.autoplay?'32':'33'}m▸ ${t(q.autoplay?'music.autoplay_enabled':'music.autoplay_disabled', lang)}\u001b[0m\n\`\`\``);
             return interaction.editReply({ embeds: [embed] });
         }
 

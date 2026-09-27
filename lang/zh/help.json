@@ -47,7 +47,11 @@
     "UTILITY": "实用工具和信息",
     "FUN": "趣味指令和互动",
     "OWNER": "机器人所有者专属指令",
-    "GENERAL": "通用指令"
+    "GENERAL": "通用指令",
+    "ADMIN": "服务器管理指令",
+    "CONFIG": "服务器配置与设置",
+    "MUSIC": "音乐播放与队列",
+    "SOCIAL": "社交与社区指令"
   },
   "signalLost": "❌ 信号丢失",
   "commandNotFound": "未找到指令",
@@ -64,5 +68,11 @@
     "2": "使用 {prefix}daily 领取每日奖励",
     "3": "使用 {prefix}rank 查看你的等级",
     "4": "使用 {prefix}shop 访问商店"
-  }
+  },
+  "topCategories": "🏆 热门分类",
+  "noData": "暂无数据",
+  "moduleLocked": "[ 已锁定 ]",
+  "moduleDisabledTitle": "模块已禁用",
+  "moduleDisabledDesc": "> 该模块未在此服务器启用。\n> 请联系管理员开启。",
+  "noCommands": "未找到指令。"
 }

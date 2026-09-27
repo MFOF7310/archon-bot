@@ -129,8 +129,8 @@ data: new SlashCommandBuilder()
         .addUserOption(opt => opt.setName('target').setDescription('User to check').setRequired(false))),
 
 run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        
+        const OK = ['en', 'fr', 'bm', 'zh', 'ar'];
+        lang = OK.includes(serverSettings?.language) ? serverSettings.language : (OK.includes(lang) ? lang : 'en');
         const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guildId = message.guild.id;
@@ -355,7 +355,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
     execute: async (interaction, client) => {
         const db = client.db;
         const subcommand = interaction.options.getSubcommand();
-        const lang = interaction.locale === 'fr' ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr', 'bm', 'zh', 'ar']);
         const t = loadT(lang);
         const version = client.version || '1.6.0';
         const guildId = interaction.guild.id;

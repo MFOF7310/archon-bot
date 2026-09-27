@@ -47,7 +47,11 @@
     "UTILITY": "Useful tools and information",
     "FUN": "Fun commands and interactions",
     "OWNER": "Bot owner exclusive commands",
-    "GENERAL": "General purpose commands"
+    "GENERAL": "General purpose commands",
+    "ADMIN": "Server administration commands",
+    "CONFIG": "Server configuration & settings",
+    "MUSIC": "Music playback & queues",
+    "SOCIAL": "Social & community commands"
   },
   "signalLost": "❌ SIGNAL LOST",
   "commandNotFound": "Command Not Found",
@@ -64,5 +68,11 @@
     "2": "Claim daily rewards with {prefix}daily",
     "3": "Check your rank with {prefix}rank",
     "4": "Visit the shop with {prefix}shop"
-  }
+  },
+  "topCategories": "🏆 TOP CATEGORIES",
+  "noData": "No data available",
+  "moduleLocked": "[ LOCKED ]",
+  "moduleDisabledTitle": "MODULE DISABLED",
+  "moduleDisabledDesc": "> This module is not enabled on this server.\n> Contact an admin to enable it.",
+  "noCommands": "No commands found."
 }

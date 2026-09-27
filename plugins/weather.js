@@ -4,8 +4,6 @@ const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 function loadT(lang) {
-    const t = (k, v) => i18n.t(`weather.${k}`, lang, v);
-    const ref = require('./lib/../lib/i18n'); // unused, just for clarity
     // build advice object
     const adviceKeys = ['extremeHeat','hotDay','warmPleasant','mild','cool','cold','freezing','rainy','stormy','foggy','windy','perfect','uvHigh','uvExtreme','aqiBad'];
     const advice = {};
@@ -269,7 +267,7 @@ module.exports = {
             // ================= BUILD EMBED =================
             const embed = new EmbedBuilder()
                 .setColor(embedColor)
-                .setTitle(txt.title(data.name, data.sys.country))
+                .setTitle(i18n.t('weather.title', lang, { a: data.name, b: data.sys.country }))
                 .setDescription(`**${weatherDescription}** ${isDaytime ? '☀️' : '🌙'}`)
                 .setThumbnail(`https://openweathermap.org/img/wn/${icon}@4x.png`)
                 .setImage(cityImage)
@@ -340,7 +338,7 @@ module.exports = {
             console.error('[WEATHER] Error:', err.response?.data || err.message);
 
             let errorMessage = txt.fetchError;
-            if (err.response?.status === 404) errorMessage = txt.notFound(city);
+            if (err.response?.status === 404) errorMessage = i18n.t('weather.notFound', lang, { a: city });
             else if (err.response?.status === 401) errorMessage = txt.apiError;
 
             const errorEmbed = new EmbedBuilder()

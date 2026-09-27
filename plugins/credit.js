@@ -8,11 +8,11 @@ function calculateLevel(xp) {
 
 // ================= AGENT RANKS =================
 const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
-    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
-    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
-    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
+    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT", zh: "神经新兵", ar: "مجند عصبي" }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT", zh: "外勤特工", ar: "وكيل ميداني" }, color: "#3498db", emoji: "🔹" },
+    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST", zh: "网络专家", ar: "مختص سيبراني" }, color: "#9b59b6", emoji: "💠" },
+    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER", zh: "BKO 指挥官", ar: "قائد BKO" }, color: "#e67e22", emoji: "⚜️" },
+    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT", zh: "系统架构师", ar: "مهندس النظام" }, color: "#e74c3c", emoji: "👑" }
 ];
 
 function getRank(level) {
@@ -132,7 +132,100 @@ const creditTranslations = {
         rankField: 'Rang',
         mentionUser: 'Mentionnez un utilisateur',
         newBalance: 'Nouveau Solde'
+    },
+    zh: {
+        title: '💰 巴马科神经银行',
+        balanceTitle: '余额查询',
+        transferTitle: '转账收据',
+        notFound: '未找到用户。',
+        selfTransfer: "❌ 不能给自己转账！",
+        zeroTransfer: "❌ 金额必须大于零！",
+        insufficient: "❌ 积分不足！你有",
+        balanceOf: (name) => `**${name}** 的神经银行余额`,
+        balanceCheck: '使用 `.bal @user` 查看任意特工的余额',
+        embedFooter: 'ARCHON CG-223 • 神经银行部 • BAMAKO_223 🇲🇱',
+        transferSuccess: '转账完成',
+        transferComplete: (from, to, amount, emoji) => `**${from}** 向 **${to}** 发送了 **${(amount||0).toLocaleString()} ${emoji}**`,
+        senderNewBal: '发送方余额',
+        receiverNewBal: '接收方余额',
+        noPermission: '❌ 你没有权限使用此指令。',
+        memberOnly: '❌ 该指令仅限服务器使用。加入一个神经节点！',
+        transactionFailed: '❌ 交易失败，请稍后再试。',
+        invalidAmount: '❌ 无效金额。使用 `.pay @user <amount>`',
+        userNotFound: '❌ 未找到用户。',
+        leaderboardTitle: '🏆 顶级同步特工',
+        leaderboardDesc: '本分区同步度最高的特工：',
+        rank: '排名',
+        agent: '特工',
+        balance: '余额',
+        noData: '该分区没有找到特工。',
+        footer: '巴马科神经银行',
+        guildContext: (name) => `服务器：${name}`,
+        viewProfile: '👤 查看资料',
+        viewMarket: '📈 市场',
+        verifyBalance: '使用 .bal 或 .credits 查看',
+        leaderboardBtn: '🏆 排行榜',
+        transferBtn: '💸 转账',
+        shopBtn: '🛒 商店',
+        refreshBtn: '🔄 刷新',
+        accessDenied: '❌ 该控件不属于你。',
+        checking: '🔍 正在查询余额...',
+        transferPrompt: '使用 `.pay @user <amount>` 进行转账',
+        dmsDisabled: '❌ 无法私聊该用户。',
+        transferReceived: '💸 收到转账！',
+        transferReceivedFrom: (from, amount, emoji) => `你收到了来自 **${from}** 的 **${(amount||0).toLocaleString()} ${emoji}**！`,
+        levelField: '等级',
+        rankField: '段位',
+        mentionUser: '请 @ 一位用户',
+        newBalance: '新余额'
+    },
+    ar: {
+        title: '💰 البنك العصبي في باماكو',
+        balanceTitle: 'استعلام الرصيد',
+        transferTitle: 'إيصال التحويل',
+        notFound: 'المستخدم غير موجود.',
+        selfTransfer: "❌ لا يمكنك تحويل الرصيد إلى نفسك!",
+        zeroTransfer: "❌ يجب أن يكون المبلغ أكبر من صفر!",
+        insufficient: "❌ رصيد غير كافٍ! لديك",
+        balanceOf: (name) => `رصيد **${name}** في البنك العصبي`,
+        balanceCheck: 'تحقق من رصيد أي وكيل بـ `.bal @user`',
+        embedFooter: 'أركون CG-223 • القسم المصرفي العصبي • BAMAKO_223 🇲🇱',
+        transferSuccess: 'اكتمل التحويل',
+        transferComplete: (from, to, amount, emoji) => `أرسل **${from}** مبلغ **${(amount||0).toLocaleString()} ${emoji}** إلى **${to}**`,
+        senderNewBal: 'رصيد المُرسِل',
+        receiverNewBal: 'رصيد المستلم',
+        noPermission: '❌ ليس لديك إذن لاستخدام هذا الأمر.',
+        memberOnly: '❌ هذا الأمر للخوادم فقط. انضم إلى عقدة عصبية!',
+        transactionFailed: '❌ فشلت المعاملة. حاول مجددًا لاحقًا.',
+        invalidAmount: '❌ مبلغ غير صالح. استخدم `.pay @user <amount>`',
+        userNotFound: '❌ المستخدم غير موجود.',
+        leaderboardTitle: '🏆 كبار الوكلاء المُزامَنين',
+        leaderboardDesc: 'الوكلاء الأكثر مزامنة في هذا القطاع:',
+        rank: 'الرتبة',
+        agent: 'الوكيل',
+        balance: 'الرصيد',
+        noData: 'لم يتم العثور على وكلاء في هذا القطاع.',
+        footer: 'البنك العصبي في باماكو',
+        guildContext: (name) => `الخادم: ${name}`,
+        viewProfile: '👤 عرض الملف',
+        viewMarket: '📈 السوق',
+        verifyBalance: 'تحقق باستخدام .bal أو .credits',
+        leaderboardBtn: '🏆 التصنيف',
+        transferBtn: '💸 تحويل',
+        shopBtn: '🛒 المتجر',
+        refreshBtn: '🔄 تحديث',
+        accessDenied: '❌ هذا الزر ليس لك.',
+        checking: '🔍 جارٍ فحص الرصيد...',
+        transferPrompt: 'استخدم `.pay @user <amount>` للتحويل',
+        dmsDisabled: '❌ لا يمكن إرسال رسالة خاصة لهذا المستخدم.',
+        transferReceived: '💸 تم استلام تحويل!',
+        transferReceivedFrom: (from, amount, emoji) => `استلمت **${(amount||0).toLocaleString()} ${emoji}** من **${from}**!`,
+        levelField: 'المستوى',
+        rankField: 'الرتبة',
+        mentionUser: 'اذكر مستخدمًا',
+        newBalance: 'الرصيد الجديد'
     }
+
 };
 
 module.exports = {
@@ -154,7 +247,8 @@ module.exports = {
 
     // ================= TEXT COMMAND HANDLER =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
+        const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
+        lang = OKL.includes(serverSettings?.language) ? serverSettings.language : (OKL.includes(lang) ? lang : 'en');
         const t = creditTranslations[lang] || creditTranslations['en'];
         const prefix = serverSettings?.prefix || '.';
 
@@ -178,7 +272,8 @@ module.exports = {
     // ================= SLASH EXECUTION =================
     async execute(interaction, client) {
         const sub = interaction.options.getSubcommand();
-        const lang = (interaction.guild ? client.getServerSettings(interaction.guild.id) : { language: 'en' })?.language || 'en';
+        const _l = (interaction.guild ? client.getServerSettings(interaction.guild.id) : { language: 'en' })?.language || 'en';
+        const lang = ['en','fr','bm','zh','ar'].includes(_l) ? _l : 'en';
         const t = creditTranslations[lang] || creditTranslations['en'];
         const prefix = interaction.guild ? (client.getServerSettings?.(interaction.guild.id)?.prefix || '.') : '.';
         const guildId = interaction.guild?.id || 'DM';
@@ -269,7 +364,7 @@ let userData = db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").g
         )
         .addFields(
             { name: `📊 ${t.levelField}`, value: `${level}`, inline: true },
-            { name: `🎖️ ${t.rankField}`, value: `${rank.emoji} ${rank.title[lang]}`, inline: true },
+            { name: `🎖️ ${t.rankField}`, value: `${rank.emoji} ${rank.title[lang] || rank.title.en}`, inline: true },
             { name: `📈 XP`, value: `${xp.toLocaleString()}`, inline: true }
         )
         .setFooter({ text: `${t.guildContext(guildName)} • ${t.embedFooter} • v${version}`, iconURL: guildIcon })

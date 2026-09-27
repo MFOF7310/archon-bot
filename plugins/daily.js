@@ -67,7 +67,72 @@ const dailyTranslations = {
         highestStreak: 'Meilleure Série',
         streakProtections: 'Protections',
         never: 'Jamais'
+    },
+    zh: {
+        title: '📅 每日奖励',
+        claimed: `${EMOJIS.check} 每日奖励已领取！`,
+        alreadyClaimed: '⏰ 今日已领取',
+        comeBack: '请在',
+        hours: '小时',
+        minutes: '分钟后',
+        baseReward: '基础奖励',
+        streakBonus: '连击奖励',
+        totalEarned: '总共获得',
+        xpEarned: '获得经验',
+        newBalance: '新余额',
+        currentStreak: '当前连击',
+        days: '天',
+        day: '天',
+        verifyWith: '使用以下命令查看',
+        checkBalance: (prefix) => `随时使用 \`${prefix}bal\` 或 \`${prefix}credits\` 查看余额`,
+        footer: '神经每日 • 每 24 小时领取',
+        streakMilestone: '🔥 连击里程碑！',
+        bonusAdded: '已添加奖励',
+        levelUp: '🎉 升级！',
+        reachedLevel: '你达到了等级',
+        noAccount: `${EMOJIS.error} 没有找到数据 — 使用 \`/claim\` 开始！`,
+        readyToClaim: '可以领取了！',
+        onCooldown: '冷却中',
+        useClaim: '使用 `/claim`',
+        totalDailies: '总领取次数',
+        lastDaily: '上次领取',
+        highestStreak: '最高连击',
+        streakProtections: '连击保护',
+        never: '从未'
+    },
+    ar: {
+        title: '📅 المكافأة اليومية',
+        claimed: `${EMOJIS.check} تم استلام المكافأة اليومية!`,
+        alreadyClaimed: '⏰ تم الاستلام اليوم',
+        comeBack: 'عد بعد',
+        hours: 'ساعة',
+        minutes: 'دقيقة',
+        baseReward: 'المكافأة الأساسية',
+        streakBonus: 'مكافأة السلسلة',
+        totalEarned: 'المجموع المكتسب',
+        xpEarned: 'الخبرة المكتسبة',
+        newBalance: 'الرصيد الجديد',
+        currentStreak: 'السلسلة الحالية',
+        days: 'أيام',
+        day: 'يوم',
+        verifyWith: 'تحقق باستخدام',
+        checkBalance: (prefix) => `تحقق من رصيدك في أي وقت بـ \`${prefix}bal\` أو \`${prefix}credits\``,
+        footer: 'اليومي العصبي • استلم كل 24 ساعة',
+        streakMilestone: '🔥 محطة سلسلة!',
+        bonusAdded: 'أُضيفت المكافأة',
+        levelUp: '🎉 ترقية!',
+        reachedLevel: 'لقد وصلت إلى المستوى',
+        noAccount: `${EMOJIS.error} لم يتم العثور على بيانات — استخدم \`/claim\` للبدء!`,
+        readyToClaim: 'جاهز للاستلام!',
+        onCooldown: 'فترة انتظار نشطة',
+        useClaim: 'استخدم `/claim`',
+        totalDailies: 'إجمالي الاستلامات',
+        lastDaily: 'آخر استلام',
+        highestStreak: 'أطول سلسلة',
+        streakProtections: 'حمايات السلسلة',
+        never: 'أبدًا'
     }
+
 };
 
 module.exports = {
@@ -96,9 +161,8 @@ module.exports = {
         const frenchAliases = ['quotidien', 'journalier', 'journalière', 'qotd'];
         const isFrenchAlias = usedCommand && frenchAliases.some(a => usedCommand.toLowerCase().includes(a));
         const guildId = message.guild?.id || 'DM';
-        lang = isFrenchAlias ? 'fr' :
-                     (message.guild?.preferredLocale?.startsWith('fr') ? 'fr' :
-                     (client.detectLanguage ? client.detectLanguage('daily', guildId) : 'en'));
+        const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
+        lang = OKL.includes(serverSettings?.language) ? serverSettings.language : (isFrenchAlias ? 'fr' : 'en');
         const t = dailyTranslations[lang] || dailyTranslations['en'];
         const prefix = serverSettings?.prefix || '.';
 
@@ -115,7 +179,7 @@ module.exports = {
 
         // Use Discord's locale for slash commands (respects user's client language)
         // Fallback to detectLanguage for prefix-style detection
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr', 'bm', 'zh', 'ar']);
         const t = dailyTranslations[lang] || dailyTranslations['en'];
         const prefix = interaction.guild ? (client.getServerSettings(interaction.guild.id)?.prefix || '.') : '.';
         const subcommand = interaction.options.getSubcommand(false);
@@ -185,7 +249,7 @@ module.exports = {
 
         let statusEmoji, statusText, timeInfo;
         if (canClaim) {
-            statusEmoji = '${EMOJIS.check}';
+            statusEmoji = EMOJIS.check || '✅';
             statusText = t.readyToClaim;
             timeInfo = t.useClaim;
         } else {

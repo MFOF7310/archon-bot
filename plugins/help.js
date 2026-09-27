@@ -3,8 +3,8 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
-const HELP_FLAT = ["directoryTitle", "commandExtract", "module", "category", "usage", "aliases", "examples", "cooldown", "seconds", "noDescription", "noExamples", "none", "systemStatus", "online", "node", "core", "uptime", "version", "moduleStats", "commands", "aliasesStat", "categories", "agents", "guilds", "quickAccess", "aiAssistant", "aiDesc", "selectPlaceholder", "viewAll", "mainMenu", "backToMain", "modulesTitle", "moduleStatsTitle", "totalCommands", "aliasesRegistered", "commandsAvailable", "useHelpForDetails", "selectModuleBelow", "signalLost", "commandNotFound", "notFoundDesc", "checkSpelling", "accessDenied", "footer", "bamakoNode", "modulesOnline", "tip"];
-const HELP_NESTED = {"categoryDescriptions": ["SYSTEM", "GAMING", "ECONOMY", "PROFILE", "AI", "MODERATION", "UTILITY", "FUN", "OWNER", "GENERAL"], "tips": ["0", "1", "2", "3", "4"]};
+const HELP_FLAT = ["directoryTitle", "commandExtract", "module", "category", "usage", "aliases", "examples", "cooldown", "seconds", "noDescription", "noExamples", "none", "systemStatus", "online", "node", "core", "uptime", "version", "moduleStats", "commands", "aliasesStat", "categories", "agents", "guilds", "quickAccess", "aiAssistant", "aiDesc", "selectPlaceholder", "viewAll", "mainMenu", "backToMain", "modulesTitle", "moduleStatsTitle", "totalCommands", "aliasesRegistered", "commandsAvailable", "useHelpForDetails", "selectModuleBelow", "signalLost", "commandNotFound", "notFoundDesc", "checkSpelling", "accessDenied", "footer", "bamakoNode", "modulesOnline", "tip", "topCategories", "noData", "moduleLocked", "moduleDisabledTitle", "moduleDisabledDesc", "noCommands"];
+const HELP_NESTED = {"categoryDescriptions": ["SYSTEM", "GAMING", "ECONOMY", "PROFILE", "AI", "MODERATION", "UTILITY", "FUN", "OWNER", "GENERAL", "ADMIN", "CONFIG", "MUSIC", "SOCIAL"], "tips": ["0", "1", "2", "3", "4"]};
 // Clés dans lang/<locale>/help.json ; '' retombe sur EN dans t().
 // tips est stocké indexé (dig() ne rend que des chaînes) et reconstruit en tableau.
 function loadT(lang) {
@@ -108,9 +108,11 @@ function getTopCategories(stats, limit = 3) {
         .map(([cat, count]) => ({ cat, count }));
 }
 
+const FR_CAT_FALLBACK = { ADMIN: "Commandes d'administration du serveur", CONFIG: 'Configuration et paramètres du serveur', MUSIC: 'Lecture de musique et files d\'attente', SOCIAL: 'Commandes sociales et communautaires' };
 function getCategoryDescription(cat, t, lang) {
     const upperCat = cat.toUpperCase();
     if (t.categoryDescriptions?.[upperCat]) return t.categoryDescriptions[upperCat];
+    if (lang === 'fr' && FR_CAT_FALLBACK[upperCat]) return FR_CAT_FALLBACK[upperCat];
     return lang === 'fr' ? `Commandes pour le module ${cat}` : `Commands for the ${cat} module`;
 }
 
@@ -123,11 +125,9 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
         return new EmbedBuilder()
             .setColor('#e94560')
             .setAuthor({ name: `${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} MODULE`, iconURL: client.user.displayAvatarURL() })
-            .setTitle('`[ LOCKED ]`')
+            .setTitle(t.moduleLocked)
             .setDescription(
-                lang === 'fr' 
-                    ? `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\n**MODULE DÉSACTIVÉ**\n> Ce module n'est pas activé sur ce serveur.\n> Contactez un administrateur pour l'activer.\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
-                    : `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\n**MODULE DISABLED**\n> This module is not enabled on this server.\n> Contact an admin to enable it.\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
+                `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\n**${t.moduleDisabledTitle}**\n${t.moduleDisabledDesc}\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
             )
             .setFooter({ text: `${guildName} • v${version} • UNCLASSIFIED`, iconURL: guildIcon })
             .setTimestamp();
@@ -164,7 +164,7 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
         .setColor(intelColor)
         .setAuthor({ name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}`, iconURL: client.user.displayAvatarURL() })
         .setTitle(`\`[ ${t.modulesTitle} ]\``)
-        .setDescription(commandList || (lang === 'fr' ? 'Aucune commande trouvée.' : 'No commands found.'))
+        .setDescription(commandList || t.noCommands)
         .addFields({ 
             name: `\` ${t.moduleStatsTitle} \``, 
             value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\n\`STATUS: ONLINE\`\`\`\``, 
@@ -326,7 +326,7 @@ module.exports = {
             )
             .addFields(
                 { name: `\` ${t.moduleStats} \``, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${totalMembers.toLocaleString()}\n${t.guilds}: ${totalGuilds}\`\`\``, inline: true },
-                { name: `\` 🏆 TOP CATEGORIES \``, value: topCategoriesDisplay || 'No data available', inline: true },
+                { name: `\` ${t.topCategories} \``, value: topCategoriesDisplay || t.noData, inline: true },
                 { name: `\` ${t.quickAccess} \``, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
                 { name: `\` ${t.aiAssistant} \``, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
                 { name: `${EMOJIS.website} Dashboard`, value: '[bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)', inline: true },
@@ -401,7 +401,7 @@ module.exports = {
                         )
                         .addFields(
                             { name: `\` ${t.moduleStats} \``, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, inline: true },
-                            { name: `\` 🏆 TOP CATEGORIES \``, value: topCategoriesDisplay || 'No data available', inline: true },
+                            { name: `\` ${t.topCategories} \``, value: topCategoriesDisplay || t.noData, inline: true },
                             { name: `\` ${t.quickAccess} \``, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
                             { name: `\` ${t.aiAssistant} \``, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
                             { name: `\` ${t.tip} \``, value: getRandomTip(t, effectivePrefix), inline: true }
