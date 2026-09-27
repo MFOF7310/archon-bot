@@ -28,10 +28,12 @@ function storedInviteRow(db, guild) {
     try {
         const col = inviteCol(db);
         if (!col) return null;
-        const url = db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v;
-        if (!url || !/^https?:\/\//i.test(url)) return null;
+        const raw = db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v;
+        if (!raw) return null;
+        const m = String(raw).match(/https?:\/\/[^\s)\]]+/i);
+        if (!m) return null;
         return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
-            .setLabel(vt(db, guild.id, 'rejoinBtn')).setURL(url));
+            .setLabel(vt(db, guild.id, 'rejoinBtn')).setURL(m[0]));
     } catch { return null; }
 }
 const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
