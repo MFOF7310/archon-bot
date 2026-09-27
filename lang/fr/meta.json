@@ -1,12 +1,12 @@
 {
-  "metaTitle": "Méta des armes CODM — {season}",
-  "metaFooter": "Mis à jour : {updated} • /weapon <nom> pour la fiche complète",
-  "unknown": "inconnue",
-  "emptyCategory": "Pas encore d'arme **{cat}** dans la liste méta.",
-  "emptyList": "La liste méta est vide pour l'instant — repasse après la prochaine mise à jour.",
-  "armory": "Armurerie",
-  "unclassified": "Non classée",
-  "statsTitle": "📊 Statistiques",
+  "metaTitle": "Méta CODM — {season}",
+  "metaFooter": "Mis à jour {updated} • /weapon <nom> pour les stats complètes",
+  "unknown": "Inconnu",
+  "emptyCategory": "Pas encore d'armes **{cat}** dans la méta.",
+  "emptyList": "La méta est vide pour le moment — reviens après la prochaine maj !",
+  "armory": "Arsenal",
+  "unclassified": "Non classé",
+  "statsTitle": "📊 Stats",
   "statFireRate": "Cadence",
   "statDamage": "Dégâts",
   "statAccuracy": "Précision",
@@ -15,7 +15,7 @@
   "statMobility": "Mobilité",
   "loadoutTitle": "🛠️ Loadout recommandé",
   "weaponFooter": "Méta {season} • ARCHON CG-223",
-  "noMatch": "Je ne trouve pas **{q}** dans la liste méta.\nEssaie plutôt : {names}",
-  "noneYet": "aucune pour l'instant",
-  "reroll": "Relancer"
+  "noMatch": "Impossible de trouver **{q}** dans la méta.\nEssaie celles-ci : {names}",
+  "noneYet": "Rien pour l'instant",
+  "reroll": "🔄 Relancer"
 }

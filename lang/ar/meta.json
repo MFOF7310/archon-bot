@@ -1,9 +1,9 @@
 {
   "metaTitle": "ميتا أسلحة CODM — {season}",
-  "metaFooter": "آخر تحديث {updated} • /weapon <name> للمواصفات الكاملة",
+  "metaFooter": "محدّث {updated} • اكتب /weapon <اسم> للإحصائيات الكاملة",
   "unknown": "غير معروف",
-  "emptyCategory": "لا توجد أسلحة **{cat}** في قائمة الميتا بعد.",
-  "emptyList": "قائمة الميتا فارغة حاليًا — عد بعد التحديث القادم.",
+  "emptyCategory": "ما فيه أسلحة **{cat}** بقائمة الميتا بعد.",
+  "emptyList": "قائمة الميتا فاضية حاليًا — عد بعد التحديث الجاي!",
   "armory": "الترسانة",
   "unclassified": "غير مصنف",
   "statsTitle": "📊 الإحصائيات",
@@ -15,7 +15,7 @@
   "statMobility": "الحركة",
   "loadoutTitle": "🛠️ التجهيزات الموصى بها",
   "weaponFooter": "ميتا {season} • أركون CG-223",
-  "noMatch": "تعذر العثور على **{q}** في قائمة الميتا.\nجرّب أحد هذه: {names}",
+  "noMatch": "ما لقيت **{q}** بقائمة الميتا.\nجرب هذي: {names}",
   "noneYet": "لا شيء بعد",
-  "reroll": "إعادة السحب"
+  "reroll": "🔄 جرّب غيرها"
 }

@@ -2,8 +2,8 @@
   "metaTitle": "CODM 武器版本强度 — {season}",
   "metaFooter": "更新于 {updated} • 输入 /weapon <名称> 查看完整参数",
   "unknown": "未知",
-  "emptyCategory": "版本强度列表中暂无 **{cat}** 武器。",
-  "emptyList": "版本强度列表目前为空 — 下次更新后再来看看。",
+  "emptyCategory": "版本强度列表里还没有 **{cat}** 武器。",
+  "emptyList": "版本强度列表暂时是空的 — 下次更新后再来看看！",
   "armory": "军械库",
   "unclassified": "未分类",
   "statsTitle": "📊 属性",
@@ -12,10 +12,10 @@
   "statAccuracy": "精准度",
   "statRange": "射程",
   "statControl": "控制",
-  "statMobility": "机动性",
+  "statMobility": "机动",
   "loadoutTitle": "🛠️ 推荐配装",
   "weaponFooter": "{season} 版本强度 • ARCHON CG-223",
-  "noMatch": "在版本强度列表中找不到 **{q}**。\n试试这些：{names}",
+  "noMatch": "在版本强度列表里找不到 **{q}**。\n试试这些：{names}",
   "noneYet": "暂无",
-  "reroll": "换一批"
+  "reroll": "🔄 换一批"
 }
