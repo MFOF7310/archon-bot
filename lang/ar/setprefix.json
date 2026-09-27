@@ -1,13 +1,13 @@
 {
-  "title": "",
-  "current": "",
-  "new": "",
-  "updated": "",
-  "updatedDesc": "",
-  "example": "",
-  "samePrefix": "",
-  "invalid": "",
-  "noPermission": "",
-  "notConfigured": "",
-  "footer": ""
+  "title": "⚙️ تكوين البادئة",
+  "current": "البادئة الحالية",
+  "new": "البادئة الجديدة",
+  "updated": "✅ تم تحديث البادئة بنجاح!",
+  "updatedDesc": "تم تغيير بادئة الأوامر إلى `{prefix}`",
+  "example": "مثال: `{prefix}help`",
+  "samePrefix": "❌ هذه هي البادئة الحالية بالفعل.",
+  "invalid": "❌ بادئة غير صالحة. يجب أن تكون من 1 إلى 5 أحرف.",
+  "noPermission": "❌ تحتاج إلى صلاحية **Manage Server** لتغيير البادئة.",
+  "notConfigured": "غير مُعدّ",
+  "footer": "تم تحديث إعدادات الخادم"
 }

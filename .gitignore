@@ -115,3 +115,4 @@ assets/builds/
 # Personal data — see *.example.* for schema
 data/music-library.json
 config/emojis.js
+heap-snapshots/

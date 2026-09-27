@@ -1,9 +1,9 @@
 {
-  "title": "",
-  "boostCount": "",
-  "boostLevel": "",
-  "boosters": "",
-  "noBoosters": "",
-  "since": "",
-  "footer": ""
+  "title": "🚀 مقوّمو خادم {name}",
+  "boostCount": "عدد التقوية",
+  "boostLevel": "مستوى التقوية",
+  "boosters": "🌟 المقوّمون",
+  "noBoosters": "❌ هذا الخادم ليس لديه مقوّمون.",
+  "since": "يقوّي منذ",
+  "footer": "أركون CG-223 • التقدير العصبي"
 }

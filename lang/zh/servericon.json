@@ -1,6 +1,6 @@
 {
-  "title": "",
-  "noIcon": "",
-  "formats": "",
-  "footer": ""
+  "title": "🖼️ {name} 服务器图标",
+  "noIcon": "❌ 该服务器没有图标。",
+  "formats": "格式",
+  "footer": "ARCHON CG-223 • 神经影像"
 }

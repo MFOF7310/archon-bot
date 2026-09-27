@@ -1,12 +1,12 @@
 {
-  "title": "",
-  "desc": "",
-  "confirm": "",
-  "abort": "",
-  "security": "",
-  "aborted": "",
-  "timeout": "",
-  "backupSent": "",
-  "success": "",
-  "preview": ""
+  "title": "☢️ 神经系统覆写",
+  "desc": "选择一项清除操作，架构师。",
+  "confirm": "⚠️ 确认",
+  "abort": "❌ 中止",
+  "security": "⛔ 主节点访问仅限架构师。",
+  "aborted": "✅ 操作已中止。数据库完好。",
+  "timeout": "⏰ 授权已过期。",
+  "backupSent": "📡 备份已发送到你的私聊。",
+  "success": "☢️ **{type}** 完成！\n```yaml\n受影响: {count} 条记录\n备份: ✅ 已保存\n时间戳: {ts}\n```",
+  "preview": "```yaml\n🧠 经验记录: {xp}\n💰 非零积分: {credits}\n👥 总用户数: {total}\n```"
 }

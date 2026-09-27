@@ -1,12 +1,12 @@
 {
-  "title": "",
-  "oldDesignation": "",
-  "newDesignation": "",
-  "usage": "",
-  "limit": "",
-  "noChange": "",
-  "success": "",
-  "footer": "",
-  "error": "",
-  "updated": ""
+  "title": "✅ تم تحديث الهوية",
+  "oldDesignation": "التسمية القديمة",
+  "newDesignation": "التسمية الجديدة",
+  "usage": "❌ الاستخدام: `.rename [الاسم الجديد]`",
+  "limit": "⚠️ الحد: 20 حرفًا.",
+  "noChange": "⚠️ الاسم الجديد هو نفس اسمك الحالي.",
+  "success": "تم تحديث هويتك من **{old}** إلى **{newName}**.",
+  "footer": "مجتمع النسر • المحرك الرقمي",
+  "error": "❌ حدث خطأ أثناء تحديث اسمك.",
+  "updated": "تم تحديث الهوية"
 }

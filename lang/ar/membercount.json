@@ -1,13 +1,13 @@
 {
-  "title": "",
-  "total": "",
-  "humans": "",
-  "bots": "",
-  "online": "",
-  "idle": "",
-  "dnd": "",
-  "offline": "",
-  "boosters": "",
-  "roles": "",
-  "footer": ""
+  "title": "👥 إحصائيات أعضاء {name}",
+  "total": "👤 إجمالي الأعضاء",
+  "humans": "👨 البشر",
+  "bots": "🤖 البوتات",
+  "online": "🟢 متصل",
+  "idle": "🟡 خامل",
+  "dnd": "🔴 عدم الإزعاج",
+  "offline": "⚫ غير متصل",
+  "boosters": "🚀 المقوّمون",
+  "roles": "📋 الأدوار",
+  "footer": "أركون CG-223 • التعداد العصبي"
 }

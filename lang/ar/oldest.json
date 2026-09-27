@@ -1,8 +1,8 @@
 {
-  "title": "",
-  "member": "",
-  "joined": "",
-  "accountCreated": "",
-  "daysAgo": "",
-  "footer": ""
+  "title": "👴 أقدم الأعضاء - {name}",
+  "member": "العضو",
+  "joined": "تاريخ الانضمام",
+  "accountCreated": "تاريخ إنشاء الحساب",
+  "daysAgo": "منذ {days} يومًا",
+  "footer": "أركون CG-223 • الأرشيف العصبي"
 }

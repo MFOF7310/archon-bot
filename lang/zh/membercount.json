@@ -1,13 +1,13 @@
 {
-  "title": "",
-  "total": "",
-  "humans": "",
-  "bots": "",
-  "online": "",
-  "idle": "",
-  "dnd": "",
-  "offline": "",
-  "boosters": "",
-  "roles": "",
-  "footer": ""
+  "title": "👥 {name} 成员统计",
+  "total": "👤 总成员",
+  "humans": "👨 人类",
+  "bots": "🤖 机器人",
+  "online": "🟢 在线",
+  "idle": "🟡 闲置",
+  "dnd": "🔴 请勿打扰",
+  "offline": "⚫ 离线",
+  "boosters": "🚀 提升者",
+  "roles": "📋 角色",
+  "footer": "ARCHON CG-223 • 神经普查"
 }

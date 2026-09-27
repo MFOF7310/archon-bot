@@ -1,8 +1,8 @@
 {
-  "title": "",
-  "member": "",
-  "joined": "",
-  "accountCreated": "",
-  "daysAgo": "",
-  "footer": ""
+  "title": "👴 最早加入的成员 - {name}",
+  "member": "成员",
+  "joined": "加入时间",
+  "accountCreated": "账号创建时间",
+  "daysAgo": "{days} 天前",
+  "footer": "ARCHON CG-223 • 神经档案"
 }

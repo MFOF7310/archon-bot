@@ -1,12 +1,12 @@
 {
-  "title": "",
-  "oldDesignation": "",
-  "newDesignation": "",
-  "usage": "",
-  "limit": "",
-  "noChange": "",
-  "success": "",
-  "footer": "",
-  "error": "",
-  "updated": ""
+  "title": "✅ 身份已更新",
+  "oldDesignation": "旧称号",
+  "newDesignation": "新称号",
+  "usage": "❌ 用法：`.rename [新名字]`",
+  "limit": "⚠️ 限制：20 个字符。",
+  "noChange": "⚠️ 新名字与当前名字相同。",
+  "success": "你的身份已从 **{old}** 更新为 **{newName}**。",
+  "footer": "Eagle 社区 • 数字引擎",
+  "error": "❌ 更新名字时出错。",
+  "updated": "身份已更新"
 }

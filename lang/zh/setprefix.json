@@ -1,13 +1,13 @@
 {
-  "title": "",
-  "current": "",
-  "new": "",
-  "updated": "",
-  "updatedDesc": "",
-  "example": "",
-  "samePrefix": "",
-  "invalid": "",
-  "noPermission": "",
-  "notConfigured": "",
-  "footer": ""
+  "title": "⚙️ 前缀配置",
+  "current": "当前前缀",
+  "new": "新前缀",
+  "updated": "✅ 前缀更新成功！",
+  "updatedDesc": "指令前缀已更改为 `{prefix}`",
+  "example": "示例：`{prefix}help`",
+  "samePrefix": "❌ 这已是当前前缀。",
+  "invalid": "❌ 无效前缀。长度必须为 1-5 个字符。",
+  "noPermission": "❌ 你需要 **Manage Server** 权限才能更改前缀。",
+  "notConfigured": "未配置",
+  "footer": "服务器设置已更新"
 }
