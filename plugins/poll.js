@@ -56,22 +56,15 @@ data: new SlashCommandBuilder()
 run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         
-        const t = {
-            en: {
-                title: '📊 POLL',
-                createdBy: 'Created by',
-                reactToVote: 'React with the corresponding emoji to vote!',
-                invalid: '❌ Usage: `.poll "Question" "Option1" "Option2" ...`\nExample: `.poll "Favorite color?" "Red" "Blue" "Green"`',
-                maxOptions: '❌ Maximum 9 options allowed.'
-            },
-            fr: {
-                title: '📊 SONDAGE',
-                createdBy: 'Créé par',
-                reactToVote: 'Réagissez avec l\'emoji correspondant pour voter !',
-                invalid: '❌ Utilisation: `.poll "Question" "Option1" "Option2" ...`\nExemple: `.poll "Couleur préférée ?" "Rouge" "Bleu" "Vert"`',
-                maxOptions: '❌ Maximum 9 options autorisées.'
-            }
-        }[lang];
+        const OKL = ['en','fr','bm','zh','ar'];
+        lang = OKL.includes(serverSettings?.language) ? serverSettings.language : (OKL.includes(lang) ? lang : 'en');
+        const T = {
+            en: { title: '📊 POLL', createdBy: 'Created by', reactToVote: 'React with the corresponding emoji to vote!', invalid: '❌ Usage: `.poll "Question" "Option1" "Option2" ...`\nExample: `.poll "Favorite color?" "Red" "Blue" "Green"`', maxOptions: '❌ Maximum 9 options allowed.', minOptions: '❌ You must provide at least 2 options.' },
+            fr: { title: '📊 SONDAGE', createdBy: 'Créé par', reactToVote: 'Réagissez avec l\'emoji correspondant pour voter !', invalid: '❌ Utilisation: `.poll "Question" "Option1" "Option2" ...`\nExemple: `.poll "Couleur préférée ?" "Rouge" "Bleu" "Vert"`', maxOptions: '❌ Maximum 9 options autorisées.', minOptions: '❌ Il faut au moins 2 options.' },
+            zh: { title: '📊 投票', createdBy: '发起人', reactToVote: '用对应的表情符号投票吧！', invalid: '❌ 用法：`.poll "问题" "选项1" "选项2" ...`\n例如：`.poll "最喜欢什么颜色？" "红" "蓝" "绿"`', maxOptions: '❌ 最多 9 个选项。', minOptions: '❌ 至少需要 2 个选项。' },
+            ar: { title: '📊 تصويت', createdBy: 'أنشأه', reactToVote: 'صوّت بالإيموجي المناسب!', invalid: '❌ الاستخدام: `.poll "سؤال" "خيار1" "خيار2" ...`\nمثال: `.poll "أفضل لون؟" "أحمر" "أزرق"`', maxOptions: '❌ الحد الأقصى 9 خيارات.', minOptions: '❌ تحتاج خيارين على الأقل.' }
+        };
+        const t = T[lang] || T.en;
 
         // Parse arguments (support quoted strings)
         const regex = /"([^"]+)"|'([^']+)'|(\S+)/g;
@@ -120,21 +113,12 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
     },
 
     execute: async (interaction, client) => {
-        const lang = interaction.locale === 'fr' ? 'fr' : 'en';
+        const lang = require('../lib/i18n').slashLang(interaction, ['en','fr','zh','ar']);
         
         const t = {
-            en: {
-                title: '📊 POLL',
-                createdBy: 'Created by',
-                reactToVote: 'React with the corresponding emoji to vote!',
-                maxOptions: '❌ Maximum 9 options allowed.'
-            },
-            fr: {
-                title: '📊 SONDAGE',
-                createdBy: 'Créé par',
-                reactToVote: 'Réagissez avec l\'emoji correspondant pour voter !',
-                maxOptions: '❌ Maximum 9 options autorisées.'
-            }
+            en: { title: '📊 POLL', createdBy: 'Created by', reactToVote: 'React with the corresponding emoji to vote!', maxOptions: '❌ Maximum 9 options allowed.', minOptions: '❌ You must provide at least 2 options.' },
+            fr: { title: '📊 SONDAGE', createdBy: 'Créé par', reactToVote: 'Réagissez avec l\'emoji correspondant pour voter !', maxOptions: '❌ Maximum 9 options autorisées.', minOptions: '❌ Il faut au moins 2 options.' },
+            zh: { title: '📊 投票', createdBy: '发起人', reactToVote: '用对应的表情符号投票吧！', invalid: '❌ 用法：`.poll "问题" "选项1" "选项2" ...`\n例如：`.poll "最喜欢什么颜色？" "红" "蓝" "绿"`', maxOptions: '❌ 最多 9 个选项。', minOptions: '❌ 至少需要 2 个选项。' },
         }[lang];
 
         const question = interaction.options.getString('question');
@@ -147,7 +131,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         }
 
         if (options.length < 2) {
-            return interaction.reply({ content: '❌ You must provide at least 2 options.', flags: 64 });
+            return interaction.reply({ content: t.minOptions, flags: 64 });
         }
 
         if (options.length > 9) {

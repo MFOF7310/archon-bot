@@ -99,6 +99,58 @@ const tttTranslations = {
         level: 'Niveau',
         clickToPlay: 'À toi de jouer — choisis bien ! 🧠',
         cellTaken: '🚫 Cette case est prise — choisis-en une autre !'
+    },
+    zh: {
+        title: '⚔️ 神经井字棋', vs: '对战', turn: '🎮 当前回合',
+        win: '🏆 胜利属于你！', loss: '💔 下次运气会更好！', tie: '🤝 势均力敌！',
+        tieDesc: '谁也没 cracking — 积分已退还，不服再来！',
+        winDesc: (winner) => `**${winner}** 技高一筹 — 漂亮！🔥`,
+        lossDesc: (loser) => `**${loser}** 打得顽强 — 下次更强！💪`,
+        challenge: (challenger, opponent) => `⚔️ **${challenger}** 踏入竞技场，点名挑战 **${opponent}** — 敢接吗？👀`,
+        invalidTarget: '👀 @ 你要挑战的人 — 一个人玩不了哦！(如 `.ttt @好友`)',
+        alreadyPlaying: '⏳ 对方正在对局中 — 等TA打完！',
+        notYourTurn: '🚫 还没轮到你！',
+        gameTimeout: '⏰ 对局超时 — 太久啦！积分已退还给双方。',
+        reward: '💰 奖励', xpGain: '📈 经验', creditsGain: '💎 积分',
+        winnerStats: '🏆 胜者数据', gamesPlayed: '对局数', winRate: '胜率',
+        footer: '神经竞技场 · 叫上朋友来战！',
+        betInfo: '💰 **入场费：** 50 🪙 | **胜者赢得：** 100 🪙',
+        insufficientCredits: '💸 进场需要 **50 🪙** — 先去 `.daily` 领奖励再来！',
+        opponentInsufficientCredits: (name) => `❌ **${name}** 积分不够（需要 50 🪙）！`,
+        levelUp: '🎉 特工晋升！',
+        levelUpDesc: (username, level, rank) => `**${username}** 升到了 **${level} 级**！
+${rank.emoji} **${rank.title.zh || rank.title.en}**`,
+        waiting: '等待玩家加入...', gameActive: '对局进行中',
+        refund: '💰 退款', refundDesc: '入场费已退还给双方。',
+        playerStats: '📊 玩家数据', credits: '积分', level: '等级',
+        clickToPlay: '该你了 — 想清楚再落子！🧠',
+        cellTaken: '🚫 这个格子被占了 — 换一个！'
+    },
+    ar: {
+        title: '⚔️ إكس-أو العصبي', vs: 'ضد', turn: '🎮 الدور الحالي',
+        win: '🏆 الفوز لك!', loss: '💔 حظ أوفر المرة الجاية!', tie: '🤝 تعادل!',
+        tieDesc: 'ولا واحد فيكم انكسر — الرصيد رجع، والثأر قريب!',
+        winDesc: (winner) => `**${winner}** تفوّق بالمهارة — أحسنت! 🔥`,
+        lossDesc: (loser) => `**${loser}** قاتل بشرف — ارجع أقوى! 💪`,
+        challenge: (challenger, opponent) => `⚔️ **${challenger}** دخل الساحة ونادى **${opponent}** — بتقبل؟ 👀`,
+        invalidTarget: '👀 اذكر من تتحداه — ما تقدر تلعب لحالك! (مثال: `.ttt @صديق`)',
+        alreadyPlaying: '⏳ هاللاعب في مباراة — انتظر ينتهي!',
+        notYourTurn: '🚫 مو دورك!',
+        gameTimeout: '⏰ انتهت المباراة — بطيء زيادة! رجعنا الرصيد للطرفين.',
+        reward: '💰 المكافأة', xpGain: '📈 خبرة', creditsGain: '💎 رصيد',
+        winnerStats: '🏆 إحصائيات الفائز', gamesPlayed: 'المباريات', winRate: 'نسبة الفوز',
+        footer: 'الساحة العصبية · تحدَّ أصدقاءك!',
+        betInfo: '💰 **رسوم الدخول:** 50 🪙 | **الفائز يأخذ:** 100 🪙',
+        insufficientCredits: '💸 تحتاج **50 🪙** للدخول — خذ مكافأتك اليومية بـ `.daily` ورجع!',
+        opponentInsufficientCredits: (name) => `❌ **${name}** ما عنده رصيد كافي (50 🪙 مطلوب)!`,
+        levelUp: '🎉 ترقية وكيل!',
+        levelUpDesc: (username, level, rank) => `**${username}** وصل للمستوى **${level}**!
+${rank.emoji} **${rank.title.ar || rank.title.en}**`,
+        waiting: 'في انتظار اللاعبين...', gameActive: 'المباراة جارية',
+        refund: '💰 استرجاع', refundDesc: 'رجعنا رسوم الدخول للطرفين.',
+        playerStats: '📊 إحصائيات اللاعبين', credits: 'الرصيد', level: 'المستوى',
+        clickToPlay: 'دورك — اختار بذكاء! 🧠',
+        cellTaken: '🚫 هالخانة محجوزة — اختار غيرها!'
     }
 };
 

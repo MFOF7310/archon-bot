@@ -1,0 +1,9 @@
+{
+  "coinTitle": "🪙 Pile ou Face",
+  "coinResult": "Résultat : **{result}** !",
+  "heads": "Pile",
+  "tails": "Face",
+  "rollTitle": "🎲 Lancer de dés",
+  "rollResult": "**{dice}** → **{result}**",
+  "rollInvalid": "❌ Format invalide ! Utilise NdN (ex. `2d6`, `1d20`)"
+}

@@ -1,0 +1,9 @@
+{
+  "coinTitle": "🪙 抛硬币",
+  "coinResult": "结果是 **{result}**！",
+  "heads": "正面",
+  "tails": "反面",
+  "rollTitle": "🎲 掷骰子",
+  "rollResult": "**{dice}** → **{result}**",
+  "rollInvalid": "❌ 格式无效！使用 NdN（如 `2d6`、`1d20`）"
+}

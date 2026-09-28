@@ -1,0 +1,9 @@
+{
+  "coinTitle": "🪙 رمي العملة",
+  "coinResult": "النتيجة: **{result}**!",
+  "heads": "وجه",
+  "tails": "كتابة",
+  "rollTitle": "🎲 رمي النرد",
+  "rollResult": "**{dice}** → **{result}**",
+  "rollInvalid": "❌ صيغة غير صالحة! استخدم NdN (مثل `2d6`)"
+}

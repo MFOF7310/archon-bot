@@ -1,0 +1,9 @@
+{
+  "coinTitle": "🪙 Coin Flip",
+  "coinResult": "It's **{result}**!",
+  "heads": "Heads",
+  "tails": "Tails",
+  "rollTitle": "🎲 Dice Roll",
+  "rollResult": "**{dice}** → **{result}**",
+  "rollInvalid": "❌ Invalid format! Use NdN (e.g., `2d6`, `1d20`)"
+}

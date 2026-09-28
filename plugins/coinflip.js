@@ -1,4 +1,8 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const { t } = require('../lib/i18n');
+
+const OKL = ['en','fr','bm','zh','ar'];
+const gl = (o) => OKL.includes(o?.language) ? o.language : 'en';
 
 module.exports = {
     name: 'coinflip',
@@ -6,34 +10,24 @@ module.exports = {
     description: '🪙 Flip a coin',
     category: 'FUN',
     cooldown: 1,
-    
-    data: new SlashCommandBuilder()
-        .setName('coinflip')
-        .setDescription('Flip a coin'),
-    
-    run: async (client, message) => {
-        const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
-        const emoji = result === 'Heads' ? '🪙' : '💿';
-        
-        const embed = new EmbedBuilder()
+
+    data: new SlashCommandBuilder().setName('coinflip').setDescription('Flip a coin'),
+
+    _flip: (client, gid) => {
+        const lang = gl(client?.getServerSettings?.(gid) || {});
+        const heads = Math.random() < 0.5;
+        return new EmbedBuilder()
             .setColor(0xFFD700)
-            .setTitle(`${emoji} Coin Flip`)
-            .setDescription(`It's **${result}**!`)
+            .setTitle(t('fun.coinTitle', lang))
+            .setDescription(t('fun.coinResult', lang, { result: t(heads ? 'fun.heads' : 'fun.tails', lang) }))
             .setTimestamp();
-        
-        await message.reply({ embeds: [embed] });
     },
-    
-    execute: async (interaction) => {
-        const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
-        const emoji = result === 'Heads' ? '🪙' : '💿';
-        
-        const embed = new EmbedBuilder()
-            .setColor(0xFFD700)
-            .setTitle(`${emoji} Coin Flip`)
-            .setDescription(`It's **${result}**!`)
-            .setTimestamp();
-        
-        await interaction.reply({ embeds: [embed] });
+
+    run: async (client, message) => {
+        await message.reply({ embeds: [module.exports._flip(client, message.guild?.id)] });
+    },
+
+    execute: async (interaction, client) => {
+        await interaction.reply({ embeds: [module.exports._flip(client, interaction.guildId)] });
     }
 };
