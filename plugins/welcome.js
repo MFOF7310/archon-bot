@@ -115,7 +115,7 @@ async function handleWelcome(member, client, db) {
 
     // Embed uses attachment:// reference — NOT a base64 data URL
     const _roleHex = member.roles?.color?.hex;
-    const _accentHex = (cfg.welcomeAccent || (_roleHex && _roleHex !== '#000000' ? _roleHex : '#FFD700')).replace('#', '');
+    const _accentHex = (cfg.welcomeAccent || (_roleHex && _roleHex !== '#000000' ? _roleHex : '#2ecc71')).replace('#', '');
     const embed = new EmbedBuilder()
         .setColor(parseInt(_accentHex, 16))
         .setImage('attachment://welcome-card.png')

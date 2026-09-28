@@ -226,7 +226,7 @@ async function renderWelcomeCard(member, count, cfg) {
         || (isMilestone1000 ? '#00f0ff'
         : isMilestone500  ? '#9b59b6'
         : isMilestone100  ? '#f1c40f'
-        : '#FFD700');
+        : '#2ecc71');
 
     // Background
     ctx.fillStyle = '#0a1f0a';
@@ -234,9 +234,9 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Left accent bar
     const barGrad = ctx.createLinearGradient(0, 0, 0, CH);
-    barGrad.addColorStop(0, 'rgba(255,215,0,0.0)');
-    barGrad.addColorStop(0.5, 'rgba(255,215,0,0.9)');
-    barGrad.addColorStop(1, 'rgba(255,215,0,0.0)');
+    barGrad.addColorStop(0, 'rgba(46,204,113,0.0)');
+    barGrad.addColorStop(0.5, 'rgba(46,204,113,0.9)');
+    barGrad.addColorStop(1, 'rgba(46,204,113,0.0)');
     ctx.fillStyle = barGrad;
     ctx.fillRect(0, 0, 4 * SCALE, CH);
 
@@ -337,7 +337,7 @@ async function renderWelcomeCard(member, count, cfg) {
             ctx.restore();
             ctx.beginPath();
             ctx.arc(ix + ir, iy + ir, ir + 2, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255,215,0,0.6)';
+            ctx.strokeStyle = 'rgba(46,204,113,0.6)';
             ctx.lineWidth = 2;
             ctx.stroke();
         }
