@@ -1,0 +1,15 @@
+{
+  "author": "🦅 ARCHON CG-223 • 服务器规则",
+  "title": "📜 社区准则",
+  "welcomeLine": "欢迎来到 **{server}**！花一分钟读一下规则 — 留下来就表示你同意遵守它们 😊",
+  "acceptNote": "✅ 继续留在本服务器即表示你接受这些规则（包括后续的更新）。",
+  "defaultRules": "1. 互相尊重 — 禁止骚扰、辱骂或歧视。\n2. 禁止垃圾信息和过度刷屏。\n3. 广告和邀请链接需要管理员许可。\n4. 保持频道主题一致，用对的频道发对的内容。\n5. 剧透内容请标注并放在指定频道。\n6. 禁止分享盗版、作弊工具或恶意软件。\n7. NSFW 内容零容忍。\n8. 尊重工作人员的决定，有异议请私聊沟通。\n9. 禁止冒充他人或工作人员。\n10. 违规将视情节给予警告、禁言或封禁。",
+  "noCustomRules": "*该服务器尚未设置自定义规则 — 以下为默认准则。管理员可用 `/rules set` 自定义。*",
+  "setSuccess": "✅ 规则已保存！用 `/rules` 或 `/rules panel` 查看。{extra}",
+  "panelPosted": "📜 规则面板已发布到 {channel}",
+  "channelSet": "✅ 规则频道已设置为 {channel}。之后用 `/rules panel` 一键发布规则到那里。",
+  "channelMissing": "⚠️ 之前设置的规则频道已失效（可能被删除）。用 `/rules channel #频道` 重新设置一个，然后用 `/rules panel` 发布。",
+  "channelCleared": "✅ 规则频道已清除。`/rules` 将在当前频道显示规则。",
+  "needManageGuild": "⛔ 需要「管理服务器」权限。",
+  "rulesTooLong": "⚠️ 规则太长，自动拆分为多条消息显示。"
+}

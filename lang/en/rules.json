@@ -1,0 +1,15 @@
+{
+  "author": "🦅 ARCHON CG-223 • Server Rules",
+  "title": "📜 Community Guidelines",
+  "welcomeLine": "Welcome to **{server}**! Take a minute to read the rules — staying here means you agree to follow them 😊",
+  "acceptNote": "✅ Your presence in this server implies accepting these rules (including future updates).",
+  "defaultRules": "1. Be respectful — no harassment, insults, or discrimination.\n2. No spam or excessive flooding.\n3. Advertising and invite links need moderator approval.\n4. Stay on topic and use the right channel for the right content.\n5. Tag spoilers and keep them in the designated channel.\n6. No sharing pirated content, cheats, or malware.\n7. Zero tolerance for NSFW content.\n8. Respect staff decisions — to contest, DM us.\n9. Impersonating others or staff is forbidden.\n10. Violations lead to warn, mute, or ban depending on severity.",
+  "noCustomRules": "*No custom rules set on this server — showing defaults. Admins can customize with `/rules set`.*",
+  "setSuccess": "✅ Rules saved! View them with `/rules` or `/rules panel`. {extra}",
+  "panelPosted": "📜 Rules panel posted to {channel}",
+  "channelSet": "✅ Rules channel set to {channel}. Use `/rules panel` to publish rules there anytime.",
+  "channelMissing": "⚠️ The stored rules channel is gone (deleted?). Set a new one with `/rules channel #channel`, then publish with `/rules panel`.",
+  "channelCleared": "✅ Rules channel cleared. `/rules` will display rules in the current channel.",
+  "needManageGuild": "⛔ You need the Manage Server permission.",
+  "rulesTooLong": "⚠️ Rules too long — split across multiple messages."
+}

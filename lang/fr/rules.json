@@ -1,0 +1,15 @@
+{
+  "author": "🦅 ARCHON CG-223 • Règles du serveur",
+  "title": "📜 Code de la communauté",
+  "welcomeLine": "Bienvenue sur **{server}** ! Prends une minute pour lire les règles — rester ici implique de les accepter 😊",
+  "acceptNote": "✅ Ta présence sur ce serveur implique l'acceptation de ces règles (mises à jour incluses).",
+  "defaultRules": "1. Respecte tout le monde — harcèlement, insultes et discrimination interdits.\n2. Pas de spam ni de flood excessif.\n3. Publicité et liens d'invitation avec autorisation d'un modérateur.\n4. Reste dans le sujet de chaque salon et utilise le bon salon.\n5. Les spoilers doivent être balisés et postés dans le salon prévu.\n6. Aucun partage de piratage, cheats ou malwares.\n7. Contenu NSFW : tolérance zéro.\n8. Respecte les décisions du staff — pour contester, écris-nous en privé.\n9. Usurper l'identité d'autrui ou du staff est interdit.\n10. Les infractions mènent à un avertissement, un mute ou un ban selon la gravité.",
+  "noCustomRules": "*Aucune règle personnalisée sur ce serveur — voici les règles par défaut. Les admins peuvent les personnaliser avec `/rules set`.*",
+  "setSuccess": "✅ Règles enregistrées ! Affiche-les avec `/rules` ou `/rules panel`. {extra}",
+  "panelPosted": "📜 Panneau des règles publié dans {channel}",
+  "channelSet": "✅ Salon des règles défini : {channel}. Utilise ensuite `/rules panel` pour y publier les règles.",
+  "channelMissing": "⚠️ Le salon des règles enregistré n'existe plus (supprimé ?). Définis-en un nouveau avec `/rules channel #salon`, puis publie avec `/rules panel`.",
+  "channelCleared": "✅ Salon des règles effacé. `/rules` affichera les règles dans le salon courant.",
+  "needManageGuild": "⛔ Permission Gérer le serveur requise.",
+  "rulesTooLong": "⚠️ Règles trop longues — affichage réparti sur plusieurs messages."
+}
