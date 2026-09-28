@@ -114,8 +114,10 @@ async function handleWelcome(member, client, db) {
     content += `\n> ${tipLabel}\n${tips.map(t => `> • ${t}`).join('\n')}`;
 
     // Embed uses attachment:// reference — NOT a base64 data URL
+    const _roleHex = member.roles?.color?.hex;
+    const _accentHex = (cfg.welcomeAccent || (_roleHex && _roleHex !== '#000000' ? _roleHex : '#FFD700')).replace('#', '');
     const embed = new EmbedBuilder()
-        .setColor(0xFFD700)
+        .setColor(parseInt(_accentHex, 16))
         .setImage('attachment://welcome-card.png')
         .setFooter({ text: t('welcome.welcome_footer', lang, { guild: member.guild.name, count }) })
         .setTimestamp();

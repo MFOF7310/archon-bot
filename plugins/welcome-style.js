@@ -6,9 +6,13 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const fs = require('fs');
 const path = require('path');
+try {
+    GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'ChakraPetch-Bold.ttf'), 'Chakra Petch');
+    console.log('[WELCOME] Chakra Petch font registered ✅');
+} catch (e) { console.error('[WELCOME] font register failed:', e.message); }
 
 // ── Dynamic background loader — auto-detects any image in data/assets/ named welcome-* ──
 let _cachedBg = null;
@@ -25,6 +29,73 @@ async function loadWelcomeBg() {
     _cachedBg = img;
     _cachedBgPath = fullPath;
     return img;
+}
+
+// ── Mascot loader — assets/welcome/{mascot,eagle}.{png,jpg,jpeg,webp}
+// Flood-fill keying: only border-connected dark pixels become transparent,
+// so black clothing/interior darks stay opaque. ──
+const _mascotCache = new Map();
+function keyDarkBackground(tctx, w, h) {
+    const data = tctx.getImageData(0, 0, w, h);
+    const px = data.data;
+    const visited = new Uint8Array(w * h);
+    const stack = [];
+    const push = (x, y) => { const idx = y * w + x; if (!visited[idx]) { visited[idx] = 1; stack.push(idx); } };
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+    for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+    while (stack.length) {
+        const idx = stack.pop();
+        const i = idx * 4;
+        const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        if (lum > 55) continue; // too bright = part of the character, stop the flood
+        px[i + 3] = 0;
+        const x = idx % w, y = (idx / w) | 0;
+        if (x > 0) push(x - 1, y);
+        if (x < w - 1) push(x + 1, y);
+        if (y > 0) push(x, y - 1);
+        if (y < h - 1) push(x, y + 1);
+    }
+    tctx.putImageData(data, 0, 0);
+}
+async function loadMascotFile(base) {
+    // Random pick among assets/welcome/{base}{optional digit}.{ext}
+    // e.g. mascot.jpg, mascot2.jpg, mascot3.png ... each flood-fill keyed once, cached by filename
+    const LIST = '_list_' + base;
+    if (!_mascotCache.has(LIST)) {
+        const dir = path.join(__dirname, '..', 'assets', 'welcome');
+        let files = [];
+        try {
+            const re = new RegExp('^' + base + '\\d*\\.(png|jpg|jpeg|webp)$', 'i');
+            files = fs.readdirSync(dir).filter(f => re.test(f));
+        } catch (e) {}
+        _mascotCache.set(LIST, files);
+    }
+    const files = _mascotCache.get(LIST);
+    if (!files || !files.length) return null;
+    const file = files[Math.floor(Math.random() * files.length)];
+    if (_mascotCache.has(file)) return _mascotCache.get(file);
+    let keyed = null;
+    try {
+        const img = await loadImage(path.join(__dirname, '..', 'assets', 'welcome', file));
+        const w = img.width, h = img.height;
+        const tmp = createCanvas(w, h);
+        const tctx = tmp.getContext('2d');
+        tctx.drawImage(img, 0, 0);
+        keyDarkBackground(tctx, w, h);
+        keyed = tmp;
+    } catch (e) {}
+    _mascotCache.set(file, keyed);
+    return keyed;
+}
+function drawMascot(ctx, img, CW, CH, SCALE) {
+    if (!img) return;
+    const h = CH - 30 * SCALE;
+    const w = h * (img.width / img.height);
+    const x = CW - w - 52 * SCALE;
+    const y = CH - h - 12 * SCALE;
+    ctx.save();
+    ctx.drawImage(img, x, y, w, h);
+    ctx.restore();
 }
 
 // ── Reduced from 700×220 → 560×175 (20% smaller, much more compact on mobile) ──
@@ -150,14 +221,15 @@ async function renderWelcomeCard(member, count, cfg) {
     const isMilestone1000 = count % 1000 === 0;
     const isMilestone500  = count % 500  === 0;
     const isMilestone100  = count % 100  === 0;
-    const accent = cfg.welcomeAccent
+    const roleHex = member.roles?.color?.hex;
+    const accent = cfg.welcomeAccent || (roleHex && roleHex !== '#000000' ? roleHex : null)
         || (isMilestone1000 ? '#00f0ff'
         : isMilestone500  ? '#9b59b6'
         : isMilestone100  ? '#f1c40f'
         : '#FFD700');
 
     // Background
-    ctx.fillStyle = '#0a1a0a';
+    ctx.fillStyle = '#0a1f0a';
     ctx.fillRect(0, 0, CW, CH);
 
     // Left accent bar
@@ -213,7 +285,7 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${34 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${34 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.textAlign = 'left';
     const name = member.user.username.length > 18
         ? member.user.username.substring(0, 17) + '\u2026'
@@ -222,7 +294,7 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Label
     ctx.fillStyle = accent;
-    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${11 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.letterSpacing = `${2 * SCALE}px`;
     ctx.fillText('AW BISIMILA [MLI] -- ARCHON CG-223', tx, CH * 0.52);
     ctx.letterSpacing = '0px';
@@ -231,7 +303,7 @@ async function renderWelcomeCard(member, count, cfg) {
     const age = accountAgeShort(member.user.createdTimestamp);
     const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${10 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.fillText(
         `${ordinal(count)} member  \u00b7  ${isNew ? '[NEW] ' : ''}${age} old account`,
         tx, CH * 0.72
@@ -240,9 +312,13 @@ async function renderWelcomeCard(member, count, cfg) {
     // Milestone badge
     if (isMilestone100 || isMilestone500 || isMilestone1000) {
         ctx.fillStyle = accent;
-        ctx.font = `bold ${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+        ctx.font = `bold ${10 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
         ctx.fillText(`\uD83C\uDF96\uFE0F ${ordinal(count).toUpperCase()} MEMBER`, tx, CH * 0.86);
     }
+
+    // Mascot — right side (screen blend: dark AI bg disappears on dark card)
+    const mascotImg = await loadMascotFile('mascot');
+    drawMascot(ctx, mascotImg, CW, CH, SCALE);
 
     // Server icon — top right
     try {
@@ -269,7 +345,7 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Bottom right — server name
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.font = `${6.5 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${6.5 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.textAlign = 'right';
     const sName = member.guild.name.length > 24
         ? member.guild.name.substring(0, 23) + '\u2026'
@@ -294,23 +370,23 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     ctx.textBaseline = 'middle';
 
     // Background
-    ctx.fillStyle = '#0a0a1a';
+    ctx.fillStyle = '#160a0a';
     ctx.fillRect(0, 0, CW, CH);
 
 
     // Left red accent bar
     const barGrad = ctx.createLinearGradient(0, 0, 0, CH);
-    barGrad.addColorStop(0, 'rgba(180,120,0,0.0)');
-    barGrad.addColorStop(0.5, 'rgba(180,120,0,0.9)');
-    barGrad.addColorStop(1, 'rgba(180,120,0,0.0)');
+    barGrad.addColorStop(0, 'rgba(255,56,56,0.0)');
+    barGrad.addColorStop(0.5, 'rgba(255,56,56,0.9)');
+    barGrad.addColorStop(1, 'rgba(255,56,56,0.0)');
     ctx.fillStyle = barGrad;
     ctx.fillRect(0, 0, 4 * SCALE, CH);
 
     // Glow border
     ctx.save();
-    ctx.shadowColor = '#B8860B';
+    ctx.shadowColor = '#ff4757';
     ctx.shadowBlur = 20 * SCALE;
-    ctx.strokeStyle = '#B8860B';
+    ctx.strokeStyle = '#ff4757';
     ctx.lineWidth = 3;
     roundRect(ctx, 2, 2, CW - 4, CH - 4, 14 * SCALE);
     ctx.stroke();
@@ -326,11 +402,11 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     const ay = CH / 2;
 
     ctx.save();
-    ctx.shadowColor = '#B8860B';
+    ctx.shadowColor = '#ff4757';
     ctx.shadowBlur = 18 * SCALE;
     ctx.beginPath();
     ctx.arc(ax + ar, ay, ar + 4, 0, Math.PI * 2);
-    ctx.strokeStyle = '#B8860B';
+    ctx.strokeStyle = '#ff4757';
     ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
@@ -349,7 +425,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 
     // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${34 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${34 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.textAlign = 'left';
     const name = member.user.username.length > 18
         ? member.user.username.substring(0, 17) + '\u2026'
@@ -357,8 +433,8 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     ctx.fillText(name, tx, CH * 0.32);
 
     // DEPARTURE LOG label
-    ctx.fillStyle = '#B8860B';
-    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.fillStyle = '#ff4757';
+    ctx.font = `bold ${11 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.letterSpacing = `${2 * SCALE}px`;
     ctx.fillText('AW KANBE [MLI] -- ARCHON CG-223', tx, CH * 0.52);
     ctx.letterSpacing = '0px';
@@ -366,7 +442,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     // Duration + roles
     const dur = duration || '< 1 min';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${10 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.fillText(
         `Stayed: ${dur}  \u00b7  ${roleCount} role${roleCount !== 1 ? 's' : ''} removed`,
         tx, CH * 0.72
@@ -374,7 +450,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 
     // Watermarks
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.font = `${6.5 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${6.5 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.textAlign = 'right';
     const sName = member.guild.name.length > 24
         ? member.guild.name.substring(0, 23) + '\u2026'
@@ -382,6 +458,10 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     ctx.fillText(sName, CW - 14 * SCALE, CH - 12 * SCALE);
     ctx.textAlign = 'left';
     ctx.fillText('BAMAKO_223 [MLI]', 14 * SCALE, CH - 12 * SCALE);
+
+    // Eagle emblem — right side
+    const eagleImg = await loadMascotFile('eagle');
+    drawMascot(ctx, eagleImg, CW, CH, SCALE);
 
     // Server icon — top right
     try {
@@ -400,7 +480,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
             ctx.restore();
             ctx.beginPath();
             ctx.arc(ix + ir, iy + ir, ir + 2, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(184,134,11,0.6)';
+            ctx.strokeStyle = 'rgba(255,71,87,0.6)';
             ctx.lineWidth = 2;
             ctx.stroke();
         }
