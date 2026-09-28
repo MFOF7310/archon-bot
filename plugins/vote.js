@@ -1,284 +1,154 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
-// ================= ENGINE IMPORT =================
+// ================= ENGINE IMPORTS =================
 const voteSync = require('./votesync.js');
-const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
-const fs = require('fs');
-const nodePath = require('path');
+const { buildVoteLBCanvas } = require('./vote-lb-canvas.js');
 const EMOJIS = require('../config/emojis');
 
-// ================= VOTE LEADERBOARD CANVAS =================
-const VOTE_LB_BG = nodePath.join(__dirname, '../assets/backgrounds/lb_bg.jpg');
-const VOTE_FONTS_DIR = nodePath.join(__dirname, '../assets/fonts');
-
-function loadVoteFonts() {
-    try {
-        GlobalFonts.registerFromPath(nodePath.join(VOTE_FONTS_DIR, 'DejaVuSans-Bold.ttf'), 'DejaVuBold');
-        GlobalFonts.registerFromPath(nodePath.join(VOTE_FONTS_DIR, 'DejaVuSansMono.ttf'), 'DejaVuMono');
-        GlobalFonts.registerFromPath(nodePath.join(VOTE_FONTS_DIR, 'DejaVuSansMono-Bold.ttf'), 'DejaVuMonoBold');
-    } catch(e) {}
-}
-loadVoteFonts();
-
-function roundRectVote(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-}
-
-async function buildVoteLBCanvas(entries, guildName, botAvatarURL) {
-    const W = 820;
-    const HEADER_H = 100;
-    const ROW_H = 52;
-    const FOOTER_H = 50;
-    const TOP = Math.min(entries.length, 10);
-    const H = HEADER_H + TOP * ROW_H + FOOTER_H;
-    const SCALE = 2;
-
-    const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
-    const MEDAL_LABELS = ['#1', '#2', '#3'];
-
-    const canvas = createCanvas(W * SCALE, H * SCALE);
-    const ctx = canvas.getContext('2d');
-    ctx.scale(SCALE, SCALE);
-
-    // Background
-    try {
-        const bgImg = await loadImage(VOTE_LB_BG);
-        const scale = Math.max(W / bgImg.width, H / bgImg.height);
-        const bw = bgImg.width * scale, bh = bgImg.height * scale;
-        const bx = (W - bw) / 2, by = (H - bh) / 2;
-        ctx.drawImage(bgImg, bx, by, bw, bh);
-    } catch(e) {
-        ctx.fillStyle = '#0a0a0f';
-        ctx.fillRect(0, 0, W, H);
-    }
-
-    // Dark warm overlay
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 0, W, H);
-
-    // Warm grid lines
-    ctx.strokeStyle = 'rgba(255,215,0,0.04)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < W; x += 45) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-    for (let y = 0; y < H; y += 45) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-
-    // Header gradient — warm gold
-    const headerGrad = ctx.createLinearGradient(0, 0, W, 0);
-    headerGrad.addColorStop(0, 'rgba(255,215,0,0.06)');
-    headerGrad.addColorStop(0.5, 'rgba(255,215,0,0.14)');
-    headerGrad.addColorStop(1, 'rgba(255,215,0,0.06)');
-    ctx.fillStyle = headerGrad;
-    ctx.fillRect(0, 0, W, HEADER_H);
-
-    // Top accent line — gold
-    const accentGrad = ctx.createLinearGradient(0, 0, W, 0);
-    accentGrad.addColorStop(0, 'transparent');
-    accentGrad.addColorStop(0.3, '#FFD700');
-    accentGrad.addColorStop(0.7, '#FFD700');
-    accentGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = accentGrad;
-    ctx.fillRect(0, 0, W, 3);
-
-    // Bot avatar in header
-    try {
-        const avatarImg = await loadImage(botAvatarURL);
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(45, 50, 30, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(avatarImg, 15, 20, 60, 60);
-        ctx.restore();
-        // Gold ring around avatar
-        ctx.beginPath();
-        ctx.arc(45, 50, 31, 0, Math.PI * 2);
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    } catch(e) {
-        ctx.font = 'bold 36px DejaVuBold';
-        ctx.fillStyle = '#FFD700';
-        ctx.textAlign = 'left';
-        ctx.fillText('#', 25, 65);
-    }
-
-    // Title
-    ctx.font = 'bold 26px DejaVuBold';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('Top Voters', 90, 52);
-
-    // Subtitle
-    ctx.font = '13px DejaVuMono';
-    ctx.fillStyle = '#FFD700';
-    ctx.fillText(`${guildName.substring(0, 35)} · Top ${TOP} supporters`, 90, 78);
-
-    // Right side — voter count
-    ctx.textAlign = 'right';
-    ctx.font = '12px DejaVuMono';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillText(`${TOP} voters`, W - 25, 55);
-    ctx.fillText('BAMAKO_223 [ML]', W - 25, 75);
-    ctx.textAlign = 'left';
-
-    // Column headers
-    const colY = HEADER_H - 14;
-    ctx.font = '10px DejaVuMono';
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillText('RANK', 15, colY);
-    ctx.fillText('VOTER', 110, colY);
-    ctx.fillText('VOTES', 490, colY);
-    ctx.fillText('STREAK', 590, colY);
-    ctx.fillText('EARNED', 710, colY);
-
-    // Rows
-    for (let i = 0; i < TOP; i++) {
-        const entry = entries[i];
-        const rowY = HEADER_H + i * ROW_H;
-        const centerY = rowY + ROW_H / 2;
-
-        // Row bg
-        if (i < 3) {
-            roundRectVote(ctx, 8, rowY + 4, W - 16, ROW_H - 8, 8);
-            ctx.fillStyle = `rgba(${i===0?'255,215,0':i===1?'192,192,192':'205,127,50'},0.08)`;
-            ctx.fill();
-            roundRectVote(ctx, 8, rowY + 4, W - 16, ROW_H - 8, 8);
-            ctx.strokeStyle = `rgba(${i===0?'255,215,0':i===1?'192,192,192':'205,127,50'},0.3)`;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        } else if (i % 2 === 0) {
-            ctx.fillStyle = 'rgba(255,255,255,0.02)';
-            ctx.fillRect(8, rowY + 4, W - 16, ROW_H - 8);
-        }
-
-        // Rank medal
-        if (i < 3) {
-            ctx.font = 'bold 16px DejaVuBold';
-            ctx.fillStyle = MEDAL_COLORS[i];
-            ctx.textAlign = 'center';
-            ctx.fillText(MEDAL_LABELS[i], 42, centerY + 6);
-        } else {
-            ctx.font = '12px DejaVuMono';
-            ctx.fillStyle = 'rgba(255,255,255,0.35)';
-            ctx.textAlign = 'center';
-            ctx.fillText(`#${i+1}`, 42, centerY + 5);
-        }
-        ctx.textAlign = 'left';
-
-        // Username
-        const nameColor = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#ffffff';
-        ctx.font = i < 3 ? 'bold 14px DejaVuBold' : '13px DejaVuMono';
-        ctx.fillStyle = nameColor;
-        const displayName = (entry.username || 'Unknown').substring(0, 20);
-        ctx.fillText(displayName, 110, centerY + 5);
-
-        // Votes
-        ctx.font = 'bold 13px DejaVuMonoBold';
-        ctx.fillStyle = '#FFD700';
-        ctx.fillText(`${entry.total_votes}`, 490, centerY + 5);
-
-        // Streak
-        ctx.font = '12px DejaVuMono';
-        ctx.fillStyle = entry.current_streak > 0 ? '#ff6b35' : 'rgba(255,255,255,0.3)';
-        ctx.fillText(`${entry.current_streak}d`, 590, centerY + 5);
-
-        // Earned credits
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fillText(`${(entry.total_rewards || 0).toLocaleString()}`, 710, centerY + 5);
-    }
-
-    // Footer
-    const footerY = HEADER_H + TOP * ROW_H;
-    ctx.fillStyle = 'rgba(255,215,0,0.06)';
-    ctx.fillRect(0, footerY, W, FOOTER_H);
-
-    const footerAccent = ctx.createLinearGradient(0, 0, W, 0);
-    footerAccent.addColorStop(0, 'transparent');
-    footerAccent.addColorStop(0.3, 'rgba(255,215,0,0.4)');
-    footerAccent.addColorStop(0.7, 'rgba(255,215,0,0.4)');
-    footerAccent.addColorStop(1, 'transparent');
-    ctx.fillStyle = footerAccent;
-    ctx.fillRect(0, footerY, W, 1);
-
-    ctx.font = '11px DejaVuMono';
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.textAlign = 'center';
-    ctx.fillText(`ARCHON CG-223 • Vote Leaderboard • ${new Date().toLocaleDateString()}`, W/2, footerY + 30);
-
-    return canvas.toBuffer('image/png');
-}
-
-
-// ================= BILINGUAL =================
+// ================= QUADRILINGUAL (en/fr/zh/ar) =================
 const T = {
-    en: {
-        title: '\u2b50 VOTE PORTAL', voteBtn: 'Vote on Top.gg', claimBtn: 'Claim Reward',
-        checkBtn: 'My Stats', lbBtn: 'Leaderboard', footer: 'Architect CG-223',
-        noVote: '\u274c You haven\'t voted yet!', voteFirst: 'Vote on [Top.gg]({link}), then click **Claim Reward**.',
-        claimed: '\u2705 REWARD CLAIMED!', gotReward: '**+{reward}** credits | Streak: **{streak}** \ud83d\udd25',
-        milestone7: '\ud83c\udfc6 7-Day Milestone! +2,000 bonus!', milestone30: '\ud83d\udc51 30-Day Legend! +5,000 bonus!',
-        milestone100: '\ud83c\udf1f 100-Day Mythic! +10,000 bonus!', ready: '\u2705 Ready to vote!',
-        nextIn: 'Next vote: {time}', streak: '\ud83d\udd25 Streak: **{days}** days', best: '\ud83c\udfc5 Best: **{days}**',
-        total: '\ud83d\udcca Total: **{n}** votes', rewards: '\ud83d\udcb0 Earned: **{n}** credits',
-        lbTitle: '🏆 Top Voters', rankEmoji: ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc'],
-        checkError: '\u274c Could not check vote status. Try again later.',
-        adminTest: '\u2705 Admin test vote processed for {user}.',
-        statusTitle: '📣 Vote System', statusOnline: '\u2705 Online', statusOffline: '\u274c Offline',
-        statusMode: '**Mode:** {mode}', statusWebhook: '**Webhook:** {status}', statusApi: '**Top.gg API:** {status}',
-        modeWebhook: 'Webhook (instant)', modePoll: 'API Check (on claim)', modeFallback: 'Manual only',
-        alreadyClaimed: '\u23f0 Already claimed! Next vote: {time}',
-        progress: '\ud83d\udcc8 Progress to {milestone}-Day', progressBar: '**{bar}** {percent}% ({current}/{target})',
-        nextReward: '\ud83d\udca1 Next reward: **{n}** credits at {milestone} days',
-        voteLink: 'https://top.gg/bot/{botId}/vote',
-        dmSuccess: '\ud83d\udce9 Check your DMs for a detailed reward breakdown!',
-        cooldownTitle: '⏰ Not Yet!',
-        cooldownExact: 'Exact Remaining Time',
-        cooldownLive: '*This countdown updates automatically in your Discord client.*',
-        firstVoteBtn: 'Cast First Vote',
-        checkCooldownBtn: 'Check Cooldown'
-    },
-    fr: {
-        title: '\u2b50 PORTAIL DE VOTE', voteBtn: 'Voter sur Top.gg', claimBtn: 'Réclamer',
-        checkBtn: 'Mes Stats', lbBtn: 'Classement', footer: 'Architect CG-223',
-        noVote: '\u274c Vous n\'avez pas encore vot\u00e9 !', voteFirst: 'Votez sur [Top.gg]({link}), puis cliquez **R\u00e9clamer**.',
-        claimed: '\u2705 R\u00c9COMPENSE R\u00c9CLAM\u00c9E !', gotReward: '**+{reward}** cr\u00e9dits | S\u00e9rie: **{streak}** \ud83d\udd25',
-        milestone7: '\ud83c\udfc6 Objectif 7 jours ! +2 000 bonus !', milestone30: '\ud83d\udc51 L\u00e9gende 30 jours ! +5 000 bonus !',
-        milestone100: '\ud83c\udf1f Mythique 100 jours ! +10 000 bonus !', ready: '\u2705 Pr\u00eat \u00e0 voter !',
-        nextIn: 'Prochain vote: {time}', streak: '\ud83d\udd25 S\u00e9rie: **{days}** jours', best: '\ud83c\udfc5 Meilleure: **{days}**',
-        total: '\ud83d\udcca Total: **{n}** votes', rewards: '\ud83d\udcb0 Gagn\u00e9s: **{n}** cr\u00e9dits',
-        lbTitle: '\ud83c\udfc6 L\u00c9GENDES DU VOTE', rankEmoji: ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc', '\ud83d\udccc'],
-        checkError: '\u274c Impossible de v\u00e9rifier le vote. R\u00e9essayez.',
-        adminTest: '\u2705 Vote test admin pour {user}.',
-        statusTitle: '📣 Système de Vote', statusOnline: '\u2705 En ligne', statusOffline: '\u274c Hors ligne',
-        statusMode: '**Mode:** {mode}', statusWebhook: '**Webhook:** {status}', statusApi: '**API Top.gg:** {status}',
-        modeWebhook: 'Webhook (instantan\u00e9)', modePoll: 'V\u00e9rification API (au claim)', modeFallback: 'Manuel uniquement',
-        alreadyClaimed: '\u23f0 D\u00e9j\u00e0 r\u00e9clam\u00e9 ! Prochain vote: {time}',
-        progress: '\ud83d\udcc8 Progression vers {milestone} jours', progressBar: '**{bar}** {percent}% ({current}/{target})',
-        nextReward: '\ud83d\udca1 Prochaine r\u00e9compense: **{n}** cr\u00e9dits \u00e0 {milestone} jours',
-        voteLink: 'https://top.gg/bot/{botId}/vote',
-        dmSuccess: '\ud83d\udce9 V\u00e9rifiez vos MPs pour un d\u00e9tail des r\u00e9compenses !',
-        cooldownTitle: '⏰ RAPPORT DE COOLDOWN',
-        cooldownExact: 'Temps restant exact',
-        cooldownLive: '*Ce compte à rebours se met à jour automatiquement dans Discord.*',
-        firstVoteBtn: '🌟 PREMIER VOTE',
-        checkCooldownBtn: '⏰ VÉRIFIER COOLDOWN'
-    }
+ en: {
+  title:'⭐ VOTE PORTAL', voteBtn:'Vote on Top.gg', claimBtn:'Claim Reward', checkBtn:'My Stats', lbBtn:'Leaderboard', footer:'Architect CG-223',
+  noVote:'❌ You haven\'t voted yet!', voteFirst:'Vote on [Top.gg]({link}), then click **Claim Reward**.',
+  claimed:'✅ REWARD CLAIMED!', gotReward:'**+{reward}** credits | Streak: **{streak}** 🔥',
+  milestone7:'🏆 7-Day Milestone! +2,000 bonus!', milestone30:'👑 30-Day Legend! +5,000 bonus!', milestone100:'🌟 100-Day Mythic! +10,000 bonus!',
+  nextIn:'Next vote: {time}', streak:'🔥 Streak: **{days}** days', best:'🏆 Best: **{days}**', total:'🗳️ Total: **{n}** votes', rewards:'💰 Earned: **{n}** credits',
+  lbTitle:'🏆 Top Voters', rankEmoji:['🥇','🥈','🥉','📌','📌','📌','📌','📌','📌','📌'],
+  checkError:'❌ Could not check vote status. Try again later.',
+  statusTitle:'📣 Vote System', statusMode:'**Mode:** {mode}', statusWebhook:'**Webhook:**', statusApi:'**Top.gg API:**',
+  modeWebhook:'Webhook (instant)', modePoll:'API Check (on claim)', modeFallback:'Manual only',
+  alreadyClaimed:'⏰ Already claimed! Next vote: {time}',
+  progress:'📈 Progress to {milestone}-Day', progressBar:'**{bar}** {percent}% ({current}/{target})',
+  voteLink:'https://top.gg/bot/{botId}/vote',
+  dmSuccess:'📩 Check your DMs for a detailed reward breakdown!',
+  cooldownTitle:'⏰ Not Yet!', cooldownExact:'Exact Remaining Time', cooldownLive:'*This countdown updates automatically in your Discord client.*',
+  firstVoteBtn:'Cast First Vote', checkCooldownBtn:'Check Cooldown',
+  greetingMorning:'🌅 Good Morning, **{user}**', greetingAfternoon:'☀️ Good Afternoon, **{user}**', greetingEvening:'🌆 Good Evening, **{user}**', greetingNight:'🌙 Good Night, **{user}**',
+  badgeFirst:'🔴 First vote pending', badgeReady:'🟢 Ready to vote!', badgeWait:'🟡 Come back soon',
+  subtitleWelcome:'🌟 Welcome!', subtitleReady:'✅ You\'re all set!', subtitleWait:'⏰ Not yet, hang tight!',
+  bodyFirst:'Your support powers the **ARCHON CG-223** ecosystem.\nCast your first vote to activate your operative record and begin earning credits.',
+  bodyReady:'{streakMsg}\nMaintain your streak to unlock milestone bonuses. Every vote strengthens the network.',
+  bodyWait:'You have already supported us today. Your operative record is updated.\nNext authorization window opens below.',
+  streakActive:'Current streak: **{days} days** 🔥', noStreak:'No active streak',
+  recordTitle:'Your Vote Record', progressTitle:'Milestone Progress', nextVoteOpens:'Next vote opens',
+  keepGoing7:'Keep your streak alive! Reach **7 days** for a **+2,000** bonus.',
+  keepGoing30:'7-day milestone achieved! Push to **30 days** for **+5,000**.',
+  keepGoing100:'Legendary status! **100-day Mythic** awaits with **+10,000**.',
+  notYours:'❌ Not yours.', serverOnly:'Server only.', adminOnly:'❌ Admin only.',
+  processFail:'❌ Vote processing failed. Try again later.', lbFailMsg:'Could not generate leaderboard image.',
+  cooldownWord:'⏰ Cooldown', rankLabel:'📊 Rank', unranked:'Unranked', votesUnit:'votes',
+  cooldownGreeting:'**Operative {user},**', cooldownBody:'Your voting authorization is on cooldown.',
+  cooldownVoteAgainAt:'You can vote again', cooldownFullAuth:'**Full Authorization:**'
+ },
+ fr: {
+  title:'⭐ PORTAIL DE VOTE', voteBtn:'Voter sur Top.gg', claimBtn:'Réclamer', checkBtn:'Mes Stats', lbBtn:'Classement', footer:'Architect CG-223',
+  noVote:'❌ Vous n\'avez pas encore voté !', voteFirst:'Votez sur [Top.gg]({link}), puis cliquez **Réclamer**.',
+  claimed:'✅ RÉCOMPENSE RÉCLAMÉE !', gotReward:'**+{reward}** crédits | Série : **{streak}** 🔥',
+  milestone7:'🏆 Objectif 7 jours ! +2 000 bonus !', milestone30:'👑 Légende 30 jours ! +5 000 bonus !', milestone100:'🌟 Mythique 100 jours ! +10 000 bonus !',
+  nextIn:'Prochain vote : {time}', streak:'🔥 Série : **{days}** jours', best:'🏆 Meilleure : **{days}**', total:'🗳️ Total : **{n}** votes', rewards:'💰 Gagnés : **{n}** crédits',
+  lbTitle:'🏆 LÉGENDES DU VOTE', rankEmoji:['🥇','🥈','🥉','📌','📌','📌','📌','📌','📌','📌'],
+  checkError:'❌ Impossible de vérifier le vote. Réessayez.',
+  statusTitle:'📣 Système de Vote', statusMode:'**Mode :** {mode}', statusWebhook:'**Webhook :**', statusApi:'**API Top.gg :**',
+  modeWebhook:'Webhook (instantané)', modePoll:'Vérification API (au claim)', modeFallback:'Manuel uniquement',
+  alreadyClaimed:'⏰ Déjà réclamé ! Prochain vote : {time}',
+  progress:'📈 Progression vers {milestone} jours', progressBar:'**{bar}** {percent}% ({current}/{target})',
+  voteLink:'https://top.gg/bot/{botId}/vote',
+  dmSuccess:'📩 Vérifiez vos MPs pour un détail des récompenses !',
+  cooldownTitle:'⏰ RAPPORT DE COOLDOWN', cooldownExact:'Temps restant exact', cooldownLive:'*Ce compte à rebours se met à jour automatiquement dans Discord.*',
+  firstVoteBtn:'🌟 PREMIER VOTE', checkCooldownBtn:'⏰ VÉRIFIER COOLDOWN',
+  greetingMorning:'🌅 Bonjour, **{user}**', greetingAfternoon:'☀️ Bon après-midi, **{user}**', greetingEvening:'🌆 Bonsoir, **{user}**', greetingNight:'🌙 Bonne nuit, **{user}**',
+  badgeFirst:'🔴 Premier vote en attente', badgeReady:'🟢 Prêt à voter !', badgeWait:'🟡 Reviens bientôt',
+  subtitleWelcome:'🌟 Bienvenue !', subtitleReady:'✅ Tu es prêt !', subtitleWait:'⏰ Pas encore, patience !',
+  bodyFirst:'Votre soutien alimente l\'écosystème **ARCHON CG-223**.\nLancez votre premier vote pour activer votre dossier opérationnel et commencer à gagner des crédits.',
+  bodyReady:'{streakMsg}\nMaintenez votre série pour débloquer des bonus de jalons. Chaque vote renforce le réseau.',
+  bodyWait:'Vous avez déjà voté aujourd\'hui. Votre dossier est à jour.\nLa prochaine fenêtre d\'autorisation s\'ouvre ci-dessous.',
+  streakActive:'Série actuelle : **{days} jours** 🔥', noStreak:'Aucune série active',
+  recordTitle:'Ton Historique', progressTitle:'Progression', nextVoteOpens:'Prochain vote',
+  keepGoing7:'Gardez votre série ! Atteignez **7 jours** pour **+2 000**.',
+  keepGoing30:'Jalon 7 jours atteint ! Visez **30 jours** pour **+5 000**.',
+  keepGoing100:'Statut légendaire ! Le **Mythique 100 jours** attend avec **+10 000**.',
+  notYours:'❌ Pas à toi.', serverOnly:'Réservé aux serveurs.', adminOnly:'❌ Réservé aux admins.',
+  processFail:'❌ Échec du traitement. Réessayez plus tard.', lbFailMsg:'Impossible de générer le classement.',
+  cooldownWord:'⏰ Cooldown', rankLabel:'📊 Rang', unranked:'Non classé', votesUnit:'votes',
+  cooldownGreeting:'**Opératif {user},**', cooldownBody:'Votre autorisation de vote est en cooldown.',
+  cooldownVoteAgainAt:'Vous pourrez voter de nouveau', cooldownFullAuth:'**Autorisation complète :**'
+ },
+ zh: {
+  title:'⭐ 投票传送门', voteBtn:'去 Top.gg 投票', claimBtn:'领取奖励', checkBtn:'我的统计', lbBtn:'排行榜', footer:'Architect CG-223',
+  noVote:'❌ 你还没有投票！', voteFirst:'先到 [Top.gg]({link}) 投票，再点**领取奖励**。',
+  claimed:'✅ 奖励已领取！', gotReward:'**+{reward}** 积分 | 连投：**{streak}** 🔥',
+  milestone7:'🏆 7 天里程碑！+2,000 奖励！', milestone30:'👑 30 天传奇！+5,000 奖励！', milestone100:'🌟 100 天神话！+10,000 奖励！',
+  nextIn:'下次可投：{time}', streak:'🔥 连投：**{days}** 天', best:'🏆 最高：**{days}**', total:'🗳️ 总计：**{n}** 次投票', rewards:'💰 已获得：**{n}** 积分',
+  lbTitle:'🏆 投票传奇榜', rankEmoji:['🥇','🥈','🥉','📌','📌','📌','📌','📌','📌','📌'],
+  checkError:'❌ 无法检查投票状态，请稍后再试。',
+  statusTitle:'📣 投票系统', statusMode:'**模式：** {mode}', statusWebhook:'**Webhook：**', statusApi:'**Top.gg API：**',
+  modeWebhook:'Webhook（即时）', modePoll:'API 检查（领取时）', modeFallback:'仅手动',
+  alreadyClaimed:'⏰ 已领取！下次可投：{time}',
+  progress:'📈 距离 {milestone} 天里程碑', progressBar:'**{bar}** {percent}%（{current}/{target}）',
+  voteLink:'https://top.gg/bot/{botId}/vote',
+  dmSuccess:'📩 私聊里有详细的奖励明细，快去查看！',
+  cooldownTitle:'⏰ 还不能投！', cooldownExact:'精确剩余时间', cooldownLive:'*倒计时会在你的 Discord 客户端自动更新。*',
+  firstVoteBtn:'投出第一票', checkCooldownBtn:'查看冷却',
+  greetingMorning:'🌅 早上好，**{user}**', greetingAfternoon:'☀️ 下午好，**{user}**', greetingEvening:'🌆 晚上好，**{user}**', greetingNight:'🌙 夜深了，**{user}**',
+  badgeFirst:'🔴 等待第一票', badgeReady:'🟢 可以投票了！', badgeWait:'🟡 稍后再来',
+  subtitleWelcome:'🌟 欢迎！', subtitleReady:'✅ 一切就绪！', subtitleWait:'⏰ 还没到时候，别急！',
+  bodyFirst:'你的支持是 **ARCHON CG-223** 生态的动力。\n投出第一票即可激活你的特工档案，开始赚积分！',
+  bodyReady:'{streakMsg}\n保持连投解锁里程碑奖励，每一票都在壮大网络。',
+  bodyWait:'你今天已经支持过我们了，档案已更新。\n下一个投票窗口见下方。',
+  streakActive:'当前连投：**{days} 天** 🔥', noStreak:'暂无连投记录',
+  recordTitle:'你的投票档案', progressTitle:'里程碑进度', nextVoteOpens:'下次可投',
+  keepGoing7:'保持连投！到 **7 天** 拿 **+2,000** 奖励。',
+  keepGoing30:'7 天里程碑达成！冲向 **30 天** 拿 **+5,000**。',
+  keepGoing100:'已是传奇！**100 天神话** 等你，奖励 **+10,000**。',
+  notYours:'❌ 这不是你的菜单。', serverOnly:'仅限服务器使用。', adminOnly:'❌ 仅限管理员。',
+  processFail:'❌ 处理失败，请稍后再试。', lbFailMsg:'排行榜图片生成失败。',
+  cooldownWord:'⏰ 冷却中', rankLabel:'📊 排名', unranked:'未上榜', votesUnit:'次投票',
+  cooldownGreeting:'**特工 {user}，**', cooldownBody:'你的投票授权正在冷却中。',
+  cooldownVoteAgainAt:'你可以再次投票', cooldownFullAuth:'**完整授权时间：**'
+ },
+ ar: {
+  title:'⭐ بوابة التصويت', voteBtn:'صوّت بـ Top.gg', claimBtn:'استلم المكافأة', checkBtn:'إحصائياتي', lbBtn:'التصنيف', footer:'Architect CG-223',
+  noVote:'❌ ما صوّيت بعد!', voteFirst:'صوّت أول بـ [Top.gg]({link})، ثم اضغط **استلم المكافأة**.',
+  claimed:'✅ تم استلام المكافأة!', gotReward:'**+{reward}** رصيد | السلسلة: **{streak}** 🔥',
+  milestone7:'🏆 محطة 7 أيام! +2,000 مكافأة!', milestone30:'👑 أسطورة 30 يومًا! +5,000 مكافأة!', milestone100:'🌟 أسطوري 100 يومًا! +10,000 مكافأة!',
+  nextIn:'التصويت التالي: {time}', streak:'🔥 السلسلة: **{days}** يوم', best:'🏆 الأفضل: **{days}**', total:'🗳️ الإجمالي: **{n}** تصويت', rewards:'💰 المكتسب: **{n}** رصيد',
+  lbTitle:'🏆 أساطير التصويت', rankEmoji:['🥇','🥈','🥉','📌','📌','📌','📌','📌','📌','📌'],
+  checkError:'❌ ما قدرت أتحقق. حاول بعد لحظات.',
+  statusTitle:'📣 نظام التصويت', statusMode:'**الوضع:** {mode}', statusWebhook:'**Webhook:**', statusApi:'**Top.gg API:**',
+  modeWebhook:'Webhook (فوري)', modePoll:'فحص API (عند الاستلام)', modeFallback:'يدوي فقط',
+  alreadyClaimed:'⏰ اناستلمت! التصويت التالي: {time}',
+  progress:'📈 التقدم نحو {milestone} يوم', progressBar:'**{bar}** {percent}% ({current}/{target})',
+  voteLink:'https://top.gg/bot/{botId}/vote',
+  dmSuccess:'📩 شيك خاصك، فيه تفاصيل المكافأة كاملة!',
+  cooldownTitle:'⏰ مو وقتها!', cooldownExact:'الوقت المتبقي بالضبط', cooldownLive:'*العداد يتحدث تلقائيًا بعميل ديسكورد.*',
+  firstVoteBtn:'صوّت أول مرة', checkCooldownBtn:'شيك الكول داون',
+  greetingMorning:'🌅 صباح الخير، **{user}**', greetingAfternoon:'☀️ مساء الخير، **{user}**', greetingEvening:'🌆 مساء النور، **{user}**', greetingNight:'🌙 ليلة سعيدة، **{user}**',
+  badgeFirst:'🔴 بانتظار أول تصويت', badgeReady:'🟢 جاهز للتصويت!', badgeWait:'🟡 عُد قريبًا',
+  subtitleWelcome:'🌟 أهلًا بك!', subtitleReady:'✅ كل شي جاهز!', subtitleWait:'⏰ ليس بعد، شوي صبر!',
+  bodyFirst:'دعمك هو قوة نظام **أركون CG-223**.\nصوّت أول مرة لتفعيل ملفك وابدأ تجمع الرصيد!',
+  bodyReady:'{streakMsg}\nحافظ على سلسلتك لفتح مكافآت المحطات. كل تصويت يقوي الشبكة.',
+  bodyWait:'صوّتت اليوم بالفعل وملفك محدّث.\nنافذة التصويت الجاية تنفتح تحت.',
+  streakActive:'السلسلة الحالية: **{days} يوم** 🔥', noStreak:'لا سلسلة نشطة',
+  recordTitle:'سجل تصويتك', progressTitle:'تقدم المحطات', nextVoteOpens:'التصويت التالي',
+  keepGoing7:'كمّل السلسلة! أوصل **7 أيام** وخذ **+2,000**.',
+  keepGoing30:'محطة 7 أيام تمت! اقفز لـ **30 يومًا** وخذ **+5,000**.',
+  keepGoing100:'مستوى أسطوري! **الأسطوري 100 يومًا** بانتظارك مع **+10,000**.',
+  notYours:'❌ هالقائمة مو لك.', serverOnly:'للسيرفرات فقط.', adminOnly:'❌ للمشرفين فقط.',
+  processFail:'❌ فشل المعالجة. حاول بعد لحظات.', lbFailMsg:'ما قدرنا نسوي صورة التصنيف.',
+  cooldownWord:'⏰ كول داون', rankLabel:'📊 الترتيب', unranked:'غير مصنف', votesUnit:'تصويت',
+  cooldownGreeting:'**وكيل {user}،**', cooldownBody:'تصريح تصويتك في فترة انتظار.',
+  cooldownVoteAgainAt:'تقدر تصوّت مجددًا', cooldownFullAuth:'**وقت التصريح الكامل:**'
+ }
 };
 
-// ================= PROGRESS BAR =================
+// ================= HELPERS =================
+const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
+const pl = (o) => OKL.includes(o?.language) ? o.language : 'en';
+
 function progressBar(current, target) {
     const pct = Math.min(100, Math.round((current / target) * 100));
     const filled = Math.round((pct / 100) * 10);
-    return { bar: '\u2588'.repeat(filled) + '\u2591'.repeat(10 - filled), percent: pct };
+    return { bar: '█'.repeat(filled) + '░'.repeat(10 - filled), percent: pct };
 }
 
 // ================= REALTIME VOTE STATUS =================
@@ -299,87 +169,47 @@ async function getRealtimeStatus(client, uid, gid, db) {
             apiVoted = await voteSync.checkTopGGVote(uid, client);
             apiVerified = true;
         }
-    } catch (e) {
-        // Fallback to DB logic
-    }
+    } catch (e) {}
 
     const onCooldown = apiVerified ? apiVoted : !canVote;
     const readyToVote = apiVerified ? !apiVoted : canVote;
 
-    return {
-        stats,
-        canVote: readyToVote,
-        onCooldown,
-        isFirstTime,
-        nextVote,
-        timeSince,
-        lastVote,
-        apiVerified,
-        apiVoted
-    };
+    return { stats, canVote: readyToVote, onCooldown, isFirstTime, nextVote, timeSince, lastVote, apiVerified, apiVoted };
 }
 
-// ================= GREETING ENGINE =================
-function getGreeting(user) {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return `🌅 Good Morning, **${user.username}**`;
-    if (hour >= 12 && hour < 17) return `☀️ Good Afternoon, **${user.username}**`;
-    if (hour >= 17 && hour < 21) return `🌆 Good Evening, **${user.username}**`;
-    return `🌙 Good Night, **${user.username}**`;
-}
-
-function getGreetingFR(user) {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return `🌅 Bonjour, **${user.username}**`;
-    if (hour >= 12 && hour < 17) return `☀️ Bon après-midi, **${user.username}**`;
-    if (hour >= 17 && hour < 21) return `🌆 Bonsoir, **${user.username}**`;
-    return `🌙 Bonne nuit, **${user.username}**`;
-}
-
-// ================= BUILD PORTAL EMBED (POLICE/DOSSIER STYLE) =================
+// ================= PORTAL EMBED =================
 function buildPortalEmbed(client, user, status, t, lang, guild) {
-    const link = t.voteLink.replace('{botId}', client.user.id);
-    const greeting = lang === 'fr' ? getGreetingFR(user) : getGreeting(user);
+    const h = new Date().getHours();
+    const gKey = h >= 5 && h < 12 ? 'greetingMorning' : h >= 12 && h < 17 ? 'greetingAfternoon' : h >= 17 && h < 21 ? 'greetingEvening' : 'greetingNight';
+    const greeting = t[gKey].replace('{user}', user.username);
 
     let color, badge, subtitle, body;
     if (status.isFirstTime) {
         color = '#e74c3c';
-        badge = '🔴 First vote pending';
-        subtitle = lang === 'fr' ? '🌟 Bienvenue !' : '🌟 Welcome!';
-        body = lang === 'fr'
-            ? `Votre soutien alimente l'écosystème **ARCHON CG-223**.\nLancez votre premier vote pour activer votre dossier opérationnel et commencer à gagner des crédits.`
-            : `Your support powers the **ARCHON CG-223** ecosystem.\nCast your first vote to activate your operative record and begin earning credits.`;
+        badge = t.badgeFirst;
+        subtitle = t.subtitleWelcome;
+        body = t.bodyFirst;
     } else if (status.canVote) {
         color = '#2ecc71';
-        badge = lang === 'fr' ? '🟢 Prêt à voter !' : '🟢 Ready to vote!';
-        const streakMsg = status.stats.current_streak > 0
-            ? (lang === 'fr' ? `Série actuelle: **${status.stats.current_streak} jours** 🔥` : `Current streak: **${status.stats.current_streak} days** 🔥`)
-            : (lang === 'fr' ? 'Aucune série active' : 'No active streak');
-        subtitle = lang === 'fr' ? '✅ Tu es prêt !' : '✅ You\'re all set!';
-        body = lang === 'fr'
-            ? `${streakMsg}\nMaintenez votre série pour débloquer des bonus de jalons. Chaque vote renforce le réseau.`
-            : `${streakMsg}\nMaintain your streak to unlock milestone bonuses. Every vote strengthens the network.`;
+        badge = t.badgeReady;
+        const streakMsg = status.stats.current_streak > 0 ? t.streakActive.replace('{days}', status.stats.current_streak) : t.noStreak;
+        subtitle = t.subtitleReady;
+        body = t.bodyReady.replace('{streakMsg}', streakMsg);
     } else {
         color = '#f39c12';
-        badge = lang === 'fr' ? '🟡 Reviens bientôt' : '🟡 Come back soon';
-        subtitle = lang === 'fr' ? '⏰ Pas encore, patience !' : '⏰ Not yet, hang tight!';
-        body = lang === 'fr'
-            ? `Vous avez déjà voté aujourd'hui. Votre dossier est à jour.\nLa prochaine fenêtre d'autorisation s'ouvre ci-dessous.`
-            : `You have already supported us today. Your operative record is updated.\nNext authorization window opens below.`;
+        badge = t.badgeWait;
+        subtitle = t.subtitleWait;
+        body = t.bodyWait;
     }
 
-    const { bar, percent } = progressBar(status.stats.current_streak, status.stats.current_streak < 7 ? 7 : status.stats.current_streak < 30 ? 30 : 100);
+    const target = status.stats.current_streak < 7 ? 7 : status.stats.current_streak < 30 ? 30 : 100;
+    const { bar, percent } = progressBar(status.stats.current_streak, target);
 
     const embed = new EmbedBuilder()
         .setColor(color)
         .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
         .setTitle(greeting)
-        .setDescription(
-            `**${subtitle}**\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `${body}\n\n` +
-            `**${badge}**`
-        );
+        .setDescription(`**${subtitle}**\n━━━━━━━━━━━━━━━━━━━━━━\n${body}\n\n**${badge}**`);
 
     const recordValue =
         `🔥 ${t.streak.replace('{days}', status.stats.current_streak)}\n` +
@@ -388,86 +218,38 @@ function buildPortalEmbed(client, user, status, t, lang, guild) {
         `💰 ${t.rewards.replace('{n}', status.stats.total_rewards.toLocaleString())}`;
 
     embed.addFields(
-        { name: lang === 'fr' ? `${EMOJIS.vote} Ton Historique` : `${EMOJIS.vote} Your Vote Record`, value: recordValue, inline: false },
-        { name: lang === 'fr' ? `${EMOJIS.milestones} Progression` : `${EMOJIS.milestones} Milestone Progress`, value:
-            t.progress.replace('{milestone}', status.stats.current_streak < 7 ? '7' : status.stats.current_streak < 30 ? '30' : '100') + '\n' +
-            t.progressBar.replace('{bar}', bar).replace('{percent}', percent).replace('{current}', status.stats.current_streak).replace('{target}', status.stats.current_streak < 7 ? '7' : status.stats.current_streak < 30 ? '30' : '100'),
+        { name: `${EMOJIS.vote} ${t.recordTitle}`, value: recordValue, inline: false },
+        { name: `${EMOJIS.milestones} ${t.progressTitle}`, value:
+            t.progress.replace('{milestone}', String(target)) + '\n' +
+            t.progressBar.replace('{bar}', bar).replace('{percent}', percent).replace('{current}', status.stats.current_streak).replace('{target}', target),
             inline: false }
     );
 
     if (status.onCooldown && !status.isFirstTime) {
-        embed.addFields({
-            name: lang === 'fr' ? '⏰ Prochain vote' : '⏰ Next vote opens',
-            value: `<t:${status.nextVote}:R>\n*(<<t:${status.nextVote}:f>)*`,
-            inline: false
-        });
+        embed.addFields({ name: `⏰ ${t.nextVoteOpens}`, value: `<t:${status.nextVote}:R>\n*(<t:${status.nextVote}:f>)*`, inline: false });
     }
 
-    // Dynamic briefing based on streak
-    if (status.stats.current_streak > 0 && status.stats.current_streak < 7) {
-        embed.addFields({
-            name: lang === 'fr' ? `${EMOJIS.streak} Continue !` : `${EMOJIS.streak} Keep it going!`,
-            value: lang === 'fr'
-                ? `Maintenez votre série! Atteignez **7 jours** pour un bonus de **+2 000**.`
-                : `Keep your streak alive! Reach **7 days** for a **+2,000** bonus.`,
-            inline: false
-        });
-    } else if (status.stats.current_streak >= 7 && status.stats.current_streak < 30) {
-        embed.addFields({
-            name: lang === 'fr' ? `${EMOJIS.streak} Continue !` : `${EMOJIS.streak} Keep it going!`,
-            value: lang === 'fr'
-                ? `Jalon de 7 jours atteint! Poussez vers **30 jours** pour **+5 000**.`
-                : `7-day milestone achieved! Push to **30 days** for **+5,000**.`,
-            inline: false
-        });
-    } else if (status.stats.current_streak >= 30) {
-        embed.addFields({
-            name: lang === 'fr' ? `${EMOJIS.streak} Continue !` : `${EMOJIS.streak} Keep it going!`,
-            value: lang === 'fr'
-                ? `Statut légendaire! Le **Mythique 100 jours** attend avec **+10 000**.`
-                : `Legendary status! **100-day Mythic** awaits with **+10,000**.`,
-            inline: false
-        });
-    }
+    const cs = status.stats.current_streak;
+    if (cs > 0 && cs < 7) embed.addFields({ name: `${EMOJIS.streak} ${t.streak.split('：')[0].replace('🔥 ', '')} !`, value: t.keepGoing7, inline: false });
+    else if (cs >= 7 && cs < 30) embed.addFields({ name: `${EMOJIS.streak} ✨`, value: t.keepGoing30, inline: false });
+    else if (cs >= 30) embed.addFields({ name: `${EMOJIS.streak} ✨`, value: t.keepGoing100, inline: false });
 
-    embed.setFooter({
-        text: `${guild?.name || 'ARCHON CG-223'} • ${t.footer}`,
-        iconURL: guild?.iconURL() || client.user.displayAvatarURL()
-    }).setTimestamp();
-
+    embed.setFooter({ text: `${guild?.name || 'ARCHON CG-223'} • ${t.footer}`, iconURL: guild?.iconURL() || client.user.displayAvatarURL() }).setTimestamp();
     return embed;
 }
 
-// ================= BUILD DYNAMIC BUTTON ROW =================
+// ================= PORTAL BUTTON ROW =================
 function buildPortalRow(client, status, t, isSlash = false) {
     const link = t.voteLink.replace('{botId}', client.user.id);
     const row = new ActionRowBuilder();
     const suffix = isSlash ? '_slash' : '';
 
     if (status.canVote) {
-        row.addComponents(
-            new ButtonBuilder()
-                .setLabel(t.voteBtn)
-                .setStyle(ButtonStyle.Link)
-                .setURL(link)
-                .setEmoji('⭐')
-        );
+        row.addComponents(new ButtonBuilder().setLabel(t.voteBtn).setStyle(ButtonStyle.Link).setURL(link).setEmoji(EMOJIS.vote || '⭐'));
     } else if (status.isFirstTime) {
-        row.addComponents(
-            new ButtonBuilder()
-                .setLabel(t.firstVoteBtn)
-                .setStyle(ButtonStyle.Link)
-                .setURL(link)
-                .setEmoji('🌟')
-        );
+        row.addComponents(new ButtonBuilder().setLabel(t.firstVoteBtn).setStyle(ButtonStyle.Link).setURL(link).setEmoji('🌟'));
     } else {
-        row.addComponents(
-            new ButtonBuilder()
-                .setCustomId(`vote_check_status${suffix}`)
-                .setLabel(t.checkCooldownBtn)
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('⏰')
-        );
+        row.addComponents(new ButtonBuilder().setCustomId(`vote_check_status${suffix}`).setLabel(t.checkCooldownBtn).setStyle(ButtonStyle.Secondary).setEmoji('⏰'));
     }
 
     row.addComponents(
@@ -475,7 +257,6 @@ function buildPortalRow(client, status, t, isSlash = false) {
         new ButtonBuilder().setCustomId(`vote_stats${suffix}`).setLabel(t.checkBtn).setStyle(ButtonStyle.Secondary).setEmoji('📊'),
         new ButtonBuilder().setCustomId(`vote_lb${suffix}`).setLabel(t.lbBtn).setStyle(ButtonStyle.Secondary).setEmoji('🏆')
     );
-
     return row;
 }
 
@@ -484,10 +265,10 @@ function buildClaimEmbed(t, result, nextTimestamp) {
     const embed = new EmbedBuilder().setColor('#2ecc71')
         .setTitle(t.claimed)
         .setDescription(t.gotReward.replace('{reward}', result.total.toLocaleString()).replace('{streak}', result.streak));
-    if (result.milestone === '7') embed.addFields({ name: '\u200b', value: t.milestone7 });
-    if (result.milestone === '30') embed.addFields({ name: '\u200b', value: t.milestone30 });
-    if (result.milestone === '100') embed.addFields({ name: '\u200b', value: t.milestone100 });
-    embed.addFields({ name: '\u200b', value: t.nextIn.replace('{time}', `<t:${nextTimestamp}:R>`) });
+    if (result.milestone === '7') embed.addFields({ name: '', value: t.milestone7 });
+    if (result.milestone === '30') embed.addFields({ name: '', value: t.milestone30 });
+    if (result.milestone === '100') embed.addFields({ name: '', value: t.milestone100 });
+    embed.addFields({ name: '', value: t.nextIn.replace('{time}', `<t:${nextTimestamp}:R>`) });
     return embed;
 }
 
@@ -495,12 +276,12 @@ function buildClaimEmbed(t, result, nextTimestamp) {
 module.exports = {
     name: 'vote',
     aliases: ['voter', 'upvote', 'topgg'],
-    description: '\u2b50 Vote on Top.gg and claim legendary rewards with streaks and milestones.',
+    description: '⭐ Vote on Top.gg and claim legendary rewards with streaks and milestones.',
     category: 'ECONOMY',
     usage: '.vote | .vote claim | .vote stats | .vote lb | .vote test @user | .vote status',
     cooldown: 3000,
 
-    data: new SlashCommandBuilder().setName('vote').setDescription('\u2b50 Vote on Top.gg and claim rewards')
+    data: new SlashCommandBuilder().setName('vote').setDescription('⭐ Vote on Top.gg and claim rewards')
         .addSubcommand(s => s.setName('claim').setDescription('Claim your vote reward after voting on Top.gg'))
         .addSubcommand(s => s.setName('stats').setDescription('View your voting stats'))
         .addSubcommand(s => s.setName('leaderboard').setDescription('View top voters'))
@@ -509,15 +290,17 @@ module.exports = {
 
     // ================= PREFIX =================
     run: async (client, message, args, db, ss, used) => {
-    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
-        if (!message.guild) return message.reply('Server only.').catch(() => {});
+        const guildId = message.guild?.id ?? 'DM';
+        if (!message.guild) return message.reply(tServerOnlySafe()).catch(() => {});
         voteSync.setupDB(db);
-        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
+        const lang = pl(ss);
         const t = T[lang] || T.en;
         const sub = args[0]?.toLowerCase();
         const uid = message.author.id;
         const gid = message.guild.id;
         const isAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
+
+        function tServerOnlySafe() { return (T[pl(ss)] || T.en).serverOnly; }
 
         // ---- CLAIM (delegated to engine) ----
         if (sub === 'claim') {
@@ -529,8 +312,8 @@ module.exports = {
                     return message.reply({ embeds: [embed] }).catch(() => {});
                 }
                 if (result.error === 'CHECK_FAILED') return message.reply({ content: t.checkError, allowedMentions: { parse: [] } }).catch(() => {});
-                if (result.error === 'COOLDOWN') return message.reply({ embeds: [new EmbedBuilder().setColor('#e67e22').setTitle('\u23f0 Cooldown').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] }).catch(() => {});
-                return message.reply({ content: '\u274c Vote processing failed. Try again later.', allowedMentions: { parse: [] } }).catch(() => {});
+                if (result.error === 'COOLDOWN') return message.reply({ embeds: [new EmbedBuilder().setColor('#e67e22').setTitle(t.cooldownWord).setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] }).catch(() => {});
+                return message.reply({ content: t.processFail, allowedMentions: { parse: [] } }).catch(() => {});
             }
             const embed = buildClaimEmbed(t, result, result.nextVote);
             message.reply({ embeds: [embed] }).catch(() => {});
@@ -545,11 +328,11 @@ module.exports = {
             const rank = all.findIndex(u => u.user_id === uid);
             const embed = new EmbedBuilder().setColor('#ffd700')
                 .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
-                .setTitle(`\ud83d\udcca ${t.title}`)
+                .setTitle(`📊 ${t.title}`)
                 .addFields(
                     { name: t.streak.replace('{days}', stats.current_streak), value: t.best.replace('{days}', stats.best_streak), inline: true },
                     { name: t.total.replace('{n}', stats.total_votes), value: t.rewards.replace('{n}', stats.total_rewards.toLocaleString()), inline: true },
-                    { name: '\ud83d\udcca Rank', value: rank >= 0 ? `#${rank + 1}` : 'Unranked', inline: true }
+                    { name: t.rankLabel, value: rank >= 0 ? `#${rank + 1}` : t.unranked, inline: true }
                 ).setFooter({ text: t.footer }).setTimestamp();
             return message.reply({ embeds: [embed] }).catch(() => {});
         }
@@ -568,7 +351,7 @@ module.exports = {
                 return message.reply({ files: [att] }).catch(() => {});
             } catch(e) {
                 console.error('[VOTE LB CANVAS]', e.message);
-                return message.reply('Could not generate leaderboard image.').catch(() => {});
+                return message.reply(t.lbFailMsg).catch(() => {});
             }
         }
 
@@ -653,8 +436,8 @@ module.exports = {
             const embed = new EmbedBuilder().setColor(hasApi ? '#2ecc71' : '#e74c3c').setTitle(t.statusTitle)
                 .addFields(
                     { name: t.statusMode.replace('{mode}', ''), value: mode, inline: false },
-                    { name: t.statusApi.replace('{status}', ''), value: hasApi ? '\u2705 Configured' : '\u274c Missing TOPGG_API_TOKEN', inline: true },
-                    { name: t.statusWebhook.replace('{status}', ''), value: hasWebhook ? '\u2705 Configured' : '\u274c Not configured', inline: true }
+                    { name: t.statusApi, value: hasApi ? '✅ Configured' : '❌ Missing TOPGG_API_TOKEN', inline: true },
+                    { name: t.statusWebhook, value: hasWebhook ? '✅ Configured' : '❌ Not configured', inline: true }
                 ).setFooter({ text: t.footer }).setTimestamp();
             return message.reply({ embeds: [embed] }).catch(() => {});
         }
@@ -668,7 +451,7 @@ module.exports = {
 
         const collector = sent.createMessageComponentCollector({ time: 120000 });
         collector.on('collect', async i => {
-            if (i.user.id !== uid) return i.reply({ content: '\u274c Not yours.', flags: MessageFlags.Ephemeral }).catch(() => {});
+            if (i.user.id !== uid) return i.reply({ content: t.notYours, flags: MessageFlags.Ephemeral }).catch(() => {});
             await i.deferUpdate().catch(() => {});
 
             if (i.customId === 'vote_check_status') {
@@ -684,12 +467,12 @@ module.exports = {
                     .setColor('#f39c12')
                     .setTitle(t.cooldownTitle)
                     .setDescription(
-                        `**${lang === 'fr' ? 'Opératif' : 'Operative'} ${i.user.username},**\n\n` +
-                        `${lang === 'fr' ? 'Votre autorisation de vote est en cooldown.' : 'Your voting authorization is on cooldown.'}\n\n` +
+                        `${t.cooldownGreeting.replace('{user}', i.user.username)}\n\n` +
+                        `${t.cooldownBody}\n\n` +
                         `**${t.cooldownExact}:**\n` +
                         `\`\`\`yaml\n${h}h ${m}m ${s}s\n\`\`\`\n` +
-                        `${lang === 'fr' ? 'Vous pourrez voter de nouveau' : 'You can vote again'} <t:${nextVote}:R>.\n` +
-                        `**${lang === 'fr' ? 'Autorisation complète' : 'Full Authorization'}:** <t:${nextVote}:F>\n\n` +
+                        `${t.cooldownVoteAgainAt} <t:${nextVote}:R>.\n` +
+                        `${t.cooldownFullAuth} <t:${nextVote}:F>\n\n` +
                         t.cooldownLive
                     )
                     .setFooter({ text: 'ARCHON CG-223 • Vote Command' });
@@ -704,7 +487,7 @@ module.exports = {
                     if (result.error === 'NOT_VOTED') return i.followUp({ content: t.noVote + ' ' + t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)), flags: MessageFlags.Ephemeral }).catch(() => {});
                     if (result.error === 'CHECK_FAILED') return i.followUp({ content: t.checkError, flags: MessageFlags.Ephemeral }).catch(() => {});
                     if (result.error === 'COOLDOWN') return i.followUp({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))], flags: MessageFlags.Ephemeral }).catch(() => {});
-                    return i.followUp({ content: '\u274c Processing failed. Try again.', flags: MessageFlags.Ephemeral }).catch(() => {});
+                    return i.followUp({ content: t.processFail, flags: MessageFlags.Ephemeral }).catch(() => {});
                 }
                 const ce = buildClaimEmbed(t, result, result.nextVote);
                 i.followUp({ embeds: [ce], flags: MessageFlags.Ephemeral }).catch(() => {});
@@ -713,11 +496,11 @@ module.exports = {
                 const s = voteSync.getStats(db, uid, gid);
                 const all = db.prepare(`SELECT user_id FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC`).all(gid);
                 const r = all.findIndex(u => u.user_id === uid);
-                const se = new EmbedBuilder().setColor('#ffd700').setTitle(`\ud83d\udcca ${t.title}`)
+                const se = new EmbedBuilder().setColor('#ffd700').setTitle(`📊 ${t.title}`)
                     .addFields(
                         { name: t.streak.replace('{days}', s.current_streak), value: t.best.replace('{days}', s.best_streak), inline: true },
                         { name: t.total.replace('{n}', s.total_votes), value: t.rewards.replace('{n}', s.total_rewards.toLocaleString()), inline: true },
-                        { name: '\ud83d\udcca Rank', value: r >= 0 ? `#${r + 1}` : 'Unranked', inline: true }
+                        { name: t.rankLabel, value: r >= 0 ? `#${r + 1}` : t.unranked, inline: true }
                     ).setFooter({ text: t.footer }).setTimestamp();
                 i.followUp({ embeds: [se], flags: MessageFlags.Ephemeral }).catch(() => {});
             } else if (i.customId === 'vote_lb') {
@@ -727,13 +510,13 @@ module.exports = {
                     return { ...row, username };
                 }));
                 try {
-                    const img = await buildVoteLBCanvas(entries, guild?.name || 'ARCHON', i.client.user.displayAvatarURL({ size: 128 }));
+                    const img = await buildVoteLBCanvas(entries, message.guild?.name || 'ARCHON', i.client.user.displayAvatarURL({ size: 128 }));
                     const { AttachmentBuilder } = require('discord.js');
                     const att = new AttachmentBuilder(img, { name: 'vote-leaderboard.png' });
                     i.followUp({ files: [att], flags: MessageFlags.Ephemeral }).catch(() => {});
                 } catch(e) {
                     console.error('[VOTE LB CANVAS]', e.message);
-                    i.followUp({ content: 'Could not generate leaderboard image.', flags: MessageFlags.Ephemeral }).catch(() => {});
+                    i.followUp({ content: t.lbFailMsg, flags: MessageFlags.Ephemeral }).catch(() => {});
                 }
             }
         });
@@ -743,13 +526,13 @@ module.exports = {
     execute: async (interaction, client) => {
         if (!interaction.guild) return interaction.reply({ content: 'Server only.', flags: MessageFlags.Ephemeral });
         voteSync.setupDB(client.db);
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr', 'zh', 'ar']);
         const t = T[lang] || T.en;
         const uid = interaction.user.id;
         const gid = interaction.guildId;
         const sub = interaction.options.getSubcommand();
 
-        // ---- CLAIM (delegated to engine) ----
+        // ---- CLAIM ----
         if (sub === 'claim') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             const result = await voteSync.processVote(uid, gid, client);
@@ -757,7 +540,7 @@ module.exports = {
                 if (result.error === 'NOT_VOTED') return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e74c3c').setTitle(t.noVote).setDescription(t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)))] });
                 if (result.error === 'CHECK_FAILED') return interaction.editReply({ content: t.checkError });
                 if (result.error === 'COOLDOWN') return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] });
-                return interaction.editReply({ content: '\u274c Processing failed. Try again later.' });
+                return interaction.editReply({ content: t.processFail });
             }
             await interaction.editReply({ embeds: [buildClaimEmbed(t, result, result.nextVote)] });
             if (result.dmSent !== false) {
@@ -772,11 +555,11 @@ module.exports = {
             const stats = voteSync.getStats(client.db, uid, gid);
             const all = client.db.prepare(`SELECT user_id FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC`).all(gid);
             const rank = all.findIndex(u => u.user_id === uid);
-            const embed = new EmbedBuilder().setColor('#ffd700').setTitle(`\ud83d\udcca ${t.title}`)
+            const embed = new EmbedBuilder().setColor('#ffd700').setTitle(`📊 ${t.title}`)
                 .addFields(
                     { name: t.streak.replace('{days}', stats.current_streak), value: t.best.replace('{days}', stats.best_streak), inline: true },
                     { name: t.total.replace('{n}', stats.total_votes), value: t.rewards.replace('{n}', stats.total_rewards.toLocaleString()), inline: true },
-                    { name: '\ud83d\udcca Rank', value: rank >= 0 ? `#${rank + 1}` : 'Unranked', inline: true }
+                    { name: t.rankLabel, value: rank >= 0 ? `#${rank + 1}` : t.unranked, inline: true }
                 ).setFooter({ text: t.footer }).setTimestamp();
             return interaction.editReply({ embeds: [embed] });
         }
@@ -796,14 +579,14 @@ module.exports = {
                 return interaction.editReply({ files: [att] });
             } catch(e) {
                 console.error('[VOTE LB CANVAS]', e.message);
-                return interaction.editReply({ content: 'Could not generate leaderboard image.' });
+                return interaction.editReply({ content: t.lbFailMsg });
             }
         }
 
         // ---- STATUS (admin) ----
         if (sub === 'status') {
             if (!interaction.member.permissions?.has(PermissionFlagsBits.Administrator)) {
-                return interaction.reply({ content: '\u274c Admin only.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: t.adminOnly, flags: MessageFlags.Ephemeral });
             }
             const hasApi = !!process.env.TOPGG_API_TOKEN;
             const hasWebhook = !!(process.env.TOPGG_WEBHOOK_SECRET || process.env.TOPGG_WEBHOOK_AUTH);
@@ -811,8 +594,8 @@ module.exports = {
             const embed = new EmbedBuilder().setColor(hasApi ? '#2ecc71' : '#e74c3c').setTitle(t.statusTitle)
                 .addFields(
                     { name: t.statusMode.replace('{mode}', ''), value: mode, inline: false },
-                    { name: t.statusApi.replace('{status}', ''), value: hasApi ? '\u2705 Configured' : '\u274c Missing TOPGG_API_TOKEN', inline: true },
-                    { name: t.statusWebhook.replace('{status}', ''), value: hasWebhook ? '\u2705 Configured' : '\u274c Not configured', inline: true }
+                    { name: t.statusApi, value: hasApi ? '✅ Configured' : '❌ Missing TOPGG_API_TOKEN', inline: true },
+                    { name: t.statusWebhook, value: hasWebhook ? '✅ Configured' : '❌ Not configured', inline: true }
                 ).setFooter({ text: t.footer }).setTimestamp();
             return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
@@ -825,10 +608,10 @@ module.exports = {
         interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
     },
 
-    // ================= BUTTON HANDLER (for slash portal buttons) =================
+    // ================= BUTTON HANDLER (slash portal) =================
     async handleSlashButton(interaction, client) {
         voteSync.setupDB(client.db);
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
+        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr', 'zh', 'ar']);
         const t = T[lang] || T.en;
         const uid = interaction.user.id;
         const gid = interaction.guildId;
@@ -850,12 +633,12 @@ module.exports = {
                 .setColor('#f39c12')
                 .setTitle(t.cooldownTitle)
                 .setDescription(
-                    `**${lang === 'fr' ? 'Opératif' : 'Operative'} ${interaction.user.username},**\n\n` +
-                    `${lang === 'fr' ? 'Votre autorisation de vote est en cooldown.' : 'Your voting authorization is on cooldown.'}\n\n` +
+                    `${t.cooldownGreeting.replace('{user}', interaction.user.username)}\n\n` +
+                    `${t.cooldownBody}\n\n` +
                     `**${t.cooldownExact}:**\n` +
                     `\`\`\`yaml\n${h}h ${m}m ${s}s\n\`\`\`\n` +
-                    `${lang === 'fr' ? 'Vous pourrez voter de nouveau' : 'You can vote again'} <t:${nextVote}:R>.\n` +
-                    `**${lang === 'fr' ? 'Autorisation complète' : 'Full Authorization'}:** <t:${nextVote}:F>\n\n` +
+                    `${t.cooldownVoteAgainAt} <t:${nextVote}:R>.\n` +
+                    `${t.cooldownFullAuth} <t:${nextVote}:F>\n\n` +
                     t.cooldownLive
                 )
                 .setFooter({ text: 'ARCHON CG-223 • Vote Command' });
@@ -863,14 +646,14 @@ module.exports = {
             return interaction.editReply({ embeds: [ce] });
         }
 
-        // ---- CLAIM (delegated to engine) ----
+        // ---- CLAIM ----
         if (id === 'vote_claim_slash') {
             const result = await voteSync.processVote(uid, gid, client);
             if (!result.success) {
                 if (result.error === 'NOT_VOTED') return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e74c3c').setTitle(t.noVote).setDescription(t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)))] });
                 if (result.error === 'CHECK_FAILED') return interaction.editReply({ content: t.checkError });
                 if (result.error === 'COOLDOWN') return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] });
-                return interaction.editReply({ content: '\u274c Processing failed. Try again later.' });
+                return interaction.editReply({ content: t.processFail });
             }
             await interaction.editReply({ embeds: [buildClaimEmbed(t, result, result.nextVote)] });
             if (result.dmSent !== false) {
@@ -884,10 +667,10 @@ module.exports = {
             const stats = voteSync.getStats(client.db, uid, gid);
             const all = client.db.prepare(`SELECT user_id FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC`).all(gid);
             const rank = all.findIndex(u => u.user_id === uid);
-            return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#ffd700').setTitle(`\ud83d\udcca ${t.title}`).addFields(
+            return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#ffd700').setTitle(`📊 ${t.title}`).addFields(
                 { name: t.streak.replace('{days}', stats.current_streak), value: t.best.replace('{days}', stats.best_streak), inline: true },
                 { name: t.total.replace('{n}', stats.total_votes), value: t.rewards.replace('{n}', stats.total_rewards.toLocaleString()), inline: true },
-                { name: '\ud83d\udcca Rank', value: rank >= 0 ? `#${rank + 1}` : 'Unranked', inline: true }
+                { name: t.rankLabel, value: rank >= 0 ? `#${rank + 1}` : t.unranked, inline: true }
             ).setFooter({ text: t.footer }).setTimestamp()] });
         }
 
@@ -895,13 +678,13 @@ module.exports = {
         if (id === 'vote_lb_slash') {
             const lb = client.db.prepare(`SELECT user_id, total_votes, current_streak, best_streak, total_rewards FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 10`).all(gid);
             let desc = '```yaml\n';
-            for (let i = 0; i < lb.length; i++) { let n; try { n = (await client.users.fetch(lb[i].user_id)).username; } catch { n = 'Unknown'; } desc += `${t.rankEmoji[i] || '\ud83d\udccc'} ${n.padEnd(18)} ${lb[i].total_votes} votes\n`; }
+            for (let i = 0; i < lb.length; i++) { let n; try { n = (await client.users.fetch(lb[i].user_id)).username; } catch { n = 'Unknown'; } desc += `${t.rankEmoji[i] || '📌'} ${n.padEnd(18)} ${lb[i].total_votes} ${t.votesUnit}\n`; }
             desc += '```';
             return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#ffd700').setTitle(t.lbTitle).setDescription(desc).setFooter({ text: t.footer }).setTimestamp()] });
         }
     },
 
-    // ================= EXPORTS FOR EXTERNAL USE =================
+    // ================= EXPORTS =================
     processVote: voteSync.processVote,
     getStats: voteSync.getStats,
     checkTopGGVote: voteSync.checkTopGGVote,
