@@ -2,7 +2,7 @@
   "cooldown": "⏳ 慢一点！{remaining} 秒后再试",
   "cmd_error": "⚠️ **指令执行失败。**",
   "restricted_title": "🦅 受限访问 — 仅限服务器的指令",
-  "restricted_desc": "```ansi\n\\u001b[1;33m⚠️ 无效指令区域\\u001b[0m\n\n该指令需要 \\u001b[1;36m服务器环境\\u001b[0m 才能访问服务器数据。\n```",
+  "restricted_desc": "```ansi\n\u001b[1;33m⚠️ 无效指令区域\u001b[0m\n\n该指令需要 \u001b[1;36m服务器环境\u001b[0m 才能访问服务器数据。\n```",
   "restricted_action": "**请在 {botname} 所在的服务器频道中运行 `/{command}`。**\n\n🔹 *个人资料、经济和管理指令在私聊中不可用。*",
   "restricted_suggestion": "💡 **替代方案：** 使用 `/help` 查看私聊中可用的指令。",
   "restricted_action_label": "📍 需要操作",
