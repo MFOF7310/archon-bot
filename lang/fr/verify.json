@@ -69,7 +69,7 @@
   "lockingChannels": "🛡️ Sécurisation de **{server}**… verrouillage de {count} salons pour {role} ⏳",
   "configuredTitle": "🛡️ Portail configuré",
   "panelTitle": "🛡️ Vérification requise",
-  "panelDesc": "Appuie sur **Commencer** pour ton code.\n\nToi seul le vois — **3 essais**, puis une pause.",
+  "panelDesc": "{shield} Appuie sur **Commencer la vérification** pour obtenir ton code.\n\nToi seul verras le captcha. Entre-le dans la fenêtre — **3 essais**, puis une courte pause.",
   "panelBtn": "Commencer la vérification",
   "panelPosted": "✅ Panneau publié dans {ch}.",
   "panelCanSee": "{role} peut le voir.",

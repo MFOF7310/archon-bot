@@ -69,7 +69,7 @@
   "lockingChannels": "🛡️ 正在保护 **{server}**… 正逐个为 {role} 锁定 {count} 个频道，请稍候 ⏳",
   "configuredTitle": "🛡️ 验证之门已配置",
   "panelTitle": "🛡️ 需要验证",
-  "panelDesc": "点击**开始验证**获取验证码。\n\n只有你能看到验证码，在弹出窗口输入 — **3 次尝试**后有短暂冷却。",
+  "panelDesc": "{shield} 点击**开始验证**获取验证码。\n\n只有你能看到验证码。在弹出窗口中输入 — **3 次尝试**，之后会有短暂冷却。",
   "panelBtn": "开始验证",
   "panelPosted": "✅ 面板已发布到 {ch}。",
   "panelCanSee": "{role} 可以看到它。",

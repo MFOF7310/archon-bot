@@ -69,7 +69,7 @@
   "lockingChannels": "🛡️ Securing **{server}**… locking {count} channels for {role}, one by one ⏳",
   "configuredTitle": "🛡️ Verification Gate Configured",
   "panelTitle": "🛡️ Verification Required",
-  "panelDesc": "Press **Start verification** to get your code.\n\nOnly you see the captcha — **3 attempts**, then a short cooldown.",
+  "panelDesc": "{shield} Press **Start verification** to get your code.\n\nOnly you will see the captcha. Enter it in the popup — **3 attempts**, then a short cooldown.",
   "panelBtn": "Start verification",
   "panelPosted": "✅ Panel posted in {ch}.",
   "panelCanSee": "{role} can see it.",
