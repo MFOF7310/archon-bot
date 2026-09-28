@@ -56,7 +56,7 @@ function buildScrimEmbed(scrim, signups, guild) {
     const embed = new EmbedBuilder()
         .setColor(isClosed ? '#95a5a6' : '#2ecc71')
         .setAuthor({ name: `${guild?.name || 'Scrim'} • Scrim`, iconURL: guild?.iconURL() || undefined })
-        .setTitle(`🎮 ${scrim.title || 'Scrim'}${isClosed ? ' — CANCELLED' : ''}`)
+        .setTitle(`${EMOJIS.gamer} ${scrim.title || 'Scrim'}${isClosed ? ' — CANCELLED' : ''}`)
         .setDescription(
             `${EMOJIS.clock} <t:${scrim.scheduled_at}:F>\n` +
             `*<t:${scrim.scheduled_at}:R>*` +
@@ -132,7 +132,7 @@ function startScrimReminders(client) {
                         content: yes.map(id => `<@${id}>`).join(' '),
                         embeds: [new EmbedBuilder()
                             .setColor('#f39c12')
-                            .setTitle(`🚨 Scrim starting soon`)
+                            .setTitle(`${EMOJIS.alarm} Scrim starting soon`)
                             .setDescription(
                                 `**${scrim.title || 'Scrim'}** starts <t:${scrim.scheduled_at}:R>.\n` +
                                 `${yes.length} player${yes.length === 1 ? '' : 's'} confirmed.`
@@ -340,7 +340,7 @@ module.exports = {
             return interaction.editReply({
                 embeds: [new EmbedBuilder()
                     .setColor('#3498db')
-                    .setTitle(`🎮 Upcoming scrims`)
+                    .setTitle(`${EMOJIS.gamer} Upcoming scrims`)
                     .setDescription(lines.join('\n\n'))
                     .setFooter({ text: 'ARCHON CG-223' })
                 ],
@@ -368,7 +368,7 @@ module.exports = {
                         content: yes.map(u => `<@${u}>`).join(' '),
                         embeds: [new EmbedBuilder()
                             .setColor('#e74c3c')
-                            .setTitle(`⚠️ Scrim cancelled`)
+                            .setTitle(`${EMOJIS.warning} Scrim cancelled`)
                             .setDescription(`**${scrim.title || 'Scrim'}** (<t:${scrim.scheduled_at}:F>) has been cancelled.`)
                         ],
                     }).catch(() => {});

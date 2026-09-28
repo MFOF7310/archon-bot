@@ -23,7 +23,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#f1c40f')
-                .setTitle(`⚠️ Access Restricted`)
+                .setTitle(`${EMOJIS.warning} Access Restricted`)
                 .setDescription(
                     `Hey! ${EMOJIS.wave}\n\n` +
                     `This command is reserved for the **System Architect** only.\n` +
@@ -42,7 +42,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
             return reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#2ecc71')
-                    .setTitle(`🟢 Ghost Scan Clear`)
+                    .setTitle(`${EMOJIS.online} Ghost Scan Clear`)
                     .setDescription(`No ghost servers found. All nodes active above ${GHOST_DAYS}-day threshold.`)],
                 flags: 64
             });
@@ -61,7 +61,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#e67e22')
-                .setTitle(`⚠️ Ghost Servers — ${candidates.length} candidates`)
+                .setTitle(`${EMOJIS.warning} Ghost Servers — ${candidates.length} candidates`)
                 .addFields(fields)
                 .setFooter({ text: `Threshold: ${GHOST_DAYS}+ days • /ghostclean leave <id> | /ghostclean leaveall` })],
             flags: 64
@@ -81,7 +81,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#3498db')
-                .setTitle(`🦅 Ghost Server IDs`)
+                .setTitle(`${EMOJIS.eagle} Ghost Server IDs`)
                 .addFields(fields)
                 .setFooter({ text: 'Tap an ID to copy • Use /ghostclean leave <id> to remove' })],
             flags: 64
@@ -101,7 +101,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#e74c3c')
-                .setTitle(`⚫ Left Ghost Server`)
+                .setTitle(`${EMOJIS.offline} Left Ghost Server`)
                 .setDescription(`Successfully left **${name}** (\`${targetId}\`)`)
                 .setTimestamp()],
             flags: 64
@@ -118,7 +118,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
             return reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#e74c3c')
-                    .setTitle(`⚠️ Confirm Mass Leave`)
+                    .setTitle(`${EMOJIS.warning} Confirm Mass Leave`)
                     .setDescription(`About to leave **${inCache.length}** servers:\n\n${preview}\n\n**Add \`confirm\` to proceed.**`)],
                 flags: 64
             });
@@ -143,7 +143,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle(`🦅 Ghost Clean Complete`)
+                .setTitle(`${EMOJIS.eagle} Ghost Clean Complete`)
                 .setDescription(results.join('\n'))
                 .addFields({ name: 'Summary', value: `✅ Left: ${left} • ❌ Failed: ${failed}` })
                 .setTimestamp()],

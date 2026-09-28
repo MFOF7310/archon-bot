@@ -148,7 +148,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#3498db')
                 .setAuthor({ name: `${interaction.guild.name} • Clan War`, iconURL: interaction.guild.iconURL() || undefined })
-                .setTitle(`🏆 Clan record`)
+                .setTitle(`${EMOJIS.trophy} Clan record`)
                 .setDescription(
                     `**${r.win}W – ${r.loss}L${r.draw ? ` – ${r.draw}D` : ''}** across ${r.played} match${r.played === 1 ? '' : 'es'}\n` +
                     `**${r.winRate}%** win rate` +
@@ -262,7 +262,7 @@ module.exports = {
         return message.reply({
             embeds: [new EmbedBuilder()
                 .setColor('#3498db')
-                .setTitle(`🏆 Clan record`)
+                .setTitle(`${EMOJIS.trophy} Clan record`)
                 .setDescription(
                     `**${r.win}W – ${r.loss}L${r.draw ? ` – ${r.draw}D` : ''}** · **${r.winRate}%** win rate` +
                     (streak && streak.n > 1 ? `\n${RESULT_ICON[streak.kind]} ${streak.n} ${RESULT_LABEL[streak.kind].toLowerCase()} streak` : '')
