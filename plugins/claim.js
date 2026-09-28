@@ -1,4 +1,5 @@
 const { ns } = require('../lib/lang');
+const { t: it } = require('../lib/i18n');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 function parseEmoji(str) {
@@ -118,33 +119,17 @@ function loadPendingDailyReminders(database) {
 
 // Deliver DM reminder — tries DM first, falls back to channel mention
 async function deliverDailyReminder(client, reminder, database) {
-    const lang = reminder.lang || 'en';
-    const dmT = {
-        en: {
-            title: '⏰ Daily Reward Ready!',
-            desc: (guild) => `Your daily reward is now available in **${guild}**!\n\nUse \`/claim\` or \`.claim\` to collect it.\n🔥 Don't break your streak!`,
-            footer: 'Architect CG-223 • Daily Reminder'
-        },
-        fr: {
-            title: '⏰ Récompense Quotidienne Prête !',
-            desc: (guild) => `Votre récompense quotidienne est disponible sur **${guild}** !\n\nUtilisez \`/claim\` ou \`.claim\` pour la réclamer.\n🔥 Ne cassez pas votre série !`,
-            footer: 'Architect CG-223 • Rappel Quotidien'
-        }
-    };
-    if (!dmT['bm']) {
-        dmT['bm'] = {
-            title: 'I ka tile bonus labɛn sabatilen do!',
-            desc: (guild) => `I ka tile bonus nana **${guild}** kɔnɔ!\n\nI bɛ se ka \`/claim\` walima \`.claim\` ta, k'a mara i ka compte la.\n🔥 Ka na to i ka Streak ka tiyɛn!`,
-            footer: 'Architect CG-223 • Daily Reminder'
-        };
-    }
-    const t = dmT[lang] || dmT['en'];
+    const lang = ['en', 'fr', 'bm', 'zh', 'ar'].includes(reminder.lang) ? reminder.lang : 'en';
+    const t = (k, vars) => it('reminder.' + k, lang, vars);
+    const guildName = reminder.guildName || 'the server';
 
     const embed = new EmbedBuilder()
         .setColor('#00fbff')
-        .setAuthor({ name: t.title, iconURL: client.user?.displayAvatarURL() })
-        .setDescription((typeof t.desc === 'function' ? t.desc(reminder.guildName || 'the server') : t.desc.replace('{guild}', reminder.guildName || 'the server')))
-        .setFooter({ text: t.footer })
+        .setAuthor({ name: t('author'), iconURL: client.user?.displayAvatarURL() })
+        .setTitle(t('title'))
+        .setDescription(t('desc', { guild: guildName }) + '\n\n' + t('body'))
+        .addFields({ name: t('howLabel'), value: t('howValue', { guild: guildName }), inline: false })
+        .setFooter({ text: `${guildName} • ARCHON CG-223 • BAMAKO_223 🇲🇱` })
         .setTimestamp();
 
     let delivered = false;
@@ -167,7 +152,7 @@ async function deliverDailyReminder(client, reminder, database) {
             const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
             if (channel && channel.send) {
                 const fbEmbed = EmbedBuilder.from(embed)
-                    .setDescription(`<@${reminder.user_id}> ${(typeof t.desc === 'function' ? t.desc(reminder.guildName || 'the server') : t.desc.replace('{guild}', reminder.guildName || 'the server'))}`);
+                    .setDescription(`<@${reminder.user_id}> ${t('desc', { guild: reminder.guildName || 'the server' })}\n${t('body', {})}`);
                 await channel.send({ content: `<@${reminder.user_id}>`, embeds: [fbEmbed] });
                 delivered = true;
                 console.log(`[DAILY REMINDER] 📢 Channel fallback for ${reminder.user_tag || reminder.user_id}`);

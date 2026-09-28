@@ -1,0 +1,8 @@
+{
+  "author": "⏰ ARCHON CG-223 • DAILY CYCLE",
+  "title": "🌅 Daily Reward Ready!",
+  "desc": "```ansi\n\u001b[1;32m[ NEURAL CYCLE COMPLETE ]\u001b[0m\n\u001b[32mYour daily reward is ready in {guild}\u001b[0m\n```",
+  "body": "Come collect it — the cycle won't wait, and your streak is counting on you 🔥",
+  "howLabel": "🎯 How to claim",
+  "howValue": "Use `/claim` or `.claim` in any channel of {guild}."
+}

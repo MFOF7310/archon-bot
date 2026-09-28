@@ -1,0 +1,8 @@
+{
+  "author": "⏰ ARCHON CG-223 • 每日周期",
+  "title": "🌅 每日奖励已就绪！",
+  "desc": "```ansi\n\u001b[1;32m[ 每日周期已完成 ]\u001b[0m\n\u001b[32m你的每日奖励已在 {guild} 就绪\u001b[0m\n```",
+  "body": "快来领取吧 — 周期不等人，你的连签还指着你呢 🔥",
+  "howLabel": "🎯 如何领取",
+  "howValue": "在 {guild} 的任意频道使用 `/claim` 或 `.claim` 即可领取。"
+}

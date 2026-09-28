@@ -1,0 +1,8 @@
+{
+  "author": "⏰ ARCHON CG-223 • CYCLE QUOTIDIEN",
+  "title": "🌅 Récompense quotidienne prête !",
+  "desc": "```ansi\n\u001b[1;32m[ CYCLE QUOTIDIEN TERMINÉ ]\u001b[0m\n\u001b[32mTa récompense t'attend sur {guild}\u001b[0m\n```",
+  "body": "Viens la récupérer — le cycle n'attend pas, et ta série compte sur toi 🔥",
+  "howLabel": "🎯 Comment récupérer",
+  "howValue": "Utilise `/claim` ou `.claim` dans n'importe quel salon de {guild}."
+}
