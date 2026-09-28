@@ -19,7 +19,7 @@ function metaEmbed(guild, filterCat, lang = 'en') {
     const embed = new EmbedBuilder()
         .setColor('#ffd700')
         .setAuthor({ name: `${guild?.name || 'ARCHON'} • Meta`, iconURL: guild?.iconURL() || undefined })
-        .setTitle(`${EMOJIS.gamer} ${tr('metaTitle', { season })}`);
+        .setTitle(`🎮 ${tr('metaTitle', { season })}`);
 
     let any = false;
     for (const [tier, list] of groups) {

@@ -63,7 +63,7 @@ function buildEmbed(build, member, guild) {
             name: member?.displayName || member?.user?.username || 'Unknown',
             iconURL: member?.displayAvatarURL?.() || undefined,
         })
-        .setTitle(`${EMOJIS.gamer} ${build.weapon}`)
+        .setTitle(`🎮 ${build.weapon}`)
         .setFooter({ text: `Build #${build.id} • ${guild?.name || 'ARCHON'}` })
         .setTimestamp(new Date((build.updated_at || build.created_at) * 1000));
 
@@ -274,7 +274,7 @@ module.exports = {
                 embeds: [new EmbedBuilder()
                     .setColor('#3498db')
                     .setAuthor({ name: `${interaction.guild.name} • Builds`, iconURL: interaction.guild.iconURL() || undefined })
-                    .setTitle(`${EMOJIS.gamer} ${tr('listTitle')}${filter ? ` — ${filter}` : ''}`)
+                    .setTitle(`🎮 ${tr('listTitle')}${filter ? ` — ${filter}` : ''}`)
                     .setDescription(lines.join('\n'))
                     .setFooter({ text: (rows.length === 1 ? tr('listFooterOne') : tr('listFooterMany', { count: rows.length })) })
                 ],

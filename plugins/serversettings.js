@@ -146,7 +146,7 @@ async execute(interaction, client) {
 
             const embed = new EmbedBuilder()
                 .setColor('#e74c3c')
-                .setAuthor({ name: EMOJIS.shield + ' Access Restricted', iconURL: message.guild.iconURL() || client.user.displayAvatarURL() })
+                .setAuthor({ name: '🛡️ Access Restricted', iconURL: message.guild.iconURL() || client.user.displayAvatarURL() })
                 .setDescription(msg)
                 .setFooter({ text: `${message.guild.name} • Server Configuration Protected` })
                 .setTimestamp();

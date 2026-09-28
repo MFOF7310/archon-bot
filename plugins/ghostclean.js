@@ -23,12 +23,12 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#f1c40f')
-                .setTitle(`${EMOJIS.warning} Access Restricted`)
+                .setTitle(`⚠️ Access Restricted`)
                 .setDescription(
                     `Hey! ${EMOJIS.wave}\n\n` +
                     `This command is reserved for the **System Architect** only.\n` +
                     `Need server help? Reach out to a moderator instead.\n\n` +
-                    `${EMOJIS.eagle} *ARCHON CG-223 — Neural Grid*`
+                    `🦅 *ARCHON CG-223 — Neural Grid*`
                 )],
             flags: 64
         });
@@ -42,7 +42,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
             return reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#2ecc71')
-                    .setTitle(`${EMOJIS.online} Ghost Scan Clear`)
+                    .setTitle(`🟢 Ghost Scan Clear`)
                     .setDescription(`No ghost servers found. All nodes active above ${GHOST_DAYS}-day threshold.`)],
                 flags: 64
             });
@@ -61,7 +61,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#e67e22')
-                .setTitle(`${EMOJIS.warning} Ghost Servers — ${candidates.length} candidates`)
+                .setTitle(`⚠️ Ghost Servers — ${candidates.length} candidates`)
                 .addFields(fields)
                 .setFooter({ text: `Threshold: ${GHOST_DAYS}+ days • /ghostclean leave <id> | /ghostclean leaveall` })],
             flags: 64
@@ -71,7 +71,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
     // ── SERVERS (name + ID only) ──
     if (subcommand === 'servers') {
         if (candidates.length === 0) {
-            return reply({ content: `${EMOJIS.online} No ghost servers found.`, flags: 64 });
+            return reply({ content: `🟢 No ghost servers found.`, flags: 64 });
         }
         const fields = candidates.map((r, i) => ({
             name: `${i + 1}. ${r.guild_name}`,
@@ -81,7 +81,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#3498db')
-                .setTitle(`${EMOJIS.eagle} Ghost Server IDs`)
+                .setTitle(`🦅 Ghost Server IDs`)
                 .addFields(fields)
                 .setFooter({ text: 'Tap an ID to copy • Use /ghostclean leave <id> to remove' })],
             flags: 64
@@ -101,7 +101,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#e74c3c')
-                .setTitle(`${EMOJIS.offline} Left Ghost Server`)
+                .setTitle(`⚫ Left Ghost Server`)
                 .setDescription(`Successfully left **${name}** (\`${targetId}\`)`)
                 .setTimestamp()],
             flags: 64
@@ -114,11 +114,11 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         if (inCache.length === 0) return reply({ content: '⚠️ No ghost candidates in cache.', flags: 64 });
 
         if (args[1] !== 'confirm') {
-            const preview = inCache.map(r => `${EMOJIS.warning} **${r.guild_name}** — ${r.days_inactive}d`).join('\n');
+            const preview = inCache.map(r => `⚠️ **${r.guild_name}** — ${r.days_inactive}d`).join('\n');
             return reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#e74c3c')
-                    .setTitle(`${EMOJIS.warning} Confirm Mass Leave`)
+                    .setTitle(`⚠️ Confirm Mass Leave`)
                     .setDescription(`About to leave **${inCache.length}** servers:\n\n${preview}\n\n**Add \`confirm\` to proceed.**`)],
                 flags: 64
             });
@@ -132,7 +132,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
             try {
                 await guild.leave();
                 left++;
-                results.push(`${EMOJIS.online} Left **${row.guild_name}**`);
+                results.push(`🟢 Left **${row.guild_name}**`);
                 console.log(`[GHOSTCLEAN] Left: ${row.guild_name} (${row.guild_id})`);
             } catch (e) {
                 failed++;
@@ -143,7 +143,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle(`${EMOJIS.eagle} Ghost Clean Complete`)
+                .setTitle(`🦅 Ghost Clean Complete`)
                 .setDescription(results.join('\n'))
                 .addFields({ name: 'Summary', value: `✅ Left: ${left} • ❌ Failed: ${failed}` })
                 .setTimestamp()],

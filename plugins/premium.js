@@ -60,8 +60,8 @@ module.exports = {
 
             const embed = new EmbedBuilder()
                 .setColor(premium ? 0xffd700 : 0x2c2f33)
-                .setAuthor({ name: pt('statusActive', lang, { emoji: EMOJIS.premium }).replace(/ — .*$/, '') + (premium ? '' : ''), iconURL: client.user.displayAvatarURL() })
-                .setTitle(premium ? pt('statusActive', lang, { emoji: EMOJIS.premium }) : pt('statusInactive', lang, { emoji: EMOJIS.crown || EMOJIS.premium }))
+                .setAuthor({ name: `🦅 ARCHON CG-223 // PREMIUM GATE`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(premium ? pt('statusActive', lang, { emoji: '⭐' }) : pt('statusInactive', lang, { emoji: '🔒' }))
                 .setDescription(premium ? pt('descActive', lang) : pt('descInactive', lang))
                 .addFields(
                     { name: pt('fStatus', lang), value: premium ? pt('vActive', lang) : pt('vInactive', lang), inline: true },
@@ -85,7 +85,7 @@ module.exports = {
             const features = require('../lib/premium-features');
             const embed = new EmbedBuilder()
                 .setColor(0xffd700)
-                .setTitle(pt('featuresTitle', lang, { emoji: EMOJIS.premium }))
+                .setTitle(pt('featuresTitle', lang, { emoji: '✨' }))
                 .setDescription(pt('planIncludes', lang))
                 .addFields(features.map(f => ({ name: `${f.emoji} ${f.name}`, value: f.value, inline: true })))
                 .setFooter({ text: pt('featuresFooter', lang, { status: premium ? pt('vActive', lang) : pt('vInactive', lang) }) });

@@ -143,7 +143,7 @@ module.exports = {
             if (!isPremium(db, gid)) {
                 return interaction.reply({ embeds: [new EmbedBuilder()
                     .setColor(0xffd700)
-                    .setTitle(`${EMOJIS.premium} ${vt(db, gid, 'premiumTitle')}`)
+                    .setTitle(`⭐ ${vt(db, gid, 'premiumTitle')}`)
                     .setDescription(vt(db, gid, 'premiumDesc'))
                     .addFields({ name: vt(db, gid, 'premiumHowTo'), value: vt(db, gid, 'premiumHowToValue') })
                     .setFooter({ text: vt(db, gid, 'bamakoFooter') })
@@ -155,7 +155,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00cc44)
-                    .setTitle(`${EMOJIS.verified} ${vt(db, gid, 'enableTitle')}`)
+                    .setTitle(`✅ ${vt(db, gid, 'enableTitle')}`)
                     .addFields(
                         { name: vt(db, gid, 'verifiedRoleLabel'), value: role, inline: true },
                         { name: vt(db, gid, 'autokickLabel'), value: settings?.verify_kick_days ? vt(db, gid, 'autokickMin', { mins: settings.verify_kick_days }) : vt(db, gid, 'disabled'), inline: true }
@@ -170,7 +170,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0xff3311)
-                    .setDescription(`${EMOJIS.warning} ${vt(db, gid, 'disableDesc')}`)],
+                    .setDescription(`⚠️ ${vt(db, gid, 'disableDesc')}`)],
                 flags: 64
             });
         }
@@ -198,7 +198,7 @@ module.exports = {
                     .setColor(0x00aaff)
                     .setDescription(mins === 0 
                         ? `${EMOJIS.check} ${vt(db, gid, 'setkickDisabled')}`
-                        : `${EMOJIS.warning} ${vt(db, gid, 'setkickEnabled', { mins })}`)],
+                        : `⚠️ ${vt(db, gid, 'setkickEnabled', { mins })}`)],
                 flags: 64
             });
         }
@@ -359,7 +359,7 @@ module.exports = {
             .setTitle(vt(db, gid, 'dmTitle', { server: member.guild.name }))
             .setDescription(
                 vt(db, gid, 'dmInstructions') +
-                `${EMOJIS.warning} ${vt(db, gid, 'dmCaseNote')} • **${vt(db, gid, 'dmAttempts')}** • ${vt(db, gid, 'dmExpires', { mins: (settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10 })}\n\n` +
+                `⚠️ ${vt(db, gid, 'dmCaseNote')} • **${vt(db, gid, 'dmAttempts')}** • ${vt(db, gid, 'dmExpires', { mins: (settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10 })}\n\n` +
                 (pl ? `*${vt(db, gid, 'dmTroublePanel')}*` : `*${vt(db, gid, 'dmTroubleRejoin')}*`)
             )
             .setImage('attachment://verify.png')
@@ -430,7 +430,7 @@ module.exports = {
 
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x00cc44)
-                        .setTitle(`${EMOJIS.verified} ${vt(db, gid, 'verifiedDmTitle')}`)
+                        .setTitle(`✅ ${vt(db, gid, 'verifiedDmTitle')}`)
                         .setDescription(vt(db, gid, 'welcomeDm', { server: member.guild.name }))
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ]}).catch(() => {});
@@ -444,7 +444,7 @@ module.exports = {
                         const kickOn = (settings.verify_kick_days || 0) > 0;
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff3311)
-                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
+                            .setTitle(`⚠️ ${vt(db, gid, 'tooManyTitle')}`)
                             .setDescription(kickOn
                                 ? vt(db, gid, 'kickDm', { server: member.guild.name })
                                 : (pl ? vt(db, gid, 'failPanelDm', { server: member.guild.name }) : vt(db, gid, 'failRejoinDm', { server: member.guild.name })))
@@ -462,7 +462,7 @@ module.exports = {
 
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff8800)
-                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'attemptWrongTitle', { n: attempts, max: maxAttempts })}`)
+                            .setTitle(`⚠️ ${vt(db, gid, 'attemptWrongTitle', { n: attempts, max: maxAttempts })}`)
                             .setDescription(vt(db, gid, 'attemptWrongDesc', { remaining: maxAttempts - attempts }))
                             .setImage('attachment://verify.png')
                             .setFooter({ text: vt(db, gid, 'dmRetryFooter') })
@@ -480,7 +480,7 @@ module.exports = {
                     if (!pending.get(key)?.timer) pending.delete(key);
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x888888)
-                        .setDescription(`${EMOJIS.warning} ${plNoKick ? vt(db, gid, 'expiredPanel') : vt(db, gid, 'expiredRejoin')}`)
+                        .setDescription(`⚠️ ${plNoKick ? vt(db, gid, 'expiredPanel') : vt(db, gid, 'expiredRejoin')}`)
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ], components: plNoKick ? [plNoKick.row] : [] }).catch(() => {});
                     // Kicking is handled by the auto-kick timer only
@@ -504,7 +504,7 @@ module.exports = {
                     if (dmCh) {
                         const invRow = storedInviteRow(db, member.guild);
                         await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
-                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
+                            .setTitle(`⚠️ ${vt(db, gid, 'tooManyTitle')}`)
                             .setDescription(vt(db, gid, 'kickDm', { server: member.guild.name }))
                             .setFooter({ text: vt(db, gid, 'bamakoFooter') })],
                             components: invRow ? [invRow] : [] }).catch(() => {});
