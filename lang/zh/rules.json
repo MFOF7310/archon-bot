@@ -11,5 +11,10 @@
   "channelMissing": "⚠️ 之前设置的规则频道已失效（可能被删除）。用 `/rules channel #频道` 重新设置一个，然后用 `/rules panel` 发布。",
   "channelCleared": "✅ 规则频道已清除。`/rules` 将在当前频道显示规则。",
   "needManageGuild": "⛔ 需要「管理服务器」权限。",
-  "rulesTooLong": "⚠️ 规则太长，自动拆分为多条消息显示。"
+  "rulesTooLong": "⚠️ 规则太长，自动拆分为多条消息显示。",
+  "setColorSuccess": "✅ 强调色已设置为 {color}！",
+  "invalidColor": "⚠️ 无效颜色 — 请用十六进制格式，如 #ff0000。",
+  "setTitleSuccess": "✅ 标题已设置为「{title}」！",
+  "welcomeOn": "✅ 欢迎语已开启 — 会显示在规则上方。",
+  "welcomeOff": "✅ 欢迎语已关闭 — 只显示规则 embed。"
 }

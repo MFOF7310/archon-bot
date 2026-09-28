@@ -11,5 +11,10 @@
   "channelMissing": "⚠️ Le salon des règles enregistré n'existe plus (supprimé ?). Définis-en un nouveau avec `/rules channel #salon`, puis publie avec `/rules panel`.",
   "channelCleared": "✅ Salon des règles effacé. `/rules` affichera les règles dans le salon courant.",
   "needManageGuild": "⛔ Permission Gérer le serveur requise.",
-  "rulesTooLong": "⚠️ Règles trop longues — affichage réparti sur plusieurs messages."
+  "rulesTooLong": "⚠️ Règles trop longues — affichage réparti sur plusieurs messages.",
+  "setColorSuccess": "✅ Couleur définie : {color} !",
+  "invalidColor": "⚠️ Couleur invalide — format hex, ex. #ff0000.",
+  "setTitleSuccess": "✅ Titre défini : {title} !",
+  "welcomeOn": "✅ Message de bienvenue activé.",
+  "welcomeOff": "✅ Message de bienvenue désactivé."
 }

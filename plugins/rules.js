@@ -19,7 +19,20 @@ function ensureTable(db) {
         rules_text TEXT,
         updated_at INTEGER
     )`).run();
+    const cols = db.prepare('PRAGMA table_info(server_rules)').all().map(c => c.name);
+    if (!cols.includes('color')) db.prepare('ALTER TABLE server_rules ADD COLUMN color TEXT').run();
+    if (!cols.includes('title')) db.prepare('ALTER TABLE server_rules ADD COLUMN title TEXT').run();
+    if (!cols.includes('welcome_on')) db.prepare('ALTER TABLE server_rules ADD COLUMN welcome_on INTEGER DEFAULT 1').run();
     _tableReady = true;
+}
+
+function saveStyle(db, gid, patch) {
+    ensureTable(db);
+    const keys = Object.keys(patch);
+    db.prepare(`INSERT INTO server_rules (guild_id, ${keys.join(', ')}, updated_at)
+        VALUES (?, ${keys.map(() => '?').join(', ')}, ?)
+        ON CONFLICT(guild_id) DO UPDATE SET ${keys.map(k => k + ' = excluded.' + k).join(', ')}, updated_at = excluded.updated_at`)
+        .run(gid, ...keys.map(k => patch[k]), Math.floor(Date.now() / 1000));
 }
 
 function getRulesText(db, gid) {
@@ -62,7 +75,7 @@ function formatRules(text) {
     return text.split('\n').map(l => l.trim()).filter(Boolean).join('\n');
 }
 
-function buildRulesEmbeds(client, guild, rulesText, lang, custom) {
+function buildRulesEmbeds(client, guild, rulesText, lang, custom, style = {}) {
     const text = formatRules(rulesText);
     const chunks = [];
     if (text.length <= 3900) chunks.push(text);
@@ -76,9 +89,9 @@ function buildRulesEmbeds(client, guild, rulesText, lang, custom) {
     }
     return chunks.slice(0, 3).map((chunk, i) => {
         const embed = new EmbedBuilder()
-            .setColor(GOLD)
+            .setColor(style.color || GOLD)
             .setAuthor({ name: t('rules.author', lang), iconURL: client.user.displayAvatarURL() })
-            .setTitle(t('rules.title', lang) + (chunks.length > 1 ? ` (${i + 1}/${chunks.length})` : ''))
+            .setTitle((style.title || t('rules.title', lang)) + (chunks.length > 1 ? ` (${i + 1}/${chunks.length})` : ''))
             .setDescription(chunk)
             .setFooter({ text: `${guild.name} • ARCHON CG-223 • BAMAKO_223 🇲🇱`, iconURL: guild.iconURL() || client.user.displayAvatarURL() })
             .setTimestamp();
@@ -93,10 +106,14 @@ function buildRulesEmbeds(client, guild, rulesText, lang, custom) {
 }
 
 async function sendRules(client, guild, channel, lang) {
-    const custom = getRulesText(client.db, guild.id);
-    const rulesText = custom || t('rules.defaultRules', lang);
-    const embeds = buildRulesEmbeds(client, guild, rulesText, lang, !!custom);
-    await channel.send({ content: t('rules.welcomeLine', lang, { server: guild.name }), embeds });
+    ensureTable(client.db);
+    const row = client.db.prepare('SELECT * FROM server_rules WHERE guild_id = ?').get(guild.id) || {};
+    const rulesText = row.rules_text || t('rules.defaultRules', lang);
+    const style = { color: row.color || undefined, title: row.title || undefined };
+    const embeds = buildRulesEmbeds(client, guild, rulesText, lang, !!row.rules_text, style);
+    const payload = { embeds };
+    if (row.welcome_on !== 0) payload.content = t('rules.welcomeLine', lang, { server: guild.name });
+    await channel.send(payload);
     return embeds.length;
 }
 
@@ -116,6 +133,12 @@ module.exports = {
             .addStringOption(o => o.setName('text').setDescription('Full rules text, one rule per line').setRequired(true)))
         .addSubcommand(s => s.setName('channel').setDescription('Set the rules channel (admin) — same registry as /channels set type:rules')
             .addChannelOption(o => o.setName('channel').setDescription('Rules channel').setRequired(true)))
+        .addSubcommand(s => s.setName('setcolor').setDescription('Set embed accent color (admin)')
+            .addStringOption(o => o.setName('color').setDescription('Hex color, e.g. #ff0000').setRequired(true)))
+        .addSubcommand(s => s.setName('settitle').setDescription('Set embed title (admin)')
+            .addStringOption(o => o.setName('title').setDescription('Custom title').setRequired(true)))
+        .addSubcommand(s => s.setName('welcome').setDescription('Toggle the welcome line above the embed (admin)')
+            .addBooleanOption(o => o.setName('enabled').setDescription('true = show welcome line').setRequired(true)))
         .addSubcommand(s => s.setName('resetchannel').setDescription('Clear the rules channel setting (admin)')),
 
     execute: async (interaction, client) => {
@@ -127,9 +150,10 @@ module.exports = {
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.ManageGuild);
 
         if (sub === 'show') {
+            await interaction.deferReply({ flags: 64 }).catch(() => {});
             const n = await sendRules(client, interaction.guild, interaction.channel, lang);
-            const note = n > 1 ? t('rules.rulesTooLong', lang) : '';
-            await interaction.reply({ content: note, flags: 64 }).catch(() => {});
+            const note = n > 1 ? t('rules.rulesTooLong', lang) : '✅';
+            await interaction.editReply({ content: note }).catch(() => {});
             return;
         }
 
@@ -159,6 +183,29 @@ module.exports = {
             const ch = interaction.options.getChannel('channel', true);
             setRulesChannel(client, db, gid, ch.id);
             return interaction.reply({ content: t('rules.channelSet', lang, { channel: ch.toString() }), flags: 64 });
+        }
+
+        if (sub === 'setcolor') {
+            if (!isAdmin) return interaction.reply({ content: t('rules.needManageGuild', lang), flags: 64 });
+            let hex = interaction.options.getString('color', true).trim();
+            if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) return interaction.reply({ content: t('rules.invalidColor', lang), flags: 64 });
+            if (!hex.startsWith('#')) hex = '#' + hex;
+            saveStyle(db, gid, { color: hex });
+            return interaction.reply({ content: t('rules.setColorSuccess', lang, { color: hex }), flags: 64 });
+        }
+
+        if (sub === 'settitle') {
+            if (!isAdmin) return interaction.reply({ content: t('rules.needManageGuild', lang), flags: 64 });
+            const title = interaction.options.getString('title', true).slice(0, 200);
+            saveStyle(db, gid, { title });
+            return interaction.reply({ content: t('rules.setTitleSuccess', lang, { title }), flags: 64 });
+        }
+
+        if (sub === 'welcome') {
+            if (!isAdmin) return interaction.reply({ content: t('rules.needManageGuild', lang), flags: 64 });
+            const on = interaction.options.getBoolean('enabled', true) ? 1 : 0;
+            saveStyle(db, gid, { welcome_on: on });
+            return interaction.reply({ content: on ? t('rules.welcomeOn', lang) : t('rules.welcomeOff', lang), flags: 64 });
         }
 
         if (sub === 'resetchannel') {
@@ -204,6 +251,30 @@ module.exports = {
                 }
             }
             return message.reply(t('rules.channelMissing', lang)).catch(() => {});
+        }
+
+        if (sub === 'color' || sub === 'setcolor') {
+            if (!isAdmin) return message.reply(t('rules.needManageGuild', lang)).catch(() => {});
+            let hex = (args[1] || '').trim();
+            if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) return message.reply(t('rules.invalidColor', lang)).catch(() => {});
+            if (!hex.startsWith('#')) hex = '#' + hex;
+            saveStyle(db, gid, { color: hex });
+            return message.reply(t('rules.setColorSuccess', lang, { color: hex })).catch(() => {});
+        }
+
+        if (sub === 'title' || sub === 'settitle') {
+            if (!isAdmin) return message.reply(t('rules.needManageGuild', lang)).catch(() => {});
+            const title = args.slice(1).join(' ').slice(0, 200);
+            if (!title) return message.reply(t('rules.setTitleSuccess', lang, { title: '—' })).catch(() => {});
+            saveStyle(db, gid, { title });
+            return message.reply(t('rules.setTitleSuccess', lang, { title })).catch(() => {});
+        }
+
+        if (sub === 'welcome') {
+            if (!isAdmin) return message.reply(t('rules.needManageGuild', lang)).catch(() => {});
+            const on = ['on', '1', 'true', 'yes'].includes((args[1] || '').toLowerCase()) ? 1 : 0;
+            saveStyle(db, gid, { welcome_on: on });
+            return message.reply(on ? t('rules.welcomeOn', lang) : t('rules.welcomeOff', lang)).catch(() => {});
         }
 
         if (sub === 'resetchannel') {

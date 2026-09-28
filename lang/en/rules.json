@@ -11,5 +11,10 @@
   "channelMissing": "⚠️ The stored rules channel is gone (deleted?). Set a new one with `/rules channel #channel`, then publish with `/rules panel`.",
   "channelCleared": "✅ Rules channel cleared. `/rules` will display rules in the current channel.",
   "needManageGuild": "⛔ You need the Manage Server permission.",
-  "rulesTooLong": "⚠️ Rules too long — split across multiple messages."
+  "rulesTooLong": "⚠️ Rules too long — split across multiple messages.",
+  "setColorSuccess": "✅ Accent color set to {color}!",
+  "invalidColor": "⚠️ Invalid color — use hex format, e.g. #ff0000.",
+  "setTitleSuccess": "✅ Title set to \"{title}\"!",
+  "welcomeOn": "✅ Welcome line enabled.",
+  "welcomeOff": "✅ Welcome line disabled."
 }
