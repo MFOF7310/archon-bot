@@ -155,7 +155,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00cc44)
-                    .setTitle(`✅ ${vt(db, gid, 'enableTitle')}`)
+                    .setTitle(`${EMOJIS.verified} ${vt(db, gid, 'enableTitle')}`)
                     .addFields(
                         { name: vt(db, gid, 'verifiedRoleLabel'), value: role, inline: true },
                         { name: vt(db, gid, 'autokickLabel'), value: settings?.verify_kick_days ? vt(db, gid, 'autokickMin', { mins: settings.verify_kick_days }) : vt(db, gid, 'disabled'), inline: true }
@@ -430,7 +430,7 @@ module.exports = {
 
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x00cc44)
-                        .setTitle(`✅ ${vt(db, gid, 'verifiedDmTitle')}`)
+                        .setTitle(`${EMOJIS.verified} ${vt(db, gid, 'verifiedDmTitle')}`)
                         .setDescription(vt(db, gid, 'welcomeDm', { server: member.guild.name }))
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ]}).catch(() => {});
@@ -444,7 +444,7 @@ module.exports = {
                         const kickOn = (settings.verify_kick_days || 0) > 0;
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff3311)
-                            .setTitle(`⚠️ ${vt(db, gid, 'tooManyTitle')}`)
+                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
                             .setDescription(kickOn
                                 ? vt(db, gid, 'kickDm', { server: member.guild.name })
                                 : (pl ? vt(db, gid, 'failPanelDm', { server: member.guild.name }) : vt(db, gid, 'failRejoinDm', { server: member.guild.name })))
@@ -462,7 +462,7 @@ module.exports = {
 
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff8800)
-                            .setTitle(`⚠️ ${vt(db, gid, 'attemptWrongTitle', { n: attempts, max: maxAttempts })}`)
+                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'attemptWrongTitle', { n: attempts, max: maxAttempts })}`)
                             .setDescription(vt(db, gid, 'attemptWrongDesc', { remaining: maxAttempts - attempts }))
                             .setImage('attachment://verify.png')
                             .setFooter({ text: vt(db, gid, 'dmRetryFooter') })
@@ -504,7 +504,7 @@ module.exports = {
                     if (dmCh) {
                         const invRow = storedInviteRow(db, member.guild);
                         await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
-                            .setTitle(`⚠️ ${vt(db, gid, 'tooManyTitle')}`)
+                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
                             .setDescription(vt(db, gid, 'kickDm', { server: member.guild.name }))
                             .setFooter({ text: vt(db, gid, 'bamakoFooter') })],
                             components: invRow ? [invRow] : [] }).catch(() => {});
