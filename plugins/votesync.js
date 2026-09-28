@@ -1,20 +1,18 @@
 const axios = require('axios');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const EMOJIS = require('../config/emojis');
 
 /**
- * VoteSync Engine — The heart of the voting system.
- * 
+ * VoteSync Engine — The heart of the voting system. (v1.1 i18n: en/fr/zh/ar)
  * Does ONE job well: process a vote claim from any source.
- * Called by: vote.js (buttons/slash/prefix), Top.gg webhook, or polling.
- * 
- * Handles: Top.gg API check → reward calc → DB write → DM delivery → public log
  */
 
-// ================= BILINGUAL =================
+// ================= QUADRILINGUAL =================
 const T = {
     en: {
+        rewardAuthor: 'ARCHON CG-223 • TOP.GG VERIFIED',
         dmTitle: ['🌟 NEURAL GRID SYNCHRONIZED 🌟', '⚡ COSMIC ENERGY RECEIVED ⚡', '🦅 THE ARCHITECT SALUTES YOU 🦅'],
-        dear: 'Dear Agent,', thanks: 'Your vote has been received.', support: 'Thank you for your support!',
+        dear: 'Dear Agent,', thanks: 'Your vote has been received.', support: 'Thank you for your support! 🙌',
         reward: '💰 REWARD', streak: '🔥 STREAK', best: 'BEST', lifetime: '👑 LIFETIME',
         nextVote: '⏳ NEXT VOTE', rewardFmt: '\u001b[1;33m+{n} Credits\u001b[0m',
         streakFmt: '\u001b[1;36mCurrent: {current}\nBest: {best}\u001b[0m',
@@ -24,29 +22,68 @@ const T = {
         milestone30: '👑 30-DAY LEGENDARY! +5,000 BONUS!', milestone30desc: '```ansi\n\u001b[1;35m+5,000 BONUS CREDITS!\u001b[0m\n```',
         milestone100: '🌟 100-DAY MYTHIC! +10,000 BONUS!', milestone100desc: '```ansi\n\u001b[1;33m+10,000 BONUS + LEGENDARY TITLE!\u001b[0m\n```',
         footer: 'ARCHON CG-223 • Top.gg Certified',
-        voteAgain: '⭐ Vote Again', noVote: '❌ You have not voted yet!',
+        voteAgain: 'Vote Again', noVote: '❌ You have not voted yet!',
         checkError: '❌ Could not check vote status. Try again later.',
         alreadyClaimed: '⏰ Already claimed! Next vote: {time}',
         publicTitle: '🗳️ VOTE RECEIVED', publicDesc: '**{user}** voted!\n💰 **Reward:** +{reward} Credits\n🔥 **Streak:** {streak} days\n📊 **Total:** {total} votes',
         publicFooter: 'ARCHON CG-223 • Top.gg Verified'
     },
     fr: {
+        rewardAuthor: 'ARCHON CG-223 • TOP.GG VÉRIFIÉ',
         dmTitle: ['🌟 RÉSEAU NEURAL SYNCHRONISÉ 🌟', '⚡ ÉNERGIE COSMIQUE REÇUE ⚡', '🦅 L\'ARCHITECTE VOUS SALUE 🦅'],
-        dear: 'Cher Agent,', thanks: 'Votre vote a été reçu.', support: 'Merci pour votre soutien!',
+        dear: 'Cher Agent,', thanks: 'Votre vote a été reçu.', support: 'Merci pour votre soutien ! 🙌',
         reward: '💰 RÉCOMPENSE', streak: '🔥 SÉRIE', best: 'MEILLEURE', lifetime: '👑 TOTAL',
         nextVote: '⏳ PROCHAIN VOTE', rewardFmt: '\u001b[1;33m+{n} Crédits\u001b[0m',
-        streakFmt: '\u001b[1;36mActuelle: {current}\nMeilleure: {best}\u001b[0m',
+        streakFmt: '\u001b[1;36mActuelle : {current}\nMeilleure : {best}\u001b[0m',
         lifetimeFmt: '\u001b[1;35m{rewards} 🪙\n{votes} votes\u001b[0m',
         nextFmt: '{time} ({relative})',
-        milestone7: '🏆 OBJECTIF 7 JOURS! +2 000 BONUS!', milestone7desc: '```ansi\n\u001b[1;32m+2 000 CRÉDITS BONUS!\u001b[0m\n```',
-        milestone30: '👑 LÉGENDAIRE 30 JOURS! +5 000 BONUS!', milestone30desc: '```ansi\n\u001b[1;35m+5 000 CRÉDITS BONUS!\u001b[0m\n```',
-        milestone100: '🌟 MYTHIQUE 100 JOURS! +10 000 BONUS!', milestone100desc: '```ansi\n\u001b[1;33m+10 000 BONUS + TITRE LÉGENDAIRE!\u001b[0m\n```',
+        milestone7: '🏆 OBJECTIF 7 JOURS ! +2 000 BONUS !', milestone7desc: '```ansi\n\u001b[1;32m+2 000 CRÉDITS BONUS !\u001b[0m\n```',
+        milestone30: '👑 LÉGENDAIRE 30 JOURS ! +5 000 BONUS !', milestone30desc: '```ansi\n\u001b[1;35m+5 000 CRÉDITS BONUS !\u001b[0m\n```',
+        milestone100: '🌟 MYTHIQUE 100 JOURS ! +10 000 BONUS !', milestone100desc: '```ansi\n\u001b[1;33m+10 000 BONUS + TITRE LÉGENDAIRE !\u001b[0m\n```',
         footer: 'ARCHON CG-223 • Certifié Top.gg',
-        voteAgain: '⭐ Voter à nouveau', noVote: '❌ Vous n\'avez pas encore voté!',
-        checkError: '❌ Impossible de vérifier. Réessayez.',
-        alreadyClaimed: '⏰ Déjà réclamé! Prochain vote: {time}',
-        publicTitle: '🗳️ VOTE REÇU', publicDesc: '**{user}** a voté!\n💰 **Récompense:** +{reward} Crédits\n🔥 **Série:** {streak} jours\n📊 **Total:** {total} votes',
+        voteAgain: 'Voter à nouveau', noVote: '❌ Vous n\'avez pas encore voté !',
+        checkError: '❌ Impossible de vérifier. Réessayez plus tard.',
+        alreadyClaimed: '⏰ Déjà réclamé ! Prochain vote : {time}',
+        publicTitle: '🗳️ VOTE REÇU', publicDesc: '**{user}** a voté !\n💰 **Récompense :** +{reward} Crédits\n🔥 **Série :** {streak} jours\n📊 **Total :** {total} votes',
         publicFooter: 'ARCHON CG-223 • Top.gg Vérifié'
+    },
+    zh: {
+        rewardAuthor: 'ARCHON CG-223 • TOP.GG 已验证',
+        dmTitle: ['🌟 神经网格已同步 🌟', '⚡ 宇宙能量已接收 ⚡', '🦅 架构师向你致敬 🦅'],
+        dear: '特工你好，', thanks: '你的投票已收到。', support: '感谢你的支持！🙌',
+        reward: '💰 奖励', streak: '🔥 连投', best: '最高', lifetime: '👑 生涯总计',
+        nextVote: '⏳ 下次可投', rewardFmt: '\u001b[1;33m+{n} 积分\u001b[0m',
+        streakFmt: '\u001b[1;36m当前：{current}\n最高：{best}\u001b[0m',
+        lifetimeFmt: '\u001b[1;35m{rewards} 🪙\n{votes} 次投票\u001b[0m',
+        nextFmt: '{time}（{relative}）',
+        milestone7: '🏆 7 天里程碑！+2,000 奖励！', milestone7desc: '```ansi\n\u001b[1;32m+2,000 奖励积分！\u001b[0m\n```',
+        milestone30: '👑 30 天传奇！+5,000 奖励！', milestone30desc: '```ansi\n\u001b[1;35m+5,000 奖励积分！\u001b[0m\n```',
+        milestone100: '🌟 100 天神话！+10,000 奖励！', milestone100desc: '```ansi\n\u001b[1;33m+10,000 奖励 + 传奇称号！\u001b[0m\n```',
+        footer: 'ARCHON CG-223 • Top.gg 认证',
+        voteAgain: '再投一票', noVote: '❌ 你还没有投票！',
+        checkError: '❌ 无法检查投票状态，请稍后再试。',
+        alreadyClaimed: '⏰ 已领取！下次可投：{time}',
+        publicTitle: '🗳️ 收到投票', publicDesc: '**{user}** 投票了！\n💰 **奖励：** +{reward} 积分\n🔥 **连投：** {streak} 天\n📊 **总计：** {total} 次',
+        publicFooter: 'ARCHON CG-223 • Top.gg 已验证'
+    },
+    ar: {
+        rewardAuthor: 'أركون CG-223 • Top.gg موثّق',
+        dmTitle: ['🌟 الشبكة العصبية متزامنة 🌟', '⚡ طاقة كونية مستقبلة ⚡', '🦅 المهندس يحييك 🦅'],
+        dear: 'أهلًا أيها الوكيل،', thanks: 'وصلنا تصويتك.', support: 'شكرًا لدعمك! 🙌',
+        reward: '💰 المكافأة', streak: '🔥 السلسلة', best: 'الأفضل', lifetime: '👑 الإجمالي',
+        nextVote: '⏳ التصويت التالي', rewardFmt: '\u001b[1;33m+{n} رصيد\u001b[0m',
+        streakFmt: '\u001b[1;36mالحالية: {current}\nالأفضل: {best}\u001b[0m',
+        lifetimeFmt: '\u001b[1;35m{rewards} 🪙\n{votes} تصويت\u001b[0m',
+        nextFmt: '{time} ({relative})',
+        milestone7: '🏆 محطة 7 أيام! +2,000 مكافأة!', milestone7desc: '```ansi\n\u001b[1;32m+2,000 رصيد مكافأة!\u001b[0m\n```',
+        milestone30: '👑 أسطورة 30 يومًا! +5,000 مكافأة!', milestone30desc: '```ansi\n\u001b[1;35m+5,000 رصيد مكافأة!\u001b[0m\n```',
+        milestone100: '🌟 أسطوري 100 يومًا! +10,000 مكافأة!', milestone100desc: '```ansi\n\u001b[1;33m+10,000 مكافأة + لقب أسطوري!\u001b[0m\n```',
+        footer: 'أركون CG-223 • Top.gg معتمد',
+        voteAgain: 'صوّت مجددًا', noVote: '❌ ما صوّيت بعد!',
+        checkError: '❌ ما قدرت أتحقق. حاول بعد لحظات.',
+        alreadyClaimed: '⏰ اناستلمت! التصويت التالي: {time}',
+        publicTitle: '🗳️ وصل تصويت', publicDesc: '**{user}** صوّت!\n💰 **المكافأة:** +{reward} رصيد\n🔥 **السلسلة:** {streak} يوم\n📊 **الإجمالي:** {total} تصويت',
+        publicFooter: 'أركون CG-223 • Top.gg موثّق'
     }
 };
 
@@ -55,9 +92,7 @@ function setupDB(db) {
     db.pragma('journal_mode = WAL');
     db.pragma('busy_timeout = 10000');
     db.pragma('synchronous = NORMAL');
-    // ====================================
-    
-    // Migration: recreate user_votes if guild_id column is missing (old schema without per-server partitioning)
+
     const userVotesInfo = db.prepare(`PRAGMA table_info(user_votes)`).all();
     if (userVotesInfo.length > 0 && !userVotesInfo.find(c => c.name === 'guild_id')) {
         console.log(`[VOTESYNC] Migrating user_votes table to per-server partitioning schema...`);
@@ -69,7 +104,6 @@ function setupDB(db) {
             total_rewards INTEGER DEFAULT 0, votes_this_month INTEGER DEFAULT 0,
             last_month_reset INTEGER DEFAULT 0, PRIMARY KEY (user_id, guild_id)
         )`).run();
-        // Best-effort migration: assign '0' as guild_id for legacy data
         try {
             db.prepare(`INSERT INTO user_votes (user_id, guild_id, total_votes, current_streak, best_streak, last_vote_date, total_rewards, votes_this_month, last_month_reset)
                 SELECT user_id, '0', total_votes, current_streak, best_streak, last_vote_date, total_rewards, votes_this_month, last_month_reset FROM user_votes_old`).run();
@@ -80,7 +114,6 @@ function setupDB(db) {
         }
     }
 
-    // Migration: recreate vote_claims if guild_id column is missing
     const voteClaimsInfo = db.prepare(`PRAGMA table_info(vote_claims)`).all();
     if (voteClaimsInfo.length > 0 && !voteClaimsInfo.find(c => c.name === 'guild_id')) {
         console.log(`[VOTESYNC] Migrating vote_claims table to per-server partitioning schema...`);
@@ -156,21 +189,16 @@ function updateDB(db, userId, guildId, result, stats) {
     const newTotalVotes = (stats.total_votes || 0) + 1;
     const newTotalRewards = (stats.total_rewards || 0) + result.total;
     const newVotesThisMonth = (stats.votes_this_month || 0) + 1;
-    
-    // Update vote tracking tables
+
     db.prepare(`INSERT OR REPLACE INTO user_votes (user_id, guild_id, total_votes, current_streak, best_streak, last_vote_date, total_rewards, votes_this_month, last_month_reset)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(userId, guildId, newTotalVotes, result.streak, result.best, now, newTotalRewards, newVotesThisMonth, stats.last_month_reset || now);
-    
+
     db.prepare(`INSERT OR IGNORE INTO vote_claims (user_id, guild_id, claim_date, reward) VALUES (?, ?, ?, ?)`).run(userId, guildId, now, result.total);
-    
-    // =================================================================
-    // DISTRIBUTION GLOBALE DES CRÉDITS DE VOTE (WAL FIX)
-    // =================================================================
+
     try {
         const allUserRecords = db.prepare(`SELECT guild_id, credits FROM users WHERE id = ? AND guild_id = ?`).all(userId, guildId);
-        
+
         if (allUserRecords.length > 0) {
-            // Use transaction for atomic updates
             const updateMany = db.transaction((records, amount) => {
                 const stmt = db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`);
                 for (const record of records) {
@@ -180,38 +208,30 @@ function updateDB(db, userId, guildId, result, stats) {
                     }
                 }
             });
-            
+
             updateMany(allUserRecords, result.total);
-            
-            // CRITICAL: Force WAL to flush to disk
             db.pragma('wal_checkpoint(TRUNCATE)');
-            
             console.log(`[VOTESYNC] Credits added to ${allUserRecords.length} servers for ${userId}: +${result.total}`);
         } else {
-            // No profile found - create new one
             const targetGuild = guildId || '0';
-            db.prepare(`INSERT INTO users (id, guild_id, credits, xp, level, streak_days, last_daily, total_dailies, highest_streak) 
+            db.prepare(`INSERT INTO users (id, guild_id, credits, xp, level, streak_days, last_daily, total_dailies, highest_streak)
                 VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0)`)
               .run(userId, targetGuild, result.total);
             db.pragma('wal_checkpoint(TRUNCATE)');
             console.log(`[VOTESYNC] New profile created for ${userId} with ${result.total} credits`);
         }
-        
-        // Verify the update actually worked
+
         const verify = db.prepare(`SELECT credits FROM users WHERE id = ?`).all(userId);
         const totalCredits = verify.reduce((sum, r) => sum + (r.credits || 0), 0);
         console.log(`[VOTESYNC] Verification: User ${userId} now has ${totalCredits} total credits across ${verify.length} profiles`);
-        
+
     } catch (e) {
         console.error(`[VOTESYNC ERROR] Failed to add credits for ${userId}:`, e.message);
-        // Rollback on error
-        try {
-            db.exec('ROLLBACK');
-        } catch (rollbackErr) {
+        try { db.exec('ROLLBACK'); } catch (rollbackErr) {
             console.error(`[VOTESYNC] Rollback failed:`, rollbackErr.message);
         }
     }
-    
+
     return { newTotalVotes, newTotalRewards };
 }
 
@@ -222,7 +242,7 @@ function buildDMEmbed(client, user, result, stats, t, lang) {
     const title = titles[Math.floor(Math.random() * titles.length)];
 
     const embed = new EmbedBuilder().setColor('#ffd700')
-        .setAuthor({ name: 'ARCHON CG-223 • TOP.GG VERIFIED', iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ name: t.rewardAuthor, iconURL: client.user.displayAvatarURL() })
         .setTitle(title)
         .setDescription(`\`\`\`ansi\n\u001b[1;33m${t.dear}\u001b[0m\n\n\u001b[1;37m${t.thanks}\u001b[0m\n\u001b[1;36m${t.support}\u001b[0m\n\`\`\``)
         .addFields(
@@ -238,21 +258,23 @@ function buildDMEmbed(client, user, result, stats, t, lang) {
     if (result.milestone === '30') embed.addFields({ name: '\u200b', value: t.milestone30desc, inline: false });
     if (result.milestone === '100') embed.addFields({ name: '\u200b', value: t.milestone100desc, inline: false });
 
+    // Custom vote emoji on button; label carries NO star (kills the duplicate)
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t.voteAgain).setStyle(ButtonStyle.Link).setURL(`https://top.gg/bot/${client.user.id}/vote`).setEmoji('⭐')
+        new ButtonBuilder().setLabel(t.voteAgain).setStyle(ButtonStyle.Link)
+            .setURL(`https://top.gg/bot/${client.user.id}/vote`)
+            .setEmoji(EMOJIS.vote || '🗳️')
     );
 
     return { embed, components: [row], nextVote: nextTs };
 }
 
 // ================= SEND PUBLIC LOG =================
-async function sendPublicLog(client, user, result, stats) {
+async function sendPublicLog(client, user, result, stats, t) {
     const logId = process.env.LOG_CHANNEL_ID;
     if (!logId) return;
     try {
         const ch = await client.channels.fetch(logId).catch(() => null);
         if (!ch) return;
-        const t = T.en;
         const embed = new EmbedBuilder().setColor('#ffd700')
             .setAuthor({ name: t.publicTitle, iconURL: user.displayAvatarURL() })
             .setDescription(t.publicDesc.replace('{user}', user.username).replace('{reward}', result.total.toLocaleString()).replace('{streak}', result.streak).replace('{total}', (stats.total_votes || 0) + 1))
@@ -317,11 +339,17 @@ async function processVote(userId, guildId, client, opts = {}) {
     const user = await client.users.fetch(userId).catch(() => null);
     if (!user) return { success: false, error: 'USER_NOT_FOUND' };
 
-    // 6. Detect language
+    // 6. Detect language: server setting wins, then Discord locale (fr/zh), default en
     let lang = 'en';
     try {
-        const g = client.guilds.cache.find(g => g.members.cache.has(userId));
-        if (g?.preferredLocale?.startsWith('fr')) lang = 'fr';
+        const ssLang = client.getServerSettings?.(guildId)?.language;
+        if (['en', 'fr', 'zh', 'ar', 'bm'].includes(ssLang)) lang = ssLang;
+        else {
+            const g = client.guilds.cache.find(g => g.members.cache.has(userId));
+            const loc = g?.preferredLocale || '';
+            if (loc.startsWith('fr')) lang = 'fr';
+            else if (loc.startsWith('zh')) lang = 'zh';
+        }
     } catch {}
     const t = T[lang] || T.en;
 
@@ -332,10 +360,10 @@ async function processVote(userId, guildId, client, opts = {}) {
         console.log(`[VOTESYNC] DM failed for ${userId}: ${err.message}`);
     });
 
-    // 8. Public log
-    await sendPublicLog(client, user, result, stats);
+    // 8. Public log (localized too)
+    await sendPublicLog(client, user, result, stats, t);
 
-    console.log(`[VOTESYNC] ✅ ${user.username} | +${result.total} | Streak: ${result.streak} | DM: ${dmSent ? 'sent' : 'failed'}`);
+    console.log(`[VOTESYNC] ✅ ${user.username} | +${result.total} | Streak: ${result.streak} | Lang: ${lang} | DM: ${dmSent ? 'sent' : 'failed'}`);
     return { success: true, ...result, nextVote, lang, dmSent, total_votes: newTotalVotes, total_rewards: newTotalRewards };
 }
 
