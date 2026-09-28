@@ -252,7 +252,7 @@ module.exports = {
                     .setDescription(vt(db, gid, 'panelDesc'))
                     .setFooter({ text: vt(db, gid, 'bamakoFooter') })],
                 components: [new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(db, gid, 'panelBtn')).setStyle(ButtonStyle.Success).setEmoji('🛡️'))]
+                    new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(db, gid, 'panelBtn')).setStyle(ButtonStyle.Success).setEmoji(EMOJIS.shield))]
             });
             return interaction.reply({
                 content: vt(db, gid, 'panelPosted', { ch: String(ch) }) + (uRole ? ' ' + vt(db, gid, 'panelCanSee', { role: String(uRole) }) : vt(db, gid, 'panelNoRole')),
