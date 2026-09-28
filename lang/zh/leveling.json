@@ -22,5 +22,6 @@
   "role_set": "{check} 达到 **{level} 级**的成员将自动获得 {role}。",
   "role_cleared": "{check} 已清除 **{level} 级**角色。",
   "levelUpLine": "恭喜 {user}，你达到了 **{level} 级**！",
-  "levelUpRole": "新角色：**{role}**"
+  "levelUpRole": "新角色：**{role}**",
+  "newRolesLabel": "🎭 新角色"
 }

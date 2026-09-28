@@ -39,5 +39,19 @@
   "fallback_2": "Je n'ai pas d'information précise là-dessus. Tu veux que je fasse une recherche sur le web, ou je peux t'aider avec quelque chose lié aux fonctionnalités du bot ?",
   "fallback_3": "C'est en dehors de ma base de connaissances actuelle. Je me concentre sur l'aide aux systèmes d'ARCHON CG-223. Sur quoi veux-tu en savoir plus ?",
   "memory_example": "**Exemple :**\n`Retiens que ma couleur préférée est le bleu`\n→ Stocke `favorite_color: blue`",
-  "key_saved_tip": "Astuce : ta clé est stockée côté serveur uniquement et n'apparaît jamais dans le chat."
+  "key_saved_tip": "Astuce : ta clé est stockée côté serveur uniquement et n'apparaît jamais dans le chat.",
+  "badgeActive": "ACTIF",
+  "badgeStandby": "VEILLE",
+  "statusActiveDesc": "```ansi\n\\u001b[1;32m[ MONITEUR SYSTÈME ]\\u001b[0m\n\\u001b[32m{botName} est actif dans #{channel}\\u001b[0m\n```\n",
+  "statusActiveBody": "**Méthodes de chat :**\n• Mentionne @{botName}\n• Tape `{prefix}ai [message]`\n• Dis `{botName} [message]`\n\n🖼️ Analyse d'images supportée\n🌐 Support multilingue\n🔑 {keyMode}",
+  "statusStandbyDesc": "```ansi\n\\u001b[1;33m[ MONITEUR SYSTÈME ]\\u001b[0m\n\\u001b[33m{botName} est en veille\\u001b[0m\n```\n",
+  "statusStandbyBody": "**Activation :** `{prefix}lydia on`\n\n📌 Une fois active : mémoire, rappels, recherche web et support multilingue",
+  "onAuthor": "MONITEUR • EN LIGNE",
+  "onDesc": "```ansi\n\\u001b[1;32m[ LIEN NEURAL ÉTABLI ]\\u001b[0m\n\\u001b[32m{botName} est maintenant actif dans #{channel}\\u001b[0m\n```\n",
+  "onBody": "**Méthodes de chat :**\n• Mentionne @{botName}\n• Tape `{prefix}ai [question]`\n• Dis `{botName} [question]`\n\n🧠 Mémoire : `[MEMORY: clé | valeur]`\n🕐 Rappels : `[REMIND: 5 min | message]`\n🌐 Détection automatique de la langue",
+  "onFooter": "Prête à aider",
+  "offAuthor": "MONITEUR • HORS LIGNE",
+  "offDesc": "```ansi\n\\u001b[1;31m[ LIEN NEURAL TERMINÉ ]\\u001b[0m\n\\u001b[31m{botName} a été désactivé dans #{channel}\\u001b[0m\n```\n",
+  "offBody": "**Réactivation :** `{prefix}lydia on`\n\n💬 Disponible dans les autres salons actifs",
+  "offFooter": "Mode veille"
 }

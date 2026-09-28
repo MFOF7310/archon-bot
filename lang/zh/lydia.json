@@ -39,5 +39,19 @@
   "fallback_2": "我没有这方面的具体信息。要我帮你搜索网络吗，或者聊聊机器人的功能？",
   "fallback_3": "这超出了我目前的知识库。我专注于帮助使用 ARCHON CG-223 的系统。你想了解什么？",
   "memory_example": "**示例：**\n`记住我最喜欢的颜色是蓝色`\n→ 会存储 `favorite_color: blue`",
-  "key_saved_tip": "提示：你的 key 只存储在服务器端，永远不会显示在聊天中。"
+  "key_saved_tip": "提示：你的 key 只存储在服务器端，永远不会显示在聊天中。",
+  "badgeActive": "运行中",
+  "badgeStandby": "待机中",
+  "statusActiveDesc": "```ansi\n\\u001b[1;32m[ 系统监视 ]\\u001b[0m\n\\u001b[32m{botName} 已在 #{channel} 激活\\u001b[0m\n```\n",
+  "statusActiveBody": "**聊天方式：**\n• @ 提及 {botName}\n• 输入 `{prefix}ai [消息]`\n• 直接说 `{botName} [消息]`\n\n🖼️ 支持图片分析\n🌐 全语言支持\n🔑 {keyMode}",
+  "statusStandbyDesc": "```ansi\n\\u001b[1;33m[ 系统监视 ]\\u001b[0m\n\\u001b[33m{botName} 处于待机模式\\u001b[0m\n```\n",
+  "statusStandbyBody": "**激活：** `{prefix}lydia on`\n\n📌 激活后可用：记忆、提醒、联网搜索、多语言支持",
+  "onAuthor": "系统监视 • 在线",
+  "onDesc": "```ansi\n\\u001b[1;32m[ 神经链接已建立 ]\\u001b[0m\n\\u001b[32m{botName} 现已在 #{channel} 激活\\u001b[0m\n```\n",
+  "onBody": "**聊天方式：**\n• @ 提及 {botName}\n• 输入 `{prefix}ai [问题]`\n• 直接说 `{botName} [问题]`\n\n🧠 记忆：`[MEMORY: 键 | 值]`\n🕐 提醒：`[REMIND: 5 min | 内容]`\n🌐 全语言自动检测",
+  "onFooter": "随时待命",
+  "offAuthor": "系统监视 • 离线",
+  "offDesc": "```ansi\n\\u001b[1;31m[ 神经链接已断开 ]\\u001b[0m\n\\u001b[31m{botName} 已在 #{channel} 关闭\\u001b[0m\n```\n",
+  "offBody": "**重新激活：** `{prefix}lydia on`\n\n💬 其他已激活的频道仍可使用",
+  "offFooter": "睡眠模式"
 }

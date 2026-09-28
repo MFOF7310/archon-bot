@@ -1368,17 +1368,14 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
     const embed = new EmbedBuilder()
       .setColor(isEnabled ? '#2ecc71' : '#95a5a6')
       .setAuthor({
-        name: `${botName} \u2022 ${isEnabled ? 'ACTIVE' : 'STANDBY'}`,
+        name: `${botName} \u2022 ${isEnabled ? t('lydia.badgeActive', lang) : t('lydia.badgeStandby', lang)}`,
         iconURL: client.user.displayAvatarURL()
       })
       .setThumbnail(isEnabled ? client.user.displayAvatarURL() : null)
       .setDescription(
         isEnabled
-          ? `\`\`\`ansi\n\u001b[1;32m[ SYSTEM MONITOR ]\u001b[0m\n\u001b[32m${botName} is active in #${channel.name}\u001b[0m\n\`\`\`\n` +
-            `**Chat methods:**\n\u2022 Mention @${botName}\n\u2022 Type \`${prefix}ai [message]\`\n\u2022 Say \`${botName} [message]\`\n\n` +
-            `\u{1F5BC}\u{FE0F} Image analysis supported.\n\u{1F310} Universal language support.\n\u{1F511} ${keyMode}`
-          : `\`\`\`ansi\n\u001b[1;33m[ SYSTEM MONITOR ]\u001b[0m\n\u001b[33m${botName} is in standby mode\u001b[0m\n\`\`\`\n` +
-            `**Activate:** \`${prefix}lydia on\`\n\n\u{1F4CC} Memory, reminders, web search, and multilingual support available when active.`
+          ? t('lydia.statusActiveDesc', lang, { botName, channel: channel.name }) + t('lydia.statusActiveBody', lang, { botName, prefix, keyMode })
+          : t('lydia.statusStandbyDesc', lang, { botName }) + t('lydia.statusStandbyBody', lang, { prefix })
       )
       .setFooter({
         text: `#${channel.name} \u2022 ${new Date().toLocaleTimeString('en-US', { timeZone: 'Africa/Bamako' })}`,
@@ -1405,14 +1402,13 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
     const embed = new EmbedBuilder()
       .setColor('#2ecc71')
-      .setAuthor({ name: `\u{1F7E2} SYSTEM MONITOR \u2022 ONLINE`, iconURL: client.user.displayAvatarURL() })
+      .setAuthor({ name: `\u{1F7E2} ${t('lydia.onAuthor', lang)}`, iconURL: client.user.displayAvatarURL() })
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
-        `\`\`\`ansi\n\u001b[1;32m[ NEURAL LINK ESTABLISHED ]\u001b[0m\n\u001b[32m${botName} is now active in #${channel.name}\u001b[0m\n\`\`\`\n` +
-        `**Chat methods:**\n\u2022 Mention @${botName}\n\u2022 Type \`${prefix}ai [question]\`\n\u2022 Say \`${botName} [question]\`\n\n` +
-        `\u{1F9E0} Memory: \`[MEMORY: key | value]\`\n\u{1F551} Reminders: \`[REMIND: 5 min | message]\`\n\u{1F310} Universal language auto-detection`
+        t('lydia.onDesc', lang, { botName, channel: channel.name }) +
+        t('lydia.onBody', lang, { botName, prefix })
       )
-      .setFooter({ text: `#${channel.name} \u2022 Ready to help`, iconURL: guild.iconURL() })
+      .setFooter({ text: `#${channel.name} \u2022 ${t('lydia.onFooter', lang)}`, iconURL: guild.iconURL() })
       .setTimestamp();
     if (respondFn) await respondFn({ embeds: [embed] });
     return;
@@ -1431,12 +1427,12 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
     const embed = new EmbedBuilder()
       .setColor('#e74c3c')
-      .setAuthor({ name: `\u{1F534} SYSTEM MONITOR \u2022 OFFLINE`, iconURL: client.user.displayAvatarURL() })
+      .setAuthor({ name: `\u{1F534} ${t('lydia.offAuthor', lang)}`, iconURL: client.user.displayAvatarURL() })
       .setDescription(
-        `\`\`\`ansi\n\u001b[1;31m[ NEURAL LINK TERMINATED ]\u001b[0m\n\u001b[31m${botName} has been deactivated in #${channel.name}\u001b[0m\n\`\`\`\n` +
-        `**Reactivate:** \`${prefix}lydia on\`\n\n\u{1F4AC} Available in other active channels.`
+        t('lydia.offDesc', lang, { botName, channel: channel.name }) +
+        t('lydia.offBody', lang, { prefix })
       )
-      .setFooter({ text: `#${channel.name} \u2022 Sleep mode`, iconURL: guild.iconURL() })
+      .setFooter({ text: `#${channel.name} \u2022 ${t('lydia.offFooter', lang)}`, iconURL: guild.iconURL() })
       .setTimestamp();
     if (respondFn) await respondFn({ embeds: [embed] });
     return;

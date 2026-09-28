@@ -453,10 +453,8 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
         const chId = ss.levelupChannel || ss.levelup_channel;
         const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
         if (!ch) return;
-        const lang = ss.language && ss.language !== 'auto' ? ss.language : 'en';
-        const text = lang === 'fr'
-            ? `⚡ ${member} a atteint le **Niveau ${newLevel}** ! Continue comme ça.`
-            : `⚡ ${member} reached **Level ${newLevel}**! Keep grinding.`;
+        const lang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : 'en';
+        const text = require('../lib/i18n').t('leveling.levelUpLine', lang, { user: String(member), level: newLevel });
         const msg = await ch.send({ content: text }).catch(() => null);
         if (msg) setTimeout(() => msg.delete().catch(() => {}), 15000);
         return;
@@ -465,13 +463,15 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
     const customTheme = db ? getThemeDB(db, member.guild.id) : null;
     const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme);
     const theme = getTheme(newLevel, customTheme);
-    const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setDescription(`**${member.user.tag}** reached **Level ${newLevel}**!`).setImage('attachment://levelup.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-    if (added.length) embed.addFields({ name: 'New Roles', value: added.map(r => `• ${r}`).join('\n'), inline: false });
+    const _t = require('../lib/i18n').t;
+    const lvLang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : 'en';
+    const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setDescription(_t('leveling.levelUpLine', lvLang, { user: member.user.tag, level: newLevel })).setImage('attachment://levelup.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+    if (added.length) embed.addFields({ name: _t('leveling.newRolesLabel', lvLang), value: added.map(r => `• ${r}`).join('\n'), inline: false });
     const ss = client.getServerSettings?.(member.guild.id) || {};
     const chId = ss.levelupChannel || ss.levelup_channel;
     const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
     if (!ch) return;
-    await ch.send({ content: `GG ${member}! 🎉`, embeds: [embed], files: [new AttachmentBuilder(png, { name: 'levelup.png' })] }).catch(() => { });
+    await ch.send({ content: _t('leveling.levelUpLine', lvLang, { user: String(member), level: newLevel }), embeds: [embed], files: [new AttachmentBuilder(png, { name: 'levelup.png' })] }).catch(() => { });
 }
 
 async function handleWelcome(member, client, db) {

@@ -22,5 +22,6 @@
   "role_set": "{check} Members who reach **Level {level}** will automatically receive {role}.",
   "role_cleared": "{check} Level **{level}** role cleared.",
   "levelUpLine": "GG {user}, you reached **level {level}**!",
-  "levelUpRole": "New role: **{role}**"
+  "levelUpRole": "New role: **{role}**",
+  "newRolesLabel": "🎭 New Roles"
 }

@@ -22,5 +22,6 @@
   "role_set": "{check} الأعضاء الذين يصلون إلى **المستوى {level}** سيحصلون تلقائيًا على {role}.",
   "role_cleared": "{check} تم مسح دور المستوى **{level}**.",
   "levelUpLine": "مبروك {user}، لقد وصلت إلى **المستوى {level}**!",
-  "levelUpRole": "دور جديد: **{role}**"
+  "levelUpRole": "دور جديد: **{role}**",
+  "newRolesLabel": "🎭 أدوار جديدة"
 }
