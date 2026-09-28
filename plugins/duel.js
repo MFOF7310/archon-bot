@@ -39,7 +39,8 @@ const T = {
   eloLine: 'ELO: {elo} ({chg})', streakLine: 'Streak: {n} 🔥', rankLine: 'Rank: {r}',
   usage: '⚔️ **Neural Arena**\nUsage: `{p}duel @user [bet]`',
   minBet: 'Minimum bet is 10 🪙', maxBet: 'Maximum bet is 5,000 🪙',
-  logFooter: 'Round {n} • NEURAL ARENA'
+  logFooter: 'Round {n} • NEURAL ARENA',
+  notYourTurn: 'Not your turn — hold your fire!'
  },
  fr: {
   selfDuel: `${EMOJIS.warning} Tu ne peux pas te battre contre toi-même — trouve un adversaire digne ! 😄`,
@@ -72,7 +73,8 @@ const T = {
   eloLine: 'ELO : {elo} ({chg})', streakLine: 'Série : {n} 🔥', rankLine: 'Rang : {r}',
   usage: '⚔️ **Arène Neurale**\nUtilisation : `{p}duel @user [pari]`',
   minBet: 'Pari minimum : 10 🪙', maxBet: 'Pari maximum : 5 000 🪙',
-  logFooter: 'Manche {n} • ARÈNE NEURALE'
+  logFooter: 'Manche {n} • ARÈNE NEURALE',
+  notYourTurn: 'Pas ton tour — retiens ton feu !'
  },
  zh: {
   selfDuel: `${EMOJIS.warning} 不能挑战自己 — 找个像样的对手吧！😄`,
@@ -105,7 +107,8 @@ const T = {
   eloLine: 'ELO：{elo}（{chg}）', streakLine: '连击：{n} 🔥', rankLine: '段位：{r}',
   usage: '⚔️ **神经竞技场**\n用法：`{p}duel @user [赌注]`',
   minBet: '最低赌注 10 🪙', maxBet: '最高赌注 5,000 🪙',
-  logFooter: '第 {n} 回合 • 神经竞技场'
+  logFooter: '第 {n} 回合 • 神经竞技场',
+  notYourTurn: '还没轮到你 — 按住扳机！'
  },
  ar: {
   selfDuel: `${EMOJIS.warning} ما تقدر تحدّي نفسك — لاقِ خصم يستاهل! 😄`,
@@ -138,7 +141,8 @@ const T = {
   eloLine: 'ELO: {elo} ({chg})', streakLine: 'السلسلة: {n} 🔥', rankLine: 'الرتبة: {r}',
   usage: '⚔️ **الساحة العصبية**\nالاستخدام: `{p}duel @user [رهان]`',
   minBet: 'أقل رهان 10 🪙', maxBet: 'أعلى رهان 5,000 🪙',
-  logFooter: 'الجولة {n} • الساحة العصبية'
+  logFooter: 'الجولة {n} • الساحة العصبية',
+  notYourTurn: 'مو دورك — ثبت يدك!'
  }
 };
 
@@ -379,6 +383,17 @@ async function runBattle(msg, client, db, duel) {
   let round = 1;
   let turn = Math.random() > 0.5 ? p1.id : p2.id;
 
+  // Acknowledge out-of-turn clicks so Discord doesn't show "interaction failed"
+  const ackCollector = msg.createMessageComponentCollector({
+    filter: i => i.message.id === msg.id && i.customId.startsWith('duel_'),
+    time: 10 * 60 * 1000
+  });
+  ackCollector.on('collect', async (i) => {
+    if (i.user.id !== duel.turn) {
+      await i.reply({ content: t.notYourTurn, flags: 64 }).catch(() => {});
+    }
+  });
+
   const processTurnEnd = (player) => {
     if (player.bleed > 0) { player.hp -= player.bleed; player.bleed--; }
     player.energy = Math.min(100, player.energy + 15);
@@ -495,6 +510,7 @@ async function runBattle(msg, client, db, duel) {
   });
 
   await msg.edit({ embeds: [vicEmbed], components: [] }).catch(() => {});
+  ackCollector.stop();
   activeDuels.delete(msg.id);
 }
 
