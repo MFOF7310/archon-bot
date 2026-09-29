@@ -5342,13 +5342,14 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
             try {
                 let session = checkoutSessionId ? db.prepare('SELECT guild_id FROM premium_sessions WHERE session_id = ?').get(checkoutSessionId) : null;
                 if (!session && linkSlug) session = db.prepare('SELECT guild_id FROM premium_sessions WHERE session_id = ?').get(linkSlug);
+                if (!session && event.data?.subscription_id) session = db.prepare('SELECT guild_id FROM premium_sessions WHERE session_id = ?').get(event.data.subscription_id);
                 if (session) { guildId = session.guild_id; console.log('[DODO] Found guild_id:', guildId); }
             } catch(e) { console.error('[DODO DEBUG] lookup error:', e.message); }
         }
         const customerId = event.data?.customer?.customer_id;
         const email = event.data?.customer?.email;
 
-        if (eventType === 'payment.succeeded' || eventType === 'subscription.active') {
+        if (eventType === 'payment.succeeded' || eventType === 'subscription.active' || eventType === 'subscription.renewed') {
             if (!guildId) {
                 console.error('[DODO] No guild_id in metadata');
                 return res.json({ received: true });
@@ -5357,11 +5358,14 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
             const pid = event.data?.product_id || event.data?.product_cart?.[0]?.product_id || '';
             const yearly = event.data?.metadata?.plan === 'yearly' || (!!process.env.DODO_PRODUCT_ID_YEARLY && pid === process.env.DODO_PRODUCT_ID_YEARLY);
             const planName = yearly ? 'yearly' : 'monthly';
-            const expiresAt = Math.floor(Date.now()/1000) + ((yearly ? 365 : 30) * 86400);
+            const _cur = db.prepare('SELECT expires_at FROM premium WHERE guild_id = ?').get(String(guildId));
+            if (_cur && _cur.expires_at === null) { console.log(`[DODO] Guild ${guildId} has lifetime premium — ${eventType} logged, row unchanged`); return res.json({ received: true }); }
+            const expiresAt = Math.max(_cur?.expires_at || 0, Math.floor(Date.now()/1000) + ((yearly ? 365 : 30) * 86400));
             db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)').run(
                 guildId, expiresAt, planName, 'dodo', event.data?.payment_id || 'dodo', email || 'dodo'
             );
-            console.log(`[DODO] ✅ Premium activated for guild ${guildId} (${planName})`);
+            if (event.data?.subscription_id) db.prepare('INSERT OR REPLACE INTO premium_sessions (session_id, guild_id, created_at) VALUES (?,?,?)').run(event.data.subscription_id, String(guildId), Math.floor(Date.now()/1000));
+            console.log(`[DODO] ✅ Premium activated for guild ${guildId} (${planName}, ${eventType})`);
 
             // DM guild owner
             try {
