@@ -5291,6 +5291,10 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
         const webhookTimestamp = req.headers['webhook-timestamp'];
         const webhookSignature = req.headers['webhook-signature'];
         
+        if (!webhookSecret) { console.error('[DODO] DODO_WEBHOOK_SECRET not set - rejecting'); return res.status(503).json({ error: 'not_configured' }); }
+        if (!webhookId || !webhookTimestamp || !webhookSignature) return res.status(401).json({ error: 'Missing signature' });
+        if (Math.abs(Date.now() / 1000 - Number(webhookTimestamp)) > 300) return res.status(401).json({ error: 'Stale timestamp' });
+
         if (webhookSecret && webhookSignature) {
             const secretBytes = Buffer.from(webhookSecret.replace('whsec_', ''), 'base64');
             const bodyStr = req.rawBody || JSON.stringify(req.body);
@@ -5433,13 +5437,18 @@ apiApp.post('/api/premium/activate', (req, res) => {
     try {
         const { code, guildId } = req.body;
         if (!code || !guildId) return res.json({ success: false, error: 'Missing code or guild ID' });
+        if (!/^\d{17,20}$/.test(String(guildId))) return res.json({ success: false, error: 'Invalid guild ID' });
 
         const codeRow = db.prepare('SELECT * FROM premium_codes WHERE code = ? AND used = 0').get(code.toUpperCase());
         if (!codeRow) return res.json({ success: false, error: 'Invalid or already used code' });
 
-        const expiresAt = codeRow.days === 0 ? null : Math.floor(Date.now()/1000) + (codeRow.days * 86400);
+        const nowS = Math.floor(Date.now()/1000);
+        const cur = db.prepare('SELECT expires_at FROM premium WHERE guild_id = ?').get(String(guildId));
+        if (cur && cur.expires_at === null) return res.json({ success: false, error: 'This server already has lifetime premium' });
+        const baseS = cur && cur.expires_at > nowS ? cur.expires_at : nowS;
+        const expiresAt = codeRow.days === 0 ? null : baseS + (codeRow.days * 86400);
         db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)').run(
-            guildId, expiresAt, 'code', 'code', code, 'dashboard'
+            String(guildId), expiresAt, 'code', 'code', code, 'dashboard'
         );
         db.prepare('UPDATE premium_codes SET used = 1, used_at = ? WHERE code = ?').run(
             Math.floor(Date.now()/1000), code.toUpperCase()
