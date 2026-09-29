@@ -477,7 +477,7 @@ module.exports = {
                 new ButtonBuilder().setCustomId(`ban_cancel_${targetUser.id}`).setLabel(t.cancelButton).setStyle(ButtonStyle.Secondary).setEmoji('❌')
             );
 
-            await interaction.reply({ embeds: [confirmEmbed], components: [row], ephemeral: false });
+            await interaction.reply({ embeds: [confirmEmbed], components: [row] });
 
             const collector = interaction.channel.createMessageComponentCollector({
                 filter: i => i.user.id === interaction.user.id && i.customId.startsWith('ban_'),
@@ -545,7 +545,7 @@ module.exports = {
                 new ButtonBuilder().setCustomId(`unban_cancel_${userId}`).setLabel(t.cancelButton).setStyle(ButtonStyle.Secondary).setEmoji('❌')
             );
 
-            await interaction.reply({ embeds: [confirmEmbed], components: [row], ephemeral: false });
+            await interaction.reply({ embeds: [confirmEmbed], components: [row] });
 
             const collector = interaction.channel.createMessageComponentCollector({
                 filter: i => i.user.id === interaction.user.id && i.customId.startsWith('unban_'),

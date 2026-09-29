@@ -387,7 +387,7 @@ let userData = db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").g
     if (i.customId === 'credit_lb') {
         const lbMessage = {
             ...message,
-            reply: (opts) => i.followUp({ ...opts, ephemeral: false }).catch(() => null)
+            reply: (opts) => i.followUp({ ...opts }).catch(() => null)
         };
         await handleLeaderboard(lbMessage, client, db, lang, t, guildId, economySettings, guildName, guildIcon, version);
     } else if (i.customId === 'credit_pay') {

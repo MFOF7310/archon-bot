@@ -379,7 +379,7 @@ async function startGame(interaction, database, difficulty) {
 
   // Show intro
   const introEmbed = buildHackerEmbed(game, 'intro', { client: interaction.client });
-  await interaction.reply({ embeds: [introEmbed], components: [], ephemeral: false });
+  await interaction.reply({ embeds: [introEmbed], components: [] });
 
   // Wait 3 seconds then start first round
   await new Promise(r => setTimeout(r, 3000));

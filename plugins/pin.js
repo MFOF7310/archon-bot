@@ -333,7 +333,7 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
         .setFooter({ text: `${message.author.tag} • ${t.neuralArchive} • v${version}`, iconURL: message.author.displayAvatarURL() })
         .setTimestamp();
     
-    await message.reply({ embeds: [successEmbed], ephemeral: false }).catch(() => {});
+    await message.reply({ embeds: [successEmbed] }).catch(() => {});
     console.log(`[PIN] ${message.author.tag} pinned message from ${targetMessage.author.tag}`);
 }
 
@@ -458,7 +458,7 @@ async function handleSlashUnpin(interaction, client, db, t, lang) {
 
 // ================= SLASH PINS LIST HANDLER =================
 async function handleSlashPinsList(interaction, t, lang) {
-    await interaction.deferReply({ ephemeral: false });
+    await interaction.deferReply();
     const version = getVersion();
     
     try {

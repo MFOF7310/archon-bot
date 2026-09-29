@@ -742,7 +742,7 @@ module.exports = {
                         .setEmoji(parseEmoji(EMOJIS.myprofile))
                 );
             
-            await interaction.reply({ embeds: [successEmbed], components: [actionRow], ephemeral: false });
+            await interaction.reply({ embeds: [successEmbed], components: [actionRow] });
             
             // Handle button clicks via collector
             const claimMsg = await interaction.fetchReply().catch(() => null);

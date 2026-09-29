@@ -246,7 +246,7 @@ module.exports = {
             new ButtonBuilder().setCustomId('invite_stats_slash').setLabel(t.statsButton).setStyle(ButtonStyle.Secondary).setEmoji('📊')
         );
         
-        await interaction.reply({ embeds: [embed], components: [row1, row2], ephemeral: false });
+        await interaction.reply({ embeds: [embed], components: [row1, row2] });
         
         const safeChannel = interaction.channel ?? null;
         if (safeChannel) {

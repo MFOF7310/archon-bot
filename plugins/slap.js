@@ -100,7 +100,7 @@ module.exports = {
         try {
             const { embed, row } = createSlapResponse(interaction.user, target);
             const reply = await interaction.editReply({ embeds: [embed], components: [row] });
-    await interaction.followUp({ content: `👋 <@${target.id}>, ${interaction.user.username} slapped you!`, ephemeral: false });
+    await interaction.followUp({ content: `👋 <@${target.id}>, ${interaction.user.username} slapped you!` });
             
             const collector = reply.createMessageComponentCollector({ time: 300000 });
             
