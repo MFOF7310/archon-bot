@@ -4224,6 +4224,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isModalSubmit() && interaction.customId === 'premium_code_modal') {
         const code = interaction.fields.getTextInputValue('premium_code').trim().toUpperCase();
         const gid = interaction.guild?.id;
+        if (!gid) return interaction.reply({ content: '❌ Use this inside a server.', flags: 64 });
         const { EmbedBuilder } = require('discord.js');
 
         const codeRow = db.prepare('SELECT * FROM premium_codes WHERE code = ? AND used = 0').get(code);
@@ -4234,9 +4235,13 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             ], flags: 64 });
         }
 
-        const expiresAt = codeRow.days === 0 ? null : Math.floor(Date.now()/1000) + (codeRow.days * 86400);
+        const nowS = Math.floor(Date.now()/1000);
+        const cur = db.prepare('SELECT expires_at FROM premium WHERE guild_id = ?').get(String(gid));
+        if (cur && cur.expires_at === null) return interaction.reply({ content: '❌ This server already has lifetime premium. Your code was not used.', flags: 64 });
+        const baseS = cur && cur.expires_at > nowS ? cur.expires_at : nowS;
+        const expiresAt = codeRow.days === 0 ? null : baseS + (codeRow.days * 86400);
         db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)').run(
-            gid, expiresAt, 'code', 'code', code, interaction.user.id
+            String(gid), expiresAt, 'code', 'code', code, interaction.user.id
         );
         db.prepare('UPDATE premium_codes SET used = 1, used_by = ?, used_at = ? WHERE code = ?').run(
             interaction.user.id, Math.floor(Date.now()/1000), code
