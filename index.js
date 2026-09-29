@@ -2585,10 +2585,37 @@ client.once(Events.ClientReady, async () => {
         if (lastHash && lastHash !== currentHash && !alreadyBroadcastToday) {
             console.log(`${green}[UPDATE BROADCAST]${reset} New deploy: ${lastHash.substring(0,7)} → ${shortHash}`);
 
-            const commits = execSync('git log --oneline -5', { cwd: __dirname })
-                .toString().trim().split('\n')
-                .map(l => `• ${l.substring(8).trim()}`)
-                .join('\n');
+            const _range = (() => { try { execSync(`git cat-file -e ${lastHash}^{commit}`, { cwd: __dirname, stdio: 'ignore' }); return `${lastHash}..HEAD`; } catch { return '-5'; } })();
+            const commits = execSync(`git log --no-merges --format=%s ${_range}`, { cwd: __dirname })
+                .toString().trim().split('\n').filter(Boolean)
+                .filter(l => !/^(chore|refactor|style|docs|test|ci|build)(\([^)]*\))?!?:/i.test(l))
+                .slice(0, 15)
+                .map(l => `• ${l.trim()}`)
+                .join('\n') || '• Internal improvements and fixes';
+            const _notes = {};
+            const getNotes = (lang) => _notes[lang] ??= (async () => {
+                const key = process.env.OPENROUTER_API_KEY;
+                if (!key) { console.log('[UPDATE BROADCAST] OPENROUTER_API_KEY missing, using raw commits'); return commits; }
+                try {
+                    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: 'meta-llama/llama-3.1-8b-instruct:free',
+                            max_tokens: 400,
+                            messages: [{ role: 'user', content:
+                                (lang === 'fr'
+                                  ? 'Tu écris les notes de mise à jour du bot Discord ARCHON CG-223 pour des admins de clans CODM. Transforme ces commits git en 3 à 5 puces courtes en français, ton humain et simple, sans jargon technique, sans noms de fichiers ni hash. Ignore les détails internes. Chaque ligne commence par "• ". Réponds uniquement avec les puces.'
+                                  : 'You write update notes for the Discord bot ARCHON CG-223 for CODM clan admins. Turn these git commits into 3-5 short bullets in plain, human English, no technical jargon, no file names or hashes. Skip internal details. Each line starts with "• ". Reply with the bullets only.')
+                                + '\n\nCommits:\n' + commits }]
+                        })
+                    });
+                    const d = await r.json().catch(() => ({}));
+                    if (!r.ok) { console.log(`[UPDATE BROADCAST] AI ${r.status}: ${JSON.stringify(d).slice(0, 200)}`); return commits; }
+                    const txt = d?.choices?.[0]?.message?.content?.trim();
+                    return txt && txt.length > 10 ? txt.slice(0, 3900) : commits;
+                } catch (e) { console.log('[UPDATE BROADCAST] AI error:', e.message); return commits; }
+            })();
 
             const guilds = await client.guilds.fetch();
             let notified = 0;
@@ -2602,37 +2629,13 @@ client.once(Events.ClientReady, async () => {
 
                     const { EmbedBuilder } = require('discord.js');
 
-                    // ── AI-powered commit summary ──
-                    let friendlyNotes = commits;
-                    try {
-                        const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'x-api-key': process.env.ANTHROPIC_API_KEY,
-                                'anthropic-version': '2023-06-01'
-                            },
-                            body: JSON.stringify({
-                                model: 'claude-haiku-4-5',
-                                max_tokens: 300,
-                                messages: [{
-                                    role: 'user',
-                                    content: `You are writing update notes for a Discord bot called ARCHON CG-223. Convert these git commits into 3-5 clear bullet points for Discord server members. Plain language only, no technical terms, no feat/fix prefixes. Each line starts with a relevant emoji. Max 12 words per bullet. Be factual and clear, not hype.\n\nCommits:\n${commits}\n\nRespond with ONLY the bullet points, nothing else.`
-                                }]
-                            })
-                        });
-                        const aiData = await aiRes.json();
-                        const aiText = aiData?.content?.[0]?.text?.trim();
-                        if (aiText && aiText.length > 10) friendlyNotes = aiText;
-                    } catch(aiErr) {
-                        // Fallback to raw commits if AI fails
-                        console.log('[UPDATE BROADCAST] AI summary failed, using raw commits');
-                    }
+                    const _lang = /^(en|zh|ar)/i.test(String(settings.language || settings.lang || '')) ? 'en' : 'fr';
+                    let friendlyNotes = await getNotes(_lang);
 
                     const embed = new EmbedBuilder()
                         .setColor('#00f0ff')
                         .setAuthor({ name: 'ARCHON CG-223 — New Update', iconURL: client.user.displayAvatarURL() })
-                        .setTitle(`🚀 Version ${currentVersion} is live!`)
+                        .setTitle(_lang === 'fr' ? '🚀 Nouvelle mise à jour en ligne !' : '🚀 New update is live!')
                         .setDescription(friendlyNotes)
                         .addFields(
                             { name: '🔖 Build', value: `\`${shortHash}\``, inline: true },
