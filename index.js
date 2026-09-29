@@ -2574,7 +2574,7 @@ client.once(Events.ClientReady, async () => {
         const shortHash = currentHash.substring(0, 7);
         const currentVersion = client.version || '2.0.0';
 
-        const metaRow = db.prepare("SELECT value FROM bot_meta WHERE key = 'last_commit'").get();
+        const metaRow = db.prepare("SELECT value FROM bot_meta WHERE key = 'last_broadcast_commit'").get() || { value: 'bfabb41' };
         const lastHash = metaRow?.value || null;
 
         const todayStr = new Date().toISOString().slice(0, 10);
@@ -2654,14 +2654,17 @@ client.once(Events.ClientReady, async () => {
             }
 
             console.log(`${green}[UPDATE BROADCAST]${reset} Notified ${notified} servers.`);
+            if (notified > 0) {
+                db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_broadcast_commit', ?)").run(currentHash);
+                db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_broadcast_date', ?)").run(todayStr);
+            }
         } else if (!lastHash) {
             console.log(`${green}[UPDATE BROADCAST]${reset} First boot recorded: ${shortHash}`);
         } else {
-            console.log(`${green}[UPDATE BROADCAST]${reset} Same commit ${shortHash} — no broadcast.`);
+            console.log(`${green}[UPDATE BROADCAST]${reset} ${lastHash === currentHash ? `Same commit ${shortHash} — no broadcast.` : `Already posted today — ${shortHash} pending until the next day.`}`);
         }
 
         db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_commit', ?)").run(currentHash);
-        if (!alreadyBroadcastToday) db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('last_broadcast_date', ?)").run(todayStr);
     } catch (e) {
         console.error('[UPDATE BROADCAST] Error:', e.message);
     } }, 15000); // 15s delay
