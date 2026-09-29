@@ -5475,7 +5475,8 @@ apiApp.post('/api/premium/generate', requireAdmin, (req, res) => {
         const { days = 30, amount = 1 } = req.body;
         const codes = [];
         for (let i = 0; i < Math.min(amount, 10); i++) {
-            const code = 'ARCHON-' + Math.random().toString(36).slice(2,6).toUpperCase() + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+            const seg4 = () => Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[require('crypto').randomInt(32)]).join('');
+            const code = 'ARCHON-' + seg4() + '-' + seg4();
             db.prepare('INSERT OR IGNORE INTO premium_codes (code, days) VALUES (?,?)').run(code, days);
             codes.push(code);
         }
