@@ -17,7 +17,6 @@
   "deleted": "🗑️ Build #{id} ({weapon}) deleted.",
   "prefixNoneSelf": "Nothing saved here yet — `/build save` puts you on the clan list!",
   "prefixNoneWeapon": "No **{weapon}** builds on this server yet.",
-  "notInMeta": "",
   "listFooterOne": "1 build • /build show to open",
   "listFooterMany": "{count} builds • /build show to open"
 }

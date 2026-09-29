@@ -17,7 +17,6 @@
   "deleted": "🗑️ 已删除配装 #{id}（{weapon}）。",
   "prefixNoneSelf": "这里还没有你的配装 — `/build save` 就能上战队榜单！",
   "prefixNoneWeapon": "这个服务器上还没有 **{weapon}** 的配装。",
-  "notInMeta": "",
   "listFooterOne": "1 个配装 • /build show 打开查看",
   "listFooterMany": "{count} 个配装 • /build show 打开查看"
 }

@@ -17,7 +17,6 @@
   "deleted": "🗑️ تم حذف البيلد #{id} ({weapon}).",
   "prefixNoneSelf": "ما حفظت شي هنا بعد — `/build save` وبتدخل قائمة الكلان!",
   "prefixNoneWeapon": "ما فيه builds لـ **{weapon}** بهالسيرفر بعد.",
-  "notInMeta": "",
   "listFooterOne": "بيلد واحد • /build show للعرض",
   "listFooterMany": "{count} بيلد • /build show للعرض"
 }

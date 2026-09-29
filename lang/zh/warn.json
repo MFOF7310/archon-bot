@@ -34,7 +34,17 @@
   "type": "类型",
   "moderator": "操作者",
   "date": "日期",
-  "actions": "",
+  "actions": {
+    "warn": "警告",
+    "mute": "禁言",
+    "timeout": "限时禁言",
+    "unmute": "解除禁言",
+    "kick": "踢出",
+    "ban": "封禁",
+    "unban": "解封",
+    "clear": "清除消息",
+    "config": "设置修改"
+  },
   "accessDenied": "🔒 此菜单属于其他人。",
   "noPermission": "⛔ 你需要 **Moderate Members** 权限才能执行此操作。",
   "footer": "ARCHON CG-223 • 神经管理",

@@ -34,7 +34,17 @@
   "type": "Type",
   "moderator": "Moderator",
   "date": "Date",
-  "actions": "",
+  "actions": {
+    "warn": "Warning",
+    "mute": "Mute",
+    "timeout": "Timeout",
+    "unmute": "Unmute",
+    "kick": "Kick",
+    "ban": "Ban",
+    "unban": "Unban",
+    "clear": "Messages cleared",
+    "config": "Config change"
+  },
   "accessDenied": "🔒 This menu belongs to someone else.",
   "noPermission": "⛔ You need the **Moderate Members** permission to do that.",
   "footer": "ARCHON CG-223 • Neural Moderation",
