@@ -4225,6 +4225,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         const code = interaction.fields.getTextInputValue('premium_code').trim().toUpperCase();
         const gid = interaction.guild?.id;
         if (!gid) return interaction.reply({ content: '❌ Use this inside a server.', flags: 64 });
+        if (!interaction.memberPermissions?.has('ManageGuild')) return interaction.reply({ content: '❌ You need the Manage Server permission to activate premium.', flags: 64 });
         const { EmbedBuilder } = require('discord.js');
 
         const codeRow = db.prepare('SELECT * FROM premium_codes WHERE code = ? AND used = 0').get(code);
@@ -4284,6 +4285,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // ================= WELCOME BUTTON HANDLER =================
     // ── PREMIUM ACTIVATE BUTTON ──
     if (interaction.isButton() && interaction.customId === 'premium_activate') {
+        if (!interaction.memberPermissions?.has('ManageGuild')) return interaction.reply({ content: '❌ You need the Manage Server permission to activate premium.', flags: 64 });
         const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
         const modal = new ModalBuilder()
             .setCustomId('premium_code_modal')
