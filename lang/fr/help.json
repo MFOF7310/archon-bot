@@ -47,7 +47,11 @@
     "UTILITY": "Outils et informations utiles",
     "FUN": "Commandes amusantes",
     "OWNER": "Commandes exclusives du propriétaire",
-    "GENERAL": "Commandes générales"
+    "GENERAL": "Commandes générales",
+    "ADMIN": "Commandes d'administration du serveur",
+    "CONFIG": "Configuration et réglages du serveur",
+    "MUSIC": "Musique et files d'attente",
+    "SOCIAL": "Commandes sociales et communautaires"
   },
   "signalLost": "❌ SIGNAL PERDU",
   "commandNotFound": "Commande Introuvable",
@@ -64,5 +68,11 @@
     "2": "Réclamez vos récompenses avec {prefix}daily",
     "3": "Vérifiez votre rang avec {prefix}rank",
     "4": "Visitez la boutique avec {prefix}shop"
-  }
+  },
+  "topCategories": "🏆 CATÉGORIES POPULAIRES",
+  "noData": "Aucune donnée pour l'instant",
+  "moduleLocked": "[ VERROUILLÉ ]",
+  "moduleDisabledTitle": "MODULE DÉSACTIVÉ",
+  "moduleDisabledDesc": "> Ce module n'est pas activé sur ce serveur.\n> Demande à un admin de l'activer.",
+  "noCommands": "Aucune commande trouvée."
 }
