@@ -2601,12 +2601,10 @@ client.once(Events.ClientReady, async () => {
                         method: 'POST',
                         headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            model: 'meta-llama/llama-3.1-8b-instruct:free',
+                            model: 'google/gemini-2.5-flash',
                             max_tokens: 400,
                             messages: [{ role: 'user', content:
-                                (lang === 'fr'
-                                  ? 'Tu écris les notes de mise à jour du bot Discord ARCHON CG-223 pour des admins de clans CODM. Transforme ces commits git en 3 à 5 puces courtes en français, ton humain et simple, sans jargon technique, sans noms de fichiers ni hash. Ignore les détails internes. Chaque ligne commence par "• ". Réponds uniquement avec les puces.'
-                                  : 'You write update notes for the Discord bot ARCHON CG-223 for CODM clan admins. Turn these git commits into 3-5 short bullets in plain, human English, no technical jargon, no file names or hashes. Skip internal details. Each line starts with "• ". Reply with the bullets only.')
+                                ('You write update notes for the Discord bot ARCHON CG-223 for CODM clan admins. Turn these git commits into 3-5 short bullets in plain, human ' + ({fr:'French',zh:'Simplified Chinese',ar:'Arabic',en:'English'}[lang]) + ', with no technical jargon, file names or hashes. Skip internal details. Each line starts with "• ". Reply with the bullets only, in that language.')
                                 + '\n\nCommits:\n' + commits }]
                         })
                     });
@@ -2629,13 +2627,15 @@ client.once(Events.ClientReady, async () => {
 
                     const { EmbedBuilder } = require('discord.js');
 
-                    const _lang = /^(en|zh|ar)/i.test(String(settings.language || settings.lang || '')) ? 'en' : 'fr';
+                    const _set = String(settings.language || settings.lang || '').toLowerCase();
+                    const _src = (_set && _set !== 'auto') ? _set : String(channel.guild?.preferredLocale || 'en').toLowerCase();
+                    const _lang = ['fr','zh','ar'].find(l => _src.startsWith(l)) || 'en';
                     let friendlyNotes = await getNotes(_lang);
 
                     const embed = new EmbedBuilder()
                         .setColor('#00f0ff')
                         .setAuthor({ name: 'ARCHON CG-223 — New Update', iconURL: client.user.displayAvatarURL() })
-                        .setTitle(_lang === 'fr' ? '🚀 Nouvelle mise à jour en ligne !' : '🚀 New update is live!')
+                        .setTitle({ fr: '🚀 Nouvelle mise à jour en ligne !', zh: '🚀 新版本已上线！', ar: '🚀 تحديث جديد متاح الآن!', en: '🚀 New update is live!' }[_lang])
                         .setDescription(friendlyNotes)
                         .addFields(
                             { name: '🔖 Build', value: `\`${shortHash}\``, inline: true },
