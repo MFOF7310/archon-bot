@@ -128,7 +128,7 @@ async function checkToxicity(text) {
     if (!process.env.OPENROUTER_API_KEY || text.length < 8) return null;
     try {
         const r = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-            model: 'meta-llama/llama-3.1-8b-instruct:free',
+            model: 'openai/gpt-4o-mini',
             messages: [{ role: 'system', content: 'Analyze for toxicity. Return ONLY: {"toxic":true/false,"reason":"brief","type":"insult|hate|harassment|spam|none"}' }, { role: 'user', content: text }],
             temperature: 0, max_tokens: 60
         }, { headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 5000 });
@@ -596,7 +596,7 @@ async function scanMessage(message, client, db) {
     }
 
     // 10. AI toxicity
-    if (violations.length === 0 && message.content.length > 10) {
+    if (violations.length === 0 && message.content.length > 10 && require('./premium.js').isPremium(db, message.guild?.id)) {
         const ai = await checkToxicity(message.content);
         if (ai?.toxic) { violations.push({ type: ai.type || 'toxic content', reason: ai.reason || 'AI detected', source: 'ai' }); }
     }
