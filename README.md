@@ -57,7 +57,6 @@
 
 - SoundCloud primary + YouTube yt-dlp fallback
 - Queue management, loop, skip, volume
-- Per-guild play history and top tracks leaderboard on dashboard
 - 530+ curated tracks including Mali legends, Arabic, Chinese artists
 
 </details>
@@ -78,7 +77,6 @@
 
 - Discord OAuth2 login with full guild isolation
 - Server settings — language, welcome/goodbye, leveling, automod
-- Per-guild music stats and top tracks
 - User profiles with rank, XP, badges, economy stats
 - Live at [bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)
 
@@ -279,7 +277,7 @@ ARCHON CG-223 is fully internationalized across 5 locales:
 |------|----------|--------|
 | `en` | English | ✅ Complete |
 | `fr` | French | ✅ Complete |
-| `bm` | Bambara (Bamanankan) | ✅ Complete |
+| `bm` | Bambara (Bamanankan) | 🚧 In progress |
 | `zh` | Chinese (Simplified) | ✅ Complete |
 | `ar` | Arabic | ✅ Complete |
 
