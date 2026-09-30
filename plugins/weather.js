@@ -3,19 +3,18 @@ const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
-const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     // build advice object
     const adviceKeys = ['extremeHeat','hotDay','warmPleasant','mild','cool','cold','freezing','rainy','stormy','foggy','windy','perfect','uvHigh','uvExtreme','aqiBad'];
     const advice = {};
-    for (const k of adviceKeys) advice[k] = i18n.t(`weather.advice.${k}`, lang, LATE_VARS);
+    for (const k of adviceKeys) advice[k] = i18n.t(`weather.advice.${k}`, lang);
     // build indexed arrays
-    const aqiLabels = [0,1,2,3,4,5].map(i => i18n.t(`weather.aqiLabels.${i}`, lang, LATE_VARS));
-    const uviLabels = [0,1,2,3,4,5,6,7,8,9].map(i => i18n.t(`weather.uviLabels.${i}`, lang, LATE_VARS));
+    const aqiLabels = [0,1,2,3,4,5].map(i => i18n.t(`weather.aqiLabels.${i}`, lang));
+    const uviLabels = [0,1,2,3,4,5,6,7,8,9].map(i => i18n.t(`weather.uviLabels.${i}`, lang));
     // flat keys
     const o = { advice, aqiLabels, uviLabels };
     const flatKeys = ['temperature','feelsLike','atmosphere','humidity','pressure','visibility','wind','speed','direction','extraInfo','cloudiness','sunrise','sunset','airQuality','uvi','dewPoint','forecast','smartAdvice','location','timezone','configError','apiError','fetchError','weatherServiceError','checkCity','typing','title','notFound'];
-    for (const k of flatKeys) o[k] = i18n.t(`weather.${k}`, lang, LATE_VARS);
+    for (const k of flatKeys) o[k] = i18n.t(`weather.${k}`, lang);
     return o;
 }
 

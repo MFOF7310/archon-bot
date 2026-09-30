@@ -4,10 +4,9 @@ const { EmbedBuilder } = require('discord.js');
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["title","noBanner","footer"];
 // Clés dans lang/<locale>/serverbanner.json ; '' retombe sur EN dans t().
-const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`serverbanner.${k}`, lang, LATE_VARS);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`serverbanner.${k}`, lang);
     return o;
 }
 

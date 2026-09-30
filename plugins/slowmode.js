@@ -3,10 +3,9 @@ const { EmbedBuilder, PermissionsBitField, SlashCommandBuilder, ChannelType, Mes
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["accessDeniedTitle", "accessDeniedDesc", "serverContext", "dmFallbackNote", "noPerms", "botNoPerms", "enabledTitle", "enabledDescription", "disabledTitle", "disabledDescription", "invalid", "max", "min", "alreadyOff", "current", "logTitle", "permCheckField", "permYourRole", "permBotRole", "helpTitle"];
-const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`slowmode.${k}`, lang, LATE_VARS);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`slowmode.${k}`, lang);
     return o;
 }
 

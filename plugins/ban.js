@@ -7,10 +7,9 @@ const OWNER_GUILD_INVITE = 'https://discord.gg/NFSMFJajp9';
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["banTitle","banEntity","banAuthorizedBy","banReason","banDuration","banPermanent","banCaseId","banFooter","banSuccess","banFailed","confirmBanTitle","confirmBanDesc","confirmBanReason","confirmBanWarning","confirmBanButton","unbanTitle","unbanEntity","unbanAuthorizedBy","unbanReason","unbanPreviousBan","unbanCaseId","unbanFooter","unbanSuccess","unbanFailed","confirmUnbanTitle","confirmUnbanDesc","confirmUnbanReason","confirmUnbanWarning","confirmUnbanButton","inviteTitle","inviteSetSuccess","inviteSetFailed","inviteGetTitle","inviteGetCustom","inviteGetDefault","inviteGetNone","inviteInvalid","inviteUsage","noPermission","noTarget","selfBan","notBannable","notBanned","cancelButton","actionCancelled","dmBanTitle","dmBanDesc","dmBanReason","dmBanAppeal","dmUnbanTitle","dmUnbanDesc","dmUnbanReason","dmUnbanWelcome","dmUnbanFallback","rejoinButton","modLog","actionBan","actionUnban","actionInvite","userId","bannedBy","unbannedBy","originalReason","slashBanDesc","slashUnbanDesc","slashSetinviteDesc","slashGetinviteDesc","slashUserDesc","slashUserIdDesc","slashReasonDesc","slashInviteDesc","slashActionDesc"];
 // Clés dans lang/<locale>/ban.json ; '' retombe sur EN dans t().
-const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`ban.${k}`, lang, LATE_VARS);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`ban.${k}`, lang);
     return o;
 }
 

@@ -8,14 +8,13 @@ const HELP_NESTED = {"categoryDescriptions": ["SYSTEM", "GAMING", "ECONOMY", "PR
 // Clés dans lang/<locale>/help.json ; '' retombe sur EN dans t().
 // tips est stocké indexé (dig() ne rend que des chaînes) et reconstruit en tableau.
 // Sentinels: interpolate() maps {x} to itself → placeholders survive for .replace() later, zero warnings
-const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}' };
 function loadT(lang) {
     const o = {};
-    for (const k of HELP_FLAT) o[k] = i18n.t(`help.${k}`, lang, LATE_VARS);
+    for (const k of HELP_FLAT) o[k] = i18n.t(`help.${k}`, lang);
     for (const [k, subs] of Object.entries(HELP_NESTED)) {
         const isArr = subs.every(s => /^\d+$/.test(s));
         const box = isArr ? [] : {};
-        for (const s of subs) box[isArr ? Number(s) : s] = i18n.t(`help.${k}.${s}`, lang, LATE_VARS);
+        for (const s of subs) box[isArr ? Number(s) : s] = i18n.t(`help.${k}.${s}`, lang);
         o[k] = box;
     }
     return o;
