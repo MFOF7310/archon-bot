@@ -155,7 +155,7 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated,
 
 // Prompt fragment: tells the model how to propose. Injected only for premium guilds.
 const INTENT_INSTRUCTIONS = `
-SETTINGS ACTIONS (premium server): if the user clearly asks you to CHANGE a server setting, answer normally and then append exactly one JSON block on its own line:
+SETTINGS ACTIONS (premium server): if the user clearly asks you to CHANGE a server setting, reply with ONE short, friendly sentence (no instructions, no alternative ways to do it), then append exactly one JSON block on its own line:
 {"action":"set","key":"<key>","value":<value>}
 Allowed keys: ${Object.keys(ALLOWED).join(', ')}. Use booleans for toggles, numbers for limits, a short string for prefix/language.
 Only emit the block for explicit change requests ("set", "change", "turn off", "disable", "make the prefix"). Never for questions. If unsure, ask instead of emitting.
