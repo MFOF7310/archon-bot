@@ -5828,7 +5828,7 @@ apiApp.get('/api/stats', (req, res) => {
                 commands: client.commands.size,
                 slashCommands: client.commands.filter(c => !!c.data && c.category !== 'TELEGRAM').size,
                 telegramPlugins: client.telegramCommandCount || 0,
-                totalModules: client.commands.size,
+                totalModules: new Set(client.commands.filter(c=>c.category).map(c=>c.category)).size,
                 servers: guildCache.size,
                 users: guildCache.reduce((acc, g) => acc + (g.memberCount || 0), 0)
             },
