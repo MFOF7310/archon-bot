@@ -515,8 +515,8 @@ module.exports = {
             const categoryOptions = categories.slice(0, 25).map(cat => ({
                 label: cat.toUpperCase().substring(0, 100),
                 value: cat,
-                description: `${lang === 'fr' ? 'Voir les commandes' : 'View commands'}`.substring(0, 100),
-                emoji: '📁'
+                description: `${client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === cat).size} ${lang === 'fr' ? 'commande(s)' : 'command(s)'}`,
+                emoji: emojiMap[cat] || '📁'
             }));
 
             const selectMenu = new StringSelectMenuBuilder()
@@ -554,7 +554,7 @@ module.exports = {
                     const categoryEmbed = new EmbedBuilder()
                         .setColor(getIntelColor())
                         .setAuthor({ 
-                            name: `📁 ${category.toUpperCase()} ${lang === 'fr' ? 'Commandes' : 'Commands'}`, 
+                            name: `${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} ${lang === 'fr' ? 'Commandes' : 'Commands'}`, 
                             iconURL: client.user.displayAvatarURL() 
                         })
                         .setDescription(
