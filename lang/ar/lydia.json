@@ -86,5 +86,9 @@
       "xpMultiplier": "مضاعف الخبرة",
       "dailyBonus": "المكافأة اليومية"
     }
+  },
+  "thinkingEmbed": {
+    "label": "أفكّر…",
+    "text": "لحظة، أنظر في الأمر…"
   }
 }

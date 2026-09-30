@@ -86,5 +86,9 @@
       "xpMultiplier": "XP multiplier",
       "dailyBonus": "Daily bonus"
     }
+  },
+  "thinkingEmbed": {
+    "label": "Thinking…",
+    "text": "One sec, looking at that…"
   }
 }

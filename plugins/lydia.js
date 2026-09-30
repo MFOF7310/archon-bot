@@ -895,10 +895,10 @@ function buildEmbed(reply, message, options = {}) {
     return new EmbedBuilder()
       .setColor('#f1c40f')
       .setAuthor({
-        name: `${badgeEmoji} ${classification} \u2022 ANALYZING...`,
+        name: `${badgeEmoji} ${classification} \u2022 ${require('../lib/i18n').t('lydia.thinkingEmbed.label', lang)}`,
         iconURL: message.author.displayAvatarURL({ dynamic: true, size: 32 })
       })
-      .setDescription(`\`\`\`ansi\n\u001b[1;33m[ ${theme.name.toUpperCase()} ] \u001b[0m\u001b[33mProcessing neural request...\u001b[0m\n\`\`\``)
+      .setDescription(`\`\`\`ansi\n\u001b[1;33m[ ${theme.name.toUpperCase()} ] \u001b[0m\u001b[33m${require('../lib/i18n').t('lydia.thinkingEmbed.text', lang)}\u001b[0m\n\`\`\``)
       .setFooter({
         text: `ARCHON CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
         iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
@@ -1262,7 +1262,7 @@ async function handleLydiaMessage(message, client, database) {
     if (validation.ok !== false && message.guild && typeof safeReply === 'string') {
       try {
         console.log('[LYDIA ACTION] checking reply for intent…');
-        safeReply = await lydiaActions.handleIntent({ reply: safeReply, message, client, db: database, isPremium, isElevated: _isElevated });
+        safeReply = await lydiaActions.handleIntent({ reply: safeReply, message, client, db: database, isPremium, isElevated: _isElevated, lang: (typeof lang !== 'undefined' ? lang : undefined) });
       } catch (e) { console.log('[LYDIA ACTION] error:', e.message); }
     }
     if (!validation.ok) {

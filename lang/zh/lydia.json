@@ -86,5 +86,9 @@
       "xpMultiplier": "经验倍率",
       "dailyBonus": "每日奖励"
     }
+  },
+  "thinkingEmbed": {
+    "label": "思考中…",
+    "text": "稍等，我看一下…"
   }
 }
