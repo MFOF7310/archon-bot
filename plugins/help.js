@@ -201,7 +201,8 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
             name: `\` ${t.moduleStatsTitle} \``, 
             value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\n\`STATUS: ONLINE\`\`\`\``, 
             inline: false 
-        })
+        });
+    catEmbed
         .setFooter({ 
             text: `${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${version} • UNCLASSIFIED`,
             iconURL: guildIcon
@@ -470,7 +471,7 @@ module.exports = {
                         await i.deferUpdate().catch(() => {});
                     }
                     const [, pgCat, pgIdx] = i.customId.split(':');
-                    const newIdx = Math.max(0, Math.min(lastCategoryPages - 1, parseInt(pgIdx, 10) || 0));
+                    const newIdx = Math.max(0, (parseInt(pgIdx, 10) || 0));
                     const pgEmbed = createCategoryEmbed(client, pgCat, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, newIdx);
                     const pgRow2 = new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false)
