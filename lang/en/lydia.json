@@ -90,5 +90,15 @@
   "thinkingEmbed": {
     "label": "Thinking…",
     "text": "One sec, looking at that…"
+  },
+  "classification": {
+    "unclassified": "UNCLASSIFIED",
+    "systemAlert": "SYSTEM ALERT",
+    "securityBrief": "SECURITY BRIEF",
+    "technicalBrief": "TECHNICAL BRIEF",
+    "intelReport": "INTEL REPORT",
+    "medicalAdvisory": "MEDICAL ADVISORY",
+    "fieldGuide": "FIELD GUIDE",
+    "researchNote": "RESEARCH NOTE"
   }
 }

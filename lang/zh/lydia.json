@@ -90,5 +90,15 @@
   "thinkingEmbed": {
     "label": "思考中…",
     "text": "稍等，我看一下…"
+  },
+  "classification": {
+    "unclassified": "非机密",
+    "systemAlert": "系统警报",
+    "securityBrief": "安全简报",
+    "technicalBrief": "技术简报",
+    "intelReport": "情报报告",
+    "medicalAdvisory": "医疗提示",
+    "fieldGuide": "战术指南",
+    "researchNote": "研究笔记"
   }
 }

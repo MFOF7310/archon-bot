@@ -90,5 +90,15 @@
   "thinkingEmbed": {
     "label": "أفكّر…",
     "text": "لحظة، أنظر في الأمر…"
+  },
+  "classification": {
+    "unclassified": "غير سري",
+    "systemAlert": "تنبيه النظام",
+    "securityBrief": "إحاطة أمنية",
+    "technicalBrief": "إحاطة تقنية",
+    "intelReport": "تقرير استخباراتي",
+    "medicalAdvisory": "إرشاد طبي",
+    "fieldGuide": "دليل ميداني",
+    "researchNote": "مذكرة بحثية"
   }
 }

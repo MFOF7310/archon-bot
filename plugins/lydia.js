@@ -870,6 +870,24 @@ function splitIntoEmbeds(text, options = {}) {
 // EMBED BUILDER (Updated — multi-embed support, no truncation)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// UI language for the bot's own messages: the server's setting when set (bm -> fr), else the person's language
+function _uiLang(client, message, personLang) {
+  let l = null;
+  try {
+    const v = String(client.getServerSettings?.(message.guild?.id)?.language || '').toLowerCase();
+    if (v && v !== 'auto') l = v;
+  } catch {}
+  l = l || personLang || 'en';
+  if (l === 'bm') l = 'fr';
+  return ['en', 'fr', 'zh', 'ar'].includes(l) ? l : 'en';
+}
+function _tx(key, lang, fallback) {
+  try {
+    const v = require('../lib/i18n').t(key, lang === 'bm' ? 'fr' : lang);
+    return v && !String(v).includes(key) ? v : fallback;
+  } catch { return fallback; }
+}
+
 function buildEmbed(reply, message, options = {}) {
   const { isError = false, isThinking = false, theme = THEMES.default, model = null, latency = null, tokens = null, sources = [], lang = 'en' } = options;
 
@@ -890,6 +908,7 @@ function buildEmbed(reply, message, options = {}) {
   else if (themeKey === 'medical') { classification = 'MEDICAL ADVISORY'; badgeEmoji = '\u{1F3E5}'; }
   else if (themeKey === 'tactical') { classification = 'FIELD GUIDE'; badgeEmoji = '\u{1F4CB}'; }
   else if (themeKey === 'academic') { classification = 'RESEARCH NOTE'; badgeEmoji = '\u{1F4DA}'; }
+  { const _ck = { 'UNCLASSIFIED': 'unclassified', 'SYSTEM ALERT': 'systemAlert', 'SECURITY BRIEF': 'securityBrief', 'TECHNICAL BRIEF': 'technicalBrief', 'INTEL REPORT': 'intelReport', 'MEDICAL ADVISORY': 'medicalAdvisory', 'FIELD GUIDE': 'fieldGuide', 'RESEARCH NOTE': 'researchNote' }[classification]; if (_ck) classification = _tx(`lydia.classification.${_ck}`, lang, classification); }
 
   if (isThinking) {
     return new EmbedBuilder()
@@ -1113,6 +1132,7 @@ async function handleLydiaMessage(message, client, database) {
 
   const detectedLang = detectUserLanguage(message.content || '');
   const lang = detectedLang;
+  const uiLang = _uiLang(client, message, lang);
 
   try {
     const botName = (getBotName(message) || 'Lydia').toLowerCase();
@@ -1133,7 +1153,7 @@ async function handleLydiaMessage(message, client, database) {
     const theme = detectTheme(userPrompt || 'hello');
 
     thinkingMsg = await message.reply({
-      embeds: [buildEmbed(null, message, { isThinking: true, theme, lang: (typeof lang !== 'undefined' ? (lang === 'bm' ? 'fr' : lang) : 'en') })],
+      embeds: [buildEmbed(null, message, { isThinking: true, theme, lang: uiLang })],
       allowedMentions: { repliedUser: false }
     }).catch(() => null);
 
@@ -1262,7 +1282,7 @@ async function handleLydiaMessage(message, client, database) {
     if (validation.ok !== false && message.guild && typeof safeReply === 'string') {
       try {
         console.log('[LYDIA ACTION] checking reply for intent…');
-        safeReply = await lydiaActions.handleIntent({ reply: safeReply, message, client, db: database, isPremium, isElevated: _isElevated, lang: (typeof lang !== 'undefined' ? lang : undefined) });
+        safeReply = await lydiaActions.handleIntent({ reply: safeReply, message, client, db: database, isPremium, isElevated: _isElevated, lang: uiLang });
       } catch (e) { console.log('[LYDIA ACTION] error:', e.message); }
     }
     if (!validation.ok) {

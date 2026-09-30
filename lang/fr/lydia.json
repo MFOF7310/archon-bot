@@ -90,5 +90,15 @@
   "thinkingEmbed": {
     "label": "Je réfléchis…",
     "text": "Je regarde ça…"
+  },
+  "classification": {
+    "unclassified": "NON CLASSIFIÉ",
+    "systemAlert": "ALERTE SYSTÈME",
+    "securityBrief": "NOTE DE SÉCURITÉ",
+    "technicalBrief": "NOTE TECHNIQUE",
+    "intelReport": "RAPPORT DE RENSEIGNEMENT",
+    "medicalAdvisory": "AVIS MÉDICAL",
+    "fieldGuide": "GUIDE DE TERRAIN",
+    "researchNote": "NOTE DE RECHERCHE"
   }
 }
