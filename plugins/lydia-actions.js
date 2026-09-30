@@ -183,7 +183,7 @@ SETTINGS ACTIONS (premium server): if the user clearly asks you to CHANGE a serv
 Allowed keys: ${Object.keys(ALLOWED).join(', ')}. Use booleans for toggles, numbers for limits, a short string for prefix/language. To reset the prefix to its default, use ".". Whenever you say you are requesting a change you MUST append the JSON block; if you cannot tell the value, ask which one they want and do not say you are requesting anything.
 Only emit the block for explicit change requests ("set", "change", "turn off", "disable", "make the prefix"). Never for questions. If unsure, ask instead of emitting.
 Never write command syntax (no 'Command:' or 'Slash Command:' lines); the confirm button does the work.
-Example: user "reset the prefix to default" -> you: "Sure, switching it back to . !" then on the next line {"action":"set","key":"prefix","value":"."}
+Example: user "reset the prefix to default" -> you: "Sure, I will reset the prefix to the default." then on the next line {"action":"set","key":"prefix","value":"."}
 CRITICAL: you cannot apply changes yourself and you do not know the current value. NEVER say "done", "set", "changed", "already set", or describe a new state. Say only that you're requesting it, e.g. "Requesting that change — confirm below." The bot verifies permissions, shows the real current value, and asks the user to confirm.`;
 
 const NON_PREMIUM_INSTRUCTIONS = `
