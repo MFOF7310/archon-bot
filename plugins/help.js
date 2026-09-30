@@ -24,46 +24,6 @@ const emojiMap = {
     GENERAL: '📁', UTILITY: '🛠️', MODERATION: '🛡️', ECONOMY: '💰', FUN: '🎉',
     ADMIN: '🔐', CONFIG: '⚙️', MUSIC: '🎵', SOCIAL: '🤝', TICKETS: '🎫', CODM: '🎯', LEVELING: '📈'
 
-// 🏷️ HUMAN-TONED DROPDOWN TAGLINES (respects lang: auto-detect + setlang)
-const CATEGORY_TAGLINES = {
-    en: {
-        SYSTEM: 'The backbone — uptime, stats, core tools',
-        GAMING: 'Games, arcade & good old competition',
-        ECONOMY: 'Earn credits, hit the shop, claim dailies',
-        PROFILE: 'Your rank, your stats, your legacy',
-        AI: 'Talk to the neural brain of the node',
-        MODERATION: 'Keep the server clean and safe',
-        UTILITY: 'Handy little tools for everyday use',
-        FUN: 'Memes, jokes and pure chaos',
-        ADMIN: 'Server administration, owner-level control',
-        CONFIG: 'Tune the bot to fit your server',
-        MUSIC: 'Play music, build queues, vibe',
-        SOCIAL: 'Connect and interact with your people',
-        OWNER: 'Architect-only commands. No peeking.',
-        TICKETS: 'Open a ticket, get support fast',
-        LEVELING: 'Earn XP, climb the leaderboard',
-        GENERAL: 'Everything that did not fit elsewhere',
-        CODM: 'Call of Duty Mobile tools & stats'
-    },
-    fr: {
-        SYSTEM: 'La colonne vertébrale — stats, uptime, outils',
-        GAMING: 'Jeux, arcade et bonne vieille compétition',
-        ECONOMY: 'Gagne des crédits, boutique, récompenses',
-        PROFILE: 'Ton rang, tes stats, ta légende',
-        AI: 'Parle au cerveau neuronal du nœud',
-        MODERATION: 'Garde le serveur propre et sûr',
-        UTILITY: 'Petits outils pratiques du quotidien',
-        FUN: 'Mèmes, blagues et pur chaos',
-        ADMIN: 'Administration du serveur, contrôle total',
-        CONFIG: 'Règle le bot selon ton serveur',
-        MUSIC: 'Musique, files d'attente, ambiances',
-        SOCIAL: 'Échange avec ta communauté',
-        OWNER: 'Réservé à l'Architecte. Interdit de regarder.',
-        TICKETS: 'Ouvre un ticket, support rapide',
-        LEVELING: 'Gagne de l'XP, grimpe au classement',
-        GENERAL: 'Tout ce qui n'a pas sa place ailleurs',
-        CODM: 'Outils & stats Call of Duty Mobile'
-    }
 };
 
 const colorMap = {
@@ -379,11 +339,11 @@ module.exports = {
 
         const menu = new StringSelectMenuBuilder()
             .setCustomId('help_select')
-            .setPlaceholder(`🔍 ${lang === 'fr' ? 'Choisis un module à décrypter…' : 'Select a System Module to Decrypt…'}`)
+            .setPlaceholder(t.selectPlaceholder)
             .addOptions(categories.map(cat => ({
                 label: cat.toUpperCase().substring(0, 100),
                 value: cat,
-                description: ((CATEGORY_TAGLINES[lang]?.[cat.toUpperCase()] || CATEGORY_TAGLINES.en[cat.toUpperCase()]) || getCategoryDescription(cat, t, lang)).substring(0, 100),
+                description: getCategoryDescription(cat, t, lang).substring(0, 100),
                 emoji: emojiMap[cat.toUpperCase()] || '📁'
             })));
 
@@ -556,7 +516,7 @@ module.exports = {
             const categoryOptions = categories.slice(0, 25).map(cat => ({
                 label: cat.toUpperCase().substring(0, 100),
                 value: cat,
-                description: ((CATEGORY_TAGLINES[lang]?.[cat] || CATEGORY_TAGLINES.en[cat]) || `${client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === cat).size} ${lang === 'fr' ? 'commande(s)' : 'command(s)'}`).substring(0, 100),
+                description: `${client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === cat).size} ${lang === 'fr' ? 'commande(s)' : 'command(s)'}`,
                 emoji: emojiMap[cat] || '📁'
             }));
 
