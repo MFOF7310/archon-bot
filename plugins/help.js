@@ -21,7 +21,8 @@ function loadT(lang) {
 
 const emojiMap = {
     SYSTEM: '⚙️', GAMING: '🎮', AI: '🧠', PROFILE: '👤', OWNER: '👑',
-    GENERAL: '📁', UTILITY: '🛠️', MODERATION: '🛡️', ECONOMY: '💰', FUN: '🎉'
+    GENERAL: '📁', UTILITY: '🛠️', MODERATION: '🛡️', ECONOMY: '💰', FUN: '🎉',
+    ADMIN: '🔐', CONFIG: '⚙️', MUSIC: '🎵', SOCIAL: '🤝', TICKETS: '🎫', CODM: '🎯', LEVELING: '📈'
 };
 
 const colorMap = {
