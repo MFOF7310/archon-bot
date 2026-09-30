@@ -2604,7 +2604,7 @@ client.once(Events.ClientReady, async () => {
                             model: 'google/gemini-2.5-flash',
                             max_tokens: 400,
                             messages: [{ role: 'user', content:
-                                ('You write update notes for the Discord bot ARCHON CG-223 for CODM clan admins. Turn these git commits into 3-5 short bullets in plain, human ' + ({fr:'French',zh:'Simplified Chinese',ar:'Arabic',en:'English'}[lang]) + ', with no technical jargon, file names or hashes. Skip internal details. Each line starts with "• ". Reply with the bullets only, in that language.')
+                                ('You write update notes for the Discord bot ARCHON CG-223 for CODM clan admins. Turn these git commits into 3-5 short bullets in plain, human ' + ({fr:'French',zh:'Simplified Chinese',ar:'Arabic',en:'English'}[lang]) + ', with no technical jargon, file names or hashes. Skip internal details. Start each line with a relevant emoji then a space. No bullet points. Reply with the lines only, in that language.')
                                 + '\n\nCommits:\n' + commits }]
                         })
                     });
