@@ -69,7 +69,11 @@ function displayVal(spec, v) {
 // Main entry. Returns the text to show (intent stripped). Handles the action flow itself.
 async function handleIntent({ reply, message, client, db, isPremium, isElevated, lang: langIn }) {
   const { text, intent } = extractIntent(reply);
-  if (!intent) return text;
+  if (!intent) {
+    // she promised a confirmation but sent no JSON block: drop the dangling promise
+    if (/confirm below/i.test(text)) console.log('[LYDIA ACTION] reply promised a confirmation but had no intent block');
+    return text.replace(/\s*Requesting that change\s*[—–-]\s*confirm below\.?/gi, '').trim();
+  }
 
   const gid = message.guild?.id;
   const spec = ALLOWED[intent.key];
@@ -157,7 +161,7 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated,
 const INTENT_INSTRUCTIONS = `
 SETTINGS ACTIONS (premium server): if the user clearly asks you to CHANGE a server setting, reply with ONE short, friendly sentence (no instructions, no alternative ways to do it), then append exactly one JSON block on its own line:
 {"action":"set","key":"<key>","value":<value>}
-Allowed keys: ${Object.keys(ALLOWED).join(', ')}. Use booleans for toggles, numbers for limits, a short string for prefix/language.
+Allowed keys: ${Object.keys(ALLOWED).join(', ')}. Use booleans for toggles, numbers for limits, a short string for prefix/language. To reset the prefix to its default, use ".". Whenever you say you are requesting a change you MUST append the JSON block; if you cannot tell the value, ask which one they want and do not say you are requesting anything.
 Only emit the block for explicit change requests ("set", "change", "turn off", "disable", "make the prefix"). Never for questions. If unsure, ask instead of emitting.
 CRITICAL: you cannot apply changes yourself and you do not know the current value. NEVER say "done", "set", "changed", "already set", or describe a new state. Say only that you're requesting it, e.g. "Requesting that change — confirm below." The bot verifies permissions, shows the real current value, and asks the user to confirm.`;
 
