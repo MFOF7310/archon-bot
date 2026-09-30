@@ -53,5 +53,38 @@
   "offAuthor": "SYSTEM MONITOR • OFFLINE",
   "offDesc": "```ansi\n\u001b[1;31m[ NEURAL LINK TERMINATED ]\u001b[0m\n\u001b[31m{botName} has been deactivated in #{channel}\u001b[0m\n```\n",
   "offBody": "**Reactivate:** `{prefix}lydia on`\n\n💬 Available in other active channels.",
-  "offFooter": "Sleep mode"
+  "offFooter": "Sleep mode",
+  "actions": {
+    "confirm": "Got it! Change **{label}**: {from} → {to}? Press **Confirm** within {s} seconds.",
+    "confirmBtn": "Confirm",
+    "cancelBtn": "Cancel",
+    "requestedBy": "Requested by {user} • {guild}",
+    "cancelled": "Cancelled, **{label}** stays as it was.",
+    "done": "Done! **{label}** is now {to}.",
+    "failed": "I couldn't apply **{label}**. Try the dashboard.",
+    "already": "**{label}** is already {value}, nothing to change.",
+    "notAllowed": "I can't change `{key}` from here. Use the dashboard for that.",
+    "premiumOnly": "Changing settings by chat is a **premium** feature. You can still do it in the dashboard → Settings, or with `/serversettings set`.",
+    "needManage": "You need **Manage Server** to change **{label}**. Ask an admin.",
+    "invalid": "`{value}` isn't a valid value for **{label}**{range}.",
+    "modlog": "**{label}**: {from} → {to}\nvia Lydia · requested by <@{id}>",
+    "on": "on",
+    "off": "off",
+    "none": "(none)",
+    "labels": {
+      "prefix": "Command prefix",
+      "language": "Language",
+      "automod": "AutoMod",
+      "linkFilter": "Link filter",
+      "inviteFilter": "Invite filter",
+      "welcome": "Welcome messages",
+      "goodbye": "Goodbye messages",
+      "market": "Market",
+      "ai": "Lydia AI",
+      "maxWarnings": "Max warnings",
+      "mentionLimit": "Mention limit",
+      "xpMultiplier": "XP multiplier",
+      "dailyBonus": "Daily bonus"
+    }
+  }
 }

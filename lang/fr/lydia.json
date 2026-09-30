@@ -53,5 +53,38 @@
   "offAuthor": "MONITEUR • HORS LIGNE",
   "offDesc": "```ansi\n\u001b[1;31m[ LIEN NEURAL TERMINÉ ]\u001b[0m\n\u001b[31m{botName} a été désactivé dans #{channel}\u001b[0m\n```\n",
   "offBody": "**Réactivation :** `{prefix}lydia on`\n\n💬 Disponible dans les autres salons actifs",
-  "offFooter": "Mode veille"
+  "offFooter": "Mode veille",
+  "actions": {
+    "confirm": "C'est noté ! Changer **{label}** : {from} → {to} ? Appuie sur **Confirmer** dans les {s} secondes.",
+    "confirmBtn": "Confirmer",
+    "cancelBtn": "Annuler",
+    "requestedBy": "Demandé par {user} • {guild}",
+    "cancelled": "Annulé, **{label}** reste comme avant.",
+    "done": "C'est fait ! **{label}** : {to}.",
+    "failed": "Je n'ai pas réussi à appliquer **{label}**. Essaie depuis le dashboard.",
+    "already": "**{label}** a déjà cette valeur ({value}), rien à changer.",
+    "notAllowed": "Je ne peux pas modifier `{key}` depuis ici. Passe par le dashboard.",
+    "premiumOnly": "Modifier les réglages par chat est une option **premium**. Tu peux quand même le faire dans le dashboard → Réglages, ou avec `/serversettings set`.",
+    "needManage": "Il te faut la permission **Gérer le serveur** pour modifier **{label}**. Demande à un admin.",
+    "invalid": "`{value}` n'est pas une valeur valide pour **{label}**{range}.",
+    "modlog": "**{label}** : {from} → {to}\nvia Lydia · demandé par <@{id}>",
+    "on": "activé",
+    "off": "désactivé",
+    "none": "(aucun)",
+    "labels": {
+      "prefix": "Préfixe des commandes",
+      "language": "Langue",
+      "automod": "AutoMod",
+      "linkFilter": "Filtre de liens",
+      "inviteFilter": "Filtre d'invitations",
+      "welcome": "Messages de bienvenue",
+      "goodbye": "Messages d'au revoir",
+      "market": "Marché",
+      "ai": "Lydia IA",
+      "maxWarnings": "Avertissements max",
+      "mentionLimit": "Limite de mentions",
+      "xpMultiplier": "Multiplicateur d'XP",
+      "dailyBonus": "Bonus quotidien"
+    }
+  }
 }

@@ -53,5 +53,38 @@
   "offAuthor": "系统监视 • 离线",
   "offDesc": "```ansi\n\u001b[1;31m[ 神经链接已断开 ]\u001b[0m\n\u001b[31m{botName} 已在 #{channel} 关闭\u001b[0m\n```\n",
   "offBody": "**重新激活：** `{prefix}lydia on`\n\n💬 其他已激活的频道仍可使用",
-  "offFooter": "睡眠模式"
+  "offFooter": "睡眠模式",
+  "actions": {
+    "confirm": "收到！要修改 **{label}**：{from} → {to} 吗？请在 {s} 秒内点击 **确认**。",
+    "confirmBtn": "确认",
+    "cancelBtn": "取消",
+    "requestedBy": "由 {user} 发起 • {guild}",
+    "cancelled": "已取消，**{label}** 保持不变。",
+    "done": "搞定！**{label}** 现在是 {to}。",
+    "failed": "没能应用 **{label}**，请到仪表盘里试试。",
+    "already": "**{label}** 已经是 {value}，无需更改。",
+    "notAllowed": "我没法在这里修改 `{key}`，请到仪表盘里操作。",
+    "premiumOnly": "通过聊天修改设置是**高级版**功能。你仍然可以在仪表盘 → 设置里修改，或使用 `/serversettings set`。",
+    "needManage": "修改 **{label}** 需要「管理服务器」权限，请联系管理员。",
+    "invalid": "`{value}` 不是 **{label}** 的有效值{range}。",
+    "modlog": "**{label}**：{from} → {to}\n通过 Lydia · 由 <@{id}> 发起",
+    "on": "开",
+    "off": "关",
+    "none": "（无）",
+    "labels": {
+      "prefix": "命令前缀",
+      "language": "语言",
+      "automod": "自动审核",
+      "linkFilter": "链接过滤",
+      "inviteFilter": "邀请过滤",
+      "welcome": "欢迎消息",
+      "goodbye": "告别消息",
+      "market": "市场",
+      "ai": "Lydia AI",
+      "maxWarnings": "最大警告数",
+      "mentionLimit": "提及上限",
+      "xpMultiplier": "经验倍率",
+      "dailyBonus": "每日奖励"
+    }
+  }
 }

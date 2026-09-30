@@ -3,6 +3,9 @@
 // Security boundary: the model only *proposes* via a JSON intent; this file decides.
 // ═══════════════════════════════════════════════════════════════════════════
 const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const i18n = require('../lib/i18n');
+// Bambara strings aren't written yet: bm servers get French (Mali's official language)
+const pickLang = (l) => ({ en: 'en', fr: 'fr', zh: 'zh', ar: 'ar', bm: 'fr' })[l] || null;
 
 // Allowlist: setting key → { column, type, validate, label }. Nothing else is touchable.
 const ALLOWED = {
@@ -53,48 +56,56 @@ function coerce(spec, raw) {
   return null;
 }
 
+function showVal(spec, v, tr) {
+  if (spec.type === 'bool') return v ? tr('on') : tr('off');
+  return (v === '' || v === null || v === undefined) ? tr('none') : `\`${v}\``;
+}
+
 function displayVal(spec, v) {
   if (spec.type === 'bool') return v ? 'on' : 'off';
   return `\`${v}\``;
 }
 
 // Main entry. Returns the text to show (intent stripped). Handles the action flow itself.
-async function handleIntent({ reply, message, client, db, isPremium, isElevated }) {
+async function handleIntent({ reply, message, client, db, isPremium, isElevated, lang: langIn }) {
   const { text, intent } = extractIntent(reply);
   if (!intent) return text;
 
   const gid = message.guild?.id;
   const spec = ALLOWED[intent.key];
+  const lang = pickLang(langIn) || pickLang((() => { try { return client.detectLanguage?.('lydia', gid); } catch { return null; } })()) || 'en';
+  const tr = (k, vars) => i18n.t(`lydia.actions.${k}`, lang, vars);
+  const lab = spec ? tr(`labels.${intent.key}`) : '';
   const note = (s) => `> ${s}`;  // on refusal, drop her 'requesting…' line — nothing to confirm
 
   // 1. allowlist
-  if (!gid || !spec) return note(`⚙️ I can't change \`${intent.key}\` — it's not a setting I'm allowed to touch. Use the dashboard for that.`);
+  if (!gid || !spec) return note(`⚙️ ${tr('notAllowed', { key: intent.key })}`);
 
   // 2. premium gate
-  if (!isPremium(db, gid)) return note(`⚙️ Applying settings by chat is a **premium** feature. I can still tell you exactly where to change it: dashboard → Settings, or \`/serversettings set\`.`);
+  if (!isPremium(db, gid)) return note(`⚙️ ${tr('premiumOnly')}`);
 
   // 3. permission gate — the speaker must already be able to do this
   const member = message.member;
   const canManage = member && (message.guild.ownerId === member.id || isElevated(member) || member.permissions.has(PermissionsBitField.Flags.ManageGuild));
-  if (!canManage) return note(`⚙️ You'd need **Manage Server** to change ${spec.label}. Ask an admin.`);
+  if (!canManage) return note(`⚙️ ${tr('needManage', { label: lab })}`);
 
   // 4. validate value
   const value = coerce(spec, intent.value);
-  if (value === null) return note(`⚙️ \`${intent.value}\` isn't a valid value for ${spec.label}${spec.min !== undefined ? ` (${spec.min}–${spec.max})` : ''}.`);
+  if (value === null) return note(`⚙️ ${tr('invalid', { value: intent.value, label: lab, range: spec.min !== undefined ? ` (${spec.min}–${spec.max})` : '' })}`);
 
   // 5. read current for the audit trail
   let current = null;
   try { current = db.prepare(`SELECT ${spec.col} AS v FROM server_settings WHERE guild_id = ?`).get(gid)?.v ?? null; } catch {}
-  if (String(current) === String(value)) return note(`⚙️ ${spec.label} is already ${displayVal(spec, value)} — nothing to change.`);
+  if (String(current) === String(value)) return note(`⚙️ ${tr('already', { label: lab, value: showVal(spec, value, tr) })}`);
 
   // 6. confirm — same user, ✅ within 60s
   const confirmEmbed = new EmbedBuilder()
     .setColor(0xfbbf24)
-    .setDescription(`⚙️ **Confirm change** — ${spec.label}: ${displayVal(spec, current)} → ${displayVal(spec, value)}\n\nTap **Confirm** within ${CONFIRM_MS/1000}s to apply.`)
-    .setFooter({ text: `Requested by ${message.author.username} • ${message.guild.name}` });
+    .setDescription(`⚙️ ${tr('confirm', { label: lab, from: showVal(spec, current, tr), to: showVal(spec, value, tr), s: CONFIRM_MS / 1000 })}`)
+    .setFooter({ text: `${tr('requestedBy', { user: message.author.username, guild: message.guild.name })}` });
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('lydia_confirm').setLabel('Confirm').setStyle(ButtonStyle.Success).setEmoji('✅'),
-    new ButtonBuilder().setCustomId('lydia_cancel').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('lydia_confirm').setLabel(tr('confirmBtn')).setStyle(ButtonStyle.Success).setEmoji('✅'),
+    new ButtonBuilder().setCustomId('lydia_cancel').setLabel(tr('cancelBtn')).setStyle(ButtonStyle.Secondary),
   );
   const prompt = await message.reply({ embeds: [confirmEmbed], components: [row] });
 
@@ -108,14 +119,14 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated 
 
   if (!confirmed) {
     console.log(`[LYDIA ACTION] cancelled (no ✅ from ${message.author.tag} within ${CONFIRM_MS/1000}s) — ${spec.col}`);
-    await prompt.edit({ embeds: [EmbedBuilder.from(confirmEmbed).setColor(0x71717a).setDescription(`⚙️ Cancelled — ${spec.label} unchanged. Only <@${message.author.id}> can confirm, within ${CONFIRM_MS/1000}s.`)] }).catch(() => {});
+    await prompt.edit({ embeds: [EmbedBuilder.from(confirmEmbed).setColor(0x71717a).setDescription(`⚙️ ${tr('cancelled', { label: lab })}`)] }).catch(() => {});
     return text;
   }
 
   // 7. apply
   const ok = client.updateServerSetting?.(gid, spec.col, String(value));
   if (!ok) {
-    await prompt.edit({ embeds: [EmbedBuilder.from(confirmEmbed).setColor(0xf87171).setDescription(`⚙️ Failed to apply ${spec.label}. Try the dashboard.`)] }).catch(() => {});
+    await prompt.edit({ embeds: [EmbedBuilder.from(confirmEmbed).setColor(0xf87171).setDescription(`⚙️ ${tr('failed', { label: lab })}`)] }).catch(() => {});
     return text;
   }
   client.settings?.delete(gid);
@@ -132,12 +143,12 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated 
     const ch = logId && message.guild.channels.cache.get(logId);
     if (ch?.isTextBased()) {
       await ch.send({ embeds: [new EmbedBuilder().setColor(0x00cc66)
-        .setDescription(`⚙️ **${spec.label}** ${displayVal(spec, current)} → ${displayVal(spec, value)}\nvia Lydia · requested by <@${message.author.id}>`)
+        .setDescription(`⚙️ ${tr('modlog', { label: lab, from: showVal(spec, current, tr), to: showVal(spec, value, tr), id: message.author.id })}`)
         .setTimestamp()] });
     }
   } catch {}
 
-  await prompt.edit({ embeds: [EmbedBuilder.from(confirmEmbed).setColor(0x00cc66).setDescription(`✅ Done — ${spec.label} is now ${displayVal(spec, value)}.`)] }).catch(() => {});
+  await prompt.edit({ embeds: [EmbedBuilder.from(confirmEmbed).setColor(0x00cc66).setDescription(`✅ ${tr('done', { label: lab, to: showVal(spec, value, tr) })}`)] }).catch(() => {});
   console.log(`[LYDIA ACTION] ${message.author.tag} set ${spec.col}=${value} in ${message.guild.name}`);
   return text;
 }

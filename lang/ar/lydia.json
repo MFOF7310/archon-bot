@@ -53,5 +53,38 @@
   "offAuthor": "مراقبة النظام • متوقفة",
   "offDesc": "```ansi\n\u001b[1;31m[ انقطع الرابط العصبي ]\u001b[0m\n\u001b[31m{botName} توقفت في #{channel}\u001b[0m\n```\n",
   "offBody": "**إعادة التفعيل:** `{prefix}lydia on`\n\n💬 ما زلت متاحة بالقنوات النشطة الأخرى",
-  "offFooter": "وضع النوم"
+  "offFooter": "وضع النوم",
+  "actions": {
+    "confirm": "حسنًا! تغيير **{label}**: من {from} إلى {to}؟ اضغط **تأكيد** خلال {s} ثانية.",
+    "confirmBtn": "تأكيد",
+    "cancelBtn": "إلغاء",
+    "requestedBy": "طلب من {user} • {guild}",
+    "cancelled": "تم الإلغاء، **{label}** يبقى كما كان.",
+    "done": "تم! **{label}**: {to}.",
+    "failed": "لم أستطع تطبيق **{label}**. جرّب من لوحة التحكم.",
+    "already": "لا تغيير: **{label}** مضبوط بالفعل على {value}.",
+    "notAllowed": "لا أستطيع تغيير `{key}` من هنا. استخدم لوحة التحكم.",
+    "premiumOnly": "تغيير الإعدادات عبر الدردشة ميزة **بريميوم**. يمكنك فعل ذلك من لوحة التحكم ← الإعدادات، أو عبر `/serversettings set`.",
+    "needManage": "تحتاج إلى صلاحية **إدارة السيرفر** لتغيير **{label}**. اطلب من أحد المشرفين.",
+    "invalid": "`{value}` ليست قيمة صالحة لـ **{label}**{range}.",
+    "modlog": "**{label}**: {from} → {to}\nعبر Lydia · بطلب من <@{id}>",
+    "on": "مفعّل",
+    "off": "معطّل",
+    "none": "(لا شيء)",
+    "labels": {
+      "prefix": "بادئة الأوامر",
+      "language": "اللغة",
+      "automod": "الإشراف التلقائي",
+      "linkFilter": "فلتر الروابط",
+      "inviteFilter": "فلتر الدعوات",
+      "welcome": "رسائل الترحيب",
+      "goodbye": "رسائل الوداع",
+      "market": "السوق",
+      "ai": "Lydia AI",
+      "maxWarnings": "الحد الأقصى للتحذيرات",
+      "mentionLimit": "حد الإشارات",
+      "xpMultiplier": "مضاعف الخبرة",
+      "dailyBonus": "المكافأة اليومية"
+    }
+  }
 }
