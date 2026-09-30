@@ -36,6 +36,16 @@ const colorMap = {
 const INTEL_COLORS = ['#1a1a2e', '#16213e', '#00d9ff', '#f5a623', '#e94560', '#00b894', '#636e72'];
 function getIntelColor() { return INTEL_COLORS[Math.floor(Math.random() * INTEL_COLORS.length)]; }
 
+// ◀ ▶ Dynamic pagination (state set synchronously by createCategoryEmbed — race-safe, no awaits between call and use)
+let lastCategoryPages = 1;
+function buildPagerRow(category, current, total, lang, t) {
+    const prev = Math.max(0, current - 1), next = Math.min(total - 1, current + 1);
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`help_pg:${category}:${prev}`).setLabel('\u25C0').setStyle(ButtonStyle.Secondary).setDisabled(current <= 0),
+        new ButtonBuilder().setCustomId(`help_pg:${category}:${next}`).setLabel('\u25B6').setStyle(ButtonStyle.Secondary).setDisabled(current >= total - 1)
+    );
+}
+
 const red = "\x1b[31m", reset = "\x1b[0m";
 
 // ================= SMART EXAMPLE FORMATTER =================
@@ -119,11 +129,12 @@ function getCategoryDescription(cat, t, lang) {
 }
 
 // 🛡️ POLICE-STYLE CATEGORY EMBED
-function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, guildId) {
+function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, guildId, page = 0) {
     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
 
     const plugins = getServerPlugins(client, guildId);
     if (plugins && category.toUpperCase() !== 'SYSTEM' && plugins[category.toUpperCase()] === false) {
+        lastCategoryPages = 1;
         return new EmbedBuilder()
             .setColor('#e94560')
             .setAuthor({ name: `${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} MODULE`, iconURL: client.user.displayAvatarURL() })
@@ -139,9 +150,10 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
     const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
     const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
 
-    const commandList = sortedCmds.map(cmd => {
+    const rendered = sortedCmds.map(cmd => {
+      try {
         const aliasesText = cmd.aliases?.length ? ` \`(${cmd.aliases.slice(0, 3).join(', ')})\`` : '';
-        const examples = cmd.examples?.length ? `\n> 📝 ${lang === 'fr' ? 'Ex' : 'Ex'}: \`${cmd.examples.map(ex => formatExample(ex, prefix, cmd.name, cmd.aliases)).join('`, `')}\`` : '';
+        const examples = Array.isArray(cmd.examples) && cmd.examples.length ? `\n> 📝 ${lang === 'fr' ? 'Ex' : 'Ex'}: \`${cmd.examples.map(ex => formatExample(ex, prefix, cmd.name, cmd.aliases)).join('`, `')}\`` : '';
         const hasSlash = !!(cmd.data || cmd.execute);
         const slashBadge = hasSlash ? ' `[/]`' : '';
         // Get subcommands from slash data
@@ -160,14 +172,31 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
             } catch(e) {}
         }
         return `\`▸ ${prefix}${cmd.name}\`${slashBadge}${aliasesText}\n> ${cmd.description || t.noDescription}${subcommandText}${examples}`;
-    }).join('\n\n');
+      } catch (e) {
+        console.error('[HELP ERROR] Render failed for cmd ' + cmd.name + ':', e.message);
+        return `\`\u25b8 ${prefix}${cmd.name}\`\n> \u26a0\ufe0f`;
+      }
+    });
+    // \u{1F4C6} Chunk to respect Discord's 4096-char embed description limit
+    const pageChunks = [];
+    let curChunk = [], curLen = 0;
+    for (const r of rendered) {
+        if (curLen + r.length + 2 > 3900 && curChunk.length) { pageChunks.push(curChunk); curChunk = []; curLen = 0; }
+        curChunk.push(r); curLen += r.length + 2;
+    }
+    if (curChunk.length || pageChunks.length === 0) pageChunks.push(curChunk);
+    const totalPages = pageChunks.length;
+    const safePage = Math.min(Math.max(0, page), totalPages - 1);
+    lastCategoryPages = totalPages;
+    const commandList = pageChunks[safePage].join('\n\n');
 
-    return new EmbedBuilder()
+    const pageLabel = totalPages > 1 ? ` \u2014 ${safePage + 1}/${totalPages}` : '';
+    const catEmbed = new EmbedBuilder()
         .setColor(intelColor)
-        .setAuthor({ name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}`, iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}${pageLabel}`, iconURL: client.user.displayAvatarURL() })
         .setTitle(`\`[ ${t.modulesTitle} ]\``)
-        .setDescription(commandList || t.noCommands)
-        .addFields({ 
+        .setDescription(commandList || t.noCommands);
+    if (safePage === totalPages - 1) catEmbed.addFields({ 
             name: `\` ${t.moduleStatsTitle} \``, 
             value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\n\`STATUS: ONLINE\`\`\`\``, 
             inline: false 
@@ -177,6 +206,7 @@ function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorM
             iconURL: guildIcon
         })
         .setTimestamp();
+    return catEmbed;
 }
 
 // ================= MAIN EXPORT =================
@@ -243,8 +273,23 @@ module.exports = {
             const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))];
 
             if (categories.includes(searchTerm)) {
-                const embed = createCategoryEmbed(client, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id);
-                return message.reply({ embeds: [embed] }).catch(() => {});
+                const embed = createCategoryEmbed(client, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, 0);
+                const catPages = lastCategoryPages;
+                const catReply = await message.reply({ embeds: [embed], components: catPages > 1 ? [buildPagerRow(searchTerm, 0, catPages, lang, t)] : [] }).catch(() => null);
+                if (catReply && catPages > 1) {
+                    const catCol = catReply.createMessageComponentCollector({ time: 300000 });
+                    catCol.on('collect', async (bi) => {
+                        if (bi.user.id !== message.author.id) return bi.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
+                        if (bi.isButton() && bi.customId.startsWith('help_pg:')) {
+                            await bi.deferUpdate().catch(() => {});
+                            const [, pgCat, pgIdx] = bi.customId.split(':');
+                            const newIdx = Math.max(0, Math.min(catPages - 1, parseInt(pgIdx, 10) || 0));
+                            const pgEmbed = createCategoryEmbed(client, pgCat, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, newIdx);
+                            await bi.editReply({ embeds: [pgEmbed], components: [buildPagerRow(pgCat, newIdx, catPages, lang, t)] }).catch(() => {});
+                        }
+                    });
+                }
+                return;
             }
 
             const cmdLower = args[0].toLowerCase();
@@ -419,6 +464,20 @@ module.exports = {
                     return;
                 }
 
+                if (i.isButton() && i.customId.startsWith('help_pg:')) {
+                    if (!i.deferred && !i.replied) {
+                        await i.deferUpdate().catch(() => {});
+                    }
+                    const [, pgCat, pgIdx] = i.customId.split(':');
+                    const newIdx = Math.max(0, Math.min(lastCategoryPages - 1, parseInt(pgIdx, 10) || 0));
+                    const pgEmbed = createCategoryEmbed(client, pgCat, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, newIdx);
+                    const pgRow2 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false)
+                    );
+                    await i.editReply({ content: null, embeds: [pgEmbed], components: [row1, pgRow2, ...(lastCategoryPages > 1 ? [buildPagerRow(pgCat, newIdx, lastCategoryPages, lang, t)] : [])] }).catch(() => {});
+                    return;
+                }
+
                 if (i.isStringSelectMenu() && i.customId === 'help_select') {
                     // ✅ SAFE DEFER + EDIT
                     if (!i.deferred && !i.replied) {
@@ -426,13 +485,13 @@ module.exports = {
                     }
 
                     const category = i.values[0];
-                    const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id);
+                    const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, 0);
 
                     const updatedRow2 = new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false)
                     );
 
-                    await i.editReply({ content: null, embeds: [categoryEmbed], components: [row1, updatedRow2] }).catch((err) => {
+                    await i.editReply({ content: null, embeds: [categoryEmbed], components: [row1, updatedRow2, ...(lastCategoryPages > 1 ? [buildPagerRow(category, 0, lastCategoryPages, lang, t)] : [])] }).catch((err) => {
                         console.error(`${red}[HELP ERROR]${reset} Failed to edit:`, err.message);
                     });
                     return;
