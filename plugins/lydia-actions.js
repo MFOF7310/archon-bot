@@ -66,9 +66,28 @@ function displayVal(spec, v) {
   return `\`${v}\``;
 }
 
+
+// The model sometimes writes the change in prose ("setprefix .") instead of the JSON block.
+// Recover the prefix case only when she clearly says she is requesting it; the confirm gate still applies.
+function salvageIntent(reply, userMsg) {
+  if (!/(request|confirm|demande|let's|je (lance|change))/i.test(reply)) return null;
+  const m = reply.match(/setprefix\s+`?([^\s`*<>\[\]]{1,5})`?/i);
+  if (m && !/^default$/i.test(m[1])) return { action: 'set', key: 'prefix', value: m[1] };
+  if (/pr[ée]fix/i.test(`${reply}\n${userMsg}`) && /(default|d[ée]faut|reset|r[ée]initialis)/i.test(`${reply}\n${userMsg}`)) return { action: 'set', key: 'prefix', value: '.' };
+  return null;
+}
+
 // Main entry. Returns the text to show (intent stripped). Handles the action flow itself.
 async function handleIntent({ reply, message, client, db, isPremium, isElevated, lang: langIn }) {
-  const { text, intent } = extractIntent(reply);
+  let { text, intent } = extractIntent(reply);
+  if (!intent) {
+    const s2 = salvageIntent(text, message.content || '');
+    if (s2) {
+      intent = s2;
+      console.log('[LYDIA ACTION] salvaged intent from prose:', JSON.stringify(s2));
+      text = text.replace(/\s*\*\*(?:Slash )?Command:\*\*\s*[!\/.?,*$#]?\w+(?:\s+\S+)?/gi, '').trim();
+    }
+  }
   if (!intent) {
     // she promised a confirmation but sent no JSON block: drop the dangling promise
     if (/confirm below/i.test(text)) console.log('[LYDIA ACTION] reply promised a confirmation but had no intent block');
@@ -163,6 +182,8 @@ SETTINGS ACTIONS (premium server): if the user clearly asks you to CHANGE a serv
 {"action":"set","key":"<key>","value":<value>}
 Allowed keys: ${Object.keys(ALLOWED).join(', ')}. Use booleans for toggles, numbers for limits, a short string for prefix/language. To reset the prefix to its default, use ".". Whenever you say you are requesting a change you MUST append the JSON block; if you cannot tell the value, ask which one they want and do not say you are requesting anything.
 Only emit the block for explicit change requests ("set", "change", "turn off", "disable", "make the prefix"). Never for questions. If unsure, ask instead of emitting.
+Never write command syntax (no 'Command:' or 'Slash Command:' lines); the confirm button does the work.
+Example: user "reset the prefix to default" -> you: "Sure, switching it back to . !" then on the next line {"action":"set","key":"prefix","value":"."}
 CRITICAL: you cannot apply changes yourself and you do not know the current value. NEVER say "done", "set", "changed", "already set", or describe a new state. Say only that you're requesting it, e.g. "Requesting that change — confirm below." The bot verifies permissions, shows the real current value, and asks the user to confirm.`;
 
 const NON_PREMIUM_INSTRUCTIONS = `
