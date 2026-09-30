@@ -51,7 +51,10 @@
     "ADMIN": "Server administration commands",
     "CONFIG": "Server configuration & settings",
     "MUSIC": "Music playback & queues",
-    "SOCIAL": "Social & community commands"
+    "SOCIAL": "Social & community commands",
+    "TICKETS": "Support tickets and help desk",
+    "LEVELING": "XP, levels and leaderboards",
+    "CODM": "Call of Duty Mobile tools"
   },
   "signalLost": "❌ SIGNAL LOST",
   "commandNotFound": "Command Not Found",

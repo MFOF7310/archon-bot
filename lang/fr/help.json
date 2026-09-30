@@ -51,7 +51,10 @@
     "ADMIN": "Commandes d'administration du serveur",
     "CONFIG": "Configuration et réglages du serveur",
     "MUSIC": "Musique et files d'attente",
-    "SOCIAL": "Commandes sociales et communautaires"
+    "SOCIAL": "Commandes sociales et communautaires",
+    "TICKETS": "Tickets de support et assistance",
+    "LEVELING": "XP, niveaux et classements",
+    "CODM": "Outils Call of Duty Mobile"
   },
   "signalLost": "❌ SIGNAL PERDU",
   "commandNotFound": "Commande Introuvable",

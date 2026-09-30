@@ -4,7 +4,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 const HELP_FLAT = ["directoryTitle", "commandExtract", "module", "category", "usage", "aliases", "examples", "cooldown", "seconds", "noDescription", "noExamples", "none", "systemStatus", "online", "node", "core", "uptime", "version", "moduleStats", "commands", "aliasesStat", "categories", "agents", "guilds", "quickAccess", "aiAssistant", "aiDesc", "selectPlaceholder", "viewAll", "mainMenu", "backToMain", "modulesTitle", "moduleStatsTitle", "totalCommands", "aliasesRegistered", "commandsAvailable", "useHelpForDetails", "selectModuleBelow", "signalLost", "commandNotFound", "notFoundDesc", "checkSpelling", "accessDenied", "footer", "bamakoNode", "modulesOnline", "tip", "topCategories", "noData", "moduleLocked", "moduleDisabledTitle", "moduleDisabledDesc", "noCommands"];
-const HELP_NESTED = {"categoryDescriptions": ["SYSTEM", "GAMING", "ECONOMY", "PROFILE", "AI", "MODERATION", "UTILITY", "FUN", "OWNER", "GENERAL", "ADMIN", "CONFIG", "MUSIC", "SOCIAL"], "tips": ["0", "1", "2", "3", "4"]};
+const HELP_NESTED = {"categoryDescriptions": ["SYSTEM", "GAMING", "ECONOMY", "PROFILE", "AI", "MODERATION", "UTILITY", "FUN", "OWNER", "GENERAL", "ADMIN", "CONFIG", "MUSIC", "SOCIAL", "TICKETS", "LEVELING", "CODM"], "tips": ["0", "1", "2", "3", "4"]};
 // Clés dans lang/<locale>/help.json ; '' retombe sur EN dans t().
 // tips est stocké indexé (dig() ne rend que des chaînes) et reconstruit en tableau.
 function loadT(lang) {

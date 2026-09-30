@@ -51,7 +51,10 @@
     "ADMIN": "服务器管理指令",
     "CONFIG": "服务器配置与设置",
     "MUSIC": "音乐播放与队列",
-    "SOCIAL": "社交与社区指令"
+    "SOCIAL": "社交与社区指令",
+    "TICKETS": "支持工单与帮助",
+    "LEVELING": "经验值、等级和排行榜",
+    "CODM": "使命召唤手游工具"
   },
   "signalLost": "❌ 信号丢失",
   "commandNotFound": "未找到指令",
