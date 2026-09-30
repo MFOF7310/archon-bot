@@ -4,9 +4,10 @@ const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('disc
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["title","current","new","updated","updatedDesc","example","samePrefix","invalid","noPermission","notConfigured","footer"];
 // Clés dans lang/<locale>/setprefix.json ; '' retombe sur EN dans t().
+const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`setprefix.${k}`, lang);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`setprefix.${k}`, lang, LATE_VARS);
     return o;
 }
 

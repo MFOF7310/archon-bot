@@ -3,9 +3,10 @@ const { PermissionFlagsBits, EmbedBuilder, SlashCommandBuilder, Colors } = requi
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["accessDeniedTitle", "accessDeniedDesc", "serverContext", "targetErased", "errorOld", "noTarget", "deletedBy", "messageId", "author", "channel", "reason", "logTitle", "bulkDelete", "bulkSuccess", "invalidCount", "provideCount", "fetching", "noMessagesFound", "userMessagesDeleted", "permCheckTitle", "permCheckField", "permServerField", "permYourRole", "permBotRole", "dmFallbackNote", "helpTitle", "usage", "examples", "ex1", "ex2", "ex3", "ex4"];
+const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`delete.${k}`, lang);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`delete.${k}`, lang, LATE_VARS);
     return o;
 }
 

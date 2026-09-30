@@ -4,9 +4,10 @@ const EMOJIS = require('../config/emojis');
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["warnTitle", "warnedBy", "reason", "warningCount", "warningId", "dmTitle", "dmDescription", "warnSuccess", "cannotWarnSelf", "cannotWarnBot", "cannotWarnHigher", "noReason", "warningsTitle", "noWarnings", "totalWarnings", "activeWarnings", "expiredWarnings", "issuedBy", "issuedAt", "expires", "expired", "active", "never", "clearTitle", "clearSuccess", "confirmClear", "confirm", "cancel", "removeSuccess", "removeNotFound", "modlogsTitle", "noModlogs", "type", "moderator", "date", "actions", "accessDenied", "noPermission", "footer", "page", "of", "delete", "logChannel", "loggedTo"];
+const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`warn.${k}`, lang);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`warn.${k}`, lang, LATE_VARS);
     return o;
 }
 

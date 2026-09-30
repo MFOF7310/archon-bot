@@ -20,9 +20,10 @@ const CATEGORY_CONFIG = {
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["title", "description", "selectCategory", "allCommands", "categories", "commands", "aliases", "usage", "cooldown", "seconds", "none", "noDescription", "totalCommands", "totalAliases", "selectCategoryPrompt", "commandsInCategoryOne", "commandsInCategoryMany", "aliasesFor", "page", "of", "footer", "accessDenied", "back", "refresh", "viewAll", "commandDetails", "categoryLabel", "cooldownLabel", "examples", "noExamples", "tip", "loading", "searchPlaceholder", "favorites", "addFavorite", "removeFavorite", "favoriteAdded", "favoriteRemoved", "noFavorites", "mostUsed", "timesUsed", "newCommand", "commandOfDay", "tryItNow", "compactView", "normalView", "themeLight", "themeDark", "themeNeural", "searchResults", "noResults", "statsSummary", "mostPopularCategory", "leastUsedCommand", "totalExecutions", "noCommandsInCategory", "statistics", "resultsFound", "commandsWord", "favoriteCommands"];
+const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`list.${k}`, lang);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`list.${k}`, lang, LATE_VARS);
     return o;
 }
 

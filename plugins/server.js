@@ -3,9 +3,10 @@ const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["scanning", "author", "commander", "established", "sectorId", "populationMetrics", "total", "voice", "active", "roles", "networkGrid", "tier", "node", "uptime", "stable", "boostSync", "securityProtocols", "verification", "integrity", "synchronized", "anniversaryTitle", "anniversaryAlert", "anniversaryProtocol", "anniversaryDesc", "maxLevel", "channels", "text", "category", "emojis", "stickers", "footer"];
+const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`server.${k}`, lang);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`server.${k}`, lang, LATE_VARS);
     return o;
 }
 

@@ -3,14 +3,15 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFl
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 const I18N_PLAIN = ["title", "transmitting", "complete", "cancelled", "broadcastDesc", "confirmationRequired", "confirmMessage", "totalNodes", "activeNodes", "failedNodes", "successRate", "transmissionTime", "confirm", "cancel", "mentionEveryone", "mentionHere", "noMention", "schedule", "selectChannel", "systemChannel", "generalChat", "firstTextChannel", "announcementsChannel", "restricted", "usage", "noPermission", "preparing", "sending", "success", "footer", "mentionWarning", "noServers", "channelStrategy", "schedulePrompt", "scheduled", "invalidTime", "broadcastSent", "fromArchitect", "imageAttached"];
+const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_PLAIN) o[k] = i18n.t(`broadcast.${k}`, lang);
+    for (const k of I18N_PLAIN) o[k] = i18n.t(`broadcast.${k}`, lang, LATE_VARS);
     const _strategies = {};
-    _strategies['system'] = i18n.t(`broadcast.strategies_system`, lang);
-    _strategies['general'] = i18n.t(`broadcast.strategies_general`, lang);
-    _strategies['first'] = i18n.t(`broadcast.strategies_first`, lang);
-    _strategies['announcements'] = i18n.t(`broadcast.strategies_announcements`, lang);
+    _strategies['system'] = i18n.t(`broadcast.strategies_system`, lang, LATE_VARS);
+    _strategies['general'] = i18n.t(`broadcast.strategies_general`, lang, LATE_VARS);
+    _strategies['first'] = i18n.t(`broadcast.strategies_first`, lang, LATE_VARS);
+    _strategies['announcements'] = i18n.t(`broadcast.strategies_announcements`, lang, LATE_VARS);
     o.strategies = _strategies;
     return o;
 }

@@ -3,9 +3,10 @@ const { EmbedBuilder } = require('discord.js');
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["title","member","joined","accountCreated","daysAgo","footer"];
+const LATE_VARS = { prefix: '{prefix}', category: '{category}', arg: '{arg}', user: '{user}', count: '{count}', target: '{target}', max: '{max}', amount: '{amount}', reason: '{reason}' };
 function loadT(lang) {
     const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`oldest.${k}`, lang);
+    for (const k of I18N_KEYS) o[k] = i18n.t(`oldest.${k}`, lang, LATE_VARS);
     return o;
 }
 
