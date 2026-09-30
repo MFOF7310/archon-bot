@@ -1133,7 +1133,7 @@ async function handleLydiaMessage(message, client, database) {
     const theme = detectTheme(userPrompt || 'hello');
 
     thinkingMsg = await message.reply({
-      embeds: [buildEmbed(null, message, { isThinking: true, theme })],
+      embeds: [buildEmbed(null, message, { isThinking: true, theme, lang: (typeof lang !== 'undefined' ? (lang === 'bm' ? 'fr' : lang) : 'en') })],
       allowedMentions: { repliedUser: false }
     }).catch(() => null);
 
