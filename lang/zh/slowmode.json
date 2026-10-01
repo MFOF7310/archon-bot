@@ -18,5 +18,8 @@
   "permCheckField": "你需要 `ManageChannels` 权限才能使用此指令。",
   "permYourRole": "你的最高角色缺少此权限。",
   "permBotRole": "机器人角色可能也需要提升权限。",
-  "helpTitle": "🐢 慢速模式指令"
+  "helpTitle": "🐢 慢速模式指令",
+  "botNoPermsPrivate": "⛔ 我还不能在 {ch} 设置慢速模式——该频道是私密频道，我不在允许列表里。\n\n**解决方法（约10秒）：**\n1. 打开频道 → **添加成员或角色**（或 编辑频道 → 权限）\n2. 添加 **ARCHON**\n3. 开启 **查看频道** 和 **管理频道**\n4. 重新运行命令",
+  "botNoPermsRoleBlock": "⛔ 我无法在 {ch} 设置慢速模式——{role} 在那里阻止了我。\n\n**解决方法：**\n1. 编辑频道 → 权限\n2. **添加 ARCHON 角色**并允许 **{perms}**——不要改动 {role}\n3. 重新运行命令",
+  "botNoPermsMissingPerm": "⛔ 我在任何地方都无法管理频道——我的角色缺少 **{perms}** 权限。\n\n**解决方法：**\n1. 服务器设置 → 角色 → **ARCHON**\n2. 开启 **管理频道**\n3. 重新运行命令"
 }

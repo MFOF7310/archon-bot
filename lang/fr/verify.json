@@ -87,5 +87,8 @@
   "bamakoFooter": "ARCHON CG-223 • BAMAKO_223 🇲🇱",
   "dmFooter": "Tape le code pour te vérifier",
   "dmRetryFooter": "ARCHON CG-223 • Tape le code ci-dessus",
-  "rejoinBtn": "🔗 Rejoindre le serveur"
+  "rejoinBtn": "🔗 Rejoindre le serveur",
+  "cantPostPrivate": "⛔ Je ne peux pas encore poster dans {ch} — ce salon est privé et je ne suis pas dans sa liste.\n\n**Pour régler ça (10 secondes) :**\n1. Ouvre le salon → **Ajouter des membres ou des rôles** (ou Modifier le salon → Permissions)\n2. Ajoute **ARCHON**\n3. Active **Voir le salon**, **Envoyer des messages** et **Intégrer des liens**\n4. Relance `/verify panel`",
+  "cantPostRoleBlock": "⛔ Je ne peux pas poster dans {ch} — {role} me bloque là-bas.\n\n**Pour régler ça :**\n1. Modifier le salon → Permissions\n2. **Ajoute le rôle ARCHON** et autorise **{perms}** — ne touche pas à {role}, ça ouvrirait le salon à tout le monde\n3. Relance la commande",
+  "cantPostMissingPerm": "⛔ Je ne peux pas poster du tout — il me manque **{perms}** au niveau du serveur.\n\n**Pour régler ça :**\n1. Paramètres du serveur → Rôles → **ARCHON**\n2. Active **{perms}**\n3. Relance la commande"
 }

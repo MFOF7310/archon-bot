@@ -530,8 +530,7 @@ async function sendNotification(client, db, guildId, username, data, type) {
         if (!channel) return false;
 
         const botMember = guild.members.me;
-        const canSend = channel.permissionsFor(botMember)?.has(['SendMessages', 'EmbedLinks', 'MentionEveryone']);
-        if (!canSend) return false;
+        if (!require('../lib/canPost').log(guild, channel, botMember, 'tiktok').ok) return false;
 
         // ─── GESTION DES EMBEDS SELON LE TYPE ───
         let embedToSend;

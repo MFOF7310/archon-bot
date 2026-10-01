@@ -199,9 +199,10 @@ module.exports = {
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
         // Check bot permissions for target channel
-        if (!targetChannel.permissionsFor(interaction.guild.members.me).has(PermissionsBitField.Flags.ManageChannels)) {
+        const smDiag = require('../lib/canPost').diagnose(interaction.guild, targetChannel, interaction.guild.members.me, [['Manage Channels', PermissionsBitField.Flags.ManageChannels]]);
+        if (!smDiag.ok) {
             return interaction.reply({
-                content: i18n.t('slowmode.botNoPerms', lang, { channel: targetChannel.toString() }),
+                content: i18n.t('slowmode.' + require('../lib/canPost').keyFor('botNoPerms', smDiag.reason), lang, { channel: targetChannel.toString(), role: smDiag.role || '', perms: (smDiag.missing || []).join(', ') }),
                 flags: MessageFlags.Ephemeral
             }).catch(() => {});
         }
