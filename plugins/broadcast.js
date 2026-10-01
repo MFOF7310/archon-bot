@@ -71,7 +71,11 @@ function findBroadcastChannel(guild, strategy = 'first') {
                        c.permissionsFor(botMember).has(PermissionFlagsBits.SendMessages))
                 .sort((a, b) => (b.lastMessageId ? 1 : 0) - (a.lastMessageId ? 1 : 0)); // Active channels first
             
-            return channels.first() || null;
+            const pick = channels.first();
+            if (!pick && guild.systemChannel) {
+                require('../lib/canPost').log(guild, guild.systemChannel, botMember, 'broadcast');
+            }
+            return pick || null;
     }
 }
 
@@ -201,6 +205,9 @@ async function executeBroadcast(client, settings, lang, statusMsg) {
             const channel = findBroadcastChannel(guild, settings.channelStrategy);
             
             if (channel) {
+                const _need = [['View Channel', PermissionFlagsBits.ViewChannel], ['Send Messages', PermissionFlagsBits.SendMessages]];
+                if (settings.imageUrl) _need.push(['Embed Links', PermissionFlagsBits.EmbedLinks]);
+                if (!require('../lib/canPost').log(guild, channel, guild.members.me, 'broadcast', _need).ok) { fail++; return; }
                 // 🔥 Send text as CONTENT (preserves markdown/ANSI) + embed for image/footer
                 await channel.send({ 
                     content: fullContent || null, 
