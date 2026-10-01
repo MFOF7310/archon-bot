@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const progress = require('../lib/games/progress');
 
 // ═══════════════════════════════════════════════════════
 //  🎮 ARCHON WRG v3.0 — NEURAL GRID WORD COMBAT
@@ -470,32 +471,15 @@ async function runGame(client, message, args, db, lang) {
             const newStreak = incStreak(m.author.id, guildId);
             const rewards = calcRewards(tier, targetWord.length, solveTime, newStreak);
 
-            // ── Update DB ──
-            const winnerData = db.prepare("SELECT xp, credits, level, games_played, games_won FROM users WHERE id = ? AND guild_id = ?").get(m.author.id, guildId);
-            const oldXP = winnerData?.xp || 0;
-            const newXP = oldXP + rewards.xp;
-            const newLevel = calculateLevel(newXP);
-            const oldLevel = winnerData?.level || calculateLevel(oldXP);
-
-            // Always use queueUserUpdate for consistency — avoids INSERT OR REPLACE overwriting raw SQL increments
-            const freshData = client.getUserData
-                ? client.getUserData(m.author.id, guildId)
-                : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(m.author.id, guildId);
-            const baseData = freshData || winnerData || {};
-            if (client.queueUserUpdate) {
-                client.queueUserUpdate(m.author.id, guildId, {
-                    ...baseData,
-                    xp: (baseData.xp || 0) + rewards.xp,
-                    level: newLevel,
-                    credits: (baseData.credits || 0) + rewards.credits,
-                    games_played: (baseData.games_played || 0) + 1,
-                    games_won: (baseData.games_won || 0) + 1,
-                    username: m.author.username
-                });
-            } else {
-                db.prepare(`UPDATE users SET xp=xp+?, credits=credits+?, level=?, games_played=COALESCE(games_played,0)+1, games_won=COALESCE(games_won,0)+1 WHERE id=? AND guild_id=?`)
-                    .run(rewards.xp, rewards.credits, newLevel, m.author.id, guildId);
-            }
+            // ── Update via shared engine (daily cap + user cache) ──
+            const _pre = client.getUserData?.(m.author.id, guildId) || {};
+            const oldLevel = _pre.level || progress.levelFromXp(_pre.xp);
+            const paid = progress.award(client, db, { userId: m.author.id, guildId, username: m.author.username, credits: rewards.credits, xp: rewards.xp, played: 1, won: 1 });
+            progress.recordRun(db, { game: 'wrg', userId: m.author.id, guildId, username: m.author.username, points: paid.credits + paid.xp, won: true, streak: newStreak, correct: 1, tier: tierKey, tierOrder: Object.keys(TIERS) });
+            const _post = client.getUserData?.(m.author.id, guildId) || {};
+            const newXP = _post.xp || 0;
+            const newLevel = _post.level || progress.levelFromXp(newXP);
+            const winnerData = _pre;
 
             const finalRank = getRank(newLevel);
             const newXpNeeded = Math.pow(newLevel/0.1,2) - Math.pow((newLevel-1)/0.1,2);
@@ -569,6 +553,8 @@ async function runGame(client, message, args, db, lang) {
             clearTimeout(hintTimer);
             if (!winnerDeclared && reason !== 'winner') {
                 resetStreak(message.author.id, guildId);
+                progress.award(client, db, { userId: message.author.id, guildId, username: message.author.username, played: 1, won: 0 });
+                progress.recordRun(db, { game: 'wrg', userId: message.author.id, guildId, username: message.author.username, points: 0, won: false, streak: 0, correct: 0, tier: tierKey, tierOrder: Object.keys(TIERS) });
                 const failEmbed = new EmbedBuilder()
                     .setColor('#e74c3c')
                     .setDescription(
