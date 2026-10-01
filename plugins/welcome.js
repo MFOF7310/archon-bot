@@ -84,6 +84,7 @@ async function handleWelcome(member, client, db) {
 
     const ch = member.guild.channels.cache.get(cfg.welcomeChannel);
     if (!ch) return;
+    if (!require('../lib/canPost').log(member.guild, ch, member.guild.members.me, 'welcome').ok) return;
 
     const count = member.guild.memberCount;
     const lang = (ssRaw.language && ssRaw.language !== 'auto') ? ssRaw.language : (client.detectLanguage ? client.detectLanguage('welcome', member.guild.id) : 'en');
@@ -165,6 +166,7 @@ async function handleGoodbye(member, client, db) {
 
     const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
     if (!ch) return;
+    if (!require('../lib/canPost').log(member.guild, ch, member.guild.members.me, 'goodbye').ok) return;
 
     ensureJoinTable(db);
     await backfillJoins(db, member.guild);
