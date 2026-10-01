@@ -230,6 +230,7 @@ module.exports = {
 
     // Convenience hooks
     onCommandProcessed(database, guildId, userId, commandName, isSlash = false) {
+        try { require('../lib/insights').record(database, { guildId, userId, command: commandName, slash: isSlash }); } catch {}
         if (!database || !guildId) return;
         const xp = isSlash ? BOT_XP_CONFIG.slashXP : BOT_XP_CONFIG.commandXP;
         addBotXP(database, guildId, xp, isSlash ? 'slash' : 'command');
