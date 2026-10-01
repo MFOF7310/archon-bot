@@ -1,0 +1,27 @@
+{
+  "btnAnswer": "إجابة",
+  "btnGiveUp": "استسلام",
+  "answerLabel": "إجابتك",
+  "answerPlaceholder": "اكتبها هنا",
+  "timeLeft": "الوقت المتبقي",
+  "reward": "+{credits} رصيد · +{xp} خبرة",
+  "capNote": "وصلت إلى حدّ اليوم في الألعاب ({credits} رصيد و{xp} خبرة لكل الألعاب). نقاطك ما زالت تُحتسب في الترتيب.",
+  "levelUp": "🎉 ارتقيت! أنت الآن في المستوى {level}، {rank}.",
+  "notYours": "هذه اللعبة لشخص آخر. ابدأ لعبتك الخاصة!",
+  "alreadyPlaying": "لديك لعبة جارية بالفعل. أنهِها أولًا!",
+  "tooLate": "فات الأوان، انتهى الوقت.",
+  "oneMoment": "لحظة…",
+  "serverOnly": "الألعاب تعمل في السيرفرات فقط.",
+  "error": "حدث خطأ من جهتنا. حاول مجددًا بعد لحظة.",
+  "slashOnly": "هذا أمر سلاش. استخدم `/{command}`.",
+  "lbLine": "{medal} **{name}** · {points} نقطة · 🏆 {wins}",
+  "unknown": "مجهول",
+  "footer": "ARCHON CG-223 · {game}",
+  "ranks": {
+    "recruit": "مجنّد عصبي",
+    "fieldAgent": "عميل ميداني",
+    "cyberSpecialist": "خبير سيبراني",
+    "bkoCommander": "قائد BKO",
+    "systemArchitect": "مهندس النظام"
+  }
+}

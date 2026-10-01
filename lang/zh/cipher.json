@@ -1,0 +1,69 @@
+{
+  "name": "神经密码",
+  "title": "🦅 神经密码 · {tier}",
+  "roundTitle": "第 {n}/{total} 个词 · {method}",
+  "howTo": "解出下面的单词。点击 **作答** 输入你的答案。答错会结束本局，但已获得的奖励会保留。",
+  "hint": "提示",
+  "footerRound": "连对 {streak} · 已得：{reward}",
+  "footerScore": "{points} 分 · 已破解 {cracked} 个词",
+  "modalTitle": "解出这个词",
+  "correctTitle": "✅ 破解成功！",
+  "correctDesc": "答案是 **{word}**。{reward}",
+  "nextSoon": "下一个词马上来…",
+  "wrongTitle": "❌ 差一点",
+  "wrongDesc": "答案是 **{word}**，你输入的是 **{guess}**。",
+  "timeoutTitle": "⏱️ 时间到",
+  "answerWas": "答案是 **{word}**。",
+  "giveupTitle": "🏳️ 到此为止",
+  "expiredTitle": "⌛ 本局已关闭",
+  "expiredDesc": "本局持续太久，已自动关闭。",
+  "keep": "已获得的奖励会保留：{reward}。",
+  "victoryTitle": "🏆 {tier} 通关！",
+  "victoryDesc": "{rounds} 个词全部破解，用时 {time} 秒，最高连对 {streak}。已含全对奖励。\n本局：**{reward}**。",
+  "lbTitle": "🏆 {guild} · 解码高手榜",
+  "lbGlobalTitle": "🌍 全球解码高手榜",
+  "lbEmpty": "还没有人破解过密码。用 `/cipher play` 成为第一个！",
+  "profileTitle": "{name} · 解码者档案",
+  "pPoints": "分数",
+  "pWins": "胜场",
+  "pCracked": "已破解",
+  "pStreak": "最高连对",
+  "pTier": "最高难度",
+  "pServer": "本服分数",
+  "tiers": {
+    "novice": "新手",
+    "operative": "特工",
+    "specialist": "专家",
+    "elite": "精英",
+    "architect": "架构师",
+    "supreme": "至尊"
+  },
+  "methods": {
+    "caesar": {
+      "name": "凯撒移位",
+      "hint": "每个字母向后移了 {shift} 位，把它们移回去。"
+    },
+    "reverse": {
+      "name": "倒序 + 移位",
+      "hint": "先倒着写，再把每个字母向后移 {shift} 位。"
+    },
+    "mirror": {
+      "name": "镜像",
+      "hint": "每个字母换成它的镜像：A↔Z、B↔Y、C↔X…"
+    },
+    "rotate": {
+      "name": "轮转",
+      "hint": "第 1 个字母后移 {shift} 位，第 2 个 {shift1} 位，第 3 个 {shift2} 位，依此类推。"
+    }
+  },
+  "titles": {
+    "scriptKiddie": "脚本小子",
+    "codeBreaker": "破译者",
+    "cryptanalyst": "密码分析师",
+    "cipherArchitect": "密码架构师",
+    "ghostOperative": "幽灵特工",
+    "supremeDecryptor": "至尊解码者"
+  },
+  "titleLine": "你的称号：**{title}**",
+  "pTitle": "称号"
+}

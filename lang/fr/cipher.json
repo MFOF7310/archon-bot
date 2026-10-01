@@ -1,0 +1,69 @@
+{
+  "name": "Neural Cipher",
+  "title": "🦅 Neural Cipher · {tier}",
+  "roundTitle": "Mot {n} sur {total} · {method}",
+  "howTo": "Décode le mot ci-dessous. Appuie sur **Répondre** pour taper ta réponse. Une erreur met fin à la partie, mais tu gardes ce que tu as gagné.",
+  "hint": "Indice",
+  "footerRound": "Série {streak} · gagné : {reward}",
+  "footerScore": "{points} pts · {cracked} mots décodés",
+  "modalTitle": "Décode le mot",
+  "correctTitle": "✅ Bien joué !",
+  "correctDesc": "Le mot était **{word}**. {reward}",
+  "nextSoon": "Le prochain mot arrive…",
+  "wrongTitle": "❌ Pas tout à fait",
+  "wrongDesc": "Le mot était **{word}**, et tu as tapé **{guess}**.",
+  "timeoutTitle": "⏱️ Temps écoulé",
+  "answerWas": "Le mot était **{word}**.",
+  "giveupTitle": "🏳️ Tu t'arrêtes là",
+  "expiredTitle": "⌛ Partie fermée",
+  "expiredDesc": "Cette partie a duré trop longtemps et a été fermée.",
+  "keep": "Tu gardes ce que tu as gagné : {reward}.",
+  "victoryTitle": "🏆 Niveau {tier} réussi !",
+  "victoryDesc": "Les {rounds} mots décodés en {time} s, meilleure série {streak}. Bonus sans faute inclus.\nCette partie : **{reward}**.",
+  "lbTitle": "🏆 {guild} · Meilleurs décodeurs",
+  "lbGlobalTitle": "🌍 Meilleurs décodeurs du monde",
+  "lbEmpty": "Personne n'a encore décodé de mot. Sois le premier avec `/cipher play` !",
+  "profileTitle": "{name} · Profil de décodeur",
+  "pPoints": "Points",
+  "pWins": "Victoires",
+  "pCracked": "Mots décodés",
+  "pStreak": "Meilleure série",
+  "pTier": "Niveau max",
+  "pServer": "Points ici",
+  "tiers": {
+    "novice": "Novice",
+    "operative": "Opérateur",
+    "specialist": "Spécialiste",
+    "elite": "Élite",
+    "architect": "Architecte",
+    "supreme": "Suprême"
+  },
+  "methods": {
+    "caesar": {
+      "name": "Décalage de César",
+      "hint": "Chaque lettre a été avancée de {shift} rangs. Recule-les."
+    },
+    "reverse": {
+      "name": "Inversé + décalage",
+      "hint": "Écrit à l'envers, puis chaque lettre avancée de {shift} rangs."
+    },
+    "mirror": {
+      "name": "Miroir",
+      "hint": "Chaque lettre a été échangée avec son miroir : A↔Z, B↔Y, C↔X…"
+    },
+    "rotate": {
+      "name": "Rotation",
+      "hint": "1re lettre avancée de {shift}, 2e de {shift1}, 3e de {shift2}, et ainsi de suite."
+    }
+  },
+  "titles": {
+    "scriptKiddie": "Apprenti",
+    "codeBreaker": "Casseur de codes",
+    "cryptanalyst": "Cryptanalyste",
+    "cipherArchitect": "Architecte du chiffre",
+    "ghostOperative": "Agent fantôme",
+    "supremeDecryptor": "Décrypteur suprême"
+  },
+  "titleLine": "Ton titre : **{title}**",
+  "pTitle": "Titre"
+}

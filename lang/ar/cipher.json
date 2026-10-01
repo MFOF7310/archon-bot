@@ -1,0 +1,69 @@
+{
+  "name": "الشيفرة العصبية",
+  "title": "🦅 الشيفرة العصبية · {tier}",
+  "roundTitle": "الكلمة {n} من {total} · {method}",
+  "howTo": "فكّ الكلمة أدناه. اضغط **إجابة** لكتابة تخمينك. الإجابة الخاطئة تنهي الجولة، لكنك تحتفظ بما ربحته.",
+  "hint": "تلميح",
+  "footerRound": "سلسلة {streak} · المكسب: {reward}",
+  "footerScore": "{points} نقطة · {cracked} كلمات مفكوكة",
+  "modalTitle": "فكّ الكلمة",
+  "correctTitle": "✅ أحسنت!",
+  "correctDesc": "الكلمة كانت **{word}**. {reward}",
+  "nextSoon": "الكلمة التالية قادمة…",
+  "wrongTitle": "❌ ليس تمامًا",
+  "wrongDesc": "الكلمة كانت **{word}**، وكتبتَ **{guess}**.",
+  "timeoutTitle": "⏱️ انتهى الوقت",
+  "answerWas": "الكلمة كانت **{word}**.",
+  "giveupTitle": "🏳️ توقفت هنا",
+  "expiredTitle": "⌛ أُغلقت الجولة",
+  "expiredDesc": "استغرقت هذه الجولة وقتًا طويلًا فأُغلقت.",
+  "keep": "تحتفظ بما ربحته: {reward}.",
+  "victoryTitle": "🏆 أنهيت مستوى {tier}!",
+  "victoryDesc": "فككت الكلمات الـ {rounds} كلها في {time} ثانية، وأفضل سلسلة {streak}. مكافأة الأداء المثالي مشمولة.\nهذه الجولة: **{reward}**.",
+  "lbTitle": "🏆 {guild} · أفضل فاكّي الشيفرات",
+  "lbGlobalTitle": "🌍 أفضل فاكّي الشيفرات عالميًا",
+  "lbEmpty": "لم يفكّ أحد أي شيفرة بعد. كن الأول مع `/cipher play`!",
+  "profileTitle": "{name} · ملف فاكّ الشيفرات",
+  "pPoints": "النقاط",
+  "pWins": "الانتصارات",
+  "pCracked": "الكلمات المفكوكة",
+  "pStreak": "أفضل سلسلة",
+  "pTier": "أعلى مستوى",
+  "pServer": "النقاط هنا",
+  "tiers": {
+    "novice": "مبتدئ",
+    "operative": "عميل",
+    "specialist": "متخصص",
+    "elite": "نخبة",
+    "architect": "مهندس",
+    "supreme": "أسطوري"
+  },
+  "methods": {
+    "caesar": {
+      "name": "إزاحة قيصر",
+      "hint": "تمت إزاحة كل حرف {shift} مواضع إلى الأمام. أعِدها إلى الخلف."
+    },
+    "reverse": {
+      "name": "معكوس + إزاحة",
+      "hint": "كُتبت بالمقلوب، ثم أُزيح كل حرف {shift} مواضع إلى الأمام."
+    },
+    "mirror": {
+      "name": "مرآة",
+      "hint": "استُبدل كل حرف بمقابله في المرآة: A↔Z، B↔Y، C↔X…"
+    },
+    "rotate": {
+      "name": "دوران",
+      "hint": "أُزيح الحرف الأول {shift} إلى الأمام، والثاني {shift1}، والثالث {shift2}، وهكذا."
+    }
+  },
+  "titles": {
+    "scriptKiddie": "مبتدئ السكربتات",
+    "codeBreaker": "كاسر الشيفرات",
+    "cryptanalyst": "محلل التشفير",
+    "cipherArchitect": "مهندس الشيفرة",
+    "ghostOperative": "العميل الشبح",
+    "supremeDecryptor": "فاكّ الشيفرات الأعلى"
+  },
+  "titleLine": "لقبك: **{title}**",
+  "pTitle": "اللقب"
+}

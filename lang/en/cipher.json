@@ -1,0 +1,69 @@
+{
+  "name": "Neural Cipher",
+  "title": "🦅 Neural Cipher · {tier}",
+  "roundTitle": "Word {n} of {total} · {method}",
+  "howTo": "Decode the word below. Tap **Answer** to type your guess. A wrong answer ends the run, but you keep what you've earned.",
+  "hint": "Hint",
+  "footerRound": "Streak {streak} · earned: {reward}",
+  "footerScore": "{points} pts · {cracked} words cracked",
+  "modalTitle": "Decode the word",
+  "correctTitle": "✅ Cracked it!",
+  "correctDesc": "The word was **{word}**. {reward}",
+  "nextSoon": "Next word coming up…",
+  "wrongTitle": "❌ Not quite",
+  "wrongDesc": "The word was **{word}**, and you typed **{guess}**.",
+  "timeoutTitle": "⏱️ Time's up",
+  "answerWas": "The word was **{word}**.",
+  "giveupTitle": "🏳️ You stopped here",
+  "expiredTitle": "⌛ Run closed",
+  "expiredDesc": "This run went on too long and was closed.",
+  "keep": "You keep what you earned: {reward}.",
+  "victoryTitle": "🏆 {tier} cleared!",
+  "victoryDesc": "All {rounds} words cracked in {time}s, best streak {streak}. Perfect-run bonus included.\nThis run: **{reward}**.",
+  "lbTitle": "🏆 {guild} · Top codebreakers",
+  "lbGlobalTitle": "🌍 Top codebreakers worldwide",
+  "lbEmpty": "Nobody has cracked a cipher yet. Be the first with `/cipher play`!",
+  "profileTitle": "{name} · Codebreaker profile",
+  "pPoints": "Points",
+  "pWins": "Wins",
+  "pCracked": "Words cracked",
+  "pStreak": "Best streak",
+  "pTier": "Highest level",
+  "pServer": "Points here",
+  "tiers": {
+    "novice": "Novice",
+    "operative": "Operative",
+    "specialist": "Specialist",
+    "elite": "Elite",
+    "architect": "Architect",
+    "supreme": "Supreme"
+  },
+  "methods": {
+    "caesar": {
+      "name": "Caesar shift",
+      "hint": "Each letter was moved {shift} places forward. Move them back."
+    },
+    "reverse": {
+      "name": "Reversed + shift",
+      "hint": "Written backwards, then each letter moved {shift} places forward."
+    },
+    "mirror": {
+      "name": "Mirror",
+      "hint": "Each letter was swapped with its mirror: A↔Z, B↔Y, C↔X…"
+    },
+    "rotate": {
+      "name": "Rotation",
+      "hint": "1st letter moved {shift} forward, 2nd {shift1}, 3rd {shift2}, and so on."
+    }
+  },
+  "titles": {
+    "scriptKiddie": "Script Kiddie",
+    "codeBreaker": "Code Breaker",
+    "cryptanalyst": "Cryptanalyst",
+    "cipherArchitect": "Cipher Architect",
+    "ghostOperative": "Ghost Operative",
+    "supremeDecryptor": "Supreme Decryptor"
+  },
+  "titleLine": "Your title: **{title}**",
+  "pTitle": "Title"
+}

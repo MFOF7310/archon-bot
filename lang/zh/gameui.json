@@ -1,0 +1,27 @@
+{
+  "btnAnswer": "作答",
+  "btnGiveUp": "放弃",
+  "answerLabel": "你的答案",
+  "answerPlaceholder": "在这里输入",
+  "timeLeft": "剩余时间",
+  "reward": "+{credits} 积分 · +{xp} 经验",
+  "capNote": "你已达到今日游戏上限（所有游戏合计 {credits} 积分、{xp} 经验）。分数仍会计入排行榜。",
+  "levelUp": "🎉 升级了！你现在是 {level} 级，{rank}。",
+  "notYours": "这一局属于别人。开一局你自己的吧！",
+  "alreadyPlaying": "你已经有一局在进行中，先完成它吧！",
+  "tooLate": "太晚了，时间已经用完。",
+  "oneMoment": "稍等…",
+  "serverOnly": "游戏只能在服务器中使用。",
+  "error": "我们这边出了点问题，请稍后再试。",
+  "slashOnly": "这是斜杠命令，请使用 `/{command}`。",
+  "lbLine": "{medal} **{name}** · {points} 分 · 🏆 {wins}",
+  "unknown": "未知",
+  "footer": "ARCHON CG-223 · {game}",
+  "ranks": {
+    "recruit": "神经新兵",
+    "fieldAgent": "外勤特工",
+    "cyberSpecialist": "网络专家",
+    "bkoCommander": "BKO 指挥官",
+    "systemArchitect": "系统架构师"
+  }
+}

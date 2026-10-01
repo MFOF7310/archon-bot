@@ -1,0 +1,27 @@
+{
+  "btnAnswer": "Répondre",
+  "btnGiveUp": "Abandonner",
+  "answerLabel": "Ta réponse",
+  "answerPlaceholder": "Tape-la ici",
+  "timeLeft": "Temps restant",
+  "reward": "+{credits} crédits · +{xp} XP",
+  "capNote": "Tu as atteint la limite du jour ({credits} crédits, {xp} XP pour tous les jeux). Tes points comptent quand même pour le classement.",
+  "levelUp": "🎉 Niveau supérieur ! Tu es maintenant niveau {level}, {rank}.",
+  "notYours": "Cette partie appartient à quelqu'un d'autre. Lance la tienne !",
+  "alreadyPlaying": "Tu as déjà une partie en cours. Termine-la d'abord !",
+  "tooLate": "Trop tard, le temps est écoulé.",
+  "oneMoment": "Un instant…",
+  "serverOnly": "Les jeux fonctionnent uniquement dans les serveurs.",
+  "error": "Un problème est survenu de notre côté. Réessaie dans un instant.",
+  "slashOnly": "Celle-ci est une commande slash. Utilise `/{command}`.",
+  "lbLine": "{medal} **{name}** · {points} pts · 🏆 {wins}",
+  "unknown": "Inconnu",
+  "footer": "ARCHON CG-223 · {game}",
+  "ranks": {
+    "recruit": "Recrue neurale",
+    "fieldAgent": "Agent de terrain",
+    "cyberSpecialist": "Spécialiste cyber",
+    "bkoCommander": "Commandant BKO",
+    "systemArchitect": "Architecte système"
+  }
+}
