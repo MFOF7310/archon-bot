@@ -130,10 +130,11 @@ module.exports = {
             const _cp = require('../lib/canPost');
             const _need = _cp.neededFor(type);
             const _d = _cp.diagnose(interaction.guild, channel, interaction.guild.members.me, _need);
+            const _me = interaction.guild.members.me;
+            const _bot = _me.roles.botRole?.name || _me.displayName;
             const _statusLine = _d.ok
-                ? `✅ **ACCESS GRANTED** — ${_need.map(x => x[0]).join(', ')} verified`
-                : `⛔ **ACCESS DENIED** — ${_d.role || 'this channel'} denies ${_d.missing.join(', ')}
-**Fix:** Edit Channel → Permissions → add the ARCHON role → allow ${_d.missing.join(', ')}`;
+                ? `✅ I can post in this channel.`
+                : `⚠️ ${_d.reason === 'private' ? `This channel is private — I'm not on its list.` : `**${_d.role || 'A role'}** is blocking **${_d.missing.join(', ')}** here.`}\n\nTo fix it: Edit Channel → Permissions → add **${_bot}** and allow **${_d.missing.join(', ')}**.`;
 
             const embed = new EmbedBuilder()
                 .setColor(_d.ok ? 0x2ecc71 : 0xf1c40f)
@@ -208,7 +209,9 @@ module.exports = {
             client.settings?.delete(guildId);
             const _cp2 = require('../lib/canPost');
             const _d2 = _cp2.diagnose(message.guild, ch, message.guild.members.me, _cp2.neededFor(type));
-            const _tail = _d2.ok ? '' : `\n\n⛔ **ACCESS DENIED** — ${_d2.role || 'this channel'} denies ${_d2.missing.join(', ')}\n**Fix:** Edit Channel → Permissions → add ARCHON role → allow ${_d2.missing.join(', ')}`;
+            const _me2 = message.guild.members.me;
+            const _bot2 = _me2.roles.botRole?.name || _me2.displayName;
+            const _tail = _d2.ok ? '' : `\n\n⚠️ ${_d2.reason === 'private' ? `This channel is private — I'm not on its list.` : `**${_d2.role || 'A role'}** is blocking **${_d2.missing.join(', ')}** here.`}\nTo fix it: Edit Channel → Permissions → add **${_bot2}** and allow **${_d2.missing.join(', ')}**.`;
             return message.reply(`${EMOJIS.check} **${def.label}** set to <#${channelId}>${_tail}`).catch(() => {});
         }
     }
