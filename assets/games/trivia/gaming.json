@@ -1,22 +1,842 @@
 [
-{"en": {"q": "Which company created Mario?", "a": ["Nintendo", "Sega", "Sony", "Microsoft"], "fact": "Mario was created by Shigeru Miyamoto and first appeared in Donkey Kong (1981)."}, "fr": {"q": "Quelle entreprise a créé Mario ?", "a": ["Nintendo", "Sega", "Sony", "Microsoft"], "fact": "Mario a été créé par Shigeru Miyamoto."}},
-{"en": {"q": "In CODM, what does 'ADS' mean?", "a": ["Aim Down Sights", "Auto Deploy System", "Advanced Defense Shield", "Aerial Drop Support"], "fact": "ADS refers to aiming down your weapon's sights for better accuracy."}, "fr": {"q": "Dans CODM, que signifie 'ADS' ?", "a": ["Viser avec le viseur", "Système Auto", "Bouclier Avancé", "Support Aérien"], "fact": "L'ADS fait référence au fait de viser avec le viseur."}},
-{"en": {"q": "What is the best-selling video game of all time?", "a": ["Minecraft", "GTA V", "Tetris", "Wii Sports"], "fact": "Minecraft has sold over 300 million copies worldwide."}, "fr": {"q": "Quel est le jeu vidéo le plus vendu ?", "a": ["Minecraft", "GTA V", "Tetris", "Wii Sports"], "fact": "Minecraft s'est vendu à plus de 300 millions d'exemplaires."}},
-{"en": {"q": "What year was the first Call of Duty released?", "a": ["2003", "2001", "2005", "2007"], "fact": "The original Call of Duty was released on October 29, 2003."}, "fr": {"q": "En quelle année le premier Call of Duty est-il sorti ?", "a": ["2003", "2001", "2005", "2007"], "fact": "Le Call of Duty original est sorti le 29 octobre 2003."}},
-{"en": {"q": "In Pokemon, what type is Pikachu?", "a": ["Electric", "Fire", "Water", "Normal"], "fact": "Pikachu is the mascot of the Pokémon franchise."}, "fr": {"q": "Dans Pokemon, quel type est Pikachu ?", "a": ["Électrique", "Feu", "Eau", "Normal"], "fact": "Pikachu est la mascotte de la franchise Pokémon."}},
-{"en": {"q": "Which game features 'The King of the Iron Fist Tournament'?", "a": ["Tekken", "Street Fighter", "Mortal Kombat", "SoulCalibur"], "fact": "Tekken's tournament is sponsored by the Mishima Zaibatsu."}, "fr": {"q": "Quel jeu présente 'Le Tournoi du Roi du Poing de Fer' ?", "a": ["Tekken", "Street Fighter", "Mortal Kombat", "SoulCalibur"], "fact": "Le tournoi de Tekken est sponsorisé par le Mishima Zaibatsu."}},
-{"en": {"q": "What is the name of the main character in The Legend of Zelda?", "a": ["Link", "Zelda", "Ganondorf", "Epona"], "fact": "Many think it's Zelda — but Zelda is the princess!"}, "fr": {"q": "Comment s'appelle le héros de The Legend of Zelda ?", "a": ["Link", "Zelda", "Ganondorf", "Epona"], "fact": "Beaucoup pensent que c'est Zelda — mais Zelda est la princesse !"}},
-{"en": {"q": "Which game popularized the battle royale genre in 2017?", "a": ["Fortnite", "Tetris 99", "Fall Guys", "Among Us"], "fact": "Fortnite Battle Royale reached 125 million players in under a year."}, "fr": {"q": "Quel jeu a popularisé le battle royale en 2017 ?", "a": ["Fortnite", "Tetris 99", "Fall Guys", "Among Us"], "fact": "Fortnite a atteint 125 millions de joueurs en moins d'un an."}},
-{"en": {"q": "In Minecraft, what material is needed to mine diamonds?", "a": ["Iron pickaxe", "Wooden pickaxe", "Stone pickaxe", "Gold pickaxe"], "fact": "Diamond ore requires at least an iron pickaxe."}, "fr": {"q": "Dans Minecraft, quel outil faut-il pour miner du diamant ?", "a": ["Pioche en fer", "Pioche en bois", "Pioche en pierre", "Pioche en or"], "fact": "Le minerai de diamant nécessite au moins une pioche en fer."}},
-{"en": {"q": "What does 'GG' stand for in gaming?", "a": ["Good Game", "Great Gun", "Go Go", "Game Over"], "fact": "It's sportsmanship slang dating back to 90s competitive StarCraft."}, "fr": {"q": "Que signifie 'GG' dans le gaming ?", "a": ["Good Game", "Great Gun", "Go Go", "Game Over"], "fact": "Une marque de fair-play née dans le StarCraft compétitif des années 90."}},
-{"en": {"q": "Which console did Sony release in 2020?", "a": ["PlayStation 5", "PlayStation 4 Pro", "PlayStation Vita", "PlayStation Classic"], "fact": "The PS5 launched in November 2020."}, "fr": {"q": "Quelle console Sony a-t-il lancée en 2020 ?", "a": ["PlayStation 5", "PlayStation 4 Pro", "PlayStation Vita", "PlayStation Classic"], "fact": "La PS5 est sortie en novembre 2020."}},
-{"en": {"q": "In League of Legends, what is the main map called?", "a": ["Summoner's Rift", "Howling Abyss", "Twisted Treeline", "Crystal Scar"], "fact": "Summoner's Rift is the iconic 5v5 map."}, "fr": {"q": "Dans League of Legends, comment s'appelle la carte principale ?", "a": ["Summoner's Rift", "Howling Abyss", "Twisted Treeline", "Crystal Scar"], "fact": "Summoner's Rift est la carte 5v5 emblématique."}},
-{"en": {"q": "Which company developed Fortnite?", "a": ["Epic Games", "Activision", "EA", "Ubisoft"], "fact": "Epic Games also created the Unreal Engine."}, "fr": {"q": "Quelle entreprise a développé Fortnite ?", "a": ["Epic Games", "Activision", "EA", "Ubisoft"], "fact": "Epic Games a aussi créé l'Unreal Engine."}},
-{"en": {"q": "What year was Roblox released?", "a": ["2006", "2010", "2003", "2015"], "fact": "Roblox launched in 2006 and exploded in popularity in the late 2010s."}, "fr": {"q": "En quelle année Roblox est-il sorti ?", "a": ["2006", "2010", "2003", "2015"], "fact": "Roblox a été lancé en 2006."}},
-{"en": {"q": "In GTA V, how many playable protagonists are there?", "a": ["3", "1", "2", "4"], "fact": "Michael, Franklin and Trevor — a first for the series."}, "fr": {"q": "Dans GTA V, combien y a-t-il de protagonistes jouables ?", "a": ["3", "1", "2", "4"], "fact": "Michael, Franklin et Trevor — une première pour la série."}},
-{"en": {"q": "What is the name of the princess in Super Mario Bros?", "a": ["Peach", "Zelda", "Daisy", "Rosalina"], "fact": "Princess Peach has been Mario's rescue target since 1985."}, "fr": {"q": "Comment s'appelle la princesse de Super Mario Bros ?", "a": ["Peach", "Zelda", "Daisy", "Rosalina"], "fact": "La princesse Peach est le personnage à sauver depuis 1985."}},
-{"en": {"q": "Which game features a character named Master Chief?", "a": ["Halo", "Call of Duty", "Gears of War", "Destiny"], "fact": "Master Chief is the Spartan-II supersoldier protagonist of Halo."}, "fr": {"q": "Quel jeu met en scène le Master Chief ?", "a": ["Halo", "Call of Duty", "Gears of War", "Destiny"], "fact": "Le Master Chief est le super-soldat Spartan-II protagoniste de Halo."}},
-{"en": {"q": "What does 'NPC' stand for in gaming?", "a": ["Non-Player Character", "Neural Processing Core", "New Player Control", "Network Play Character"], "fact": "NPCs populate game worlds and drive story without player control."}, "fr": {"q": "Que signifie 'PNJ' dans le jeu vidéo ?", "a": ["Personnage Non Joueur", "Processeur Neural de Jeu", "Protocole de Navigation de Jeu", "Plateforme de Nouveaux Joueurs"], "fact": "Les PNJ peuplent les mondes de jeu sans contrôle du joueur."}},
-{"en": {"q": "Which company makes the Xbox console?", "a": ["Microsoft", "Sony", "Nintendo", "Sega"], "fact": "Microsoft launched the original Xbox in 2001."}, "fr": {"q": "Quelle entreprise fabrique la console Xbox ?", "a": ["Microsoft", "Sony", "Nintendo", "Sega"], "fact": "Microsoft a lancé la première Xbox en 2001."}},
-{"en": {"q": "In Among Us, what are players trying to find?", "a": ["The Impostor", "The Key", "The Exit", "The Reactor"], "fact": "One or more impostors sabotage and eliminate crewmates."}, "fr": {"q": "Dans Among Us, que cherchent les joueurs ?", "a": ["L'Imposteur", "La Clé", "La Sortie", "Le Réacteur"], "fact": "Un ou plusieurs imposteurs sabotent et éliminent les équipiers."}}
+  {
+    "en": {
+      "q": "Which company created Mario?",
+      "a": [
+        "Nintendo",
+        "Sega",
+        "Sony",
+        "Microsoft"
+      ],
+      "fact": "Mario was created by Shigeru Miyamoto and first appeared in Donkey Kong (1981)."
+    },
+    "fr": {
+      "q": "Quelle entreprise a créé Mario ?",
+      "a": [
+        "Nintendo",
+        "Sega",
+        "Sony",
+        "Microsoft"
+      ],
+      "fact": "Mario a été créé par Shigeru Miyamoto."
+    },
+    "zh": {
+      "q": "马里奥是哪个公司创造的？",
+      "a": [
+        "任天堂",
+        "世嘉",
+        "索尼",
+        "微软"
+      ],
+      "fact": "马里奥由宫本茂创造，1981年首次出现在《森喜刚》中。"
+    },
+    "ar": {
+      "q": "ما الشركة التي أصنعت شخصية ماريو؟",
+      "a": [
+        "نينتندو",
+        "سيغا",
+        "سوني",
+        "مايكروسوفت"
+      ],
+      "fact": "صنع ماريو شيغيرو مياموتو وظهر لأول مرة في لعبة Donkey Kong عام 1981."
+    }
+  },
+  {
+    "en": {
+      "q": "In CODM, what does 'ADS' mean?",
+      "a": [
+        "Aim Down Sights",
+        "Auto Deploy System",
+        "Advanced Defense Shield",
+        "Aerial Drop Support"
+      ],
+      "fact": "ADS refers to aiming down your weapon's sights for better accuracy."
+    },
+    "fr": {
+      "q": "Dans CODM, que signifie 'ADS' ?",
+      "a": [
+        "Viser avec le viseur",
+        "Système Auto",
+        "Bouclier Avancé",
+        "Support Aérien"
+      ],
+      "fact": "L'ADS fait référence au fait de viser avec le viseur."
+    },
+    "zh": {
+      "q": "在《使命召唤手游》中，\"ADS\"是什么意思？",
+      "a": [
+        "瞄准（机瞄）",
+        "自动部署系统",
+        "高级防御护盾",
+        "空投支援"
+      ],
+      "fact": "ADS指通过武器瞄准具瞄准以提高精度。"
+    },
+    "ar": {
+      "q": "في Call of Duty Mobile، ماذا تعني \"ADS\"؟",
+      "a": [
+        "التصويب عبر الميناء",
+        "نظام النشر الآلي",
+        "درع الدفاع المتقدم",
+        "الإسناد الجوي"
+      ],
+      "fact": "تشير ADS إلى التصويب عبر مناظر السلاح لتحسين الدقة."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the best-selling video game of all time?",
+      "a": [
+        "Minecraft",
+        "GTA V",
+        "Tetris",
+        "Wii Sports"
+      ],
+      "fact": "Minecraft has sold over 300 million copies worldwide."
+    },
+    "fr": {
+      "q": "Quel est le jeu vidéo le plus vendu ?",
+      "a": [
+        "Minecraft",
+        "GTA V",
+        "Tetris",
+        "Wii Sports"
+      ],
+      "fact": "Minecraft s'est vendu à plus de 300 millions d'exemplaires."
+    },
+    "zh": {
+      "q": "史上最畅销的电子游戏是什么？",
+      "a": [
+        "《我的世界》",
+        "《GTA V》",
+        "《俄罗斯方块》",
+        "《Wii运动》"
+      ],
+      "fact": "《我的世界》全球销量已超过3亿份。"
+    },
+    "ar": {
+      "q": "ما أكثر لعبة فيديو مبيعًا في التاريخ؟",
+      "a": [
+        "ماين كرافت",
+        "GTA V",
+        "تتريس",
+        "Wii سبورتس"
+      ],
+      "fact": "باعت ماين كرافت أكثر من 300 مليون نسخة حول العالم."
+    }
+  },
+  {
+    "en": {
+      "q": "What year was the first Call of Duty released?",
+      "a": [
+        "2003",
+        "2001",
+        "2005",
+        "2007"
+      ],
+      "fact": "The original Call of Duty was released on October 29, 2003."
+    },
+    "fr": {
+      "q": "En quelle année le premier Call of Duty est-il sorti ?",
+      "a": [
+        "2003",
+        "2001",
+        "2005",
+        "2007"
+      ],
+      "fact": "Le Call of Duty original est sorti le 29 octobre 2003."
+    },
+    "zh": {
+      "q": "第一部《使命召唤》是哪一年发布的？",
+      "a": [
+        "2003",
+        "2001",
+        "2005",
+        "2007"
+      ],
+      "fact": "初代《使命召唤》于2003年10月29日发布。"
+    },
+    "ar": {
+      "q": "في أي عام صدرت أول لعبة Call of Duty؟",
+      "a": [
+        "2003",
+        "2001",
+        "2005",
+        "2007"
+      ],
+      "fact": "صدرت Call of Duty الأصلية في 29 أكتوبر 2003."
+    }
+  },
+  {
+    "en": {
+      "q": "In Pokemon, what type is Pikachu?",
+      "a": [
+        "Electric",
+        "Fire",
+        "Water",
+        "Normal"
+      ],
+      "fact": "Pikachu is the mascot of the Pokémon franchise."
+    },
+    "fr": {
+      "q": "Dans Pokemon, quel type est Pikachu ?",
+      "a": [
+        "Électrique",
+        "Feu",
+        "Eau",
+        "Normal"
+      ],
+      "fact": "Pikachu est la mascotte de la franchise Pokémon."
+    },
+    "zh": {
+      "q": "在《宝可梦》中，皮卡丘是什么属性？",
+      "a": [
+        "电",
+        "火",
+        "水",
+        "普通"
+      ],
+      "fact": "皮卡丘是宝可梦系列的吉祥物。"
+    },
+    "ar": {
+      "q": "في بوكيمون، ما نوع بيكاتشو؟",
+      "a": [
+        "الكهرباء",
+        "النار",
+        "الماء",
+        "العادي"
+      ],
+      "fact": "بيكاتشو هو التميمة الرسمية لسلسلة بوكيمون."
+    }
+  },
+  {
+    "en": {
+      "q": "Which game features 'The King of the Iron Fist Tournament'?",
+      "a": [
+        "Tekken",
+        "Street Fighter",
+        "Mortal Kombat",
+        "SoulCalibur"
+      ],
+      "fact": "Tekken's tournament is sponsored by the Mishima Zaibatsu."
+    },
+    "fr": {
+      "q": "Quel jeu présente 'Le Tournoi du Roi du Poing de Fer' ?",
+      "a": [
+        "Tekken",
+        "Street Fighter",
+        "Mortal Kombat",
+        "SoulCalibur"
+      ],
+      "fact": "Le tournoi de Tekken est sponsorisé par le Mishima Zaibatsu."
+    },
+    "zh": {
+      "q": "哪款游戏以\"铁拳王锦标赛\"为主题？",
+      "a": [
+        "《铁拳》",
+        "《街头霸王》",
+        "《真人快打》",
+        "《灵魂能力》"
+      ],
+      "fact": "铁拳锦标赛由三岛财阀赞助举办。"
+    },
+    "ar": {
+      "q": "ما اللعبة التي تتمحور حول \"بطولة ملك القبضة الحديدية\"؟",
+      "a": [
+        "تيكِن",
+        "ستريت فايتر",
+        "مورتال كومبات",
+        "سول كاليبر"
+      ],
+      "fact": "ترعى شركة ميشيما زايباتسو بطولة تيكن."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the name of the main character in The Legend of Zelda?",
+      "a": [
+        "Link",
+        "Zelda",
+        "Ganondorf",
+        "Epona"
+      ],
+      "fact": "Many think it's Zelda — but Zelda is the princess!"
+    },
+    "fr": {
+      "q": "Comment s'appelle le héros de The Legend of Zelda ?",
+      "a": [
+        "Link",
+        "Zelda",
+        "Ganondorf",
+        "Epona"
+      ],
+      "fact": "Beaucoup pensent que c'est Zelda — mais Zelda est la princesse !"
+    },
+    "zh": {
+      "q": "《塞尔达传说》的主角叫什么名字？",
+      "a": [
+        "林克",
+        "塞尔达",
+        "加农多夫",
+        "艾波娜"
+      ],
+      "fact": "很多人以为是塞尔达——但塞尔达是公主！"
+    },
+    "ar": {
+      "q": "ما اسم الشخصية الرئيسية في The Legend of Zelda؟",
+      "a": [
+        "لينك",
+        "زيلدا",
+        "غانوندورف",
+        "إيبونا"
+      ],
+      "fact": "كثيرون يظنون أنها زيلدا — لكن زيلدا هي الأميرة!"
+    }
+  },
+  {
+    "en": {
+      "q": "Which game helped battle royale explode worldwide in 2017?",
+      "a": [
+        "Fortnite",
+        "Tetris 99",
+        "Fall Guys",
+        "Among Us"
+      ],
+      "fact": "Fortnite's free battle royale hit 125 million players in under a year — PUBG had kicked the genre off months earlier."
+    },
+    "fr": {
+      "q": "Quel jeu a fait exploser le battle royale dans le monde en 2017 ?",
+      "a": [
+        "Fortnite",
+        "Tetris 99",
+        "Fall Guys",
+        "Among Us"
+      ],
+      "fact": "Le battle royale gratuit de Fortnite a attiré 125 millions de joueurs en moins d'un an — PUBG avait lancé le genre quelques mois plus tôt."
+    },
+    "zh": {
+      "q": "哪款游戏让\"大逃杀\"模式在2017年火遍全球？",
+      "a": [
+        "《堡垒之夜》",
+        "《俄罗斯方块99》",
+        "《糖豆人》",
+        "《Among Us》"
+      ],
+      "fact": "《堡垒之夜》的免费大逃杀不到一年就吸引了1.25亿玩家——而《绝地求生》早在几个月前开创了这一玩法。"
+    },
+    "ar": {
+      "q": "ما اللعبة التي جعلت أسلوب Battle Royale ينتشر عالميًا في 2017؟",
+      "a": [
+        "فورتنايت",
+        "تتريس 99",
+        "فال غايز",
+        "أمونغ أس"
+      ],
+      "fact": "وصلت فورتنايت المجانية إلى 125 مليون لاعب في أقل من سنة — بينما أطلق PUBG الأسلوب قبل أشهر."
+    }
+  },
+  {
+    "en": {
+      "q": "In Minecraft, what material is needed to mine diamonds?",
+      "a": [
+        "Iron pickaxe",
+        "Wooden pickaxe",
+        "Stone pickaxe",
+        "Gold pickaxe"
+      ],
+      "fact": "Diamond ore requires at least an iron pickaxe."
+    },
+    "fr": {
+      "q": "Dans Minecraft, quel outil faut-il pour miner du diamant ?",
+      "a": [
+        "Pioche en fer",
+        "Pioche en bois",
+        "Pioche en pierre",
+        "Pioche en or"
+      ],
+      "fact": "Le minerai de diamant nécessite au moins une pioche en fer."
+    },
+    "zh": {
+      "q": "在《我的世界》中，挖钻石需要什么工具？",
+      "a": [
+        "铁镐",
+        "木镐",
+        "石镐",
+        "金镐"
+      ],
+      "fact": "钻石矿至少需要铁镐才能开采。"
+    },
+    "ar": {
+      "q": "في ماين كرافت، ما الأداة اللازمة لتعدين الألماس؟",
+      "a": [
+        "معول حديدي",
+        "معول خشبي",
+        "معول حجري",
+        "معول ذهبي"
+      ],
+      "fact": "يتطلب خام الألماس معولًا حديديًا على الأقل."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'GG' stand for in gaming?",
+      "a": [
+        "Good Game",
+        "Great Gun",
+        "Go Go",
+        "Game Over"
+      ],
+      "fact": "It's sportsmanship slang dating back to 90s competitive StarCraft."
+    },
+    "fr": {
+      "q": "Que signifie 'GG' dans le gaming ?",
+      "a": [
+        "Good Game",
+        "Great Gun",
+        "Go Go",
+        "Game Over"
+      ],
+      "fact": "Une marque de fair-play née dans le StarCraft compétitif des années 90."
+    },
+    "zh": {
+      "q": "游戏中\"GG\"是什么意思？",
+      "a": [
+        "打得好",
+        "好枪",
+        "冲呀",
+        "游戏结束"
+      ],
+      "fact": "这是竞技体育精神的俚语，可以追溯到90年代的《星际争霸》。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"GG\" في عالم الألعاب؟",
+      "a": [
+        "لعبة جيدة (Good Game)",
+        "مسدس رائع",
+        "هيا بنا",
+        "انتهت اللعبة"
+      ],
+      "fact": "هي عبارة روح رياضية يرجع تاريخها إلى بطولات ستاركرافت في التسعينيات."
+    }
+  },
+  {
+    "en": {
+      "q": "Which console did Sony release in 2020?",
+      "a": [
+        "PlayStation 5",
+        "PlayStation 4 Pro",
+        "PlayStation Vita",
+        "PlayStation Classic"
+      ],
+      "fact": "The PS5 launched in November 2020."
+    },
+    "fr": {
+      "q": "Quelle console Sony a-t-il lancée en 2020 ?",
+      "a": [
+        "PlayStation 5",
+        "PlayStation 4 Pro",
+        "PlayStation Vita",
+        "PlayStation Classic"
+      ],
+      "fact": "La PS5 est sortie en novembre 2020."
+    },
+    "zh": {
+      "q": "索尼在2020年发布了哪款游戏机？",
+      "a": [
+        "PlayStation 5",
+        "PlayStation 4 Pro",
+        "PlayStation Vita",
+        "PlayStation Classic"
+      ],
+      "fact": "PS5于2020年11月发售。"
+    },
+    "ar": {
+      "q": "ما جهاز الألعاب الذي أصدرته سوني في 2020؟",
+      "a": [
+        "بلايستيشن 5",
+        "بلايستيشن 4 برو",
+        "بلايستيشن فيتا",
+        "بلايستيشن كلاسيك"
+      ],
+      "fact": "أُطلق PS5 في نوفمبر 2020."
+    }
+  },
+  {
+    "en": {
+      "q": "In League of Legends, what is the main map called?",
+      "a": [
+        "Summoner's Rift",
+        "Howling Abyss",
+        "Twisted Treeline",
+        "Crystal Scar"
+      ],
+      "fact": "Summoner's Rift is the iconic 5v5 map."
+    },
+    "fr": {
+      "q": "Dans League of Legends, comment s'appelle la carte principale ?",
+      "a": [
+        "Summoner's Rift",
+        "Howling Abyss",
+        "Twisted Treeline",
+        "Crystal Scar"
+      ],
+      "fact": "Summoner's Rift est la carte 5v5 emblématique."
+    },
+    "zh": {
+      "q": "在《英雄联盟》中，主地图叫什么？",
+      "a": [
+        "召唤师峡谷",
+        "嚎哭深渊",
+        "扭曲丛林",
+        "水晶之痕"
+      ],
+      "fact": "召唤师峡谷是标志性的5v5地图。"
+    },
+    "ar": {
+      "q": "ما اسم الخريطة الرئيسية في League of Legends؟",
+      "a": [
+        "وادي المستدعي",
+        "الهاوية العوّاءة",
+        "الغابة الملتوية",
+        "ندبة الكريستال"
+      ],
+      "fact": "وادي المستدعي هو خريطة 5 ضد 5 الأيقونية."
+    }
+  },
+  {
+    "en": {
+      "q": "Which company developed Fortnite?",
+      "a": [
+        "Epic Games",
+        "Activision",
+        "EA",
+        "Ubisoft"
+      ],
+      "fact": "Epic Games also created the Unreal Engine."
+    },
+    "fr": {
+      "q": "Quelle entreprise a développé Fortnite ?",
+      "a": [
+        "Epic Games",
+        "Activision",
+        "EA",
+        "Ubisoft"
+      ],
+      "fact": "Epic Games a aussi créé l'Unreal Engine."
+    },
+    "zh": {
+      "q": "《堡垒之夜》是哪家公司开发的？",
+      "a": [
+        "Epic Games",
+        "动视",
+        "EA",
+        "育碧"
+      ],
+      "fact": "Epic Games也开发了虚幻引擎。"
+    },
+    "ar": {
+      "q": "ما الشركة المطوّرة للعبة فورتنايت؟",
+      "a": [
+        "إيبك جيمز",
+        "أكتيفيجن",
+        "إي إيه",
+        "يوبيسوفت"
+      ],
+      "fact": "طورت إيبك جيمز أيضًا محرك أنريل (Unreal Engine)."
+    }
+  },
+  {
+    "en": {
+      "q": "What year was Roblox released?",
+      "a": [
+        "2006",
+        "2010",
+        "2003",
+        "2015"
+      ],
+      "fact": "Roblox launched in 2006 and exploded in popularity in the late 2010s."
+    },
+    "fr": {
+      "q": "En quelle année Roblox est-il sorti ?",
+      "a": [
+        "2006",
+        "2010",
+        "2003",
+        "2015"
+      ],
+      "fact": "Roblox a été lancé en 2006."
+    },
+    "zh": {
+      "q": "Roblox是哪一年发布的？",
+      "a": [
+        "2006",
+        "2010",
+        "2003",
+        "2015"
+      ],
+      "fact": "Roblox于2006年上线，并在2010年代末爆火。"
+    },
+    "ar": {
+      "q": "في أي عام أُطلقت لعبة روبلوكس؟",
+      "a": [
+        "2006",
+        "2010",
+        "2003",
+        "2015"
+      ],
+      "fact": "أُطلقت روبلوكس في 2006 وانتشرت بشكل هائل في أواخر عقد 2010."
+    }
+  },
+  {
+    "en": {
+      "q": "In GTA V, how many playable protagonists are there?",
+      "a": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "fact": "Michael, Franklin and Trevor — a first for the series."
+    },
+    "fr": {
+      "q": "Dans GTA V, combien y a-t-il de protagonistes jouables ?",
+      "a": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "fact": "Michael, Franklin et Trevor — une première pour la série."
+    },
+    "zh": {
+      "q": "在《GTA V》中有几个可玩主角？",
+      "a": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "fact": "麦克、富兰克林和崔佛——这是系列首次。"
+    },
+    "ar": {
+      "q": "كم عدد الشخصيات القابلة للعب في GTA V؟",
+      "a": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "fact": "مايكل وفرانكلين وتريفور — لأول مرة في السلسلة."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the name of the princess in Super Mario Bros?",
+      "a": [
+        "Peach",
+        "Zelda",
+        "Daisy",
+        "Rosalina"
+      ],
+      "fact": "Princess Peach has been Mario's rescue target since 1985."
+    },
+    "fr": {
+      "q": "Comment s'appelle la princesse de Super Mario Bros ?",
+      "a": [
+        "Peach",
+        "Zelda",
+        "Daisy",
+        "Rosalina"
+      ],
+      "fact": "La princesse Peach est le personnage à sauver depuis 1985."
+    },
+    "zh": {
+      "q": "《超级马力欧》中的公主叫什么名字？",
+      "a": [
+        "桃花公主",
+        "塞尔达",
+        "黛西",
+        "罗莎塔"
+      ],
+      "fact": "桃花公主从1985年起就是马力欧的营救目标。"
+    },
+    "ar": {
+      "q": "ما اسم الأميرة في Super Mario Bros؟",
+      "a": [
+        "الأميرة بيتش",
+        "زيلدا",
+        "ديزي",
+        "روزالينا"
+      ],
+      "fact": "الأميرة بيتش هي هدف إنقاذ ماريو منذ عام 1985."
+    }
+  },
+  {
+    "en": {
+      "q": "Which game features a character named Master Chief?",
+      "a": [
+        "Halo",
+        "Call of Duty",
+        "Gears of War",
+        "Destiny"
+      ],
+      "fact": "Master Chief is the Spartan-II supersoldier protagonist of Halo."
+    },
+    "fr": {
+      "q": "Quel jeu met en scène le Master Chief ?",
+      "a": [
+        "Halo",
+        "Call of Duty",
+        "Gears of War",
+        "Destiny"
+      ],
+      "fact": "Le Master Chief est le super-soldat Spartan-II protagoniste de Halo."
+    },
+    "zh": {
+      "q": "哪个游戏有\"士官长\"这个角色？",
+      "a": [
+        "《光环》",
+        "《使命召唤》",
+        "《战争机器》",
+        "《命运》"
+      ],
+      "fact": "士官长是《光环》中的斯巴达II超级战士主角。"
+    },
+    "ar": {
+      "q": "ما اللعبة التي تضم شخصية ماستر تشيف؟",
+      "a": [
+        "هيلو",
+        "كول أوف ديوتي",
+        "جيرز أوف وور",
+        "ديستني"
+      ],
+      "fact": "ماستر تشيف هو الجندي الخارق سبارتان-2 بطل سلسلة هيلو."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'NPC' stand for in gaming?",
+      "a": [
+        "Non-Player Character",
+        "Neural Processing Core",
+        "New Player Control",
+        "Network Play Character"
+      ],
+      "fact": "NPCs populate game worlds and drive story without player control."
+    },
+    "fr": {
+      "q": "Que signifie 'PNJ' dans le jeu vidéo ?",
+      "a": [
+        "Personnage Non Joueur",
+        "Processeur Neural de Jeu",
+        "Protocole de Navigation de Jeu",
+        "Plateforme de Nouveaux Joueurs"
+      ],
+      "fact": "Les PNJ peuplent les mondes de jeu sans contrôle du joueur."
+    },
+    "zh": {
+      "q": "游戏中\"NPC\"是什么意思？",
+      "a": [
+        "非玩家角色",
+        "神经处理核心",
+        "新手控制",
+        "网络对战角色"
+      ],
+      "fact": "NPC填充游戏世界，在没有玩家控制的情况下推动剧情。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"NPC\" في الألعاب؟",
+      "a": [
+        "شخصية غير قابلة للعب",
+        "النواة العصبية المعالجة",
+        "تحكم اللاعب الجديد",
+        "شخصية اللعب الشبكي"
+      ],
+      "fact": "تملأ الشخصيات NPC عوالم الألعاب وتدفع القصة دون تحكم اللاعب."
+    }
+  },
+  {
+    "en": {
+      "q": "Which company makes the Xbox console?",
+      "a": [
+        "Microsoft",
+        "Sony",
+        "Nintendo",
+        "Sega"
+      ],
+      "fact": "Microsoft launched the original Xbox in 2001."
+    },
+    "fr": {
+      "q": "Quelle entreprise fabrique la console Xbox ?",
+      "a": [
+        "Microsoft",
+        "Sony",
+        "Nintendo",
+        "Sega"
+      ],
+      "fact": "Microsoft a lancé la première Xbox en 2001."
+    },
+    "zh": {
+      "q": "哪家公司生产Xbox游戏机？",
+      "a": [
+        "微软",
+        "索尼",
+        "任天堂",
+        "世嘉"
+      ],
+      "fact": "微软于2001年推出初代Xbox。"
+    },
+    "ar": {
+      "q": "ما الشركة المصنّعة لجهاز Xbox؟",
+      "a": [
+        "مايكروسوفت",
+        "سوني",
+        "نينتندو",
+        "سيغا"
+      ],
+      "fact": "أطلقت مايكروسوفت جهاز Xbox الأصلي في 2001."
+    }
+  },
+  {
+    "en": {
+      "q": "In Among Us, what are players trying to find?",
+      "a": [
+        "The Impostor",
+        "The Key",
+        "The Exit",
+        "The Reactor"
+      ],
+      "fact": "One or more impostors sabotage and eliminate crewmates."
+    },
+    "fr": {
+      "q": "Dans Among Us, que cherchent les joueurs ?",
+      "a": [
+        "L'Imposteur",
+        "La Clé",
+        "La Sortie",
+        "Le Réacteur"
+      ],
+      "fact": "Un ou plusieurs imposteurs sabotent et éliminent les équipiers."
+    },
+    "zh": {
+      "q": "在《Among Us》中，玩家要找出什么？",
+      "a": [
+        "内鬼",
+        "钥匙",
+        "出口",
+        "反应堆"
+      ],
+      "fact": "一名或多名内鬼会破坏并消灭船员。"
+    },
+    "ar": {
+      "q": "في Among Us، ما الذي يحاول اللاعبون اكتشافه؟",
+      "a": [
+        "المحتال (Impostor)",
+        "المفتاح",
+        "المخرج",
+        "المفاعل"
+      ],
+      "fact": "يقوم محتال أو أكثر بالتخريب والقضاء على أفراد الطاقم."
+    }
+  }
 ]

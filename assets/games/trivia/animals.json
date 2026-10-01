@@ -1,22 +1,842 @@
 [
-{"en": {"q": "What is the largest animal on Earth?", "a": ["Blue Whale", "African Elephant", "Giraffe", "Great White Shark"], "fact": "Blue whales can grow up to 30 meters long and weigh over 180 tons."}, "fr": {"q": "Quel est le plus grand animal sur Terre ?", "a": ["Baleine Bleue", "Éléphant d'Afrique", "Girafe", "Grand Requin Blanc"], "fact": "Les baleines bleues peuvent atteindre 30 mètres et 180 tonnes."}},
-{"en": {"q": "What is the fastest land animal?", "a": ["Cheetah", "Lion", "Greyhound", "Pronghorn"], "fact": "Cheetahs can reach speeds of up to 120 km/h."}, "fr": {"q": "Quel est l'animal terrestre le plus rapide ?", "a": ["Guépard", "Lion", "Lévrier", "Antilope"], "fact": "Les guépards atteignent 120 km/h."}},
-{"en": {"q": "How many hearts does an octopus have?", "a": ["3", "1", "2", "4"], "fact": "Octopuses have three hearts and blue blood."}, "fr": {"q": "Combien de cœurs a une pieuvre ?", "a": ["3", "1", "2", "4"], "fact": "Les pieuvres ont trois cœurs et le sang bleu."}},
-{"en": {"q": "What is the only mammal capable of true flight?", "a": ["Bat", "Flying Squirrel", "Colugo", "Sugar Glider"], "fact": "Bats are the only mammals that can truly fly."}, "fr": {"q": "Quel est le seul mammifère capable de voler vraiment ?", "a": ["Chauve-souris", "Écureuil Volant", "Colugo", "Phalanger Volant"], "fact": "Les chauves-souris sont les seuls mammifères volants."}},
-{"en": {"q": "What is a group of lions called?", "a": ["Pride", "Pack", "Herd", "Flock"], "fact": "A pride typically consists of about 15 lions."}, "fr": {"q": "Comment appelle-t-on un groupe de lions ?", "a": ["Troupe", "Meute", "Troupeau", "Volée"], "fact": "Une troupe compte environ 15 lions."}},
-{"en": {"q": "Which bird can fly backwards?", "a": ["Hummingbird", "Eagle", "Sparrow", "Pigeon"], "fact": "Hummingbirds are the only birds that can fly backwards."}, "fr": {"q": "Quel oiseau peut voler en arrière ?", "a": ["Colibri", "Aigle", "Moineau", "Pigeon"], "fact": "Les colibris sont les seuls oiseaux volant en arrière."}},
-{"en": {"q": "How many legs does a spider have?", "a": ["8", "6", "10", "12"], "fact": "Spiders are arachnids, not insects — insects have 6 legs."}, "fr": {"q": "Combien de pattes a une araignée ?", "a": ["8", "6", "10", "12"], "fact": "Les araignées sont des arachnides, pas des insectes."}},
-{"en": {"q": "Which animal is known as the 'King of the Jungle'?", "a": ["Lion", "Tiger", "Elephant", "Gorilla"], "fact": "Ironically, lions live in savannas, not jungles."}, "fr": {"q": "Quel animal est surnommé le 'Roi de la Jungle' ?", "a": ["Lion", "Tigre", "Éléphant", "Gorille"], "fact": "Ironiquement, les lions vivent dans la savane."}},
-{"en": {"q": "What is the tallest animal in the world?", "a": ["Giraffe", "Elephant", "Ostrich", "Moose"], "fact": "Giraffes can reach 5.5 meters tall."}, "fr": {"q": "Quel est l'animal le plus grand du monde ?", "a": ["Girafe", "Éléphant", "Autruche", "Élan"], "fact": "Les girafes peuvent atteindre 5,5 mètres."}},
-{"en": {"q": "How long can a crocodile hold its breath underwater?", "a": ["Up to 1 hour", "5 minutes", "10 hours", "30 seconds"], "fact": "A resting crocodile can slow its heart to 2-3 beats per minute."}, "fr": {"q": "Combien de temps un crocodile peut-il retenir son souffle ?", "a": ["Jusqu'à 1 heure", "5 minutes", "10 heures", "30 secondes"], "fact": "Un crocodile au repos ralentit son cœur à 2-3 battements/min."}},
-{"en": {"q": "Which animal has the longest lifespan?", "a": ["Greenland shark", "African elephant", "Giant tortoise", "Blue whale"], "fact": "Greenland sharks can live over 400 years."}, "fr": {"q": "Quel animal vit le plus longtemps ?", "a": ["Requin du Groenland", "Éléphant d'Afrique", "Tortue géante", "Baleine bleue"], "fact": "Les requins du Groenland peuvent vivre plus de 400 ans."}},
-{"en": {"q": "What is a baby kangaroo called?", "a": ["Joey", "Cub", "Calf", "Pup"], "fact": "Joeys live in their mother's pouch for months."}, "fr": {"q": "Comment s'appelle un bébé kangourou ?", "a": ["Joey", "Ourson", "Veau", "Chiot"], "fact": "Les joeys vivent dans la poche de leur mère pendant des mois."}},
-{"en": {"q": "Which sea creature is known for changing color?", "a": ["Octopus", "Dolphin", "Seahorse", "Jellyfish"], "fact": "Octopuses use chromatophores to change color instantly."}, "fr": {"q": "Quelle créature marine change de couleur ?", "a": ["Pieuvre", "Dauphin", "Hippocampe", "Méduse"], "fact": "Les pieuvres utilisent des chromatophores pour changer de couleur."}},
-{"en": {"q": "What is the largest bird in the world?", "a": ["Ostrich", "Emu", "Albatross", "Condor"], "fact": "Ostriches can weigh up to 150 kg and run 70 km/h."}, "fr": {"q": "Quel est le plus grand oiseau du monde ?", "a": ["Autruche", "Émeu", "Albatros", "Condor"], "fact": "Les autruches pèsent jusqu'à 150 kg et courent à 70 km/h."}},
-{"en": {"q": "How many stomachs does a cow have?", "a": ["4", "1", "2", "3"], "fact": "The four compartments help digest tough grass."}, "fr": {"q": "Combien d'estomacs a une vache ?", "a": ["4", "1", "2", "3"], "fact": "Les quatre compartiments aident à digérer l'herbe."}},
-{"en": {"q": "What is the fastest bird in the world?", "a": ["Peregrine Falcon", "Golden Eagle", "Ostrich", "Swift"], "fact": "The peregrine falcon dives at over 320 km/h."}, "fr": {"q": "Quel est l'oiseau le plus rapide du monde ?", "a": ["Faucon pèlerin", "Aigle royal", "Autruche", "Martinet"], "fact": "Le faucon pèlerin plonge à plus de 320 km/h."}},
-{"en": {"q": "Which animal never sleeps?", "a": ["Bullfrog", "Dolphin", "Elephant", "Giraffe"], "fact": "Bullfrogs show no change in brain activity between rest and activity."}, "fr": {"q": "Quel animal ne dort jamais ?", "a": ["Grenouille-taureau", "Dauphin", "Éléphant", "Girafe"], "fact": "La grenouille-taureau ne montre aucun changement d'activité cérébrale au repos."}},
-{"en": {"q": "How do sharks detect prey in dark water?", "a": ["Electroreception", "Echolocation", "Infrared vision", "Smell alone"], "fact": "Sharks sense electrical fields from muscle contractions via ampullae of Lorenzini."}, "fr": {"q": "Comment les requins détectent-ils leurs proies dans l'obscurité ?", "a": ["Électroréception", "Écholocation", "Vision infrarouge", "Odorat seul"], "fact": "Les requins captent les champs électriques via les ampoules de Lorenzini."}},
-{"en": {"q": "Which insect has the shortest lifespan?", "a": ["Mayfly", "Mosquito", "Housefly", "Ant"], "fact": "Adult mayflies live only 24 hours — just long enough to reproduce."}, "fr": {"q": "Quel insecte a la durée de vie la plus courte ?", "a": ["Éphémère", "Moustique", "Mouche", "Fourmi"], "fact": "L'éphémère adulte ne vit que 24 heures — juste assez pour se reproduire."}},
-{"en": {"q": "What is the only venomous mammal?", "a": ["Platypus", "Shrew", "Slow Loris", "Hedgehog"], "fact": "The male platypus has venomous spurs on its hind legs."}, "fr": {"q": "Quel est le seul mammifère venimeux ?", "a": ["Ornithorynque", "Musaraigne", "Loris paresseux", "Hérisson"], "fact": "Le mâle ornithorynque possède des éperons venimeux sur les pattes arrière."}}
+  {
+    "en": {
+      "q": "What is the largest animal on Earth?",
+      "a": [
+        "Blue Whale",
+        "African Elephant",
+        "Giraffe",
+        "Great White Shark"
+      ],
+      "fact": "Blue whales can grow up to 30 meters long and weigh over 180 tons."
+    },
+    "fr": {
+      "q": "Quel est le plus grand animal sur Terre ?",
+      "a": [
+        "Baleine Bleue",
+        "Éléphant d'Afrique",
+        "Girafe",
+        "Grand Requin Blanc"
+      ],
+      "fact": "Les baleines bleues peuvent atteindre 30 mètres et 180 tonnes."
+    },
+    "zh": {
+      "q": "地球上最大的动物是什么？",
+      "a": [
+        "蓝鲸",
+        "非洲象",
+        "长颈鹿",
+        "大白鲨"
+      ],
+      "fact": "蓝鲸体长可达30米，体重可超过180吨。"
+    },
+    "ar": {
+      "q": "ما أكبر حيوان على وجه الأرض؟",
+      "a": [
+        "الحوت الأزرق",
+        "الفيل الأفريقي",
+        "الزرافة",
+        "القرش الأبيض الكبير"
+      ],
+      "fact": "يبلغ طول الحوت الأزرق نحو 30 مترًا ويزن أكثر من 180 طنًا."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the fastest land animal?",
+      "a": [
+        "Cheetah",
+        "Lion",
+        "Greyhound",
+        "Pronghorn"
+      ],
+      "fact": "Cheetahs can reach speeds of up to 120 km/h."
+    },
+    "fr": {
+      "q": "Quel est l'animal terrestre le plus rapide ?",
+      "a": [
+        "Guépard",
+        "Lion",
+        "Lévrier",
+        "Antilope"
+      ],
+      "fact": "Les guépards atteignent 120 km/h."
+    },
+    "zh": {
+      "q": "陆地上跑得最快的动物是什么？",
+      "a": [
+        "猎豹",
+        "狮子",
+        "灵缇犬",
+        "叉角羚"
+      ],
+      "fact": "猎豹的速度可达每小时120公里。"
+    },
+    "ar": {
+      "q": "ما أسرع حيوان بري؟",
+      "a": [
+        "الفهد",
+        "الأسد",
+        "الكلب السلوقي",
+        "الظبي شوكي القرون"
+      ],
+      "fact": "يمكن للفهد أن يصل إلى سرعة 120 كم/ساعة."
+    }
+  },
+  {
+    "en": {
+      "q": "How many hearts does an octopus have?",
+      "a": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "fact": "Octopuses have three hearts and blue blood."
+    },
+    "fr": {
+      "q": "Combien de cœurs a une pieuvre ?",
+      "a": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "fact": "Les pieuvres ont trois cœurs et le sang bleu."
+    },
+    "zh": {
+      "q": "章鱼有几颗心脏？",
+      "a": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "fact": "章鱼有三颗心脏，血液是蓝色的。"
+    },
+    "ar": {
+      "q": "كم عدد قلوب الأخطبوط؟",
+      "a": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "fact": "للأخطبوط ثلاثة قلوب ولونه دم أزرق."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the only mammal capable of true flight?",
+      "a": [
+        "Bat",
+        "Flying Squirrel",
+        "Colugo",
+        "Sugar Glider"
+      ],
+      "fact": "Bats are the only mammals that can truly fly."
+    },
+    "fr": {
+      "q": "Quel est le seul mammifère capable de voler vraiment ?",
+      "a": [
+        "Chauve-souris",
+        "Écureuil Volant",
+        "Colugo",
+        "Phalanger Volant"
+      ],
+      "fact": "Les chauves-souris sont les seuls mammifères volants."
+    },
+    "zh": {
+      "q": "唯一真正会飞的哺乳动物是什么？",
+      "a": [
+        "蝙蝠",
+        "飞鼠",
+        "鼯猴",
+        "蜜袋鼯"
+      ],
+      "fact": "蝙蝠是唯一真正能飞翔的哺乳动物。"
+    },
+    "ar": {
+      "q": "ما الثديي الوحيد القادر على الطيران الحقيقي؟",
+      "a": [
+        "الخفاش",
+        "السنجاب الطائر",
+        "الكولوغو",
+        "جليدي السكر"
+      ],
+      "fact": "الخفاش هو الثديي الوحيد الذي يطير طيرانًا حقيقيًا."
+    }
+  },
+  {
+    "en": {
+      "q": "What is a group of lions called?",
+      "a": [
+        "Pride",
+        "Pack",
+        "Herd",
+        "Flock"
+      ],
+      "fact": "A pride typically consists of about 15 lions."
+    },
+    "fr": {
+      "q": "Comment appelle-t-on un groupe de lions ?",
+      "a": [
+        "Troupe",
+        "Meute",
+        "Troupeau",
+        "Volée"
+      ],
+      "fact": "Une troupe compte environ 15 lions."
+    },
+    "zh": {
+      "q": "一群狮子叫什么？",
+      "a": [
+        "狮群",
+        "狼群",
+        "兽群",
+        "鸟群"
+      ],
+      "fact": "一个狮群通常由约15只狮子组成。"
+    },
+    "ar": {
+      "q": "ما اسم مجموعة الأسود؟",
+      "a": [
+        "الزمرة",
+        "القطيع",
+        "السَّوْم",
+        "السِّرْب"
+      ],
+      "fact": "تتكون الزمرة عادةً من نحو 15 أسدًا."
+    }
+  },
+  {
+    "en": {
+      "q": "Which bird can fly backwards?",
+      "a": [
+        "Hummingbird",
+        "Eagle",
+        "Sparrow",
+        "Pigeon"
+      ],
+      "fact": "Hummingbirds are the only birds that can fly backwards."
+    },
+    "fr": {
+      "q": "Quel oiseau peut voler en arrière ?",
+      "a": [
+        "Colibri",
+        "Aigle",
+        "Moineau",
+        "Pigeon"
+      ],
+      "fact": "Les colibris sont les seuls oiseaux volant en arrière."
+    },
+    "zh": {
+      "q": "哪种鸟能向后飞？",
+      "a": [
+        "蜂鸟",
+        "鹰",
+        "麻雀",
+        "鸽子"
+      ],
+      "fact": "蜂鸟是唯一可以向后飞行的鸟。"
+    },
+    "ar": {
+      "q": "ما الطائر الذي يمكنه الطيران إلى الخلف؟",
+      "a": [
+        "الطنّان",
+        "النسر",
+        "العصفور",
+        "الحمامة"
+      ],
+      "fact": "الطنّان هو الطائر الوحيد القادر على الطيران إلى الخلف."
+    }
+  },
+  {
+    "en": {
+      "q": "How many legs does a spider have?",
+      "a": [
+        "8",
+        "6",
+        "10",
+        "12"
+      ],
+      "fact": "Spiders are arachnids, not insects — insects have 6 legs."
+    },
+    "fr": {
+      "q": "Combien de pattes a une araignée ?",
+      "a": [
+        "8",
+        "6",
+        "10",
+        "12"
+      ],
+      "fact": "Les araignées sont des arachnides, pas des insectes."
+    },
+    "zh": {
+      "q": "蜘蛛有几条腿？",
+      "a": [
+        "8",
+        "6",
+        "10",
+        "12"
+      ],
+      "fact": "蜘蛛属于蛛形纲而非昆虫——昆虫有6条腿。"
+    },
+    "ar": {
+      "q": "كم عدد أرجل العنكبوت؟",
+      "a": [
+        "8",
+        "6",
+        "10",
+        "12"
+      ],
+      "fact": "العنكبوت من العنكبوتيات وليس من الحشرات — وللحشرات 6 أرجل."
+    }
+  },
+  {
+    "en": {
+      "q": "Which animal is known as the 'King of the Jungle'?",
+      "a": [
+        "Lion",
+        "Tiger",
+        "Elephant",
+        "Gorilla"
+      ],
+      "fact": "Ironically, lions live in savannas, not jungles."
+    },
+    "fr": {
+      "q": "Quel animal est surnommé le 'Roi de la Jungle' ?",
+      "a": [
+        "Lion",
+        "Tigre",
+        "Éléphant",
+        "Gorille"
+      ],
+      "fact": "Ironiquement, les lions vivent dans la savane."
+    },
+    "zh": {
+      "q": "哪种动物被称为\"丛林之王\"？",
+      "a": [
+        "狮子",
+        "老虎",
+        "大象",
+        "大猩猩"
+      ],
+      "fact": "说来也怪，狮子生活在草原上，而不是丛林里。"
+    },
+    "ar": {
+      "q": "ما الحيوان الملقَّب بملك الغابة؟",
+      "a": [
+        "الأسد",
+        "النمر",
+        "الفيل",
+        "الغوريلا"
+      ],
+      "fact": "من المفارقة أن الأسد يعيش في السافانا وليس في الغابة."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the tallest animal in the world?",
+      "a": [
+        "Giraffe",
+        "Elephant",
+        "Ostrich",
+        "Moose"
+      ],
+      "fact": "Giraffes can reach 5.5 meters tall."
+    },
+    "fr": {
+      "q": "Quel est l'animal le plus grand du monde ?",
+      "a": [
+        "Girafe",
+        "Éléphant",
+        "Autruche",
+        "Élan"
+      ],
+      "fact": "Les girafes peuvent atteindre 5,5 mètres."
+    },
+    "zh": {
+      "q": "世界上最高的动物是什么？",
+      "a": [
+        "长颈鹿",
+        "大象",
+        "鸵鸟",
+        "驼鹿"
+      ],
+      "fact": "长颈鹿身高可达5.5米。"
+    },
+    "ar": {
+      "q": "ما أطول حيوان في العالم؟",
+      "a": [
+        "الزرافة",
+        "الفيل",
+        "النعامة",
+        "الأيل"
+      ],
+      "fact": "يمكن للزرافة أن يصل طولها إلى 5.5 متر."
+    }
+  },
+  {
+    "en": {
+      "q": "How long can a crocodile hold its breath underwater?",
+      "a": [
+        "Up to 1 hour",
+        "5 minutes",
+        "10 hours",
+        "30 seconds"
+      ],
+      "fact": "A resting crocodile can slow its heart to 2-3 beats per minute."
+    },
+    "fr": {
+      "q": "Combien de temps un crocodile peut-il retenir son souffle ?",
+      "a": [
+        "Jusqu'à 1 heure",
+        "5 minutes",
+        "10 heures",
+        "30 secondes"
+      ],
+      "fact": "Un crocodile au repos ralentit son cœur à 2-3 battements/min."
+    },
+    "zh": {
+      "q": "鳄鱼在水下最长能憋气多久？",
+      "a": [
+        "长达1小时",
+        "5分钟",
+        "10小时",
+        "30秒"
+      ],
+      "fact": "静止不动的鳄鱼可以将心率降到每分钟2-3次。"
+    },
+    "ar": {
+      "q": "إلى متى يستطيع التمساح حبس أنفاسه تحت الماء؟",
+      "a": [
+        "حتى ساعة كاملة",
+        "5 دقائق",
+        "10 ساعات",
+        "30 ثانية"
+      ],
+      "fact": "يستطيع التمساح في حالة الراحة إبطاء ضربات قلبه إلى 2-3 مرات في الدقيقة."
+    }
+  },
+  {
+    "en": {
+      "q": "Which animal has the longest lifespan?",
+      "a": [
+        "Greenland shark",
+        "African elephant",
+        "Giant tortoise",
+        "Blue whale"
+      ],
+      "fact": "Greenland sharks can live over 400 years."
+    },
+    "fr": {
+      "q": "Quel animal vit le plus longtemps ?",
+      "a": [
+        "Requin du Groenland",
+        "Éléphant d'Afrique",
+        "Tortue géante",
+        "Baleine bleue"
+      ],
+      "fact": "Les requins du Groenland peuvent vivre plus de 400 ans."
+    },
+    "zh": {
+      "q": "哪种动物的寿命最长？",
+      "a": [
+        "格陵兰鲨",
+        "非洲象",
+        "巨龟",
+        "蓝鲸"
+      ],
+      "fact": "格陵兰鲨可以活400多年。"
+    },
+    "ar": {
+      "q": "ما الحيوان الأطول عمرًا؟",
+      "a": [
+        "قرش غرينلاند",
+        "الفيل الأفريقي",
+        "السلحفاة العملاقة",
+        "الحوت الأزرق"
+      ],
+      "fact": "يمكن لقرش غرينلاند أن يعيش أكثر من 400 عام."
+    }
+  },
+  {
+    "en": {
+      "q": "What is a baby kangaroo called?",
+      "a": [
+        "Joey",
+        "Cub",
+        "Calf",
+        "Pup"
+      ],
+      "fact": "Joeys live in their mother's pouch for months."
+    },
+    "fr": {
+      "q": "Comment s'appelle un bébé kangourou ?",
+      "a": [
+        "Joey",
+        "Ourson",
+        "Veau",
+        "Chiot"
+      ],
+      "fact": "Les joeys vivent dans la poche de leur mère pendant des mois."
+    },
+    "zh": {
+      "q": "袋鼠宝宝叫什么？",
+      "a": [
+        "乔伊",
+        "熊崽",
+        "牛犊",
+        "幼犬"
+      ],
+      "fact": "幼袋鼠会在妈妈的育儿袋里生活好几个月。"
+    },
+    "ar": {
+      "q": "ما اسم صغير الكنغر؟",
+      "a": [
+        "جوي (Joey)",
+        "الشبل",
+        "العجل",
+        "الجرو"
+      ],
+      "fact": "يعيش جوي في جيب أمه لعدة أشهر."
+    }
+  },
+  {
+    "en": {
+      "q": "Which sea creature is known for changing color?",
+      "a": [
+        "Octopus",
+        "Dolphin",
+        "Seahorse",
+        "Jellyfish"
+      ],
+      "fact": "Octopuses use chromatophores to change color instantly."
+    },
+    "fr": {
+      "q": "Quelle créature marine change de couleur ?",
+      "a": [
+        "Pieuvre",
+        "Dauphin",
+        "Hippocampe",
+        "Méduse"
+      ],
+      "fact": "Les pieuvres utilisent des chromatophores pour changer de couleur."
+    },
+    "zh": {
+      "q": "哪种海洋生物以变色闻名？",
+      "a": [
+        "章鱼",
+        "海豚",
+        "海马",
+        "水母"
+      ],
+      "fact": "章鱼利用色素细胞瞬间变色。"
+    },
+    "ar": {
+      "q": "ما الكائن البحري المعروف بتغيير لونه؟",
+      "a": [
+        "الأخطبوط",
+        "الدولفين",
+        "حصان البحر",
+        "قنديل البحر"
+      ],
+      "fact": "يستخدم الأخطبوط الخلايا الصباغية لتغيير لونه في لحظات."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the largest bird in the world?",
+      "a": [
+        "Ostrich",
+        "Emu",
+        "Albatross",
+        "Condor"
+      ],
+      "fact": "Ostriches can weigh up to 150 kg and run 70 km/h."
+    },
+    "fr": {
+      "q": "Quel est le plus grand oiseau du monde ?",
+      "a": [
+        "Autruche",
+        "Émeu",
+        "Albatros",
+        "Condor"
+      ],
+      "fact": "Les autruches pèsent jusqu'à 150 kg et courent à 70 km/h."
+    },
+    "zh": {
+      "q": "世界上最大的鸟是什么？",
+      "a": [
+        "鸵鸟",
+        "鸸鹋",
+        "信天翁",
+        "神鹰"
+      ],
+      "fact": "鸵鸟体重可达150公斤，奔跑时速可达70公里。"
+    },
+    "ar": {
+      "q": "ما أكبر طائر في العالم؟",
+      "a": [
+        "النعامة",
+        "الإيمو",
+        "القطرس",
+        "النسر الأنديزي"
+      ],
+      "fact": "يمكن للنعامة أن يصل وزنها إلى 150 كجم وتجري بسرعة 70 كم/ساعة."
+    }
+  },
+  {
+    "en": {
+      "q": "How many stomachs does a cow have?",
+      "a": [
+        "4",
+        "1",
+        "2",
+        "3"
+      ],
+      "fact": "The four compartments help digest tough grass."
+    },
+    "fr": {
+      "q": "Combien d'estomacs a une vache ?",
+      "a": [
+        "4",
+        "1",
+        "2",
+        "3"
+      ],
+      "fact": "Les quatre compartiments aident à digérer l'herbe."
+    },
+    "zh": {
+      "q": "牛有几个胃？",
+      "a": [
+        "4",
+        "1",
+        "2",
+        "3"
+      ],
+      "fact": "四个胃室帮助消化坚韧的草料。"
+    },
+    "ar": {
+      "q": "كم عدد معدات البقرة؟",
+      "a": [
+        "4",
+        "1",
+        "2",
+        "3"
+      ],
+      "fact": "تساعد المعدات الأربع على هضم العشب القاسي."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the fastest bird in the world?",
+      "a": [
+        "Peregrine Falcon",
+        "Golden Eagle",
+        "Ostrich",
+        "Swift"
+      ],
+      "fact": "The peregrine falcon dives at over 320 km/h."
+    },
+    "fr": {
+      "q": "Quel est l'oiseau le plus rapide du monde ?",
+      "a": [
+        "Faucon pèlerin",
+        "Aigle royal",
+        "Autruche",
+        "Martinet"
+      ],
+      "fact": "Le faucon pèlerin plonge à plus de 320 km/h."
+    },
+    "zh": {
+      "q": "世界上最快的鸟是什么？",
+      "a": [
+        "游隼",
+        "金雕",
+        "鸵鸟",
+        "雨燕"
+      ],
+      "fact": "游隼俯冲时速可超过320公里。"
+    },
+    "ar": {
+      "q": "ما أسرع طائر في العالم؟",
+      "a": [
+        "الشاهين",
+        "النسر الذهبي",
+        "النعامة",
+        "السمامة"
+      ],
+      "fact": "يغوص الشاهين بسرعة تتجاوز 320 كم/ساعة."
+    }
+  },
+  {
+    "en": {
+      "q": "Which animal is often said to never truly sleep?",
+      "a": [
+        "Bullfrog",
+        "Dolphin",
+        "Elephant",
+        "Giraffe"
+      ],
+      "fact": "Bullfrogs show almost no change in brain activity between rest and activity."
+    },
+    "fr": {
+      "q": "Quel animal dit-on souvent ne jamais vraiment dormir ?",
+      "a": [
+        "La grenouille taureau",
+        "Le dauphin",
+        "L'éléphant",
+        "La girafe"
+      ],
+      "fact": "La grenouille taureau ne montre presque aucun changement d'activité cérébrale entre le repos et l'activité."
+    },
+    "zh": {
+      "q": "人们常说哪种动物从不真正睡觉？",
+      "a": [
+        "牛蛙",
+        "海豚",
+        "大象",
+        "长颈鹿"
+      ],
+      "fact": "牛蛙在休息和活动之间大脑活动几乎没有变化。"
+    },
+    "ar": {
+      "q": "ما الحيوان الذي يُقال إنه لا ينام أبدًا حقًا؟",
+      "a": [
+        "الضفدور الثور",
+        "الدولفين",
+        "الفيل",
+        "الزرافة"
+      ],
+      "fact": "لا يُظهر الضفدور الثور أي تغيير يُذكر في نشاط الدماغ بين الراحة والنشاط."
+    }
+  },
+  {
+    "en": {
+      "q": "How do sharks detect prey in dark water?",
+      "a": [
+        "Electroreception",
+        "Echolocation",
+        "Infrared vision",
+        "Smell alone"
+      ],
+      "fact": "Sharks sense electrical fields from muscle contractions via ampullae of Lorenzini."
+    },
+    "fr": {
+      "q": "Comment les requins détectent-ils leurs proies dans l'obscurité ?",
+      "a": [
+        "Électroréception",
+        "Écholocation",
+        "Vision infrarouge",
+        "Odorat seul"
+      ],
+      "fact": "Les requins captent les champs électriques via les ampoules de Lorenzini."
+    },
+    "zh": {
+      "q": "鲨鱼如何在黑暗的水中探测猎物？",
+      "a": [
+        "电感受",
+        "回声定位",
+        "红外视觉",
+        "仅靠嗅觉"
+      ],
+      "fact": "鲨鱼通过洛伦齐尼壶腹感知猎物肌肉收缩产生的电场。"
+    },
+    "ar": {
+      "q": "كيف تكتشف أسماك القرش فريستها في الماء المظلم؟",
+      "a": [
+        "الاستشعار الكهربائي",
+        "تحديد المواقع بالصدى",
+        "الرؤية تحت الحمراء",
+        "الشم وحده"
+      ],
+      "fact": "تستشعر أسماك القرش المجالات الكهربائية الناتجة عن انقباضات العضلات عبر أمبولة لورنتزيني."
+    }
+  },
+  {
+    "en": {
+      "q": "Which insect has the shortest lifespan?",
+      "a": [
+        "Mayfly",
+        "Mosquito",
+        "Housefly",
+        "Ant"
+      ],
+      "fact": "Adult mayflies live only 24 hours — just long enough to reproduce."
+    },
+    "fr": {
+      "q": "Quel insecte a la durée de vie la plus courte ?",
+      "a": [
+        "Éphémère",
+        "Moustique",
+        "Mouche",
+        "Fourmi"
+      ],
+      "fact": "L'éphémère adulte ne vit que 24 heures — juste assez pour se reproduire."
+    },
+    "zh": {
+      "q": "哪种昆虫寿命最短？",
+      "a": [
+        "蜉蝣",
+        "蚊子",
+        "家蝇",
+        "蚂蚁"
+      ],
+      "fact": "蜉蝣成虫只活24小时——刚好够繁殖后代。"
+    },
+    "ar": {
+      "q": "ما الحشرة الأقصر عمرًا؟",
+      "a": [
+        "ذبابة مايو",
+        "البعوضة",
+        "ذبابة المنزل",
+        "النملة"
+      ],
+      "fact": "تعيش ذبابة مايو البالغة 24 ساعة فقط — كفاية للتكاثر."
+    }
+  },
+  {
+    "en": {
+      "q": "Which egg-laying mammal has venomous spurs?",
+      "a": [
+        "Platypus",
+        "Echidna",
+        "Opossum",
+        "Armadillo"
+      ],
+      "fact": "Male platypuses have venomous spurs on their hind legs."
+    },
+    "fr": {
+      "q": "Quel mammifère ovipare a des éperons venimeux ?",
+      "a": [
+        "L'ornithorynque",
+        "L'échidné",
+        "L'opossum",
+        "L'armadillo"
+      ],
+      "fact": "Le mâle de l'ornithorynque porte des éperons venimeux sur ses pattes arrière."
+    },
+    "zh": {
+      "q": "哪种卵生哺乳动物的后腿上有毒刺？",
+      "a": [
+        "鸭嘴兽",
+        "针鼹",
+        "负鼠",
+        "犰狳"
+      ],
+      "fact": "雄性鸭嘴兽的后腿上有毒刺。"
+    },
+    "ar": {
+      "q": "ما الثديي الواضع البيض الذي تملك أطرافه الخلفية أشواكًا سامة؟",
+      "a": [
+        "البلاتيبس",
+        "الإشينا",
+        "الأبوسوم",
+        "الأرماديلو"
+      ],
+      "fact": "للبلاتيبس الذكر أشواك سامة على رجليه الخلفيتين."
+    }
+  }
 ]

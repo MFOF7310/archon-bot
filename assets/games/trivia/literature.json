@@ -1,22 +1,842 @@
 [
-{"en": {"q": "Who wrote 'Romeo and Juliet'?", "a": ["William Shakespeare", "Charles Dickens", "Jane Austen", "Mark Twain"], "fact": "Shakespeare wrote Romeo and Juliet around 1596."}, "fr": {"q": "Qui a écrit 'Roméo et Juliette' ?", "a": ["William Shakespeare", "Charles Dickens", "Jane Austen", "Mark Twain"], "fact": "Shakespeare a écrit Roméo et Juliette vers 1596."}},
-{"en": {"q": "Who wrote 'Things Fall Apart'?", "a": ["Chinua Achebe", "Wole Soyinka", "Ngũgĩ wa Thiong'o", "Chimamanda Adichie"], "fact": "Things Fall Apart is the most widely read book in African literature."}, "fr": {"q": "Qui a écrit 'Le Monde s'effondre' ?", "a": ["Chinua Achebe", "Wole Soyinka", "Ngũgĩ wa Thiong'o", "Chimamanda Adichie"], "fact": "C'est le livre le plus lu de la littérature africaine."}},
-{"en": {"q": "Who is the author of 'Harry Potter'?", "a": ["J.K. Rowling", "J.R.R. Tolkien", "C.S. Lewis", "Philip Pullman"], "fact": "J.K. Rowling wrote the Harry Potter series."}, "fr": {"q": "Qui est l'auteur de 'Harry Potter' ?", "a": ["J.K. Rowling", "J.R.R. Tolkien", "C.S. Lewis", "Philip Pullman"], "fact": "J.K. Rowling a écrit la série Harry Potter."}},
-{"en": {"q": "What is the first book of the Bible?", "a": ["Genesis", "Exodus", "Matthew", "Psalms"], "fact": "Genesis means 'beginning' or 'origin' in Greek."}, "fr": {"q": "Quel est le premier livre de la Bible ?", "a": ["Genèse", "Exode", "Matthieu", "Psaumes"], "fact": "Genèse signifie 'commencement' en grec."}},
-{"en": {"q": "Who wrote 'The Great Gatsby'?", "a": ["F. Scott Fitzgerald", "Ernest Hemingway", "John Steinbeck", "William Faulkner"], "fact": "The Great Gatsby was published in 1925."}, "fr": {"q": "Qui a écrit 'Gatsby le Magnifique' ?", "a": ["F. Scott Fitzgerald", "Ernest Hemingway", "John Steinbeck", "William Faulkner"], "fact": "Gatsby le Magnifique a été publié en 1925."}},
-{"en": {"q": "Who wrote 'Les Misérables'?", "a": ["Victor Hugo", "Alexandre Dumas", "Gustave Flaubert", "Émile Zola"], "fact": "Victor Hugo wrote Les Misérables in 1862."}, "fr": {"q": "Qui a écrit 'Les Misérables' ?", "a": ["Victor Hugo", "Alexandre Dumas", "Gustave Flaubert", "Émile Zola"], "fact": "Victor Hugo a écrit Les Misérables en 1862."}},
-{"en": {"q": "Who wrote '1984'?", "a": ["George Orwell", "Aldous Huxley", "Ray Bradbury", "Franz Kafka"], "fact": "Orwell published 1984 in 1949 — it coined 'Big Brother'."}, "fr": {"q": "Qui a écrit '1984' ?", "a": ["George Orwell", "Aldous Huxley", "Ray Bradbury", "Franz Kafka"], "fact": "Orwell a publié 1984 en 1949 — il a inventé 'Big Brother'."}},
-{"en": {"q": "Which epic poem is attributed to Homer?", "a": ["The Odyssey", "The Aeneid", "Beowulf", "The Divine Comedy"], "fact": "The Odyssey follows Odysseus's 10-year journey home from Troy."}, "fr": {"q": "Quel poème épique est attribué à Homère ?", "a": ["L'Odyssée", "L'Énéide", "Beowulf", "La Divine Comédie"], "fact": "L'Odyssée suit le voyage d'Ulysse pendant 10 ans."}},
-{"en": {"q": "Who wrote 'The Old Man and the Sea'?", "a": ["Ernest Hemingway", "John Steinbeck", "Mark Twain", "Jack London"], "fact": "It won Hemingway the Pulitzer Prize in 1953."}, "fr": {"q": "Qui a écrit 'Le Vieil Homme et la Mer' ?", "a": ["Ernest Hemingway", "John Steinbeck", "Mark Twain", "Jack London"], "fact": "Il a valu à Hemingway le prix Pulitzer en 1953."}},
-{"en": {"q": "Which African author wrote 'Half of a Yellow Sun'?", "a": ["Chimamanda Ngozi Adichie", "Chinua Achebe", "Mariama Bâ", "Ama Ata Aidoo"], "fact": "The novel depicts the Biafran War in Nigeria."}, "fr": {"q": "Quelle auteure africaine a écrit 'L'Autre Moitié du soleil' ?", "a": ["Chimamanda Ngozi Adichie", "Chinua Achebe", "Mariama Bâ", "Ama Ata Aidoo"], "fact": "Le roman dépeint la guerre du Biafra au Nigeria."}},
-{"en": {"q": "Who wrote 'Don Quixote'?", "a": ["Miguel de Cervantes", "Gabriel García Márquez", "Pablo Neruda", "Jorge Luis Borges"], "fact": "Published in 1605, it's often called the first modern novel."}, "fr": {"q": "Qui a écrit 'Don Quichotte' ?", "a": ["Miguel de Cervantes", "Gabriel García Márquez", "Pablo Neruda", "Jorge Luis Borges"], "fact": "Publié en 1605, c'est souvent le premier roman moderne."}},
-{"en": {"q": "What genre is 'The Hobbit'?", "a": ["Fantasy", "Science Fiction", "Horror", "Mystery"], "fact": "Tolkien wrote The Hobbit in 1937, before The Lord of the Rings."}, "fr": {"q": "Quel est le genre du 'Hobbit' ?", "a": ["Fantasy", "Science-fiction", "Horreur", "Policier"], "fact": "Tolkien a écrit Le Hobbit en 1937."}},
-{"en": {"q": "Who wrote 'Pride and Prejudice'?", "a": ["Jane Austen", "Charlotte Brontë", "Emily Dickinson", "Mary Shelley"], "fact": "Austen published it anonymously in 1813."}, "fr": {"q": "Qui a écrit 'Orgueil et Préjugés' ?", "a": ["Jane Austen", "Charlotte Brontë", "Emily Dickinson", "Mary Shelley"], "fact": "Austen l'a publié anonymement en 1813."}},
-{"en": {"q": "Which play features the line 'To be or not to be'?", "a": ["Hamlet", "Macbeth", "Othello", "King Lear"], "fact": "Hamlet's soliloquy is the most quoted in English literature."}, "fr": {"q": "Quelle pièce contient 'Être ou ne pas être' ?", "a": ["Hamlet", "Macbeth", "Othello", "Le Roi Lear"], "fact": "Le monologue d'Hamlet est le plus cité de la littérature anglaise."}},
-{"en": {"q": "Who wrote the 'A Song of Ice and Fire' series?", "a": ["George R.R. Martin", "J.R.R. Tolkien", "Brandon Sanderson", "Patrick Rothfuss"], "fact": "The series inspired the TV show Game of Thrones."}, "fr": {"q": "Qui a écrit la saga 'Le Trône de fer' ?", "a": ["George R.R. Martin", "J.R.R. Tolkien", "Brandon Sanderson", "Patrick Rothfuss"], "fact": "La saga a inspiré la série Game of Thrones."}},
-{"en": {"q": "What is the name of the whale in Moby Dick?", "a": ["Moby Dick", "White Fang", "Leviathan", "Pequod"], "fact": "Moby Dick is the great white sperm whale hunted by Captain Ahab."}, "fr": {"q": "Comment s'appelle la baleine dans Moby Dick ?", "a": ["Moby Dick", "Croc-Blanc", "Léviathan", "Pequod"], "fact": "Moby Dick est le grand cachalot blanc chassé par le capitaine Achab."}},
-{"en": {"q": "Who wrote 'The Alchemist'?", "a": ["Paulo Coelho", "Gabriel García Márquez", "Jorge Amado", "Isabel Allende"], "fact": "The Alchemist has sold over 65 million copies worldwide."}, "fr": {"q": "Qui a écrit 'L'Alchimiste' ?", "a": ["Paulo Coelho", "Gabriel García Márquez", "Jorge Amado", "Isabel Allende"], "fact": "L'Alchimiste s'est vendu à plus de 65 millions d'exemplaires."}},
-{"en": {"q": "In which country is 'Crime and Punishment' set?", "a": ["Russia", "France", "Germany", "Poland"], "fact": "Dostoevsky set it in St. Petersburg in the 1860s."}, "fr": {"q": "Dans quel pays se déroule 'Crime et Châtiment' ?", "a": ["Russie", "France", "Allemagne", "Pologne"], "fact": "Dostoïevski l'a situé à Saint-Pétersbourg dans les années 1860."}},
-{"en": {"q": "What was the pen name of author Mary Ann Evans?", "a": ["George Eliot", "George Sand", "Currer Bell", "Ellis Bell"], "fact": "She used a male pen name to be taken seriously as a writer."}, "fr": {"q": "Quel était le pseudonyme de l'auteure Mary Ann Evans ?", "a": ["George Eliot", "George Sand", "Currer Bell", "Ellis Bell"], "fact": "Elle utilisait un nom masculin pour être prise au sérieux."}},
-{"en": {"q": "Which Shakespeare play features the character Shylock?", "a": ["The Merchant of Venice", "Othello", "The Tempest", "A Midsummer Night's Dream"], "fact": "Shylock is the moneylender who demands a pound of flesh."}, "fr": {"q": "Quelle pièce de Shakespeare met en scène Shylock ?", "a": ["Le Marchand de Venise", "Othello", "La Tempête", "Le Songe d'une nuit d'été"], "fact": "Shylock est le prêteur qui réclame une livre de chair."}}
+  {
+    "en": {
+      "q": "Who wrote 'Romeo and Juliet'?",
+      "a": [
+        "William Shakespeare",
+        "Charles Dickens",
+        "Jane Austen",
+        "Mark Twain"
+      ],
+      "fact": "Shakespeare wrote Romeo and Juliet around 1596."
+    },
+    "fr": {
+      "q": "Qui a écrit 'Roméo et Juliette' ?",
+      "a": [
+        "William Shakespeare",
+        "Charles Dickens",
+        "Jane Austen",
+        "Mark Twain"
+      ],
+      "fact": "Shakespeare a écrit Roméo et Juliette vers 1596."
+    },
+    "zh": {
+      "q": "《罗密欧与朱丽叶》是谁写的？",
+      "a": [
+        "威廉·莎士比亚",
+        "查尔斯·狄更斯",
+        "简·奥斯汀",
+        "马克·吐温"
+      ],
+      "fact": "莎士比亚约在1596年写下《罗密欧与朱丽叶》。"
+    },
+    "ar": {
+      "q": "من كتب مسرحية روميو وجولييت؟",
+      "a": [
+        "ويليام شكسبير",
+        "تشارلز ديكنز",
+        "جين أوستن",
+        "مارك توين"
+      ],
+      "fact": "كتب شكسبير روميو وجولييت حوالي عام 1596."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote 'Things Fall Apart'?",
+      "a": [
+        "Chinua Achebe",
+        "Wole Soyinka",
+        "Ngũgĩ wa Thiong'o",
+        "Chimamanda Adichie"
+      ],
+      "fact": "Things Fall Apart is the most widely read book in African literature."
+    },
+    "fr": {
+      "q": "Qui a écrit 'Le Monde s'effondre' ?",
+      "a": [
+        "Chinua Achebe",
+        "Wole Soyinka",
+        "Ngũgĩ wa Thiong'o",
+        "Chimamanda Adichie"
+      ],
+      "fact": "C'est le livre le plus lu de la littérature africaine."
+    },
+    "zh": {
+      "q": "《瓦解》（Things Fall Apart）是谁写的？",
+      "a": [
+        "钦努阿·阿契贝",
+        "沃莱·索因卡",
+        "恩古吉·瓦·提昂戈",
+        "奇玛曼达·阿迪契"
+      ],
+      "fact": "《瓦解》是非洲文学中读者最多的作品。"
+    },
+    "ar": {
+      "q": "من كتب رواية \"Things Fall Apart\"؟",
+      "a": [
+        "تشينوا أشيبي",
+        "وولي سوينكا",
+        "نغوجي وا ثيونغو",
+        "تشيماماندا أديتشي"
+      ],
+      "fact": "\"Things Fall Apart\" هي أكثر كتب الأدب الأفريقي قراءةً في العالم."
+    }
+  },
+  {
+    "en": {
+      "q": "Who is the author of 'Harry Potter'?",
+      "a": [
+        "J.K. Rowling",
+        "J.R.R. Tolkien",
+        "C.S. Lewis",
+        "Philip Pullman"
+      ],
+      "fact": "J.K. Rowling wrote the Harry Potter series."
+    },
+    "fr": {
+      "q": "Qui est l'auteur de 'Harry Potter' ?",
+      "a": [
+        "J.K. Rowling",
+        "J.R.R. Tolkien",
+        "C.S. Lewis",
+        "Philip Pullman"
+      ],
+      "fact": "J.K. Rowling a écrit la série Harry Potter."
+    },
+    "zh": {
+      "q": "《哈利·波特》的作者是谁？",
+      "a": [
+        "J.K.罗琳",
+        "J.R.R.托尔金",
+        "C.S.路易斯",
+        "菲利普·普尔曼"
+      ],
+      "fact": "J.K.罗琳创作了《哈利·波特》系列。"
+    },
+    "ar": {
+      "q": "من مؤلفة سلسلة هاري بوتر؟",
+      "a": [
+        "ج. ك. رولينغ",
+        "ج. ر. ر. تولكين",
+        "سي. إس. لويس",
+        "فيليب بولمان"
+      ],
+      "fact": "كتبت ج. ك. رولينغ سلسلة هاري بوتر."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the first book of the Bible?",
+      "a": [
+        "Genesis",
+        "Exodus",
+        "Matthew",
+        "Psalms"
+      ],
+      "fact": "Genesis means 'beginning' or 'origin' in Greek."
+    },
+    "fr": {
+      "q": "Quel est le premier livre de la Bible ?",
+      "a": [
+        "Genèse",
+        "Exode",
+        "Matthieu",
+        "Psaumes"
+      ],
+      "fact": "Genèse signifie 'commencement' en grec."
+    },
+    "zh": {
+      "q": "《圣经》的第一卷书是什么？",
+      "a": [
+        "《创世记》",
+        "《出埃及记》",
+        "《马太福音》",
+        "《诗篇》"
+      ],
+      "fact": "\"Genesis\"在希腊语中意为\"起源\"。"
+    },
+    "ar": {
+      "q": "ما أول كتب الكتاب المقدس؟",
+      "a": [
+        "سفر التكوين",
+        "سفر الخروج",
+        "إنجيل متى",
+        "مزامير داود"
+      ],
+      "fact": "كلمة \"Genesis\" تعني \"البداية\" أو \"الأصل\" باليونانية."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote 'The Great Gatsby'?",
+      "a": [
+        "F. Scott Fitzgerald",
+        "Ernest Hemingway",
+        "John Steinbeck",
+        "William Faulkner"
+      ],
+      "fact": "The Great Gatsby was published in 1925."
+    },
+    "fr": {
+      "q": "Qui a écrit 'Gatsby le Magnifique' ?",
+      "a": [
+        "F. Scott Fitzgerald",
+        "Ernest Hemingway",
+        "John Steinbeck",
+        "William Faulkner"
+      ],
+      "fact": "Gatsby le Magnifique a été publié en 1925."
+    },
+    "zh": {
+      "q": "《了不起的盖茨比》是谁写的？",
+      "a": [
+        "菲茨杰拉德",
+        "海明威",
+        "斯坦贝克",
+        "福克纳"
+      ],
+      "fact": "《了不起的盖茨比》出版于1925年。"
+    },
+    "ar": {
+      "q": "من كتب \"غاتسبي العظيم\"؟",
+      "a": [
+        "ف. سكوت فيتزجيرالد",
+        "إرنست هيمنغواي",
+        "جون شتاينبك",
+        "وليم فوكنر"
+      ],
+      "fact": "نُشرت \"غاتسبي العظيم\" عام 1925."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote 'Les Misérables'?",
+      "a": [
+        "Victor Hugo",
+        "Alexandre Dumas",
+        "Gustave Flaubert",
+        "Émile Zola"
+      ],
+      "fact": "Victor Hugo wrote Les Misérables in 1862."
+    },
+    "fr": {
+      "q": "Qui a écrit 'Les Misérables' ?",
+      "a": [
+        "Victor Hugo",
+        "Alexandre Dumas",
+        "Gustave Flaubert",
+        "Émile Zola"
+      ],
+      "fact": "Victor Hugo a écrit Les Misérables en 1862."
+    },
+    "zh": {
+      "q": "《悲惨世界》是谁写的？",
+      "a": [
+        "维克多·雨果",
+        "大仲马",
+        "福楼拜",
+        "左拉"
+      ],
+      "fact": "维克多·雨果于1862年出版《悲惨世界》。"
+    },
+    "ar": {
+      "q": "من كتب \"البؤساء\" (Les Misérables)؟",
+      "a": [
+        "فيكتور هوغو",
+        "ألكسندر دوما",
+        "غوستاف فلوبير",
+        "إميل زولا"
+      ],
+      "fact": "كتب فيكتور هوغو \"البؤساء\" عام 1862."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote '1984'?",
+      "a": [
+        "George Orwell",
+        "Aldous Huxley",
+        "Ray Bradbury",
+        "Franz Kafka"
+      ],
+      "fact": "Orwell published 1984 in 1949 — it coined 'Big Brother'."
+    },
+    "fr": {
+      "q": "Qui a écrit '1984' ?",
+      "a": [
+        "George Orwell",
+        "Aldous Huxley",
+        "Ray Bradbury",
+        "Franz Kafka"
+      ],
+      "fact": "Orwell a publié 1984 en 1949 — il a inventé 'Big Brother'."
+    },
+    "zh": {
+      "q": "《一九八四》是谁写的？",
+      "a": [
+        "乔治·奥威尔",
+        "赫胥黎",
+        "雷·布拉德伯里",
+        "卡夫卡"
+      ],
+      "fact": "奥威尔1949年出版《一九八四》——书中创造了\"老大哥\"一词。"
+    },
+    "ar": {
+      "q": "من كتب رواية \"1984\"؟",
+      "a": [
+        "جورج أورويل",
+        "ألدوس هكسلي",
+        "راي برادبيري",
+        "فرانز كافكا"
+      ],
+      "fact": "نشر أورويل \"1984\" عام 1949 — وصكّ فيها مصطلح \"الأخ الأكبر\"."
+    }
+  },
+  {
+    "en": {
+      "q": "Which epic poem is attributed to Homer?",
+      "a": [
+        "The Odyssey",
+        "The Aeneid",
+        "Beowulf",
+        "The Divine Comedy"
+      ],
+      "fact": "The Odyssey follows Odysseus's 10-year journey home from Troy."
+    },
+    "fr": {
+      "q": "Quel poème épique est attribué à Homère ?",
+      "a": [
+        "L'Odyssée",
+        "L'Énéide",
+        "Beowulf",
+        "La Divine Comédie"
+      ],
+      "fact": "L'Odyssée suit le voyage d'Ulysse pendant 10 ans."
+    },
+    "zh": {
+      "q": "哪部史诗相传为荷马所作？",
+      "a": [
+        "《奥德赛》",
+        "《埃涅阿斯纪》",
+        "《贝奥武夫》",
+        "《神曲》"
+      ],
+      "fact": "《奥德赛》讲述了奥德修斯战后历时十年的归乡之旅。"
+    },
+    "ar": {
+      "q": "ما الملحمة الشعرية التي تُنسَّب إلى هوميروس؟",
+      "a": [
+        "الأوديسة",
+        "الإنيادة",
+        "بيوولف",
+        "الكوميديا الإلهية"
+      ],
+      "fact": "تروي الأوديسة رحلة عودة أوديسيوس إلى وطنه التي استغرقت عشر سنوات بعد حرب طروادة."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote 'The Old Man and the Sea'?",
+      "a": [
+        "Ernest Hemingway",
+        "John Steinbeck",
+        "Mark Twain",
+        "Jack London"
+      ],
+      "fact": "It won Hemingway the Pulitzer Prize in 1953."
+    },
+    "fr": {
+      "q": "Qui a écrit 'Le Vieil Homme et la Mer' ?",
+      "a": [
+        "Ernest Hemingway",
+        "John Steinbeck",
+        "Mark Twain",
+        "Jack London"
+      ],
+      "fact": "Il a valu à Hemingway le prix Pulitzer en 1953."
+    },
+    "zh": {
+      "q": "《老人与海》是谁写的？",
+      "a": [
+        "海明威",
+        "斯坦贝克",
+        "马克·吐温",
+        "杰克·伦敦"
+      ],
+      "fact": "这部作品为海明威赢得了1953年普利策奖。"
+    },
+    "ar": {
+      "q": "من كتب \"العجوز والبحر\"؟",
+      "a": [
+        "إرنست هيمنغواي",
+        "جون شتاينبك",
+        "مارك توين",
+        "جاك لندن"
+      ],
+      "fact": "منحت هذه الرواية هيمنغواي جائزة بوليتزر عام 1953."
+    }
+  },
+  {
+    "en": {
+      "q": "Which African author wrote 'Half of a Yellow Sun'?",
+      "a": [
+        "Chimamanda Ngozi Adichie",
+        "Chinua Achebe",
+        "Mariama Bâ",
+        "Ama Ata Aidoo"
+      ],
+      "fact": "The novel depicts the Biafran War in Nigeria."
+    },
+    "fr": {
+      "q": "Quelle auteure africaine a écrit 'L'Autre Moitié du soleil' ?",
+      "a": [
+        "Chimamanda Ngozi Adichie",
+        "Chinua Achebe",
+        "Mariama Bâ",
+        "Ama Ata Aidoo"
+      ],
+      "fact": "Le roman dépeint la guerre du Biafra au Nigeria."
+    },
+    "zh": {
+      "q": "哪位非洲作家写了《半轮黄日》？",
+      "a": [
+        "奇玛曼达·恩戈齐·阿迪契",
+        "钦努阿·阿契贝",
+        "玛丽亚玛·芭",
+        "阿玛·阿塔·艾杜"
+      ],
+      "fact": "这部小说描绘了尼日利亚的比夫拉战争。"
+    },
+    "ar": {
+      "q": "أي أديبة أفريقية كتبت رواية \"Half of a Yellow Sun\"؟",
+      "a": [
+        "تشيماماندا نغوزي أديتشي",
+        "تشينوا أشيبي",
+        "مارياما با",
+        "أما آتا آيدو"
+      ],
+      "fact": "تصوّر الرواية حرب بيافرا في نيجيريا."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote 'Don Quixote'?",
+      "a": [
+        "Miguel de Cervantes",
+        "Gabriel García Márquez",
+        "Pablo Neruda",
+        "Jorge Luis Borges"
+      ],
+      "fact": "Published in 1605, it's often called the first modern novel."
+    },
+    "fr": {
+      "q": "Qui a écrit 'Don Quichotte' ?",
+      "a": [
+        "Miguel de Cervantes",
+        "Gabriel García Márquez",
+        "Pablo Neruda",
+        "Jorge Luis Borges"
+      ],
+      "fact": "Publié en 1605, c'est souvent le premier roman moderne."
+    },
+    "zh": {
+      "q": "《堂吉诃德》是谁写的？",
+      "a": [
+        "塞万提斯",
+        "加西亚·马尔克斯",
+        "聂鲁达",
+        "博尔赫斯"
+      ],
+      "fact": "该书出版于1605年，常被称为第一部现代小说。"
+    },
+    "ar": {
+      "q": "من كتب \"دون كيخوته\"؟",
+      "a": [
+        "ميغيل دي ثيربانتس",
+        "غابرييل غارسيا ماركيز",
+        "بابلو نيرودا",
+        "خورخي لويس بورخيس"
+      ],
+      "fact": "نُشرت عام 1605 وغالبًا ما تُوصف بأنها أول رواية حديثة."
+    }
+  },
+  {
+    "en": {
+      "q": "What genre is 'The Hobbit'?",
+      "a": [
+        "Fantasy",
+        "Science Fiction",
+        "Horror",
+        "Mystery"
+      ],
+      "fact": "Tolkien wrote The Hobbit in 1937, before The Lord of the Rings."
+    },
+    "fr": {
+      "q": "Quel est le genre du 'Hobbit' ?",
+      "a": [
+        "Fantasy",
+        "Science-fiction",
+        "Horreur",
+        "Policier"
+      ],
+      "fact": "Tolkien a écrit Le Hobbit en 1937."
+    },
+    "zh": {
+      "q": "《霍比特人》属于哪种文学类型？",
+      "a": [
+        "奇幻",
+        "科幻",
+        "恐怖",
+        "悬疑"
+      ],
+      "fact": "托尔金于1937年写下《霍比特人》，早于《魔戒》。"
+    },
+    "ar": {
+      "q": "ما نوع أدب \"الهوبيت\"؟",
+      "a": [
+        "الفانتازيا",
+        "الخيال العلمي",
+        "الرعب",
+        "الغموض"
+      ],
+      "fact": "كتب تولكين \"الهوبيت\" عام 1937، قبل \"سيد الخواتم\"."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote 'Pride and Prejudice'?",
+      "a": [
+        "Jane Austen",
+        "Charlotte Brontë",
+        "Emily Dickinson",
+        "Mary Shelley"
+      ],
+      "fact": "Austen published it anonymously in 1813."
+    },
+    "fr": {
+      "q": "Qui a écrit 'Orgueil et Préjugés' ?",
+      "a": [
+        "Jane Austen",
+        "Charlotte Brontë",
+        "Emily Dickinson",
+        "Mary Shelley"
+      ],
+      "fact": "Austen l'a publié anonymement en 1813."
+    },
+    "zh": {
+      "q": "《傲慢与偏见》是谁写的？",
+      "a": [
+        "简·奥斯汀",
+        "夏洛蒂·勃朗特",
+        "艾米莉·狄金森",
+        "玛丽·雪莱"
+      ],
+      "fact": "奥斯汀于1813年匿名出版了这本书。"
+    },
+    "ar": {
+      "q": "من كتبت \"كبرياء وهوى\"؟",
+      "a": [
+        "جين أوستن",
+        "شارلوت برونتي",
+        "إيميلي ديكنسون",
+        "ماري شيلي"
+      ],
+      "fact": "نشرت أوستن الرواية بشكل مجهول عام 1813."
+    }
+  },
+  {
+    "en": {
+      "q": "Which play features the line 'To be or not to be'?",
+      "a": [
+        "Hamlet",
+        "Macbeth",
+        "Othello",
+        "King Lear"
+      ],
+      "fact": "Hamlet's soliloquy is the most quoted in English literature."
+    },
+    "fr": {
+      "q": "Quelle pièce contient 'Être ou ne pas être' ?",
+      "a": [
+        "Hamlet",
+        "Macbeth",
+        "Othello",
+        "Le Roi Lear"
+      ],
+      "fact": "Le monologue d'Hamlet est le plus cité de la littérature anglaise."
+    },
+    "zh": {
+      "q": "哪部剧作中有\"生存还是毁灭\"这句台词？",
+      "a": [
+        "《哈姆雷特》",
+        "《麦克白》",
+        "《奥赛罗》",
+        "《李尔王》"
+      ],
+      "fact": "哈姆雷特的这段独白是英语文学中被引用最多的。"
+    },
+    "ar": {
+      "q": "في أي مسرحية تأتي عبارة \"أكون أو لا أكون\"؟",
+      "a": [
+        "هاملت",
+        "ماكبث",
+        "أوتيللو",
+        "الملك لير"
+      ],
+      "fact": "مناجاة هاملت هي الأكثر اقتباسًا في الأدب الإنجليزي."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote the 'A Song of Ice and Fire' series?",
+      "a": [
+        "George R.R. Martin",
+        "J.R.R. Tolkien",
+        "Brandon Sanderson",
+        "Patrick Rothfuss"
+      ],
+      "fact": "The series inspired the TV show Game of Thrones."
+    },
+    "fr": {
+      "q": "Qui a écrit la saga 'Le Trône de fer' ?",
+      "a": [
+        "George R.R. Martin",
+        "J.R.R. Tolkien",
+        "Brandon Sanderson",
+        "Patrick Rothfuss"
+      ],
+      "fact": "La saga a inspiré la série Game of Thrones."
+    },
+    "zh": {
+      "q": "《冰与火之歌》系列是谁写的？",
+      "a": [
+        "乔治·R·R·马丁",
+        "J.R.R.托尔金",
+        "布兰登·桑德森",
+        "帕特里克·罗斯福斯"
+      ],
+      "fact": "该系列启发了美剧《权力的游戏》。"
+    },
+    "ar": {
+      "q": "من كتب سلسلة \"أغنية الجليد والنار\"؟",
+      "a": [
+        "جورج ر. ر. مارتن",
+        "ج. ر. ر. تولكين",
+        "براندون سانديرسون",
+        "باتريك روثفوس"
+      ],
+      "fact": "ألهمت السلسلة مسلسل \"صراع العروش\"."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the name of the whale in Moby Dick?",
+      "a": [
+        "Moby Dick",
+        "White Fang",
+        "Leviathan",
+        "Pequod"
+      ],
+      "fact": "Moby Dick is the great white sperm whale hunted by Captain Ahab."
+    },
+    "fr": {
+      "q": "Comment s'appelle la baleine dans Moby Dick ?",
+      "a": [
+        "Moby Dick",
+        "Croc-Blanc",
+        "Léviathan",
+        "Pequod"
+      ],
+      "fact": "Moby Dick est le grand cachalot blanc chassé par le capitaine Achab."
+    },
+    "zh": {
+      "q": "《白鲸》中鲸鱼的名字是什么？",
+      "a": [
+        "莫比·迪克",
+        "白牙",
+        "利维坦",
+        "裴廓德号"
+      ],
+      "fact": "莫比·迪克是亚哈船长追捕的白色抹香鲸。"
+    },
+    "ar": {
+      "q": "ما اسم الحوت في رواية \"موبي ديك\"؟",
+      "a": [
+        "موبي ديك",
+        "الناب الأبيض",
+        "لوياثان",
+        "بيكود"
+      ],
+      "fact": "موبي ديك هو حوت العنبر الأبيض الذي يطارده الكابتن آهاب."
+    }
+  },
+  {
+    "en": {
+      "q": "Who wrote 'The Alchemist'?",
+      "a": [
+        "Paulo Coelho",
+        "Gabriel García Márquez",
+        "Jorge Amado",
+        "Isabel Allende"
+      ],
+      "fact": "The Alchemist has sold over 65 million copies worldwide."
+    },
+    "fr": {
+      "q": "Qui a écrit 'L'Alchimiste' ?",
+      "a": [
+        "Paulo Coelho",
+        "Gabriel García Márquez",
+        "Jorge Amado",
+        "Isabel Allende"
+      ],
+      "fact": "L'Alchimiste s'est vendu à plus de 65 millions d'exemplaires."
+    },
+    "zh": {
+      "q": "《牧羊少年奇幻之旅》（《炼金术士》）是谁写的？",
+      "a": [
+        "保罗·柯艾略",
+        "加西亚·马尔克斯",
+        "若热·亚马多",
+        "伊莎贝尔·阿连德"
+      ],
+      "fact": "《炼金术士》全球销量超过6500万册。"
+    },
+    "ar": {
+      "q": "من كتب \"الخيميائي\"؟",
+      "a": [
+        "باولو كويلو",
+        "غابرييل غارسيا ماركيز",
+        "جورجي أمادو",
+        "إيزابيل الليندي"
+      ],
+      "fact": "باعت رواية \"الخيميائي\" أكثر من 65 مليون نسخة حول العالم."
+    }
+  },
+  {
+    "en": {
+      "q": "In which country is 'Crime and Punishment' set?",
+      "a": [
+        "Russia",
+        "France",
+        "Germany",
+        "Poland"
+      ],
+      "fact": "Dostoevsky set it in St. Petersburg in the 1860s."
+    },
+    "fr": {
+      "q": "Dans quel pays se déroule 'Crime et Châtiment' ?",
+      "a": [
+        "Russie",
+        "France",
+        "Allemagne",
+        "Pologne"
+      ],
+      "fact": "Dostoïevski l'a situé à Saint-Pétersbourg dans les années 1860."
+    },
+    "zh": {
+      "q": "《罪与罚》的故事发生在哪个国家？",
+      "a": [
+        "俄国",
+        "法国",
+        "德国",
+        "波兰"
+      ],
+      "fact": "陀思妥耶夫斯基将故事设定在19世纪60年代的圣彼得堡。"
+    },
+    "ar": {
+      "q": "في أي دولة تدور أحداث \"الجريمة والعقاب\"؟",
+      "a": [
+        "روسيا",
+        "فرنسا",
+        "ألمانيا",
+        "بولندا"
+      ],
+      "fact": "وضع دوستويفسكي أحداثها في سانت بطرسبرغ في ستينيات القرن التاسع عشر."
+    }
+  },
+  {
+    "en": {
+      "q": "What was the pen name of author Mary Ann Evans?",
+      "a": [
+        "George Eliot",
+        "George Sand",
+        "Currer Bell",
+        "Ellis Bell"
+      ],
+      "fact": "She used a male pen name to be taken seriously as a writer."
+    },
+    "fr": {
+      "q": "Quel était le pseudonyme de l'auteure Mary Ann Evans ?",
+      "a": [
+        "George Eliot",
+        "George Sand",
+        "Currer Bell",
+        "Ellis Bell"
+      ],
+      "fact": "Elle utilisait un nom masculin pour être prise au sérieux."
+    },
+    "zh": {
+      "q": "作家玛丽·安·埃文斯的笔名是什么？",
+      "a": [
+        "乔治·艾略特",
+        "乔治·桑",
+        "柯勒·贝尔",
+        "埃利斯·贝尔"
+      ],
+      "fact": "她使用男性笔名是为了被认真对待。"
+    },
+    "ar": {
+      "q": "ما الاسم المستعار للأديبة ماري آن إيفانز؟",
+      "a": [
+        "جورج إليوت",
+        "جورج ساند",
+        "كورير بيل",
+        "إليس بيل"
+      ],
+      "fact": "استخدمت اسمًا رجاليًا لتُؤخذ على محمل الجد ككاتبة."
+    }
+  },
+  {
+    "en": {
+      "q": "Which Shakespeare play features the character Shylock?",
+      "a": [
+        "The Merchant of Venice",
+        "Othello",
+        "The Tempest",
+        "A Midsummer Night's Dream"
+      ],
+      "fact": "Shylock is the moneylender who demands a pound of flesh."
+    },
+    "fr": {
+      "q": "Quelle pièce de Shakespeare met en scène Shylock ?",
+      "a": [
+        "Le Marchand de Venise",
+        "Othello",
+        "La Tempête",
+        "Le Songe d'une nuit d'été"
+      ],
+      "fact": "Shylock est le prêteur qui réclame une livre de chair."
+    },
+    "zh": {
+      "q": "莎士比亚的哪部剧作中有夏洛克这个角色？",
+      "a": [
+        "《威尼斯商人》",
+        "《奥赛罗》",
+        "《暴风雨》",
+        "《仲夏夜之梦》"
+      ],
+      "fact": "夏洛克是那位索要一磅肉的放债人。"
+    },
+    "ar": {
+      "q": "أي مسرحية شكسبيرية تضم شخصية شايلوك؟",
+      "a": [
+        "تاجر البندقية",
+        "أوتيللو",
+        "العاصفة",
+        "حلم ليلة منتصف الصيف"
+      ],
+      "fact": "شايلوك هو المرابي الذي يطالب بربع... بالرطل الواحد من اللحم."
+    }
+  }
 ]

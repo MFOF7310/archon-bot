@@ -1,22 +1,842 @@
 [
-{"en": {"q": "What is the closest planet to the Sun?", "a": ["Mercury", "Venus", "Earth", "Mars"], "fact": "Mercury orbits the Sun at an average distance of 58 million km."}, "fr": {"q": "Quelle est la planète la plus proche du Soleil ?", "a": ["Mercure", "Vénus", "Terre", "Mars"], "fact": "Mercure orbite autour du Soleil à 58 millions de km en moyenne."}},
-{"en": {"q": "How many moons does Mars have?", "a": ["2", "1", "3", "0"], "fact": "Mars has two moons: Phobos and Deimos."}, "fr": {"q": "Combien de lunes Mars possède-t-elle ?", "a": ["2", "1", "3", "0"], "fact": "Mars a deux lunes : Phobos et Deimos."}},
-{"en": {"q": "What is the largest planet in our solar system?", "a": ["Jupiter", "Saturn", "Neptune", "Uranus"], "fact": "Jupiter is more than twice as massive as all other planets combined."}, "fr": {"q": "Quelle est la plus grande planète du système solaire ?", "a": ["Jupiter", "Saturne", "Neptune", "Uranus"], "fact": "Jupiter est plus massive que toutes les autres planètes réunies."}},
-{"en": {"q": "What is the name of our galaxy?", "a": ["Milky Way", "Andromeda", "Triangulum", "Sombrero"], "fact": "The Milky Way contains over 100 billion stars."}, "fr": {"q": "Quel est le nom de notre galaxie ?", "a": ["Voie Lactée", "Andromède", "Triangle", "Sombrero"], "fact": "La Voie Lactée contient plus de 100 milliards d'étoiles."}},
-{"en": {"q": "Who was the first human in space?", "a": ["Yuri Gagarin", "Neil Armstrong", "Alan Shepard", "John Glenn"], "fact": "Yuri Gagarin orbited Earth on April 12, 1961."}, "fr": {"q": "Qui fut le premier humain dans l'espace ?", "a": ["Youri Gagarine", "Neil Armstrong", "Alan Shepard", "John Glenn"], "fact": "Youri Gagarine a orbité la Terre le 12 avril 1961."}},
-{"en": {"q": "What is the hottest planet in our solar system?", "a": ["Venus", "Mercury", "Mars", "Jupiter"], "fact": "Venus has surface temperatures over 460°C."}, "fr": {"q": "Quelle est la planète la plus chaude du système solaire ?", "a": ["Vénus", "Mercure", "Mars", "Jupiter"], "fact": "Vénus dépasse 460°C en surface."}},
-{"en": {"q": "How long does light from the Sun take to reach Earth?", "a": ["About 8 minutes", "1 minute", "1 hour", "1 second"], "fact": "Sunlight travels 150 million km in about 8 min 20 s."}, "fr": {"q": "Combien de temps la lumière du Soleil met-elle à nous atteindre ?", "a": ["Environ 8 minutes", "1 minute", "1 heure", "1 seconde"], "fact": "La lumière parcourt 150 millions de km en 8 min 20 s."}},
-{"en": {"q": "Which planet is famous for its rings?", "a": ["Saturn", "Jupiter", "Uranus", "Neptune"], "fact": "Saturn's rings are mostly ice and rock particles."}, "fr": {"q": "Quelle planète est célèbre pour ses anneaux ?", "a": ["Saturne", "Jupiter", "Uranus", "Neptune"], "fact": "Les anneaux de Saturne sont faits de glace et de roche."}},
-{"en": {"q": "What does ISS stand for?", "a": ["International Space Station", "Interstellar Space Ship", "Inner Solar System", "International Science Satellite"], "fact": "The ISS has hosted astronauts continuously since 2000."}, "fr": {"q": "Que signifie ISS ?", "a": ["Station Spatiale Internationale", "Vaisseau Spatial Interstellaire", "Système Solaire Interne", "Satellite Scientifique International"], "fact": "L'ISS accueille des astronautes en continu depuis 2000."}},
-{"en": {"q": "What is a light-year?", "a": ["A distance", "A duration", "A speed", "A brightness"], "fact": "One light-year ≈ 9.46 trillion kilometers."}, "fr": {"q": "Qu'est-ce qu'une année-lumière ?", "a": ["Une distance", "Une durée", "Une vitesse", "Une luminosité"], "fact": "Une année-lumière ≈ 9 460 milliards de kilomètres."}},
-{"en": {"q": "Which planet rotates on its side?", "a": ["Uranus", "Neptune", "Saturn", "Mars"], "fact": "Uranus has an axial tilt of about 98 degrees."}, "fr": {"q": "Quelle planète tourne sur le côté ?", "a": ["Uranus", "Neptune", "Saturne", "Mars"], "fact": "Uranus a une inclinaison axiale d'environ 98 degrés."}},
-{"en": {"q": "What is the Sun mainly made of?", "a": ["Hydrogen", "Oxygen", "Iron", "Carbon"], "fact": "About 73% hydrogen, 25% helium."}, "fr": {"q": "De quoi le Soleil est-il principalement composé ?", "a": ["Hydrogène", "Oxygène", "Fer", "Carbone"], "fact": "Environ 73% d'hydrogène et 25% d'hélium."}},
-{"en": {"q": "How many planets are in our solar system?", "a": ["8", "9", "7", "10"], "fact": "Pluto was reclassified as a dwarf planet in 2006."}, "fr": {"q": "Combien de planètes compte notre système solaire ?", "a": ["8", "9", "7", "10"], "fact": "Pluton a été reclassée planète naine en 2006."}},
-{"en": {"q": "Which rover landed on Mars in 2021?", "a": ["Perseverance", "Curiosity", "Opportunity", "Spirit"], "fact": "Perseverance carries the Ingenuity helicopter."}, "fr": {"q": "Quel rover a atterri sur Mars en 2021 ?", "a": ["Perseverance", "Curiosity", "Opportunity", "Spirit"], "fact": "Perseverance transporte l'hélicoptère Ingenuity."}},
-{"en": {"q": "What force forms black holes?", "a": ["Gravity collapsing a massive star", "Magnetic storms", "Solar flares", "Dark energy"], "fact": "Not even light can escape a black hole's event horizon."}, "fr": {"q": "Qu'est-ce qui forme un trou noir ?", "a": ["L'effondrement gravitationnel d'une étoile massive", "Les tempêtes magnétiques", "Les éruptions solaires", "L'énergie sombre"], "fact": "Même la lumière ne peut échapper à l'horizon d'un trou noir."}},
-{"en": {"q": "What is the name of NASA's most famous space telescope?", "a": ["Hubble", "James Webb", "Spitzer", "Chandra"], "fact": "The Hubble Space Telescope launched in 1990 and revolutionized astronomy."}, "fr": {"q": "Quel est le télescope spatial le plus célèbre de la NASA ?", "a": ["Hubble", "James Webb", "Spitzer", "Chandra"], "fact": "Le télescope Hubble a révolutionné l'astronomie depuis 1990."}},
-{"en": {"q": "What planet is known for its Great Red Spot?", "a": ["Jupiter", "Mars", "Saturn", "Neptune"], "fact": "The Great Red Spot is a storm larger than Earth that has raged for centuries."}, "fr": {"q": "Quelle planète est connue pour sa Grande Tache Rouge ?", "a": ["Jupiter", "Mars", "Saturne", "Neptune"], "fact": "La Grande Tache Rouge est une tempête plus grande que la Terre."}},
-{"en": {"q": "What is the term for a star that explodes at the end of its life?", "a": ["Supernova", "Pulsar", "Quasar", "Nebula"], "fact": "A supernova can briefly outshine an entire galaxy."}, "fr": {"q": "Comment appelle-t-on une étoile qui explose en fin de vie ?", "a": ["Supernova", "Pulsar", "Quasar", "Nébuleuse"], "fact": "Une supernova peut brièvement éclipser une galaxie entière."}},
-{"en": {"q": "Which space agency landed humans on the Moon?", "a": ["NASA", "ESA", "Roscosmos", "JAXA"], "fact": "NASA's Apollo 11 was the first crewed Moon landing in 1969."}, "fr": {"q": "Quelle agence spatiale a posé des humains sur la Lune ?", "a": ["NASA", "ESA", "Roscosmos", "JAXA"], "fact": "L'Apollo 11 de la NASA fut le premier alunissage habité en 1969."}},
-{"en": {"q": "What is the name of Mars's largest volcano?", "a": ["Olympus Mons", "Mauna Kea", "Vesuvius", "Etna"], "fact": "Olympus Mons is the tallest volcano in the solar system at 22 km."}, "fr": {"q": "Quel est le nom du plus grand volcan de Mars ?", "a": ["Olympus Mons", "Mauna Kea", "Vésuve", "Etna"], "fact": "Olympus Mons culmine à 22 km — le plus haut volcan du système solaire."}}
+  {
+    "en": {
+      "q": "What is the closest planet to the Sun?",
+      "a": [
+        "Mercury",
+        "Venus",
+        "Earth",
+        "Mars"
+      ],
+      "fact": "Mercury orbits the Sun at an average distance of 58 million km."
+    },
+    "fr": {
+      "q": "Quelle est la planète la plus proche du Soleil ?",
+      "a": [
+        "Mercure",
+        "Vénus",
+        "Terre",
+        "Mars"
+      ],
+      "fact": "Mercure orbite autour du Soleil à 58 millions de km en moyenne."
+    },
+    "zh": {
+      "q": "离太阳最近的行星是哪颗？",
+      "a": [
+        "水星",
+        "金星",
+        "地球",
+        "火星"
+      ],
+      "fact": "水星与太阳的平均距离约5800万公里。"
+    },
+    "ar": {
+      "q": "ما أقرب كوكب إلى الشمس؟",
+      "a": [
+        "عطارد",
+        "الزهرة",
+        "الأرض",
+        "المريخ"
+      ],
+      "fact": "يدور عطارد حول الشمس على مسافة متوسطة قدرها 58 مليون كم."
+    }
+  },
+  {
+    "en": {
+      "q": "How many moons does Mars have?",
+      "a": [
+        "2",
+        "1",
+        "3",
+        "0"
+      ],
+      "fact": "Mars has two moons: Phobos and Deimos."
+    },
+    "fr": {
+      "q": "Combien de lunes Mars possède-t-elle ?",
+      "a": [
+        "2",
+        "1",
+        "3",
+        "0"
+      ],
+      "fact": "Mars a deux lunes : Phobos et Deimos."
+    },
+    "zh": {
+      "q": "火星有几颗卫星？",
+      "a": [
+        "2",
+        "1",
+        "3",
+        "0"
+      ],
+      "fact": "火星有两颗卫星：火卫一和火卫二。"
+    },
+    "ar": {
+      "q": "كم عدد أقمار المريخ؟",
+      "a": [
+        "2",
+        "1",
+        "3",
+        "0"
+      ],
+      "fact": "للمريخ قمران: فوبوس وديموس."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the largest planet in our solar system?",
+      "a": [
+        "Jupiter",
+        "Saturn",
+        "Neptune",
+        "Uranus"
+      ],
+      "fact": "Jupiter is more than twice as massive as all other planets combined."
+    },
+    "fr": {
+      "q": "Quelle est la plus grande planète du système solaire ?",
+      "a": [
+        "Jupiter",
+        "Saturne",
+        "Neptune",
+        "Uranus"
+      ],
+      "fact": "Jupiter est plus massive que toutes les autres planètes réunies."
+    },
+    "zh": {
+      "q": "太阳系中最大的行星是哪颗？",
+      "a": [
+        "木星",
+        "土星",
+        "海王星",
+        "天王星"
+      ],
+      "fact": "木星的质量超过其他所有行星总和的两倍。"
+    },
+    "ar": {
+      "q": "ما أكبر كوكب في المجموعة الشمسية؟",
+      "a": [
+        "المشتري",
+        "زحل",
+        "نبتون",
+        "أورانوس"
+      ],
+      "fact": "كتلة المشتري تزيد عن ضعف كتلة جميع الكواكب الأخرى مجتمعة."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the name of our galaxy?",
+      "a": [
+        "Milky Way",
+        "Andromeda",
+        "Triangulum",
+        "Sombrero"
+      ],
+      "fact": "The Milky Way contains over 100 billion stars."
+    },
+    "fr": {
+      "q": "Quel est le nom de notre galaxie ?",
+      "a": [
+        "Voie Lactée",
+        "Andromède",
+        "Triangle",
+        "Sombrero"
+      ],
+      "fact": "La Voie Lactée contient plus de 100 milliards d'étoiles."
+    },
+    "zh": {
+      "q": "我们所在的星系叫什么名字？",
+      "a": [
+        "银河系",
+        "仙女座星系",
+        "三角座星系",
+        "草帽星系"
+      ],
+      "fact": "银河系包含超过1000亿颗恒星。"
+    },
+    "ar": {
+      "q": "ما اسم مجرتنا؟",
+      "a": [
+        "درب التبانة",
+        "أندروميدا",
+        "المثلثة",
+        "القبعة"
+      ],
+      "fact": "يضم درب التبانة أكثر من 100 مليار نجم."
+    }
+  },
+  {
+    "en": {
+      "q": "Who was the first human in space?",
+      "a": [
+        "Yuri Gagarin",
+        "Neil Armstrong",
+        "Alan Shepard",
+        "John Glenn"
+      ],
+      "fact": "Yuri Gagarin orbited Earth on April 12, 1961."
+    },
+    "fr": {
+      "q": "Qui fut le premier humain dans l'espace ?",
+      "a": [
+        "Youri Gagarine",
+        "Neil Armstrong",
+        "Alan Shepard",
+        "John Glenn"
+      ],
+      "fact": "Youri Gagarine a orbité la Terre le 12 avril 1961."
+    },
+    "zh": {
+      "q": "谁是第一个进入太空的人？",
+      "a": [
+        "尤里·加加林",
+        "尼尔·阿姆斯特朗",
+        "艾伦·谢泼德",
+        "约翰·格伦"
+      ],
+      "fact": "1961年4月12日，尤里·加加林绕地球飞行了一圈。"
+    },
+    "ar": {
+      "q": "من أول إنسان في الفضاء؟",
+      "a": [
+        "يوري غاغارين",
+        "نيل أرمسترونغ",
+        "آلان شيبرد",
+        "جون غلين"
+      ],
+      "fact": "دار يوري غاغارين حول الأرض في 12 أبريل 1961."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the hottest planet in our solar system?",
+      "a": [
+        "Venus",
+        "Mercury",
+        "Mars",
+        "Jupiter"
+      ],
+      "fact": "Venus has surface temperatures over 460°C."
+    },
+    "fr": {
+      "q": "Quelle est la planète la plus chaude du système solaire ?",
+      "a": [
+        "Vénus",
+        "Mercure",
+        "Mars",
+        "Jupiter"
+      ],
+      "fact": "Vénus dépasse 460°C en surface."
+    },
+    "zh": {
+      "q": "太阳系中最热的行星是哪颗？",
+      "a": [
+        "金星",
+        "水星",
+        "火星",
+        "木星"
+      ],
+      "fact": "金星表面温度超过460°C。"
+    },
+    "ar": {
+      "q": "ما أحر كوكب في المجموعة الشمسية؟",
+      "a": [
+        "الزهرة",
+        "عطارد",
+        "المريخ",
+        "المشتري"
+      ],
+      "fact": "تتجاوز درجة حرارة سطح الزهرة 460 درجة مئوية."
+    }
+  },
+  {
+    "en": {
+      "q": "How long does light from the Sun take to reach Earth?",
+      "a": [
+        "About 8 minutes",
+        "1 minute",
+        "1 hour",
+        "1 second"
+      ],
+      "fact": "Sunlight travels 150 million km in about 8 min 20 s."
+    },
+    "fr": {
+      "q": "Combien de temps la lumière du Soleil met-elle à nous atteindre ?",
+      "a": [
+        "Environ 8 minutes",
+        "1 minute",
+        "1 heure",
+        "1 seconde"
+      ],
+      "fact": "La lumière parcourt 150 millions de km en 8 min 20 s."
+    },
+    "zh": {
+      "q": "阳光到达地球需要多长时间？",
+      "a": [
+        "约8分钟",
+        "1分钟",
+        "1小时",
+        "1秒"
+      ],
+      "fact": "阳光跨越1.5亿公里，大约需要8分20秒。"
+    },
+    "ar": {
+      "q": "كم يستغرق ضوء الشمس للوصول إلى الأرض؟",
+      "a": [
+        "نحو 8 دقائق",
+        "دقيقة واحدة",
+        "ساعة واحدة",
+        "ثانية واحدة"
+      ],
+      "fact": "يقطع ضوء الشمس مسافة 150 مليون كم في نحو 8 دقائق و20 ثانية."
+    }
+  },
+  {
+    "en": {
+      "q": "Which planet is famous for its rings?",
+      "a": [
+        "Saturn",
+        "Jupiter",
+        "Uranus",
+        "Neptune"
+      ],
+      "fact": "Saturn's rings are mostly ice and rock particles."
+    },
+    "fr": {
+      "q": "Quelle planète est célèbre pour ses anneaux ?",
+      "a": [
+        "Saturne",
+        "Jupiter",
+        "Uranus",
+        "Neptune"
+      ],
+      "fact": "Les anneaux de Saturne sont faits de glace et de roche."
+    },
+    "zh": {
+      "q": "哪颗行星以光环闻名？",
+      "a": [
+        "土星",
+        "木星",
+        "天王星",
+        "海王星"
+      ],
+      "fact": "土星环主要由冰和岩石颗粒组成。"
+    },
+    "ar": {
+      "q": "ما الكوكب المشهور بحلقاته؟",
+      "a": [
+        "زحل",
+        "المشتري",
+        "أورانوس",
+        "نبتون"
+      ],
+      "fact": "تتكون حلقات زحل أساسًا من جزيئات الجليد والصخور."
+    }
+  },
+  {
+    "en": {
+      "q": "What does ISS stand for?",
+      "a": [
+        "International Space Station",
+        "Interstellar Space Ship",
+        "Inner Solar System",
+        "International Science Satellite"
+      ],
+      "fact": "The ISS has hosted astronauts continuously since 2000."
+    },
+    "fr": {
+      "q": "Que signifie ISS ?",
+      "a": [
+        "Station Spatiale Internationale",
+        "Vaisseau Spatial Interstellaire",
+        "Système Solaire Interne",
+        "Satellite Scientifique International"
+      ],
+      "fact": "L'ISS accueille des astronautes en continu depuis 2000."
+    },
+    "zh": {
+      "q": "\"ISS\"代表什么？",
+      "a": [
+        "国际空间站",
+        "星际飞船",
+        "内太阳系",
+        "国际科学卫星"
+      ],
+      "fact": "国际空间站从2000年起一直有宇航员驻留。"
+    },
+    "ar": {
+      "q": "ماذا تعني اختصار ISS؟",
+      "a": [
+        "محطة الفضاء الدولية",
+        "سفينة الفضاء بين النجوم",
+        "النظام الشمسي الداخلي",
+        "القمر الصناعي العلمي الدولي"
+      ],
+      "fact": "تستضيف محطة الفضاء الدولية رواد فضاء بشكل متواصل منذ عام 2000."
+    }
+  },
+  {
+    "en": {
+      "q": "What is a light-year?",
+      "a": [
+        "A distance",
+        "A duration",
+        "A speed",
+        "A brightness"
+      ],
+      "fact": "One light-year ≈ 9.46 trillion kilometers."
+    },
+    "fr": {
+      "q": "Qu'est-ce qu'une année-lumière ?",
+      "a": [
+        "Une distance",
+        "Une durée",
+        "Une vitesse",
+        "Une luminosité"
+      ],
+      "fact": "Une année-lumière ≈ 9 460 milliards de kilomètres."
+    },
+    "zh": {
+      "q": "什么是\"光年\"？",
+      "a": [
+        "一种距离单位",
+        "一段时间",
+        "一种速度",
+        "一种亮度"
+      ],
+      "fact": "一光年约等于9.46万亿公里。"
+    },
+    "ar": {
+      "q": "ما السنة الضوئية؟",
+      "a": [
+        "وحدة مسافة",
+        "مدة زمنية",
+        "سرعة",
+        "مستوى سطوع"
+      ],
+      "fact": "السنة الضوئية الواحدة تساوي نحو 9.46 تريليون كيلومتر."
+    }
+  },
+  {
+    "en": {
+      "q": "Which planet rotates on its side?",
+      "a": [
+        "Uranus",
+        "Neptune",
+        "Saturn",
+        "Mars"
+      ],
+      "fact": "Uranus has an axial tilt of about 98 degrees."
+    },
+    "fr": {
+      "q": "Quelle planète tourne sur le côté ?",
+      "a": [
+        "Uranus",
+        "Neptune",
+        "Saturne",
+        "Mars"
+      ],
+      "fact": "Uranus a une inclinaison axiale d'environ 98 degrés."
+    },
+    "zh": {
+      "q": "哪颗行星是\"躺着\"自转的？",
+      "a": [
+        "天王星",
+        "海王星",
+        "土星",
+        "火星"
+      ],
+      "fact": "天王星的自转轴倾角约98度。"
+    },
+    "ar": {
+      "q": "ما الكوكب الذي يدور حول محوره وهو مائل على جانبه؟",
+      "a": [
+        "أورانوس",
+        "نبتون",
+        "زحل",
+        "المريخ"
+      ],
+      "fact": "يبلغ ميل محور أورانوس نحو 98 درجة."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the Sun mainly made of?",
+      "a": [
+        "Hydrogen",
+        "Oxygen",
+        "Iron",
+        "Carbon"
+      ],
+      "fact": "About 73% hydrogen, 25% helium."
+    },
+    "fr": {
+      "q": "De quoi le Soleil est-il principalement composé ?",
+      "a": [
+        "Hydrogène",
+        "Oxygène",
+        "Fer",
+        "Carbone"
+      ],
+      "fact": "Environ 73% d'hydrogène et 25% d'hélium."
+    },
+    "zh": {
+      "q": "太阳主要由什么组成？",
+      "a": [
+        "氢",
+        "氧",
+        "铁",
+        "碳"
+      ],
+      "fact": "约73%是氢，25%是氦。"
+    },
+    "ar": {
+      "q": "ممّ يتكون الشمس أساسًا؟",
+      "a": [
+        "الهيدروجين",
+        "الأكسجين",
+        "الحديد",
+        "الكربون"
+      ],
+      "fact": "نحو 73% هيدروجين و25% هيليوم."
+    }
+  },
+  {
+    "en": {
+      "q": "How many planets are in our solar system?",
+      "a": [
+        "8",
+        "9",
+        "7",
+        "10"
+      ],
+      "fact": "Pluto was reclassified as a dwarf planet in 2006."
+    },
+    "fr": {
+      "q": "Combien de planètes compte notre système solaire ?",
+      "a": [
+        "8",
+        "9",
+        "7",
+        "10"
+      ],
+      "fact": "Pluton a été reclassée planète naine en 2006."
+    },
+    "zh": {
+      "q": "太阳系有几颗行星？",
+      "a": [
+        "8",
+        "9",
+        "7",
+        "10"
+      ],
+      "fact": "2006年冥王星被重新归类为矮行星。"
+    },
+    "ar": {
+      "q": "كم عدد كواكب المجموعة الشمسية؟",
+      "a": [
+        "8",
+        "9",
+        "7",
+        "10"
+      ],
+      "fact": "أُعيد تصنيف بلوتو ككوكب قزم في عام 2006."
+    }
+  },
+  {
+    "en": {
+      "q": "Which rover landed on Mars in 2021?",
+      "a": [
+        "Perseverance",
+        "Curiosity",
+        "Opportunity",
+        "Spirit"
+      ],
+      "fact": "Perseverance carries the Ingenuity helicopter."
+    },
+    "fr": {
+      "q": "Quel rover a atterri sur Mars en 2021 ?",
+      "a": [
+        "Perseverance",
+        "Curiosity",
+        "Opportunity",
+        "Spirit"
+      ],
+      "fact": "Perseverance transporte l'hélicoptère Ingenuity."
+    },
+    "zh": {
+      "q": "2021年哪辆火星车登陆了火星？",
+      "a": [
+        "毅力号",
+        "好奇号",
+        "机遇号",
+        "勇气号"
+      ],
+      "fact": "毅力号携带了\"机智号\"直升机。"
+    },
+    "ar": {
+      "q": "ما المركبة التي هبطت على المريخ عام 2021؟",
+      "a": [
+        "بيرسيفيرانس",
+        "كيوريوسيتي",
+        "أوبورتيونيتي",
+        "سبيريت"
+      ],
+      "fact": "تحمل بيرسيفيرانس مروحية إنجينويتي."
+    }
+  },
+  {
+    "en": {
+      "q": "What force forms black holes?",
+      "a": [
+        "Gravity collapsing a massive star",
+        "Magnetic storms",
+        "Solar flares",
+        "Dark energy"
+      ],
+      "fact": "Not even light can escape a black hole's event horizon."
+    },
+    "fr": {
+      "q": "Qu'est-ce qui forme un trou noir ?",
+      "a": [
+        "L'effondrement gravitationnel d'une étoile massive",
+        "Les tempêtes magnétiques",
+        "Les éruptions solaires",
+        "L'énergie sombre"
+      ],
+      "fact": "Même la lumière ne peut échapper à l'horizon d'un trou noir."
+    },
+    "zh": {
+      "q": "什么力量形成黑洞？",
+      "a": [
+        "大质量恒星在引力作用下坍缩",
+        "磁暴",
+        "太阳耀斑",
+        "暗能量"
+      ],
+      "fact": "连光也无法逃脱黑洞的事件视界。"
+    },
+    "ar": {
+      "q": "ما القوة التي تكوّن الثقوب السوداء؟",
+      "a": [
+        "انهيار نجم ضخم بفعل الجاذبية",
+        "العواصف المغناطيسية",
+        "التوهجات الشمسية",
+        "الطاقة المظلمة"
+      ],
+      "fact": "حتى الضوء لا يستطيع الإفلات من أفق الحدث للثقب الأسود."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the name of NASA's most famous space telescope?",
+      "a": [
+        "Hubble",
+        "James Webb",
+        "Spitzer",
+        "Chandra"
+      ],
+      "fact": "The Hubble Space Telescope launched in 1990 and revolutionized astronomy."
+    },
+    "fr": {
+      "q": "Quel est le télescope spatial le plus célèbre de la NASA ?",
+      "a": [
+        "Hubble",
+        "James Webb",
+        "Spitzer",
+        "Chandra"
+      ],
+      "fact": "Le télescope Hubble a révolutionné l'astronomie depuis 1990."
+    },
+    "zh": {
+      "q": "NASA最著名的太空望远镜叫什么？",
+      "a": [
+        "哈勃",
+        "詹姆斯·韦伯",
+        "斯皮策",
+        "钱德拉"
+      ],
+      "fact": "哈勃太空望远镜于1990年发射，彻底改变了天文学。"
+    },
+    "ar": {
+      "q": "ما اسم أشهر تلسكوب فضائي لدى ناسا؟",
+      "a": [
+        "هابل",
+        "جيمس ويب",
+        "سبيتزر",
+        "شاندرا"
+      ],
+      "fact": "أُطلق تلسكوب هابل الفضائي عام 1990 وغيّر وجه علم الفلك."
+    }
+  },
+  {
+    "en": {
+      "q": "What planet is known for its Great Red Spot?",
+      "a": [
+        "Jupiter",
+        "Mars",
+        "Saturn",
+        "Neptune"
+      ],
+      "fact": "The Great Red Spot is a storm larger than Earth that has raged for centuries."
+    },
+    "fr": {
+      "q": "Quelle planète est connue pour sa Grande Tache Rouge ?",
+      "a": [
+        "Jupiter",
+        "Mars",
+        "Saturne",
+        "Neptune"
+      ],
+      "fact": "La Grande Tache Rouge est une tempête plus grande que la Terre."
+    },
+    "zh": {
+      "q": "哪颗行星以\"大红斑\"闻名？",
+      "a": [
+        "木星",
+        "火星",
+        "土星",
+        "海王星"
+      ],
+      "fact": "大红斑是比地球还大的风暴，已持续数百年。"
+    },
+    "ar": {
+      "q": "ما الكوكب المعروف بالبقعة الحمراء العظيمة؟",
+      "a": [
+        "المشتري",
+        "المريخ",
+        "زحل",
+        "نبتون"
+      ],
+      "fact": "البقعة الحمراء عاصفة أكبر من الأرض واشتعلت لقرون."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the term for a star that explodes at the end of its life?",
+      "a": [
+        "Supernova",
+        "Pulsar",
+        "Quasar",
+        "Nebula"
+      ],
+      "fact": "A supernova can briefly outshine an entire galaxy."
+    },
+    "fr": {
+      "q": "Comment appelle-t-on une étoile qui explose en fin de vie ?",
+      "a": [
+        "Supernova",
+        "Pulsar",
+        "Quasar",
+        "Nébuleuse"
+      ],
+      "fact": "Une supernova peut brièvement éclipser une galaxie entière."
+    },
+    "zh": {
+      "q": "恒星生命尽头爆炸叫什么？",
+      "a": [
+        "超新星",
+        "脉冲星",
+        "类星体",
+        "星云"
+      ],
+      "fact": "超新星爆发时的亮度可以超过整个星系。"
+    },
+    "ar": {
+      "q": "ما مصطلح النجم الذي ينفجر في نهاية عمره؟",
+      "a": [
+        "المستعر الأعظم",
+        "النجم النابض",
+        "النجم الزائف",
+        "السديم"
+      ],
+      "fact": "يمكن للمستعر الأعظم أن يتفوق لمعانه على مجرّة بأكملها لفترة وجيزة."
+    }
+  },
+  {
+    "en": {
+      "q": "Which space agency landed humans on the Moon?",
+      "a": [
+        "NASA",
+        "ESA",
+        "Roscosmos",
+        "JAXA"
+      ],
+      "fact": "NASA's Apollo 11 was the first crewed Moon landing in 1969."
+    },
+    "fr": {
+      "q": "Quelle agence spatiale a posé des humains sur la Lune ?",
+      "a": [
+        "NASA",
+        "ESA",
+        "Roscosmos",
+        "JAXA"
+      ],
+      "fact": "L'Apollo 11 de la NASA fut le premier alunissage habité en 1969."
+    },
+    "zh": {
+      "q": "哪个航天局将人类送上了月球？",
+      "a": [
+        "NASA",
+        "欧空局（ESA）",
+        "俄罗斯航天局",
+        "日本宇宙航空研究开发机构"
+      ],
+      "fact": "1969年NASA的阿波罗11号实现了首次载人登月。"
+    },
+    "ar": {
+      "q": "ما الوكالة الفضائية التي هبطت بالبشر على سطح القمر؟",
+      "a": [
+        "ناسا",
+        "وكالة الفضاء الأوروبية",
+        "روسكوزموس",
+        "JAXA"
+      ],
+      "fact": "كانت أبولو 11 التابعة لناسا أول هبوط مأهول على القمر عام 1969."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the name of Mars's largest volcano?",
+      "a": [
+        "Olympus Mons",
+        "Mauna Kea",
+        "Vesuvius",
+        "Etna"
+      ],
+      "fact": "Olympus Mons is the tallest volcano in the solar system at 22 km."
+    },
+    "fr": {
+      "q": "Quel est le nom du plus grand volcan de Mars ?",
+      "a": [
+        "Olympus Mons",
+        "Mauna Kea",
+        "Vésuve",
+        "Etna"
+      ],
+      "fact": "Olympus Mons culmine à 22 km — le plus haut volcan du système solaire."
+    },
+    "zh": {
+      "q": "火星上最大的火山叫什么？",
+      "a": [
+        "奥林帕斯山",
+        "冒纳凯阿火山",
+        "维苏威火山",
+        "埃特纳火山"
+      ],
+      "fact": "奥林帕斯山是太阳系中最高的火山，高达22公里。"
+    },
+    "ar": {
+      "q": "ما اسم أكبر بركان على المريخ؟",
+      "a": [
+        "أوليمبوس مونس",
+        "ماونا كيا",
+        "فيزوف",
+        "إتنا"
+      ],
+      "fact": "أوليمبوس مونس هو أطول بركان في المجموعة الشمسية بارتفاع 22 كم."
+    }
+  }
 ]

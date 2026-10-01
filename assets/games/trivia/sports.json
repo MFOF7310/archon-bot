@@ -1,22 +1,842 @@
 [
-{"en": {"q": "How many players are on a football (soccer) team?", "a": ["11", "10", "12", "9"], "fact": "Each team has 11 players on the field."}, "fr": {"q": "Combien de joueurs dans une équipe de football ?", "a": ["11", "10", "12", "9"], "fact": "Chaque équipe a 11 joueurs sur le terrain."}},
-{"en": {"q": "Which country has won the most FIFA World Cups?", "a": ["Brazil", "Germany", "Italy", "Argentina"], "fact": "Brazil has won the World Cup 5 times."}, "fr": {"q": "Quel pays a gagné le plus de Coupes du Monde FIFA ?", "a": ["Brésil", "Allemagne", "Italie", "Argentine"], "fact": "Le Brésil a remporté la Coupe du Monde 5 fois."}},
-{"en": {"q": "In which sport would you perform a 'slam dunk'?", "a": ["Basketball", "Volleyball", "Tennis", "Baseball"], "fact": "A slam dunk is when a player jumps and forcefully scores."}, "fr": {"q": "Dans quel sport effectue-t-on un 'slam dunk' ?", "a": ["Basketball", "Volleyball", "Tennis", "Baseball"], "fact": "Un slam dunk, c'est marquer en force au basket."}},
-{"en": {"q": "How many rounds are in a professional boxing championship match?", "a": ["12", "10", "15", "8"], "fact": "Championship boxing matches are 12 rounds."}, "fr": {"q": "Combien de rounds dans un match de boxe de championnat ?", "a": ["12", "10", "15", "8"], "fact": "Les matchs de championnat sont de 12 rounds."}},
-{"en": {"q": "Which country hosted the 2022 FIFA World Cup?", "a": ["Qatar", "Russia", "Brazil", "France"], "fact": "Qatar hosted the first World Cup in the Middle East."}, "fr": {"q": "Quel pays a accueilli la Coupe du Monde 2022 ?", "a": ["Qatar", "Russie", "Brésil", "France"], "fact": "Le Qatar a accueilli la première Coupe du Monde au Moyen-Orient."}},
-{"en": {"q": "What is the highest score possible in 10-pin bowling?", "a": ["300", "200", "250", "350"], "fact": "A perfect game in bowling is 300 points."}, "fr": {"q": "Quel est le score parfait au bowling ?", "a": ["300", "200", "250", "350"], "fact": "Une partie parfaite au bowling est de 300 points."}},
-{"en": {"q": "How often are the Summer Olympic Games held?", "a": ["Every 4 years", "Every 2 years", "Every 5 years", "Every year"], "fact": "The modern Olympics began in Athens in 1896."}, "fr": {"q": "À quelle fréquence ont lieu les Jeux Olympiques d'été ?", "a": ["Tous les 4 ans", "Tous les 2 ans", "Tous les 5 ans", "Chaque année"], "fact": "Les Jeux modernes ont commencé à Athènes en 1896."}},
-{"en": {"q": "In tennis, what is a score of zero called?", "a": ["Love", "Null", "Ace", "Deuce"], "fact": "'Love' likely comes from the French 'l'œuf' (the egg — shaped like 0)."}, "fr": {"q": "Au tennis, comment appelle-t-on un score de zéro ?", "a": ["Love", "Null", "Ace", "Deuce"], "fact": "'Love' vient probablement du français 'l'œuf' (forme du 0)."}},
-{"en": {"q": "Which sport uses a shuttlecock?", "a": ["Badminton", "Tennis", "Squash", "Table tennis"], "fact": "Badminton is the fastest racket sport — smashes exceed 400 km/h."}, "fr": {"q": "Quel sport utilise un volant ?", "a": ["Badminton", "Tennis", "Squash", "Ping-pong"], "fact": "Le badminton est le sport de raquette le plus rapide — plus de 400 km/h."}},
-{"en": {"q": "How many holes are in a standard round of golf?", "a": ["18", "9", "12", "24"], "fact": "The standard was set at St Andrews, Scotland."}, "fr": {"q": "Combien de trous dans un parcours de golf standard ?", "a": ["18", "9", "12", "24"], "fact": "Le standard a été fixé à St Andrews, en Écosse."}},
-{"en": {"q": "In which country did judo originate?", "a": ["Japan", "China", "Korea", "Thailand"], "fact": "Judo was founded by Jigoro Kano in 1882."}, "fr": {"q": "Dans quel pays le judo est-il né ?", "a": ["Japon", "Chine", "Corée", "Thaïlande"], "fact": "Le judo a été fondé par Jigoro Kano en 1882."}},
-{"en": {"q": "What does NBA stand for?", "a": ["National Basketball Association", "National Ball Arena", "North Basketball Alliance", "National Boxing Association"], "fact": "The NBA was founded in 1946 as the BAA."}, "fr": {"q": "Que signifie NBA ?", "a": ["National Basketball Association", "National Ball Arena", "North Basketball Alliance", "National Boxing Association"], "fact": "La NBA a été fondée en 1946 sous le nom de BAA."}},
-{"en": {"q": "How long is an Olympic swimming pool?", "a": ["50 meters", "25 meters", "100 meters", "75 meters"], "fact": "Olympic pools are 50 m long and 25 m wide."}, "fr": {"q": "Quelle est la longueur d'une piscine olympique ?", "a": ["50 mètres", "25 mètres", "100 mètres", "75 mètres"], "fact": "Les piscines olympiques font 50 m de long et 25 m de large."}},
-{"en": {"q": "Which athlete is known as the fastest man alive?", "a": ["Usain Bolt", "Carl Lewis", "Mo Farah", "Tyson Gay"], "fact": "Bolt ran 100m in 9.58 seconds in 2009."}, "fr": {"q": "Quel athlète est l'homme le plus rapide du monde ?", "a": ["Usain Bolt", "Carl Lewis", "Mo Farah", "Tyson Gay"], "fact": "Bolt a couru le 100 m en 9,58 secondes en 2009."}},
-{"en": {"q": "In which sport is the Ryder Cup contested?", "a": ["Golf", "Tennis", "Sailing", "Cricket"], "fact": "The Ryder Cup pits Team USA against Team Europe."}, "fr": {"q": "Dans quel sport se dispute la Ryder Cup ?", "a": ["Golf", "Tennis", "Voile", "Cricket"], "fact": "La Ryder Cup oppose les équipes des USA et d'Europe."}},
-{"en": {"q": "Which country invented basketball?", "a": ["USA", "Canada", "Brazil", "UK"], "fact": "Dr. James Naismith invented basketball in Massachusetts in 1891 — he was Canadian."}, "fr": {"q": "Quel pays a inventé le basketball ?", "a": ["USA", "Canada", "Brésil", "UK"], "fact": "Le Dr James Naismith a inventé le basketball en 1891 — il était Canadien."}},
-{"en": {"q": "How many players are on a volleyball team on court?", "a": ["6", "5", "7", "9"], "fact": "Six players per side — three front row, three back row."}, "fr": {"q": "Combien de joueurs sont sur le terrain au volleyball ?", "a": ["6", "5", "7", "9"], "fact": "Six joueurs par équipe — trois en avant, trois en arrière."}},
-{"en": {"q": "What is the diameter of a basketball hoop in inches?", "a": ["18 inches", "15 inches", "20 inches", "22 inches"], "fact": "The rim is 18 inches in diameter — just wide enough for two balls."}, "fr": {"q": "Quel est le diamètre du panier de basketball en cm ?", "a": ["45 cm", "38 cm", "50 cm", "55 cm"], "fact": "Le cercle mesure 45 cm de diamètre — juste assez pour deux ballons."}},
-{"en": {"q": "Which country has won the most Olympic gold medals overall?", "a": ["USA", "Russia", "China", "UK"], "fact": "The USA leads with over 1,000 gold medals all-time."}, "fr": {"q": "Quel pays a remporté le plus de médailles d'or olympiques ?", "a": ["USA", "Russie", "Chine", "UK"], "fact": "Les USA mènent avec plus de 1 000 médailles d'or."}},
-{"en": {"q": "In football, what does VAR stand for?", "a": ["Video Assistant Referee", "Virtual Action Review", "Video Action Replay", "Verified Assist Rule"], "fact": "VAR was introduced to help referees review key decisions."}, "fr": {"q": "Dans le football, que signifie VAR ?", "a": ["Vidéo-Assistant Arbitre", "Vérification d'Action en Réalité", "Vidéo d'Action Rejouée", "Validation d'Assistance Réglementaire"], "fact": "Le VAR aide les arbitres à revoir les décisions clés."}}
+  {
+    "en": {
+      "q": "How many players are on a football (soccer) team?",
+      "a": [
+        "11",
+        "10",
+        "12",
+        "9"
+      ],
+      "fact": "Each team has 11 players on the field."
+    },
+    "fr": {
+      "q": "Combien de joueurs dans une équipe de football ?",
+      "a": [
+        "11",
+        "10",
+        "12",
+        "9"
+      ],
+      "fact": "Chaque équipe a 11 joueurs sur le terrain."
+    },
+    "zh": {
+      "q": "一支足球队有多少名球员？",
+      "a": [
+        "11",
+        "10",
+        "12",
+        "9"
+      ],
+      "fact": "每支球队场上有11名球员。"
+    },
+    "ar": {
+      "q": "كم عدد لاعبي فريق كرة القدم؟",
+      "a": [
+        "11",
+        "10",
+        "12",
+        "9"
+      ],
+      "fact": "لكل فريق 11 لاعبًا داخل الملعب."
+    }
+  },
+  {
+    "en": {
+      "q": "Which country has won the most FIFA World Cups?",
+      "a": [
+        "Brazil",
+        "Germany",
+        "Italy",
+        "Argentina"
+      ],
+      "fact": "Brazil has won the World Cup 5 times."
+    },
+    "fr": {
+      "q": "Quel pays a gagné le plus de Coupes du Monde FIFA ?",
+      "a": [
+        "Brésil",
+        "Allemagne",
+        "Italie",
+        "Argentine"
+      ],
+      "fact": "Le Brésil a remporté la Coupe du Monde 5 fois."
+    },
+    "zh": {
+      "q": "哪个国家赢得世界杯次数最多？",
+      "a": [
+        "巴西",
+        "德国",
+        "意大利",
+        "阿根廷"
+      ],
+      "fact": "巴西5次夺得世界杯。"
+    },
+    "ar": {
+      "q": "ما الدولة الأكثر فوزًا بكأس العالم؟",
+      "a": [
+        "البرازيل",
+        "ألمانيا",
+        "إيطاليا",
+        "الأرجنتين"
+      ],
+      "fact": "فازت البرازيل بكأس العالم 5 مرات."
+    }
+  },
+  {
+    "en": {
+      "q": "In which sport would you perform a 'slam dunk'?",
+      "a": [
+        "Basketball",
+        "Volleyball",
+        "Tennis",
+        "Baseball"
+      ],
+      "fact": "A slam dunk is when a player jumps and forcefully scores."
+    },
+    "fr": {
+      "q": "Dans quel sport effectue-t-on un 'slam dunk' ?",
+      "a": [
+        "Basketball",
+        "Volleyball",
+        "Tennis",
+        "Baseball"
+      ],
+      "fact": "Un slam dunk, c'est marquer en force au basket."
+    },
+    "zh": {
+      "q": "在哪项运动中会完成\"扣篮\"？",
+      "a": [
+        "篮球",
+        "排球",
+        "网球",
+        "棒球"
+      ],
+      "fact": "扣篮是球员跃起后将球用力砸进篮筐。"
+    },
+    "ar": {
+      "q": "في أي رياضة يُنفَّذ \"السلام دانك\"؟",
+      "a": [
+        "كرة السلة",
+        "الكرة الطائرة",
+        "التنس",
+        "البيسبول"
+      ],
+      "fact": "السلام دانك هو تسجيل النقاط بالقفز وغرس الكرة بقوة في السلة."
+    }
+  },
+  {
+    "en": {
+      "q": "How many rounds are in a professional boxing championship match?",
+      "a": [
+        "12",
+        "10",
+        "15",
+        "8"
+      ],
+      "fact": "Championship boxing matches are 12 rounds."
+    },
+    "fr": {
+      "q": "Combien de rounds dans un match de boxe de championnat ?",
+      "a": [
+        "12",
+        "10",
+        "15",
+        "8"
+      ],
+      "fact": "Les matchs de championnat sont de 12 rounds."
+    },
+    "zh": {
+      "q": "职业拳击冠军赛有多少个回合？",
+      "a": [
+        "12",
+        "10",
+        "15",
+        "8"
+      ],
+      "fact": "职业拳击冠军赛为12个回合。"
+    },
+    "ar": {
+      "q": "كم عدد الجولات في نزال الملاكمة الاحترافي على الألقاب؟",
+      "a": [
+        "12",
+        "10",
+        "15",
+        "8"
+      ],
+      "fact": "تُقام نزالات الملاكمة على الألقاب من 12 جولة."
+    }
+  },
+  {
+    "en": {
+      "q": "Which country hosted the 2022 FIFA World Cup?",
+      "a": [
+        "Qatar",
+        "Russia",
+        "Brazil",
+        "France"
+      ],
+      "fact": "Qatar hosted the first World Cup in the Middle East."
+    },
+    "fr": {
+      "q": "Quel pays a accueilli la Coupe du Monde 2022 ?",
+      "a": [
+        "Qatar",
+        "Russie",
+        "Brésil",
+        "France"
+      ],
+      "fact": "Le Qatar a accueilli la première Coupe du Monde au Moyen-Orient."
+    },
+    "zh": {
+      "q": "2022年世界杯由哪个国家主办？",
+      "a": [
+        "卡塔尔",
+        "俄罗斯",
+        "巴西",
+        "法国"
+      ],
+      "fact": "卡塔尔主办了中东首次世界杯。"
+    },
+    "ar": {
+      "q": "أي دولة استضافت كأس العالم 2022؟",
+      "a": [
+        "قطر",
+        "روسيا",
+        "البرازيل",
+        "فرنسا"
+      ],
+      "fact": "استضافت قطر أول كأس العالم في الشرق الأوسط."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the highest score possible in 10-pin bowling?",
+      "a": [
+        "300",
+        "200",
+        "250",
+        "350"
+      ],
+      "fact": "A perfect game in bowling is 300 points."
+    },
+    "fr": {
+      "q": "Quel est le score parfait au bowling ?",
+      "a": [
+        "300",
+        "200",
+        "250",
+        "350"
+      ],
+      "fact": "Une partie parfaite au bowling est de 300 points."
+    },
+    "zh": {
+      "q": "保龄球（十瓶制）的最高分是多少？",
+      "a": [
+        "300",
+        "200",
+        "250",
+        "350"
+      ],
+      "fact": "保龄球完美一局是300分。"
+    },
+    "ar": {
+      "q": "ما أعلى نتيجة ممكنة في البولينغ؟",
+      "a": [
+        "300",
+        "200",
+        "250",
+        "350"
+      ],
+      "fact": "اللعبة المثالية في البولينغ تساوي 300 نقطة."
+    }
+  },
+  {
+    "en": {
+      "q": "How often are the Summer Olympic Games held?",
+      "a": [
+        "Every 4 years",
+        "Every 2 years",
+        "Every 5 years",
+        "Every year"
+      ],
+      "fact": "The modern Olympics began in Athens in 1896."
+    },
+    "fr": {
+      "q": "À quelle fréquence ont lieu les Jeux Olympiques d'été ?",
+      "a": [
+        "Tous les 4 ans",
+        "Tous les 2 ans",
+        "Tous les 5 ans",
+        "Chaque année"
+      ],
+      "fact": "Les Jeux modernes ont commencé à Athènes en 1896."
+    },
+    "zh": {
+      "q": "夏季奥运会多久举办一次？",
+      "a": [
+        "每4年",
+        "每2年",
+        "每5年",
+        "每年"
+      ],
+      "fact": "现代奥运会于1896年在雅典首次举办。"
+    },
+    "ar": {
+      "q": "كم مرة تُقام دورة الألعاب الأولمبية الصيفية؟",
+      "a": [
+        "كل 4 سنوات",
+        "كل سنتين",
+        "كل 5 سنوات",
+        "كل سنة"
+      ],
+      "fact": "بدأت الأولمبياد الحديثة في أثينا عام 1896."
+    }
+  },
+  {
+    "en": {
+      "q": "In tennis, what is a score of zero called?",
+      "a": [
+        "Love",
+        "Null",
+        "Ace",
+        "Deuce"
+      ],
+      "fact": "'Love' likely comes from the French 'l'œuf' (the egg — shaped like 0)."
+    },
+    "fr": {
+      "q": "Au tennis, comment appelle-t-on un score de zéro ?",
+      "a": [
+        "Love",
+        "Null",
+        "Ace",
+        "Deuce"
+      ],
+      "fact": "'Love' vient probablement du français 'l'œuf' (forme du 0)."
+    },
+    "zh": {
+      "q": "网球中零分叫什么？",
+      "a": [
+        "Love（零分）",
+        "Null（零）",
+        "Ace（发球得分）",
+        "Deuce（平分）"
+      ],
+      "fact": "\"Love\"可能来自法语\"l'œuf\"（鸡蛋——形状像0）。"
+    },
+    "ar": {
+      "q": "في التنس، ماذا يُسمى النتيجة صفر؟",
+      "a": [
+        "لوف (Love)",
+        "نِل",
+        "آيس",
+        "ديويس"
+      ],
+      "fact": "يُرجَّح أن كلمة \"Love\" تأتي من الفرنسية \"لْؤوف\" (البيضة — تشبه الشكل 0)."
+    }
+  },
+  {
+    "en": {
+      "q": "Which sport uses a shuttlecock?",
+      "a": [
+        "Badminton",
+        "Tennis",
+        "Squash",
+        "Table tennis"
+      ],
+      "fact": "Badminton is the fastest racket sport — smashes exceed 400 km/h."
+    },
+    "fr": {
+      "q": "Quel sport utilise un volant ?",
+      "a": [
+        "Badminton",
+        "Tennis",
+        "Squash",
+        "Ping-pong"
+      ],
+      "fact": "Le badminton est le sport de raquette le plus rapide — plus de 400 km/h."
+    },
+    "zh": {
+      "q": "哪项运动使用羽毛球（shuttlecock）？",
+      "a": [
+        "羽毛球",
+        "网球",
+        "壁球",
+        "乒乓球"
+      ],
+      "fact": "羽毛球是速度最快的拍类运动——扣杀时速超过400公里。"
+    },
+    "ar": {
+      "q": "ما الرياضة التي تستخدم الريشة (شاتلكوك)؟",
+      "a": [
+        "الريشة الطائرة",
+        "التنس",
+        "الإسكواش",
+        "تنس الطاولة"
+      ],
+      "fact": "الريشة الطائرة هي أسرع رياضة مضرب — تتجاوز سرعة الضربات 400 كم/ساعة."
+    }
+  },
+  {
+    "en": {
+      "q": "How many holes are in a standard round of golf?",
+      "a": [
+        "18",
+        "9",
+        "12",
+        "24"
+      ],
+      "fact": "The standard was set at St Andrews, Scotland."
+    },
+    "fr": {
+      "q": "Combien de trous dans un parcours de golf standard ?",
+      "a": [
+        "18",
+        "9",
+        "12",
+        "24"
+      ],
+      "fact": "Le standard a été fixé à St Andrews, en Écosse."
+    },
+    "zh": {
+      "q": "一场标准高尔夫球赛有多少个洞？",
+      "a": [
+        "18",
+        "9",
+        "12",
+        "24"
+      ],
+      "fact": "这一标准是在苏格兰圣安德鲁斯确立的。"
+    },
+    "ar": {
+      "q": "كم عدد الحفر في جولة الغولف القياسية؟",
+      "a": [
+        "18",
+        "9",
+        "12",
+        "24"
+      ],
+      "fact": "جرى اعتماد هذا المعيار في سانت أندروز باسكتلندا."
+    }
+  },
+  {
+    "en": {
+      "q": "In which country did judo originate?",
+      "a": [
+        "Japan",
+        "China",
+        "Korea",
+        "Thailand"
+      ],
+      "fact": "Judo was founded by Jigoro Kano in 1882."
+    },
+    "fr": {
+      "q": "Dans quel pays le judo est-il né ?",
+      "a": [
+        "Japon",
+        "Chine",
+        "Corée",
+        "Thaïlande"
+      ],
+      "fact": "Le judo a été fondé par Jigoro Kano en 1882."
+    },
+    "zh": {
+      "q": "柔道起源于哪个国家？",
+      "a": [
+        "日本",
+        "中国",
+        "韩国",
+        "泰国"
+      ],
+      "fact": "柔道由嘉纳治五郎于1882年创立。"
+    },
+    "ar": {
+      "q": "في أي دولة نشأ الجودو؟",
+      "a": [
+        "اليابان",
+        "الصين",
+        "كوريا",
+        "تايلاند"
+      ],
+      "fact": "أسس الجودو جيغورو كانو عام 1882."
+    }
+  },
+  {
+    "en": {
+      "q": "What does NBA stand for?",
+      "a": [
+        "National Basketball Association",
+        "National Ball Arena",
+        "North Basketball Alliance",
+        "National Boxing Association"
+      ],
+      "fact": "The NBA was founded in 1946 as the BAA."
+    },
+    "fr": {
+      "q": "Que signifie NBA ?",
+      "a": [
+        "National Basketball Association",
+        "National Ball Arena",
+        "North Basketball Alliance",
+        "National Boxing Association"
+      ],
+      "fact": "La NBA a été fondée en 1946 sous le nom de BAA."
+    },
+    "zh": {
+      "q": "\"NBA\"代表什么？",
+      "a": [
+        "美国职业篮球联赛",
+        "国家球场联盟",
+        "北方篮球联盟",
+        "国家拳击协会"
+      ],
+      "fact": "NBA于1946年以BAA之名成立。"
+    },
+    "ar": {
+      "q": "ماذا تعني اختصار NBA؟",
+      "a": [
+        "الرابطة الوطنية لكرة السلة",
+        "الملعب الوطني للكرة",
+        "تحالف كرة السلة الشمالي",
+        "الرابطة الوطنية للملاكمة"
+      ],
+      "fact": "تأسست NBA عام 1946 تحت اسم BAA."
+    }
+  },
+  {
+    "en": {
+      "q": "How long is an Olympic swimming pool?",
+      "a": [
+        "50 meters",
+        "25 meters",
+        "100 meters",
+        "75 meters"
+      ],
+      "fact": "Olympic pools are 50 m long and 25 m wide."
+    },
+    "fr": {
+      "q": "Quelle est la longueur d'une piscine olympique ?",
+      "a": [
+        "50 mètres",
+        "25 mètres",
+        "100 mètres",
+        "75 mètres"
+      ],
+      "fact": "Les piscines olympiques font 50 m de long et 25 m de large."
+    },
+    "zh": {
+      "q": "奥运会游泳池有多长？",
+      "a": [
+        "50米",
+        "25米",
+        "100米",
+        "75米"
+      ],
+      "fact": "奥运会泳池长50米、宽25米。"
+    },
+    "ar": {
+      "q": "ما طول حمام السباحة الأولمبي؟",
+      "a": [
+        "50 مترًا",
+        "25 مترًا",
+        "100 متر",
+        "75 مترًا"
+      ],
+      "fact": "المسابح الأولمبية طولها 50 م وعرضها 25 م."
+    }
+  },
+  {
+    "en": {
+      "q": "Which athlete is known as the fastest man alive?",
+      "a": [
+        "Usain Bolt",
+        "Carl Lewis",
+        "Mo Farah",
+        "Tyson Gay"
+      ],
+      "fact": "Bolt ran 100m in 9.58 seconds in 2009."
+    },
+    "fr": {
+      "q": "Quel athlète est l'homme le plus rapide du monde ?",
+      "a": [
+        "Usain Bolt",
+        "Carl Lewis",
+        "Mo Farah",
+        "Tyson Gay"
+      ],
+      "fact": "Bolt a couru le 100 m en 9,58 secondes en 2009."
+    },
+    "zh": {
+      "q": "哪位运动员被称为\"世界上跑得最快的人\"？",
+      "a": [
+        "尤塞恩·博尔特",
+        "卡尔·刘易斯",
+        "莫·法拉",
+        "泰森·盖伊"
+      ],
+      "fact": "博尔特在2009年跑出9秒58的百米纪录。"
+    },
+    "ar": {
+      "q": "ما الرياضي المعروف بأسرع رجل في العالم؟",
+      "a": [
+        "يوسين بولت",
+        "كارل لويس",
+        "مو فارح",
+        "تايسون غاي"
+      ],
+      "fact": "جرى بولت 100 متر في 9.58 ثانية عام 2009."
+    }
+  },
+  {
+    "en": {
+      "q": "In which sport is the Ryder Cup contested?",
+      "a": [
+        "Golf",
+        "Tennis",
+        "Sailing",
+        "Cricket"
+      ],
+      "fact": "The Ryder Cup pits Team USA against Team Europe."
+    },
+    "fr": {
+      "q": "Dans quel sport se dispute la Ryder Cup ?",
+      "a": [
+        "Golf",
+        "Tennis",
+        "Voile",
+        "Cricket"
+      ],
+      "fact": "La Ryder Cup oppose les équipes des USA et d'Europe."
+    },
+    "zh": {
+      "q": "莱德杯是哪项运动的赛事？",
+      "a": [
+        "高尔夫",
+        "网球",
+        "帆船",
+        "板球"
+      ],
+      "fact": "莱德杯由美国队对阵欧洲队。"
+    },
+    "ar": {
+      "q": "في أي رياضة تُنافس كأس رايدر؟",
+      "a": [
+        "الغولف",
+        "التنس",
+        "الإبحار",
+        "الكريكيت"
+      ],
+      "fact": "تتنافس في كأس رايدر الولايات المتحدة وأوروبا."
+    }
+  },
+  {
+    "en": {
+      "q": "Which country invented basketball?",
+      "a": [
+        "USA",
+        "Canada",
+        "Brazil",
+        "UK"
+      ],
+      "fact": "Dr. James Naismith invented basketball in Massachusetts in 1891 — he was Canadian."
+    },
+    "fr": {
+      "q": "Quel pays a inventé le basketball ?",
+      "a": [
+        "USA",
+        "Canada",
+        "Brésil",
+        "UK"
+      ],
+      "fact": "Le Dr James Naismith a inventé le basketball en 1891 — il était Canadien."
+    },
+    "zh": {
+      "q": "篮球是哪个国家发明的？",
+      "a": [
+        "美国",
+        "加拿大",
+        "巴西",
+        "英国"
+      ],
+      "fact": "詹姆斯·奈史密斯博士于1891年在马萨诸塞州发明了篮球——他是加拿大人。"
+    },
+    "ar": {
+      "q": "في أي دولة اخترعت كرة السلة؟",
+      "a": [
+        "الولايات المتحدة",
+        "كندا",
+        "البرازيل",
+        "المملكة المتحدة"
+      ],
+      "fact": "اخترع الدكتور جيمس نايسميث كرة السلة في ماساتشوستس عام 1891 — وكان كنديًا."
+    }
+  },
+  {
+    "en": {
+      "q": "How many players are on a volleyball team on court?",
+      "a": [
+        "6",
+        "5",
+        "7",
+        "9"
+      ],
+      "fact": "Six players per side — three front row, three back row."
+    },
+    "fr": {
+      "q": "Combien de joueurs sont sur le terrain au volleyball ?",
+      "a": [
+        "6",
+        "5",
+        "7",
+        "9"
+      ],
+      "fact": "Six joueurs par équipe — trois en avant, trois en arrière."
+    },
+    "zh": {
+      "q": "排球场上每队有几名球员？",
+      "a": [
+        "6",
+        "5",
+        "7",
+        "9"
+      ],
+      "fact": "每队6人——前排3人，后排3人。"
+    },
+    "ar": {
+      "q": "كم عدد لاعبي الكرة الطائرة في الملعب؟",
+      "a": [
+        "6",
+        "5",
+        "7",
+        "9"
+      ],
+      "fact": "ستة لاعبين لكل فريق — ثلاثة في الصف الأمامي وثلاثة في الخلفي."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the diameter of a basketball hoop in inches?",
+      "a": [
+        "18 inches",
+        "15 inches",
+        "20 inches",
+        "22 inches"
+      ],
+      "fact": "The rim is 18 inches in diameter — just wide enough for two balls."
+    },
+    "fr": {
+      "q": "Quel est le diamètre du panier de basketball en cm ?",
+      "a": [
+        "45 cm",
+        "38 cm",
+        "50 cm",
+        "55 cm"
+      ],
+      "fact": "Le cercle mesure 45 cm de diamètre — juste assez pour deux ballons."
+    },
+    "zh": {
+      "q": "篮球篮筐的直径是多少英寸？",
+      "a": [
+        "18英寸",
+        "15英寸",
+        "20英寸",
+        "22英寸"
+      ],
+      "fact": "篮筐直径18英寸——刚好能容下两个球。"
+    },
+    "ar": {
+      "q": "ما قطر سلة كرة السلة بالبوصة؟",
+      "a": [
+        "18 بوصة",
+        "15 بوصة",
+        "20 بوصة",
+        "22 بوصة"
+      ],
+      "fact": "قطر السلة 18 بوصة — يتسع بالكاد لكرتين."
+    }
+  },
+  {
+    "en": {
+      "q": "Which country has won the most Olympic gold medals overall?",
+      "a": [
+        "USA",
+        "Russia",
+        "China",
+        "UK"
+      ],
+      "fact": "The USA leads with over 1,000 gold medals all-time."
+    },
+    "fr": {
+      "q": "Quel pays a remporté le plus de médailles d'or olympiques ?",
+      "a": [
+        "USA",
+        "Russie",
+        "Chine",
+        "UK"
+      ],
+      "fact": "Les USA mènent avec plus de 1 000 médailles d'or."
+    },
+    "zh": {
+      "q": "哪个国家获得的奥运金牌总数最多？",
+      "a": [
+        "美国",
+        "俄罗斯",
+        "中国",
+        "英国"
+      ],
+      "fact": "美国以超过1000枚金牌位居历史第一。"
+    },
+    "ar": {
+      "q": "ما الدولة الأكثر حصولًا على ميداليات ذهبية أولمبية؟",
+      "a": [
+        "الولايات المتحدة",
+        "روسيا",
+        "الصين",
+        "المملكة المتحدة"
+      ],
+      "fact": "تتصدر الولايات المتحدة بأكثر من 1000 ميدالية ذهبية في تاريخ الأولمبياد."
+    }
+  },
+  {
+    "en": {
+      "q": "In football, what does VAR stand for?",
+      "a": [
+        "Video Assistant Referee",
+        "Virtual Action Review",
+        "Video Action Replay",
+        "Verified Assist Rule"
+      ],
+      "fact": "VAR was introduced to help referees review key decisions."
+    },
+    "fr": {
+      "q": "Dans le football, que signifie VAR ?",
+      "a": [
+        "Vidéo-Assistant Arbitre",
+        "Vérification d'Action en Réalité",
+        "Vidéo d'Action Rejouée",
+        "Validation d'Assistance Réglementaire"
+      ],
+      "fact": "Le VAR aide les arbitres à revoir les décisions clés."
+    },
+    "zh": {
+      "q": "足球中\"VAR\"代表什么？",
+      "a": [
+        "视频助理裁判",
+        "虚拟动作审查",
+        "视频动作回放",
+        "验证辅助规则"
+      ],
+      "fact": "VAR的引入是为了帮助裁判审查关键判罚。"
+    },
+    "ar": {
+      "q": "في كرة القدم، ماذا تعني اختصار VAR؟",
+      "a": [
+        "حكم الفيديو المساعد",
+        "مراجعة الفعل الافتراضية",
+        "إعادة عرض الفيديو",
+        "قاعدة المساعدة الموثقة"
+      ],
+      "fact": "أُدخل VAR لمساعدة الحكام في مراجعة القرارات المفصلية."
+    }
+  }
 ]

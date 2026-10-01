@@ -1,22 +1,842 @@
 [
-{"en": {"q": "What does CPU stand for?", "a": ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Core Processing Utility"], "fact": "The CPU is the brain of the computer."}, "fr": {"q": "Que signifie CPU ?", "a": ["Unité Centrale de Traitement", "Unité Personnelle d'Ordinateur", "Utilitaire Central de Programme", "Utilitaire de Traitement Central"], "fact": "Le CPU est le cerveau de l'ordinateur."}},
-{"en": {"q": "Which company created JavaScript?", "a": ["Netscape", "Microsoft", "Google", "Apple"], "fact": "JavaScript was created by Brendan Eich at Netscape in 1995."}, "fr": {"q": "Quelle entreprise a créé JavaScript ?", "a": ["Netscape", "Microsoft", "Google", "Apple"], "fact": "JavaScript a été créé par Brendan Eich chez Netscape en 1995."}},
-{"en": {"q": "What does 'HTTP' stand for?", "a": ["HyperText Transfer Protocol", "High Tech Transfer Process", "Hyperlink Text Protocol", "Home Tool Transfer Protocol"], "fact": "HTTP is the foundation of data communication on the web."}, "fr": {"q": "Que signifie 'HTTP' ?", "a": ["Protocole de Transfert HyperTexte", "Processus de Transfert Haute Tech", "Protocole de Texte Hyperlien", "Protocole de Transfert Domestique"], "fact": "HTTP est la base de la communication de données sur le web."}},
-{"en": {"q": "Who is the creator of Linux?", "a": ["Linus Torvalds", "Bill Gates", "Steve Jobs", "Mark Zuckerberg"], "fact": "Linus Torvalds created Linux in 1991."}, "fr": {"q": "Qui est le créateur de Linux ?", "a": ["Linus Torvalds", "Bill Gates", "Steve Jobs", "Mark Zuckerberg"], "fact": "Linus Torvalds a créé Linux en 1991."}},
-{"en": {"q": "What year was the first iPhone released?", "a": ["2007", "2005", "2008", "2006"], "fact": "Steve Jobs unveiled the first iPhone on January 9, 2007."}, "fr": {"q": "En quelle année le premier iPhone est-il sorti ?", "a": ["2007", "2005", "2008", "2006"], "fact": "Steve Jobs a dévoilé le premier iPhone le 9 janvier 2007."}},
-{"en": {"q": "What does 'AI' stand for?", "a": ["Artificial Intelligence", "Automated Interface", "Advanced Integration", "Algorithmic Input"], "fact": "AI refers to machines that can perform tasks requiring human intelligence."}, "fr": {"q": "Que signifie 'IA' ?", "a": ["Intelligence Artificielle", "Interface Automatisée", "Intégration Avancée", "Entrée Algorithmique"], "fact": "L'IA désigne les machines capables d'effectuer des tâches nécessitant l'intelligence humaine."}},
-{"en": {"q": "What does 'USB' stand for?", "a": ["Universal Serial Bus", "United System Bridge", "Ultra Speed Buffer", "Universal System Board"], "fact": "USB was introduced in 1996 to standardize connections."}, "fr": {"q": "Que signifie 'USB' ?", "a": ["Bus Série Universel", "Pont Système Unifié", "Tampon Ultra Rapide", "Carte Système Universelle"], "fact": "L'USB a été introduit en 1996 pour standardiser les connexions."}},
-{"en": {"q": "Who founded Microsoft with Bill Gates?", "a": ["Paul Allen", "Steve Wozniak", "Steve Ballmer", "Larry Page"], "fact": "Allen and Gates founded Microsoft in 1975."}, "fr": {"q": "Qui a fondé Microsoft avec Bill Gates ?", "a": ["Paul Allen", "Steve Wozniak", "Steve Ballmer", "Larry Page"], "fact": "Allen et Gates ont fondé Microsoft en 1975."}},
-{"en": {"q": "What does 'RAM' stand for?", "a": ["Random Access Memory", "Rapid Action Module", "Read Access Memory", "Remote Array Memory"], "fact": "RAM is your computer's short-term working memory."}, "fr": {"q": "Que signifie 'RAM' ?", "a": ["Mémoire vive", "Module d'action rapide", "Mémoire de lecture", "Mémoire distante"], "fact": "La RAM est la mémoire de travail à court terme de l'ordinateur."}},
-{"en": {"q": "In binary code, what does '1' represent?", "a": ["On / True", "Off / False", "Zero", "Null"], "fact": "Binary uses only 1 and 0 — the language of all computers."}, "fr": {"q": "En code binaire, que représente '1' ?", "a": ["Activé / Vrai", "Désactivé / Faux", "Zéro", "Nul"], "fact": "Le binaire n'utilise que 1 et 0 — le langage de tous les ordinateurs."}},
-{"en": {"q": "Which company owns YouTube?", "a": ["Google", "Meta", "Amazon", "Microsoft"], "fact": "Google acquired YouTube in 2006 for $1.65 billion."}, "fr": {"q": "Quelle entreprise possède YouTube ?", "a": ["Google", "Meta", "Amazon", "Microsoft"], "fact": "Google a racheté YouTube en 2006 pour 1,65 milliard de dollars."}},
-{"en": {"q": "What was the first graphical web browser?", "a": ["Mosaic", "Netscape", "Internet Explorer", "Firefox"], "fact": "Mosaic, released in 1993, made the web visual."}, "fr": {"q": "Quel fut le premier navigateur web graphique ?", "a": ["Mosaic", "Netscape", "Internet Explorer", "Firefox"], "fact": "Mosaic, sorti en 1993, a rendu le web visuel."}},
-{"en": {"q": "What does 'GPU' stand for?", "a": ["Graphics Processing Unit", "General Program Utility", "Global Processing Unit", "Graphics Power Unit"], "fact": "GPUs power gaming and modern AI training alike."}, "fr": {"q": "Que signifie 'GPU' ?", "a": ["Processeur graphique", "Utilitaire général", "Processeur global", "Unité de puissance graphique"], "fact": "Les GPU alimentent le gaming et l'entraînement de l'IA moderne."}},
-{"en": {"q": "Which language is known as the backbone of web pages?", "a": ["HTML", "Python", "C++", "Java"], "fact": "HTML structures every page you visit."}, "fr": {"q": "Quel langage est la colonne vertébrale des pages web ?", "a": ["HTML", "Python", "C++", "Java"], "fact": "HTML structure chaque page que vous visitez."}},
-{"en": {"q": "What does 'Wi-Fi' primarily use to transmit data?", "a": ["Radio waves", "Light beams", "Sound waves", "Magnetic fields"], "fact": "Wi-Fi operates mainly on 2.4 GHz and 5 GHz radio bands."}, "fr": {"q": "Qu'est-ce que le Wi-Fi utilise pour transmettre les données ?", "a": ["Ondes radio", "Faisceaux lumineux", "Ondes sonores", "Champs magnétiques"], "fact": "Le Wi-Fi fonctionne principalement sur les bandes 2,4 GHz et 5 GHz."}},
-{"en": {"q": "What does 'VPN' stand for?", "a": ["Virtual Private Network", "Visual Processing Node", "Verified Public Network", "Variable Packet Notation"], "fact": "VPNs encrypt your connection and mask your IP address."}, "fr": {"q": "Que signifie 'VPN' ?", "a": ["Réseau Privé Virtuel", "Nœud de Traitement Visuel", "Réseau Public Vérifié", "Notation de Paquets Variables"], "fact": "Les VPN chiffrent votre connexion et masquent votre adresse IP."}},
-{"en": {"q": "Which programming language is known as the language of the web?", "a": ["JavaScript", "Python", "Ruby", "PHP"], "fact": "JavaScript runs in every modern browser natively."}, "fr": {"q": "Quel langage est considéré comme le langage du web ?", "a": ["JavaScript", "Python", "Ruby", "PHP"], "fact": "JavaScript s'exécute nativement dans tous les navigateurs modernes."}},
-{"en": {"q": "What is 'open source' software?", "a": ["Software with publicly available code", "Free antivirus software", "Software made by governments", "Offline-only software"], "fact": "Open source lets anyone view, modify, and distribute the code."}, "fr": {"q": "Qu'est-ce qu'un logiciel open source ?", "a": ["Logiciel au code public", "Antivirus gratuit", "Logiciel gouvernemental", "Logiciel hors-ligne"], "fact": "L'open source permet à chacun de voir, modifier et distribuer le code."}},
-{"en": {"q": "What does 'SSD' stand for?", "a": ["Solid State Drive", "Super Speed Disk", "System Storage Device", "Serial Sync Drive"], "fact": "SSDs use flash memory with no moving parts, making them faster than HDDs."}, "fr": {"q": "Que signifie 'SSD' ?", "a": ["Disque à État Solide", "Disque Super Rapide", "Stockage Système Dédié", "Synchronisation Série Disque"], "fact": "Les SSD utilisent la mémoire flash sans pièces mobiles."}},
-{"en": {"q": "Who founded Apple Computer Company?", "a": ["Steve Jobs", "Bill Gates", "Elon Musk", "Jeff Bezos"], "fact": "Steve Jobs co-founded Apple with Wozniak and Wayne in 1976."}, "fr": {"q": "Qui a fondé Apple ?", "a": ["Steve Jobs", "Bill Gates", "Elon Musk", "Jeff Bezos"], "fact": "Steve Jobs a cofondé Apple avec Wozniak et Wayne en 1976."}}
+  {
+    "en": {
+      "q": "What does CPU stand for?",
+      "a": [
+        "Central Processing Unit",
+        "Computer Personal Unit",
+        "Central Program Utility",
+        "Core Processing Utility"
+      ],
+      "fact": "The CPU is the brain of the computer."
+    },
+    "fr": {
+      "q": "Que signifie CPU ?",
+      "a": [
+        "Unité Centrale de Traitement",
+        "Unité Personnelle d'Ordinateur",
+        "Utilitaire Central de Programme",
+        "Utilitaire de Traitement Central"
+      ],
+      "fact": "Le CPU est le cerveau de l'ordinateur."
+    },
+    "zh": {
+      "q": "\"CPU\"代表什么？",
+      "a": [
+        "中央处理器",
+        "计算机个人单元",
+        "中央程序实用工具",
+        "核心处理单元"
+      ],
+      "fact": "CPU是计算机的\"大脑\"。"
+    },
+    "ar": {
+      "q": "ماذا تعني اختصار CPU؟",
+      "a": [
+        "وحدة المعالجة المركزية",
+        "الوحدة الشخصية للحاسوب",
+        "أداة البرنامج المركزية",
+        "أداة المعالجة الأساسية"
+      ],
+      "fact": "تُعد وحدة المعالجة المركزية عقل الحاسوب."
+    }
+  },
+  {
+    "en": {
+      "q": "Which company created JavaScript?",
+      "a": [
+        "Netscape",
+        "Microsoft",
+        "Google",
+        "Apple"
+      ],
+      "fact": "JavaScript was created by Brendan Eich at Netscape in 1995."
+    },
+    "fr": {
+      "q": "Quelle entreprise a créé JavaScript ?",
+      "a": [
+        "Netscape",
+        "Microsoft",
+        "Google",
+        "Apple"
+      ],
+      "fact": "JavaScript a été créé par Brendan Eich chez Netscape en 1995."
+    },
+    "zh": {
+      "q": "哪家公司创造了JavaScript？",
+      "a": [
+        "网景（Netscape）",
+        "微软",
+        "谷歌",
+        "苹果"
+      ],
+      "fact": "JavaScript由布兰登·艾克于1995年在网景公司创造。"
+    },
+    "ar": {
+      "q": "ما الشركة التي أنشأت لغة جافاسكريبت؟",
+      "a": [
+        "نتسكيب",
+        "مايكروسوفت",
+        "جوجل",
+        "آبل"
+      ],
+      "fact": "أنشأ بريندان آيك جافاسكريبت في شركة نتسكيب عام 1995."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'HTTP' stand for?",
+      "a": [
+        "HyperText Transfer Protocol",
+        "High Tech Transfer Process",
+        "Hyperlink Text Protocol",
+        "Home Tool Transfer Protocol"
+      ],
+      "fact": "HTTP is the foundation of data communication on the web."
+    },
+    "fr": {
+      "q": "Que signifie 'HTTP' ?",
+      "a": [
+        "Protocole de Transfert HyperTexte",
+        "Processus de Transfert Haute Tech",
+        "Protocole de Texte Hyperlien",
+        "Protocole de Transfert Domestique"
+      ],
+      "fact": "HTTP est la base de la communication de données sur le web."
+    },
+    "zh": {
+      "q": "\"HTTP\"代表什么？",
+      "a": [
+        "超文本传输协议",
+        "高科技传输过程",
+        "超链接文本协议",
+        "家庭工具传输协议"
+      ],
+      "fact": "HTTP是网络数据通信的基础。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"HTTP\"؟",
+      "a": [
+        "بروتوكول نقل النص التشعبي",
+        "عملية نقل التقنية العالية",
+        "بروتوكول نص الروابط",
+        "بروتوكول نقل أدوات المنزل"
+      ],
+      "fact": "يُعد HTTP أساس الاتصال بالبيانات على الويب."
+    }
+  },
+  {
+    "en": {
+      "q": "Who is the creator of Linux?",
+      "a": [
+        "Linus Torvalds",
+        "Bill Gates",
+        "Steve Jobs",
+        "Mark Zuckerberg"
+      ],
+      "fact": "Linus Torvalds created Linux in 1991."
+    },
+    "fr": {
+      "q": "Qui est le créateur de Linux ?",
+      "a": [
+        "Linus Torvalds",
+        "Bill Gates",
+        "Steve Jobs",
+        "Mark Zuckerberg"
+      ],
+      "fact": "Linus Torvalds a créé Linux en 1991."
+    },
+    "zh": {
+      "q": "Linux的创造者是谁？",
+      "a": [
+        "林纳斯·托瓦兹",
+        "比尔·盖茨",
+        "史蒂夫·乔布斯",
+        "马克·扎克伯格"
+      ],
+      "fact": "林纳斯·托瓦兹于1991年创造了Linux。"
+    },
+    "ar": {
+      "q": "من مبتكر نظام لينكس؟",
+      "a": [
+        "لينوس تورفالدس",
+        "بيل غيتس",
+        "ستيف جوبز",
+        "مارك زوكربيرغ"
+      ],
+      "fact": "أنشأ لينوس تورفالدس لينكس عام 1991."
+    }
+  },
+  {
+    "en": {
+      "q": "What year was the first iPhone released?",
+      "a": [
+        "2007",
+        "2005",
+        "2008",
+        "2006"
+      ],
+      "fact": "Steve Jobs unveiled the first iPhone on January 9, 2007."
+    },
+    "fr": {
+      "q": "En quelle année le premier iPhone est-il sorti ?",
+      "a": [
+        "2007",
+        "2005",
+        "2008",
+        "2006"
+      ],
+      "fact": "Steve Jobs a dévoilé le premier iPhone le 9 janvier 2007."
+    },
+    "zh": {
+      "q": "第一代iPhone是哪一年发布的？",
+      "a": [
+        "2007",
+        "2005",
+        "2008",
+        "2006"
+      ],
+      "fact": "2007年1月9日，史蒂夫·乔布斯发布了第一代iPhone。"
+    },
+    "ar": {
+      "q": "في أي عام أُطلق أول آيفون؟",
+      "a": [
+        "2007",
+        "2005",
+        "2008",
+        "2006"
+      ],
+      "fact": "كشف ستيف جوبز عن أول آيفون في 9 يناير 2007."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'AI' stand for?",
+      "a": [
+        "Artificial Intelligence",
+        "Automated Interface",
+        "Advanced Integration",
+        "Algorithmic Input"
+      ],
+      "fact": "AI refers to machines that can perform tasks requiring human intelligence."
+    },
+    "fr": {
+      "q": "Que signifie 'IA' ?",
+      "a": [
+        "Intelligence Artificielle",
+        "Interface Automatisée",
+        "Intégration Avancée",
+        "Entrée Algorithmique"
+      ],
+      "fact": "L'IA désigne les machines capables d'effectuer des tâches nécessitant l'intelligence humaine."
+    },
+    "zh": {
+      "q": "\"AI\"代表什么？",
+      "a": [
+        "人工智能",
+        "自动化界面",
+        "高级集成",
+        "算法输入"
+      ],
+      "fact": "AI指能够执行需要人类智能的任务的机器。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"AI\"؟",
+      "a": [
+        "الذكاء الاصطناعي",
+        "الواجهة الآلية",
+        "التكامل المتقدم",
+        "المدخل الخوارزمي"
+      ],
+      "fact": "يشير الذكاء الاصطناعي إلى آلات تؤدي مهام تتطلب ذكاءً بشريًا."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'USB' stand for?",
+      "a": [
+        "Universal Serial Bus",
+        "United System Bridge",
+        "Ultra Speed Buffer",
+        "Universal System Board"
+      ],
+      "fact": "USB was introduced in 1996 to standardize connections."
+    },
+    "fr": {
+      "q": "Que signifie 'USB' ?",
+      "a": [
+        "Bus Série Universel",
+        "Pont Système Unifié",
+        "Tampon Ultra Rapide",
+        "Carte Système Universelle"
+      ],
+      "fact": "L'USB a été introduit en 1996 pour standardiser les connexions."
+    },
+    "zh": {
+      "q": "\"USB\"代表什么？",
+      "a": [
+        "通用串行总线",
+        "联合系统桥",
+        "超高速缓冲器",
+        "通用系统板"
+      ],
+      "fact": "USB于1996年推出，用于统一连接标准。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"USB\"؟",
+      "a": [
+        "الناقل التسلسلي العام",
+        "جسر الأنظمة الموحّد",
+        "مخزن السرعة الفائقة",
+        "لوحة النظام العامة"
+      ],
+      "fact": "أُطلق USB عام 1996 لتوحيد معايير التوصيل."
+    }
+  },
+  {
+    "en": {
+      "q": "Who founded Microsoft with Bill Gates?",
+      "a": [
+        "Paul Allen",
+        "Steve Wozniak",
+        "Steve Ballmer",
+        "Larry Page"
+      ],
+      "fact": "Allen and Gates founded Microsoft in 1975."
+    },
+    "fr": {
+      "q": "Qui a fondé Microsoft avec Bill Gates ?",
+      "a": [
+        "Paul Allen",
+        "Steve Wozniak",
+        "Steve Ballmer",
+        "Larry Page"
+      ],
+      "fact": "Allen et Gates ont fondé Microsoft en 1975."
+    },
+    "zh": {
+      "q": "谁与比尔·盖茨一起创立了微软？",
+      "a": [
+        "保罗·艾伦",
+        "史蒂夫·沃兹尼亚克",
+        "史蒂夫·鲍尔默",
+        "拉里·佩奇"
+      ],
+      "fact": "艾伦和盖茨于1975年创立了微软。"
+    },
+    "ar": {
+      "q": "من أسس مايكروسوفت مع بيل غيتس؟",
+      "a": [
+        "بول ألين",
+        "ستيف ووزنياك",
+        "ستيف بالمر",
+        "لاري بيدج"
+      ],
+      "fact": "أسس ألين وغيتس مايكروسوفت عام 1975."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'RAM' stand for?",
+      "a": [
+        "Random Access Memory",
+        "Rapid Action Module",
+        "Read Access Memory",
+        "Remote Array Memory"
+      ],
+      "fact": "RAM is your computer's short-term working memory."
+    },
+    "fr": {
+      "q": "Que signifie 'RAM' ?",
+      "a": [
+        "Mémoire vive",
+        "Module d'action rapide",
+        "Mémoire de lecture",
+        "Mémoire distante"
+      ],
+      "fact": "La RAM est la mémoire de travail à court terme de l'ordinateur."
+    },
+    "zh": {
+      "q": "\"RAM\"代表什么？",
+      "a": [
+        "随机存取存储器",
+        "快速动作模块",
+        "读取存取存储器",
+        "远程阵列存储器"
+      ],
+      "fact": "RAM是计算机的短期工作内存。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"RAM\"؟",
+      "a": [
+        "ذاكرة الوصول العشوائي",
+        "وحدة العمل السريع",
+        "ذاكرة الوصول للقراءة",
+        "ذاكرة المصفوفة البعيدة"
+      ],
+      "fact": "ذاكرة RAM هي ذاكرة العمل قصيرة المدى في حاسوبك."
+    }
+  },
+  {
+    "en": {
+      "q": "In binary code, what does '1' represent?",
+      "a": [
+        "On / True",
+        "Off / False",
+        "Zero",
+        "Null"
+      ],
+      "fact": "Binary uses only 1 and 0 — the language of all computers."
+    },
+    "fr": {
+      "q": "En code binaire, que représente '1' ?",
+      "a": [
+        "Activé / Vrai",
+        "Désactivé / Faux",
+        "Zéro",
+        "Nul"
+      ],
+      "fact": "Le binaire n'utilise que 1 et 0 — le langage de tous les ordinateurs."
+    },
+    "zh": {
+      "q": "在二进制代码中，\"1\"代表什么？",
+      "a": [
+        "开/真",
+        "关/假",
+        "零",
+        "空"
+      ],
+      "fact": "二进制只使用1和0——这是所有计算机的语言。"
+    },
+    "ar": {
+      "q": "في النظام الثنائي، ماذا تمثل \"1\"؟",
+      "a": [
+        "تشغيل / صحيح",
+        "إيقاف / خطأ",
+        "صفر",
+        "قيمة فارغة"
+      ],
+      "fact": "يستخدم النظام الثنائي 1 و0 فقط — لغة جميع الحواسيب."
+    }
+  },
+  {
+    "en": {
+      "q": "Which company owns YouTube?",
+      "a": [
+        "Google",
+        "Meta",
+        "Amazon",
+        "Microsoft"
+      ],
+      "fact": "Google acquired YouTube in 2006 for $1.65 billion."
+    },
+    "fr": {
+      "q": "Quelle entreprise possède YouTube ?",
+      "a": [
+        "Google",
+        "Meta",
+        "Amazon",
+        "Microsoft"
+      ],
+      "fact": "Google a racheté YouTube en 2006 pour 1,65 milliard de dollars."
+    },
+    "zh": {
+      "q": "哪家公司拥有YouTube？",
+      "a": [
+        "谷歌",
+        "Meta",
+        "亚马逊",
+        "微软"
+      ],
+      "fact": "谷歌于2006年以16.5亿美元收购了YouTube。"
+    },
+    "ar": {
+      "q": "ما الشركة المالكة ليوتيوب؟",
+      "a": [
+        "جوجل",
+        "ميتا",
+        "أمازون",
+        "مايكروسوفت"
+      ],
+      "fact": "استحوذت جوجل على يوتيوب عام 2006 مقابل 1.65 مليار دولار."
+    }
+  },
+  {
+    "en": {
+      "q": "What was the first graphical web browser?",
+      "a": [
+        "Mosaic",
+        "Netscape",
+        "Internet Explorer",
+        "Firefox"
+      ],
+      "fact": "Mosaic, released in 1993, made the web visual."
+    },
+    "fr": {
+      "q": "Quel fut le premier navigateur web graphique ?",
+      "a": [
+        "Mosaic",
+        "Netscape",
+        "Internet Explorer",
+        "Firefox"
+      ],
+      "fact": "Mosaic, sorti en 1993, a rendu le web visuel."
+    },
+    "zh": {
+      "q": "第一个图形化网页浏览器是什么？",
+      "a": [
+        "Mosaic（马赛克）",
+        "网景导航者",
+        "IE浏览器",
+        "火狐"
+      ],
+      "fact": "1993年发布的Mosaic让网络变得可视化。"
+    },
+    "ar": {
+      "q": "ما أول متصفح ويب رسومي؟",
+      "a": [
+        "موزاييك",
+        "نتسكيب",
+        "إنترنت إكسبلورر",
+        "فايرفوكس"
+      ],
+      "fact": "أطلق موزاييك عام 1993 وجعل الويب مرئيًا."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'GPU' stand for?",
+      "a": [
+        "Graphics Processing Unit",
+        "General Program Utility",
+        "Global Processing Unit",
+        "Graphics Power Unit"
+      ],
+      "fact": "GPUs power gaming and modern AI training alike."
+    },
+    "fr": {
+      "q": "Que signifie 'GPU' ?",
+      "a": [
+        "Processeur graphique",
+        "Utilitaire général",
+        "Processeur global",
+        "Unité de puissance graphique"
+      ],
+      "fact": "Les GPU alimentent le gaming et l'entraînement de l'IA moderne."
+    },
+    "zh": {
+      "q": "\"GPU\"代表什么？",
+      "a": [
+        "图形处理器",
+        "通用程序实用工具",
+        "全局处理单元",
+        "图形功率单元"
+      ],
+      "fact": "GPU既驱动游戏，也驱动现代AI训练。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"GPU\"؟",
+      "a": [
+        "وحدة معالجة الرسوميات",
+        "أداة البرنامج العامة",
+        "وحدة المعالجة العالمية",
+        "وحدة طاقة الرسوميات"
+      ],
+      "fact": "تدعم وحدات GPU الألعاب وتدريب الذكاء الاصطناعي الحديث على حد سواء."
+    }
+  },
+  {
+    "en": {
+      "q": "Which language is known as the backbone of web pages?",
+      "a": [
+        "HTML",
+        "Python",
+        "C++",
+        "Java"
+      ],
+      "fact": "HTML structures every page you visit."
+    },
+    "fr": {
+      "q": "Quel langage est la colonne vertébrale des pages web ?",
+      "a": [
+        "HTML",
+        "Python",
+        "C++",
+        "Java"
+      ],
+      "fact": "HTML structure chaque page que vous visitez."
+    },
+    "zh": {
+      "q": "哪种语言被称为网页的骨架？",
+      "a": [
+        "HTML",
+        "Python",
+        "C++",
+        "Java"
+      ],
+      "fact": "HTML构成了你访问的每一个页面的结构。"
+    },
+    "ar": {
+      "q": "ما اللغة المعروفة بأنها العمود الفقري لصفحات الويب؟",
+      "a": [
+        "HTML",
+        "بايثون",
+        "C++",
+        "جافا"
+      ],
+      "fact": "يبني HTML هيكل كل صفحة تزورها."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'Wi-Fi' primarily use to transmit data?",
+      "a": [
+        "Radio waves",
+        "Light beams",
+        "Sound waves",
+        "Magnetic fields"
+      ],
+      "fact": "Wi-Fi operates mainly on 2.4 GHz and 5 GHz radio bands."
+    },
+    "fr": {
+      "q": "Qu'est-ce que le Wi-Fi utilise pour transmettre les données ?",
+      "a": [
+        "Ondes radio",
+        "Faisceaux lumineux",
+        "Ondes sonores",
+        "Champs magnétiques"
+      ],
+      "fact": "Le Wi-Fi fonctionne principalement sur les bandes 2,4 GHz et 5 GHz."
+    },
+    "zh": {
+      "q": "Wi-Fi主要用什么传输数据？",
+      "a": [
+        "无线电波",
+        "光束",
+        "声波",
+        "磁场"
+      ],
+      "fact": "Wi-Fi主要在2.4 GHz和5 GHz无线电频段上运行。"
+    },
+    "ar": {
+      "q": "بماذا يرسل Wi-Fi البيانات أساسًا؟",
+      "a": [
+        "موجات الراديو",
+        "أشعة الضوء",
+        "الموجات الصوتية",
+        "المجالات المغناطيسية"
+      ],
+      "fact": "يعمل Wi-Fi أساسًا على نطاقي الراديو 2.4 و5 غيغاهرتز."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'VPN' stand for?",
+      "a": [
+        "Virtual Private Network",
+        "Visual Processing Node",
+        "Verified Public Network",
+        "Variable Packet Notation"
+      ],
+      "fact": "VPNs encrypt your connection and mask your IP address."
+    },
+    "fr": {
+      "q": "Que signifie 'VPN' ?",
+      "a": [
+        "Réseau Privé Virtuel",
+        "Nœud de Traitement Visuel",
+        "Réseau Public Vérifié",
+        "Notation de Paquets Variables"
+      ],
+      "fact": "Les VPN chiffrent votre connexion et masquent votre adresse IP."
+    },
+    "zh": {
+      "q": "\"VPN\"代表什么？",
+      "a": [
+        "虚拟专用网络",
+        "视觉处理节点",
+        "验证公共网络",
+        "可变数据包记号"
+      ],
+      "fact": "VPN会加密你的连接并隐藏你的IP地址。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"VPN\"؟",
+      "a": [
+        "الشبكة الافتراضية الخاصة",
+        "عقدة المعالجة المرئية",
+        "الشبكة العامة الموثقة",
+        "تدوين الحزم المتغير"
+      ],
+      "fact": "تشفّر شبكات VPN اتصالك وتخفي عنوان IP الخاص بك."
+    }
+  },
+  {
+    "en": {
+      "q": "Which programming language is known as the language of the web?",
+      "a": [
+        "JavaScript",
+        "Python",
+        "Ruby",
+        "PHP"
+      ],
+      "fact": "JavaScript runs in every modern browser natively."
+    },
+    "fr": {
+      "q": "Quel langage est considéré comme le langage du web ?",
+      "a": [
+        "JavaScript",
+        "Python",
+        "Ruby",
+        "PHP"
+      ],
+      "fact": "JavaScript s'exécute nativement dans tous les navigateurs modernes."
+    },
+    "zh": {
+      "q": "哪种编程语言被称为\"网络语言\"？",
+      "a": [
+        "JavaScript",
+        "Python",
+        "Ruby",
+        "PHP"
+      ],
+      "fact": "JavaScript原生运行于每一个现代浏览器中。"
+    },
+    "ar": {
+      "q": "ما لغة البرمجة المعروفة بلغة الويب؟",
+      "a": [
+        "جافاسكريبت",
+        "بايثون",
+        "روبي",
+        "PHP"
+      ],
+      "fact": "تعمل جافاسكريبت أصلاً في كل متصفح حديث."
+    }
+  },
+  {
+    "en": {
+      "q": "What is 'open source' software?",
+      "a": [
+        "Software with publicly available code",
+        "Free antivirus software",
+        "Software made by governments",
+        "Offline-only software"
+      ],
+      "fact": "Open source lets anyone view, modify, and distribute the code."
+    },
+    "fr": {
+      "q": "Qu'est-ce qu'un logiciel open source ?",
+      "a": [
+        "Logiciel au code public",
+        "Antivirus gratuit",
+        "Logiciel gouvernemental",
+        "Logiciel hors-ligne"
+      ],
+      "fact": "L'open source permet à chacun de voir, modifier et distribuer le code."
+    },
+    "zh": {
+      "q": "什么是\"开源\"软件？",
+      "a": [
+        "代码公开可用的软件",
+        "免费杀毒软件",
+        "政府开发的软件",
+        "仅限离线使用的软件"
+      ],
+      "fact": "开源允许任何人查看、修改和分发代码。"
+    },
+    "ar": {
+      "q": "ما البرمجيات مفتوحة المصدر؟",
+      "a": [
+        "البرمجيات المتاح كودها علنًا",
+        "برامج الحماية المجانية",
+        "البرمجيات التي تطورها الحكومات",
+        "البرمجيات التي تعمل دون اتصال فقط"
+      ],
+      "fact": "تتيح البرمجيات مفتوحة المصدر لأي شخص الاطلاع على الكود وتعديله وتوزيعه."
+    }
+  },
+  {
+    "en": {
+      "q": "What does 'SSD' stand for?",
+      "a": [
+        "Solid State Drive",
+        "Super Speed Disk",
+        "System Storage Device",
+        "Serial Sync Drive"
+      ],
+      "fact": "SSDs use flash memory with no moving parts, making them faster than HDDs."
+    },
+    "fr": {
+      "q": "Que signifie 'SSD' ?",
+      "a": [
+        "Disque à État Solide",
+        "Disque Super Rapide",
+        "Stockage Système Dédié",
+        "Synchronisation Série Disque"
+      ],
+      "fact": "Les SSD utilisent la mémoire flash sans pièces mobiles."
+    },
+    "zh": {
+      "q": "\"SSD\"代表什么？",
+      "a": [
+        "固态硬盘",
+        "超高速磁盘",
+        "系统存储设备",
+        "串行同步驱动器"
+      ],
+      "fact": "SSD采用闪存、无活动部件，因此比机械硬盘（HDD）更快。"
+    },
+    "ar": {
+      "q": "ماذا تعني \"SSD\"؟",
+      "a": [
+        "القرص ذو الحالة الصلبة",
+        "قرص السرعة الفائقة",
+        "جهاز تخزين النظام",
+        "مشغل المزامنة التسلسلية"
+      ],
+      "fact": "تستخدم أقراص SSD ذاكرة فلاش دون أجزاء متحركة، مما يجعلها أسرع من أقراص HDD."
+    }
+  },
+  {
+    "en": {
+      "q": "Who founded Apple Computer Company?",
+      "a": [
+        "Steve Jobs",
+        "Bill Gates",
+        "Elon Musk",
+        "Jeff Bezos"
+      ],
+      "fact": "Steve Jobs co-founded Apple with Wozniak and Wayne in 1976."
+    },
+    "fr": {
+      "q": "Qui a fondé Apple ?",
+      "a": [
+        "Steve Jobs",
+        "Bill Gates",
+        "Elon Musk",
+        "Jeff Bezos"
+      ],
+      "fact": "Steve Jobs a cofondé Apple avec Wozniak et Wayne en 1976."
+    },
+    "zh": {
+      "q": "谁创立了苹果公司？",
+      "a": [
+        "史蒂夫·乔布斯",
+        "比尔·盖茨",
+        "埃隆·马斯克",
+        "杰夫·贝索斯"
+      ],
+      "fact": "1976年，史蒂夫·乔布斯与沃兹尼亚克和韦恩共同创立了苹果。"
+    },
+    "ar": {
+      "q": "من أسس شركة أبل؟",
+      "a": [
+        "ستيف جوبز",
+        "بيل غيتس",
+        "إيلون ماسك",
+        "جيف بيزوس"
+      ],
+      "fact": "أسس ستيف جوبز شركة أبل مع ووزنياك ووين عام 1976."
+    }
+  }
 ]
