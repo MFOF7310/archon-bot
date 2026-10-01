@@ -62,7 +62,7 @@ module.exports = {
         }
         await setLanguage(client, message.guild.id, code, message.guild.name);
         return message.reply({
-            embeds: [buildEmbed(code)]
+            embeds: [buildEmbed(code, message.guild)]
         });
     },
 
@@ -91,7 +91,7 @@ module.exports = {
             const code = interaction.options.getString('language');
             if (!code || !LANGUAGES[code]) return interaction.reply({ content: '❌ Invalid language.', flags: 64 });
             await setLanguage(client, interaction.guild.id, code, interaction.guild.name);
-            return interaction.reply({ embeds: [buildEmbed(code)], flags: 64 });
+            return interaction.reply({ embeds: [buildEmbed(code, interaction.guild)], flags: 64 });
         }
     }
 };
@@ -109,13 +109,13 @@ async function setLanguage(client, guildId, code, guildName) {
     }
 }
 
-function buildEmbed(code) {
+function buildEmbed(code, guild = null) {
     const lang = LANGUAGES[code] || LANGUAGES['en'];
     // config/emojis stores ':globe:'-style shortcodes for some names — Discord does
     // NOT parse shortcodes in bot messages, so fall back to real unicode chars.
     const globe = (EMOJIS.globe && !String(EMOJIS.globe).startsWith(':')) ? EMOJIS.globe : '🌐';
     const check = (EMOJIS.check && !String(EMOJIS.check).startsWith(':')) ? EMOJIS.check : '✅';
-    const confirmMsg = {
+    let confirmMsg = {
         en: `Server language set to **${lang.native}**\n\nAll bot responses will now appear in **${lang.native}**.`,
         fr: `Langue du serveur définie sur **${lang.native}**\n\nToutes les réponses apparaîtront en **${lang.native}**.`,
         bm: `Serveur ka kan sɛbɛnni bɛ **${lang.native}** na\n\nJaabiw bɛɛ bɛna kɛ **${lang.native}** na.`,
@@ -123,10 +123,30 @@ function buildEmbed(code) {
         zh: `服务器语言已设置为 **${lang.native}**\n\n所有回复将以 **${lang.native}** 显示。`,
     }[code] || `Server language set to **${lang.native}**\n\nAll bot responses will now appear in **${lang.native}**.`;
 
+    // Under Auto: show what language actually resolves right now (Discord native setting)
+    let autoNote = '';
+    if (code === 'auto' && guild) {
+        const autoMsg = {
+            en: "Server language set to **Auto** — I follow Discord's native server language, with command detection as fallback.",
+            fr: "Langue définie sur **Auto** — je suis la langue native du serveur Discord, avec détection par commande en secours.",
+            bm: "Serveur ka kan sɛbɛnni bɛ **Auto** na — ne bɛ Discord serveur kan na to, command detection fana bɛ se ka kɛ.",
+            ar: "تم التعيين على **Auto** — أتبع لغة السيرفر الأصلية في Discord، مع كشف الأوامر كاحتياطٍ.",
+            zh: "已设置为 **Auto**——我将跟随 Discord 服务器原生语言，并以命令检测作为后备。",
+        };
+        const pl = guild.preferredLocale || 'en-US';
+        let det = 'en';
+        if (pl.startsWith('fr')) det = 'fr';
+        else if (pl.startsWith('zh')) det = 'zh';
+        else if (pl.startsWith('ar')) det = 'ar';
+        const detName = { fr: '🇫🇷 Français', zh: '🇨🇳 中文', ar: '🇸🇦 العربية', en: '🇬🇧 English' }[det];
+        autoNote = `\n\n🔎 **Auto** currently resolves to **${detName}**\n\`\`\`\n▸ SOURCE   Discord server language (\`${pl}\`)\n▸ FALLBACK Command-language detection\n\`\`\``;
+        confirmMsg = autoMsg[code] || autoMsg.en;
+    }
+
     return new EmbedBuilder()
         .setColor('#00f0ff')
         .setAuthor({ name: '🌐 Language Updated' })
         .setTitle(`${lang.flag} ${lang.native} (${lang.name})`)
-        .setDescription(globe + ' ' + check + ' ' + confirmMsg)
+        .setDescription(globe + ' ' + check + ' ' + confirmMsg + autoNote)
         .setFooter({ text: 'ARCHON CG-223  •  Language Settings' });
 }
