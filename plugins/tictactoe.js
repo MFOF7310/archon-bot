@@ -245,8 +245,8 @@ module.exports = {
             });
             console.log(`[TTT] Batch queued: Fees deducted from ${challenger.tag} and ${opponent.tag}`);
         } else {
-            db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ?`).run(entryFee, challenger.id);
-            db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ?`).run(entryFee, opponent.id);
+            db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?`).run(entryFee, challenger.id, guildId);
+            db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?`).run(entryFee, opponent.id, guildId);
         }
         
         // ================= GAME STATE =================
@@ -377,13 +377,13 @@ module.exports = {
                 
                 if (result === 'tie') {
                     if (client.queueUserUpdate) {
-                        const cData = client.getUserData(challenger.id) || challengerData;
-                        const oData = client.getUserData(opponent.id) || opponentData;
+                        const cData = client.getUserData(challenger.id, guildId) || challengerData;
+                        const oData = client.getUserData(opponent.id, guildId) || opponentData;
                         client.queueUserUpdate(challenger.id, guildId, { ...cData, credits: (cData.credits || 0) + entryFee });
                         client.queueUserUpdate(opponent.id, guildId, { ...oData, credits: (oData.credits || 0) + entryFee });
                     } else {
-                        db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(entryFee, challenger.id);
-                        db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(entryFee, opponent.id);
+                        db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(entryFee, challenger.id, guildId);
+                        db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(entryFee, opponent.id, guildId);
                     }
                     
                     resultEmbed
@@ -475,8 +475,8 @@ if (message.guild) {
             // Switch turn
             turn = turn === challenger.id ? opponent.id : challenger.id;
             
-            const updatedChallenger = client.getUserData(challenger.id) || challengerData;
-            const updatedOpponent = client.getUserData(opponent.id) || opponentData;
+            const updatedChallenger = client.getUserData(challenger.id, guildId) || challengerData;
+            const updatedOpponent = client.getUserData(opponent.id, guildId) || opponentData;
             
             const updatedEmbed = new EmbedBuilder()
                 .setColor('#9b59b6')
@@ -504,13 +504,13 @@ if (message.guild) {
                 activeGames.delete(gameKey);
                 
                 if (client.queueUserUpdate) {
-                    const cData = client.getUserData(challenger.id) || challengerData;
-                    const oData = client.getUserData(opponent.id) || opponentData;
+                    const cData = client.getUserData(challenger.id, guildId) || challengerData;
+                    const oData = client.getUserData(opponent.id, guildId) || opponentData;
                     client.queueUserUpdate(challenger.id, guildId, { ...cData, credits: (cData.credits || 0) + entryFee });
                     client.queueUserUpdate(opponent.id, guildId, { ...oData, credits: (oData.credits || 0) + entryFee });
                 } else {
-                    db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(entryFee, challenger.id);
-                    db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`).run(entryFee, opponent.id);
+                    db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(entryFee, challenger.id, guildId);
+                    db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(entryFee, opponent.id, guildId);
                 }
                 
                 const timeoutEmbed = new EmbedBuilder()
