@@ -183,7 +183,7 @@ async function startSession(source, db, lang) {
   if (!release) return source.reply({ content: T('alreadyPlaying'), ...(ctx.isSlash ? { flags: 64 } : {}) }).catch(() => {});
 
   const s = {
-    ctx, db, lang, client: ctx.client, userId: ctx.user.id, guildId: ctx.guildId, username: ctx.user.username,
+    ctx, db, lang, client: ctx.client, userId: ctx.user.id, guildId: ctx.guildId, username: ctx.member?.displayName || ctx.user.globalName || ctx.user.username,
     cat: 'general', diff: 'easy', phase: 'menu', release,
     questions: [], index: 0, correct: 0, streak: 0, maxStreak: 0, points: 0,
     paid: { credits: 0, xp: 0 }, capped: false, levelUp: null, deadline: 0, timer: null, collector: null,

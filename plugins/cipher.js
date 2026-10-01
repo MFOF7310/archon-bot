@@ -80,7 +80,7 @@ function createGame(interaction, tierKey, lang) {
     return { word, method, shift, cipher: encode(word, method, shift), timeMs: roundTime(tier, word, method), deadline: 0 };
   });
   return {
-    userId: interaction.user.id, guildId: interaction.guildId, username: ui.clean(interaction.user.username),
+    userId: interaction.user.id, guildId: interaction.guildId, username: ui.clean(interaction.member?.displayName || interaction.user.globalName || interaction.user.username),
     interaction, client: interaction.client, lang, tierKey, tier, rounds,
     round: 0, streak: 0, maxStreak: 0, cracked: 0, points: 0,
     paid: { credits: 0, xp: 0 }, capped: false, levelUp: null,
@@ -280,7 +280,7 @@ function profileCard(interaction, db, lang) {
   const { here, all } = progress.statsFor(db, GAME, interaction.user.id, interaction.guildId);
   const tier = TIERS[here?.top_tier];
   return ui.card(interaction.client, {
-    author: C('profileTitle', { name: ui.clean(interaction.user.username) }),
+    author: C('profileTitle', { name: ui.clean(interaction.member?.displayName || interaction.user.globalName || interaction.user.username) }),
     fields: [
       { name: C('pTitle'), value: C(`titles.${titleFor(all.points)}`), inline: true },
       { name: C('pPoints'), value: String(all.points), inline: true },
