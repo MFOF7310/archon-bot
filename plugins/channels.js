@@ -131,8 +131,8 @@ module.exports = {
             const _need = _cp.neededFor(type);
             const _d = _cp.diagnose(interaction.guild, channel, interaction.guild.members.me, _need);
             const _statusLine = _d.ok
-                ? `✅ **READY** — I can post there (${_need.map(x => x[0]).join(', ')} verified)`
-                : `⚠️ **SET BUT BLOCKED** — ${_d.role || 'this channel'} denies ${_d.missing.join(', ')}
+                ? `✅ **ACCESS GRANTED** — ${_need.map(x => x[0]).join(', ')} verified`
+                : `⛔ **ACCESS DENIED** — ${_d.role || 'this channel'} denies ${_d.missing.join(', ')}
 **Fix:** Edit Channel → Permissions → add the ARCHON role → allow ${_d.missing.join(', ')}`;
 
             const embed = new EmbedBuilder()
@@ -208,7 +208,7 @@ module.exports = {
             client.settings?.delete(guildId);
             const _cp2 = require('../lib/canPost');
             const _d2 = _cp2.diagnose(message.guild, ch, message.guild.members.me, _cp2.neededFor(type));
-            const _tail = _d2.ok ? '' : `\n⚠️ **Set, but blocked** — ${_d2.role || 'this channel'} denies ${_d2.missing.join(', ')}. Fix: Edit Channel → Permissions → add ARCHON role → allow ${_d2.missing.join(', ')}.`;
+            const _tail = _d2.ok ? '' : `\n\n⛔ **ACCESS DENIED** — ${_d2.role || 'this channel'} denies ${_d2.missing.join(', ')}\n**Fix:** Edit Channel → Permissions → add ARCHON role → allow ${_d2.missing.join(', ')}`;
             return message.reply(`${EMOJIS.check} **${def.label}** set to <#${channelId}>${_tail}`).catch(() => {});
         }
     }

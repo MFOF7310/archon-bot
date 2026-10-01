@@ -19,7 +19,7 @@
   "permYourRole": "أعلى دور لك يفتقد هذه الصلاحية.",
   "permBotRole": "قد يحتاج دور البوت أيضًا إلى ترقية.",
   "helpTitle": "🐢 أمر وضع الإبطاء",
-  "botNoPermsPrivate": "⛔ لا أستطيع ضبط الوضع البطيء في {ch} بعد — هذه القناة خاصة ولا أظهر في قائمتها.\n\n**الحل (نحو 10 ثوانٍ):**\n1. افتح القناة → **Add members or roles** (أو **Edit Channel** → **Permissions**)\n2. أضف **{bot}**\n3. فعّل **View Channel** و**Manage Channels**\n4. أعد تشغيل الأمر",
-  "botNoPermsRoleBlock": "⛔ لا أستطيع ضبط الوضع البطيء في {ch} — الدور {role} يمنعني هناك.\n\n**الحل:**\n1. **Edit Channel** → **Permissions**\n2. **أضف دور {bot}** واسمح بـ **{perms}** — لا تغيّر {role}\n3. أعد تشغيل الأمر",
-  "botNoPermsMissingPerm": "⛔ دوري يفتقد إلى **{perms}** على مستوى الخادم، فلا أستطيع إدارة {ch}.\n\n**الحل:**\n1. **Server Settings** → **Roles** → **{bot}**\n2. فعّل **{perms}**\n3. أعد تشغيل الأمر\n\n_ما زال لا يعمل؟ قد تكون القناة خاصة أيضًا — أضف {bot} إلى أذوناتها._"
+  "botNoPermsPrivate": "⛔ **تم رفض الوصول**\n```\n▸ القناة   {ch}\n▸ السبب    قناة خاصة — لا أظهر في قائمتها\n```\n**بروتوكول الحل** — ~10 ثوانٍ\n`1` افتح القناة → **Add members or roles**\n`2` أضف **{bot}**\n`3` فعّل **View Channel** و**Manage Channels**\n`4` أعد تشغيل `/slowmode`\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`",
+  "botNoPermsRoleBlock": "⛔ **تم رفض الوصول**\n```\n▸ القناة      {ch}\n▸ المانع      {role}\n▸ المفقود     {perms}\n```\n**بروتوكول الحل**\n`1` Edit Channel → Permissions\n`2` **أضف دور {bot}** واسمح بـ **{perms}**\n`3` لا تغيّر {role} — وإلا ستُفتح القناة للجميع\n`4` أعد تشغيل `/slowmode`\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`",
+  "botNoPermsMissingPerm": "⛔ **تم رفض الوصول**\n```\n▸ القناة      {ch}\n▸ المفقود     {perms} (مستوى السيرفر)\n```\n**بروتوكول الحل**\n`1` Server Settings → Roles → **{bot}**\n`2` فعّل **{perms}**\n`3` أعد تشغيل `/slowmode`\n\n_ما زال لا يعمل؟ قد تكون القناة خاصة أيضًا — أضف {bot} إلى أذوناتها._\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`"
 }

@@ -111,8 +111,10 @@ async function setLanguage(client, guildId, code, guildName) {
 
 function buildEmbed(code) {
     const lang = LANGUAGES[code] || LANGUAGES['en'];
-    const globe = EMOJIS.globe || '🌐';
-    const check = EMOJIS.check || '✅';
+    // config/emojis stores ':globe:'-style shortcodes for some names — Discord does
+    // NOT parse shortcodes in bot messages, so fall back to real unicode chars.
+    const globe = (EMOJIS.globe && !String(EMOJIS.globe).startsWith(':')) ? EMOJIS.globe : '🌐';
+    const check = (EMOJIS.check && !String(EMOJIS.check).startsWith(':')) ? EMOJIS.check : '✅';
     const confirmMsg = {
         en: `Server language set to **${lang.native}**\n\nAll bot responses will now appear in **${lang.native}**.`,
         fr: `Langue du serveur définie sur **${lang.native}**\n\nToutes les réponses apparaîtront en **${lang.native}**.`,

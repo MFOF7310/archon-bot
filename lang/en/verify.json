@@ -88,7 +88,7 @@
   "dmFooter": "Type the code to verify",
   "dmRetryFooter": "ARCHON CG-223 • Type the code shown above",
   "rejoinBtn": "🔗 Rejoin Server",
-  "cantPostPrivate": "⛔ I can't post in {ch} yet — that channel is private, and I'm not on its list.\n\n**To fix it (about 10 seconds):**\n1. Open the channel → **Add members or roles** (or Edit Channel → Permissions)\n2. Add **{bot}**\n3. Turn on **View Channel**, **Send Messages** and **Embed Links**\n4. Run `/verify panel` again",
-  "cantPostRoleBlock": "⛔ I can't post in {ch} — {role} is blocking me there.\n\n**To fix it:**\n1. Edit Channel → Permissions\n2. **Add the {bot} role** and allow **{perms}** — leave {role} alone, changing it would open the channel to everyone\n3. Run the command again",
-  "cantPostMissingPerm": "⛔ My role is missing **{perms}** at the server level, so I can't post in {ch}.\n\n**To fix it:**\n1. Server Settings → Roles → **{bot}**\n2. Enable **{perms}**\n3. Run the command again\n\n_Still failing? This channel may also be private — add {bot} to its permissions as well._"
+  "cantPostPrivate": "⛔ **ACCESS DENIED**\n```\n▸ NODE    {ch}\n▸ CAUSE   Private channel — not on the access list\n```\n**RESOLUTION PROTOCOL** — est. 10 sec\n`1` Channel → **Add members or roles**\n`2` Add **{bot}**\n`3` Enable **View Channel**, **Send Messages**, **Embed Links**\n`4` Re-run the command\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`",
+  "cantPostRoleBlock": "⛔ **ACCESS DENIED**\n```\n▸ NODE        {ch}\n▸ BLOCKED BY  {role}\n▸ MISSING     {perms}\n```\n**RESOLUTION PROTOCOL**\n`1` Edit Channel → Permissions\n`2` **Add the {bot} role** and allow **{perms}**\n`3` Leave {role} untouched — changing it opens the channel to everyone\n`4` Re-run the command\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`",
+  "cantPostMissingPerm": "⛔ **ACCESS DENIED**\n```\n▸ NODE     {ch}\n▸ MISSING  {perms} (server level)\n```\n**RESOLUTION PROTOCOL**\n`1` Server Settings → Roles → **{bot}**\n`2` Enable **{perms}**\n`3` Re-run the command\n\n_Still failing? This channel may also be private — add {bot} to its permissions._\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`"
 }
