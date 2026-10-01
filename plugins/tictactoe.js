@@ -396,8 +396,9 @@ module.exports = {
                             '\u001b[0;37m\u25b8 TIP      \u001b[0mChallenge again to settle the score!\n' +
                             '```'
                         );
-                    const winnerData = client.getUserData(winnerId) || (winnerId === challenger.id ? challengerData : opponentData);
-                    const loserData = client.getUserData(loserId) || (loserId === challenger.id ? challengerData : opponentData);
+                    } else {
+                    const winnerData = client.getUserData(winnerId, guildId) || (winnerId === challenger.id ? challengerData : opponentData);
+                    const loserData = client.getUserData(loserId, guildId) || (loserId === challenger.id ? challengerData : opponentData);
                     
                     if (client.queueUserUpdate) {
                         client.queueUserUpdate(winnerId, guildId, {
@@ -415,8 +416,8 @@ module.exports = {
                             username: loser.username
                         });
                     } else {
-                        db.prepare(`UPDATE users SET credits = credits + ?, xp = xp + 100, games_played = games_played + 1, games_won = games_won + 1 WHERE id = ?`).run(winnerReward, winnerId);
-                        db.prepare(`UPDATE users SET xp = xp + 25, games_played = games_played + 1 WHERE id = ?`).run(loserId);
+                        db.prepare(`UPDATE users SET credits = credits + ?, xp = xp + 100, games_played = games_played + 1, games_won = games_won + 1 WHERE id = ? AND guild_id = ?`).run(winnerReward, winnerId, guildId);
+                        db.prepare(`UPDATE users SET xp = xp + 25, games_played = games_played + 1 WHERE id = ? AND guild_id = ?`).run(loserId, guildId);
                     }
                     
                     const newWinnerLevel = calculateLevel((winnerData?.xp || 0) + 100);
