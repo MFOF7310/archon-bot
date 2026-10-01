@@ -5987,11 +5987,8 @@ apiApp.get('/api/warnings/:guildId?', (req, res) => {
     const { guildId } = req.params;
     try {
         let warnings;
-        if (guildId && validateSnowflake(guildId)) {
-            warnings = db.prepare('SELECT * FROM warnings WHERE guild_id = ? ORDER BY created_at DESC').all(guildId);
-        } else {
-            warnings = db.prepare('SELECT * FROM warnings ORDER BY created_at DESC LIMIT 100').all();
-        }
+        if (!guildId || !validateSnowflake(guildId)) return res.status(400).json({ error: 'a valid guild id is required' });
+        warnings = db.prepare('SELECT * FROM warnings WHERE guild_id = ? ORDER BY created_at DESC').all(guildId);
         res.json({ success: true, warnings, count: warnings.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
