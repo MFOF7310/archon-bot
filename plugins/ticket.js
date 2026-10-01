@@ -428,7 +428,18 @@ module.exports = {
                 resetACTimer(tc.id,client,ss);
                 const e=new EmbedBuilder().setColor('#2ecc71').setDescription(`${t('ticket.made', lang)}\n👉 <#${tc.id}>`).setTimestamp();
                 await ix.editReply({embeds:[e]}).catch(()=>{});
-            }catch(err){console.error('[TIX]',err);await ix.editReply({content:t('ticket.createErr', lang)}).catch(()=>{});}
+            }catch(err){
+                const _cp=require('../lib/canPost'),_me=g.members.me;
+                const _cat=ss?.ticketCategory?g.channels.cache.get(ss.ticketCategory):null;
+                const _tgt=_cat||g;
+                const _d=_cat?_cp.diagnose(g,_cat,_me,[['Manage Channels', PermissionFlagsBits.ManageChannels], ['Manage Roles', PermissionFlagsBits.ManageRoles]]):null;
+                if(_d&&!_d.ok){
+                    await ix.editReply({content:t('ticket.'+_d.key.replace('cantPost','cantCreate'),lang,{ch:_cat?String(_cat):'this category',role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName})}).catch(()=>{});
+                }else{
+                    console.error('[TIX]',err.message);
+                    await ix.editReply({content:t('ticket.createErr',lang)}).catch(()=>{});
+                }
+            }
             return true;
         }
 
