@@ -19,7 +19,7 @@
   "permYourRole": "Your highest role lacks this permission.",
   "permBotRole": "Bot role may also need elevation.",
   "helpTitle": "🐢 SLOWMODE COMMAND",
-  "botNoPermsPrivate": "⛔ I can't set slowmode in {ch} yet — that channel is private, and I'm not on its list.\n\n**To fix it (about 10 seconds):**\n1. Open the channel → **Add members or roles** (or Edit Channel → Permissions)\n2. Add **ARCHON**\n3. Turn on **View Channel** and **Manage Channels**\n4. Run the command again",
-  "botNoPermsRoleBlock": "⛔ I can't set slowmode in {ch} — {role} is blocking me there.\n\n**To fix it:**\n1. Edit Channel → Permissions\n2. **Add the ARCHON role** and allow **{perms}** — leave {role} alone, changing it would open the channel to everyone\n3. Run the command again",
-  "botNoPermsMissingPerm": "⛔ I can't manage channels anywhere — my role is missing **{perms}** server-wide.\n\n**To fix it:**\n1. Server Settings → Roles → **ARCHON**\n2. Enable **Manage Channels**\n3. Run the command again"
+  "botNoPermsPrivate": "⛔ I can't set slowmode in {ch} yet — that channel is private, and I'm not on its list.\n\n**To fix it (about 10 seconds):**\n1. Open the channel → **Add members or roles** (or Edit Channel → Permissions)\n2. Add **{bot}**\n3. Turn on **View Channel** and **Manage Channels**\n4. Run the command again",
+  "botNoPermsRoleBlock": "⛔ I can't set slowmode in {ch} — {role} is blocking me there.\n\n**To fix it:**\n1. Edit Channel → Permissions\n2. **Add the {bot} role** and allow **{perms}** — leave {role} alone, changing it would open the channel to everyone\n3. Run the command again",
+  "botNoPermsMissingPerm": "⛔ My role is missing **{perms}** at the server level, so I can't manage {ch}.\n\n**To fix it:**\n1. Server Settings → Roles → **{bot}**\n2. Enable **{perms}**\n3. Run the command again\n\n_Still failing? This channel may also be private — add {bot} to its permissions as well._"
 }

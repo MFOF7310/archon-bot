@@ -202,7 +202,7 @@ module.exports = {
         const smDiag = require('../lib/canPost').diagnose(interaction.guild, targetChannel, interaction.guild.members.me, [['Manage Channels', PermissionsBitField.Flags.ManageChannels]]);
         if (!smDiag.ok) {
             return interaction.reply({
-                content: i18n.t('slowmode.' + require('../lib/canPost').keyFor('botNoPerms', smDiag.reason), lang, { channel: targetChannel.toString(), role: smDiag.role || '', perms: (smDiag.missing || []).join(', ') }),
+                content: i18n.t('slowmode.' + require('../lib/canPost').keyFor('botNoPerms', smDiag.reason), lang, { channel: targetChannel.toString(), role: smDiag.role || '', perms: require('../lib/canPost').localize(smDiag.missing || [], lang).join(', '), bot: interaction.guild.members.me.roles.botRole?.name || interaction.guild.members.me.displayName }),
                 flags: MessageFlags.Ephemeral
             }).catch(() => {});
         }

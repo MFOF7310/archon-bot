@@ -236,7 +236,7 @@ module.exports = {
             const ch = interaction.options.getChannel('channel');
             const canPostChk = require('../lib/canPost').diagnose(guild, ch, guild.members.me);
             if (!canPostChk.ok)
-                return interaction.reply({ content: vt(db, gid, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: (canPostChk.missing || []).join(', ') }), flags: 64 });
+                return interaction.reply({ content: vt(db, gid, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: require('../lib/canPost').localize(canPostChk.missing || [], VL(db, gid)).join(', '), bot: guild.members.me.roles.botRole?.name || guild.members.me.displayName }), flags: 64 });
 
             ensureCols(db);
             db.prepare('UPDATE server_settings SET verify_panel_channel_id = ? WHERE guild_id = ?').run(ch.id, gid);

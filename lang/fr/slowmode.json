@@ -19,7 +19,7 @@
   "permYourRole": "Votre rôle le plus élevé n'a pas cette permission.",
   "permBotRole": "Le rôle du bot peut aussi nécessiter une élévation.",
   "helpTitle": "🐢 COMMANDE MODE LENT",
-  "botNoPermsPrivate": "⛔ Je ne peux pas encore régler le slowmode dans {ch} — ce salon est privé et je ne suis pas dans sa liste.\n\n**Pour régler ça (10 secondes) :**\n1. Ouvre le salon → **Ajouter des membres ou des rôles** (ou Modifier le salon → Permissions)\n2. Ajoute **ARCHON**\n3. Active **Voir le salon** et **Gérer les salons**\n4. Relance la commande",
-  "botNoPermsRoleBlock": "⛔ Je ne peux pas régler le slowmode dans {ch} — {role} me bloque là-bas.\n\n**Pour régler ça :**\n1. Modifier le salon → Permissions\n2. **Ajoute le rôle ARCHON** et autorise **{perms}** — ne touche pas à {role}\n3. Relance la commande",
-  "botNoPermsMissingPerm": "⛔ Je ne peux gérer aucun salon — il me manque **{perms}** au niveau du serveur.\n\n**Pour régler ça :**\n1. Paramètres du serveur → Rôles → **ARCHON**\n2. Active **Gérer les salons**\n3. Relance la commande"
+  "botNoPermsPrivate": "⛔ Je ne peux pas encore régler le slowmode dans {ch} — ce salon est privé et je ne suis pas dans sa liste.\n\n**Pour régler ça (10 secondes) :**\n1. Ouvre le salon → **Ajouter des membres ou des rôles** (ou Modifier le salon → Permissions)\n2. Ajoute **{bot}**\n3. Active **Voir le salon** et **Gérer les salons**\n4. Relance la commande",
+  "botNoPermsRoleBlock": "⛔ Je ne peux pas régler le slowmode dans {ch} — {role} me bloque là-bas.\n\n**Pour régler ça :**\n1. Modifier le salon → Permissions\n2. **Ajoute le rôle {bot}** et autorise **{perms}** — ne touche pas à {role}\n3. Relance la commande",
+  "botNoPermsMissingPerm": "⛔ Il me manque **{perms}** au niveau du serveur, donc je ne peux pas gérer {ch}.\n\n**Pour régler ça :**\n1. Paramètres du serveur → Rôles → **{bot}**\n2. Active **{perms}**\n3. Relance la commande\n\n_Ça coince encore ? Ce salon est peut-être aussi privé — ajoute {bot} à ses permissions._"
 }
