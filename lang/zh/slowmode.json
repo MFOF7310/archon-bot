@@ -1,5 +1,5 @@
 {
-  "accessDeniedTitle": "🚫 拒绝访问",
+  "accessDeniedTitle": "🚫 需要权限",
   "accessDeniedDesc": "你在此服务器中缺少所需的 `Manage Channels` 权限。",
   "serverContext": "此指令需要**服务器上下文**来验证权限。",
   "dmFallbackNote": "📩 *此消息已私发，以免公开尴尬。*",
@@ -19,7 +19,7 @@
   "permYourRole": "你的最高角色缺少此权限。",
   "permBotRole": "机器人角色可能也需要提升权限。",
   "helpTitle": "🐢 慢速模式指令",
-  "botNoPermsPrivate": "⛔ **访问被拒绝**\n```\n▸ 节点    {ch}\n▸ 原因    私密频道——不在允许列表中\n```\n**解决方案** — 约 10 秒\n`1` 打开频道 → **添加成员或身份组**\n`2` 添加 **{bot}**\n`3` 开启 **查看频道** 和 **管理频道**\n`4` 重新运行 `/slowmode`\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`",
-  "botNoPermsRoleBlock": "⛔ **访问被拒绝**\n```\n▸ 节点      {ch}\n▸ 阻止者    {role}\n▸ 缺少权限  {perms}\n```\n**解决方案**\n`1` 编辑频道 → 权限\n`2` **添加 {bot} 身份组**并允许 **{perms}**\n`3` 不要改动 {role}——否则会对所有人开放该频道\n`4` 重新运行 `/slowmode`\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`",
-  "botNoPermsMissingPerm": "⛔ **访问被拒绝**\n```\n▸ 节点      {ch}\n▸ 缺少权限  {perms}（服务器层面）\n```\n**解决方案**\n`1` 服务器设置 → 身份组 → **{bot}**\n`2` 开启 **{perms}**\n`3` 重新运行 `/slowmode`\n\n_仍然失败？该频道可能同时是私密频道——请将 {bot} 添加到其权限中。_\n\n`ARCHON CG-223 • BAMAKO_223 🇲🇱 • UNCLASSIFIED`"
+  "botNoPermsPrivate": "⛔ 我还不能在 {ch} 设置慢速模式——这是私密频道，我不在允许列表里。\n\n**解决方法（约 10 秒）：**\n1. 打开频道 → **添加成员或身份组**（或 编辑频道 → 权限）\n2. 添加 **{bot}**\n3. 开启 **查看频道** 和 **管理频道**\n4. 重新运行命令",
+  "botNoPermsRoleBlock": "⛔ 我无法在 {ch} 设置慢速模式——{role} 在那里阻止了我。\n\n**解决方法：**\n1. 编辑频道 → 权限\n2. **添加 {bot} 身份组**并允许 **{perms}**——不要改动 {role}\n3. 重新运行命令",
+  "botNoPermsMissingPerm": "⛔ 我的身份组在服务器层面缺少 **{perms}**，所以无法管理 {ch}。\n\n**解决方法：**\n1. 服务器设置 → 身份组 → **{bot}**\n2. 开启 **{perms}**\n3. 重新运行命令\n\n_仍然失败？该频道可能同时是私密频道——也请把 {bot} 添加到其权限中。_"
 }
