@@ -107,7 +107,7 @@ module.exports = {
                 .setTitle(`📡 ${guild.name} — Channels`)
                 .setDescription(
                     Object.entries(CHANNEL_DEFS).map(([key, def]) => {
-                        const id = freshSettings[def.col];
+                        const id = freshSettings[def.col] || freshSettings[def.dbcol];
                         const val = id ? `<#${id}>` : (isOwnerGuild && process.env[def.env] ? `<#${process.env[def.env]}> 🔹 .env` : '\`Not set\`');
                         return `${def.emoji} **${def.label}** — ${val}`;
                     }).join('\n')
@@ -127,11 +127,19 @@ module.exports = {
             const ok = client.updateServerSetting?.(guildId, def.dbcol, channel.id);
             client.settings?.delete(guildId);
 
+            const _cp = require('../lib/canPost');
+            const _need = _cp.neededFor(type);
+            const _d = _cp.diagnose(interaction.guild, channel, interaction.guild.members.me, _need);
+            const _statusLine = _d.ok
+                ? `\u001b[1;32m✅ READY — I can post there (${_need.map(x => x[0]).join(', ')} verified)\u001b[0m`
+                : `\u001b[1;33m⚠️ SET BUT BLOCKED — ${_d.role || 'this channel'} denies ${_d.missing.join(', ')}\nFix: Edit Channel → Permissions → add the ARCHON role → allow ${_d.missing.join(', ')}\u001b[0m`;
+
             const embed = new EmbedBuilder()
-                .setColor(0x2ecc71)
+                .setColor(_d.ok ? 0x2ecc71 : 0xf1c40f)
                 .setDescription(
                     `\`\`\`ansi\n\u001b[1;32m▸ CHANNEL UPDATED\u001b[0m\n` +
-                    `\u001b[1;36m${def.emoji} ${def.label}\u001b[0m → <#${channel.id}>\n\`\`\``
+                    `\u001b[1;36m${def.emoji} ${def.label}\u001b[0m → <#${channel.id}>\n` +
+                    `${_statusLine}\n\`\`\``
                 )
                 .setFooter({ text: `BAMAKO_223 🇲🇱 • ${guild.name}` });
             return interaction.reply({ embeds: [embed], flags: 64 });
@@ -196,7 +204,10 @@ module.exports = {
             if (!ch) return message.reply('${EMOJIS.error} Channel not found.').catch(() => {});
             client.updateServerSetting?.(guildId, def.dbcol, channelId);
             client.settings?.delete(guildId);
-            return message.reply(`${EMOJIS.check} **${def.label}** set to <#${channelId}>`).catch(() => {});
+            const _cp2 = require('../lib/canPost');
+            const _d2 = _cp2.diagnose(message.guild, ch, message.guild.members.me, _cp2.neededFor(type));
+            const _tail = _d2.ok ? '' : `\n⚠️ **Set, but blocked** — ${_d2.role || 'this channel'} denies ${_d2.missing.join(', ')}. Fix: Edit Channel → Permissions → add ARCHON role → allow ${_d2.missing.join(', ')}.`;
+            return message.reply(`${EMOJIS.check} **${def.label}** set to <#${channelId}>${_tail}`).catch(() => {});
         }
     }
 };
