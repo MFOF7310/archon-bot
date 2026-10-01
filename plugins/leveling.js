@@ -453,6 +453,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
         const chId = ss.levelupChannel || ss.levelup_channel;
         const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
         if (!ch) return;
+        if (!require('../lib/canPost').log(member.guild, ch, member.guild.members.me, 'levelup').ok) return;
         const lang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : 'en';
         const text = require('../lib/i18n').t('leveling.levelUpLine', lang, { user: String(member), level: newLevel });
         const msg = await ch.send({ content: text }).catch(() => null);
@@ -471,6 +472,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
     const chId = ss.levelupChannel || ss.levelup_channel;
     const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
     if (!ch) return;
+    if (!require('../lib/canPost').log(member.guild, ch, member.guild.members.me, 'levelup-milestone', require('../lib/canPost').CARD_NEEDED).ok) return;
     await ch.send({ content: _t('leveling.levelUpLine', lvLang, { user: String(member), level: newLevel }), embeds: [embed], files: [new AttachmentBuilder(png, { name: 'levelup.png' })] }).catch(() => { });
 }
 

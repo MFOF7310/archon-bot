@@ -131,15 +131,17 @@ module.exports = {
             const _need = _cp.neededFor(type);
             const _d = _cp.diagnose(interaction.guild, channel, interaction.guild.members.me, _need);
             const _statusLine = _d.ok
-                ? `\u001b[1;32m✅ READY — I can post there (${_need.map(x => x[0]).join(', ')} verified)\u001b[0m`
-                : `\u001b[1;33m⚠️ SET BUT BLOCKED — ${_d.role || 'this channel'} denies ${_d.missing.join(', ')}\nFix: Edit Channel → Permissions → add the ARCHON role → allow ${_d.missing.join(', ')}\u001b[0m`;
+                ? `✅ **READY** — I can post there (${_need.map(x => x[0]).join(', ')} verified)`
+                : `⚠️ **SET BUT BLOCKED** — ${_d.role || 'this channel'} denies ${_d.missing.join(', ')}
+**Fix:** Edit Channel → Permissions → add the ARCHON role → allow ${_d.missing.join(', ')}`;
 
             const embed = new EmbedBuilder()
                 .setColor(_d.ok ? 0x2ecc71 : 0xf1c40f)
                 .setDescription(
                     `\`\`\`ansi\n\u001b[1;32m▸ CHANNEL UPDATED\u001b[0m\n` +
-                    `\u001b[1;36m${def.emoji} ${def.label}\u001b[0m → <#${channel.id}>\n` +
-                    `${_statusLine}\n\`\`\``
+                    `\u001b[1;36m${def.emoji} ${def.label}\u001b[0m → <#${channel.id}>\n\`\`\`
+` +
+                    `${_statusLine}`
                 )
                 .setFooter({ text: `BAMAKO_223 🇲🇱 • ${guild.name}` });
             return interaction.reply({ embeds: [embed], flags: 64 });

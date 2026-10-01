@@ -364,7 +364,7 @@ async function takeAction(message, violations, client, db) {
     const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog || settings.log;
     if (logId) {
         const logCh = message.guild.channels.cache.get(logId);
-        if (logCh?.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
+        if (logCh && require('../lib/canPost').log(message.guild, logCh, message.guild.members.me, 'automod-log').ok) {
             const bar = strikeBar(displayWc);
             const next = displayWc >= 4 ? 'None — maximum reached' : ['1 hour timeout', '1 day timeout', '7 day timeout', 'Ban'][displayWc];
             const log = new EmbedBuilder()
@@ -798,7 +798,7 @@ async function handleAppeal(message, client) {
                 const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog;
                 if (logId) {
                     const logCh = targetGuild.channels.cache.get(logId);
-                    if (logCh) {
+                    if (logCh && require('../lib/canPost').log(targetGuild, logCh, targetGuild.members.me, 'automod-appeals').ok) {
                         const ownerMention = owner ? `<@${owner.id}>` : 'Server owner';
                         sent = await logCh.send({
                             content: `${ownerMention} — an appeal was submitted but I couldn't DM you directly.`,
