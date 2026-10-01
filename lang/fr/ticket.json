@@ -90,5 +90,8 @@
   "lb_error": "{error} Échec du classement…",
   "stats_error": "{error} Échec des stats…",
   "ratings_error": "{error} Échec de tes notes…",
-  "staff_ping_msg": "Salut {user} ! 👋 Ton ticket est actif — l'équipe est notifiée et arrive. Pas besoin de ping, on te voit ! 💙"
+  "staff_ping_msg": "Salut {user} ! 👋 Ton ticket est actif — l'équipe est notifiée et arrive. Pas besoin de ping, on te voit ! 💙",
+  "cantPostPrivate": "⛔ Je ne peux pas encore publier le panneau de tickets dans {ch} — ce salon est privé et je ne suis pas dans sa liste.\n\n**Pour régler ça (10 secondes) :**\n1. Ouvre le salon → **Ajouter des membres ou des rôles** (ou Modifier le salon → Permissions)\n2. Ajoute **{bot}**\n3. Active **Voir le salon**, **Envoyer des messages** et **Intégrer des liens**\n4. Relance `{cmd}`",
+  "cantPostRoleBlock": "⛔ Je ne peux pas publier le panneau de tickets dans {ch} — {role} me bloque là-bas.\n\n**Pour régler ça :**\n1. Modifier le salon → Permissions\n2. **Ajoute le rôle {bot}** et autorise **{perms}** — ne touche pas à {role}, ça ouvrirait le salon à tout le monde\n3. Relance `{cmd}`",
+  "cantPostMissingPerm": "⛔ Il manque **{perms}** à mon rôle au niveau du serveur, donc je ne peux pas publier le panneau de tickets dans {ch}.\n\n**Pour régler ça :**\n1. Paramètres du serveur → Rôles → **{bot}**\n2. Active **{perms}**\n3. Relance `{cmd}`\n\n_Ça coince encore ? Ce salon est peut-être aussi privé — ajoute {bot} à ses permissions._"
 }

@@ -90,5 +90,8 @@
   "lb_error": "{error} Could not load leaderboard.",
   "stats_error": "{error} Could not load stats.",
   "ratings_error": "{error} Could not load your ratings.",
-  "staff_ping_msg": "Hey {user}! 👋 Your ticket is live — the team is notified and on the way. No need to ping anyone, we see you! 💙"
+  "staff_ping_msg": "Hey {user}! 👋 Your ticket is live — the team is notified and on the way. No need to ping anyone, we see you! 💙",
+  "cantPostPrivate": "⛔ I can't post the ticket panel in {ch} yet — this channel is private, and I'm not on its list.\n\n**To fix it (about 10 seconds):**\n1. Open the channel → **Add members or roles** (or Edit Channel → Permissions)\n2. Add **{bot}**\n3. Turn on **View Channel**, **Send Messages** and **Embed Links**\n4. Run `{cmd}` again",
+  "cantPostRoleBlock": "⛔ I can't post the ticket panel in {ch} — {role} is blocking me there.\n\n**To fix it:**\n1. Edit Channel → Permissions\n2. **Add the {bot} role** and allow **{perms}** — leave {role} alone, changing it would open the channel to everyone\n3. Run `{cmd}` again",
+  "cantPostMissingPerm": "⛔ My role is missing **{perms}** at the server level, so I can't post the ticket panel in {ch}.\n\n**To fix it:**\n1. Server Settings → Roles → **{bot}**\n2. Turn on **{perms}**\n3. Run `{cmd}` again\n\n_Still failing? This channel may also be private — add {bot} to its permissions as well._"
 }
