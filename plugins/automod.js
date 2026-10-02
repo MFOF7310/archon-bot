@@ -296,54 +296,58 @@ async function takeAction(message, violations, client, db) {
     }
 
     const member = await message.guild.members.fetch(uid).catch(() => null);
-    let actionText = 'Timed out', actionColor = C.YELLOW;
+    const _L = require('../lib/botPerms').langOf({ guild: message.guild, client });
+    const _t = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
+    const _n = (base, n) => _t(Number(n) === 1 ? base + 'One' : base + 'Many', { n });
+    const _dur = (ms) => ms >= 86400000 ? _n('days', Math.round(ms / 86400000)) : _n('hours', Math.round(ms / 3600000));
+    const _next = (wc) => _t(wc >= 4 ? 'strikeNextMax' : wc === 1 ? 'strikeNext1Day' : wc === 2 ? 'strikeNext7Days' : 'strikeNextBan');
+    let actionText = _t('strikeActWarn'), actionColor = C.GREY, outcome = 'warn', whyNot = null;
     try {
         if (action === 'timeout' && member?.moderatable) {
             await member.timeout(duration, `AutoMod: ${violations[0].reason}`);
-            actionText = `Timed out for ${fmtDur(duration)}`;
+            actionText = _t('strikeActTimeout', { duration: _dur(duration) }); outcome = 'timeout';
             actionColor = duration >= 604800000 ? C.RED : C.YELLOW;
         } else if (action === 'ban' && member?.bannable) {
             await member.ban({ reason: `AutoMod: ${violations[0].reason}`, deleteMessageSeconds: 86400 });
-            actionText = 'Banned'; actionColor = C.RED;
+            actionText = _t('strikeActBan'); actionColor = C.RED; outcome = 'ban';
             history.delete(k);
         } else {
-            actionText = 'Warned (insufficient permissions)'; actionColor = C.GREY;
+            // could not punish: the member only gets a warning, the owner and the log get the reason and the fix
+            whyNot = require('../lib/botPerms').whyNotActed(message.guild, member, action, message.author.username, _L);
         }
-    } catch (e) { actionText = 'Action failed'; actionColor = C.GREY; }
+    } catch (e) {
+        actionText = _t('strikeActFailed'); actionColor = C.GREY; outcome = 'failed';
+        whyNot = require('../lib/botPerms').whyNotActed(message.guild, member, action, message.author.username, _L, e);
+    }
 
     // ── FIX 2: DM to user now includes an "Appeal This Action" button ──
     try {
         const guildOwner = await message.guild.fetchOwner().catch(() => null);
-        const appealContact = guildOwner ? `<@${guildOwner.id}>` : 'a server administrator';
-        const actionEmoji = action === 'ban' ? '<a:BAN:1540115967428796466>' : action === 'timeout' ? '<a:lock:1540115656035401778>' : '<:warning:1535637269317160970>';
-        const strikeNext = displayWc >= 4 ? 'Maximum reached' : ['1-day timeout', '7-day timeout', 'Ban', 'Ban'][displayWc - 1] || 'Ban';
+        const appealContact = guildOwner ? `<@${guildOwner.id}>` : _t('strikeContactFallback');
+        const actionEmoji = outcome === 'ban' ? '<a:BAN:1540115967428796466>' : outcome === 'timeout' ? '<a:lock:1540115656035401778>' : '<:warning:1535637269317160970>';
+        const strikeNext = _next(displayWc);
         const dm = new EmbedBuilder()
             .setColor(actionColor)
             .setAuthor({ name: message.guild.name, iconURL: message.guild.iconURL({ size: 64 }) || ICON })
-            .setDescription(
-                `${actionEmoji} **${action === 'ban' ? 'You were banned' : action === 'timeout' ? 'You were timed out' : 'Warning issued'}**\n\n` +
-                `Your message was caught by our moderation system.\n` +
-                `This isn't personal — we keep things clean for everyone.\n\n` +
-                `**Rule:** ${violations[0].type}\n` +
-                `**Violation:** ${violations[0].reason}\n` +
-                `**Action:** ${actionText}\n\n` +
-                `**Strike:** ${strikeBar(displayWc)} ${displayWc} of 4\n` +
-                `**Next offense:** ${strikeNext}\n\n` +
-                `Think this was a mistake? Hit **Appeal** below.\n` +
-                `Or contact ${appealContact} directly.`
-            )
-            .setFooter({ text: `ARCHON CG-223 • You get 1 appeal per server per day`, iconURL: ICON })
+            .setDescription(_t('strikeDmDesc', {
+                emoji: actionEmoji,
+                title: _t(outcome === 'ban' ? 'strikeDmTitleBan' : outcome === 'timeout' ? 'strikeDmTitleTimeout' : 'strikeDmTitleWarn'),
+                rule: violations[0].type, violation: violations[0].reason,
+                action: (outcome === 'timeout' || outcome === 'ban') ? actionText : _t('strikeMemberWarn'),
+                bar: strikeBar(displayWc), n: displayWc, next: strikeNext, contact: appealContact
+            }))
+            .setFooter({ text: _t('strikeDmFooter'), iconURL: ICON })
             .setTimestamp();
 
         // ── FIX 2: Appeal button in the punishment DM ──
         const appealRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`automod_appeal_${uid}_${gid}`)
-                .setLabel('Appeal This Action')
+                .setLabel(_t('strikeBtnAppeal'))
                 .setEmoji({ id: '1534872816099528725', name: 'mod_abuse_bean_sign' })
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
-                .setLabel('Server Rules')
+                .setLabel(_t('strikeBtnRules'))
                 .setStyle(ButtonStyle.Link)
                 .setURL(`https://discord.com/channels/${gid}`)
         );
@@ -357,7 +361,7 @@ async function takeAction(message, violations, client, db) {
         const notif = await message.channel.send({
             embeds: [new EmbedBuilder()
                 .setColor(actionColor)
-                .setDescription(`<:shield:1535642169032048730> Message removed • **${message.author.username}** • Rule: ${violations[0].type}`)]
+                .setDescription(_t('strikeNotice', { emoji: '<:shield:1535642169032048730>', user: message.author.username, rule: violations[0].type }))]
         }).catch(() => {});
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
@@ -368,20 +372,15 @@ async function takeAction(message, violations, client, db) {
         const logCh = message.guild.channels.cache.get(logId);
         if (logCh && require('../lib/canPost').log(message.guild, logCh, message.guild.members.me, 'automod-log').ok) {
             const bar = strikeBar(displayWc);
-            const next = displayWc >= 4 ? 'None — maximum reached' : ['1 hour timeout', '1 day timeout', '7 day timeout', 'Ban'][displayWc];
+            const next = _next(displayWc);
             const log = new EmbedBuilder()
                 .setColor(actionColor)
                 .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
-                .setDescription(
-                    `<a:mod_abuse_bean_sign:1534872816099528725> **${actionText}**\n\n` +
-                    `**Member:** ${message.author} \`${uid}\`\n` +
-                    `**Rule:** ${violations[0].type}\n` +
-                    `**Violation:** ${violations[0].reason}\n` +
-                    `**Channel:** <#${message.channel.id}>`
-                )
-                .setFooter({ text: `${bar}  Strike ${displayWc} of 4  •  Next: ${next}`, iconURL: client.user.displayAvatarURL() })
+                .setDescription(_t('strikeLogDesc', { emoji: '<a:mod_abuse_bean_sign:1534872816099528725>', action: actionText, member: `${message.author}`, uid, rule: violations[0].type, violation: violations[0].reason, channel: `<#${message.channel.id}>` }))
+                .setFooter({ text: _t('strikeLogFooter', { bar, n: displayWc, next }), iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();
-            if (repeatV?.channels?.length > 1) log.addFields({ name: 'Cross-channel', value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
+            if (repeatV?.channels?.length > 1) log.addFields({ name: _t('strikeLabelCross'), value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
+            if (whyNot) log.addFields({ name: _t('strikeLabelWhy'), value: whyNot, inline: false });
             await logCh.send({ embeds: [log] }).catch(() => {});
         }
     }
@@ -391,17 +390,18 @@ async function takeAction(message, violations, client, db) {
         if (owner && !owner.user.bot) {
             const privateEmbed = new EmbedBuilder()
                 .setColor(actionColor)
-                .setAuthor({ name: 'AutoMod — Private Report', iconURL: client.user.displayAvatarURL() })
+                .setAuthor({ name: _t('strikeOwnerAuthor'), iconURL: client.user.displayAvatarURL() })
                 .setTitle(actionText)
-                .setDescription(`**Server:** ${message.guild.name}\n**Privacy:** Only you see this (server owner)`)
+                .setDescription(_t('strikeOwnerDesc', { server: message.guild.name }))
                 .addFields(
-                    { name: 'Member', value: `${message.author} \`${uid}\``, inline: false },
-                    { name: 'Rule', value: violations[0].type, inline: true },
-                    { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
-                    { name: 'Strike', value: `${displayWc}/4`, inline: true },
-                    { name: 'Message Content', value: `\`\`\`${message.content.substring(0, 1800) || '(attachment / image)'}\`\`\``, inline: false }
+                    { name: _t('strikeLabelMember'), value: `${message.author} \`${uid}\``, inline: false },
+                    { name: _t('strikeLabelRule'), value: violations[0].type, inline: true },
+                    { name: _t('strikeLabelChannel'), value: `<#${message.channel.id}>`, inline: true },
+                    { name: _t('strikeLabelStrike'), value: `${displayWc}/4`, inline: true },
+                    { name: _t('strikeLabelMessage'), value: `\`\`\`${message.content.substring(0, 1800) || _t('strikeAttachment')}\`\`\``, inline: false },
+                    ...(whyNot ? [{ name: _t('strikeLabelWhy'), value: whyNot, inline: false }] : [])
                 )
-                .setFooter({ text: 'ARCHON CG-223 • Confidential' })
+                .setFooter({ text: _t('strikeOwnerFooter') })
                 .setTimestamp();
             await owner.send({ embeds: [privateEmbed] }).catch(() => {});
         }
