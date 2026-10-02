@@ -1050,6 +1050,16 @@ function getServerSettings(guildId) {
             welcomeEnabled: settings.welcome_enabled !== 0,
             goodbyeEnabled: settings.goodbye_enabled !== 0,
             afkEnabled: settings.afk_enabled !== 0,
+
+            // Raid protection and Advanced AutoMod. The dashboard needs these to show what is saved:
+            // without them its switches always started from the defaults, and Save could overwrite your choices.
+            // The fallbacks are what the raid engine itself uses when nothing is stored.
+            raidEnabled: settings.raid_enabled === 1 || settings.raid_enabled === '1',
+            raidThreshold: settings.raid_threshold ?? 5,
+            raidWindow: settings.raid_window ?? 30,
+            raidAction: settings.raid_action || 'alert',
+            raidMinAgeDays: settings.raid_min_age_days ?? 0,
+            advancedAutomod: settings.advanced_automod === 1 || settings.advanced_automod === '1',
             marketEnabled: settings.market_enabled !== 0,
             economy_enabled: settings.economy_enabled !== 0 ? 1 : 0,
             leveling_enabled: settings.leveling_enabled !== 0 ? 1 : 0,
