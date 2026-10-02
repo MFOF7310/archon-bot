@@ -1,12 +1,12 @@
 {
-  "okTitle": "",
-  "okDesc": "",
-  "noTitle": "",
-  "whyPrivate": "",
-  "whyRoleBlock": "",
-  "whyMissingPerm": "",
-  "fixPrivate": "",
-  "fixRoleBlock": "",
-  "fixMissingPerm": "",
-  "someRole": ""
+  "okTitle": "✅ 我可以在 {channel} 发送消息",
+  "okDesc": "我在那里需要的权限都已就位。",
+  "noTitle": "我还不能在 {channel} 发送消息",
+  "whyPrivate": "我看不到这个频道。",
+  "whyRoleBlock": "**{role}** 在此屏蔽了 **{perms}**。",
+  "whyMissingPerm": "**{bot}** 身份组在整个服务器缺少 **{perms}**。",
+  "fixPrivate": "要修复：\n1. 打开频道设置 → 权限\n2. 添加 **{bot}** 身份组\n3. 允许 **{perms}**\n4. 重新运行此检查",
+  "fixRoleBlock": "要修复：\n1. 打开频道设置 → 权限\n2. 找到 **{bot}**（或添加它）并允许 **{perms}**\n3. 重新运行此检查",
+  "fixMissingPerm": "要修复：\n1. 打开服务器设置 → 身份组\n2. 打开 **{bot}** 并开启 **{perms}**\n3. 重新运行此检查",
+  "someRole": "某个身份组"
 }

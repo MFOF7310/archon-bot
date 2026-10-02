@@ -1,12 +1,12 @@
 {
-  "okTitle": "",
-  "okDesc": "",
-  "noTitle": "",
-  "whyPrivate": "",
-  "whyRoleBlock": "",
-  "whyMissingPerm": "",
-  "fixPrivate": "",
-  "fixRoleBlock": "",
-  "fixMissingPerm": "",
-  "someRole": ""
+  "okTitle": "✅ يمكنني الكتابة في {channel}",
+  "okDesc": "جميع الأذونات التي أحتاجها هناك موجودة.",
+  "noTitle": "لا أستطيع الكتابة في {channel} بعد",
+  "whyPrivate": "لا أرى هذه القناة.",
+  "whyRoleBlock": "**{role}** تحظر **{perms}** هنا.",
+  "whyMissingPerm": "رتبة **{bot}** تفتقر إلى **{perms}** على مستوى الخادم بأكمله.",
+  "fixPrivate": "لإصلاحه:\n1. افتح Edit Channel → Permissions\n2. أضف رتبة **{bot}**\n3. اسمح بـ **{perms}**\n4. أعد هذا الفحص",
+  "fixRoleBlock": "لإصلاحه:\n1. افتح Edit Channel → Permissions\n2. اعثر على **{bot}** (أو أضفها) واسمح بـ **{perms}**\n3. أعد هذا الفحص",
+  "fixMissingPerm": "لإصلاحه:\n1. افتح Server Settings → Roles\n2. افتح **{bot}** وفعّل **{perms}**\n3. أعد هذا الفحص",
+  "someRole": "رتبة ما"
 }
