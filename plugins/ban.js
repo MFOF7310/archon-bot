@@ -366,7 +366,7 @@ module.exports = {
 
             if (!target) return message.reply({ content: t.noTarget }).catch(() => {});
             if (target.id === message.author.id) return message.reply({ content: t.selfBan }).catch(() => {});
-            if (!target.bannable) return message.reply({ content: t.notBannable }).catch(() => {});
+            if (!target.bannable) return message.reply({ content: require('../lib/botPerms').hierarchyText?.(message.guild, target, 'ban', t.notBannable, message) ?? t.notBannable }).catch(() => {});
 
             const caseId = generateCaseId('BAN');
             const confirmRow = new ActionRowBuilder().addComponents(
@@ -457,7 +457,7 @@ module.exports = {
 
             if (!targetMember) return interaction.reply({ content: t.noTarget, flags: 64 });
             if (targetMember.id === interaction.user.id) return interaction.reply({ content: t.selfBan, flags: 64 });
-            if (!targetMember.bannable) return interaction.reply({ content: t.notBannable, flags: 64 });
+            if (!targetMember.bannable) return interaction.reply({ content: require('../lib/botPerms').hierarchyText?.(interaction.guild, targetMember, 'ban', t.notBannable, interaction) ?? t.notBannable, flags: 64 });
 
             const caseId = generateCaseId('BAN');
             const confirmEmbed = new EmbedBuilder()

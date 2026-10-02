@@ -7,5 +7,9 @@
   "logSetPrivate": "Salon des logs AutoMod défini sur {channel}, **mais je ne vois pas encore ce salon.**\nPour corriger : paramètres du salon → Permissions → ajoute **{bot}** et autorise **{perms}**.",
   "logSetRoleBlock": "Salon des logs AutoMod défini sur {channel}, **mais je ne peux pas encore y écrire :** **{role}** bloque **{perms}**.\nPour corriger : paramètres du salon → Permissions → ajoute **{bot}** et autorise **{perms}**.",
   "logSetMissingPerm": "Salon des logs AutoMod défini sur {channel}, **mais je ne peux pas encore y écrire :** le rôle **{bot}** n'a pas **{perms}**.\nPour corriger : Paramètres du serveur → Rôles → **{bot}** → active **{perms}**.",
-  "someRole": "un rôle"
+  "someRole": "un rôle",
+  "hierarchyBan": "Je ne peux pas bannir **{target}** : son rôle le plus haut, **{role}**, est au-dessus du mien.\nPour corriger : Paramètres du serveur → Rôles → fais glisser **{bot}** au-dessus de **{role}**, puis réessaie.",
+  "hierarchyKick": "Je ne peux pas expulser **{target}** : son rôle le plus haut, **{role}**, est au-dessus du mien.\nPour corriger : Paramètres du serveur → Rôles → fais glisser **{bot}** au-dessus de **{role}**, puis réessaie.",
+  "hierarchyOwner": "Je ne peux pas faire ça au propriétaire du serveur. Discord ne permet à personne d'agir sur le propriétaire.",
+  "hierarchySelf": "Je ne peux pas faire ça sur moi-même."
 }

@@ -7,5 +7,9 @@
   "logSetPrivate": "AutoMod log set to {channel}, **but I can't see that channel yet.**\nTo fix it: channel settings → Permissions → add **{bot}** and allow **{perms}**.",
   "logSetRoleBlock": "AutoMod log set to {channel}, **but I can't post there yet:** **{role}** is blocking **{perms}**.\nTo fix it: channel settings → Permissions → add **{bot}** and allow **{perms}**.",
   "logSetMissingPerm": "AutoMod log set to {channel}, **but I can't post there yet:** the **{bot}** role is missing **{perms}**.\nTo fix it: Server Settings → Roles → **{bot}** → turn on **{perms}**.",
-  "someRole": "a role"
+  "someRole": "a role",
+  "hierarchyBan": "I can't ban **{target}**: their highest role, **{role}**, sits above mine.\nTo fix it: Server Settings → Roles → drag **{bot}** above **{role}**, then try again.",
+  "hierarchyKick": "I can't kick **{target}**: their highest role, **{role}**, sits above mine.\nTo fix it: Server Settings → Roles → drag **{bot}** above **{role}**, then try again.",
+  "hierarchyOwner": "I can't do that to the server owner. Discord doesn't let anyone act on the owner.",
+  "hierarchySelf": "I can't do that to myself."
 }

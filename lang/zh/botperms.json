@@ -7,5 +7,9 @@
   "logSetPrivate": "AutoMod 日志已设置为 {channel}，**但我还看不到该频道。**\n要修复：频道设置 → 权限 → 添加 **{bot}** 并允许 **{perms}**。",
   "logSetRoleBlock": "AutoMod 日志已设置为 {channel}，**但我还不能在那里发送消息：** **{role}** 屏蔽了 **{perms}**。\n要修复：频道设置 → 权限 → 添加 **{bot}** 并允许 **{perms}**。",
   "logSetMissingPerm": "AutoMod 日志已设置为 {channel}，**但我还不能在那里发送消息：** **{bot}** 身份组缺少 **{perms}**。\n要修复：服务器设置 → 身份组 → **{bot}** → 开启 **{perms}**。",
-  "someRole": "某个身份组"
+  "someRole": "某个身份组",
+  "hierarchyBan": "",
+  "hierarchyKick": "",
+  "hierarchyOwner": "",
+  "hierarchySelf": ""
 }

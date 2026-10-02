@@ -7,5 +7,9 @@
   "logSetPrivate": "",
   "logSetRoleBlock": "",
   "logSetMissingPerm": "",
-  "someRole": ""
+  "someRole": "",
+  "hierarchyBan": "",
+  "hierarchyKick": "",
+  "hierarchyOwner": "",
+  "hierarchySelf": ""
 }

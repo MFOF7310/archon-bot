@@ -56,7 +56,7 @@ module.exports = {
         }
         
         if (!target.kickable) {
-            return message.reply({ content: t.notKickable, flags: 64 }).catch(() => {});
+            return message.reply({ content: require('../lib/botPerms').hierarchyText?.(message.guild, target, 'kick', t.notKickable, message) ?? t.notKickable, flags: 64 }).catch(() => {});
         }
 
         try {
