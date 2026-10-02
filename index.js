@@ -1051,6 +1051,11 @@ function getServerSettings(guildId) {
             goodbyeEnabled: settings.goodbye_enabled !== 0,
             afkEnabled: settings.afk_enabled !== 0,
 
+            // Currency name and emoji. The Economy page needs these to show what is saved:
+            // without them it always started from "credits" / the default emoji, and Save replaced your choice.
+            currencyName: settings.currency_name || null,
+            currencyEmoji: settings.currency_emoji || null,
+
             // Raid protection and Advanced AutoMod. The dashboard needs these to show what is saved:
             // without them its switches always started from the defaults, and Save could overwrite your choices.
             // The fallbacks are what the raid engine itself uses when nothing is stored.
