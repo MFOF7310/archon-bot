@@ -1,0 +1,15 @@
+{
+  "raidAlertTitle": "Beaucoup de monde a rejoint {server} d'un coup",
+  "raidAlertDescKick": "{n} comptes ont rejoint en {s} secondes, bien plus vite que d'habitude. Ça pourrait être un raid. Tant que ça ne se calme pas, ARCHON retire les nouveaux membres dont le compte a moins de {days}.",
+  "raidAlertDescAlert": "{n} comptes ont rejoint en {s} secondes, bien plus vite que d'habitude. Ça pourrait être un raid. ARCHON ne retire personne automatiquement (l'âge minimum du compte est réglé sur 0), tu voudras peut-être regarder la liste des membres.",
+  "raidFieldJoins": "Arrivées",
+  "raidJoinsValue": "{n} en {s} secondes",
+  "raidFieldWhen": "Quand",
+  "raidAlertFooter": "ARCHON revérifie toutes les 5 minutes et te prévient quand tout redevient normal.",
+  "raidClearedTitle": "Retour au calme sur {server}",
+  "raidClearedDesc": "Les arrivées ont ralenti. ARCHON continue de surveiller.",
+  "raidKickTitle": "Tu as été retiré de {server}",
+  "raidKickDesc": "{server} recevait beaucoup de nouveaux membres d'un coup, et dans ces moments il retire les comptes de moins de {days}. Le tien a {age}, donc tu as été retiré. Ce n'est pas à cause de quelque chose que tu as fait.\nTu pourras revenir dans {left}.",
+  "daysOne": "{n} jour",
+  "daysMany": "{n} jours"
+}

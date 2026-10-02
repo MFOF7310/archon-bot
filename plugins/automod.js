@@ -188,25 +188,25 @@ async function handleRaidDetection(member, client, db) {
         // Alert owner
         const owner = await member.guild.fetchOwner().catch(() => null);
         if (owner) {
+            const _L = require('../lib/botPerms').langOf({ guild: member.guild, client });
+            const _t = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
+            const _dw = (n) => _t(Number(n) === 1 ? 'daysOne' : 'daysMany', { n });
+            const _secs = Math.round(window / 1000);
             const embed = new EmbedBuilder()
-                .setColor(0xff0000)
-                .setTitle('🚨 RAID DETECTED — ' + member.guild.name)
-                .setDescription(
-                    '**Unusual join activity detected!**\n\n' +
-                    'Your server may be under a coordinated raid attack.'
-                )
+                .setColor(0xe67e22)
+                .setTitle(_t('raidAlertTitle', { server: member.guild.name }))
+                .setDescription(_t(minAgeDays > 0 ? 'raidAlertDescKick' : 'raidAlertDescAlert', { n: recent.length, s: _secs, days: _dw(minAgeDays) }))
                 .addFields(
-                    { name: '⚡ Joins', value: `${recent.length} in ${settings.raid_window}s`, inline: true },
-                    { name: '🏰 Server', value: member.guild.name, inline: true },
-                    { name: '🕐 Time', value: `<t:${Math.floor(now/1000)}:T>`, inline: true }
+                    { name: _t('raidFieldJoins'), value: _t('raidJoinsValue', { n: recent.length, s: _secs }), inline: true },
+                    { name: _t('raidFieldWhen'), value: `<t:${Math.floor(now/1000)}:T>`, inline: true }
                 )
-                .setFooter({ text: 'ARCHON CG-223 • Auto-unlocks in 5 min if joins stop' })
+                .setFooter({ text: _t('raidAlertFooter') })
                 .setTimestamp();
             await owner.send({ embeds: [embed] }).catch(() => {});
         }
 
         // Auto-unlock after 5 min
-        setTimeout(() => {
+        const _recheck = () => {
             const newJoins = raidJoinLog.get(gid) || [];
             const stillActive = newJoins.filter(t => Date.now() - t < window).length >= threshold;
             if (!stillActive) {
@@ -215,13 +215,17 @@ async function handleRaidDetection(member, client, db) {
                 if (owner) {
                     owner.send({ embeds: [new EmbedBuilder()
                         .setColor(0x00cc44)
-                        .setTitle('✅ Raid Alert Cleared — ' + member.guild.name)
-                        .setDescription('Join rate has returned to normal. Server is secure.')
+                        .setTitle(require('../lib/i18n').t('automod.raidClearedTitle', require('../lib/botPerms').langOf({ guild: member.guild, client }), { server: member.guild.name }))
+                        .setDescription(require('../lib/i18n').t('automod.raidClearedDesc', require('../lib/botPerms').langOf({ guild: member.guild, client })))
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ]}).catch(() => {});
                 }
+            } else {
+                setTimeout(_recheck, 5 * 60000); // joins are still coming in: look again later,
+                                                 // instead of staying in raid mode for ever
             }
-        }, 5 * 60000);
+        };
+        setTimeout(_recheck, 5 * 60000);
     }
 
     // Kick/flag new accounts during active raid
@@ -230,16 +234,14 @@ async function handleRaidDetection(member, client, db) {
         await member.kick(`Raid protection: Account too new (${accountAge.toFixed(1)} days)`).catch(() => {});
         try {
             const dm = await member.createDM();
+            const _kl = require('../lib/botPerms').langOf({ guild: member.guild, client });
+            const _kt = (k, v) => require('../lib/i18n').t('automod.' + k, _kl, v);
+            const _kd = (n) => _kt(Number(n) === 1 ? 'daysOne' : 'daysMany', { n });
             await dm.send({
                 embeds: [new EmbedBuilder()
                     .setColor(0xff8800)
-                    .setTitle('⚠️ Kicked — Account Too New')
-                    .setDescription(
-                        `You were automatically removed from **${member.guild.name}** during a security alert.\n\n` +
-                        `This server requires accounts to be at least **${minAgeDays} days old**.\n` +
-                        `Your account is **${accountAge.toFixed(1)} days old**.\n\n` +
-                        `Please try again when your account is older!`
-                    )
+                    .setTitle(_kt('raidKickTitle', { server: member.guild.name }))
+                                .setDescription(_kt('raidKickDesc', { server: member.guild.name, days: _kd(minAgeDays), age: _kd(accountAge.toFixed(1)), left: _kd(Math.max(1, Math.ceil(minAgeDays - accountAge))) }))
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
             }).catch(() => {});
         } catch {}
@@ -1255,7 +1257,7 @@ module.exports = {
         if (sc === 'log') {
             const ch = ix.options.getChannel('channel');
             client.updateServerSetting(ix.guild.id, 'automodlog', ch.id); client.settings.delete(ix.guild.id);
-            return ix.reply({ content: `✅ Log → ${ch}`, flags: 1 << 6 });
+            return ix.reply({ content: require('../lib/botPerms').channelText(ix.guild, ch, ix), flags: 1 << 6 });
         }
 
         // ── RAID DETECTION HANDLER (Premium) ──
@@ -1499,7 +1501,7 @@ module.exports = {
             const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[1]);
             if (!ch) return msg.reply('❌ Mention a channel.');
             client.updateServerSetting(msg.guild.id, 'automodlog', ch.id); client.settings.delete(msg.guild.id);
-            return msg.reply(`✅ Log → ${ch}`);
+            return msg.reply(require('../lib/botPerms').channelText(msg.guild, ch, msg));
         }
         return msg.reply('❓ Usage: .automod [status|enable|disable|sensitivity|whitelist|domains|channels|log|appeals]');
     },

@@ -1,0 +1,15 @@
+{
+  "raidAlertTitle": "Many people joined {server} at once",
+  "raidAlertDescKick": "{n} accounts joined in {s} seconds, much faster than usual. It could be a raid. Until things calm down, ARCHON will remove new members whose account is younger than {days}.",
+  "raidAlertDescAlert": "{n} accounts joined in {s} seconds, much faster than usual. It could be a raid. ARCHON isn't removing anyone automatically (the minimum account age is set to 0), so you may want to look at the member list.",
+  "raidFieldJoins": "Joins",
+  "raidJoinsValue": "{n} in {s} seconds",
+  "raidFieldWhen": "When",
+  "raidAlertFooter": "ARCHON checks again every 5 minutes and tells you when things are back to normal.",
+  "raidClearedTitle": "Things are back to normal in {server}",
+  "raidClearedDesc": "Joins have slowed down again. ARCHON keeps watching.",
+  "raidKickTitle": "You were removed from {server}",
+  "raidKickDesc": "{server} was getting a lot of new members at once, and at those moments it removes accounts younger than {days}. Yours is {age} old, so you were removed. This isn't about anything you did.\nYou're welcome to join again in {left}.",
+  "daysOne": "{n} day",
+  "daysMany": "{n} days"
+}
