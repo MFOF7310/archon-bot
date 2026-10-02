@@ -3980,6 +3980,8 @@ if (cooldownCheck.blocked) {
     return message.reply(msg).catch(() => {});
 }
     
+    // Bot permission check: say plainly what ARCHON is missing, instead of failing inside the command (fails open)
+    { try { const _bp = require('./lib/botPerms'); const _g = _bp.guard(message, command.name || cmdName, commandLang || 'en'); if (_g) return _bp.say(message, _g.text); } catch (_e) { console.error('[botPerms]', _e.message); } }
     try {
         await executePluginCommand(command, client, message, args, db, usedCommand, serverSettings, commandLang);
         // Bot XP: earns XP when processing a command
@@ -3991,6 +3993,7 @@ if (cooldownCheck.blocked) {
             } catch (e) { 
                 console.error(`${red}[COMMAND ERROR]${reset} ${cmdName}:`, e);
                 const lang = detectLanguage(usedCommand || cmdName);
+                { try { const _bp = require('./lib/botPerms'); const _x = _bp.explainError(e, message, (command && command.name) || cmdName, lang); if (_x) return _bp.say(message, _x); } catch (_e2) { console.error('[botPerms]', _e2.message); } }
                 const errorMsg = t('index.cmd_error', lang);
                 return message.reply(errorMsg).catch(() => {});
             }
@@ -4091,6 +4094,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                     }).catch(() => {});
                 }
                 // Plugin has native slash support — use it directly
+                { try { const _bp = require('./lib/botPerms'); const _g = _bp.guard(interaction, command.name || interaction.commandName); if (_g) return _bp.say(interaction, _g.text); } catch (_e) { console.error('[botPerms]', _e.message); } }
                 await command.execute(interaction, client);
 
                 // Bot XP: earns XP when processing a slash command
@@ -4173,6 +4177,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                 };
 
                 // Execute plugin's run() with adapted parameters
+                { try { const _bp = require('./lib/botPerms'); const _g = _bp.guard(interaction, command.name || interaction.commandName, lang); if (_g) return _bp.say(interaction, _g.text); } catch (_e) { console.error('[botPerms]', _e.message); } }
                 await executePluginCommand(command, client, interactionMessage, args, db, usedCommand, serverSettings, lang);
 
                 // If plugin never replied, send basic acknowledgment
@@ -4189,6 +4194,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             }
         } catch (error) {
             console.error(`${red}[SLASH ERROR]${reset} ${interaction.commandName}:`, error);
+            { try { const _bp = require('./lib/botPerms'); const _x = _bp.explainError(error, interaction, interaction.commandName); if (_x) return _bp.say(interaction, _x); } catch (_e2) { console.error('[botPerms]', _e2.message); } }
             const errorMsg = { content: '\u274c There was an error executing this command!', flags: 1 << 6 };
 
             if (interaction.replied || interaction.deferred) {
@@ -6001,11 +6007,17 @@ apiApp.get('/api/leaderboard/:guildId?', (req, res) => {
 // ─── WARNINGS ──────────────────────────────────────────
 apiApp.get('/api/warnings/:guildId?', (req, res) => {
     const { guildId } = req.params;
+    const { userId, active } = req.query;
+    if (!guildId || !validateSnowflake(guildId)) return res.status(400).json({ error: 'a valid guild id is required' });
+    if (userId !== undefined && !validateSnowflake(String(userId))) return res.status(400).json({ error: 'invalid user id' });
     try {
-        let warnings;
-        if (!guildId || !validateSnowflake(guildId)) return res.status(400).json({ error: 'a valid guild id is required' });
-        warnings = db.prepare('SELECT * FROM warnings WHERE guild_id = ? ORDER BY created_at DESC').all(guildId);
-        res.json({ success: true, warnings, count: warnings.length });
+        let query = 'SELECT * FROM warnings WHERE guild_id = ?';
+        const params = [guildId];
+        if (userId) { query += ' AND user_id = ?'; params.push(String(userId)); }
+        if (active !== undefined) { query += ' AND active = ?'; params.push(active === 'true' ? 1 : 0); }
+        query += ' ORDER BY created_at DESC LIMIT 2000';
+        const warnings = db.prepare(query).all(...params);
+        res.json({ success: true, warnings, count: warnings.length, total: warnings.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -6703,24 +6715,6 @@ apiApp.get('/api/modlogs/:guildId', (req, res) => {
         params.push(parseInt(limit) || 50);
         const logs = db.prepare(query).all(...params);
         res.json({ success: true, logs, total: logs.length });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ─── WARNINGS ────────────────────────────────────────────────────────────────
-apiApp.get('/api/warnings/:guildId', (req, res) => {
-    const { guildId } = req.params;
-    const { userId, active } = req.query;
-    if (!validateSnowflake(guildId)) return res.status(400).json({ error: 'Invalid guild ID' });
-    try {
-        let query = 'SELECT * FROM warnings WHERE guild_id = ?';
-        const params = [guildId];
-        if (userId) { query += ' AND user_id = ?'; params.push(userId); }
-        if (active !== undefined) { query += ' AND active = ?'; params.push(active === 'true' ? 1 : 0); }
-        query += ' ORDER BY created_at DESC LIMIT 100';
-        const warnings = db.prepare(query).all(...params);
-        res.json({ success: true, warnings, total: warnings.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
