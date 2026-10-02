@@ -8,8 +8,8 @@
   "logSetRoleBlock": "AutoMod 日志已设置为 {channel}，**但我还不能在那里发送消息：** **{role}** 屏蔽了 **{perms}**。\n要修复：频道设置 → 权限 → 添加 **{bot}** 并允许 **{perms}**。",
   "logSetMissingPerm": "AutoMod 日志已设置为 {channel}，**但我还不能在那里发送消息：** **{bot}** 身份组缺少 **{perms}**。\n要修复：服务器设置 → 身份组 → **{bot}** → 开启 **{perms}**。",
   "someRole": "某个身份组",
-  "hierarchyBan": "",
-  "hierarchyKick": "",
-  "hierarchyOwner": "",
-  "hierarchySelf": ""
+  "hierarchyBan": "我无法封禁 **{target}**：其最高身份组 **{role}** 排在我的之上。\n要修复：服务器设置 → 身份组 → 将 **{bot}** 拖到 **{role}** 之上，然后再试一次。",
+  "hierarchyKick": "我无法踢出 **{target}**：其最高身份组 **{role}** 排在我的之上。\n要修复：服务器设置 → 身份组 → 将 **{bot}** 拖到 **{role}** 之上，然后再试一次。",
+  "hierarchyOwner": "我不能对服务器所有者这样做。Discord 不允许任何人对所有者采取行动。",
+  "hierarchySelf": "我不能对自己这样做。"
 }

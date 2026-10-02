@@ -6,7 +6,7 @@
   "invalidAmount": "❌ **无效数量。**\n请指定 1 到 {max} 之间的数字。",
   "purgedMessages": "🧹 **清理完成！**\n已从神经频道清除来自 **{target}** 的 `{count}` 条消息。",
   "noMessages": "⚠️ **未找到可删除的数据包。**\n消息必须少于 14 天且未置顶。",
-  "error": "❌ **错误：** 无法清除消息。",
+  "error": "❌ 我没能删除那些消息。请稍后再试。",
   "footer": "ARCHON CG-223 • 神经清除系统",
   "packetsRemoved": "个数据包已移除",
   "fromNode": "来自节点",

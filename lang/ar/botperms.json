@@ -8,8 +8,8 @@
   "logSetRoleBlock": "تم ضبط سجل AutoMod على {channel}، **لكنني لا أستطيع الكتابة هناك بعد:** **{role}** تحظر **{perms}**.\nلإصلاحه: Edit Channel → Permissions → أضف **{bot}** واسمح بـ **{perms}**.",
   "logSetMissingPerm": "تم ضبط سجل AutoMod على {channel}، **لكنني لا أستطيع الكتابة هناك بعد:** رتبة **{bot}** تفتقر إلى **{perms}**.\nلإصلاحه: Server Settings → Roles → **{bot}** → فعّل **{perms}**.",
   "someRole": "رتبة ما",
-  "hierarchyBan": "",
-  "hierarchyKick": "",
-  "hierarchyOwner": "",
-  "hierarchySelf": ""
+  "hierarchyBan": "لا أستطيع حظر **{target}**: رتبته الأعلى، **{role}**، فوق رتبتي.\nلإصلاحه: Server Settings → Roles → اسحب **{bot}** فوق **{role}**، ثم حاول مرة أخرى.",
+  "hierarchyKick": "لا أستطيع طرد **{target}**: رتبته الأعلى، **{role}**، فوق رتبتي.\nلإصلاحه: Server Settings → Roles → اسحب **{bot}** فوق **{role}**، ثم حاول مرة أخرى.",
+  "hierarchyOwner": "لا أستطيع فعل ذلك لمالك الخادم. لا يسمح Discord لأحد بالتصرف تجاه المالك.",
+  "hierarchySelf": "لا أستطيع فعل ذلك بنفسي."
 }
