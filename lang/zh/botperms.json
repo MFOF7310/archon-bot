@@ -1,0 +1,11 @@
+{
+  "botNoPermsMissingPerm": "我还做不到：**{bot}** 身份组缺少 **{perms}**。\n要修复：服务器设置 → 身份组 → **{bot}** → 开启 **{perms}**，然后再试一次。",
+  "botNoPermsRoleBlock": "我在这里做不到：**{role}** 在此频道屏蔽了 **{perms}**。\n要修复：频道设置 → 权限 → 添加 **{bot}** 并允许 **{perms}**，然后再试一次。",
+  "botNoPermsPrivate": "我看不到这个频道，所以暂时无法使用它。\n要修复：频道设置 → 权限 → 添加 **{bot}** 并允许 **{perms}**，然后再试一次。",
+  "botNoPermsUnknown": "Discord 拦住了我。要么是我在这里缺少某项权限，要么是对方的身份组排在我之上。\n要修复：服务器设置 → 身份组 → 把 **{bot}** 排到我需要管理的身份组之上，并确认它具有此命令所需的权限。**postcheck** 命令会显示缺少什么。",
+  "logSetOk": "✅ AutoMod 日志将发送到 {channel}。",
+  "logSetPrivate": "AutoMod 日志已设置为 {channel}，**但我还看不到该频道。**\n要修复：频道设置 → 权限 → 添加 **{bot}** 并允许 **{perms}**。",
+  "logSetRoleBlock": "AutoMod 日志已设置为 {channel}，**但我还不能在那里发送消息：** **{role}** 屏蔽了 **{perms}**。\n要修复：频道设置 → 权限 → 添加 **{bot}** 并允许 **{perms}**。",
+  "logSetMissingPerm": "AutoMod 日志已设置为 {channel}，**但我还不能在那里发送消息：** **{bot}** 身份组缺少 **{perms}**。\n要修复：服务器设置 → 身份组 → **{bot}** → 开启 **{perms}**。",
+  "someRole": "某个身份组"
+}

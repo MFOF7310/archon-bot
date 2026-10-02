@@ -1,0 +1,11 @@
+{
+  "botNoPermsMissingPerm": "Je ne peux pas encore le faire : le rôle **{bot}** n'a pas **{perms}**.\nPour corriger : Paramètres du serveur → Rôles → **{bot}** → active **{perms}**, puis réessaie.",
+  "botNoPermsRoleBlock": "Je ne peux pas le faire ici : **{role}** bloque **{perms}** dans ce salon.\nPour corriger : paramètres du salon → Permissions → ajoute **{bot}** et autorise **{perms}**, puis réessaie.",
+  "botNoPermsPrivate": "Je ne vois pas ce salon, donc je ne peux pas encore l'utiliser.\nPour corriger : paramètres du salon → Permissions → ajoute **{bot}** et autorise **{perms}**, puis réessaie.",
+  "botNoPermsUnknown": "Discord m'a bloqué. Soit il me manque une permission ici, soit le rôle de cette personne est au-dessus du mien.\nPour corriger : Paramètres du serveur → Rôles → place **{bot}** au-dessus des rôles que je dois gérer, et vérifie qu'il a les permissions nécessaires à cette commande. La commande **postcheck** montre ce qui manque.",
+  "logSetOk": "✅ Les logs AutoMod iront dans {channel}.",
+  "logSetPrivate": "Salon des logs AutoMod défini sur {channel}, **mais je ne vois pas encore ce salon.**\nPour corriger : paramètres du salon → Permissions → ajoute **{bot}** et autorise **{perms}**.",
+  "logSetRoleBlock": "Salon des logs AutoMod défini sur {channel}, **mais je ne peux pas encore y écrire :** **{role}** bloque **{perms}**.\nPour corriger : paramètres du salon → Permissions → ajoute **{bot}** et autorise **{perms}**.",
+  "logSetMissingPerm": "Salon des logs AutoMod défini sur {channel}, **mais je ne peux pas encore y écrire :** le rôle **{bot}** n'a pas **{perms}**.\nPour corriger : Paramètres du serveur → Rôles → **{bot}** → active **{perms}**.",
+  "someRole": "un rôle"
+}

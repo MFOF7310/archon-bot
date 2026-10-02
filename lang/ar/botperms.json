@@ -1,0 +1,11 @@
+{
+  "botNoPermsMissingPerm": "لا أستطيع فعل ذلك بعد: رتبة **{bot}** تفتقر إلى **{perms}**.\nلإصلاحه: Server Settings → Roles → **{bot}** → فعّل **{perms}**، ثم حاول مرة أخرى.",
+  "botNoPermsRoleBlock": "لا أستطيع فعل ذلك هنا: **{role}** تحظر **{perms}** في هذه القناة.\nلإصلاحه: Edit Channel → Permissions → أضف **{bot}** واسمح بـ **{perms}**، ثم حاول مرة أخرى.",
+  "botNoPermsPrivate": "لا أرى هذه القناة، لذا لا أستطيع استخدامها بعد.\nلإصلاحه: Edit Channel → Permissions → أضف **{bot}** واسمح بـ **{perms}**، ثم حاول مرة أخرى.",
+  "botNoPermsUnknown": "منعني Discord. إما أنني أفتقر إلى إذن هنا، أو أن رتبة ذلك الشخص فوق رتبتي.\nلإصلاحه: Server Settings → Roles → انقل **{bot}** فوق الرتب التي أحتاج إلى إدارتها، وتحقق من أنها تملك الأذونات التي يحتاجها هذا الأمر. أمر **postcheck** يُظهر ما ينقص.",
+  "logSetOk": "✅ ستُرسَل سجلات AutoMod إلى {channel}.",
+  "logSetPrivate": "تم ضبط سجل AutoMod على {channel}، **لكنني لا أرى تلك القناة بعد.**\nلإصلاحه: Edit Channel → Permissions → أضف **{bot}** واسمح بـ **{perms}**.",
+  "logSetRoleBlock": "تم ضبط سجل AutoMod على {channel}، **لكنني لا أستطيع الكتابة هناك بعد:** **{role}** تحظر **{perms}**.\nلإصلاحه: Edit Channel → Permissions → أضف **{bot}** واسمح بـ **{perms}**.",
+  "logSetMissingPerm": "تم ضبط سجل AutoMod على {channel}، **لكنني لا أستطيع الكتابة هناك بعد:** رتبة **{bot}** تفتقر إلى **{perms}**.\nلإصلاحه: Server Settings → Roles → **{bot}** → فعّل **{perms}**.",
+  "someRole": "رتبة ما"
+}

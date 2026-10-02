@@ -1,0 +1,12 @@
+{
+  "okTitle": "✅ Je peux écrire dans {channel}",
+  "okDesc": "Toutes les permissions dont j'ai besoin sont en place.",
+  "noTitle": "Je ne peux pas encore écrire dans {channel}",
+  "whyPrivate": "Je ne vois pas ce salon.",
+  "whyRoleBlock": "**{role}** bloque **{perms}** ici.",
+  "whyMissingPerm": "Le rôle **{bot}** n'a pas **{perms}** sur l'ensemble du serveur.",
+  "fixPrivate": "Pour corriger :\n1. Ouvre les paramètres du salon → Permissions\n2. Ajoute le rôle **{bot}**\n3. Autorise **{perms}**\n4. Relance cette vérification",
+  "fixRoleBlock": "Pour corriger :\n1. Ouvre les paramètres du salon → Permissions\n2. Trouve **{bot}** (ou ajoute-le) et autorise **{perms}**\n3. Relance cette vérification",
+  "fixMissingPerm": "Pour corriger :\n1. Ouvre Paramètres du serveur → Rôles\n2. Ouvre **{bot}** et active **{perms}**\n3. Relance cette vérification",
+  "someRole": "un rôle"
+}

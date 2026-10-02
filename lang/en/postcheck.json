@@ -1,0 +1,12 @@
+{
+  "okTitle": "✅ I can post in {channel}",
+  "okDesc": "All the permissions I need there are in place.",
+  "noTitle": "I can't post in {channel} yet",
+  "whyPrivate": "I can't see this channel.",
+  "whyRoleBlock": "**{role}** is blocking **{perms}** here.",
+  "whyMissingPerm": "The **{bot}** role is missing **{perms}** on the whole server.",
+  "fixPrivate": "To fix it:\n1. Open the channel's settings → Permissions\n2. Add the **{bot}** role\n3. Allow **{perms}**\n4. Run this check again",
+  "fixRoleBlock": "To fix it:\n1. Open the channel's settings → Permissions\n2. Find **{bot}** (or add it) and allow **{perms}**\n3. Run this check again",
+  "fixMissingPerm": "To fix it:\n1. Open Server Settings → Roles\n2. Open **{bot}** and turn on **{perms}**\n3. Run this check again",
+  "someRole": "a role"
+}

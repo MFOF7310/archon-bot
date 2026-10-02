@@ -1,0 +1,11 @@
+{
+  "botNoPermsMissingPerm": "I can't do that yet: the **{bot}** role is missing **{perms}**.\nTo fix it: Server Settings → Roles → **{bot}** → turn on **{perms}**, then try again.",
+  "botNoPermsRoleBlock": "I can't do that here: **{role}** is blocking **{perms}** in this channel.\nTo fix it: channel settings → Permissions → add **{bot}** and allow **{perms}**, then try again.",
+  "botNoPermsPrivate": "I can't see this channel, so I can't use it yet.\nTo fix it: channel settings → Permissions → add **{bot}** and allow **{perms}**, then try again.",
+  "botNoPermsUnknown": "Discord stopped me. Either I'm missing a permission here, or that person's role sits above mine.\nTo fix it: Server Settings → Roles → move **{bot}** above the roles I need to manage, and check it has the permissions this command needs. The **postcheck** command shows what's missing.",
+  "logSetOk": "✅ AutoMod logs will go to {channel}.",
+  "logSetPrivate": "AutoMod log set to {channel}, **but I can't see that channel yet.**\nTo fix it: channel settings → Permissions → add **{bot}** and allow **{perms}**.",
+  "logSetRoleBlock": "AutoMod log set to {channel}, **but I can't post there yet:** **{role}** is blocking **{perms}**.\nTo fix it: channel settings → Permissions → add **{bot}** and allow **{perms}**.",
+  "logSetMissingPerm": "AutoMod log set to {channel}, **but I can't post there yet:** the **{bot}** role is missing **{perms}**.\nTo fix it: Server Settings → Roles → **{bot}** → turn on **{perms}**.",
+  "someRole": "a role"
+}
