@@ -58,10 +58,9 @@ module.exports = {
         
         // Update database
         try {
-            db.prepare(`
-                INSERT OR REPLACE INTO server_settings (guild_id, prefix, updated_at) 
-                VALUES (?, ?, strftime('%s', 'now'))
-            `).run(message.guild.id, newPrefix);
+            // Update ONLY the prefix. INSERT OR REPLACE deleted the whole row and reset every other setting of the server to its default.
+            if (db.prepare(`UPDATE server_settings SET prefix = ?, updated_at = strftime('%s', 'now') WHERE guild_id = ?`).run(newPrefix, message.guild.id).changes === 0)
+                db.prepare(`INSERT INTO server_settings (guild_id, prefix, updated_at) VALUES (?, ?, strftime('%s', 'now'))`).run(message.guild.id, newPrefix);
             
             // Clear cache
             client.settings.delete(message.guild.id);
@@ -110,10 +109,9 @@ module.exports = {
         
         // Update database
         try {
-            db.prepare(`
-                INSERT OR REPLACE INTO server_settings (guild_id, prefix, updated_at) 
-                VALUES (?, ?, strftime('%s', 'now'))
-            `).run(interaction.guildId, newPrefix);
+            // Update ONLY the prefix. INSERT OR REPLACE deleted the whole row and reset every other setting of the server to its default.
+            if (db.prepare(`UPDATE server_settings SET prefix = ?, updated_at = strftime('%s', 'now') WHERE guild_id = ?`).run(newPrefix, interaction.guildId).changes === 0)
+                db.prepare(`INSERT INTO server_settings (guild_id, prefix, updated_at) VALUES (?, ?, strftime('%s', 'now'))`).run(interaction.guildId, newPrefix);
             
             // Clear cache
             client.settings.delete(interaction.guildId);
