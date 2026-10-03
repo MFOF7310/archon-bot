@@ -5589,6 +5589,8 @@ apiApp.get('/api/premium/checkout-url', async (req, res) => {
 // Usage report for the dashboard's Insights tab (loopback only, like the rest of this API)
 apiApp.get('/api/insights/:guildId', (req, res) => require('./lib/insights-route').handle(req, res, db, client));
 apiApp.get('/api/insights/:guildId/day/:date', (req, res) => require('./lib/insights-route').handleDay(req, res, db, client));
+// Server health (read by the dashboard: loopback only, Manage Server is checked there)
+apiApp.get('/api/health/:guildId', (req, res) => require('./lib/health-route').handle(req, res, db, client));
 
 apiApp.get('/api/premium/status', (req, res) => {
     try {
