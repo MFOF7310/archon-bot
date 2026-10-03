@@ -43,6 +43,58 @@ const joinHits = new Map(); // userId:guildId => [timestamps]
 const JOIN_LIMIT = 3, JOIN_WINDOW = 10 * 60 * 1000;
 const panelSessions = new Map(); // userId:guildId => { code, attempts, expires, nonce }
 const panelCooldown = new Map(); // userId:guildId => ts
+
+// ── Auto-kick deadlines survive restarts ─────────────────────────────────────────────────────────────────────────
+// A pending kick used to live only in a setTimeout, so every restart (every deploy) silently cancelled it and the member stayed unverified forever.
+// The deadline is now ALSO stored in the database (table verify_pending), removed when the member verifies, leaves or is handled, and re-armed at
+// startup by resumeKickTimers(). A deadline that passed while the bot was down gets a short grace period instead of an immediate kick:
+// nobody can verify while the bot is offline. Every database call is wrapped: a failure here can never break verification itself.
+const RESUME_GRACE_MS = 10 * 60 * 1000;
+let _vdb = null, _deadlineTable = false;
+function _deadlines(db) {
+    if (!db) return false;
+    if (!_deadlineTable) { db.prepare('CREATE TABLE IF NOT EXISTS verify_pending (guild_id TEXT NOT NULL, user_id TEXT NOT NULL, kick_at INTEGER NOT NULL, PRIMARY KEY (guild_id, user_id))').run(); _deadlineTable = true; }
+    return true;
+}
+function saveDeadline(db, gid, uid, kickAt) {
+    try { if (_deadlines(db)) db.prepare('INSERT OR REPLACE INTO verify_pending (guild_id, user_id, kick_at) VALUES (?, ?, ?)').run(String(gid), String(uid), kickAt); }
+    catch (e) { console.error('[VERIFY] could not save a kick deadline:', e.message); }
+}
+function forgetDeadline(db, gid, uid) {
+    try { if (_deadlines(db)) db.prepare('DELETE FROM verify_pending WHERE guild_id = ? AND user_id = ?').run(String(gid), String(uid)); }
+    catch (e) { console.error('[VERIFY] could not remove a kick deadline:', e.message); }
+}
+function armResumedKick(client, db, gid, uid, waitMs) {
+    const key = `${uid}:${gid}`;
+    const old = pending.get(key); if (old?.timer) clearTimeout(old.timer);
+    const timer = setTimeout(() => kickIfStillUnverified(client, db, gid, uid).catch((e) => console.error('[VERIFY] resumed kick failed:', e.message)), waitMs);
+    pending.set(key, { timer, resumed: true });   // the normal cleanup paths (verified, left) clear it like any other timer
+}
+async function kickIfStillUnverified(client, db, gid, uid) {
+    const key = `${uid}:${gid}`;
+    forgetDeadline(db, gid, uid);
+    const pk = pending.get(key); if (!pk) return;                     // verified, left or replaced in the meantime
+    pk.collector?.stop('kicked'); pending.delete(key);
+    const guild = client.guilds.cache.get(gid); if (!guild) return;
+    const s = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days FROM server_settings WHERE guild_id = ?').get(gid);
+    if (!s || !s.verify_enabled || !(s.verify_kick_days > 0)) return; // verification was switched off in the meantime
+    const m = await guild.members.fetch(uid).catch(() => null); if (!m) return;
+    const role = s.verify_role_id ? guild.roles.cache.get(s.verify_role_id) : null;
+    if (role && m.roles.cache.has(role.id)) return;                   // verified
+    try {
+        const dmCh = await m.createDM().catch(() => null);
+        if (dmCh) {
+            const invRow = storedInviteRow(db, guild);
+            await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
+                .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
+                .setDescription(vt(db, gid, 'kickDm', { server: guild.name }))
+                .setFooter({ text: vt(db, gid, 'bamakoFooter') })],
+                components: invRow ? [invRow] : [] }).catch(() => {});
+        }
+    } catch {}
+    await m.kick('Failed to verify in time').catch(() => {});
+    logVerify(guild, db, 0xff8800, vt(db, gid, 'logKickedTimeout'), uid, `${s.verify_kick_days} min`);
+}
 const PANEL_TTL = 5 * 60 * 1000, PANEL_COOLDOWN = 30 * 1000;
 
 let _colsReady = false;
@@ -106,6 +158,25 @@ function panelLink(guild, db) {
 }
 
 module.exports = {
+    // Called once from ClientReady: re-arms the auto-kick deadlines that were running when the bot stopped
+    resumeKickTimers: async (client, db) => {
+        _vdb = db;
+        let rows;
+        try { _deadlines(db); rows = db.prepare('SELECT guild_id, user_id, kick_at FROM verify_pending').all(); }
+        catch (e) { console.error('[VERIFY] could not read the kick deadlines:', e.message); return; }
+        const now = Date.now();
+        let rearmed = 0, graced = 0, dropped = 0;
+        for (const r of rows) {
+            if (!client.guilds.cache.get(r.guild_id)) { forgetDeadline(db, r.guild_id, r.user_id); dropped++; continue; }   // the bot left that server
+            let wait = r.kick_at - now;
+            if (wait <= 0) {
+                wait = RESUME_GRACE_MS; graced++;
+                try { db.prepare('UPDATE verify_pending SET kick_at = ? WHERE guild_id = ? AND user_id = ?').run(now + wait, r.guild_id, r.user_id); } catch {}
+            } else rearmed++;
+            armResumedKick(client, db, r.guild_id, r.user_id, wait);
+        }
+        console.log(`[VERIFY] resumed ${rows.length} kick deadline(s): ${rearmed} re-armed, ${graced} overdue (given ${RESUME_GRACE_MS / 60000} min), ${dropped} dropped`);
+    },
     name: 'verify',
     description: 'Verification gate system',
     category: 'MODERATION',
@@ -491,6 +562,7 @@ module.exports = {
         // Auto-kick timer
         const kickMins = settings.verify_kick_days || 0;
         const timer = kickMins > 0 ? setTimeout(async () => {
+            forgetDeadline(db, gid, member.id);
             const pk = pending.get(key);
             if (!pk) return; // verified, failed or replaced
             pk.collector?.stop('kicked');
@@ -516,6 +588,8 @@ module.exports = {
         }, kickMins * 60000) : null;
 
         pending.set(key, { timer, dmMsg, code, collector });
+        _vdb = db;
+        if (timer) saveDeadline(db, member.guild.id, member.id, Date.now() + kickMins * 60000);
     },
 
     // Called from InteractionCreate for customId 'vpanel:*'
@@ -595,6 +669,7 @@ module.exports = {
                 panelSessions.delete(key);
                 const p = pending.get(key);
                 if (p) { if (p.timer) clearTimeout(p.timer); p.collector?.stop('verified'); pending.delete(key); }
+                forgetDeadline(db, gid, uid);
                 if (uRole) await member.roles.remove(uRole).catch(() => {});
                 if (vRole) await member.roles.add(vRole).catch(() => {});
                 logVerify(guild, db, 0x00cc44, vt(db, gid, 'logPassedPanel'), uid);
@@ -615,6 +690,7 @@ module.exports = {
     // Called from guildMemberRemove — frees timer + collector
     onMemberLeave: (member) => {
         const key = `${member.id}:${member.guild.id}`;
+        forgetDeadline(_vdb, member.guild.id, member.id);
         const p = pending.get(key);
         if (!p) return;
         if (p.timer) clearTimeout(p.timer);
