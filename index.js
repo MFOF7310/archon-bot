@@ -980,7 +980,8 @@ function getServerSettings(guildId) {
     try {
         let settings = db.prepare(`SELECT * FROM server_settings WHERE guild_id = ?`).get(guildId);
         if (!settings) {
-            db.prepare(`INSERT INTO server_settings (guild_id, prefix) VALUES (?, ?)`).run(guildId, DEFAULT_SETTINGS.prefix);
+            // only a real server gets a row: a direct message ("DM"), a language code or nothing at all must never create one
+            if (/^[0-9]{15,25}$/.test(String(guildId))) db.prepare(`INSERT INTO server_settings (guild_id, prefix) VALUES (?, ?)`).run(guildId, DEFAULT_SETTINGS.prefix);
             settings = { guild_id: guildId, prefix: DEFAULT_SETTINGS.prefix };
         }
         
@@ -1154,7 +1155,7 @@ function updateServerSetting(guildId, setting, value) {
     // Ensure row exists (upsert) before updating
     try {
         const exists = db.prepare('SELECT 1 FROM server_settings WHERE guild_id = ?').get(guildId);
-        if (!exists) {
+        if (!exists && /^[0-9]{15,25}$/.test(String(guildId))) {
             db.prepare('INSERT OR IGNORE INTO server_settings (guild_id, prefix) VALUES (?, ?)').run(guildId, '.');
         }
     } catch (e) {}
