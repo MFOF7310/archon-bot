@@ -102,7 +102,7 @@ module.exports = {
         const embed = buildEmbed(client, guildIcon);
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setLabel('Dashboard').setURL('https://bamako-steel-dev.xyz').setStyle(ButtonStyle.Link).setEmoji('\u{1F310}'),
-            new ButtonBuilder().setLabel('Invite ARCHON').setURL('https://discord.com/oauth2/authorize?client_id=1204920379971645460&permissions=2253174475189366&scope=bot%20applications.commands').setStyle(ButtonStyle.Link).setEmoji('\u{1F916}')
+            new ButtonBuilder().setLabel('Invite ARCHON').setURL('https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=2253174475189366&scope=bot%20applications.commands').setStyle(ButtonStyle.Link).setEmoji('\u{1F916}')
         );
         return message.reply({ embeds: [embed], components: [row] });
     },
@@ -113,7 +113,7 @@ module.exports = {
         const embed = buildEmbed(client, guildIcon);
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setLabel('Dashboard').setURL('https://bamako-steel-dev.xyz').setStyle(ButtonStyle.Link).setEmoji('\u{1F310}'),
-            new ButtonBuilder().setLabel('Invite ARCHON').setURL('https://discord.com/oauth2/authorize?client_id=1204920379971645460&permissions=2253174475189366&scope=bot%20applications.commands').setStyle(ButtonStyle.Link).setEmoji('\u{1F916}')
+            new ButtonBuilder().setLabel('Invite ARCHON').setURL('https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=2253174475189366&scope=bot%20applications.commands').setStyle(ButtonStyle.Link).setEmoji('\u{1F916}')
         );
         await interaction.editReply({ embeds: [embed], components: [row] });
     }
