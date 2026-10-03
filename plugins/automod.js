@@ -1284,7 +1284,7 @@ module.exports = {
                 return ix.reply({ embeds: [new EmbedBuilder()
                     .setColor(0xffd700)
                     .setTitle('⭐ Premium Feature')
-                    .setDescription('Raid detection requires **ARCHON Premium**!\n\nGet it for just **$1.99/month** — protect your server from coordinated attacks.')
+                    .setDescription('Raid detection requires **ARCHON Premium**!\n\nGet it for just **$3.40/month** — protect your server from coordinated attacks.')
                     .addFields({ name: '🔑 Activate', value: 'Use `/premium status` to upgrade!' })
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                 ], flags: 64 });

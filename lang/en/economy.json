@@ -112,7 +112,7 @@
     "sub_grant": "👑 Grant premium [Owner only]",
     "sub_generate": "🔑 Generate premium code [Owner only]",
     "sub_list": "📋 List all active codes [Owner only]",
-    "btn_subscribe": "💳 Subscribe — $1.99/mo",
+    "btn_subscribe": "💳 Subscribe — $3.40/mo",
     "btn_have_code": "🔑 I have a code",
     "opt_days": "Days (0 = lifetime)",
     "opt_guild_id": "Guild ID",
@@ -122,7 +122,7 @@
     "activated_title": "⭐ Premium Activated!",
     "activated_dm": "**{server}** now has ARCHON Premium!\n\nDuration: **{days}**\n\nAll premium features are now unlocked! 🎉",
     "duration_line": "Duration: **{days}**",
-    "plan_includes": "Everything included in the $1.99/server plan:",
+    "plan_includes": "Everything included in the $3.40/server plan:",
     "codes_generated_title": "🔑 Premium Codes Generated",
     "codes_list_title": "📋 Active Premium Codes ({count})"
   },
