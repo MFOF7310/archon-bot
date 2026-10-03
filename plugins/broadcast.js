@@ -252,7 +252,7 @@ module.exports = {
 // ================= SLASH COMMAND DATA =================
 
     run: async (client, message, args, database, serverSettings, usedCommand) => {
-    const guildId = message.guild?.id ?? interaction?.guildId ?? 'DM';
+    const guildId = message.guild?.id ?? 'DM';
 
         // ================= PERMISSION CHECK =================
 // ================= PERMISSION CHECK =================
