@@ -220,7 +220,7 @@ module.exports = {
                     .setAuthor({ name: '🔗 INVITE ARCHON CG-223', iconURL: client.user.displayAvatarURL() })
                     .setDescription(
                         `**Add the bot to your server!**\n\n` +
-                        `🔗 **Invite Link:**\nhttps://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot%20applications.commands\n\n` +
+                        `🔗 **Invite Link:**\nhttps://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=2253174475189366&scope=bot%20applications.commands\n\n` +
                         `✨ **Features:**\n` +
                         `• AI Chat (Lydia)\n` +
                         `• Economy System\n` +

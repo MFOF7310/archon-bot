@@ -125,7 +125,7 @@ function buildDossierEmbed(client, lang, isArchitect, stats, version) {
 function buildButtons(t, isSlash = false) {
     const s = isSlash ? '_slash' : '';
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('INVITE').setURL(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID || '1472707869257367676'}&permissions=8&scope=bot%20applications.commands`).setStyle(ButtonStyle.Link).setEmoji('🔗'),
+        new ButtonBuilder().setLabel('INVITE').setURL(`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID || '1472707869257367676'}&permissions=2253174475189366&scope=bot%20applications.commands`).setStyle(ButtonStyle.Link).setEmoji('🔗'),
         new ButtonBuilder().setLabel('DASHBOARD').setURL('https://bamako-steel-dev.xyz').setStyle(ButtonStyle.Link).setEmoji('🌐'),
         new ButtonBuilder().setLabel('GITHUB').setURL('https://github.com/MFOF7310').setStyle(ButtonStyle.Link).setEmoji('💻'),
     );
