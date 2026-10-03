@@ -322,6 +322,7 @@ const _RULE_REASONS = {
     'image spam':          [/^(\d+) images in ([\d.]+)s$/, 'why_image_spam', (m) => ({ n: m[1], s: m[2] })],
     'attachment spam':     [/^Multiple image-only posts$/, 'why_attachment_spam', () => ({})],
     'cross-channel spam':  [/^Same message in (\d+) channels( \(contains links\))?$/, 'why_cross_channel_spam', (m) => ({ n: m[1] }), (m) => m[2] ? 'why_cross_channel_spam_links' : 'why_cross_channel_spam'],
+    'rapid fire':          [/^(\d+) messages across (\d+) channels in ([\d.]+)s$/, 'why_rapid_fire', (x) => ({ n: x[1], c: x[2], s: x[3] })],
 };
 const _usable = (out, key, fallback) => (typeof out === 'string' && out && out !== key && !out.startsWith('automod.')) ? out : fallback;
 function ruleName(v, t) {

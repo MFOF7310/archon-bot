@@ -81,5 +81,6 @@
   "why_image_spam": "{s} 秒内 {n} 张图片",
   "why_attachment_spam": "多条仅含图片的消息",
   "why_cross_channel_spam": "同一条消息发布在 {n} 个频道",
-  "why_cross_channel_spam_links": "同一条消息发布在 {n} 个频道（包含链接）"
+  "why_cross_channel_spam_links": "同一条消息发布在 {n} 个频道（包含链接）",
+  "why_rapid_fire": "{s} 秒内在 {c} 个频道发送 {n} 条消息"
 }

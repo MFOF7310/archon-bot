@@ -81,5 +81,6 @@
   "why_image_spam": "",
   "why_attachment_spam": "",
   "why_cross_channel_spam": "",
-  "why_cross_channel_spam_links": ""
+  "why_cross_channel_spam_links": "",
+  "why_rapid_fire": ""
 }

@@ -81,5 +81,6 @@
   "why_image_spam": "{n} images in {s}s",
   "why_attachment_spam": "Multiple image-only posts",
   "why_cross_channel_spam": "Same message in {n} channels",
-  "why_cross_channel_spam_links": "Same message in {n} channels (contains links)"
+  "why_cross_channel_spam_links": "Same message in {n} channels (contains links)",
+  "why_rapid_fire": "{n} messages across {c} channels in {s}s"
 }

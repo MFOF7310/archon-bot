@@ -81,5 +81,6 @@
   "why_image_spam": "{n} من الصور في {s} ثانية",
   "why_attachment_spam": "عدة رسائل تحتوي فقط على صور",
   "why_cross_channel_spam": "نفس الرسالة في {n} من القنوات",
-  "why_cross_channel_spam_links": "نفس الرسالة في {n} من القنوات (تحتوي على روابط)"
+  "why_cross_channel_spam_links": "نفس الرسالة في {n} من القنوات (تحتوي على روابط)",
+  "why_rapid_fire": "{n} من الرسائل في {c} من القنوات خلال {s} ثانية"
 }

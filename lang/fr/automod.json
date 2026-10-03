@@ -81,5 +81,6 @@
   "why_image_spam": "{n} images en {s} s",
   "why_attachment_spam": "Plusieurs messages contenant uniquement des images",
   "why_cross_channel_spam": "Même message dans {n} salons",
-  "why_cross_channel_spam_links": "Même message dans {n} salons (contient des liens)"
+  "why_cross_channel_spam_links": "Même message dans {n} salons (contient des liens)",
+  "why_rapid_fire": "{n} messages dans {c} salons en {s} s"
 }
