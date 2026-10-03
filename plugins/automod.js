@@ -249,6 +249,43 @@ async function handleRaidDetection(member, client, db) {
 }
 
 // ================= FIX 1: takeAction stores violation metadata in history =================
+// ── Rule names and reasons shown to PEOPLE are translated (display only) ─────────────────────────────────────────
+// The English strings inside each violation stay exactly as they are, because other code matches on them (type.includes('malicious'),
+// the audit-log reasons, the console). Anything not known here (for example what the AI reports) is shown as it is.
+const _RULE_TYPES = ['message spam', 'caps flood', 'emoji flood', 'mass mention', 'everyone/here spam', 'rapid everyone spam', 'promotional spam',
+    'malicious link', 'unauthorized invite', 'unauthorized link', 'image spam', 'attachment spam', 'cross-channel spam', 'rapid fire', 'toxic content'];
+const _slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+// violation type -> [pattern of the English reason, translation key, how to read the numbers out of it]
+const _RULE_REASONS = {
+    'message spam':        [/^(\d+)\+ messages in ([\d.]+)s$/, 'why_message_spam', (m) => ({ n: m[1], s: m[2] })],
+    'caps flood':          [/^(\d+)% uppercase$/, 'why_caps_flood', (m) => ({ p: m[1] })],
+    'emoji flood':         [/^(\d+) emoji \((\d+)%\)$/, 'why_emoji_flood', (m) => ({ n: m[1], p: m[2] })],
+    'mass mention':        [/^(\d+) mentions$/, 'why_mass_mention', (m) => ({ n: m[1] })],
+    'everyone/here spam':  [/^@everyone with mass attachments$/, 'why_everyone_here_spam', () => ({})],
+    'rapid everyone spam': [/^Repeated @everyone spam with attachments$/, 'why_rapid_everyone_spam', () => ({})],
+    'promotional spam':    [/^@here\/@everyone \+ external link$/, 'why_promotional_spam', () => ({})],
+    'malicious link':      [/^Phishing\/scam URL detected$/, 'why_malicious_link', () => ({})],
+    'unauthorized invite': [/^External Discord invite$/, 'why_unauthorized_invite', () => ({})],
+    'unauthorized link':   [/^Link domain not permitted$/, 'why_unauthorized_link', () => ({})],
+    'image spam':          [/^(\d+) images in ([\d.]+)s$/, 'why_image_spam', (m) => ({ n: m[1], s: m[2] })],
+    'attachment spam':     [/^Multiple image-only posts$/, 'why_attachment_spam', () => ({})],
+    'cross-channel spam':  [/^Same message in (\d+) channels( \(contains links\))?$/, 'why_cross_channel_spam', (m) => ({ n: m[1] }), (m) => m[2] ? 'why_cross_channel_spam_links' : 'why_cross_channel_spam'],
+};
+const _usable = (out, key, fallback) => (typeof out === 'string' && out && out !== key && !out.startsWith('automod.')) ? out : fallback;
+function ruleName(v, t) {
+    try { const type = v?.type; if (!type) return ''; if (!_RULE_TYPES.includes(type)) return type; const key = 'rule_' + _slug(type); return _usable(t(key), key, type); }
+    catch { return v?.type || ''; }
+}
+function ruleReason(v, t) {
+    try {
+        const raw = v?.reason || '', spec = _RULE_REASONS[v?.type];
+        if (!spec) return raw;
+        const m = String(raw).match(spec[0]); if (!m) return raw;
+        const key = spec[3] ? spec[3](m) : spec[1];
+        return _usable(t(key, spec[2](m)), key, raw);
+    } catch { return v?.reason || ''; }
+}
+
 async function takeAction(message, violations, client, db) {
     const uid = message.author.id, gid = message.guild.id;
     const k = key(uid, gid);
@@ -332,7 +369,7 @@ async function takeAction(message, violations, client, db) {
             .setDescription(_t('strikeDmDesc', {
                 emoji: actionEmoji,
                 title: _t(outcome === 'ban' ? 'strikeDmTitleBan' : outcome === 'timeout' ? 'strikeDmTitleTimeout' : 'strikeDmTitleWarn'),
-                rule: violations[0].type, violation: violations[0].reason,
+                rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t),
                 action: (outcome === 'timeout' || outcome === 'ban') ? actionText : _t('strikeMemberWarn'),
                 bar: strikeBar(displayWc), n: displayWc, next: strikeNext, contact: appealContact
             }))
@@ -361,7 +398,7 @@ async function takeAction(message, violations, client, db) {
         const notif = await message.channel.send({
             embeds: [new EmbedBuilder()
                 .setColor(actionColor)
-                .setDescription(_t('strikeNotice', { emoji: '<:shield:1535642169032048730>', user: message.author.username, rule: violations[0].type }))]
+                .setDescription(_t('strikeNotice', { emoji: '<:shield:1535642169032048730>', user: message.author.username, rule: ruleName(violations[0], _t) }))]
         }).catch(() => {});
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
@@ -376,7 +413,7 @@ async function takeAction(message, violations, client, db) {
             const log = new EmbedBuilder()
                 .setColor(actionColor)
                 .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
-                .setDescription(_t('strikeLogDesc', { emoji: '<a:mod_abuse_bean_sign:1534872816099528725>', action: actionText, member: `${message.author}`, uid, rule: violations[0].type, violation: violations[0].reason, channel: `<#${message.channel.id}>` }))
+                .setDescription(_t('strikeLogDesc', { emoji: '<a:mod_abuse_bean_sign:1534872816099528725>', action: actionText, member: `${message.author}`, uid, rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t), channel: `<#${message.channel.id}>` }))
                 .setFooter({ text: _t('strikeLogFooter', { bar, n: displayWc, next }), iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();
             if (repeatV?.channels?.length > 1) log.addFields({ name: _t('strikeLabelCross'), value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
@@ -395,7 +432,7 @@ async function takeAction(message, violations, client, db) {
                 .setDescription(_t('strikeOwnerDesc', { server: message.guild.name }))
                 .addFields(
                     { name: _t('strikeLabelMember'), value: `${message.author} \`${uid}\``, inline: false },
-                    { name: _t('strikeLabelRule'), value: violations[0].type, inline: true },
+                    { name: _t('strikeLabelRule'), value: ruleName(violations[0], _t), inline: true },
                     { name: _t('strikeLabelChannel'), value: `<#${message.channel.id}>`, inline: true },
                     { name: _t('strikeLabelStrike'), value: `${displayWc}/4`, inline: true },
                     { name: _t('strikeLabelMessage'), value: `\`\`\`${message.content.substring(0, 1800) || _t('strikeAttachment')}\`\`\``, inline: false },
