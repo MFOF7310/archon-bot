@@ -158,6 +158,56 @@ function isElevated(member) {
 const raidJoinLog = new Map(); // guildId => [timestamps]
 const raidActive = new Map();  // guildId => true/false
 
+// ── Raid mode survives restarts ─────────────────────────────────────────────────────────────────────────────────
+// raidActive lives in memory, so a restart (every deploy) silently ended an active raid: the suspect-account removal stopped and the owner never got
+// the "back to normal" message. The raid is now also stored in the database (table raid_state), removed when it ends, and picked up again at boot.
+// A raid older than 30 minutes is ended quietly at boot (the bot was off for too long for the old state to mean anything).
+// Every database call is wrapped: a failure here can never break raid detection itself.
+const RAID_RESUME_MAX_AGE_MS = 30 * 60000;
+let _raidTable = false;
+function _raidDb(db) {
+    if (!db) return false;
+    if (!_raidTable) { db.prepare('CREATE TABLE IF NOT EXISTS raid_state (guild_id TEXT PRIMARY KEY NOT NULL, started_at INTEGER NOT NULL)').run(); _raidTable = true; }
+    return true;
+}
+function saveRaid(db, gid, ts) {
+    try { if (_raidDb(db)) db.prepare('INSERT OR REPLACE INTO raid_state (guild_id, started_at) VALUES (?, ?)').run(String(gid), ts); }
+    catch (e) { console.error('[RAID] could not save the raid state:', e.message); }
+}
+function forgetRaid(db, gid) {
+    try { if (_raidDb(db)) db.prepare('DELETE FROM raid_state WHERE guild_id = ?').run(String(gid)); }
+    catch (e) { console.error('[RAID] could not remove the raid state:', e.message); }
+}
+// Called once from ClientReady
+async function resumeRaids(client, db) {
+    let rows;
+    try { _raidDb(db); rows = db.prepare('SELECT guild_id, started_at FROM raid_state').all(); }
+    catch (e) { console.error('[RAID] could not read the raid state:', e.message); return; }
+    const now = Date.now();
+    let resumed = 0, ended = 0;
+    for (const r of rows) {
+        const gid = r.guild_id, guild = client.guilds.cache.get(gid);
+        const s = db.prepare('SELECT raid_enabled, raid_threshold, raid_window FROM server_settings WHERE guild_id = ?').get(gid);
+        if (!guild || !s?.raid_enabled || now - r.started_at > RAID_RESUME_MAX_AGE_MS) { forgetRaid(db, gid); ended++; continue; }   // gone, switched off or too old: end it quietly
+        raidActive.set(gid, true); resumed++;
+        const threshold = s.raid_threshold || 5, window = (s.raid_window || 30) * 1000;
+        const check = async () => {
+            const stillActive = (raidJoinLog.get(gid) || []).filter((t) => Date.now() - t < window).length >= threshold;
+            if (stillActive) { setTimeout(check, 5 * 60000); return; }       // joins are still coming in: look again later
+            raidActive.set(gid, false); forgetRaid(db, gid);
+            console.log(`[RAID] ✅ Raid over in ${guild.name} — monitoring resumed`);
+            const owner = await guild.fetchOwner().catch(() => null); if (!owner) return;
+            const L = require('../lib/botPerms').langOf({ guild, client });
+            owner.send({ embeds: [new EmbedBuilder().setColor(0x00cc44)
+                .setTitle(require('../lib/i18n').t('automod.raidClearedTitle', L, { server: guild.name }))
+                .setDescription(require('../lib/i18n').t('automod.raidClearedDesc', L))
+                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })] }).catch(() => {});
+        };
+        setTimeout(check, 5 * 60000);
+    }
+    console.log(`[RAID] resumed ${resumed} raid state(s), ${ended} ended quietly`);
+}
+
 async function handleRaidDetection(member, client, db) {
     const gid = member.guild.id;
     const settings = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid);
@@ -183,6 +233,7 @@ async function handleRaidDetection(member, client, db) {
     // Check if raid threshold hit
     if (recent.length >= threshold && !raidActive.get(gid)) {
         raidActive.set(gid, true);
+        saveRaid(db, gid, now);
         console.log(`[RAID] 🚨 Raid detected in ${member.guild.name} — ${recent.length} joins in ${settings.raid_window}s`);
 
         // Alert owner
@@ -211,6 +262,7 @@ async function handleRaidDetection(member, client, db) {
             const stillActive = newJoins.filter(t => Date.now() - t < window).length >= threshold;
             if (!stillActive) {
                 raidActive.set(gid, false);
+                forgetRaid(db, gid);
                 console.log(`[RAID] ✅ Raid over in ${member.guild.name} — monitoring resumed`);
                 if (owner) {
                     owner.send({ embeds: [new EmbedBuilder()
@@ -1572,3 +1624,5 @@ module.exports = {
         return await handleAppealButton(interaction, client);
     }
 };
+
+module.exports.resumeRaids = resumeRaids;

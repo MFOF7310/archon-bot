@@ -2499,6 +2499,8 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 client.once(Events.ClientReady, async () => {
     // Re-arm the "verify in time or be kicked" deadlines that were running when the bot stopped
     Promise.resolve(require('./plugins/verify.js').resumeKickTimers?.(client, db)).catch((e) => console.error('[VERIFY] resume failed:', e.message));
+    // Raid mode: pick up a raid that was active when the bot stopped
+    Promise.resolve(require('./plugins/automod.js').resumeRaids?.(client, db)).catch((e) => console.error('[RAID] resume failed:', e.message));
     // Cache missing guild names from DB + bulk stats sync
     setTimeout(async () => {
         try {
