@@ -414,6 +414,18 @@ async function takeAction(message, violations, client, db) {
     console.log(`[AUTOMOD] ${cc}${action.toUpperCase()} | ${message.author.tag} | ${violations.map(v=>v.type).join(', ')} | Strike ${displayWc}/4`);
 }
 
+// ── Advanced AutoMod is a Premium feature: image spam, attachment-only spam and @everyone-with-attachments detection ──
+// Premium is looked up at most once a minute per server (a purchase or an expiry takes up to a minute to apply).
+const _advCache = new Map();   // guildId -> { on, ts }
+function advancedAutomodOn(db, gid) {
+    const c = _advCache.get(gid), now = Date.now();
+    if (c && now - c.ts < 60000) return c.on;
+    let on = false;
+    try { on = !!require('./premium.js').isPremium(db, gid); } catch (e) { on = false; }
+    _advCache.set(gid, { on, ts: now });
+    return on;
+}
+
 async function scanMessage(message, client, db) {
     if (!message.guild || message.author.bot || message.webhookId) return false;
     const ss = client.getServerSettings?.(message.guild.id);
@@ -429,6 +441,7 @@ async function scanMessage(message, client, db) {
 
     const uid = message.author.id, gid = message.guild.id;
     const k = key(uid, gid), now = Date.now();
+    const advanced = advancedAutomodOn(db, gid);   // Premium: image spam, attachment spam, @everyone spam
     if (!history.has(k)) history.set(k, { messages: [], warns: 0, last: now });
     const entry = history.get(k);
     entry.last = now;
@@ -496,7 +509,7 @@ async function scanMessage(message, client, db) {
     }
 
     // ── FIX 3: @everyone/@here — only flag when combined with 2+ attachments (spam pattern) ──
-    if (isRestrictedChannel && !seen.has('everyone')) {
+    if (advanced && isRestrictedChannel && !seen.has('everyone')) {
         const hasEveryoneText = message.content.includes('@everyone') || message.content.includes('@here');
         const hasEveryoneResolved = message.mentions.everyone === true;
         const hasEveryone = hasEveryoneText || hasEveryoneResolved;
@@ -542,7 +555,7 @@ async function scanMessage(message, client, db) {
     }
 
     // ── Image/attachment spam ──
-    if (isRestrictedChannel && !seen.has('image_spam')) {
+    if (advanced && isRestrictedChannel && !seen.has('image_spam')) {
         const imageRecent = h.filter(m =>
             now - m.ts <= IMAGE_SPAM_WINDOW &&
             m.channelId === message.channel.id &&
@@ -560,7 +573,7 @@ async function scanMessage(message, client, db) {
     }
 
     // ── Attachment-only spam ──
-    if (isRestrictedChannel && !seen.has('attachment_spam') && message.attachments.size > 0) {
+    if (advanced && isRestrictedChannel && !seen.has('attachment_spam') && message.attachments.size > 0) {
         const textContent = message.content.trim();
         const hasOnlyMentions = textContent.length > 0 && /^[@<>:!&\s\d]+$/.test(textContent);
         if (textContent.length === 0 || hasOnlyMentions) {
