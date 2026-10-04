@@ -161,7 +161,7 @@ async function handleButton(btn, client, userId, lang) {
 
 module.exports = {
     name: 'about',
-    aliases: ['info', 'author', 'architect', 'botinfo', 'system', 'apropos', 'credits', 'dossier'],
+    aliases: ['info', 'author', 'architect', 'botinfo', 'apropos', 'credits', 'dossier'],
     description: '📁 Display the ARCHON CG-223 classified neural dossier.',
     category: 'SYSTEM',
     cooldown: 5000,

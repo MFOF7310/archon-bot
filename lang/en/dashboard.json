@@ -1,0 +1,15 @@
+{
+  "intro": "Here's how your server is doing.",
+  "members": "👥 **{members}** members · **{active}** active this week",
+  "membersOnly": "👥 **{members}** members",
+  "boost": "🚀 Boost: Tier {tier} · {boosts} boosts",
+  "boostNone": "🚀 No boost yet",
+  "xp": "⭐ **{xp}** XP earned here · average level **{avg}**",
+  "top": "🏆 Top member: **{name}** (level {level})",
+  "topNone": "🏆 No top member yet: members earn XP by chatting.",
+  "hint": "To change settings, open the dashboard. You'll sign in with Discord, and you need the **Manage Server** permission.",
+  "button": "Open the dashboard",
+  "dmText": "Open the dashboard from inside a server to land on its page. Here is the website:",
+  "dmButton": "Open the website",
+  "error": "Something went wrong. Please try again."
+}

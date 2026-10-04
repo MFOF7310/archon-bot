@@ -1,0 +1,15 @@
+{
+  "intro": "Voici où en est ton serveur.",
+  "members": "👥 **{members}** membres · **{active}** actifs cette semaine",
+  "membersOnly": "👥 **{members}** membres",
+  "boost": "🚀 Boost : niveau {tier} · {boosts} boosts",
+  "boostNone": "🚀 Pas encore de boost",
+  "xp": "⭐ **{xp}** XP gagnés ici · niveau moyen **{avg}**",
+  "top": "🏆 Meilleur membre : **{name}** (niveau {level})",
+  "topNone": "🏆 Pas encore de meilleur membre : on gagne de l'XP en discutant.",
+  "hint": "Pour changer les réglages, ouvre le tableau de bord. Tu te connectes avec Discord, et il faut la permission **Gérer le serveur**.",
+  "button": "Ouvrir le tableau de bord",
+  "dmText": "Ouvre le tableau de bord depuis un serveur pour arriver sur sa page. Voici le site :",
+  "dmButton": "Ouvrir le site",
+  "error": "Quelque chose s'est mal passé. Réessaie."
+}

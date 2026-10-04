@@ -1,0 +1,26 @@
+{
+  "title": "Rapport système",
+  "verdict": {
+    "healthy": "Tout a l'air en bonne santé.",
+    "slow": "ARCHON tourne, mais la connexion à Discord est lente ({ping} ms).",
+    "verySlow": "La connexion à Discord est très lente ({ping} ms). Quelque chose cloche peut-être.",
+    "pingUnknown": "ARCHON vient de démarrer : la vitesse de connexion n'est pas encore mesurée.",
+    "memLow": "La machine manque de mémoire ({avail} Mo disponibles)."
+  },
+  "line": {
+    "version": "Version : v{version}",
+    "uptime": "En marche depuis : {uptime}",
+    "ping": "Connexion à Discord : {ping} ms",
+    "pingNone": "Connexion à Discord : pas encore mesurée",
+    "memory": "Mémoire d'ARCHON : {rss} Mo · la machine a {avail} Mo disponibles sur {total} Mo",
+    "load": "Charge par cœur : {load} ({cores} cœurs)",
+    "servers": "Serveurs : {servers} · Salons : {channels}",
+    "commands": "Commandes : {commands}",
+    "records": "Fiches membres dans la base : {records}",
+    "runtime": "Node {node} · discord.js {djs}"
+  },
+  "uptimeFmt": "{d} j {h} h {m} min",
+  "busy": "occupée",
+  "ownerOnly": "Cette commande est réservée au propriétaire du bot.",
+  "error": "Quelque chose s'est mal passé pendant la création du rapport."
+}
