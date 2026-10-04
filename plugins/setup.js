@@ -1,73 +1,114 @@
-const { 
-    EmbedBuilder, 
-    PermissionFlagsBits, 
-    SlashCommandBuilder,
-    ActionRowBuilder,
-    StringSelectMenuBuilder,
-    ButtonBuilder,
-    ButtonStyle,
-    ChannelType
+// ═══════════════════════════════════════════════════════
+// ARCHON CG-223 — SETUP: the first-run wizard
+// Four short questions (rules channel, welcome channel, member role, log channel), then a summary.
+//   - every sentence lives in lang/<locale>/setup.json (English and French are written; the other languages fall back to English)
+//   - native channel and role pickers: they list EVERY channel and role, with search (the old menus stopped at 25)
+//   - the member role is checked before it is saved: not @everyone or an integration role, not above ARCHON's own role,
+//     and not a role with powerful permissions (every new member would get those)
+//   - the summary says whether ARCHON can really post in the welcome and log channels (the same check as /postcheck)
+//   - what you pick is saved right away, so cancelling or timing out never loses it
+// ═══════════════════════════════════════════════════════
+const {
+    EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
+    ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType
 } = require('discord.js');
+const i18n = require('../lib/i18n');
+const canPost = require('../lib/canPost');
 
-// ================= TRANSLATIONS =================
-const t = {
-    fr: {
-        title: '🧙‍♂️ ASSISTANT DE CONFIGURATION',
-        welcome: '👋 Bienvenue dans l\'assistant de configuration ARCHON CG-223 !\n\nJe vais vous guider à travers les **5 étapes essentielles** pour configurer votre serveur.\n\nCliquez sur **Démarrer** pour commencer.',
-        step1_title: '📜 Étape 1/5 : Salon des Règles',
-        step1_desc: 'Sélectionnez le salon où vos règles sont affichées.\nLes nouveaux membres verront un bouton pour y accéder.',
-        step2_title: '👋 Étape 2/5 : Salon de Bienvenue',
-        step2_desc: 'Sélectionnez le salon où les messages de bienvenue seront envoyés.',
-        step3_title: '👤 Étape 3/5 : Rôle Membre',
-        step3_desc: 'Sélectionnez le rôle attribué automatiquement aux nouveaux membres.',
-        step4_title: '📊 Étape 4/5 : Salon de Logs',
-        step4_desc: 'Sélectionnez le salon pour les rapports de sécurité et logs.',
-        step5_title: '🎉 Étape 5/5 : Configuration Terminée !',
-        step5_desc: (prefix) => `✅ **Votre serveur est configuré !**\n\nVoici un résumé :\n• Salon des règles : <#{rules}>\n• Salon de bienvenue : <#{welcome}>\n• Rôle membre : <@&{role}>\n• Salon de logs : <#{log}>\n\n💡 **Préfixe actuel :** \`${prefix}\`\n🔧 Utilisez \`/serversettings\` pour modifier ces paramètres.`,
-        start: '🚀 Démarrer',
-        skip: '⏭️ Passer',
-        finish: '✅ Terminer',
-        selectChannel: 'Sélectionnez un salon...',
-        selectRole: 'Sélectionnez un rôle...',
-        noChannels: 'Aucun salon disponible',
-        noRoles: 'Aucun rôle disponible',
-        timeout: '⏰ Temps écoulé. Configuration annulée.',
-        cancelled: '❌ Configuration annulée.',
-        error: '❌ Une erreur est survenue.',
-        saved: '✅ Paramètre enregistré !',
-        footer: 'ARCHON CG-223 • Assistant de Configuration'
-    },
-    en: {
-        title: '🧙‍♂️ SETUP WIZARD',
-        welcome: '👋 Welcome to the ARCHON CG-223 setup wizard!\n\nI\'ll guide you through the **5 essential steps** to configure your server.\n\nClick **Start** to begin.',
-        step1_title: '📜 Step 1/5: Rules Channel',
-        step1_desc: 'Select the channel where your rules are displayed.\nNew members will see a button to access them.',
-        step2_title: '👋 Step 2/5: Welcome Channel',
-        step2_desc: 'Select the channel where welcome messages will be sent.',
-        step3_title: '👤 Step 3/5: Member Role',
-        step3_desc: 'Select the role automatically given to new members.',
-        step4_title: '📊 Step 4/5: Log Channel',
-        step4_desc: 'Select the channel for security reports and logs.',
-        step5_title: '🎉 Step 5/5: Setup Complete!',
-        step5_desc: (prefix) => `✅ **Your server is configured!**\n\nHere's a summary:\n• Rules channel: <#{rules}>\n• Welcome channel: <#{welcome}>\n• Member role: <@&{role}>\n• Log channel: <#{log}>\n\n💡 **Current prefix:** \`${prefix}\`\n🔧 Use \`/serversettings\` to modify these settings.`,
-        start: '🚀 Start',
-        skip: '⏭️ Skip',
-        finish: '✅ Finish',
-        selectChannel: 'Select a channel...',
-        selectRole: 'Select a role...',
-        noChannels: 'No channels available',
-        noRoles: 'No roles available',
-        timeout: '⏰ Time expired. Setup cancelled.',
-        cancelled: '❌ Setup cancelled.',
-        error: '❌ An error occurred.',
-        saved: '✅ Setting saved!',
-        footer: 'ARCHON CG-223 • Setup Wizard'
-    }
-};
+const LANGS = ['en', 'fr', 'zh', 'ar', 'bm'];
+const IDLE_MS = 120000;                                   // two minutes without a click ends the setup
+const GOLD = 0xfcd116, GREEN = 0x14b53a, AMBER = 0xf59e0b, GREY = 0x8d897f;   // the colours of Mali, plus two quiet ones
 
-// ================= COLLECTOR TIMEOUT =================
-const COLLECTOR_TIME = 120000;
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// The questions, in order. `setting` is the name client.updateServerSetting already knows; `needsPost` marks the channels ARCHON writes in.
+const STEPS = [
+    { key: 'rules',   kind: 'channel', setting: 'rules' },
+    { key: 'welcome', kind: 'channel', setting: 'welcome', extra: [['welcome_enabled', '1']], needsPost: 'welcome' },
+    { key: 'member',  kind: 'role',    setting: 'member' },
+    { key: 'log',     kind: 'channel', setting: 'log', needsPost: 'log' },
+];
+
+// A role with any of these must not be handed to every new member.
+const POWERFUL = [
+    ['Administrator', PermissionFlagsBits.Administrator], ['Manage Server', PermissionFlagsBits.ManageGuild], ['Manage Roles', PermissionFlagsBits.ManageRoles],
+    ['Manage Channels', PermissionFlagsBits.ManageChannels], ['Ban Members', PermissionFlagsBits.BanMembers], ['Kick Members', PermissionFlagsBits.KickMembers],
+    ['Timeout Members', PermissionFlagsBits.ModerateMembers], ['Manage Messages', PermissionFlagsBits.ManageMessages], ['Mention Everyone', PermissionFlagsBits.MentionEveryone],
+];
+
+const T = (lang, key, vars) => i18n.t('setup.' + key, lang, vars);
+const safeName = (s) => String(s || '').replace(/[*_~`|>\\]/g, '').slice(0, 80);
+
+// The language: the server's own (or the slash command's), and always one we have; anything else is English.
+function pickLang(client, guildId, interaction) {
+    let raw = null;
+    if (interaction && typeof i18n.slashLang === 'function') { try { raw = i18n.slashLang(interaction, LANGS); } catch { raw = null; } }
+    if (!LANGS.includes(raw)) { try { raw = client.detectLanguage ? client.detectLanguage('setup', guildId) : null; } catch { raw = null; } }
+    return LANGS.includes(raw) ? raw : 'en';
+}
+
+// ── the screens ──────────────────────────────────────
+function welcomeScreen(lang, guild, client) {
+    const embed = new EmbedBuilder().setColor(GOLD)
+        .setAuthor({ name: T(lang, 'title'), iconURL: client?.user?.displayAvatarURL?.() })
+        .setDescription(T(lang, 'welcome', { server: safeName(guild.name), total: STEPS.length }));
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('setup_start').setLabel(T(lang, 'start')).setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
+    return { embeds: [embed], components: [row] };
+}
+
+function questionScreen(lang, guild, idx, notice) {
+    const step = STEPS[idx];
+    const embed = new EmbedBuilder().setColor(GOLD)
+        .setTitle(T(lang, `q.${step.key}.title`))
+        .setDescription(T(lang, `q.${step.key}.text`) + (notice ? `\n\n⚠️ ${notice}` : ''))
+        .setFooter({ text: T(lang, 'footer', { server: safeName(guild.name), n: idx + 1, total: STEPS.length }) });
+    const picker = step.kind === 'role' ? new RoleSelectMenuBuilder() : new ChannelSelectMenuBuilder().setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+    picker.setCustomId('setup_pick').setPlaceholder(T(lang, step.kind === 'role' ? 'placeholderRole' : 'placeholderChannel')).setMinValues(1).setMaxValues(1);
+    const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('setup_skip').setLabel(T(lang, 'skip')).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
+    return { embeds: [embed], components: [new ActionRowBuilder().addComponents(picker), buttons] };
+}
+
+function summaryScreen(lang, guild, state, warnings, prefix) {
+    const lines = STEPS.map((s) => {
+        const label = T(lang, `line.${s.key}`);
+        return state[s.key] ? `✅ ${label}: ${s.kind === 'role' ? `<@&${state[s.key]}>` : `<#${state[s.key]}>`}` : `⏭️ ${label}: ${T(lang, 'skipped')}`;
+    });
+    let text = `${T(lang, 'doneText')}\n\n${lines.join('\n')}`;
+    if (warnings.length) text += `\n\n**⚠️ ${T(lang, 'attention')}**\n${warnings.join('\n\n')}`;
+    text += `\n\n${T(lang, 'next')}\n${T(lang, 'prefixLine', { prefix })}`;
+    const embed = new EmbedBuilder().setColor(warnings.length ? AMBER : GREEN).setTitle(T(lang, 'doneTitle')).setDescription(text)
+        .setFooter({ text: safeName(guild.name) }).setTimestamp();
+    return { embeds: [embed], components: [] };
+}
+
+function plainScreen(lang, key) {
+    return { embeds: [new EmbedBuilder().setColor(GREY).setDescription(T(lang, key))], components: [] };
+}
+
+// ── the checks ───────────────────────────────────────
+// Returns a sentence when ARCHON cannot give this role to new members, otherwise null.
+function roleProblem(lang, guild, role) {
+    if (!role) return null;
+    if (role.id === guild.id || role.managed) return T(lang, 'roleManaged');
+    const me = guild.members?.me;
+    if (me && role.position >= (me.roles?.highest?.position ?? 0)) return T(lang, 'roleAbove', { role: safeName(role.name) });
+    const names = role.permissions?.has(PermissionFlagsBits.Administrator) ? ['Administrator'] : POWERFUL.filter(([, bit]) => role.permissions?.has(bit)).map(([n]) => n);
+    if (names.length) return T(lang, 'roleDangerous', { role: safeName(role.name), perms: canPost.localize(names, lang).join(', ') });
+    return null;
+}
+
+// Returns a sentence when ARCHON cannot post in a channel it was just given, otherwise null.
+function channelWarning(lang, guild, step, id) {
+    const me = guild.members?.me;
+    const ch = guild.channels?.cache?.get(id);
+    if (!me || !ch || !step.needsPost || typeof ch.permissionsFor !== 'function') return null;
+    const d = canPost.diagnose(guild, ch, me, canPost.neededFor(step.needsPost));
+    if (d.ok) return null;
+    const vars = { channel: `<#${id}>`, bot: me.roles?.botRole?.name || me.displayName, perms: canPost.localize(d.missing || [], lang).join(', '), role: d.role || '' };
+    return `${i18n.t('postcheck.' + canPost.keyFor('why', d.reason), lang, vars)}\n${T(lang, 'postcheckHint')}`;
+}
 
 module.exports = {
     name: 'setup',
@@ -83,302 +124,85 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .setDescriptionLocalizations({ fr: '🧙‍♂️ Lancer l\'assistant de configuration interactif' }),
 
-    // ================= SLASH EXECUTION =================
+    // ── slash command ──
     async execute(interaction, client) {
-        const isOwner = interaction.user.id === interaction.guild?.ownerId;
-        const isAdmin = interaction.member?.permissions.has('Administrator');
-        if (!isOwner && !isAdmin) {
-            return interaction.reply({ content: '🔒 This command requires Administrator permissions.', flags: 1 << 6 }).catch(() => {});
-        }
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
+        const lang = pickLang(client, interaction.guild?.id, interaction);
+        if (!interaction.guild) return interaction.reply({ content: T(lang, 'guildOnly'), flags: 1 << 6 }).catch(() => {});
+        const isAdmin = interaction.user.id === interaction.guild.ownerId || interaction.member?.permissions?.has('Administrator');
+        if (!isAdmin) return interaction.reply({ content: T(lang, 'needAdmin'), flags: 1 << 6 }).catch(() => {});
         await module.exports.startWizard(interaction, client, lang, true);
     },
 
-    // ================= PREFIX EXECUTION =================
+    // ── prefix command ──
     async run(client, message, args, db, serverSettings) {
-        const isOwner = message.author.id === message.guild?.ownerId;
-        const isAdmin = message.member?.permissions.has('Administrator');
-        if (!isOwner && !isAdmin) {
-            return message.reply('🔒 This command requires Administrator permissions.').catch(() => {});
-        }
-        const lang = client.detectLanguage ? client.detectLanguage('setup', message.guild?.id) : 'en';
+        const lang = pickLang(client, message.guild?.id, null);
+        if (!message.guild) return message.reply(T(lang, 'guildOnly')).catch(() => {});
+        const isAdmin = message.author.id === message.guild.ownerId || message.member?.permissions?.has('Administrator');
+        if (!isAdmin) return message.reply(T(lang, 'needAdmin')).catch(() => {});
         await module.exports.startWizard(message, client, lang, false);
     },
 
-    // ================= START WIZARD =================
+    // ── the wizard: one collector for the whole conversation ──
     async startWizard(context, client, lang, isSlash) {
-        const translations = t[lang];
         const guild = context.guild;
         const userId = isSlash ? context.user.id : context.author.id;
-        const settings = client.getServerSettings(guild.id);
-        const prefix = settings.prefix || '.';
+        const state = {};
+        let idx = -1;
 
-        const wizardState = { rules: null, welcome: null, memberRole: null, log: null, step: 0 };
+        let msg;
+        try {
+            const first = welcomeScreen(lang, guild, client);
+            if (isSlash) { await context.reply(first); msg = await context.fetchReply(); } else msg = await context.reply(first);
+        } catch (e) { console.error('[SETUP] could not open the wizard:', e.message); return; }
 
-        const reply = async (options) => {
-            if (isSlash) {
-                if (context.deferred || context.replied) return context.editReply(options).catch(() => {});
-                return context.reply(options).catch(() => {});
-            }
-            return context.reply(options).catch(() => {});
+        const collector = msg.createMessageComponentCollector({ idle: IDLE_MS });
+        const savedCount = () => Object.keys(state).length;
+
+        const advance = (i) => {
+            idx += 1;
+            if (idx < STEPS.length) return i.update(questionScreen(lang, guild, idx)).catch(() => {});
+            collector.stop('done');
+            const warnings = STEPS.filter((s) => s.needsPost && state[s.key]).map((s) => channelWarning(lang, guild, s, state[s.key])).filter(Boolean);
+            let prefix = '.';
+            try { prefix = client.getServerSettings(guild.id)?.prefix || '.'; } catch { /* the default prefix */ }
+            return i.update(summaryScreen(lang, guild, state, warnings, prefix)).catch(() => {});
         };
 
-        const welcomeEmbed = new EmbedBuilder()
-            .setColor('#9b59b6')
-            .setAuthor({ name: translations.title, iconURL: client.user.displayAvatarURL() })
-            .setDescription(translations.welcome)
-            .setFooter({ text: `${guild.name} • ${translations.footer}` })
-            .setTimestamp();
-
-        const startRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder().setCustomId('setup_start').setLabel(translations.start).setStyle(ButtonStyle.Success).setEmoji('🚀'),
-                new ButtonBuilder().setCustomId('setup_cancel').setLabel(translations.skip).setStyle(ButtonStyle.Secondary).setEmoji('❌')
-            );
-
-        const welcomeMsg = await reply({ embeds: [welcomeEmbed], components: [startRow] });
-
-        const filter = (i) => i.user.id === userId;
-        const collector = welcomeMsg.createMessageComponentCollector({ filter, time: COLLECTOR_TIME });
-
         collector.on('collect', async (i) => {
-            if (i.customId === 'setup_cancel') {
-                collector.stop();
-                await i.update({ content: translations.cancelled, embeds: [], components: [] }).catch(() => {});
-                return;
-            }
-            if (i.customId === 'setup_start') {
-                collector.stop();
-                await module.exports.runStep1(i, client, guild, wizardState, translations, prefix, userId);
+            try {
+                if (i.user.id !== userId) return i.reply({ content: T(lang, 'notYours'), flags: 1 << 6 }).catch(() => {});
+                if (i.customId === 'setup_cancel') { collector.stop('cancelled'); return i.update(plainScreen(lang, savedCount() ? 'cancelledSaved' : 'cancelled')).catch(() => {}); }
+                if (i.customId === 'setup_start' && idx === -1) return advance(i);
+                if (i.customId === 'setup_skip' && idx >= 0) return advance(i);
+                if (i.customId === 'setup_pick' && idx >= 0) {
+                    const step = STEPS[idx];
+                    const id = i.values[0];
+                    if (step.kind === 'role') {
+                        const problem = roleProblem(lang, guild, guild.roles.cache.get(id));
+                        if (problem) return i.update(questionScreen(lang, guild, idx, problem)).catch(() => {});   // stay on this question
+                    }
+                    client.updateServerSetting(guild.id, step.setting, id);
+                    for (const [k, v] of step.extra || []) client.updateServerSetting(guild.id, k, v);
+                    state[step.key] = id;
+                    return advance(i);
+                }
+            } catch (e) {
+                console.error('[SETUP] step failed:', e.message);
+                if (!i.replied && !i.deferred) i.reply({ content: T(lang, 'error'), flags: 1 << 6 }).catch(() => {});
             }
         });
 
         collector.on('end', async (_, reason) => {
-            if (reason === 'time' && wizardState.step === 0) {
-                await welcomeMsg.edit({ content: translations.timeout, embeds: [], components: [] }).catch(() => {});
-            }
+            if (reason === 'idle') await msg.edit(plainScreen(lang, savedCount() ? 'timeoutSaved' : 'timeout')).catch(() => {});
         });
     },
 
-    // ================= STEP 1: RULES CHANNEL =================
-async runStep1(interaction, client, guild, state, t, prefix, userId) {
-    state.step = 1;
-    const channels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText).first(25);
-
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId('setup_rules')
-        .setPlaceholder(t.selectChannel)
-        .addOptions(channels.map(c => ({ label: `#${c.name}`.slice(0, 25), value: c.id, emoji: '📜' })));
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    const skipRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('setup_skip').setLabel(t.skip).setStyle(ButtonStyle.Secondary).setEmoji('⏭️')
-    );
-
-    const embed = new EmbedBuilder().setColor('#3498db').setTitle(t.step1_title).setDescription(t.step1_desc)
-        .setFooter({ text: `${guild.name} • ${t.footer} • Step 1/5` });
-
-    // 🔥 Use editReply for subsequent steps, reply for first
-    if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed], components: [row, skipRow] }).catch(() => {});
-    } else {
-        await interaction.update({ embeds: [embed], components: [row, skipRow] }).catch(() => {});
-    }
-
-    const filter = (i) => i.user.id === userId;
-    const msg = await interaction.fetchReply().catch(() => null);
-    if (!msg) return;
-    const collector = msg.createMessageComponentCollector({ filter, time: COLLECTOR_TIME });
-
-    collector.on('collect', async (i) => {
-        // 🔥 DEFER FIRST — acknowledges immediately
-        await i.deferUpdate().catch(() => {});
-        
-        if (i.customId === 'setup_skip') {
-            collector.stop();
-            return module.exports.runStep2(i, client, guild, state, t, prefix, userId);
-        }
-        if (i.customId === 'setup_rules') {
-            state.rules = i.values[0];
-            client.updateServerSetting(guild.id, 'rules', state.rules);
-            collector.stop();
-            return module.exports.runStep2(i, client, guild, state, t, prefix, userId);
-        }
-    });
-
-    collector.on('end', async (_, reason) => {
-        if (reason === 'time') await msg.edit({ content: t.timeout, embeds: [], components: [] }).catch(() => {});
-    });
-},
-
-// ================= STEP 2: WELCOME CHANNEL =================
-async runStep2(interaction, client, guild, state, t, prefix, userId) {
-    state.step = 2;
-    const channels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText).first(25);
-
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId('setup_welcome')
-        .setPlaceholder(t.selectChannel)
-        .addOptions(channels.map(c => ({ label: `#${c.name}`.slice(0, 25), value: c.id, emoji: '👋' })));
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    const skipRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('setup_skip').setLabel(t.skip).setStyle(ButtonStyle.Secondary).setEmoji('⏭️')
-    );
-
-    const embed = new EmbedBuilder().setColor('#2ecc71').setTitle(t.step2_title).setDescription(t.step2_desc)
-        .setFooter({ text: `${guild.name} • ${t.footer} • Step 2/5` });
-
-    await interaction.editReply({ embeds: [embed], components: [row, skipRow] }).catch(() => {});
-
-    const filter = (i) => i.user.id === userId;
-    const msg = await interaction.fetchReply().catch(() => null);
-    if (!msg) return;
-    const collector = msg.createMessageComponentCollector({ filter, time: COLLECTOR_TIME });
-
-    collector.on('collect', async (i) => {
-        await i.deferUpdate().catch(() => {});
-        
-        if (i.customId === 'setup_skip') {
-    collector.stop();
-    await sleep(100);  // ← ADD THIS
-    return module.exports.runStep3(i, client, guild, state, t, prefix, userId);
-}
-if (i.customId === 'setup_welcome') {
-    state.welcome = i.values[0];
-    client.updateServerSetting(guild.id, 'welcome', state.welcome);
-    client.updateServerSetting(guild.id, 'welcome_enabled', '1');
-    collector.stop();
-    await sleep(100);
-    return module.exports.runStep3(i, client, guild, state, t, prefix, userId);
-}
-    });
-
-    collector.on('end', async (_, reason) => {
-        if (reason === 'time') await msg.edit({ content: t.timeout, embeds: [], components: [] }).catch(() => {});
-    });
-},
-
-// ================= STEP 3: MEMBER ROLE =================
-async runStep3(interaction, client, guild, state, t, prefix, userId) {
-    state.step = 3;
-    const roles = guild.roles.cache.filter(r => r.name !== '@everyone' && !r.managed).first(25);
-
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId('setup_member_role')
-        .setPlaceholder(t.selectRole)
-        .addOptions(roles.map(r => ({ label: r.name.slice(0, 25), value: r.id, emoji: '👤' })));
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    const skipRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('setup_skip').setLabel(t.skip).setStyle(ButtonStyle.Secondary).setEmoji('⏭️')
-    );
-
-    const embed = new EmbedBuilder().setColor('#e91e63').setTitle(t.step3_title).setDescription(t.step3_desc)
-        .setFooter({ text: `${guild.name} • ${t.footer} • Step 3/5` });
-
-    await interaction.editReply({ embeds: [embed], components: [row, skipRow] }).catch(() => {});
-
-    const filter = (i) => i.user.id === userId;
-    const msg = await interaction.fetchReply().catch(() => null);
-    if (!msg) return;
-    const collector = msg.createMessageComponentCollector({ filter, time: COLLECTOR_TIME });
-
-    collector.on('collect', async (i) => {
-        await i.deferUpdate().catch(() => {});
-        
-        if (i.customId === 'setup_skip') {
-            collector.stop();
-            return module.exports.runStep4(i, client, guild, state, t, prefix, userId);
-        }
-        if (i.customId === 'setup_member_role') {
-            state.memberRole = i.values[0];
-            client.updateServerSetting(guild.id, 'member', state.memberRole);
-            collector.stop();
-            return module.exports.runStep4(i, client, guild, state, t, prefix, userId);
-        }
-    });
-
-    collector.on('end', async (_, reason) => {
-        if (reason === 'time') await msg.edit({ content: t.timeout, embeds: [], components: [] }).catch(() => {});
-    });
-},
-
-// ================= STEP 4: LOG CHANNEL =================
-async runStep4(interaction, client, guild, state, t, prefix, userId) {
-    state.step = 4;
-    const channels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText).first(25);
-
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId('setup_log')
-        .setPlaceholder(t.selectChannel)
-        .addOptions(channels.map(c => ({ label: `#${c.name}`.slice(0, 25), value: c.id, emoji: '📊' })));
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    const skipRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('setup_skip').setLabel(t.skip).setStyle(ButtonStyle.Secondary).setEmoji('⏭️')
-    );
-
-    const embed = new EmbedBuilder().setColor('#e67e22').setTitle(t.step4_title).setDescription(t.step4_desc)
-        .setFooter({ text: `${guild.name} • ${t.footer} • Step 4/5` });
-
-    await interaction.editReply({ embeds: [embed], components: [row, skipRow] }).catch(() => {});
-
-    const filter = (i) => i.user.id === userId;
-    const msg = await interaction.fetchReply().catch(() => null);
-    if (!msg) return;
-    const collector = msg.createMessageComponentCollector({ filter, time: COLLECTOR_TIME });
-
-    collector.on('collect', async (i) => {
-        await i.deferUpdate().catch(() => {});
-        
-        if (i.customId === 'setup_skip') {
-            collector.stop();
-            return module.exports.runStep5(i, client, guild, state, t, prefix, userId);
-        }
-        if (i.customId === 'setup_log') {
-            state.log = i.values[0];
-            client.updateServerSetting(guild.id, 'log', state.log);
-            collector.stop();
-            return module.exports.runStep5(i, client, guild, state, t, prefix, userId);
-        }
-    });
-
-    collector.on('end', async (_, reason) => {
-        if (reason === 'time') await msg.edit({ content: t.timeout, embeds: [], components: [] }).catch(() => {});
-    });
-},
-
-// ================= STEP 5: SUMMARY =================
-async runStep5(interaction, client, guild, state, t, prefix, userId) {
-    state.step = 5;
-
-    const desc = t.step5_desc(prefix)
-        .replace('{rules}', state.rules || '❌')
-        .replace('{welcome}', state.welcome || '❌')
-        .replace('{role}', state.memberRole || '❌')
-        .replace('{log}', state.log || '❌');
-
-    const embed = new EmbedBuilder().setColor('#ffd700').setTitle(t.step5_title).setDescription(desc)
-        .setFooter({ text: `${guild.name} • ${t.footer}` }).setTimestamp();
-
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('setup_finish').setLabel(t.finish).setStyle(ButtonStyle.Success).setEmoji('✅')
-    );
-
-    await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
-
-    const filter = (i) => i.user.id === userId;
-    const msg = await interaction.fetchReply().catch(() => null);
-    if (!msg) return;
-    const collector = msg.createMessageComponentCollector({ filter, time: 30000 });
-
-    collector.on('collect', async (i) => {
-        await i.deferUpdate().catch(() => {});
-        if (i.customId === 'setup_finish') {
-            collector.stop();
-            await i.editReply({ content: '✅ **Setup complete!** Use `/serversettings view`, `/channels view` and `/roles view` to review.', embeds: [], components: [] }).catch(() => {});
-            }
-        });
+    // Used by the installer's self-test: builds every screen in one language with the real discord.js builders.
+    _preview(lang) {
+        const guild = { name: 'Test Server', channels: { cache: new Map() }, members: { me: null } };
+        const state = { rules: '111111111111111111', welcome: '222222222222222222', member: '333333333333333333' };
+        const shots = [welcomeScreen(lang, guild, null), ...STEPS.map((_, n) => questionScreen(lang, guild, n)), questionScreen(lang, guild, 2, T(lang, 'roleManaged')),
+            summaryScreen(lang, guild, state, ['example warning'], '.'), plainScreen(lang, 'cancelled'), plainScreen(lang, 'timeoutSaved')];
+        return shots.map((s) => JSON.stringify({ embeds: s.embeds.map((e) => e.toJSON()), components: s.components.map((c) => c.toJSON()) }));
     }
 };

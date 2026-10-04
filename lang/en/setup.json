@@ -1,0 +1,52 @@
+{
+  "title": "Server setup",
+  "welcome": "Hi! Let's get **{server}** ready. I'll ask you {total} quick questions: your rules channel, your welcome channel, a role for new members and a log channel.\n\nIt takes about a minute, you can skip any question, and everything you pick is saved right away.",
+  "start": "Let's go",
+  "cancel": "Cancel",
+  "skip": "Skip this one",
+  "q": {
+    "rules": {
+      "title": "Where are your rules?",
+      "text": "Pick the channel where your server rules are. New members will get a button that takes them there."
+    },
+    "welcome": {
+      "title": "Where should I welcome people?",
+      "text": "Pick the channel for welcome messages. I'll greet new members there."
+    },
+    "member": {
+      "title": "Which role do new members get?",
+      "text": "Pick the role I should give to new members automatically. Choose a plain member role, not one with moderator or admin powers."
+    },
+    "log": {
+      "title": "Where should I post logs?",
+      "text": "Pick the channel for security reports and logs. A private channel for your team works best."
+    }
+  },
+  "placeholderChannel": "Choose a channel…",
+  "placeholderRole": "Choose a role…",
+  "footer": "{server} · Question {n} of {total}",
+  "skipped": "not set",
+  "roleManaged": "I can't give that role: it's managed by an integration, or it's @everyone. Pick another one.",
+  "roleAbove": "I can't give **{role}** because it's above my own role. Move my role above it in Server Settings → Roles, or pick another role.",
+  "roleDangerous": "**{role}** has powerful permissions ({perms}), so every new member would get them. Pick a plain member role instead.",
+  "doneTitle": "All set!",
+  "doneText": "Here's what I saved:",
+  "line": {
+    "rules": "Rules channel",
+    "welcome": "Welcome channel",
+    "member": "Member role",
+    "log": "Log channel"
+  },
+  "attention": "Needs your attention",
+  "postcheckHint": "Run /postcheck in that channel for the exact steps.",
+  "next": "You can change any of this later with /serversettings, add more channels with /channels set, and open the full control panel with /dashboard.",
+  "prefixLine": "Your prefix is `{prefix}`, so commands also work as `{prefix}help`.",
+  "cancelled": "Setup cancelled. Nothing else was changed.",
+  "cancelledSaved": "Setup cancelled. What you already picked is saved.",
+  "timeout": "This setup timed out. Run /setup again whenever you're ready.",
+  "timeoutSaved": "This setup timed out. What you already picked is saved: run /setup again to continue.",
+  "needAdmin": "You need the Administrator permission to run the setup.",
+  "guildOnly": "Setup only works inside a server.",
+  "notYours": "This setup was started by someone else. Run /setup to start your own.",
+  "error": "Something went wrong. Please try /setup again."
+}

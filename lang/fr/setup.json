@@ -1,0 +1,52 @@
+{
+  "title": "Configuration du serveur",
+  "welcome": "Salut ! Préparons **{server}**. Je vais te poser {total} questions rapides : ton salon des règles, ton salon de bienvenue, un rôle pour les nouveaux membres et un salon de logs.\n\nÇa prend environ une minute, tu peux passer n'importe quelle question, et tout ce que tu choisis est enregistré tout de suite.",
+  "start": "C'est parti",
+  "cancel": "Annuler",
+  "skip": "Passer cette question",
+  "q": {
+    "rules": {
+      "title": "Où sont tes règles ?",
+      "text": "Choisis le salon où se trouve le règlement du serveur. Les nouveaux membres auront un bouton qui les y amène."
+    },
+    "welcome": {
+      "title": "Où accueillir les gens ?",
+      "text": "Choisis le salon des messages de bienvenue. J'y saluerai les nouveaux membres."
+    },
+    "member": {
+      "title": "Quel rôle pour les nouveaux membres ?",
+      "text": "Choisis le rôle que je donne automatiquement aux nouveaux membres. Prends un rôle de membre ordinaire, pas un rôle de modérateur ou d'admin."
+    },
+    "log": {
+      "title": "Où publier les logs ?",
+      "text": "Choisis le salon des rapports de sécurité et des logs. Un salon privé réservé à ton équipe, c'est l'idéal."
+    }
+  },
+  "placeholderChannel": "Choisis un salon…",
+  "placeholderRole": "Choisis un rôle…",
+  "footer": "{server} · Question {n} sur {total}",
+  "skipped": "non défini",
+  "roleManaged": "Je ne peux pas donner ce rôle : il est géré par une intégration, ou c'est @everyone. Choisis-en un autre.",
+  "roleAbove": "Je ne peux pas donner **{role}** : il est au-dessus de mon propre rôle. Place mon rôle au-dessus dans Paramètres du serveur → Rôles, ou choisis un autre rôle.",
+  "roleDangerous": "**{role}** a des permissions puissantes ({perms}) : chaque nouveau membre les recevrait. Choisis plutôt un rôle de membre ordinaire.",
+  "doneTitle": "C'est prêt !",
+  "doneText": "Voici ce que j'ai enregistré :",
+  "line": {
+    "rules": "Salon des règles",
+    "welcome": "Salon de bienvenue",
+    "member": "Rôle des membres",
+    "log": "Salon de logs"
+  },
+  "attention": "À vérifier",
+  "postcheckHint": "Lance /postcheck dans ce salon pour voir les étapes exactes.",
+  "next": "Tu peux tout modifier plus tard avec /serversettings, ajouter d'autres salons avec /channels set, et ouvrir le tableau de bord avec /dashboard.",
+  "prefixLine": "Ton préfixe est `{prefix}`, donc les commandes marchent aussi avec `{prefix}help`.",
+  "cancelled": "Configuration annulée. Rien d'autre n'a été modifié.",
+  "cancelledSaved": "Configuration annulée. Ce que tu as déjà choisi est enregistré.",
+  "timeout": "La configuration a expiré. Relance /setup quand tu veux.",
+  "timeoutSaved": "La configuration a expiré. Ce que tu as déjà choisi est enregistré : relance /setup pour continuer.",
+  "needAdmin": "Il faut la permission Administrateur pour lancer la configuration.",
+  "guildOnly": "La configuration ne fonctionne que dans un serveur.",
+  "notYours": "Cette configuration a été lancée par quelqu'un d'autre. Lance /setup pour démarrer la tienne.",
+  "error": "Quelque chose s'est mal passé. Réessaie avec /setup."
+}
