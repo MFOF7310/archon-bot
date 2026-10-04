@@ -107,7 +107,7 @@ function channelWarning(lang, guild, step, id) {
     const d = canPost.diagnose(guild, ch, me, canPost.neededFor(step.needsPost));
     if (d.ok) return null;
     const vars = { channel: `<#${id}>`, bot: me.roles?.botRole?.name || me.displayName, perms: canPost.localize(d.missing || [], lang).join(', '), role: d.role || '' };
-    return `${i18n.t('postcheck.' + canPost.keyFor('why', d.reason), lang, vars)}\n${T(lang, 'postcheckHint')}`;
+    return `**<#${id}>**\n${i18n.t('postcheck.' + canPost.keyFor('why', d.reason), lang, vars)}\n${T(lang, 'postcheckHint')}`;
 }
 
 module.exports = {
@@ -196,6 +196,9 @@ module.exports = {
             if (reason === 'idle') await msg.edit(plainScreen(lang, savedCount() ? 'timeoutSaved' : 'timeout')).catch(() => {});
         });
     },
+
+    // Used by the installer's self-test.
+    _warning: (lang, guild, step, id) => channelWarning(lang, guild, step, id),
 
     // Used by the installer's self-test: builds every screen in one language with the real discord.js builders.
     _preview(lang) {

@@ -39,7 +39,7 @@
   },
   "attention": "À vérifier",
   "postcheckHint": "Lance /postcheck dans ce salon pour voir les étapes exactes.",
-  "next": "Tu peux tout modifier plus tard avec /serversettings, ajouter d'autres salons avec /channels set, et ouvrir le tableau de bord avec /dashboard.",
+  "next": "Tu peux tout modifier plus tard avec /serversettings, et ajouter d'autres salons avec /channels set.",
   "prefixLine": "Ton préfixe est `{prefix}`, donc les commandes marchent aussi avec `{prefix}help`.",
   "cancelled": "Configuration annulée. Rien d'autre n'a été modifié.",
   "cancelledSaved": "Configuration annulée. Ce que tu as déjà choisi est enregistré.",
