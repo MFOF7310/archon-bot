@@ -205,7 +205,7 @@ Your voice: direct, warm, occasionally dry. You push back when something is off.
 When Moussa (mfof7559) talks to you — he is the Architect. Acknowledge it naturally, not robotically.
 Never claim you have corrected, updated or learned something permanently — you can't. If you really got something wrong, acknowledge it plainly. If someone only questions what you said, check it against the command registry and the facts below first: if they support you, stand by your answer politely and say where it comes from. Never retract a correct answer just to please someone.
 Command syntax: only use the slash signatures listed under the relevant commands. If a command isn't listed or you're unsure, point to /help <command> instead of guessing.
-Before you confirm or deny that a command or feature exists, check the registry below. If it is listed, it exists. If it is not listed, you may simply not be seeing it in this message: say "I don't see it in my list right now" and point to /help <command>. Never say a command does not exist, and never say you made something up, unless you can see proof.
+Before you confirm or deny that a command exists, check ALL COMMANDS below: every name in it exists, and the RELEVANT COMMANDS section adds the signatures for the ones that match the message. If a name is in neither, say "I don't see it in my list" and point to /help <command>. Never say you made something up when the name is in ALL COMMANDS.
 ARCHON is open source: https://github.com/MFOF7310/archon-bot — share it only when someone asks about the code, contributing or self-hosting.
 
 — HELPING SOMEONE WHO WANTS TO KNOW ARCHON —
@@ -1023,6 +1023,30 @@ function slashSignatures(cmd) {
   return out;
 }
 
+// Every command that exists, names only, so she can confirm or deny a command on ANY turn (not only when the message happens to match it).
+// Cached for a minute: the list only changes when plugins load.
+let _allCmdCache = { size: -1, owner: null, at: 0, text: '' };
+function allCommandsBlock(commands, isOwner) {
+  try {
+    if (!commands || !commands.size) return '';
+    const now = Date.now();
+    if (_allCmdCache.size === commands.size && _allCmdCache.owner === !!isOwner && now - _allCmdCache.at < 60000) return _allCmdCache.text;
+    const slash = new Set(), prefix = new Set();
+    for (const [, cmd] of commands) {
+      if (!cmd?.name || cmd.category === 'TELEGRAM') continue;
+      if (!isOwner && (cmd.ownerOnly === true || cmd.category === 'OWNER' || cmd.category === 'DEV')) continue;
+      let hasSlash = false;
+      try { hasSlash = slashSignatures(cmd).length > 0; } catch (_) { hasSlash = false; }
+      (hasSlash ? slash : prefix).add(cmd.name);
+    }
+    const text = '\nALL COMMANDS (names only; every name listed here exists, and the signatures are given below only for the ones that match this message):\n' +
+      'with a slash command (most also work with the prefix): ' + [...slash].sort().join(', ') + '\n' +
+      'prefix only: ' + [...prefix].sort().join(', ') + '\n';
+    _allCmdCache = { size: commands.size, owner: !!isOwner, at: now, text };
+    return text;
+  } catch (_) { return ''; }
+}
+
 function relevantCommands(userMessage, commands, limit = 8) {
   if (!commands || !commands.size) return '';
   const words = String(userMessage || '').toLowerCase().match(/[a-z0-9]{3,}/g) || [];
@@ -1080,7 +1104,7 @@ LIVE CONTEXT:
 - Mode: ${theme.name}
 - Prefix: ${prefix} (or use slash commands)
 - Language: respond in ${langName} — follow the user, always
-${(() => { const rc = relevantCommands(userMessage, commands); return rc ? `\nRELEVANT COMMANDS (from the live registry — only these exist; if a command is not listed here or in the ecosystem summary, say so instead of inventing one):\n${rc}` : ''; })()}
+${allCommandsBlock(commands, isOwner)}${(() => { const rc = relevantCommands(userMessage, commands); return rc ? `\nRELEVANT COMMANDS (the signatures of the commands that match this message; every command that exists is named under ALL COMMANDS):\n${rc}` : ''; })()}
 
 RECENT CHANGES:
 ${changelogSummary}
