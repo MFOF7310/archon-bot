@@ -3884,7 +3884,7 @@ if (message.content && message.content.length > 4000) {
                         .replace(/{xp}/gi, newXP.toLocaleString())
                         .replace(/{server}/gi, guildName)
                         .replace(/{tier}/gi, levelTier);
-                    await targetChannel.send({ content: filled });
+                    await targetChannel.send({ content: filled, allowedMentions: { parse: [], users: [userId] } });
                 } else {
                     // ================= SIMPLE LEVEL-UP =================
                     // One line like the big bots; a second one only on a real tier promotion
