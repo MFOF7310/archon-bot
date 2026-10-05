@@ -1,6 +1,7 @@
 // plugins/mylang.js
-// .mylang <en|fr|ar|bm|zh|auto> : choose the language ARCHON answers YOU in, on every server set to Auto.
+// .mylang <en|fr|ar|bm|zh|auto>   and   /mylang [language] : choose the language ARCHON answers YOU in, on every server set to Auto.
 // A language chosen with /setlang by the server always wins; this never overrides it.
+const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const memberLang = require('../lib/member-lang');
@@ -20,6 +21,31 @@ const RESET = ['auto', 'reset', 'off', 'clear', 'default'];
 // A language this command has texts for: English and French always, the others once their file exists.
 const hasTexts = (lang) => lang === 'en' || lang === 'fr' || fs.existsSync(path.join(__dirname, '..', 'lang', lang, 'mylang.json'));
 
+// One answer for both the prefix command and the slash command. `interaction` is null for a prefix command.
+function answer(client, { userId, guildId, interaction }, wordIn) {
+    const list = Object.entries(NAMES).map(([k, v]) => `\`${k}\` ${v}`).join(' · ');
+    const serverLang = (() => { try { return (guildId && client.getServerSettings?.(guildId)?.language) || 'auto'; } catch { return 'auto'; } })();
+    const mine = memberLang.get(userId);
+    const answerIn = (preferred) => (preferred && hasTexts(preferred) ? preferred : pickLang(client, guildId, interaction));
+    const word = String(wordIn || '').trim().toLowerCase();
+
+    if (!word) {
+        const lang = answerIn(mine);
+        const body = mine ? t('mylang.current', lang, { name: NAMES[mine] }) : t('mylang.none', lang);
+        return `${body}\n${t('mylang.howTo', lang, { list })}`;
+    }
+    if (RESET.includes(word)) {
+        try { memberLang.reset(userId); } catch (e) { console.error('[MYLANG] reset failed:', e.message); return t('mylang.error', answerIn(mine)); }
+        return t('mylang.reset', answerIn(null));
+    }
+    const code = WORDS[word];
+    if (!code) return t('mylang.invalid', answerIn(mine), { list });
+    try { memberLang.set(userId, code); } catch (e) { console.error('[MYLANG] save failed:', e.message); return t('mylang.error', answerIn(mine)); }
+    const lang = answerIn(code);
+    const explicit = serverLang !== 'auto' && serverLang !== code;
+    return t('mylang.saved', lang, { name: NAMES[code] }) + (explicit ? `\n${t('mylang.serverKeeps', lang)}` : '');
+}
+
 module.exports = {
     name: 'mylang',
     aliases: ['mylanguage', 'malangue', 'monlangue'],
@@ -28,29 +54,35 @@ module.exports = {
     cooldown: 3000,
     usage: '.mylang <en|fr|ar|bm|zh|auto>',
 
-    async run(client, message, args) {
-        const list = Object.entries(NAMES).map(([k, v]) => `\`${k}\` ${v}`).join(' · ');
-        const guildId = message.guild ? message.guild.id : null;
-        const serverLang = (() => { try { return (guildId && client.getServerSettings?.(guildId)?.language) || 'auto'; } catch { return 'auto'; } })();
-        const mine = memberLang.get(message.author.id);
-        const answerIn = (preferred) => (preferred && hasTexts(preferred) ? preferred : pickLang(client, guildId));
-        const send = (content) => message.reply({ content, allowedMentions: { repliedUser: false } });
-        const word = String((args || [])[0] || '').trim().toLowerCase();
+    data: new SlashCommandBuilder()
+        .setName('mylang')
+        .setDescription('🌐 Choose the language ARCHON answers you in')
+        .addStringOption(o => o
+            .setName('language')
+            .setDescription('Your language (leave empty to see your current one)')
+            .setRequired(false)
+            .addChoices(
+                { name: '🌐 Auto (automatic)', value: 'auto' },
+                { name: '🇬🇧 English', value: 'en' },
+                { name: '🇫🇷 Français', value: 'fr' },
+                { name: '🇸🇦 العربية', value: 'ar' },
+                { name: '🇲🇱 Bamanankan', value: 'bm' },
+                { name: '🇨🇳 中文', value: 'zh' },
+            )),
 
-        if (!word) {
-            const lang = answerIn(mine);
-            const body = mine ? t('mylang.current', lang, { name: NAMES[mine] }) : t('mylang.none', lang);
-            return send(`${body}\n${t('mylang.howTo', lang, { list })}`);
+    async run(client, message, args) {
+        const content = answer(client, { userId: message.author.id, guildId: message.guild ? message.guild.id : null, interaction: null }, (args || [])[0]);
+        return message.reply({ content, allowedMentions: { repliedUser: false } });
+    },
+
+    async execute(interaction, client) {
+        let content;
+        try {
+            content = answer(client, { userId: interaction.user.id, guildId: interaction.guildId || null, interaction }, interaction.options?.getString('language'));
+        } catch (e) {
+            console.error('[MYLANG] slash failed:', e.message);
+            content = 'Something went wrong. Please try again in a moment.';
         }
-        if (RESET.includes(word)) {
-            try { memberLang.reset(message.author.id); } catch (e) { console.error('[MYLANG] reset failed:', e.message); return send(t('mylang.error', answerIn(mine))); }
-            return send(t('mylang.reset', answerIn(null)));
-        }
-        const code = WORDS[word];
-        if (!code) return send(t('mylang.invalid', answerIn(mine), { list }));
-        try { memberLang.set(message.author.id, code); } catch (e) { console.error('[MYLANG] save failed:', e.message); return send(t('mylang.error', answerIn(mine))); }
-        const lang = answerIn(code);
-        const explicit = serverLang !== 'auto' && serverLang !== code;
-        return send(t('mylang.saved', lang, { name: NAMES[code] }) + (explicit ? `\n${t('mylang.serverKeeps', lang)}` : ''));
+        return interaction.reply({ content, flags: 64 });
     },
 };
