@@ -1024,6 +1024,8 @@ function getServerSettings(guildId) {
             welcomeMessage: settings.welcome_message,
             goodbyeMessage: settings.goodbye_message,
             levelUpMessage: settings.levelup_message,
+            levelupMessage: settings.levelup_message,   // the level-up code and the dashboard read this spelling
+            levelupChannel: settings.levelup_channel,   // and this one: it was missing, so a saved level-up channel was never used
             
             memberRole: settings.member_role,
             autoRoleId: settings.auto_role_id,
@@ -3884,7 +3886,7 @@ if (message.content && message.content.length > 4000) {
                         .replace(/{xp}/gi, newXP.toLocaleString())
                         .replace(/{server}/gi, guildName)
                         .replace(/{tier}/gi, levelTier);
-                    await targetChannel.send({ content: filled, allowedMentions: { parse: [], users: [userId] } });
+                    await targetChannel.send({ content: filled, allowedMentions: { parse: [], users: [userId] } }).catch((e) => console.log(`[LEVELUP] could not post the level-up message: ${e.message}`));
                 } else {
                     // ================= SIMPLE LEVEL-UP =================
                     // One line like the big bots; a second one only on a real tier promotion
@@ -3892,7 +3894,7 @@ if (message.content && message.content.length > 4000) {
                     const lines = [`🎉 ${i18nT('leveling.levelUpLine', userLang, { user: `<@${message.author.id}>`, level: newLevel })}`];
                     if (tierChanged && roleResult?.ok && roleResult.role?.name)
                         lines.push(`${tierEmoji} ${i18nT('leveling.levelUpRole', userLang, { role: roleResult.role.name })}`);
-                    await targetChannel.send({ content: lines.join('\n') });
+                    await targetChannel.send({ content: lines.join('\n') }).catch((e) => console.log(`[LEVELUP] could not post the level-up line: ${e.message}`));
                 }
             }
 
