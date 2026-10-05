@@ -1,0 +1,10 @@
+{
+  "current": "Your language: **{name}**.",
+  "none": "You haven't chosen a language. ARCHON follows the server, or the words you type.",
+  "howTo": "Choose one with `.mylang <code>`: {list}. Use `.mylang auto` to go back to automatic.",
+  "saved": "Your language is now **{name}**. ARCHON will answer you in it on servers set to Auto.",
+  "serverKeeps": "This server chose its own language with /setlang, so it keeps it here.",
+  "reset": "Done. ARCHON will go back to choosing your language automatically.",
+  "invalid": "I don't know that language. Choose one of: {list}.",
+  "error": "I couldn't save that right now. Please try again in a moment."
+}

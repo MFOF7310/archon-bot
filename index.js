@@ -3967,6 +3967,11 @@ if (message.content && message.content.length > 4000) {
     if (!client.aliasLang.has(usedCommand.toLowerCase())) {
         commandLang = detectLanguage(usedCommand);
     }
+    // A language the member chose with .mylang applies when the server is on Auto (the explicit server language, checked just below, still wins)
+    try {
+        const _myLang = require('./lib/member-lang').get(message.author.id);
+        if (_myLang && (_myLang === 'en' || _myLang === 'fr' || fs.existsSync(path.join(__dirname, 'lang', _myLang, `${command.name}.json`)))) commandLang = _myLang;
+    } catch (_) { /* a problem here must never stop a command */ }
     // An explicit server language wins: en/fr for every plugin, other languages only
     // for plugins that ship lang/<locale>/<name>.json (legacy ones index {en, fr} and crash).
     const srvLang = serverSettings?.language;

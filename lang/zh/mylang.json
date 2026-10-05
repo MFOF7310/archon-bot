@@ -1,0 +1,10 @@
+{
+  "current": "你的语言：**{name}**。",
+  "none": "你还没有选择语言。ARCHON 会跟随服务器设置，或根据你输入的内容判断。",
+  "howTo": "用 `.mylang <代码>` 选择语言：{list}。用 `.mylang auto` 恢复自动选择。",
+  "saved": "你的语言已设为 **{name}**。在设置为“自动”的服务器上，ARCHON 会用它回复你。",
+  "serverKeeps": "这个服务器已用 /setlang 指定了语言，所以这里仍使用该语言。",
+  "reset": "好的。ARCHON 将重新自动选择你的语言。",
+  "invalid": "我不认识这种语言。请选择：{list}。",
+  "error": "现在无法保存，请稍后再试。"
+}
