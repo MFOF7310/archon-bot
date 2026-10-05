@@ -454,7 +454,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
         const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
         if (!ch) return;
         if (!require('../lib/canPost').log(member.guild, ch, member.guild.members.me, 'levelup').ok) return;
-        const lang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : 'en';
+        const lang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : (['en','fr','bm','zh','ar'].includes(client.userLastLang?.get(member.id)) ? client.userLastLang.get(member.id) : 'en');
         const text = require('../lib/i18n').t('leveling.levelUpLine', lang, { user: String(member), level: newLevel });
         const msg = await ch.send({ content: text }).catch(() => null);
         if (msg) setTimeout(() => msg.delete().catch(() => {}), 15000);
@@ -466,7 +466,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
     const theme = getTheme(newLevel, customTheme);
     const _t = require('../lib/i18n').t;
     const ss = client.getServerSettings?.(member.guild.id) || {};
-    const lvLang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : 'en';
+    const lvLang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : (['en','fr','bm','zh','ar'].includes(client.userLastLang?.get(member.id)) ? client.userLastLang.get(member.id) : 'en');
     const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setDescription(_t('leveling.levelUpLine', lvLang, { user: member.user.tag, level: newLevel })).setImage('attachment://levelup.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
     if (added.length) embed.addFields({ name: _t('leveling.newRolesLabel', lvLang), value: added.map(r => `• ${r}`).join('\n'), inline: false });
     const chId = ss.levelupChannel || ss.levelup_channel;

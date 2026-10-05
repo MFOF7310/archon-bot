@@ -3806,7 +3806,7 @@ if (message.content && message.content.length > 4000) {
                 await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCur), Math.floor(xpNeed), client, db);
             }
 
-            const userLang = client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
+            const userLang = (['en','fr','bm','zh','ar'].includes(serverSettings?.language) ? serverSettings.language : null) || client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
             const isDM = !message.guild;
             const guildName = isDM ? 'NEURAL NETWORK' : message.guild.name;
             const guildIcon = isDM ? client.user.displayAvatarURL() : message.guild.iconURL();
