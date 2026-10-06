@@ -1,7 +1,99 @@
 {
-  "game.json": ["codm"],
-  "lydia.json": ["greeting_fr"],
-  "system.json": ["line.runtime"],
-  "verify.json": ["bamakoFooter"],
-  "welcome.json": ["setup_slash"]
+  "_readme": "Texts that are identical to English ON PURPOSE: brand and product names, command syntax, owner-only text. Format: file name -> list of keys. For the older flat files in lib/lang, use the file name en.json.",
+  "broadcast.json": [
+    "channelStrategy",
+    "confirmMessage",
+    "mentionEveryone",
+    "mentionHere",
+    "mentionWarning",
+    "scheduled",
+    "sending",
+    "success",
+    "usage"
+  ],
+  "common.json": [
+    "modules.ai",
+    "modules.codm"
+  ],
+  "emoji.json": [
+    "unicode"
+  ],
+  "en.json": [
+    "alive.discordVersion",
+    "alive.node",
+    "alive.webSocket",
+    "invest.footer",
+    "ping.restApi",
+    "ping.websocket"
+  ],
+  "game.json": [
+    "codm"
+  ],
+  "gameui.json": [
+    "footer"
+  ],
+  "index.json": [
+    "footer"
+  ],
+  "invite.json": [
+    "botName"
+  ],
+  "leveling.json": [
+    "usage"
+  ],
+  "lydia.json": [
+    "actions.labels.ai",
+    "greeting_fr"
+  ],
+  "owner.json": [
+    "discord",
+    "facebook",
+    "github",
+    "instagram",
+    "tiktok",
+    "whatsapp"
+  ],
+  "setgame.json": [
+    "examples_0",
+    "examples_1",
+    "examples_2",
+    "examples_3",
+    "examples_4",
+    "quickButtons_apex",
+    "quickButtons_csgo",
+    "quickButtons_fortnite",
+    "quickButtons_val"
+  ],
+  "socials.json": [
+    "discord",
+    "facebook",
+    "github",
+    "instagram",
+    "tiktok",
+    "whatsapp"
+  ],
+  "status.json": [
+    "discordVersion",
+    "nodeVersion",
+    "webSocket"
+  ],
+  "system.json": [
+    "line.runtime"
+  ],
+  "ticket.json": [
+    "cfgFoot",
+    "pFooter"
+  ],
+  "verify.json": [
+    "bamakoFooter"
+  ],
+  "welcome.json": [
+    "footer",
+    "setup_slash",
+    "tip_label_ar",
+    "tip_label_bm",
+    "tip_label_en",
+    "tip_label_fr",
+    "tip_label_zh"
+  ]
 }
