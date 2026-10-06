@@ -1,0 +1,7 @@
+{
+  "game.json": ["codm"],
+  "lydia.json": ["greeting_fr"],
+  "system.json": ["line.runtime"],
+  "verify.json": ["bamakoFooter"],
+  "welcome.json": ["setup_slash"]
+}
