@@ -1,1 +1,26 @@
-{}
+{
+  "title": "系统报告",
+  "verdict": {
+    "healthy": "一切正常。",
+    "slow": "ARCHON 正在运行，但与 Discord 的连接较慢（{ping} 毫秒）。",
+    "verySlow": "与 Discord 的连接非常慢（{ping} 毫秒），可能出了问题。",
+    "pingUnknown": "ARCHON 刚启动，还没测到连接速度。",
+    "memLow": "机器内存不足（可用 {avail} MB）。"
+  },
+  "line": {
+    "version": "版本：v{version}",
+    "uptime": "已运行：{uptime}",
+    "ping": "与 Discord 的连接：{ping} 毫秒",
+    "pingNone": "与 Discord 的连接：还没测到",
+    "memory": "ARCHON 内存：{rss} MB · 机器共 {total} MB，可用 {avail} MB",
+    "load": "每核负载：{load}（{cores} 核）",
+    "servers": "服务器：{servers} · 频道：{channels}",
+    "commands": "命令：{commands}",
+    "records": "数据库中的用户记录：{records}",
+    "runtime": "Node {node} · discord.js {djs}"
+  },
+  "uptimeFmt": "{d}天 {h}小时 {m}分钟",
+  "busy": "繁忙",
+  "ownerOnly": "这个命令只有机器人所有者能用。",
+  "error": "生成报告时出错。"
+}

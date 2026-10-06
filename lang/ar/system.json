@@ -1,1 +1,26 @@
-{}
+{
+  "title": "تقرير النظام",
+  "verdict": {
+    "healthy": "كل شيء يبدو سليماً.",
+    "slow": "ARCHON يعمل، لكن الاتصال بـ Discord بطيء ({ping} مللي ثانية).",
+    "verySlow": "الاتصال بـ Discord بطيء جداً ({ping} مللي ثانية). قد يكون هناك خلل.",
+    "pingUnknown": "بدأ ARCHON للتو، لذا لم تُقَس سرعة الاتصال بعد.",
+    "memLow": "ذاكرة الجهاز منخفضة (المتاح {avail} ميغابايت)."
+  },
+  "line": {
+    "version": "الإصدار: v{version}",
+    "uptime": "مدة التشغيل: {uptime}",
+    "ping": "الاتصال بـ Discord: {ping} مللي ثانية",
+    "pingNone": "الاتصال بـ Discord: لم يُقَس بعد",
+    "memory": "ذاكرة ARCHON: {rss} ميغابايت · المتاح في الجهاز {avail} ميغابايت من أصل {total}",
+    "load": "الحمل لكل نواة: {load} ({cores} أنوية)",
+    "servers": "الخوادم: {servers} · القنوات: {channels}",
+    "commands": "الأوامر: {commands}",
+    "records": "سجلات المستخدمين في قاعدة البيانات: {records}",
+    "runtime": "Node {node} · discord.js {djs}"
+  },
+  "uptimeFmt": "{d} يوم {h} ساعة {m} دقيقة",
+  "busy": "مشغول",
+  "ownerOnly": "هذا الأمر لمالك البوت فقط.",
+  "error": "حدث خطأ أثناء إنشاء التقرير."
+}
