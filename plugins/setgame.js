@@ -1,5 +1,8 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 
+// The gaming column is checked once, not on every command
+let _gamingColumnReady = false;
+
 // ================= AGENT RANKS =================
 const AGENT_RANKS = [
     { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
@@ -68,10 +71,21 @@ const GAME_PATTERNS = {
     'LEAGUE OF LEGENDS': { keywords: ['lol', 'league', 'league of legends'], modes: ['Solo/Duo', 'Flex', 'ARAM'] }
 };
 
+// A game keyword counts only as whole words: "val" matches "val", but "Valheim" no longer becomes VALORANT.
+function hasWord(text, keyword) {
+    const words = String(text).split(/[^a-z0-9]+/).filter(Boolean);
+    const want = String(keyword).split(/[^a-z0-9]+/).filter(Boolean);
+    if (!want.length) return false;
+    for (let i = 0; i + want.length <= words.length; i++) {
+        if (want.every((w, j) => words[i + j] === w)) return true;
+    }
+    return false;
+}
+
 function detectGame(input) {
     const lowerInput = input.toLowerCase();
     for (const [gameName, data] of Object.entries(GAME_PATTERNS)) {
-        if (data.keywords.some(k => lowerInput.includes(k))) return gameName;
+        if (data.keywords.some(k => hasWord(lowerInput, k))) return gameName;
     }
     return null;
 }
@@ -142,7 +156,7 @@ module.exports = {
         const fullInput = args.join(' ');
         
         // Ensure gaming column exists
-        try { db.prepare(`ALTER TABLE users ADD COLUMN gaming TEXT`).run(); } catch (e) {}
+        if (!_gamingColumnReady) { try { db.prepare(`ALTER TABLE users ADD COLUMN gaming TEXT`).run(); } catch (e) {} _gamingColumnReady = true; }
         
         // ================= INTERACTIVE MODE =================
         if (!fullInput) {
@@ -243,7 +257,7 @@ module.exports = {
                 { name: t.rankTier, value: `\`\`\`yaml\n${safeRank}\`\`\``, inline: true }
             )
             .addFields(
-                { name: t.agentStatus, value: `\`\`\`yaml\n${t.level}: ${level}\n${t.rank}: ${agentRank.emoji} ${agentRank.title[lang]}\n${t.xp}: ${(updatedUser?.xp || 0).toLocaleString()}\n${t.credits}: ${(updatedUser?.credits || 0).toLocaleString()} 🪙\`\`\``, inline: true },
+                { name: t.agentStatus, value: `\`\`\`yaml\n${t.level}: ${level}\n${t.rank}: ${agentRank.emoji} ${agentRank.title[lang] || agentRank.title.en}\n${t.xp}: ${(updatedUser?.xp || 0).toLocaleString()}\n${t.credits}: ${(updatedUser?.credits || 0).toLocaleString()} 🪙\`\`\``, inline: true },
                 { name: t.lastSync, value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
             )
             .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
