@@ -2534,6 +2534,17 @@ client.once(Events.ClientReady, async () => {
         } catch(e) { console.error('[GUILD CACHE] Error:', e.message); }
     }, 10000);
 
+    // ── Add emoji keys that arrived with an update (never overwrites yours) ──
+    try {
+        const _path = require('path');
+        const _added = require('./lib/emoji-sync')(
+            _path.join(__dirname, 'config/emojis.js'),
+            _path.join(__dirname, 'config/emojis.example.js'),
+            require('./config/emojis')
+        );
+        if (_added.length) console.log(`[EMOJIS] Added ${_added.length} new keys: ${_added.join(', ')}`);
+    } catch (e) { console.error('[EMOJIS] sync failed:', e.message); }
+
     // ── Dynamic emoji resolver — update emojis.js on disk at boot ──
     try {
         const mainGuild = client.guilds.cache.get(process.env.GUILD_ID)
@@ -2549,7 +2560,7 @@ client.once(Events.ClientReady, async () => {
                     ? `<a:${emoji.name}:${emoji.id}>`
                     : `<:${emoji.name}:${emoji.id}>`;
                 // Match by name — replace old ID with new one
-                const pattern = new RegExp(`(<a?:${emoji.name}:\d+>)`, 'g');
+                const pattern = new RegExp(`(<a?:${emoji.name}:\\d+>)`, 'g');
                 const newFile = emojiFile.replace(pattern, newStr);
                 if (newFile !== emojiFile) {
                     emojiFile = newFile;

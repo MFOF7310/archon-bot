@@ -113,4 +113,26 @@ module.exports = {
     away:    '<a:away:YOUR_EMOJI_ID>',
     moon:    '<a:moon2:YOUR_EMOJI_ID>',
     zzz:     '<a:zzz10sectimer:YOUR_EMOJI_ID>',
+
+    // ── Moderation ──
+    mod_sign:          '🛡️',
+
+    // ── Games ──
+    gameController:    '🎮',
+    gameSaved:         '✅',
+    gameCodm:          '🎯',
+    gameValorant:      '🎯',
+    gameCs2:           '🔫',
+    gameLol:           '⚔️',
+    gameFortnite:      '🏗️',
+    gameFortniteCustom:'🏗️',
+    gameFortniteCard:  '🏗️',
+    gameApex:          '🦅',
+    gameApexCustom:    '🦅',
+
+    // ── Help menu ──
+    helpSystem:        '⚙️',
+    helpUtility:       '🛠️',
+    helpSocial:        '🤝',
+    helpFun:           '🎉',
 };

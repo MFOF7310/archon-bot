@@ -21,10 +21,23 @@ function loadT(lang) {
 }
 
 const emojiMap = {
-    SYSTEM: '⚙️', GAMING: '🎮', AI: '🧠', PROFILE: '👤', OWNER: '👑',
-    GENERAL: '📁', UTILITY: '🛠️', MODERATION: '🛡️', ECONOMY: '💰', FUN: '🎉',
-    ADMIN: '🔐', CONFIG: '⚙️', MUSIC: '🎵', SOCIAL: '🤝', TICKETS: '🎫', CODM: '🎯', LEVELING: '📈'
-
+    SYSTEM:    EMOJIS.helpSystem,
+    GAMING:     EMOJIS.gameController,
+    AI:         EMOJIS.ai_assistant,
+    PROFILE:    EMOJIS.myprofile,
+    OWNER:      EMOJIS.eagle,
+    GENERAL:    EMOJIS.general,
+    UTILITY:   EMOJIS.helpUtility,
+    MODERATION: EMOJIS.shield,
+    ECONOMY:    EMOJIS.coins,
+    FUN:       EMOJIS.helpFun,
+    ADMIN:     EMOJIS.crown,
+    CONFIG:     '⚙️',
+    MUSIC:      EMOJIS.music,
+    SOCIAL:    EMOJIS.helpSocial,
+    TICKETS:    EMOJIS.ticket,
+    CODM:       EMOJIS.gameCodm,
+    LEVELING:   EMOJIS.level,
 };
 
 const colorMap = {
