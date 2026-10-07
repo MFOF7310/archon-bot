@@ -2702,6 +2702,16 @@ client.once(Events.ClientReady, async () => {
         console.error('[UPDATE BROADCAST] Error:', e.message);
     } }, 15000); // 15s delay
 
+    // ── Update notice: tell the owner when a newer version is on GitHub ──
+    try {
+        const _upd = require('./lib/updater');
+        const _quiet = (e) => console.error('[UPDATE]', e.message);
+        setTimeout(() => _upd.announceAfterRestart(client).catch(_quiet), 20000);
+        setTimeout(() => _upd.announceAfterRestart(client).catch(_quiet), 60000);
+        setTimeout(() => _upd.checkAndNotify(client, db).catch(_quiet), 90000);
+        setInterval(() => _upd.checkAndNotify(client, db).catch(_quiet), 6 * 60 * 60 * 1000);
+    } catch (e) { console.error('[UPDATE] notifier failed:', e.message); }
+
     // ── TELEGRAM INIT ──
     try {
         const telegramBridge = require('./telegram/bridge.js');
