@@ -52,7 +52,7 @@
   "strikeWhyAdmin": "我无法禁言 **{who}**：Discord 不允许禁言拥有管理员（Administrator）权限的成员。",
   "strikeWhyOwner": "我无法对 **{who}** 采取行动：此人是服务器所有者，Discord 不允许任何人对所有者采取行动。",
   "strikeWhyRole": "我没能{verb} **{who}**：其最高身份组 **{role}** 排在我的之上。\n要修复：服务器设置 → 身份组 → 将 **{bot}** 拖到 **{role}** 之上。",
-  "strikeWhyUnknown": "我没能{verb} **{who}**，也说不清原因。**postcheck** 命令和 服务器设置 → 身份组 是最好的排查起点。",
+  "strikeWhyUnknown": "我没能{verb} **{who}**，也说不清原因。**postcheck** 命令和“服务器设置 → 身份组”是最好的排查起点。",
   "rule_message_spam": "垃圾消息",
   "rule_caps_flood": "大写字母刷屏",
   "rule_emoji_flood": "表情刷屏",
