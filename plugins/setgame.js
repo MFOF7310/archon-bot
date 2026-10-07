@@ -39,13 +39,13 @@ const GAMES = {
         ranks: ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal', 'Radiant'],
     },
     'APEX LEGENDS': {
-        label: 'Apex Legends', emoji: 'gameApex', color: '#DA292A',
+        label: 'Apex Legends', emoji: 'gameApexCustom', cardEmoji: 'gameApex', color: '#DA292A',
         keywords: ['apex', 'apex legends'],
         modes: ['BR', 'Ranked', 'Mixtape'],
         ranks: ['Rookie', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Apex Predator'],
     },
     'FORTNITE': {
-        label: 'Fortnite', emoji: 'gameFortnite', cardEmoji: 'gameFortniteCard', color: '#7D4CDB',
+        label: 'Fortnite', emoji: 'gameFortniteCustom', cardEmoji: 'gameFortniteCard', color: '#7D4CDB',
         keywords: ['fn', 'fort', 'fortnite'],
         modes: ['Solo', 'Duo', 'Trio', 'Squad', 'Ranked', 'Zero Build'],
         ranks: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Elite', 'Champion', 'Unreal'],
