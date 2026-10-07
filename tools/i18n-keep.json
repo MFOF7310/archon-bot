@@ -15,6 +15,9 @@
     "modules.ai",
     "modules.codm"
   ],
+  "economy.json": [
+    "transfer.usage_desc"
+  ],
   "emoji.json": [
     "unicode"
   ],
