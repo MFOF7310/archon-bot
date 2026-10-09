@@ -24,7 +24,7 @@
   },
   "placeholderChannel": "选择一个频道…",
   "placeholderRole": "选择一个身份组…",
-  "footer": "{server} · 第 {n} 题，共 {total} 题",
+  "footer": "{server} · 第 {n} 个问题，共 {total} 个",
   "skipped": "未设置",
   "roleManaged": "这个身份组我给不了：它由某个集成管理，或者是 @everyone。请换一个。",
   "roleAbove": "我给不了 **{role}**，因为它比我自己的身份组更高。请在“服务器设置 → 身份组”里把我的身份组拖到它上面，或者换一个身份组。",
@@ -45,7 +45,7 @@
   "cancelledSaved": "设置已取消，你之前选好的内容已经保存。",
   "timeout": "这次设置超时了。准备好了就再运行一次 /setup。",
   "timeoutSaved": "这次设置超时了，不过你之前选好的内容已经保存。再运行 /setup 就能继续。",
-  "needAdmin": "运行设置需要管理员权限。",
+  "needAdmin": "你需要拥有管理员权限才能运行设置。",
   "guildOnly": "设置只能在服务器内使用。",
   "notYours": "这次设置是别人发起的。想设置你自己的，请运行 /setup。",
   "error": "出错了，请再运行一次 /setup。"
