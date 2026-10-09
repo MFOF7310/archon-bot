@@ -135,4 +135,15 @@ module.exports = {
     helpUtility:       '🛠️',
     helpSocial:        '🤝',
     helpFun:           '🎉',
+
+    // ── Roulette ──
+    rouletteRed:       '🔴',
+    rouletteBlack:     '⚫',
+    rouletteGreen:     '🟢',
+    rouletteSpin:      '🎡',
+    rouletteUndo:      '↩️',
+    rouletteClear:     '🧹',
+    rouletteDouble:    '⏫',
+    rouletteWin:       '✅',
+    rouletteLose:      '❌',
 };

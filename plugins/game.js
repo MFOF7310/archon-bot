@@ -482,6 +482,18 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
 
 // ================= ROULETTE =================
 async function playRoulette(ctx, client, db, lang, guildId, userId, bet) {
+    // The table lives in lib/games/roulette.js (Components V2). The older code below is no longer reached.
+    return require('../lib/games/roulette').play({
+        ctx, client, db, lang, guildId, userId, bet,
+        getUser: () => (client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)),
+        charge: (amount) => {
+            const user = client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+            if (!user || (user.credits || 0) < amount) return false;
+            deductBet(db, client, userId, guildId, amount, user);
+            return true;
+        },
+        settle: (won, returned, xp) => updateGameStats(db, client, userId, guildId, won, returned, xp, ctx, lang, 'roulette'),
+    });
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
