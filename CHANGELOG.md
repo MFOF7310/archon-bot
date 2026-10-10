@@ -45,18 +45,3 @@ All notable updates to ARCHON CG-223, in plain language.
 **Improved**
 - Bot status messages now highlight CODM features (scrims, meta, clan wars) instead of generic server stats.
 
-## Welcome card — as of e802e22 + archon-mascot.jpg
-Shipped: CV2 container, clickable /help (5 langs), REG emojis, character art left, chibi right, avatar CV2 thumbnail, dead code removed.
-
-Parked (not urgent):
-- Transparent PNG for archon-mascot: needs `pip install "rembg[cpu]"` in /opt/rembg venv
-- Character x-position tweak if transparency exposes left-edge crop: `ctx.drawImage(_char, 12*SCALE, ...)`
-- Goodbye card — untouched. Still V1 embed, still tips block, still inline emoji IDs. Next session.
-
-Rollback point: /tmp/wv6-* backups on VPS (may be cleared on reboot)
-
----
-
-*Older history lives in the [commit log](https://github.com/MFOF7310/archon-bot/commits/main).*
-
-
