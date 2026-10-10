@@ -146,4 +146,22 @@ module.exports = {
     rouletteDouble:    '⏫',
     rouletteWin:       '✅',
     rouletteLose:      '❌',
+
+    // ── Game hub ──
+    hubWheel:           '🎡',
+    gameSlots:          '🎰',
+    hubInfo:            'ℹ️',
+    hubSparkle:         '✨',
+    streaks2:           '🔥',
+    slowly:             '🐌',
+    purpleDot:          '🟣',
+    settings:           '⚙️',
+    clapping:           '👏',
+    aoLiGei:            '💪',
+    star:               '⭐',
+    codmFrontline:      '🔫',
+    gameTicTacToe:      '⭕',
+    gameBlackjack:      '🃏',
+    gameRoulette:       '🎲',
+    gameTrivia:         '🧠',
 };

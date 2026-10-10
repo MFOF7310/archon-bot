@@ -1,0 +1,23 @@
+{
+  "title": "Centre de jeux",
+  "welcome": "Bienvenue, {name} ! Choisis un jeu ci-dessous et amuse-toi bien.",
+  "statCredits": "Crédits : **{n}**",
+  "statPlayed": "Parties jouées : **{n}**",
+  "statWon": "Gagnées : **{n}**",
+  "statsNone": "Tes statistiques apparaîtront ici après ta première partie.",
+  "play": "Jouer",
+  "g_codm": "Call of Duty Mobile",
+  "d_codm": "Relève un petit défi Call of Duty Mobile.",
+  "g_slots": "Machine à sous",
+  "d_slots": "Tire le levier et vois ce qui s'aligne.",
+  "g_tictactoe": "Morpion",
+  "d_tictactoe": "Un duel classique à deux. Défie un ami avec /game tictactoe.",
+  "g_blackjack": "Blackjack",
+  "d_blackjack": "Approche-toi le plus possible de 21 et bats le croupier.",
+  "g_roulette": "Roulette",
+  "d_roulette": "Compose ta propre table avec des couleurs, des numéros et des douzaines.",
+  "g_trivia": "Quiz",
+  "d_trivia": "Réponds aux questions et montre ce que tu sais.",
+  "note": "Les crédits et les statistiques sont séparés sur chaque serveur.",
+  "luck": "Bonne chance !"
+}

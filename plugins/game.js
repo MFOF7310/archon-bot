@@ -601,8 +601,11 @@ async function executeSlashCommand(interaction, client) {
     const ctx = new GameContext(interaction);
 
         if (sub === 'menu') {
-        const hub = buildHub(client, lang, interaction.guild?.name);
-        return interaction.reply({ embeds: hub.embeds, components: hub.components });
+        const hub = require('../lib/games/hub').buildHub({
+            lang, guildName: interaction.guild?.name, user: interaction.user,
+            stats: (client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)) || null,
+        });
+        return interaction.reply(hub);
     }
 
     const bet = interaction.options.getInteger('bet') || 100;

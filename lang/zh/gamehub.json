@@ -1,0 +1,23 @@
+{
+  "title": "游戏中心",
+  "welcome": "欢迎，{name}！在下面选一个游戏，玩得开心。",
+  "statCredits": "积分：**{n}**",
+  "statPlayed": "已玩：**{n}**",
+  "statWon": "获胜：**{n}**",
+  "statsNone": "完成第一局游戏后，你的数据就会显示在这里。",
+  "play": "开始",
+  "g_codm": "使命召唤手游",
+  "d_codm": "来一场快节奏的使命召唤手游挑战吧。",
+  "g_slots": "老虎机",
+  "d_slots": "拉下拉杆，看看能凑成什么。",
+  "g_tictactoe": "井字棋",
+  "d_tictactoe": "经典的双人对决，用 /game tictactoe 向朋友发起挑战。",
+  "g_blackjack": "二十一点",
+  "d_blackjack": "尽量接近 21 点，击败庄家。",
+  "g_roulette": "轮盘",
+  "d_roulette": "用颜色、数字和分区自己搭一张牌桌。",
+  "g_trivia": "知识问答",
+  "d_trivia": "回答问题，展示你的知识。",
+  "note": "积分和数据在每个服务器中是分开记录的。",
+  "luck": "祝你好运！"
+}

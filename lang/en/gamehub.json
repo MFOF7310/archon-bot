@@ -1,0 +1,23 @@
+{
+  "title": "Game Center",
+  "welcome": "Welcome, {name}! Pick a game below and let's have some fun.",
+  "statCredits": "Credits: **{n}**",
+  "statPlayed": "Played: **{n}**",
+  "statWon": "Won: **{n}**",
+  "statsNone": "Your stats will show up here after your first game.",
+  "play": "Play",
+  "g_codm": "Call of Duty Mobile",
+  "d_codm": "Take on a quick Call of Duty Mobile challenge.",
+  "g_slots": "Slots",
+  "d_slots": "Pull the lever and see what lines up.",
+  "g_tictactoe": "Tic Tac Toe",
+  "d_tictactoe": "A classic duel for two. Challenge a friend with /game tictactoe.",
+  "g_blackjack": "Blackjack",
+  "d_blackjack": "Get as close to 21 as you can and beat the dealer.",
+  "g_roulette": "Roulette",
+  "d_roulette": "Build your own table with colors, numbers and dozens.",
+  "g_trivia": "Trivia",
+  "d_trivia": "Answer questions and show what you know.",
+  "note": "Credits and stats are kept separately on each server.",
+  "luck": "Good luck out there!"
+}
