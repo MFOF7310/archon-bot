@@ -1,0 +1,16 @@
+{
+  "guildOnly": "Cette commande ne fonctionne que dans un serveur.",
+  "need": "Tu as besoin de la permission **Gérer le serveur** pour changer la langue.",
+  "title": "Langue du serveur",
+  "current": "Langue actuelle : {value}",
+  "available": "Tu peux choisir parmi :",
+  "usage": "Essaie par exemple : `{prefix}setlang fr`",
+  "unknown": "Je ne connais pas **{code}**, mais voici ce que je sais faire.",
+  "invalid": "Je ne connais pas cette langue. Choisis-en une dans la liste.",
+  "updated": "Langue mise à jour",
+  "footer": "ARCHON CG-223 · Paramètres de langue",
+  "confirm": "La langue du serveur est maintenant **{native}**.\n\nTout ce que je dirai apparaîtra en **{native}** à partir de maintenant.",
+  "autoConfirm": "La langue du serveur est maintenant sur **Auto**. Je suis la langue de ton serveur dans Discord, et je me rabats sur la langue de la commande que tu tapes.",
+  "autoNow": "Pour l'instant, cela donne **{language}**.",
+  "saveFailed": "Je n'ai pas pu enregistrer ça pour le moment. Réessaie dans un instant."
+}

@@ -164,4 +164,7 @@ module.exports = {
     gameBlackjack:      '🃏',
     gameRoulette:       '🎲',
     gameTrivia:         '🧠',
+
+    // ── Game hub (extra) ──
+    dart:               '🎯',
 };

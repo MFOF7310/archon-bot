@@ -1,0 +1,16 @@
+{
+  "guildOnly": "This only works inside a server.",
+  "need": "You need the **Manage Server** permission to change the language.",
+  "title": "Server language",
+  "current": "Current language: {value}",
+  "available": "You can choose from:",
+  "usage": "Try it like this: `{prefix}setlang fr`",
+  "unknown": "I don't know **{code}**, but here's what I can do.",
+  "invalid": "I don't know that language. Pick one from the list.",
+  "updated": "Language updated",
+  "footer": "ARCHON CG-223 · Language settings",
+  "confirm": "The server language is now **{native}**.\n\nEverything I say will appear in **{native}** from here on.",
+  "autoConfirm": "The server language is now set to **Auto**. I follow your server's language in Discord, and fall back to the language of the command you type.",
+  "autoNow": "Right now that gives **{language}**.",
+  "saveFailed": "I couldn't save that right now. Please try again in a moment."
+}
