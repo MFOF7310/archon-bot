@@ -250,38 +250,20 @@ async function renderWelcomeCard(member, count, cfg) {
     ctx.stroke();
     ctx.restore();
 
-    // Avatar
-    const av = await loadImage(
-        member.user.displayAvatarURL({ extension: 'png', size: 256 })
-    ).catch(() => null);
-
-    const ar = 52 * SCALE;
-    const ax = 20 * SCALE;
-    const ay = CH / 2;
-
-    // Glow behind avatar
-    ctx.save();
-    ctx.shadowColor = accent;
-    ctx.shadowBlur = 18 * SCALE;
-    ctx.beginPath();
-    ctx.arc(ax + ar, ay, ar + 4, 0, Math.PI * 2);
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.restore();
-
-    if (av) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(ax + ar, ay, ar, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(av, ax, ay - ar, ar * 2, ar * 2);
-        ctx.restore();
+    // v6: character art (replaces old avatar-in-canvas slot)
+    const _char = await loadMascotFile('archon-mascot');
+    if (_char) {
+        const _maxW = CW * 0.35;
+        const _aspect = _char.width / _char.height;
+        const _drawH = CH - 8 * SCALE;
+        let _drawW = _drawH * _aspect;
+        let _dh = _drawH;
+        if (_drawW > _maxW) { _drawW = _maxW; _dh = _drawW / _aspect; }
+        ctx.drawImage(_char, 0, CH - _dh, _drawW, _dh);
     }
 
     // Text start x
-    const tx = ax + ar * 2 + 22 * SCALE;
+    const tx = CW * 0.37;
 
 
     // Username
@@ -676,41 +658,6 @@ const ALL_TIPS = {
     }
 };
 
-function buildRandomTips(cfg, lang = 'en') {
-    const pool = ALL_TIPS[lang] || ALL_TIPS.en;
-    const p = cfg.prefix || '.';
-    const available = [];
-
-    for (const [key, tip] of Object.entries(pool)) {
-        let enabled = true;
-        if (key === 'lydia'   && !cfg.aiEnabled)      enabled = false;
-        if (['daily', 'shop', 'credits', 'market'].includes(key) && !cfg.economyEnabled) enabled = false;
-        if (key === 'market'  && !cfg.marketEnabled)   enabled = false;
-        if (key === 'ticket'  && !cfg.ticketEnabled)   enabled = false;
-        if (key === 'profile' && !cfg.levelingEnabled) enabled = false;
-        if (key === 'rank'    && !cfg.levelingEnabled) enabled = false;
-        if (enabled) available.push(tip);
-    }
-
-    const count = Math.min(available.length, 3 + Math.floor(Math.random() * 3));
-    const selected = [];
-    const poolCopy = [...available];
-
-    for (let i = 0; i < count && poolCopy.length > 0; i++) {
-        const totalWeight = poolCopy.reduce((sum, t) => sum + t.weight, 0);
-        let random = Math.random() * totalWeight;
-        let index = 0;
-        while (random > 0 && index < poolCopy.length) {
-            random -= poolCopy[index].weight;
-            if (random > 0) index++;
-        }
-        selected.push(poolCopy[index].text.replace(/\{p\}/g, p));
-        poolCopy.splice(index, 1);
-    }
-
-    return selected;
-}
-
 // ================= BUTTON DEFINITIONS =================
 function getWelcomeButtons(cfg, member) {
     const lang = cfg.lang || 'en';
@@ -748,7 +695,6 @@ module.exports = {
     renderGoodbyeCard,
     warmWelcomeText,
     goodbyeText,
-    buildRandomTips,
     getWelcomeButtons,
     ordinal,
     fmtDur,

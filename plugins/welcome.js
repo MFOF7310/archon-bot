@@ -16,10 +16,12 @@ const {
     MediaGalleryItemBuilder,
     MessageFlags,
     PermissionFlagsBits,
+    SectionBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
     SlashCommandBuilder,
     TextDisplayBuilder,
+    ThumbnailBuilder,
 } = require('discord.js');
 const { t } = require('../lib/i18n');
 const Style = require('./welcome-style.js');
@@ -184,8 +186,17 @@ ${t('welcome.help_hint', lang, { help: _helpLink })}`;
                 new MediaGalleryItemBuilder().setURL('attachment://welcome-card.png')
             )
         )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(content)
+        .addSectionComponents(
+            new SectionBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(content)
+                )
+                .setThumbnailAccessory(
+                    new ThumbnailBuilder().setURL(
+                        (safeMember?.displayAvatarURL?.({ extension: 'png', size: 128 }))
+                        || member.user.displayAvatarURL({ extension: 'png', size: 128 })
+                    )
+                )
         )
         .addSeparatorComponents(
             new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
