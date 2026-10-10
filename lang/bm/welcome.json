@@ -38,5 +38,6 @@
   "default_goodbye_msg": "K'an bɛn {user}, i ni ce i ka kɛ {server} mɔgɔ ye!",
   "default_welcome_msg": "I bisimila {user} {server} kan! I ye mɔgɔ #{count} nan ye.",
   "footer": "ARCHON CG-223",
-  "setup_slash": "`/welcome message` · `/welcome goodbyemsg`"
+  "setup_slash": "`/welcome message` · `/welcome goodbyemsg`",
+  "help_hint": "I bɛ fɛ ka fɛn wɛrɛ lajɛ wa? {help} tap — n bɛna a ɲɛ jira i la."
 }

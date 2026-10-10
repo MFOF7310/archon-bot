@@ -38,5 +38,6 @@
   "footer": "ARCHON CG-223",
   "default_welcome_msg": "Welcome {user} to {server}! You are member #{count}.",
   "default_goodbye_msg": "Goodbye {user}, thanks for being part of {server}!",
-  "setup_slash": "`/welcome message` · `/welcome goodbyemsg`"
+  "setup_slash": "`/welcome message` · `/welcome goodbyemsg`",
+  "help_hint": "Wondering what else I can do? Tap {help} — I'll show you around. 💜"
 }

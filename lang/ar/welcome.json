@@ -38,5 +38,6 @@
   "footer": "أركون CG-223",
   "default_welcome_msg": "مرحبًا {user} في {server}! أنت العضو رقم #{count}.",
   "default_goodbye_msg": "إلى اللقاء {user}، شكرًا لكونك جزءًا من {server}!",
-  "setup_slash": "`/welcome message` · `/welcome goodbyemsg`"
+  "setup_slash": "`/welcome message` · `/welcome goodbyemsg`",
+  "help_hint": "تتساءل ماذا أستطيع أيضًا؟ اضغط {help} وسأرشدك."
 }

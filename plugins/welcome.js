@@ -6,8 +6,20 @@
 // ╚══════════════════════════════════════════════════════════════════════╝
 
 const {
-    EmbedBuilder, AttachmentBuilder, ActionRowBuilder,
-    ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits
+    ActionRowBuilder,
+    AttachmentBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ContainerBuilder,
+    EmbedBuilder,
+    MediaGalleryBuilder,
+    MediaGalleryItemBuilder,
+    MessageFlags,
+    PermissionFlagsBits,
+    SeparatorBuilder,
+    SeparatorSpacingSize,
+    SlashCommandBuilder,
+    TextDisplayBuilder,
 } = require('discord.js');
 const { t } = require('../lib/i18n');
 const Style = require('./welcome-style.js');
@@ -117,19 +129,28 @@ async function handleWelcome(member, client, db) {
         content = `${Style.formatTemplate(cfg.welcomeMessage, safeMember, count)}\n${content}`;
     }
 
-    // 3–5 random pro-tips
-    const tips = Style.buildRandomTips(cfg, lang);
-    const tipLabel = t('welcome.tip_label_' + (['en','fr','bm','zh','ar'].includes(lang) ? lang : 'en'), lang);
-    content += `\n> ${tipLabel}\n${tips.map(t => `> • ${t}`).join('\n')}`;
+    // v5.2: robust help lookup — cache → local → fetch → fallback
+    let _helpCmd = client.application?.commands?.cache?.find(c => c.name === 'help');
+    if (!_helpCmd && client.commands?.get) {
+        const _local = client.commands.get('help');
+        if (_local && _local.id) _helpCmd = _local;
+    }
+    if (!_helpCmd && client.application?.commands?.fetch) {
+        try {
+            const _all = await client.application.commands.fetch();
+            _helpCmd = _all.find(c => c.name === 'help');
+        } catch (_e) { /* non-fatal */ }
+    }
+    const _helpLink = _helpCmd?.id
+        ? `</help:${_helpCmd.id}>`
+        : (client.user?.id ? `</help:${client.user.id}>` : '`/help`');
+    console.log('[WELCOME] help cmd resolved:', !!_helpCmd?.id, _helpCmd?.id || 'n/a');
+    content += `
+${t('welcome.help_hint', lang, { help: _helpLink })}`;
 
     // Embed uses attachment:// reference — NOT a base64 data URL
     const _roleHex = member.roles?.color?.hex;
     const _accentHex = (cfg.welcomeAccent || (_roleHex && _roleHex !== '#000000' ? _roleHex : '#2ecc71')).replace('#', '');
-    const embed = new EmbedBuilder()
-        .setColor(parseInt(_accentHex, 16))
-        .setImage('attachment://welcome-card.png')
-        .setFooter({ text: t('welcome.welcome_footer', lang, { guild: member.guild.name, count }) })
-        .setTimestamp();
 
     // Build action buttons
     const buttonDefs = Style.getWelcomeButtons(cfg, safeMember);
@@ -155,11 +176,34 @@ async function handleWelcome(member, client, db) {
     }
     if (btnCount > 0) rows.push(currentRow);
 
+    // v5.1: Components V2 container (Ephi-style layout)
+    const _container = new ContainerBuilder()
+        .setAccentColor(parseInt(_accentHex, 16))
+        .addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+                new MediaGalleryItemBuilder().setURL('attachment://welcome-card.png')
+            )
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(content)
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                t('welcome.welcome_footer', lang, { guild: member.guild.name, count })
+            )
+        );
+
+    if (rows.length > 0) {
+        _container.addActionRowComponents(...rows);
+    }
+
     await ch.send({
-        content,
-        embeds: [embed],
-        components: rows.length > 0 ? rows : undefined,
-        files: [attachment]
+        components: [_container],
+        files: [attachment],
+        flags: MessageFlags.IsComponentsV2,
     }).catch(err => console.error('[WELCOME] Send failed:', err.message));
 }
 

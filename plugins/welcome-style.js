@@ -283,6 +283,7 @@ async function renderWelcomeCard(member, count, cfg) {
     // Text start x
     const tx = ax + ar * 2 + 22 * SCALE;
 
+
     // Username
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold ${34 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
