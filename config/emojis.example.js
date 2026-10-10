@@ -167,4 +167,13 @@ module.exports = {
 
     // ── Game hub (extra) ──
     dart:               '🎯',
+
+    // ── Trivia ──
+    triviaStart:       '▶️',
+    triviaNext:        '▶️',
+    triviaCancel:      '✖️',
+    triviaResults:     '🏁',
+    triviaAgain:       '🔄',
+    triviaMenu:        '📂',
+    triviaGames:       '🎮',
 };

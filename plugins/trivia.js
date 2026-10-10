@@ -9,6 +9,8 @@ const { SlashCommandBuilder, StringSelectMenuBuilder, ComponentType } = require(
 const ui = require('../lib/games/ui');
 const progress = require('../lib/games/progress');
 const session = require('../lib/games/session');
+const v2 = require('../lib/games/v2');
+const E = require('../config/emojis');
 
 const GAME = 'trivia';
 const DATA_DIR = path.join(__dirname, '..', 'assets', 'games', 'trivia');
@@ -38,7 +40,6 @@ const DIFFICULTIES = {
 };
 const DIFF_ORDER = Object.keys(DIFFICULTIES);
 const LETTERS = ['A', 'B', 'C', 'D'];
-const LETTER_EMOJI = ['🇦', '🇧', '🇨', '🇩'];
 
 // ───────────────────────────── questions ─────────────────────────────
 const bank = {};
@@ -72,60 +73,63 @@ function pickQuestions(userId, cat, count, lang) {
 
 const streakMult = (streak) => Math.min(1.5, 1 + 0.1 * (streak - 1));
 
-// ───────────────────────────── screens ─────────────────────────────
+// ───────────────────────────── screens (Components V2) ─────────────────────────────
+const em = (key) => E[key] || '';
+const join = (...parts) => parts.filter(Boolean).join(' ');
+
 function names(s) {
   const Q = ui.t(s.lang, GAME);
   return { cat: `${CATEGORIES[s.cat].emoji} ${Q(`categories.${s.cat}`)}`, diff: `${DIFFICULTIES[s.diff].emoji} ${Q(`difficulties.${s.diff}`)}` };
 }
-const footer = (s) => ui.t(s.lang)('footer', { game: ui.t(s.lang, GAME)('name') });
 
-function menuScreen(s) {
+// Streak and score on one line, the same on the question and the answer screens.
+function statsLine(s, played) {
+  const Q = ui.t(s.lang, GAME);
+  return `${join(em('streaks2'), Q('streak'))}: **${s.streak}**   ·   ${join(em('star'), Q('score'))}: **${s.correct}/${played}**`;
+}
+
+// A plain one-card message, for "cancelled" and "this menu closed".
+const plainScreen = (message) => v2.card(ui.COLORS.neutral, [{ text: message }]);
+
+// o.note: a line under the menu (for example "no questions yet"). o.closed: show it without buttons.
+function menuScreen(s, o = {}) {
   const T = ui.t(s.lang); const Q = ui.t(s.lang, GAME);
   const d = s.client.getUserData?.(s.userId, s.guildId) || {};
   const level = d.level || progress.levelFromXp(d.xp);
   const rank = progress.rankForLevel(level);
   const n = names(s); const diff = DIFFICULTIES[s.diff];
-  const embed = ui.card(s.client, {
-    color: CATEGORIES[s.cat].color,
-    author: Q('title'),
-    title: Q('menuTitle'),
-    description: [
-      Q('menuPlayer', { name: ui.clean(s.username), rank: `${rank.emoji} ${T(`ranks.${rank.key}`)}`, level }),
-      '', `## ${n.cat} · ${n.diff}`,
-      Q('difficultyInfo', { questions: diff.questions, seconds: diff.seconds }),
-      '', Q('menuHow'),
-    ].join('\n'),
-    footer: footer(s),
-  });
-  const catMenu = new StringSelectMenuBuilder().setCustomId('trivia_cat').setPlaceholder(Q('pickCategory')).addOptions(
-    Object.entries(CATEGORIES).map(([key, c]) => ({ label: Q(`categories.${key}`).slice(0, 100), value: key, emoji: c.emoji, default: key === s.cat })));
-  const diffMenu = new StringSelectMenuBuilder().setCustomId('trivia_diff').setPlaceholder(Q('pickDifficulty')).addOptions(
-    Object.entries(DIFFICULTIES).map(([key, x]) => ({
-      label: Q(`difficulties.${key}`), value: key, emoji: x.emoji, default: key === s.diff,
-      description: Q('difficultyInfo', { questions: x.questions, seconds: x.seconds }).slice(0, 100) })));
-  return { embeds: [embed], components: [
-    ui.row(catMenu), ui.row(diffMenu),
-    ui.row(ui.button('trivia_start', Q('btnStart'), '▶️', ui.ButtonStyle.Success), ui.button('trivia_cancel', Q('btnCancel'), '✖️')),
-  ] };
+  const choice = [`## ${n.cat} · ${n.diff}`, Q('difficultyInfo', { questions: diff.questions, seconds: diff.seconds }), '', Q('menuHow')];
+  if (o.note) choice.push('', o.note);
+  if (o.closed) choice.push('', Q('expired'));
+  const items = [
+    { text: `## ${Q('title')}\n${Q('menuPlayer', { name: ui.clean(s.username), rank: `${rank.emoji} ${T(`ranks.${rank.key}`)}`, level })}` },
+    { rule: true },
+    { text: choice.join('\n') },
+  ];
+  if (!o.closed) {
+    const catMenu = new StringSelectMenuBuilder().setCustomId('trivia_cat').setPlaceholder(Q('pickCategory')).addOptions(
+      Object.entries(CATEGORIES).map(([key, c]) => ({ label: Q(`categories.${key}`).slice(0, 100), value: key, emoji: c.emoji, default: key === s.cat })));
+    const diffMenu = new StringSelectMenuBuilder().setCustomId('trivia_diff').setPlaceholder(Q('pickDifficulty')).addOptions(
+      Object.entries(DIFFICULTIES).map(([key, x]) => ({
+        label: Q(`difficulties.${key}`), value: key, emoji: x.emoji, default: key === s.diff,
+        description: Q('difficultyInfo', { questions: x.questions, seconds: x.seconds }).slice(0, 100) })));
+    items.push({ rule: true }, { row: ui.row(catMenu) }, { row: ui.row(diffMenu) },
+      { row: ui.row(ui.button('trivia_start', Q('btnStart'), em('triviaStart'), ui.ButtonStyle.Success), ui.button('trivia_cancel', Q('btnCancel'), em('triviaCancel'))) });
+  }
+  return v2.card(CATEGORIES[s.cat].color, items);
 }
 
+// Each answer is its own row: the text on the left, its letter button on the right.
 function questionScreen(s) {
   const T = ui.t(s.lang); const Q = ui.t(s.lang, GAME);
   const q = s.questions[s.index]; const n = names(s);
-  const embed = ui.card(s.client, {
-    color: DIFFICULTIES[s.diff].color,
-    author: `${Q('title')} · ${n.cat} · ${n.diff}`,
-    title: Q('questionTitle', { n: s.index + 1, total: s.questions.length }),
-    description: `## ${q.q}\n\n` + q.a.map((ans, i) => `${LETTER_EMOJI[i]}  **${ans}**`).join('\n')
-      + `\n\n${ui.progressBar(s.index, s.questions.length)}`,
-    fields: [
-      { name: `🔥 ${Q('streak')}`, value: String(s.streak), inline: true },
-      { name: `✅ ${Q('score')}`, value: `${s.correct}/${s.index}`, inline: true },
-      { name: `⏱️ ${T('timeLeft')}`, value: ui.countdown(s.deadline), inline: true },
-    ],
-    footer: footer(s),
-  });
-  return { embeds: [embed], components: [ui.row(LETTERS.map((l, i) => ui.button(`trivia_a${i}`, l, null, ui.ButtonStyle.Primary)))] };
+  return v2.card(DIFFICULTIES[s.diff].color, [
+    { text: `-# ${n.cat} · ${n.diff}\n**${Q('questionTitle', { n: s.index + 1, total: s.questions.length })}**\n## ${q.q}` },
+    { rule: true },
+    ...q.a.map((ans, i) => ({ section: [`**${ans}**`, ui.button(`trivia_a${i}`, LETTERS[i], null, ui.ButtonStyle.Primary)] })),
+    { rule: true },
+    { text: `${statsLine(s, s.index)}   ·   ${join(em('clock'), T('timeLeft'))}: ${ui.countdown(s.deadline)}\n${ui.progressBar(s.index, s.questions.length)}` },
+  ]);
 }
 
 function answerScreen(s, outcome, paid) {
@@ -133,26 +137,26 @@ function answerScreen(s, outcome, paid) {
   const q = s.questions[s.index];
   const look = { correct: [ui.COLORS.success, Q('correctTitle')], wrong: [ui.COLORS.danger, Q('wrongTitle')], timeout: [ui.COLORS.neutral, Q('timeoutTitle')] }[outcome];
   const last = s.index + 1 >= s.questions.length;
-  const lines = [Q('answerWas', { answer: q.a[q.correct] }), '', `📖 **${Q('didYouKnow')}** ${q.fact}`];
+  const lines = [`## ${look[1]}`, Q('answerWas', { answer: q.a[q.correct] }), '', `${join(em('hubInfo'), `**${Q('didYouKnow')}**`)} ${q.fact}`];
   if (paid) lines.push('', ui.rewardText(s.lang, paid));
-  const embed = ui.card(s.client, {
-    color: look[0], author: `${Q('title')} · ${names(s).cat}`, title: look[1], description: lines.join('\n'),
-    fields: [
-      { name: `🔥 ${Q('streak')}`, value: String(s.streak), inline: true },
-      { name: `✅ ${Q('score')}`, value: `${s.correct}/${s.index + 1}`, inline: true },
-    ],
-    footer: footer(s),
-  });
-  return { embeds: [embed], components: [ui.row(ui.button('trivia_next', last ? Q('btnResults') : Q('btnNext'), last ? '🏁' : '▶️', ui.ButtonStyle.Success))] };
+  return v2.card(look[0], [
+    { text: lines.join('\n') },
+    { rule: true },
+    { text: statsLine(s, s.index + 1) },
+    { rule: true },
+    { row: ui.row(ui.button('trivia_next', last ? Q('btnResults') : Q('btnNext'), last ? em('triviaResults') : em('triviaNext'), ui.ButtonStyle.Success)) },
+  ]);
 }
 
-function resultsScreen(s, hasGames) {
+// o.closed: the same results, without buttons.
+function resultsScreen(s, hasGames, o = {}) {
   const T = ui.t(s.lang); const Q = ui.t(s.lang, GAME);
   const total = s.questions.length;
   const accuracy = Math.round((s.correct / total) * 100);
   const headline = accuracy === 100 ? Q('perfect') : accuracy >= 80 ? Q('great') : accuracy >= 60 ? Q('good') : Q('keepGoing');
   const n = names(s);
   const lines = [
+    `## ${headline}`,
     `**${ui.clean(s.username)}** · ${n.cat} · ${n.diff}`, '',
     `${ui.progressBar(s.correct, total)}  ${Q('summary', { correct: s.correct, total, accuracy, streak: s.maxStreak })}`, '',
     Q('earned', { reward: ui.rewardText(s.lang, s.paid) }),
@@ -161,17 +165,16 @@ function resultsScreen(s, hasGames) {
     const rank = progress.rankForLevel(s.levelUp);
     lines.push('', T('levelUp', { level: s.levelUp, rank: `${rank.emoji} ${T(`ranks.${rank.key}`)}` }));
   }
-  const embed = ui.card(s.client, {
-    color: accuracy === 100 ? ui.COLORS.gold : CATEGORIES[s.cat].color,
-    author: Q('title'), title: headline, description: lines.join('\n'),
-    fields: s.capped ? [{ name: '\u200b', value: T('capNote', { credits: progress.DAILY.credits, xp: progress.DAILY.xp }) }] : [],
-    footer: footer(s),
-  });
-  return { embeds: [embed], components: [ui.row(
-    ui.button('trivia_again', Q('btnAgain'), '🔄', ui.ButtonStyle.Success),
-    ui.button('trivia_menu', Q('btnMenu'), '📂', ui.ButtonStyle.Primary),
-    hasGames ? ui.button('trivia_games', Q('btnGames'), '🎮') : null,
-  )] };
+  if (s.capped) lines.push('', T('capNote', { credits: progress.DAILY.credits, xp: progress.DAILY.xp }));
+  const items = [{ text: lines.join('\n') }];
+  if (!o.closed) {
+    items.push({ rule: true }, { row: ui.row(
+      ui.button('trivia_again', Q('btnAgain'), em('triviaAgain'), ui.ButtonStyle.Success),
+      ui.button('trivia_menu', Q('btnMenu'), em('triviaMenu'), ui.ButtonStyle.Primary),
+      hasGames ? ui.button('trivia_games', Q('btnGames'), em('triviaGames')) : null,
+    ) });
+  }
+  return v2.card(accuracy === 100 ? ui.COLORS.gold : CATEGORIES[s.cat].color, items);
 }
 
 // ───────────────────────────── session flow ─────────────────────────────
@@ -194,7 +197,8 @@ async function startSession(source, db, lang) {
     s.collector = msg.createMessageComponentCollector({ idle: 5 * 60 * 1000, time: 30 * 60 * 1000 });
     s.collector.on('collect', (i) => onClick(s, i).catch(e => console.error('[TRIVIA CLICK]', e.message)));
     s.collector.on('end', () => {
-      if (s.phase === 'menu' || s.phase === 'results') s.ctx.edit({ components: [] }).catch(() => {}); // no dead buttons
+      if (s.phase === 'menu') s.ctx.edit(menuScreen(s, { closed: true })).catch(() => {}); // no dead buttons
+      else if (s.phase === 'results') s.ctx.edit(resultsScreen(s, Boolean(s.client.commands?.get?.('game')), { closed: true })).catch(() => {});
       close(s);
     });
   } catch (e) {
@@ -214,7 +218,7 @@ function armMenu(s) {
   setTimer(s, MENU_IDLE_MS, async () => {
     if (s.phase !== 'menu') return;
     s.phase = 'over';
-    await s.ctx.edit({ content: Q('expired'), embeds: [], components: [] }).catch(() => {});
+    await s.ctx.edit(plainScreen(Q('expired'))).catch(() => {});
     s.collector?.stop('expired');
   });
 }
@@ -234,12 +238,12 @@ async function onClick(s, i) {
       if (id === 'trivia_cat' && CATEGORIES[i.values?.[0]]) s.cat = i.values[0];
       if (id === 'trivia_diff' && DIFFICULTIES[i.values?.[0]]) s.diff = i.values[0];
       await s.ctx.ack(i); armMenu(s);
-      return s.ctx.edit({ content: null, ...menuScreen(s) });
+      return s.ctx.edit(menuScreen(s));
     }
     if (id === 'trivia_cancel') {
       s.phase = 'over'; clearTimeout(s.timer);
       await s.ctx.ack(i);
-      await s.ctx.edit({ content: Q('cancelled'), embeds: [], components: [] }).catch(() => {});
+      await s.ctx.edit(plainScreen(Q('cancelled'))).catch(() => {});
       return s.collector?.stop('cancelled');
     }
     if (id === 'trivia_start') { await s.ctx.ack(i); return beginRun(s); }
@@ -256,13 +260,13 @@ async function onClick(s, i) {
 
   if (s.phase === 'results') {
     if (id === 'trivia_again') { await s.ctx.ack(i); return beginRun(s); }
-    if (id === 'trivia_menu') { await s.ctx.ack(i); s.phase = 'menu'; armMenu(s); return s.ctx.edit({ content: null, ...menuScreen(s) }); }
+    if (id === 'trivia_menu') { await s.ctx.ack(i); s.phase = 'menu'; armMenu(s); return s.ctx.edit(menuScreen(s)); }
     if (id === 'trivia_games') {
       await s.ctx.ack(i);
       s.collector?.stop('games');
-      const hub = s.client.commands?.get?.('game');
-      const asMessage = { author: i.user, guild: i.guild, channel: i.channel, member: i.member, reply: (o) => i.followUp(o), react: () => Promise.resolve() };
-      return hub?.run?.(s.client, asMessage, ['menu'], s.db, s.client.getServerSettings?.(s.guildId) || {}, 'game');
+      const stats = s.client.getUserData?.(s.userId, s.guildId) || null;
+      return i.followUp(require('../lib/games/hub').buildHub({ lang: s.lang, guildName: i.guild?.name, user: i.user, stats }))
+        .catch((e) => console.error('[TRIVIA HUB]', e.message));
     }
   }
   return i.reply({ content: T('oneMoment'), flags: 64 }).catch(() => {});
@@ -272,7 +276,7 @@ async function beginRun(s) {
   const Q = ui.t(s.lang, GAME);
   const diff = DIFFICULTIES[s.diff];
   Object.assign(s, { questions: pickQuestions(s.userId, s.cat, diff.questions, s.lang), index: 0, correct: 0, streak: 0, maxStreak: 0, points: 0, paid: { credits: 0, xp: 0 }, capped: false, levelUp: null });
-  if (!s.questions.length) { s.phase = 'menu'; armMenu(s); return s.ctx.edit({ ...menuScreen(s), content: Q('noQuestions') }); }
+  if (!s.questions.length) { s.phase = 'menu'; armMenu(s); return s.ctx.edit(menuScreen(s, { note: Q('noQuestions') })); }
   return showQuestion(s);
 }
 
@@ -283,7 +287,7 @@ async function showQuestion(s) {
   setTimer(s, DIFFICULTIES[s.diff].seconds * 1000 + GRACE_MS, async () => {
     if (s.phase === 'question' && s.index === idx) return answer(s, 'timeout');
   });
-  await s.ctx.edit({ content: null, ...questionScreen(s) });
+  await s.ctx.edit(questionScreen(s));
 }
 
 async function answer(s, outcome) {
