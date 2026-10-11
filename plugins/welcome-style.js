@@ -523,19 +523,8 @@ function warmWelcomeText(member, count, cfg) {
 
     const pool = greetings[lang] || greetings.en;
     const greeting = pool[Math.floor(Math.random() * pool.length)];
-    const age = realAccountAge(member.user.createdTimestamp);
-    const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
-    const newBadge = isNew ? ' 🆕' : '';
-
-    const memberLine = {
-        en: `-# ${memberEmoji} Member **#${count}** · account **${age}**${newBadge}`,
-        fr: `-# ${memberEmoji} Membre **#${count}** · compte **${age}**${newBadge}`,
-        bm: `-# ${memberEmoji} Membre **#${count}** · compte **${age}**${newBadge}`,
-        ar: `-# ${memberEmoji} عضو **#${count}** · الحساب **${age}**${newBadge}`,
-        zh: `-# ${memberEmoji} 第 **#${count}** 位成员 · 账号 **${age}**${newBadge}`,
-    }[lang] || `-# ${memberEmoji} Member **#${count}** · account **${age}**${newBadge}`;
-
-    return `${greeting}\n${memberLine}`;
+    // v7.1: info line dropped — canvas already shows member # and account age
+    return greeting;
 }
 
 // ================= GOODBYE TEXT =================
@@ -543,7 +532,6 @@ function goodbyeText(member, duration, roleCount, lang = 'en') {
     // v7: warm tone rewrite — direct address, `-#` info line, REG emojis
     const wave = EMOJIS.wave || '👋';
     const dur = duration || 'a short stay';
-    const durationText = duration || 'N/A';
     const u = `**${member.user.username}**`;
 
     const farewells = {
@@ -587,16 +575,8 @@ function goodbyeText(member, duration, roleCount, lang = 'en') {
     const pool = farewells[lang] || farewells.en;
     const farewell = pool[Math.floor(Math.random() * pool.length)];
 
-    const plural = roleCount !== 1 ? 's' : '';
-    const infoLine = {
-        en: `-# ⏱️ Stayed **${durationText}** · **${roleCount}** role${plural} carried out the door`,
-        fr: `-# ⏱️ Resté **${durationText}** · **${roleCount}** rôle${plural} repris`,
-        bm: `-# ⏱️ Tɔ len **${durationText}** · **${roleCount}** jɔyɔrɔ`,
-        ar: `-# ⏱️ بقي **${durationText}** · **${roleCount}** دور`,
-        zh: `-# ⏱️ 陪伴 **${durationText}** · **${roleCount}** 个身份`,
-    }[lang] || `-# ⏱️ Stayed **${durationText}** · **${roleCount}** role${plural} carried out the door`;
-
-    return `${farewell}\n${infoLine}`;
+    // v7.1: info line dropped — canvas already shows duration and roles
+    return farewell;
 }
 
 // ================= BUTTON DEFINITIONS =================
