@@ -250,16 +250,31 @@ async function handleGoodbye(member, client, db) {
         content = `${Style.formatTemplate(cfg.goodbyeMessage, safeMember, member.guild.memberCount)}\n${content}`;
     }
 
-    const embed = new EmbedBuilder()
-        .setColor(0xe74c3c)
-        .setImage('attachment://goodbye-card.png')
-        .setFooter({ text: t('welcome.goodbye_footer', goodbyeLang, { guild: member.guild.name }) })
-        .setTimestamp();
+
+    // v7: Components V2 container (goodbye)
+    const _gbContainer = new ContainerBuilder()
+        .setAccentColor(0xff4757)
+        .addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+                new MediaGalleryItemBuilder().setURL('attachment://goodbye-card.png')
+            )
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(content)
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                t('welcome.goodbye_footer', goodbyeLang, { guild: member.guild.name })
+            )
+        );
 
     await ch.send({
-        content,
-        embeds: [embed],
-        files: [attachment]
+        components: [_gbContainer],
+        files: [attachment],
+        flags: MessageFlags.IsComponentsV2,
     }).catch(err => console.error('[GOODBYE] Send failed:', err.message));
 }
 
@@ -268,7 +283,7 @@ module.exports = {
     name: 'welcome',
     category: 'SYSTEM',
     aliases: ['goodbye', 'leave', 'join', 'welcomecard'],
-    description: 'Neural-grid welcome/goodbye cards with warm welcome, random pro-tips, and real account age.',
+    description: 'Neural-grid welcome/goodbye cards with warm greetings, character art, and real account age.',
     usage: '.welcome config | .welcome test | .welcome message <text> | .welcome goodbyemsg <text>',
     cooldown: 1000,
 

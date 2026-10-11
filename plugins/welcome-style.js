@@ -475,46 +475,49 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 
 // ================= WARM WELCOME TEXT =================
 function warmWelcomeText(member, count, cfg) {
+    // v7: warm tone rewrite — direct address, `-#` info line, REG emojis
     const lang = cfg.lang || 'en';
-    const party = cfg.party || '<a:party:1538963206871973928>';
-    const wave = cfg.wave || '<a:wave:1538963063036842134>';
+    const party = cfg.party || EMOJIS.party || '🎉';
+    const wave = cfg.wave || EMOJIS.wave || '👋';
     const memberEmoji = cfg.memberEmoji || '📊';
+    const u = member.toString();
+    const g = member.guild.name;
 
     const greetings = {
         en: [
-            `${party} Welcome to **${member.guild.name}**, ${member.toString()}!`,
-            `${wave} Hey ${member.toString()}, welcome to **${member.guild.name}**!`,
-            `🌟 ${member.toString()} just joined **${member.guild.name}** — welcome!`,
-            `🚀 ${member.toString()} has entered **${member.guild.name}**!`,
-            `✨ Welcome aboard, ${member.toString()}! **${member.guild.name}** just got better.`,
+            `${party} Hey ${u} — welcome to **${g}**. Saved you a seat.`,
+            `${wave} ${u}, you found us. **${g}** just got better with you in it.`,
+            `✨ Welcome in, ${u}. **${g}** — make yourself at home.`,
+            `${party} ${u} just walked in. **${g}**, say hi.`,
+            `${u}, glad you're here. **${g}** — no rush, look around.`,
         ],
         fr: [
-            `${party} Bienvenue sur **${member.guild.name}**, ${member.toString()} !`,
-            `${wave} Hey ${member.toString()}, bienvenue sur **${member.guild.name}** !`,
-            `🌟 ${member.toString()} vient de rejoindre **${member.guild.name}** — bienvenue !`,
-            `🚀 ${member.toString()} a rejoint **${member.guild.name}** !`,
-            `✨ Bienvenue parmi nous, ${member.toString()} ! **${member.guild.name}** est encore mieux.`,
+            `${party} Salut ${u} — bienvenue sur **${g}**. On t'a gardé une place.`,
+            `${wave} ${u}, tu nous as trouvés. **${g}** est mieux avec toi.`,
+            `✨ Bienvenue ${u}. **${g}** — fais comme chez toi.`,
+            `${party} ${u} vient d'arriver. **${g}**, dis bonjour.`,
+            `${u}, content de te voir. **${g}** — prends ton temps, regarde autour.`,
         ],
         bm: [
-            `${party} I bisimila **${member.guild.name}** kan, nteri ${member.toString()} !`,
-            `${wave} Hey nteri ${member.toString()}, I bisimila **${member.guild.name}** kan, an bɛ kun !`,
-            `🌟 Nteri ${member.toString()} donna sisan sisan **${member.guild.name}** kɔnɔ !`,
-            `🚀 Nteri ${member.toString()} bɔra ka don **${member.guild.name}** kɔnɔ !`,
-            `✨ I bisimila, an bɛ kun, nteri ${member.toString()} ! **${member.guild.name}** bɛ ka denbaya ka ta fɛ yɛrɛ yɛrɛ.`,
+            `${party} I bisimila **${g}** kan, ${u}. An ye sigi yɔrɔ dɔ bila i ye.`,
+            `${wave} ${u}, i ye an sɔrɔ. An sewara ni i ka naali ye — **${g}** ka cogoya ka fisa k'i to a kɔnɔ.`,
+            `✨ I bisimila, ${u}. **${g}** — a kɛ i n'a fɔ i bɛ i ka so.`,
+            `${party} ${u} nana sisan sisan. **${g}**, foli bila an na.`,
+            `${u}, n'nisɔndiyara n'i ka naali ye. **${g}** — kana kɔrɔtɔ, hakɛto i ka salɔnw lajɛ.`,
         ],
         ar: [
-            `${party} مرحباً بك في **${member.guild.name}**، ${member.toString()} !`,
-            `${wave} هيا ${member.toString()}، أهلاً بك في **${member.guild.name}** !`,
-            `🌟 ${member.toString()} انضم للتو إلى **${member.guild.name}** — أهلاً !`,
-            `🚀 ${member.toString()} دخل **${member.guild.name}** !`,
-            `✨ أهلاً وسهلاً، ${member.toString()} ! **${member.guild.name}** أصبح أجمل.`,
+            `${party} مرحباً ${u} — أهلاً بك في **${g}**. حجزنا لك مقعداً.`,
+            `${wave} ${u}، وجدتنا. **${g}** أجمل بوجودك.`,
+            `✨ أهلاً ${u}. **${g}** — اعتبره بيتك.`,
+            `${party} ${u} دخل للتو. **${g}**، قل مرحباً.`,
+            `${u}، سعيد بوجودك. **${g}** — خذ وقتك، تعرّف على المكان.`,
         ],
         zh: [
-            `${party} 欢迎来到 **${member.guild.name}**，${member.toString()} !`,
-            `${wave} 嗨 ${member.toString()}，欢迎加入 **${member.guild.name}** !`,
-            `🌟 ${member.toString()} 刚刚加入了 **${member.guild.name}** — 欢迎！`,
-            `🚀 ${member.toString()} 进入了 **${member.guild.name}** !`,
-            `✨ 欢迎上船，${member.toString()} ! **${member.guild.name}** 因你更精彩。`,
+            `${party} 嗨 ${u} —— 欢迎来到 **${g}**。给你留了位置。`,
+            `${wave} ${u}，你找到我们了。**${g}** 因你更精彩。`,
+            `✨ 欢迎 ${u}。**${g}** —— 就当自己家。`,
+            `${party} ${u} 刚进门。**${g}**，打个招呼吧。`,
+            `${u}，很高兴你来了。**${g}** —— 不急，先逛逛。`,
         ],
     };
 
@@ -525,138 +528,76 @@ function warmWelcomeText(member, count, cfg) {
     const newBadge = isNew ? ' 🆕' : '';
 
     const memberLine = {
-        en: `> ${memberEmoji} You are member **#${count}** · Account: **${age}**${newBadge}`,
-        fr: `> ${memberEmoji} Vous êtes le membre **#${count}** · Compte: **${age}**${newBadge}`,
-        bm: `> ${memberEmoji} I ye membre **#${count}** ye · Compte: **${age}**${newBadge}`,
-        ar: `> ${memberEmoji} أنت العضو رقم **#${count}** · الحساب: **${age}**${newBadge}`,
-        zh: `> ${memberEmoji} 你是第 **#${count}** 位成员 · 账号: **${age}**${newBadge}`,
-    }[lang] || `> ${memberEmoji} You are member **#${count}** · Account: **${age}**${newBadge}`;
+        en: `-# ${memberEmoji} Member **#${count}** · account **${age}**${newBadge}`,
+        fr: `-# ${memberEmoji} Membre **#${count}** · compte **${age}**${newBadge}`,
+        bm: `-# ${memberEmoji} Membre **#${count}** · compte **${age}**${newBadge}`,
+        ar: `-# ${memberEmoji} عضو **#${count}** · الحساب **${age}**${newBadge}`,
+        zh: `-# ${memberEmoji} 第 **#${count}** 位成员 · 账号 **${age}**${newBadge}`,
+    }[lang] || `-# ${memberEmoji} Member **#${count}** · account **${age}**${newBadge}`;
 
     return `${greeting}\n${memberLine}`;
 }
 
 // ================= GOODBYE TEXT =================
 function goodbyeText(member, duration, roleCount, lang = 'en') {
-    const wave = '<a:wave:1538963063036842134>';
-    const dur = duration || 'a brief visit';
+    // v7: warm tone rewrite — direct address, `-#` info line, REG emojis
+    const wave = EMOJIS.wave || '👋';
+    const dur = duration || 'a short stay';
+    const durationText = duration || 'N/A';
     const u = `**${member.user.username}**`;
 
     const farewells = {
         en: [
-            `${wave} ${u} has left — hope to see them again someday.`,
-            `🚪 ${u} stepped out after ${dur}. Safe travels!`,
-            `💫 ${u} has moved on. Wishing them well out there.`,
-            `🌙 ${u} signed off. The grid remembers them fondly.`,
-            `✈️ ${u} flew the nest after ${dur}. Until next time!`,
+            `${wave} ${u} left today after ${dur}. Hope our paths cross again.`,
+            `🌙 ${u} signed off. The grid keeps a light on.`,
+            `💫 ${u} — ${dur} with us, and it mattered. Come back when it's right.`,
+            `🚪 ${u} stepped out. That seat's still theirs if they want it.`,
+            `✈️ ${u} took off after ${dur}. Safe travels, friend.`,
         ],
         fr: [
-            `${wave} ${u} a quitté le serveur — espérons se revoir un jour.`,
-            `🚪 ${u} est parti après ${dur}. Bon voyage !`,
-            `💫 ${u} a tourné la page. Nous lui souhaitons le meilleur.`,
-            `🌙 ${u} s'est déconnecté. Le serveur garde un bon souvenir.`,
-            `✈️ ${u} a pris son envol après ${dur}. À la prochaine !`,
+            `${wave} ${u} est parti après ${dur}. J'espère qu'on se reverra.`,
+            `🌙 ${u} s'est déconnecté. Le serveur garde une lumière allumée.`,
+            `💫 ${u} — ${dur} avec nous, et ça comptait. Reviens quand tu veux.`,
+            `🚪 ${u} est sorti. Sa place reste libre s'il revient.`,
+            `✈️ ${u} a pris son envol après ${dur}. Bon voyage, l'ami.`,
         ],
         bm: [
-            `${wave} ${u} ye serveur bla — nda len b'a la an bɛna ɲɔgɔn ye tugun waati dɔ la.`,
-            `🚪 ${u} ka serveur bilali waati kɛrɛnkɛrɛn ka bɛn ni sanga **${dur}** ye. Ka fiɲɛ k'i yɛlɛn sen ye nteri!`,
-            `💫 ${u} y'a ɲɛsin ko wɛrɛ ma. An bɛ dugawu k'a ye yen fɛ.`,
-            `🌙 ${u} jiginna kaban. An bɛ an hakili to a la kosɛbɛ.`,
-            `✈️ ${u} panna ka bɔ serveur kɔnɔ, ni sanga **${dur}** tɛmɛnen kɔ. Kanbɛ fo waati wɛrɛ nteri!`,
+            `${wave} ${u} bɔra bi, ${dur} kɔn. K'an bɛn tugun.`,
+            `🌙 ${u} taa ra. An bɛ an hakili to i la.`,
+            `💫 ${u} — ${dur} an fɛ, o tun falen. Segi ni i sɔnna.`,
+            `🚪 ${u} bɔra. A ka sigi yɔrɔ bɛ yen.`,
+            `✈️ ${u} taara ${dur} kɔ. K'an bɛn.`,
         ],
         ar: [
-            `${wave} ${u} غادر السيرفر — نأمل أن نراه مجدداً يوماً ما.`,
-            `🚪 ${u} غادر بعد ${dur}. سافر بأمان!`,
-            `💫 ${u} مضى في طريقه. نتمنى له التوفيق.`,
-            `🌙 ${u} أوقف الاتصال. السيرفر يتذكره بخير.`,
-            `✈️ ${u} غادر بعد ${dur}. إلى اللقاء!`,
+            `${wave} ${u} غادر اليوم بعد ${dur}. نأمل أن نلتقي مجدداً.`,
+            `🌙 ${u} أوقف الاتصال. السيرفر يُبقي الضوء مضاءً.`,
+            `💫 ${u} — ${dur} معنا، وكان ذلك مهمّاً. عُد متى شئت.`,
+            `🚪 ${u} خرج. مقعده ما زال محفوظاً إن أراد العودة.`,
+            `✈️ ${u} حلّق بعد ${dur}. رحلة آمنة يا صديق.`,
         ],
         zh: [
-            `${wave} ${u} 已离开服务器 — 希望有一天能再相见。`,
-            `🚪 ${u} 在 ${dur} 后离开了。一路顺风！`,
-            `💫 ${u} 已经离开。祝他一切顺利。`,
-            `🌙 ${u} 已下线。服务器会记得他的。`,
-            `✈️ ${u} 在 ${dur} 后飞走了。下次见！`,
+            `${wave} ${u} 今天离开了，陪了我们 ${dur}。希望还能再见。`,
+            `🌙 ${u} 下线了。服务器留着一盏灯。`,
+            `💫 ${u} —— ${dur}，这段时光有意义。想回来就回来。`,
+            `🚪 ${u} 出门了。他的位置还留着。`,
+            `✈️ ${u} 在 ${dur} 后起飞了。一路顺风，朋友。`,
         ],
     };
 
     const pool = farewells[lang] || farewells.en;
     const farewell = pool[Math.floor(Math.random() * pool.length)];
-    return `${farewell}\n> ⏱️ Stayed: **${duration || 'N/A'}** · Roles removed: **${roleCount}**`;
-}
 
-// ================= RANDOM PRO-TIPS POOL =================
-const ALL_TIPS = {
-    en: {
-        help:    { text: '`{p}help` — Discover all commands',              weight: 10 },
-        daily:   { text: '`{p}daily` — Daily reward (streak = bonus!)',    weight: 10 },
-        profile: { text: '`{p}profile` — View your agent dossier',         weight: 10 },
-        lydia:   { text: '`{p}lydia [message]` — Chat with AI Lydia',      weight: 8  },
-        shop:    { text: '`{p}shop` — Buy boosts and items',               weight: 8  },
-        market:  { text: '`{p}market` — Invest in the Bamako market',      weight: 6  },
-        ticket:  { text: '`{p}ticket` — Open a support ticket',            weight: 6  },
-        trivia:  { text: '`{p}trivia` — Test your knowledge & earn XP',    weight: 5  },
-        rank:    { text: '`{p}rank` — Check your server standing',         weight: 5  },
-        whois:   { text: '`{p}whois @user` — Deep-scan any member',        weight: 4  },
-        game:    { text: '`{p}game` — Challenge other agents',             weight: 4  },
-        credits: { text: '`{p}credits` — Check your balance',              weight: 3  },
-    },
-    fr: {
-        help:    { text: "`{p}help` — Découvrir toutes les commandes",                  weight: 10 },
-        daily:   { text: "`{p}daily` — Récompense quotidienne (série = bonus !)",       weight: 10 },
-        profile: { text: "`{p}profile` — Voir votre dossier d'agent",                   weight: 10 },
-        lydia:   { text: "`{p}lydia [message]` — Discuter avec l'IA Lydia",             weight: 8  },
-        shop:    { text: "`{p}shop` — Acheter des boosts et objets",                    weight: 8  },
-        market:  { text: "`{p}market` — Investir dans le marché de Bamako",             weight: 6  },
-        ticket:  { text: "`{p}ticket` — Ouvrir un ticket support",                      weight: 6  },
-        trivia:  { text: "`{p}trivia` — Tester vos connaissances & gagner XP",          weight: 5  },
-        rank:    { text: "`{p}rank` — Voir votre position sur le serveur",              weight: 5  },
-        whois:   { text: "`{p}whois @user` — Scanner n'importe quel membre",            weight: 4  },
-        game:    { text: "`{p}game` — Défier d'autres agents",                          weight: 4  },
-        credits: { text: "`{p}credits` — Vérifier votre solde",                         weight: 3  },
-    },
-    bm: {
-        help:    { text: "`{p}help` — Ni b'a fɛ ka commandes bɛɛ lajɛlen lajɛ",      weight: 10 },
-        daily:   { text: "`{p}daily` — Don bonus sɔrɔ (streak = bonus!)",              weight: 10 },
-        profile: { text: "`{p}profile` — I ka agent dossier lajɛ",                     weight: 10 },
-        lydia:   { text: "`{p}lydia [message]` — Baro kɛ ni AI Lydia ye",              weight: 8  },
-        shop:    { text: "`{p}shop` — Sanni sugu butigi kɔnɔ (boosts ani items!)",     weight: 8  },
-        market:  { text: "`{p}market` — I bɛ se ka investi Bamakɔ sugu kɔnɔna la",    weight: 6  },
-        ticket:  { text: "`{p}ticket` — Ticket support dayɛlɛ ka kumaɲɔgɔnya kɛ",     weight: 6  },
-        trivia:  { text: "`{p}trivia` — I ka dɔnniya tester & XP sɔrɔli bugun",       weight: 5  },
-        rank:    { text: "`{p}rank` — I ka serveur jɔyɔrɔ lajɛ",                      weight: 5  },
-        whois:   { text: "`{p}whois @user` — Membre kelen lajɛ",                       weight: 4  },
-        game:    { text: "`{p}game` — Agent wɛrɛw kɛlɛ",                              weight: 4  },
-        credits: { text: "`{p}credits` — I ka solde lajɛ",                             weight: 3  },
-    },
-    ar: {
-        help:    { text: "`{p}help` — اكتشف جميع الأوامر",               weight: 10 },
-        daily:   { text: "`{p}daily` — مكافأة يومية (سلسلة = مكافأة!)", weight: 10 },
-        profile: { text: "`{p}profile` — اعرض ملفك الشخصي",             weight: 10 },
-        lydia:   { text: "`{p}lydia [message]` — تحدث مع Lydia AI",      weight: 8  },
-        shop:    { text: "`{p}shop` — اشترِ التحسينات والعناصر",         weight: 8  },
-        market:  { text: "`{p}market` — استثمر في سوق باماكو",           weight: 6  },
-        ticket:  { text: "`{p}ticket` — افتح تذكرة دعم",                 weight: 6  },
-        trivia:  { text: "`{p}trivia` — اختبر معلوماتك واكسب XP",       weight: 5  },
-        rank:    { text: "`{p}rank` — تحقق من مرتبتك في السيرفر",        weight: 5  },
-        whois:   { text: "`{p}whois @user` — فحص أي عضو",               weight: 4  },
-        game:    { text: "`{p}game` — تحدى وكلاء آخرين",                weight: 4  },
-        credits: { text: "`{p}credits` — تحقق من رصيدك",                weight: 3  },
-    },
-    zh: {
-        help:    { text: "`{p}help` — 查看所有命令",               weight: 10 },
-        daily:   { text: "`{p}daily` — 每日奖励（连签=额外奖励）", weight: 10 },
-        profile: { text: "`{p}profile` — 查看你的档案",            weight: 10 },
-        lydia:   { text: "`{p}lydia [消息]` — 与 Lydia AI 聊天",   weight: 8  },
-        shop:    { text: "`{p}shop` — 购买强化道具",               weight: 8  },
-        market:  { text: "`{p}market` — 在巴马科市场投资",          weight: 6  },
-        ticket:  { text: "`{p}ticket` — 开启支持票单",             weight: 6  },
-        trivia:  { text: "`{p}trivia` — 测试知识并获得 XP",        weight: 5  },
-        rank:    { text: "`{p}rank` — 查看你的服务器排名",          weight: 5  },
-        whois:   { text: "`{p}whois @用户` — 深度扫描成员",        weight: 4  },
-        game:    { text: "`{p}game` — 挑战其他成员",               weight: 4  },
-        credits: { text: "`{p}credits` — 查看余额",                weight: 3  },
-    }
-};
+    const plural = roleCount !== 1 ? 's' : '';
+    const infoLine = {
+        en: `-# ⏱️ Stayed **${durationText}** · **${roleCount}** role${plural} carried out the door`,
+        fr: `-# ⏱️ Resté **${durationText}** · **${roleCount}** rôle${plural} repris`,
+        bm: `-# ⏱️ Tɔ len **${durationText}** · **${roleCount}** jɔyɔrɔ`,
+        ar: `-# ⏱️ بقي **${durationText}** · **${roleCount}** دور`,
+        zh: `-# ⏱️ 陪伴 **${durationText}** · **${roleCount}** 个身份`,
+    }[lang] || `-# ⏱️ Stayed **${durationText}** · **${roleCount}** role${plural} carried out the door`;
+
+    return `${farewell}\n${infoLine}`;
+}
 
 // ================= BUTTON DEFINITIONS =================
 function getWelcomeButtons(cfg, member) {
