@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
 const { t } = require('../lib/i18n');
+const EMOJIS = require('../config/emojis');
 const v2 = require('../lib/games/v2');
 
 
@@ -93,20 +94,33 @@ function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx
     if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
 
     if (newLevel > (userData.level || 1) && ctx.channel) {
-        const lw = Math.max(t('game.xpGained', lang).length, t('game.gamesPlayed', lang).length, t('game.gamesWon', lang).length, t('game.gameText', lang).length);
-        const lvlEmbed = new EmbedBuilder().setColor('#00fbff')
-            .setAuthor({ name: t('game.levelUp', lang), iconURL: ctx.user.displayAvatarURL() })
-            .setDescription(
-                `## ${t('game.reachedLevel', lang)} **${newLevel}**!\n` +
-                '```ansi\n' +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.gameText', lang).padEnd(lw)}\u001b[0m  \u001b[1;35m${gameType.toUpperCase()}\u001b[0m\n` +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.xpGained', lang).padEnd(lw)}\u001b[0m  \u001b[1;33m+${xpGain} XP\u001b[0m\n` +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.gamesPlayed', lang).padEnd(lw)}\u001b[0m  \u001b[1;36m${gamesPlayed}\u001b[0m\n` +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.gamesWon', lang).padEnd(lw)}\u001b[0m  \u001b[1;32m${gamesWon}\u001b[0m\n` +
-                '```'
-            )
-            .setFooter({ text: `${t('game.footer', lang)} • v${ctx.client.version || '2.0.0'}` }).setTimestamp();
-        ctx.channel.send({ content: `<@${userId}>`, embeds: [lvlEmbed] }).catch(() => {});
+        // v8: level-up on CV2, every emoji from the registry, no hardcoded ids
+        const GAME_EMOJI = {
+            slots:     EMOJIS.gameSlots,
+            tictactoe: EMOJIS.gameTicTacToe,
+            blackjack: EMOJIS.gameBlackjack,
+            roulette:  EMOJIS.gameRoulette,
+            trivia:    EMOJIS.gameTrivia,
+            codm:      EMOJIS.gameCodm,
+        };
+        const gameEm = GAME_EMOJI[gameType] || EMOJIS.gamer || EMOJIS.gameController || '';
+        const lines = [
+            `${gameEm} ${t('game.gameText', lang)}: **${gameType.toUpperCase()}**`,
+            `${EMOJIS.xp} ${t('game.xpGained', lang)}: **+${xpGain}**`,
+            `${EMOJIS.gameController} ${t('game.gamesPlayed', lang)}: **${gamesPlayed}**`,
+            `${EMOJIS.trophy} ${t('game.gamesWon', lang)}: **${gamesWon}**`,
+        ].join('\n');
+        const card = v2.card(0x00fbff, [
+            { text: `<@${userId}>` },
+            { text: `## ${EMOJIS.level} ${t('game.levelUp', lang)}` },
+            { text: `### ${t('game.reachedLevel', lang)} **${newLevel}**!` },
+            { rule: true },
+            { text: lines },
+            { rule: true },
+            { text: `-# ${t('game.footer', lang)} • v${ctx.client.version || '2.0.0'}` },
+        ]);
+        card.allowedMentions = { parse: [], users: [userId] };
+        ctx.channel.send(card).catch(() => {});
     }
 }
 
