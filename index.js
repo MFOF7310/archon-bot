@@ -5274,7 +5274,8 @@ async function gracefulShutdown(signal) {
                         userData.last_daily ?? 0,         // 14
                         userData.total_dailies ?? 0,      // 15
                         userData.highest_streak ?? 0,     // 16
-                        userData.streak_protections ?? 0  // 17
+                        userData.streak_protections ?? 0, // 17
+                        userData.avatar ?? null           // 18 (v9.5: was missing — placeholder count mismatch)
                     );
                 }
             })();
