@@ -1,4 +1,5 @@
 const { ns } = require('../lib/lang');
+const v2 = require('../lib/games/v2');
 const { t: it } = require('../lib/i18n');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
@@ -123,14 +124,20 @@ async function deliverDailyReminder(client, reminder, database) {
     const t = (k, vars) => it('reminder.' + k, lang, vars);
     const guildName = reminder.guildName || 'the server';
 
-    const embed = new EmbedBuilder()
-        .setColor('#00fbff')
-        .setAuthor({ name: t('author'), iconURL: client.user?.displayAvatarURL() })
-        .setTitle(t('title'))
-        .setDescription(t('desc', { guild: guildName }) + '\n\n' + t('body'))
-        .addFields({ name: t('howLabel'), value: t('howValue', { guild: guildName }), inline: false })
-        .setFooter({ text: `${guildName} • ARCHON CG-223 • BAMAKO_223 🇲🇱` })
-        .setTimestamp();
+    // v9.4: DM reminder on CV2
+    const _reminderCard = (opts = {}) => {
+        const _items = [];
+        if (opts.mention) _items.push({ text: `<@${reminder.user_id}>` });
+        _items.push({ text: `## ${EMOJIS.notification || '🔔'} ${t('title')}` });
+        if (!opts.mention) _items.push({ text: `-# ${t('author')}` });
+        _items.push({ text: t('desc', { guild: guildName }) });
+        _items.push({ rule: true });
+        _items.push({ text: `**${t('howLabel')}**\n${t('howValue', { guild: guildName })}` });
+        _items.push({ text: t('body') });
+        _items.push({ rule: true });
+        _items.push({ text: `-# ${guildName} • ARCHON CG-223 • BAMAKO_223` });
+        return v2.card(0x00fbff, _items);
+    };
 
     let delivered = false;
 
@@ -138,7 +145,7 @@ async function deliverDailyReminder(client, reminder, database) {
     try {
         const user = await client.users.fetch(reminder.user_id).catch(() => null);
         if (user) {
-            await user.send({ embeds: [embed] });
+            await user.send(_reminderCard());
             delivered = true;
             console.log(`[DAILY REMINDER] ${EMOJIS.check} DM sent to ${reminder.user_tag || reminder.user_id}`);
         }
@@ -151,9 +158,7 @@ async function deliverDailyReminder(client, reminder, database) {
         try {
             const channel = await client.channels.fetch(reminder.channel_id).catch(() => null);
             if (channel && channel.send) {
-                const fbEmbed = EmbedBuilder.from(embed)
-                    .setDescription(`<@${reminder.user_id}> ${t('desc', { guild: reminder.guildName || 'the server' })}\n${t('body', {})}`);
-                await channel.send({ content: `<@${reminder.user_id}>`, embeds: [fbEmbed] });
+                await channel.send(_reminderCard({ mention: true }));
                 delivered = true;
                 console.log(`[DAILY REMINDER] 📢 Channel fallback for ${reminder.user_tag || reminder.user_id}`);
             }
@@ -455,42 +460,36 @@ module.exports = {
             const currentLevel = updatedUser?.level || calculateLevel(currentXP);
             
             // ================= SUCCESS EMBED =================
-            const successEmbed = new EmbedBuilder()
-                .setColor('#00fbff')
-                .setAuthor({ name: t.successTitle, iconURL: avatarURL })
-                .setDescription(t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak))
-                .addFields(
-                    { name: t.nextClaim, value: `<t:${Math.floor((now + oneDay) / 1000)}:R>`, inline: true },
-                    { name: t.currentStats, value: `\`\`\`yaml\n${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}\`\`\``, inline: true }
-                );
-            
-            if (streakBonusXP > 25 || streakBonusCredits > 10) {
-                successEmbed.addFields({
-                    name: t.streakBonus,
-                    value: t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits),
-                    inline: false
-                });
+            // v9.3: claim success card on CV2
+            const _nextClaimStr = `<t:${Math.floor((now + oneDay) / 1000)}:R>`;
+            const _hasStreakBonus = streakBonusXP > 25 || streakBonusCredits > 10;
+            const _statsBlock = `${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}`;
+            const _claimItems = [
+                { text: `## ${EMOJIS.check} ${t.successTitle}` },
+                { text: t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak) },
+                { rule: true },
+                { text: `${t.nextClaim}: **${_nextClaimStr}**` },
+                { text: `**${t.currentStats}**\n\`\`\`yaml\n${_statsBlock}\n\`\`\`` },
+            ];
+            if (_hasStreakBonus) {
+                _claimItems.push({ rule: true });
+                _claimItems.push({ text: `**${t.streakBonus}**\n${t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits)}` });
             }
-            
-            successEmbed
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            
-            const actionRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setURL(`https://bamako-steel-dev.xyz/user/${message.author.id}?guild=${message.guild?.id || ""}`)
-                        .setLabel(t.viewDashboard)
-                        .setStyle(ButtonStyle.Link)
-                        .setEmoji(parseEmoji(EMOJIS.dashboard)),
-                    new ButtonBuilder()
-                        .setCustomId('claim_view_profile')
-                        .setLabel(t.myProfile)
-                        .setStyle(ButtonStyle.Primary)
-                        .setEmoji(parseEmoji(EMOJIS.myprofile))
-                );
-            
-            const successReply = await message.reply({ embeds: [successEmbed], components: [actionRow] });
+            _claimItems.push({ rule: true });
+            _claimItems.push({ text: `-# ${guildName} • v${version}` });
+            _claimItems.push({ row: new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setURL(`https://bamako-steel-dev.xyz/user/${message.author.id}?guild=${message.guild?.id || ""}`)
+                    .setLabel(t.viewDashboard)
+                    .setStyle(ButtonStyle.Link)
+                    .setEmoji(parseEmoji(EMOJIS.dashboard)),
+                new ButtonBuilder()
+                    .setCustomId('claim_view_profile')
+                    .setLabel(t.myProfile)
+                    .setStyle(ButtonStyle.Primary)
+                    .setEmoji(parseEmoji(EMOJIS.myprofile))
+            ) });
+            const successReply = await message.reply(v2.card(0x00fbff, _claimItems));
 
             const buttonFilter = (i) => i.user.id === userId;
             const buttonCollector = successReply.createMessageComponentCollector({ filter: buttonFilter, time: 60000 });
@@ -707,42 +706,36 @@ module.exports = {
             const currentLevel = updatedUser?.level || calculateLevel(currentXP);
             
             // ================= SUCCESS EMBED =================
-            const successEmbed = new EmbedBuilder()
-                .setColor('#00fbff')
-                .setAuthor({ name: t.successTitle, iconURL: avatarURL })
-                .setDescription(t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak))
-                .addFields(
-                    { name: t.nextClaim, value: `<t:${Math.floor((now + oneDay) / 1000)}:R>`, inline: true },
-                    { name: t.currentStats, value: `\`\`\`yaml\n${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}\`\`\``, inline: true }
-                );
-            
-            if (streakBonusXP > 25 || streakBonusCredits > 10) {
-                successEmbed.addFields({
-                    name: t.streakBonus,
-                    value: t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits),
-                    inline: false
-                });
+            // v9.3: claim success card on CV2
+            const _nextClaimStr = `<t:${Math.floor((now + oneDay) / 1000)}:R>`;
+            const _hasStreakBonus = streakBonusXP > 25 || streakBonusCredits > 10;
+            const _statsBlock = `${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}`;
+            const _claimItems = [
+                { text: `## ${EMOJIS.check} ${t.successTitle}` },
+                { text: t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak) },
+                { rule: true },
+                { text: `${t.nextClaim}: **${_nextClaimStr}**` },
+                { text: `**${t.currentStats}**\n\`\`\`yaml\n${_statsBlock}\n\`\`\`` },
+            ];
+            if (_hasStreakBonus) {
+                _claimItems.push({ rule: true });
+                _claimItems.push({ text: `**${t.streakBonus}**\n${t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits)}` });
             }
-            
-            successEmbed
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            
-            const actionRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}?guild=${interaction.guild?.id || ""}`)
-                        .setLabel(t.viewDashboard)
-                        .setStyle(ButtonStyle.Link)
-                        .setEmoji(parseEmoji(EMOJIS.dashboard)),
-                    new ButtonBuilder()
-                        .setCustomId('claim_slash_view_profile')
-                        .setLabel(t.myProfile)
-                        .setStyle(ButtonStyle.Primary)
-                        .setEmoji(parseEmoji(EMOJIS.myprofile))
-                );
-            
-            await interaction.reply({ embeds: [successEmbed], components: [actionRow] });
+            _claimItems.push({ rule: true });
+            _claimItems.push({ text: `-# ${guildName} • v${version}` });
+            _claimItems.push({ row: new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}?guild=${interaction.guild?.id || ""}`)
+                    .setLabel(t.viewDashboard)
+                    .setStyle(ButtonStyle.Link)
+                    .setEmoji(parseEmoji(EMOJIS.dashboard)),
+                new ButtonBuilder()
+                    .setCustomId('claim_slash_view_profile')
+                    .setLabel(t.myProfile)
+                    .setStyle(ButtonStyle.Primary)
+                    .setEmoji(parseEmoji(EMOJIS.myprofile))
+            ) });
+            await interaction.reply(v2.card(0x00fbff, _claimItems));
             
             // Handle button clicks via collector
             const claimMsg = await interaction.fetchReply().catch(() => null);
