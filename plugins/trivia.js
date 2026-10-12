@@ -20,23 +20,23 @@ const MENU_IDLE_MS = 60000;       // menu closes after a minute without a choice
 const FR_ALIASES = ['quizz', 'culture'];
 
 const CATEGORIES = {
-  general:    { emoji: '🧠', color: 0x00f0ff },
-  mali:       { emoji: '🇲🇱', color: 0xf1c40f },
-  science:    { emoji: '🔬', color: 0x2ecc71 },
-  history:    { emoji: '📜', color: 0xe67e22 },
-  gaming:     { emoji: '🎮', color: 0x9b59b6 },
-  technology: { emoji: '💻', color: 0x3498db },
-  geography:  { emoji: '🌍', color: 0x1abc9c },
-  space:      { emoji: '🚀', color: 0x8e44ad },
-  animals:    { emoji: '🐾', color: 0xd35400 },
-  sports:     { emoji: '⚽', color: 0xe74c3c },
-  literature: { emoji: '📚', color: 0xf39c12 },
+  general:    { emoji: E.catGeneral || '🧠', color: 0x00f0ff },
+  mali:       { emoji: E.catMali || '🇲🇱', color: 0xf1c40f },
+  science:    { emoji: E.catScience || '🔬', color: 0x2ecc71 },
+  history:    { emoji: E.catHistory || '📜', color: 0xe67e22 },
+  gaming:     { emoji: E.catGaming || '🎮', color: 0x9b59b6 },
+  technology: { emoji: E.catTechnology || '💻', color: 0x3498db },
+  geography:  { emoji: E.catGeography || '🌍', color: 0x1abc9c },
+  space:      { emoji: E.catSpace || '🚀', color: 0x8e44ad },
+  animals:    { emoji: E.catAnimals || '🐾', color: 0xd35400 },
+  sports:     { emoji: E.catSports || '⚽', color: 0xe74c3c },
+  literature: { emoji: E.catLiterature || '📚', color: 0xf39c12 },
 };
 // Per correct answer: credits × streak bonus (+10% per streak step, max +50%) and xp. Perfect run: 2× credits and xp.
 const DIFFICULTIES = {
-  easy:   { emoji: '🟢', color: 0x2ecc71, questions: 5,  seconds: 20, credits: 12, xp: 15 },
-  medium: { emoji: '🟡', color: 0xf1c40f, questions: 7,  seconds: 15, credits: 20, xp: 20 },
-  hard:   { emoji: '🔴', color: 0xe74c3c, questions: 10, seconds: 10, credits: 30, xp: 30 },
+  easy:   { emoji: E.diffEasy || '🟢', color: 0x2ecc71, questions: 5,  seconds: 20, credits: 12, xp: 15 },
+  medium: { emoji: E.diffMedium || '🟡', color: 0xf1c40f, questions: 7,  seconds: 15, credits: 20, xp: 20 },
+  hard:   { emoji: E.diffHard || '🔴', color: 0xe74c3c, questions: 10, seconds: 10, credits: 30, xp: 30 },
 };
 const DIFF_ORDER = Object.keys(DIFFICULTIES);
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -108,10 +108,10 @@ function menuScreen(s, o = {}) {
   ];
   if (!o.closed) {
     const catMenu = new StringSelectMenuBuilder().setCustomId('trivia_cat').setPlaceholder(Q('pickCategory')).addOptions(
-      Object.entries(CATEGORIES).map(([key, c]) => ({ label: Q(`categories.${key}`).slice(0, 100), value: key, emoji: c.emoji, default: key === s.cat })));
+      Object.entries(CATEGORIES).map(([key, c]) => ({ label: Q(`categories.${key}`).slice(0, 100), value: key, emoji: ui.parseEmoji(c.emoji), default: key === s.cat })));
     const diffMenu = new StringSelectMenuBuilder().setCustomId('trivia_diff').setPlaceholder(Q('pickDifficulty')).addOptions(
       Object.entries(DIFFICULTIES).map(([key, x]) => ({
-        label: Q(`difficulties.${key}`), value: key, emoji: x.emoji, default: key === s.diff,
+        label: Q(`difficulties.${key}`), value: key, emoji: ui.parseEmoji(x.emoji), default: key === s.diff,
         description: Q('difficultyInfo', { questions: x.questions, seconds: x.seconds }).slice(0, 100) })));
     items.push({ rule: true }, { row: ui.row(catMenu) }, { row: ui.row(diffMenu) },
       { row: ui.row(ui.button('trivia_start', Q('btnStart'), em('triviaStart'), ui.ButtonStyle.Success), ui.button('trivia_cancel', Q('btnCancel'), em('triviaCancel'))) });

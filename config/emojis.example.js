@@ -176,4 +176,20 @@ module.exports = {
     triviaAgain:       '🔄',
     triviaMenu:        '📂',
     triviaGames:       '🎮',
+
+    // ── Trivia categories & difficulties ──
+    catGeneral: '<:name:id>',
+    catMali: '<:name:id>',
+    catScience: '<:name:id>',
+    catHistory: '<:name:id>',
+    catGaming: '<:name:id>',
+    catTechnology: '<:name:id>',
+    catGeography: '<:name:id>',
+    catSpace: '<:name:id>',
+    catAnimals: '<:name:id>',
+    catSports: '<:name:id>',
+    catLiterature: '<:name:id>',
+    diffEasy: '<:name:id>',
+    diffMedium: '<:name:id>',
+    diffHard: '<:name:id>',
 };
