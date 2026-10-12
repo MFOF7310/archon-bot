@@ -7,6 +7,8 @@ const { SlashCommandBuilder, ComponentType } = require('discord.js');
 const ui = require('../lib/games/ui');
 const progress = require('../lib/games/progress');
 const session = require('../lib/games/session');
+const v2 = require('../lib/games/v2');
+const E = require('../config/emojis');
 
 const GAME = 'cipher';
 const BETWEEN_MS = 2500;            // pause after a correct answer
@@ -98,7 +100,10 @@ function pay(game, db, credits, xp) {
   return r;
 }
 
-// ───────────────────────────── screens ─────────────────────────────
+// ───────────────────────────── screens (Components V2) ─────────────────────────────
+const em = (key) => E[key] || '';
+const join = (...parts) => parts.filter(Boolean).join(' ');
+
 function header(game, C) {
   return C('title', { tier: `${game.tier.emoji} ${C(`tiers.${game.tier.key}`)}` });
 }
@@ -107,19 +112,18 @@ function roundCard(game) {
   const T = ui.t(game.lang); const C = ui.t(game.lang, GAME);
   const r = game.rounds[game.round];
   const shown = r.cipher.length <= 12 ? r.cipher.split('').join(' ') : r.cipher; // spaced letters read better on phones
-  return ui.card(game.client, {
-    color: game.tier.color,
-    author: header(game, C),
-    title: C('roundTitle', { n: game.round + 1, total: game.tier.rounds, method: C(`methods.${r.method.toLowerCase()}.name`) }),
-    description: (game.round === 0 ? `${C('howTo')}\n\n` : '') + '```\n' + shown + '\n```',
-    fields: [
-      { name: C('hint'), value: C(`methods.${r.method.toLowerCase()}.hint`, { shift: r.shift, shift1: (r.shift + 1) % 26, shift2: (r.shift + 2) % 26 }) },
-      { name: T('timeLeft'), value: ui.countdown(r.deadline) },
-    ],
-    footer: C('footerRound', { streak: game.streak, reward: ui.rewardText(game.lang, game.paid) }),
-  });
+  const hint = C(`methods.${r.method.toLowerCase()}.hint`, { shift: r.shift, shift1: (r.shift + 1) % 26, shift2: (r.shift + 2) % 26 });
+  return v2.card(game.tier.color, [
+    { text: `## ${header(game, C)}\n**${C('roundTitle', { n: game.round + 1, total: game.tier.rounds, method: C(`methods.${r.method.toLowerCase()}.name`) })}**` },
+    { text: (game.round === 0 ? `${C('howTo')}\n\n` : '') + '```\n' + shown + '\n```' },
+    { text: `**${C('hint')}:** ${hint}\n${join(em('clock'), T('timeLeft'))}: ${ui.countdown(r.deadline)}` },
+    { rule: true },
+    { row: ui.answerRow(game.lang, GAME) },
+    { text: `-# ${C('footerRound', { streak: game.streak, reward: ui.rewardText(game.lang, game.paid) })}` },
+  ]);
 }
 
+// After a right answer the card keeps a disabled Answer row, so the layout does not jump.
 function resultCard(game, kind, extra = {}) {
   const T = ui.t(game.lang); const C = ui.t(game.lang, GAME);
   const earned = game.paid.credits || game.paid.xp ? ` ${C('keep', { reward: ui.rewardText(game.lang, game.paid) })}` : '';
@@ -142,14 +146,11 @@ function resultCard(game, kind, extra = {}) {
     const rank = progress.rankForLevel(game.levelUp);
     lines.push(`\n${T('levelUp', { level: game.levelUp, rank: `${rank.emoji} ${T(`ranks.${rank.key}`)}` })}`);
   }
-  return ui.card(game.client, {
-    color: look.color,
-    author: header(game, C),
-    title: look.title,
-    description: lines.join('\n'),
-    fields: game.capped ? [{ name: '\u200b', value: T('capNote', { credits: progress.DAILY.credits, xp: progress.DAILY.xp }) }] : [],
-    footer: C('footerScore', { points: game.points, cracked: game.cracked }),
-  });
+  const items = [{ text: `## ${header(game, C)}\n**${look.title}**\n${lines.join('\n')}` }];
+  if (game.capped) items.push({ text: T('capNote', { credits: progress.DAILY.credits, xp: progress.DAILY.xp }) });
+  if (kind === 'correct') items.push({ rule: true }, { row: ui.answerRow(game.lang, GAME, false) });
+  items.push({ text: `-# ${C('footerScore', { points: game.points, cracked: game.cracked })}` });
+  return v2.card(look.color, items);
 }
 
 // ───────────────────────────── flow ─────────────────────────────
@@ -176,7 +177,7 @@ async function startGame(interaction, db, tierKey) {
   try {
     game.rounds[0].deadline = Date.now() + game.rounds[0].timeMs;
     game.phase = 'round';
-    await interaction.reply({ embeds: [roundCard(game)], components: [ui.answerRow(lang, GAME)] });
+    await interaction.reply(roundCard(game));
     armRound(game, db);
     const msg = await interaction.fetchReply();
     const total = game.rounds.reduce((s, r) => s + r.timeMs + BETWEEN_MS + GRACE_MS, 0) + 30_000;
@@ -231,7 +232,7 @@ async function checkAnswer(game, db, guess) {
   if (game.round >= game.tier.rounds) return finish(game, db, 'victory');
 
   game.phase = 'between';
-  await game.interaction.editReply({ embeds: [resultCard(game, 'correct', { word: r.word, paid })], components: [ui.answerRow(game.lang, GAME, false)] }).catch(() => {});
+  await game.interaction.editReply(resultCard(game, 'correct', { word: r.word, paid })).catch(() => {});
   setTimeout(() => nextRound(game, db).catch(e => console.error('[CIPHER ROUND]', e.message)), BETWEEN_MS);
 }
 
@@ -240,7 +241,7 @@ async function nextRound(game, db) {
   game.rounds[game.round].deadline = Date.now() + game.rounds[game.round].timeMs;
   game.phase = 'round';
   armRound(game, db);
-  await game.interaction.editReply({ embeds: [roundCard(game)], components: [ui.answerRow(game.lang, GAME)] });
+  await game.interaction.editReply(roundCard(game));
 }
 
 async function finish(game, db, kind, extra = {}) {
@@ -259,39 +260,41 @@ async function finish(game, db, kind, extra = {}) {
   progress.recordRun(db, { game: GAME, userId: game.userId, guildId: game.guildId, username: game.username, points: game.points, won, streak: game.maxStreak, correct: game.cracked, tier: game.tierKey, tierOrder: TIER_ORDER });
   extra.title = titleFor(progress.statsFor(db, GAME, game.userId, game.guildId).all.points);
 
-  await game.interaction.editReply({ embeds: [resultCard(game, kind, extra)], components: [] }).catch(() => {});
+  await game.interaction.editReply(resultCard(game, kind, extra)).catch(() => {});
   game.collector?.stop('over');
 }
 
-// ───────────────────────────── leaderboard & profile ─────────────────────────────
+// ───────────────────────────── leaderboard & profile (Components V2) ─────────────────────────────
 function boardCard(interaction, db, lang, global) {
   const C = ui.t(lang, GAME);
   const rows = progress.board(db, GAME, global ? null : interaction.guildId);
-  return ui.card(interaction.client, {
-    color: global ? ui.COLORS.gold : ui.COLORS.info,
-    title: global ? C('lbGlobalTitle') : C('lbTitle', { guild: ui.clean(interaction.guild?.name, 60) }),
-    description: rows.length ? ui.boardLines(lang, rows).join('\n') : C('lbEmpty'),
-    footer: ui.t(lang)('footer', { game: C('name') }),
-  });
+  const title = global ? C('lbGlobalTitle') : C('lbTitle', { guild: ui.clean(interaction.guild?.name, 60) });
+  return v2.card(global ? ui.COLORS.gold : ui.COLORS.info, [
+    { text: `## ${title}` },
+    { rule: true },
+    { text: rows.length ? ui.boardLines(lang, rows).join('\n') : C('lbEmpty') },
+    { text: `-# ${ui.t(lang)('footer', { game: C('name') })}` },
+  ]);
 }
 
 function profileCard(interaction, db, lang) {
   const C = ui.t(lang, GAME);
   const { here, all } = progress.statsFor(db, GAME, interaction.user.id, interaction.guildId);
   const tier = TIERS[here?.top_tier];
-  return ui.card(interaction.client, {
-    author: C('profileTitle', { name: ui.clean(interaction.member?.displayName || interaction.user.globalName || interaction.user.username) }),
-    fields: [
-      { name: C('pTitle'), value: C(`titles.${titleFor(all.points)}`), inline: true },
-      { name: C('pPoints'), value: String(all.points), inline: true },
-      { name: C('pWins'), value: String(all.wins), inline: true },
-      { name: C('pCracked'), value: String(all.correct), inline: true },
-      { name: C('pStreak'), value: String(all.best_streak), inline: true },
-      { name: C('pTier'), value: tier ? `${tier.emoji} ${C(`tiers.${tier.key}`)}` : '—', inline: true },
-      { name: C('pServer'), value: String(here?.points || 0), inline: true },
-    ],
-    footer: ui.t(lang)('footer', { game: C('name') }),
-  }).setThumbnail(interaction.user.displayAvatarURL?.({ size: 256 }) || null);
+  const name = ui.clean(interaction.member?.displayName || interaction.user.globalName || interaction.user.username);
+  const avatar = interaction.user.displayAvatarURL?.({ size: 256 });
+  const top = `## ${C('profileTitle', { name })}\n**${C('pTitle')}:** ${C(`titles.${titleFor(all.points)}`)}`;
+  const stats = [
+    `**${C('pPoints')}:** ${all.points}`, `**${C('pWins')}:** ${all.wins}`, `**${C('pCracked')}:** ${all.correct}`,
+    `**${C('pStreak')}:** ${all.best_streak}`, `**${C('pTier')}:** ${tier ? `${tier.emoji} ${C(`tiers.${tier.key}`)}` : '—'}`,
+    `**${C('pServer')}:** ${here?.points || 0}`,
+  ].join('\n');
+  return v2.card(ui.COLORS.info, [
+    avatar ? { thumbnail: [top, avatar] } : { text: top },
+    { rule: true },
+    { text: stats },
+    { text: `-# ${ui.t(lang)('footer', { game: C('name') })}` },
+  ]);
 }
 
 // One-time copy of v1/v2 cipher scores into the shared stats table.
@@ -344,9 +347,9 @@ async function execute(interaction, client) {
   try {
     const sub = interaction.options.getSubcommand();
     if (sub === 'play') return await startGame(interaction, db, interaction.options.getString('difficulty'));
-    if (sub === 'leaderboard') return await interaction.reply({ embeds: [boardCard(interaction, db, lang, false)] });
-    if (sub === 'global') return await interaction.reply({ embeds: [boardCard(interaction, db, lang, true)] });
-    if (sub === 'profile') return await interaction.reply({ embeds: [profileCard(interaction, db, lang)] });
+    if (sub === 'leaderboard') return await interaction.reply(boardCard(interaction, db, lang, false));
+    if (sub === 'global') return await interaction.reply(boardCard(interaction, db, lang, true));
+    if (sub === 'profile') return await interaction.reply(profileCard(interaction, db, lang));
   } catch (e) {
     console.error('[CIPHER]', e.message);
     if (!interaction.replied && !interaction.deferred) await interaction.reply({ content: T('error'), flags: 64 }).catch(() => {});
