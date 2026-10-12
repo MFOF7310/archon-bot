@@ -454,7 +454,13 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
         ...(withButtons ? [{ row: bjRow() }] : []),
     ]);
 
-    const sent = await ctx.reply(bjCard());
+    // v9.1: ctx.reply returns InteractionResponse — fetch it to get a real Message
+    const _resp = await ctx.reply(bjCard());
+    const sent = (typeof _resp?.fetch === 'function' ? await _resp.fetch().catch(() => null) : _resp);
+    if (!sent?.channel?.awaitMessageComponent) {
+        console.error('[BJ] reply is not a fetchable Message:', _resp && Object.keys(_resp));
+        return;
+    }
 
     // Player turn
     let playerDone = false;
