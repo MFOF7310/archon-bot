@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
 const { t } = require('../lib/i18n');
+const v2 = require('../lib/games/v2');
 
 
 // ================= RANKS =================
@@ -227,8 +228,9 @@ async function playSlots(ctx, client, db, lang, guildId, userId, bet) {
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], flags: 64 });
+        const card = v2.card(0xff4757, [{ text: `${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**` }]);
+        card.flags = 64 | 32768;
+        return ctx.reply(card);
     }
     deductBet(db, client, userId, guildId, bet, userData);
 
@@ -241,21 +243,26 @@ async function playSlots(ctx, client, db, lang, guildId, userId, bet) {
     const won = allSame || twoMatch;
     const winnings = isJackpot ? bet * 10 : allSame ? bet * 5 : twoMatch ? bet * 2 : 0;
 
-    const embed = new EmbedBuilder().setColor(isJackpot ? '#f1c40f' : won ? '#2ecc71' : '#e74c3c')
-        .setAuthor({ name: `${isJackpot ? t('game.jackpot', lang) : won ? t('game.slotsWin', lang) : t('game.slotsLoss', lang)}`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(
-            '```ansi\n' +
-            `\u001b[1;36m╔${'═'.repeat(16)}╗\u001b[0m\n` +
-            `\u001b[1;36m║\u001b[0m  ${line.map(s => `\u001b[1;33m${s}\u001b[0m`).join(' \u001b[1;36m│\u001b[0m ')}  \u001b[1;36m║\u001b[0m\n` +
-            `\u001b[1;36m╚${'═'.repeat(16)}╝\u001b[0m\n` +
-            '```' + (isJackpot ? `\n## ${t('game.jackpot', lang)}` : '')
-        )
-        .addFields(
-            { name: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true },
-            { name: `💰 ${t('game.newBalance', lang)}`, value: `${(userData.credits - bet + winnings).toLocaleString()} 🪙`, inline: true }
-        )
-        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
-    await ctx.reply({ embeds: [embed] });
+    // v8: slots on CV2
+    const reel = '```ansi\n' +
+        `\u001b[1;36m╔${'═'.repeat(16)}╗\u001b[0m\n` +
+        `\u001b[1;36m║\u001b[0m  ${line.map(s => `\u001b[1;33m${s}\u001b[0m`).join(' \u001b[1;36m│\u001b[0m ')}  \u001b[1;36m║\u001b[0m\n` +
+        `\u001b[1;36m╚${'═'.repeat(16)}╝\u001b[0m\n` +
+        '```';
+    const headline = isJackpot ? `## 🎰 ${t('game.jackpot', lang)}` : won ? `## ✨ ${t('game.slotsWin', lang)}` : `## 💨 ${t('game.slotsLoss', lang)}`;
+    const delta = won ? `+${winnings.toLocaleString()}` : `-${bet.toLocaleString()}`;
+    const balance = (userData.credits - bet + winnings).toLocaleString();
+    const footer = `-# ${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`;
+    const color = isJackpot ? 0xf1c40f : won ? 0x2ecc71 : 0xe74c3c;
+    const card = v2.card(color, [
+        { text: headline },
+        { text: reel },
+        { rule: true },
+        { text: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}: **${delta}** 🪙   ·   ${t('game.newBalance', lang)}: **${balance}** 🪙` },
+        { rule: true },
+        { text: footer },
+    ]);
+    await ctx.reply(card);
     updateGameStats(db, client, userId, guildId, won, winnings, 25, ctx, lang, 'slots');
 }
 
