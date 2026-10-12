@@ -2,6 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommand
 const { t } = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
 const v2 = require('../lib/games/v2');
+const ui = require('../lib/games/ui');
 
 
 // ================= RANKS =================
@@ -411,8 +412,9 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], flags: 64 });
+        const card = v2.card(0xff4757, [{ text: `${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} ${EMOJIS.coins}**` }]);
+        card.flags = 64 | 32768;
+        return ctx.reply(card);
     }
     deductBet(db, client, userId, guildId, bet, userData);
 
@@ -438,17 +440,21 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     let playerHand = [drawCard(), drawCard()];
     let dealerHand = [drawCard(), drawCard()];
 
-    const embed = new EmbedBuilder().setColor('#9b59b6')
-        .setAuthor({ name: t('game.blackjack', lang), iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(bjDesc(false))
-        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
-
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji('🃏'),
-        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji('✋')
+    // v9: blackjack on CV2
+    const bjFooter = () => `-# ${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`;
+    const bjRow = () => new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji(ui.parseEmoji(EMOJIS.gameBlackjack)),
+        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji(ui.parseEmoji(EMOJIS.stop))
     );
+    const bjCard = ({ reveal = false, withButtons = true } = {}) => v2.card(0x9b59b6, [
+        { text: `## ${EMOJIS.gameBlackjack} ${t('game.blackjack', lang)}` },
+        { text: bjDesc(reveal) },
+        { rule: true },
+        { text: bjFooter() },
+        ...(withButtons ? [{ row: bjRow() }] : []),
+    ]);
 
-    const sent = await ctx.reply({ embeds: [embed], components: [row] });
+    const sent = await ctx.reply(bjCard());
 
     // Player turn
     let playerDone = false;
@@ -466,12 +472,7 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
             } else playerDone = true;
 
             if (!playerDone || handValue(playerHand) <= 21) {
-                await sent.edit({ embeds: [new EmbedBuilder().setColor('#9b59b6')
-                    .setAuthor({ name: t('game.blackjack', lang), iconURL: ctx.user.displayAvatarURL() })
-                    .setDescription(bjDesc(false))
-                    .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp()],
-                    components: playerDone ? [] : [row]
-                }).catch(() => {});
+                await sent.edit(bjCard({ withButtons: !playerDone })).catch(() => {});
             }
         } catch (e) { playerDone = true; }
     }
@@ -488,16 +489,17 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     const draw = pVal === dVal && !playerBust && !dealerBust;
     const winnings = blackjack ? Math.floor(bet * 2.5) : won ? bet * 2 : draw ? bet : 0;
 
-    const resultEmbed = new EmbedBuilder().setColor(won ? '#2ecc71' : draw ? '#f1c40f' : '#e74c3c')
-        .setAuthor({ name: `${blackjack ? t('game.blackjackWin', lang) : won ? t('game.youWon', lang) : draw ? t('game.draw', lang) : t('game.youLost', lang)}`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(bjDesc(true) + (playerBust ? `\n${t('game.youBusted', lang)}` : dealerBust ? `\n${t('game.dealerBusted', lang)}` : ''))
-        .addFields(
-            { name: `💰 ${t('game.bet', lang)}`, value: `${bet.toLocaleString()} 🪙`, inline: true },
-            { name: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true }
-        )
-        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
-
-    await sent.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
+    const outcome = blackjack ? t('game.blackjackWin', lang) : won ? t('game.youWon', lang) : draw ? t('game.draw', lang) : t('game.youLost', lang);
+    const bustNote = playerBust ? `\n_${t('game.youBusted', lang)}_` : dealerBust ? `\n_${t('game.dealerBusted', lang)}_` : '';
+    const deltaStr = `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()}`;
+    await sent.edit(v2.card(won ? 0x2ecc71 : draw ? 0xf1c40f : 0xe74c3c, [
+        { text: `## ${EMOJIS.gameBlackjack} ${outcome}` },
+        { text: bjDesc(true) + bustNote },
+        { rule: true },
+        { text: `${EMOJIS.coins} ${t('game.bet', lang)}: **${bet.toLocaleString()}**  ·  ${won ? t('game.winnings', lang) : t('game.loss', lang)}: **${deltaStr}**` },
+        { rule: true },
+        { text: bjFooter() },
+    ])).catch(() => {});
     updateGameStats(db, client, userId, guildId, won, winnings, won ? 100 : 50, ctx, lang, 'blackjack');
 }
 
