@@ -106,9 +106,9 @@ function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx
         const gameEm = GAME_EMOJI[gameType] || EMOJIS.gamer || EMOJIS.gameController || '';
         const lines = [
             `${gameEm} ${t('game.gameText', lang)}: **${gameType.toUpperCase()}**`,
-            `${EMOJIS.xp} ${t('game.xpGained', lang)}: **+${xpGain}**`,
+            `${EMOJIS.star} ${t('game.xpGained', lang)}: **+${xpGain}**`,
             `${EMOJIS.gameController} ${t('game.gamesPlayed', lang)}: **${gamesPlayed}**`,
-            `${EMOJIS.trophy} ${t('game.gamesWon', lang)}: **${gamesWon}**`,
+            `${EMOJIS.crown} ${t('game.gamesWon', lang)}: **${gamesWon}**`,
         ].join('\n');
         const card = v2.card(0x00fbff, [
             { text: `<@${userId}>` },
