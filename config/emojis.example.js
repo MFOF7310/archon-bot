@@ -79,9 +79,9 @@ module.exports = {
     level:   '<a:level:YOUR_EMOJI_ID>',
 
     // ── Music ──
-    library:  '<:library:YOUR_EMOJI_ID>',
-    folder:   '<:folder:YOUR_EMOJI_ID>',
-    queue:    '<:queue:YOUR_EMOJI_ID>',
+    library:  '<:LIBRARY:YOUR_EMOJI_ID>',
+    folder:   '<:FOLDER:YOUR_EMOJI_ID>',
+    queue:    '<:QUEUE:YOUR_EMOJI_ID>',
     playlist: '<:playlist:YOUR_EMOJI_ID>',
     stop:     '<:stop:YOUR_EMOJI_ID>',
 

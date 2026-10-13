@@ -2,6 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ActionRowBuilder
 const axios = require('axios');
 const cmdSlash = require('../lib/cmd').slash;
 const { card: v2card } = require('../lib/games/v2');
+const ui = require('../lib/games/ui');
 
 // ================= THRESHOLDS =================
 const SPAM_THRESHOLD = 3;
@@ -1013,7 +1014,7 @@ function buildStatusCard(client, guild, ss, opts = {}) {
     const pendingCount = formatPendingAppeals(guild.id).length;
     const on = !!ss?.autoModEnabled;
 
-    const lines = [
+    const body = [
         `**${_T('admin_statusLabelStatus')}** · ${on ? _T('admin_statusEnabled') : _T('admin_statusDisabled')}`,
         `**${_T('admin_statusLabelSensitivity')}** · ${(ss?.autoModSensitivity || 'medium').toUpperCase()}`,
         `**${_T('admin_statusLabelLog')}** · ${logId ? `<#${logId}>` : _T('admin_statusNotConfigured')}`,
@@ -1023,18 +1024,24 @@ function buildStatusCard(client, guild, ss, opts = {}) {
         `**${_T('admin_statusLabelAppeals')}** · ${pendingCount > 0 ? _T('admin_statusAppealsValue', { n: pendingCount }) : _T('admin_statusAppealsNone')}`,
     ].join('\n');
 
-    const buttons = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_domains').setLabel(_T('admin_btnManageDomains')).setEmoji('🌐').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_status_appeals').setLabel(_T('admin_btnViewAppeals')).setEmoji('⚖️').setStyle(ButtonStyle.Secondary),
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_status_domains').setLabel(_T('admin_btnDomains')).setEmoji(ui.emObj('globe', '🌐')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_status_channels').setLabel(_T('admin_btnChannels')).setEmoji(ui.emObj('general', '📢')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_status_log').setLabel(_T('admin_btnLog')).setEmoji(ui.emObj('dashboard', '📋')).setStyle(ButtonStyle.Primary),
+    );
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_status_raid').setLabel(_T('admin_btnRaid')).setEmoji(ui.emObj('eagle', '🛡️')).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_status_appeals').setLabel(_T('admin_btnAppeals')).setEmoji(ui.emObj('mod_sign', '⚖️')).setStyle(ButtonStyle.Secondary),
     );
 
-    const view = v2card(on ? 0x2ecc71 : 0xe74c3c, [
-        { text: `## ${_T('admin_statusTitle')}` },
+    const view = v2card(on ? 0x2ecc71 : 0x95a5a6, [
+        { text: `## ${ui.em('dashboard', '🛠️')} AutoMod\n*Protection, link filtering and appeals.*` },
         { rule: true },
-        { text: lines },
+        { text: body },
         { rule: true },
-        { text: _T('admin_statusHint', { cmd: cmdSlash(client, 'automod domains', { guild }) }) },
-        { row: buttons },
+        { text: `-# ${_T('admin_statusHint', { cmd: cmdSlash(client, 'automod domains', { guild }) })}` },
+        { row: row1 },
+        { row: row2 },
     ]);
     return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
 }
@@ -1247,16 +1254,22 @@ function buildDomainsCard(client, guild, ss) {
     const _T = (k, v) => _adminT(client, guild, k, v);
     const list = parseDomainWhitelist(ss?.autoModDomains);
     const customList = list.length > 0 ? list.join(', ') : _T('admin_domainsCustomNone');
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_domains_add').setLabel(_T('admin_domainsBtnAdd')).setEmoji('➕').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_domains_remove').setLabel(_T('admin_domainsBtnRemove')).setEmoji('➖').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('automod_domains_reset').setLabel(_T('admin_domainsBtnReset')).setEmoji('🔄').setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_domains_add').setLabel(_T('admin_btnAdd')).setEmoji(ui.emObj('success', '➕')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_domains_remove').setLabel(_T('admin_btnRemove')).setEmoji(ui.emObj('minus', '➖')).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_domains_reset').setLabel(_T('admin_btnReset')).setEmoji(ui.emObj('loading', '🔄')).setStyle(ButtonStyle.Danger),
     );
-    const view = v2card(0x5865F2, [
-        { text: `## 🌐 ${_T('admin_domainsTitle')}` }, { rule: true },
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(ui.emObj('mc_previous', '↩️')).setStyle(ButtonStyle.Secondary),
+    );
+    const view = v2card(0x2ecc71, [
+        { text: `## ${ui.em('globe', '🌐')} ${_T('admin_domainsTitle')}\n*Allowed link destinations for non-moderators.*` },
+        { rule: true },
         { text: `**${_T('admin_domainsDefaultLabel')}**\n${[...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ')}, …\n\n**${_T('admin_domainsCustomLabel')}**\n${customList}` },
-        { rule: true }, { text: _T('admin_domainsHint') }, { row },
+        { rule: true },
+        { text: `-# ${_T('admin_domainsHint')}` },
+        { row: row1 },
+        { row: row2 },
     ]);
     return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
 }
@@ -1267,16 +1280,21 @@ function buildChannelsCard(client, guild, ss) {
     const raw = ss?.automodChannels || ss?.automod_channels || '';
     const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
     const body = list.length ? list.map(c => `<#${c}>`).join(' ') : _T('admin_channelsAllChannels');
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_channels_add').setLabel(_T('admin_channelsBtnAdd')).setEmoji('➕').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_channels_remove').setLabel(_T('admin_channelsBtnRemove')).setEmoji('➖').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('automod_channels_clear').setLabel(_T('admin_channelsBtnClear')).setEmoji('🗑️').setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_channels_add').setLabel(_T('admin_btnAdd')).setEmoji(ui.emObj('success', '➕')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_channels_remove').setLabel(_T('admin_btnRemove')).setEmoji(ui.emObj('minus', '➖')).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_channels_clear').setLabel(_T('admin_btnClear')).setEmoji(ui.emObj('stop', '🗑️')).setStyle(ButtonStyle.Danger),
     );
-    const view = v2card(0x9b59b6, [
-        { text: `## 📢 ${_T('admin_channelsTitle')}` }, { rule: true },
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(ui.emObj('mc_previous', '↩️')).setStyle(ButtonStyle.Secondary),
+    );
+    const view = v2card(0x2ecc71, [
+        { text: `## 📢 ${_T('admin_channelsTitle')}\n*AutoMod only runs in the channels listed below.*` },
+        { rule: true },
         { text: `**${_T('admin_channelsActiveLabel')}**\n${body}` },
-        { rule: true }, { row },
+        { rule: true },
+        { row: row1 },
+        { row: row2 },
     ]);
     return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
 }
@@ -1285,15 +1303,20 @@ function buildLogCard(client, guild, ss) {
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
     const _T = (k, v) => _adminT(client, guild, k, v);
     const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_log_set').setLabel(_T('admin_logBtnSet')).setEmoji('📌').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_log_remove').setLabel(_T('admin_logBtnRemove')).setEmoji('🗑️').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_log_set').setLabel(_T('admin_btnSetLog')).setEmoji(ui.emObj('notification', '📌')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_log_remove').setLabel(_T('admin_btnRemoveLog')).setEmoji(ui.emObj('trash_can', '🗑️')).setStyle(ButtonStyle.Secondary),
     );
-    const view = v2card(0x3498db, [
-        { text: `## 📋 ${_T('admin_logTitle')}` }, { rule: true },
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(ui.emObj('mc_previous', '↩️')).setStyle(ButtonStyle.Secondary),
+    );
+    const view = v2card(0x2ecc71, [
+        { text: `## 📋 ${_T('admin_logTitle')}\n*Where AutoMod sends its action reports.*` },
+        { rule: true },
         { text: `**${_T('admin_logCurrentLabel')}** · ${logId ? `<#${logId}>` : _T('admin_statusNotConfigured')}` },
-        { rule: true }, { row },
+        { rule: true },
+        { row: row1 },
+        { row: row2 },
     ]);
     return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
 }
@@ -1303,22 +1326,25 @@ function buildRaidCard(client, guild, db) {
     const _T = (k, v) => _adminT(client, guild, k, v);
     const s = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(guild.id) || {};
     const enabled = !!s.raid_enabled;
-    const rows = [];
-    const top = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_raid_enable').setLabel(_T('admin_raidBtnEnable')).setEmoji('✅').setStyle(ButtonStyle.Success).setDisabled(enabled),
-        new ButtonBuilder().setCustomId('automod_raid_disable').setLabel(_T('admin_raidBtnDisable')).setEmoji('❌').setStyle(ButtonStyle.Danger).setDisabled(!enabled),
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_raid_enable').setLabel(_T('admin_btnEnable')).setEmoji(ui.emObj('verified', '✅')).setStyle(ButtonStyle.Success).setDisabled(enabled),
+        new ButtonBuilder().setCustomId('automod_raid_disable').setLabel(_T('admin_btnDisable')).setEmoji(ui.emObj('error', '❌')).setStyle(ButtonStyle.Danger).setDisabled(!enabled),
     );
-    rows.push(top);
-    rows.push(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_raid_threshold').setLabel(_T('admin_raidBtnThreshold')).setEmoji('⚙️').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_raid_minage').setLabel(_T('admin_raidBtnMinAge')).setEmoji('👶').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
-    ));
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_raid_threshold').setLabel(_T('admin_btnThreshold')).setEmoji(ui.emObj('settings', '⚙️')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_raid_minage').setLabel(_T('admin_btnMinAge')).setEmoji(ui.emObj('clock', '👶')).setStyle(ButtonStyle.Primary),
+    );
+    const row3 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(ui.emObj('mc_previous', '↩️')).setStyle(ButtonStyle.Secondary),
+    );
     const view = v2card(enabled ? 0x2ecc71 : 0x95a5a6, [
-        { text: `## 🛡️ ${_T('admin_raidTitle')}` }, { rule: true },
+        { text: `## ${ui.em('eagle', '🛡️')} ${_T('admin_raidTitle')}\n*High-threshold protection against coordinated joins.*` },
+        { rule: true },
         { text: `**${_T('admin_raidStatusLabel')}** · ${enabled ? _T('admin_raidEnabled') : _T('admin_raidDisabled')}\n**${_T('admin_raidTriggerLabel')}** · ${s.raid_threshold || 5} joins / ${s.raid_window || 30}s\n**${_T('admin_raidMinAgeLabel')}** · ${s.raid_min_age_days ? _T('admin_raidDays', { n: s.raid_min_age_days }) : _T('admin_raidMinAgeDisabled')}` },
         { rule: true },
-        ...rows.map(r => ({ row: r })),
+        { row: row1 },
+        { row: row2 },
+        { row: row3 },
     ]);
     return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
 }
@@ -1475,7 +1501,8 @@ async function handleAdminSelect(interaction, client) {
 // ═══════════════════════════════════════════════════════
 async function handleStatusButton(interaction, client) {
     const id = interaction.customId;
-    if (id !== 'automod_status_domains' && id !== 'automod_status_appeals' && id !== 'automod_status_back') return false;
+    const STATUS_IDS = ['automod_status_domains', 'automod_status_channels', 'automod_status_log', 'automod_status_raid', 'automod_status_appeals', 'automod_status_back'];
+    if (!STATUS_IDS.includes(id)) return false;
 
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
     const ss = client.getServerSettings(interaction.guild.id);
@@ -1494,19 +1521,34 @@ async function handleStatusButton(interaction, client) {
         return interaction.update(buildDomainsCard(client, interaction.guild, ss));
     }
 
+    if (id === 'automod_status_channels') {
+        return interaction.update(buildChannelsCard(client, interaction.guild, ss));
+    }
+
+    if (id === 'automod_status_log') {
+        return interaction.update(buildLogCard(client, interaction.guild, ss));
+    }
+
+    if (id === 'automod_status_raid') {
+        return interaction.update(buildRaidCard(client, interaction.guild, client.db));
+    }
+
     if (id === 'automod_status_appeals') {
         const pending = formatPendingAppeals(interaction.guild.id);
-        const items = [{ text: `## ⚖️ ${_T('admin_appealsHeader', { n: pending.length })}` }, { rule: true }];
+        const items = [
+            { text: `## ${ui.em('mod_sign', '⚖️')} ${_T('admin_appealsHeader', { n: pending.length })}\n*Pending appeals waiting for your decision.*` },
+            { rule: true },
+        ];
         if (pending.length === 0) {
-            items.push({ text: _T('admin_appealsEmpty') });
+            items.push({ text: `-# ${_T('admin_appealsEmpty')}` });
         } else {
             for (const a of pending.slice(0, 8)) {
                 const when = a.lastViolationTime ? `<t:${Math.floor(a.lastViolationTime / 1000)}:R>` : null;
-                items.push({ text: `**${a.userTag}** · ${a.violationType || '—'}\n${when ? `${when} · ` : ''}${a.reason?.substring(0, 90) || '—'}` });
+                items.push({ text: `**${a.userTag}** · ${a.violationType || '—'}\n${when ? `-# ${when} · ` : '-# '}${a.reason?.substring(0, 90) || '—'}` });
             }
         }
         items.push({ rule: true }, { row: backBtn });
-        const view = v2card(0x9b59b6, items);
+        const view = v2card(0x2ecc71, items);
         return interaction.update({ ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
     }
     return false;
