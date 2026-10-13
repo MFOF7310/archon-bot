@@ -98,7 +98,7 @@
     "footer": "NEURAL DAILY • RÉCLAMEZ TOUTES LES 24H",
     "successTitle": "Bonus récupéré !",
     "cooldownTitle": "Pas Encore, Agent",
-    "successDesc": "Bien joué — **{xp} XP** et **{credits} crédits** viennent d'arriver. Ça fait **{streak} jours** d'affilée 🔥",
+    "successDesc": "Bien joué — **{xp} XP** et **{credits} crédits** viennent d'arriver. Ça fait **{streak} jour(s)** d'affilée 🔥",
     "cooldownDesc": "**Agent {name}**, votre cycle neural est toujours en cours.\n\n{loading} **Temps restant:** `{time}`\n\n💡 Utilisez `{prefix}claim` quand vous êtes prêt.",
     "currentStats": "Tes stats",
     "channelRestricted": "❌ Cette commande marche uniquement dans <#{channel}>. Vas-y !",
