@@ -39,5 +39,9 @@
   "default_welcome_msg": "مرحبًا {user} في {server}! أنت العضو رقم #{count}.",
   "default_goodbye_msg": "إلى اللقاء {user}، شكرًا لكونك جزءًا من {server}!",
   "setup_slash": "`/welcome message` · `/welcome goodbyemsg`",
-  "help_hint": "تتساءل ماذا أستطيع أيضًا؟ اضغط {help} وسأرشدك."
+  "help_hint": "Wondering what else I can do? Tap **Help** below and I'll show you around. 💜",
+  "btn_help": "المساعدة",
+  "help_card_title": "للبدء بسهولة",
+  "help_card_how": "يمكنك فتح المساعدة الكاملة في أي وقت وفي أي قناة يمكنك استخدام الأوامر فيها: اكتب {prefix}help أو استخدم /help.",
+  "help_card_server": "هذا الخادم"
 }

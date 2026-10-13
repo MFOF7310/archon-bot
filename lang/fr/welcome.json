@@ -39,5 +39,9 @@
   "default_welcome_msg": "Bienvenue {user} sur {server} ! Tu es le membre n°{count}.",
   "default_goodbye_msg": "Au revoir {user}, merci d’avoir fait partie de {server} !",
   "setup_slash": "`/welcome message` · `/welcome goodbyemsg`",
-  "help_hint": "Envie de découvrir le reste ? Touche {help} — je te fais visiter."
+  "help_hint": "Wondering what else I can do? Tap **Help** below and I'll show you around. 💜",
+  "btn_help": "Aide",
+  "help_card_title": "Pour bien démarrer",
+  "help_card_how": "Tu peux ouvrir l'aide complète à tout moment, dans n'importe quel salon où tu peux utiliser des commandes : tape {prefix}help ou utilise /help.",
+  "help_card_server": "ce serveur"
 }

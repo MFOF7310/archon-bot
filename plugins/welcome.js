@@ -131,31 +131,27 @@ async function handleWelcome(member, client, db) {
         content = `${Style.formatTemplate(cfg.welcomeMessage, safeMember, count)}\n${content}`;
     }
 
-    // v5.2: robust help lookup — cache → local → fetch → fallback
-    let _helpCmd = client.application?.commands?.cache?.find(c => c.name === 'help');
-    if (!_helpCmd && client.commands?.get) {
-        const _local = client.commands.get('help');
-        if (_local && _local.id) _helpCmd = _local;
-    }
-    if (!_helpCmd && client.application?.commands?.fetch) {
-        try {
-            const _all = await client.application.commands.fetch();
-            _helpCmd = _all.find(c => c.name === 'help');
-        } catch (_e) { /* non-fatal */ }
-    }
-    const _helpLink = _helpCmd?.id
-        ? `</help:${_helpCmd.id}>`
-        : (client.user?.id ? `</help:${client.user.id}>` : '`/help`');
-    console.log('[WELCOME] help cmd resolved:', !!_helpCmd?.id, _helpCmd?.id || 'n/a');
+    // The hint points at the Help button below: a command mention cannot be tapped in channels where members cannot use commands.
     content += `
-${t('welcome.help_hint', lang, { help: _helpLink })}`;
+${t('welcome.help_hint', lang, {})}`;
 
     // Embed uses attachment:// reference — NOT a base64 data URL
     const _roleHex = member.roles?.color?.hex;
     const _accentHex = (cfg.welcomeAccent || (_roleHex && _roleHex !== '#000000' ? _roleHex : '#2ecc71')).replace('#', '');
 
     // Build action buttons
-    const buttonDefs = Style.getWelcomeButtons(cfg, safeMember);
+    const rawDefs = Style.getWelcomeButtons(cfg, safeMember) || [];
+    // Fix: The 'AI Assistant' button was mistakenly given the 'welcome_help' ID.
+    // We rename it to 'welcome_ai_assistant' so it doesn't conflict with the new Help button.
+    const buttonDefs = rawDefs.map(d => {
+        if (d.customId === 'welcome_help' && d.label !== t('welcome.btn_help', lang)) {
+            return { ...d, customId: 'welcome_ai_assistant' };
+        }
+        return d;
+    });
+    if (!buttonDefs.some((d) => d.customId === 'welcome_help')) {
+        buttonDefs.push({ label: t('welcome.btn_help', lang), emoji: EMOJIS.hubInfo, style: 'Primary', customId: 'welcome_help' });
+    }
     const rows = [];
     let currentRow = new ActionRowBuilder();
     let btnCount = 0;
