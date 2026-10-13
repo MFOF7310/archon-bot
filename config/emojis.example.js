@@ -36,6 +36,12 @@ module.exports = {
     loading: '<a:loading:YOUR_EMOJI_ID>',
     trophy:  '<:trophy:YOUR_EMOJI_ID>',
 
+
+    // ── Game indicators ──
+    speed: '<:flash:1559466046463942676>',  // replace with real emoji ID after upload
+    progress: '<:charts:1537826551884943420>',  // replace with real emoji ID after upload
+    hint: '<a:hints:1559460401349922826>',  // replace with real emoji ID after upload
+    timeout: '<:stop_watch:1559465352893698118>',  // replace with real emoji ID after upload
     // ── ARCHON Branding ──
     bamako: '<:bamako:YOUR_EMOJI_ID>',
     eagle:  '<:eagle:YOUR_EMOJI_ID>',
