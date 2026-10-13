@@ -1,5 +1,7 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const progress = require('../lib/games/progress');
+const ui = require('../lib/games/ui');
+const { card } = require('../lib/games/v2');
 
 // ═══════════════════════════════════════════════════════
 //  🎮 ARCHON WRG v3.0 — NEURAL GRID WORD COMBAT
@@ -42,7 +44,7 @@ function buildHint(word) {
 const TIERS = {
     rookie: {
         label: { en: '⚪ ROOKIE',     fr: '⚪ RECRUE'    },
-        color: '#95a5a6', ansiColor: '\u001b[0;37m', emoji: '⚪',
+        color: '#95a5a6', emoji: '⚪',
         xpBase: 15,  xpBonus: 0,   creditBase: 3,  creditBonus: 0,
         timeLimit: 20000,
         speedWindow: 5000,
@@ -54,7 +56,7 @@ const TIERS = {
     },
     agent: {
         label: { en: '🔵 AGENT',      fr: '🔵 AGENT'     },
-        color: '#3498db', ansiColor: '\u001b[1;34m', emoji: '🔵',
+        color: '#3498db', emoji: '🔵',
         xpBase: 25,  xpBonus: 20,  creditBase: 5,  creditBonus: 10,
         timeLimit: 30000,
         speedWindow: 6000,
@@ -66,7 +68,7 @@ const TIERS = {
     },
     elite: {
         label: { en: '🟠 ELITE',      fr: '🟠 ELITE'     },
-        color: '#e67e22', ansiColor: '\u001b[1;33m', emoji: '🟠',
+        color: '#e67e22', emoji: '🟠',
         xpBase: 40,  xpBonus: 50,  creditBase: 8,  creditBonus: 25,
         timeLimit: 40000,
         speedWindow: 7000,
@@ -78,7 +80,7 @@ const TIERS = {
     },
     commander: {
         label: { en: '🔴 COMMANDER', fr: '🔴 COMMANDANT' },
-        color: '#e74c3c', ansiColor: '\u001b[1;31m', emoji: '🔴',
+        color: '#e74c3c', emoji: '🔴',
         xpBase: 60,  xpBonus: 100, creditBase: 12, creditBonus: 50,
         timeLimit: 50000,
         speedWindow: 8000,
@@ -90,7 +92,7 @@ const TIERS = {
     },
     architect: {
         label: { en: '👑 ARCHITECT',  fr: '👑 ARCHITECTE' },
-        color: '#f1c40f', ansiColor: '\u001b[1;33m', emoji: '👑',
+        color: '#f1c40f', emoji: '👑',
         xpBase: 100, xpBonus: 200, creditBase: 20, creditBonus: 100,
         timeLimit: 60000,
         speedWindow: 10000,
@@ -367,7 +369,7 @@ async function runGame(client, message, args, db, lang) {
         // ── Channel lock ──
         const channelId = message.channel.id;
         if (activeGames.has(channelId)) {
-            const busy = await message.channel.send({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription('`⚔️ A game is already running in this channel. Wait for it to finish.`')] }).catch(()=>null);
+            const busy = await message.channel.send(card(0xe74c3c, [{ text: '⚔️ A game is already running in this channel. Wait for it to finish.' }])).catch(() => null);
             if (busy) setTimeout(() => busy.delete().catch(()=>{}), 4000);
             return;
         }
@@ -402,31 +404,16 @@ async function runGame(client, message, args, db, lang) {
         const estRewards = calcRewards(tier, targetWord.length, 9999999, streakCount);
 
         // ── Start embed ──
-        const startEmbed = new EmbedBuilder()
-            .setColor(tier.color)
-            .setAuthor({ name: `🎮 ARCHON WORD COMBAT — ${tier.label[lang]} · ${cat.emoji} ${cat.label[lang]}`, iconURL: client.user.displayAvatarURL() })
-            .setDescription(
-                `\`\`\`ansi\n` +
-                `${tier.ansiColor}▸ TIER     \u001b[0m${tier.emoji} ${tierKey.toUpperCase()}\n` +
-                `${tier.ansiColor}▸ CATEGORY \u001b[0m${cat.emoji} ${cat.label[lang]}\n` +
-                `${tier.ansiColor}▸ LETTERS  \u001b[0m\u001b[1;37m${targetWord.length}\u001b[0m\n` +
-                `${tier.ansiColor}▸ TIME     \u001b[0m\u001b[1;33m${tier.timeLimit/1000}s\u001b[0m\n` +
-                `${tier.ansiColor}▸ SCRAMBLE \u001b[0m\u001b[1;36m${scrambled}\u001b[0m\n` +
-                `\`\`\`` +
-                `\n*${tier.hint[lang]}*`
-            )
-            .addFields(
-                { name: '💰 Base Rewards', value: `\`+${estRewards.xp} XP\` · \`+${estRewards.credits} 🪙\``, inline: true },
-                { name: '⚡ Speed Bonus', value: `Solve in **${tier.speedWindow/1000}s** → **2x XP**`, inline: true },
-                { name: streakCount > 0 ? `🔥 Streak: ${streakCount}` : '🔥 Streak', value: streakCount >= 3 ? `**${streakCount} wins!** Multiplier active!` : `Win more for multiplier!`, inline: true },
-                { name: `${currentRank.emoji} ${lang==='fr'?'Rang':'Rank'}`, value: `${currentRank.title[lang]} · Lv.${currentLevel}`, inline: true },
-                { name: '📊 Progress', value: `\`${progressBar(pct, 12)}\` ${pct.toFixed(0)}%`, inline: true },
-                { name: '💡 How to play', value: lang==='fr'?'Tapez votre réponse dans le chat !':'Type your answer in chat!', inline: true }
-            )
-            .setFooter({ text: `${guildName} · NEURAL WRG v3.0 · BAMAKO_223 🇲🇱` })
-            .setTimestamp();
+        const tierColor = parseInt(tier.color.slice(1), 16);
+        const startCard = card(tierColor, [
+            { text: `## ${ui.em('gameController', '🎮')} ${tier.label[lang]} · ${cat.label[lang]}` },
+            { rule: true },
+            { text: `▸ **Tier** · ${tier.emoji} ${tierKey.toUpperCase()}\n▸ **Category** · ${cat.label[lang]}\n▸ **Letters** · ${targetWord.length}\n▸ **Time** · ${tier.timeLimit / 1000}s\n▸ **Scramble** · \`${scrambled}\`\n\n*${tier.hint[lang]}*` },
+            { rule: true },
+            { text: `${ui.em('coins', '💰')} **Base Rewards** \`+${estRewards.xp} XP\` · \`+${estRewards.credits}\` ${ui.em('coins', '🪙')}\n${ui.em('speed', '⚡')} **Speed Bonus** · Solve in **${tier.speedWindow / 1000}s** → **2× XP**\n${ui.em('streak', '🔥')} **Streak** · ${streakCount >= 3 ? `**${streakCount} wins!** Multiplier active.` : 'Win more for a multiplier.'}\n${currentRank.emoji} **Rank** · ${currentRank.title[lang]} · Lv.${currentLevel}\n${ui.em('progress', '📊')} **Progress** · \`${ui.progressBar(Math.round(pct), 100, 12)}\` ${pct.toFixed(0)}%\n${ui.em('hint', '💡')} **How to play** · ${lang === 'fr' ? 'Tapez votre réponse dans le chat !' : 'Type your answer in chat!'}` },
+        ]);
 
-        const startMsg = await message.channel.send({ embeds: [startEmbed] }).catch(()=>null);
+        const startMsg = await message.channel.send(startCard).catch(() => null);
         if (startMsg) setTimeout(() => startMsg.delete().catch(()=>{}), 5000);
 
         const gameStart = Date.now();
@@ -438,15 +425,12 @@ async function runGame(client, message, args, db, lang) {
             if (!winnerDeclared) {
                 hintSent = true;
                 const hintStr = buildHint(targetWord);
-                const hintEmbed = new EmbedBuilder()
-                    .setColor('#00f0ff')
-                    .setDescription(
-                        `\`\`\`ansi\n\u001b[1;36m▸ HINT UNLOCKED\u001b[0m\n` +
-                        `\u001b[1;37m${hintStr}\u001b[0m\n\`\`\`` +
-                        `\n*${tier.emoji} Still scrambled: \`${scrambled}\`*`
-                    )
-                    .setFooter({ text: `${tier.timeLimit/2000}s elapsed · Hint revealed` });
-                const hintMsg = await message.channel.send({ embeds: [hintEmbed] }).catch(() => null);
+                const hintCard = card(0x00d4ff, [
+                    { text: `## ${ui.em('hint', '💡')} Hint Unlocked` },
+                    { rule: true },
+                    { text: `\`${hintStr}\`\n\n*Still scrambled: \`${scrambled}\`*\n*${tier.timeLimit / 2000}s elapsed.*` },
+                ]);
+                const hintMsg = await message.channel.send(hintCard).catch(() => null);
                 if (hintMsg) setTimeout(() => hintMsg.delete().catch(() => {}), 15000);
             }
         }, tier.timeLimit / 2);
@@ -489,47 +473,27 @@ async function runGame(client, message, args, db, lang) {
 
             // ── Win embed ──
             let bonusLines = '';
-            if (rewards.speedLabel) bonusLines += `\u001b[1;33m⚡ ${rewards.speedLabel}\u001b[0m\n`;
-            if (rewards.streakLabel) bonusLines += `\u001b[1;35m${rewards.streakLabel}\u001b[0m\n`;
+            if (rewards.speedLabel) bonusLines += `${rewards.speedLabel}\n`;
+            if (rewards.streakLabel) bonusLines += `${rewards.streakLabel}\n`;
 
-            const winEmbed = new EmbedBuilder()
-                .setColor('#00ff88')
-                .setAuthor({ name: `🏆 NEURAL GRID — CODE CRACKED!`, iconURL: m.author.displayAvatarURL() })
-                .setDescription(
-                `\`\`\`ansi\n` +
-                `\u001b[1;32m\u25b8 CORRECT  \u001b[0m\u001b[1;37m${targetWord}\u001b[0m\n` +
-                `\u001b[1;32m\u25b8 TIME     \u001b[0m${solveSeconds}s\n` +
-                `\u001b[1;32m\u25b8 STREAK   \u001b[0m${newStreak} wins\n` +
-                (bonusLines ? bonusLines : '') +
-                `\u001b[1;36m\u25b8 XP       \u001b[0m\u001b[1;32m+${rewards.xp}\u001b[0m\n` +
-                `\u001b[1;33m\u25b8 CREDITS  \u001b[0m+${rewards.credits}\n` +
-                `\u001b[0m\`\`\``
-            )
-                .addFields(
-                    { name: '📊 Progress', value: `\`${progressBar(newPct,15)}\` ${newPct.toFixed(1)}%\n└ ${Math.ceil(newXpNeeded-newXpProgress).toLocaleString()} XP to next level`, inline: false },
-                    { name: `${finalRank.emoji} Rank`, value: `${finalRank.title[lang]} · Lv.${newLevel}`, inline: true },
-                    { name: '💎 Credits', value: `\`${((winnerData?.credits||0)+rewards.credits).toLocaleString()} 🪙\``, inline: true },
-                    { name: '🎮 Tier', value: `${tier.emoji} ${tierKey.toUpperCase()}`, inline: true }
-                )
-                .setFooter({ text: `${guildName} · NEURAL WRG v3.0 · BAMAKO_223 🇲🇱` })
-                .setTimestamp();
+            const winCard = card(0x2ecc71, [
+                { text: `## ${ui.em('trophy', '🏆')} Code Cracked!` },
+                { rule: true },
+                { text: `▸ **Correct** · \`${targetWord}\`\n▸ **Time** · ${solveSeconds}s\n▸ **Streak** · ${newStreak} wins\n${bonusLines}▸ **XP** · +${rewards.xp}\n▸ **Credits** · +${rewards.credits}` },
+                { rule: true },
+                { text: `${ui.em('progress', '📊')} **Progress** · \`${ui.progressBar(Math.round(newPct), 100, 15)}\` ${newPct.toFixed(1)}%\n└ ${Math.ceil(newXpNeeded - newXpProgress).toLocaleString()} XP to next level\n\n${finalRank.emoji} **Rank** · ${finalRank.title[lang]} · Lv.${newLevel}\n${ui.em('coins', '💎')} **Credits** · ${((winnerData?.credits || 0) + rewards.credits).toLocaleString()} ${ui.em('coins', '🪙')}\n${ui.em('gameController', '🎮')} **Tier** · ${tier.emoji} ${tierKey.toUpperCase()}` },
+            ]);
 
-            await message.channel.send({ embeds: [winEmbed] });
+            await message.channel.send(winCard);
 
             // ── Level up ──
             if (newLevel > oldLevel) {
-                const lvlEmbed = new EmbedBuilder()
-                    .setColor(finalRank.color)
-                    .setDescription(
-                        `\`\`\`ansi\n` +
-                        `\u001b[1;33m▸ LEVEL UP  \u001b[0m🎉\n` +
-                        `\u001b[1;33m▸ AGENT     \u001b[0m${m.author.username.substring(0,20)}\n` +
-                        `\u001b[1;33m▸ NEW LEVEL \u001b[0m\u001b[1;37mLv.${newLevel}\u001b[0m\n` +
-                        `\u001b[1;33m▸ NEW RANK  \u001b[0m${finalRank.emoji} ${finalRank.title[lang]}\n` +
-                        `\`\`\``
-                    )
-                    .setFooter({ text: `ARCHON CG-223 · BAMAKO_223 🇲🇱` });
-                await message.channel.send({ embeds: [lvlEmbed] });
+                const lvlCard = card(parseInt(finalRank.color.slice(1), 16), [
+                    { text: `## ${ui.em('party', '🎉')} Level Up!` },
+                    { rule: true },
+                    { text: `▸ **Agent** · ${m.author.username.substring(0, 20)}\n▸ **New Level** · Lv.${newLevel}\n▸ **New Rank** · ${finalRank.emoji} ${finalRank.title[lang]}` },
+                ]);
+                await message.channel.send(lvlCard);
             }
 
             // ── Duelist role ──
@@ -555,18 +519,12 @@ async function runGame(client, message, args, db, lang) {
                 resetStreak(message.author.id, guildId);
                 progress.award(client, db, { userId: message.author.id, guildId, username: message.author.username, played: 1, won: 0 });
                 progress.recordRun(db, { game: 'wrg', userId: message.author.id, guildId, username: message.author.username, points: 0, won: false, streak: 0, correct: 0, tier: tierKey, tierOrder: Object.keys(TIERS) });
-                const failEmbed = new EmbedBuilder()
-                    .setColor('#e74c3c')
-                    .setDescription(
-                        `\`\`\`ansi\n` +
-                        `\u001b[1;31m▸ TIME UP   \u001b[0m⏰\n` +
-                        `\u001b[1;31m▸ WORD WAS  \u001b[0m\u001b[1;37m${targetWord}\u001b[0m\n` +
-                        `\u001b[1;31m▸ SCRAMBLED \u001b[0m${scrambled}\n` +
-                        `\u001b[0;37m▸ TIP       \u001b[0mTry .wrg rookie to warm up\n` +
-                        `\`\`\``
-                    )
-                    .setFooter({ text: `${guildName} · NEURAL WRG v3.0 · BAMAKO_223 🇲🇱` });
-                message.channel.send({ embeds: [failEmbed] }).then(m => {
+                const failCard = card(0xe74c3c, [
+                    { text: `## ${ui.em('timeout', '⏰')} Time Up` },
+                    { rule: true },
+                    { text: `▸ **Word was** · \`${targetWord}\`\n▸ **Scrambled** · \`${scrambled}\`\n\n*Tip: Try \`.wrg rookie\` to warm up.*` },
+                ]);
+                message.channel.send(failCard).then(m => {
                     if (m) setTimeout(() => m.delete().catch(()=>{}), 8000);
                 }).catch(()=>{});
             }
@@ -577,7 +535,7 @@ async function runGame(client, message, args, db, lang) {
     } catch(err) {
         console.error('[WRG v3] Fatal:', err.message);
         activeGames.delete(message.channel?.id);
-        message.reply({ embeds: [new EmbedBuilder().setColor('#ED4245').setTitle('❌ GAME ERROR').setDescription('An error occurred. Please try again.').setFooter({ text: 'ARCHON CG-223' })] }).catch(()=>{});
+        message.reply(card(0xED4245, [{ text: `## ${ui.em('error', '❌')} Game Error\nAn error occurred. Please try again.` }])).catch(() => {});
     }
 }
 
