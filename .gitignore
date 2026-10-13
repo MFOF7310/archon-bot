@@ -118,3 +118,9 @@ config/emojis.js
 heap-snapshots/
 assets/welcome/
 anime_style_mascot_character_*.jpg
+
+# One-time emoji audit scripts
+audit_guilds.js
+preflight_emoji.js
+fix_missing_emojis.js
+emoji_preflight.json
