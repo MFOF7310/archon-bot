@@ -4396,28 +4396,57 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton() && interaction.customId === 'welcome_help') {
-        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : null;
-        const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-        const _ssG = interaction.guild ? (client.getServerSettings?.(interaction.guild.id) || {}) : {};
-        const lang = _ssG.language && _ssG.language !== 'auto' ? _ssG.language : (interaction.locale?.startsWith('fr') ? 'fr' : 'en');
-        
-        const helpEmbed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setTitle(t('index.guardian_title', lang))
-            .setDescription(
-                `\`\`\`ansi\n` +
-`[1;36m${t('index.guardian_welcome', lang, { server: interaction.guild?.name || (lang === 'fr' ? 'notre serveur' : 'our server') })}[0m\n\n` +
-                `[1;33m${t('index.guardian_cmds_label', lang)}[0m\n` +
-                `[1;32m${t('index.guardian_help', lang, { prefix })}[0m\n` +
-                `[1;32m${t('index.guardian_profile', lang, { prefix })}[0m\n` +
-                `[1;32m${t('index.guardian_daily', lang, { prefix })}[0m\n` +
-                `[1;32m${t('index.guardian_shop', lang, { prefix })}[0m\n` +
-                `[1;32m${t('index.guardian_lydia', lang, { prefix })}[0m\n`
-                `\`\`\``
-            )
-            .setFooter({ text: `${interaction.guild?.name || 'Neural Network'} • ${prefix} = prefix • v${client.version}` });
-        
-        await interaction.reply({ embeds: [helpEmbed], flags: 1 << 6 });
+        const _ssH = interaction.guild ? (client.getServerSettings?.(interaction.guild.id) || {}) : {};
+        const _langH = _ssH.language && _ssH.language !== 'auto'
+            ? _ssH.language
+            : (['fr', 'zh', 'ar'].find((l) => String(interaction.locale || '').toLowerCase().startsWith(l)) || 'en');
+        try {
+            await interaction.reply(require('./lib/welcome-help').buildWelcomeHelp({
+                lang: _langH, prefix: _ssH.prefix || process.env.PREFIX || '.', guildName: interaction.guild?.name,
+            }));
+        } catch (e) { console.error('[WELCOME HELP]', e.message); }
+        return;
+    }
+
+    // ================= AI ASSISTANT BUTTON HANDLER (COMPONENTS V2) =================
+    if (interaction.isButton() && interaction.customId === 'welcome_ai_assistant') {
+        try {
+            const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+            
+            let activeChannels = [];
+            if (client.lydiaChannels && interaction.guild) {
+                activeChannels = Object.keys(client.lydiaChannels).filter(id => interaction.guild.channels.cache.has(id));
+            }
+            
+            // Use custom emoji if available, fallback to default robot emoji
+            const aiEmojiObj = client.emojis.cache.find(e => e.name === 'ai_assistant' || e.name === 'ai_assitant');
+            const aiEmoji = aiEmojiObj ? `<:${aiEmojiObj.name}:${aiEmojiObj.id}>` : '🤖';
+            
+            const card = new ContainerBuilder()
+                .setAccentColor(0x9b59b6) // Purple accent
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## ${aiEmoji} AI Assistant`)
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                );
+                
+            if (activeChannels.length > 0) {
+                const channelMentions = activeChannels.map(id => `<#${id}>`).join(', ');
+                card.addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`I'm here to help! Lydia is currently active in:\n\n${channelMentions}\n\nHead over there and mention me with your message, like <@${client.user.id}> hello to chat!`)
+                );
+            } else {
+                card.addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`I'm here to help! However, Lydia hasn't been activated in any channel yet.\n\nPlease ask a moderator to enable her.`)
+                );
+            }
+
+            await interaction.reply({
+                components: [card],
+                flags: MessageFlags.IsComponentsV2 | 64 // Ephemeral
+            });
+        } catch (e) { console.error('[AI ASSISTANT BTN]', e.message); }
         return;
     }
 
