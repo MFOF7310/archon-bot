@@ -469,11 +469,11 @@ module.exports = {
                 { text: t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak) },
                 { rule: true },
                 { text: `${t.nextClaim}: **${_nextClaimStr}**` },
-                { text: `**${t.currentStats}**\n\`\`\`yaml\n${_statsBlock}\n\`\`\`` },
+                { text: `${EMOJIS.charts || '📊'} **${t.currentStats}**\n\`\`\`yaml\n${_statsBlock}\n\`\`\`` },
             ];
             if (_hasStreakBonus) {
                 _claimItems.push({ rule: true });
-                _claimItems.push({ text: `**${t.streakBonus}**\n${t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits)}` });
+                _claimItems.push({ text: `${EMOJIS.streak || '🔥'} ${t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits)}` });
             }
             _claimItems.push({ rule: true });
             _claimItems.push({ text: `-# ${guildName} • v${version}` });
@@ -715,11 +715,11 @@ module.exports = {
                 { text: t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak) },
                 { rule: true },
                 { text: `${t.nextClaim}: **${_nextClaimStr}**` },
-                { text: `**${t.currentStats}**\n\`\`\`yaml\n${_statsBlock}\n\`\`\`` },
+                { text: `${EMOJIS.charts || '📊'} **${t.currentStats}**\n\`\`\`yaml\n${_statsBlock}\n\`\`\`` },
             ];
             if (_hasStreakBonus) {
                 _claimItems.push({ rule: true });
-                _claimItems.push({ text: `**${t.streakBonus}**\n${t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits)}` });
+                _claimItems.push({ text: `${EMOJIS.streak || '🔥'} ${t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits)}` });
             }
             _claimItems.push({ rule: true });
             _claimItems.push({ text: `-# ${guildName} • v${version}` });
