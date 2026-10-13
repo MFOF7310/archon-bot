@@ -1,5 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
+const cmdSlash = require('../lib/cmd').slash;
+const { card: v2card } = require('../lib/games/v2');
 
 // ================= THRESHOLDS =================
 const SPAM_THRESHOLD = 3;
@@ -995,6 +997,48 @@ async function handleAppeal(message, client) {
     }
 }
 
+
+// ═══════════════════════════════════════════════════════
+//  STATUS CARD (Components V2) — build once, use for slash + prefix
+// ═══════════════════════════════════════════════════════
+function buildStatusCard(client, guild, ss, opts = {}) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+    const _L = require('../lib/botPerms').langOf({ guild, client });
+    const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
+    const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
+    const wl = ss?.autoModWhitelist;
+    const domainList = parseDomainWhitelist(ss?.autoModDomains);
+    const rawChannels = ss?.automodChannels || ss?.automod_channels || '';
+    const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : _T('admin_statusAllChannels');
+    const pendingCount = formatPendingAppeals(guild.id).length;
+    const on = !!ss?.autoModEnabled;
+
+    const lines = [
+        `**${_T('admin_statusLabelStatus')}** · ${on ? _T('admin_statusEnabled') : _T('admin_statusDisabled')}`,
+        `**${_T('admin_statusLabelSensitivity')}** · ${(ss?.autoModSensitivity || 'medium').toUpperCase()}`,
+        `**${_T('admin_statusLabelLog')}** · ${logId ? `<#${logId}>` : _T('admin_statusNotConfigured')}`,
+        `**${_T('admin_statusLabelExempt')}** · ${wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : _T('admin_statusNone')}`,
+        `**${_T('admin_statusLabelLinkPolicy')}** · ${_T('admin_statusLinkPolicyValue', { n: domainList.length })}`,
+        `**${_T('admin_statusLabelChannels')}** · ${channelList}`,
+        `**${_T('admin_statusLabelAppeals')}** · ${pendingCount > 0 ? _T('admin_statusAppealsValue', { n: pendingCount }) : _T('admin_statusAppealsNone')}`,
+    ].join('\n');
+
+    const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_status_domains').setLabel(_T('admin_btnManageDomains')).setEmoji('🌐').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_status_appeals').setLabel(_T('admin_btnViewAppeals')).setEmoji('⚖️').setStyle(ButtonStyle.Secondary),
+    );
+
+    const view = v2card(on ? 0x2ecc71 : 0xe74c3c, [
+        { text: `## ${_T('admin_statusTitle')}` },
+        { rule: true },
+        { text: lines },
+        { rule: true },
+        { text: _T('admin_statusHint', { cmd: cmdSlash(client, 'automod domains', { guild }) }) },
+        { row: buttons },
+    ]);
+    return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+}
+
 // ================= TRIBUNAL BUTTON HANDLER =================
 async function handleAppealButton(interaction, client) {
     if (!interaction.isButton() || !interaction.customId.startsWith('appeal_')) return false;
@@ -1190,6 +1234,59 @@ function formatPendingAppeals(guildId) {
     return pending;
 }
 
+
+// ═══════════════════════════════════════════════════════
+//  STATUS BUTTONS — Manage domains / View appeals
+// ═══════════════════════════════════════════════════════
+async function handleStatusButton(interaction, client) {
+    const id = interaction.customId;
+    if (id !== 'automod_status_domains' && id !== 'automod_status_appeals' && id !== 'automod_status_back') return false;
+
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+    const ss = client.getServerSettings(interaction.guild.id);
+    const _L = require('../lib/botPerms').langOf({ guild: interaction.guild, client });
+    const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
+
+    const backBtn = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary)
+    );
+
+    if (id === 'automod_status_back') {
+        return interaction.update(buildStatusCard(client, interaction.guild, ss));
+    }
+
+    if (id === 'automod_status_domains') {
+        const list = parseDomainWhitelist(ss?.autoModDomains);
+        const customList = list.length > 0 ? list.join(', ') : _T('admin_domainsCustomNone');
+        const view = v2card(0x5865F2, [
+            { text: `## 🌐 ${_T('admin_domainsTitle')}` },
+            { rule: true },
+            { text: `**${_T('admin_domainsDefaultLabel')}**\n${[...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ')}, …\n\n**${_T('admin_domainsCustomLabel')}**\n${customList}` },
+            { rule: true },
+            { text: _T('admin_domainsHint') },
+            { row: backBtn },
+        ]);
+        return interaction.update({ ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+    }
+
+    if (id === 'automod_status_appeals') {
+        const pending = formatPendingAppeals(interaction.guild.id);
+        const items = [{ text: `## ⚖️ ${_T('admin_appealsHeader', { n: pending.length })}` }, { rule: true }];
+        if (pending.length === 0) {
+            items.push({ text: _T('admin_appealsEmpty') });
+        } else {
+            for (const a of pending.slice(0, 8)) {
+                const when = a.lastViolationTime ? `<t:${Math.floor(a.lastViolationTime / 1000)}:R>` : null;
+                items.push({ text: `**${a.userTag}** · ${a.violationType || '—'}\n${when ? `${when} · ` : ''}${a.reason?.substring(0, 90) || '—'}` });
+            }
+        }
+        items.push({ rule: true }, { row: backBtn });
+        const view = v2card(0x9b59b6, items);
+        return interaction.update({ ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+    }
+    return false;
+}
+
 module.exports = {
     isElevated,
     name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
@@ -1224,33 +1321,44 @@ module.exports = {
         if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
         const sc = ix.options.getSubcommand();
         const ss = client.getServerSettings(ix.guild.id);
+        const _LA = require('../lib/botPerms').langOf({ guild: ix.guild, client });
+        const _TA = (k, v) => require('../lib/i18n').t('automod.' + k, _LA, v);
 
         // ── FIX 4: /automod appeals — slash handler ──
         if (sc === 'appeals') {
+            const _LG = require('../lib/botPerms').langOf({ guild: ix.guild, client });
+            const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _LG, v);
             const pending = formatPendingAppeals(ix.guild.id);
             if (pending.length === 0) {
                 return ix.reply({
                     embeds: [new EmbedBuilder()
                         .setColor(C.GREEN)
-                        .setTitle('⚖️ Appeal Queue')
-                        .setDescription('No pending appeals for this server.')
+                        .setTitle(_T('admin_appealsTitle'))
+                        .setDescription(_T('admin_appealsEmpty'))
                         .setFooter({ text: 'ARCHON CG-223' })],
                     flags: 1 << 6
                 });
             }
             const e = new EmbedBuilder()
                 .setColor(C.BLURPLE)
-                .setTitle(`⚖️ Pending Appeals (${pending.length})`)
-                .setFooter({ text: 'ARCHON CG-223 • Use the tribunal buttons to rule' })
+                .setTitle(_T('admin_appealsHeader', { n: pending.length }))
+                .setFooter({ text: _T('admin_appealsFooterSlash') })
                 .setTimestamp();
 
             for (const a of pending.slice(0, 10)) {
                 const timeAgo = a.lastViolationTime
                     ? `<t:${Math.floor(a.lastViolationTime / 1000)}:R>`
-                    : 'Unknown time';
+                    : null;
+                const fieldKey = timeAgo ? 'admin_appealsFieldValue' : 'admin_appealsFieldValueNoTime';
+                const vars = {
+                    reason: a.reason?.substring(0, 100) || '—',
+                    delivery: a.deliveryMethod || '—',
+                    id: a.id,
+                };
+                if (timeAgo) vars.when = timeAgo;
                 e.addFields({
-                    name: `${a.userTag} — ${a.violationType || 'unknown violation'}`,
-                    value: `**Reason:** ${a.reason?.substring(0, 100) || 'No reason'}\n**Delivery:** ${a.deliveryMethod || 'unknown'}\n**When:** ${timeAgo}\n**ID:** \`${a.id}\``,
+                    name: `${a.userTag} — ${a.violationType || '—'}`,
+                    value: _T(fieldKey, vars),
                     inline: false
                 });
             }
@@ -1258,42 +1366,21 @@ module.exports = {
         }
 
         if (sc === 'status') {
-            const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
-            const wl = ss?.autoModWhitelist;
-            const domainList = parseDomainWhitelist(ss?.autoModDomains);
-            const rawChannels = ss?.automodChannels || ss?.automod_channels || '';
-            const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : 'All channels';
-            const pendingCount = formatPendingAppeals(ix.guild.id).length;
-            const e = new EmbedBuilder()
-                .setColor(ss?.autoModEnabled ? C.GREEN : C.RED)
-                .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
-                .setTitle('Configuration')
-                .addFields(
-                    { name: 'Status', value: ss?.autoModEnabled ? 'Enabled' : 'Disabled', inline: true },
-                    { name: 'Sensitivity', value: (ss?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
-                    { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
-                    { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
-                    { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true },
-                    { name: 'Restricted Channels', value: channelList, inline: false },
-                    { name: 'Pending Appeals', value: pendingCount > 0 ? `${pendingCount} — use \`/automod appeals\` to review` : 'None', inline: false }
-                )
-                .setFooter({ text: 'Use /automod domains to manage • ARCHON CG-223' })
-                .setTimestamp();
-            return ix.reply({ embeds: [e], flags: 1 << 6 });
+            return ix.reply(buildStatusCard(client, ix.guild, ss));
         }
 
         if (sc === 'enable' || sc === 'disable') {
             const en = sc === 'enable';
             const cur = ss?.autoModEnabled;
-            if (en === !!cur) return ix.reply({ content: `⚠️ Already ${en ? 'enabled' : 'disabled'}.`, flags: 1 << 6 });
+            if (en === !!cur) return ix.reply({ content: _TA(en ? 'admin_enableAlready' : 'admin_disableAlready'), flags: 1 << 6 });
             if (en) {
                 const me = ix.guild.members.me;
                 const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter(p => !me.permissions.has(PermissionsBitField.Flags[p]));
-                if (missing.length) return ix.reply({ content: `🛡️ Missing: ${missing.map(p => '`' + p + '`').join(', ')}`, flags: 1 << 6 });
+                if (missing.length) return ix.reply({ content: _TA('admin_enableMissing', { list: missing.map(p => '`' + p + '`').join(', ') }), flags: 1 << 6 });
             }
             client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s','now') WHERE guild_id = ?").run(en ? '1' : '0', ix.guild.id);
             client.settings.delete(ix.guild.id);
-            const e = new EmbedBuilder().setColor(en ? C.GREEN : C.GREY).setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() }).setDescription(en ? '**AutoMod is now enabled.**\nShield rules deployed to this server.\n🛡️ Non-moderators can only post links from trusted domains.\nUse `/automod domains` to customize.' : '**AutoMod is now disabled.**\nShield rules removed.').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
+            const e = new EmbedBuilder().setColor(en ? C.GREEN : C.GREY).setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() }).setDescription(_TA(en ? 'admin_enableOk' : 'admin_disableOk', { cmd: cmdSlash(client, 'automod domains', { guild: ix.guild }) })).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
             await ix.reply({ embeds: [e], flags: 1 << 6 });
             await syncRules(ix.guild, en ? 'create' : 'delete', ss);
             return;
@@ -1303,22 +1390,22 @@ module.exports = {
             const lv = ix.options.getString('level');
             client.updateServerSetting(ix.guild.id, 'automodsensitivity', lv);
             client.settings.delete(ix.guild.id);
-            return ix.reply({ content: `✅ Sensitivity → **${lv.toUpperCase()}**`, flags: 1 << 6 });
+            return ix.reply({ content: '✅ ' + _TA('admin_sensitivitySet', { level: lv.toUpperCase() }), flags: 1 << 6 });
         }
         if (sc === 'whitelist') {
             const role = ix.options.getRole('role');
             const cur = ss?.autoModWhitelist;
             if (role) {
-                if (cur?.split(',').includes(role.id)) return ix.reply({ content: `⚠️ Already whitelisted.`, flags: 1 << 6 });
+                if (cur?.split(',').includes(role.id)) return ix.reply({ content: _TA('admin_whitelistAlready'), flags: 1 << 6 });
                 const nw = cur ? `${cur},${role.id}` : role.id;
                 client.updateServerSetting(ix.guild.id, 'automodwhitelist', nw); client.settings.delete(ix.guild.id);
                 if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: nw }); }
-                return ix.reply({ content: `✅ Whitelisted **${role.name}**`, flags: 1 << 6 });
+                return ix.reply({ content: '✅ ' + _TA('admin_whitelistAdded', { role: role.name }), flags: 1 << 6 });
             } else {
-                if (!cur) return ix.reply({ content: `⚠️ Empty.`, flags: 1 << 6 });
+                if (!cur) return ix.reply({ content: _TA('admin_whitelistEmpty'), flags: 1 << 6 });
                 client.updateServerSetting(ix.guild.id, 'automodwhitelist', null); client.settings.delete(ix.guild.id);
                 if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: null }); }
-                return ix.reply({ content: `✅ Cleared.`, flags: 1 << 6 });
+                return ix.reply({ content: '✅ ' + _TA('admin_whitelistCleared'), flags: 1 << 6 });
             }
         }
         if (sc === 'domains') {
@@ -1467,28 +1554,36 @@ module.exports = {
         if (!adm) return msg.reply('🔒 Admin only.');
         const action = args[0]?.toLowerCase() || 'status';
         const settings = client.getServerSettings(msg.guild.id);
+        const _LP = require('../lib/botPerms').langOf({ guild: msg.guild, client });
+        const _TP = (k, v) => require('../lib/i18n').t('automod.' + k, _LP, v);
 
         // ── FIX 4: .automod appeals — prefix handler ──
         if (action === 'appeals') {
+            const _LG = require('../lib/botPerms').langOf({ guild: msg.guild, client });
+            const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _LG, v);
             const pending = formatPendingAppeals(msg.guild.id);
             if (pending.length === 0) {
                 return msg.reply({
                     embeds: [new EmbedBuilder()
                         .setColor(C.GREEN)
-                        .setTitle('⚖️ Appeal Queue')
-                        .setDescription('No pending appeals for this server.')
+                        .setTitle(_T('admin_appealsTitle'))
+                        .setDescription(_T('admin_appealsEmpty'))
                         .setFooter({ text: 'ARCHON CG-223' })]
                 });
             }
             const e = new EmbedBuilder()
                 .setColor(C.BLURPLE)
-                .setTitle(`⚖️ Pending Appeals (${pending.length})`)
-                .setFooter({ text: 'ARCHON CG-223 • Appeals expire after 7 days' })
+                .setTitle(_T('admin_appealsHeader', { n: pending.length }))
+                .setFooter({ text: _T('admin_appealsFooterPrefix') })
                 .setTimestamp();
             for (const a of pending.slice(0, 10)) {
                 e.addFields({
-                    name: `${a.userTag} — ${a.violationType || 'unknown'}`,
-                    value: `**Reason:** ${a.reason?.substring(0, 100) || 'No reason'}\n**Delivery:** ${a.deliveryMethod || 'unknown'}\n**ID:** \`${a.id}\``,
+                    name: `${a.userTag} — ${a.violationType || '—'}`,
+                    value: _T('admin_appealsFieldValueNoTime', {
+                        reason: a.reason?.substring(0, 100) || '—',
+                        delivery: a.deliveryMethod || '—',
+                        id: a.id,
+                    }),
                     inline: false
                 });
             }
@@ -1502,26 +1597,29 @@ module.exports = {
             const rawChannels = settings?.automodChannels || settings?.automod_channels || '';
             const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : 'All channels';
             const pendingCount = formatPendingAppeals(msg.guild.id).length;
+            const _LS = require('../lib/botPerms').langOf({ guild: msg.guild, client });
+            const _TS = (k, v) => require('../lib/i18n').t('automod.' + k, _LS, v);
             const e = new EmbedBuilder()
                 .setColor(settings?.autoModEnabled ? C.GREEN : C.RED)
                 .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
-                .setTitle('Configuration')
+                .setTitle(_TS('admin_statusTitle'))
+                .setDescription(_TS('admin_statusHint', { cmd: cmdSlash(client, 'automod domains', { guild: msg.guild }) }))
                 .addFields(
-                    { name: 'Status', value: settings?.autoModEnabled ? 'Enabled' : 'Disabled', inline: true },
-                    { name: 'Sensitivity', value: (settings?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
-                    { name: 'Log Channel', value: logId ? `<#${logId}>` : 'Not configured', inline: true },
-                    { name: 'Exempt Roles', value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : 'None', inline: false },
-                    { name: 'Link Policy', value: `Non-mods: whitelisted domains only\nCustom: ${domainList.length} added`, inline: true },
-                    { name: 'Restricted Channels', value: channelList, inline: false },
-                    { name: 'Pending Appeals', value: pendingCount > 0 ? `${pendingCount} — use \`.automod appeals\` to review` : 'None', inline: false }
+                    { name: _TS('admin_statusLabelStatus'), value: settings?.autoModEnabled ? _TS('admin_statusEnabled') : _TS('admin_statusDisabled'), inline: true },
+                    { name: _TS('admin_statusLabelSensitivity'), value: (settings?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
+                    { name: _TS('admin_statusLabelLog'), value: logId ? `<#${logId}>` : _TS('admin_statusNotConfigured'), inline: true },
+                    { name: _TS('admin_statusLabelExempt'), value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : _TS('admin_statusNone'), inline: false },
+                    { name: _TS('admin_statusLabelLinkPolicy'), value: _TS('admin_statusLinkPolicyValue', { n: domainList.length }), inline: true },
+                    { name: _TS('admin_statusLabelChannels'), value: channelList === 'All channels' ? _TS('admin_statusAllChannels') : channelList, inline: false },
+                    { name: _TS('admin_statusLabelAppeals'), value: pendingCount > 0 ? _TS('admin_statusAppealsValue', { n: pendingCount, cmd: cmdSlash(client, 'automod appeals', { guild: msg.guild }) }) : _TS('admin_statusAppealsNone'), inline: false }
                 )
-                .setFooter({ text: 'Use .automod domains to manage • ARCHON CG-223' })
+                .setFooter({ text: _TS('admin_statusFooter', { cmd: cmdSlash(client, 'automod domains', { guild: msg.guild }) }) })
                 .setTimestamp();
             return msg.reply({ embeds: [e] });
         }
         if (action === 'enable' || action === 'on') {
             const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
-            if (cur?.automod_enabled === 1) return msg.reply('⚠️ Already enabled.');
+            if (cur?.automod_enabled === 1) return msg.reply(_TP('admin_enableAlready'));
             const me = msg.guild.members.me;
             const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter(p => !me.permissions.has(PermissionsBitField.Flags[p]));
             if (missing.length) return msg.reply(`🛡️ Missing: ${missing.join(', ')}`);
@@ -1532,7 +1630,7 @@ module.exports = {
         }
         if (action === 'disable' || action === 'off') {
             const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
-            if (cur?.automod_enabled === 0) return msg.reply('⚠️ Already disabled.');
+            if (cur?.automod_enabled === 0) return msg.reply(_TP('admin_disableAlready'));
             await syncRules(msg.guild, 'delete');
             client.db.prepare("UPDATE server_settings SET automod_enabled = 0 WHERE guild_id = ?").run(msg.guild.id);
             client.settings.delete(msg.guild.id);
@@ -1658,6 +1756,10 @@ module.exports = {
 
     async handleAppealButton(interaction, client) {
         return await handleAppealButton(interaction, client);
+    },
+
+    async handleStatusButton(interaction, client) {
+        return await handleStatusButton(interaction, client);
     }
 };
 

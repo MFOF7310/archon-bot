@@ -3329,6 +3329,12 @@ const cleanCommands = commands.filter(cmd => {
                 
                 console.log = originalLog;
                 console.log(`${green}[SLASH]${reset} Successfully registered ${cleanCommands.length} global slash commands.`);
+// Populate the slash-command cache so </name:id> mentions render as clickable pills
+try {
+    await client.application.commands.fetch();
+    require('./lib/cmd').warm(client);
+    console.log(`[SLASH] Cache warmed: ${client.application.commands.cache.size} commands`);
+} catch (e) { console.error('[SLASH] cache warm failed:', e.message); }
             } catch (error) {
                 console.log = originalLog;
                 console.error(`${red}[SLASH ERROR]${reset}`, error.message);
@@ -4392,6 +4398,14 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             const verifyPlugin = require('./plugins/verify.js');
             await verifyPlugin.onVerifyButton(interaction, client, db);
         } catch(e) { console.error('[VERIFY BTN]', e.message); }
+        return;
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('automod_status_')) {
+        try {
+            const am = require('./plugins/automod.js');
+            if (am.handleStatusButton) await am.handleStatusButton(interaction, client);
+        } catch (e) { console.error('[AUTOMOD STATUS BTN]', e.message); }
         return;
     }
 
