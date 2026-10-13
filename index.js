@@ -2686,7 +2686,14 @@ client.once(Events.ClientReady, async () => {
                     const _v2 = require('./lib/games/v2');
                     const _titleMap = { fr: 'Nouvelle mise à jour en ligne', zh: '新版本已上线', ar: 'تحديث جديد متاح الآن', en: 'New update is live' };
                     const _title = `## ${_E.dashboard || '🚀'} ${_titleMap[_lang] || _titleMap.en}`;
-                    const _buildUrl = `https://github.com/MFOF7310/archon-bot/commit/${shortHash}`;
+                    const _buildUrl = (() => {
+                        try {
+                            let remote = require('child_process').execSync('git config --get remote.origin.url', { cwd: __dirname, stdio: ['ignore','pipe','ignore'] }).toString().trim();
+                            remote = remote.replace(/^git@([^:]+):/, 'https://$1/').replace(/\.git$/, '');
+                            if (!/^https?:\/\//.test(remote)) remote = `https://github.com/MFOF7310/archon-bot`;
+                            return `${remote}/commit/${shortHash}`;
+                        } catch { return `https://github.com/MFOF7310/archon-bot/commit/${shortHash}`; }
+                    })();
                     const _footer = `-# [\`${shortHash}\`](${_buildUrl}) · ARCHON CG-223 • Always cooking 🍳`;
                     const _card = _v2.card(0x00f0ff, [
                         { text: `*ARCHON CG-223 · New Update*` },
