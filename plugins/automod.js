@@ -719,6 +719,17 @@ async function handleAppeal(message, client) {
 
     const content = message.content.trim();
     const lower = content.toLowerCase();
+    // Default language for pre-server messages (uses the user's Discord locale)
+    const _defaultLang = (() => {
+        const u = String(message.author.locale || '').toLowerCase();
+        for (const l of ['en', 'fr', 'zh', 'ar']) if (u.startsWith(l)) return l;
+        return 'en';
+    })();
+    const _t0 = (k, v) => require('../lib/i18n').t('automod.' + k, _defaultLang, v);
+    const _tGuild = (guild) => {
+        try { return require('../lib/botPerms').langOf({ guild, client }); }
+        catch { return _defaultLang; }
+    };
 
     if (lower === 'appeal' || lower === 'help') {
         const appeals = [];
@@ -738,16 +749,16 @@ async function handleAppeal(message, client) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.GREY)
-                    .setTitle('No Active Strikes')
-                    .setDescription('You have no recent AutoMod actions on servers I manage.\nIf you believe a message was wrongly deleted, please include:\n\n**Server name**\n**What you posted**\n**Why it should be allowed**\n\nI will forward this to the server owner.')
+                    .setTitle(_t0('appeal_noStrikesTitle'))
+                    .setDescription(_t0('appeal_noStrikesDesc'))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
 
         const embed = new EmbedBuilder()
             .setColor(C.YELLOW)
-            .setTitle('AutoMod Appeal')
-            .setDescription('You have active strikes on the following servers:');
+            .setTitle(_t0('appeal_listTitle'))
+            .setDescription(_t0('appeal_listDesc'));
 
         for (const a of appeals.slice(0, 5)) {
             const owner = await a.guild.fetchOwner().catch(() => null);
@@ -759,8 +770,8 @@ async function handleAppeal(message, client) {
         }
 
         embed.addFields({
-            name: 'How to appeal',
-            value: 'Reply with:\n"appeal [server name] | [your message]"\n\nExample:\n"appeal Testing bot | I was just excited, not flooding caps on purpose"\n\n⚠️ You get **1 appeal per server every 24 hours** — make it count.\nOr contact the server owner directly.',
+            name: _t0('appeal_listFieldName'),
+            value: _t0('appeal_listFieldValue'),
             inline: false
         });
 
@@ -786,8 +797,8 @@ async function handleAppeal(message, client) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
-                    .setTitle('Missing Server Name')
-                    .setDescription('Usage:\n"appeal [server name] | [your message]"\n\nExample:\n"appeal Testing bot | I was just excited, not flooding caps on purpose"')
+                    .setTitle(_t0('appeal_missingServerTitle'))
+                    .setDescription(_t0('appeal_missingServerDesc'))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -804,8 +815,8 @@ async function handleAppeal(message, client) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
-                    .setTitle('Could not Identify the Server')
-                    .setDescription('I could not tell where the server name ends and your message begins.\n\nPlease use the pipe format so I parse it correctly:\n"appeal [server name] | [your message]"\n\nExample:\n"appeal Testing bot | I was just excited, not flooding caps on purpose"')
+                    .setTitle(_t0('appeal_ambiguousTitle'))
+                    .setDescription(_t0('appeal_ambiguousDesc'))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -814,8 +825,8 @@ async function handleAppeal(message, client) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
-                    .setTitle('Server Not Found')
-                    .setDescription('I could not find a server matching "' + serverName + '".\nUse "appeal" to see your active strikes.')
+                    .setTitle(_t0('appeal_notFoundTitle'))
+                    .setDescription(_t0('appeal_notFoundDesc', { name: serverName }))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -869,22 +880,25 @@ async function handleAppeal(message, client) {
                 new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel('🔨 Ban Appeals').setStyle(ButtonStyle.Secondary)
             );
 
+            const _tS = (k, v) => require('../lib/i18n').t('automod.' + k, _tGuild(targetGuild), v);
             const tribunalEmbed = new EmbedBuilder()
                 .setColor(C.BLURPLE)
                 .setAuthor({ name: 'AutoMod Appeal Tribunal', iconURL: message.author.displayAvatarURL() })
-                .setTitle('⚖️ New Appeal Received')
-                .setDescription(`**From:** ${message.author.tag} (${message.author.id})
-**Server:** ${targetGuild.name}
-**Reason:** ${reason}
-
-**Strikes:** ${Math.min(entry?.warns || 1, 4)}/4`)
+                .setTitle(_tS('appeal_tribunalTitle'))
+                .setDescription(_tS('appeal_tribunalFrom', {
+                    user: message.author.tag,
+                    id: message.author.id,
+                    server: targetGuild.name,
+                    reason,
+                    strikes: Math.min(entry?.warns || 1, 4),
+                }))
                 .addFields(
-                    { name: '🛡️ Original Violation', value: `\`${violationType}\``, inline: true },
-                    { name: '⏰ When', value: violationTime, inline: true },
-                    { name: '⚡ Action Taken', value: entry?.lastAction ? `${entry.lastAction} (${entry.lastDuration ? fmtDur(entry.lastDuration) : 'permanent'})` : 'unknown', inline: true },
-                    { name: '📄 Deleted Message', value: `\`\`\`${evidence.substring(0, 900)}\`\`\`` }
+                    { name: _tS('appeal_tribunalViolation'), value: `\`${violationType}\``, inline: true },
+                    { name: _tS('appeal_tribunalWhen'), value: violationTime, inline: true },
+                    { name: _tS('appeal_tribunalAction'), value: entry?.lastAction ? `${entry.lastAction} (${entry.lastDuration ? fmtDur(entry.lastDuration) : 'permanent'})` : 'unknown', inline: true },
+                    { name: _tS('appeal_tribunalDeleted'), value: `\`\`\`${evidence.substring(0, 900)}\`\`\`` }
                 )
-                .setFooter({ text: 'ARCHON CG-223 • Click to render verdict' })
+                .setFooter({ text: _tS('appeal_tribunalFooter') })
                 .setTimestamp();
 
             // ── FIX 4: 3-tier appeal delivery: DM → log channel → queue ──
@@ -953,17 +967,19 @@ async function handleAppeal(message, client) {
             appealCooldowns.set(cdKey, now);
 
             // Confirmation message varies by delivery method
+            const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _defaultLang, v);
             const confirmDesc = deliveryMethod === 'dm'
-                ? `Your appeal for **${targetGuild.name}** has been forwarded to the server owner.\n\n🕊️ **Please be patient** — they will review it and may reach out to you directly.`
+                ? _tU('appeal_submittedDescDm', { server: targetGuild.name })
                 : deliveryMethod === 'log_channel'
-                ? `Your appeal for **${targetGuild.name}** could not reach the owner's DMs, so it was posted in the server log channel.\n\n🕊️ The owner will see it there.`
-                : `Your appeal for **${targetGuild.name}** has been queued. The server owner can review it with \`/automod appeals\`.\n\n⚠️ I could not reach the owner directly or via log channel.`;
+                ? _tU('appeal_submittedDescLog', { server: targetGuild.name })
+                : _tU('appeal_submittedDescQueued', { server: targetGuild.name });
 
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(deliveryMethod === 'queued' ? C.YELLOW : C.GREEN)
-                    .setTitle(deliveryMethod === 'queued' ? '⏳ Appeal Queued' : '✅ Appeal Submitted')
-                    .setDescription(confirmDesc + '\n\nSince you get one appeal per server per day, sending follow-up messages here won\'t speed things up.')
+                    .setTitle(_tU(deliveryMethod === 'queued' ? 'appeal_queuedTitle' : 'appeal_submittedTitle',
+                        deliveryMethod === 'queued' ? {} : { emoji: require('../config/emojis').success || '✅' }))
+                    .setDescription(confirmDesc + '\n\n' + _tU('appeal_submittedFooter'))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
 
@@ -971,8 +987,8 @@ async function handleAppeal(message, client) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
-                    .setTitle('Appeal Failed')
-                    .setDescription('An unexpected error occurred. Please try again later.')
+                    .setTitle(_t0('appeal_failedTitle'))
+                    .setDescription(_t0('appeal_failedDesc'))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -982,6 +998,18 @@ async function handleAppeal(message, client) {
 // ================= TRIBUNAL BUTTON HANDLER =================
 async function handleAppealButton(interaction, client) {
     if (!interaction.isButton() || !interaction.customId.startsWith('appeal_')) return false;
+
+    // Owner reads the tribunal in their own DM; the user who appealed reads the outcome in theirs.
+    // Use the guild's language for the owner-facing bits, and the target user's locale (fallback English) for their DM.
+    const _Lg = (() => {
+        const g = client.guilds.cache.get(String(interaction.customId).split('_')[2] ? '' : '');
+        return null;
+    })(); // placeholder, real per-guild lookup happens below
+    const _tO = (k, v, guild) => {
+        let lang = 'en';
+        try { if (guild) lang = require('../lib/botPerms').langOf({ guild, client }) || 'en'; } catch {}
+        return require('../lib/i18n').t('automod.' + k, lang, v);
+    };
 
     const parts = interaction.customId.split('_');
     const action = parts[1];
@@ -1039,11 +1067,15 @@ async function handleAppealButton(interaction, client) {
                 : wasTimedOut === false && guild
                 ? '\n\n✅ Your timeout had already expired.'
                 : '';
+            const _tUser = (k, v) => _tO(k, v, guild);
+            const _liftedExtra = timeoutLifted
+                ? _tUser('appeal_approvedTimeoutLifted')
+                : (wasTimedOut === false && guild ? _tUser('appeal_approvedTimeoutExpired') : '');
             await targetUser.send({
                 embeds: [new EmbedBuilder()
                     .setColor(C.GREEN)
-                    .setTitle('✅ Appeal Approved')
-                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **approved** by the owner.\n\nYour strike count has been reduced. Stay clean! 🕊️${liftedNote}`)
+                    .setTitle(_tUser('appeal_approvedTitle', { emoji: require('../config/emojis').verified || '✅' }))
+                    .setDescription(_tUser('appeal_approvedDesc', { server: guild?.name || 'the server' }) + _liftedExtra)
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -1052,7 +1084,10 @@ async function handleAppealButton(interaction, client) {
         appealTribunal.set(appealId, vote);
 
         await interaction.update({
-            content: `✅ **APPROVED** by ${interaction.user.tag}\nStrike reduced. User notified.${timeoutLifted ? ' Timeout lifted.' : ' (timeout already expired or user left)'}`,
+            content: _tO('appeal_resultApproved', {
+                user: interaction.user.tag,
+                extra: timeoutLifted ? _tO('appeal_resultExtraLifted', {}, guild) : _tO('appeal_resultExtraExpired', {}, guild),
+            }, guild),
             embeds: [],
             components: []
         }).catch(() => {});
@@ -1062,8 +1097,8 @@ async function handleAppealButton(interaction, client) {
             await targetUser.send({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
-                    .setTitle('❌ Appeal Rejected')
-                    .setDescription(`Your appeal for **${guild?.name || 'the server'}** was **rejected** by the owner.\n\nThe punishment stands. You can appeal again in 24 hours.`)
+                    .setTitle(_tO('appeal_rejectedTitle', {}, guild))
+                    .setDescription(_tO('appeal_rejectedDesc', { server: guild?.name || 'the server' }, guild))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -1072,7 +1107,7 @@ async function handleAppealButton(interaction, client) {
         appealTribunal.set(appealId, vote);
 
         await interaction.update({
-            content: `❌ **REJECTED** by ${interaction.user.tag}\nPunishment stands. User notified.`,
+            content: _tO('appeal_resultRejected', { user: interaction.user.tag }, guild),
             embeds: [],
             components: []
         }).catch(() => {});
@@ -1091,8 +1126,8 @@ async function handleAppealButton(interaction, client) {
             await targetUser.send({
                 embeds: [new EmbedBuilder()
                     .setColor(C.DARK)
-                    .setTitle('🚫 Appeal Banned')
-                    .setDescription(`You have been **banned from appealing** on **${guild?.name || 'the server'}** for **7 days** due to frivolous appeals.\n\nYou also received an additional strike.`)
+                    .setTitle(_tO('appeal_banTitle', {}, guild))
+                    .setDescription(_tO('appeal_banDesc', { server: guild?.name || 'the server' }, guild))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -1101,7 +1136,7 @@ async function handleAppealButton(interaction, client) {
         appealTribunal.set(appealId, vote);
 
         await interaction.update({
-            content: `🔨 **APPEAL BANNED** by ${interaction.user.tag}\nUser cannot appeal for 7 days. +1 strike added.`,
+            content: _tO('appeal_resultBanned', { user: interaction.user.tag }, guild),
             embeds: [],
             components: []
         }).catch(() => {});
