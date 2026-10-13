@@ -417,7 +417,7 @@ async function takeAction(message, violations, client, db) {
     try {
         const guildOwner = await message.guild.fetchOwner().catch(() => null);
         const appealContact = guildOwner ? `<@${guildOwner.id}>` : _t('strikeContactFallback');
-        const actionEmoji = outcome === 'ban' ? '<a:BAN:1540115967428796466>' : outcome === 'timeout' ? '<a:lock:1540115656035401778>' : '<:warning:1535637269317160970>';
+        const actionEmoji = outcome === 'ban' ? require('../config/emojis').banAlert : outcome === 'timeout' ? require('../config/emojis').lock : require('../config/emojis').warning;
         const strikeNext = _next(displayWc);
         const dm = new EmbedBuilder()
             .setColor(actionColor)
@@ -454,7 +454,7 @@ async function takeAction(message, violations, client, db) {
         const notif = await message.channel.send({
             embeds: [new EmbedBuilder()
                 .setColor(actionColor)
-                .setDescription(_t('strikeNotice', { emoji: '<:shield:1535642169032048730>', user: message.author.username, rule: ruleName(violations[0], _t) }))]
+                .setDescription(_t('strikeNotice', { emoji: require('../config/emojis').shield, user: message.author.username, rule: ruleName(violations[0], _t) }))]
         }).catch(() => {});
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
@@ -469,7 +469,7 @@ async function takeAction(message, violations, client, db) {
             const log = new EmbedBuilder()
                 .setColor(actionColor)
                 .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
-                .setDescription(_t('strikeLogDesc', { emoji: '<a:mod_abuse_bean_sign:1534872816099528725>', action: actionText, member: `${message.author}`, uid, rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t), channel: `<#${message.channel.id}>` }))
+                .setDescription(_t('strikeLogDesc', { emoji: require('../config/emojis').mod_sign, action: actionText, member: `${message.author}`, uid, rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t), channel: `<#${message.channel.id}>` }))
                 .setFooter({ text: _t('strikeLogFooter', { bar, n: displayWc, next }), iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();
             if (repeatV?.channels?.length > 1) log.addFields({ name: _t('strikeLabelCross'), value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });

@@ -474,7 +474,7 @@ async function checkAndAnnounceBirthdays(client) {
                 );
                 
                 await channel.send({ 
-                    content: `<a:party_2:1539977059273539716> <a:cake:1539977063056937082> — ${member}'s special day! Let's celebrate!`,
+                    content: `${require('../config/emojis').party_2} ${require('../config/emojis').cake} — ${member}'s special day! Let's celebrate!`,
                     embeds: [embed],
                     components: [row]
                 }).catch(() => {});

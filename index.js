@@ -4838,7 +4838,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             const { EmbedBuilder } = require('discord.js');
 
             if (!interaction.member?.voice?.channel) {
-                return interaction.reply({ content: '<:warning:1535637269317160970> Neural link required — join a voice channel to initialize the music grid.', flags: 64 }).catch(() => {});
+                return interaction.reply({ content: `${require('./config/emojis').warning} Neural link required — join a voice channel to initialize the music grid.`, flags: 64 }).catch(() => {});
             }
 
             await interaction.deferUpdate().catch(() => {});

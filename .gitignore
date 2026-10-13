@@ -124,3 +124,15 @@ audit_guilds.js
 preflight_emoji.js
 fix_missing_emojis.js
 emoji_preflight.json
+emoji_migration_plan.json
+emoji_migration_plan.md
+build_migration_plan.js
+app_emoji_ids.json
+upload_app_emojis.js
+build_app_registry.js
+
+# ── App emoji migration artifacts (per-deployment, not source) ──
+config/emojis.app.js
+config/emojis.app.bak
+config/emojis.js.newkeys.bak
+emoji_migration.diff.md
