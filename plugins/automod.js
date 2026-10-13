@@ -1235,6 +1235,241 @@ function formatPendingAppeals(guildId) {
 }
 
 
+
+// ═══════════════════════════════════════════════════════
+//  ADMIN CARDS (V2) — Domains / Channels / Log / Raid
+// ═══════════════════════════════════════════════════════
+function _adminLang(client, guild) { return require('../lib/botPerms').langOf({ guild, client }); }
+function _adminT(client, guild, k, v) { return require('../lib/i18n').t('automod.' + k, _adminLang(client, guild), v); }
+
+function buildDomainsCard(client, guild, ss) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+    const _T = (k, v) => _adminT(client, guild, k, v);
+    const list = parseDomainWhitelist(ss?.autoModDomains);
+    const customList = list.length > 0 ? list.join(', ') : _T('admin_domainsCustomNone');
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_domains_add').setLabel(_T('admin_domainsBtnAdd')).setEmoji('➕').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_domains_remove').setLabel(_T('admin_domainsBtnRemove')).setEmoji('➖').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_domains_reset').setLabel(_T('admin_domainsBtnReset')).setEmoji('🔄').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+    );
+    const view = v2card(0x5865F2, [
+        { text: `## 🌐 ${_T('admin_domainsTitle')}` }, { rule: true },
+        { text: `**${_T('admin_domainsDefaultLabel')}**\n${[...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ')}, …\n\n**${_T('admin_domainsCustomLabel')}**\n${customList}` },
+        { rule: true }, { text: _T('admin_domainsHint') }, { row },
+    ]);
+    return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+}
+
+function buildChannelsCard(client, guild, ss) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+    const _T = (k, v) => _adminT(client, guild, k, v);
+    const raw = ss?.automodChannels || ss?.automod_channels || '';
+    const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
+    const body = list.length ? list.map(c => `<#${c}>`).join(' ') : _T('admin_channelsAllChannels');
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_channels_add').setLabel(_T('admin_channelsBtnAdd')).setEmoji('➕').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_channels_remove').setLabel(_T('admin_channelsBtnRemove')).setEmoji('➖').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_channels_clear').setLabel(_T('admin_channelsBtnClear')).setEmoji('🗑️').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+    );
+    const view = v2card(0x9b59b6, [
+        { text: `## 📢 ${_T('admin_channelsTitle')}` }, { rule: true },
+        { text: `**${_T('admin_channelsActiveLabel')}**\n${body}` },
+        { rule: true }, { row },
+    ]);
+    return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+}
+
+function buildLogCard(client, guild, ss) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+    const _T = (k, v) => _adminT(client, guild, k, v);
+    const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_log_set').setLabel(_T('admin_logBtnSet')).setEmoji('📌').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_log_remove').setLabel(_T('admin_logBtnRemove')).setEmoji('🗑️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+    );
+    const view = v2card(0x3498db, [
+        { text: `## 📋 ${_T('admin_logTitle')}` }, { rule: true },
+        { text: `**${_T('admin_logCurrentLabel')}** · ${logId ? `<#${logId}>` : _T('admin_statusNotConfigured')}` },
+        { rule: true }, { row },
+    ]);
+    return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+}
+
+function buildRaidCard(client, guild, db) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+    const _T = (k, v) => _adminT(client, guild, k, v);
+    const s = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(guild.id) || {};
+    const enabled = !!s.raid_enabled;
+    const rows = [];
+    const top = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_raid_enable').setLabel(_T('admin_raidBtnEnable')).setEmoji('✅').setStyle(ButtonStyle.Success).setDisabled(enabled),
+        new ButtonBuilder().setCustomId('automod_raid_disable').setLabel(_T('admin_raidBtnDisable')).setEmoji('❌').setStyle(ButtonStyle.Danger).setDisabled(!enabled),
+    );
+    rows.push(top);
+    rows.push(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('automod_raid_threshold').setLabel(_T('admin_raidBtnThreshold')).setEmoji('⚙️').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_raid_minage').setLabel(_T('admin_raidBtnMinAge')).setEmoji('👶').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+    ));
+    const view = v2card(enabled ? 0x2ecc71 : 0x95a5a6, [
+        { text: `## 🛡️ ${_T('admin_raidTitle')}` }, { rule: true },
+        { text: `**${_T('admin_raidStatusLabel')}** · ${enabled ? _T('admin_raidEnabled') : _T('admin_raidDisabled')}\n**${_T('admin_raidTriggerLabel')}** · ${s.raid_threshold || 5} joins / ${s.raid_window || 30}s\n**${_T('admin_raidMinAgeLabel')}** · ${s.raid_min_age_days ? _T('admin_raidDays', { n: s.raid_min_age_days }) : _T('admin_raidMinAgeDisabled')}` },
+        { rule: true },
+        ...rows.map(r => ({ row: r })),
+    ]);
+    return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+}
+
+async function handleAdminButton(interaction, client) {
+    const id = interaction.customId;
+    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ChannelSelectMenuBuilder, ChannelType } = require('discord.js');
+    const _T = (k, v) => _adminT(client, interaction.guild, k, v);
+    const ss = client.getServerSettings(interaction.guild.id);
+
+    // ── Domains ──
+    if (id === 'automod_domains_add') {
+        return interaction.showModal(new ModalBuilder().setCustomId('automod_modal_domains_add').setTitle(_T('admin_domainsModalAddTitle')).addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('domain').setLabel(_T('admin_domainsModalAddLabel')).setPlaceholder(_T('admin_domainsModalAddHint')).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(80))));
+    }
+    if (id === 'automod_domains_remove') {
+        return interaction.showModal(new ModalBuilder().setCustomId('automod_modal_domains_remove').setTitle(_T('admin_domainsModalRemoveTitle')).addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('domain').setLabel(_T('admin_domainsModalRemoveLabel')).setPlaceholder(_T('admin_domainsModalRemoveHint')).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(80))));
+    }
+    if (id === 'automod_domains_reset') {
+        client.updateServerSetting(interaction.guild.id, 'automoddomains', null);
+        client.settings.delete(interaction.guild.id);
+        return interaction.update(buildDomainsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+    }
+
+    // ── Channels ──
+    if (id === 'automod_channels_add') {
+        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_channels_add').setPlaceholder(_T('admin_channelsSelectAdd')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement]).setMinValues(1).setMaxValues(1);
+        return interaction.update({ components: [new ActionRowBuilder().addComponents(sel)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+    }
+    if (id === 'automod_channels_remove') {
+        const raw = ss?.automodChannels || ss?.automod_channels || '';
+        const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
+        if (!list.length) return interaction.reply({ content: _T('admin_channelsAllChannels'), flags: 64 });
+        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_channels_remove').setPlaceholder(_T('admin_channelsSelectRemove')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement]).setMinValues(1).setMaxValues(1);
+        return interaction.update({ components: [new ActionRowBuilder().addComponents(sel)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+    }
+    if (id === 'automod_channels_clear') {
+        client.updateServerSetting(interaction.guild.id, 'automodchannels', null);
+        client.settings.delete(interaction.guild.id);
+        return interaction.update(buildChannelsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+    }
+
+    // ── Log ──
+    if (id === 'automod_log_set') {
+        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_log').setPlaceholder(_T('admin_logSelect')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement]).setMinValues(1).setMaxValues(1);
+        return interaction.update({ components: [new ActionRowBuilder().addComponents(sel)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+    }
+    if (id === 'automod_log_remove') {
+        client.updateServerSetting(interaction.guild.id, 'automodlog', null);
+        client.settings.delete(interaction.guild.id);
+        return interaction.update(buildLogCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+    }
+
+    // ── Raid ──
+    if (id === 'automod_raid_enable' || id === 'automod_raid_disable') {
+        if (!require('./premium.js').isPremium(client.db, interaction.guild.id)) {
+            return interaction.reply({ content: _T('admin_raidPremiumRequired'), flags: 64 });
+        }
+        const en = id === 'automod_raid_enable' ? 1 : 0;
+        client.db.prepare('UPDATE server_settings SET raid_enabled = ? WHERE guild_id = ?').run(en, interaction.guild.id);
+        return interaction.update(buildRaidCard(client, interaction.guild, client.db));
+    }
+    if (id === 'automod_raid_threshold') {
+        return interaction.showModal(new ModalBuilder().setCustomId('automod_modal_raid_threshold').setTitle(_T('admin_raidModalThresholdTitle')).addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('value').setLabel(_T('admin_raidModalThresholdLabel')).setPlaceholder(_T('admin_raidModalThresholdHint')).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(3))));
+    }
+    if (id === 'automod_raid_minage') {
+        return interaction.showModal(new ModalBuilder().setCustomId('automod_modal_raid_minage').setTitle(_T('admin_raidModalMinAgeTitle')).addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('value').setLabel(_T('admin_raidModalMinAgeLabel')).setPlaceholder(_T('admin_raidModalMinAgeHint')).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(3))));
+    }
+    return false;
+}
+
+async function handleAdminModal(interaction, client) {
+    const id = interaction.customId;
+    const _T = (k, v) => _adminT(client, interaction.guild, k, v);
+    const raw = (k) => String(interaction.fields.getTextInputValue(k) || '').trim();
+
+    if (id === 'automod_modal_domains_add' || id === 'automod_modal_domains_remove') {
+        const domain = raw('domain').toLowerCase().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain)) {
+            return interaction.reply({ content: _T('admin_domainsInvalid'), flags: 64 });
+        }
+        const ss = client.getServerSettings(interaction.guild.id);
+        const list = parseDomainWhitelist(ss?.autoModDomains);
+        if (id === 'automod_modal_domains_add') {
+            if (list.includes(domain)) return interaction.reply({ content: _T('admin_domainsAlready', { domain }), flags: 64 });
+            const nw = ss?.autoModDomains ? `${ss.autoModDomains},${domain}` : domain;
+            client.updateServerSetting(interaction.guild.id, 'automoddomains', nw);
+        } else {
+            if (!list.includes(domain)) return interaction.reply({ content: _T('admin_domainsNotFound', { domain }), flags: 64 });
+            const nw = list.filter(d => d !== domain).join(',');
+            client.updateServerSetting(interaction.guild.id, 'automoddomains', nw || null);
+        }
+        client.settings.delete(interaction.guild.id);
+        await interaction.update(buildDomainsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+        return interaction.followUp({ content: id === 'automod_modal_domains_add' ? _T('admin_domainsAdded', { domain }) : _T('admin_domainsRemoved', { domain }), flags: 64 });
+    }
+
+    if (id === 'automod_modal_raid_threshold' || id === 'automod_modal_raid_minage') {
+        const n = parseInt(raw('value'), 10);
+        if (!Number.isFinite(n) || n < 0 || n > 999) return interaction.reply({ content: '❌ 0–999', flags: 64 });
+        if (id === 'automod_modal_raid_threshold') {
+            client.db.prepare('UPDATE server_settings SET raid_threshold = ? WHERE guild_id = ?').run(n, interaction.guild.id);
+        } else {
+            client.db.prepare('UPDATE server_settings SET raid_min_age_days = ? WHERE guild_id = ?').run(n, interaction.guild.id);
+        }
+        await interaction.update(buildRaidCard(client, interaction.guild, client.db));
+        return interaction.followUp({ content: id === 'automod_modal_raid_threshold' ? _T('admin_raidThresholdSet', { n }) : _T('admin_raidMinAgeSet', { n }), flags: 64 });
+    }
+    return false;
+}
+
+async function handleAdminSelect(interaction, client) {
+    const id = interaction.customId;
+    const _T = (k, v) => _adminT(client, interaction.guild, k, v);
+    const picked = interaction.values?.[0];
+    if (!picked) return interaction.update(buildStatusCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+
+    const ss = client.getServerSettings(interaction.guild.id);
+
+    if (id === 'automod_select_channels_add') {
+        const raw = ss?.automodChannels || ss?.automod_channels || '';
+        const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
+        if (list.includes(picked)) { await interaction.update(buildChannelsCard(client, interaction.guild, ss)); return interaction.followUp({ content: _T('admin_channelsAlready', { id: picked }), flags: 64 }); }
+        const nw = raw ? `${raw},${picked}` : picked;
+        client.updateServerSetting(interaction.guild.id, 'automodchannels', nw);
+        client.settings.delete(interaction.guild.id);
+        await interaction.update(buildChannelsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+        return interaction.followUp({ content: _T('admin_channelsAdded', { id: picked }), flags: 64 });
+    }
+    if (id === 'automod_select_channels_remove') {
+        const raw = ss?.automodChannels || ss?.automod_channels || '';
+        const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
+        if (!list.includes(picked)) { await interaction.update(buildChannelsCard(client, interaction.guild, ss)); return interaction.followUp({ content: _T('admin_channelsNotIn', { id: picked }), flags: 64 }); }
+        const nw = list.filter(c => c !== picked).join(',');
+        client.updateServerSetting(interaction.guild.id, 'automodchannels', nw || null);
+        client.settings.delete(interaction.guild.id);
+        await interaction.update(buildChannelsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+        return interaction.followUp({ content: _T('admin_channelsRemoved', { id: picked }), flags: 64 });
+    }
+    if (id === 'automod_select_log') {
+        client.updateServerSetting(interaction.guild.id, 'automodlog', picked);
+        client.settings.delete(interaction.guild.id);
+        await interaction.update(buildLogCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+        return interaction.followUp({ content: _T('admin_logSet', { id: picked }), flags: 64 });
+    }
+    return false;
+}
+
 // ═══════════════════════════════════════════════════════
 //  STATUS BUTTONS — Manage domains / View appeals
 // ═══════════════════════════════════════════════════════
@@ -1256,17 +1491,7 @@ async function handleStatusButton(interaction, client) {
     }
 
     if (id === 'automod_status_domains') {
-        const list = parseDomainWhitelist(ss?.autoModDomains);
-        const customList = list.length > 0 ? list.join(', ') : _T('admin_domainsCustomNone');
-        const view = v2card(0x5865F2, [
-            { text: `## 🌐 ${_T('admin_domainsTitle')}` },
-            { rule: true },
-            { text: `**${_T('admin_domainsDefaultLabel')}**\n${[...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ')}, …\n\n**${_T('admin_domainsCustomLabel')}**\n${customList}` },
-            { rule: true },
-            { text: _T('admin_domainsHint') },
-            { row: backBtn },
-        ]);
-        return interaction.update({ ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+        return interaction.update(buildDomainsCard(client, interaction.guild, ss));
     }
 
     if (id === 'automod_status_appeals') {
@@ -1760,6 +1985,18 @@ module.exports = {
 
     async handleStatusButton(interaction, client) {
         return await handleStatusButton(interaction, client);
+    },
+
+    async handleAdminButton(interaction, client) {
+        return await handleAdminButton(interaction, client);
+    },
+
+    async handleAdminModal(interaction, client) {
+        return await handleAdminModal(interaction, client);
+    },
+
+    async handleAdminSelect(interaction, client) {
+        return await handleAdminSelect(interaction, client);
     }
 };
 

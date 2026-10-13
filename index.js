@@ -1078,6 +1078,10 @@ function getServerSettings(guildId) {
             ai_enabled: settings.ai_enabled !== 0 ? 1 : 0,
             aiEnabled: settings.ai_enabled !== 0,
             autoModEnabled: settings.automod_enabled === 1,
+            autoModWhitelist: settings.automod_whitelist || null,
+            autoModSensitivity: settings.automod_sensitivity || 'medium',
+            autoModDomains: settings.automod_domains || null,
+            autoModLogChannel: settings.automod_log_channel || null,
             linkFilterEnabled: settings.link_filter_enabled === 1,
             inviteFilterEnabled: settings.invite_filter_enabled === 1,
             
@@ -1343,6 +1347,26 @@ function updateServerSetting(guildId, setting, value) {
         ticketautoclose: 'ticket_auto_close_hours',
         ticketcategories: 'ticket_categories_config',
         ticketlimit: 'ticket_limit_per_user',
+        // ── AutoMod + Raid (lowercase + snake_case aliases) ──
+        automoddomains:      'automod_domains',
+        automod_domains:     'automod_domains',
+        automodwhitelist:    'automod_whitelist',
+        automod_whitelist:   'automod_whitelist',
+        automodsensitivity:  'automod_sensitivity',
+        automod_sensitivity: 'automod_sensitivity',
+        automodchannels:     'automod_channels',
+        automod_channels:    'automod_channels',
+        automodlog:          'automod_log_channel',
+        automod_log_channel: 'automod_log_channel',
+        automodenabled:      'automod_enabled',
+        advancedautomod:     'advanced_automod',
+        linkfilterenabled:   'link_filter_enabled',
+        invitefilterenabled: 'invite_filter_enabled',
+        raidenabled:         'raid_enabled',
+        raidthreshold:       'raid_threshold',
+        raidwindow:          'raid_window',
+        raidaction:          'raid_action',
+        raidminagedays:      'raid_min_age_days',
     };
     
     // ✅ SECURE: Strict whitelist validation
@@ -4406,6 +4430,29 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             const am = require('./plugins/automod.js');
             if (am.handleStatusButton) await am.handleStatusButton(interaction, client);
         } catch (e) { console.error('[AUTOMOD STATUS BTN]', e.message); }
+        return;
+    }
+
+    if (interaction.isButton() && (
+        interaction.customId.startsWith('automod_domains_') ||
+        interaction.customId.startsWith('automod_channels_') ||
+        interaction.customId.startsWith('automod_log_') ||
+        interaction.customId.startsWith('automod_raid_')
+    )) {
+        try { const am = require('./plugins/automod.js'); if (am.handleAdminButton) await am.handleAdminButton(interaction, client); }
+        catch (e) { console.error('[AUTOMOD ADMIN BTN]', e.message); }
+        return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('automod_modal_')) {
+        try { const am = require('./plugins/automod.js'); if (am.handleAdminModal) await am.handleAdminModal(interaction, client); }
+        catch (e) { console.error('[AUTOMOD ADMIN MODAL]', e.message); }
+        return;
+    }
+
+    if (interaction.isAnySelectMenu() && interaction.customId.startsWith('automod_select_')) {
+        try { const am = require('./plugins/automod.js'); if (am.handleAdminSelect) await am.handleAdminSelect(interaction, client); }
+        catch (e) { console.error('[AUTOMOD ADMIN SELECT]', e.message); }
         return;
     }
 
