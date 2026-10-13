@@ -2682,28 +2682,22 @@ client.once(Events.ClientReady, async () => {
                     const channel = await client.channels.fetch(settings.updatesChannel).catch(() => null);
                     if (!channel) continue;
 
-                    const { EmbedBuilder } = require('discord.js');
-
-                    const _set = String(settings.language || settings.lang || '').toLowerCase();
-                    const _src = (_set && _set !== 'auto') ? _set : String(channel.guild?.preferredLocale || 'en').toLowerCase();
-                    const _lang = ['fr','zh','ar'].find(l => _src.startsWith(l)) || 'en';
-                    let friendlyNotes = await getNotes(_lang);
-
-                    const embed = new EmbedBuilder()
-                        .setColor('#00f0ff')
-                        .setAuthor({ name: 'ARCHON CG-223 — New Update', iconURL: client.user.displayAvatarURL() })
-                        .setTitle({ fr: '🚀 Nouvelle mise à jour en ligne !', zh: '🚀 新版本已上线！', ar: '🚀 تحديث جديد متاح الآن!', en: '🚀 New update is live!' }[_lang])
-                        .setDescription(friendlyNotes)
-                        .addFields(
-                            { name: '🔖 Build', value: `\`${shortHash}\``, inline: true },
-                            { name: '📅 Released', value: `<t:${Math.floor(Date.now()/1000)}:D>`, inline: true },
-                            { name: '🌍 Origin', value: 'Bamako 🇲🇱', inline: true }
-                        )
-                        .setThumbnail(client.user.displayAvatarURL())
-                        .setFooter({ text: 'ARCHON CG-223 • Always cooking 🍳', iconURL: client.user.displayAvatarURL() })
-                        .setTimestamp();
-
-                    await channel.send({ embeds: [embed] });
+                    const _E = require('./config/emojis');
+                    const _v2 = require('./lib/games/v2');
+                    const _titleMap = { fr: 'Nouvelle mise à jour en ligne', zh: '新版本已上线', ar: 'تحديث جديد متاح الآن', en: 'New update is live' };
+                    const _title = `## ${_E.dashboard || '🚀'} ${_titleMap[_lang] || _titleMap.en}`;
+                    const _buildUrl = `https://github.com/MFOF7310/archon-bot/commit/${shortHash}`;
+                    const _footer = `-# [\`${shortHash}\`](${_buildUrl}) · ARCHON CG-223 • Always cooking 🍳`;
+                    const _card = _v2.card(0x00f0ff, [
+                        { text: `*ARCHON CG-223 · New Update*` },
+                        { text: _title },
+                        { rule: true },
+                        { text: friendlyNotes },
+                        { rule: true },
+                        { text: `${_E.check || '✅'} Build · \`${shortHash}\`\n${_E.clock || '🕐'} Released · <t:${Math.floor(Date.now()/1000)}:D>\n${_E.bamako || '🌍'} Origin · Bamako 🇲🇱` },
+                        { text: _footer },
+                    ]);
+                    await channel.send({ ..._card, allowedMentions: { parse: [] } });
                     notified++;
                 } catch (e) {
                     console.error(`[UPDATE BROADCAST] Failed for ${guildId}: ${e.message}`);
