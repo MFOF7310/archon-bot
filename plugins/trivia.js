@@ -128,7 +128,7 @@ function questionScreen(s) {
     { rule: true },
     ...q.a.map((ans, i) => ({ section: [`**${ans}**`, ui.button(`trivia_a${i}`, LETTERS[i], null, ui.ButtonStyle.Primary)] })),
     { rule: true },
-    { text: `${statsLine(s, s.index)}   ·   ${join(em('clock'), T('timeLeft'))}: ${ui.countdown(s.deadline)}\n${ui.progressBar(s.index, s.questions.length)}` },
+    { text: `${statsLine(s, s.index)}   ·   ${join(em('clock'), T('timeLeft'))}: ${ui.countdown(s.deadline)}\n${ui.progressBar(s.index, s.questions.length, Math.min(s.questions.length, 10))}` },
   ]);
 }
 
@@ -158,7 +158,7 @@ function resultsScreen(s, hasGames, o = {}) {
   const lines = [
     `## ${headline}`,
     `**${ui.clean(s.username)}** · ${n.cat} · ${n.diff}`, '',
-    `${ui.progressBar(s.correct, total)}  ${Q('summary', { correct: s.correct, total, accuracy, streak: s.maxStreak })}`, '',
+    `${ui.progressBar(s.correct, total, Math.min(total, 10))}  ${Q('summary', { correct: s.correct, total, accuracy, streak: s.maxStreak })}`, '',
     Q('earned', { reward: ui.rewardText(s.lang, s.paid) }),
   ];
   if (s.levelUp) {

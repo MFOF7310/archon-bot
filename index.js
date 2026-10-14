@@ -2684,6 +2684,10 @@ client.once(Events.ClientReady, async () => {
 
                     const _E = require('./config/emojis');
                     const _v2 = require('./lib/games/v2');
+                    const _set = String(settings.language || settings.lang || '').toLowerCase();
+                    const _src = (_set && _set !== 'auto') ? _set : String(channel.guild?.preferredLocale || 'en').toLowerCase();
+                    const _lang = ['fr','zh','ar'].find(l => _src.startsWith(l)) || 'en';
+                    const friendlyNotes = await getNotes(_lang);
                     const _titleMap = { fr: 'Nouvelle mise à jour en ligne', zh: '新版本已上线', ar: 'تحديث جديد متاح الآن', en: 'New update is live' };
                     const _title = `## ${_E.dashboard || '🚀'} ${_titleMap[_lang] || _titleMap.en}`;
                     const _buildUrl = (() => {
