@@ -3670,6 +3670,17 @@ setInterval(async () => {
         console.error(`${red}[TIKTOK]${reset} Engine failed to start: ${err.message}`);
     }
 
+    // ================= YOUTUBE LIVE + UPLOAD ENGINE =================
+    try {
+        const ytModule = require('./plugins/livestream.js');
+        if (ytModule.startPolling) {
+            ytModule.startPolling(client, db);
+            console.log(`${green}[YOUTUBE]${reset} Polling engine active · priority 2min · normal 5min`);
+        }
+    } catch (err) {
+        console.error(`${red}[YOUTUBE]${reset} Engine failed to start: ${err.message}`);
+    }
+
 
     try {
         require('./plugins/scrim.js').startScrimReminders(client);
@@ -4142,13 +4153,31 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // SLASH COMMAND EXECUTION
     // Autocomplete handler
     if (interaction.isAutocomplete()) {
-        const command = client.commands.get(interaction.commandName);
-        if (command?.autocomplete) {
-            try {
-                await command.autocomplete(interaction, client);
-            } catch(e) {
-                await interaction.respond([]).catch(() => {});
+        // Resolve by name or alias so autocomplete works even when invoked via a shortcut.
+        const command = client.commands?.get(interaction.commandName)
+            || client.commands?.get(client.aliases?.get?.(interaction.commandName));
+
+        // No handler? Always respond so Discord never shows "did not respond".
+        if (!command?.autocomplete) {
+            await interaction.respond([]).catch(() => {});
+            return;
+        }
+
+        const t0 = Date.now();
+        try {
+            await command.autocomplete(interaction, client);
+            // Safety net: a plugin that forgot to respond would otherwise time out.
+            if (!interaction.responded) await interaction.respond([]).catch(() => {});
+        } catch (e) {
+            // Only respond if we still can. A double-respond is worse than silence.
+            if (!interaction.responded) await interaction.respond([]).catch(() => {});
+            // Log real failures, ignore the harmless "already responded" noise.
+            if (!/already\s*(responded|been)/i.test(e.message)) {
+                console.error(`[AUTOCOMPLETE] ${interaction.commandName} failed after ${Date.now() - t0}ms:`, e.message);
             }
+        } finally {
+            const took = Date.now() - t0;
+            if (took > 2500) console.warn(`[AUTOCOMPLETE] ${interaction.commandName} slow: ${took}ms`);
         }
         return;
     }

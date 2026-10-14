@@ -718,12 +718,12 @@ module.exports = {
             .addChannelOption(o => o.setName('channel').setDescription('Channel for notifications').setRequired(true).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
             .addBooleanOption(o => o.setName('force').setDescription('Skip validation if TikTok blocks verification').setRequired(false)))
         .addSubcommand(sub => sub.setName('remove').setDescription('Remove TikTok tracking')
-            .addStringOption(o => o.setName('username').setDescription('Username to remove').setRequired(true)))
+            .addStringOption(o => o.setName('username').setDescription('Username to remove').setRequired(true).setAutocomplete(true)))
         .addSubcommand(sub => sub.setName('list').setDescription('List tracked accounts'))
         .addSubcommand(sub => sub.setName('check').setDescription('Debug: manually check a TikTok user')
             .addStringOption(o => o.setName('username').setDescription('Username to check').setRequired(true)))
         .addSubcommand(sub => sub.setName('test').setDescription('Force-send a test live notification')
-            .addStringOption(o => o.setName('username').setDescription('Tracked username to test').setRequired(true))),
+            .addStringOption(o => o.setName('username').setDescription('Tracked username to test').setRequired(true).setAutocomplete(true))),
 
     // ─── PREFIX COMMAND HANDLER ───
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
@@ -924,6 +924,18 @@ if (action === 'test' || action === 'simulate') {
     },
 
     // ─── SLASH COMMAND HANDLER ───
+    async autocomplete(interaction, client) {
+        const guildId = interaction.guildId || interaction.guild?.id;
+        if (!guildId) return require('../lib/autocomplete').reply(interaction, []);
+        initDatabase(client.db);
+        const rows = client.db.prepare('SELECT tiktok_username, is_live FROM tiktok_notifications WHERE guild_id = ?').all(guildId);
+        const items = rows.map(r => ({
+            name: `@${r.tiktok_username}${r.is_live === 1 ? ' 🔴 live' : ''}`,
+            value: r.tiktok_username,
+        }));
+        return require('../lib/autocomplete').reply(interaction, items);
+    },
+
     execute: async (interaction, client) => {
         const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id);
         const subcommand = interaction.options.getSubcommand();

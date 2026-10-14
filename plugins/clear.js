@@ -1,3 +1,4 @@
+const { pickLang } = require('../lib/pick-lang');
 const { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
@@ -41,14 +42,14 @@ module.exports = {
 
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, database, serverSettings, usedCommand) => {
+        const lang = pickLang(client, message.guild?.id, null, message.author.id);
         
         // ================= PERMISSION CHECK =================
         const isArchitect = message.author.id === process.env.OWNER_ID;
         const hasPerms = message.member.permissions.has(PermissionFlagsBits.ManageMessages);
         
         if (!isArchitect && !hasPerms) {
-            const lang = serverSettings?.language || 'en';
-            const t = loadT(lang);
+            const t = loadT(pickLang(client, message.guild?.id, null, message.author.id));
             return message.reply({ content: t.accessDenied, flags: 64 });
         }
 
@@ -88,9 +89,7 @@ module.exports = {
         const targetUser = interaction.options.getUser('target');
         const reason = interaction.options.getString('reason') || 'No reason provided';
         
-        const lang = interaction.client.detectLanguage 
-            ? interaction.client.detectLanguage('/clear', interaction.guild?.language || 'en')
-            : 'en';
+        const lang = pickLang(interaction.client, interaction.guildId, interaction, interaction.user?.id);
         const t = loadT(lang);
         
         try {

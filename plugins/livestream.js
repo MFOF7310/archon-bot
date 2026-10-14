@@ -289,10 +289,10 @@ module.exports = {
             .addChannelOption(o => o.setName('target').setDescription('Where to post alerts').setRequired(true).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
             .addBooleanOption(o => o.setName('priority').setDescription('Poll every 2 min instead of 5').setRequired(false)))
         .addSubcommand(s => s.setName('remove').setDescription('Stop tracking')
-            .addStringOption(o => o.setName('channel').setDescription('Handle or ID').setRequired(true)))
+            .addStringOption(o => o.setName('channel').setDescription('Handle or ID').setRequired(true).setAutocomplete(true)))
         .addSubcommand(s => s.setName('list').setDescription('Show tracked channels'))
         .addSubcommand(s => s.setName('test').setDescription('Send a test live alert')
-            .addStringOption(o => o.setName('channel').setDescription('Tracked channel').setRequired(true))),
+            .addStringOption(o => o.setName('channel').setDescription('Tracked channel').setRequired(true).setAutocomplete(true))),
 
     async run(client, message, args, db, serverSettings, usedCommand, lang) {
         const prefix = serverSettings?.prefix || '.';
@@ -364,6 +364,21 @@ module.exports = {
         }
 
         return message.reply(`📺 **YouTube notifications**\n\`${prefix}livestream set @handle #channel [--priority]\`\n\`${prefix}livestream remove @handle\`\n\`${prefix}livestream list\`\n\`${prefix}livestream test @handle\``);
+    },
+
+    async autocomplete(interaction, client) {
+        const focused = String(interaction.options.getFocused() || '').trim();
+        const guildId = interaction.guildId || interaction.guild?.id;
+        const sub = interaction.options.getSubcommand();
+        if (!guildId) return require('../lib/autocomplete').reply(interaction, []);
+        initDatabase(client.db);
+        const rows = client.db.prepare('SELECT youtube_channel_id, youtube_handle FROM youtube_notifications WHERE guild_id = ?').all(guildId);
+        // exclude the subcommand's own context if needed (remove/test both want the full list)
+        const items = rows.map(r => ({
+            name: r.youtube_handle ? `@${r.youtube_handle} (${r.youtube_channel_id.slice(0, 8)}…)` : r.youtube_channel_id,
+            value: r.youtube_handle ? `@${r.youtube_handle}` : r.youtube_channel_id,
+        }));
+        return require('../lib/autocomplete').reply(interaction, items);
     },
 
     async execute(interaction, client) {
