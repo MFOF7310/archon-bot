@@ -11,7 +11,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 async function ytdlpRun(args) {
-    return await execFileAsync('yt-dlp', args);
+    return await execFileAsync('yt-dlp', ['--extractor-args', 'youtubetab:skip=authcheck', ...args]);
 }
 
 

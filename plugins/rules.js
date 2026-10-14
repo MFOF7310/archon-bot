@@ -126,40 +126,55 @@ async function sendRules(client, guild, channel, lang) {
     return 1;
 }
 
-function attachAcceptCollector(msg, client, gid) {
-    const c = msg.createMessageComponentCollector({ time: 24 * 60 * 60 * 1000 });
-    c.on('collect', async (i) => {
-        if (!i.customId.startsWith('rules_accept_')) return;
+function initRulesAccept(client) {
+    // Handler GLOBAL idempotent — survit aux restarts pm2
+    if (client._rulesAcceptHandlerReady) return;
+    client._rulesAcceptHandlerReady = true;
+
+    client.on('interactionCreate', async (i) => {
+        if (typeof i.isButton !== 'function' || !i.isButton()) return;
+        if (!i.customId || !i.customId.startsWith('rules_accept_')) return;
+        const gid = i.guildId;
+        if (!gid) return;
+
         try {
+            await i.deferReply({ flags: 64 });
             const db = client.db;
             ensureTable(db);
             const already = db.prepare('SELECT 1 FROM rules_acceptance WHERE guild_id = ? AND user_id = ?').get(gid, i.user.id);
             if (already) {
-                return i.reply({ content: t('rules.alreadyAccepted', 'en'), flags: 64 }).catch(() => {});
+                return i.editReply({ content: t('rules.alreadyAccepted', 'en') }).catch(() => {});
             }
             const row = getRow(db, gid);
             const lang = OKL.includes(client.getServerSettings?.(gid)?.language) ? client.getServerSettings(gid).language : 'en';
             if (!row.accept_role_id) {
-                return i.reply({ content: t('rules.needAcceptRole', lang), flags: 64 }).catch(() => {});
+                return i.editReply({ content: t('rules.needAcceptRole', lang) }).catch(() => {});
             }
             const member = await i.guild.members.fetch(i.user.id).catch(() => null);
             const role = i.guild.roles.cache.get(row.accept_role_id);
             if (!member || !role) {
-                return i.reply({ content: t('rules.acceptFailed', lang), flags: 64 }).catch(() => {});
+                return i.editReply({ content: t('rules.acceptFailed', lang) }).catch(() => {});
             }
             await member.roles.add(role, 'Accepted server rules').catch(() => {});
             db.prepare('INSERT OR IGNORE INTO rules_acceptance (guild_id, user_id, accepted_at) VALUES (?, ?, ?)')
                 .run(gid, i.user.id, Math.floor(Date.now() / 1000));
-            return i.reply({ content: t('rules.acceptSuccess', lang), flags: 64 }).catch(() => {});
+            return i.editReply({ content: t('rules.acceptSuccess', lang) }).catch(() => {});
         } catch (e) {
             console.error('[RULES ACCEPT]', e.message);
-            await i.reply({ content: '❌ Error', flags: 64 }).catch(() => {});
+            if (i.deferred || i.replied) await i.editReply({ content: '❌ Error' }).catch(() => {});
+            else await i.reply({ content: '❌ Error', flags: 64 }).catch(() => {});
         }
     });
 }
 
+// Backward compat: appelé depuis le chemin prefix
+function attachAcceptCollector(_msg, client, _gid) {
+    initRulesAccept(client);
+}
+
 module.exports = {
     name: 'rules',
+    init: initRulesAccept,
     aliases: ['regles', 'règles', 'qawanin'],
     description: '📜 Display server rules (customizable per server)',
     category: 'SYSTEM',

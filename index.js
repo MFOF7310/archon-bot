@@ -2326,6 +2326,10 @@ client.loadPlugins = async () => {
 
             if (command.name && (command.run || command.execute)) {
                 client.commands.set(command.name, command);
+                if (typeof command.init === 'function') {
+                    try { await command.init(client, client.db); }
+                    catch (e) { console.error('[PLUGIN INIT]', file, e.message); }
+                }
                 if (command.aliases && Array.isArray(command.aliases)) {
                     command.aliases.forEach(a => client.aliases.set(a, command.name));
                 }
