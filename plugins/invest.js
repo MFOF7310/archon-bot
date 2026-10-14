@@ -221,6 +221,7 @@ module.exports = {
     },
 
     execute: async (interaction, client) => {
+        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id);
         await interaction.deferReply().catch(() => {});
         const subcommand = interaction.options.getSubcommand();
         let args = [];

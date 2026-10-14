@@ -925,6 +925,7 @@ if (action === 'test' || action === 'simulate') {
 
     // ─── SLASH COMMAND HANDLER ───
     execute: async (interaction, client) => {
+        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id);
         const subcommand = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
         const db = client.db;

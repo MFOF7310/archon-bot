@@ -172,6 +172,7 @@ module.exports = {
     },
 
     execute: async (interaction, client) => {
+        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id);
 
         const tr = (k, v) => i18n.t(`build.${k}`, lang, v);
         if (!interaction.guild) {

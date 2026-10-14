@@ -527,6 +527,7 @@ module.exports = {
 
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
+        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user.id);
         try {
             // PER-SERVER: Extract guildId for composite key lookups
             const guildId = interaction.guild?.id || 'DM';

@@ -180,6 +180,7 @@ module.exports = {
 
     // ================= SLASH HANDLER =================
     execute: async (interaction, client) => {
+        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id);
         const ARCHITECT_ID = process.env.OWNER_ID;
 
         const t = loadT(lang);

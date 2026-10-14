@@ -239,6 +239,13 @@ client.formatNumber = formatNumber;
 console.log(`${green}[LANGUAGE]${reset} Universal pattern-based detection initialized`);
 
 // --- SQLITE DATABASE ---
+function parseEmoji(str) {
+    if (!str) return undefined;
+    const m = String(str).match(/<(a?):([^:]+):(\d+)>/);
+    if (!m) return str;
+    return { animated: !!m[1], name: m[2], id: m[3] };
+}
+
 const Database = require('better-sqlite3');
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -3510,33 +3517,81 @@ setInterval(async () => {
                 else if (hoursSinceReady < 12) availabilityStatus = `  Overdue ${hoursSinceReady}h`;
                 else                           availabilityStatus = `  Overdue ${hoursSinceReady}h — don't lose your streak!`;
 
-                const supremeEmbed = new EmbedBuilder()
-                    .setColor(streakColor)
-                    .setAuthor({ name: `🦅 ARCHON CG-223 • DAILY REWARDS READY`, iconURL: client.user.displayAvatarURL() })
-                    .setTitle(`${greetingEmoji} ${greeting}, ${discordUser.username}!`)
-                    .setDescription(`Your neural receptors have been replenished and are ready for a new injection.\n\n> *Claim your daily rewards before the next reset cycle begins.*`)
-                    .addFields(
-                        { name: '💰 **ESTIMATED REWARD**', value: `\`\`\`\nBase Reward:    ${baseReward} 🪙\nStreak Bonus:   +${streakBonus} 🪙\nLevel Bonus:    +${levelBonus} 🪙\nMarket (${trendEmoji}):  x${marketMultiplier.toFixed(2)}\n━━━━━━━━━━━━━━━━━━━━\nTOTAL:          ${estimatedReward} 🪙\n\`\`\``, inline: false },
-                        { name: `${streakEmoji} **STREAK: ${streakStatus}**`, value: `📊 **Current Streak:** ${streakDays} day${streakDays !== 1 ? 's' : ''}\n🏆 **Best Streak:** ${user.highest_streak || 0} days\n🛡️ **Protections:** ${user.streak_protections || 0}\n📅 **Total Claims:** ${user.total_dailies || 0}`, inline: true },
-                        { name: '🎯 **YOUR PROFILE**', value: `⭐ **Level:** ${user.level || 1}\n💰 **Balance:** ${(user.credits || 0).toLocaleString()} 🪙\n💬 **Messages:** ${(user.total_messages || 0).toLocaleString()}`, inline: true },
-                        { name: '⏰ **STATUS**', value: `${availabilityStatus}\n\n📌 **Claim Command:**\n\`${prefix}daily\``, inline: false },
-                        { name: '🏛️ **WHERE TO CLAIM**', value: guild ? `**${guildName}**\nUse \`${prefix}daily\` in any channel!` : `Use \`${prefix}daily\` in any server!`, inline: false },
-                        { name: '💡 **STREAK MASTERY TIPS**', value: `🛡️ **Shield:** \`${prefix}shop\` → Buy Streak Shield (2,000 🪙)\n🔥 **7 Days:** Unlock +50% bonus credits\n🛡️ **30 Days:** Exclusive Elite role\n💎 **100 Days:** Premium rewards tier\n👑 **365 Days:** Legendary status + custom role`, inline: false },
-                        { name: '🌐 **DASHBOARD**', value: '[**bamako-steel-dev.xyz**](https://bamako-steel-dev.xyz)', inline: false }
-                    )
-                    .setThumbnail(discordUser.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setFooter({ text: `🦅 ARCHON CG-223 • bamako-steel-dev.xyz • ${guildName}`, iconURL: guildIcon })
-                    .setTimestamp();
+                // ── Warmer copy + streak progress ──
+                const _E = require('./config/emojis');
+                const _v2 = require('./lib/games/v2');
+                const _ui = require('./lib/games/ui');
+
+                // Streak milestone ladder
+                const _milestones = [
+                    { days: 3,   name: 'ACTIVE',    emoji: '🔥' },
+                    { days: 7,   name: 'VETERAN',   emoji: '⚔️' },
+                    { days: 30,  name: 'ELITE',     emoji: '🛡️' },
+                    { days: 100, name: 'MYTHIC',    emoji: '💎' },
+                    { days: 365, name: 'LEGENDARY', emoji: '👑' },
+                ];
+                let _curIdx = -1;
+                for (let _i = 0; _i < _milestones.length; _i++) if (streakDays >= _milestones[_i].days) _curIdx = _i;
+                const _cur = _curIdx >= 0 ? _milestones[_curIdx] : null;
+                const _nxt = _milestones.find(m => streakDays < m.days) || null;
+                let _streakLine;
+                if (_nxt) {
+                    const floor = _cur ? _cur.days : 0;
+                    const span = _nxt.days - floor;
+                    const pct = Math.round(((streakDays - floor) / span) * 100);
+                    const bar = _ui.progressBar(streakDays - floor, span, 10);
+                    const done = _milestones.filter(m => streakDays >= m.days).map(m => `✓${m.days}d`).join(' · ');
+                    const rest = _milestones.filter(m => streakDays < m.days).map(m => `${m.emoji}${m.days}d`).join(' · ');
+                    _streakLine = `\`${bar}\` **${pct}%** → ${_nxt.emoji} **${_nxt.name}** (${_nxt.days - streakDays}d left)\n-# ${done ? done + ' · ' : ''}${rest}`;
+                } else {
+                    _streakLine = `*Maximum tier reached — you are a LEGEND.*`;
+                }
+
+                // Warmer availability
+                let _ready;
+                if (hoursSinceReady < 1) _ready = 'Just became available';
+                else if (hoursSinceReady < 3) _ready = `Ready for ${hoursSinceReady}h ${minutesSinceReady}m`;
+                else if (hoursSinceReady < 6) _ready = `${hoursSinceReady}h in — grab it soon`;
+                else if (hoursSinceReady < 12) _ready = `${hoursSinceReady}h overdue`;
+                else _ready = `${hoursSinceReady}h overdue — don't let the streak slip`;
+
+                // Profile URL — takes them to their data, not the homepage
+                const _profileUrl = `https://bamako-steel-dev.xyz/user/${user.id}?guild=${guild?.id || ''}`;
+
+                // Warmer description
+                const _warm = hoursSinceReady < 3
+                    ? `Your daily on **${guildName}** just landed. Come collect it while it's fresh.`
+                    : hoursSinceReady < 12
+                    ? `Your daily on **${guildName}** is waiting. The cycle moves on, and so does your streak.`
+                    : `Your daily on **${guildName}** is overdue. One more day missed and the streak resets.`;
+
+                const _card = _v2.card(parseInt(streakColor.replace('#',''), 16), [
+                    { text: `*${_E.eagle || '🦅'} ARCHON CG-223 · Daily Reminder*` },
+                    { text: `## ${greetingEmoji} ${greeting}, ${discordUser.username}` },
+                    { text: `-# ${_warm}` },
+                    { rule: true },
+                    { text: `⏰ **${_ready}**` },
+                    { text: `${streakEmoji} **${streakStatus}** · **${streakDays} day${streakDays !== 1 ? 's' : ''}** in a row\n${_streakLine}` },
+                    { rule: true },
+                    { text: `${_E.coins || '🪙'} **Estimated: +${estimatedReward.toLocaleString()}**` },
+                    { text: `-# Base ${baseReward} · Streak +${streakBonus} · Level +${levelBonus} · Market ${trendEmoji} ×${marketMultiplier.toFixed(2)}` },
+                    { rule: true },
+                    { text: `**Your stats**\n⭐ Lv.${user.level || 1} · 💬 ${(user.total_messages || 0).toLocaleString()} messages\n🏆 Best ${user.highest_streak || 0}d · 🛡️ ${user.streak_protections || 0} shield${(user.streak_protections || 0) !== 1 ? 's' : ''} · 📅 ${user.total_dailies || 0} claims` },
+                    { rule: true },
+                    { text: `📌 Use \`${prefix}daily\` in **${guildName}** to claim.` },
+                    { text: `-# ${_E.website || '🌐'} [Open your profile](${_profileUrl}) · BAMAKO-223 · v${client.version || '3.1.1'}` },
+                ]);
 
                 const actionRow = new ActionRowBuilder()
                     .addComponents(
-                        new ButtonBuilder().setLabel(`Claim in ${guildName.substring(0, 20)}`).setStyle(ButtonStyle.Link).setURL(guild ? `https://discord.com/channels/${guild.id}/${settings?.dailyChannel || guild.systemChannelId || guild.id}` : 'https://discord.com').setEmoji('🏛️'),
-                        new ButtonBuilder().setCustomId(`dm_streak_info_${user.id}`).setLabel('Streak Rewards').setStyle(ButtonStyle.Primary).setEmoji('🔥'),
-                        new ButtonBuilder().setCustomId(`dm_shop_${user.id}`).setLabel('Buy Shield').setStyle(ButtonStyle.Success).setEmoji('🛡️')
+                        new ButtonBuilder().setLabel(`Claim in ${guildName.substring(0, 20)}`).setStyle(ButtonStyle.Link).setURL(guild ? `https://discord.com/channels/${guild.id}/${settings?.dailyChannel || guild.systemChannelId || guild.id}` : 'https://discord.com').setEmoji(parseEmoji(_E.eagle) || '🏛️'),
+                        new ButtonBuilder().setCustomId(`dm_streak_info_${user.id}`).setLabel('Streak rewards').setStyle(ButtonStyle.Primary).setEmoji(parseEmoji(_E.streak) || '🔥'),
+                        new ButtonBuilder().setCustomId(`dm_shop_${user.id}`).setLabel('Buy shield').setStyle(ButtonStyle.Success).setEmoji('🛡️'),
+                        new ButtonBuilder().setLabel('Dashboard').setStyle(ButtonStyle.Link).setURL(_profileUrl).setEmoji(parseEmoji(_E.website) || '🌐')
                     );
 
                 try {
-                    await discordUser.send({ embeds: [supremeEmbed], components: [actionRow] });
+                    await discordUser.send({ ..._card, components: [..._card.components, actionRow] });
                     sent++;
                     db.prepare('UPDATE users SET last_reminder = ? WHERE id = ? AND guild_id = ?').run(now, user.id, user.guild_id);
                     console.log(`${green}[DM REMINDER]${reset}   ${discordUser.username} @ ${guildName} • Streak: ${streakDays}d • +${estimatedReward} 🪙`);
