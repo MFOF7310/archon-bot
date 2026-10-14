@@ -22,7 +22,7 @@
   "strikeDmTitleBan": "你已被封禁",
   "strikeDmTitleTimeout": "你已被禁言",
   "strikeDmTitleWarn": "你收到一条警告",
-  "strikeDmDesc": "{emoji} **{title}**\n\n你的消息已被服务器的自动审核移除。\n这不是针对你个人：这样做是为了让每个人都有愉快的体验。\n\n**规则：** {rule}\n**发生了什么：** {violation}\n**我采取的措施：** {action}\n\n**违规次数：** {bar} {n}/4\n**下次：** {next}\n\n觉得处理有误？点击下方的 **申诉** 按钮，\n或直接联系 {contact}。",
+  "strikeDmDesc": "你的消息已被服务器的自动审核移除。\n这不是针对你个人：这样做是为了让每个人都有愉快的体验。\n\n**规则：** {rule}\n**发生了什么：** {violation}\n**我采取的措施：** {action}\n\n**违规次数：** {bar} {n}/4\n**下次：** {next}\n\n觉得处理有误？点击下方的 **申诉** 按钮，\n或直接联系 {contact}。",
   "strikeContactFallback": "一位服务器管理员",
   "strikeDmFooter": "ARCHON CG-223 • 每个服务器每天可申诉一次",
   "strikeBtnAppeal": "申诉",

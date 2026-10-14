@@ -22,7 +22,7 @@
   "strikeDmTitleBan": "Tu as été banni",
   "strikeDmTitleTimeout": "Tu as été exclu temporairement",
   "strikeDmTitleWarn": "Tu as reçu un avertissement",
-  "strikeDmDesc": "{emoji} **{title}**\n\nTon message a été supprimé par la modération automatique du serveur.\nCe n'est rien de personnel : ça sert à garder un espace agréable pour tout le monde.\n\n**Règle :** {rule}\n**Ce qui s'est passé :** {violation}\n**Ce que j'ai fait :** {action}\n\n**Avertissements :** {bar} {n} sur 4\n**La prochaine fois :** {next}\n\nTu penses que c'est une erreur ? Appuie sur **Contester** ci-dessous,\nou contacte directement {contact}.",
+  "strikeDmDesc": "Ton message a été supprimé par la modération automatique du serveur.\nCe n'est rien de personnel : ça sert à garder un espace agréable pour tout le monde.\n\n**Règle :** {rule}\n**Ce qui s'est passé :** {violation}\n**Ce que j'ai fait :** {action}\n\n**Avertissements :** {bar} {n} sur 4\n**La prochaine fois :** {next}\n\nTu penses que c'est une erreur ? Appuie sur **Contester** ci-dessous,\nou contacte directement {contact}.",
   "strikeContactFallback": "un administrateur du serveur",
   "strikeDmFooter": "ARCHON CG-223 • Une contestation par serveur et par jour",
   "strikeBtnAppeal": "Contester",

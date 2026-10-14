@@ -419,20 +419,26 @@ async function takeAction(message, violations, client, db) {
         const appealContact = guildOwner ? `<@${guildOwner.id}>` : _t('strikeContactFallback');
         const actionEmoji = outcome === 'ban' ? require('../config/emojis').banAlert : outcome === 'timeout' ? require('../config/emojis').lock : require('../config/emojis').warning;
         const strikeNext = _next(displayWc);
-        const dm = new EmbedBuilder()
-            .setColor(actionColor)
-            .setAuthor({ name: message.guild.name, iconURL: message.guild.iconURL({ size: 64 }) || ICON })
-            .setDescription(_t('strikeDmDesc', {
-                emoji: actionEmoji,
-                title: _t(outcome === 'ban' ? 'strikeDmTitleBan' : outcome === 'timeout' ? 'strikeDmTitleTimeout' : 'strikeDmTitleWarn'),
-                rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t),
-                action: (outcome === 'timeout' || outcome === 'ban') ? actionText : _t('strikeMemberWarn'),
-                bar: strikeBar(displayWc), n: displayWc, next: strikeNext, contact: appealContact
-            }))
-            .setFooter({ text: _t('strikeDmFooter'), iconURL: ICON })
-            .setTimestamp();
+        const _v2 = require('../lib/games/v2');
+        const _E  = require('../config/emojis');
 
-        // ── FIX 2: Appeal button in the punishment DM ──
+        // Header emoji + translated title (lang keys kept, string interpolation preserved)
+        const _titleKey = outcome === 'ban' ? 'strikeDmTitleBan' : outcome === 'timeout' ? 'strikeDmTitleTimeout' : 'strikeDmTitleWarn';
+        const _titleText = _t(_titleKey);
+
+        // Reuse the existing strikeDmDesc but strip emoji + title (they go in the header)
+        const _body = _t('strikeDmDesc', {
+            emoji: '',
+            title: '',
+            rule: ruleName(violations[0], _t),
+            violation: ruleReason(violations[0], _t),
+            action: (outcome === 'timeout' || outcome === 'ban') ? actionText : _t('strikeMemberWarn'),
+            bar: strikeBar(displayWc),
+            n: displayWc,
+            next: strikeNext,
+            contact: appealContact,
+        }).replace(/^\s*[\n\r]+/, '').replace(/\n{3,}/g, '\n\n').trim();
+
         const appealRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`automod_appeal_${uid}_${gid}`)
@@ -442,13 +448,30 @@ async function takeAction(message, violations, client, db) {
             new ButtonBuilder()
                 .setLabel(_t('strikeBtnRules'))
                 .setStyle(ButtonStyle.Link)
-                .setURL(`https://discord.com/channels/${gid}`)
+                .setURL(`https://discord.com/channels/${gid}`),
         );
 
-        await message.author.send({ embeds: [dm], components: [appealRow] }).catch(() => {
-            // If DM fails, that's fine — user can still type "appeal" manually
+        const _accent = typeof actionColor === 'string' && actionColor.startsWith('#')
+            ? parseInt(actionColor.slice(1), 16)
+            : (typeof actionColor === 'number' ? actionColor : 0x2F3136);
+        const _card = _v2.card(
+            _accent,
+            [
+                { text: `*${_E.eagle || '🦅'} ARCHON CG-223 · Enforcement*` },
+                { text: `## ${actionEmoji} ${_titleText}` },
+                { rule: true },
+                { text: _body },
+                { text: `-# ${_t('strikeDmFooter')}` },
+                { row: appealRow },
+            ]
+        );
+
+        await message.author.send({ ..._card }).catch((e) => {
+            console.error(`[AUTOMOD DM] send failed for ${message.author.tag}: ${e.message}`);
         });
-    } catch (e) {}
+    } catch (e) {
+        console.error(`[AUTOMOD DM] card build failed for ${message.author.tag}: ${e.message}`);
+    }
 
     try {
         const notif = await message.channel.send({
@@ -466,15 +489,25 @@ async function takeAction(message, violations, client, db) {
         if (logCh && require('../lib/canPost').log(message.guild, logCh, message.guild.members.me, 'automod-log').ok) {
             const bar = strikeBar(displayWc);
             const next = _next(displayWc);
-            const log = new EmbedBuilder()
-                .setColor(actionColor)
-                .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
-                .setDescription(_t('strikeLogDesc', { emoji: require('../config/emojis').mod_sign, action: actionText, member: `${message.author}`, uid, rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t), channel: `<#${message.channel.id}>` }))
-                .setFooter({ text: _t('strikeLogFooter', { bar, n: displayWc, next }), iconURL: client.user.displayAvatarURL() })
-                .setTimestamp();
-            if (repeatV?.channels?.length > 1) log.addFields({ name: _t('strikeLabelCross'), value: repeatV.channels.map(c => `<#${c}>`).join(' '), inline: false });
-            if (whyNot) log.addFields({ name: _t('strikeLabelWhy'), value: whyNot, inline: false });
-            await logCh.send({ embeds: [log] }).catch(() => {});
+            const _v2 = require('../lib/games/v2');
+            const _E  = require('../config/emojis');
+
+            const _extra = [];
+            if (repeatV?.channels?.length > 1) _extra.push(`**${_t('strikeLabelCross')}** · ${repeatV.channels.map(c => `<#${c}>`).join(' ')}`);
+            if (whyNot) _extra.push(`**${_t('strikeLabelWhy')}** · ${whyNot}`);
+
+            const _logItems = [
+                { text: `*${_E.eagle || '🦅'} ARCHON CG-223 · Enforcement Log*` },
+                { text: `## ${_E.mod_sign || '⚖️'} ${actionText}` },
+                { rule: true },
+                { text: _t('strikeLogDesc', { emoji: '', action: '', member: `${message.author}`, uid, rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t), channel: `<#${message.channel.id}>` }).replace(/^\s*[\n\r]+/, '').trim() },
+            ];
+            if (_extra.length) _logItems.push({ text: _extra.join('\n') });
+            _logItems.push({ rule: true });
+            _logItems.push({ text: `-# ${_t('strikeLogFooter', { bar, n: displayWc, next })}` });
+
+            const _logCard = _v2.card((typeof actionColor === 'string' && actionColor.startsWith('#') ? parseInt(actionColor.slice(1), 16) : (typeof actionColor === 'number' ? actionColor : 0x2F3136)), _logItems);
+            await logCh.send({ ..._logCard }).catch(() => {});
         }
     }
 

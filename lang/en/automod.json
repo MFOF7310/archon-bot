@@ -22,7 +22,7 @@
   "strikeDmTitleBan": "You were banned",
   "strikeDmTitleTimeout": "You were timed out",
   "strikeDmTitleWarn": "You got a warning",
-  "strikeDmDesc": "{emoji} **{title}**\n\nYour message was removed by the server's automatic moderation.\nThis isn't personal: it keeps things pleasant for everyone.\n\n**Rule:** {rule}\n**What happened:** {violation}\n**What I did:** {action}\n\n**Strike:** {bar} {n} of 4\n**Next time:** {next}\n\nThink this was a mistake? Press **Appeal** below,\nor contact {contact} directly.",
+  "strikeDmDesc": "Your message was removed by the server's automatic moderation.\nThis isn't personal: it keeps things pleasant for everyone.\n\n**Rule:** {rule}\n**What happened:** {violation}\n**What I did:** {action}\n\n**Strike:** {bar} {n} of 4\n**Next time:** {next}\n\nThink this was a mistake? Press **Appeal** below,\nor contact {contact} directly.",
   "strikeContactFallback": "a server administrator",
   "strikeDmFooter": "ARCHON CG-223 • One appeal per server per day",
   "strikeBtnAppeal": "Appeal",
