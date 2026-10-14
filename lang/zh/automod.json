@@ -32,7 +32,7 @@
   "strikeNextBan": "封禁",
   "strikeNextMax": "已达上限",
   "strikeNotice": "{emoji} **{user}** 的一条消息已被移除（{rule}）。",
-  "strikeLogDesc": "{emoji} **{action}**\n\n**成员：** {member} `{uid}`\n**规则：** {rule}\n**发生了什么：** {violation}\n**频道：** {channel}",
+  "strikeLogDesc": "**成员：** {member} `{uid}`\n**规则：** {rule}\n**发生了什么：** {violation}\n**频道：** {channel}",
   "strikeLogFooter": "{bar}  违规 {n}/4  •  下次：{next}",
   "strikeLabelCross": "同时发布于",
   "strikeOwnerAuthor": "AutoMod：私人报告",
@@ -247,5 +247,10 @@
   "admin_btnEnable": "启用",
   "admin_btnDisable": "禁用",
   "admin_btnThreshold": "阈值",
-  "admin_btnMinAge": "最低年龄"
+  "admin_btnMinAge": "最低年龄",
+  "appeal_notYoursTitle": "不该由你来判",
+  "appeal_notYoursDesc": "只有所有者或管理员才能裁决此申诉。",
+  "decisionApproved": "已通过 — 取消一次处罚，解除禁言。",
+  "decisionRejected": "已审阅 — 维持处理，用户已收到通知。",
+  "decisionBanned": "申诉暂停 7 天，已增加处罚。"
 }

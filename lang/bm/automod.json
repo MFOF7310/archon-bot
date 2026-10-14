@@ -32,7 +32,7 @@
   "strikeNextBan": "",
   "strikeNextMax": "Banni",
   "strikeNotice": "{emoji} {user} — {rule} sariya tiɲɛlen don.",
-  "strikeLogDesc": "{emoji} **{action}**\n\n**Mɛmbɛ:** {member} `{uid}`\n**Sariya:** {rule}\n**Mun kɛra:** {violation}\n**Kanal:** {channel}",
+  "strikeLogDesc": "**Mɛmbɛ:** {member} `{uid}`\n**Sariya:** {rule}\n**Mun kɛra:** {violation}\n**Kanal:** {channel}",
   "strikeLogFooter": "{bar}  Strayik {n}/4  •  Nata: {next}",
   "strikeLabelCross": "Kanal caman",
   "strikeOwnerAuthor": "Automod: kunkɔnɔfoni",
@@ -247,5 +247,10 @@
   "admin_btnEnable": "Activer",
   "admin_btnDisable": "Désactiver",
   "admin_btnThreshold": "Seuil",
-  "admin_btnMinAge": "Âge min"
+  "admin_btnMinAge": "Âge min",
+  "appeal_notYoursTitle": "A tɛ i ka baara ye",
+  "appeal_notYoursDesc": "Kunkɔnɔfoni walima modérateur dɔrɔn bɛ se ka nin lajɛ.",
+  "decisionApproved": "A sɔngɔ — strayik dɔ bɔra, kɔlɔsi bɔra.",
+  "decisionRejected": "A lajɛlen — a bɛ to. A fɔra a ye.",
+  "decisionBanned": "Appel bilalen don 7. Strayik fara a kan."
 }

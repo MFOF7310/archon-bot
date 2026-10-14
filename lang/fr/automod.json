@@ -32,7 +32,7 @@
   "strikeNextBan": "un bannissement",
   "strikeNextMax": "Maximum atteint",
   "strikeNotice": "{emoji} Un message de **{user}** a été supprimé ({rule}).",
-  "strikeLogDesc": "{emoji} **{action}**\n\n**Membre :** {member} `{uid}`\n**Règle :** {rule}\n**Ce qui s'est passé :** {violation}\n**Salon :** {channel}",
+  "strikeLogDesc": "**Membre :** {member} `{uid}`\n**Règle :** {rule}\n**Ce qui s'est passé :** {violation}\n**Salon :** {channel}",
   "strikeLogFooter": "{bar}  Avertissement {n} sur 4  •  Ensuite : {next}",
   "strikeLabelCross": "Aussi posté dans",
   "strikeOwnerAuthor": "AutoMod : rapport privé",
@@ -247,5 +247,10 @@
   "admin_btnEnable": "Activer",
   "admin_btnDisable": "Désactiver",
   "admin_btnThreshold": "Seuil",
-  "admin_btnMinAge": "Âge min"
+  "admin_btnMinAge": "Âge min",
+  "appeal_notYoursTitle": "Pas ton rôle",
+  "appeal_notYoursDesc": "Seul le propriétaire ou un modérateur peut trancher cet appel.",
+  "decisionApproved": "Approuvé — un avertissement retiré, exclusion levée.",
+  "decisionRejected": "Examiné — l'action est maintenue. Utilisateur prévenu.",
+  "decisionBanned": "Appels en pause 7 jours. Avertissement ajouté."
 }

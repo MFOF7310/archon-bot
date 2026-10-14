@@ -32,7 +32,7 @@
   "strikeNextBan": "حظر",
   "strikeNextMax": "تم بلوغ الحد الأقصى",
   "strikeNotice": "{emoji} تم حذف رسالة من **{user}** ({rule}).",
-  "strikeLogDesc": "{emoji} **{action}**\n\n**العضو:** {member} `{uid}`\n**القاعدة:** {rule}\n**ما حدث:** {violation}\n**القناة:** {channel}",
+  "strikeLogDesc": "**العضو:** {member} `{uid}`\n**القاعدة:** {rule}\n**ما حدث:** {violation}\n**القناة:** {channel}",
   "strikeLogFooter": "{bar}  المخالفة {n} من 4  •  التالي: {next}",
   "strikeLabelCross": "منشور أيضًا في",
   "strikeOwnerAuthor": "AutoMod: تقرير خاص",
@@ -247,5 +247,10 @@
   "admin_btnEnable": "تفعيل",
   "admin_btnDisable": "تعطيل",
   "admin_btnThreshold": "العتبة",
-  "admin_btnMinAge": "العمر الأدنى"
+  "admin_btnMinAge": "العمر الأدنى",
+  "appeal_notYoursTitle": "ليس قرارك",
+  "appeal_notYoursDesc": "فقط المالك أو مشرف يمكنه الحكم على هذا الاستئناف.",
+  "decisionApproved": "تمت الموافقة — رُفع إجراء واحد ورُفع الكتم.",
+  "decisionRejected": "تمت المراجعة — يبقى الإجراء، تم إخطار المستخدم.",
+  "decisionBanned": "الاستئناف موقوف 7 أيام، أُضيف إجراء."
 }

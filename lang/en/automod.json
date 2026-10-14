@@ -32,7 +32,7 @@
   "strikeNextBan": "a ban",
   "strikeNextMax": "Maximum reached",
   "strikeNotice": "{emoji} A message from **{user}** was removed ({rule}).",
-  "strikeLogDesc": "{emoji} **{action}**\n\n**Member:** {member} `{uid}`\n**Rule:** {rule}\n**What happened:** {violation}\n**Channel:** {channel}",
+  "strikeLogDesc": "**Member:** {member} `{uid}`\n**Rule:** {rule}\n**What happened:** {violation}\n**Channel:** {channel}",
   "strikeLogFooter": "{bar}  Strike {n} of 4  •  Next: {next}",
   "strikeLabelCross": "Also posted in",
   "strikeOwnerAuthor": "AutoMod: private report",
@@ -247,5 +247,10 @@
   "admin_btnEnable": "Enable",
   "admin_btnDisable": "Disable",
   "admin_btnThreshold": "Threshold",
-  "admin_btnMinAge": "Min age"
+  "admin_btnMinAge": "Min age",
+  "appeal_notYoursTitle": "Not your call",
+  "appeal_notYoursDesc": "Only the owner or a moderator can rule on this one.",
+  "decisionApproved": "Approved — one strike lifted, timeout cleared.",
+  "decisionRejected": "Reviewed — the action stays. User was notified.",
+  "decisionBanned": "Appeals paused for 7 days. Strike added."
 }

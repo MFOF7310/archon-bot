@@ -448,7 +448,11 @@ async function takeAction(message, violations, client, db) {
             new ButtonBuilder()
                 .setLabel(_t('strikeBtnRules'))
                 .setStyle(ButtonStyle.Link)
-                .setURL(`https://discord.com/channels/${gid}`),
+                .setURL((() => {
+                    const _s = client.getServerSettings?.(gid) || {};
+                    const _rc = _s.rulesChannel || _s.rules_channel || _s.rules;
+                    return _rc ? `https://discord.com/channels/${gid}/${_rc}` : `https://discord.com/channels/${gid}`;
+                })()),
         );
 
         const _accent = typeof actionColor === 'string' && actionColor.startsWith('#')
@@ -1079,152 +1083,138 @@ function buildStatusCard(client, guild, ss, opts = {}) {
     return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
 }
 
+
+// Split a lang string like "✅ Approved by X\nBody" into emoji + title + body.
+function _splitOutcome(s) {
+    const raw = String(s || '').trim();
+    const nl = raw.indexOf('\n');
+    const head = nl === -1 ? raw : raw.slice(0, nl);
+    const body = nl === -1 ? '' : raw.slice(nl + 1).trim();
+    // Strip leading emoji + space from the head; keep the rest as the title
+    const title = head.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    return { title, body };
+}
+
 // ================= TRIBUNAL BUTTON HANDLER =================
 async function handleAppealButton(interaction, client) {
     if (!interaction.isButton() || !interaction.customId.startsWith('appeal_')) return false;
-
-    // Owner reads the tribunal in their own DM; the user who appealed reads the outcome in theirs.
-    // Use the guild's language for the owner-facing bits, and the target user's locale (fallback English) for their DM.
-    const _Lg = (() => {
-        const g = client.guilds.cache.get(String(interaction.customId).split('_')[2] ? '' : '');
-        return null;
-    })(); // placeholder, real per-guild lookup happens below
-    const _tO = (k, v, guild) => {
-        let lang = 'en';
-        try { if (guild) lang = require('../lib/botPerms').langOf({ guild, client }) || 'en'; } catch {}
-        return require('../lib/i18n').t('automod.' + k, lang, v);
-    };
 
     const parts = interaction.customId.split('_');
     const action = parts[1];
     const appealId = parts[2];
     const vote = appealTribunal.get(appealId);
 
+    // ── Defer immediately: 15-min window, no more 3s timeouts ──
+    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate().catch(() => {});
+
     if (!vote) {
-        return interaction.reply({ content: '⚠️ This appeal has expired or was already ruled on.', flags: 1 << 6 }).catch(() => {});
+        return interaction.editReply({ content: '⚠️ This appeal has expired or was already ruled on.', embeds: [], components: [] }).catch(() => {});
     }
-
-    if (interaction.user.id !== vote.ownerId) {
-        return interaction.reply({ content: '🔒 Only the server owner can rule on this appeal.', flags: 1 << 6 }).catch(() => {});
-    }
-
     if (vote.status !== 'pending') {
-        return interaction.reply({ content: '⚠️ This appeal was already decided.', flags: 1 << 6 }).catch(() => {});
+        return interaction.editReply({ content: '⚠️ This appeal was already decided.', embeds: [], components: [] }).catch(() => {});
+    }
+
+    // ── Permission guard: owner OR admin/mod ──
+    const _perms = interaction.member?.permissions;
+    const _canRule = interaction.user.id === vote.ownerId
+        || _perms?.has('Administrator')
+        || _perms?.has('ManageGuild')
+        || _perms?.has('ManageMessages');
+    if (!_canRule) {
+        return interaction.editReply({ content: '🔒 Only the owner or a moderator can rule on this appeal.', embeds: [], components: [] }).catch(() => {});
     }
 
     const guild = client.guilds.cache.get(vote.guildId);
     const targetUser = await client.users.fetch(vote.userId).catch(() => null);
+    const _L = require('../lib/botPerms').langOf({ guild, client });
+    const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
+    const _E = require('../config/emojis');
 
+    // ── Compute decision info ──
+    let color, emojiKey, langKey, statusLabel;
+    if (action === 'approve') {
+        color = C.GREEN; emojiKey = 'verified'; langKey = 'decisionApproved'; statusLabel = 'approved';
+    } else if (action === 'reject') {
+        color = C.RED; emojiKey = 'error'; langKey = 'decisionRejected'; statusLabel = 'rejected';
+    } else if (action === 'ban') {
+        color = C.DARK; emojiKey = 'lock'; langKey = 'decisionBanned'; statusLabel = 'banned';
+    } else {
+        return false;
+    }
+
+    // ── Action-specific side effects ──
     if (action === 'approve') {
         const k = key(vote.userId, vote.guildId);
         const entry = history.get(k);
-        if (entry && entry.warns > 0) {
-            entry.warns = Math.max(0, entry.warns - 1);
-            history.set(k, entry);
-        }
+        if (entry && entry.warns > 0) { entry.warns = Math.max(0, entry.warns - 1); history.set(k, entry); }
 
-        // ── CORE FIX: Actually lift the Discord timeout on the member ──
         let timeoutLifted = false;
-        let wasTimedOut = false;
         if (guild) {
             try {
                 const member = await guild.members.fetch(vote.userId).catch(() => null);
-                if (member) {
-                    // Check if they are actually still timed out
-                    wasTimedOut = !!member.communicationDisabledUntilTimestamp &&
-                                  member.communicationDisabledUntilTimestamp > Date.now();
-                    if (wasTimedOut) {
-                        // null removes the timeout immediately
-                        await member.timeout(null, `Appeal approved by ${interaction.user.tag}`);
-                        timeoutLifted = true;
-                        console.log(`[AUTOMOD APPEAL] Timeout lifted for ${vote.userId} in ${guild.name} by ${interaction.user.tag}`);
-                    }
+                if (member && member.communicationDisabledUntilTimestamp && member.communicationDisabledUntilTimestamp > Date.now()) {
+                    await member.timeout(null, `Appeal approved by ${interaction.user.tag}`);
+                    timeoutLifted = true;
                 }
-            } catch (e) {
-                console.error(`[AUTOMOD APPEAL] Failed to lift timeout for ${vote.userId}:`, e.message);
-            }
+            } catch (e) { console.error('[AUTOMOD APPEAL] timeout lift failed:', e.message); }
         }
 
         if (targetUser) {
-            const liftedNote = timeoutLifted
-                ? '\n\n⏰ Your timeout has been **lifted immediately**. You can chat again!'
-                : wasTimedOut === false && guild
-                ? '\n\n✅ Your timeout had already expired.'
-                : '';
-            const _tUser = (k, v) => _tO(k, v, guild);
-            const _liftedExtra = timeoutLifted
-                ? _tUser('appeal_approvedTimeoutLifted')
-                : (wasTimedOut === false && guild ? _tUser('appeal_approvedTimeoutExpired') : '');
-            await targetUser.send({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.GREEN)
-                    .setTitle(_tUser('appeal_approvedTitle', { emoji: require('../config/emojis').verified || '✅' }))
-                    .setDescription(_tUser('appeal_approvedDesc', { server: guild?.name || 'the server' }) + _liftedExtra)
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
+            const lifted = timeoutLifted ? _tU('appeal_approvedTimeoutLifted') : _tU('appeal_approvedTimeoutExpired');
+            await targetUser.send({ embeds: [new EmbedBuilder()
+                .setColor(C.GREEN)
+                .setTitle(`${_E.verified || '✅'} ${_tU('appeal_approvedTitle')}`)
+                .setDescription(_tU('appeal_approvedDesc', { server: guild?.name || 'the server' }) + lifted)
+                .setFooter({ text: 'ARCHON CG-223' })] }).catch(() => {});
         }
-
-        vote.status = 'approved';
-        appealTribunal.set(appealId, vote);
-
-        await interaction.update({
-            content: _tO('appeal_resultApproved', {
-                user: interaction.user.tag,
-                extra: timeoutLifted ? _tO('appeal_resultExtraLifted', {}, guild) : _tO('appeal_resultExtraExpired', {}, guild),
-            }, guild),
-            embeds: [],
-            components: []
-        }).catch(() => {});
-
     } else if (action === 'reject') {
         if (targetUser) {
-            await targetUser.send({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.RED)
-                    .setTitle(_tO('appeal_rejectedTitle', {}, guild))
-                    .setDescription(_tO('appeal_rejectedDesc', { server: guild?.name || 'the server' }, guild))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
+            await targetUser.send({ embeds: [new EmbedBuilder()
+                .setColor(C.RED)
+                .setTitle(`${_E.error || '❌'} ${_tU('appeal_rejectedTitle')}`)
+                .setDescription(_tU('appeal_rejectedDesc', { server: guild?.name || 'the server' }))
+                .setFooter({ text: 'ARCHON CG-223' })] }).catch(() => {});
         }
-
-        vote.status = 'rejected';
-        appealTribunal.set(appealId, vote);
-
-        await interaction.update({
-            content: _tO('appeal_resultRejected', { user: interaction.user.tag }, guild),
-            embeds: [],
-            components: []
-        }).catch(() => {});
-
     } else if (action === 'ban') {
-        const banKey = `ban:${vote.userId}:${vote.guildId}`;
-        // Store timestamp of when the ban expires (7 days from now)
-        appealCooldowns.set(banKey, Date.now() + 7 * 86400000);
-
+        appealCooldowns.set(`ban:${vote.userId}:${vote.guildId}`, Date.now() + 7 * 86400000);
         const k = key(vote.userId, vote.guildId);
         const entry = history.get(k) || { messages: [], warns: 0, last: Date.now() };
         entry.warns++;
         history.set(k, entry);
-
         if (targetUser) {
-            await targetUser.send({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.DARK)
-                    .setTitle(_tO('appeal_banTitle', {}, guild))
-                    .setDescription(_tO('appeal_banDesc', { server: guild?.name || 'the server' }, guild))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
+            await targetUser.send({ embeds: [new EmbedBuilder()
+                .setColor(C.DARK)
+                .setTitle(`${_E.lock || '🔨'} ${_tU('appeal_banTitle')}`)
+                .setDescription(_tU('appeal_banDesc', { server: guild?.name || 'the server' }))
+                .setFooter({ text: 'ARCHON CG-223' })] }).catch(() => {});
         }
-
-        vote.status = 'banned';
-        appealTribunal.set(appealId, vote);
-
-        await interaction.update({
-            content: _tO('appeal_resultBanned', { user: interaction.user.tag }, guild),
-            embeds: [],
-            components: []
-        }).catch(() => {});
     }
+
+    vote.status = statusLabel;
+    appealTribunal.set(appealId, vote);
+
+    // ── Replace the tribunal embed with a decision embed, keep disabled buttons ──
+    const decisionText = `${_E[emojiKey] || ''} ${_T(langKey, { user: interaction.user.tag })}`.trim();
+    const decided = new EmbedBuilder()
+        .setColor(color)
+        .setAuthor({ name: 'ARCHON CG-223 · Tribunal', iconURL: client.user.displayAvatarURL() })
+        .setDescription(decisionText)
+        .setFooter({ text: `${guild?.name || 'Server'} · ${appealId}` })
+        .setTimestamp();
+
+    // Rebuild the same three buttons, all disabled
+    const lockedRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel('✅ Approve').setStyle(ButtonStyle.Success).setDisabled(true),
+        new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel('❌ Reject').setStyle(ButtonStyle.Danger).setDisabled(true),
+        new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel('🔨 Ban Appeals').setStyle(ButtonStyle.Secondary).setDisabled(true)
+    );
+
+    await interaction.editReply({ embeds: [decided], components: [lockedRow] })
+        .then(() => console.log(`[TRIBUNAL] ${appealId} → ${statusLabel} by ${interaction.user.tag}`))
+        .catch((e) => console.error('[TRIBUNAL] edit failed:', e.message));
 
     return true;
 }
