@@ -16,5 +16,18 @@
   "invalidColor": "⚠️ Invalid color — use hex format, e.g. #ff0000.",
   "setTitleSuccess": "✅ Title set to \"{title}\"!",
   "welcomeOn": "✅ Welcome line enabled.",
-  "welcomeOff": "✅ Welcome line disabled."
+  "welcomeOff": "✅ Welcome line disabled.",
+  "notConfigured": "No rules have been published yet.",
+  "notConfiguredHint": "Admins — set your rules with `/rules set`, then publish with `/rules panel`.",
+  "btnAccept": "I accept the rules",
+  "alreadyAccepted": "You already accepted these rules. ✅",
+  "acceptSuccess": "✅ Thanks — you now have access. Welcome!",
+  "acceptFailed": "❌ Something went wrong. Please ping a moderator.",
+  "needAcceptRole": "⚠️ Rules acceptance isn't fully set up yet. Please contact a moderator.",
+  "acceptRoleSet": "✅ Role on accept: {role}",
+  "acceptRoleCleared": "✅ Accept role cleared.",
+  "acceptedTitle": "Members who accepted ({n})",
+  "acceptedEmpty": "No one has accepted the rules yet.",
+  "resetSuccess": "✅ Rules reset to default.",
+  "resetNoCustom": "⚠️ No custom rules to reset."
 }

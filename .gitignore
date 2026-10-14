@@ -136,3 +136,7 @@ config/emojis.app.js
 config/emojis.app.bak
 config/emojis.js.newkeys.bak
 emoji_migration.diff.md
+
+# One-shot registration scripts
+force-register-livestream.js
+register-livestream.js

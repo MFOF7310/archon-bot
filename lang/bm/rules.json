@@ -1,0 +1,15 @@
+{
+  "notConfigured": "Sariya si fɔra fɔlɔ.",
+  "notConfiguredHint": "Adminw — ɲɛsigi sariya ni `/rules set`, kɔfɛ lajɛ ni `/rules panel`.",
+  "btnAccept": "N b'a lajɛ sariya in na",
+  "alreadyAccepted": "I ye nin sariya lajɛ kɔfɛ. ✅",
+  "acceptSuccess": "✅ I ni ce — i bɛ se ka don sisan. I bisimila!",
+  "acceptFailed": "❌ Fili dɔ kɛra. Aw ye modérateur wele.",
+  "needAcceptRole": "⚠️ Sariya lajɛli ma labɛn fɔlɔ. Aw ye modérateur wele.",
+  "acceptRoleSet": "✅ Jɔyɔrɔ min bɛ di lajɛli na: {role}",
+  "acceptRoleCleared": "✅ Lajɛli jɔyɔrɔ bɔra.",
+  "acceptedTitle": "Mɔgɔ minnu ye sariya lajɛ ({n})",
+  "acceptedEmpty": "Mɔgɔ si ma sariya lajɛ fɔlɔ.",
+  "resetSuccess": "✅ Sariyaw seginna.",
+  "resetNoCustom": "⚠️ Sariya wɛrɛ tɛ min bɛ segin."
+}

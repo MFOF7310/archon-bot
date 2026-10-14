@@ -16,5 +16,18 @@
   "invalidColor": "⚠️ لون غير صالح — استخدم hex مثل #ff0000.",
   "setTitleSuccess": "✅ تم تعيين العنوان: {title}!",
   "welcomeOn": "✅ الترحيب مفعّل — يظهر فوق القواعد.",
-  "welcomeOff": "✅ الترحيب متوقف — اللوحة فقط."
+  "welcomeOff": "✅ الترحيب متوقف — اللوحة فقط.",
+  "notConfigured": "لم يتم نشر أي قواعد بعد.",
+  "notConfiguredHint": "للمشرفين — عيّن قواعدك عبر `/rules set`، ثم انشرها عبر `/rules panel`.",
+  "btnAccept": "أوافق على القواعد",
+  "alreadyAccepted": "لقد قبلت هذه القواعد مسبقاً. ✅",
+  "acceptSuccess": "✅ شكراً — لديك الآن صلاحية الوصول. أهلاً بك!",
+  "acceptFailed": "❌ حدث خطأ. يرجى التواصل مع مشرف.",
+  "needAcceptRole": "⚠️ لم يتم إعداد قبول القواعد بعد. يرجى التواصل مع مشرف.",
+  "acceptRoleSet": "✅ الرتبة عند القبول: {role}",
+  "acceptRoleCleared": "✅ تم مسح رتبة القبول.",
+  "acceptedTitle": "الأعضاء الذين قبلوا ({n})",
+  "acceptedEmpty": "لم يقبل أحد القواعد بعد.",
+  "resetSuccess": "✅ تمت إعادة تعيين القواعد.",
+  "resetNoCustom": "⚠️ لا توجد قواعد مخصصة لإعادة تعيينها."
 }

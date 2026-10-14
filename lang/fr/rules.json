@@ -16,5 +16,18 @@
   "invalidColor": "⚠️ Couleur invalide — format hex, ex. #ff0000.",
   "setTitleSuccess": "✅ Titre défini : {title} !",
   "welcomeOn": "✅ Message de bienvenue activé.",
-  "welcomeOff": "✅ Message de bienvenue désactivé."
+  "welcomeOff": "✅ Message de bienvenue désactivé.",
+  "notConfigured": "Aucune règle n'a encore été publiée.",
+  "notConfiguredHint": "Admins — définissez vos règles avec `/rules set`, puis publiez avec `/rules panel`.",
+  "btnAccept": "J'accepte les règles",
+  "alreadyAccepted": "Tu as déjà accepté ces règles. ✅",
+  "acceptSuccess": "✅ Merci — tu as maintenant accès. Bienvenue !",
+  "acceptFailed": "❌ Une erreur est survenue. Contacte un modérateur.",
+  "needAcceptRole": "⚠️ L'acceptation des règles n'est pas encore configurée. Contacte un modérateur.",
+  "acceptRoleSet": "✅ Rôle attribué à l'acceptation : {role}",
+  "acceptRoleCleared": "✅ Rôle d'acceptation retiré.",
+  "acceptedTitle": "Membres ayant accepté ({n})",
+  "acceptedEmpty": "Personne n'a encore accepté les règles.",
+  "resetSuccess": "✅ Règles réinitialisées.",
+  "resetNoCustom": "⚠️ Aucune règle personnalisée à réinitialiser."
 }
