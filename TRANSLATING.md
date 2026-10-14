@@ -10,11 +10,40 @@ Thanks for helping make ARCHON accessible in more languages. This guide covers e
 |------|----------|--------|
 | `en` | English | ✅ Complete |
 | `fr` | French | ✅ Complete |
-| `bm` | Bambara | ✅ Complete |
+| `bm` | Bambara | 🚧 Draft — needs native review |
 | `zh` | Chinese (Simplified) | ✅ Complete |
 | `ar` | Arabic | ✅ Complete |
 
 To add a new language, open an issue first so we can discuss scope before you invest time.
+
+---
+
+## Bambara (`bm`) — needs native review
+
+Bambara is the most recent locale. The strings were drafted by pattern-matching the existing `bm` corpus and **have not been reviewed by a native speaker**. They work in context but a fluent speaker will likely rewrite some of them.
+
+**Files to review first** (in order of user visibility):
+
+1. `lib/lang/bm.json` — `supreme.*`, `daily.*`, `alive.*`, `mylang.*` blocks
+2. `lang/bm/reminder.json` — daily reminder card
+3. `lang/bm/mylang.json` — language chooser card
+
+**Vocabulary already established** (do not change without reason):
+
+| Bambara | Meaning |
+|---|---|
+| `don` | day |
+| `bonusi` | bonus |
+| `kɔnɔ` | in |
+| `sɔrɔ` | get / receive |
+| `tɛ` | not / no |
+| `b'i kan` | on you |
+| `ɲɔgɔnna` | in a row / consecutive |
+| `kɛlɛla` | veteran (lit. warrior) |
+
+**Rule for `bm` fallback:** if a key is missing in `bm.json`, the framework falls back to French (not English). That's intentional — French is more accessible in Mali than English.
+
+If you are a native speaker and want to review, open a PR against this repo. Every fix is welcome.
 
 ---
 

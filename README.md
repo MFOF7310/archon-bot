@@ -9,9 +9,9 @@
 [![Discord](https://img.shields.io/badge/Discord-Eagle%20Community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/NFSMFJajp9)
 [![Telegram](https://img.shields.io/badge/Telegram-archon223-26A5E4?style=flat&logo=telegram&logoColor=white)](https://t.me/architect223bot?start=_tgr_TUbY9E0wZjBk)
 [![Dashboard](https://img.shields.io/badge/Dashboard-Live-00f0ff?style=flat&logo=vercel&logoColor=white)](https://bamako-steel-dev.xyz)
-[![Version](https://img.shields.io/badge/Version-v3.1.0-00ff88?style=flat)](#)
-[![Servers](https://img.shields.io/badge/Servers-25+-f1c40f?style=flat)](#)
-[![Users](https://img.shields.io/badge/Users-365+-ff6b6b?style=flat)](#)
+[![Version](https://img.shields.io/badge/Version-v3.1.1-00ff88?style=flat)](#)
+[![Servers](https://img.shields.io/badge/Servers-14-f1c40f?style=flat)](#)
+[![Users](https://img.shields.io/badge/Users-138-ff6b6b?style=flat)](#)
 [![Made in Mali](https://img.shields.io/badge/Made%20in-Bamako%2C%20Mali%20🇲🇱-green?style=flat)](#)
 
 *Built from scratch in Bamako, Mali — developed entirely from a phone via Termux + SSH*
@@ -22,7 +22,7 @@
 
 ## ✨ Features
 
-### 🎮 Discord — 110 plugins · 86 slash commands
+### 🎮 Discord — 121 plugins · 93 slash commands
 
 <details>
 <summary><b>🧠 AI & Language</b></summary>
@@ -84,7 +84,18 @@
 
 ---
 
-### 📱 Telegram — 53 plugins
+### 🆕 Recent updates (v3.1.1)
+
+- **Components V2 everywhere** — automod, welcome, ping, alive, claim, reminder, mylang rebuilt as V2 cards
+- **Emoji migration** — 130 guild emojis moved to Discord Application Emojis (render in every server the bot is in, no permission quirks)
+- **i18n unified** — one language resolver (`pickLang`): server `setlang` → user `mylang` → Discord locale → English
+- **Auto-broadcast** — every deploy posts a V2 update card to opted-in servers, with AI-generated notes and a clickable GitHub commit link
+- **Automod admin panel** — status, domains, channels, log, raid config all runnable via buttons and modals
+- **Live telemetry** — `/ping` and `/alive` show real REST/gateway latency with progress bars
+
+---
+
+### 📱 Telegram — 67 plugins
 
 <details>
 <summary><b>🎬 Media Downloads</b></summary>
@@ -119,7 +130,7 @@
 
 | Layer | Technology |
 |-------|------------|
-| Runtime | Node.js 20 |
+| Runtime | Node.js 22 |
 | Discord | Discord.js v14 |
 | Telegram | Custom polling engine |
 | Database | SQLite via better-sqlite3 |
@@ -135,11 +146,11 @@
 
 ## 📊 Stats
 
-![Plugins](https://img.shields.io/badge/Discord%20Plugins-110-5865F2?style=for-the-badge&logo=discord&logoColor=white)
-![Telegram](https://img.shields.io/badge/Telegram%20Plugins-53-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)
-![Commands](https://img.shields.io/badge/Slash%20Commands-86-00ff88?style=for-the-badge)
-![Servers](https://img.shields.io/badge/Servers-25+-f1c40f?style=for-the-badge)
-![Users](https://img.shields.io/badge/Users-365+-ff6b6b?style=for-the-badge)
+![Plugins](https://img.shields.io/badge/Discord%20Plugins-121-5865F2?style=for-the-badge&logo=discord&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram%20Plugins-67-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)
+![Commands](https://img.shields.io/badge/Slash%20Commands-93-00ff88?style=for-the-badge)
+![Servers](https://img.shields.io/badge/Servers-14-f1c40f?style=for-the-badge)
+![Users](https://img.shields.io/badge/Users-138-ff6b6b?style=for-the-badge)
 ![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20FR%20%7C%20BM%20%7C%20AR%20%7C%20ZH-green?style=for-the-badge)
 
 ---
@@ -148,7 +159,7 @@
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - Python 3.x
 - ffmpeg + yt-dlp installed globally
 - PM2 (`npm install -g pm2`)
@@ -208,7 +219,7 @@ pm2 start index.js --name Architect-CG223
 <details>
 <summary><b>🪟 Windows</b></summary>
 
-1. Install [Node.js 20](https://nodejs.org) and [Git](https://git-scm.com)
+1. Install [Node.js 22](https://nodejs.org) and [Git](https://git-scm.com)
 2. Install [ffmpeg](https://ffmpeg.org/download.html) and add to PATH
 3. Run:
 
@@ -277,7 +288,7 @@ ARCHON CG-223 is fully internationalized across 5 locales:
 |------|----------|--------|
 | `en` | English | ✅ Complete |
 | `fr` | French | ✅ Complete |
-| `bm` | Bambara (Bamanankan) | 🚧 In progress |
+| `bm` | Bambara (Bamanankan) | 🚧 Draft — needs native review |
 | `zh` | Chinese (Simplified) | ✅ Complete |
 | `ar` | Arabic | ✅ Complete |
 
@@ -292,7 +303,7 @@ ARCHON CG-223 is built by **Moussa Fofana** ([@MFOF7310](https://github.com/MFOF
 - **Built entirely from a phone** — Samsung Galaxy Z Fold 5, Termux + SSH into Hetzner VPS
 - **Not a fork** — built from scratch, every line written by hand
 - **Dual platform** — Discord + Telegram from a single codebase
-- **Production ready** — serving 25+ servers and 365+ users
+- **Production ready** — serving 14 servers and 138 active users
 - **Multilingual core** — EN / FR / Bamanankan / AR / ZH
 
 ---
@@ -307,7 +318,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 🦅 **ARCHON CG-223** • BAMAKO_223 🇲🇱
 
-*Neural Grid v3.1.0 — All systems nominal*
+*Neural Grid v3.1.1 — All systems nominal*
 
 </div>
 
