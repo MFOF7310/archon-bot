@@ -928,7 +928,7 @@ if (action === 'test' || action === 'simulate') {
         const subcommand = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
         const db = client.db;
-        const lang = client.detectLanguage ? client.detectLanguage('tiktok', interaction.guild?.id) : 'en';
+
         initDatabase(db);
         const isOwner = interaction.user.id === interaction.guild.ownerId || interaction.member?.permissions.has('Administrator');
 

@@ -284,7 +284,7 @@ module.exports = {
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
             // Language detection
-            const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
+
             const t = ns('daily', lang);
             const version = client.version || '2.0.0';
             
@@ -520,7 +520,7 @@ module.exports = {
             
         } catch (error) {
             console.error(`[CLAIM] FATAL ERROR:`, error);
-            const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
+
             return message.reply({ content: ns('daily', lang).error }).catch(() => {});
         }
     },
@@ -531,8 +531,7 @@ module.exports = {
             // PER-SERVER: Extract guildId for composite key lookups
             const guildId = interaction.guild?.id || 'DM';
             const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-            
-            const lang = client.detectLanguage ? client.detectLanguage('claim', guildId) : 'en';
+
             const t = ns('daily', lang);
             
             const version = client.version || '2.0.0';

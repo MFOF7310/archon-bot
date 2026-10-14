@@ -1,40 +1,132 @@
 const { performance } = require('perf_hooks');
 const { ns } = require('../lib/lang');
-const EMOJIS = require('../config/emojis');
-const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const E = require('../config/emojis');
+const ui = require('../lib/games/ui');
+const v2 = require('../lib/games/v2');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 
-// ================= BILINGUAL TRANSLATIONS =================
+const em = (k, fb) => E[k] || fb;
 
-// Translations loaded from lib/lang/*.json
-
-
-// ================= DYNAMIC PROGRESS BAR =================
-function createProgressBar(value, max = 300, length = 12) {
-    const percentage = Math.min(100, Math.max(0, (value / max) * 100));
-    const filled = Math.floor((percentage / 100) * length);
-    const empty = length - filled;
-    
-    let bar = '';
-    for (let i = 0; i < filled; i++) bar += '█';
-    for (let i = 0; i < empty; i++) bar += '░';
-    
-    let colorCode = '';
-    if (percentage < 33) colorCode = '🟢';
-    else if (percentage < 66) colorCode = '🟡';
-    else colorCode = '🔴';
-    
-    return { bar, percentage: Math.round(percentage), colorCode };
+// ── Latency tier ──
+function tier(ms, good = 100, ok = 250) {
+    if (ms < good) return { dot: '🟢', key: 'excellent', color: 0x2ecc71 };
+    if (ms < ok)   return { dot: '🟡', key: 'good',      color: 0xf1c40f };
+    return              { dot: '🔴', key: 'slow',      color: 0xe74c3c };
 }
 
-// ================= GET HEALTH SCORE =================
-function getHealthScore(messageLatency, apiPing, dbLatency) {
-    let score = 100;
-    
-    if (messageLatency > 100) score -= Math.min(30, (messageLatency - 100) / 5);
-    if (apiPing > 100) score -= Math.min(30, (apiPing - 100) / 5);
-    if (dbLatency && dbLatency > 50) score -= Math.min(40, (dbLatency - 50) / 2);
-    
-    return Math.max(0, Math.min(100, Math.round(score)));
+// ── Health score ──
+function healthScore(rest, api, db) {
+    let s = 100;
+    if (rest > 100) s -= Math.min(30, (rest - 100) / 5);
+    if (api  > 100) s -= Math.min(30, (api  - 100) / 5);
+    if (db && db > 50) s -= Math.min(40, (db - 50) / 2);
+    return Math.max(0, Math.min(100, Math.round(s)));
+}
+
+function healthTier(s) {
+    if (s >= 80) return { dot: '🟢', color: 0x2ecc71, key: 'scoreExcellent', rec: 'recExcellent' };
+    if (s >= 50) return { dot: '🟡', color: 0xf1c40f, key: 'scoreGood',      rec: 'recGood' };
+    return              { dot: '🔴', color: 0xe74c3c, key: 'scorePoor',      rec: 'recPoor' };
+}
+
+// ── Measure everything in one call ──
+async function measure(client, db) {
+    // Real Discord REST round-trip — a live API call, not a local timing.
+    const t0 = performance.now();
+    try { await client.application.fetch(); } catch {}
+    const rest = Math.round(performance.now() - t0);
+
+    // Gateway heartbeat (rolling average).
+    const api = Math.round(client.ws?.ping ?? 0);
+
+    // SQLite query time.
+    let database = null;
+    try {
+        const d0 = performance.now();
+        db.prepare('SELECT 1').get();
+        database = Math.round(performance.now() - d0);
+    } catch {}
+
+    return { rest, api, database };
+}
+
+// ── One card builder for prefix, slash, and refresh ──
+function buildCard(client, t, ctx) {
+    const { rest, api, database, guildName, version, detailed } = ctx;
+    const restT = tier(rest);
+    const apiT  = tier(api);
+    const dbT   = database != null ? tier(database, 30, 80) : null;
+    const score = healthScore(rest, api, database);
+    const hT    = healthTier(score);
+
+    const items = [
+        { text: `*ARCHON CG-223 · Live Telemetry*` },
+        { text: `## ${em('dashboard', '📡')} ${t.title}` },
+        { rule: true },
+        { text: `**🌐 ${t.apiHeartbeat}** · ${apiT.dot} *${t[apiT.key] || apiT.key}*\n\n\`${ui.progressBar(Math.min(api, 300), 300, 10)}\` **${api}ms**` },
+        { text: `**📡 ${t.roundTrip}** · ${restT.dot} *${t[restT.key] || restT.key}*\n\n\`${ui.progressBar(Math.min(rest, 300), 300, 10)}\` **${rest}ms**` },
+    ];
+    if (dbT) {
+        items.push({ text: `**🗄️ ${t.databaseLatency || 'Database'}** · ${dbT.dot} *${t[dbT.key] || dbT.key}*\n\n\`${ui.progressBar(Math.min(database, 100), 100, 10)}\` **${database}ms**` });
+    }
+    items.push({ rule: true });
+    items.push({ text: `${hT.dot} **${t.overallHealth}** · **${score}/100** — *${t[hT.key] || hT.key}*\n-# ${t[hT.rec] || ''}` });
+
+    if (detailed) {
+        const up = process.uptime();
+        const d = Math.floor(up / 86400), h = Math.floor((up % 86400) / 3600), m = Math.floor((up % 3600) / 60);
+        const mem = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+        items.push({ rule: true });
+        items.push({ text: `**⚙️ ${t.systemMetrics || 'System'}**\n${em('clock', '🕐')} ${t.uptime || 'Uptime'} · **${d}d ${h}h ${m}m**\n${em('XP', '⚡')} ${t.memory || 'Memory'} · **${mem} MB**\n${em('eagle', '🦅')} ${t.servers || 'Servers'} · **${client.guilds.cache.size}**\n${em('dashboard', '🎮')} ${t.commands || 'Commands'} · **${client.commands?.size || 0}**` });
+    }
+    items.push({ rule: true });
+    items.push({ text: `-# ${guildName} · BAMAKO-223 · v${version}` });
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('ping_refresh').setLabel(t.refresh || 'Refresh').setStyle(ButtonStyle.Primary).setEmoji(ui.emObj('loading', '🔄')),
+        new ButtonBuilder().setCustomId('ping_toggle').setLabel(detailed ? (t.simpleView || 'Simple') : (t.detailedView || 'Detailed')).setStyle(ButtonStyle.Secondary).setEmoji(ui.emObj('dashboard', '📈')),
+        new ButtonBuilder().setCustomId('ping_help').setLabel(t.help || 'Help').setStyle(ButtonStyle.Success).setEmoji('❓'),
+    );
+    items.push({ row });
+
+    return v2.card(hT.color, items);
+}
+
+function buildHelpCard(t) {
+    return v2.card(0x3498db, [
+        { text: `## ❓ ${t.help || 'Help'}` },
+        { rule: true },
+        { text: `**🌐 ${t.apiHeartbeat}** — Discord WebSocket heartbeat.\n**📡 ${t.roundTrip}** — Round-trip time for this reply.\n**🗄️ ${t.databaseLatency || 'Database'}** — SQLite query time.\n**${t.overallHealth}** — Weighted score across all three.` },
+        { rule: true },
+        { text: `-# 🟢 <100ms  ·  🟡 100–250ms  ·  🔴 >250ms` },
+    ]);
+}
+
+// ── Button collector — same handler for prefix and slash ──
+function attachCollector(msg, client, db, ctx, t, authorId, isSlash) {
+    const collector = msg.createMessageComponentCollector({ time: 60000 });
+    collector.on('collect', async (i) => {
+        if (i.user.id !== authorId) return i.reply({ content: t.accessDenied || 'Only the original user can interact.', flags: 64 }).catch(() => {});
+        try {
+            if (i.customId === 'ping_refresh') {
+                await i.deferUpdate();
+                const m = await measure(client, db);
+                ctx.rest = m.rest; ctx.api = m.api; ctx.database = m.database;
+                await i.editReply(buildCard(client, t, ctx));
+            } else if (i.customId === 'ping_toggle') {
+                await i.deferUpdate();
+                ctx.detailed = !ctx.detailed;
+                const m = await measure(client, db);
+                ctx.rest = m.rest; ctx.api = m.api; ctx.database = m.database;
+                await i.editReply(buildCard(client, t, ctx));
+            } else if (i.customId === 'ping_help') {
+                await i.reply({ ...buildHelpCard(t), flags: MessageFlags.IsComponentsV2 | 64 });
+            }
+        } catch (e) {
+            console.error('[PING BUTTON]', e.message);
+            await i.deferUpdate().catch(() => {});
+        }
+    });
 }
 
 module.exports = {
@@ -44,387 +136,46 @@ module.exports = {
     category: 'SYSTEM',
     cooldown: 3000,
     usage: '.ping',
-    examples: ['.ping', '.latence'],
+    examples: ['.ping', '.ping detailed'],
 
-    // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('ping')
         .setDescription('📡 Check bot latency and system health')
-        .addBooleanOption(option =>
-            option.setName('detailed')
-                .setDescription('Show detailed performance metrics')
-                .setRequired(false)
-        ),
+        .addBooleanOption(o => o.setName('detailed').setDescription('Show detailed performance metrics').setRequired(false)),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
         const t = ns('ping', lang);
-        const version = client.version || '1.8.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        
-        const showDetailed = args[0] === 'detailed' || args[0] === 'detail' || args[0] === 'full';
-        
-        // ================= MEASURE LATENCIES =================
-        const start = performance.now();
-        const pingMsg = await message.reply(`${EMOJIS.loading} ${t.ping}`).catch(() => null);
-        const end = performance.now();
-        const messageLatency = Math.round(end - start);
-        const apiPing = Math.round(client.ws.ping);
-        
-        let dbLatency = null;
-        try {
-            const dbStart = performance.now();
-            db.prepare('SELECT 1').get();
-            const dbEnd = performance.now();
-            dbLatency = Math.round(dbEnd - dbStart);
-        } catch (e) { dbLatency = null; }
-        
-        // ================= CALCULATE METRICS =================
-        const messageBar = createProgressBar(messageLatency);
-        const apiBar = createProgressBar(apiPing);
-        const dbBar = dbLatency ? createProgressBar(dbLatency, 100) : null;
-        
-        const healthScore = getHealthScore(messageLatency, apiPing, dbLatency);
-        let healthColor, healthStatus, healthRecommendation;
-        
-        if (healthScore >= 80) {
-            healthColor = '#2ecc71';
-            healthStatus = t.scoreExcellent;
-            healthRecommendation = t.recExcellent;
-        } else if (healthScore >= 50) {
-            healthColor = '#f1c40f';
-            healthStatus = t.scoreGood;
-            healthRecommendation = t.recGood;
-        } else {
-            healthColor = '#e74c3c';
-            healthStatus = t.scorePoor;
-            healthRecommendation = t.recPoor;
-        }
-        
-        // ================= BUILD MAIN EMBED =================
-        const embed = new EmbedBuilder()
-            .setColor(healthColor)
-            .setAuthor({ 
-                name: t.author, 
-                iconURL: client.user.displayAvatarURL(),
-                url: 'https://github.com/MFOF7310'
-            })
-            .setTitle(`${messageBar.colorCode} ${t.title} ${messageBar.colorCode}`)
-            .setDescription(
-                `\`\`\`yaml\n` +
-                `┌─────────────────────────────────┐\n` +
-                `│ ${t.node}: BAMAKO-223 (Mali Node)    │\n` +
-                `│ ${t.core}: Groq LPU™ 70B + OpenRouter│\n` +
-                `│ ${t.websocket}: ${apiPing}ms (${apiBar.percentage}%)                │\n` +
-                `│ ${t.restApi}: ${messageLatency}ms (${messageBar.percentage}%)              │\n` +
-                `${dbLatency ? `│ Database: ${dbLatency}ms (${dbBar.percentage}%)                  │\n` : ''}` +
-                `└─────────────────────────────────┘\n` +
-                `\`\`\``
-            )
-            .addFields(
-                {
-                    name: `📡 ${t.roundTrip}`,
-                    value: `\`\`\`\n${messageBar.bar} ${messageLatency}ms\n${messageBar.percentage}% • ${messageLatency < 100 ? t.excellent : (messageLatency < 250 ? t.good : t.slow)}\`\`\``,
-                    inline: true
-                },
-                {
-                    name: `🌐 ${t.apiHeartbeat}`,
-                    value: `\`\`\`\n${apiBar.bar} ${apiPing}ms\n${apiBar.percentage}% • ${apiPing < 100 ? t.excellent : (apiPing < 250 ? t.good : t.slow)}\`\`\``,
-                    inline: true
-                }
-            );
-        
-        if (dbLatency && showDetailed) {
-            embed.addFields({
-                name: `🗄️ ${t.databaseLatency}`,
-                value: `\`\`\`\n${dbBar.bar} ${dbLatency}ms\n${dbBar.percentage}% • ${dbLatency < 50 ? t.excellent : (dbLatency < 100 ? t.good : t.slow)}\`\`\``,
-                inline: true
-            });
-        }
-        
-        // ================= HEALTH SCORE SECTION =================
-        const healthEmoji = healthScore >= 80 ? '🟢' : (healthScore >= 50 ? '🟡' : '🔴');
-        embed.addFields({
-            name: `${healthEmoji} ${t.overallHealth}`,
-            value: `\`\`\`yaml\n` +
-                   `Score: ${healthScore}/100 (${healthStatus})\n` +
-                   `Status: ${healthScore >= 80 ? t.statusOnline : (healthScore >= 50 ? t.statusWarning : t.statusCritical)}\n` +
-                   `└─ ${healthRecommendation}\`\`\``,
-            inline: false
-        });
-        
-        // ================= SYSTEM METRICS (Detailed Mode) =================
-        if (showDetailed) {
-            const uptime = process.uptime();
-            const uptimeDays = Math.floor(uptime / 86400);
-            const uptimeHours = Math.floor((uptime % 86400) / 3600);
-            const uptimeMinutes = Math.floor((uptime % 3600) / 60);
-            const memoryUsage = process.memoryUsage();
-            const memoryMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-            
-            embed.addFields({
-                name: '📊 SYSTEM METRICS',
-                value: `\`\`\`yaml\n` +
-                       `Uptime: ${uptimeDays}d ${uptimeHours}h ${uptimeMinutes}m\n` +
-                       `Memory: ${memoryMB} MB (heapUsed)\n` +
-                       `Commands: ${client.commands?.size || 0} loaded\n` +
-                       `Servers: ${client.guilds?.cache?.size || 0}\`\`\``,
-                inline: false
-            });
-        }
-        
-        embed.setFooter({ 
-            text: `${guildName} • ${t.footer} • v${version}`, 
-            iconURL: guildIcon 
-        })
-        .setTimestamp();
-        
-        // ================= BUILD BUTTONS =================
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('ping_refresh')
-                .setLabel(t.refresh)
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('🔄'),
-            new ButtonBuilder()
-                .setCustomId('ping_detailed')
-                .setLabel(showDetailed ? '📊 Simple View' : '📈 Detailed View')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji(showDetailed ? '📊' : '📈'),
-            new ButtonBuilder()
-                .setCustomId('ping_help')
-                .setLabel(t.help)
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('❓')
-        );
-        
-        // ================= SEND/RESPOND =================
-        if (pingMsg) {
-            await pingMsg.edit({ content: null, embeds: [embed], components: [row] }).catch(async () => {
-                const fallbackMsg = await message.channel.send({ embeds: [embed], components: [row] }).catch(() => {});
-                if (!fallbackMsg) return;
-                await handleCollector(fallbackMsg, client, message, db, t, lang, guildName, guildIcon, version, showDetailed);
-            });
-            await handleCollector(pingMsg, client, message, db, t, lang, guildName, guildIcon, version, showDetailed);
-        } else {
-            const newMsg = await message.channel.send({ embeds: [embed], components: [row] }).catch(() => {});
-            if (newMsg) await handleCollector(newMsg, client, message, db, t, lang, guildName, guildIcon, version, showDetailed);
-        }
-        
-        console.log(`[PING] ${message.author.tag} | Msg: ${messageLatency}ms | API: ${apiPing}ms | DB: ${dbLatency}ms | Health: ${healthScore} | Lang: ${lang}`);
+        const detailed = ['detailed', 'detail', 'full'].includes((args[0] || '').toLowerCase());
+        const ctx = {
+            rest: 0, api: 0, database: null,
+            guildName: message.guild?.name?.toUpperCase() || 'NEURAL NODE',
+            version: client.version || '1.8.0',
+            detailed,
+        };
+        const m = await measure(client, db);
+        ctx.rest = m.rest; ctx.api = m.api; ctx.database = m.database;
+
+        const msg = await message.reply(buildCard(client, t, ctx)).catch(() => null);
+        if (msg) attachCollector(msg, client, db, ctx, t, message.author.id, false);
+
+        console.log(`[PING] ${message.author.tag} | REST ${ctx.rest}ms | API ${ctx.api}ms | DB ${ctx.database ?? '—'}ms | Lang ${lang}`);
     },
 
-    // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const guildId = interaction.guild?.id || 'DM';
         const lang = client.detectLanguage ? client.detectLanguage('ping', guildId) : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
         const t = ns('ping', lang);
-        const version = client.version || '1.8.0';
-        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
-        const db = client.db;
-        
-        const showDetailed = interaction.options.getBoolean('detailed') || false;
-        
-        await interaction.deferReply();
-        
-        // Measure latencies
-        const start = performance.now();
-        const messageLatency = Math.round((performance.now() - start));
-        const apiPing = Math.round(client.ws.ping);
-        
-        let dbLatency = null;
-        try {
-            const dbStart = performance.now();
-            db.prepare('SELECT 1').get();
-            const dbEnd = performance.now();
-            dbLatency = Math.round(dbEnd - dbStart);
-        } catch (e) { dbLatency = null; }
-        
-        const messageBar = createProgressBar(messageLatency);
-        const apiBar = createProgressBar(apiPing);
-        const healthScore = getHealthScore(messageLatency, apiPing, dbLatency);
-        let healthColor = healthScore >= 80 ? '#2ecc71' : (healthScore >= 50 ? '#f1c40f' : '#e74c3c');
-        
-        const embed = new EmbedBuilder()
-            .setColor(healthColor)
-            .setAuthor({ name: t.author, iconURL: client.user.displayAvatarURL() })
-            .setTitle(`${messageBar.colorCode} ${t.title} ${messageBar.colorCode}`)
-            .setDescription(
-                `\`\`\`yaml\n` +
-                `Node: BAMAKO-223 (Mali Node)\n` +
-                `WebSocket: ${apiPing}ms (${apiBar.percentage}%)\n` +
-                `REST API: ${messageLatency}ms (${messageBar.percentage}%)\n` +
-                `${dbLatency ? `Database: ${dbLatency}ms` : ''}\n` +
-                `Health Score: ${healthScore}/100\`\`\``
-            )
-            .addFields(
-                { name: `📡 ${t.roundTrip}`, value: `\`\`\`\n${messageBar.bar} ${messageLatency}ms\`\`\``, inline: true },
-                { name: `🌐 ${t.apiHeartbeat}`, value: `\`\`\`\n${apiBar.bar} ${apiPing}ms\`\`\``, inline: true }
-            )
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
-        
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ping_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Primary).setEmoji('🔄'),
-            new ButtonBuilder().setCustomId('ping_help').setLabel(t.help).setStyle(ButtonStyle.Success).setEmoji('❓')
-        );
-        
-        await interaction.editReply({ embeds: [embed], components: [row] });
-        
-        const collector = interaction.channel.createMessageComponentCollector({ 
-            filter: i => i.user.id === interaction.user.id && i.customId.startsWith('ping_'),
-            time: 60000
-        });
-        
-        collector.on('collect', async (i) => {
-            if (i.customId === 'ping_refresh') {
-                await i.deferUpdate();
-                const newStart = performance.now();
-                const newMsgLat = Math.round((performance.now() - newStart));
-                const newApiPing = Math.round(client.ws.ping);
-                const newMessageBar = createProgressBar(newMsgLat);
-                const newApiBar = createProgressBar(newApiPing);
-                const newHealthScore = getHealthScore(newMsgLat, newApiPing, dbLatency);
-                const newHealthColor = newHealthScore >= 80 ? '#2ecc71' : (newHealthScore >= 50 ? '#f1c40f' : '#e74c3c');
-                
-                const refreshedEmbed = EmbedBuilder.from(embed)
-                    .setColor(newHealthColor)
-                    .setDescription(
-                        `\`\`\`yaml\n` +
-                        `Node: BAMAKO-223 (Mali Node)\n` +
-                        `WebSocket: ${newApiPing}ms (${newApiBar.percentage}%)\n` +
-                        `REST API: ${newMsgLat}ms (${newMessageBar.percentage}%)\n` +
-                        `${dbLatency ? `Database: ${dbLatency}ms` : ''}\n` +
-                        `Health Score: ${newHealthScore}/100\`\`\``
-                    )
-                    .setFields(
-                        { name: `📡 ${t.roundTrip}`, value: `\`\`\`\n${newMessageBar.bar} ${newMsgLat}ms\`\`\``, inline: true },
-                        { name: `🌐 ${t.apiHeartbeat}`, value: `\`\`\`\n${newApiBar.bar} ${newApiPing}ms\`\`\``, inline: true }
-                    )
-                    .setTimestamp();
-                
-                await i.editReply({ embeds: [refreshedEmbed] });
-            } else if (i.customId === 'ping_help') {
-                const helpEmbed = new EmbedBuilder()
-                    .setColor('#3498db')
-                    .setTitle('📡 PING COMMAND HELP')
-                    .setDescription(
-                        `\`\`\`yaml\n` +
-                        `The ping command measures your connection to the bot:\n\n` +
-                        `• Message Latency: Time from command to response\n` +
-                        `• API Latency: Discord WebSocket heartbeat\n` +
-                        `• Database Latency: SQLite query time\n` +
-                        `• Health Score: Overall system performance\n\n` +
-                        `Green (<100ms)  → Excellent\n` +
-                        `Yellow (100-250ms) → Good\n` +
-                        `Red (>250ms)    → Slow\`\`\``
-                    )
-                    .setFooter({ text: t.footer })
-                    .setTimestamp();
-                await i.reply({ embeds: [helpEmbed], flags: 64 });
-            }
-        });
-    }
-};
+        const ctx = {
+            rest: 0, api: 0, database: null,
+            guildName: interaction.guild?.name?.toUpperCase() || 'NEURAL NODE',
+            version: client.version || '1.8.0',
+            detailed: interaction.options.getBoolean('detailed') || false,
+        };
+        const m = await measure(client, client.db);
+        ctx.rest = m.rest; ctx.api = m.api; ctx.database = m.database;
 
-// ================= COLLECTOR HANDLER =================
-async function handleCollector(msg, client, originalMsg, db, t, lang, guildName, guildIcon, version, showDetailed) {
-    const collector = msg.createMessageComponentCollector({ time: 60000 });
-    
-    collector.on('collect', async (i) => {
-        if (i.user.id !== originalMsg.author.id) {
-            return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
-        }
-        
-        await i.deferUpdate().catch(() => {});
-        
-        if (i.customId === 'ping_refresh') {
-            const start = performance.now();
-            const newMsgLat = Math.round((performance.now() - start));
-            const newApiPing = Math.round(client.ws.ping);
-            
-            let newDbLatency = null;
-            try {
-                const dbStart = performance.now();
-                db.prepare('SELECT 1').get();
-                const dbEnd = performance.now();
-                newDbLatency = Math.round(dbEnd - dbStart);
-            } catch (e) {}
-            
-            const newMessageBar = createProgressBar(newMsgLat);
-            const newApiBar = createProgressBar(newApiPing);
-            const newHealthScore = getHealthScore(newMsgLat, newApiPing, newDbLatency);
-            const newHealthColor = newHealthScore >= 80 ? '#2ecc71' : (newHealthScore >= 50 ? '#f1c40f' : '#e74c3c');
-            
-            const refreshedEmbed = new EmbedBuilder()
-                .setColor(newHealthColor)
-                .setAuthor({ name: t.author, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`${newMessageBar.colorCode} ${t.title} ${newMessageBar.colorCode}`)
-                .setDescription(
-                    `\`\`\`yaml\n` +
-                    `┌─────────────────────────────────┐\n` +
-                    `│ Node: BAMAKO-223 (Mali Node)       │\n` +
-                    `│ Core: Groq LPU™ 70B + OpenRouter   │\n` +
-                    `│ WebSocket: ${newApiPing}ms (${newApiBar.percentage}%)                │\n` +
-                    `│ REST API: ${newMsgLat}ms (${newMessageBar.percentage}%)              │\n` +
-                    `${newDbLatency ? `│ Database: ${newDbLatency}ms                  │\n` : ''}` +
-                    `└─────────────────────────────────┘\n` +
-                    `\`\`\``
-                )
-                .addFields(
-                    { name: `📡 ${t.roundTrip}`, value: `\`\`\`\n${newMessageBar.bar} ${newMsgLat}ms\n${newMessageBar.percentage}% • ${newMsgLat < 100 ? t.excellent : (newMsgLat < 250 ? t.good : t.slow)}\`\`\``, inline: true },
-                    { name: `🌐 ${t.apiHeartbeat}`, value: `\`\`\`\n${newApiBar.bar} ${newApiPing}ms\n${newApiBar.percentage}% • ${newApiPing < 100 ? t.excellent : (newApiPing < 250 ? t.good : t.slow)}\`\`\``, inline: true }
-                );
-            
-            if (newDbLatency && showDetailed) {
-                const newDbBar = createProgressBar(newDbLatency, 100);
-                refreshedEmbed.addFields({
-                    name: `🗄️ ${t.databaseLatency}`,
-                    value: `\`\`\`\n${newDbBar.bar} ${newDbLatency}ms\n${newDbBar.percentage}% • ${newDbLatency < 50 ? t.excellent : (newDbLatency < 100 ? t.good : t.slow)}\`\`\``,
-                    inline: true
-                });
-            }
-            
-            const healthEmoji = newHealthScore >= 80 ? '🟢' : (newHealthScore >= 50 ? '🟡' : '🔴');
-            refreshedEmbed.addFields({
-                name: `${healthEmoji} ${t.overallHealth}`,
-                value: `\`\`\`yaml\nScore: ${newHealthScore}/100\nStatus: ${newHealthScore >= 80 ? t.statusOnline : (newHealthScore >= 50 ? t.statusWarning : t.statusCritical)}\`\`\``,
-                inline: false
-            });
-            
-            refreshedEmbed.setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon }).setTimestamp();
-            
-            await i.editReply({ embeds: [refreshedEmbed] });
-        } else if (i.customId === 'ping_detailed') {
-            const newShowDetailed = !showDetailed;
-            const fakeMessage = { author: originalMsg.author, guild: originalMsg.guild, channel: originalMsg.channel };
-            const fakeArgs = newShowDetailed ? ['detailed'] : [];
-            await module.exports.run(client, fakeMessage, fakeArgs, db, null, 'ping');
-            await msg.delete().catch(() => {});
-        } else if (i.customId === 'ping_help') {
-            const helpEmbed = new EmbedBuilder()
-                .setColor('#3498db')
-                .setTitle('📡 PING COMMAND HELP')
-                .setDescription(
-                    `\`\`\`yaml\n` +
-                    `📊 Latency Metrics:\n` +
-                    `• Message Latency: Command → Response time\n` +
-                    `• API Latency: Discord WebSocket heartbeat\n` +
-                    `• Database Latency: SQLite query performance\n\n` +
-                    `🎯 Health Score Calculation:\n` +
-                    `• <100ms → Excellent (Green)\n` +
-                    `• 100-250ms → Good (Yellow)\n` +
-                    `• >250ms → Slow (Red)\n\n` +
-                    `💡 Tips:\n` +
-                    `• Click refresh for real-time update\n` +
-                    `• Use /ping detailed for full metrics\n` +
-                    `• Health score considers all factors\`\`\``
-                )
-                .setFooter({ text: t.footer })
-                .setTimestamp();
-            await i.reply({ embeds: [helpEmbed], flags: 64 });
-        }
-    });
-}
+        await interaction.reply(buildCard(client, t, ctx)).catch(() => {});
+        const msg = await interaction.fetchReply().catch(() => null);
+        if (msg) attachCollector(msg, client, client.db, ctx, t, interaction.user.id, true);
+    },
+};

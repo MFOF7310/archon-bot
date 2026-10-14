@@ -210,7 +210,7 @@ module.exports = {
 
     run: async (client, message, args, db, ss, used) => {
     const guildId = message.guild?.id ?? 'DM';
-        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
+
         const t = T[lang];
         if (args.length < 2) return message.reply(`❌ ${t.usage}`).catch(() => {});
         const durationMs = parseTime(args[0]);

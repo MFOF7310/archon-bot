@@ -186,7 +186,7 @@ module.exports = {
 
 
     run: async (client, message, args, db, ss, used) => {
-        const lang = client.detectLanguage ? client.detectLanguage(used, message.guild?.id) : 'en';
+
         const t = T[lang] || T.en;
         const uid = message.author.id;
 

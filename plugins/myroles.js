@@ -45,8 +45,7 @@ module.exports = {
     
     // ⚡ PREFIX COMMAND EXECUTION
     async run(client, message, args, db) {
-        const lang = client.detectLanguage ? client.detectLanguage('myroles', message.guild?.id) : 'en';
-        
+
         // Resolve target
         const target = message.mentions.members.first() || message.member;
         const isSelf = target.id === message.author.id;

@@ -53,7 +53,7 @@ module.exports = {
         }
 
         // ================= LANGUAGE SETUP =================
-        const lang = client.detectLanguage ? client.detectLanguage('clear', message.guild?.id) : 'en';
+
         const t = loadT(lang);
 
         // Delete command message immediately

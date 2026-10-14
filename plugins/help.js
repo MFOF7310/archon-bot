@@ -254,7 +254,7 @@ module.exports = {
         const guildId = message.guild?.id ?? 'DM';
         let lang = 'en';
         if (client.detectLanguage && usedCommand) {
-            lang = client.detectLanguage('help', guildId);
+
         } else if (usedCommand) {
             const cmd = usedCommand.toLowerCase();
             if (cmd === 'aide' || cmd === 'commandes') lang = 'fr';

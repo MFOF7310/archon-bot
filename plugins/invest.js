@@ -229,7 +229,6 @@ module.exports = {
         else if (subcommand === 'status') args = ['status'];
 
         const guildId = interaction.guild?.id || 'DM';
-        const lang = client.detectLanguage ? client.detectLanguage('invest', guildId) : 'en';
 
         const fakeMessage = {
             author: interaction.user,

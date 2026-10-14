@@ -699,7 +699,7 @@ async function executeSlashCommand(interaction, client) {
 
 // ================= PREFIX FALLBACK =================
 async function run(client, message, args, db, serverSettings, usedCommand) {
-    const lang = client.detectLanguage ? client.detectLanguage('game', message.guild?.id) : 'en';
+
     const guildId = message.guild?.id || 'DM';
     const userId = message.author.id;
     const prefix = serverSettings?.prefix || '.';

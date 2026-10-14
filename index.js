@@ -228,11 +228,10 @@ const FRENCH_ALIASES = new Set([
 ]);
 
 client.detectLanguage = (usedCommand, guildId = null) => {
-    // Safety check
-    const cmd = typeof usedCommand === 'string' ? usedCommand : String(usedCommand || '');
-    // French alias override
-    if (FRENCH_ALIASES.has(cmd.toLowerCase())) return 'fr';
-    return detectLanguage(cmd, guildId);
+    // Command language resolution: setlang > slash locale > English.
+    // The heuristic below is kept only for free-text (AFK/level-up messages).
+    try { return require('./lib/pick-lang').pickLang(client, guildId, null); }
+    catch { return 'en'; }
 };
 client.calculateLevel = calculateLevel;
 client.formatNumber = formatNumber;
@@ -3862,7 +3861,7 @@ if (message.content && message.content.length > 4000) {
                 await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCur), Math.floor(xpNeed), client, db);
             }
 
-            const userLang = (['en','fr','bm','zh','ar'].includes(serverSettings?.language) ? serverSettings.language : null) || client.userLastLang?.get(message.author.id) || detectLanguage(message.content) || 'en';
+            const userLang = (['en','fr','bm','zh','ar'].includes(serverSettings?.language) ? serverSettings.language : null) || client.userLastLang?.get(message.author.id) || 'en';
             const isDM = !message.guild;
             const guildName = isDM ? 'NEURAL NETWORK' : message.guild.name;
             const guildIcon = isDM ? client.user.displayAvatarURL() : message.guild.iconURL();
@@ -4018,11 +4017,7 @@ if (message.content && message.content.length > 4000) {
 
         if (command) {
     // Determine language from the exact alias typed
-    let commandLang = client.aliasLang.get(usedCommand.toLowerCase()) || 'en';
-    // Optional fallback to old detector for unknown aliases
-    if (!client.aliasLang.has(usedCommand.toLowerCase())) {
-        commandLang = detectLanguage(usedCommand);
-    }
+    let commandLang = require('./lib/pick-lang').pickLang(client, message.guild?.id, null);
     // A language the member chose with .mylang applies when the server is on Auto (the explicit server language, checked just below, still wins)
     try {
         const _myLang = require('./lib/member-lang').get(message.author.id);
@@ -4060,7 +4055,7 @@ if (cooldownCheck.blocked) {
                 return;
             } catch (e) { 
                 console.error(`${red}[COMMAND ERROR]${reset} ${cmdName}:`, e);
-                const lang = detectLanguage(usedCommand || cmdName);
+                const lang = commandLang || 'en';
                 { try { const _bp = require('./lib/botPerms'); const _x = _bp.explainError(e, message, (command && command.name) || cmdName, lang); if (_x) return _bp.say(message, _x); } catch (_e2) { console.error('[botPerms]', _e2.message); } }
                 const errorMsg = t('index.cmd_error', lang);
                 return message.reply(errorMsg).catch(() => {});
@@ -4402,7 +4397,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'meta_reroll') {
         try {
             const metaPlugin = require('./plugins/meta.js');
-            const embed = metaPlugin.randomPick(interaction.guild, client.detectLanguage('meta', interaction.guildId));
+            const embed = metaPlugin.randomPick(interaction.guild, require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction));
             if (embed) {
                 await interaction.update({ embeds: [embed], components: [metaPlugin.rerollRow(client.detectLanguage('meta', interaction.guildId))] }).catch(() => {});
             }

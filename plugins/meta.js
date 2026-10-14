@@ -176,7 +176,7 @@ module.exports = {
 
     // Prefix: .meta | .meta sniper | .weapon ak117
     run: async (client, message, args, db, ss, used) => {
-        const lang = client.detectLanguage ? client.detectLanguage(used || 'meta', message.guild?.id) : 'en';
+
         const tr = (k, v) => i18n.t(`meta.${k}`, lang, v);
         const cmd = (used || '').toLowerCase();
         const arg = args.join(' ').trim();

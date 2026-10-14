@@ -98,8 +98,7 @@ async execute(interaction, client) {
     if (!isOwner && !isAdmin) {
         const owner = await interaction.guild.fetchOwner().catch(() => null);
         const ownerName = owner ? `**${owner.user.username}**` : 'the server owner';
-        const lang = client.detectLanguage ? client.detectLanguage('serversettings', interaction.guild?.id) : 'en';
-        
+
         const msg = lang === 'fr'
             ? `🔒 **ACCÈS RESTREINT**\n\nCette commande est réservée aux **administrateurs** du serveur.\n\n👑 **Propriétaire :** ${ownerName}`
             : `🔒 **RESTRICTED ACCESS**\n\nThis command is reserved for server **administrators**.\n\n👑 **Server Owner:** ${ownerName}`;
@@ -156,7 +155,7 @@ async execute(interaction, client) {
 
         const action = args[0]?.toLowerCase();
         const cmdName = args[0]?.toLowerCase() || 'view';
-        const lang = client.detectLanguage ? client.detectLanguage(cmdName, message.guild?.id) : 'en';
+
         const guildId = message.guild.id;
         const settings = client.getServerSettings(guildId);
 

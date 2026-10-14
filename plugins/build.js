@@ -172,7 +172,7 @@ module.exports = {
     },
 
     execute: async (interaction, client) => {
-        const lang = client.detectLanguage ? client.detectLanguage('build', interaction.guildId) : 'en';
+
         const tr = (k, v) => i18n.t(`build.${k}`, lang, v);
         if (!interaction.guild) {
             return interaction.reply({ content: tr('guildOnly'), flags: MessageFlags.Ephemeral });
@@ -340,7 +340,7 @@ module.exports = {
     // Prefix: .build  -> your own builds
     //         .build <weapon> -> clan builds for that weapon
     run: async (client, message, args) => {
-        const lang = client.detectLanguage ? client.detectLanguage('build', message.guild?.id) : 'en';
+
         const tr = (k, v) => i18n.t(`build.${k}`, lang, v);
         if (!message.guild) return message.reply(tr('guildOnly')).catch(() => {});
         const db = client.db;

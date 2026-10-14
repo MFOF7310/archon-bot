@@ -170,7 +170,7 @@ module.exports = {
         
         // ================= LANGUAGE DETECTION =================
         if (client.detectLanguage && usedCommand) {
-            lang = client.detectLanguage('pin', guildId);
+
         }
         const t = loadT(lang);
         
