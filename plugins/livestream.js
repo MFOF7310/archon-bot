@@ -77,7 +77,7 @@ async function resolveHandle(handle) {
 }
 
 // ─── Live check via yt-dlp ───
-const COOKIE_FILE = '/opt/youtube_cookies.txt';
+const COOKIE_FILE = require('path').join(__dirname, '..', 'config', 'youtube_cookies.txt');
 
 async function fetchLiveStatus(channelId) {
     try {
