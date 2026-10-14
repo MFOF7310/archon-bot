@@ -10,6 +10,10 @@ const axios = require('axios');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
+async function ytdlpRun(args) {
+    return await execFileAsync('yt-dlp', args);
+}
+
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
 const PRIORITY_INTERVAL_MS = 2 * 60 * 1000;
@@ -73,23 +77,59 @@ async function resolveHandle(handle) {
 }
 
 // ─── Live check via yt-dlp ───
+const COOKIE_FILE = '/opt/youtube_cookies.txt';
+
 async function fetchLiveStatus(channelId) {
     try {
-        const { stdout } = await execFileAsync('yt-dlp', [
+        const { stdout, stderr } = await execFileAsync('yt-dlp', [
             '--skip-download', '--no-warnings', '--no-playlist',
+            '--cookies', COOKIE_FILE,
             '--print', 'is_live', '--print', 'title', '--print', 'thumbnail',
             `https://www.youtube.com/channel/${channelId}/live`,
         ], { timeout: YTDLP_TIMEOUT_MS });
         const lines = String(stdout).trim().split('\n');
         const flag = (lines[0] || '').trim().toLowerCase();
-        if (flag !== 'true') return { isLive: false };
-        return {
-            isLive: true,
-            title: (lines[1] || 'Live stream').trim(),
-            thumbnail: (lines[2] || '').trim() || null,
-            url: `https://youtube.com/channel/${channelId}/live`,
-        };
-    } catch { return { isLive: false }; }
+        if (flag === 'true' || flag === 'is_live') {
+            return {
+                isLive: true,
+                title: (lines[1] || 'Live stream').trim(),
+                thumbnail: (lines[2] || '').trim() || null,
+                url: `https://youtube.com/channel/${channelId}/live`,
+            };
+        }
+        // yt-dlp returned OK and said is_live=false → offline
+        console.log(`[YOUTUBE] ${channelId} is_live=${flag}`);
+        return { isLive: false };
+    } catch (e) {
+        const msg = String(e.message || '') + String(e.stderr || '');
+        // "Not currently live" is a valid answer, not an error
+        if (/not currently live|has ended|not a live|no live/i.test(msg)) {
+            return { isLive: false };
+        }
+        // Real errors — cookie expiry, block, network
+        console.log(`[YOUTUBE] ${channelId} live check err: ${msg.slice(0, 180)}`);
+        return await fetchLiveFallback(channelId);
+    }
+}
+
+async function fetchLiveFallback(channelId) {
+    const up = await fetchLatestUpload(channelId);
+    if (!up) return { isLive: false };
+    try {
+        const { stdout } = await execFileAsync('yt-dlp', [
+            '--skip-download', '--no-warnings', '--no-playlist',
+            '--cookies', COOKIE_FILE,
+            '--print', 'live_status',
+            up.url,
+        ], { timeout: YTDLP_TIMEOUT_MS });
+        const status = String(stdout).trim();
+        if (status === 'is_live') {
+            return { isLive: true, title: up.title, thumbnail: up.thumbnail, url: up.url };
+        }
+        return { isLive: false };
+    } catch {
+        return { isLive: false };
+    }
 }
 
 // ─── Upload check via RSS ───
@@ -112,17 +152,20 @@ async function fetchLatestUpload(channelId) {
 
 // ─── Embeds ───
 function buildLiveEmbed(channelId, live, handle, client) {
+    const isPreview = live._test === true;
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(live.url).setEmoji('🔴'),
         new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(`https://youtube.com/channel/${channelId}`).setEmoji('📺'),
     );
     const embed = new EmbedBuilder()
-        .setColor('#FF0000')
-        .setAuthor({ name: '📺 YouTube Live  •  ' + (handle ? '@' + handle : channelId), iconURL: client.user.displayAvatarURL() })
-        .setTitle('🔴 ' + live.title)
+        .setColor(isPreview ? 0xf39c12 : 0xFF0000)
+        .setAuthor({ name: (isPreview ? '🧪 TEST PREVIEW  •  ' : '📺 YouTube Live  •  ') + (handle ? '@' + handle : channelId), iconURL: client.user.displayAvatarURL() })
+        .setTitle((isPreview ? '🧪 [TEST] ' : '🔴 ') + live.title)
         .setURL(live.url)
-        .setDescription('**' + (handle ? '@' + handle : 'Channel') + '** is live on YouTube right now!')
-        .setFooter({ text: 'ARCHON CG-223  •  YouTube Live Alert', iconURL: client.user.displayAvatarURL() })
+        .setDescription(isPreview
+            ? `**Layout preview** for ${handle ? '@' + handle : channelId}.\nThis is **not a real live alert** — the channel is not currently streaming.`
+            : '**' + (handle ? '@' + handle : 'Channel') + '** is live on YouTube right now!')
+        .setFooter({ text: 'ARCHON CG-223  •  ' + (isPreview ? 'Test Preview' : 'YouTube Live Alert'), iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
     if (live.thumbnail) embed.setImage(live.thumbnail);
     return { embed, row };
@@ -358,9 +401,15 @@ module.exports = {
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
             if (!track) return message.reply('❌ Not tracked. Run `.livestream set` first.');
             const live = await fetchLiveStatus(channelId);
-            const payload = live.isLive ? live : { isLive: true, title: 'Test stream from ARCHON', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
+            const isRealLive = !!live.isLive;
+            const payload = isRealLive
+                ? live
+                : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
             const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
-            return message.reply(sent ? `✅ Test sent to <#${track.target_channel_id}>.` : '❌ Send failed — check permissions.');
+            if (!sent) return message.reply('❌ Send failed — check permissions.');
+            return message.reply(isRealLive
+                ? `✅ Real live alert sent — @${track.youtube_handle || channelId} is actually streaming right now.`
+                : `🧪 Preview sent (marked as TEST). @${track.youtube_handle || channelId} is **not live** — this is a layout preview only.`);
         }
 
         return message.reply(`📺 **YouTube notifications**\n\`${prefix}livestream set @handle #channel [--priority]\`\n\`${prefix}livestream remove @handle\`\n\`${prefix}livestream list\`\n\`${prefix}livestream test @handle\``);
@@ -431,11 +480,17 @@ module.exports = {
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
             if (!track) return interaction.editReply('❌ Not tracked.');
             const live = await fetchLiveStatus(channelId);
-            const payload = live.isLive ? live : { isLive: true, title: 'Test stream from ARCHON', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
+            const isRealLive = !!live.isLive;
+            const payload = isRealLive
+                ? live
+                : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
             const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
-            return interaction.editReply(sent ? `✅ Test sent.` : '❌ Send failed.');
+            if (!sent) return interaction.editReply('❌ Send failed — check bot permissions in that channel.');
+            return interaction.editReply(isRealLive
+                ? `✅ Real live alert sent — @${track.youtube_handle || channelId} is actually streaming right now.`
+                : `🧪 Preview sent (marked as TEST). @${track.youtube_handle || channelId} is **not live** — this is a layout preview only.`);
         }
     },
 
-    startPolling, stopPolling, fetchLiveStatus, fetchLatestUpload, resolveHandle,
+    startPolling, stopPolling, fetchLiveStatus, fetchLiveFallback, fetchLatestUpload, resolveHandle,
 };
