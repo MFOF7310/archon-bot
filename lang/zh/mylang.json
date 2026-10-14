@@ -6,5 +6,9 @@
   "serverKeeps": "这个服务器已用 /setlang 指定了语言，所以这里仍使用该语言。",
   "reset": "好的。ARCHON 将重新自动选择你的语言。",
   "invalid": "我不认识这种语言。请选择：{list}。",
-  "error": "现在无法保存，请稍后再试。"
+  "error": "现在无法保存，请稍后再试。",
+  "title": "你的语言",
+  "hintWithCmd": "使用 {cmd}，代码：en · fr · ar · bm · zh · auto",
+  "serverAuto": "本服务器已设为 Auto。",
+  "serverKeepsShort": "本服务器使用 {name}。"
 }

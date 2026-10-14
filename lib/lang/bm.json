@@ -9,8 +9,8 @@
     "notFound": "A ma sɔrɔ."
   },
   "alive": {
-    "title": "🚀 TITRE",
-    "botInfo": "📡 BOT KUNNAFONI",
+    "title": "TITRE",
+    "botInfo": "BOT KUNNAFONI",
     "name": "Tɔgɔ",
     "id": "ID",
     "version": "Version",
@@ -18,7 +18,7 @@
     "servers": "Serveurs",
     "users": "Mɔgɔw",
     "commands": "Commandes",
-    "status": "🎮 Kɛcogoyaw",
+    "status": "Kɛcogoyaw",
     "operational": "A bɛ baara la"
   },
   "ping": {

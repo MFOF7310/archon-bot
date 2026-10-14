@@ -6,5 +6,9 @@
   "serverKeeps": "Ce serveur a choisi sa propre langue avec /setlang, il la garde donc ici.",
   "reset": "C'est fait. ARCHON choisira de nouveau ta langue automatiquement.",
   "invalid": "Je ne connais pas cette langue. Choisis parmi : {list}.",
-  "error": "Je n'ai pas pu enregistrer ça pour le moment. Réessaie dans un instant."
+  "error": "Je n'ai pas pu enregistrer ça pour le moment. Réessaie dans un instant.",
+  "title": "Ta langue",
+  "hintWithCmd": "Utilise {cmd} avec un code — en · fr · ar · bm · zh · auto",
+  "serverAuto": "Ce serveur est en Auto.",
+  "serverKeepsShort": "Ce serveur utilise {name}."
 }

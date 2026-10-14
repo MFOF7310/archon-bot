@@ -5,5 +5,9 @@
   "serverKeeps": "Nin sɛrivɛri in ka kan sugandilen do kaban nin /setlang ye. O hokumu la a bɛ to o cogoya in kan.",
   "reset": "A ɲɛna. ARCHON bɛna segin ka taa i ka kan sugandilen ma otomatikeman.",
   "invalid": "Hakɛto ne tɛ nin kan in dɔn. Kelen sugandi: {list} kɔnɔ ta la.",
-  "error": "Hakɛto nma sen ka nin mara. seginnin kɛ a kan waati wɛrɛ kɔnɔ."
+  "error": "Hakɛto nma sen ka nin mara. seginnin kɛ a kan waati wɛrɛ kɔnɔ.",
+  "title": "I kan",
+  "hintWithCmd": "Kɛ {cmd} ni kode ye — en · fr · ar · bm · zh · auto",
+  "serverAuto": "Nin serveur bɛ Auto.",
+  "serverKeepsShort": "Nin serveur bɛ {name} kɛ."
 }

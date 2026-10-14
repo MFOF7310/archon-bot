@@ -36,7 +36,7 @@ function buildCard(client, userId, guildId, interaction) {
     const current = mine
         ? L('current', { name: `${FLAGS[mine]} ${NAMES[mine]}` }) || `Current: **${NAMES[mine]}**`
         : L('none') || `You haven't chosen yet. ARCHON follows the server, then your Discord locale.`;
-    const how = L('hintWithCmd', { cmd }) || `Use ${cmd} <code> — one of: en · fr · ar · bm · zh · auto`;
+    const how = L('hintWithCmd', { cmd }) || `Use ${cmd} with a code — en · fr · ar · bm · zh · auto`;
     const server = serverLang !== 'auto'
         ? (L('serverKeepsShort') || `This server uses **${NAMES[serverLang] || serverLang}**.`)
         : (L('serverAuto') || 'This server is set to **Auto**.');
