@@ -72,8 +72,8 @@ async function setLanguage(client, guildId, code, guildName) {
 }
 
 // The language of the person typing, never failing: English is the safe answer.
-function languageOf(client, guildId, interaction) {
-    try { return textLang(pickLang(client, guildId, interaction)); } catch (e) { return 'en'; }
+function languageOf(client, guildId, interaction, userId = null) {
+    try { return textLang(pickLang(client, guildId, interaction, userId)); } catch (e) { return 'en'; }
 }
 
 const cleanCode = (s) => String(s || '').replace(/[^\p{L}\p{N}_-]/gu, '').slice(0, 12);

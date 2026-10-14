@@ -3786,8 +3786,7 @@ if (message.content && message.content.length > 4000) {
 
     // ================= AFK SYSTEM =================
     if (message.mentions.users.size > 0) {
-        const messageContent = message.content || '';
-        const lang = detectLanguage(messageContent);
+        const lang = require('./lib/pick-lang').pickLang(client, message.guild?.id, null, message.author.id);
         
         for (const [mentionedId, user] of message.mentions.users) {
             if (afkUsers.has(mentionedId)) {
@@ -3812,8 +3811,7 @@ if (message.content && message.content.length > 4000) {
         
         afkUsers.delete(message.author.id);
         
-        const messageContent = message.content || '';
-        const lang = detectLanguage(messageContent);
+        const lang = require('./lib/pick-lang').pickLang(client, message.guild?.id, null, message.author.id);
         
         const { EmbedBuilder: ReturnEmbed } = require('discord.js');
         const returnEmbed = new ReturnEmbed()
@@ -4017,7 +4015,7 @@ if (message.content && message.content.length > 4000) {
 
         if (command) {
     // Determine language from the exact alias typed
-    let commandLang = require('./lib/pick-lang').pickLang(client, message.guild?.id, null);
+    let commandLang = require('./lib/pick-lang').pickLang(client, message.guild?.id, null, message.author.id);
     // A language the member chose with .mylang applies when the server is on Auto (the explicit server language, checked just below, still wins)
     try {
         const _myLang = require('./lib/member-lang').get(message.author.id);
@@ -4397,9 +4395,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'meta_reroll') {
         try {
             const metaPlugin = require('./plugins/meta.js');
-            const embed = metaPlugin.randomPick(interaction.guild, require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction));
+            const embed = metaPlugin.randomPick(interaction.guild, require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id));
             if (embed) {
-                await interaction.update({ embeds: [embed], components: [metaPlugin.rerollRow(client.detectLanguage('meta', interaction.guildId))] }).catch(() => {});
+                await interaction.update({ embeds: [embed], components: [metaPlugin.rerollRow(require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id))] }).catch(() => {});
             }
         } catch (e) {
             console.error('[META]', e.message);
