@@ -43,5 +43,12 @@
   "btn_help": "Help",
   "help_card_title": "Finding your way around",
   "help_card_how": "You can open the full help any time, in any channel where you can use commands: type {prefix}help or use /help.",
-  "help_card_server": "this server"
+  "help_card_server": "this server",
+  "card_greeting": "👋 Welcome {user}{badge}",
+  "card_member_count": "You're the **{count}** member of **{guild}**.",
+  "card_footer": "Member #{count} · {date}",
+  "card_inviter": " · via {code} ({name})",
+  "card_inviter_unknown": " · Unknown inviter",
+  "card_intro": "Welcome to the family — feel free to introduce yourself and explore the channels! 💜",
+  "card_joined": "Joined {date}"
 }

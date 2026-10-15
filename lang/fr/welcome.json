@@ -43,5 +43,12 @@
   "btn_help": "Aide",
   "help_card_title": "Pour bien démarrer",
   "help_card_how": "Tu peux ouvrir l'aide complète à tout moment, dans n'importe quel salon où tu peux utiliser des commandes : tape {prefix}help ou utilise /help.",
-  "help_card_server": "ce serveur"
+  "help_card_server": "ce serveur",
+  "card_greeting": "👋 Bienvenue {user}{badge}",
+  "card_member_count": "Tu es le **{count}** membre de **{guild}**.",
+  "card_footer": "Membre #{count} · {date}",
+  "card_inviter": " · via {code} ({name})",
+  "card_inviter_unknown": " · Inviteur inconnu",
+  "card_intro": "Bienvenue dans la famille — n'hésite pas à te présenter et à explorer les salons ! 💜",
+  "card_joined": "Rejoint {date}"
 }

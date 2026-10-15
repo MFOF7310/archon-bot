@@ -129,8 +129,10 @@ async function handleWelcome(member, client, db) {
     cfg.lang = lang;
     const _topRole = member.roles?.highest;
     const _badge = (_topRole && _topRole.id !== member.guild.id) ? ` [${_topRole.name}]` : '';
-    const _wave = EMOJIS.wave || '👋';
-    let content = `${_wave} Bienvenue ${member.user}${_badge}\nTu es le **${Style.ordinal(count)}** membre de **${member.guild.name}**.`;
+    const _greet = t('welcome.card_greeting', lang, { user: member.user, badge: _badge });
+    const _memberLine = t('welcome.card_member_count', lang, { count: Style.ordinal(count), guild: member.guild.name });
+    const _intro = t('welcome.card_intro', lang);
+    let content = `${_greet}\n${_memberLine}\n\n${_intro}`;
     if (cfg.welcomeMessage) {
         content = `${Style.formatTemplate(cfg.welcomeMessage, member, count)}\n${content}`;
     }
@@ -189,15 +191,16 @@ async function handleWelcome(member, client, db) {
     try { _inviter = await require('../lib/invite-tracker').detect(member.guild); } catch {}
 
     // ── Compact footer (no ping) ──
-    const _months = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
-    const _now = new Date();
-    const _dateStr = `${_now.getDate()} ${_months[_now.getMonth()]}`;
-    let _footerLine = `-# Membre #${count} · ${_dateStr}`;
+    const _fmt = { day: 'numeric', month: 'short', year: 'numeric' };
+    const _joinedStr = new Intl.DateTimeFormat(lang, _fmt).format(member.joinedAt || new Date());
+    let _footerLine = '-# ' + t('welcome.card_footer', lang, { count, date: _joinedStr });
     if (_inviter?.code) {
         const _invName = _inviter.inviter?.username || (_inviter.inviter?.tag || '').split('#')[0];
-        _footerLine += _invName ? ` · via ${_inviter.code} (${_invName})` : ` · via ${_inviter.code}`;
+        _footerLine += _invName
+            ? t('welcome.card_inviter', lang, { code: _inviter.code, name: _invName })
+            : t('welcome.card_inviter', lang, { code: _inviter.code, name: '' }).replace(/ \(\s*\)/, '');
     } else {
-        _footerLine += ` · Inviteur inconnu`;
+        _footerLine += t('welcome.card_inviter_unknown', lang);
     }
 
     // ── V2 container (compact Ephi style) ──
@@ -210,6 +213,9 @@ async function handleWelcome(member, client, db) {
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(content)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('\u200b')
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(_footerLine)

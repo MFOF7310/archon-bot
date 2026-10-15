@@ -43,5 +43,12 @@
   "btn_help": "帮助",
   "help_card_title": "快速上手",
   "help_card_how": "你随时可以在任何能使用命令的频道打开完整帮助：输入 {prefix}help 或使用 /help。",
-  "help_card_server": "本服务器"
+  "help_card_server": "本服务器",
+  "card_greeting": "👋 欢迎 {user}{badge}",
+  "card_member_count": "你是 **{guild}** 的第 **{count}** 位成员。",
+  "card_footer": "第 {count} 位 · {date}",
+  "card_inviter": " · 通过 {code} ({name})",
+  "card_inviter_unknown": " · 邀请人未知",
+  "card_intro": "欢迎加入大家庭——快来介绍你自己，逛逛各个频道吧！💜",
+  "card_joined": "加入于 {date}"
 }

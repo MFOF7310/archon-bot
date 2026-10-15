@@ -43,5 +43,12 @@
   "btn_help": "المساعدة",
   "help_card_title": "للبدء بسهولة",
   "help_card_how": "يمكنك فتح المساعدة الكاملة في أي وقت وفي أي قناة يمكنك استخدام الأوامر فيها: اكتب {prefix}help أو استخدم /help.",
-  "help_card_server": "هذا الخادم"
+  "help_card_server": "هذا الخادم",
+  "card_greeting": "👋 أهلاً {user}{badge}",
+  "card_member_count": "أنت العضو رقم **{count}** في **{guild}**.",
+  "card_footer": "عضو #{count} · {date}",
+  "card_inviter": " · عبر {code} ({name})",
+  "card_inviter_unknown": " · الداعي غير معروف",
+  "card_intro": "أهلاً بك في العائلة — عرّفنا بنفسك وتجوّل في القنوات! 💜",
+  "card_joined": "انضم في {date}"
 }
