@@ -1,8 +1,9 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
+const { card } = require('../lib/games/v2');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
-const I18N_KEYS = ["title","name","id","animated","guild","url","unicode","type","customEmoji","standardEmoji","raw","footer","noEmoji","notFound","sizeNote","created","managed","requireColons","available","rolesAllowed","everyone"];
+const I18N_KEYS = ["name","id","animated","guild","created","unknown","sizeNote","noEmoji","notFound","typeGuild","typeApp","typeExternal","typeUnicode","identifiers","originLabel","requestedBy"];
 // Clés dans lang/<locale>/emoji.json ; '' retombe sur EN dans t().
 function loadT(lang) {
     const o = {};
@@ -38,12 +39,12 @@ module.exports = {
             return message.reply({ content: t.noEmoji, flags: 64 }).catch(() => {});
         }
 
-        const embed = await buildEmojiEmbed(input, t, client, message.guild);
+        const embed = await buildEmojiEmbed(input, t, client, message.guild, message.author.id);
         if (!embed) {
             return message.reply({ content: t.notFound, flags: 64 }).catch(() => {});
         }
 
-        await message.reply({ embeds: [embed] }).catch(() => {});
+        await message.reply({ ...embed, allowedMentions: { parse: [] } }).catch(() => {});
     },
 
     // ================= SLASH EXECUTE =================
@@ -54,162 +55,112 @@ module.exports = {
         const lang = interaction.client.detectLanguage?.('/emoji', 'en') || 'en';
         const t = loadT(lang);
 
-        const embed = await buildEmojiEmbed(input, t, interaction.client, interaction.guild);
+        const embed = await buildEmojiEmbed(input, t, interaction.client, interaction.guild, interaction.user.id);
         if (!embed) {
             return interaction.editReply({ content: t.notFound });
         }
 
-        await interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ ...embed, allowedMentions: { parse: [] } });
     }
 };
 
-// ================= BUILD EMBED FUNCTION =================
-async function buildEmojiEmbed(input, t, client, guild) {
+// ================= BUILD CARD (V2) =================
+async function buildEmojiEmbed(input, t, client, guild, userId) {
     const customEmojiRegex = /<(a?):(\w+):(\d+)>/;
     const match = input.match(customEmojiRegex);
 
-    let emojiData = {};
+    let d = {};
 
     if (match) {
-        // ================= CUSTOM EMOJI =================
         const animated = match[1] === 'a';
         const name = match[2];
         const id = match[3];
-        const extension = animated ? 'gif' : 'png';
-        
-        // Try to fetch from guild if available
+        const ext = animated ? 'gif' : 'png';
+
+        // 1. Chercher dans le serveur courant
         let guildEmoji = null;
-        if (guild) {
-            guildEmoji = await guild.emojis.fetch(id).catch(() => null);
+        if (guild) guildEmoji = await guild.emojis.fetch(id).catch(() => null);
+
+        // 2. Sinon chercher dans le cache global (tous les serveurs du bot)
+        let otherGuildEmoji = null;
+        if (!guildEmoji) {
+            otherGuildEmoji = client.emojis.cache.get(id) || null;
+            // Si pas dans le cache, tenter un fetch sur les guilds
+            if (!otherGuildEmoji && client.guilds?.cache) {
+                for (const [_, g] of client.guilds.cache) {
+                    const e = g.emojis.cache.get(id);
+                    if (e) { otherGuildEmoji = e; break; }
+                }
+            }
         }
 
-        emojiData = {
-            name: name,
-            id: id,
-            animated: animated,
-            type: t.customEmoji,
-            guild: guildEmoji?.guild?.name || 'External Server',
-            url: `https://cdn.discordapp.com/emojis/${id}.${extension}`,
+        // 3. Sinon app emoji
+        let appEmoji = null;
+        if (!guildEmoji && !otherGuildEmoji && client.application?.emojis) {
+            await client.application.emojis.fetch().catch(() => null);
+            appEmoji = client.application.emojis.cache?.get(id) || null;
+        }
+
+        const found = guildEmoji || otherGuildEmoji || appEmoji;
+
+        d = {
+            name, id, animated,
             raw: `<${match[1]}:${name}:${id}>`,
-            created: guildEmoji?.createdAt 
-                ? `<t:${Math.floor(guildEmoji.createdAt.getTime() / 1000)}:D>` 
-                : 'Unknown',
-            managed: guildEmoji?.managed ? '✅' : '❌',
-            requireColons: guildEmoji?.requiresColons ? '✅' : '❌',
-            available: guildEmoji?.available ? '✅' : '❌',
-            roles: guildEmoji?.roles?.cache?.size > 0 
-                ? guildEmoji.roles.cache.map(r => r.name).join(', ') 
-                : t.everyone
+            url: `https://cdn.discordapp.com/emojis/${id}.${ext}`,
+            typeKey: found?.guildId ? 'typeGuild' : (appEmoji ? 'typeApp' : 'typeExternal'),
+            origin: found?.guild?.name || (appEmoji ? 'Archon App' : 'Serveur externe'),
+            created: found?.createdAt
+                ? `<t:${Math.floor(found.createdAt.getTime() / 1000)}:D>`
+                : t.unknown,
         };
     } else {
-        // ================= STANDARD EMOJI =================
         const codePoints = [...input].map(c => c.codePointAt(0).toString(16)).join('-');
-        
-        emojiData = {
-            name: input,
-            id: 'N/A',
-            animated: false,
-            type: t.standardEmoji,
-            guild: 'Discord Standard',
+        d = {
+            name: input, id: '\u2014', animated: false, raw: input,
             url: `https://twemoji.maxcdn.com/v/latest/72x72/${codePoints}.png`,
-            raw: input,
+            typeKey: 'typeUnicode',
+            origin: 'Discord',
+            created: '\u2014',
             unicode: `U+${codePoints.toUpperCase()}`,
-            created: 'N/A',
-            managed: 'N/A',
-            requireColons: 'N/A',
-            available: 'N/A',
-            roles: t.everyone
         };
     }
 
-    // Color based on emoji type
-    const color = emojiData.animated ? 0x9B59B6 : 0xF1C40F;
+    const color = d.animated ? 0x9B59B6 : 0xFFD700;
+    const items = [];
 
-    const embed = new EmbedBuilder()
-        .setColor(color)
-        .setAuthor({ 
-            name: t.title, 
-            iconURL: client.user.displayAvatarURL() 
-        })
-        .setThumbnail(emojiData.url)
-        .setImage(emojiData.url)
-        .setDescription(
-            `### 📋 **${emojiData.name}**\n` +
-            `*${emojiData.type}*\n`
-        )
-        .addFields(
-            {
-                name: '📌 **Identifiers**',
-                value: [
-                    `\`\`\`yaml`,
-                    `${t.name.padEnd(14)}: ${emojiData.name}`,
-                    `${t.id.padEnd(14)}: ${emojiData.id}`,
-                    `${t.animated.padEnd(14)}: ${emojiData.animated ? '✅ Yes' : '❌ No'}`,
-                    `${t.type.padEnd(14)}: ${emojiData.type}`,
-                    `\`\`\``
-                ].join('\n'),
-                inline: false
-            },
-            {
-                name: '🏠 **Origin**',
-                value: [
-                    `\`\`\`yaml`,
-                    `${t.guild.padEnd(14)}: ${emojiData.guild}`,
-                    `${t.created.padEnd(14)}: ${emojiData.created}`,
-                    `${t.available.padEnd(14)}: ${emojiData.available}`,
-                    `\`\`\``
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: '⚙️ **Properties**',
-                value: [
-                    `\`\`\`yaml`,
-                    `${t.managed.padEnd(14)}: ${emojiData.managed}`,
-                    `${t.requireColons.padEnd(14)}: ${emojiData.requireColons}`,
-                    `\`\`\``
-                ].join('\n'),
-                inline: true
-            }
-        );
+    // Header avec thumbnail (l'emoji lui-même)
+    items.push({ thumbnail: [`# ${d.raw}\n*${t[d.typeKey]}*`, d.url] });
 
-    // Add roles field only for custom emojis with restrictions
-    if (emojiData.roles && emojiData.roles !== t.everyone) {
-        embed.addFields({
-            name: '🔒 **Role Access**',
-            value: emojiData.roles,
-            inline: false
-        });
+    // Identifiants
+    items.push({ rule: true });
+    items.push({ text:
+        `\ud83d\udccc **${t.identifiers}**\n` +
+        '```yaml\n' +
+        `${t.name.padEnd(11)}: ${d.name}\n` +
+        `${t.id.padEnd(11)}: ${d.id}\n` +
+        `${t.animated.padEnd(11)}: ${d.animated ? '\u2728' : '\u2014'}\n` +
+        '```'
+    });
+
+    // Origine
+    items.push({ text:
+        `\ud83c\udfe0 **${t.originLabel}**\n` +
+        '```yaml\n' +
+        `${t.guild.padEnd(11)}: ${d.origin}\n` +
+        `${t.created.padEnd(11)}: ${d.created}\n` +
+        '```'
+    });
+
+    if (d.unicode) {
+        items.push({ text: `\ud83d\udd22 **Unicode** : \`${d.unicode}\`` });
     }
 
-    // Add raw format
-    embed.addFields({
-        name: '📋 **Raw Format**',
-        value: `\`${emojiData.raw}\``,
-        inline: false
-    });
+    // Lien direct
+    items.push({ text: `\ud83d\udd17 [${t.sizeNote}](${d.url})` });
 
-    // Add URL field
-    embed.addFields({
-        name: '🔗 **Direct Link**',
-        value: `[${t.sizeNote}](${emojiData.url})`,
-        inline: false
-    });
+    // Footer
+    items.push({ rule: true });
+    items.push({ text: `-# ARCHON CG-223 \u2022 ${t.requestedBy} <@${userId}>` });
 
-    // Unicode for standard emojis
-    if (emojiData.unicode) {
-        embed.addFields({
-            name: '🔢 **Unicode**',
-            value: `\`${emojiData.unicode}\``,
-            inline: false
-        });
-    }
-
-    embed.setFooter({ 
-        text: `${t.footer} • Requested by ${client.user?.username || 'User'}`,
-        iconURL: guild?.iconURL() || client.user.displayAvatarURL()
-    });
-    embed.setTimestamp();
-
-    return embed;
+    return card(color, items);
 }
