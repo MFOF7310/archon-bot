@@ -114,30 +114,40 @@ async function handleWelcome(member, client, db) {
     // Proxy ensures avatar URL works in all contexts
     const safeMember = createMemberProxy(member);
 
-    // ── SINGLE canvas render ──
-    const png = await Style.renderWelcomeCard(safeMember, count, cfg);
-    const attachment = new AttachmentBuilder(png, { name: 'welcome-card.png' });
+    // ── STATIC welcome banner (no canvas) ──
+    const _fs = require('fs');
+    const _path = require('path');
+    const _bannerPath = _path.join(__dirname, '..', 'assets', 'welcome', 'welcome.png');
+    if (!_fs.existsSync(_bannerPath)) {
+        console.error('[WELCOME] welcome.png missing — aborting welcome card');
+        return;
+    }
+    const attachment = new AttachmentBuilder(_fs.readFileSync(_bannerPath), { name: 'welcome.png' });
 
-    // Welcome text (greeting + member count + account age)
+    // ── Compact content (Ephi style — 2 lignes) ──
     const EMOJIS = require('../config/emojis');
     cfg.lang = lang;
-    cfg.party = EMOJIS.party || '🎉';
-    cfg.wave = EMOJIS.wave || '👋';
-    cfg.memberEmoji = EMOJIS.xp || '📊';
-    let content = Style.warmWelcomeText(safeMember, count, cfg);
-
-    // Prepend custom server message if set
+    const _topRole = member.roles?.highest;
+    const _badge = (_topRole && _topRole.id !== member.guild.id) ? ` [${_topRole.name}]` : '';
+    const _wave = EMOJIS.wave || '👋';
+    let content = `${_wave} Bienvenue ${member.user}${_badge}\nTu es le **${Style.ordinal(count)}** membre de **${member.guild.name}**.`;
     if (cfg.welcomeMessage) {
-        content = `${Style.formatTemplate(cfg.welcomeMessage, safeMember, count)}\n${content}`;
+        content = `${Style.formatTemplate(cfg.welcomeMessage, member, count)}\n${content}`;
     }
 
-    // The hint points at the Help button below: a command mention cannot be tapped in channels where members cannot use commands.
-    content += `
-${t('welcome.help_hint', lang, {})}`;
-
     // Embed uses attachment:// reference — NOT a base64 data URL
-    const _roleHex = member.roles?.color?.hex;
-    const _accentHex = (cfg.welcomeAccent || (_roleHex && _roleHex !== '#000000' ? _roleHex : '#2ecc71')).replace('#', '');
+    // Hybrid accent: top role if readable, else neon green
+    function _pickAccent(m, c) {
+        if (c.welcomeAccent && /^#?[0-9a-fA-F]{6}$/.test(c.welcomeAccent)) return c.welcomeAccent.replace('#', '');
+        const hex = m.roles?.highest?.hexColor || m.roles?.color?.hex;
+        if (hex && hex !== '#000000') {
+            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            const lum = (r*299 + g*587 + b*114)/1000;
+            if (lum >= 40 && lum <= 220) return hex.replace('#','');
+        }
+        return '7FFF00';
+    }
+    const _accentHex = _pickAccent(member, cfg);
 
     // Build action buttons
     const rawDefs = Style.getWelcomeButtons(cfg, safeMember) || [];
@@ -174,33 +184,35 @@ ${t('welcome.help_hint', lang, {})}`;
     }
     if (btnCount > 0) rows.push(currentRow);
 
-    // v5.1: Components V2 container (Ephi-style layout)
+    // ── Inviter detection (global cache) ──
+    let _inviter = null;
+    try { _inviter = await require('../lib/invite-tracker').detect(member.guild); } catch {}
+
+    // ── Compact footer (no ping) ──
+    const _months = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+    const _now = new Date();
+    const _dateStr = `${_now.getDate()} ${_months[_now.getMonth()]}`;
+    let _footerLine = `-# Membre #${count} · ${_dateStr}`;
+    if (_inviter?.code) {
+        const _invName = _inviter.inviter?.username || (_inviter.inviter?.tag || '').split('#')[0];
+        _footerLine += _invName ? ` · via ${_inviter.code} (${_invName})` : ` · via ${_inviter.code}`;
+    } else {
+        _footerLine += ` · Inviteur inconnu`;
+    }
+
+    // ── V2 container (compact Ephi style) ──
     const _container = new ContainerBuilder()
         .setAccentColor(parseInt(_accentHex, 16))
         .addMediaGalleryComponents(
             new MediaGalleryBuilder().addItems(
-                new MediaGalleryItemBuilder().setURL('attachment://welcome-card.png')
+                new MediaGalleryItemBuilder().setURL('attachment://welcome.png')
             )
-        )
-        .addSectionComponents(
-            new SectionBuilder()
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(content)
-                )
-                .setThumbnailAccessory(
-                    new ThumbnailBuilder().setURL(
-                        (safeMember?.displayAvatarURL?.({ extension: 'png', size: 128 }))
-                        || member.user.displayAvatarURL({ extension: 'png', size: 128 })
-                    )
-                )
-        )
-        .addSeparatorComponents(
-            new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
         )
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                t('welcome.welcome_footer', lang, { guild: member.guild.name, count })
-            )
+            new TextDisplayBuilder().setContent(content)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(_footerLine)
         );
 
     if (rows.length > 0) {

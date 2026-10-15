@@ -2632,6 +2632,7 @@ client.once(Events.ClientReady, async () => {
 
     displayPM2Banner();
 
+    require('./lib/invite-tracker').install(client);
     await client.loadPlugins();
 
     // ── AUTO UPDATE BROADCASTER ── (git hash, 15s delay for guild cache)
