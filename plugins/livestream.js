@@ -90,13 +90,18 @@ function logYtErrThrottled(channelId, msg) {
     console.log(`[YOUTUBE] ${channelId} live check err: ${String(msg).slice(0, 180)}`);
 }
 
-async function fetchLiveStatus(channelId) {
+async function fetchLiveStatus(channelId, handle) {
+    // Prefer @handle URL when available — /channel/{id}/live is increasingly blocked by YouTube
+    const cleanHandle = handle ? String(handle).replace(/^@/, '').trim() : null;
+    const watchUrl = cleanHandle
+        ? `https://www.youtube.com/@${cleanHandle}/live`
+        : `https://www.youtube.com/channel/${channelId}/live`;
     try {
         const { stdout, stderr } = await execFileAsync('yt-dlp', [
             '--skip-download', '--no-warnings', '--no-playlist',
             '--cookies', COOKIE_FILE,
             '--print', 'is_live', '--print', 'title', '--print', 'thumbnail',
-            `https://www.youtube.com/channel/${channelId}/live`,
+            watchUrl,
         ], { timeout: YTDLP_TIMEOUT_MS });
         const lines = String(stdout).trim().split('\n');
         const flag = (lines[0] || '').trim().toLowerCase();
@@ -105,7 +110,7 @@ async function fetchLiveStatus(channelId) {
                 isLive: true,
                 title: (lines[1] || 'Live stream').trim(),
                 thumbnail: (lines[2] || '').trim() || null,
-                url: `https://youtube.com/channel/${channelId}/live`,
+                url: cleanHandle ? `https://youtube.com/@${cleanHandle}/live` : `https://youtube.com/channel/${channelId}/live`,
             };
         }
         // yt-dlp returned OK and said is_live=false → offline
@@ -270,7 +275,7 @@ async function runCycle(client, db, priorityOnly) {
         for (const [chId, tracks] of byChannel) {
             const handle = tracks[0]?.youtube_handle || null;
 
-            const live = await fetchLiveStatus(chId);
+            const live = await fetchLiveStatus(chId, handle);
             if (live.isLive) {
                 offlineCounters.delete(chId);
                 for (const t of tracks) {
@@ -378,7 +383,7 @@ module.exports = {
             if (!channelId) return statusMsg.edit('❌ Could not resolve that handle. Try the raw UC… ID.');
 
             const handle = input.replace(/^@/, '').trim();
-            const live = await fetchLiveStatus(channelId);
+            const live = await fetchLiveStatus(channelId, handle);
             const up = await fetchLatestUpload(channelId);
 
             db.prepare(`INSERT INTO youtube_notifications (guild_id, youtube_channel_id, youtube_handle, target_channel_id, last_video_id, is_live, priority)
@@ -411,7 +416,7 @@ module.exports = {
             if (!channelId) return message.reply('❌ Invalid channel.');
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
             if (!track) return message.reply('❌ Not tracked. Run `.livestream set` first.');
-            const live = await fetchLiveStatus(channelId);
+            const live = await fetchLiveStatus(channelId, track.youtube_handle);
             const isRealLive = !!live.isLive;
             const payload = isRealLive
                 ? live
@@ -463,7 +468,7 @@ module.exports = {
             const channelId = await resolveHandle(input);
             if (!channelId) return interaction.editReply('❌ Could not resolve that handle.');
             const handle = input.replace(/^@/, '').trim();
-            const live = await fetchLiveStatus(channelId);
+            const live = await fetchLiveStatus(channelId, handle);
             const up = await fetchLatestUpload(channelId);
             db.prepare(`INSERT INTO youtube_notifications (guild_id, youtube_channel_id, youtube_handle, target_channel_id, last_video_id, is_live, priority)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -490,7 +495,7 @@ module.exports = {
             if (!channelId) return interaction.editReply('❌ Invalid channel.');
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
             if (!track) return interaction.editReply('❌ Not tracked.');
-            const live = await fetchLiveStatus(channelId);
+            const live = await fetchLiveStatus(channelId, track.youtube_handle);
             const isRealLive = !!live.isLive;
             const payload = isRealLive
                 ? live
