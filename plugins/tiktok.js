@@ -6,7 +6,7 @@ const axios = require('axios');
 // ═══════════════════════════════════════════════════════════════════
 //  ARCHON CG-223  •  TIKTOK NOTIFICATION ENGINE v2.0
 //  Handles: Live Stream Alerts + New Video Upload Notifications
-//  Polling: Every 5 minutes via self-healing interval
+//  Polling: Every 2 minutes via self-healing interval
 //  Security: Server Owner ONLY for configuration
 //  NOTE: TikTok aggressively blocks datacenter IPs. Uses layered
 //        fallback strategy: API > oEmbed > HTML scraping.
@@ -14,8 +14,8 @@ const axios = require('axios');
 
 // ================= SCRAPING CONFIG =================
 const SCRAPE_CONFIG = {
-    // Polling interval: 5 minutes (300 seconds)
-    POLL_INTERVAL_MS: 5 * 60 * 1000,
+    // Polling interval: 2 minutes (120 seconds)
+    POLL_INTERVAL_MS: 2 * 60 * 1000,
     // Request timeout: 12 seconds (Starlink resilience)
     TIMEOUT_MS: 12000,
     // Max retries per method before moving to next fallback
