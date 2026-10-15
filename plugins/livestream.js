@@ -553,10 +553,10 @@ module.exports = {
                 ? live
                 : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
             const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
-            if (!sent) return interaction.editReply('❌ Send failed — check bot permissions in that channel.');
+            if (!sent) return interaction.editReply(t('livestream.cmd_send_failed', livLang(interaction.client, interaction.guildId)));
             return interaction.editReply(isRealLive
-                ? `✅ Real live alert sent — @${track.youtube_handle || channelId} is actually streaming right now.`
-                : `🧪 Preview sent (marked as TEST). @${track.youtube_handle || channelId} is **not live** — this is a layout preview only.`);
+                ? t('livestream.cmd_real_alert', livLang(interaction.client, interaction.guildId), { handle: track.youtube_handle || channelId })
+                : t('livestream.cmd_test_preview', livLang(interaction.client, interaction.guildId), { handle: track.youtube_handle || channelId }));
         }
     },
 
