@@ -79,6 +79,17 @@ async function resolveHandle(handle) {
 // ─── Live check via yt-dlp ───
 const COOKIE_FILE = require('path').join(__dirname, '..', 'config', 'youtube_cookies.txt');
 
+// ── Erreur log throttle : 1 msg par chaîne toutes les 30 min ──
+const _errThrottle = new Map();
+const ERR_LOG_INTERVAL_MS = 30 * 60 * 1000;
+function logYtErrThrottled(channelId, msg) {
+    const now = Date.now();
+    const last = _errThrottle.get(channelId) || 0;
+    if (now - last < ERR_LOG_INTERVAL_MS) return;
+    _errThrottle.set(channelId, now);
+    console.log(`[YOUTUBE] ${channelId} live check err: ${String(msg).slice(0, 180)}`);
+}
+
 async function fetchLiveStatus(channelId) {
     try {
         const { stdout, stderr } = await execFileAsync('yt-dlp', [
@@ -107,7 +118,7 @@ async function fetchLiveStatus(channelId) {
             return { isLive: false };
         }
         // Real errors — cookie expiry, block, network
-        console.log(`[YOUTUBE] ${channelId} live check err: ${msg.slice(0, 180)}`);
+        logYtErrThrottled(channelId, msg);
         return await fetchLiveFallback(channelId);
     }
 }
