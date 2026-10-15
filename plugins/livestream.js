@@ -443,7 +443,11 @@ module.exports = {
             const input = String(args[1] || '').replace(/^@/, '').trim();
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return message.reply(resolveErrMsg(client, message.guild.id, _resolveReason, input));
-            const res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').run(guildId, channelId);
+            let res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').run(guildId, channelId);
+            if (res.changes === 0) {
+                const cleanHandle = String(input).replace(/^@/, '').trim();
+                res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_handle = ? COLLATE NOCASE').run(guildId, cleanHandle);
+            }
             return message.reply(res.changes ? `✅ Removed **${input}**.` : `❌ **${input}** not tracked.`);
         }
 
@@ -451,7 +455,7 @@ module.exports = {
             const input = String(args[1] || '').replace(/^@/, '').trim();
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return message.reply(resolveErrMsg(client, message.guild.id, _resolveReason, input));
-            const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
+            const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
             if (!track) return message.reply('❌ Not tracked. Run `.livestream set` first.');
             const live = await fetchLiveStatus(channelId, track.youtube_handle);
             const isRealLive = !!live.isLive;
@@ -521,7 +525,11 @@ module.exports = {
             const input = interaction.options.getString('channel').replace(/^@/, '').trim();
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return interaction.reply({ content: '❌ Invalid.', flags: 64 });
-            const res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').run(guildId, channelId);
+            let res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').run(guildId, channelId);
+            if (res.changes === 0) {
+                const cleanHandle = String(input).replace(/^@/, '').trim();
+                res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_handle = ? COLLATE NOCASE').run(guildId, cleanHandle);
+            }
             return interaction.reply({ content: res.changes ? `✅ Removed **${input}**.` : `❌ Not tracked.`, flags: 64 });
         }
 
@@ -530,7 +538,7 @@ module.exports = {
             const input = interaction.options.getString('channel').replace(/^@/, '').trim();
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
-            const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
+            const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
             if (!track) return interaction.editReply('❌ Not tracked.');
             const live = await fetchLiveStatus(channelId, track.youtube_handle);
             const isRealLive = !!live.isLive;
