@@ -5,6 +5,7 @@
 //  Priority channels polled every 2 min · Normal every 5 min
 // ═══════════════════════════════════════════════════════════════════
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { t } = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
 const axios = require('axios');
 const { execFile } = require('child_process');
@@ -63,17 +64,54 @@ function buildOwnerErrorEmbed(client, guild, lang = 'en') {
 }
 
 // ─── Resolve handle → channel ID ───
+function resolveErrMsg(client, guildId, reason, handle) {
+    const lang = (client?.detectLanguage ? client.detectLanguage('livestream', guildId) : null) || 'en';
+    const key = 'livestream.resolve_' + (reason || 'unknown');
+    const h = handle ? '@' + String(handle).replace(/^@/, '') : '?';
+    try {
+        const msg = t(key, lang, { handle: h });
+        return msg && msg !== key ? msg : `❌ ${reason || 'unknown'}: ${h}`;
+    } catch {
+        return `❌ Could not resolve ${h} (${reason || 'unknown'})`;
+    }
+}
+
 async function resolveHandle(handle) {
     const clean = String(handle || '').replace(/^@/, '').trim();
-    if (!clean) return null;
-    if (/^UC[\w-]{22}$/.test(clean)) return clean;
+    if (!clean) return { id: null, reason: 'empty' };
+    if (/^UC[\w-]{22}$/.test(clean)) return { id: clean, reason: 'ok' };
+
+    // Method 1: yt-dlp (robust, uses same cookies as live check)
+    try {
+        const { stdout } = await execFileAsync('yt-dlp', [
+            '--skip-download', '--no-warnings', '--playlist-items', '0',
+            '--cookies', COOKIE_FILE,
+            '--print', 'channel_id',
+            `https://www.youtube.com/@${clean}`,
+        ], { timeout: 15000 });
+        const id = String(stdout).trim();
+        if (/^UC[\w-]{22}$/.test(id)) return { id, reason: 'ok' };
+    } catch (e) {
+        const msg = String(e.message || '') + String(e.stderr || '');
+        if (/not found|does not exist|unavailable|404/i.test(msg)) return { id: null, reason: 'not_found' };
+        // else: fall through to HTML scrape
+    }
+
+    // Method 2: HTML scrape (fallback)
     try {
         const res = await axios.get(`https://www.youtube.com/@${encodeURIComponent(clean)}`, {
-            timeout: 10000, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ARCHON-Bot/1.0)' }, validateStatus: s => s < 500,
+            timeout: 10000,
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' },
+            validateStatus: s => s < 500,
         });
-        const m = String(res.data).match(/"channelId":"(UC[\w-]{22})"/);
-        return m ? m[1] : null;
-    } catch { return null; }
+        const m = String(res.data).match(/"externalId":"(UC[\w-]{22})"/)
+              || String(res.data).match(/"channelId":"(UC[\w-]{22})"/);
+        if (m) return { id: m[1], reason: 'ok' };
+        return { id: null, reason: 'not_found' };
+    } catch (e) {
+        if (e.response?.status === 404) return { id: null, reason: 'not_found' };
+        return { id: null, reason: 'network' };
+    }
 }
 
 // ─── Live check via yt-dlp ───
@@ -331,7 +369,6 @@ function buildListEmbed(tracks, guild, client) {
     return embed;
 }
 
-// ═══════════════════════════════════════════════════════════════════
 module.exports = {
     name: 'livestream',
     aliases: ['livestream', 'ls', 'lsn'],
@@ -379,8 +416,8 @@ module.exports = {
             if (!channel) return message.reply('❌ Channel not found.');
 
             const statusMsg = await message.reply('🔍 Resolving channel...');
-            const channelId = await resolveHandle(input);
-            if (!channelId) return statusMsg.edit('❌ Could not resolve that handle. Try the raw UC… ID.');
+            const { id: channelId, reason: _resolveReason } = await resolveHandle(input);
+            if (!channelId) return statusMsg.edit(resolveErrMsg(client, message.guild.id, _resolveReason, input));
 
             const handle = input.replace(/^@/, '').trim();
             const live = await fetchLiveStatus(channelId, handle);
@@ -404,16 +441,16 @@ module.exports = {
 
         if (action === 'remove') {
             const input = String(args[1] || '').replace(/^@/, '').trim();
-            const channelId = /^UC[\w-]{22}$/.test(input) ? input : (await resolveHandle(input));
-            if (!channelId) return message.reply('❌ Invalid channel.');
+            const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
+            if (!channelId) return message.reply(resolveErrMsg(client, message.guild.id, _resolveReason, input));
             const res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').run(guildId, channelId);
             return message.reply(res.changes ? `✅ Removed **${input}**.` : `❌ **${input}** not tracked.`);
         }
 
         if (action === 'test') {
             const input = String(args[1] || '').replace(/^@/, '').trim();
-            const channelId = /^UC[\w-]{22}$/.test(input) ? input : (await resolveHandle(input));
-            if (!channelId) return message.reply('❌ Invalid channel.');
+            const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
+            if (!channelId) return message.reply(resolveErrMsg(client, message.guild.id, _resolveReason, input));
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
             if (!track) return message.reply('❌ Not tracked. Run `.livestream set` first.');
             const live = await fetchLiveStatus(channelId, track.youtube_handle);
@@ -465,8 +502,8 @@ module.exports = {
             const input = interaction.options.getString('channel').trim();
             const target = interaction.options.getChannel('target');
             const priority = interaction.options.getBoolean('priority') || false;
-            const channelId = await resolveHandle(input);
-            if (!channelId) return interaction.editReply('❌ Could not resolve that handle.');
+            const { id: channelId, reason: _resolveReason } = await resolveHandle(input);
+            if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
             const handle = input.replace(/^@/, '').trim();
             const live = await fetchLiveStatus(channelId, handle);
             const up = await fetchLatestUpload(channelId);
@@ -482,7 +519,7 @@ module.exports = {
 
         if (sub === 'remove') {
             const input = interaction.options.getString('channel').replace(/^@/, '').trim();
-            const channelId = /^UC[\w-]{22}$/.test(input) ? input : (await resolveHandle(input));
+            const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return interaction.reply({ content: '❌ Invalid.', flags: 64 });
             const res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').run(guildId, channelId);
             return interaction.reply({ content: res.changes ? `✅ Removed **${input}**.` : `❌ Not tracked.`, flags: 64 });
@@ -491,8 +528,8 @@ module.exports = {
         if (sub === 'test') {
             await interaction.deferReply();
             const input = interaction.options.getString('channel').replace(/^@/, '').trim();
-            const channelId = /^UC[\w-]{22}$/.test(input) ? input : (await resolveHandle(input));
-            if (!channelId) return interaction.editReply('❌ Invalid channel.');
+            const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
+            if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
             if (!track) return interaction.editReply('❌ Not tracked.');
             const live = await fetchLiveStatus(channelId, track.youtube_handle);

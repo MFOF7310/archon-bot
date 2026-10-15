@@ -1,0 +1,6 @@
+{
+  "resolve_empty": "✍️ 给我个 @handle 或 UC… ID 让我查！",
+  "resolve_not_found": "🤔 在 YouTube 找不到 **{handle}**。拼错了吗？",
+  "resolve_network": "📡 YouTube 没反应…… 30 秒后再试。",
+  "resolve_unknown": "😅 出了点问题。handle 对吗？"
+}

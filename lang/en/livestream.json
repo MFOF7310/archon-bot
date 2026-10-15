@@ -1,0 +1,6 @@
+{
+  "resolve_empty": "✍️ Drop me a @handle or UC… ID to look up!",
+  "resolve_not_found": "🤔 Can't find **{handle}** on YouTube. Typo?",
+  "resolve_network": "📡 YouTube's being quiet… Try again in 30s.",
+  "resolve_unknown": "😅 Something glitched. Is the handle right?"
+}
