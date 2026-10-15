@@ -143,7 +143,8 @@ function initRulesAccept(client) {
             ensureTable(db);
             const already = db.prepare('SELECT 1 FROM rules_acceptance WHERE guild_id = ? AND user_id = ?').get(gid, i.user.id);
             if (already) {
-                return i.editReply({ content: t('rules.alreadyAccepted', 'en') }).catch(() => {});
+                const _lang0 = OKL.includes(client.getServerSettings?.(gid)?.language) ? client.getServerSettings(gid).language : 'en';
+                return i.editReply({ content: t('rules.alreadyAccepted', _lang0, { user: `<@${i.user.id}>` }) }).catch(() => {});
             }
             const row = getRow(db, gid);
             const lang = OKL.includes(client.getServerSettings?.(gid)?.language) ? client.getServerSettings(gid).language : 'en';
@@ -158,7 +159,7 @@ function initRulesAccept(client) {
             await member.roles.add(role, 'Accepted server rules').catch(() => {});
             db.prepare('INSERT OR IGNORE INTO rules_acceptance (guild_id, user_id, accepted_at) VALUES (?, ?, ?)')
                 .run(gid, i.user.id, Math.floor(Date.now() / 1000));
-            return i.editReply({ content: t('rules.acceptSuccess', lang) }).catch(() => {});
+            return i.editReply({ content: t('rules.acceptSuccess', lang, { user: `<@${i.user.id}>` }) }).catch(() => {});
         } catch (e) {
             console.error('[RULES ACCEPT]', e.message);
             if (i.deferred || i.replied) await i.editReply({ content: '❌ Error' }).catch(() => {});
