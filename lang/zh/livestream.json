@@ -2,5 +2,15 @@
   "resolve_empty": "✍️ 给我个 @handle 或 UC… ID 让我查！",
   "resolve_not_found": "🤔 在 YouTube 找不到 **{handle}**。拼错了吗？",
   "resolve_network": "📡 YouTube 没反应…… 30 秒后再试。",
-  "resolve_unknown": "😅 出了点问题。handle 对吗？"
+  "resolve_unknown": "😅 出了点问题。handle 对吗？",
+  "cmd_not_tracked": "🤔 **{handle}** 不在列表里。运行 `/livestream list` 查看。",
+  "cmd_not_tracked_hint": "🤔 **{handle}** 尚未追踪。用 `/livestream set @handle #频道` 添加。",
+  "cmd_removed": "✅ **{handle}** 已从列表移除。",
+  "cmd_tracking": "✅ 正在追踪 **@{handle}** → {channel}{priority}",
+  "cmd_tracking_priority": " ⚡ (优先，2 分钟)",
+  "cmd_invalid": "❌ 输入无效 —— 需要 @handle 或 UC… ID。",
+  "cmd_help": "📺 **YouTube 通知**\n`{prefix}livestream set @handle #频道 [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
+  "cmd_send_failed": "❌ 发送失败 —— 检查频道权限。",
+  "cmd_real_alert": "✅ 真实直播提醒已发送 —— @{handle} 正在直播！",
+  "cmd_test_preview": "🧪 预览已发送（标记 TEST）。@{handle} **未在直播** —— 仅布局预览。"
 }

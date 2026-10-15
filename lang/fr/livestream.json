@@ -2,5 +2,15 @@
   "resolve_empty": "✍️ File-moi un @handle ou un ID UC… à chercher !",
   "resolve_not_found": "🤔 J'trouve pas **{handle}** sur YouTube. Une faute de frappe ?",
   "resolve_network": "📡 YouTube fait la sourde oreille… Réessaie dans 30s.",
-  "resolve_unknown": "😅 Oups, quelque chose a coincé. Le handle est bon ?"
+  "resolve_unknown": "😅 Oups, quelque chose a coincé. Le handle est bon ?",
+  "cmd_not_tracked": "🤔 **{handle}** n'est pas dans la liste. Tape `/livestream list` pour la voir.",
+  "cmd_not_tracked_hint": "🤔 **{handle}** n'est pas tracké. Ajoute-le avec `/livestream set @handle #salon`.",
+  "cmd_removed": "✅ **{handle}** retiré de la liste.",
+  "cmd_tracking": "✅ Je surveille **@{handle}** → {channel}{priority}",
+  "cmd_tracking_priority": " ⚡ (prioritaire, 2 min)",
+  "cmd_invalid": "❌ Entrée invalide — il me faut un @handle ou un ID UC…",
+  "cmd_help": "📺 **Notifications YouTube**\n`{prefix}livestream set @handle #salon [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
+  "cmd_send_failed": "❌ Envoi échoué — vérifie les permissions du salon.",
+  "cmd_real_alert": "✅ Alerte réelle envoyée — @{handle} est en live en ce moment !",
+  "cmd_test_preview": "🧪 Preview envoyée (marquée TEST). @{handle} n'est **pas en live** — c'est juste un aperçu du layout."
 }

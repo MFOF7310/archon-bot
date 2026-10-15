@@ -2,5 +2,15 @@
   "resolve_empty": "✍️ عطني @handle أو ID UC… أبحث عنه!",
   "resolve_not_found": "🤔 ما لقيت **{handle}** على YouTube. يمكن خطأ إملائي؟",
   "resolve_network": "📡 YouTube ما يستجيب… جرّب بعد 30 ثانية.",
-  "resolve_unknown": "😅 صار خلل. الـ handle صح؟"
+  "resolve_unknown": "😅 صار خلل. الـ handle صح؟",
+  "cmd_not_tracked": "🤔 **{handle}** مو موجود في القائمة. شغّل `/livestream list`.",
+  "cmd_not_tracked_hint": "🤔 **{handle}** ما هو متتبع. أضفه بـ `/livestream set @handle #قناة`.",
+  "cmd_removed": "✅ **{handle}** انشال من القائمة.",
+  "cmd_tracking": "✅ أتابع **@{handle}** → {channel}{priority}",
+  "cmd_tracking_priority": " ⚡ (أولوية، دقيقتين)",
+  "cmd_invalid": "❌ إدخال غير صالح — أحتاج @handle أو ID UC…",
+  "cmd_help": "📺 **إشعارات YouTube**\n`{prefix}livestream set @handle #قناة [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
+  "cmd_send_failed": "❌ فشل الإرسال — تحقق من صلاحيات القناة.",
+  "cmd_real_alert": "✅ تم إرسال تنبيه حقيقي — @{handle} يبث الآن!",
+  "cmd_test_preview": "🧪 تم إرسال المعاينة (TEST). @{handle} **ما يبث** — عرض تخطيط فقط."
 }
