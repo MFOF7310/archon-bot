@@ -1,0 +1,18 @@
+{
+  "title": "État du registry emojis",
+  "summary": "Registry : {reg} clés · App : {app} emojis",
+  "inSync": "Synchronisés",
+  "toRemap": "À remapper",
+  "toAdd": "À ajouter",
+  "orphans": "Orphelins",
+  "newList": "Nouveaux emojis détectés côté app",
+  "remapList": "IDs obsolètes à corriger",
+  "hint": "Lance `/emojis sync` pour appliquer (owner).",
+  "ownerOnly": "⛔ Commande réservée au owner.",
+  "syncClean": "Tout est déjà synchronisé !",
+  "syncCleanMsg": "Rien à faire — le registry est à jour ✨",
+  "syncDone": "Sync appliqué !",
+  "remapped": "Remappés",
+  "added": "Ajoutés",
+  "restartHint": "♻️ Pense à `pm2 restart` pour charger les nouveaux IDs."
+}

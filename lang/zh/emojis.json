@@ -1,0 +1,18 @@
+{
+  "title": "Emoji registry 状态",
+  "summary": "Registry: {reg} 键 · App: {app} 个 emoji",
+  "inSync": "已同步",
+  "toRemap": "待重新映射",
+  "toAdd": "待添加",
+  "orphans": "孤立",
+  "newList": "检测到 app 侧新 emoji",
+  "remapList": "需修正的过期 ID",
+  "hint": "运行 `/emojis sync` 应用（owner）。",
+  "ownerOnly": "⛔ 仅限 owner。",
+  "syncClean": "全部已同步！",
+  "syncCleanMsg": "无需操作 — registry 已是最新 ✨",
+  "syncDone": "同步已应用！",
+  "remapped": "已重映射",
+  "added": "已添加",
+  "restartHint": "♻️ 运行 `pm2 restart` 加载新 ID。"
+}
