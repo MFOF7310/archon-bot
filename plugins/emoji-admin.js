@@ -8,6 +8,15 @@ const i18n = require('../lib/i18n');
 const APP_ID = process.env.DISCORD_APP_ID || process.env.CLIENT_ID || process.env.APPLICATION_ID || null;
 const REGISTRY_PATH = path.join(__dirname, '..', 'config', 'emojis.js');
 
+// Sanitize un nom d'emoji pour qu'il soit une clé JS valide
+function safeKey(name) {
+    let k = String(name).replace(/[^A-Za-z0-9_$]/g, '_');
+    if (/^[0-9]/.test(k)) k = 'e_' + k;
+    if (/^[_$]+$/.test(k)) k = 'e' + k;
+    return k;
+}
+
+
 // ── Helpers ──
 async function fetchAppEmojis(appId) {
     const id = appId || APP_ID;
@@ -74,7 +83,7 @@ function applySync(registry, appMap) {
     for (const [name, meta] of appMap) {
         if (knownNames.has(name)) continue;
         const prefix = meta.animated ? 'a' : '';
-        autoLines.push(`    ${meta.name}: '<${prefix}:${meta.name}:${meta.id}>',   // [auto ${today}]`);
+        autoLines.push(`    ${safeKey(meta.name)}: '<${prefix}:${meta.name}:${meta.id}>',   // [auto ${today}]`);
         added++;
     }
 
