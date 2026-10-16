@@ -22,5 +22,8 @@
     "no_access": "我看不到 {channel} —— 权限被取消了。管理员能检查一下吗？",
     "invalid_emoji": "Discord 拒绝了一个 emoji。通知管理员检查 registry。",
     "unknown": "😅 意外错误：{detail}"
-  }
+  },
+  "prefix_server_only": "此命令只在服务器中可用，不支持私信。",
+  "prefix_channel_not_found": "❌ 找不到该频道。检查一下提及。",
+  "prefix_resolving": "🔍 正在解析频道..."
 }

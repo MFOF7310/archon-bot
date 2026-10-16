@@ -22,5 +22,8 @@
     "no_access": "Je peux pas voir {channel} — mes permissions ont sautées. Un admin peut vérifier ?",
     "invalid_emoji": "Discord refuse un emoji de la card. Signale-le à un admin, il regardera le registry.",
     "unknown": "😅 Erreur inattendue : {detail}"
-  }
+  },
+  "prefix_server_only": "Cette commande marche seulement sur un serveur, pas en DM.",
+  "prefix_channel_not_found": "❌ Je trouve pas ce salon. Vérifie la mention.",
+  "prefix_resolving": "🔍 Je cherche la chaîne..."
 }

@@ -435,7 +435,7 @@ module.exports = {
     async run(client, message, args, db, serverSettings, usedCommand, lang) {
         const prefix = serverSettings?.prefix || '.';
         const guildId = message.guild?.id;
-        if (!guildId) return message.reply('Server only.');
+        if (!guildId) return message.reply(t('livestream.prefix_server_only', livLang(client, null)));
         initDatabase(db);
 
         const action = (args[0] || 'list').toLowerCase();
@@ -451,13 +451,13 @@ module.exports = {
             const input = String(args[1] || '').trim();
             const chMention = args[2];
             const priority = args.includes('--priority') || args.includes('-p');
-            if (!input || !chMention) return message.reply(`Usage: \`${prefix}livestream set @handle #channel [--priority]\``);
+            if (!input || !chMention) return message.reply(t('livestream.cmd_help', livLang(client, guildId), { prefix }));
 
             const raw = chMention.replace(/[<#>]/g, '').trim();
             let channel = message.guild.channels.cache.get(raw) || message.guild.channels.cache.find(c => c.name.toLowerCase() === raw.toLowerCase());
-            if (!channel) return message.reply('❌ Channel not found.');
+            if (!channel) return message.reply(t('livestream.prefix_channel_not_found', livLang(client, guildId)));
 
-            const statusMsg = await message.reply('🔍 Resolving channel...');
+            const statusMsg = await message.reply(t('livestream.prefix_resolving', livLang(client, guildId)));
             const { id: channelId, reason: _resolveReason } = await resolveHandle(input);
             if (!channelId) return statusMsg.edit(resolveErrMsg(client, message.guild.id, _resolveReason, input));
 

@@ -22,5 +22,8 @@
     "no_access": "I can't see {channel} — my permissions got stripped. Can an admin check?",
     "invalid_emoji": "Discord rejected an emoji in the card. Ping an admin, they'll check the registry.",
     "unknown": "😅 Unexpected error: {detail}"
-  }
+  },
+  "prefix_server_only": "This command works on a server only, not in DMs.",
+  "prefix_channel_not_found": "❌ Can't find that channel. Check the mention.",
+  "prefix_resolving": "🔍 Resolving channel..."
 }
