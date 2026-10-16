@@ -10,7 +10,6 @@
   "cmd_tracking_priority": " ⚡ (priority, 2 min)",
   "cmd_invalid": "❌ Invalid input — I need a @handle or a UC… ID.",
   "cmd_help": "📺 **YouTube notifications**\n`{prefix}livestream set @handle #channel [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
-  "cmd_send_failed": "❌ Send failed — check the channel's permissions.",
   "cmd_real_alert": "✅ Real live alert sent — @{handle} is actually streaming!",
   "cmd_test_preview": "🧪 Preview sent (marked TEST). @{handle} is **not live** — layout preview only.",
   "errors": {

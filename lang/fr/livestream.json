@@ -10,7 +10,6 @@
   "cmd_tracking_priority": " ⚡ (prioritaire, 2 min)",
   "cmd_invalid": "❌ Entrée invalide — il me faut un @handle ou un ID UC…",
   "cmd_help": "📺 **Notifications YouTube**\n`{prefix}livestream set @handle #salon [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
-  "cmd_send_failed": "❌ Envoi échoué — vérifie les permissions du salon.",
   "cmd_real_alert": "✅ Alerte réelle envoyée — @{handle} est en live en ce moment !",
   "cmd_test_preview": "🧪 Preview envoyée (marquée TEST). @{handle} n'est **pas en live** — c'est juste un aperçu du layout.",
   "errors": {

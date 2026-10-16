@@ -10,7 +10,6 @@
   "cmd_tracking_priority": " ⚡ (أولوية، دقيقتين)",
   "cmd_invalid": "❌ إدخال غير صالح — أحتاج @handle أو ID UC…",
   "cmd_help": "📺 **إشعارات YouTube**\n`{prefix}livestream set @handle #قناة [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
-  "cmd_send_failed": "❌ فشل الإرسال — تحقق من صلاحيات القناة.",
   "cmd_real_alert": "✅ تم إرسال تنبيه حقيقي — @{handle} يبث الآن!",
   "cmd_test_preview": "🧪 تم إرسال المعاينة (TEST). @{handle} **ما يبث** — عرض تخطيط فقط.",
   "errors": {
