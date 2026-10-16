@@ -8,6 +8,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommand
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder } = require('discord.js');
 const { t } = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
+const em = (k, fb) => EMOJIS[k] || fb || '';
 const axios = require('axios');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
@@ -211,25 +212,27 @@ async function fetchLatestUpload(channelId) {
 }
 
 // ─── Embeds ───
-function buildLiveEmbed(channelId, live, handle, client) {
+function buildLiveEmbed(channelId, live, handle, client, pingText) {
     const isPreview = live._test === true;
     const accent = isPreview ? 0xf39c12 : 0xFF0000;
     const tag = handle ? '@' + handle : channelId;
     const title = live.title || 'Live stream';
     const watchUrl = live.url || (handle ? `https://youtube.com/@${handle}/live` : `https://youtube.com/channel/${channelId}/live`);
-    const header = isPreview ? `## 🧪 Test preview · ${tag}` : `## 🔴 ${tag} is live right now`;
+    const liveEm = em('livestream', '🔴');
+    const header = isPreview ? `## 🧪 Test preview · ${tag}` : `## ${liveEm} ${tag} is live right now`;
     const body = isPreview
         ? `**${title}**\nThis is a layout preview, not a real alert. ${tag} isn't currently streaming.`
         : `**${title}**\n${tag} is live on YouTube right now!`;
     const c = new ContainerBuilder().setAccentColor(accent);
+    if (pingText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(pingText));
     if (live.thumbnail) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(live.thumbnail)));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(header));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     const navRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji('🔴'),
-        new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji('📺')
+        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji(em('livestream', '🔴')),
+        new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji(em('youtube', '📺'))
     );
     c.addActionRowComponents(navRow);
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: ['everyone'] } } };
@@ -239,12 +242,12 @@ function buildVideoEmbed(upload, handle, client) {
     const tag = handle ? '@' + handle : (upload.author || 'the channel');
     const c = new ContainerBuilder().setAccentColor(0xFF0000);
     if (upload.thumbnail) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(upload.thumbnail)));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✨ New video from ${tag}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '✨')} New video from ${tag}`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${tag} just posted something new.`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji('🎬')
+        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(em('youtube', '🎬'))
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }
@@ -269,14 +272,13 @@ async function sendNotification(client, db, guildId, channelId, handle, payload,
 
         let content = '';
         let card;
-        if (type === 'live') { card = buildLiveEmbed(channelId, payload, handle, client); content = `@everyone 🔴 **${handle || channelId}** is LIVE on YouTube!`; }
+        if (type === 'live') { content = `@everyone 🔴 **${handle || channelId}** is LIVE on YouTube!`; card = buildLiveEmbed(channelId, payload, handle, client, content); }
         else if (type === 'video') { card = buildVideoEmbed(payload, handle, client); content = `🎬 **NEW VIDEO** from ${handle ? '@' + handle : channelId}!`; }
-        else if (type === 'system_test') { card = buildLiveEmbed(channelId, payload, handle, client); content = null; }
+        else if (type === 'system_test') { content = null; card = buildLiveEmbed(channelId, payload, handle, client); }
 
         if (card._v2) {
-            const msg = { ...card._v2 };
-            if (content) msg.content = content;
-            await channel.send(msg);
+            // V2 doesn't allow top-level content — ping was already injected into the card above
+            await channel.send({ ...card._v2 });
         } else {
             await channel.send({ content, embeds: [card.embed], components: card.row ? [card.row] : [] });
         }
@@ -368,7 +370,7 @@ async function runCycle(client, db, priorityOnly) {
 // ─── List ───
 function buildListEmbed(tracks, guild, client) {
     const c = new ContainerBuilder().setAccentColor(0xFF0000);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📺 Tracked YouTube channels · ${guild.name}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '📺')} Tracked YouTube channels · ${guild.name}`));
     if (!tracks.length) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent('Nothing tracked yet. Add a channel with `/livestream set @handle #channel`.'));
@@ -379,7 +381,7 @@ function buildListEmbed(tracks, guild, client) {
         const live = t.is_live === 1;
         const prio = t.priority === 1 ? ' ⚡' : '';
         const tag = t.youtube_handle ? '@' + t.youtube_handle : t.youtube_channel_id;
-        const status = live ? '🔴 Live' : '⚫ Offline';
+        const status = live ? `${em('online', '🔴')} Live` : `${em('offline', '⚫')} Offline`;
         const last = t.last_video_id ? `🎬 \`…${t.last_video_id.slice(-6)}\`` : 'No video yet';
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. ${tag}**${prio}  ·  ${status}\n↳ <#${t.target_channel_id}>  ·  ${last}`));
         if (i < tracks.length - 1) c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
