@@ -1,0 +1,29 @@
+{
+  "resolve_empty": "",
+  "resolve_not_found": "",
+  "resolve_network": "",
+  "resolve_unknown": "",
+  "cmd_not_tracked": "",
+  "cmd_not_tracked_hint": "",
+  "cmd_removed": "",
+  "cmd_tracking": "",
+  "cmd_tracking_priority": "",
+  "cmd_invalid": "",
+  "cmd_help": "",
+  "cmd_send_failed": "",
+  "cmd_real_alert": "",
+  "cmd_test_preview": "",
+  "prefix_server_only": "",
+  "prefix_channel_not_found": "",
+  "prefix_resolving": "",
+  "errors": {
+    "cooldown": "",
+    "not_tracked": "",
+    "guild_missing": "",
+    "channel_gone": "",
+    "no_permission": "",
+    "no_access": "",
+    "invalid_emoji": "",
+    "unknown": ""
+  }
+}

@@ -505,7 +505,12 @@ module.exports = {
                 ? live
                 : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
             const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
-            if (!sent) return message.reply(t('livestream.cmd_send_failed', livLang(client, guildId)));
+            if (!sent.ok) {
+            const _lang = livLang(client, guildId);
+            const _key = 'livestream.errors.' + (sent.reason || 'unknown');
+            const _msg = t(_key, _lang, { channel: `<#${channelId}>`, detail: sent.detail || '' });
+            return message.reply(_msg && _msg !== _key ? _msg : t('livestream.errors.unknown', _lang, { detail: sent.detail || 'no detail' }));
+        }
             return message.reply(isRealLive
                 ? t('livestream.cmd_real_alert', livLang(client, guildId), { handle: track.youtube_handle || channelId })
                 : t('livestream.cmd_test_preview', livLang(client, guildId), { handle: track.youtube_handle || channelId }));
