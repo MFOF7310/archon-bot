@@ -12,5 +12,15 @@
   "cmd_help": "📺 **Notifications YouTube**\n`{prefix}livestream set @handle #salon [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
   "cmd_send_failed": "❌ Envoi échoué — vérifie les permissions du salon.",
   "cmd_real_alert": "✅ Alerte réelle envoyée — @{handle} est en live en ce moment !",
-  "cmd_test_preview": "🧪 Preview envoyée (marquée TEST). @{handle} n'est **pas en live** — c'est juste un aperçu du layout."
+  "cmd_test_preview": "🧪 Preview envoyée (marquée TEST). @{handle} n'est **pas en live** — c'est juste un aperçu du layout.",
+  "errors": {
+    "cooldown": "Patience ! Une alerte vient de partir pour cette chaîne — j'attends un peu avant la prochaine.",
+    "not_tracked": "Cette chaîne n'est plus suivie. Ré-ajoute-la avec `/livestream set`.",
+    "guild_missing": "Je vois plus ce serveur — vérifie que je suis toujours dedans.",
+    "channel_gone": "Le salon où j'envoyais ces alertes a disparu. Repointe-en un avec `/livestream set`.",
+    "no_permission": "Je peux pas poster dans {channel} — il me manque **Envoyer des messages** ou **Intégrer des liens**. Vérifie les permissions du salon.",
+    "no_access": "Je peux pas voir {channel} — mes permissions ont sautées. Un admin peut vérifier ?",
+    "invalid_emoji": "Discord refuse un emoji de la card. Signale-le à un admin, il regardera le registry.",
+    "unknown": "😅 Erreur inattendue : {detail}"
+  }
 }

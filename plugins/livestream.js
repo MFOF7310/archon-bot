@@ -9,6 +9,17 @@ const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacing
 const { t } = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
 const em = (k, fb) => EMOJIS[k] || fb || '';
+
+// Buttons reject app emojis (COMPONENT_INVALID_EMOJI) — they only accept guild emojis.
+// Look up by name across all guilds the bot is in, fall back to Unicode if missing.
+function emBtn(name, fallback, client) {
+    const found = client?.emojis?.cache?.find(e => e.name === name);
+    if (found) return `<${found.animated ? 'a' : ''}:${found.name}:${found.id}>`;
+    if (fallback) {
+        console.warn(`[LIVESTREAM] Server emoji "${name}" not found — using fallback "${fallback}". Add it in Server Settings → Emoji to restore the custom icon.`);
+    }
+    return fallback || '';
+}
 const axios = require('axios');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
@@ -231,8 +242,8 @@ function buildLiveEmbed(channelId, live, handle, client, pingText) {
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     const navRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji(em('livestream', '🔴')),
-        new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji(em('youtube', '📺'))
+        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji(emBtn('livestream', '🔴', client)),
+        new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji(emBtn('youtube', '📺', client))
     );
     c.addActionRowComponents(navRow);
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: ['everyone'] } } };
@@ -247,7 +258,7 @@ function buildVideoEmbed(upload, handle, client) {
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${tag} just posted something new.`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(em('youtube', '🎬'))
+        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(emBtn('youtube', '🎬', client))
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }
@@ -260,15 +271,15 @@ function canNotifyLive(channelId) {
 
 async function sendNotification(client, db, guildId, channelId, handle, payload, type) {
     try {
-        if (type === 'live' && !canNotifyLive(channelId)) return false;
+        if (type === 'live' && !canNotifyLive(channelId)) return { ok: false, reason: 'cooldown' };
         const track = db.prepare('SELECT target_channel_id FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
-        if (!track) return false;
+        if (!track) return { ok: false, reason: 'not_tracked' };
         const guild = client.guilds.cache.get(guildId);
-        if (!guild) return false;
+        if (!guild) return { ok: false, reason: 'guild_missing' };
         const channel = guild.channels.cache.get(track.target_channel_id);
-        if (!channel) return false;
+        if (!channel) return { ok: false, reason: 'channel_gone' };
         const botMember = guild.members.me;
-        if (!require('../lib/canPost').log(guild, channel, botMember, 'youtube').ok) return false;
+        if (!require('../lib/canPost').log(guild, channel, botMember, 'youtube').ok) return { ok: false, reason: 'no_permission' };
 
         let content = '';
         let card;
@@ -283,8 +294,17 @@ async function sendNotification(client, db, guildId, channelId, handle, payload,
             await channel.send({ content, embeds: [card.embed], components: card.row ? [card.row] : [] });
         }
         if (type === 'live') lastNotificationTime.set(channelId, Date.now());
-        return true;
-    } catch { return false; }
+        return { ok: true };
+    } catch (e) {
+        const msg = String(e?.message || e);
+        console.error('[LIVESTREAM] sendNotification failed:', msg);
+        let reason = 'unknown';
+        if (/Invalid emoji/i.test(msg)) reason = 'invalid_emoji';
+        else if (/Missing Permissions/i.test(msg)) reason = 'no_permission';
+        else if (/Unknown Channel/i.test(msg)) reason = 'channel_gone';
+        else if (/Missing Access/i.test(msg)) reason = 'no_access';
+        return { ok: false, reason, detail: msg.slice(0, 200) };
+    }
 }
 
 // ─── Polling ───
@@ -335,7 +355,7 @@ async function runCycle(client, db, priorityOnly) {
                 for (const t of tracks) {
                     if (t.is_live !== 1 && canNotifyLive(chId)) {
                         const sent = await sendNotification(client, db, t.guild_id, chId, handle, live, 'live');
-                        if (sent) db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId);
+                        if (sent.ok) db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId);
                     }
                 }
             } else {
@@ -558,7 +578,7 @@ module.exports = {
         }
 
         if (sub === 'test') {
-            await interaction.deferReply();
+            await interaction.deferReply({ flags: 64 });
             const input = interaction.options.getString('channel').replace(/^@/, '').trim();
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
@@ -570,7 +590,12 @@ module.exports = {
                 ? live
                 : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
             const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
-            if (!sent) return interaction.editReply(t('livestream.cmd_send_failed', livLang(interaction.client, interaction.guildId)));
+            if (!sent.ok) {
+            const _lang = livLang(interaction.client, interaction.guildId);
+            const _key = 'livestream.errors.' + (sent.reason || 'unknown');
+            const _msg = t(_key, _lang, { channel: `<#${channelId}>`, detail: sent.detail || '' });
+            return interaction.editReply(_msg && _msg !== _key ? _msg : t('livestream.errors.unknown', _lang, { detail: sent.detail || 'no detail' }));
+        }
             return interaction.editReply(isRealLive
                 ? t('livestream.cmd_real_alert', livLang(interaction.client, interaction.guildId), { handle: track.youtube_handle || channelId })
                 : t('livestream.cmd_test_preview', livLang(interaction.client, interaction.guildId), { handle: track.youtube_handle || channelId }));

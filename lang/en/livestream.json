@@ -12,5 +12,15 @@
   "cmd_help": "📺 **YouTube notifications**\n`{prefix}livestream set @handle #channel [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
   "cmd_send_failed": "❌ Send failed — check the channel's permissions.",
   "cmd_real_alert": "✅ Real live alert sent — @{handle} is actually streaming!",
-  "cmd_test_preview": "🧪 Preview sent (marked TEST). @{handle} is **not live** — layout preview only."
+  "cmd_test_preview": "🧪 Preview sent (marked TEST). @{handle} is **not live** — layout preview only.",
+  "errors": {
+    "cooldown": "Hold on — an alert just went out for this channel. Waiting before the next one.",
+    "not_tracked": "This channel isn't tracked anymore. Re-add it with `/livestream set`.",
+    "guild_missing": "I can't see this server anymore — check that I'm still in it.",
+    "channel_gone": "The channel I was posting to is gone. Point me to a new one with `/livestream set`.",
+    "no_permission": "I can't post in {channel} — I'm missing **Send Messages** or **Embed Links**. Check the channel's permissions.",
+    "no_access": "I can't see {channel} — my permissions got stripped. Can an admin check?",
+    "invalid_emoji": "Discord rejected an emoji in the card. Ping an admin, they'll check the registry.",
+    "unknown": "😅 Unexpected error: {detail}"
+  }
 }

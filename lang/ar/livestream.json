@@ -12,5 +12,15 @@
   "cmd_help": "📺 **إشعارات YouTube**\n`{prefix}livestream set @handle #قناة [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
   "cmd_send_failed": "❌ فشل الإرسال — تحقق من صلاحيات القناة.",
   "cmd_real_alert": "✅ تم إرسال تنبيه حقيقي — @{handle} يبث الآن!",
-  "cmd_test_preview": "🧪 تم إرسال المعاينة (TEST). @{handle} **ما يبث** — عرض تخطيط فقط."
+  "cmd_test_preview": "🧪 تم إرسال المعاينة (TEST). @{handle} **ما يبث** — عرض تخطيط فقط.",
+  "errors": {
+    "cooldown": "استنى شوي — توّنا أرسلنا تنبيه لهذي القناة. ننتظر قبل الجاي.",
+    "not_tracked": "هذي القناة ما عاد متتبعة. أعد إضافتها بـ `/livestream set`.",
+    "guild_missing": "ما عاد أشوف هالسيرفر — تأكد إني لا زلت موجود فيه.",
+    "channel_gone": "القناة اللي كنت أرسل فيها اختفت. عيّن وحدة جديدة بـ `/livestream set`.",
+    "no_permission": "ما أقدر أنشر في {channel} — ناقصني **إرسال الرسائل** أو **تضمين الروابط**. تحقق من صلاحيات القناة.",
+    "no_access": "ما أشوف {channel} — صلاحياتي انسحبت. في مشرف يتحقق؟",
+    "invalid_emoji": "ديسكورد رفض إيموجي في البطاقة. نبّه مشرف يراجع الريجستري.",
+    "unknown": "😅 خطأ غير متوقع: {detail}"
+  }
 }

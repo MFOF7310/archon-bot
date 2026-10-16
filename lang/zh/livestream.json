@@ -12,5 +12,15 @@
   "cmd_help": "📺 **YouTube 通知**\n`{prefix}livestream set @handle #频道 [--priority]`\n`{prefix}livestream remove @handle`\n`{prefix}livestream list`\n`{prefix}livestream test @handle`",
   "cmd_send_failed": "❌ 发送失败 —— 检查频道权限。",
   "cmd_real_alert": "✅ 真实直播提醒已发送 —— @{handle} 正在直播！",
-  "cmd_test_preview": "🧪 预览已发送（标记 TEST）。@{handle} **未在直播** —— 仅布局预览。"
+  "cmd_test_preview": "🧪 预览已发送（标记 TEST）。@{handle} **未在直播** —— 仅布局预览。",
+  "errors": {
+    "cooldown": "稍等一下 —— 这个频道刚发过提醒，过一会再发。",
+    "not_tracked": "这个频道不再被追踪了。用 `/livestream set` 重新添加。",
+    "guild_missing": "我看不到这个服务器了 —— 检查一下我还在不在。",
+    "channel_gone": "我发提醒的频道不见了。用 `/livestream set` 重新指定一个。",
+    "no_permission": "我在 {channel} 发不了消息 —— 缺少 **发送消息** 或 **嵌入链接** 权限。检查一下频道权限。",
+    "no_access": "我看不到 {channel} —— 权限被取消了。管理员能检查一下吗？",
+    "invalid_emoji": "Discord 拒绝了一个 emoji。通知管理员检查 registry。",
+    "unknown": "😅 意外错误：{detail}"
+  }
 }
