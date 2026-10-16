@@ -4,7 +4,8 @@
 //  Upload check: YouTube RSS feed (free, unlimited, near-instant)
 //  Priority channels polled every 2 min · Normal every 5 min
 // ═══════════════════════════════════════════════════════════════════
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder } = require('discord.js');
 const { t } = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
 const axios = require('axios');
@@ -212,38 +213,40 @@ async function fetchLatestUpload(channelId) {
 // ─── Embeds ───
 function buildLiveEmbed(channelId, live, handle, client) {
     const isPreview = live._test === true;
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(live.url).setEmoji('🔴'),
-        new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(`https://youtube.com/channel/${channelId}`).setEmoji('📺'),
+    const accent = isPreview ? 0xf39c12 : 0xFF0000;
+    const tag = handle ? '@' + handle : channelId;
+    const title = live.title || 'Live stream';
+    const watchUrl = live.url || (handle ? `https://youtube.com/@${handle}/live` : `https://youtube.com/channel/${channelId}/live`);
+    const header = isPreview ? `## 🧪 Test preview · ${tag}` : `## 🔴 ${tag} is live right now`;
+    const body = isPreview
+        ? `**${title}**\nThis is a layout preview, not a real alert. ${tag} isn't currently streaming.`
+        : `**${title}**\n${tag} is live on YouTube right now!`;
+    const c = new ContainerBuilder().setAccentColor(accent);
+    if (live.thumbnail) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(live.thumbnail)));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(header));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    const navRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji('🔴'),
+        new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji('📺')
     );
-    const embed = new EmbedBuilder()
-        .setColor(isPreview ? 0xf39c12 : 0xFF0000)
-        .setAuthor({ name: (isPreview ? '🧪 TEST PREVIEW  •  ' : '📺 YouTube Live  •  ') + (handle ? '@' + handle : channelId), iconURL: client.user.displayAvatarURL() })
-        .setTitle((isPreview ? '🧪 [TEST] ' : '🔴 ') + live.title)
-        .setURL(live.url)
-        .setDescription(isPreview
-            ? `**Layout preview** for ${handle ? '@' + handle : channelId}.\nThis is **not a real live alert** — the channel is not currently streaming.`
-            : '**' + (handle ? '@' + handle : 'Channel') + '** is live on YouTube right now!')
-        .setFooter({ text: 'ARCHON CG-223  •  ' + (isPreview ? 'Test Preview' : 'YouTube Live Alert'), iconURL: client.user.displayAvatarURL() })
-        .setTimestamp();
-    if (live.thumbnail) embed.setImage(live.thumbnail);
-    return { embed, row };
+    c.addActionRowComponents(navRow);
+    return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: ['everyone'] } } };
 }
 
 function buildVideoEmbed(upload, handle, client) {
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji('🎬'),
-    );
-    const embed = new EmbedBuilder()
-        .setColor('#FF0000')
-        .setAuthor({ name: '📺 New Upload  •  ' + (handle ? '@' + handle : upload.author), iconURL: client.user.displayAvatarURL() })
-        .setTitle(upload.title)
-        .setURL(upload.url)
-        .setDescription('Fresh video from **' + (handle ? '@' + handle : upload.author) + '**!')
-        .setFooter({ text: 'ARCHON CG-223  •  YouTube Upload Alert', iconURL: client.user.displayAvatarURL() })
-        .setTimestamp();
-    if (upload.thumbnail) embed.setImage(upload.thumbnail);
-    return { embed, row };
+    const tag = handle ? '@' + handle : (upload.author || 'the channel');
+    const c = new ContainerBuilder().setAccentColor(0xFF0000);
+    if (upload.thumbnail) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(upload.thumbnail)));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✨ New video from ${tag}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${tag} just posted something new.`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji('🎬')
+    ));
+    return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }
 
 function canNotifyLive(channelId) {
@@ -270,7 +273,13 @@ async function sendNotification(client, db, guildId, channelId, handle, payload,
         else if (type === 'video') { card = buildVideoEmbed(payload, handle, client); content = `🎬 **NEW VIDEO** from ${handle ? '@' + handle : channelId}!`; }
         else if (type === 'system_test') { card = buildLiveEmbed(channelId, payload, handle, client); content = null; }
 
-        await channel.send({ content, embeds: [card.embed], components: card.row ? [card.row] : [] });
+        if (card._v2) {
+            const msg = { ...card._v2 };
+            if (content) msg.content = content;
+            await channel.send(msg);
+        } else {
+            await channel.send({ content, embeds: [card.embed], components: card.row ? [card.row] : [] });
+        }
         if (type === 'live') lastNotificationTime.set(channelId, Date.now());
         return true;
     } catch { return false; }
@@ -358,20 +367,26 @@ async function runCycle(client, db, priorityOnly) {
 
 // ─── List ───
 function buildListEmbed(tracks, guild, client) {
-    const embed = new EmbedBuilder().setColor('#FF0000')
-        .setAuthor({ name: '📺 Tracked YouTube Channels', iconURL: guild.iconURL() || client.user.displayAvatarURL() })
-        .setFooter({ text: 'ARCHON CG-223  •  YouTube Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
-    if (!tracks.length) { embed.setDescription('> No channels tracked yet.'); return embed; }
-    let desc = '';
+    const c = new ContainerBuilder().setAccentColor(0xFF0000);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📺 Tracked YouTube channels · ${guild.name}`));
+    if (!tracks.length) {
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent('Nothing tracked yet. Add a channel with `/livestream set @handle #channel`.'));
+        return c;
+    }
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     tracks.forEach((t, i) => {
-        const status = t.is_live === 1 ? (EMOJIS.online + ' LIVE') : (EMOJIS.offline + ' Offline');
+        const live = t.is_live === 1;
         const prio = t.priority === 1 ? ' ⚡' : '';
-        const handle = t.youtube_handle ? '@' + t.youtube_handle : t.youtube_channel_id;
-        const last = t.last_video_id ? '🎬 `...' + t.last_video_id.slice(-6) + '`' : 'No video yet';
-        desc += `${i + 1}. **${handle}**${prio}  ${status}\n   ↳ <#${t.target_channel_id}>  •  ${last}\n\n`;
+        const tag = t.youtube_handle ? '@' + t.youtube_handle : t.youtube_channel_id;
+        const status = live ? '🔴 Live' : '⚫ Offline';
+        const last = t.last_video_id ? `🎬 \`…${t.last_video_id.slice(-6)}\`` : 'No video yet';
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. ${tag}**${prio}  ·  ${status}\n↳ <#${t.target_channel_id}>  ·  ${last}`));
+        if (i < tracks.length - 1) c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     });
-    embed.setDescription(desc.substring(0, 4000));
-    return embed;
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent('-# ARCHON CG-223 · YouTube Engine'));
+    return c;
 }
 
 module.exports = {
@@ -405,7 +420,7 @@ module.exports = {
 
         if (action === 'list') {
             const rows = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ?').all(guildId);
-            return message.reply({ embeds: [buildListEmbed(rows, message.guild, client)] });
+            return message.reply({ components: [buildListEmbed(rows, message.guild, client)], flags: MessageFlags.IsComponentsV2 });
         }
 
         if (!isGuildOwner(message)) return message.reply({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] });
@@ -501,7 +516,7 @@ module.exports = {
 
         if (sub === 'list') {
             const rows = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ?').all(guildId);
-            return interaction.reply({ embeds: [buildListEmbed(rows, interaction.guild, client)] });
+            return interaction.reply({ components: [buildListEmbed(rows, interaction.guild, client)], flags: MessageFlags.IsComponentsV2 });
         }
         const isOwner = interaction.user.id === interaction.guild.ownerId || interaction.member?.permissions.has('Administrator');
         if (!isOwner) return interaction.reply({ embeds: [buildOwnerErrorEmbed(client, interaction.guild, lang)], flags: 1 << 6 });
