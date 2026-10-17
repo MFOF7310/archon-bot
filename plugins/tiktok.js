@@ -1,6 +1,12 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
-const { t } = require('../lib/lang');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder, MessageFlags } = require('discord.js');
+const { t } = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
+
+// Fallback Unicode si l'app emoji est mort — jamais de :texte: brut
+function emFallback(key, fb) {
+    return EMOJIS[key] || fb;
+}
 const axios = require('axios');
 
 // ═══════════════════════════════════════════════════════════════════
@@ -86,12 +92,10 @@ function isGuildOwner(message) {
 }
 
 function buildOwnerErrorEmbed(client, guild, lang = 'en') {
-    const t = {
-        fr: { title: '🔒 ACCÈS RESTREINT', desc: 'Seul le **propriétaire du serveur** peut gérer les notifications TikTok.', footer: 'ARCHON CG-223 • Sécurité Propriétaire' },
-        en: { title: '🔒 RESTRICTED ACCESS', desc: 'Only the **server owner** can manage TikTok notifications.', footer: 'ARCHON CG-223 • Owner Security' }
-    }[lang] || t.en;
-
-    return new EmbedBuilder().setColor('#e74c3c').setAuthor({ name: '🛡️ ' + t.title, iconURL: guild.iconURL() || client.user.displayAvatarURL() }).setDescription(t.desc).setFooter({ text: t.footer }).setTimestamp();
+    const c = new ContainerBuilder().setAccentColor(0xe74c3c);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🛡️ ACCÈS RESTREINT`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`Seul le **propriétaire du serveur** peut gérer les notifications TikTok.`));
+    return c;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -423,83 +427,52 @@ function buildResult(user, stats, latestVideo, isLive, liveRoomInfo, username, l
  * Professional live notification embed with real stream cover
  * and invitation-style messaging
  */
-function buildLiveEmbed(data, guild, client) {
-    const tt = EMOJIS.tiktok_logo || '📱';
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setLabel('Watch Live')
-            .setStyle(ButtonStyle.Link)
-            .setURL('https://www.tiktok.com/@' + data.username + '/live')
-            .setEmoji('🔴'),
-        new ButtonBuilder()
-            .setLabel('@' + data.username + ' on TikTok')
-            .setStyle(ButtonStyle.Link)
-            .setURL('https://www.tiktok.com/@' + data.username)
-            .setEmoji('👤')
-    );
-
-    const bannerImage = data.liveCover || data.avatar || null;
-    const lines = [
-        tt + ' 🔴 **' + data.nickname + '** just went live — come hang out!',
-        ''
-    ];
+function buildLiveEmbed(data, guild, client, pingText = null) {
+    const tt = emFallback('tiktok_logo', '📱');
+    const liveEm = emFallback('livestream', '🔴');
+    const userEm = emFallback('myprofile', '👤');
+    const c = new ContainerBuilder().setAccentColor(0xFF0050);
+    if (pingText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(pingText));
+    
+    if (data.liveCover || data.avatar) {
+        c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(data.liveCover || data.avatar)));
+    }
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${liveEm} ${data.nickname} est en LIVE`));
     if (data.bio && data.bio.length > 5 && !data.bio.includes('Creator Profile')) {
-        lines.push('> *"' + data.bio.substring(0, 120) + (data.bio.length > 120 ? '...' : '') + '"*');
-        lines.push('');
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*"${data.bio.substring(0, 120)}${data.bio.length > 120 ? '...' : ''}"*`));
     }
     if (data.stats.followers > 0 || data.stats.likes > 0) {
-        lines.push('👥 **' + Number(data.stats.followers).toLocaleString() + '** followers  •  ❤️ **' + Number(data.stats.likes).toLocaleString() + '** likes');
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`👥 **${Number(data.stats.followers).toLocaleString()}** followers • ❤️ **${Number(data.stats.likes).toLocaleString()}** likes`));
     }
-
-    const embed = new EmbedBuilder()
-        .setColor('#FF0050')
-        .setAuthor({
-            name: '📱 TikTok Live  •  @' + data.username,
-            iconURL: data.avatar || client.user.displayAvatarURL(),
-            url: 'https://www.tiktok.com/@' + data.username + '/live'
-        })
-        .setTitle((data.verified ? '✅ ' : '') + data.nickname + ' is live right now!')
-        .setDescription(lines.join('\n'))
-        .setThumbnail(data.avatar || null)
-        .setFooter({ text: 'ARCHON CG-223  •  TikTok Live Alert', iconURL: client.user.displayAvatarURL() })
-        .setTimestamp();
-
-    if (bannerImage) embed.setImage(bannerImage);
-    return { embed, row };
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username + '/live').setEmoji(liveEm),
+        new ButtonBuilder().setLabel('Profil').setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username).setEmoji(userEm)
+    ));
+    return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2 } };
 }
 
-function buildVideoEmbed(data, guild, client) {
+function buildVideoEmbed(data, guild, client, pingText = null) {
     const video = data.latestVideo;
     if (!video) return null;
-
-    const tt = EMOJIS.tiktok_logo || '📱';
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(video.url).setEmoji('🎬')
-    );
-
-    const postedAgo = video.createTime ? '<t:' + video.createTime + ':R>' : 'just now';
-    const desc = video.desc ? video.desc.substring(0, 280) + (video.desc.length > 280 ? '...' : '') : '';
-    const lines = [];
-    if (desc) { lines.push('> ' + desc); lines.push(''); }
-    lines.push('📅 Posted ' + postedAgo);
-    lines.push('');
-    lines.push('▶️ `' + Number(video.playCount).toLocaleString() + '` views  •  ❤️ `' + Number(video.likeCount).toLocaleString() + '` likes  •  💬 `' + Number(video.commentCount).toLocaleString() + '` comments');
-
-    const embed = new EmbedBuilder()
-        .setColor('#00F2FE')
-        .setAuthor({
-            name: '📱 New TikTok  •  @' + data.username,
-            iconURL: data.avatar || client.user.displayAvatarURL(),
-            url: video.url
-        })
-        .setTitle((data.verified ? '✅ ' : '') + data.nickname + ' posted a new video!')
-        .setDescription(lines.join('\n'))
-        .setThumbnail(data.avatar || null)
-        .setFooter({ text: 'ARCHON CG-223  •  TikTok Video Alert', iconURL: client.user.displayAvatarURL() })
-        .setTimestamp();
-
-    if (video.cover) embed.setImage(video.cover);
-    return { embed, row };
+    const liveEm = emFallback('livestream', '🔴');
+    const videoEm = emFallback('youtube', '🎬'); // on peut utiliser youtube en fallback visuel
+    const c = new ContainerBuilder().setAccentColor(0x00F2FE);
+    
+    if (video.cover) {
+        c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(video.cover)));
+    }
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${videoEm} ${data.nickname} a posté une vidéo`));
+    if (video.desc) {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*"${video.desc.substring(0, 280)}${video.desc.length > 280 ? '...' : ''}"*`));
+    }
+    const postedAgo = video.createTime ? `<t:${video.createTime}:R>` : "à l'instant";
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`📅 Postée ${postedAgo}\n▶️ **${Number(video.playCount).toLocaleString()}** vues • ❤️ **${Number(video.likeCount).toLocaleString()}** likes`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(video.url).setEmoji(videoEm)
+    ));
+    return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2 } };
 }
 
 // ================= NOTIFICATION SENDER =================
@@ -533,36 +506,32 @@ async function sendNotification(client, db, guildId, username, data, type) {
         if (!require('../lib/canPost').log(guild, channel, botMember, 'tiktok').ok) return false;
 
         // ─── GESTION DES EMBEDS SELON LE TYPE ───
-        let embedToSend;
-        let rowToSend;
+        let card;
         let contentMessage = '';
 
         if (type === 'live') {
-            const result = buildLiveEmbed(data, guild, client);
-            if (!result) return false;
-            embedToSend = result.embed;
-            rowToSend = result.row;
             contentMessage = `@everyone 🔴 **${data.nickname}** is LIVE on TikTok right now!`;
-        } 
+            card = buildLiveEmbed(data, guild, client, contentMessage);
+        }
         else if (type === 'video') {
-            const result = buildVideoEmbed(data, guild, client);
-            if (!result) return false;
-            embedToSend = result.embed;
-            rowToSend = result.row;
             contentMessage = `🎬 **NEW VIDEO** from @${data.username}!`;
-        } 
+            card = buildVideoEmbed(data, guild, client, contentMessage);
+        }
         else if (type === 'system_test') {
-            const testResult = buildLiveEmbed(data, guild, client);
-            embedToSend = testResult.embed;
-            rowToSend = testResult.row;
-            contentMessage = null;
+            card = buildLiveEmbed(data, guild, client);
         }
 
-        await channel.send({
-            content: contentMessage,
-            embeds: [embedToSend],
-            components: rowToSend ? [rowToSend] : []
-        });
+        if (!card) return false;
+
+        if (card._v2) {
+            await channel.send(card._v2);
+        } else {
+            await channel.send({
+                content: contentMessage,
+                embeds: [card.embed],
+                components: card.row ? [card.row] : []
+            });
+        }
 
         if (type === 'live') {
             lastNotificationTime.set(username, Date.now());
@@ -570,6 +539,7 @@ async function sendNotification(client, db, guildId, username, data, type) {
 
         return true;
     } catch (err) {
+        console.error("[TIKTOK] sendNotification failed:", err.message);
         return false;
     }
 }
@@ -676,26 +646,28 @@ async function processUserForGuild(client, db, track, data) {
 
 // ================= COMMANDS =================
 function buildListEmbed(tracks, guild, client, lang = 'en') {
-    const tt = EMOJIS.tiktok_logo || '📱';
-
-    const embed = new EmbedBuilder()
-        .setColor('#FF0050')
-        .setAuthor({ name: '📱 ' + t('tiktok.trackedAccounts', lang), iconURL: guild.iconURL() || client.user.displayAvatarURL() })
-        .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() })
-        .setTimestamp();
-
-    if (tracks.length === 0) { embed.setDescription('> ' + t('tiktok.noAccounts', lang)); return embed; }
-
-    let desc = '';
+    const tt = emFallback('tiktok_logo', '📱');
+    const c = new ContainerBuilder().setAccentColor(0xFF0050);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${tt} ${t('tiktok.trackedAccounts', lang)}`));
+    
+    if (tracks.length === 0) {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${t('tiktok.noAccounts', lang)}`));
+        return c;
+    }
+    
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     tracks.forEach((track, i) => {
-        const liveStatus = track.is_live === 1 ? (EMOJIS.online + ' ' + t('tiktok.liveStatus', lang).replace('🔴 ', '')) : (EMOJIS.offline + ' ' + t('tiktok.offlineStatus', lang).replace('⚫ ', ''));
+        const liveEm = track.is_live === 1 ? emFallback('online', '🟢') : emFallback('offline', '🔴');
+        const status = track.is_live === 1 ? t('tiktok.liveStatus', lang).replace('🔴 ', '') : t('tiktok.offlineStatus', lang).replace('⚫ ', '');
         const forceTag = track.force_mode === 1 ? ' ⚠️' : '';
-        const lastVideo = track.last_video_id ? '🎬 `...' + track.last_video_id.slice(-6) + '`' : t('tiktok.noVideoYet', lang);
-        desc += (i + 1) + '. **@' + track.tiktok_username + '**' + forceTag + '  ' + liveStatus + '\n';
-        desc += '   ↳ <#' + track.target_channel_id + '>  •  ' + lastVideo + '\n\n';
+        const lastVideo = track.last_video_id ? `🎬 \`...${track.last_video_id.slice(-6)}\`` : t('tiktok.noVideoYet', lang);
+        
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. @${track.tiktok_username}**${forceTag} · ${liveEm} ${status}\n<#${track.target_channel_id}> · ${lastVideo}`));
+        if (i < tracks.length - 1) c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     });
-    embed.setDescription(desc.substring(0, 4000));
-    return embed;
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 · TikTok Engine`));
+    return c;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -825,7 +797,7 @@ if (action === 'test' || action === 'simulate') {
         // ─── LIST (public) ───
         if (action === 'list' || !action) {
             const tracks = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ?').all(guildId);
-            return message.reply({ embeds: [buildListEmbed(tracks, message.guild, client, lang)] });
+            return message.reply({ components: [buildListEmbed(tracks, message.guild, client, lang)], flags: MessageFlags.IsComponentsV2 });
         }
 
         // ─── OWNER GUARD ───
@@ -874,17 +846,23 @@ if (action === 'test' || action === 'simulate') {
                     force_mode = excluded.force_mode
             `).run(guildId, username.toLowerCase(), channelId, lastVideoId, testData?.isLive ? 1 : 0, forceMode ? 1 : 0);
 
-            const embed = new EmbedBuilder().setColor(forceMode ? '#f39c12' : '#2ecc71')
-                .setAuthor({ name: forceMode ? t('tiktok.forcedTracking', lang) : t('tiktok.normalTracking', lang), iconURL: testData?.avatar || client.user.displayAvatarURL() })
-                .setTitle(testData ? `${testData.verified ? '✅ ' : ''}${testData.nickname}` : `@${username}`)
-                .setDescription(forceMode
-                    ? t('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
-                    : t('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId) + '\n' + t('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString())
-                )
-                .setThumbnail(testData?.avatar || null)
-                .setFooter({ text: `${guildName} • ARCHON CG-223 • TikTok Engine`, iconURL: guildIcon }).setTimestamp();
-
-            return statusMsg.edit({ content: null, embeds: [embed] });
+            const c = new ContainerBuilder().setAccentColor(forceMode ? 0xf39c12 : 0x2ecc71);
+            const header = `## ${forceMode ? '⚠️ ' : '✅ '}${testData?.nickname || '@' + username}`;
+            const desc = forceMode
+                ? t('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
+                : t('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId);
+            
+            if (testData?.avatar) {
+                c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(header + '\n' + desc)).setThumbnailAccessory(new ThumbnailBuilder().setURL(testData.avatar)));
+            } else {
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(header + '\n' + desc));
+            }
+            if (!forceMode && testData?.stats?.followers) {
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString())));
+            }
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName} • ARCHON CG-223 • TikTok Engine`));
+            
+            return statusMsg.edit({ content: null, components: [c], flags: MessageFlags.IsComponentsV2 });
         }
 
         // ─── REMOVE ───
@@ -947,7 +925,7 @@ if (action === 'test' || action === 'simulate') {
 
         if (subcommand === 'list') {
             const tracks = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ?').all(guildId);
-            return interaction.reply({ embeds: [buildListEmbed(tracks, interaction.guild, client, lang)] });
+            return interaction.reply({ components: [buildListEmbed(tracks, interaction.guild, client, lang)], flags: MessageFlags.IsComponentsV2 });
         }
 
         if (!isOwner) return interaction.reply({ embeds: [buildOwnerErrorEmbed(client, interaction.guild, lang)], flags: 1 << 6 });
@@ -1013,14 +991,21 @@ if (action === 'test' || action === 'simulate') {
                     force_mode = excluded.force_mode
             `).run(guildId, username.toLowerCase(), channelId, lastVideoId, testData?.isLive ? 1 : 0, forceMode ? 1 : 0);
 
-            const embed = new EmbedBuilder().setColor(forceMode ? '#f39c12' : '#2ecc71')
-                .setAuthor({ name: forceMode ? t('tiktok.forcedTracking', lang) : t('tiktok.normalTracking', lang), iconURL: testData?.avatar || client.user.displayAvatarURL() })
-                .setTitle(testData ? `${testData.verified ? '✅ ' : ''}${testData.nickname}` : `@${username}`)
-                .setDescription(forceMode
-                    ? t('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
-                    : t('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId) + (testData?.stats?.followers ? '\n' + t('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString()) : '')
-                )
-                .setThumbnail(testData?.avatar || null).setTimestamp();
+            const c = new ContainerBuilder().setAccentColor(forceMode ? 0xf39c12 : 0x2ecc71);
+            const desc = forceMode
+                ? t('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
+                : t('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId);
+            const header = `## ${forceMode ? '⚠️ ' : '✅ '}${testData?.nickname || '@' + username}`;
+            
+            if (testData?.avatar) {
+                c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(header + '\n' + desc)).setThumbnailAccessory(new ThumbnailBuilder().setURL(testData.avatar)));
+            } else {
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(header + '\n' + desc));
+            }
+            if (!forceMode && testData?.stats?.followers) {
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString())));
+            }
+            const embed = { components: [c], flags: MessageFlags.IsComponentsV2 };
             try {
                 return await interaction.editReply({ embeds: [embed] });
             } catch (err) {
@@ -1033,7 +1018,9 @@ if (action === 'test' || action === 'simulate') {
             const username = interaction.options.getString('username').replace(/^@/, '').trim();
             const result = db.prepare('DELETE FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').run(guildId, username);
             if (result.changes === 0) return interaction.reply({ content: `❌ **${username}** not tracked.`, flags: 1 << 6 });
-            return interaction.reply({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(`**${username}** removed.`)] });
+            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🗑️ **${username}** a été retiré du suivi.`));
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
         }
     },
 

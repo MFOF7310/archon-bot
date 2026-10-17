@@ -1,0 +1,22 @@
+{
+  "trackedAccounts": "📱 Les comptes TikTok qu'on surveille",
+  "noAccounts": "On ne surveille encore personne ici. Ajoute une chaîne avec `/tiktok set` !",
+  "liveStatus": "En direct",
+  "offlineStatus": "Hors ligne",
+  "noVideoYet": "Aucune vidéo",
+  "verifying": "Je jette un œil à **{username}** sur TikTok...",
+  "notFound": "🤔 Impossible de trouver **{username}**. TikTok a peut-être bloqué l'IP du serveur. Essaie avec `--force`.",
+  "normalTracking": "C'est dans la boîte !",
+  "forcedTracking": "Mode forcé activé !",
+  "trackedDesc": "Je surveille **{username}** pour toi. Les alertes atterriront dans <#{channelId}>.",
+  "trackedForceDesc": "Je surveille **{username}** de force (vu que TikTok bloque). Alertes dans <#{channelId}>.",
+  "followers": "👥 **{count}** followers",
+  "ownerCmds": "🛡️ **Commandes Owner**",
+  "trackCmd": "Suivre un compte",
+  "stopTracking": "Arrêter le suivi",
+  "publicCmds": "🌐 **Commandes publiques**",
+  "viewTracked": "Voir les comptes suivis",
+  "channelTip": "💡 *Astuce : ajoute `--force` si TikTok bloque la vérification.*",
+  "datacenterWarning": "⚠️ *Note : TikTok bloque souvent les IP de datacenter.*",
+  "channelNotFound": "❌ Salon introuvable."
+}

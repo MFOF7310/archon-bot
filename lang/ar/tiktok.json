@@ -1,0 +1,22 @@
+{
+  "trackedAccounts": "حسابات TikTok المتابَعة",
+  "noAccounts": "لا توجد حسابات متابَعة.",
+  "liveStatus": "مباشر",
+  "offlineStatus": "غير متصل",
+  "noVideoYet": "لا يوجد فيديو",
+  "verifying": "جاري التحقق من **{username}**...",
+  "notFound": "❌ **{username}** غير موجود. جرب `--force`.",
+  "normalTracking": "تم تفعيل المتابعة",
+  "forcedTracking": "تم تفعيل المتابعة القسرية",
+  "trackedDesc": "تنبيهات **{username}** ستُرسل إلى <#{channelId}>.",
+  "trackedForceDesc": "متابعة قسرية لـ **{username}** في <#{channelId}>.",
+  "followers": "👥 **{count}** متابع",
+  "ownerCmds": "🛡️ **أوامر المالك**",
+  "trackCmd": "متابعة حساب",
+  "stopTracking": "إيقاف المتابعة",
+  "publicCmds": "🌐 **أوامر عامة**",
+  "viewTracked": "عرض الحسابات المتابَعة",
+  "channelTip": "💡 *نصيحة: أضف `--force` إذا حظر TikTok التحقق.*",
+  "datacenterWarning": "⚠️ *ملاحظة: TikTok غالباً يحظر IP مراكز البيانات.*",
+  "channelNotFound": "❌ القناة غير موجودة."
+}

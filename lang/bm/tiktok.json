@@ -1,0 +1,22 @@
+{
+  "trackedAccounts": "TikTok kɔnɔkow",
+  "noAccounts": "Kɔnɔkow tɛ yen.",
+  "liveStatus": "Live",
+  "offlineStatus": "Offline",
+  "noVideoYet": "Video tɛ yen",
+  "verifying": "Checking **{username}**...",
+  "notFound": "❌ **{username}** tɛ yen. `--force` kɛ.",
+  "normalTracking": "Tracking on",
+  "forcedTracking": "Forced tracking on",
+  "trackedDesc": "Alerts for **{username}** go to <#{channelId}>.",
+  "trackedForceDesc": "Forced for **{username}** in <#{channelId}>.",
+  "followers": "👥 **{count}** followers",
+  "ownerCmds": "🛡️ **Owner**",
+  "trackCmd": "Track",
+  "stopTracking": "Stop",
+  "publicCmds": "🌐 **Public**",
+  "viewTracked": "List",
+  "channelTip": "💡 *Tip: use `--force` if blocked.*",
+  "datacenterWarning": "⚠️ *Note: datacenter IPs blocked.*",
+  "channelNotFound": "❌ Channel not found."
+}

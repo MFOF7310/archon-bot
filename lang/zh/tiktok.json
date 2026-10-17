@@ -1,0 +1,22 @@
+{
+  "trackedAccounts": "已追踪的 TikTok 账号",
+  "noAccounts": "暂无追踪账号。",
+  "liveStatus": "直播中",
+  "offlineStatus": "离线",
+  "noVideoYet": "暂无视频",
+  "verifying": "正在验证 **{username}**...",
+  "notFound": "❌ 找不到 **{username}**。尝试使用 `--force`。",
+  "normalTracking": "已开启追踪",
+  "forcedTracking": "已强制开启追踪",
+  "trackedDesc": "**{username}** 的通知将发送到 <#{channelId}>。",
+  "trackedForceDesc": "已强制追踪 **{username}** 到 <#{channelId}>。",
+  "followers": "👥 **{count}** 粉丝",
+  "ownerCmds": "🛡️ **管理员命令**",
+  "trackCmd": "追踪账号",
+  "stopTracking": "停止追踪",
+  "publicCmds": "🌐 **公开命令**",
+  "viewTracked": "查看追踪列表",
+  "channelTip": "💡 *提示：如果 TikTok 阻止验证，请添加 `--force`。*",
+  "datacenterWarning": "⚠️ *注意：TikTok 经常屏蔽数据中心 IP。*",
+  "channelNotFound": "❌ 找不到频道。"
+}

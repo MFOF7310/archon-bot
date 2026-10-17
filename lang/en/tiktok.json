@@ -1,0 +1,22 @@
+{
+  "trackedAccounts": "📱 The TikTok accounts we're watching",
+  "noAccounts": "Nobody here yet. Add someone with `/tiktok set` !",
+  "liveStatus": "Live",
+  "offlineStatus": "Offline",
+  "noVideoYet": "No video yet",
+  "verifying": "Taking a look at **{username}** on TikTok...",
+  "notFound": "🤔 Can't find **{username}**. TikTok might be blocking the server's IP. Try `--force`.",
+  "normalTracking": "Locked in!",
+  "forcedTracking": "Force mode activated!",
+  "trackedDesc": "I'm watching **{username}** for you. Alerts will land in <#{channelId}>.",
+  "trackedForceDesc": "Watching **{username}** by force (TikTok's being difficult). Alerts in <#{channelId}>.",
+  "followers": "👥 **{count}** followers",
+  "ownerCmds": "🛡️ **Owner Commands**",
+  "trackCmd": "Track an account",
+  "stopTracking": "Stop tracking",
+  "publicCmds": "🌐 **Public Commands**",
+  "viewTracked": "View tracked accounts",
+  "channelTip": "💡 *Tip: add `--force` if TikTok blocks verification.*",
+  "datacenterWarning": "⚠️ *Note: TikTok often blocks datacenter IPs.*",
+  "channelNotFound": "❌ Channel not found."
+}
