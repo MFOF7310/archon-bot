@@ -427,18 +427,23 @@ function buildResult(user, stats, latestVideo, isLive, liveRoomInfo, username, l
  * Professional live notification embed with real stream cover
  * and invitation-style messaging
  */
-function buildLiveEmbed(data, guild, client, pingText = null) {
+function buildLiveEmbed(data, guild, client, lang = 'en', pingText = null) {
     const tt = emFallback('tiktok_logo', '📱');
     const liveEm = emFallback('livestream', '🔴');
     const userEm = emFallback('myprofile', '👤');
     const c = new ContainerBuilder().setAccentColor(0xFF0050);
     if (pingText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(pingText));
     
-    if (data.liveCover || data.avatar) {
-        c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(data.liveCover || data.avatar)));
+    const _img = data.liveCover || data.avatar || guild.iconURL() || client.user.displayAvatarURL();
+    if (_img) {
+        c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(_img)));
     }
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${liveEm} ${data.nickname} est en LIVE`));
-    if (data.bio && data.bio.length > 5 && !data.bio.includes('Creator Profile')) {
+    const isTest = data._isTest === true;
+    const title = isTest ? `## 🧪 [TEST PREVIEW] ${liveEm} ${data.nickname}` : `## ${liveEm} ${t('tiktok.isLiveTitle', lang, { user: data.nickname })}`;
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(title));
+    if (isTest) {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ⚠️ *${t('tiktok.testWarning', lang)}*`));
+    } else if (data.bio && data.bio.length > 5 && !data.bio.includes('Creator Profile')) {
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*"${data.bio.substring(0, 120)}${data.bio.length > 120 ? '...' : ''}"*`));
     }
     if (data.stats.followers > 0 || data.stats.likes > 0) {
@@ -446,13 +451,13 @@ function buildLiveEmbed(data, guild, client, pingText = null) {
     }
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username + '/live').setEmoji(liveEm),
-        new ButtonBuilder().setLabel('Profil').setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username).setEmoji(userEm)
+        new ButtonBuilder().setLabel(t('tiktok.btnWatchLive', 'en')).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username + '/live').setEmoji(liveEm),
+        new ButtonBuilder().setLabel(t('tiktok.btnProfile', 'en')).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username).setEmoji(userEm)
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2 } };
 }
 
-function buildVideoEmbed(data, guild, client, pingText = null) {
+function buildVideoEmbed(data, guild, client, lang = 'en', pingText = null) {
     const video = data.latestVideo;
     if (!video) return null;
     const liveEm = emFallback('livestream', '🔴');
@@ -489,6 +494,7 @@ function canNotifyLive(username) {
 
 async function sendNotification(client, db, guildId, username, data, type) {
     try {
+        const lang = client.detectLanguage ? client.detectLanguage('tiktok', guildId) : 'en';
         if (type === 'live' && !canNotifyLive(username)) {
             return false; 
         }
@@ -510,15 +516,15 @@ async function sendNotification(client, db, guildId, username, data, type) {
         let contentMessage = '';
 
         if (type === 'live') {
-            contentMessage = `@everyone 🔴 **${data.nickname}** is LIVE on TikTok right now!`;
-            card = buildLiveEmbed(data, guild, client, contentMessage);
+            contentMessage = data._isTest ? null : `@everyone 🔴 **${data.nickname}** is LIVE on TikTok right now!`;
+            card = buildLiveEmbed(data, guild, client, lang, contentMessage);
         }
         else if (type === 'video') {
             contentMessage = `🎬 **NEW VIDEO** from @${data.username}!`;
-            card = buildVideoEmbed(data, guild, client, contentMessage);
+            card = buildVideoEmbed(data, guild, client, lang, contentMessage);
         }
         else if (type === 'system_test') {
-            card = buildLiveEmbed(data, guild, client);
+            card = buildLiveEmbed(data, guild, client, lang);
         }
 
         if (!card) return false;
@@ -784,13 +790,14 @@ if (action === 'test' || action === 'simulate') {
             latestVideo: null
         };
     }
+    realData._isTest = true;
 
     // On lance la notification en mode 'system_test'
     const sent = await sendNotification(client, db, guildId, username, realData, 'system_test');
     
     return statusMsg.edit(sent
-        ? `✅ **Test layout notification sent!** Check <#${track.target_channel_id}>.`
-        : `❌ **Test failed.** Check bot permissions in <#${track.target_channel_id}>.`
+        ? t('tiktok.testSent', lang, { channel: `<#${track.target_channel_id}>` })
+        : t('tiktok.testFailed', lang, { channel: `<#${track.target_channel_id}>` })
     );
 }
 
@@ -946,7 +953,7 @@ if (action === 'test' || action === 'simulate') {
     await interaction.deferReply();
 
     const track = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username);
-    if (!track) return interaction.editReply(`❌ **${username}** is not tracked. Use /tiktok set first.`);
+    if (!track) return interaction.editReply(t('tiktok.notTrackedTest', lang, { username }));
 
     let realData = await fetchTikTokUser(username);
     
@@ -959,12 +966,13 @@ if (action === 'test' || action === 'simulate') {
             latestVideo: null
         };
     }
+    realData._isTest = true;
 
     const sent = await sendNotification(client, db, guildId, username, realData, 'system_test');
     
     return interaction.editReply(sent
-        ? `✅ **Test layout sent!** Check <#${track.target_channel_id}>.`
-        : `❌ **Failed.** Check bot permissions in <#${track.target_channel_id}>.`
+        ? t('tiktok.testSent', lang, { channel: `<#${track.target_channel_id}>` })
+        : t('tiktok.testFailed', lang, { channel: `<#${track.target_channel_id}>` })
     );
 }
 
@@ -1007,7 +1015,7 @@ if (action === 'test' || action === 'simulate') {
             }
             const embed = { components: [c], flags: MessageFlags.IsComponentsV2 };
             try {
-                return await interaction.editReply({ embeds: [embed] });
+                return await interaction.editReply(embed);
             } catch (err) {
                 console.error('[TIKTOK SET] editReply error:', err.message, '| channel.id:', channel?.id, '| channel.type:', channel?.type);
                 return await interaction.editReply({ content: `✅ **${username}** tracked in <#${channel.id}>` });

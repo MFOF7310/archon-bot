@@ -18,5 +18,12 @@
   "viewTracked": "查看追踪列表",
   "channelTip": "💡 *提示：如果 TikTok 阻止验证，请添加 `--force`。*",
   "datacenterWarning": "⚠️ *注意：TikTok 经常屏蔽数据中心 IP。*",
-  "channelNotFound": "❌ 找不到频道。"
+  "channelNotFound": "❌ 找不到频道。",
+  "notTrackedTest": "🤔 **{username}** 不在列表中。请先使用 `/tiktok set`。",
+  "testSent": "✅ 测试已发送！请查看 {channel} 的排版。",
+  "testFailed": "❌ 测试失败。请检查我在 {channel} 的权限。",
+  "btnWatchLive": "观看直播",
+  "btnProfile": "TikTok 主页",
+  "testWarning": "这是用于测试排版的模拟界面，主播目前并未直播。",
+  "isLiveTitle": "{user} 正在直播"
 }

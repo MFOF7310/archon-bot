@@ -18,5 +18,12 @@
   "viewTracked": "List",
   "channelTip": "💡 *Tip: use `--force` if blocked.*",
   "datacenterWarning": "⚠️ *Note: datacenter IPs blocked.*",
-  "channelNotFound": "❌ Channel not found."
+  "channelNotFound": "❌ Channel not found.",
+  "notTrackedTest": "🤔 **{username}** tɛ yen. `/tiktok set` kɛ.",
+  "testSent": "✅ Test sɔrɔ! Aw ye {channel} lajɛ.",
+  "testFailed": "❌ Test man se. Aw ye n ka yɔrɔ lajɛ {channel} kɔnɔ.",
+  "btnWatchLive": "Live",
+  "btnProfile": "Profil",
+  "testWarning": "Nin ye test dɔrɔn de ye. A tɛ live la fɔlɔ.",
+  "isLiveTitle": "{user} bɛ live la"
 }

@@ -18,5 +18,12 @@
   "viewTracked": "عرض الحسابات المتابَعة",
   "channelTip": "💡 *نصيحة: أضف `--force` إذا حظر TikTok التحقق.*",
   "datacenterWarning": "⚠️ *ملاحظة: TikTok غالباً يحظر IP مراكز البيانات.*",
-  "channelNotFound": "❌ القناة غير موجودة."
+  "channelNotFound": "❌ القناة غير موجودة.",
+  "notTrackedTest": "🤔 **{username}** غير متتبع. استخدم `/tiktok set` أولاً.",
+  "testSent": "✅ تم إرسال الاختبار! تحقق من {channel}.",
+  "testFailed": "❌ فشل الاختبار. تحقق من صلاحياتي في {channel}.",
+  "btnWatchLive": "مشاهدة مباشرة",
+  "btnProfile": "ملف TikTok",
+  "testWarning": "هذه محاكاة للتصميم. البث المباشر غير نشط حالياً.",
+  "isLiveTitle": "{user} يبث الآن"
 }

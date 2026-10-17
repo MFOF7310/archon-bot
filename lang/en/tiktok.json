@@ -18,5 +18,12 @@
   "viewTracked": "View tracked accounts",
   "channelTip": "💡 *Tip: add `--force` if TikTok blocks verification.*",
   "datacenterWarning": "⚠️ *Note: TikTok often blocks datacenter IPs.*",
-  "channelNotFound": "❌ Channel not found."
+  "channelNotFound": "❌ Channel not found.",
+  "notTrackedTest": "🤔 **{username}** isn't tracked. Use `/tiktok set` first.",
+  "testSent": "✅ Test sent! Check {channel} to see the layout.",
+  "testFailed": "❌ Test failed. Check my permissions in {channel}.",
+  "btnWatchLive": "Watch Live",
+  "btnProfile": "TikTok Profile",
+  "testWarning": "This is a layout simulation. The streamer is not live.",
+  "isLiveTitle": "{user} is LIVE"
 }
