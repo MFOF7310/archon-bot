@@ -343,6 +343,7 @@ module.exports = {
             const autokick = settings?.verify_kick_days ? `${settings.verify_kick_days} minutes` : 'Disabled';
 
             const v = (k, x) => vt(db, gid, k, x);
+            const cmdId = interaction.commandId;
             const desc = [
                 `### ${enabled ? `${EMOJIS.online} ${v('gateActive')}` : paused ? `${EMOJIS.offline} ${v('gatePaused')}` : `${EMOJIS.offline} ${v('gateInactive')}`}`,
                 `> ${enabled ? v('gateActiveDesc') : paused ? v('gatePausedDesc') : v('gateInactiveDesc')}`,
@@ -353,9 +354,9 @@ module.exports = {
                 `**${v('autokickLabel')}** — ${autokick}`,
                 ``,
                 `### ${EMOJIS.shield} ${v('quickSetup')}`,
-                v('qsSetrole'),
-                v('qsSetunverified'),
-                v('qsSetkick'),
+                v('qsSetrole', { id: cmdId }),
+                v('qsSetunverified', { id: cmdId }),
+                v('qsSetkick', { id: cmdId }),
             ].join('\n');
 
             return interaction.reply({
