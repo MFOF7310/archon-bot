@@ -25,16 +25,35 @@ function inviteCol(db) {
     } catch { _inviteCol = null; }
     return _inviteCol;
 }
-function storedInviteRow(db, guild) {
+async function storedInviteRow(db, guild) {
     try {
         const col = inviteCol(db);
-        if (!col) return null;
-        const raw = db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v;
-        if (!raw) return null;
-        const m = String(raw).match(/https?:\/\/[^\s)\]]+/i);
-        if (!m) return null;
+        let url = null;
+        
+        // 1. Chercher dans la DB
+        if (col) {
+            const raw = db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v;
+            if (raw) {
+                const m = String(raw).match(/https?:\/\/[^\s)\]]+/i);
+                if (m) url = m[0];
+            }
+        }
+        
+        // 2. Fallback : générer un lien à la volée
+        if (!url) {
+            const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
+            if (me && me.permissions.has('CreateInstantInvite')) {
+                const channel = guild.systemChannel || guild.channels.cache.find(c => c.type === 0 && c.permissionsFor(me)?.has('CreateInstantInvite'));
+                if (channel) {
+                    const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: 'Verification rejoin' }).catch(() => null);
+                    if (invite) url = invite.url;
+                }
+            }
+        }
+
+        if (!url) return null;
         return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
-            .setLabel(vt(db, guild.id, 'rejoinBtn')).setURL(m[0]));
+            .setLabel(vt(db, guild.id, 'rejoinBtn')).setURL(url));
     } catch { return null; }
 }
 const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
@@ -85,7 +104,7 @@ async function kickIfStillUnverified(client, db, gid, uid) {
     try {
         const dmCh = await m.createDM().catch(() => null);
         if (dmCh) {
-            const invRow = storedInviteRow(db, guild);
+            const invRow = await storedInviteRow(db, guild);
             await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
                 .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
                 .setDescription(vt(db, gid, 'kickDm', { server: guild.name }))
@@ -526,7 +545,7 @@ module.exports = {
                                 ? vt(db, gid, 'kickDm', { server: member.guild.name })
                                 : (pl ? vt(db, gid, 'failPanelDm', { server: member.guild.name }) : vt(db, gid, 'failRejoinDm', { server: member.guild.name })))
                             .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-                        ], components: kickOn ? (() => { const r = storedInviteRow(db, member.guild); return r ? [r] : []; })() : (pl ? [pl.row] : []) }).catch(() => {});
+                        ], components: await (async () => { if (kickOn) { const r = await storedInviteRow(db, member.guild); return r ? [r] : []; } return pl ? [pl.row] : []; })() }).catch(() => {});
                         if (kickOn) await member.kick('Failed captcha verification').catch(() => {});
                         logVerify(member.guild, db, 0xff3311, kickOn ? vt(db, gid, 'logKickedFail') : vt(db, gid, 'logFailed'), member.id, '3 wrong attempts');
                     } else {
@@ -580,7 +599,7 @@ module.exports = {
                 try {
                     const dmCh = await freshMember.createDM().catch(() => null);
                     if (dmCh) {
-                        const invRow = storedInviteRow(db, member.guild);
+                        const invRow = await storedInviteRow(db, member.guild);
                         await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
                             .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
                             .setDescription(vt(db, gid, 'kickDm', { server: member.guild.name }))
