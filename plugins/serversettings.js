@@ -233,11 +233,12 @@ async execute(interaction, client) {
             return { embeds: [embed], components: [row], flags: 1 << 6 };
         };
 
-        const msg = await interaction.reply({ ...buildMsg(currentCategory), fetchReply: true });
+        const msg = await interaction.reply({ ...buildMsg(currentCategory), withResponse: true });
+        const fetchedMsg = msg.resource.message;
         const specific = ['general', 'welcome', 'leveling', 'economy', 'moderation', 'features', 'specialRoles'];
         if (specific.includes(interaction.options.getString('category'))) return;
 
-        const collector = msg.createMessageComponentCollector({ time: 120000 });
+        const collector = fetchedMsg.createMessageComponentCollector({ time: 120000 });
         collector.on('collect', async i => {
             if (i.user.id !== interaction.user.id) return i.reply({ content: "This isn't your menu.", flags: 64 });
             const newCat = i.customId.replace('ss_nav_', '');
