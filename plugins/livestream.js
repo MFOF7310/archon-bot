@@ -175,7 +175,7 @@ async function fetchLiveStatus(channelId, handle) {
     } catch (e) {
         const msg = String(e.message || '') + String(e.stderr || '');
         // "Not currently live" is a valid answer, not an error
-        if (/not currently live|has ended|not a live|no live/i.test(msg)) {
+        if (/not currently live|has ended|not a live|no live|will begin in|premiere|upcoming/i.test(msg)) {
             return { isLive: false };
         }
         // Real errors — cookie expiry, block, network
