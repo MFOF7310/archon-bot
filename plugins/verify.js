@@ -205,6 +205,10 @@ module.exports = {
 
         const sub = interaction.options.getSubcommand();
         const gid = interaction.guild.id;
+        
+        // Fetch premium command ID for clickable mentions in errors
+        const premiumCmdId = client.application.commands.cache.find(c => c.name === 'premium')?.id;
+        const premiumMention = premiumCmdId ? `</premium status:${premiumCmdId}>` : '`/premium status`';
 
         // Ensure row exists
         db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
@@ -302,7 +306,7 @@ module.exports = {
 
         if (sub === 'panel') {
             const { isPremium } = require('./premium.js');
-            if (!isPremium(db, gid)) return interaction.reply({ content: vt(db, gid, 'premiumLapsed'), flags: 64 });
+            if (!isPremium(db, gid)) return interaction.reply({ content: vt(db, gid, 'premiumLapsed', { premiumCmd: premiumMention }), flags: 64 });
             const guild = interaction.guild;
             const ch = interaction.options.getChannel('channel');
             const canPostChk = require('../lib/canPost').diagnose(guild, ch, guild.members.me);

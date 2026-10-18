@@ -1,4 +1,5 @@
 const EMOJIS = require('../config/emojis');
+const mentions = require('../lib/mentions');
 const { 
     EmbedBuilder, 
     PermissionFlagsBits, 
@@ -245,9 +246,9 @@ async execute(interaction, client) {
                 disabled: '❌ Désactivé',
                 notSet: '⚠️ Non défini',
                 footer: 'ARCHON CG-223 • Configuration par serveur',
-                tip: '💡 Utilisez `/serversettings set` pour modifier',
+                tip: `💡 Utilisez ${mentions(client, 'serversettings', 'set')} pour modifier`,
                 resetConfirmError: '❌ Tapez `{word}` pour confirmer la réinitialisation.',
-                resetSuccess: '🔄 **Tous les paramètres réinitialisés** aux valeurs par défaut.\n💡 Tapez `/serversettings view` pour vérifier.',
+                resetSuccess: `🔄 **Tous les paramètres réinitialisés** aux valeurs par défaut.\n💡 Tapez ${mentions(client, 'serversettings', 'view')} pour vérifier.`,
                 resetConfirmError: '❌ Tapez `{word}` pour confirmer la réinitialisation.',
                 resetSuccess: '🔄 **Tous les paramètres ont été réinitialisés** aux valeurs par défaut.\n💡 Tapez `/serversettings view` pour vérifier.'
             },
@@ -284,9 +285,9 @@ async execute(interaction, client) {
                 disabled: '❌ Disabled',
                 notSet: '⚠️ Not set',
                 footer: 'ARCHON CG-223 • Per-Server Configuration',
-                tip: '💡 Use `/serversettings set` to modify',
+                tip: `💡 Use ${mentions(client, 'serversettings', 'set')} to modify`,
                 resetConfirmError: '❌ Type `{word}` to confirm reset.',
-                resetSuccess: '🔄 **All settings reset** to default values.\n💡 Type `/serversettings view` to verify.',
+                resetSuccess: `🔄 **All settings reset** to default values.\n💡 Type ${mentions(client, 'serversettings', 'view')} to verify.`,
                 resetConfirmError: '❌ Type `{word}` to confirm reset.',
                 resetSuccess: '🔄 **All settings have been reset** to default values.\n💡 Type `/serversettings view` to verify.'
             },
@@ -323,7 +324,7 @@ async execute(interaction, client) {
                 disabled: '❌ Datugulen',
                 notSet: '⚠️ A ma réglé',
                 footer: 'ARCHON CG-223 • Configuration du serveur',
-                tip: '💡 I bɛ `/serversettings set` ta, ka yɛlɛma do a la',
+                tip: `💡 I bɛ ${mentions(client, 'serversettings', 'set')} ta, ka yɛlɛma do a la`,
                 resetConfirmError: '❌ {word} sɛbɛn, ka reset kɛ.',
                 resetSuccess: '🔄 **Paramètres bɛɛ kɛlen don** default cogoya la.\n💡 `/serversettings view` ta ka filɛ.'
             },
@@ -360,7 +361,7 @@ async execute(interaction, client) {
                 disabled: '❌ معطّل',
                 notSet: '⚠️ غير محدد',
                 footer: 'ARCHON CG-223 • إعدادات السيرفر',
-                tip: '💡 استخدم `/serversettings set` للتعديل',
+                tip: `💡 استخدم ${mentions(client, 'serversettings', 'set')} للتعديل`,
                 resetConfirmError: '❌ اكتب `{word}` لتأكيد إعادة الضبط.',
                 resetSuccess: '🔄 **تم إعادة ضبط جميع الإعدادات**.\n💡 اكتب `/serversettings view` للتحقق.'
             },
@@ -397,7 +398,7 @@ async execute(interaction, client) {
                 disabled: '❌ 已禁用',
                 notSet: '⚠️ 未设置',
                 footer: 'ARCHON CG-223 • 服务器配置',
-                tip: '💡 使用 `/serversettings set` 进行修改',
+                tip: `💡 使用 ${mentions(client, 'serversettings', 'set')} 进行修改`,
                 resetConfirmError: '❌ 输入 `{word}` 确认重置。',
                 resetSuccess: '🔄 **所有设置已重置**为默认值。\n💡 输入 `/serversettings view` 查看。'
             }
@@ -604,7 +605,7 @@ async execute(interaction, client) {
                 invalidNumber: '❌ Nombre invalide. Utilisez une valeur entre 0.5 et 5.0',
                 invalidPrefix: '❌ Le préfixe doit faire entre 1 et 5 caractères.',
                 settingNotFound: '❌ Paramètre inconnu.',
-                viewAll: '💡 Tapez `/serversettings view` pour voir tous les paramètres.\n💬 Utilisez `default` comme valeur pour réinitialiser les messages au défaut système.'
+                viewAll: `💡 Tapez ${mentions(client, 'serversettings', 'view')} pour voir tous les paramètres.\n💬 Utilisez \`default\` comme valeur pour réinitialiser les messages au défaut système.`
             },
             en: {
                 success: '✅ Setting Updated',
@@ -615,7 +616,7 @@ async execute(interaction, client) {
                 invalidNumber: '❌ Invalid number. Use a value between 0.5 and 5.0',
                 invalidPrefix: '❌ Prefix must be 1-5 characters.',
                 settingNotFound: '❌ Unknown setting.',
-                viewAll: '💡 Type `/serversettings view` to see all settings.\n💬 Use `default` as value to reset messages to system default.'
+                viewAll: `💡 Type ${mentions(client, 'serversettings', 'view')} to see all settings.\n💬 Use \`default\` as value to reset messages to system default.`
             }
         }[lang];
 

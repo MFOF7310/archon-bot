@@ -38,7 +38,7 @@
   "premiumDesc": "التحقق برمز الصورة ميزة **Premium** — بدون طرد خاطئ.\n\nبس **3.40$/شهريًا** واحمِ مجتمعك.",
   "premiumHowTo": "🔑 كيفية التفعيل",
   "premiumHowToValue": "شغّل `/premium status` — تستغرق 30 ثانية.",
-  "premiumLapsed": "⛔ التحقق ميزة بريميوم — راجع `/premium status`.",
+  "premiumLapsed": "التحقق هو ميزة **Premium** — انظر {premiumCmd}.",
   "gateTitle": "🛡️ بوابة التحقق",
   "gateActive": "البوابة نشطة",
   "gatePaused": "البوابة متوقفة",

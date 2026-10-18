@@ -19,7 +19,7 @@
   "channelTip": "💡 *Astuce : ajoute `--force` si TikTok bloque la vérification.*",
   "datacenterWarning": "⚠️ *Note : TikTok bloque souvent les IP de datacenter.*",
   "channelNotFound": "❌ Salon introuvable.",
-  "notTrackedTest": "🤔 **{username}** n'est pas dans la liste. Fais `/tiktok set` d'abord.",
+  "notTrackedTest": "🤔 **{username}** n'est pas tracké. Ajoute-le avec {mention}.",
   "testSent": "✅ Test envoyé ! Regarde dans {channel} pour voir le layout.",
   "testFailed": "❌ Échec du test. Vérifie mes permissions dans {channel}.",
   "btnWatchLive": "Regarder en direct",

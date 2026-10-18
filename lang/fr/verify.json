@@ -38,7 +38,7 @@
   "premiumDesc": "La vérification captcha est **Premium** — zéro fausse expulsion.\n\nSeulement **3,40 $/mois** pour protéger ta communauté.",
   "premiumHowTo": "🔑 Comment activer",
   "premiumHowToValue": "Lance `/premium status` — 30 secondes chrono.",
-  "premiumLapsed": "⛔ La vérification est Premium — voir `/premium status`.",
+  "premiumLapsed": "La vérification est une fonctionnalité **Premium** — consulte {premiumCmd}.",
   "gateTitle": "🛡️ Portail de vérification",
   "gateActive": "Portail actif",
   "gatePaused": "Portail en pause",

@@ -203,7 +203,7 @@ module.exports = {
 
         if (sub === 'list' || !sub) {
             const replies = db.prepare('SELECT * FROM auto_replies WHERE guild_id = ? ORDER BY created_at DESC').all(guildId);
-            if (!replies.length) return message.reply('No auto-replies set. Use `/autoreply add` to create one.').catch(() => {});
+            if (!replies.length) return message.reply(`No auto-replies set. Use ${mentions(client, 'autoreply', 'add')} to create one.`).catch(() => {});
             const list = replies.map((r, i) => `${i+1}. **${r.keyword}** → ${r.response.substring(0,50)}...`).join('\n');
             return message.reply({ embeds: [new EmbedBuilder().setColor(0x00f0ff).setTitle('🤖 Auto-Replies').setDescription(list)] }).catch(() => {});
         }

@@ -1,6 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder, MessageFlags } = require('discord.js');
 const { t } = require('../lib/i18n');
+const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
 
 // Fallback Unicode si l'app emoji est mort — jamais de :texte: brut
@@ -953,7 +954,7 @@ if (action === 'test' || action === 'simulate') {
     await interaction.deferReply();
 
     const track = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username);
-    if (!track) return interaction.editReply(t('tiktok.notTrackedTest', lang, { username }));
+    if (!track) return interaction.editReply(t('tiktok.notTrackedTest', lang, { username, mention: mentions(client, 'tiktok', 'set') }));
 
     let realData = await fetchTikTokUser(username);
     

@@ -7,6 +7,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder } = require('discord.js');
 const { t } = require('../lib/i18n');
+const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
 const em = (k, fb) => EMOJIS[k] || fb || '';
 
@@ -498,7 +499,7 @@ module.exports = {
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return message.reply(resolveErrMsg(client, message.guild.id, _resolveReason, input));
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
-            if (!track) return message.reply(t('livestream.cmd_not_tracked_hint', livLang(client, guildId), { handle: input }));
+            if (!track) return message.reply(t('livestream.cmd_not_tracked_hint', livLang(client, guildId), { handle: input, mention: mentions(client, 'livestream', 'set') }));
             const live = await fetchLiveStatus(channelId, track.youtube_handle);
             const isRealLive = !!live.isLive;
             const payload = isRealLive

@@ -1787,7 +1787,7 @@ module.exports = {
                     .setColor(0xffd700)
                     .setTitle('⭐ Premium Feature')
                     .setDescription('Raid detection requires **ARCHON Premium**!\n\nGet it for just **$3.40/month** — protect your server from coordinated attacks.')
-                    .addFields({ name: '🔑 Activate', value: 'Use `/premium status` to upgrade!' })
+                    .addFields({ name: '🔑 Activate', value: `Use ${mentions(client, 'premium', 'status')} to upgrade!` })
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                 ], flags: 64 });
             }

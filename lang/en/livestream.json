@@ -4,7 +4,7 @@
   "resolve_network": "📡 YouTube's being quiet… Try again in 30s.",
   "resolve_unknown": "😅 Something glitched. Is the handle right?",
   "cmd_not_tracked": "🤔 **{handle}** isn't on the list. Run `/livestream list` to see it.",
-  "cmd_not_tracked_hint": "🤔 **{handle}** isn't tracked. Add it with `/livestream set @handle #channel`.",
+  "cmd_not_tracked_hint": "🤔 **{handle}** isn't tracked. Add it with {mention}.",
   "cmd_removed": "✅ **{handle}** removed from the list.",
   "cmd_tracking": "✅ Now tracking **@{handle}** → {channel}{priority}",
   "cmd_tracking_priority": " ⚡ (priority, 2 min)",

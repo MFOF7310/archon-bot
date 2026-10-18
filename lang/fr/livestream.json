@@ -4,7 +4,7 @@
   "resolve_network": "📡 YouTube fait la sourde oreille… Réessaie dans 30s.",
   "resolve_unknown": "😅 Oups, quelque chose a coincé. Le handle est bon ?",
   "cmd_not_tracked": "🤔 **{handle}** n'est pas dans la liste. Tape `/livestream list` pour la voir.",
-  "cmd_not_tracked_hint": "🤔 **{handle}** n'est pas tracké. Ajoute-le avec `/livestream set @handle #salon`.",
+  "cmd_not_tracked_hint": "🤔 **{handle}** n'est pas tracké. Ajoute-le avec {mention}.",
   "cmd_removed": "✅ **{handle}** retiré de la liste.",
   "cmd_tracking": "✅ Je surveille **@{handle}** → {channel}{priority}",
   "cmd_tracking_priority": " ⚡ (prioritaire, 2 min)",

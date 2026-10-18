@@ -38,7 +38,7 @@
   "premiumDesc": "图片验证码验证是 **Premium** 功能 — 零误踢，保障服务器安全。\n\n仅需 **$3.40/月** 即可解锁，保护你的社区。",
   "premiumHowTo": "🔑 如何激活",
   "premiumHowToValue": "运行 `/premium status` 即可升级 — 只需 30 秒。",
-  "premiumLapsed": "⛔ 验证是 Premium 功能 — 请查看 `/premium status`。",
+  "premiumLapsed": "验证功能是 **Premium** 专属功能 — 请查看 {premiumCmd}。",
   "gateTitle": "🛡️ 验证之门",
   "gateActive": "之门已激活",
   "gatePaused": "之门已暂停",

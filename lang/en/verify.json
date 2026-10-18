@@ -38,7 +38,7 @@
   "premiumDesc": "Image captcha verification is a **Premium** feature — zero false kicks.\n\nUnlock it for just **$3.40/month** and protect your community.",
   "premiumHowTo": "🔑 How to activate",
   "premiumHowToValue": "Run `/premium status` to upgrade — takes 30 seconds.",
-  "premiumLapsed": "⛔ Verification is a Premium feature — see `/premium status`.",
+  "premiumLapsed": "Verification is a **Premium** feature — see {premiumCmd}.",
   "gateTitle": "🛡️ Verification Gate",
   "gateActive": "Gate is Active",
   "gatePaused": "Gate is Paused",

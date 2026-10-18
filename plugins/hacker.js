@@ -672,8 +672,8 @@ async function showProfile(interaction, database) {
 // ================= PREFIX FALLBACK =================
 async function run(client, message, args, db, usedCommand, serverSettings, lang) {
   const reply = lang === 'fr'
-    ? `⚡ Cette commande est uniquement disponible en slash. Utilisez \`/hacker\`.`
-    : `⚡ This command is only available as a slash command. Use \`/hacker\`.`;
+    ? `⚡ Cette commande est uniquement disponible en slash. Utilisez ${mentions(client, 'hacker')}.`
+    : `⚡ This command is only available as a slash command. Use ${mentions(client, 'hacker')}.`;
   return message.reply(reply);
 }
 
