@@ -550,7 +550,7 @@ module.exports = {
         if (!isOwner) return interaction.reply({ embeds: [buildOwnerErrorEmbed(client, interaction.guild, lang)], flags: 1 << 6 });
 
         if (sub === 'set') {
-            await interaction.deferReply();
+            await interaction.deferReply({ flags: 64 });
             const input = interaction.options.getString('channel').trim();
             const target = interaction.options.getChannel('target');
             const priority = interaction.options.getBoolean('priority') || false;
@@ -567,7 +567,12 @@ module.exports = {
                     last_video_id = COALESCE(youtube_notifications.last_video_id, excluded.last_video_id),
                     priority = excluded.priority`).run(guildId, channelId, handle, target.id, up?.id || null, live.isLive ? 1 : 0, priority ? 1 : 0);
             const _L2 = livLang(interaction.client, interaction.guildId);
-            return interaction.editReply(t('livestream.cmd_tracking', _L2, { handle, channel: `<#${target.id}>`, priority: priority ? t('livestream.cmd_tracking_priority', _L2) : '' }));
+            const _lsEmbed = new EmbedBuilder()
+                .setColor(priority ? 0xf39c12 : 0x2ecc71)
+                .setAuthor({ name: '📺 YouTube Tracking', iconURL: client.user.displayAvatarURL() })
+                .setDescription(t('livestream.cmd_tracking', _L2, { handle, channel: `<#${target.id}>`, priority: priority ? t('livestream.cmd_tracking_priority', _L2) : '' }))
+                .setFooter({ text: 'ARCHON CG-223 • YouTube Engine' }).setTimestamp();
+            return interaction.editReply({ embeds: [_lsEmbed] });
         }
 
         if (sub === 'remove') {
