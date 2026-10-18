@@ -12,6 +12,7 @@ const { applyUnverifiedLock, lockSummary } = require('../lib/verify-guard.js');
 const crypto = require('crypto');
 const { generateCaptcha, randomCode } = require('./captcha.js');
 const EMOJIS = require('../config/emojis');
+const mentions = require('../lib/mentions');
 const i18nV = require('../lib/i18n');
 const VL = (db, gid) => { try { const l = db.prepare('SELECT language FROM server_settings WHERE guild_id = ?').get(gid)?.language; return ['en','fr','bm','zh','ar'].includes(l) ? l : 'en'; } catch { return 'en'; } };
 const vt = (db, gid, k, v) => i18nV.t('verify.' + k, VL(db, gid), v);
@@ -311,7 +312,7 @@ module.exports = {
             const ch = interaction.options.getChannel('channel');
             const canPostChk = require('../lib/canPost').diagnose(guild, ch, guild.members.me);
             if (!canPostChk.ok)
-                return interaction.reply({ content: vt(db, gid, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: require('../lib/canPost').localize(canPostChk.missing || [], VL(db, gid)).join(', '), bot: guild.members.me.roles.botRole?.name || guild.members.me.displayName }), flags: 64 });
+                return interaction.reply({ content: vt(db, gid, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: require('../lib/canPost').localize(canPostChk.missing || [], VL(db, gid)).join(', '), bot: guild.members.me.roles.botRole?.name || guild.members.me.displayName, cmd: mentions(client, 'verify', 'panel') }), flags: 64 });
 
             ensureCols(db);
             db.prepare('UPDATE server_settings SET verify_panel_channel_id = ? WHERE guild_id = ?').run(ch.id, gid);
