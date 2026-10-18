@@ -978,7 +978,7 @@ if (action === 'test' || action === 'simulate') {
 }
 
         if (subcommand === 'set') {
-            await interaction.deferReply();
+            await interaction.deferReply({ flags: 64 });
             const username = interaction.options.getString('username').replace(/^@/, '').trim();
             const forceMode = interaction.options.getBoolean('force') || false;
             const channelOption = interaction.options.getChannel('channel');
@@ -1019,7 +1019,12 @@ if (action === 'test' || action === 'simulate') {
                 return await interaction.editReply(embed);
             } catch (err) {
                 console.error('[TIKTOK SET] editReply error:', err.message, '| channel.id:', channel?.id, '| channel.type:', channel?.type);
-                return await interaction.editReply({ content: `✅ **${username}** tracked in <#${channel.id}>` });
+                const ttEmbed = new EmbedBuilder()
+                .setColor(0x2ecc71)
+                .setAuthor({ name: '📱 TikTok Tracking', iconURL: client.user.displayAvatarURL() })
+                .setDescription(`C'est noté ! Je garde un œil sur **@${username}**.\nLes alertes arriveront dans <#${channel.id}>.`)
+                .setFooter({ text: 'ARCHON CG-223 • TikTok Engine' }).setTimestamp();
+            return await interaction.editReply({ embeds: [ttEmbed] });
             }
         }
 

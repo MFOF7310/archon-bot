@@ -576,7 +576,12 @@ async execute(interaction, client) {
 
         this.performReset(interaction.guild.id, client);
 
-        await interaction.reply({ content: t.resetSuccess || '🔄 **All settings reset** to default values.' });
+        const resetEmbed = new EmbedBuilder()
+            .setColor(0x2ecc71)
+            .setAuthor({ name: '🔄 System Reset', iconURL: client.user.displayAvatarURL() })
+            .setDescription(t.resetSuccess || 'Settings reset.')
+            .setFooter({ text: 'ARCHON CG-223' });
+        await interaction.reply({ embeds: [resetEmbed], flags: 64 });
     },
 
     // ================= RESET SETTINGS (PREFIX) =================
