@@ -27,16 +27,16 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@discordjs/opus": "^0.9.0",
+    "@discordjs/opus": "^0.10.0",
     "@discordjs/voice": "^0.19.2",
     "@napi-rs/canvas": "^1.0.1",
     "@snazzah/davey": "^0.1.12",
-    "axios": "^1.8.4",
+    "axios": "^1.20.0",
     "better-sqlite3": "^12.1.0",
     "canvafy": "^7.2.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "discord.js": "^14.18.0",
+    "discord.js": "^14.27.0",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
     "form-data": "^4.0.2",
@@ -47,10 +47,14 @@
     "pdfkit": "^0.19.1",
     "play-dl": "^1.9.7",
     "pm2": "^6.0.5",
-    "sharp": "^0.35.2",
+    "sharp": "^0.35.4",
     "sodium-native": "^5.1.0",
     "telegraf": "^4.16.3",
     "tweetnacl": "^1.0.3"
+  },
+  "overrides": {
+    "tar": "^7.5.22",
+    "undici": "^6.27.0"
   },
   "optionalDependencies": {
     "opusscript": "^0.0.8"
