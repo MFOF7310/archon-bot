@@ -132,7 +132,7 @@ module.exports = {
 
             if (!replies.length) {
                 return interaction.reply({
-                    embeds: [new EmbedBuilder().setColor(0xe67e22).setDescription('```ansi\n\u001b[1;33m▸ NO AUTO-REPLIES\u001b[0m\n\u001b[0;37mAdd one with /autoreply add\u001b[0m\n```')]
+                    embeds: [new EmbedBuilder().setColor(0xe67e22).setDescription('### ⚠️ No Auto-Replies\n> Add one with ' + mentions(client, 'autoreply', 'add'))]
                 });
             }
 

@@ -199,9 +199,50 @@ async execute(interaction, client) {
 
     // ================= VIEW SETTINGS (SLASH) =================
     async viewSettings(interaction, client, settings, lang) {
-        const category = interaction.options.getString('category') || 'all';
-        const embed = this.buildSettingsEmbed(settings, interaction.guild, client, lang, category);
-        await interaction.reply({ embeds: [embed], flags: 1 << 6 }); // Ephemeral
+        let currentCategory = interaction.options.getString('category') || 'configured';
+        if (currentCategory === 'all') currentCategory = 'configured';
+
+        const buildMsg = (cat) => {
+            const embed = this.buildSettingsEmbed(settings, interaction.guild, client, lang, cat);
+            // Boutons : recherche dynamique avec chaîne de fallback
+            const findEmoji = (names) => {
+                for (const n of names) {
+                    const found = client.emojis.cache.find(e => e.name === n);
+                    if (found) return found.toString();
+                }
+                return null;
+            };
+
+            const checkEmoji = findEmoji(['green_verified', 'verified', 'success', 'check']) || '✅';
+            const crossEmoji = findEmoji(['warning', 'alert', 'error', 'cross']) || '⚠️';
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('ss_nav_configured')
+                    .setLabel('Configured')
+                    .setEmoji(checkEmoji)
+                    .setStyle(cat === 'configured' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                    .setDisabled(cat === 'configured'),
+                new ButtonBuilder()
+                    .setCustomId('ss_nav_unconfigured')
+                    .setLabel('Not Set')
+                    .setEmoji(crossEmoji)
+                    .setStyle(cat === 'unconfigured' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+                    .setDisabled(cat === 'unconfigured')
+            );
+            return { embeds: [embed], components: [row], flags: 1 << 6 };
+        };
+
+        const msg = await interaction.reply({ ...buildMsg(currentCategory), fetchReply: true });
+        const specific = ['general', 'welcome', 'leveling', 'economy', 'moderation', 'features', 'specialRoles'];
+        if (specific.includes(interaction.options.getString('category'))) return;
+
+        const collector = msg.createMessageComponentCollector({ time: 120000 });
+        collector.on('collect', async i => {
+            if (i.user.id !== interaction.user.id) return i.reply({ content: "This isn't your menu.", flags: 64 });
+            const newCat = i.customId.replace('ss_nav_', '');
+            await i.update(buildMsg(newCat));
+        });
     },
 
     // ================= VIEW SETTINGS (PREFIX) =================
@@ -213,344 +254,97 @@ async execute(interaction, client) {
     // ================= BUILD SETTINGS EMBED =================
     buildSettingsEmbed(settings, guild, client, lang, category) {
         const translations = {
-            fr: {
-                title: 'Configuration du serveur',
-                general: 'Général',
-                prefix: 'Préfixe',
-                welcome: 'Bienvenue',
-                welcomeChannel: 'Salon de Bienvenue',
-                welcomeMessage: 'Message de Bienvenue',
-                goodbyeChannel: 'Salon d\'Au Revoir',
-                goodbyeMessage: 'Message d\'Au Revoir',
-                leveling: 'Niveaux',
-                xpMultiplier: 'Multiplicateur XP',
-                levelChannel: 'Salon des Niveaux',
-                economy: 'Économie',
-                marketEnabled: 'Marché Activé',
-                features: 'Fonctionnalités',
-                afkEnabled: 'Système AFK',
-                aiEnabled: 'Lydia AI',
-                moderation: 'Modération',
-                logChannel: 'Salon de Logs',
-                muteRole: 'Rôle Muet',
-                modLogChannel: 'Salon Logs Modération',
-                roles: 'Rôles',
-                memberRole: 'Rôle Membre',
-                autoRole: 'Rôle Automatique',
-                channels: 'Salons',
-                rulesChannel: 'Salon Règles',
-                generalChannel: 'Salon Général',
-                dailyChannel: 'Salon Quotidien',
-                shopChannel: 'Salon Boutique',
-                enabled: '✅ Activé',
-                disabled: '❌ Désactivé',
-                notSet: '⚠️ Non défini',
-                footer: 'ARCHON CG-223 • Configuration par serveur',
-                tip: `💡 Utilisez ${mentions(client, 'serversettings', 'set')} pour modifier`,
-                resetConfirmError: '❌ Tapez `{word}` pour confirmer la réinitialisation.',
-                resetSuccess: `🔄 **Tous les paramètres réinitialisés** aux valeurs par défaut.\n💡 Tapez ${mentions(client, 'serversettings', 'view')} pour vérifier.`,
-                resetConfirmError: '❌ Tapez `{word}` pour confirmer la réinitialisation.',
-                resetSuccess: '🔄 **Tous les paramètres ont été réinitialisés** aux valeurs par défaut.\n💡 Tapez `/serversettings view` pour vérifier.'
-            },
-            en: {
-                title: 'Server Configuration',
-                general: 'General',
-                prefix: 'Prefix',
-                welcome: 'Welcome',
-                welcomeChannel: 'Welcome Channel',
-                welcomeMessage: 'Welcome Message',
-                goodbyeChannel: 'Goodbye Channel',
-                goodbyeMessage: 'Goodbye Message',
-                leveling: 'Leveling',
-                xpMultiplier: 'XP Multiplier',
-                levelChannel: 'Level-Up Channel',
-                economy: 'Economy',
-                marketEnabled: 'Market Enabled',
-                features: 'Features',
-                afkEnabled: 'AFK System',
-                aiEnabled: 'Lydia AI',
-                moderation: 'Moderation',
-                logChannel: 'Log Channel',
-                muteRole: 'Mute Role',
-                modLogChannel: 'Mod Log Channel',
-                roles: 'Roles',
-                memberRole: 'Member Role',
-                autoRole: 'Auto Role',
-                channels: 'Channels',
-                rulesChannel: 'Rules Channel',
-                generalChannel: 'General Channel',
-                dailyChannel: 'Daily Channel',
-                shopChannel: 'Shop Channel',
-                enabled: '✅ Enabled',
-                disabled: '❌ Disabled',
-                notSet: '⚠️ Not set',
-                footer: 'ARCHON CG-223 • Per-Server Configuration',
-                tip: `💡 Use ${mentions(client, 'serversettings', 'set')} to modify`,
-                resetConfirmError: '❌ Type `{word}` to confirm reset.',
-                resetSuccess: `🔄 **All settings reset** to default values.\n💡 Type ${mentions(client, 'serversettings', 'view')} to verify.`,
-                resetConfirmError: '❌ Type `{word}` to confirm reset.',
-                resetSuccess: '🔄 **All settings have been reset** to default values.\n💡 Type `/serversettings view` to verify.'
-            },
-            bm: {
-                title: 'Configuration du serveur',
-                general: 'Général',
-                prefix: 'Préfixe',
-                welcome: 'Aw bisimila',
-                welcomeChannel: 'Aw bisimila salon',
-                welcomeMessage: 'Aw bisimila message',
-                goodbyeChannel: 'Aw kanbɛ salon',
-                goodbyeMessage: 'Aw kanbɛ message',
-                leveling: 'Niveau yɛlɛnni',
-                xpMultiplier: 'XP Multiplicateur',
-                levelChannel: 'Niveau salon',
-                economy: 'Maara',
-                marketEnabled: 'Marché dayɛlɛ len',
-                features: 'Fonctionnalités',
-                afkEnabled: 'AFK système',
-                aiEnabled: 'Lydia AI',
-                moderation: 'Modération',
-                logChannel: 'Log salon',
-                muteRole: 'Mute rôle',
-                modLogChannel: 'Mod log salon',
-                roles: 'Rôles',
-                memberRole: 'Membre rôle',
-                autoRole: 'Auto rôle',
-                channels: 'Salons',
-                rulesChannel: 'Règles salon',
-                generalChannel: 'Général salon',
-                dailyChannel: 'Quotidien salon',
-                shopChannel: 'Boutique salon',
-                enabled: '✅ Dayɛlɛ len',
-                disabled: '❌ Datugulen',
-                notSet: '⚠️ A ma réglé',
-                footer: 'ARCHON CG-223 • Configuration du serveur',
-                tip: `💡 I bɛ ${mentions(client, 'serversettings', 'set')} ta, ka yɛlɛma do a la`,
-                resetConfirmError: '❌ {word} sɛbɛn, ka reset kɛ.',
-                resetSuccess: '🔄 **Paramètres bɛɛ kɛlen don** default cogoya la.\n💡 `/serversettings view` ta ka filɛ.'
-            },
-            ar: {
-                title: 'إعدادات السيرفر',
-                general: 'عام',
-                prefix: 'البادئة',
-                welcome: 'الترحيب',
-                welcomeChannel: 'قناة الترحيب',
-                welcomeMessage: 'رسالة الترحيب',
-                goodbyeChannel: 'قناة الوداع',
-                goodbyeMessage: 'رسالة الوداع',
-                leveling: 'المستويات',
-                xpMultiplier: 'مضاعف XP',
-                levelChannel: 'قناة الترقية',
-                economy: 'الاقتصاد',
-                marketEnabled: 'السوق مفعّل',
-                features: 'الميزات',
-                afkEnabled: 'نظام AFK',
-                aiEnabled: 'Lydia AI',
-                moderation: 'الإدارة',
-                logChannel: 'قناة السجلات',
-                muteRole: 'رتبة الكتم',
-                modLogChannel: 'قناة سجلات الإدارة',
-                roles: 'الرتب',
-                memberRole: 'رتبة العضو',
-                autoRole: 'رتبة تلقائية',
-                channels: 'القنوات',
-                rulesChannel: 'قناة القواعد',
-                generalChannel: 'القناة العامة',
-                dailyChannel: 'القناة اليومية',
-                shopChannel: 'قناة المتجر',
-                enabled: '✅ مفعّل',
-                disabled: '❌ معطّل',
-                notSet: '⚠️ غير محدد',
-                footer: 'ARCHON CG-223 • إعدادات السيرفر',
-                tip: `💡 استخدم ${mentions(client, 'serversettings', 'set')} للتعديل`,
-                resetConfirmError: '❌ اكتب `{word}` لتأكيد إعادة الضبط.',
-                resetSuccess: '🔄 **تم إعادة ضبط جميع الإعدادات**.\n💡 اكتب `/serversettings view` للتحقق.'
-            },
-            zh: {
-                title: '服务器配置',
-                general: '通用',
-                prefix: '前缀',
-                welcome: '欢迎',
-                welcomeChannel: '欢迎频道',
-                welcomeMessage: '欢迎消息',
-                goodbyeChannel: '告别频道',
-                goodbyeMessage: '告别消息',
-                leveling: '等级系统',
-                xpMultiplier: 'XP 倍率',
-                levelChannel: '升级频道',
-                economy: '经济',
-                marketEnabled: '市场已启用',
-                features: '功能',
-                afkEnabled: 'AFK 系统',
-                aiEnabled: 'Lydia AI',
-                moderation: '管理',
-                logChannel: '日志频道',
-                muteRole: '禁言身份组',
-                modLogChannel: '管理日志频道',
-                roles: '身份组',
-                memberRole: '成员身份组',
-                autoRole: '自动身份组',
-                channels: '频道',
-                rulesChannel: '规则频道',
-                generalChannel: '通用频道',
-                dailyChannel: '每日频道',
-                shopChannel: '商店频道',
-                enabled: '✅ 已启用',
-                disabled: '❌ 已禁用',
-                notSet: '⚠️ 未设置',
-                footer: 'ARCHON CG-223 • 服务器配置',
-                tip: `💡 使用 ${mentions(client, 'serversettings', 'set')} 进行修改`,
-                resetConfirmError: '❌ 输入 `{word}` 确认重置。',
-                resetSuccess: '🔄 **所有设置已重置**为默认值。\n💡 输入 `/serversettings view` 查看。'
-            }
+            fr: { title: 'Configuration du serveur', general: 'Général', prefix: 'Préfixe', welcome: 'Bienvenue', welcomeChannel: 'Salon de Bienvenue', welcomeMessage: 'Message de Bienvenue', goodbyeChannel: 'Salon d\'Au Revoir', goodbyeMessage: 'Message d\'Au Revoir', leveling: 'Niveaux', xpMultiplier: 'Multiplicateur XP', levelChannel: 'Salon des Niveaux', economy: 'Économie', marketEnabled: 'Marché Activé', features: 'Fonctionnalités', afkEnabled: 'Système AFK', aiEnabled: 'Lydia AI', moderation: 'Modération', logChannel: 'Salon de Logs', muteRole: 'Rôle Muet', modLogChannel: 'Salon Logs Modération', roles: 'Rôles', memberRole: 'Rôle Membre', autoRole: 'Rôle Automatique', channels: 'Salons', rulesChannel: 'Salon Règles', generalChannel: 'Salon Général', dailyChannel: 'Salon Quotidien', shopChannel: 'Salon Boutique', enabled: '✅ Activé', disabled: '❌ Désactivé', notSet: '⚠️ Non défini', footer: 'ARCHON CG-223 • Configuration par serveur', tip: `💡 Utilisez ${mentions(client, 'serversettings', 'set')} pour modifier` },
+            en: { title: 'Server Configuration', general: 'General', prefix: 'Prefix', welcome: 'Welcome', welcomeChannel: 'Welcome Channel', welcomeMessage: 'Welcome Message', goodbyeChannel: 'Goodbye Channel', goodbyeMessage: 'Goodbye Message', leveling: 'Leveling', xpMultiplier: 'XP Multiplier', levelChannel: 'Level-Up Channel', economy: 'Economy', marketEnabled: 'Market Enabled', features: 'Features', afkEnabled: 'AFK System', aiEnabled: 'Lydia AI', moderation: 'Moderation', logChannel: 'Log Channel', muteRole: 'Mute Role', modLogChannel: 'Mod Log Channel', roles: 'Roles', memberRole: 'Member Role', autoRole: 'Auto Role', channels: 'Channels', rulesChannel: 'Rules Channel', generalChannel: 'General Channel', dailyChannel: 'Daily Channel', shopChannel: 'Shop Channel', enabled: '✅ Enabled', disabled: '❌ Disabled', notSet: '⚠️ Not set', footer: 'ARCHON CG-223 • Per-Server Configuration', tip: `💡 Use ${mentions(client, 'serversettings', 'set')} to modify` },
+            bm: { title: 'Configuration du serveur', general: 'Général', prefix: 'Préfixe', welcome: 'Aw bisimila', welcomeChannel: 'Aw bisimila salon', welcomeMessage: 'Aw bisimila message', goodbyeChannel: 'Aw kanbɛ salon', goodbyeMessage: 'Aw kanbɛ message', leveling: 'Niveau yɛlɛnni', xpMultiplier: 'XP Multiplicateur', levelChannel: 'Niveau salon', economy: 'Maara', marketEnabled: 'Marché dayɛlɛ len', features: 'Fonctionnalités', afkEnabled: 'AFK système', aiEnabled: 'Lydia AI', moderation: 'Modération', logChannel: 'Log salon', muteRole: 'Mute rôle', modLogChannel: 'Mod log salon', roles: 'Rôles', memberRole: 'Membre rôle', autoRole: 'Auto rôle', channels: 'Salons', rulesChannel: 'Règles salon', generalChannel: 'Général salon', dailyChannel: 'Quotidien salon', shopChannel: 'Boutique salon', enabled: '✅ Dayɛlɛ len', disabled: '❌ Datugulen', notSet: '⚠️ A ma réglé', footer: 'ARCHON CG-223 • Configuration du serveur', tip: `💡 I bɛ ${mentions(client, 'serversettings', 'set')} ta, ka yɛlɛma do a la` },
+            ar: { title: 'إعدادات السيرفر', general: 'عام', prefix: 'البادئة', welcome: 'الترحيب', welcomeChannel: 'قناة الترحيب', welcomeMessage: 'رسالة الترحيب', goodbyeChannel: 'قناة الوداع', goodbyeMessage: 'رسالة الوداع', leveling: 'المستويات', xpMultiplier: 'مضاعف XP', levelChannel: 'قناة الترقية', economy: 'الاقتصاد', marketEnabled: 'السوق مفعّل', features: 'الميزات', afkEnabled: 'نظام AFK', aiEnabled: 'Lydia AI', moderation: 'الإدارة', logChannel: 'قناة السجلات', muteRole: 'رتبة الكتم', modLogChannel: 'قناة سجلات الإدارة', roles: 'الرتب', memberRole: 'رتبة العضو', autoRole: 'رتبة تلقائية', channels: 'القنوات', rulesChannel: 'قناة القواعد', generalChannel: 'القناة العامة', dailyChannel: 'القناة اليومية', shopChannel: 'قناة المتجر', enabled: '✅ مفعّل', disabled: '❌ معطّل', notSet: '⚠️ غير محدد', footer: 'ARCHON CG-223 • إعدادات السيرفر', tip: `💡 استخدم ${mentions(client, 'serversettings', 'set')} للتعديل` },
+            zh: { title: '服务器配置', general: '通用', prefix: '前缀', welcome: '欢迎', welcomeChannel: '欢迎频道', welcomeMessage: '欢迎消息', goodbyeChannel: '告别频道', goodbyeMessage: '告别消息', leveling: '等级系统', xpMultiplier: 'XP 倍率', levelChannel: '升级频道', economy: '经济', marketEnabled: '市场已启用', features: '功能', afkEnabled: 'AFK 系统', aiEnabled: 'Lydia AI', moderation: '管理', logChannel: '日志频道', muteRole: '禁言身份组', modLogChannel: '管理日志频道', roles: '身份组', memberRole: '成员身份组', autoRole: '自动身份组', channels: '频道', rulesChannel: '规则频道', generalChannel: '通用频道', dailyChannel: '每日频道', shopChannel: '商店频道', enabled: '✅ 已启用', disabled: '❌ 已禁用', notSet: '⚠️ 未设置', footer: 'ARCHON CG-223 • 服务器配置', tip: `💡 使用 ${mentions(client, 'serversettings', 'set')} 进行修改` }
         };
         const t = translations[lang] || translations['en'];
 
         const embed = new EmbedBuilder()
             .setColor('#2ecc71')
-            .setAuthor({ 
-                name: t.title, 
-                iconURL: guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL() 
-            });
+            .setAuthor({ name: t.title, iconURL: guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL() });
 
         const isArchitectServer = guild.id === process.env.GUILD_ID;
-
-        const channelMention = (id, envKey) => {
-            if (id) return `<#${id}>`;
-            if (isArchitectServer && envKey && process.env[envKey]) return `<#${process.env[envKey]}> \ud83d\udd39 .env`;
-            return t.notSet;
-        };
-
-        const roleMention = (id, envKey) => {
-            if (id) return `<@&${id}>`;
-            if (isArchitectServer && envKey && process.env[envKey]) return `<@&${process.env[envKey]}> \ud83d\udd39 .env`;
-            return t.notSet;
-        };
-
+        const channelMention = (id, envKey) => { if (id) return `<#${id}>`; if (isArchitectServer && envKey && process.env[envKey]) return `<#${process.env[envKey]}> 🔹 .env`; return t.notSet; };
+        const roleMention = (id, envKey) => { if (id) return `<@&${id}>`; if (isArchitectServer && envKey && process.env[envKey]) return `<@&${process.env[envKey]}> 🔹 .env`; return t.notSet; };
         const boolStr = (val) => val ? t.enabled : t.disabled;
 
-        const sections = {
-            general: () => embed.addFields(
-                {
-                    name: `${EMOJIS.general} ${t.general}`,
-                    value: `${EMOJIS.shield} **Prefix:** \`${settings.prefix || '.'}\``,
-                    inline: true
-                },
-                {
-                    name: `${EMOJIS.xp} ${t.leveling}`,
-                    value: [
-                        `**XP Multiplier:** \`${settings.xpMultiplier || 1.0}x\``,
-                        `**Level-Up:** ${channelMention(settings.levelChannel, 'LEVEL_CHANNEL_ID')}`
-                    ].join('\n'),
-                    inline: true
-                }
-            ),
-            welcome: () => embed.addFields(
-                {
-                    name: `${EMOJIS.welcome} ${t.welcome}`,
-                    value: [
-                        `**Channel:** ${channelMention(settings.welcomeChannel, 'WELCOME_CHANNEL_ID')}`,
-                        `**Message:** ${settings.welcomeMessage ? '✅ Custom' : '📋 Default'}`,
-                    ].join('\n'),
-                    inline: true
-                },
-                {
-                    name: `${EMOJIS.goodbye} Goodbye`,
-                    value: [
-                        `**Channel:** ${channelMention(settings.goodbyeChannel, 'GOODBYE_CHANNEL_ID')}`,
-                        `**Message:** ${settings.goodbyeMessage ? '✅ Custom' : '📋 Default'}`,
-                    ].join('\n'),
-                    inline: true
-                }
-            ),
-            economy: () => embed.addFields(
-                {
-                    name: `${EMOJIS.coins} ${t.economy}`,
-                    value: [
-                        `**Market:** ${boolStr(settings.marketEnabled)}`,
-                        `**Market Channel:** ${channelMention(settings.marketChannel, 'MARKET_CHANNEL_ID')}`,
-                        `**Shop:** ${channelMention(settings.shopChannel, 'SHOP_CHANNEL_ID')}`,
-                    ].join('\n'),
-                    inline: true
-                },
-                {
-                    name: `${EMOJIS.ai_assistant} ${t.features}`,
-                    value: [
-                        `**AFK:** ${boolStr(settings.afkEnabled)}`,
-                        `**Lydia AI:** ${boolStr(settings.aiEnabled)}`
-                    ].join('\n'),
-                    inline: true
-                }
-            ),
-            moderation: () => embed.addFields(
-                {
-                    name: `${EMOJIS.shield} ${t.moderation}`,
-                    value: [
-                        `**Log:** ${channelMention(settings.logChannel, 'LOG_CHANNEL_ID')}`,
-                        `**Mod Log:** ${channelMention(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID')}`,
-                        `**Mute Role:** ${roleMention(settings.muteRoleId, 'MUTE_ROLE_ID')}`
-                    ].join('\n'),
-                    inline: true
-                },
-                {
-                    name: `${EMOJIS.member} ${t.roles}`,
-                    value: [
-                        `**Member:** ${roleMention(settings.memberRole, 'MEMBER_ROLE')}`,
-                        `**Auto Role:** ${roleMention(settings.autoRoleId, 'AUTO_ROLE_ID')}`
-                    ].join('\n'),
-                    inline: true
-                }
-            ),
-            channels: () => embed.addFields({
-                name: `${EMOJIS.general} ${t.channels}`,
-                value: [
-                    `**Rules:** ${channelMention(settings.rulesChannel, 'RULES_CHANNEL_ID')}`,
-                    `**General:** ${channelMention(settings.generalChannel, 'GENERAL_CHANNEL_ID')}`,
-                    `**Daily:** ${channelMention(settings.dailyChannel, 'DAILY_CHANNEL_ID')}`,
-                ].join('\n'),
-                inline: false
-            }),
-            specialRoles: () => embed.addFields(
-                {
-                    name: `${EMOJIS.investors} ${t.economy} ${t.roles}`,
-                    value: [
-                        `**Investor:** ${roleMention(settings.investorRoleId, 'INVESTOR_ROLE_ID')}`,
-                        `**Gamer:** ${roleMention(settings.gamerRoleId, 'GAMER_ROLE_ID')}`,
-                        `**Quiz Master:** ${roleMention(settings.quizMasterRoleId, 'QUIZ_MASTER_ROLE_ID')}`,
-                        `**Duelist:** ${roleMention(settings.duelistRoleId, 'DUELIST_ROLE_ID')}`,
-                    ].join('\n'),
-                    inline: true
-                },
-                {
-                    name: `🌱 Daily ${t.roles}`,
-                    value: [
-                        `**Initiate (3d):** ${roleMention(settings.dailyInitiateRoleId, 'DAILY_INITIATE_ROLE_ID')}`,
-                        `**Warrior (7d):** ${roleMention(settings.dailyWarriorRoleId, 'DAILY_WARRIOR_ROLE_ID')}`,
-                        `**Champion (30d):** ${roleMention(settings.dailyChampionRoleId, 'DAILY_CHAMPION_ROLE_ID')}`,
-                        `**Legend (100d):** ${roleMention(settings.dailyLegendRoleId, 'DAILY_LEGEND_ROLE_ID')}`,
-                    ].join('\n'),
-                    inline: true
-                }
-            ),
+        const em = (k, fb) => EMOJIS[k] || fb;
+        const isSet = (val) => val && !/Not set|Non défini|A ma réglé|⚠️/.test(String(val));
+
+        const buildField = (emoji, title, lines, inline = true) => {
+            const validLines = lines.filter(l => {
+                if (category === 'configured') return l.set;
+                if (category === 'unconfigured') return !l.set;
+                return true;
+            });
+            if (!validLines.length) return null;
+            return {
+                name: `${emoji || ''} ${title}`.trim(),
+                value: validLines.map(l => l.text).join('\n'),
+                inline: inline
+            };
         };
 
-        // ================= CATEGORY =================
-        if (category === 'all') {
-            Object.values(sections).forEach(fn => fn());
-        } else if (sections[category]) {
-            sections[category]();
+        const S = {
+            prefix: settings.prefix || '.',
+            xp: settings.xpMultiplier || 1.0,
+            levelChan: channelMention(settings.levelChannel, 'LEVEL_CHANNEL_ID'),
+            welcomeChan: channelMention(settings.welcomeChannel, 'WELCOME_CHANNEL_ID'),
+            welcomeMsg: settings.welcomeMessage ? '✅ Custom' : '📋 Default',
+            goodbyeChan: channelMention(settings.goodbyeChannel, 'GOODBYE_CHANNEL_ID'),
+            goodbyeMsg: settings.goodbyeMessage ? '✅ Custom' : '📋 Default',
+            market: boolStr(settings.marketEnabled),
+            marketChan: channelMention(settings.marketChannel, 'MARKET_CHANNEL_ID'),
+            shop: channelMention(settings.shopChannel, 'SHOP_CHANNEL_ID'),
+            afk: boolStr(settings.afkEnabled),
+            ai: boolStr(settings.aiEnabled),
+            log: channelMention(settings.logChannel, 'LOG_CHANNEL_ID'),
+            modLog: channelMention(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID'),
+            mute: roleMention(settings.muteRoleId, 'MUTE_ROLE_ID'),
+            member: roleMention(settings.memberRole, 'MEMBER_ROLE'),
+            autoRole: roleMention(settings.autoRoleId, 'AUTO_ROLE_ID'),
+            rules: channelMention(settings.rulesChannel, 'RULES_CHANNEL_ID'),
+            general: channelMention(settings.generalChannel, 'GENERAL_CHANNEL_ID'),
+            daily: channelMention(settings.dailyChannel, 'DAILY_CHANNEL_ID'),
+            investor: roleMention(settings.investorRoleId, 'INVESTOR_ROLE_ID'),
+            gamer: roleMention(settings.gamerRoleId, 'GAMER_ROLE_ID'),
+            quiz: roleMention(settings.quizMasterRoleId, 'QUIZ_MASTER_ROLE_ID'),
+            duelist: roleMention(settings.duelistRoleId, 'DUELIST_ROLE_ID'),
+            dInit: roleMention(settings.dailyInitiateRoleId, 'DAILY_INITIATE_ROLE_ID'),
+            dWar: roleMention(settings.dailyWarriorRoleId, 'DAILY_WARRIOR_ROLE_ID'),
+            dChamp: roleMention(settings.dailyChampionRoleId, 'DAILY_CHAMPION_ROLE_ID'),
+            dLeg: roleMention(settings.dailyLegendRoleId, 'DAILY_LEGEND_ROLE_ID'),
+        };
+
+        const fields = [
+            buildField(em('general', '👑'), t.general, [ { text: `**Prefix:** \`${S.prefix}\``, set: true } ]),
+            buildField(em('xp', '✨'), t.leveling, [ { text: `**XP Multiplier:** \`${S.xp}x\``, set: true }, { text: `**Level-Up:** ${S.levelChan}`, set: isSet(S.levelChan) } ]),
+            buildField(em('welcome', '🎉'), t.welcome, [ { text: `**Channel:** ${S.welcomeChan}`, set: isSet(S.welcomeChan) }, { text: `**Message:** ${S.welcomeMsg}`, set: true } ]),
+            buildField(em('goodbye', '🎬'), 'Goodbye', [ { text: `**Channel:** ${S.goodbyeChan}`, set: isSet(S.goodbyeChan) }, { text: `**Message:** ${S.goodbyeMsg}`, set: true } ]),
+            buildField(em('coins', '💰'), t.economy, [ { text: `**Market:** ${S.market}`, set: true }, { text: `**Market Channel:** ${S.marketChan}`, set: isSet(S.marketChan) }, { text: `**Shop:** ${S.shop}`, set: isSet(S.shop) } ]),
+            buildField(em('ai_assistant', '🧠'), t.features, [ { text: `**AFK:** ${S.afk}`, set: true }, { text: `**Lydia AI:** ${S.ai}`, set: true } ]),
+            buildField(em('shield', '🛡️'), t.moderation, [ { text: `**Log:** ${S.log}`, set: isSet(S.log) }, { text: `**Mod Log:** ${S.modLog}`, set: isSet(S.modLog) }, { text: `**Mute Role:** ${S.mute}`, set: isSet(S.mute) } ]),
+            buildField(em('member', '👤'), t.roles, [ { text: `**Member:** ${S.member}`, set: isSet(S.member) }, { text: `**Auto Role:** ${S.autoRole}`, set: isSet(S.autoRole) } ]),
+            buildField(em('general', '💬'), t.channels, [ { text: `**Rules:** ${S.rules}`, set: isSet(S.rules) }, { text: `**General:** ${S.general}`, set: isSet(S.general) }, { text: `**Daily:** ${S.daily}`, set: isSet(S.daily) } ], false),
+            buildField(em('investors', '🏦'), `${t.economy} ${t.roles}`, [ { text: `**Investor:** ${S.investor}`, set: isSet(S.investor) }, { text: `**Gamer:** ${S.gamer}`, set: isSet(S.gamer) }, { text: `**Quiz Master:** ${S.quiz}`, set: isSet(S.quiz) }, { text: `**Duelist:** ${S.duelist}`, set: isSet(S.duelist) } ]),
+            buildField('🌱', `Daily ${t.roles}`, [ { text: `**Initiate (3d):** ${S.dInit}`, set: isSet(S.dInit) }, { text: `**Warrior (7d):** ${S.dWar}`, set: isSet(S.dWar) }, { text: `**Champion (30d):** ${S.dChamp}`, set: isSet(S.dChamp) }, { text: `**Legend (100d):** ${S.dLeg}`, set: isSet(S.dLeg) } ])
+        ].filter(Boolean);
+
+        const tip = `-# ${t.tip}`;
+        if (fields.length) {
+            embed.addFields(fields);
+            embed.setDescription(`\n${tip}`); // Espacement renforcé avec le \n
+        } else {
+            embed.setDescription(`\n-# ${category === 'configured' ? 'No settings configured yet.' : 'All settings are configured!'}\n\n${tip}`);
         }
 
-        embed.setFooter({ 
-            text: `${guild.name} \u2022 ${t.footer} \u2022 v${client.version}`,
-            iconURL: client.user.displayAvatarURL()
-        })
-        .setTimestamp()
-        .setDescription(`\`\`\`ansi\n\u001b[1;36m${t.tip}\u001b[0m\n\`\`\``);
-
+        embed.setFooter({ text: `${guild.name} • ${t.footer} • v${client.version}`, iconURL: client.user.displayAvatarURL() }).setTimestamp();
         return embed;
     },
 
-    // ================= SET SETTING (SLASH) =================
     async setSetting(interaction, client, settings, lang) {
         const setting = interaction.options.getString('setting');
         const rawValue = interaction.options.getString('value');
