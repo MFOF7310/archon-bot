@@ -6,7 +6,7 @@ const EMOJIS = require('../config/emojis');
 const dailyTranslations = {
     en: {
         title: '📅 DAILY REWARD',
-        claimed: `${EMOJIS.check} DAILY REWARD CLAIMED!`,
+        claimed: `✅ DAILY REWARD CLAIMED!`,
         alreadyClaimed: '⏰ ALREADY CLAIMED',
         comeBack: 'Come back in',
         hours: 'hours',
@@ -26,7 +26,7 @@ const dailyTranslations = {
         bonusAdded: 'Bonus added',
         levelUp: '🎉 LEVEL UP!',
         reachedLevel: 'You reached level',
-        noAccount: `${EMOJIS.error} No data found — use \`/claim\` to get started!`,
+        noAccount: `❌ No data found — use \`/claim\` to get started!`,
         readyToClaim: 'Ready to claim!',
         onCooldown: 'On cooldown',
         useClaim: 'Use `/claim`',
@@ -38,7 +38,7 @@ const dailyTranslations = {
     },
     fr: {
         title: '📅 RÉCOMPENSE QUOTIDIENNE',
-        claimed: `${EMOJIS.check} RÉCOMPENSE QUOTIDIENNE RÉCLAMÉE !`,
+        claimed: `✅ RÉCOMPENSE QUOTIDIENNE RÉCLAMÉE !`,
         alreadyClaimed: '⏰ DÉJÀ RÉCLAMÉ',
         comeBack: 'Revenez dans',
         hours: 'heures',
@@ -58,7 +58,7 @@ const dailyTranslations = {
         bonusAdded: 'Bonus ajouté',
         levelUp: '🎉 NIVEAU SUPÉRIEUR !',
         reachedLevel: 'Vous avez atteint le niveau',
-        noAccount: `${EMOJIS.error} Aucune donnée trouvée — utilisez \`/claim\` pour commencer !`,
+        noAccount: `❌ Aucune donnée trouvée — utilisez \`/claim\` pour commencer !`,
         readyToClaim: 'Prêt à réclamer!',
         onCooldown: 'En cooldown',
         useClaim: 'Utilisez `/claim`',
@@ -70,7 +70,7 @@ const dailyTranslations = {
     },
     zh: {
         title: '📅 每日奖励',
-        claimed: `${EMOJIS.check} 每日奖励已领取！`,
+        claimed: `✅ 每日奖励已领取！`,
         alreadyClaimed: '⏰ 今日已领取',
         comeBack: '请在',
         hours: '小时',
@@ -90,7 +90,7 @@ const dailyTranslations = {
         bonusAdded: '已添加奖励',
         levelUp: '🎉 升级！',
         reachedLevel: '你达到了等级',
-        noAccount: `${EMOJIS.error} 没有找到数据 — 使用 \`/claim\` 开始！`,
+        noAccount: `❌ 没有找到数据 — 使用 \`/claim\` 开始！`,
         readyToClaim: '可以领取了！',
         onCooldown: '冷却中',
         useClaim: '使用 `/claim`',
@@ -102,7 +102,7 @@ const dailyTranslations = {
     },
     ar: {
         title: '📅 المكافأة اليومية',
-        claimed: `${EMOJIS.check} تم استلام المكافأة اليومية!`,
+        claimed: `✅ تم استلام المكافأة اليومية!`,
         alreadyClaimed: '⏰ تم الاستلام اليوم',
         comeBack: 'عد بعد',
         hours: 'ساعة',
@@ -122,7 +122,7 @@ const dailyTranslations = {
         bonusAdded: 'أُضيفت المكافأة',
         levelUp: '🎉 ترقية!',
         reachedLevel: 'لقد وصلت إلى المستوى',
-        noAccount: `${EMOJIS.error} لم يتم العثور على بيانات — استخدم \`/claim\` للبدء!`,
+        noAccount: `❌ لم يتم العثور على بيانات — استخدم \`/claim\` للبدء!`,
         readyToClaim: 'جاهز للاستلام!',
         onCooldown: 'فترة انتظار نشطة',
         useClaim: 'استخدم `/claim`',
@@ -231,7 +231,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#f1c40f')
                 .setAuthor({ name: `👏 Daily Check: @${username}`, iconURL: user.displayAvatarURL() })
-                .setDescription(`## ${EMOJIS.error} ${t.noAccount}`)
+                .setDescription(`## ❌ ${t.noAccount}`)
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             return reply({ embeds: [embed] });
@@ -311,7 +311,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#f1c40f')
                 .setAuthor({ name: `👏 Daily Stats: @${username}`, iconURL: user.displayAvatarURL() })
-                .setDescription(`${EMOJIS.error} ${t.noAccount}`)
+                .setDescription(`❌ ${t.noAccount}`)
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             return reply({ embeds: [embed] });

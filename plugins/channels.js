@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 
 const CHANNEL_DEFS = {
     general:   { col: 'generalChannel',            dbcol: 'general_channel',            env: 'GENERAL_CHANNEL_ID',            emoji: '🏠', label: 'General Channel' },
@@ -201,8 +202,8 @@ module.exports = {
             const type = args[1]?.toLowerCase();
             const channelId = args[2]?.replace(/[<#>]/g, '');
             const def = CHANNEL_DEFS[type];
-            if (!def) return message.reply(`${EMOJIS.error} Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
-            if (!channelId) return message.reply(`${EMOJIS.error} Usage: \`.channels set ${type} #channel\``).catch(() => {});
+            if (!def) return message.reply(`${resolveEmoji('error', message.guild)} Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
+            if (!channelId) return message.reply(`${resolveEmoji('error', message.guild)} Usage: \`.channels set ${type} #channel\``).catch(() => {});
             const ch = message.guild.channels.cache.get(channelId);
             if (!ch) return message.reply(`${EMOJIS.error} Channel not found.`).catch(() => {});
             client.updateServerSetting?.(guildId, def.dbcol, channelId);
@@ -212,7 +213,7 @@ module.exports = {
             const _me2 = message.guild.members.me;
             const _bot2 = _me2.roles.botRole?.name || _me2.displayName;
             const _tail = _d2.ok ? '' : `\n\n⚠️ ${_d2.reason === 'private' ? `This channel is private — I'm not on its list.` : `**${_d2.role || 'A role'}** is blocking **${_d2.missing.join(', ')}** here.`}\nTo fix it: Edit Channel → Permissions → add **${_bot2}** and allow **${_d2.missing.join(', ')}**.`;
-            return message.reply(`${EMOJIS.check} **${def.label}** set to <#${channelId}>${_tail}`).catch(() => {});
+            return message.reply(`${resolveEmoji('check', message.guild)} **${def.label}** set to <#${channelId}>${_tail}`).catch(() => {});
         }
     }
 };

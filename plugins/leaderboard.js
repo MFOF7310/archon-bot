@@ -1,5 +1,6 @@
 const { AttachmentBuilder, SlashCommandBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');

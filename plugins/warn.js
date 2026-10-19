@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionsBitField, SlashCommandBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
@@ -145,7 +146,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
             db.prepare(`CREATE INDEX IF NOT EXISTS idx_modlogs_guild_user ON moderation_logs(guild_id, user_id)`).run();
         } catch (err) {
             console.error('[WARN] Table error:', err);
-            return message.reply({ content: `${EMOJIS.error} Something went wrong — try again in a moment.`, flags: 64 }).catch(() => {});
+            return message.reply({ content: `${resolveEmoji('error', message.guild || interaction.guild)} Something went wrong — try again in a moment.`, flags: 64 }).catch(() => {});
         }
         
         const subCommand = args[0]?.toLowerCase();
@@ -367,7 +368,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
             db.prepare(`CREATE TABLE IF NOT EXISTS warnings (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER DEFAULT (strftime('%s', 'now')), expires_at INTEGER, active BOOLEAN DEFAULT 1)`).run();
             db.prepare(`CREATE TABLE IF NOT EXISTS moderation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, warning_id TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`).run();
         } catch (err) {
-            return interaction.reply({ content: `${EMOJIS.error} Something went wrong — try again in a moment.`, flags: 64 });
+            return interaction.reply({ content: `${resolveEmoji('error', message.guild || interaction.guild)} Something went wrong — try again in a moment.`, flags: 64 });
         }
         
         await interaction.deferReply().catch(() => {});
