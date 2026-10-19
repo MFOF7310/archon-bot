@@ -325,7 +325,7 @@ module.exports = {
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
-            if (!message.guild) return message.reply('${EMOJIS.error} Server only.').catch(() => {});
+            if (!message.guild) return message.reply(`${EMOJIS.error} Server only.`).catch(() => {});
 
             const guildId   = message.guild.id;
             const guildName = message.guild.name?.toUpperCase() || 'NEURAL NODE';
@@ -367,7 +367,7 @@ module.exports = {
 
         } catch(err) {
             console.error('[LEADERBOARD]', err);
-            message.reply('${EMOJIS.error} Failed to generate leaderboard.').catch(() => {});
+            message.reply(`${EMOJIS.error} Failed to generate leaderboard.`).catch(() => {});
         }
     },
 
@@ -412,7 +412,7 @@ module.exports = {
 
         } catch(err) {
             console.error('[LEADERBOARD SLASH]', err);
-            interaction.editReply('${EMOJIS.error} Failed to generate leaderboard.').catch(() => {});
+            interaction.editReply(`${EMOJIS.error} Failed to generate leaderboard.`).catch(() => {});
         }
     }
 };

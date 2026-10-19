@@ -3,6 +3,13 @@ const {
     ButtonStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder
 } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+
+function getErrorEmoji(guild) {
+    if (!guild) return '❌';
+    // Look for emoji named 'error' in the guild cache
+    const found = guild.emojis.cache.find(e => e.name === 'error');
+    return found ? found.toString() : '❌';
+}
 const mentions = require('../lib/mentions');
 const { parseEmoji } = require('discord.js');
 const { t } = require('../lib/i18n');
@@ -273,9 +280,9 @@ function cfgEmbed(s, g, c, lang='en') {
     const fch=(id,ek)=>id?`<#${id}>`:(io&&process.env[ek]?`<#${process.env[ek]}> 🔹 env`:`*${t('ticket.cfgNS', lang)}*`);
     const fr=(id,ek)=>id?`<@&${id}>`:(io&&process.env[ek]?`<@&${process.env[ek]}> 🔹 env`:`*${t('ticket.cfgNS', lang)}*`);
     const ac=s?.ticketAutoCloseHours??24, lm=s?.ticketLimitPerUser??1;
-    return new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t('ticket.cfgTitle', lang)}`,iconURL:g.iconURL({dynamic:true})||c.user.displayAvatarURL()}).setThumbnail(g.iconURL({dynamic:true,size:256})).addFields({name:t('ticket.cfgCat', lang),value:fch(s?.ticketCategory,'TICKET_CATEGORY_ID'),inline:true},{name:t('ticket.cfgStaff', lang),value:fr(s?.ticketStaffRole,'TICKET_STAFF_ROLE_ID'),inline:true},{name:t('ticket.cfgTx', lang),value:fch(s?.ticketTranscriptChannel,'TICKET_TRANSCRIPT_CHANNEL_ID'),inline:true},{name:t('ticket.cfgLog', lang),value:fch(s?.ticketLogChannel,'TICKET_LOG_CHANNEL_ID'),inline:true},{name:t('ticket.cfgAC', lang),value:ac===0?`${EMOJIS.error} ${t('ticket.cfgOff', lang)}`:`\`${ac}h\``,inline:true},{name:t('ticket.cfgLim', lang),value:`\`${lm}\` / user`,inline:true}).setFooter({text:`${t('ticket.cfgFoot', lang)} • ${g.name}`,iconURL:c.user.displayAvatarURL()}).setTimestamp();
+    return new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t('ticket.cfgTitle', lang)}`,iconURL:g.iconURL({dynamic:true})||c.user.displayAvatarURL()}).setThumbnail(g.iconURL({dynamic:true,size:256})).addFields({name:t('ticket.cfgCat', lang),value:fch(s?.ticketCategory,'TICKET_CATEGORY_ID'),inline:true},{name:t('ticket.cfgStaff', lang),value:fr(s?.ticketStaffRole,'TICKET_STAFF_ROLE_ID'),inline:true},{name:t('ticket.cfgTx', lang),value:fch(s?.ticketTranscriptChannel,'TICKET_TRANSCRIPT_CHANNEL_ID'),inline:true},{name:t('ticket.cfgLog', lang),value:fch(s?.ticketLogChannel,'TICKET_LOG_CHANNEL_ID'),inline:true},{name:t('ticket.cfgAC', lang),value:ac===0?`${getErrorEmoji(g)} ${t('ticket.cfgOff', lang)}`:`\`${ac}h\``,inline:true},{name:t('ticket.cfgLim', lang),value:`\`${lm}\` / user`,inline:true}).setFooter({text:`${t('ticket.cfgFoot', lang)} • ${g.name}`,iconURL:c.user.displayAvatarURL()}).setTimestamp();
 }
-async function saveSetting(client, gid, key, val, lang='en') { try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t('ticket.setOK', lang, {setting: key, value: val})};} return{ok:false,err:`${EMOJIS.error} DB error.`};}catch(e){return{ok:false,err:`${EMOJIS.error} DB error.`};} }
+async function saveSetting(client, gid, key, val, lang='en') { try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t('ticket.setOK', lang, {setting: key, value: val})};} return{ok:false,err:`${getErrorEmoji(g)} DB error.`};}catch(e){return{ok:false,err:`${getErrorEmoji(g)} DB error.`};} }
 
 // ================= MODULE =================
 
@@ -312,8 +319,8 @@ module.exports = {
         const lang = client.detectLanguage ? (client.detectLanguage('ticket', msg.guild?.id) || 'en') : 'en', sub=args[0]?.toLowerCase(), g=msg.guild, p=ss?.prefix||'.';
         if(!g)return msg.reply(t('ticket.servers_only', lang)).catch(()=>{});
         const adm=msg.member.permissions.has(PermissionFlagsBits.Administrator);
-        const needAdm=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel'].includes(sub);
-        if(needAdm&&!adm)return msg.reply(t('ticket.needAdmin', lang)).catch(()=>{});
+        const needAdm=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel','config','setup'].includes(sub);
+        if(needAdm&&!adm)return msg.reply(t('ticket.needAdmin', lang, { error: getErrorEmoji(g) })).catch(()=>{});
         const es=effectiveSettings(ss,g.id);
 
         // Config setters
@@ -343,11 +350,11 @@ module.exports = {
 
     // ================= SLASH =================
     execute: async(ix,client)=>{
-        const lang = client.detectLanguage ? (client.detectLanguage('ticket', ix.guildId) || 'en') : 'en', sc=ix.options.getSubcommand(), g=ix.guild,u=ix.user,db=client.db,ss=effectiveSettings(client.getServerSettings?.(g?.id)||{},g?.id);
+        const lang = client.detectLanguage ? (client.detectLanguage('ticket', ix.guildId, ix) || 'en') : 'en', sc=ix.options.getSubcommand(), g=ix.guild,u=ix.user,db=client.db,ss=effectiveSettings(client.getServerSettings?.(g?.id)||{},g?.id);
         if(!g)return ix.reply({content:t('ticket.servers_only', lang),flags:1<<6});
         const adm=ix.member.permissions?.has(PermissionFlagsBits.Administrator);
-        const need=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel'].includes(sc);
-        if(need&&!adm)return ix.reply({content:t('ticket.needAdmin', lang),flags:1<<6});
+        const need=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel','config','setup'].includes(sc);
+        if(need&&!adm)return ix.reply({content:t('ticket.needAdmin', lang, { error: getErrorEmoji(g) }),flags:1<<6});
 
         if(sc==='setcategory'){const c=ix.options.getChannel('category');if(!c||c.type!==ChannelType.GuildCategory)return ix.reply({content:t('ticket.badCh', lang),flags:1<<6});const r=await saveSetting(client,g.id,'ticketCategory',c.id,lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
         if(sc==='setstaffrole'){const r=ix.options.getRole('role');if(!r)return ix.reply({content:t('ticket.badRole', lang),flags:1<<6});const rs=await saveSetting(client,g.id,'ticketStaffRole',r.id,lang);return ix.reply({content:rs.ok?rs.msg:rs.err,flags:1<<6});}
@@ -378,7 +385,7 @@ module.exports = {
                 }).join('\n');
                 const embed = new EmbedBuilder().setColor(0xffd700).setAuthor({ name: `🦅 ARCHON ENGINE • ${t('ticket.lb_title', lang)}` }).setDescription(`**${t('ticket.lb_top', lang)}**\n\n` + desc).setFooter({text:t('ticket.lb_footer', lang)});
                 return ix.editReply({embeds:[embed]});
-            }catch(e){return ix.editReply({content:t('ticket.lb_error', lang)});}
+            }catch(e){return ix.editReply({content:t('ticket.lb_error', lang, { error: getErrorEmoji(g) })});}
         }
         if(sc==='stats'){
             await ix.deferReply({flags:1<<6});

@@ -167,7 +167,7 @@ module.exports = {
 
     run: async (client, message, args, db, ss) => {
         if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply('${EMOJIS.error} Administrator permission required.').catch(() => {});
+            return message.reply(`${EMOJIS.error} Administrator permission required.`).catch(() => {});
         }
         const sub = args[0]?.toLowerCase();
         const guildId = message.guild.id;
@@ -204,7 +204,7 @@ module.exports = {
             if (!def) return message.reply(`${EMOJIS.error} Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
             if (!channelId) return message.reply(`${EMOJIS.error} Usage: \`.channels set ${type} #channel\``).catch(() => {});
             const ch = message.guild.channels.cache.get(channelId);
-            if (!ch) return message.reply('${EMOJIS.error} Channel not found.').catch(() => {});
+            if (!ch) return message.reply(`${EMOJIS.error} Channel not found.`).catch(() => {});
             client.updateServerSetting?.(guildId, def.dbcol, channelId);
             client.settings?.delete(guildId);
             const _cp2 = require('../lib/canPost');
