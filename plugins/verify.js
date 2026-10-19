@@ -42,13 +42,24 @@ async function storedInviteRow(db, guild) {
         // 2. Fallback : générer un lien à la volée
         if (!url) {
             const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
+            
+            // Check if we can create an invite
             if (me && me.permissions.has('CreateInstantInvite')) {
                 const channel = guild.systemChannel || guild.channels.cache.find(c => c.type === 0 && c.permissionsFor(me)?.has('CreateInstantInvite'));
                 if (channel) {
                     const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: 'Verification rejoin' }).catch(() => null);
                     if (invite) url = invite.url;
+                } else {
+                    console.warn(`[VERIFY] Cannot create invite for guild ${guild.id}: no channel found where bot has CreateInstantInvite.`);
                 }
+            } else {
+                console.warn(`[VERIFY] Cannot create invite for guild ${guild.id}: bot lacks CreateInstantInvite permission.`);
             }
+        }
+
+        // 3. Ultimate fallback: Vanity URL (requires the bot to have MANAGE_GUILD to read it)
+        if (!url && guild.vanityURLCode) {
+            url = `https://discord.gg/${guild.vanityURLCode}`;
         }
 
         if (!url) return null;
