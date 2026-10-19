@@ -117,7 +117,7 @@ module.exports = {
                     .setDescription(
                         lines + '\n\n' +
                         `${EMOJIS.coins} **${t.total || 'Total'}:** ${totalInvested.toLocaleString()}\n` +
-                        `${EMOJIS.warning} ${t.tip || 'Hold longer for higher returns (8% per 6h, max 48%)'}`
+                        `⚠️ ${t.tip || 'Hold longer for higher returns (8% per 6h, max 48%)'}`
                     )
                     .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                     .setTimestamp()]
@@ -159,12 +159,12 @@ module.exports = {
                         `${EMOJIS.invest} **${t.invested || 'Invested'}:** ${totalInvested.toLocaleString()} ${EMOJIS.coins}\n` +
                         `${EMOJIS.charts} **${t.returned || 'Returned'}:** ${totalReturn.toLocaleString()} ${EMOJIS.coins}\n` +
                         (profit >= 0
-                            ? `${EMOJIS.check} **${t.profit || 'Profit'}:** +${profit.toLocaleString()} ${EMOJIS.coins}\n`
-                            : `${EMOJIS.error} **${t.loss || 'Loss'}:** ${profit.toLocaleString()} ${EMOJIS.coins}\n`) +
+                            ? `✅ **${t.profit || 'Profit'}:** +${profit.toLocaleString()} ${EMOJIS.coins}\n`
+                            : `❌ **${t.loss || 'Loss'}:** ${profit.toLocaleString()} ${EMOJIS.coins}\n`) +
                         `⏱️ **${t.held || 'Time Held'}:** ${hoursHeld}h\n` +
                         `📊 **${t.roi || 'ROI'}:** ${roi}%\n\n` +
                         `${EMOJIS.coins} **${t.oldBal || 'Previous'}:** ${oldBalance.toLocaleString()}\n` +
-                        `${EMOJIS.check} **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}`
+                        `✅ **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}`
                     )
                     .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                     .setTimestamp()]
@@ -211,9 +211,9 @@ module.exports = {
                 .setDescription(
                     `${EMOJIS.invest} **${t.invested || 'Invested'}:** ${amount.toLocaleString()} ${EMOJIS.coins}\n` +
                     `${EMOJIS.coins} **${t.oldBal || 'Previous Balance'}:** ${oldBalance.toLocaleString()}\n` +
-                    `${EMOJIS.warning} **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}\n\n` +
+                    `⚠️ **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}\n\n` +
                     `${EMOJIS.charts} **${t.rate || 'Rate'}:** 8% per 6h · max 48% at 24h\n` +
-                    `${EMOJIS.check} ${t.useClaim ? (typeof t.useClaim === 'function' ? t.useClaim(prefix) : t.useClaim.replace('{prefix}', prefix)) : `Use \`${prefix}invest claim\` after 6h to collect returns.`}`
+                    `✅ ${t.useClaim ? (typeof t.useClaim === 'function' ? t.useClaim(prefix) : t.useClaim.replace('{prefix}', prefix)) : `Use \`${prefix}invest claim\` after 6h to collect returns.`}`
                 )
                 .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                 .setTimestamp()]

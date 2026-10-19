@@ -369,7 +369,7 @@ async function startGame(interaction, database, difficulty) {
   // Check if already playing
   if (activeGames.has(userId)) {
     return interaction.reply({
-      content: `${EMOJIS.warning} You already have an active mission running — finish it first!`,
+      content: `⚠️ You already have an active mission running — finish it first!`,
       flags: 64
     });
   }
@@ -591,7 +591,7 @@ const slashCommand = new SlashCommandBuilder()
 async function executeSlashCommand(interaction, client) {
   const database = client.db;
   if (!database) {
-    return interaction.reply({ content: `${EMOJIS.error} Something went wrong on our end — try again in a moment.`, flags: 64 });
+    return interaction.reply({ content: `❌ Something went wrong on our end — try again in a moment.`, flags: 64 });
   }
 
   setupHackerDB(database);
@@ -665,7 +665,7 @@ async function showProfile(interaction, database) {
 
   } catch (e) {
     console.error(`${C.red}[HACKER PROFILE]${C.reset} ${e.message}`);
-    await interaction.reply({ content: `${EMOJIS.error} Could not load your profile — try again in a moment.`, flags: 64 });
+    await interaction.reply({ content: `❌ Could not load your profile — try again in a moment.`, flags: 64 });
   }
 }
 

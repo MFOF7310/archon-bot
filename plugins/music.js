@@ -1188,7 +1188,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             }
         } catch(e) {
             console.error('[MUSIC FOLDER]', e.message);
-            replyFn({ content: `${EMOJIS.error} Could not load folder: ${e.message}` });
+            replyFn({ content: `❌ Could not load folder: ${e.message}` });
         }
         return;
     }
@@ -1334,7 +1334,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
 
     if (!isPlaying) {
         try { await ensureConnection(q); await playNext(q); }
-        catch(err) { destroyQueue(guildId); replyFn({ content: `${EMOJIS.error} ${err.message}`, embeds: [], components: [] }).catch(() => {}); }
+        catch(err) { destroyQueue(guildId); replyFn({ content: `❌ ${err.message}`, embeds: [], components: [] }).catch(() => {}); }
     }
 }
 

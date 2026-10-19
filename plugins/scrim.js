@@ -63,8 +63,8 @@ function buildScrimEmbed(scrim, signups, guild) {
             (scrim.note ? `\n\n${scrim.note}` : '')
         )
         .addFields(
-            { name: `${EMOJIS.check} Joining — ${yes.length}`, value: list(yes).slice(0, 1024), inline: true },
-            { name: `${EMOJIS.error} Can't make it — ${no.length}`, value: list(no).slice(0, 1024), inline: true },
+            { name: `✅ Joining — ${yes.length}`, value: list(yes).slice(0, 1024), inline: true },
+            { name: `❌ Can't make it — ${no.length}`, value: list(no).slice(0, 1024), inline: true },
         )
         .setFooter({ text: `Scrim #${scrim.id} • ARCHON CG-223` })
         .setTimestamp();
@@ -368,7 +368,7 @@ module.exports = {
                         content: yes.map(u => `<@${u}>`).join(' '),
                         embeds: [new EmbedBuilder()
                             .setColor('#e74c3c')
-                            .setTitle(`${EMOJIS.warning} Scrim cancelled`)
+                            .setTitle(`⚠️ Scrim cancelled`)
                             .setDescription(`**${scrim.title || 'Scrim'}** (<t:${scrim.scheduled_at}:F>) has been cancelled.`)
                         ],
                     }).catch(() => {});

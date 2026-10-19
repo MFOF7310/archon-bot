@@ -249,6 +249,6 @@ async function handle(member, ctx, client, replyFn) {
         await replyFn({ embeds: [embed], files: [attachment] });
     } catch(e) {
         console.error('[WHOIS CANVAS]', e.message);
-        await replyFn({ content: `${EMOJIS.error} Could not render scan card — try again in a moment.` });
+        await replyFn({ content: `❌ Could not render scan card — try again in a moment.` });
     }
 }

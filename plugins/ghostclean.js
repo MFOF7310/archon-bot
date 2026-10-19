@@ -23,7 +23,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#f1c40f')
-                .setTitle(`${EMOJIS.warning} Access Restricted`)
+                .setTitle(`⚠️ Access Restricted`)
                 .setDescription(
                     `Hey! ${EMOJIS.wave}\n\n` +
                     `This command is reserved for the **System Architect** only.\n` +
@@ -61,7 +61,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#e67e22')
-                .setTitle(`${EMOJIS.warning} Ghost Servers — ${candidates.length} candidates`)
+                .setTitle(`⚠️ Ghost Servers — ${candidates.length} candidates`)
                 .addFields(fields)
                 .setFooter({ text: `Threshold: ${GHOST_DAYS}+ days • /ghostclean leave <id> | /ghostclean leaveall` })],
             flags: 64
@@ -118,7 +118,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
             return reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#e74c3c')
-                    .setTitle(`${EMOJIS.warning} Confirm Mass Leave`)
+                    .setTitle(`⚠️ Confirm Mass Leave`)
                     .setDescription(`About to leave **${inCache.length}** servers:\n\n${preview}\n\n**Add \`confirm\` to proceed.**`)],
                 flags: 64
             });
@@ -136,7 +136,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
                 console.log(`[GHOSTCLEAN] Left: ${row.guild_name} (${row.guild_id})`);
             } catch (e) {
                 failed++;
-                results.push(`${EMOJIS.error} Failed: **${row.guild_name}**`);
+                results.push(`❌ Failed: **${row.guild_name}**`);
             }
         }
 

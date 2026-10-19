@@ -147,10 +147,10 @@ async function deliverDailyReminder(client, reminder, database) {
         if (user) {
             await user.send(_reminderCard());
             delivered = true;
-            console.log(`[DAILY REMINDER] ${EMOJIS.check} DM sent to ${reminder.user_tag || reminder.user_id}`);
+            console.log(`[DAILY REMINDER] ✅ DM sent to ${reminder.user_tag || reminder.user_id}`);
         }
     } catch (dmErr) {
-        console.log(`[DAILY REMINDER] ${EMOJIS.error} DM failed for ${reminder.user_tag || reminder.user_id}: ${dmErr.message}`);
+        console.log(`[DAILY REMINDER] ❌ DM failed for ${reminder.user_tag || reminder.user_id}: ${dmErr.message}`);
     }
 
     // Fallback: channel mention
@@ -163,7 +163,7 @@ async function deliverDailyReminder(client, reminder, database) {
                 console.log(`[DAILY REMINDER] 📢 Channel fallback for ${reminder.user_tag || reminder.user_id}`);
             }
         } catch (chErr) {
-            console.log(`[DAILY REMINDER] ${EMOJIS.error} Channel fallback failed: ${chErr.message}`);
+            console.log(`[DAILY REMINDER] ❌ Channel fallback failed: ${chErr.message}`);
         }
     }
 
@@ -465,7 +465,7 @@ module.exports = {
             const _hasStreakBonus = streakBonusXP > 25 || streakBonusCredits > 10;
             const _statsBlock = `${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}`;
             const _claimItems = [
-                { text: `## ${EMOJIS.check} ${t.successTitle}` },
+                { text: `## ✅ ${t.successTitle}` },
                 { text: t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak) },
                 { rule: true },
                 { text: `${t.nextClaim}: **${_nextClaimStr}**` },
@@ -711,7 +711,7 @@ module.exports = {
             const _hasStreakBonus = streakBonusXP > 25 || streakBonusCredits > 10;
             const _statsBlock = `${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}`;
             const _claimItems = [
-                { text: `## ${EMOJIS.check} ${t.successTitle}` },
+                { text: `## ✅ ${t.successTitle}` },
                 { text: t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak) },
                 { rule: true },
                 { text: `${t.nextClaim}: **${_nextClaimStr}**` },
@@ -778,7 +778,7 @@ module.exports = {
         } catch (error) {
             console.error(`[CLAIM SLASH] FATAL ERROR:`, error);
             const _lang = client.detectLanguage ? client.detectLanguage('claim', interaction.guild?.id || 'DM') : 'en';
-            const errorMsg = { content: ns('daily', _lang).error || `${EMOJIS.error} An error occurred during claim processing.`, flags: 64 };
+            const errorMsg = { content: ns('daily', _lang).error || `❌ An error occurred during claim processing.`, flags: 64 };
             if (interaction.deferred || interaction.replied) {
                 return interaction.editReply(errorMsg).catch(() => {});
             }
