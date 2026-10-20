@@ -588,8 +588,8 @@ async function startDuel(ctx, client, db, opponent, bet) {
   }
 
   const challengeEmbed = new EmbedBuilder().setColor('#e74c3c')
-    .setAuthor({ name: t.challengeAuthor, iconURL: client.user.displayAvatarURL() })
-    .setDescription(t.challengeDesc.replace('{a}', ctx.user.username).replace('{b}', opponent.username).replace('{bet}', bet.toLocaleString()))
+    .setAuthor({ name: t.challengeAuthor || '⚔️ NEURAL ARENA // CHALLENGE ISSUED', iconURL: client.user.displayAvatarURL() })
+    .setDescription((t.challengeDesc || '**{a}** challenges **{b}** to a Neural Duel!\n```yaml\nBet: {bet} 🪙\n```').replace('{a}', ctx.user.username).replace('{b}', opponent.username).replace('{bet}', bet.toLocaleString()))
     .setFooter({ text: 'ARCHON CG-223 • Neural Arena • BAMAKO_223 🇲🇱', iconURL: client.user.displayAvatarURL() });
 
   const row = new ActionRowBuilder().addComponents(
