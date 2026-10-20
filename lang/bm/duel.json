@@ -1,0 +1,7 @@
+{
+  "selfDuel": "⚠️ I tɛ se ka i yɛrɛ kɛlɛ — Mɔgɔ dɔ ɲini i ni o ka cɛ! 😄",
+  "botDuel": "⚠️ Bɔtiw tɛ kɛlɛ — u bɛ san kɔrɔta de dɔrɔn. I ka mɔgɔ gɛlɛn dɔ wele! 🤖",
+  "noCreditsSelf": "⚠️ I ka keredi ka dɔgɔn kojugu — keredi lajɛ fɔlɔ {creditCmd}.",
+  "noCreditsOpp": "⚠️ I kɛlɛkɛ ɲɔgɔn ka keredi ka dɔgɔn (**{n}** 🪙). Hakɛto i ka keredi dɔgɔman lajɛ walima keredi lajɛ nin {creditCmd}.",
+  "declinedMsg": "⚠️ **{u}** banna challenge ma. I ka keredi seginna ka na i kun nteri. 👋"
+}

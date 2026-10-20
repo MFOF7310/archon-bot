@@ -4,7 +4,7 @@
   "resolve_network": "📡 YouTube ما يستجيب… جرّب بعد 30 ثانية.",
   "resolve_unknown": "😅 صار خلل. الـ handle صح؟",
   "cmd_not_tracked": "🤔 **{handle}** مو موجود في القائمة. شغّل `/livestream list`.",
-  "cmd_not_tracked_hint": "🤔 **{handle}** ما هو متتبع. أضفه بـ `/livestream set @handle #قناة`.",
+  "cmd_not_tracked_hint": "🤔 **{handle}** ما هو متتبع. أضفه بـ {mention}.",
   "cmd_removed": "✅ **{handle}** انشال من القائمة.",
   "cmd_tracking": "✅ أتابع **@{handle}** → {channel}{priority}",
   "cmd_tracking_priority": " ⚡ (أولوية، دقيقتين)",

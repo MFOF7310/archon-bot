@@ -1,0 +1,7 @@
+{
+  "selfDuel": "⚠️ You can't duel yourself — find a worthy opponent! 😄",
+  "botDuel": "⚠️ Bots don't duel — they just win. Challenge a real player! 🤖",
+  "noCreditsSelf": "⚠️ You don't have enough credits for this bet — you need **{n}** 🪙. Check your balance with {creditCmd}.",
+  "noCreditsOpp": "⚠️ Your opponent doesn't have enough credits for this bet (**{n}** 🪙). Try a lower amount or check with {creditCmd}.",
+  "declinedMsg": "⚠️ **{u}** declined the challenge. Credits refunded. 👋"
+}

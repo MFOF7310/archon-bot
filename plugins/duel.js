@@ -10,12 +10,39 @@ const gl = (o) => OKL.includes(o?.language) ? o.language : 'en';
 const T = {
 
   bm: {
-    selfDuel: `⚠️ I tɛ se ka i yɛrɛ kɛlɛ — ɲini i bɔriw! 😄`,
-    botDuel: `⚠️ Botw tɛ kɛlɛ — u bɛ se ka nɔɔ la. I ka mɔgɔ gɛlɛn dɔ wele! 🤖`,
-    noCreditsSelf: `⚠️ I tɛ se ka i yɛrɛ kɛlɛ — i ka kɛlɛ ni {creditCmd}.`,
-    noCreditsOpp: `⚠️ I bɔri tɛ se ka i yɛrɛ kɛlɛ (**{n}** 🪙). I ka kɛlɛ ni {creditCmd}.`,
-    declinedMsg: `⚠️ **{u}** bali. I ka baara tɛ se ka kɛ. 👋`
-  }
+    selfDuel: `⚠️ I tɛ se ka i yɛrɛ kɛlɛ — Mɔgɔ dɔ ɲini i ni o ka cɛ! 😄`,
+    botDuel: `⚠️ Bɔtiw tɛ kɛlɛ — u bɛ san kɔrɔta de dɔrɔn. I ka mɔgɔ gɛlɛn dɔ wele! 🤖`,
+    noCreditsSelf: `⚠️ I ka keredi ka dɔgɔn kojugu — keredi lajɛ fɔlɔ {creditCmd}.`,
+    noCreditsOpp: `⚠️ I kɛlɛkɛ ɲɔgɔn ka keredi ka dɔgɔn (**{n}** 🪙). Hakɛto i ka keredi dɔgɔman lajɛ walima keredi lajɛ nin {creditCmd}.`,
+    declinedMsg: `⚠️ **{u}** banna challenge ma. I ka keredi seginna ka na i kun nteri. 👋`,
+    challengeAuthor: '⚔️ NEURAL ARENA // CHALLENGE ISSUED',
+    challengeDesc: '**{a}** challenges **{b}** to a Neural Duel!\n```yaml\nBet: {bet} 🪙\nMode: Class-based Combat\n```',
+    accept: 'ACCEPT', decline: 'DECLINE',
+    timeoutMsg: '⏰ **{u}** didn\'t respond in time — challenge expired. Credits refunded.',
+    selectTitle: '🎯 NEURAL ARENA // CLASS SELECTION',
+    pick: 'Select your class', waiting: 'Waiting for opponent...',
+    hp: 'HP', dmg: 'DMG', crit: 'Crit', dodge: 'Dodge', armor: 'Armor', special: 'Special',
+    battleTitle: '⚔️ NEURAL ARENA // ROUND {n}',
+    pot: '💰 **POT:** {bet} 🪙 | 🎯 **TURN:** {user}',
+    stStunned: '⚡ STUNNED', stDodge: '🌫️ DODGE READY', stFortified: '🛡️ FORTIFIED', stBleed: '🩸 BLEED {n}', stNormal: 'STATUS: NORMAL',
+    dodge: '🌫️ **{u}** dodged the attack!',
+    hitCrit: '💥 **CRITICAL!** **{u}** dealt **{d}** damage!',
+    hit: '⚔️ **{u}** dealt **{d}** damage!',
+    defend: '🛡️ **{u}** fortified and recovered +8 HP!',
+    heal: '💉 **{u}** healed **+{h}** HP!',
+    smoke: '🌫️ **{u}** deployed **{s}**! Next attack will miss.',
+    fortress: '🛡️ **{u}** activated **{s}**! Damage reduced 60%.',
+    headshot: '🎯 **HEADSHOT!** **{u}** dealt **{d}** damage! (Ignores dodge)',
+    crash: '💻 **SYSTEM CRASH!** **{u}** is stunned and bleeding!',
+    btnAttack: '⚔️ ATTACK', btnDefend: '🛡️ DEFEND', btnHeal: '💉 HEAL',
+    victoryTitle: '🏆 NEURAL VICTORY — {u}',
+    eliminated: '✓ {cls} {u} ELIMINATED TARGET',
+    eloLine: 'ELO: {elo} ({chg})', streakLine: 'Streak: {n} 🔥', rankLine: 'Rank: {r}',
+    usage: '⚔️ **Neural Arena**\nUsage: `{p}duel @user [bet]`',
+    minBet: 'Minimum bet is 10 🪙', maxBet: 'Maximum bet is 5,000 🪙',
+    logFooter: 'Round {n} • NEURAL ARENA',
+    notYourTurn: 'Not your turn — hold your fire!'
+  },
 
  en: {
   selfDuel: `⚠️ You can't duel yourself — find a worthy opponent! 😄`,

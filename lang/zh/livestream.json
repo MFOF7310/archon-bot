@@ -4,7 +4,7 @@
   "resolve_network": "📡 YouTube 没反应…… 30 秒后再试。",
   "resolve_unknown": "😅 出了点问题。handle 对吗？",
   "cmd_not_tracked": "🤔 **{handle}** 不在列表里。运行 `/livestream list` 查看。",
-  "cmd_not_tracked_hint": "🤔 **{handle}** 尚未追踪。用 `/livestream set @handle #频道` 添加。",
+  "cmd_not_tracked_hint": "🤔 **{handle}** 尚未追踪。用 {mention} 添加。",
   "cmd_removed": "✅ **{handle}** 已从列表移除。",
   "cmd_tracking": "✅ 正在追踪 **@{handle}** → {channel}{priority}",
   "cmd_tracking_priority": " ⚡ (优先，2 分钟)",

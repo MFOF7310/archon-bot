@@ -4,7 +4,7 @@
   "resolve_network": "",
   "resolve_unknown": "",
   "cmd_not_tracked": "",
-  "cmd_not_tracked_hint": "",
+  "cmd_not_tracked_hint": "🤔 **{handle}** traque len tɛ. A don a la nin {mention} ye.",
   "cmd_removed": "",
   "cmd_tracking": "",
   "cmd_tracking_priority": "",

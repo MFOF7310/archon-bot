@@ -394,7 +394,7 @@ function buildListEmbed(tracks, guild, client) {
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '📺')} Tracked YouTube channels · ${guild.name}`));
     if (!tracks.length) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent('Nothing tracked yet. Add a channel with `/livestream set @handle #channel`.'));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`Nothing tracked yet. Add a channel with ${mentions(client, 'livestream', 'set')}.`));
         return c;
     }
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
@@ -594,7 +594,7 @@ module.exports = {
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
-            if (!track) return interaction.editReply(t('livestream.cmd_not_tracked_hint', livLang(interaction.client, interaction.guildId), { handle: input }));
+            if (!track) return interaction.editReply(t('livestream.cmd_not_tracked_hint', livLang(interaction.client, interaction.guildId), { handle: input, mention: mentions(client, 'livestream', 'set') }));
             const live = await fetchLiveStatus(channelId, track.youtube_handle);
             const isRealLive = !!live.isLive;
             const payload = isRealLive

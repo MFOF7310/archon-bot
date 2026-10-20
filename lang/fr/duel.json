@@ -1,0 +1,7 @@
+{
+  "selfDuel": "⚠️ Tu ne peux pas te battre contre toi-même — trouve un adversaire digne ! 😄",
+  "botDuel": "⚠️ Les bots ne duellent pas — ils gagnent tout seuls. Défie un vrai joueur ! 🤖",
+  "noCreditsSelf": "⚠️ Pas assez de crédits pour ce pari — il te faut **{n}** 🪙. Vérifie ton solde avec {creditCmd}.",
+  "noCreditsOpp": "⚠️ Ton adversaire n'a pas assez de crédits pour ce pari (**{n}** 🪙). Baisse la mise ou vérifie avec {creditCmd}.",
+  "declinedMsg": "⚠️ **{u}** a refusé le défi. Crédits remboursés. 👋"
+}
