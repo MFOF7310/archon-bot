@@ -1,0 +1,18 @@
+{
+  "title": "Emoji registry status",
+  "summary": "Registry: {reg} keys · App: {app} emojis",
+  "inSync": "In sync",
+  "toRemap": "To remap",
+  "toAdd": "To add",
+  "orphans": "Orphans",
+  "newList": "New emojis detected on app side",
+  "remapList": "Stale IDs to fix",
+  "hint": "Run `/emojis sync` to apply (owner).",
+  "ownerOnly": "⛔ Owner-only command.",
+  "syncClean": "Everything is in sync!",
+  "syncCleanMsg": "Nothing to do — registry is up to date ✨",
+  "syncDone": "Sync applied!",
+  "remapped": "Remapped",
+  "added": "Added",
+  "restartHint": "♻️ Run `pm2 restart` to load the new IDs."
+}

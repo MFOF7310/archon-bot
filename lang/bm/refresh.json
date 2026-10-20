@@ -1,12 +1,12 @@
 {
-  "title": "",
-  "desc": "",
-  "confirm": "",
-  "abort": "",
-  "security": "",
-  "aborted": "",
-  "timeout": "",
-  "backupSent": "",
-  "success": "",
-  "preview": ""
+  "title": "☢️ NEURAL SYSTEM OVERRIDE",
+  "desc": "Select a purge operation, Architect.",
+  "confirm": "⚠️ CONFIRM",
+  "abort": "❌ ABORT",
+  "security": "⛔ Master Node access restricted to the Architect.",
+  "aborted": "✅ Operation aborted. Database intact.",
+  "timeout": "⏰ Authorization expired.",
+  "backupSent": "📡 Backup sent to your DMs.",
+  "success": "☢️ **{type}** complete!\n```yaml\nAffected: {count} records\nBackup: ✅ Saved\nTimestamp: {ts}\n```",
+  "preview": "```yaml\n🧠 XP Records: {xp}\n💰 Non-zero Credits: {credits}\n👥 Total Users: {total}\n```"
 }

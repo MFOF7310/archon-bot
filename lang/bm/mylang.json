@@ -10,5 +10,6 @@
   "hintWithCmd": "Kɛ {cmd} ni kode ye — en · fr · ar · bm · zh · auto",
   "serverAuto": "Nin serveur bɛ Auto.",
   "serverKeepsShort": "Nin serveur bɛ {name} kɛ.",
-  "serverLocked": "⚠️ Sɛrvɛri in sɔgɔlen do **{lang}** kan na admin fɛ. N bɛna i jaɲɛ ta mara, nka n ka kan ka {lang} fɔ yan. Ni b'a fɛ ka i ka kan sugandi, I bɛ kuma ɲɔgɔnya kɛ Admin fɛ ka bila Auto la, walasa i bɛ sen ka i ka sugandi len la baara! I ni ce."
+  "serverLocked": "⚠️ Sɛrvɛri in sɔgɔlen do **{lang}** kan na admin fɛ. N bɛna i jaɲɛ ta mara, nka n ka kan ka {lang} fɔ yan. Ni b'a fɛ ka i ka kan sugandi, I bɛ kuma ɲɔgɔnya kɛ Admin fɛ ka bila Auto la, walasa i bɛ sen ka i ka sugandi len la baara! I ni ce.",
+  "howTo": "Choose one with `.mylang <code>`: {list}. Use `.mylang auto` to go back to automatic."
 }
