@@ -8,11 +8,20 @@ const gl = (o) => OKL.includes(o?.language) ? o.language : 'en';
 
 // ================= QUADRILINGUAL TONES =================
 const T = {
+
+  bm: {
+    selfDuel: `⚠️ I tɛ se ka i yɛrɛ kɛlɛ — ɲini i bɔriw! 😄`,
+    botDuel: `⚠️ Botw tɛ kɛlɛ — u bɛ se ka nɔɔ la. I ka mɔgɔ gɛlɛn dɔ wele! 🤖`,
+    noCreditsSelf: `⚠️ I tɛ se ka i yɛrɛ kɛlɛ — i ka kɛlɛ ni {creditCmd}.`,
+    noCreditsOpp: `⚠️ I bɔri tɛ se ka i yɛrɛ kɛlɛ (**{n}** 🪙). I ka kɛlɛ ni {creditCmd}.`,
+    declinedMsg: `⚠️ **{u}** bali. I ka baara tɛ se ka kɛ. 👋`
+  }
+
  en: {
   selfDuel: `⚠️ You can't duel yourself — find a worthy opponent! 😄`,
   botDuel: `⚠️ Bots don't duel — they just win. Challenge a real player! 🤖`,
-  noCreditsSelf: `⚠️ You don't have enough credits for this bet — you need **{n}** 🪙. Check your balance with \`/credit\`.`,
-  noCreditsOpp: `⚠️ Your opponent doesn't have enough credits for this bet (**{n}** 🪙). Try a lower amount.`,
+  noCreditsSelf: `⚠️ You don't have enough credits for this bet — you need **{n}** 🪙. Check your balance with {creditCmd}.`,
+  noCreditsOpp: `⚠️ Your opponent doesn't have enough credits for this bet (**{n}** 🪙). Try a lower amount or check with {creditCmd}.`,
   challengeAuthor: '⚔️ NEURAL ARENA // CHALLENGE ISSUED',
   challengeDesc: '**{a}** challenges **{b}** to a Neural Duel!\n```yaml\nBet: {bet} 🪙\nMode: Class-based Combat\n```',
   accept: 'ACCEPT', decline: 'DECLINE',
@@ -45,8 +54,8 @@ const T = {
  fr: {
   selfDuel: `⚠️ Tu ne peux pas te battre contre toi-même — trouve un adversaire digne ! 😄`,
   botDuel: `⚠️ Les bots ne duellent pas — ils gagnent tout seuls. Défie un vrai joueur ! 🤖`,
-  noCreditsSelf: `⚠️ Pas assez de crédits pour ce pari — il te faut **{n}** 🪙. Vérifie ton solde avec \`/credit\`.`,
-  noCreditsOpp: `⚠️ Ton adversaire n'a pas assez de crédits pour ce pari (**{n}** 🪙). Baisse la mise.`,
+  noCreditsSelf: `⚠️ Pas assez de crédits pour ce pari — il te faut **{n}** 🪙. Vérifie ton solde avec {creditCmd}.`,
+  noCreditsOpp: `⚠️ Ton adversaire n'a pas assez de crédits pour ce pari (**{n}** 🪙). Baisse la mise ou vérifie avec {creditCmd}.`,
   challengeAuthor: '⚔️ ARÈNE NEURALE // DÉFI LANCÉ',
   challengeDesc: '**{a}** défie **{b}** en Duel Neural !\n```yaml\nPari : {bet} 🪙\nMode : Combat par classe\n```',
   accept: 'ACCEPTER', decline: 'REFUSER',
@@ -79,8 +88,8 @@ const T = {
  zh: {
   selfDuel: `⚠️ 不能挑战自己 — 找个像样的对手吧！😄`,
   botDuel: `⚠️ 机器人不接挑战 — 它们只会赢。去找真人玩！🤖`,
-  noCreditsSelf: `⚠️ 积分不够下注 — 你需要 **{n}** 🪙。用 \`/credit\` 查看余额。`,
-  noCreditsOpp: `⚠️ 对方的积分不够这次下注（**{n}** 🪙）。降低点金额吧。`,
+  noCreditsSelf: `⚠️ 积分不够下注 — 你需要 **{n}** 🪙。用 {creditCmd} 查看余额。`,
+  noCreditsOpp: `⚠️ 对方的积分不够这次下注（**{n}** 🪙）。降低点金额，或使用 {creditCmd} 查看余额。`,
   challengeAuthor: '⚔️ 神经竞技场 // 挑战已发出',
   challengeDesc: '**{a}** 向 **{b}** 发起神经决斗！\n```yaml\n赌注：{bet} 🪙\n模式：职业战斗\n```',
   accept: '接受', decline: '拒绝',
@@ -113,8 +122,8 @@ const T = {
  ar: {
   selfDuel: `⚠️ ما تقدر تحدّي نفسك — لاقِ خصم يستاهل! 😄`,
   botDuel: `⚠️ البوتات ما تقبل التحدي — بس تفوز. تحدَّ لاعب حقيقي! 🤖`,
-  noCreditsSelf: `⚠️ رصيدك ما يكفي للرهان — تحتاج **{n}** 🪙. شيك رصيدك بـ \`/credit\`.`,
-  noCreditsOpp: `⚠️ رصيد خصمك ما يكفي لهالرهان (**{n}** 🪙). قلل المبلغ شوي.`,
+  noCreditsSelf: `⚠️ رصيدك ما يكفي للرهان — تحتاج **{n}** 🪙. شيك رصيدك بـ {creditCmd}.`,
+  noCreditsOpp: `⚠️ رصيد خصمك ما يكفي لهالرهان (**{n}** 🪙). قلل المبلغ شوي أو شيك بـ {creditCmd}.`,
   challengeAuthor: '⚔️ الساحة العصبية // تم إطلاق التحدي',
   challengeDesc: '**{a}** يتحدى **{b}** لنزال عصبي!\n```yaml\nالرهان: {bet} 🪙\nالوضع: قتال بالأصناف\n```',
   accept: 'اقبل', decline: 'ارفض',
@@ -526,8 +535,22 @@ async function startDuel(ctx, client, db, opponent, bet) {
 
   const userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare(`SELECT credits FROM users WHERE id = ? AND guild_id = ?`).get(userId, guildId);
   const oppData = client.getUserData ? client.getUserData(opponent.id, guildId) : db.prepare(`SELECT credits FROM users WHERE id = ? AND guild_id = ?`).get(opponent.id, guildId);
-  if ((userData?.credits || 0) < bet) return ctx.reply({ content: t.noCreditsSelf.replace('{n}', bet.toLocaleString()), flags: 64 });
-  if ((oppData?.credits || 0) < bet) return ctx.reply({ content: t.noCreditsOpp.replace('{n}', bet.toLocaleString()), flags: 64 });
+  if ((userData?.credits || 0) < bet) {
+    let cmdMention = '`/credit`';
+    try {
+        const mentions = require('../lib/mentions');
+        cmdMention = mentions(client, 'credit', 'balance');
+    } catch (e) { console.error('[DUEL] mention failed:', e.message); }
+    return ctx.reply({ content: t.noCreditsSelf.replace('{n}', bet.toLocaleString()).replace('{creditCmd}', cmdMention), flags: 64 });
+}
+  if ((oppData?.credits || 0) < bet) {
+    let cmdMention = '`/credit`';
+    try {
+        const mentions = require('../lib/mentions');
+        cmdMention = mentions(client, 'credit', 'balance');
+    } catch (e) { console.error('[DUEL] mention failed:', e.message); }
+    return ctx.reply({ content: t.noCreditsOpp.replace('{n}', bet.toLocaleString()).replace('{creditCmd}', cmdMention), flags: 64 });
+}
 
   if (client.removeCredits) {
     client.removeCredits(userId, guildId, bet);
