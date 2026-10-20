@@ -9,5 +9,6 @@
   "title": "I kan",
   "hintWithCmd": "Kɛ {cmd} ni kode ye — en · fr · ar · bm · zh · auto",
   "serverAuto": "Nin serveur bɛ Auto.",
-  "serverKeepsShort": "Nin serveur bɛ {name} kɛ."
+  "serverKeepsShort": "Nin serveur bɛ {name} kɛ.",
+  "serverLocked": "⚠️ Sɛrvɛri in sɔgɔlen do **{lang}** kan na admin fɛ. N bɛna i jaɲɛ ta mara, nka n ka kan ka {lang} fɔ yan. N'i b'a fɛ ka i yɛrɛ kan sugandi, i bɛ kuma ɲɔgɔnya kɛ nin Admin ye walasa k'a bila Auto la, o la i bɛ sen ka i kan sugandi!"
 }

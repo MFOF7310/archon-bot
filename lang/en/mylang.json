@@ -10,5 +10,6 @@
   "title": "Your language",
   "hintWithCmd": "Use {cmd} with a code — en · fr · ar · bm · zh · auto",
   "serverAuto": "This server is set to Auto.",
-  "serverKeepsShort": "This server uses {name}."
+  "serverKeepsShort": "This server uses {name}.",
+  "serverLocked": "⚠️ This server is locked to **{lang}** by an admin. I will save your preference, but I must speak {lang} here. If you want to use your own language, ask an admin to set the server to Auto."
 }

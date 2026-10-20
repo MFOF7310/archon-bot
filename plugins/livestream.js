@@ -142,8 +142,8 @@ function logYtErrThrottled(channelId, msg) {
     console.log(`[YOUTUBE] ${channelId} live check err: ${String(msg).slice(0, 180)}`);
 }
 
-function livLang(client, guildId) {
-    try { return client?.detectLanguage?.('livestream', guildId) || 'en'; }
+function livLang(client, guildId, context = null) {
+    try { return client?.detectLanguage?.('livestream', guildId, context) || 'en'; }
     catch { return 'en'; }
 }
 
@@ -452,13 +452,13 @@ module.exports = {
             const input = String(args[1] || '').trim();
             const chMention = args[2];
             const priority = args.includes('--priority') || args.includes('-p');
-            if (!input || !chMention) return message.reply(t('livestream.cmd_help', livLang(client, guildId), { prefix }));
+            if (!input || !chMention) return message.reply(t('livestream.cmd_help', livLang(client, guildId, message), { prefix }));
 
             const raw = chMention.replace(/[<#>]/g, '').trim();
             let channel = message.guild.channels.cache.get(raw) || message.guild.channels.cache.find(c => c.name.toLowerCase() === raw.toLowerCase());
-            if (!channel) return message.reply(t('livestream.prefix_channel_not_found', livLang(client, guildId)));
+            if (!channel) return message.reply(t('livestream.prefix_channel_not_found', livLang(client, guildId, message)));
 
-            const statusMsg = await message.reply(t('livestream.prefix_resolving', livLang(client, guildId)));
+            const statusMsg = await message.reply(t('livestream.prefix_resolving', livLang(client, guildId, message)));
             const { id: channelId, reason: _resolveReason } = await resolveHandle(input);
             if (!channelId) return statusMsg.edit(resolveErrMsg(client, message.guild.id, _resolveReason, input));
 
@@ -491,7 +491,7 @@ module.exports = {
                 const cleanHandle = String(input).replace(/^@/, '').trim();
                 res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_handle = ? COLLATE NOCASE').run(guildId, cleanHandle);
             }
-            return message.reply(res.changes ? t('livestream.cmd_removed', livLang(client, guildId), { handle: input }) : t('livestream.cmd_not_tracked', livLang(client, guildId), { handle: input }));
+            return message.reply(res.changes ? t('livestream.cmd_removed', livLang(client, guildId, message), { handle: input }) : t('livestream.cmd_not_tracked', livLang(client, guildId, message), { handle: input }));
         }
 
         if (action === 'test') {
@@ -499,7 +499,7 @@ module.exports = {
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return message.reply(resolveErrMsg(client, message.guild.id, _resolveReason, input));
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
-            if (!track) return message.reply(t('livestream.cmd_not_tracked_hint', livLang(client, guildId), { handle: input, mention: mentions(client, 'livestream', 'set') }));
+            if (!track) return message.reply(t('livestream.cmd_not_tracked_hint', livLang(client, guildId, message), { handle: input, mention: mentions(client, 'livestream', 'set') }));
             const live = await fetchLiveStatus(channelId, track.youtube_handle);
             const isRealLive = !!live.isLive;
             const payload = isRealLive
@@ -507,17 +507,17 @@ module.exports = {
                 : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
             const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
             if (!sent.ok) {
-            const _lang = livLang(client, guildId);
+            const _lang = livLang(client, guildId, message);
             const _key = 'livestream.errors.' + (sent.reason || 'unknown');
             const _msg = t(_key, _lang, { channel: `<#${channelId}>`, detail: sent.detail || '' });
             return message.reply(_msg && _msg !== _key ? _msg : t('livestream.errors.unknown', _lang, { detail: sent.detail || 'no detail' }));
         }
             return message.reply(isRealLive
-                ? t('livestream.cmd_real_alert', livLang(client, guildId), { handle: track.youtube_handle || channelId })
-                : t('livestream.cmd_test_preview', livLang(client, guildId), { handle: track.youtube_handle || channelId }));
+                ? t('livestream.cmd_real_alert', livLang(client, guildId, message), { handle: track.youtube_handle || channelId })
+                : t('livestream.cmd_test_preview', livLang(client, guildId, message), { handle: track.youtube_handle || channelId }));
         }
 
-        return message.reply(t('livestream.cmd_help', livLang(client, guildId), { prefix }));
+        return message.reply(t('livestream.cmd_help', livLang(client, guildId, message), { prefix }));
     },
 
     async autocomplete(interaction, client) {
@@ -566,7 +566,7 @@ module.exports = {
                     youtube_handle = excluded.youtube_handle,
                     last_video_id = COALESCE(youtube_notifications.last_video_id, excluded.last_video_id),
                     priority = excluded.priority`).run(guildId, channelId, handle, target.id, up?.id || null, live.isLive ? 1 : 0, priority ? 1 : 0);
-            const _L2 = livLang(interaction.client, interaction.guildId);
+            const _L2 = livLang(interaction.client, interaction.guildId, interaction);
             const _lsEmbed = new EmbedBuilder()
                 .setColor(priority ? 0xf39c12 : 0x2ecc71)
                 .setAuthor({ name: '📺 YouTube Tracking', iconURL: client.user.displayAvatarURL() })
@@ -578,13 +578,13 @@ module.exports = {
         if (sub === 'remove') {
             const input = interaction.options.getString('channel').replace(/^@/, '').trim();
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
-            if (!channelId) return interaction.reply({ content: t('livestream.cmd_invalid', livLang(interaction.client, interaction.guildId)), flags: 64 });
+            if (!channelId) return interaction.reply({ content: t('livestream.cmd_invalid', livLang(interaction.client, interaction.guildId, interaction)), flags: 64 });
             let res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').run(guildId, channelId);
             if (res.changes === 0) {
                 const cleanHandle = String(input).replace(/^@/, '').trim();
                 res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_handle = ? COLLATE NOCASE').run(guildId, cleanHandle);
             }
-            const _L = livLang(interaction.client, interaction.guildId);
+            const _L = livLang(interaction.client, interaction.guildId, interaction);
             return interaction.reply({ content: res.changes ? t('livestream.cmd_removed', _L, { handle: input }) : t('livestream.cmd_not_tracked', _L, { handle: input }), flags: 64 });
         }
 
@@ -594,7 +594,7 @@ module.exports = {
             const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
             if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
-            if (!track) return interaction.editReply(t('livestream.cmd_not_tracked_hint', livLang(interaction.client, interaction.guildId), { handle: input, mention: mentions(client, 'livestream', 'set') }));
+            if (!track) return interaction.editReply(t('livestream.cmd_not_tracked_hint', livLang(interaction.client, interaction.guildId, interaction), { handle: input, mention: mentions(client, 'livestream', 'set') }));
             const live = await fetchLiveStatus(channelId, track.youtube_handle);
             const isRealLive = !!live.isLive;
             const payload = isRealLive
@@ -602,14 +602,14 @@ module.exports = {
                 : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
             const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
             if (!sent.ok) {
-            const _lang = livLang(interaction.client, interaction.guildId);
+            const _lang = livLang(interaction.client, interaction.guildId, interaction);
             const _key = 'livestream.errors.' + (sent.reason || 'unknown');
             const _msg = t(_key, _lang, { channel: `<#${channelId}>`, detail: sent.detail || '' });
             return interaction.editReply(_msg && _msg !== _key ? _msg : t('livestream.errors.unknown', _lang, { detail: sent.detail || 'no detail' }));
         }
             return interaction.editReply(isRealLive
-                ? t('livestream.cmd_real_alert', livLang(interaction.client, interaction.guildId), { handle: track.youtube_handle || channelId })
-                : t('livestream.cmd_test_preview', livLang(interaction.client, interaction.guildId), { handle: track.youtube_handle || channelId }));
+                ? t('livestream.cmd_real_alert', livLang(interaction.client, interaction.guildId, interaction), { handle: track.youtube_handle || channelId })
+                : t('livestream.cmd_test_preview', livLang(interaction.client, interaction.guildId, interaction), { handle: track.youtube_handle || channelId }));
         }
     },
 

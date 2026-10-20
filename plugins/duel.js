@@ -4,183 +4,15 @@ const { t } = require('../lib/i18n');
 
 const C = { green: '\x1b[32m', red: '\x1b[31m', cyan: '\x1b[36m', reset: '\x1b[0m' };
 const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
-const gl = (o) => OKL.includes(o?.language) ? o.language : 'en';
 
 // ================= QUADRILINGUAL TONES =================
-const T = {
-
-  bm: {
-    selfDuel: `⚠️ I tɛ se ka i yɛrɛ kɛlɛ — Mɔgɔ dɔ ɲini i ni o ka cɛ! 😄`,
-    botDuel: `⚠️ Bɔtiw tɛ kɛlɛ — u bɛ san kɔrɔta de dɔrɔn. I ka mɔgɔ gɛlɛn dɔ wele! 🤖`,
-    noCreditsSelf: `⚠️ I ka keredi ka dɔgɔn kojugu — keredi lajɛ fɔlɔ {creditCmd}.`,
-    noCreditsOpp: `⚠️ I kɛlɛkɛ ɲɔgɔn ka keredi ka dɔgɔn (**{n}** 🪙). Hakɛto i ka keredi dɔgɔman lajɛ walima keredi lajɛ nin {creditCmd}.`,
-    declinedMsg: `⚠️ **{u}** banna challenge ma. I ka keredi seginna ka na i kun nteri. 👋`,
-    challengeAuthor: '⚔️ NEURAL ARENA // CHALLENGE ISSUED',
-    challengeDesc: '**{a}** challenges **{b}** to a Neural Duel!\n```yaml\nBet: {bet} 🪙\nMode: Class-based Combat\n```',
-    accept: 'ACCEPT', decline: 'DECLINE',
-    timeoutMsg: '⏰ **{u}** didn\'t respond in time — challenge expired. Credits refunded.',
-    selectTitle: '🎯 NEURAL ARENA // CLASS SELECTION',
-    pick: 'Select your class', waiting: 'Waiting for opponent...',
-    hp: 'HP', dmg: 'DMG', crit: 'Crit', dodge: 'Dodge', armor: 'Armor', special: 'Special',
-    battleTitle: '⚔️ NEURAL ARENA // ROUND {n}',
-    pot: '💰 **POT:** {bet} 🪙 | 🎯 **TURN:** {user}',
-    stStunned: '⚡ STUNNED', stDodge: '🌫️ DODGE READY', stFortified: '🛡️ FORTIFIED', stBleed: '🩸 BLEED {n}', stNormal: 'STATUS: NORMAL',
-    dodge: '🌫️ **{u}** dodged the attack!',
-    hitCrit: '💥 **CRITICAL!** **{u}** dealt **{d}** damage!',
-    hit: '⚔️ **{u}** dealt **{d}** damage!',
-    defend: '🛡️ **{u}** fortified and recovered +8 HP!',
-    heal: '💉 **{u}** healed **+{h}** HP!',
-    smoke: '🌫️ **{u}** deployed **{s}**! Next attack will miss.',
-    fortress: '🛡️ **{u}** activated **{s}**! Damage reduced 60%.',
-    headshot: '🎯 **HEADSHOT!** **{u}** dealt **{d}** damage! (Ignores dodge)',
-    crash: '💻 **SYSTEM CRASH!** **{u}** is stunned and bleeding!',
-    btnAttack: '⚔️ ATTACK', btnDefend: '🛡️ DEFEND', btnHeal: '💉 HEAL',
-    victoryTitle: '🏆 NEURAL VICTORY — {u}',
-    eliminated: '✓ {cls} {u} ELIMINATED TARGET',
-    eloLine: 'ELO: {elo} ({chg})', streakLine: 'Streak: {n} 🔥', rankLine: 'Rank: {r}',
-    usage: '⚔️ **Neural Arena**\nUsage: `{p}duel @user [bet]`',
-    minBet: 'Minimum bet is 10 🪙', maxBet: 'Maximum bet is 5,000 🪙',
-    logFooter: 'Round {n} • NEURAL ARENA',
-    notYourTurn: 'Not your turn — hold your fire!'
-  },
-
- en: {
-  selfDuel: `⚠️ You can't duel yourself — find a worthy opponent! 😄`,
-  botDuel: `⚠️ Bots don't duel — they just win. Challenge a real player! 🤖`,
-  noCreditsSelf: `⚠️ You don't have enough credits for this bet — you need **{n}** 🪙. Check your balance with {creditCmd}.`,
-  noCreditsOpp: `⚠️ Your opponent doesn't have enough credits for this bet (**{n}** 🪙). Try a lower amount or check with {creditCmd}.`,
-  challengeAuthor: '⚔️ NEURAL ARENA // CHALLENGE ISSUED',
-  challengeDesc: '**{a}** challenges **{b}** to a Neural Duel!\n```yaml\nBet: {bet} 🪙\nMode: Class-based Combat\n```',
-  accept: 'ACCEPT', decline: 'DECLINE',
-  declinedMsg: `⚠️ **{u}** declined the challenge. Credits refunded. 👋`,
-  timeoutMsg: '⏰ **{u}** didn\'t respond in time — challenge expired. Credits refunded.',
-  selectTitle: '🎯 NEURAL ARENA // CLASS SELECTION',
-  pick: 'Select your class', waiting: 'Waiting for opponent...',
-  hp: 'HP', dmg: 'DMG', crit: 'Crit', dodge: 'Dodge', armor: 'Armor', special: 'Special',
-  battleTitle: '⚔️ NEURAL ARENA // ROUND {n}',
-  pot: '💰 **POT:** {bet} 🪙 | 🎯 **TURN:** {user}',
-  stStunned: '⚡ STUNNED', stDodge: '🌫️ DODGE READY', stFortified: '🛡️ FORTIFIED', stBleed: '🩸 BLEED {n}', stNormal: 'STATUS: NORMAL',
-  dodge: '🌫️ **{u}** dodged the attack!',
-  hitCrit: '💥 **CRITICAL!** **{u}** dealt **{d}** damage!',
-  hit: '⚔️ **{u}** dealt **{d}** damage!',
-  defend: '🛡️ **{u}** fortified and recovered +8 HP!',
-  heal: '💉 **{u}** healed **+{h}** HP!',
-  smoke: '🌫️ **{u}** deployed **{s}**! Next attack will miss.',
-  fortress: '🛡️ **{u}** activated **{s}**! Damage reduced 60%.',
-  headshot: '🎯 **HEADSHOT!** **{u}** dealt **{d}** damage! (Ignores dodge)',
-  crash: '💻 **SYSTEM CRASH!** **{u}** is stunned and bleeding!',
-  btnAttack: '⚔️ ATTACK', btnDefend: '🛡️ DEFEND', btnHeal: '💉 HEAL',
-  victoryTitle: '🏆 NEURAL VICTORY — {u}',
-  eliminated: '✓ {cls} {u} ELIMINATED TARGET',
-  eloLine: 'ELO: {elo} ({chg})', streakLine: 'Streak: {n} 🔥', rankLine: 'Rank: {r}',
-  usage: '⚔️ **Neural Arena**\nUsage: `{p}duel @user [bet]`',
-  minBet: 'Minimum bet is 10 🪙', maxBet: 'Maximum bet is 5,000 🪙',
-  logFooter: 'Round {n} • NEURAL ARENA',
-  notYourTurn: 'Not your turn — hold your fire!'
- },
- fr: {
-  selfDuel: `⚠️ Tu ne peux pas te battre contre toi-même — trouve un adversaire digne ! 😄`,
-  botDuel: `⚠️ Les bots ne duellent pas — ils gagnent tout seuls. Défie un vrai joueur ! 🤖`,
-  noCreditsSelf: `⚠️ Pas assez de crédits pour ce pari — il te faut **{n}** 🪙. Vérifie ton solde avec {creditCmd}.`,
-  noCreditsOpp: `⚠️ Ton adversaire n'a pas assez de crédits pour ce pari (**{n}** 🪙). Baisse la mise ou vérifie avec {creditCmd}.`,
-  challengeAuthor: '⚔️ ARÈNE NEURALE // DÉFI LANCÉ',
-  challengeDesc: '**{a}** défie **{b}** en Duel Neural !\n```yaml\nPari : {bet} 🪙\nMode : Combat par classe\n```',
-  accept: 'ACCEPTER', decline: 'REFUSER',
-  declinedMsg: `⚠️ **{u}** a refusé le défi. Crédits remboursés. 👋`,
-  timeoutMsg: '⏰ **{u}** n\'a pas répondu à temps — défi expiré. Crédits remboursés.',
-  selectTitle: '🎯 ARÈNE NEURALE // CHOIX DE CLASSE',
-  pick: 'Choisis ta classe', waiting: 'En attente de l\'adversaire...',
-  hp: 'PV', dmg: 'DGT', crit: 'Crit', dodge: 'Esquive', armor: 'Armure', special: 'Spécial',
-  battleTitle: '⚔️ ARÈNE NEURALE // MANCHE {n}',
-  pot: '💰 **POT :** {bet} 🪙 | 🎯 **TOUR :** {user}',
-  stStunned: '⚡ ÉTOURDI', stDodge: '🌫️ ESQUIVE PRÊTE', stFortified: '🛡️ FORTIFIÉ', stBleed: '🩸 SAIGNEMENT {n}', stNormal: 'STATUT : NORMAL',
-  dodge: '🌫️ **{u}** a esquivé l\'attaque !',
-  hitCrit: '💥 **CRITIQUE !** **{u}** inflige **{d}** dégâts !',
-  hit: '⚔️ **{u}** inflige **{d}** dégâts !',
-  defend: '🛡️ **{u}** se fortifie et récupère +8 PV !',
-  heal: '💉 **{u}** récupère **+{h}** PV !',
-  smoke: '🌫️ **{u}** déploie **{s}** ! La prochaine attaque ratera.',
-  fortress: '🛡️ **{u}** active **{s}** ! Dégâts réduits de 60 %.',
-  headshot: '🎯 **HEADSHOT !** **{u}** inflige **{d}** dégâts ! (Ignore l\'esquive)',
-  crash: '💻 **PLANTAGE SYSTÈME !** **{u}** est étourdi et saigne !',
-  btnAttack: '⚔️ ATTAQUER', btnDefend: '🛡️ DÉFENDRE', btnHeal: '💉 SOIGNER',
-  victoryTitle: '🏆 VICTOIRE NEURALE — {u}',
-  eliminated: '✓ {cls} {u} A ÉLIMINÉ LA CIBLE',
-  eloLine: 'ELO : {elo} ({chg})', streakLine: 'Série : {n} 🔥', rankLine: 'Rang : {r}',
-  usage: '⚔️ **Arène Neurale**\nUtilisation : `{p}duel @user [pari]`',
-  minBet: 'Pari minimum : 10 🪙', maxBet: 'Pari maximum : 5 000 🪙',
-  logFooter: 'Manche {n} • ARÈNE NEURALE',
-  notYourTurn: 'Pas ton tour — retiens ton feu !'
- },
- zh: {
-  selfDuel: `⚠️ 不能挑战自己 — 找个像样的对手吧！😄`,
-  botDuel: `⚠️ 机器人不接挑战 — 它们只会赢。去找真人玩！🤖`,
-  noCreditsSelf: `⚠️ 积分不够下注 — 你需要 **{n}** 🪙。用 {creditCmd} 查看余额。`,
-  noCreditsOpp: `⚠️ 对方的积分不够这次下注（**{n}** 🪙）。降低点金额，或使用 {creditCmd} 查看余额。`,
-  challengeAuthor: '⚔️ 神经竞技场 // 挑战已发出',
-  challengeDesc: '**{a}** 向 **{b}** 发起神经决斗！\n```yaml\n赌注：{bet} 🪙\n模式：职业战斗\n```',
-  accept: '接受', decline: '拒绝',
-  declinedMsg: `⚠️ **{u}** 拒绝了挑战。积分已退还。👋`,
-  timeoutMsg: '⏰ **{u}** 没有及时回应 — 挑战过期。积分已退还。',
-  selectTitle: '🎯 神经竞技场 // 选择职业',
-  pick: '选择你的职业', waiting: '等待对手...',
-  hp: '生命', dmg: '攻击', crit: '暴击', dodge: '闪避', armor: '护甲', special: '绝技',
-  battleTitle: '⚔️ 神经竞技场 // 第 {n} 回合',
-  pot: '💰 **奖池：** {bet} 🪙 | 🎯 **回合：** {user}',
-  stStunned: '⚡ 眩晕中', stDodge: '🌫️ 闪避就绪', stFortified: '🛡️ 已加固', stBleed: '🩸 流血 {n}', stNormal: '状态：正常',
-  dodge: '🌫️ **{u}** 闪过了攻击！',
-  hitCrit: '💥 **暴击！** **{u}** 造成 **{d}** 点伤害！',
-  hit: '⚔️ **{u}** 造成 **{d}** 点伤害！',
-  defend: '🛡️ **{u}** 加固防御并回复 +8 生命！',
-  heal: '💉 **{u}** 回复了 **{h}** 生命！',
-  smoke: '🌫️ **{u}** 释放了 **{s}**！下次攻击将落空。',
-  fortress: '🛡️ **{u}** 激活了 **{s}**！伤害降低 60%。',
-  headshot: '🎯 **爆头！** **{u}** 造成 **{d}** 点伤害！（无视闪避）',
-  crash: '💻 **系统崩溃！** **{u}** 陷入眩晕并流血！',
-  btnAttack: '⚔️ 攻击', btnDefend: '🛡️ 防御', btnHeal: '💉 治疗',
-  victoryTitle: '🏆 神经胜利 — {u}',
-  eliminated: '✓ {cls} {u} 已消灭目标',
-  eloLine: 'ELO：{elo}（{chg}）', streakLine: '连击：{n} 🔥', rankLine: '段位：{r}',
-  usage: '⚔️ **神经竞技场**\n用法：`{p}duel @user [赌注]`',
-  minBet: '最低赌注 10 🪙', maxBet: '最高赌注 5,000 🪙',
-  logFooter: '第 {n} 回合 • 神经竞技场',
-  notYourTurn: '还没轮到你 — 按住扳机！'
- },
- ar: {
-  selfDuel: `⚠️ ما تقدر تحدّي نفسك — لاقِ خصم يستاهل! 😄`,
-  botDuel: `⚠️ البوتات ما تقبل التحدي — بس تفوز. تحدَّ لاعب حقيقي! 🤖`,
-  noCreditsSelf: `⚠️ رصيدك ما يكفي للرهان — تحتاج **{n}** 🪙. شيك رصيدك بـ {creditCmd}.`,
-  noCreditsOpp: `⚠️ رصيد خصمك ما يكفي لهالرهان (**{n}** 🪙). قلل المبلغ شوي أو شيك بـ {creditCmd}.`,
-  challengeAuthor: '⚔️ الساحة العصبية // تم إطلاق التحدي',
-  challengeDesc: '**{a}** يتحدى **{b}** لنزال عصبي!\n```yaml\nالرهان: {bet} 🪙\nالوضع: قتال بالأصناف\n```',
-  accept: 'اقبل', decline: 'ارفض',
-  declinedMsg: `⚠️ **{u}** رفض التحدي. رجعنا الرصيد. 👋`,
-  timeoutMsg: '⏰ **{u}** ما رد على الوقت — التحدي انتهى. رجعنا الرصيد.',
-  selectTitle: '🎯 الساحة العصبية // اختيار الصنف',
-  pick: 'اختر صنفك', waiting: 'في انتظار الخصم...',
-  hp: 'صحة', dmg: 'ضرر', crit: 'ضربة حرجة', dodge: 'مراوغة', armor: 'درع', special: 'قدرة خاصة',
-  battleTitle: '⚔️ الساحة العصبية // الجولة {n}',
-  pot: '💰 **الجائزة:** {bet} 🪙 | 🎯 **الدور:** {user}',
-  stStunned: '⚡ مشلول', stDodge: '🌫️ جاهز للمراوغة', stFortified: '🛡️ محصّن', stBleed: '🩸 نزيف {n}', stNormal: 'الحالة: طبيعي',
-  dodge: '🌫️ **{u}** مراوغ الهجوم!',
-  hitCrit: '💥 **ضربة حرجة!** **{u}** سبب **{d}** ضرر!',
-  hit: '⚔️ **{u}** سبب **{d}** ضرر!',
-  defend: '🛡️ **{u}** تحصن واسترد +8 صحة!',
-  heal: '💉 **{u}** استرد **{h}** صحة!',
-  smoke: '🌫️ **{u}** استخدم **{s}**! الهجوم الجاي بيخطئ.',
-  fortress: '🛡️ **{u}** فعّل **{s}**! الضرر انخفض 60%.',
-  headshot: '🎯 **هيدشوت!** **{u}** سبب **{d}** ضرر! (يتجاهل المراوغة)',
-  crash: '💻 **انهيار النظام!** **{u}** مشلول وينزف!',
-  btnAttack: '⚔️ هجوم', btnDefend: '🛡️ دفاع', btnHeal: '💉 علاج',
-  victoryTitle: '🏆 نصر عصبي — {u}',
-  eliminated: '✓ {cls} {u} أزال الهدف',
-  eloLine: 'ELO: {elo} ({chg})', streakLine: 'السلسلة: {n} 🔥', rankLine: 'الرتبة: {r}',
-  usage: '⚔️ **الساحة العصبية**\nالاستخدام: `{p}duel @user [رهان]`',
-  minBet: 'أقل رهان 10 🪙', maxBet: 'أعلى رهان 5,000 🪙',
-  logFooter: 'الجولة {n} • الساحة العصبية',
-  notYourTurn: 'مو دورك — ثبت يدك!'
- }
-};
+// i18n Proxy for translations
+const getT = (l) => new Proxy({}, {
+    get: (target, prop) => {
+        if (typeof prop !== 'string') return undefined;
+        return t('duel.' + prop, l);
+    }
+});
 
 // ================= NEURAL CLASSES =================
 const CLASSES = {
@@ -279,7 +111,7 @@ function updateDuelScore(db, client, userId, guildId, username, won, damage, kil
 // ================= ARENA EMBED =================
 function buildArenaEmbed(duel, phase = 'battle', extra = {}) {
   const { p1, p2, turn, round, bet } = duel;
-  const t = T[duel.lang] || T.en;
+  const t = getT(duel.lang);
   const current = turn === p1.id ? p1 : p2;
 
   let color = '#00d4ff';
@@ -334,7 +166,7 @@ function buildArenaEmbed(duel, phase = 'battle', extra = {}) {
 
 // ================= ACTION BUTTONS =================
 function buildActionButtons(duel, playerId) {
-  const t = T[duel.lang] || T.en;
+  const t = getT(duel.lang);
   const p = duel.p1.id === playerId ? duel.p1 : duel.p2;
   const canSpecial = p.energy >= 75 && p.cooldown <= 0;
   const canHeal = p.heals > 0;
@@ -356,7 +188,7 @@ function buildActionButtons(duel, playerId) {
 
 // ================= CLASS SELECTION =================
 async function classSelection(ctx, client, db, duel) {
-  const t = T[duel.lang] || T.en;
+  const t = getT(duel.lang);
   const cstat = (cls) => {
     const parts = [`${t.hp}: ${cls.hp}`, `${t.dmg}: ${cls.dmg}`, `${t.crit}: ${cls.crit}%`];
     if (cls.dodge >= 20) parts.push(`${t.dodge}: ${cls.dodge}%`);
@@ -414,7 +246,7 @@ async function classSelection(ctx, client, db, duel) {
 
 // ================= BATTLE LOOP =================
 async function runBattle(msg, client, db, duel) {
-  const t = T[duel.lang] || T.en;
+  const t = getT(duel.lang);
   const { p1, p2, bet } = duel;
   let round = 1;
   let turn = Math.random() > 0.5 ? p1.id : p2.id;
@@ -554,8 +386,8 @@ async function runBattle(msg, client, db, duel) {
 async function startDuel(ctx, client, db, opponent, bet) {
   const userId = ctx.user.id;
   const guildId = ctx.guild?.id || 'DM';
-  const lang = gl(client.getServerSettings?.(guildId) || {});
-  const t = T[lang] || T.en;
+  const lang = client.detectLanguage('duel', guildId, ctx.interaction || ctx.message);
+  const t = getT(lang);
 
   if (opponent.id === userId) return ctx.reply({ content: t.selfDuel, flags: 64 });
   if (opponent.bot) return ctx.reply({ content: t.botDuel, flags: 64 });
@@ -647,12 +479,13 @@ async function executeSlashCommand(interaction, client) {
     await interaction.reply({ ...o });
     return await interaction.fetchReply().catch(() => null);
   };
-  await startDuel({ reply, user: interaction.user, guild: interaction.guild }, client, db, opponent, bet);
+  await startDuel({ reply, user: interaction.user, guild: interaction.guild, interaction }, client, db, opponent, bet);
 }
 
 async function run(client, message, args, db, serverSettings, usedCommand) {
   const prefix = serverSettings?.prefix || '.';
-  const t = T[gl(serverSettings || {})] || T.en;
+  const lang = client.detectLanguage('duel', message.guild?.id, message);
+  const t = getT(lang);
   const opponent = message.mentions.users.first();
   const bet = parseInt(args[1]) || 100;
 
@@ -660,7 +493,7 @@ async function run(client, message, args, db, serverSettings, usedCommand) {
   if (bet < 10) return message.reply(t.minBet).catch(() => {});
   if (bet > 5000) return message.reply(t.maxBet).catch(() => {});
 
-  await startDuel({ reply: async (o) => message.reply(o), user: message.author, guild: message.guild }, client, db, opponent, bet);
+  await startDuel({ reply: async (o) => message.reply(o), user: message.author, guild: message.guild, message }, client, db, opponent, bet);
 }
 
 module.exports = {

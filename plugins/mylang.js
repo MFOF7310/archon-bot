@@ -37,9 +37,14 @@ function buildCard(client, userId, guildId, interaction) {
         ? L('current', { name: `${FLAGS[mine]} ${NAMES[mine]}` }) || `Current: **${NAMES[mine]}**`
         : L('none') || `You haven't chosen yet. ARCHON follows the server, then your Discord locale.`;
     const how = L('hintWithCmd', { cmd }) || `Use ${cmd} with a code — en · fr · ar · bm · zh · auto`;
-    const server = serverLang !== 'auto'
-        ? (L('serverKeepsShort') || `This server uses **${NAMES[serverLang] || serverLang}**.`)
-        : (L('serverAuto') || 'This server is set to **Auto**.');
+    
+    // Dynamic, humanly-toned server status
+    let server = '';
+    if (serverLang !== 'auto') {
+        server = L('serverLocked', { lang: NAMES[serverLang] || serverLang }) || `⚠️ This server is locked to **${NAMES[serverLang]}** by an admin. I will save your preference, but I must speak ${NAMES[serverLang]} here. If you want to use your own language, ask an admin to set the server to Auto.`;
+    } else {
+        server = L('serverAuto') || '✅ This server is set to **Auto**. I will follow your personal choice below!';
+    }
 
     return v2.card(0x00fbff, [
         { text: `*ARCHON CG-223 · Language*` },

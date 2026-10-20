@@ -22,8 +22,9 @@ const bambaraConfirm = (native) => `Serveur ka kan sɛbɛnni bɛ **${native}** n
 
 // What "Auto" gives for a server: its Discord language when we have it, English otherwise.
 function resolveAuto(guild) {
+    const { LANGS } = require('../lib/pick-lang');
     const locale = String((guild && guild.preferredLocale) || 'en-US').toLowerCase();
-    return ['fr', 'zh', 'ar'].find((l) => locale.startsWith(l)) || 'en';
+    return LANGS.find((l) => locale.startsWith(l)) || 'en';
 }
 
 // The confirmation is written in the language that was just chosen.
