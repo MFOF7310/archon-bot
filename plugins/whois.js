@@ -1,4 +1,5 @@
 const { EmbedBuilder, AttachmentBuilder, SlashCommandBuilder } = require('discord.js');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const EMOJIS = require('../config/emojis');
 
@@ -249,6 +250,6 @@ async function handle(member, ctx, client, replyFn) {
         await replyFn({ embeds: [embed], files: [attachment] });
     } catch(e) {
         console.error('[WHOIS CANVAS]', e.message);
-        await replyFn({ content: `❌ Could not render scan card — try again in a moment.` });
+        await replyFn({ content: `${resolveEmoji('error', ctx)} Could not render scan card — try again in a moment.` });
     }
 }

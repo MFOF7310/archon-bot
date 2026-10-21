@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const { ns } = require('../lib/lang');
 const EMOJIS = require('../config/emojis');
 
@@ -117,7 +118,7 @@ module.exports = {
                     .setDescription(
                         lines + '\n\n' +
                         `${EMOJIS.coins} **${t.total || 'Total'}:** ${totalInvested.toLocaleString()}\n` +
-                        `⚠️ ${t.tip || 'Hold longer for higher returns (8% per 6h, max 48%)'}`
+                        `${resolveEmoji('warning', message)} ${t.tip || 'Hold longer for higher returns (8% per 6h, max 48%)'}`
                     )
                     .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                     .setTimestamp()]
@@ -159,12 +160,12 @@ module.exports = {
                         `${EMOJIS.invest} **${t.invested || 'Invested'}:** ${totalInvested.toLocaleString()} ${EMOJIS.coins}\n` +
                         `${EMOJIS.charts} **${t.returned || 'Returned'}:** ${totalReturn.toLocaleString()} ${EMOJIS.coins}\n` +
                         (profit >= 0
-                            ? `✅ **${t.profit || 'Profit'}:** +${profit.toLocaleString()} ${EMOJIS.coins}\n`
-                            : `❌ **${t.loss || 'Loss'}:** ${profit.toLocaleString()} ${EMOJIS.coins}\n`) +
+                            ? `${resolveEmoji('check', message)} **${t.profit || 'Profit'}:** +${profit.toLocaleString()} ${EMOJIS.coins}\n`
+                            : `${resolveEmoji('error', message)} **${t.loss || 'Loss'}:** ${profit.toLocaleString()} ${EMOJIS.coins}\n`) +
                         `⏱️ **${t.held || 'Time Held'}:** ${hoursHeld}h\n` +
                         `📊 **${t.roi || 'ROI'}:** ${roi}%\n\n` +
                         `${EMOJIS.coins} **${t.oldBal || 'Previous'}:** ${oldBalance.toLocaleString()}\n` +
-                        `✅ **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}`
+                        `${resolveEmoji('check', message)} **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}`
                     )
                     .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                     .setTimestamp()]
@@ -211,9 +212,9 @@ module.exports = {
                 .setDescription(
                     `${EMOJIS.invest} **${t.invested || 'Invested'}:** ${amount.toLocaleString()} ${EMOJIS.coins}\n` +
                     `${EMOJIS.coins} **${t.oldBal || 'Previous Balance'}:** ${oldBalance.toLocaleString()}\n` +
-                    `⚠️ **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}\n\n` +
+                    `${resolveEmoji('warning', message)} **${t.newBal || 'New Balance'}:** ${newCredits.toLocaleString()}\n\n` +
                     `${EMOJIS.charts} **${t.rate || 'Rate'}:** 8% per 6h · max 48% at 24h\n` +
-                    `✅ ${t.useClaim ? (typeof t.useClaim === 'function' ? t.useClaim(prefix) : t.useClaim.replace('{prefix}', prefix)) : `Use \`${prefix}invest claim\` after 6h to collect returns.`}`
+                    `${resolveEmoji('check', message)} ${t.useClaim ? (typeof t.useClaim === 'function' ? t.useClaim(prefix) : t.useClaim.replace('{prefix}', prefix)) : `Use \`${prefix}invest claim\` after 6h to collect returns.`}`
                 )
                 .setFooter({ text: `${guildName} • ${t.footer || 'BAMAKO INVEST'} • v${version}`, iconURL: guildIcon })
                 .setTimestamp()]

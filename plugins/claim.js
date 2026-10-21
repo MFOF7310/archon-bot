@@ -465,7 +465,7 @@ module.exports = {
             const _hasStreakBonus = streakBonusXP > 25 || streakBonusCredits > 10;
             const _statsBlock = `${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}`;
             const _claimItems = [
-                { text: `## ✅ ${t.successTitle}` },
+                { text: `## ${EMOJIS.check} ${t.successTitle}` },
                 { text: t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak) },
                 { rule: true },
                 { text: `${t.nextClaim}: **${_nextClaimStr}**` },
@@ -711,7 +711,7 @@ module.exports = {
             const _hasStreakBonus = streakBonusXP > 25 || streakBonusCredits > 10;
             const _statsBlock = `${t.statLevel}: ${currentLevel}\n${t.statXP}: ${currentXP.toLocaleString()}\n${t.statCredits}: ${currentCredits.toLocaleString()}`;
             const _claimItems = [
-                { text: `## ✅ ${t.successTitle}` },
+                { text: `## ${EMOJIS.check} ${t.successTitle}` },
                 { text: t.successDesc.replace('{xp}', totalXP).replace('{credits}', totalCredits).replace('{streak}', streak) },
                 { rule: true },
                 { text: `${t.nextClaim}: **${_nextClaimStr}**` },

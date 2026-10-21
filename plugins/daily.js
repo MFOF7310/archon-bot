@@ -1,4 +1,5 @@
 const { ns } = require('../lib/lang');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 
@@ -231,7 +232,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#f1c40f')
                 .setAuthor({ name: `👏 Daily Check: @${username}`, iconURL: user.displayAvatarURL() })
-                .setDescription(`## ❌ ${t.noAccount}`)
+                .setDescription(`## ${resolveEmoji('error', context)} ${t.noAccount}`)
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             return reply({ embeds: [embed] });
@@ -311,7 +312,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#f1c40f')
                 .setAuthor({ name: `👏 Daily Stats: @${username}`, iconURL: user.displayAvatarURL() })
-                .setDescription(`❌ ${t.noAccount}`)
+                .setDescription(`${resolveEmoji('error', context)} ${t.noAccount}`)
                 .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
             return reply({ embeds: [embed] });

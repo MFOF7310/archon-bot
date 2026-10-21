@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
 const v2 = require('../lib/games/v2');
@@ -330,7 +331,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
 
         if (response.customId === 'ttt_decline') {
             return sent.edit(v2.card(0x95a5a6, [
-                { text: `## ❌ ${t('game.challengeDeclined', lang)}` },
+                { text: `## ${resolveEmoji('error', ctx)} ${t('game.challengeDeclined', lang)}` },
                 { rule: true },
                 { text: tttFooter() },
             ])).catch(() => {});
@@ -431,7 +432,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
                 await sent.edit(turnCard()).catch(() => {});
             } catch (e) {
                 await sent.edit(v2.card(0x95a5a6, [
-                    { text: `## ❌ ${t('game.timeout', lang)}` },
+                    { text: `## ${resolveEmoji('error', ctx)} ${t('game.timeout', lang)}` },
                     { rule: true },
                     { text: tttFooter() },
                     ...makeRows(true).map(r => ({ row: r })),
@@ -442,7 +443,7 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
     } catch (e) {
         if (!gameStarted) {
             await sent.edit(v2.card(0x95a5a6, [
-                { text: `## ❌ ${t('game.challengeDeclined', lang)}` },
+                { text: `## ${resolveEmoji('error', ctx)} ${t('game.challengeDeclined', lang)}` },
                 { rule: true },
                 { text: tttFooter() },
             ])).catch(() => {});
