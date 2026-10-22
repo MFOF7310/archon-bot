@@ -96,10 +96,10 @@ module.exports = {
         } else {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.usage}\u001b[0m\n\`\`\``)
-                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.usageDesc}\u001b[0m\n\`\`\``)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`${t('usage')}`)
+                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('usageDesc')}\u001b[0m\n\`\`\``)
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
 
@@ -110,20 +110,20 @@ module.exports = {
         if (isNaN(amount) || amount < 10) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.minTransfer}\u001b[0m\n\`\`\``)
-                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.minTransferDesc}\u001b[0m\n\`\`\``)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`${t('minTransfer')}`)
+                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('minTransferDesc')}\u001b[0m\n\`\`\``)
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
 
         if (targetId === userId) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.selfTransfer}\u001b[0m\n\`\`\``)
-                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.selfTransferDesc}\u001b[0m\n\`\`\``)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`${t('selfTransfer')}`)
+                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('selfTransferDesc')}\u001b[0m\n\`\`\``)
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
 
@@ -134,10 +134,10 @@ module.exports = {
         if (!senderData) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.noAccount}\u001b[0m\n\`\`\``)
-                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.noAccountDesc}\u001b[0m\n\`\`\``)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`${t('noAccount')}`)
+                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('noAccountDesc')}\u001b[0m\n\`\`\``)
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
 
@@ -146,15 +146,15 @@ module.exports = {
         if (oldSenderBalance < amount) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.insufficient}\u001b[0m\n\`\`\``)
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`${t('insufficient')}`)
                 .setDescription(
                     `\`\`\`ansi\n` +
-                    `\u001b[0;37m  ${t.insufficientDesc}\u001b[0m\n` +
+                    `\u001b[0;37m  ${t('insufficientDesc')}\u001b[0m\n` +
                     `\u001b[1;33m  ${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n` +
                     `\`\`\``
                 )
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return message.reply({ embeds: [errorEmbed] }).catch(() => {});
         }
 
@@ -174,35 +174,35 @@ module.exports = {
         // ═══════════════════════════════════════════════════════
         const confirmEmbed = new EmbedBuilder()
             .setColor(ARCHON.gold)
-            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: message.author.displayAvatarURL() })
-            .setTitle(`\`\`\`ansi\n\u001b[1;33m  ⚠️ ${t.confirmTitle}\u001b[0m\n\`\`\``)
+            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: message.author.displayAvatarURL() })
+            .setTitle(`${resolveEmoji('warning', message)} ${t('confirmTitle')}`)
             .setDescription(
                 `\`\`\`ansi\n` +
-                `\u001b[1;36m  ${t.from}:\u001b[0m ${username}\n` +
-                `\u001b[1;36m  ${t.to}:\u001b[0m ${targetName} ${isTelegram ? '📱' : ''}\n` +
-                `\u001b[1;36m  ${t.amount}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n` +
-                `\u001b[1;36m  ${t.transactionFee}:\u001b[0m ${t.free}\n\n` +
-                `\u001b[0;37m  ${t.confirmDesc}\u001b[0m\n` +
+                `\u001b[1;36m  ${resolveEmoji('member', message) || '👤'} ${t('from')}:\u001b[0m ${username}\n` +
+                `\u001b[1;36m  ${resolveEmoji('target', message) || '🎯'} ${t('to')}:\u001b[0m ${targetName} ${isTelegram ? '📱' : ''}\n` +
+                `\u001b[1;36m  ${resolveEmoji('cashmoney', message) || '💰'} ${t('amount')}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n` +
+                `\u001b[1;36m  ${t('transactionFee')}:\u001b[0m ${t('free')}\n\n` +
+                `\u001b[0;37m  ${t('confirmDesc')}\u001b[0m\n` +
                 `\`\`\``
             )
             .addFields(
-                { name: `📊 ${t.previousBalance}`, value: `\`\`\`ansi\n\u001b[1;33m${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
-                { name: `💰 ${t.yourNewBalance}`, value: `\`\`\`ansi\n\u001b[1;32m${(oldSenderBalance - amount).toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
+                { name: `📊 ${t('previousBalance')}`, value: `\`\`\`ansi\n\u001b[1;33m${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
+                { name: `💰 ${t('yourNewBalance')}`, value: `\`\`\`ansi\n\u001b[1;32m${(oldSenderBalance - amount).toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
             )
-            .setFooter({ text: `${guildName} • ${t.perServer} • v${version}`, iconURL: guildIcon })
+            .setFooter({ text: `${guildName} • ${t('perServer')} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
 
         const confirmRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`transfer_confirm_${userId}_${Date.now()}`)
-                .setLabel(t.confirmBtn)
+                .setLabel(t('confirmBtn'))
                 .setStyle(ButtonStyle.Success)
-                .setEmoji(resolveEmoji('check', message) || '✅'),
+                .setEmoji(resolveEmoji('check', interaction) || '✅'),
             new ButtonBuilder()
                 .setCustomId(`transfer_cancel_${userId}_${Date.now()}`)
-                .setLabel(t.cancelBtn)
+                .setLabel(t('cancelBtn'))
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji(resolveEmoji('error', message) || '❌')
+                .setEmoji(resolveEmoji('error', interaction) || '❌')
         );
 
         const confirmMsg = await message.reply({ embeds: [confirmEmbed], components: [confirmRow] }).catch(() => {});
@@ -212,18 +212,18 @@ module.exports = {
 
         confirmCollector.on('collect', async (i) => {
             if (i.user.id !== userId) {
-                return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
+                return i.reply({ content: t('accessDenied'), flags: 64 }).catch(() => {});
             }
 
             await i.deferUpdate().catch(() => {});
 
-            if (i.customId.startsWith.transfer_cancel_) {
+            if (i.customId.startsWith('transfer_cancel_')) {
                 const cancelEmbed = new EmbedBuilder()
                     .setColor(ARCHON.gray)
-                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: message.author.displayAvatarURL() })
-                    .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.cancelled}\u001b[0m\n\`\`\``)
-                    .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.cancelledDesc}\u001b[0m\n\`\`\``)
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: message.author.displayAvatarURL() })
+                    .setTitle(`${t('cancelled')}`)
+                    .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('cancelledDesc')}\u001b[0m\n\`\`\``)
+                    .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
                 await i.editReply({ embeds: [cancelEmbed], components: [] }).catch(() => {});
                 confirmCollector.stop();
                 return;
@@ -262,36 +262,36 @@ module.exports = {
             // ═══════════════════════════════════════════════════════
             const receiptEmbed = new EmbedBuilder()
                 .setColor(ARCHON.green)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.success}`, iconURL: message.author.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✅ ${t.transferComplete}\u001b[0m\n\`\`\``)
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('success')}`, iconURL: message.author.displayAvatarURL() })
+                .setTitle(`${resolveEmoji('check', message)} ${t('transferComplete')}`)
                 .setDescription(
                     `\`\`\`ansi\n` +
-                    `\u001b[1;36m  ${t.from}:\u001b[0m ${username}\n` +
-                    `\u001b[1;36m  ${t.to}:\u001b[0m ${targetName} ${isTelegram ? '📱' : ''}\n` +
-                    `\u001b[1;36m  ${t.amount}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n` +
-                    `\u001b[1;36m  ${t.transactionFee}:\u001b[0m ${t.free}\n` +
+                    `\u001b[1;36m  ${resolveEmoji('member', message) || '👤'} ${t('from')}:\u001b[0m ${username}\n` +
+                    `\u001b[1;36m  ${resolveEmoji('target', message) || '🎯'} ${t('to')}:\u001b[0m ${targetName} ${isTelegram ? '📱' : ''}\n` +
+                    `\u001b[1;36m  ${resolveEmoji('cashmoney', message) || '💰'} ${t('amount')}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n` +
+                    `\u001b[1;36m  ${t('transactionFee')}:\u001b[0m ${t('free')}\n` +
                     `\`\`\``
                 )
                 .addFields(
-                    { name: `📊 ${t.previousBalance}`, value: `\`\`\`ansi\n\u001b[1;33m${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
-                    { name: `💰 ${t.yourNewBalance}`, value: `\`\`\`ansi\n\u001b[1;32m${newSenderCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
-                    { name: `🎯 ${t.recipientNewBalance}`, value: `\`\`\`ansi\n\u001b[1;36m${newReceiverCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
+                    { name: `📊 ${t('previousBalance')}`, value: `\`\`\`ansi\n\u001b[1;33m${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
+                    { name: `💰 ${t('yourNewBalance')}`, value: `\`\`\`ansi\n\u001b[1;32m${newSenderCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
+                    { name: `🎯 ${t('recipientNewBalance')}`, value: `\`\`\`ansi\n\u001b[1;36m${newReceiverCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
                 )
-                .setFooter({ text: `${guildName} • ${t.perServer} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                .setFooter({ text: `${guildName} • ${t('perServer')} • ${t('footer')} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
 
             // Action buttons
             const buttonRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId(`transfer_balance_${userId}`)
-                    .setLabel(t.checkBalance)
+                    .setLabel(t('checkBalance'))
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji(resolveEmoji('coins', message) || '💰'),
+                    .setEmoji(resolveEmoji('coins', interaction) || '💰'),
                 new ButtonBuilder()
                     .setCustomId(`transfer_history_${userId}`)
-                    .setLabel(t.viewHistory)
+                    .setLabel(t('viewHistory'))
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji(resolveEmoji('charts', message) || '📋')
+                    .setEmoji(resolveEmoji('charts', interaction) || '📋')
             );
 
             await i.editReply({ embeds: [receiptEmbed], components: [buttonRow] }).catch(() => {});
@@ -306,20 +306,20 @@ module.exports = {
                     if (recipient) {
                         const notifyEmbed = new EmbedBuilder()
                             .setColor(ARCHON.green)
-                            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.dmSubject}`, iconURL: message.author.displayAvatarURL() })
-                            .setTitle(`\`\`\`ansi\n\u001b[1;32m  💰 ${t.dmSubject}\u001b[0m\n\`\`\``)
+                            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('dmSubject')}`, iconURL: message.author.displayAvatarURL() })
+                            .setTitle(`💰 ${t('dmSubject')}`)
                             .setDescription(
                                 `\`\`\`ansi\n` +
-                                `\u001b[1;36m  ${t.fromUser}:\u001b[0m ${username}\n` +
-                                `\u001b[1;36m  ${t.amount}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n\n` +
-                                `\u001b[0;37m  ${t.dmDesc}\u001b[0m\n` +
+                                `\u001b[1;36m  ${t('fromUser')}:\u001b[0m ${username}\n` +
+                                `\u001b[1;36m  ${t('amount')}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n\n` +
+                                `\u001b[0;37m  ${t('dmDesc')}\u001b[0m\n` +
                                 `\`\`\``
                             )
                             .addFields(
-                                { name: `📊 ${t.previousBalance}`, value: `\`\`\`ansi\n\u001b[1;33m${oldReceiverBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
-                                { name: `💰 ${t.recipientNewBalance}`, value: `\`\`\`ansi\n\u001b[1;32m${newReceiverCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
+                                { name: `📊 ${t('previousBalance')}`, value: `\`\`\`ansi\n\u001b[1;33m${oldReceiverBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
+                                { name: `💰 ${t('recipientNewBalance')}`, value: `\`\`\`ansi\n\u001b[1;32m${newReceiverCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
                             )
-                            .setFooter({ text: `${guildName} • ${t.footer} • v${version}` })
+                            .setFooter({ text: `${guildName} • ${t('footer')} • v${version}` })
                             .setTimestamp();
                         await recipient.send({ embeds: [notifyEmbed] }).catch(() => {});
                     }
@@ -331,12 +331,12 @@ module.exports = {
                 const telegramId = args[0];
                 client.telegramBridge.send(
                     `🦅 *ARCHON NEURAL TRANSFER*\n\n` +
-                    `💰 *${t.telegramNotification}*\n\n` +
-                    `*${t.fromUser}:* ${username} (Discord)\n` +
-                    `*${t.amount}:* ${amount.toLocaleString()} 🪙\n` +
-                    `*${t.previousBalance}:* ${oldReceiverBalance.toLocaleString()} 🪙\n` +
-                    `*${t.recipientNewBalance}:* ${newReceiverCredits.toLocaleString()} 🪙\n\n` +
-                    t.useBalance(prefix)
+                    `💰 *${t('telegramNotification')}*\n\n` +
+                    `*${t('fromUser')}:* ${username} (Discord)\n` +
+                    `*${t('amount')}:* ${amount.toLocaleString()} 🪙\n` +
+                    `*${t('previousBalance')}:* ${oldReceiverBalance.toLocaleString()} 🪙\n` +
+                    `*${t('recipientNewBalance')}:* ${newReceiverCredits.toLocaleString()} 🪙\n\n` +
+                    t('useBalance', { prefix })
                 ).catch(() => {});
             }
 
@@ -350,24 +350,24 @@ module.exports = {
 
         receiptCollector.on('collect', async (i) => {
             if (i.user.id !== userId) {
-                return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
+                return i.reply({ content: t('accessDenied'), flags: 64 }).catch(() => {});
             }
 
             await i.deferReply({ flags: 64 }).catch(() => {});
 
-            if (i.customId.startsWith.transfer_balance_) {
+            if (i.customId.startsWith('transfer_balance_')) {
                 const senderDataFresh = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT credits FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
                 const currentBalance = senderDataFresh?.credits || 0;
 
                 const balanceEmbed = new EmbedBuilder()
                     .setColor(ARCHON.green)
-                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.checkBalance}`, iconURL: message.author.displayAvatarURL() })
-                    .setTitle(`\`\`\`ansi\n\u001b[1;32m  💰 ${currentBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``)
-                    .setFooter({ text: `${guildName} • ${t.footer}` });
+                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('checkBalance')}`, iconURL: message.author.displayAvatarURL() })
+                    .setTitle(`💰 ${currentBalance.toLocaleString()} 🪙`)
+                    .setFooter({ text: `${guildName} • ${t('footer')}` });
                 await i.followUp({ embeds: [balanceEmbed], flags: 64 }).catch(() => {});
             }
 
-            if (i.customId.startsWith.transfer_history_) {
+            if (i.customId.startsWith('transfer_history_')) {
                 const history = db.prepare(`
                     SELECT * FROM transfers
                     WHERE (sender_id = ? OR receiver_id = ?) AND guild_id = ?
@@ -385,9 +385,9 @@ module.exports = {
 
                 const historyEmbed = new EmbedBuilder()
                     .setColor(ARCHON.blue)
-                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.historyTitle}`, iconURL: message.author.displayAvatarURL() })
-                    .setDescription(historyText || `\`\`\`ansi\n\u001b[0;37m  ${t.noHistory}\u001b[0m\n\`\`\``)
-                    .setFooter({ text: `${guildName} • ${t.footer}` });
+                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('historyTitle')}`, iconURL: message.author.displayAvatarURL() })
+                    .setDescription(historyText || `\`\`\`ansi\n\u001b[0;37m  ${t('noHistory')}\u001b[0m\n\`\`\``)
+                    .setFooter({ text: `${guildName} • ${t('footer')}` });
                 await i.followUp({ embeds: [historyEmbed], flags: 64 }).catch(() => {});
             }
         });
@@ -398,7 +398,7 @@ module.exports = {
     // ═══════════════════════════════════════════════════════
     execute: async (interaction, client) => {
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
-        const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
+        const lang = typeof client.detectLanguage === 'function' ? client.detectLanguage('transfer', interaction.guildId, interaction) : 'en';
         const t = (k, v) => i18nT('transfer.' + k, lang, v);
         const guildId = interaction.guild?.id || 'DM';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
@@ -406,18 +406,18 @@ module.exports = {
         const version = client.version || '1.7.0';
         const prefix = client.getServerSettings ? (client.getServerSettings(guildId)?.prefix || '.') : '.';
 
-        const amount = interaction.options.getInteger.amount;
-        const targetUser = interaction.options.getUser.user;
-        const telegramId = interaction.options.getString.telegram_id;
+        const amount = interaction.options.getInteger('amount');
+        const targetUser = interaction.options.getUser('user');
+        const telegramId = interaction.options.getString('telegram_id');
 
         // Validate target
         if (!targetUser && !telegramId) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.invalidTarget}\u001b[0m\n\`\`\``)
-                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.invalidTargetDesc}\u001b[0m\n\`\`\``)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: client.user.displayAvatarURL() })
+                .setTitle(`${t('invalidTarget')}`)
+                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('invalidTargetDesc')}\u001b[0m\n\`\`\``)
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return interaction.reply({ embeds: [errorEmbed], flags: 64 });
         }
 
@@ -450,10 +450,10 @@ module.exports = {
         if (targetId === userId) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: interaction.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.selfTransfer}\u001b[0m\n\`\`\``)
-                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.selfTransferDesc}\u001b[0m\n\`\`\``)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: interaction.user.displayAvatarURL() })
+                .setTitle(`${t('selfTransfer')}`)
+                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('selfTransferDesc')}\u001b[0m\n\`\`\``)
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return interaction.editReply({ embeds: [errorEmbed] });
         }
 
@@ -469,10 +469,10 @@ module.exports = {
         if (!senderData) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: interaction.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.noAccount}\u001b[0m\n\`\`\``)
-                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.noAccountDesc}\u001b[0m\n\`\`\``)
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: interaction.user.displayAvatarURL() })
+                .setTitle(`${t('noAccount')}`)
+                .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('noAccountDesc')}\u001b[0m\n\`\`\``)
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return interaction.editReply({ embeds: [errorEmbed] });
         }
 
@@ -481,15 +481,15 @@ module.exports = {
         if (oldSenderBalance < amount) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: interaction.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.insufficient}\u001b[0m\n\`\`\``)
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: interaction.user.displayAvatarURL() })
+                .setTitle(`${t('insufficient')}`)
                 .setDescription(
                     `\`\`\`ansi\n` +
-                    `\u001b[0;37m  ${t.insufficientDesc}\u001b[0m\n` +
+                    `\u001b[0;37m  ${t('insufficientDesc')}\u001b[0m\n` +
                     `\u001b[1;33m  ${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n` +
                     `\`\`\``
                 )
-                .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
             return interaction.editReply({ embeds: [errorEmbed] });
         }
 
@@ -507,35 +507,33 @@ module.exports = {
         // ═══════════════════════════════════════════════════════
         const confirmEmbed = new EmbedBuilder()
             .setColor(ARCHON.gold)
-            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: interaction.user.displayAvatarURL() })
-            .setTitle(`\`\`\`ansi\n\u001b[1;33m  ⚠️ ${t.confirmTitle}\u001b[0m\n\`\`\``)
+            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: interaction.user.displayAvatarURL() })
+            .setTitle(`${resolveEmoji('warning', interaction)} ${t('confirmTitle')}`)
             .setDescription(
-                `\`\`\`ansi\n` +
-                `\u001b[1;36m  ${t.from}:\u001b[0m ${username}\n` +
-                `\u001b[1;36m  ${t.to}:\u001b[0m ${targetName} ${isTelegram ? '📱' : ''}\n` +
-                `\u001b[1;36m  ${t.amount}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n` +
-                `\u001b[1;36m  ${t.transactionFee}:\u001b[0m ${t.free}\n\n` +
-                `\u001b[0;37m  ${t.confirmDesc}\u001b[0m\n` +
-                `\`\`\``
+                `**${resolveEmoji('member', interaction) || '👤'} ${t('from')}:** ${username}\n` +
+                `**${resolveEmoji('target', interaction) || '🎯'} ${t('to')}:** ${targetName} ${isTelegram ? '📱' : ''}\n` +
+                `**${resolveEmoji('cashmoney', interaction) || '💰'} ${t('amount')}:** ${amount.toLocaleString()} 🪙\n` +
+                `**${t('transactionFee')}:** ${t('free')}\n\n` +
+                `> *${t('confirmDesc')}*`
             )
             .addFields(
-                { name: `📊 ${t.previousBalance}`, value: `\`\`\`ansi\n\u001b[1;33m${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
-                { name: `💰 ${t.yourNewBalance}`, value: `\`\`\`ansi\n\u001b[1;32m${(oldSenderBalance - amount).toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
+                { name: `📊 ${t('previousBalance')}`, value: `\`\`\`ansi\n\u001b[1;33m${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
+                { name: `💰 ${t('yourNewBalance')}`, value: `\`\`\`ansi\n\u001b[1;32m${(oldSenderBalance - amount).toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
             )
-            .setFooter({ text: `${guildName} • ${t.perServer} • v${version}`, iconURL: guildIcon })
+            .setFooter({ text: `${guildName} • ${t('perServer')} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
 
         const confirmRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`transfer_confirm_${userId}_${Date.now()}`)
-                .setLabel(t.confirmBtn)
+                .setLabel(t('confirmBtn'))
                 .setStyle(ButtonStyle.Success)
-                .setEmoji(resolveEmoji('check', message) || '✅'),
+                .setEmoji(resolveEmoji('check', interaction) || '✅'),
             new ButtonBuilder()
                 .setCustomId(`transfer_cancel_${userId}_${Date.now()}`)
-                .setLabel(t.cancelBtn)
+                .setLabel(t('cancelBtn'))
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji(resolveEmoji('error', message) || '❌')
+                .setEmoji(resolveEmoji('error', interaction) || '❌')
         );
 
         await interaction.editReply({ embeds: [confirmEmbed], components: [confirmRow] });
@@ -545,18 +543,18 @@ module.exports = {
 
         confirmCollector.on('collect', async (i) => {
             if (i.user.id !== userId) {
-                return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
+                return i.reply({ content: t('accessDenied'), flags: 64 }).catch(() => {});
             }
 
             await i.deferUpdate().catch(() => {});
 
-            if (i.customId.startsWith.transfer_cancel_) {
+            if (i.customId.startsWith('transfer_cancel_')) {
                 const cancelEmbed = new EmbedBuilder()
                     .setColor(ARCHON.gray)
-                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: interaction.user.displayAvatarURL() })
-                    .setTitle(`\`\`\`ansi\n\u001b[1;31m  ${t.cancelled}\u001b[0m\n\`\`\``)
-                    .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t.cancelledDesc}\u001b[0m\n\`\`\``)
-                    .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon });
+                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('title')}`, iconURL: interaction.user.displayAvatarURL() })
+                    .setTitle(`${t('cancelled')}`)
+                    .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('cancelledDesc')}\u001b[0m\n\`\`\``)
+                    .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon });
                 await i.editReply({ embeds: [cancelEmbed], components: [] }).catch(() => {});
                 confirmCollector.stop();
                 return;
@@ -586,35 +584,33 @@ module.exports = {
 
             const receiptEmbed = new EmbedBuilder()
                 .setColor(ARCHON.green)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.success}`, iconURL: interaction.user.displayAvatarURL() })
-                .setTitle(`\`\`\`ansi\n\u001b[1;32m  ✅ ${t.transferComplete}\u001b[0m\n\`\`\``)
+                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('success')}`, iconURL: interaction.user.displayAvatarURL() })
+                .setTitle(`${resolveEmoji('check', interaction)} ${t('transferComplete')}`)
                 .setDescription(
-                    `\`\`\`ansi\n` +
-                    `\u001b[1;36m  ${t.from}:\u001b[0m ${username}\n` +
-                    `\u001b[1;36m  ${t.to}:\u001b[0m ${targetName} ${isTelegram ? '📱' : ''}\n` +
-                    `\u001b[1;36m  ${t.amount}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n` +
-                    `\u001b[1;36m  ${t.transactionFee}:\u001b[0m ${t.free}\n` +
-                    `\`\`\``
+                    `**${resolveEmoji('member', interaction) || '👤'} ${t('from')}:** ${username}\n` +
+                    `**${resolveEmoji('target', interaction) || '🎯'} ${t('to')}:** ${targetName} ${isTelegram ? '📱' : ''}\n` +
+                    `**${resolveEmoji('cashmoney', interaction) || '💰'} ${t('amount')}:** ${amount.toLocaleString()} 🪙\n` +
+                    `**${t('transactionFee')}:** ${t('free')}`
                 )
                 .addFields(
-                    { name: `📊 ${t.previousBalance}`, value: `\`\`\`ansi\n\u001b[1;33m${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
-                    { name: `💰 ${t.yourNewBalance}`, value: `\`\`\`ansi\n\u001b[1;32m${newSenderCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
-                    { name: `🎯 ${t.recipientNewBalance}`, value: `\`\`\`ansi\n\u001b[1;36m${newReceiverCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
+                    { name: `📊 ${t('previousBalance')}`, value: `\`\`\`ansi\n\u001b[1;33m${oldSenderBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
+                    { name: `💰 ${t('yourNewBalance')}`, value: `\`\`\`ansi\n\u001b[1;32m${newSenderCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
+                    { name: `🎯 ${t('recipientNewBalance')}`, value: `\`\`\`ansi\n\u001b[1;36m${newReceiverCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
                 )
-                .setFooter({ text: `${guildName} • ${t.perServer} • ${t.footer} • v${version}`, iconURL: guildIcon })
+                .setFooter({ text: `${guildName} • ${t('perServer')} • ${t('footer')} • v${version}`, iconURL: guildIcon })
                 .setTimestamp();
 
             const buttonRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId(`transfer_balance_${userId}`)
-                    .setLabel(t.checkBalance)
+                    .setLabel(t('checkBalance'))
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji(resolveEmoji('coins', message) || '💰'),
+                    .setEmoji(resolveEmoji('coins', interaction) || '💰'),
                 new ButtonBuilder()
                     .setCustomId(`transfer_history_${userId}`)
-                    .setLabel(t.viewHistory)
+                    .setLabel(t('viewHistory'))
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji(resolveEmoji('charts', message) || '📋')
+                    .setEmoji(resolveEmoji('charts', interaction) || '📋')
             );
 
             await i.editReply({ embeds: [receiptEmbed], components: [buttonRow] }).catch(() => {});
@@ -625,20 +621,20 @@ module.exports = {
                 try {
                     const notifyEmbed = new EmbedBuilder()
                         .setColor(ARCHON.green)
-                        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.dmSubject}`, iconURL: interaction.user.displayAvatarURL() })
-                        .setTitle(`\`\`\`ansi\n\u001b[1;32m  💰 ${t.dmSubject}\u001b[0m\n\`\`\``)
+                        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('dmSubject')}`, iconURL: interaction.user.displayAvatarURL() })
+                        .setTitle(`💰 ${t('dmSubject')}`)
                         .setDescription(
                             `\`\`\`ansi\n` +
-                            `\u001b[1;36m  ${t.fromUser}:\u001b[0m ${username}\n` +
-                            `\u001b[1;36m  ${t.amount}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n\n` +
-                            `\u001b[0;37m  ${t.dmDesc}\u001b[0m\n` +
+                            `\u001b[1;36m  ${t('fromUser')}:\u001b[0m ${username}\n` +
+                            `\u001b[1;36m  ${t('amount')}:\u001b[0m \u001b[1;33m${amount.toLocaleString()} 🪙\u001b[0m\n\n` +
+                            `\u001b[0;37m  ${t('dmDesc')}\u001b[0m\n` +
                             `\`\`\``
                         )
                         .addFields(
-                            { name: `📊 ${t.previousBalance}`, value: `\`\`\`ansi\n\u001b[1;33m${oldReceiverBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
-                            { name: `💰 ${t.recipientNewBalance}`, value: `\`\`\`ansi\n\u001b[1;32m${newReceiverCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
+                            { name: `📊 ${t('previousBalance')}`, value: `\`\`\`ansi\n\u001b[1;33m${oldReceiverBalance.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true },
+                            { name: `💰 ${t('recipientNewBalance')}`, value: `\`\`\`ansi\n\u001b[1;32m${newReceiverCredits.toLocaleString()} 🪙\u001b[0m\n\`\`\``, inline: true }
                         )
-                        .setFooter({ text: `${guildName} • ${t.footer} • v${version}` })
+                        .setFooter({ text: `${guildName} • ${t('footer')} • v${version}` })
                         .setTimestamp();
                     await targetUser.send({ embeds: [notifyEmbed] }).catch(() => {});
                 } catch (e) {}
@@ -648,12 +644,12 @@ module.exports = {
             if (isTelegram && client.telegramBridge?.enabled) {
                 client.telegramBridge.send(
                     `🦅 *ARCHON NEURAL TRANSFER*\n\n` +
-                    `💰 *${t.telegramNotification}*\n\n` +
-                    `*${t.fromUser}:* ${username} (Discord)\n` +
-                    `*${t.amount}:* ${amount.toLocaleString()} 🪙\n` +
-                    `*${t.previousBalance}:* ${oldReceiverBalance.toLocaleString()} 🪙\n` +
-                    `*${t.recipientNewBalance}:* ${newReceiverCredits.toLocaleString()} 🪙\n\n` +
-                    t.useBalance(prefix)
+                    `💰 *${t('telegramNotification')}*\n\n` +
+                    `*${t('fromUser')}:* ${username} (Discord)\n` +
+                    `*${t('amount')}:* ${amount.toLocaleString()} 🪙\n` +
+                    `*${t('previousBalance')}:* ${oldReceiverBalance.toLocaleString()} 🪙\n` +
+                    `*${t('recipientNewBalance')}:* ${newReceiverCredits.toLocaleString()} 🪙\n\n` +
+                    t('useBalance', { prefix })
                 ).catch(() => {});
             }
 
