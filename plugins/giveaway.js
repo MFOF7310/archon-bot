@@ -1,3 +1,4 @@
+const i18n = require('../lib/i18n');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 
 // ═══════════════════════════════════════════════════════
@@ -12,68 +13,7 @@ const ARCHON = {
 // ═══════════════════════════════════════════════════════
 // TRANSLATIONS
 // ═══════════════════════════════════════════════════════
-const T = {
-    en: {
-        title: 'CLASSIFIED DROP',
-        active: '🟢 LIVE',
-        ended: '🔴 TERMINATED',
-        enter: '🎉 Enter Protocol',
-        withdraw: '🚪 Withdraw',
-        reroll: '🔄 Reroll',
-        terminate: '🗑️ Terminate',
-        hostedBy: 'HOST AGENT',
-        winners: 'WINNERS',
-        entries: 'AGENTS REGISTERED',
-        winChance: 'WIN PROBABILITY',
-        timeLeft: 'TERMINATES',
-        eachWins: 'EACH WINNER RECEIVES',
-        pool: 'TOTAL PRIZE POOL',
-        requirements: 'ENTRY REQUIREMENTS',
-        enterOk: '✅ ENTRY CONFIRMED — Ticket #{ticket} issued. Good luck agent! 🍀',
-        leaveOk: '🚪 WITHDRAWAL CONFIRMED — You have exited the protocol.',
-        alreadyIn: '⚠️ Already registered in this protocol.',
-        notIn: '⚠️ You are not registered in this protocol.',
-        cantEnter: '❌ Cannot enter your own giveaway.',
-        needLevel: '❌ Minimum level {level} required.',
-        needCredits: '❌ Minimum {credits} 🪙 required.',
-        noEntries: '❌ No agents participated.',
-        winners_announced: '🏆 WINNERS SELECTED',
-        rerollOk: '🔄 New winners selected.',
-        terminated: '🗑️ Protocol terminated.',
-        boosterBonus: '⚡ Server booster — 2x entries applied!',
-        footer: 'BAMAKO_223 🇲🇱 • ARCHON CLASSIFIED PROTOCOL',
-    },
-    fr: {
-        title: 'OPÉRATION CLASSIFIÉE',
-        active: '🟢 EN COURS',
-        ended: '🔴 TERMINÉ',
-        enter: '🎉 Rejoindre',
-        withdraw: '🚪 Se retirer',
-        reroll: '🔄 Nouveau tirage',
-        terminate: '🗑️ Terminer',
-        hostedBy: 'AGENT HÔTE',
-        winners: 'GAGNANTS',
-        entries: 'AGENTS INSCRITS',
-        winChance: 'PROBABILITÉ',
-        timeLeft: 'SE TERMINE',
-        eachWins: 'CHAQUE GAGNANT REÇOIT',
-        pool: 'PRIZE POOL TOTAL',
-        requirements: 'CONDITIONS D\'ENTRÉE',
-        enterOk: '✅ INSCRIPTION CONFIRMÉE — Ticket #{ticket} émis. Bonne chance ! 🍀',
-        leaveOk: '🚪 RETRAIT CONFIRMÉ — Vous avez quitté le protocole.',
-        alreadyIn: '⚠️ Déjà inscrit dans ce protocole.',
-        notIn: '⚠️ Vous n\'êtes pas inscrit dans ce protocole.',
-        cantEnter: '❌ Vous ne pouvez pas participer à votre propre giveaway.',
-        needLevel: '❌ Niveau minimum {level} requis.',
-        needCredits: '❌ Minimum {credits} 🪙 requis.',
-        noEntries: '❌ Aucun agent n\'a participé.',
-        winners_announced: '🏆 GAGNANTS SÉLECTIONNÉS',
-        rerollOk: '🔄 Nouveaux gagnants sélectionnés.',
-        terminated: '🗑️ Protocole terminé.',
-        boosterBonus: '⚡ Booster du serveur — 2x entrées appliquées !',
-        footer: 'BAMAKO_223 🇲🇱 • ARCHON PROTOCOLE CLASSIFIÉ',
-    }
-};
+
 
 // ═══════════════════════════════════════════════════════
 // ACTIVE GIVEAWAYS MAP
@@ -113,18 +53,18 @@ function getLang(client, guildId) {
 // BUILD GIVEAWAY EMBED
 // ═══════════════════════════════════════════════════════
 function buildEmbed(gw, client) {
-    const t = T[gw.lang || 'en'];
+    const t = (k, v) => i18n.t('giveaway.' + k, gw.lang || 'en', v);
     const entries = gw.entries.length;
     const isActive = gw.status === 'active';
     const bar = progressBar(entries, Math.max(entries + 10, 50));
     const chance = winChance(entries, gw.winners);
     const each = Math.floor(gw.amount / gw.winners);
-    const statusLine = isActive ? t.active : t.ended;
+    const statusLine = isActive ? t('active') : t('ended');
 
     const embed = new EmbedBuilder()
         .setColor(isActive ? ARCHON.cyan : ARCHON.steel)
         .setAuthor({
-            name: `🦅 ARCHON ENGINE • ${t.title}`,
+            name: `🦅 ARCHON ENGINE • ${t('title')}`,
             iconURL: gw.hostIcon || client.user.displayAvatarURL()
         })
         .setDescription(
@@ -135,12 +75,12 @@ function buildEmbed(gw, client) {
             `\`\`\``
         )
         .addFields(
-            { name: `⏰ ${t.timeLeft}`, value: `<t:${Math.floor(gw.endTimestamp / 1000)}:R>`, inline: true },
-            { name: `🏆 ${t.winners}`, value: `\`${gw.winners}\``, inline: true },
-            { name: `🎲 ${t.winChance}`, value: `\`${chance}\``, inline: true },
-            { name: `💰 ${t.eachWins}`, value: `\`${each.toLocaleString()} 🪙\``, inline: true },
-            { name: `💎 ${t.pool}`, value: `\`${gw.amount.toLocaleString()} 🪙\``, inline: true },
-            { name: `👥 ${t.entries}`, value: `\`${entries}\``, inline: true },
+            { name: `⏰ ${t('timeLeft')}`, value: `<t:${Math.floor(gw.endTimestamp / 1000)}:R>`, inline: true },
+            { name: `🏆 ${t('winners')}`, value: `\`${gw.winners}\``, inline: true },
+            { name: `🎲 ${t('winChance')}`, value: `\`${chance}\``, inline: true },
+            { name: `💰 ${t('eachWins')}`, value: `\`${each.toLocaleString()} 🪙\``, inline: true },
+            { name: `💎 ${t('pool')}`, value: `\`${gw.amount.toLocaleString()} 🪙\``, inline: true },
+            { name: `👥 ${t('entries')}`, value: `\`${entries}\``, inline: true },
         );
 
     // Requirements
@@ -149,20 +89,20 @@ function buildEmbed(gw, client) {
     if (gw.minCredits > 0) reqs.push(`🪙 ${gw.minCredits.toLocaleString()} credits`);
     if (gw.boosterBonus) reqs.push(`⚡ Boosters get 2x entries`);
     if (reqs.length > 0) {
-        embed.addFields({ name: `🔒 ${t.requirements}`, value: reqs.join('\n'), inline: false });
+        embed.addFields({ name: `🔒 ${t('requirements')}`, value: reqs.join('\n'), inline: false });
     }
 
     // Winners
     if (!isActive && gw.winnersList?.length > 0) {
         embed.addFields({
-            name: `🏆 ${t.winners_announced}`,
+            name: `🏆 ${t('winners_announced')}`,
             value: gw.winnersList.map(w => `<@${w}> +${each.toLocaleString()} 🪙`).join('\n'),
             inline: false
         });
         embed.setColor(ARCHON.gold);
     }
 
-    embed.setFooter({ text: t.footer }).setTimestamp();
+    embed.setFooter({ text: t('footer') }).setTimestamp();
     return embed;
 }
 
@@ -170,23 +110,23 @@ function buildEmbed(gw, client) {
 // BUILD BUTTONS
 // ═══════════════════════════════════════════════════════
 function buildButtons(gw) {
-    const t = T[gw.lang || 'en'];
+    const t = (k, v) => i18n.t('giveaway.' + k, gw.lang || 'en', v);
     const isActive = gw.status === 'active';
     const row = new ActionRowBuilder();
 
     if (isActive) {
         row.addComponents(
-            new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t.enter).setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`gw_leave_${gw.id}`).setLabel(t.withdraw).setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t('enter')).setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`gw_leave_${gw.id}`).setLabel(t('withdraw')).setStyle(ButtonStyle.Secondary),
         );
     } else {
         row.addComponents(
-            new ButtonBuilder().setCustomId(`gw_reroll_${gw.id}`).setLabel(t.reroll).setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId(`gw_reroll_${gw.id}`).setLabel(t('reroll')).setStyle(ButtonStyle.Primary),
         );
     }
 
     row.addComponents(
-        new ButtonBuilder().setCustomId(`gw_end_${gw.id}`).setLabel(t.terminate).setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`gw_end_${gw.id}`).setLabel(t('terminate')).setStyle(ButtonStyle.Danger),
     );
 
     return row;
@@ -226,7 +166,7 @@ async function endGiveaway(gw, client, db) {
     gw.status = 'ended';
     clearTimeout(gw.timer);
 
-    const t = T[gw.lang || 'en'];
+    const t = (k, v) => i18n.t('giveaway.' + k, gw.lang || 'en', v);
     const winners = selectWinners(gw.entries, gw.winners);
     gw.winnersList = winners;
 
@@ -258,7 +198,7 @@ async function endGiveaway(gw, client, db) {
                     { name: '💎 Prize Pool', value: `\`${gw.amount.toLocaleString()} 🪙\``, inline: true },
                     { name: '🎲 Host', value: `**${gw.hostName}**`, inline: true },
                 )
-                .setFooter({ text: t.footer })
+                .setFooter({ text: t('footer') })
                 .setTimestamp();
 
             const mention = winners.map(w => `<@${w}>`).join(' ');
@@ -278,13 +218,13 @@ async function endGiveaway(gw, client, db) {
                             `**Server:** ${gw.guildName}\n\n` +
                             `Credits have been added to your account!`
                         )
-                        .setFooter({ text: t.footer })
+                        .setFooter({ text: t('footer') })
                         .setTimestamp();
                     await user.send({ embeds: [dm] }).catch(() => {});
                 } catch(e) {}
             }
         } else {
-            await channel.send({ content: t.noEntries }).catch(() => {});
+            await channel.send({ content: t('noEntries') }).catch(() => {});
         }
     } catch(e) {
         console.error('[GIVEAWAY] End error:', e.message);
@@ -363,7 +303,7 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
     const author = message?.author || interaction?.user;
     const member = message?.member || interaction?.member;
     const lang = getLang(client, guild.id);
-    const t = T[lang];
+    const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
 
     const id = `${guild.id}_${Date.now()}`;
     const endTimestamp = Date.now() + duration;
