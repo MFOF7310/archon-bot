@@ -1,4 +1,6 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+const { t: i18nT } = require('../lib/i18n');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 
 // ================= ARCHON COLOR PALETTE =================
 const ARCHON = {
@@ -15,107 +17,6 @@ const ARCHON = {
     steel: '#708090'
 };
 
-// ================= BILINGUAL TRANSLATIONS =================
-const transferTranslations = {
-    en: {
-        title: '💸 NEURAL TRANSFER PROTOCOL',
-        transferComplete: '✅ TRANSFER EXECUTED',
-        from: 'SENDER',
-        to: 'RECIPIENT',
-        amount: 'AMOUNT',
-        yourNewBalance: 'SENDER NEW BALANCE',
-        recipientNewBalance: 'RECIPIENT NEW BALANCE',
-        crossPlatform: 'Cross-platform bridge active',
-        usage: '❌ INVALID SYNTAX',
-        usageDesc: 'Usage: `.transfer @user <amount>` or `.transfer <telegram_id> <amount>`',
-        minTransfer: '❌ MINIMUM TRANSFER',
-        minTransferDesc: 'Minimum transfer amount is **10 🪙**',
-        selfTransfer: '❌ SELF-TRANSFER BLOCKED',
-        selfTransferDesc: 'You cannot transfer credits to yourself.',
-        noAccount: '❌ ACCOUNT NOT INITIALIZED',
-        noAccountDesc: 'Send a message first to initialize your neural profile.',
-        insufficient: '❌ INSUFFICIENT FUNDS',
-        insufficientDesc: 'Your current balance:',
-        telegramNotification: '💰 NEURAL TRANSFER RECEIVED',
-        fromUser: 'SENDER',
-        useBalance: (prefix) => `Use \`${prefix}bal\` or \`${prefix}credits\` to verify your balance.`,
-        verifyWith: 'Verify with',
-        footer: 'NEURAL TRANSFER • ARCHON CG-223',
-        previousBalance: 'PREVIOUS BALANCE',
-        transactionFee: 'TRANSACTION FEE',
-        free: '0.00 🪙 (FREE)',
-        receipt: 'TRANSFER RECEIPT',
-        confirmTitle: '⚠️ CONFIRM TRANSFER',
-        confirmDesc: 'You are about to transfer credits. This action is irreversible.',
-        confirmBtn: '✅ CONFIRM',
-        cancelBtn: '❌ CANCEL',
-        cancelled: '❌ TRANSFER ABORTED',
-        cancelledDesc: 'Operation cancelled by user. No credits were moved.',
-        processing: '⏳ PROCESSING...',
-        processingDesc: 'Neural transfer protocol executing...',
-        success: '✅ TRANSFER SUCCESSFUL',
-        successDesc: 'Credits have been securely transferred.',
-        dmSubject: '💸 INCOMING TRANSFER',
-        dmDesc: 'has sent you credits via the ARCHON neural network.',
-        historyTitle: '📋 TRANSFER HISTORY',
-        noHistory: 'No recent transactions found.',
-        checkBalance: '💰 CHECK BALANCE',
-        viewHistory: '📋 VIEW HISTORY',
-        accessDenied: '❌ UNAUTHORIZED — This interface is biometrically locked.',
-        perServer: 'PER-SERVER ISOLATION ACTIVE',
-        invalidTarget: '❌ INVALID TARGET',
-        invalidTargetDesc: 'Could not resolve the target user. Please mention a valid user or provide a valid Telegram ID.'
-    },
-    fr: {
-        title: '💸 PROTOCOLE DE TRANSFERT NEURAL',
-        transferComplete: '✅ TRANSFERT EXÉCUTÉ',
-        from: 'EXPÉDITEUR',
-        to: 'DESTINATAIRE',
-        amount: 'MONTANT',
-        yourNewBalance: 'NOUVEAU SOLDE EXPÉDITEUR',
-        recipientNewBalance: 'NOUVEAU SOLDE DESTINATAIRE',
-        crossPlatform: 'Pont multiplateforme actif',
-        usage: '❌ SYNTAXE INVALIDE',
-        usageDesc: 'Usage : `.transfer @utilisateur <montant>` ou `.transfer <telegram_id> <montant>`',
-        minTransfer: '❌ TRANSFERT MINIMUM',
-        minTransferDesc: 'Le montant minimum de transfert est de **10 🪙**',
-        selfTransfer: '❌ AUTO-TRANSFERT BLOQUÉ',
-        selfTransferDesc: 'Vous ne pouvez pas vous transférer des crédits à vous-même.',
-        noAccount: '❌ COMPTE NON INITIALISÉ',
-        noAccountDesc: 'Envoyez d\'abord un message pour initialiser votre profil neural.',
-        insufficient: '❌ FONDS INSUFFISANTS',
-        insufficientDesc: 'Votre solde actuel :',
-        telegramNotification: '💰 TRANSFERT NEURAL REÇU',
-        fromUser: 'EXPÉDITEUR',
-        useBalance: (prefix) => `Utilisez \`${prefix}bal\` ou \`${prefix}credits\` pour vérifier votre solde.`,
-        verifyWith: 'Vérifiez avec',
-        footer: 'TRANSFERT NEURAL • ARCHON CG-223',
-        previousBalance: 'SOLDE PRÉCÉDENT',
-        transactionFee: 'FRAIS DE TRANSACTION',
-        free: '0,00 🪙 (GRATUIT)',
-        receipt: 'REÇU DE TRANSFERT',
-        confirmTitle: '⚠️ CONFIRMER LE TRANSFERT',
-        confirmDesc: 'Vous êtes sur le point de transférer des crédits. Cette action est irréversible.',
-        confirmBtn: '✅ CONFIRMER',
-        cancelBtn: '❌ ANNULER',
-        cancelled: '❌ TRANSFERT ABANDONNÉ',
-        cancelledDesc: 'Opération annulée par l\'utilisateur. Aucun crédit n\'a été déplacé.',
-        processing: '⏳ TRAITEMENT...',
-        processingDesc: 'Exécution du protocole de transfert neural...',
-        success: '✅ TRANSFERT RÉUSSI',
-        successDesc: 'Les crédits ont été transférés en toute sécurité.',
-        dmSubject: '💸 TRANSFERT ENTRANT',
-        dmDesc: 'vous a envoyé des crédits via le réseau neural ARCHON.',
-        historyTitle: '📋 HISTORIQUE DES TRANSFERTS',
-        noHistory: 'Aucune transaction récente trouvée.',
-        checkBalance: '💰 VÉRIFIER LE SOLDE',
-        viewHistory: '📋 VOIR L\'HISTORIQUE',
-        accessDenied: '❌ NON AUTORISÉ — Cette interface est verrouillée biométriquement.',
-        perServer: 'ISOLATION PAR SERVEUR ACTIVE',
-        invalidTarget: '❌ CIBLE INVALIDE',
-        invalidTargetDesc: 'Impossible de résoudre l\'utilisateur cible. Mentionnez un utilisateur valide ou fournissez un ID Telegram valide.'
-    }
-};
 
 module.exports = {
     name: 'transfer',
@@ -149,7 +50,7 @@ module.exports = {
     // ═══════════════════════════════════════════════════════
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
-        const t = transferTranslations[lang] || transferTranslations['en'];
+        const t = (k, v) => i18nT('transfer.' + k, lang, v);
         const version = client.version || '1.7.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
@@ -296,12 +197,12 @@ module.exports = {
                 .setCustomId(`transfer_confirm_${userId}_${Date.now()}`)
                 .setLabel(t.confirmBtn)
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('✅'),
+                .setEmoji(resolveEmoji('check', message) || '✅'),
             new ButtonBuilder()
                 .setCustomId(`transfer_cancel_${userId}_${Date.now()}`)
                 .setLabel(t.cancelBtn)
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
+                .setEmoji(resolveEmoji('error', message) || '❌')
         );
 
         const confirmMsg = await message.reply({ embeds: [confirmEmbed], components: [confirmRow] }).catch(() => {});
@@ -316,7 +217,7 @@ module.exports = {
 
             await i.deferUpdate().catch(() => {});
 
-            if (i.customId.startsWith('transfer_cancel_')) {
+            if (i.customId.startsWith.transfer_cancel_) {
                 const cancelEmbed = new EmbedBuilder()
                     .setColor(ARCHON.gray)
                     .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: message.author.displayAvatarURL() })
@@ -385,12 +286,12 @@ module.exports = {
                     .setCustomId(`transfer_balance_${userId}`)
                     .setLabel(t.checkBalance)
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji('💰'),
+                    .setEmoji(resolveEmoji('coins', message) || '💰'),
                 new ButtonBuilder()
                     .setCustomId(`transfer_history_${userId}`)
                     .setLabel(t.viewHistory)
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('📋')
+                    .setEmoji(resolveEmoji('charts', message) || '📋')
             );
 
             await i.editReply({ embeds: [receiptEmbed], components: [buttonRow] }).catch(() => {});
@@ -454,7 +355,7 @@ module.exports = {
 
             await i.deferReply({ flags: 64 }).catch(() => {});
 
-            if (i.customId.startsWith('transfer_balance_')) {
+            if (i.customId.startsWith.transfer_balance_) {
                 const senderDataFresh = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT credits FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
                 const currentBalance = senderDataFresh?.credits || 0;
 
@@ -466,7 +367,7 @@ module.exports = {
                 await i.followUp({ embeds: [balanceEmbed], flags: 64 }).catch(() => {});
             }
 
-            if (i.customId.startsWith('transfer_history_')) {
+            if (i.customId.startsWith.transfer_history_) {
                 const history = db.prepare(`
                     SELECT * FROM transfers
                     WHERE (sender_id = ? OR receiver_id = ?) AND guild_id = ?
@@ -498,16 +399,16 @@ module.exports = {
     execute: async (interaction, client) => {
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
         const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
-        const t = transferTranslations[lang] || transferTranslations['en'];
+        const t = (k, v) => i18nT('transfer.' + k, lang, v);
         const guildId = interaction.guild?.id || 'DM';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
         const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
         const version = client.version || '1.7.0';
         const prefix = client.getServerSettings ? (client.getServerSettings(guildId)?.prefix || '.') : '.';
 
-        const amount = interaction.options.getInteger('amount');
-        const targetUser = interaction.options.getUser('user');
-        const telegramId = interaction.options.getString('telegram_id');
+        const amount = interaction.options.getInteger.amount;
+        const targetUser = interaction.options.getUser.user;
+        const telegramId = interaction.options.getString.telegram_id;
 
         // Validate target
         if (!targetUser && !telegramId) {
@@ -629,12 +530,12 @@ module.exports = {
                 .setCustomId(`transfer_confirm_${userId}_${Date.now()}`)
                 .setLabel(t.confirmBtn)
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('✅'),
+                .setEmoji(resolveEmoji('check', message) || '✅'),
             new ButtonBuilder()
                 .setCustomId(`transfer_cancel_${userId}_${Date.now()}`)
                 .setLabel(t.cancelBtn)
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
+                .setEmoji(resolveEmoji('error', message) || '❌')
         );
 
         await interaction.editReply({ embeds: [confirmEmbed], components: [confirmRow] });
@@ -649,7 +550,7 @@ module.exports = {
 
             await i.deferUpdate().catch(() => {});
 
-            if (i.customId.startsWith('transfer_cancel_')) {
+            if (i.customId.startsWith.transfer_cancel_) {
                 const cancelEmbed = new EmbedBuilder()
                     .setColor(ARCHON.gray)
                     .setAuthor({ name: `🦅 ARCHON ENGINE • ${t.title}`, iconURL: interaction.user.displayAvatarURL() })
@@ -708,12 +609,12 @@ module.exports = {
                     .setCustomId(`transfer_balance_${userId}`)
                     .setLabel(t.checkBalance)
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji('💰'),
+                    .setEmoji(resolveEmoji('coins', message) || '💰'),
                 new ButtonBuilder()
                     .setCustomId(`transfer_history_${userId}`)
                     .setLabel(t.viewHistory)
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('📋')
+                    .setEmoji(resolveEmoji('charts', message) || '📋')
             );
 
             await i.editReply({ embeds: [receiptEmbed], components: [buttonRow] }).catch(() => {});
