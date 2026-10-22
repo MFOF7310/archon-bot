@@ -26,5 +26,6 @@
   "rerollOk": "🔄 Nouveaux gagnants sélectionnés.",
   "terminated": "🗑️ Protocole terminé.",
   "boosterBonus": "⚡ Booster du serveur — 2x entrées appliquées !",
-  "footer": "BAMAKO_223 🇲🇱 • ARCHON PROTOCOLE CLASSIFIÉ"
+  "footer": "BAMAKO_223 🇲🇱 • ARCHON PROTOCOLE CLASSIFIÉ",
+  "endedError": "❌ Ce giveaway est déjà terminé."
 }

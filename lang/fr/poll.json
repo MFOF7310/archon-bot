@@ -1,0 +1,8 @@
+{
+  "title": "📊 SONDAGE",
+  "createdBy": "Créé par",
+  "reactToVote": "Réagissez avec l'emoji correspondant pour voter !",
+  "invalid": "❌ Utilisation: `.poll \"Question\" \"Option1\" \"Option2\" ...`\nExemple: `.poll \"Couleur préférée ?\" \"Rouge\" \"Bleu\" \"Vert\"`",
+  "maxOptions": "❌ Maximum 9 options autorisées.",
+  "minOptions": "❌ Il faut au moins 2 options."
+}

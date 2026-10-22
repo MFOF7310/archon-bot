@@ -26,5 +26,6 @@
   "rerollOk": "🔄 已选出新的中奖者。",
   "terminated": "🗑️ 协议已终止。",
   "boosterBonus": "⚡ 服务器加成 — 已应用 2 倍参与次数！",
-  "footer": "BAMAKO_223 🇲🇱 • ARCHON 绝密协议"
+  "footer": "BAMAKO_223 🇲🇱 • ARCHON 绝密协议",
+  "endedError": "❌ 此抽奖已经结束。"
 }

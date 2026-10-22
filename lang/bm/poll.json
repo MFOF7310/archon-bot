@@ -1,0 +1,8 @@
+{
+  "title": "📊 POLL",
+  "createdBy": "Created by",
+  "reactToVote": "React with the corresponding emoji to vote!",
+  "invalid": "❌ Usage: `.poll \"Question\" \"Option1\" \"Option2\" ...`\nExample: `.poll \"Favorite color?\" \"Red\" \"Blue\" \"Green\"`",
+  "maxOptions": "❌ Maximum 9 options allowed.",
+  "minOptions": "❌ You must provide at least 2 options."
+}

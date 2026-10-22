@@ -58,13 +58,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         const OKL = ['en','fr','bm','zh','ar'];
         lang = OKL.includes(serverSettings?.language) ? serverSettings.language : (OKL.includes(lang) ? lang : 'en');
-        const T = {
-            en: { title: '📊 POLL', createdBy: 'Created by', reactToVote: 'React with the corresponding emoji to vote!', invalid: '❌ Usage: `.poll "Question" "Option1" "Option2" ...`\nExample: `.poll "Favorite color?" "Red" "Blue" "Green"`', maxOptions: '❌ Maximum 9 options allowed.', minOptions: '❌ You must provide at least 2 options.' },
-            fr: { title: '📊 SONDAGE', createdBy: 'Créé par', reactToVote: 'Réagissez avec l\'emoji correspondant pour voter !', invalid: '❌ Utilisation: `.poll "Question" "Option1" "Option2" ...`\nExemple: `.poll "Couleur préférée ?" "Rouge" "Bleu" "Vert"`', maxOptions: '❌ Maximum 9 options autorisées.', minOptions: '❌ Il faut au moins 2 options.' },
-            zh: { title: '📊 投票', createdBy: '发起人', reactToVote: '用对应的表情符号投票吧！', invalid: '❌ 用法：`.poll "问题" "选项1" "选项2" ...`\n例如：`.poll "最喜欢什么颜色？" "红" "蓝" "绿"`', maxOptions: '❌ 最多 9 个选项。', minOptions: '❌ 至少需要 2 个选项。' },
-            ar: { title: '📊 تصويت', createdBy: 'أنشأه', reactToVote: 'صوّت بالإيموجي المناسب!', invalid: '❌ الاستخدام: `.poll "سؤال" "خيار1" "خيار2" ...`\nمثال: `.poll "أفضل لون؟" "أحمر" "أزرق"`', maxOptions: '❌ الحد الأقصى 9 خيارات.', minOptions: '❌ تحتاج خيارين على الأقل.' }
-        };
-        const t = T[lang] || T.en;
+                const t = (k, v) => i18n.t('poll.' + k, lang, v);
 
         // Parse arguments (support quoted strings)
         const regex = /"([^"]+)"|'([^']+)'|(\S+)/g;
@@ -75,14 +69,14 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         }
 
         if (parts.length < 3) {
-            return message.reply({ content: t.invalid, flags: 64 }).catch(() => {});
+            return message.reply({ content: t('invalid'), flags: 64 }).catch(() => {});
         }
 
         const question = parts[0];
         const options = parts.slice(1);
 
         if (options.length > 9) {
-            return message.reply({ content: t.maxOptions, flags: 64 }).catch(() => {});
+            return message.reply({ content: t('maxOptions'), flags: 64 }).catch(() => {});
         }
 
         const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
@@ -91,13 +85,13 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         options.forEach((opt, i) => {
             description += `${emojis[i]} **${opt}**\n`;
         });
-        description += `\n📢 *${t.reactToVote}*`;
+        description += `\n📢 *${t('reactToVote')}*`;
 
         const embed = new EmbedBuilder()
             .setColor('#9b59b6')
-            .setTitle(t.title)
+            .setTitle(t('title'))
             .setDescription(description)
-            .setFooter({ text: `${t.createdBy}: ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+            .setFooter({ text: `${t('createdBy')}: ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
             .setTimestamp();
 
         const pollMsg = await message.channel.send({ embeds: [embed] }).catch(() => {});
@@ -131,11 +125,11 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         }
 
         if (options.length < 2) {
-            return interaction.reply({ content: t.minOptions, flags: 64 });
+            return interaction.reply({ content: t('minOptions'), flags: 64 });
         }
 
         if (options.length > 9) {
-            return interaction.reply({ content: t.maxOptions, flags: 64 });
+            return interaction.reply({ content: t('maxOptions'), flags: 64 });
         }
 
         const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
@@ -144,13 +138,13 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         options.forEach((opt, i) => {
             description += `${emojis[i]} **${opt}**\n`;
         });
-        description += `\n📢 *${t.reactToVote}*`;
+        description += `\n📢 *${t('reactToVote')}*`;
 
         const embed = new EmbedBuilder()
             .setColor('#9b59b6')
-            .setTitle(t.title)
+            .setTitle(t('title'))
             .setDescription(description)
-            .setFooter({ text: `${t.createdBy}: ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+            .setFooter({ text: `${t('createdBy')}: ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });

@@ -356,7 +356,7 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
         if (i.customId === `gw_enter_${id}`) {
             await i.deferReply({ flags: 64 }).catch(() => {});
 
-            if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: '❌ Giveaway has ended.' }).catch(() => {});
+            if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: t('endedError') }).catch(() => {});
             if (i.user.id === gwNow.hostId) return i.editReply({ content: ut.cantEnter }).catch(() => {});
             if (gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut.alreadyIn }).catch(() => {});
 
@@ -389,7 +389,7 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
 
         } else if (i.customId === `gw_leave_${id}`) {
             await i.deferReply({ flags: 64 }).catch(() => {});
-            if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: '❌ Giveaway has ended.' }).catch(() => {});
+            if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: t('endedError') }).catch(() => {});
             if (!gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut.notIn }).catch(() => {});
 
             gwNow.entries = gwNow.entries.filter(e => e !== i.user.id);
