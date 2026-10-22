@@ -3816,7 +3816,7 @@ if (message.content && message.content.length > 4000) {
     // ================= ARCHITECT SHIELD v2.0 =================
     if (message.content.startsWith('.system') || message.content.startsWith('.owner')) {
         if (message.author.id !== process.env.OWNER_ID) {
-            return message.reply(require('./lib/i18n').t('common.accessDenied', client.detectLanguage('system', message.guild?.id, message))).catch(() => {});
+            return message.reply(require('./lib/i18n').t('accessDenied', client.detectLanguage('system', message.guild?.id, message))).catch(() => {});
         }
         
         const args = message.content.split(' ');
@@ -3824,7 +3824,7 @@ if (message.content && message.content.length > 4000) {
         if (token && client.verifyPushKey) {
             const verified = client.verifyPushKey(message.author.id, token);
             if (!verified) {
-                return message.reply(require('./lib/i18n').t('common.pushKeyExpired', client.detectLanguage('system', message.guild?.id, message))).catch(() => {});
+                return message.reply(require('./lib/i18n').t('pushKeyExpired', client.detectLanguage('system', message.guild?.id, message))).catch(() => {});
             }
             console.log(`\x1b[32m[AUTH]\x1b[0m Push-Key verified`);
         }
@@ -3836,7 +3836,7 @@ if (message.content && message.content.length > 4000) {
         const lastUsed = client.lydiaCooldowns.get(message.author.id) || 0;
         if (now - lastUsed < 3000) {
             const waitTime = ((3000 - (now - lastUsed)) / 1000).toFixed(1);
-            return message.reply(require('./lib/i18n').t('common.tokenProtection', client.detectLanguage('system', message.guild?.id, message), { waitTime }))
+            return message.reply(require('./lib/i18n').t('tokenProtection', client.detectLanguage('system', message.guild?.id, message), { waitTime }))
                 .then(m => setTimeout(() => m.delete().catch(() => {}), 2000));
         }
         client.lydiaCooldowns.set(message.author.id, now);
@@ -4053,7 +4053,7 @@ if (message.content && message.content.length > 4000) {
         
         let command = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
         if (command && isCommandDisabled(message.guild?.id, command)) {
-            message.reply(require('./lib/i18n').t('common.commandDisabled', client.detectLanguage('system', message.guild?.id, message)))
+            message.reply(require('./lib/i18n').t('commandDisabled', client.detectLanguage('system', message.guild?.id, message)))
                 .then(m => setTimeout(() => m.delete().catch(() => {}), 5000)).catch(() => {});
             return;
         }
@@ -4065,7 +4065,7 @@ if (message.content && message.content.length > 4000) {
                 return;
             } catch (e) {
                 console.error(`${red}[LYDIA ERROR]${reset}`, e);
-                return message.reply(require('./lib/i18n').t('common.lydiaFailed', client.detectLanguage('system', message.guild?.id, message)));
+                return message.reply(require('./lib/i18n').t('lydiaFailed', client.detectLanguage('system', message.guild?.id, message)));
             }
         }
 
@@ -4151,7 +4151,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         } catch (e) {
             console.error(`[VERIFY] panel guild=${interaction.guildId} user=${interaction.user?.id}:`, e.stack || e.message);
             if (!interaction.replied && !interaction.deferred)
-                interaction.reply({ content: require('./lib/i18n').t('common.genericError', client.detectLanguage('system', interaction.guildId, interaction)), flags: 64 }).catch(() => {});
+                interaction.reply({ content: require('./lib/i18n').t('genericError', client.detectLanguage('system', interaction.guildId, interaction)), flags: 64 }).catch(() => {});
         }
         return;
     }
@@ -4192,11 +4192,11 @@ safeOn(Events.InteractionCreate, async (interaction) => {
 
         if (!command) {
             console.log(`${yellow}[SLASH]${reset} Unknown command: ${interaction.commandName}`);
-            return interaction.reply({ content: require('./lib/i18n').t('common.commandNotFound', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
+            return interaction.reply({ content: require('./lib/i18n').t('commandNotFound', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
         }
 
         if (interaction.guild && isCommandDisabled(interaction.guild.id, command)) {
-            return interaction.reply({ content: require('./lib/i18n').t('common.commandDisabled', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
+            return interaction.reply({ content: require('./lib/i18n').t('commandDisabled', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
         }
 
         const restrictedCommands = ['profile', 'daily', 'shop', 'credits', 'balance', 'rank', 'leaderboard'];
@@ -4341,7 +4341,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
 
                 // If plugin never replied, send basic acknowledgment
                 if (!repliedSet.value && !interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ content: require('./lib/i18n').t('common.commandExecuted', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
+                    await interaction.reply({ content: require('./lib/i18n').t('commandExecuted', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
                 }
 
                 // Bot XP tracking
@@ -4349,13 +4349,13 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                     client.botStats.onCommandProcessed(db, interaction.guild.id, interaction.user.id, interaction.commandName, true);
                 }
             } else {
-                await interaction.reply({ content: require('./lib/i18n').t('common.noHandler', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
+                await interaction.reply({ content: require('./lib/i18n').t('noHandler', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
             }
         } catch (error) {
             console.error(`${red}[SLASH ERROR]${reset} ${interaction.commandName}:`, error);
             { try { const _bp = require('./lib/botPerms'); const _x = _bp.explainError(error, interaction, interaction.commandName); if (_x) return _bp.say(interaction, _x); } catch (_e2) { console.error('[botPerms]', _e2.message); } }
             const _lang = require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id);
-            const _msg = require('./lib/i18n').t('common.globalError', _lang);
+            const _msg = require('./lib/i18n').t('globalError', _lang);
             const errorMsg = { 
                 content: _msg, 
                 flags: 1 << 6 
@@ -4390,7 +4390,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         const guildId = parts[3];
         
         if (interaction.user.id !== userId) {
-            return interaction.reply({ content: require('./lib/i18n').t('common.appealNotYours', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
+            return interaction.reply({ content: require('./lib/i18n').t('appealNotYours', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
         }
 
         const modal = new ModalBuilder()

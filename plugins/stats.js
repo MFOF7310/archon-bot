@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const statsTranslations = {
@@ -435,7 +436,7 @@ try {
         
         collector.on('collect', async (i) => {
             if (i.user.id !== (message.author?.id || message.user?.id)) {
-                return i.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', flags: 64 });
+                return i.reply({ content: lang === 'fr' ? `${resolveEmoji('error', i)} Ce menu ne vous appartient pas.` : `${resolveEmoji('error', i)} This menu is not yours.`, flags: 64 });
             }
             
             await i.deferUpdate();
