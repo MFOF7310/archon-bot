@@ -252,5 +252,6 @@
   "appeal_notYoursDesc": "Seul le propriétaire ou un modérateur peut trancher cet appel.",
   "decisionApproved": "Approuvé — un avertissement retiré, exclusion levée.",
   "decisionRejected": "Examiné — l'action est maintenue. Utilisateur prévenu.",
-  "decisionBanned": "Appels en pause 7 jours. Avertissement ajouté."
+  "decisionBanned": "Appels en pause 7 jours. Avertissement ajouté.",
+  "appeal_expired": "Cet appel a déjà été traité ou a expiré. Rien à décider ici ! ✨"
 }

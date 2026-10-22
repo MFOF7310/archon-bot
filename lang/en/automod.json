@@ -252,5 +252,6 @@
   "appeal_notYoursDesc": "Only the owner or a moderator can rule on this one.",
   "decisionApproved": "Approved — one strike lifted, timeout cleared.",
   "decisionRejected": "Reviewed — the action stays. User was notified.",
-  "decisionBanned": "Appeals paused for 7 days. Strike added."
+  "decisionBanned": "Appeals paused for 7 days. Strike added.",
+  "appeal_expired": "This appeal has already wrapped up or expired. Nothing to decide here! ✨"
 }

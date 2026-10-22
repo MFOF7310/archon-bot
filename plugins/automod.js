@@ -1108,10 +1108,10 @@ async function handleAppealButton(interaction, client) {
     if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate().catch(() => {});
 
     if (!vote) {
-        return interaction.editReply({ content: '⚠️ This appeal has expired or was already ruled on.', embeds: [], components: [] }).catch(() => {});
+        return interaction.editReply({ content: `⚠️ ${_TA('appeal_expired')}`, embeds: [], components: [] }).catch(() => {});
     }
     if (vote.status !== 'pending') {
-        return interaction.editReply({ content: '⚠️ This appeal was already decided.', embeds: [], components: [] }).catch(() => {});
+        return interaction.editReply({ content: `⚠️ ${_TA('decisionRejected')}`, embeds: [], components: [] }).catch(() => {});
     }
 
     // ── Permission guard: owner OR admin/mod ──
@@ -1121,7 +1121,7 @@ async function handleAppealButton(interaction, client) {
         || _perms?.has('ManageGuild')
         || _perms?.has('ManageMessages');
     if (!_canRule) {
-        return interaction.editReply({ content: '🔒 Only the owner or a moderator can rule on this appeal.', embeds: [], components: [] }).catch(() => {});
+        return interaction.editReply({ content: `🔒 **${_TA('appeal_notYoursTitle')}**\n${_TA('appeal_notYoursDesc')}`, embeds: [], components: [] }).catch(() => {});
     }
 
     const guild = client.guilds.cache.get(vote.guildId);

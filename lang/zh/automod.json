@@ -252,5 +252,6 @@
   "appeal_notYoursDesc": "只有所有者或管理员才能裁决此申诉。",
   "decisionApproved": "已通过 — 取消一次处罚，解除禁言。",
   "decisionRejected": "已审阅 — 维持处理，用户已收到通知。",
-  "decisionBanned": "申诉暂停 7 天，已增加处罚。"
+  "decisionBanned": "申诉暂停 7 天，已增加处罚。",
+  "appeal_expired": "此申诉已结束或已过期。这里没有需要决定的事项！✨"
 }
