@@ -1,3 +1,4 @@
+const i18n = require('../lib/i18n');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 const { PermissionFlagsBits } = require('discord.js');
 
@@ -40,193 +41,6 @@ function getEconomySettings(guildId) {
 const fmt = (amt, emoji) => `${(amt || 0).toLocaleString()} ${emoji}`;
 
 // ================= BILINGUAL TRANSLATIONS =================
-const creditTranslations = {
-    en: {
-        title: '💰 NEURAL BANK OF BAMAKO',
-        balanceTitle: 'BALANCE INQUIRY',
-        transferTitle: 'TRANSFER RECEIPT',
-        notFound: 'User not found.',
-        selfTransfer: "❌ You can't transfer credits to yourself!",
-        zeroTransfer: "❌ Amount must be greater than zero!",
-        insufficient: "❌ Insufficient credits! You have",
-        balanceOf: (name) => `**${name}**'s Neural Bank Balance`,
-        balanceCheck: 'Check any agent\'s balance with `.bal @user`',
-        embedFooter: 'ARCHON CG-223 • Neural Banking Division • BAMAKO_223 🇲🇱',
-        transferSuccess: 'Transfer Complete',
-        transferComplete: (from, to, amount, emoji) => `**${from}** sent **${fmt(amount, emoji)}** to **${to}**`,
-        senderNewBal: 'Sender Balance',
-        receiverNewBal: 'Receiver Balance',
-        noPermission: '❌ You do not have permission to use this command.',
-        memberOnly: '❌ This command is server-only. Join a neural node!',
-        transactionFailed: '❌ Transaction failed. Please try again later.',
-        invalidAmount: '❌ Invalid amount. Use `.pay @user <amount>`',
-        userNotFound: '❌ User not found.',
-        leaderboardTitle: '🏆 TOP SYNCHRO AGENTS',
-        leaderboardDesc: 'Most synchronized agents in this sector:',
-        rank: 'Rank',
-        agent: 'Agent',
-        balance: 'Balance',
-        noData: 'No agents found in this sector.',
-        footer: 'NEURAL BANK OF BAMAKO',
-        guildContext: (name) => `Server: ${name}`,
-        viewProfile: '👤 View Profile',
-        viewMarket: '📈 Market',
-        verifyBalance: 'Verify with .bal or .credits',
-        leaderboardBtn: '🏆 Leaderboard',
-        transferBtn: '💸 Transfer',
-        shopBtn: '🛒 Shop',
-        refreshBtn: '🔄 Refresh',
-        accessDenied: '❌ This control is not yours.',
-        checking: '🔍 Checking balance...',
-        transferPrompt: 'Use `.pay @user <amount>` to transfer',
-        dmsDisabled: '❌ Cannot DM this user.',
-        transferReceived: '💸 Transfer Received!',
-        transferReceivedFrom: (from, amount, emoji) => `You received **${fmt(amount, emoji)}** from **${from}**!`,
-        levelField: 'Level',
-        rankField: 'Rank',
-        mentionUser: 'Mention a user',
-        newBalance: 'New Balance'
-    },
-    fr: {
-        title: '💰 BANQUE NEURALE DE BAMAKO',
-        balanceTitle: 'CONSULTATION DE SOLDE',
-        transferTitle: 'REÇU DE TRANSFERT',
-        notFound: 'Utilisateur introuvable.',
-        selfTransfer: "❌ Vous ne pouvez pas vous transférer des crédits !",
-        zeroTransfer: "❌ Le montant doit être supérieur à zéro !",
-        insufficient: "❌ Crédits insuffisants ! Vous avez",
-        balanceOf: (name) => `Solde Bancaire Neurale de **${name}**`,
-        balanceCheck: 'Vérifiez le solde avec `.bal @utilisateur`',
-        embedFooter: 'ARCHON CG-223 • Division Bancaire Neurale • BAMAKO_223 🇲🇱',
-        transferSuccess: 'Transfert Effectué',
-        transferComplete: (from, to, amount, emoji) => `**${from}** a envoyé **${fmt(amount, emoji)}** à **${to}**`,
-        senderNewBal: 'Solde Expéditeur',
-        receiverNewBal: 'Solde Destinataire',
-        noPermission: '❌ Vous n\'avez pas la permission.',
-        memberOnly: '❌ Cette commande est réservée aux serveurs. Rejoignez un nœud neural !',
-        transactionFailed: '❌ La transaction a échoué. Réessayez plus tard.',
-        invalidAmount: '❌ Montant invalide. Utilisez `.pay @utilisateur <montant>`',
-        userNotFound: '❌ Utilisateur introuvable.',
-        leaderboardTitle: '🏆 TOP AGENTS SYNCHRO',
-        leaderboardDesc: 'Agents les plus synchronisés dans ce secteur :',
-        rank: 'Rang',
-        agent: 'Agent',
-        balance: 'Solde',
-        noData: 'Aucun agent trouvé dans ce secteur.',
-        footer: 'BANQUE NEURALE DE BAMAKO',
-        guildContext: (name) => `Serveur : ${name}`,
-        viewProfile: '👤 Voir Profil',
-        viewMarket: '📈 Marché',
-        verifyBalance: 'Vérifiez avec .bal ou .credits',
-        leaderboardBtn: '🏆 Classement',
-        transferBtn: '💸 Transfert',
-        shopBtn: '🛒 Boutique',
-        refreshBtn: '🔄 Actualiser',
-        accessDenied: '❌ Ce contrôle ne vous appartient pas.',
-        checking: '🔍 Vérification du solde...',
-        transferPrompt: 'Utilisez `.pay @utilisateur <montant>` pour transférer',
-        dmsDisabled: '❌ Impossible d\'envoyer un DM à cet utilisateur.',
-        transferReceived: '💸 Transfert Reçu !',
-        transferReceivedFrom: (from, amount, emoji) => `Vous avez reçu **${fmt(amount, emoji)}** de **${from}** !`,
-        levelField: 'Niveau',
-        rankField: 'Rang',
-        mentionUser: 'Mentionnez un utilisateur',
-        newBalance: 'Nouveau Solde'
-    },
-    zh: {
-        title: '💰 巴马科神经银行',
-        balanceTitle: '余额查询',
-        transferTitle: '转账收据',
-        notFound: '未找到用户。',
-        selfTransfer: "❌ 不能给自己转账！",
-        zeroTransfer: "❌ 金额必须大于零！",
-        insufficient: "❌ 积分不足！你有",
-        balanceOf: (name) => `**${name}** 的神经银行余额`,
-        balanceCheck: '使用 `.bal @user` 查看任意特工的余额',
-        embedFooter: 'ARCHON CG-223 • 神经银行部 • BAMAKO_223 🇲🇱',
-        transferSuccess: '转账完成',
-        transferComplete: (from, to, amount, emoji) => `**${from}** 向 **${to}** 发送了 **${(amount||0).toLocaleString()} ${emoji}**`,
-        senderNewBal: '发送方余额',
-        receiverNewBal: '接收方余额',
-        noPermission: '❌ 你没有权限使用此指令。',
-        memberOnly: '❌ 该指令仅限服务器使用。加入一个神经节点！',
-        transactionFailed: '❌ 交易失败，请稍后再试。',
-        invalidAmount: '❌ 无效金额。使用 `.pay @user <amount>`',
-        userNotFound: '❌ 未找到用户。',
-        leaderboardTitle: '🏆 顶级同步特工',
-        leaderboardDesc: '本分区同步度最高的特工：',
-        rank: '排名',
-        agent: '特工',
-        balance: '余额',
-        noData: '该分区没有找到特工。',
-        footer: '巴马科神经银行',
-        guildContext: (name) => `服务器：${name}`,
-        viewProfile: '👤 查看资料',
-        viewMarket: '📈 市场',
-        verifyBalance: '使用 .bal 或 .credits 查看',
-        leaderboardBtn: '🏆 排行榜',
-        transferBtn: '💸 转账',
-        shopBtn: '🛒 商店',
-        refreshBtn: '🔄 刷新',
-        accessDenied: '❌ 该控件不属于你。',
-        checking: '🔍 正在查询余额...',
-        transferPrompt: '使用 `.pay @user <amount>` 进行转账',
-        dmsDisabled: '❌ 无法私聊该用户。',
-        transferReceived: '💸 收到转账！',
-        transferReceivedFrom: (from, amount, emoji) => `你收到了来自 **${from}** 的 **${(amount||0).toLocaleString()} ${emoji}**！`,
-        levelField: '等级',
-        rankField: '段位',
-        mentionUser: '请 @ 一位用户',
-        newBalance: '新余额'
-    },
-    ar: {
-        title: '💰 البنك العصبي في باماكو',
-        balanceTitle: 'استعلام الرصيد',
-        transferTitle: 'إيصال التحويل',
-        notFound: 'المستخدم غير موجود.',
-        selfTransfer: "❌ لا يمكنك تحويل الرصيد إلى نفسك!",
-        zeroTransfer: "❌ يجب أن يكون المبلغ أكبر من صفر!",
-        insufficient: "❌ رصيد غير كافٍ! لديك",
-        balanceOf: (name) => `رصيد **${name}** في البنك العصبي`,
-        balanceCheck: 'تحقق من رصيد أي وكيل بـ `.bal @user`',
-        embedFooter: 'أركون CG-223 • القسم المصرفي العصبي • BAMAKO_223 🇲🇱',
-        transferSuccess: 'اكتمل التحويل',
-        transferComplete: (from, to, amount, emoji) => `أرسل **${from}** مبلغ **${(amount||0).toLocaleString()} ${emoji}** إلى **${to}**`,
-        senderNewBal: 'رصيد المُرسِل',
-        receiverNewBal: 'رصيد المستلم',
-        noPermission: '❌ ليس لديك إذن لاستخدام هذا الأمر.',
-        memberOnly: '❌ هذا الأمر للخوادم فقط. انضم إلى عقدة عصبية!',
-        transactionFailed: '❌ فشلت المعاملة. حاول مجددًا لاحقًا.',
-        invalidAmount: '❌ مبلغ غير صالح. استخدم `.pay @user <amount>`',
-        userNotFound: '❌ المستخدم غير موجود.',
-        leaderboardTitle: '🏆 كبار الوكلاء المُزامَنين',
-        leaderboardDesc: 'الوكلاء الأكثر مزامنة في هذا القطاع:',
-        rank: 'الرتبة',
-        agent: 'الوكيل',
-        balance: 'الرصيد',
-        noData: 'لم يتم العثور على وكلاء في هذا القطاع.',
-        footer: 'البنك العصبي في باماكو',
-        guildContext: (name) => `الخادم: ${name}`,
-        viewProfile: '👤 عرض الملف',
-        viewMarket: '📈 السوق',
-        verifyBalance: 'تحقق باستخدام .bal أو .credits',
-        leaderboardBtn: '🏆 التصنيف',
-        transferBtn: '💸 تحويل',
-        shopBtn: '🛒 المتجر',
-        refreshBtn: '🔄 تحديث',
-        accessDenied: '❌ هذا الزر ليس لك.',
-        checking: '🔍 جارٍ فحص الرصيد...',
-        transferPrompt: 'استخدم `.pay @user <amount>` للتحويل',
-        dmsDisabled: '❌ لا يمكن إرسال رسالة خاصة لهذا المستخدم.',
-        transferReceived: '💸 تم استلام تحويل!',
-        transferReceivedFrom: (from, amount, emoji) => `استلمت **${(amount||0).toLocaleString()} ${emoji}** من **${from}**!`,
-        levelField: 'المستوى',
-        rankField: 'الرتبة',
-        mentionUser: 'اذكر مستخدمًا',
-        newBalance: 'الرصيد الجديد'
-    }
-
-};
 
 module.exports = {
     name: 'credit',
@@ -249,7 +63,7 @@ module.exports = {
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
         lang = OKL.includes(serverSettings?.language) ? serverSettings.language : (OKL.includes(lang) ? lang : 'en');
-        const t = creditTranslations[lang] || creditTranslations['en'];
+        const t = (k, v) => i18n.t('credit.' + k, lang, v);
         const prefix = serverSettings?.prefix || '.';
 
         // PER-SERVER: Extract guildId for composite key lookups
@@ -274,7 +88,7 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const _l = (interaction.guild ? client.getServerSettings(interaction.guild.id) : { language: 'en' })?.language || 'en';
         const lang = ['en','fr','bm','zh','ar'].includes(_l) ? _l : 'en';
-        const t = creditTranslations[lang] || creditTranslations['en'];
+        const t = (k, v) => i18n.t('credit.' + k, lang, v);
         const prefix = interaction.guild ? (client.getServerSettings?.(interaction.guild.id)?.prefix || '.') : '.';
         const guildId = interaction.guild?.id || 'DM';
         const economySettings = getEconomySettings(guildId);
@@ -357,24 +171,24 @@ let userData = db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").g
 
     const embed = new EmbedBuilder()
         .setColor(rank.color)
-        .setAuthor({ name: `${rank.emoji} ${userName} • ${t.balanceTitle}`, iconURL: avatarURL })
+        .setAuthor({ name: `${rank.emoji} ${userName} • ${t('balanceTitle')}`, iconURL: avatarURL })
         .setDescription(
-            `## ${rank.emoji} ${t.balanceOf(userName)}\n` +
+            `## ${rank.emoji} ${t('balanceOf', { name: userName })}\n` +
             `\`\`\`yaml\n💰 ${credits.toLocaleString()} ${economySettings.currencyEmoji}\n\`\`\``
         )
         .addFields(
-            { name: `📊 ${t.levelField}`, value: `${level}`, inline: true },
-            { name: `🎖️ ${t.rankField}`, value: `${rank.emoji} ${rank.title[lang] || rank.title.en}`, inline: true },
+            { name: `📊 ${t('levelField')}`, value: `${level}`, inline: true },
+            { name: `🎖️ ${t('rankField')}`, value: `${rank.emoji} ${rank.title[lang] || rank.title.en}`, inline: true },
             { name: `📈 XP`, value: `${xp.toLocaleString()}`, inline: true }
         )
-        .setFooter({ text: `${t.guildContext(guildName)} • ${t.embedFooter} • v${version}`, iconURL: guildIcon })
+        .setFooter({ text: `${t('guildContext', { name: guildName })} • ${t('embedFooter')} • v${version}`, iconURL: guildIcon })
         .setTimestamp();
 
     // Button row
     const actionRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('credit_lb').setLabel(t.leaderboardBtn).setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
-        new ButtonBuilder().setCustomId('credit_pay').setLabel(t.transferBtn).setStyle(ButtonStyle.Primary).setEmoji('💸'),
-        new ButtonBuilder().setCustomId('credit_shop').setLabel(t.shopBtn).setStyle(ButtonStyle.Success).setEmoji('🛒')
+        new ButtonBuilder().setCustomId('credit_lb').setLabel(t('leaderboardBtn')).setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
+        new ButtonBuilder().setCustomId('credit_pay').setLabel(t('transferBtn')).setStyle(ButtonStyle.Primary).setEmoji('💸'),
+        new ButtonBuilder().setCustomId('credit_shop').setLabel(t('shopBtn')).setStyle(ButtonStyle.Success).setEmoji('🛒')
     );
 
     const sent = await message.reply({ embeds: [embed], components: [actionRow] }).catch(() => null);
@@ -391,7 +205,7 @@ let userData = db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").g
         };
         await handleLeaderboard(lbMessage, client, db, lang, t, guildId, economySettings, guildName, guildIcon, version);
     } else if (i.customId === 'credit_pay') {
-        await i.followUp({ content: `\`${t.transferPrompt}\``, flags: 64 }).catch(() => {});
+        await i.followUp({ content: `\`${t('transferPrompt')}\``, flags: 64 }).catch(() => {});
     } else if (i.customId === 'credit_shop') {
         const shopCmd = client.commands.get('shop');
         if (shopCmd) {
@@ -417,17 +231,17 @@ async function handlePay(message, args, client, db, serverSettings, lang, t, pre
     }
 
     const target = message.mentions.users.first();
-    if (!target) return message.reply(`❌ ${t.mentionUser}. ${t.transferPrompt}`).catch(() => {});
-    if (target.id === senderId) return message.reply(t.selfTransfer).catch(() => {});
+    if (!target) return message.reply(`❌ ${t('mentionUser')}. ${t('transferPrompt')}`).catch(() => {});
+    if (target.id === senderId) return message.reply(t('selfTransfer')).catch(() => {});
 
     const amount = parseInt(args[1]) || parseInt(args[2]);
-    if (!amount || amount <= 0) return message.reply(t.invalidAmount).catch(() => {});
+    if (!amount || amount <= 0) return message.reply(t('invalidAmount')).catch(() => {});
 
     const taxRate = serverSettings?.transferTax || 0;
     const totalCost = Math.ceil(amount * (1 + taxRate));
 
     if ((senderData.credits || 0) < totalCost) {
-        return message.reply(`${t.insufficient} **${(senderData.credits || 0).toLocaleString()} ${economySettings.currencyEmoji}**.`).catch(() => {});
+        return message.reply(`${t('insufficient')} **${(senderData.credits || 0).toLocaleString()} ${economySettings.currencyEmoji}**.`).catch(() => {});
     }
 
     // PER-SERVER: Composite key lookup for receiver
@@ -460,13 +274,13 @@ async function handlePay(message, args, client, db, serverSettings, lang, t, pre
         // Transfer embed
         const embed = new EmbedBuilder()
             .setColor('#2ecc71')
-            .setAuthor({ name: `💸 ${t.transferSuccess}`, iconURL: message.author.displayAvatarURL() })
-            .setDescription(t.transferComplete(senderName, target.username, amount, economySettings.currencyEmoji))
+            .setAuthor({ name: `💸 ${t('transferSuccess')}`, iconURL: message.author.displayAvatarURL() })
+            .setDescription(t('transferComplete', { from: senderName, to: target.username, amount: fmt(amount, economySettings.currencyEmoji) }))
             .addFields(
-                { name: t.senderNewBal, value: fmt(senderNewBal, economySettings.currencyEmoji), inline: true },
-                { name: t.receiverNewBal, value: fmt(receiverNewBal, economySettings.currencyEmoji), inline: true }
+                { name: t('senderNewBal'), value: fmt(senderNewBal, economySettings.currencyEmoji), inline: true },
+                { name: t('receiverNewBal'), value: fmt(receiverNewBal, economySettings.currencyEmoji), inline: true }
             )
-            .setFooter({ text: `${guildName} • ${t.embedFooter} • v${version}`, iconURL: guildIcon })
+            .setFooter({ text: `${guildName} • ${t('embedFooter')} • v${version}`, iconURL: guildIcon })
             .setTimestamp();
 
         await message.reply({ embeds: [embed] }).catch(() => {});
@@ -475,17 +289,17 @@ async function handlePay(message, args, client, db, serverSettings, lang, t, pre
         try {
             const dmEmbed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setAuthor({ name: t.transferReceived, iconURL: message.author.displayAvatarURL() })
-                .setDescription(t.transferReceivedFrom(senderName, amount, economySettings.currencyEmoji))
-                .addFields({ name: t.newBalance, value: fmt(receiverNewBal, economySettings.currencyEmoji), inline: true })
-                .setFooter({ text: `${guildName} • ${t.embedFooter}`, iconURL: guildIcon })
+                .setAuthor({ name: t('transferReceived'), iconURL: message.author.displayAvatarURL() })
+                .setDescription(t('transferReceivedFrom', { from: senderName, amount: fmt(amount, economySettings.currencyEmoji) }))
+                .addFields({ name: t('newBalance'), value: fmt(receiverNewBal, economySettings.currencyEmoji), inline: true })
+                .setFooter({ text: `${guildName} • ${t('embedFooter')}`, iconURL: guildIcon })
                 .setTimestamp();
             await target.send({ embeds: [dmEmbed] }).catch(() => {});
         } catch (e) {}
 
     } catch (err) {
         console.error('[PAY ERROR]', err);
-        return message.reply(t.transactionFailed).catch(() => {});
+        return message.reply(t('transactionFailed')).catch(() => {});
     }
 }
 
@@ -495,7 +309,7 @@ async function handleLeaderboard(message, client, db, lang, t, guildId, economyS
     const entries = db.prepare("SELECT username, credits, xp, level FROM users WHERE guild_id = ? AND credits > 0 ORDER BY credits DESC LIMIT 15").all(guildId);
 
     if (entries.length === 0) {
-        return message.reply({ embeds: [new EmbedBuilder().setColor('#ED4245').setDescription(t.noData).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })] }).catch(() => {});
+        return message.reply({ embeds: [new EmbedBuilder().setColor('#ED4245').setDescription(t('noData')).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })] }).catch(() => {});
     }
 
     const medals = ['🥇', '🥈', '🥉'];
@@ -507,9 +321,9 @@ async function handleLeaderboard(message, client, db, lang, t, guildId, economyS
 
     const embed = new EmbedBuilder()
         .setColor('#FEE75C')
-        .setAuthor({ name: t.leaderboardTitle, iconURL: guildIcon })
+        .setAuthor({ name: t('leaderboardTitle'), iconURL: guildIcon })
         .setDescription(`\`\`\`yaml\n${list}\`\`\``)
-        .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
+        .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon })
         .setTimestamp();
 
     await message.reply({ embeds: [embed] }).catch(() => {});
