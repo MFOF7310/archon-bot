@@ -1,0 +1,22 @@
+{
+  "title": "Classement",
+  "sortedBy": "Trié par {type}",
+  "types": {
+    "xp": "Top XP",
+    "credits": "Top Crédits",
+    "messages": "Top Messages",
+    "streak": "Série Quotidienne",
+    "wins": "Top Gagnants"
+  },
+  "ranks": {
+    "recruit": "Recrue",
+    "agent": "Agent",
+    "specialist": "Spécialiste",
+    "commander": "Commandant",
+    "architect": "Architecte"
+  },
+  "stats": "{rank} • Niveau **{level}** • XP **{xp}** • {coins} **{credits}**",
+  "footer": "👤 **Ton Rang:** {rank} • 📊 **Total Agents:** {count} • **Niveau Moyen:** {avg}",
+  "empty": "Personne n'est encore sur le tableau. Commence à discuter ou à jouer pour prendre la 1ère place !",
+  "error": "Je n'ai pas pu générer le classement. Réessaie dans un instant."
+}

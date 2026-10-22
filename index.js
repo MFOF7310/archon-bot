@@ -4354,7 +4354,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         } catch (error) {
             console.error(`${red}[SLASH ERROR]${reset} ${interaction.commandName}:`, error);
             { try { const _bp = require('./lib/botPerms'); const _x = _bp.explainError(error, interaction, interaction.commandName); if (_x) return _bp.say(interaction, _x); } catch (_e2) { console.error('[botPerms]', _e2.message); } }
-            const errorMsg = { content: '\u274c There was an error executing this command!', flags: 1 << 6 };
+            const _lang = require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id);
+            const _msg = require('./lib/i18n').t('common.globalError', _lang);
+            const errorMsg = { 
+                content: _msg, 
+                flags: 1 << 6 
+            };
 
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp(errorMsg).catch(() => {});

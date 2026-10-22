@@ -1,0 +1,22 @@
+{
+  "title": "Leaderboard",
+  "sortedBy": "Sorted by {type}",
+  "types": {
+    "xp": "Top XP",
+    "credits": "Top Credits",
+    "messages": "Top Messages",
+    "streak": "Daily Streak",
+    "wins": "Top Winners"
+  },
+  "ranks": {
+    "recruit": "Recruit",
+    "agent": "Agent",
+    "specialist": "Specialist",
+    "commander": "Commander",
+    "architect": "Architect"
+  },
+  "stats": "{rank} • Level **{level}** • XP **{xp}** • {coins} **{credits}**",
+  "footer": "👤 **Your Rank:** {rank} • 📊 **Total Agents:** {count} • **Avg Level:** {avg}",
+  "empty": "Nobody is on the board yet. Start chatting or playing games to claim the #1 spot!",
+  "error": "I couldn't generate the leaderboard right now. Try again in a moment."
+}

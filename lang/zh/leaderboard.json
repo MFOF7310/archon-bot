@@ -1,0 +1,22 @@
+{
+  "title": "排行榜",
+  "sortedBy": "按 {type} 排序",
+  "types": {
+    "xp": "经验值",
+    "credits": "积分",
+    "messages": "消息数",
+    "streak": "每日连击",
+    "wins": "胜场"
+  },
+  "ranks": {
+    "recruit": "新兵",
+    "agent": "特工",
+    "specialist": "专家",
+    "commander": "指挥官",
+    "architect": "建筑师"
+  },
+  "stats": "{rank} • 等级 **{level}** • XP **{xp}** • {coins} **{credits}**",
+  "footer": "👤 **你的排名:** {rank} • 📊 **总特工数:** {count} • **平均等级:** {avg}",
+  "empty": "目前还没有人上榜。开始聊天或玩游戏来争夺第一名吧！",
+  "error": "目前无法生成排行榜，请稍后再试。"
+}

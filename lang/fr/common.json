@@ -26,5 +26,6 @@
     "moderation": "Modération",
     "ai": "IA / Lydia",
     "codm": "CODM"
-  }
+  },
+  "globalError": "⚠️ **Oups ! Ma connexion neuronale a vacillé.**\n> Je n'ai pas pu exécuter cette commande. Réessaie dans un instant."
 }

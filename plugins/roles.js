@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const EMOJIS = require('../config/emojis');
 
 const ROLE_DEFS = {
@@ -143,7 +144,7 @@ module.exports = {
             const type = interaction.options.getString('type');
             const role = interaction.options.getRole('role');
             const def = ROLE_DEFS[type];
-            if (!def) return interaction.reply({ content: '❌ Unknown role type.', flags: 64 });
+            if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown role type.`, flags: 64 });
             if (type === 'autorole') {
                 const err = require('../lib/verify-guard').validateVerifyRole(guild, guild.roles.cache.get(role.id), interaction.member);
                 if (err) return interaction.reply({ content: `⛔ Can't use ${role} as auto-role: ${require('../lib/verify-guard').GUARD_MSG[err]}`, flags: 64 });
@@ -166,7 +167,7 @@ module.exports = {
         if (sub === 'remove') {
             const type = interaction.options.getString('type');
             const def = ROLE_DEFS[type];
-            if (!def) return interaction.reply({ content: '❌ Unknown role type.', flags: 64 });
+            if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown role type.`, flags: 64 });
 
             client.updateServerSetting?.(guildId, def.col, null);
             client.settings?.delete(guildId);
@@ -181,7 +182,7 @@ module.exports = {
 
     run: async (client, message, args, db, ss) => {
         if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply('❌ Administrator permission required.').catch(() => {});
+            return message.reply(`${resolveEmoji('error', message)} Administrator permission required.`).catch(() => {});
         }
         const sub = args[0]?.toLowerCase();
         const guildId = message.guild.id;
@@ -212,17 +213,17 @@ module.exports = {
             const type = args[1]?.toLowerCase();
             const roleId = args[2]?.replace(/[<@&>]/g, '');
             const def = ROLE_DEFS[type];
-            if (!def) return message.reply(`❌ Unknown type. Use: ${Object.keys(ROLE_DEFS).join(', ')}`).catch(() => {});
-            if (!roleId) return message.reply(`❌ Usage: \`.roles set ${type} @role\``).catch(() => {});
+            if (!def) return message.reply(`${resolveEmoji('error', message)} Unknown type. Use: ${Object.keys(ROLE_DEFS).join(', ')}`).catch(() => {});
+            if (!roleId) return message.reply(`${resolveEmoji('error', message)} Usage: \`.roles set ${type} @role\``).catch(() => {});
             const role = message.guild.roles.cache.get(roleId);
-            if (!role) return message.reply('❌ Role not found.').catch(() => {});
+            if (!role) return message.reply(`${resolveEmoji('error', message)} Role not found.`).catch(() => {});
             if (type === 'autorole') {
                 const err = require('../lib/verify-guard').validateVerifyRole(message.guild, role, message.member);
                 if (err) return message.reply(`⛔ Can't use that role as auto-role: ${require('../lib/verify-guard').GUARD_MSG[err]}`).catch(() => {});
             }
             client.updateServerSetting?.(guildId, def.col, roleId);
             client.settings?.delete(guildId);
-            return message.reply(`✅ **${def.label}** set to <@&${roleId}>`).catch(() => {});
+            return message.reply(`${resolveEmoji('check', message)} **${def.label}** set to <@&${roleId}>`).catch(() => {});
         }
     }
 };

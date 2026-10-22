@@ -123,7 +123,7 @@ module.exports = {
             const type = interaction.options.getString('type');
             const channel = interaction.options.getChannel('channel');
             const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: '❌ Unknown channel type.', flags: 64 });
+            if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown channel type.`, flags: 64 });
 
             const ok = client.updateServerSetting?.(guildId, def.dbcol, channel.id);
             client.settings?.delete(guildId);
@@ -134,7 +134,7 @@ module.exports = {
             const _me = interaction.guild.members.me;
             const _bot = _me.roles.botRole?.name || _me.displayName;
             const _statusLine = _d.ok
-                ? `✅ I can post in this channel.`
+                ? `${resolveEmoji('check', interaction)} I can post in this channel.`
                 : `⚠️ ${_d.reason === 'private' ? `This channel is private — I'm not on its list.` : `**${_d.role || 'A role'}** is blocking **${_d.missing.join(', ')}** here.`}\n\nTo fix it: Edit Channel → Permissions → add **${_bot}** and allow **${_d.missing.join(', ')}**.`;
 
             const embed = new EmbedBuilder()
@@ -153,7 +153,7 @@ module.exports = {
         if (sub === 'remove') {
             const type = interaction.options.getString('type');
             const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: '❌ Unknown channel type.', flags: 64 });
+            if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown channel type.`, flags: 64 });
 
             client.updateServerSetting?.(guildId, def.dbcol, null);
             client.settings?.delete(guildId);
@@ -168,7 +168,7 @@ module.exports = {
 
     run: async (client, message, args, db, ss) => {
         if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply(`❌ Administrator permission required.`).catch(() => {});
+            return message.reply(`${resolveEmoji('error', message)} Administrator permission required.`).catch(() => {});
         }
         const sub = args[0]?.toLowerCase();
         const guildId = message.guild.id;
@@ -205,7 +205,7 @@ module.exports = {
             if (!def) return message.reply(`${resolveEmoji('error', message.guild)} Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
             if (!channelId) return message.reply(`${resolveEmoji('error', message.guild)} Usage: \`.channels set ${type} #channel\``).catch(() => {});
             const ch = message.guild.channels.cache.get(channelId);
-            if (!ch) return message.reply(`❌ Channel not found.`).catch(() => {});
+            if (!ch) return message.reply(`${resolveEmoji('error', message)} Channel not found.`).catch(() => {});
             client.updateServerSetting?.(guildId, def.dbcol, channelId);
             client.settings?.delete(guildId);
             const _cp2 = require('../lib/canPost');

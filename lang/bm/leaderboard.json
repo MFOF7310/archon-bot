@@ -1,0 +1,22 @@
+{
+  "title": "Kɛlɛ Ta",
+  "sortedBy": "Ka ɲɛsin {type} ma",
+  "types": {
+    "xp": "XP Kunnafoni",
+    "credits": "Keredi",
+    "messages": "Bato",
+    "streak": "Don kunnafoni",
+    "wins": "Tigalikɛlaw"
+  },
+  "ranks": {
+    "recruit": "Kalanden",
+    "agent": "Baarakɛla",
+    "specialist": "Dɔgɔtɔrɔ",
+    "commander": "Kuntigiba",
+    "architect": "Bannajira"
+  },
+  "stats": "{rank} • Niveau **{level}** • XP **{xp}** • {coins} **{credits}**",
+  "footer": "👤 **I tɔgɔ:** {rank} • 📊 **Baarakɛlaw:** {count} • **Niveau cɛmancɛ:** {avg}",
+  "empty": "Mɔgɔ si tɛ yen fɔlɔ. I ka baro daminɛ walima tulon kɛ fɔ i ka na se 1st la!",
+  "error": "N ma se ka kɛlɛ ta in dilan sisan. I ka a lajɛ kokura."
+}

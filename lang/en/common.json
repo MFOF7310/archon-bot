@@ -26,5 +26,6 @@
     "moderation": "Moderation",
     "ai": "AI / Lydia",
     "codm": "CODM"
-  }
+  },
+  "globalError": "⚠️ **Oops! My neural link glitched.**\n> I couldn't process that command right now. Please try again in a moment."
 }
