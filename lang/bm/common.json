@@ -27,5 +27,15 @@
     "ai": "IA / Lydia",
     "codm": "CODM"
   },
-  "globalError": "⚠️ **Hakɛto! N ka nɛrali bɔlɔlɔ juru ɲagami na.**\n> N ma se ka nin kɔmandi in la baara sisan. Lajɛli kura kɛ a la waayi wɛrɛ kɔnɔ."
+  "globalError": "⚠️ **Hakɛto! N ka nɛrali bɔlɔlɔ juru ɲagami na.**\n> N ma se ka nin kɔmandi in la baara sisan. Lajɛli kura kɛ a la waayi wɛrɛ kɔnɔ.",
+  "accessDenied": "🚫 **Sɔgɔsɔgɔnin:** Neural sɛbɛn man nɔgɔ.",
+  "pushKeyExpired": "🔐 **Push-Key laban.** Aw ka `/authorize` baara kɛ Telegram kan walisa aw ka token kura sɔrɔ.",
+  "tokenProtection": "⏳ **Token Lakali:** Aw ka makɔnɔ {waitTime}s",
+  "commandDisabled": "🔒 Nin kɔmandi in datugulen don nin sɛrvɛr in kan.",
+  "lydiaFailed": "❌ Lydia kɔmandi in ma baara kɛ.",
+  "genericError": "⚠️ **Hakɛto! N ka nɛrali bɔlɔlɔ juru ɲagami na.**\n> Fɛn dɔ ɲagamina, aw ka a lajɛ kokura waayi wɛrɛ kɔnɔ.",
+  "commandNotFound": "❌ Kɔmandi in ma sɔrɔ.",
+  "commandExecuted": "✅ Kɔmandi in baara kɛra.",
+  "noHandler": "❌ Nin kɔmandi in tɛ baarakɛla ye.",
+  "appealNotYours": "🔒 Nin appeal buton in tɛ aw ta ye."
 }

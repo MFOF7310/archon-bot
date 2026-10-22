@@ -27,5 +27,15 @@
     "ai": "AI / Lydia",
     "codm": "CODM"
   },
-  "globalError": "⚠️ **Oops! My neural link glitched.**\n> I couldn't process that command right now. Please try again in a moment."
+  "globalError": "⚠️ **Oops! My neural link glitched.**\n> I couldn't process that command right now. Please try again in a moment.",
+  "accessDenied": "🚫 **Access Denied:** Unauthorized Neural Signature.",
+  "pushKeyExpired": "🔐 **Push-Key Expired.** Use `/authorize` on Telegram for a new token.",
+  "tokenProtection": "⏳ **Token Protection:** Wait {waitTime}s",
+  "commandDisabled": "🔒 This command is disabled on this server.",
+  "lydiaFailed": "❌ Lydia command execution failed.",
+  "genericError": "⚠️ **Oops! My neural link glitched.**\n> Something went wrong — try again in a moment.",
+  "commandNotFound": "❌ Command not found.",
+  "commandExecuted": "✅ Command executed.",
+  "noHandler": "❌ This command has no execution handler.",
+  "appealNotYours": "🔒 This appeal button is not for you."
 }

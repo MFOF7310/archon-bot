@@ -27,5 +27,15 @@
     "ai": "AI / Lydia",
     "codm": "CODM"
   },
-  "globalError": "⚠️ **哎呀！我的神经网络出了点小故障。**\n> 我刚才没能处理那条指令，请稍后再试一次。"
+  "globalError": "⚠️ **哎呀！我的神经网络出了点小故障。**\n> 我刚才没能处理那条指令，请稍后再试一次。",
+  "accessDenied": "🚫 **拒绝访问：** 未经授权的神经签名。",
+  "pushKeyExpired": "🔐 **推送密钥已过期。** 在 Telegram 上使用 `/authorize` 获取新令牌。",
+  "tokenProtection": "⏳ **令牌保护：** 等待 {waitTime}秒",
+  "commandDisabled": "🔒 此服务器已禁用此命令。",
+  "lydiaFailed": "❌ Lydia 命令执行失败。",
+  "genericError": "⚠️ **哎呀！我的神经网络出了点小故障。**\n> 出了点问题，请稍后再试一次。",
+  "commandNotFound": "❌ 找不到该命令。",
+  "commandExecuted": "✅ 命令已执行。",
+  "noHandler": "❌ 此命令没有执行处理程序。",
+  "appealNotYours": "🔒 此申诉按钮不属于你。"
 }
