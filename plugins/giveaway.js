@@ -1,5 +1,6 @@
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const i18n = require('../lib/i18n');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField, SectionBuilder } = require('discord.js');
 
 // ═══════════════════════════════════════════════════════
 // ARCHON CLASSIFIED GIVEAWAY PROTOCOL v2.0
@@ -273,6 +274,8 @@ module.exports = {
         if (!interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
             return interaction.reply({ content: '❌ You need Manage Server permission.', flags: 64 });
         }
+        
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
 
         const sub = interaction.options.getSubcommand();
         if (sub !== 'start') return;
@@ -290,34 +293,56 @@ module.exports = {
             channelId: interaction.channel.id
         };
 
-        const { ContainerBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
+        const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
 
-        const buildDashboard = () => {
+                const buildDashboard = () => {
             const c = new ContainerBuilder().setAccentColor(0xf1c40f);
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('dashTitle')}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*${t('dashDesc')}*`));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-            
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**🎁 ${t('dashPrize')}:** ${session.prize || t('dashNotSet')}`));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**⏱️ ${t('dashDuration')}:** ${session.durationStr || t('dashNotSet')}`));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**👑 ${t('dashWinners')}:** ${session.winners}`));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📺 ${t('dashChannel')}:** <#${session.channelId}>`));
+
+            // Prize Section
+            c.addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**${resolveEmoji('trophy', interaction)} ${t('dashPrize')}:**\n${session.prize || t('dashNotSet')}`
+                    ))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_prize').setLabel(t('dashBtnPrize')).setStyle(ButtonStyle.Primary))
+            );
+
+            // Duration Section
+            c.addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**${resolveEmoji('clock', interaction)} ${t('dashDuration')}:**\n${session.durationStr || t('dashNotSet')}`
+                    ))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel(t('dashBtnDuration')).setStyle(ButtonStyle.Primary))
+            );
+
+            // Winners Section
+            c.addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**${resolveEmoji('crown', interaction)} ${t('dashWinners')}:**\n${session.winners}`
+                    ))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel(t('dashBtnWinners')).setStyle(ButtonStyle.Primary))
+            );
+
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                `**${resolveEmoji('general', interaction)} ${t('dashChannel')}:** <#${session.channelId}>`
+            ));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-            const row1 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('gw_set_prize').setLabel(t('dashBtnPrize')).setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('gw_set_dur').setLabel(t('dashBtnDuration')).setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('gw_set_win').setLabel(t('dashBtnWinners')).setStyle(ButtonStyle.Primary)
-            );
             const row2 = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('gw_launch').setLabel(t('dashBtnLaunch')).setStyle(ButtonStyle.Success),
                 new ButtonBuilder().setCustomId('gw_cancel').setLabel(t('dashBtnCancel')).setStyle(ButtonStyle.Danger)
             );
-            c.addActionRowComponents(row1, row2);
+            c.addActionRowComponents(row2);
             return { components: [c], flags: MessageFlags.IsComponentsV2 };
-        };
+        };;
 
-        await interaction.reply({ ...buildDashboard(), flags: MessageFlags.IsComponentsV2 | 64 });
+        await interaction.editReply(buildDashboard());
         const msg = await interaction.fetchReply();
 
         const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
