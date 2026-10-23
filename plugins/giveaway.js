@@ -296,28 +296,105 @@ module.exports = {
         const buildDashboard = () => {
             const c = new ContainerBuilder().setAccentColor(0xf1c40f);
             
-            const sum = t('dashSummary', {
-                prize: resolveEmoji('trophy', interaction) || '🎁', prizeVal: session.prize || '❌',
-                duration: resolveEmoji('clock', interaction) || '⏱️', durVal: session.durationStr || '❌',
-                winners: resolveEmoji('crown', interaction) || '👑', winVal: session.winners,
-                channel: resolveEmoji('general', interaction) || '📺', chanVal: `<#${session.channelId}>`
-            });
+            // Custom Emoji Resolvers
+            const emPrize = resolveEmoji('trophy', interaction) || '🎁';
+            const emDur = resolveEmoji('clock', interaction) || '⏱️';
+            const emWin = resolveEmoji('crown', interaction) || '🏅';
+            const emChan = resolveEmoji('general', interaction) || '👤';
+            const emSetup = resolveEmoji('settings', interaction) || '⚙️';
+            const emMax = resolveEmoji('charts', interaction) || '#️⃣';
+            const emReroll = resolveEmoji('gameRoulette', interaction) || '🔄';
+            const emLaunch = resolveEmoji('check', interaction) || '🚀';
+
+            // 1. Clean Summary Line
+            const sum = `> **${session.prize ? emPrize + ' Prize: ' + session.prize : '❌ Prize: Not set'}** | ` +
+                        `**${session.durationStr ? emDur + ' Duration: ' + session.durationStr : '❌ Duration: Not set'}** | ` +
+                        `**${emWin} Winners: ${session.winners}** | ` +
+                        `**${emChan} <#${session.channelId}>**`;
             
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(sum));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-
-            c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${resolveEmoji('trophy', interaction) || '🎁'} ${t('dashPrize')}**\n-# ${session.prize || t('dashNotSetDesc')}`)).setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_prize').setLabel(t('dashBtnPrize')).setStyle(ButtonStyle.Primary)));
-            c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${resolveEmoji('clock', interaction) || '⏱️'} ${t('dashDuration')}**\n-# ${session.durationStr || t('dashNotSetDesc')}`)).setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel(t('dashBtnDuration')).setStyle(ButtonStyle.Primary)));
-            c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${resolveEmoji('crown', interaction) || '👑'} ${t('dashWinners')}: ${session.winners}**\n-# ${t('dashWinnersDesc')}`)).setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel(t('dashBtnWinners')).setStyle(ButtonStyle.Secondary)));
             
-            c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${resolveEmoji('general', interaction) || '📺'} ${t('dashChannel')}**\n-# <#${session.channelId}>`)).setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_channel').setLabel('Set Channel').setStyle(ButtonStyle.Secondary)));
+            // 2. The Setup Bar
+            const setupRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('gw_setup_bar')
+                    .setLabel('Setup')
+                    .setEmoji(emSetup)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true)
+            );
+            c.addActionRowComponents(setupRow);
 
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-            const row2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('gw_launch').setLabel(t('dashBtnLaunch')).setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId('gw_cancel').setLabel(t('dashBtnCancel')).setStyle(ButtonStyle.Danger)
+            // 3. Settings List
+            c.addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**${emPrize} Prize**\n${session.prize ? session.prize : 'Not set, required to launch.'}`
+                    ))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_prize').setLabel(session.prize ? 'Edit' : 'Set Prize').setStyle(session.prize ? ButtonStyle.Secondary : ButtonStyle.Primary))
             );
+            
+            c.addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**${emDur} Duration**\n${session.durationStr ? session.durationStr : 'Not set, required to launch.'}`
+                    ))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel(session.durationStr ? 'Edit' : 'Set Duration').setStyle(session.durationStr ? ButtonStyle.Secondary : ButtonStyle.Primary))
+            );
+            
+            c.addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**${emWin} Winners: ${session.winners}**\nHow many people win.`
+                    ))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+            );
+
+            c.addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**${emMax} Max entries per user: 1**\nLimit how many times each user can enter.`
+                    ))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_max').setLabel('Edit').setStyle(ButtonStyle.Secondary).setDisabled(true))
+            );
+
+            c.addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                        `**${emReroll} Re-roll attempts: 3**\nAuto re-roll if no valid winner is found.`
+                    ))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_reroll').setLabel('Edit').setStyle(ButtonStyle.Secondary).setDisabled(true))
+            );
+
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            
+            // 4. Host Channel
+            c.addActionRowComponents(
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('gw_set_channel')
+                        .setLabel('Host channel (default: current channel)')
+                        .setStyle(ButtonStyle.Secondary)
+                )
+            );
+
+            // 5. Launch & Cancel Row
+            const isReady = session.prize && session.durationMs;
+            const row2 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('gw_launch')
+                    .setLabel('Launch Giveaway')
+                    .setEmoji(emLaunch)
+                    .setStyle(isReady ? ButtonStyle.Success : ButtonStyle.Secondary)
+                    .setDisabled(!isReady),
+                new ButtonBuilder()
+                    .setCustomId('gw_cancel')
+                    .setLabel('Cancel')
+                    .setStyle(ButtonStyle.Danger)
+            );
+            
             c.addActionRowComponents(row2);
             return { components: [c], flags: MessageFlags.IsComponentsV2 };
         };
