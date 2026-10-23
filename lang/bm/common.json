@@ -37,5 +37,11 @@
   "commandNotFound": "❌ Kɔmandi in ma sɔrɔ.",
   "commandExecuted": "✅ Kɔmandi in baara kɛra.",
   "noHandler": "❌ Nin kɔmandi in tɛ baarakɛla ye.",
-  "appealNotYours": "🔒 Nin appeal buton in tɛ aw ta ye."
+  "appealNotYours": "🔒 Nin appeal buton in tɛ aw ta ye.",
+  "gwTitle": "I ni ce ka Archon farali kan i ka sɛrivɛri kɔnɔ!",
+  "gwIntro": "I ni ce **{user}**, i ni ce ka **Archon** lase **{guild}** ma!",
+  "gwFeatTitle": "Archon bɛ se ka mun kɛ?",
+  "gwFeat": "• **Giveaways:** Dashboard & auto-winners\n• **Moderation:** Smart AutoMod & Appeals\n• **Tickets:** Transcripts & panels\n• **CODM & Economy:** Scrims, builds, levels & credits",
+  "gwStartTitle": "N'i bɛ fɛ k'a daminɛ",
+  "gwStartText": "I bɛ `/help` taa ka kɔmandiw bɛɛ lajɛ, walima i bɛ `/serversettings` taa walasa ka i ka sɛrvɛri labɛn sabati."
 }

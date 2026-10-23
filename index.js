@@ -5113,47 +5113,47 @@ safeOn(Events.GuildCreate, async (guild) => {
         // Skip owner's test guild — they already know the bot
         if (guild.id === process.env.GUILD_ID) return;
 
-        // WELCOME_V2 — CODM-first, FR/EN, DM then channel fallback
-        const fr = guild.preferredLocale === 'fr';
-        const WFR = {
-            title: `ARCHON est arrivé sur ${guild.name}`,
-            intro: 'Conçu pour les clans CODM :',
-            scrim: 'planifie un scrim, inscriptions par bouton, rappel 15 min avant',
-            meta: 'la méta armes de la saison',
-            build: 'chaque membre enregistre ses loadouts',
-            war: 'historique des guerres, winrate, rivaux',
-            step: "**Première étape :** `/serversettings` → règle le fuseau horaire (les scrims l'utilisent)",
-            other: 'Pas un serveur CODM ? ARCHON gère aussi niveaux, économie, tickets et modération — `/help`.',
-            mods: 'Trop de fonctions ? Désactive ce qui ne sert pas dans le [Dashboard](https://bamako-steel-dev.xyz) → Modules.'
-        };
-        const WEN = {
-            title: `ARCHON has joined ${guild.name}`,
-            intro: 'Built for CODM clans:',
-            scrim: 'schedule a scrim, button sign-ups, reminder 15 min before',
-            meta: "this season's weapon meta",
-            build: 'every member saves their loadouts',
-            war: 'war history, win rate, rivals',
-            step: '**First step:** `/serversettings` → set the timezone (scrims use it)',
-            other: 'Not a CODM server? ARCHON also runs leveling, economy, tickets and moderation — `/help`.',
-            mods: "Too many features? Turn off what you don't need in the [Dashboard](https://bamako-steel-dev.xyz) → Modules."
-        };
-        const block = W =>
-            `${W.intro}\n` +
-            `🎯 \`/scrim create\` — ${W.scrim}\n` +
-            `🔫 \`/meta\` — ${W.meta}\n` +
-            `🛠️ \`/build save\` — ${W.build}\n` +
-            `⚔️ \`/war record\` — ${W.war}\n\n` +
-            `${W.step}\n${W.mods}\n${W.other}`;
-        const body = fr ? block(WFR) : `🇫🇷 ${block(WFR)}\n\n🇬🇧 ${block(WEN)}`;
-        const welcome = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setTitle(fr ? WFR.title : `ARCHON · ${guild.name}`)
-            .setDescription(`${body}\n\n[Support](https://discord.gg/NFSMFJajp9)`);
+        // WELCOME_V2 — Dynamic via i18n
+        const pickLang = require('./lib/pick-lang').pickLang;
+        const i18n = require('./lib/i18n');
+        const lang = pickLang(client, guild.id, guild); // Guild object is used for preferredLocale fallback
+        const tW = (k, v) => i18n.t(k, lang, v);
+
+        const title = `## 🦅 ${tW('gwTitle')}`;
+        const featuresTitle = `## ⚡ ${tW('gwFeatTitle')}`;
+        const features = tW('gwFeat');
+        const startTitle = `## 🚀 ${tW('gwStartTitle')}`;
+        const startText = tW('gwStartText');
+
+        const owner = await guild.fetchOwner().catch(() => null);
+        const ownerName = owner ? owner.user.username : 'Admin';
+
+        const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+
+        const container = new ContainerBuilder()
+            .setAccentColor(0x2ecc71)
+            .addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`${title}\n${tW('gwIntro', { user: ownerName, guild: guild.name })}`)
+                    )
+                    .setThumbnailAccessory(new ThumbnailBuilder().setURL(client.user.displayAvatarURL({ extension: 'png', size: 256 })))
+            )
+            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${featuresTitle}\n${features}`))
+            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${startTitle}\n${startText}`))
+            .addActionRowComponents(
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setLabel(fr ? 'Serveur Support' : 'Support Server').setStyle(ButtonStyle.Link).setURL('https://discord.gg/NFSMFJajp9'),
+                    new ButtonBuilder().setLabel('Dashboard').setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/dashboard')
+                )
+            );
+        const welcome = { components: [container], flags: MessageFlags.IsComponentsV2 };
 
         let via = null;
-        const owner = await guild.fetchOwner().catch(() => null);
         if (owner && !owner.user.bot) {
-            const ok = await owner.send({ embeds: [welcome] }).then(() => true).catch(() => false);
+            const ok = await owner.send(welcome).then(() => true).catch(() => false);
             if (ok) via = `DM ${owner.user.tag}`;
         }
         if (!via) {
@@ -5163,7 +5163,7 @@ safeOn(Events.GuildCreate, async (guild) => {
             const ch = [guild.systemChannel, ...text].find(c =>
                 c && c.permissionsFor(me)?.has(['ViewChannel', 'SendMessages', 'EmbedLinks']));
             if (ch) {
-                const ok = await ch.send({ embeds: [welcome] }).then(() => true).catch(() => false);
+                const ok = await ch.send(welcome).then(() => true).catch(() => false);
                 if (ok) via = `#${ch.name}`;
             }
         }

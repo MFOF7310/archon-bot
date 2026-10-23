@@ -37,5 +37,11 @@
   "commandNotFound": "❌ 找不到该命令。",
   "commandExecuted": "✅ 命令已执行。",
   "noHandler": "❌ 此命令没有执行处理程序。",
-  "appealNotYours": "🔒 此申诉按钮不属于你。"
+  "appealNotYours": "🔒 此申诉按钮不属于你。",
+  "gwTitle": "感谢添加 Archon！",
+  "gwIntro": "你好 **{user}**，感谢你将 **Archon** 邀请到 **{guild}**！",
+  "gwFeatTitle": "Archon 能做什么？",
+  "gwFeat": "• **抽奖：** 实时控制台与自动开奖\n• **管理：** 智能 AutoMod 与申诉\n• **工单：** 记录与面板\n• **CODM 与经济：** 训练赛、配装、等级与积分",
+  "gwStartTitle": "开始使用",
+  "gwStartText": "使用 `/help` 查看所有命令，或使用 `/serversettings` 配置你的服务器。"
 }

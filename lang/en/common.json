@@ -37,5 +37,11 @@
   "commandNotFound": "❌ Command not found.",
   "commandExecuted": "✅ Command executed.",
   "noHandler": "❌ This command has no execution handler.",
-  "appealNotYours": "🔒 This appeal button is not for you."
+  "appealNotYours": "🔒 This appeal button is not for you.",
+  "gwTitle": "Thanks for adding Archon!",
+  "gwIntro": "Hey **{user}**, thanks for bringing **Archon** into **{guild}**!",
+  "gwFeatTitle": "What can Archon do?",
+  "gwFeat": "• **Giveaways:** Live dashboard & auto-winners\n• **Moderation:** Smart AutoMod & Appeals\n• **Tickets:** Transcripts & panels\n• **CODM & Economy:** Scrims, builds, levels & credits",
+  "gwStartTitle": "Getting Started",
+  "gwStartText": "Use `/help` to see all commands, or `/serversettings` to configure your server."
 }

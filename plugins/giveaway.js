@@ -245,14 +245,10 @@ module.exports = {
 
     data: new SlashCommandBuilder()
         .setName('giveaway')
-        .setDescription('🎁 Start a classified giveaway')
-        .addStringOption(o => o.setName('duration').setDescription('Duration (e.g. 10m, 2h, 1d)').setRequired(true))
-        .addIntegerOption(o => o.setName('amount').setDescription('Total credit prize pool').setRequired(true).setMinValue(100))
-        .addIntegerOption(o => o.setName('winners').setDescription('Number of winners (1-20)').setRequired(true).setMinValue(1).setMaxValue(20))
-        .addStringOption(o => o.setName('prize').setDescription('Prize description').setRequired(true))
-        .addIntegerOption(o => o.setName('min_level').setDescription('Minimum level to enter').setRequired(false).setMinValue(0))
-        .addIntegerOption(o => o.setName('min_credits').setDescription('Minimum credits to enter').setRequired(false).setMinValue(0))
-        .addBooleanOption(o => o.setName('booster_bonus').setDescription('Give boosters 2x entries').setRequired(false)),
+        .setDescription('🎁 Manage giveaways')
+        .addSubcommand(sub => sub
+            .setName('start')
+            .setDescription('Open the live dashboard to create a giveaway')),
 
     run: async (client, message, args, db) => {
     const guildId = message.guild?.id ?? 'DM';
@@ -278,19 +274,122 @@ module.exports = {
             return interaction.reply({ content: '❌ You need Manage Server permission.', flags: 64 });
         }
 
-        const duration = parseDuration(interaction.options.getString('duration'));
-        if (!duration) return interaction.reply({ content: '❌ Invalid duration. Use: `10s`, `5m`, `2h`, `1d`', flags: 64 });
+        const sub = interaction.options.getSubcommand();
+        if (sub !== 'start') return;
 
-        const amount = interaction.options.getInteger('amount');
-        const winners = interaction.options.getInteger('winners');
-        const prize = interaction.options.getString('prize');
-        const minLevel = interaction.options.getInteger('min_level') || 0;
-        const minCredits = interaction.options.getInteger('min_credits') || 0;
-        const boosterBonus = interaction.options.getBoolean('booster_bonus') || false;
+        const guild = interaction.guild;
+        const lang = getLang(client, guild.id);
+        const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
 
-        await interaction.deferReply({ flags: 64 });
-        await startGiveaway({ interaction, client, db, duration, amount, winners, prize, minLevel, minCredits, boosterBonus });
-        await interaction.editReply({ content: '✅ Giveaway launched!' }).catch(() => {});
+        // Draft Session
+        const session = {
+            prize: null,
+            durationStr: null,
+            durationMs: null,
+            winners: 1,
+            channelId: interaction.channel.id
+        };
+
+        const { ContainerBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
+
+        const buildDashboard = () => {
+            const c = new ContainerBuilder().setAccentColor(0xf1c40f);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('dashTitle')}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*${t('dashDesc')}*`));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**🎁 ${t('dashPrize')}:** ${session.prize || t('dashNotSet')}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**⏱️ ${t('dashDuration')}:** ${session.durationStr || t('dashNotSet')}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**👑 ${t('dashWinners')}:** ${session.winners}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📺 ${t('dashChannel')}:** <#${session.channelId}>`));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+            const row1 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('gw_set_prize').setLabel(t('dashBtnPrize')).setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('gw_set_dur').setLabel(t('dashBtnDuration')).setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('gw_set_win').setLabel(t('dashBtnWinners')).setStyle(ButtonStyle.Primary)
+            );
+            const row2 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('gw_launch').setLabel(t('dashBtnLaunch')).setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('gw_cancel').setLabel(t('dashBtnCancel')).setStyle(ButtonStyle.Danger)
+            );
+            c.addActionRowComponents(row1, row2);
+            return { components: [c], flags: MessageFlags.IsComponentsV2 };
+        };
+
+        await interaction.reply({ ...buildDashboard(), flags: MessageFlags.IsComponentsV2 | 64 });
+        const msg = await interaction.fetchReply();
+
+        const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
+
+        collector.on('collect', async (i) => {
+        try {
+            if (i.user.id !== interaction.user.id) return i.reply({ content: 'Not your setup.', flags: 64 });
+
+            if (i.customId === 'gw_cancel') {
+                collector.stop();
+                return i.update({ content: t('dashExpired'), components: [], flags: MessageFlags.IsComponentsV2 });
+            }
+
+            if (i.customId === 'gw_set_prize') {
+                const modal = new ModalBuilder().setCustomId('modal_prize').setTitle(t('dashModalPrizeTitle'))
+                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalPrizeLabel')).setStyle(TextInputStyle.Short).setRequired(true)));
+                await i.showModal(modal);
+                const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
+                if (res) { session.prize = res.fields.getTextInputValue('val'); await res.update(buildDashboard()); }
+            }
+
+            if (i.customId === 'gw_set_dur') {
+                const modal = new ModalBuilder().setCustomId('modal_dur').setTitle(t('dashModalDurTitle'))
+                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalDurLabel')).setStyle(TextInputStyle.Short).setRequired(true)));
+                await i.showModal(modal);
+                const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
+                if (res) {
+                    const val = res.fields.getTextInputValue('val');
+                    const ms = parseDuration(val);
+                    if (!ms) { await res.reply({ content: t('dashInvalidDur'), flags: 64 }); return; }
+                    session.durationStr = val;
+                    session.durationMs = ms;
+                    await res.update(buildDashboard());
+                }
+            }
+
+            if (i.customId === 'gw_set_win') {
+                const modal = new ModalBuilder().setCustomId('modal_win').setTitle(t('dashModalWinTitle'))
+                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalWinLabel')).setStyle(TextInputStyle.Short).setRequired(true)));
+                await i.showModal(modal);
+                const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
+                if (res) {
+                    const val = parseInt(res.fields.getTextInputValue('val'));
+                    if (isNaN(val) || val < 1 || val > 50) { await res.reply({ content: t('dashInvalidWin'), flags: 64 }); return; }
+                    session.winners = val;
+                    await res.update(buildDashboard());
+                }
+            }
+
+            if (i.customId === 'gw_launch') {
+                if (!session.prize || !session.durationMs) {
+                    return i.reply({ content: '❌ Please set both a Prize and a Duration before launching.', flags: 64 });
+                }
+                await i.deferUpdate();
+                collector.stop();
+                await startGiveaway({
+                    interaction, client, db,
+                    duration: session.durationMs,
+                    amount: 0,
+                    winners: session.winners,
+                    prize: session.prize,
+                    minLevel: 0,
+                    minCredits: 0,
+                    boosterBonus: false
+                });
+                await i.editReply({ content: '✅ Giveaway launched!', components: [], flags: MessageFlags.IsComponentsV2 });
+            }
+        } catch (err) {
+            console.error('[GIVEAWAY DASHBOARD ERROR]', err);
+            if (!i.replied && !i.deferred) await i.reply({ content: '⚠️ My neural link glitched. Try again.', flags: 64 }).catch(() => {});
+        }
+        });
     },
 };
 
@@ -349,25 +448,26 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
     const collector = msg.createMessageComponentCollector({ time: duration + 60000 });
 
     collector.on('collect', async (i) => {
+        try {
         const gwNow = activeGiveaways.get(id);
         const userLang = getLang(client, guild.id);
-        const ut = T[userLang];
+        const ut = (k, v) => i18n.t('giveaway.' + k, userLang, v);
 
         if (i.customId === `gw_enter_${id}`) {
             await i.deferReply({ flags: 64 }).catch(() => {});
 
             if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: t('endedError') }).catch(() => {});
-            if (i.user.id === gwNow.hostId) return i.editReply({ content: ut.cantEnter }).catch(() => {});
-            if (gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut.alreadyIn }).catch(() => {});
+            if (i.user.id === gwNow.hostId) return i.editReply({ content: ut('cantEnter') }).catch(() => {});
+            if (gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut('alreadyIn') }).catch(() => {});
 
             // Check requirements
             if (gwNow.minLevel > 0 || gwNow.minCredits > 0) {
                 const userData = db.prepare('SELECT level, credits FROM users WHERE id = ? AND guild_id = ?').get(i.user.id, guild.id);
                 if (gwNow.minLevel > 0 && (!userData || userData.level < gwNow.minLevel)) {
-                    return i.editReply({ content: ut.needLevel.replace('{level}', gwNow.minLevel) }).catch(() => {});
+                    return i.editReply({ content: ut('needLevel').replace('{level}', gwNow.minLevel) }).catch(() => {});
                 }
                 if (gwNow.minCredits > 0 && (!userData || userData.credits < gwNow.minCredits)) {
-                    return i.editReply({ content: ut.needCredits.replace('{credits}', gwNow.minCredits.toLocaleString()) }).catch(() => {});
+                    return i.editReply({ content: ut('needCredits').replace('{credits}', gwNow.minCredits.toLocaleString()) }).catch(() => {});
                 }
             }
 
@@ -383,21 +483,21 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
             const newEmbed = buildEmbed(gwNow, client);
             await msg.edit({ embeds: [newEmbed], components: [buildButtons(gwNow)] }).catch(() => {});
 
-            let reply = ut.enterOk.replace('{ticket}', ticket);
-            if (gwNow.boosterBonus && isBooster) reply += `\n${ut.boosterBonus}`;
+            let reply = ut('enterOk').replace('{ticket}', ticket);
+            if (gwNow.boosterBonus && isBooster) reply += `\n${ut('boosterBonus')}`;
             await i.editReply({ content: reply }).catch(() => {});
 
         } else if (i.customId === `gw_leave_${id}`) {
             await i.deferReply({ flags: 64 }).catch(() => {});
             if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: t('endedError') }).catch(() => {});
-            if (!gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut.notIn }).catch(() => {});
+            if (!gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut('notIn') }).catch(() => {});
 
             gwNow.entries = gwNow.entries.filter(e => e !== i.user.id);
             delete gwNow.tickets[i.user.id];
 
             const newEmbed = buildEmbed(gwNow, client);
             await msg.edit({ embeds: [newEmbed], components: [buildButtons(gwNow)] }).catch(() => {});
-            await i.editReply({ content: ut.leaveOk }).catch(() => {});
+            await i.editReply({ content: ut('leaveOk') }).catch(() => {});
 
         } else if (i.customId === `gw_reroll_${id}`) {
             if (i.user.id !== gwNow?.hostId && !i.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
@@ -411,7 +511,7 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
             await msg.edit({ embeds: [newEmbed], components: [buildButtons(gwNow)] }).catch(() => {});
             const mention = newWinners.map(w => `<@${w}>`).join(' ');
             await channel.send({ content: `🔄 **Reroll!** New winners: ${mention || 'None'}` }).catch(() => {});
-            await i.editReply({ content: ut.rerollOk }).catch(() => {});
+            await i.editReply({ content: ut('rerollOk') }).catch(() => {});
 
         } else if (i.customId === `gw_end_${id}`) {
             if (i.user.id !== gwNow?.hostId && !i.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
@@ -425,7 +525,11 @@ async function startGiveaway({ message, interaction, client, db, duration, amoun
                 activeGiveaways.delete(id);
                 await msg.delete().catch(() => {});
             }
-            await i.editReply({ content: ut.terminated }).catch(() => {});
+            await i.editReply({ content: ut('terminated') }).catch(() => {});
+        }
+    } catch (err) {
+            console.error('[GIVEAWAY BUTTON ERROR]', err.message);
+            await i.reply({ content: '⚠️ My neural link glitched while processing that click. Try again.', flags: 64 }).catch(() => {});
         }
     });
 

@@ -37,5 +37,11 @@
   "commandNotFound": "❌ Commande introuvable.",
   "commandExecuted": "✅ Commande exécutée.",
   "noHandler": "❌ Cette commande n'a pas de gestionnaire d'exécution.",
-  "appealNotYours": "🔒 Ce bouton d'appel ne vous est pas destiné."
+  "appealNotYours": "🔒 Ce bouton d'appel ne vous est pas destiné.",
+  "gwTitle": "Merci d'avoir ajouté Archon !",
+  "gwIntro": "Salut **{user}**, merci d'avoir ajouté **Archon** sur **{guild}** !",
+  "gwFeatTitle": "Que peut faire Archon ?",
+  "gwFeat": "• **Giveaways :** Dashboard en direct & gagnants auto\n• **Modération :** AutoMod intelligent & Appels\n• **Tickets :** Transcripts & panels\n• **CODM & Économie :** Scrims, builds, niveaux & crédits",
+  "gwStartTitle": "Pour commencer",
+  "gwStartText": "Utilisez `/help` pour voir toutes les commandes, ou `/serversettings` pour configurer votre serveur."
 }
