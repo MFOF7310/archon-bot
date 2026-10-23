@@ -275,7 +275,6 @@ module.exports = {
             return interaction.reply({ content: '❌ You need Manage Server permission.', flags: 64 });
         }
         
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
 
         const sub = interaction.options.getSubcommand();
         if (sub !== 'start') return;
@@ -294,6 +293,8 @@ module.exports = {
         };
 
         const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
+
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
 
                 const buildDashboard = () => {
             const c = new ContainerBuilder().setAccentColor(0xf1c40f);
@@ -358,7 +359,7 @@ module.exports = {
 
             if (i.customId === 'gw_set_prize') {
                 const modal = new ModalBuilder().setCustomId('modal_prize').setTitle(t('dashModalPrizeTitle'))
-                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalPrizeLabel')).setStyle(TextInputStyle.Short).setRequired(true)));
+                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalPrizeLabel')).setPlaceholder(t('dashModalPrizePlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
                 if (res) { session.prize = res.fields.getTextInputValue('val'); await res.update(buildDashboard()); }
@@ -366,7 +367,7 @@ module.exports = {
 
             if (i.customId === 'gw_set_dur') {
                 const modal = new ModalBuilder().setCustomId('modal_dur').setTitle(t('dashModalDurTitle'))
-                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalDurLabel')).setStyle(TextInputStyle.Short).setRequired(true)));
+                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalDurLabel')).setPlaceholder(t('dashModalDurPlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
                 if (res) {
@@ -381,7 +382,7 @@ module.exports = {
 
             if (i.customId === 'gw_set_win') {
                 const modal = new ModalBuilder().setCustomId('modal_win').setTitle(t('dashModalWinTitle'))
-                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalWinLabel')).setStyle(TextInputStyle.Short).setRequired(true)));
+                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalWinLabel')).setPlaceholder(t('dashModalWinPlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
                 if (res) {

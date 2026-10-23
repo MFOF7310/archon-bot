@@ -49,5 +49,8 @@
   "dashModalWinTitle": "Set Winners",
   "dashModalWinLabel": "Number of winners (1-50)",
   "dashInvalidDur": "❌ Invalid duration format.",
-  "dashInvalidWin": "❌ Winners must be between 1 and 50."
+  "dashInvalidWin": "❌ Winners must be between 1 and 50.",
+  "dashModalPrizePlaceholder": "例如：Discord Nitro 经典版",
+  "dashModalDurPlaceholder": "例如：1h, 1d, 12h",
+  "dashModalWinPlaceholder": "例如：1, 3, 10"
 }

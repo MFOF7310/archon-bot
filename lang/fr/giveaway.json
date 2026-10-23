@@ -49,5 +49,8 @@
   "dashModalWinTitle": "Définir les Gagnants",
   "dashModalWinLabel": "Nombre de gagnants (1-50)",
   "dashInvalidDur": "❌ Format de durée invalide.",
-  "dashInvalidWin": "❌ Les gagnants doivent être entre 1 et 50."
+  "dashInvalidWin": "❌ Les gagnants doivent être entre 1 et 50.",
+  "dashModalPrizePlaceholder": "ex: Discord Nitro Classique",
+  "dashModalDurPlaceholder": "ex: 1h, 1j, 12h",
+  "dashModalWinPlaceholder": "ex: 1, 3, 10"
 }
