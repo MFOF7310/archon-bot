@@ -7327,7 +7327,7 @@ client.once('clientReady', async () => {
 // ── Discord Login ──
 
 
-client.login(process.env.DISCORD_TOKEN).catch(err => {
+client.login((process.env.DISCORD_TOKEN || '').trim().replace(/["']/g, '')).catch(err => {
     console.error('\x1b[31m[LOGIN ERROR]\x1b[0m Failed to connect to Discord:', err.message);
     console.error('\x1b[33m[TIP]\x1b[0m Check your internet connection and token validity.');
 });
