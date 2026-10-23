@@ -52,5 +52,13 @@
   "dashInvalidWin": "❌ Winners must be between 1 and 50.",
   "dashModalPrizePlaceholder": "Misaliya: Discord Nitro Classic",
   "dashModalDurPlaceholder": "Misaliya: 1h, 1d, 12h",
-  "dashModalWinPlaceholder": "Misaliya: 1, 3, 10"
+  "dashModalWinPlaceholder": "Misaliya: 1, 3, 10",
+  "dashNotSetDesc": "I ma o fɛn sigi fɔlɔ dɛɛ, mako b'o de la ka sen ka sabatili sigi sen kan.",
+  "dashWinnersDesc": "Maa joli bɛ gaɲɛ ?",
+  "dashMaxEntries": "Maa joli ɲɔgɔn caman don nin kɛnɛ kɔnɔ ?",
+  "dashMaxEntriesDesc": "I ka dansigi kɛ maa hakɛ joli ɲɔgɔn taali la!",
+  "dashRerolls": "Segin nin hakɛ joli ɲɔgɔn kɛ la",
+  "dashRerollsDesc": "Otomatiki seginin ni maa si ma sɔrɔ.",
+  "dashSetup": "Labɛn",
+  "dashSummary": "**{prize} Prize:** {prizeVal} | **{duration} Duration:** {durVal} | **{winners} Winners:** {winVal} | **{channel} Channel:** {chanVal}"
 }

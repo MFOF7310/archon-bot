@@ -52,5 +52,13 @@
   "dashInvalidWin": "❌ Winners must be between 1 and 50.",
   "dashModalPrizePlaceholder": "e.g. Discord Nitro Classic",
   "dashModalDurPlaceholder": "e.g. 1h, 1d, 12h",
-  "dashModalWinPlaceholder": "e.g. 1, 3, 10"
+  "dashModalWinPlaceholder": "e.g. 1, 3, 10",
+  "dashNotSetDesc": "Not set, required to launch.",
+  "dashWinnersDesc": "How many people win.",
+  "dashMaxEntries": "Max entries per user",
+  "dashMaxEntriesDesc": "Limit how many times each user can enter.",
+  "dashRerolls": "Re-roll attempts",
+  "dashRerollsDesc": "Auto re-roll if no valid winner is found.",
+  "dashSetup": "Setup",
+  "dashSummary": "**{prize} Prize:** {prizeVal} | **{duration} Duration:** {durVal} | **{winners} Winners:** {winVal} | **{channel} Channel:** {chanVal}"
 }

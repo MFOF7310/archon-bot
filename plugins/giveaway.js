@@ -1,6 +1,7 @@
 const { resolveEmoji } = require('../lib/emoji-resolver');
+
 const i18n = require('../lib/i18n');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField, SectionBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SectionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize, ChannelSelectMenuBuilder, ChannelType } = require('discord.js');
 
 // ═══════════════════════════════════════════════════════
 // ARCHON CLASSIFIED GIVEAWAY PROTOCOL v2.0
@@ -275,15 +276,12 @@ module.exports = {
             return interaction.reply({ content: '❌ You need Manage Server permission.', flags: 64 });
         }
         
-
-        const sub = interaction.options.getSubcommand();
-        if (sub !== 'start') return;
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
 
         const guild = interaction.guild;
         const lang = getLang(client, guild.id);
         const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
 
-        // Draft Session
         const session = {
             prize: null,
             durationStr: null,
@@ -292,47 +290,28 @@ module.exports = {
             channelId: interaction.channel.id
         };
 
-        const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
+        
+        
 
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
-
-                const buildDashboard = () => {
+        const buildDashboard = () => {
             const c = new ContainerBuilder().setAccentColor(0xf1c40f);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('dashTitle')}`));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*${t('dashDesc')}*`));
+            
+            const sum = t('dashSummary', {
+                prize: resolveEmoji('trophy', interaction) || '🎁', prizeVal: session.prize || '❌',
+                duration: resolveEmoji('clock', interaction) || '⏱️', durVal: session.durationStr || '❌',
+                winners: resolveEmoji('crown', interaction) || '👑', winVal: session.winners,
+                channel: resolveEmoji('general', interaction) || '📺', chanVal: `<#${session.channelId}>`
+            });
+            
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(sum));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-            // Prize Section
-            c.addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**${resolveEmoji('trophy', interaction)} ${t('dashPrize')}:**\n${session.prize || t('dashNotSet')}`
-                    ))
-                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_prize').setLabel(t('dashBtnPrize')).setStyle(ButtonStyle.Primary))
-            );
+            c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${resolveEmoji('trophy', interaction) || '🎁'} ${t('dashPrize')}**\n-# ${session.prize || t('dashNotSetDesc')}`)).setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_prize').setLabel(t('dashBtnPrize')).setStyle(ButtonStyle.Primary)));
+            c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${resolveEmoji('clock', interaction) || '⏱️'} ${t('dashDuration')}**\n-# ${session.durationStr || t('dashNotSetDesc')}`)).setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel(t('dashBtnDuration')).setStyle(ButtonStyle.Primary)));
+            c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${resolveEmoji('crown', interaction) || '👑'} ${t('dashWinners')}: ${session.winners}**\n-# ${t('dashWinnersDesc')}`)).setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel(t('dashBtnWinners')).setStyle(ButtonStyle.Secondary)));
+            
+            c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${resolveEmoji('general', interaction) || '📺'} ${t('dashChannel')}**\n-# <#${session.channelId}>`)).setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_channel').setLabel('Set Channel').setStyle(ButtonStyle.Secondary)));
 
-            // Duration Section
-            c.addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**${resolveEmoji('clock', interaction)} ${t('dashDuration')}:**\n${session.durationStr || t('dashNotSet')}`
-                    ))
-                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel(t('dashBtnDuration')).setStyle(ButtonStyle.Primary))
-            );
-
-            // Winners Section
-            c.addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**${resolveEmoji('crown', interaction)} ${t('dashWinners')}:**\n${session.winners}`
-                    ))
-                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel(t('dashBtnWinners')).setStyle(ButtonStyle.Primary))
-            );
-
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                `**${resolveEmoji('general', interaction)} ${t('dashChannel')}:** <#${session.channelId}>`
-            ));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
             const row2 = new ActionRowBuilder().addComponents(
@@ -341,7 +320,7 @@ module.exports = {
             );
             c.addActionRowComponents(row2);
             return { components: [c], flags: MessageFlags.IsComponentsV2 };
-        };;
+        };
 
         await interaction.editReply(buildDashboard());
         const msg = await interaction.fetchReply();
@@ -349,82 +328,151 @@ module.exports = {
         const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
 
         collector.on('collect', async (i) => {
-        try {
-            if (i.user.id !== interaction.user.id) return i.reply({ content: 'Not your setup.', flags: 64 });
-
-            if (i.customId === 'gw_cancel') {
-                collector.stop();
-                return i.update({ content: t('dashExpired'), components: [], flags: MessageFlags.IsComponentsV2 });
+            if (i.user.id !== interaction.user.id) {
+                return i.reply({ content: 'Not your setup.', flags: 64 }).catch(() => {});
             }
 
-            if (i.customId === 'gw_set_prize') {
-                const modal = new ModalBuilder().setCustomId('modal_prize').setTitle(t('dashModalPrizeTitle'))
-                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalPrizeLabel')).setPlaceholder(t('dashModalPrizePlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
-                await i.showModal(modal);
-                const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
-                if (res) { session.prize = res.fields.getTextInputValue('val'); await res.update(buildDashboard()); }
-            }
-
-            if (i.customId === 'gw_set_dur') {
-                const modal = new ModalBuilder().setCustomId('modal_dur').setTitle(t('dashModalDurTitle'))
-                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalDurLabel')).setPlaceholder(t('dashModalDurPlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
-                await i.showModal(modal);
-                const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
-                if (res) {
-                    const val = res.fields.getTextInputValue('val');
-                    const ms = parseDuration(val);
-                    if (!ms) { await res.reply({ content: t('dashInvalidDur'), flags: 64 }); return; }
-                    session.durationStr = val;
-                    session.durationMs = ms;
-                    await res.update(buildDashboard());
+            try {
+                if (i.customId === 'gw_cancel') {
+                    collector.stop();
+                    return await i.update({ content: t('dashExpired'), components: [], flags: MessageFlags.IsComponentsV2 });
                 }
-            }
 
-            if (i.customId === 'gw_set_win') {
-                const modal = new ModalBuilder().setCustomId('modal_win').setTitle(t('dashModalWinTitle'))
-                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalWinLabel')).setPlaceholder(t('dashModalWinPlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
-                await i.showModal(modal);
-                const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
-                if (res) {
-                    const val = parseInt(res.fields.getTextInputValue('val'));
-                    if (isNaN(val) || val < 1 || val > 50) { await res.reply({ content: t('dashInvalidWin'), flags: 64 }); return; }
-                    session.winners = val;
-                    await res.update(buildDashboard());
-                }
-            }
+                if (i.customId === 'gw_set_channel') {
+                    const channelSelect = new ChannelSelectMenuBuilder()
+                        .setCustomId('gw_channel_select')
+                        .setPlaceholder(t('dashChannel') || 'Select a channel')
+                        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+                    
+                    await i.reply({ components: [new ActionRowBuilder().addComponents(channelSelect)], flags: 64 });
+                    
+                    // Wait for the user's selection on this specific reply
+                    const res = await i.channel.awaitMessageComponent({ 
+                        filter: x => x.user.id === interaction.user.id && x.customId === 'gw_channel_select', 
+                        time: 60000 
+                    }).catch(() => null);
 
-            if (i.customId === 'gw_launch') {
-                if (!session.prize || !session.durationMs) {
-                    return i.reply({ content: '❌ Please set both a Prize and a Duration before launching.', flags: 64 });
+                    if (res) {
+                        session.channelId = res.values[0];
+                        await res.update({ content: '✅ Channel updated!', components: [] });
+                        await msg.edit(buildDashboard());
+                    }
+                    return;
                 }
-                await i.deferUpdate();
-                collector.stop();
-                await startGiveaway({
-                    interaction, client, db,
-                    duration: session.durationMs,
-                    amount: 0,
-                    winners: session.winners,
-                    prize: session.prize,
-                    minLevel: 0,
-                    minCredits: 0,
-                    boosterBonus: false
-                });
-                await i.editReply({ content: '✅ Giveaway launched!', components: [], flags: MessageFlags.IsComponentsV2 });
+
+                if (i.customId === 'gw_set_prize') {
+                    const modal = new ModalBuilder().setCustomId('modal_prize').setTitle(t('dashModalPrizeTitle'))
+                        .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalPrizeLabel')).setPlaceholder(t('dashModalPrizePlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
+                    await i.showModal(modal);
+                    const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
+                    if (res) { 
+                        session.prize = res.fields.getTextInputValue('val'); 
+                        await res.update(buildDashboard()); 
+                    }
+                    return;
+                }
+
+                if (i.customId === 'gw_set_dur') {
+                    const modal = new ModalBuilder().setCustomId('modal_dur').setTitle(t('dashModalDurTitle'))
+                        .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalDurLabel')).setPlaceholder(t('dashModalDurPlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
+                    await i.showModal(modal);
+                    const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
+                    if (res) {
+                        const val = res.fields.getTextInputValue('val');
+                        const ms = parseDuration(val);
+                        if (!ms) { await res.reply({ content: t('dashInvalidDur'), flags: 64 }); return; }
+                        session.durationStr = val;
+                        session.durationMs = ms;
+                        await res.update(buildDashboard());
+                    }
+                    return;
+                }
+
+                if (i.customId === 'gw_set_win') {
+                    const modal = new ModalBuilder().setCustomId('modal_win').setTitle(t('dashModalWinTitle'))
+                        .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalWinLabel')).setPlaceholder(t('dashModalWinPlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
+                    await i.showModal(modal);
+                    const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
+                    if (res) {
+                        const val = parseInt(res.fields.getTextInputValue('val').trim());
+                        if (isNaN(val) || val < 1 || val > 50) { await res.reply({ content: t('dashInvalidWin'), flags: 64 }); return; }
+                        session.winners = val;
+                        await res.update(buildDashboard());
+                    }
+                    return;
+                }
+
+                if (i.customId === 'gw_launch') {
+                    if (!session.prize || !session.durationMs) {
+                        return await i.reply({ content: '❌ Please set both a Prize and a Duration before launching.', flags: 64 });
+                    }
+
+                    const targetChannel = guild.channels.cache.get(session.channelId);
+                    if (!targetChannel) {
+                        return await i.reply({ content: '❌ The selected channel no longer exists.', flags: 64 });
+                    }
+
+                    const canPostLib = require('../lib/canPost');
+                    const canPostCheck = canPostLib.diagnose(guild, targetChannel, guild.members.me);
+                    
+                    if (!canPostCheck.ok) {
+                        const missingPerms = canPostLib.localize(canPostCheck.missing || [], lang).map(p => `\`${p}\``).join(', ');
+                        
+                        let title = '🚧 Oops, Discord is blocking me!';
+                        let desc = `I tried to prepare the giveaway in <#${targetChannel.id}>, but I don't have the right permissions.\n\n**What I'm missing:**\n${missingPerms}\n\n`;
+                        
+                        if (canPostCheck.reason === 'role_block') {
+                            desc += `**How to fix it:**\nThe role **${canPostCheck.role}** is blocking me in that channel. You can either allow the permissions for that role, or simply pick a different channel for the drop!`;
+                        } else {
+                            desc += `**How to fix it:**\nGo to Server Settings → Roles → **Archon** and enable these permissions, or pick a different channel.`;
+                        }
+
+                        if (lang === 'fr') {
+                            title = '🚧 Oups, Discord me bloque !';
+                            desc = `J'ai essayé de préparer le giveaway dans <#${targetChannel.id}>, mais je n'ai pas les bonnes permissions.\n\n**Ce qui me manque :**\n${missingPerms}\n\n`;
+                            if (canPostCheck.reason === 'role_block') {
+                                desc += `**Comment réparer :**\nLe rôle **${canPostCheck.role}** me bloque dans ce salon. Tu peux soit autoriser les permissions pour ce rôle, soit simplement choisir un autre salon pour le drop !`;
+                            } else {
+                                desc += `**Comment réparer :**\nVa dans Paramètres du serveur → Rôles → **Archon** et active ces permissions, ou choisis un autre salon.`;
+                            }
+                        }
+
+                        const errEmbed = new EmbedBuilder()
+                            .setColor(0xe74c3c)
+                            .setTitle(title)
+                            .setDescription(desc);
+
+                        return await i.reply({ embeds: [errEmbed], flags: 64 });
+                    }
+
+                    await i.deferUpdate();
+                    collector.stop();
+                    
+                    await startGiveaway({
+                        interaction, client, db,
+                        duration: session.durationMs,
+                        amount: 0,
+                        winners: session.winners,
+                        prize: session.prize,
+                        minLevel: 0,
+                        minCredits: 0,
+                        boosterBonus: false,
+                        targetChannelId: session.channelId
+                    });
+                    
+                    await i.editReply({ content: '✅ Giveaway launched!', components: [], flags: MessageFlags.IsComponentsV2 });
+                }
+            } catch (err) {
+                console.error('[GIVEAWAY DASHBOARD ERROR]', err);
+                if (!i.replied && !i.deferred) await i.reply({ content: '⚠️ Error processing interaction.', flags: 64 }).catch(() => {});
             }
-        } catch (err) {
-            console.error('[GIVEAWAY DASHBOARD ERROR]', err);
-            if (!i.replied && !i.deferred) await i.reply({ content: '⚠️ My neural link glitched. Try again.', flags: 64 }).catch(() => {});
-        }
         });
     },
 };
 
-// ═══════════════════════════════════════════════════════
-// START GIVEAWAY
-// ═══════════════════════════════════════════════════════
-async function startGiveaway({ message, interaction, client, db, duration, amount, winners, prize, minLevel, minCredits, boosterBonus }) {
+async function startGiveaway({ message, interaction, client, db, duration, amount, winners, prize, minLevel, minCredits, boosterBonus, targetChannelId }) {
     const guild = message?.guild || interaction?.guild;
-    const channel = message?.channel || interaction?.channel;
+    const channel = targetChannelId ? guild.channels.cache.get(targetChannelId) : (message?.channel || interaction?.channel);
     const author = message?.author || interaction?.user;
     const member = message?.member || interaction?.member;
     const lang = getLang(client, guild.id);
