@@ -1,11 +1,8 @@
-const mentions = require('../lib/mentions');
+const cmdSlash = require('../lib/cmd').slash;
 const i18n = require('../lib/i18n');
-const { ns } = require('../lib/lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-const EMOJIS = require('../config/emojis');
-
-// ================= BILINGUAL TRANSLATIONS =================
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, SlashCommandBuilder } = require('discord.js');
+const { pickLang } = require('../lib/pick-lang');
 
 module.exports = {
     name: 'daily',
@@ -16,93 +13,59 @@ module.exports = {
     usage: '.daily [stats]',
     examples: ['.daily', '.daily stats', '/daily', '/daily stats'],
 
-    // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
     .setName('daily')
     .setDescription('📅 View your daily status and statistics')
-    .addSubcommand(sub =>
-        sub.setName('check').setDescription('✅ Check if your daily reward is ready')
-    )
-    .addSubcommand(sub =>
-        sub.setName('stats').setDescription('📊 View your daily streak statistics')
-    ),
+    .addSubcommand(sub => sub.setName('check').setDescription('✅ Check if your daily reward is ready'))
+    .addSubcommand(sub => sub.setName('stats').setDescription('📊 View your daily streak statistics')),
 
-    // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        // Priority: 1) French aliases (quotidien, journalier), 2) guild locale, 3) detectLanguage
-        const frenchAliases = ['quotidien', 'journalier', 'journalière', 'qotd'];
-        const isFrenchAlias = usedCommand && frenchAliases.some(a => usedCommand.toLowerCase().includes(a));
-        const guildId = message.guild?.id || 'DM';
-        const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
-        lang = OKL.includes(serverSettings?.language) ? serverSettings.language : (isFrenchAlias ? 'fr' : 'en');
+    run: async (client, message, args, db, serverSettings) => {
+        const lang = pickLang(client, message.guild?.id, message, message.author.id);
         const t = (k, v) => i18n.t('daily.' + k, lang, v);
         const prefix = serverSettings?.prefix || '.';
 
         if (args[0]?.toLowerCase() === 'stats') {
             return module.exports.showStats(client, message, db, prefix, lang, t, false);
         }
-
         return module.exports.showCheck(client, message, db, prefix, lang, t, false);
     },
 
-    // ================= SLASH COMMAND =================
     execute: async (interaction, client) => {
         await interaction.deferReply().catch(() => {});
-
-        // Use Discord's locale for slash commands (respects user's client language)
-        // Fallback to detectLanguage for prefix-style detection
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr', 'bm', 'zh', 'ar']);
+        const lang = pickLang(client, interaction.guildId, interaction, interaction.user.id);
         const t = (k, v) => i18n.t('daily.' + k, lang, v);
         const prefix = interaction.guild ? (client.getServerSettings(interaction.guild.id)?.prefix || '.') : '.';
         const subcommand = interaction.options.getSubcommand(false);
 
-        try {
-            if (subcommand === 'stats') {
-                return await module.exports.showStats(client, interaction, client.db, prefix, lang, t, true);
-            }
-            return await module.exports.showCheck(client, interaction, client.db, prefix, lang, t, true);
-        } catch (err) {
-            throw err; // Let the global error handler catch it
+        if (subcommand === 'stats') {
+            return await module.exports.showStats(client, interaction, client.db, prefix, lang, t, true);
         }
+        return await module.exports.showCheck(client, interaction, client.db, prefix, lang, t, true);
     },
 
-    // ================= SHOW CHECK (Dashboard) =================
     showCheck: async (client, context, db, prefix, lang, t, isSlash) => {
         const user = isSlash ? context.user : context.author;
         const userId = user.id;
-        const username = user.username;
         const guild = context.guild;
-        const version = client.version || '2.0.0';
-        const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = guild?.iconURL() || client.user.displayAvatarURL();
-
-        // PER-SERVER: Composite key requires guildId
         const guildId = guild?.id || 'DM';
 
         const reply = async (options) => {
-            if (isSlash) {
-                // execute() calls deferReply() first, so always use editReply
-                return context.editReply(options).catch(() => context.followUp(options));
-            }
+            if (isSlash) return context.editReply(options);
             return context.reply(options);
         };
 
         const now = Date.now();
         const oneDay = 24 * 60 * 60 * 1000;
 
-        // COMPOSITE KEY LOOKUP: WHERE id = ? AND guild_id = ?
         let userData = client.getUserData
             ? client.getUserData(userId, guildId)
             : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
 
+        const c = new ContainerBuilder().setAccentColor(0xf1c40f);
+
         if (!userData) {
-            const embed = new EmbedBuilder()
-                .setColor('#f1c40f')
-                .setAuthor({ name: `👏 Daily Check: @${username}`, iconURL: user.displayAvatarURL() })
-                .setDescription(`## ${resolveEmoji('error', context)} ${t('noAccount')}`)
-                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            return reply({ embeds: [embed] });
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('error', context) || '❌'} ${t('noAccount')}`));
+            return reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
         }
 
         let lastDaily = parseInt(userData.last_daily) || 0;
@@ -120,68 +83,57 @@ module.exports = {
             statusEmoji = '✅';
             statusText = t('readyToClaim');
             timeInfo = t('useClaim');
+            c.setAccentColor(0x2ecc71);
         } else {
             statusEmoji = '✅';
             statusText = t('onCooldown');
             const timeLeft = oneDay - (now - lastDaily);
             const hours = Math.floor(timeLeft / (60 * 60 * 1000));
             const minutes = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
-            timeInfo = `${t('comeBack')} ${hours}h ${minutes}m`;
+            timeInfo = `${t('comeBack')} **${hours}h ${minutes}m**`;
+            c.setAccentColor(0xe74c3c);
         }
 
         const statusAnsi = canClaim ? '\u001b[1;32m' : '\u001b[1;31m';
-        const embed = new EmbedBuilder()
-            .setColor(canClaim ? '#2ecc71' : '#e74c3c')
-            .setAuthor({ name: `📅 NEURAL DAILY · @${username}`, iconURL: user.displayAvatarURL() })
-            .setDescription(
-                '```ansi\n' +
-                statusAnsi + '\u25b8 STATUS   \u001b[0m' + statusEmoji + ' ' + statusText + '\n' +
-                '\u001b[1;36m\u25b8 STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t('day') : t('days')) + ' \uD83D\uDD25\n' +
-                '\u001b[1;36m\u25b8 DAILIES  \u001b[0m' + totalDailies + '\n' +
-                '\u001b[1;36m\u25b8 BALANCE  \u001b[0m' + balance.toLocaleString() + ' \uD83E\uDE99\n' +
-                '\u001b[1;36m\u25b8 SHIELDS  \u001b[0m' + streakProtections + '\n' +
-                '```\n\n**Ready to claim?** Use ' + mentions(client, 'claim')
-            )
-            .setFooter({ text: `${guildName} · NEURAL DAILY · BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
-            .setTimestamp();
+        
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📅 NEURAL DAILY · @${user.username}`));
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        
+        const ansiBlock = '```ansi\n' +
+            statusAnsi + '▸ STATUS   \u001b[0m' + statusEmoji + ' ' + statusText + '\n' +
+            '\u001b[1;36m▸ STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t('day') : t('days')) + ' 🔥\n' +
+            '\u001b[1;36m▸ DAILIES  \u001b[0m' + totalDailies + '\n' +
+            '\u001b[1;36m▸ BALANCE  \u001b[0m' + balance.toLocaleString() + ' 🪙\n' +
+            '\u001b[1;36m▸ SHIELDS  \u001b[0m' + streakProtections + '\n' +
+            '```';
+        
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(ansiBlock));
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Ready to claim?** Use ${cmdSlash(client, 'claim', { guild: context.guild })}\n-# ${guild?.name?.toUpperCase() || 'DM'} · NEURAL DAILY · BAMAKO_223 🇲🇱`));
 
-        await reply({ embeds: [embed] });
+        await reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
     },
 
-    // ================= SHOW STATS =================
     showStats: async (client, context, db, prefix, lang, t, isSlash) => {
         const user = isSlash ? context.user : context.author;
         const userId = user.id;
-        const username = user.username;
         const guild = context.guild;
-        const version = client.version || '2.0.0';
-        const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = guild?.iconURL() || client.user.displayAvatarURL();
-
-        // PER-SERVER: Composite key requires guildId
         const guildId = guild?.id || 'DM';
 
         const reply = async (options) => {
-            if (isSlash) {
-                // execute() calls deferReply() first, so always use editReply
-                return context.editReply(options).catch(() => context.followUp(options));
-            }
+            if (isSlash) return context.editReply(options);
             return context.reply(options);
         };
 
-        // COMPOSITE KEY LOOKUP: WHERE id = ? AND guild_id = ?
         let userData = client.getUserData
             ? client.getUserData(userId, guildId)
             : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
 
+        const c = new ContainerBuilder().setAccentColor(0x3498db);
+
         if (!userData) {
-            const embed = new EmbedBuilder()
-                .setColor('#f1c40f')
-                .setAuthor({ name: `👏 Daily Stats: @${username}`, iconURL: user.displayAvatarURL() })
-                .setDescription(`${resolveEmoji('error', context)} ${t('noAccount')}`)
-                .setFooter({ text: `${guildName} • ${t('footer')} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            return reply({ embeds: [embed] });
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('error', context) || '❌'} ${t('noAccount')}`));
+            return reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
         }
 
         const streakDays = parseInt(userData.streak_days) || 0;
@@ -194,21 +146,20 @@ module.exports = {
         let lastDailyText = t('never');
         if (lastDaily > 0) lastDailyText = `<t:${Math.floor(lastDaily / 1000)}:R>`;
 
-        const embed = new EmbedBuilder()
-            .setColor('#3498db')
-            .setAuthor({ name: `📊 DAILY STATS · @${username}`, iconURL: user.displayAvatarURL() })
-            .setDescription(
-                '```ansi\n' +
-                '\u001b[1;36m\u25b8 TOTAL    \u001b[0m' + totalDailies + ' dailies\n' +
-                '\u001b[1;33m\u25b8 STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t('day') : t('days')) + ' \uD83D\uDD25\n' +
-                '\u001b[1;33m\u25b8 BEST     \u001b[0m' + highestStreak + ' ' + (highestStreak === 1 ? t('day') : t('days')) + '\n' +
-                '\u001b[1;35m\u25b8 SHIELDS  \u001b[0m' + streakProtections + ' \uD83D\uDEE1\uFE0F\n' +
-                '```' +
-                '\n\uD83D\uDCC5 **Last claim:** ' + lastDailyText
-            )
-            .setFooter({ text: `${guildName} \u00b7 NEURAL DAILY \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
-            .setTimestamp();
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📊 DAILY STATS · @${user.username}`));
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-        await reply({ embeds: [embed] });
+        const ansiBlock = '```ansi\n' +
+            '\u001b[1;36m▸ TOTAL    \u001b[0m' + totalDailies + ' dailies\n' +
+            '\u001b[1;33m▸ STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t('day') : t('days')) + ' 🔥\n' +
+            '\u001b[1;33m▸ BEST     \u001b[0m' + highestStreak + ' ' + (highestStreak === 1 ? t('day') : t('days')) + '\n' +
+            '\u001b[1;35m▸ SHIELDS  \u001b[0m' + streakProtections + ' 🛡️\n' +
+            '```\n' +
+            `📅 **Last claim:** ${lastDailyText}`;
+        
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(ansiBlock));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guild?.name?.toUpperCase() || 'DM'} · NEURAL DAILY · BAMAKO_223 🇲🇱`));
+
+        await reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
     }
 };

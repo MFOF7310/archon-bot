@@ -1,7 +1,8 @@
 'use strict';
 
-const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { t } = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
 let axios = null;
 try { axios = require('axios'); }
 catch (e) { console.warn('[LYDIA] axios not installed — AI/web features degraded, but /lydia still registers. Fix: npm i axios'); }
@@ -879,14 +880,10 @@ function splitIntoEmbeds(text, options = {}) {
 
 // UI language for the bot's own messages: the server's setting when set (bm -> fr), else the person's language
 function _uiLang(client, message, personLang) {
-  let l = null;
-  try {
-    const v = String(client.getServerSettings?.(message.guild?.id)?.language || '').toLowerCase();
-    if (v && v !== 'auto') l = v;
-  } catch {}
-  l = l || personLang || 'en';
-  if (l === 'bm') l = 'fr';
-  return ['en', 'fr', 'zh', 'ar'].includes(l) ? l : 'en';
+    // Force pickLang to look up the user's mylang preference
+    const userId = message.author?.id || message.user?.id;
+    const guildId = message.guild?.id || message.guildId;
+    return pickLang(client, guildId, message, userId) || personLang || 'en';
 }
 function _tx(key, lang, fallback) {
   try {
@@ -904,98 +901,75 @@ function buildEmbed(reply, message, options = {}) {
   });
 
   const themeKey = Object.keys(THEMES).find(k => THEMES[k].name === theme.name) || 'default';
-  const embedColor = isError ? '#ff4757' : getSentimentColor(themeKey, reply);
+  const embedColor = isError ? 0xff4757 : parseInt(getSentimentColor(themeKey, reply).replace('#', ''), 16);
 
   let classification = 'UNCLASSIFIED';
-  let badgeEmoji = '\u{1F7E2}';
-  if (isError) { classification = 'SYSTEM ALERT'; badgeEmoji = '\u{1F534}'; }
-  else if (themeKey === 'police') { classification = 'SECURITY BRIEF'; badgeEmoji = '\u{1F6E1}\u{FE0F}'; }
-  else if (themeKey === 'tech') { classification = 'TECHNICAL BRIEF'; badgeEmoji = '\u{1F4BB}'; }
-  else if (themeKey === 'intel') { classification = 'INTEL REPORT'; badgeEmoji = '\u{1F50D}'; }
-  else if (themeKey === 'medical') { classification = 'MEDICAL ADVISORY'; badgeEmoji = '\u{1F3E5}'; }
-  else if (themeKey === 'tactical') { classification = 'FIELD GUIDE'; badgeEmoji = '\u{1F4CB}'; }
-  else if (themeKey === 'academic') { classification = 'RESEARCH NOTE'; badgeEmoji = '\u{1F4DA}'; }
+  let badgeEmoji = '🟢';
+  if (isError) { classification = 'SYSTEM ALERT'; badgeEmoji = '🔴'; }
+  else if (themeKey === 'police') { classification = 'SECURITY BRIEF'; badgeEmoji = '🛡️'; }
+  else if (themeKey === 'tech') { classification = 'TECHNICAL BRIEF'; badgeEmoji = '💻'; }
+  else if (themeKey === 'intel') { classification = 'INTEL REPORT'; badgeEmoji = '🔍'; }
+  else if (themeKey === 'medical') { classification = 'MEDICAL ADVISORY'; badgeEmoji = '🏥'; }
+  else if (themeKey === 'tactical') { classification = 'FIELD GUIDE'; badgeEmoji = '📋'; }
+  else if (themeKey === 'academic') { classification = 'RESEARCH NOTE'; badgeEmoji = '📚'; }
   { const _ck = { 'UNCLASSIFIED': 'unclassified', 'SYSTEM ALERT': 'systemAlert', 'SECURITY BRIEF': 'securityBrief', 'TECHNICAL BRIEF': 'technicalBrief', 'INTEL REPORT': 'intelReport', 'MEDICAL ADVISORY': 'medicalAdvisory', 'FIELD GUIDE': 'fieldGuide', 'RESEARCH NOTE': 'researchNote' }[classification]; if (_ck) classification = _tx(`lydia.classification.${_ck}`, lang, classification); }
 
+  const c = new ContainerBuilder().setAccentColor(embedColor);
+
   if (isThinking) {
-    return new EmbedBuilder()
-      .setColor('#f1c40f')
-      .setAuthor({
-        name: `${badgeEmoji} ${classification} \u2022 ${require('../lib/i18n').t('lydia.thinkingEmbed.label', lang)}`,
-        iconURL: message.author.displayAvatarURL({ dynamic: true, size: 32 })
-      })
-      .setDescription(`\`\`\`ansi\n\u001b[1;33m[ ${theme.name.toUpperCase()} ] \u001b[0m\u001b[33m${require('../lib/i18n').t('lydia.thinkingEmbed.text', lang)}\u001b[0m\n\`\`\``)
-      .setFooter({
-        text: `ARCHON CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`,
-        iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
-      })
-      .setTimestamp();
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${badgeEmoji} ${classification} • ${require('../lib/i18n').t('lydia.thinkingEmbed.label', lang)}**`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;33m[ ${theme.name.toUpperCase()} ] \u001b[0m\u001b[33m${require('../lib/i18n').t('lydia.thinkingEmbed.text', lang)}\u001b[0m\n\`\`\``));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`));
+    return c;
   }
 
-  // Format the response for Discord (NEW — beautiful formatting)
   const formattedReply = formatDiscordResponse(reply);
-
-  // Split into multiple embeds if too long (NEW — no more truncation)
   const botName = message.client?.user?.username || 'Lydia';
   const chunks = splitIntoEmbeds(formattedReply, { botName, themeName: theme.name, isFirst: true });
 
-  // Build embeds from chunks
-  const embeds = [];
+  const containers = [];
   for (let i = 0; i < chunks.length && i < CFG.MAX_EMBEDS_PER_MSG; i++) {
     const { title, content } = chunks[i];
-
-    const embed = new EmbedBuilder()
-      .setColor(embedColor)
-      .setDescription(content);
+    const cChunk = new ContainerBuilder().setAccentColor(embedColor);
 
     if (i === 0) {
-      embed.setAuthor({
-        name: `${badgeEmoji} ${classification}`,
-        iconURL: message.author.displayAvatarURL({ dynamic: true, size: 32 })
-      });
-      if (title) embed.setTitle(title);
-    } else if (title) {
-      embed.setAuthor({ name: title, iconURL: message.client?.user?.displayAvatarURL() });
+      cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${badgeEmoji} ${classification}**`));
+      cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    } else {
+      cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${title || 'Continued'}**`));
+      cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     }
 
-    // Footer only on last embed
+    cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
+
     if (i === chunks.length - 1 || i === CFG.MAX_EMBEDS_PER_MSG - 1) {
-      const footerParts = [];
-      footerParts.push(`ARCHON CG-223 • Lydia AI`);
-      if (lang === 'fr') footerParts.push('🇫🇷');
-      else footerParts.push('🌐');
+      cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-      embed.setFooter({
-        text: footerParts.join(' \u2022 '),
-        iconURL: message.guild?.iconURL({ size: 16 }) || message.client?.user?.displayAvatarURL()
-      });
-      embed.setTimestamp();
+      let footerText = `-# ARCHON CG-223 • Lydia AI`;
+      if (lang === 'fr') footerText += ' 🇫🇷'; else footerText += ' 🌐';
 
-      // Sources only on last embed
       if (sources.length > 0 && !isError) {
         const sourceLinks = sources.slice(0, 4).map((s, idx) => {
-          const t = s.title.length > 80 ? s.title.substring(0, 80) + '...' : s.title;
-          return `[[${idx + 1}]](${s.url}) ${t}`;
+          const tTitle = s.title.length > 80 ? s.title.substring(0, 80) + '...' : s.title;
+          return `[[${idx + 1}]](${s.url}) ${tTitle}`;
         }).join('\n');
-        embed.addFields({ name: '\u{1F517} Real-Time Sources', value: sourceLinks, inline: false });
+        cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**🔗 Real-Time Sources**\n${sourceLinks}`));
       }
 
-      // Command mention field only on last embed
       const botCommands = ['.daily', '.shop', '.profile', '.level', '.market', '.help', '.ticket', '.remind', '.afk', '.invest', '.claim', '.streak', '.rank', '.leaderboard', '.whois', '.mute', '.kick', '.ban', '.warn', '.automod'];
       const mentionedCommand = reply ? botCommands.find(cmd => reply.toLowerCase().includes(cmd)) : null;
       if (mentionedCommand && !isError) {
-        embed.addFields({
-          name: '\u{1F4CB} SYSTEM BRIEFING',
-          value: `\`> ${mentionedCommand}\` \u2014 Use this command in any server channel.`,
-          inline: false
-        });
+        cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📋 SYSTEM BRIEFING**\n\`> ${mentionedCommand}\` — Use this command in any server channel.`));
       }
+
+      cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(footerText));
     }
 
-    embeds.push(embed);
+    containers.push(cChunk);
   }
 
-  return embeds;
+  return containers;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1185,8 +1159,9 @@ async function handleLydiaMessage(message, client, database) {
     const theme = detectTheme(userPrompt || 'hello');
 
     thinkingMsg = await message.reply({
-      embeds: [buildEmbed(null, message, { isThinking: true, theme, lang: uiLang })],
-      allowedMentions: { repliedUser: false }
+      components: [buildEmbed(null, message, { isThinking: true, theme, lang: uiLang })],
+      allowedMentions: { repliedUser: false },
+      flags: MessageFlags.IsComponentsV2
     }).catch(() => null);
 
     console.log(`${C.cyan}[LYDIA]${C.reset} ${userName} [${lang}]: ${message.content?.substring(0, 50)} | ${theme.name}`);
@@ -1207,8 +1182,8 @@ async function handleLydiaMessage(message, client, database) {
       const staticMsg = lang === 'fr' ? t('lydia.greeting_fr', lang, { user: userName })
         : (greetings[lang] || t('lydia.greeting_en', lang, { user: userName }));
       const staticEmbeds = buildEmbed(staticMsg, message, { isError: false, theme, lang });
-      if (thinkingMsg) await thinkingMsg.edit({ embeds: staticEmbeds });
-      else await message.reply({ embeds: staticEmbeds });
+      if (thinkingMsg) await thinkingMsg.edit({ components: staticEmbeds, flags: MessageFlags.IsComponentsV2 });
+      else await message.reply({ components: staticEmbeds, flags: MessageFlags.IsComponentsV2 });
       messageProcessingLocks.delete(key);
       return;
     }
@@ -1219,8 +1194,8 @@ async function handleLydiaMessage(message, client, database) {
         isError: false, theme, model: cached.model, latency: 0, tokens: cached.tokens,
         sources: cached.sources || [], lang
       });
-      if (thinkingMsg) await thinkingMsg.edit({ embeds: cacheEmbeds });
-      else await message.reply({ embeds: cacheEmbeds });
+      if (thinkingMsg) await thinkingMsg.edit({ components: cacheEmbeds, flags: MessageFlags.IsComponentsV2 });
+      else await message.reply({ components: cacheEmbeds, flags: MessageFlags.IsComponentsV2 });
       messageProcessingLocks.delete(key);
       return;
     }
@@ -1301,8 +1276,8 @@ async function handleLydiaMessage(message, client, database) {
     if (!aiResult) {
       const errorMsg = !process.env.OPENROUTER_API_KEY ? t('lydia.ai_no_key', lang) : t('lydia.ai_unavailable', lang);
       const errorEmbeds = buildEmbed(errorMsg, message, { isError: true, theme, lang });
-      if (thinkingMsg) await thinkingMsg.edit({ embeds: errorEmbeds });
-      else await message.reply({ embeds: errorEmbeds });
+      if (thinkingMsg) await thinkingMsg.edit({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2 });
+      else await message.reply({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2 });
       messageProcessingLocks.delete(key);
       return;
     }
@@ -1322,6 +1297,8 @@ async function handleLydiaMessage(message, client, database) {
     }
 
     safeReply = scrubSecrets(safeReply);
+
+
 
     const cleanReply = safeReply
       .replace(/\[MEMORY:\s*[^|]+?\s*\|\s*[^\]]+?\s*\]/g, '')
@@ -1343,8 +1320,8 @@ async function handleLydiaMessage(message, client, database) {
       isError: false, theme, model, latency, tokens, sources: searchSources, lang
     });
 
-    if (thinkingMsg) await thinkingMsg.edit({ embeds: finalEmbeds });
-    else await message.reply({ embeds: finalEmbeds });
+    if (thinkingMsg) await thinkingMsg.edit({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2 });
+    else await message.reply({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2 });
 
     if (!imageUrl && finalReply.length > 20) {
       setCachedResponse(message.author.id, userPrompt, {
@@ -1359,8 +1336,8 @@ async function handleLydiaMessage(message, client, database) {
   } catch (err) {
     console.error(`${C.red}[LYDIA]${C.reset} ${err.message}`);
     const errorEmbeds = buildEmbed(t('lydia.ai_error', lang), message, { isError: true });
-    if (thinkingMsg) await thinkingMsg.edit({ embeds: errorEmbeds }).catch(() => {});
-    else await message.reply({ embeds: errorEmbeds }).catch(() => {});
+    if (thinkingMsg) await thinkingMsg.edit({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+    else await message.reply({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2 }).catch(() => {});
   } finally {
     messageProcessingLocks.delete(key);
   }
@@ -1417,24 +1394,29 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
       if (getGuildKey(client.db, guildId, 'openrouter')) keyMode = '🔑 Custom key (AI brain)';
       else if (getGuildKey(client.db, guildId, 'brave')) keyMode = '🔑 Custom key (web search)';
     } catch(e) {}
-    const embed = new EmbedBuilder()
-      .setColor(isEnabled ? '#2ecc71' : '#95a5a6')
-      .setAuthor({
-        name: `${botName} \u2022 ${isEnabled ? t('lydia.badgeActive', lang) : t('lydia.badgeStandby', lang)}`,
-        iconURL: client.user.displayAvatarURL()
-      })
-      .setThumbnail(isEnabled ? client.user.displayAvatarURL() : null)
-      .setDescription(
-        isEnabled
-          ? t('lydia.statusActiveDesc', lang, { botName, channel: channel.name }) + t('lydia.statusActiveBody', lang, { botName, prefix, keyMode })
-          : t('lydia.statusStandbyDesc', lang, { botName }) + t('lydia.statusStandbyBody', lang, { prefix })
-      )
-      .setFooter({
-        text: `#${channel.name} \u2022 ${new Date().toLocaleTimeString('en-US', { timeZone: 'Africa/Bamako' })}`,
-        iconURL: guild.iconURL()
-      })
-      .setTimestamp();
-    if (respondFn) await respondFn({ embeds: [embed] });
+    
+    // Explicit pickLang to ensure we respect the server's 'auto' setting
+    const resolvedLang = pickLang(client, guildId, null, userId) || lang;
+
+    const c = new ContainerBuilder().setAccentColor(isEnabled ? 0x2ecc71 : 0x95a5a6);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${botName} • ${isEnabled ? (t('lydia.badgeActive', resolvedLang) || 'ACTIVE') : (t('lydia.badgeStandby', resolvedLang) || 'STANDBY')}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    
+    const desc = isEnabled 
+      ? t('lydia.statusActiveDesc', resolvedLang, { channel: `#${channel.name}` })
+      : t('lydia.statusStandbyDesc', resolvedLang, { botName });
+      
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(desc));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+    const body = isEnabled
+      ? t('lydia.statusActiveBody', resolvedLang, { prefix, keyMode })
+      : t('lydia.statusStandbyBody', resolvedLang, { prefix });
+      
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# #${channel.name} • ${new Date().toLocaleTimeString('en-US', { timeZone: 'Africa/Bamako' })}`));
+
+    if (respondFn) await respondFn({ components: [c], flags: MessageFlags.IsComponentsV2 });
     return;
   }
 
@@ -1446,23 +1428,16 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
     client.lydiaChannels[channelId] = true;
     try {
-      client.db?.prepare(`
-        INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at)
-        VALUES (?, ?, 1, ?)
-      `).run(channelId, 'default', Math.floor(Date.now() / 1000));
+      client.db?.prepare(`INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at) VALUES (?, ?, 1, ?)`).run(channelId, 'default', Math.floor(Date.now() / 1000));
     } catch (e) {}
 
-    const embed = new EmbedBuilder()
-      .setColor('#2ecc71')
-      .setAuthor({ name: `\u{1F7E2} ${t('lydia.onAuthor', lang)}`, iconURL: client.user.displayAvatarURL() })
-      .setThumbnail(client.user.displayAvatarURL())
-      .setDescription(
-        t('lydia.onDesc', lang, { botName, channel: channel.name }) +
-        t('lydia.onBody', lang, { botName, prefix })
-      )
-      .setFooter({ text: `#${channel.name} \u2022 ${t('lydia.onFooter', lang)}`, iconURL: guild.iconURL() })
-      .setTimestamp();
-    if (respondFn) await respondFn({ embeds: [embed] });
+    const c = new ContainerBuilder().setAccentColor(0x2ecc71);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🟢 ${t('lydia.onAuthor', lang)}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.onDesc', lang, { botName, channel: channel.name }) + t('lydia.onBody', lang, { botName, prefix })));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# #${channel.name} • ${t('lydia.onFooter', lang)}`));
+
+    if (respondFn) await respondFn({ components: [c], flags: MessageFlags.IsComponentsV2 });
     return;
   }
 
@@ -1477,16 +1452,13 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
       client.db?.prepare(`UPDATE lydia_agents SET is_active = 0 WHERE channel_id = ?`).run(channelId);
     } catch (e) {}
 
-    const embed = new EmbedBuilder()
-      .setColor('#e74c3c')
-      .setAuthor({ name: `\u{1F534} ${t('lydia.offAuthor', lang)}`, iconURL: client.user.displayAvatarURL() })
-      .setDescription(
-        t('lydia.offDesc', lang, { botName, channel: channel.name }) +
-        t('lydia.offBody', lang, { prefix })
-      )
-      .setFooter({ text: `#${channel.name} \u2022 ${t('lydia.offFooter', lang)}`, iconURL: guild.iconURL() })
-      .setTimestamp();
-    if (respondFn) await respondFn({ embeds: [embed] });
+    const c = new ContainerBuilder().setAccentColor(0xe74c3c);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🔴 ${t('lydia.offAuthor', lang)}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.offDesc', lang, { botName, channel: channel.name }) + t('lydia.offBody', lang, { prefix })));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# #${channel.name} • ${t('lydia.offFooter', lang)}`));
+
+    if (respondFn) await respondFn({ components: [c], flags: MessageFlags.IsComponentsV2 });
     return;
   }
 }
@@ -1510,53 +1482,37 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
   }
 
   try {
-    const memories = database.prepare(`
-      SELECT memory_key, memory_value, updated_at FROM lydia_memory
-      WHERE user_id = ? ORDER BY updated_at DESC
-    `).all(userId);
+    const memories = database.prepare(`SELECT memory_key, memory_value, updated_at FROM lydia_memory WHERE user_id = ? ORDER BY updated_at DESC`).all(userId);
 
     if (!memories.length) {
-      const embed = new EmbedBuilder()
-        .setColor('#f1c40f')
-        .setAuthor({
-          name: `\u{1F4ED} MEMORY VAULT \u2022 ${username}`,
-          iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL()
-        })
-        .setDescription(
-          `\`\`\`ansi\n\u001b[1;33m[ ARCHIVE EMPTY ]\u001b[0m\n\u001b[33m${t('lydia.memory_empty', lang)}\u001b[0m\n\`\`\`\n` +
-          t('lydia.memory_empty_hint', lang) + '\n\n' + t('lydia.memory_example', lang)
-        )
-        .setFooter({ text: t('lydia.memory_footer', lang) })
-        .setTimestamp();
-      await respond({ embeds: [embed], flags: 64 });
+      const c = new ContainerBuilder().setAccentColor(0xf1c40f);
+      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📭 MEMORY VAULT • ${username}`));
+      c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;33m[ ARCHIVE EMPTY ]\u001b[0m\n\u001b[33m${t('lydia.memory_empty', lang)}\u001b[0m\n\`\`\`\n` + t('lydia.memory_empty_hint', lang) + '\n\n' + t('lydia.memory_example', lang)));
+      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('lydia.memory_footer', lang)}`));
+      await respond({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
       return;
     }
 
-    const memoryFields = memories.slice(0, 25).map(m => {
+    const c = new ContainerBuilder().setAccentColor(0x2ecc71);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧠 MEMORY ARCHIVE • ${username}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;32m[ ${memories.length} RECORD(S) FOUND ]\u001b[0m\n\`\`\``));
+    
+    for (const m of memories.slice(0, 25)) {
       const date = new Date(m.updated_at).toLocaleDateString();
-      return { name: `\u{1F4CC} ${m.memory_key}`, value: `${m.memory_value}\n*Stored: ${date}*`, inline: false };
-    });
+      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📌 ${m.memory_key}**\n${m.memory_value}\n*Stored: ${date}*`));
+    }
+    
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${memories.length > 25 ? t('lydia.memory_showing', lang, { count: 25, total: memories.length }) : t('lydia.memory_footer', lang)}`));
 
-    const embed = new EmbedBuilder()
-      .setColor('#2ecc71')
-      .setAuthor({
-        name: `\u{1F9E0} MEMORY ARCHIVE \u2022 ${username}`,
-        iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL()
-      })
-      .setDescription(`\`\`\`ansi\n\u001b[1;32m[ ${memories.length} RECORD(S) FOUND ]\u001b[0m\n\`\`\``)
-      .addFields(memoryFields)
-      .setFooter({ text: memories.length > 25 ? t('lydia.memory_showing', lang, { count: 25, total: memories.length }) : t('lydia.memory_footer', lang) })
-      .setTimestamp();
-
-    await respond({ embeds: [embed], flags: 64 });
+    await respond({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
   } catch (err) {
     console.error(`${C.red}[LYDIA MEMORY]${C.reset} ${err.message}`);
-    const errorEmbed = new EmbedBuilder()
-      .setColor('#e74c3c')
-      .setAuthor({ name: '\u{1F534} SYSTEM ALERT', iconURL: isSlash ? interactionOrMessage.user.displayAvatarURL() : interactionOrMessage.author.displayAvatarURL() })
-      .setDescription(t('lydia.memory_error', lang))
-      .setTimestamp();
-    await respond({ embeds: [errorEmbed], flags: 64 });
+    const c = new ContainerBuilder().setAccentColor(0xe74c3c);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🔴 SYSTEM ALERT`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.memory_error', lang)));
+    await respond({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
   }
 }
 
