@@ -1,13 +1,11 @@
 const EMOJIS = require('../config/emojis');
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
-
-// ================= BILINGUAL TRANSLATIONS =================
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const i18n = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
+
 const HELP_FLAT = ["directoryTitle", "commandExtract", "module", "category", "usage", "aliases", "examples", "cooldown", "seconds", "noDescription", "noExamples", "none", "systemStatus", "online", "node", "core", "uptime", "version", "moduleStats", "commands", "aliasesStat", "categories", "agents", "guilds", "quickAccess", "aiAssistant", "aiDesc", "selectPlaceholder", "viewAll", "mainMenu", "backToMain", "modulesTitle", "moduleStatsTitle", "totalCommands", "aliasesRegistered", "commandsAvailable", "useHelpForDetails", "selectModuleBelow", "signalLost", "commandNotFound", "notFoundDesc", "checkSpelling", "accessDenied", "footer", "bamakoNode", "modulesOnline", "tip", "topCategories", "noData", "moduleLocked", "moduleDisabledTitle", "moduleDisabledDesc", "noCommands"];
 const HELP_NESTED = {"categoryDescriptions": ["SYSTEM", "GAMING", "ECONOMY", "PROFILE", "AI", "MODERATION", "UTILITY", "FUN", "OWNER", "GENERAL", "ADMIN", "CONFIG", "MUSIC", "SOCIAL", "TICKETS", "LEVELING", "CODM"], "tips": ["0", "1", "2", "3", "4"]};
-// Clés dans lang/<locale>/help.json ; '' retombe sur EN dans t().
-// tips est stocké indexé (dig() ne rend que des chaînes) et reconstruit en tableau.
-// Sentinels: interpolate() maps {x} to itself → placeholders survive for .replace() later, zero warnings
+
 function loadT(lang) {
     const o = {};
     for (const k of HELP_FLAT) o[k] = i18n.t(`help.${k}`, lang);
@@ -21,101 +19,40 @@ function loadT(lang) {
 }
 
 const emojiMap = {
-    SYSTEM:    EMOJIS.helpSystem,
-    GAMING:     EMOJIS.gameController,
-    AI:         EMOJIS.ai_assistant,
-    PROFILE:    EMOJIS.myprofile,
-    OWNER:      EMOJIS.eagle,
-    GENERAL:    EMOJIS.general,
-    UTILITY:   EMOJIS.helpUtility,
-    MODERATION: EMOJIS.shield,
-    ECONOMY:    EMOJIS.coins,
-    FUN:       EMOJIS.helpFun,
-    ADMIN:     EMOJIS.crown,
-    CONFIG:     '⚙️',
-    MUSIC:      EMOJIS.music,
-    SOCIAL:    EMOJIS.helpSocial,
-    TICKETS:    EMOJIS.ticket,
-    CODM:       EMOJIS.gameCodm,
-    LEVELING:   EMOJIS.level,
+    SYSTEM: EMOJIS.helpSystem, GAMING: EMOJIS.gameController, AI: EMOJIS.ai_assistant, PROFILE: EMOJIS.myprofile,
+    OWNER: EMOJIS.eagle, GENERAL: EMOJIS.general, UTILITY: EMOJIS.helpUtility, MODERATION: EMOJIS.shield,
+    ECONOMY: EMOJIS.coins, FUN: EMOJIS.helpFun, ADMIN: EMOJIS.crown, CONFIG: '⚙️', MUSIC: EMOJIS.music,
+    SOCIAL: EMOJIS.helpSocial, TICKETS: EMOJIS.ticket, CODM: EMOJIS.gameCodm, LEVELING: EMOJIS.level,
 };
 
-const colorMap = {
-    SYSTEM: '#00fbff', GAMING: '#57F287', AI: '#9B59B6', PROFILE: '#FEE75C',
-    OWNER: '#ED4245', GENERAL: '#5865F2', UTILITY: '#EB459E', MODERATION: '#E67E22',
-    ECONOMY: '#F1C40F', FUN: '#3498DB'
-};
-
-// 🎨 POLICE/INTEL STYLE COLORS
 const INTEL_COLORS = ['#1a1a2e', '#16213e', '#00d9ff', '#f5a623', '#e94560', '#00b894', '#636e72'];
 function getIntelColor() { return INTEL_COLORS[Math.floor(Math.random() * INTEL_COLORS.length)]; }
 
-// ◀ ▶ Dynamic pagination (state set synchronously by createCategoryEmbed — race-safe, no awaits between call and use)
-let lastCategoryPages = 1;
 function buildPagerRow(category, current, total, lang, t) {
     const prev = Math.max(0, current - 1), next = Math.min(total - 1, current + 1);
     return new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`help_pg:${category}:${prev}`).setLabel('\u25C0').setStyle(ButtonStyle.Secondary).setDisabled(current <= 0),
-        new ButtonBuilder().setCustomId(`help_pg:${category}:${next}`).setLabel('\u25B6').setStyle(ButtonStyle.Secondary).setDisabled(current >= total - 1)
+        new ButtonBuilder().setCustomId(`help_pg:${category}:${prev}:${total}`).setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(current <= 0),
+        new ButtonBuilder().setCustomId(`help_pg:${category}:${next}:${total}`).setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(current >= total - 1)
     );
 }
 
-const red = "\x1b[31m", reset = "\x1b[0m";
-
-// ================= SMART EXAMPLE FORMATTER =================
 function formatExample(ex, prefix, cmdName, aliases = []) {
-    // Slash command — keep as-is
     if (ex.startsWith('/')) return ex;
-    
-    // Already has prefix + command name (full command) — keep as-is
     if (ex.startsWith(prefix + cmdName)) return ex;
-    
-    // Is just the command name or an alias (no args) — add prefix only
-    if (!ex.includes(' ') && (ex === cmdName || aliases.includes(ex))) {
-        return `${prefix}${ex}`;
-    }
-    
-    // Already starts with prefix but different command — keep as-is (cross-ref)
+    if (!ex.includes(' ') && (ex === cmdName || aliases.includes(ex))) return prefix + ex;
     if (ex.startsWith(prefix)) return ex;
-    
-    // Otherwise it's an argument — add prefix + command name + space
-    return `${prefix}${cmdName} ${ex}`;
+    return prefix + cmdName + ' ' + ex;
 }
 
-// ================= HELPER FUNCTIONS =================
 function getRandomTip(t, prefix) {
     const tips = t.tips;
     return tips[Math.floor(Math.random() * tips.length)].replace(/{prefix}/g, prefix);
 }
 
-function formatUptime(lang) {
-    const uptimeSec = process.uptime();
-    const days = Math.floor(uptimeSec / 86400);
-    const hours = Math.floor((uptimeSec % 86400) / 3600);
-    const minutes = Math.floor((uptimeSec % 3600) / 60);
-    const seconds = Math.floor(uptimeSec % 60);
-
-    const parts = [];
-    if (days > 0) parts.push(`${days}${lang === 'fr' ? 'j' : 'd'}`);
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    if (seconds > 0 && days === 0) parts.push(`${seconds}s`);
-
-    return parts.join(' ') || '0s';
-}
-
-// ================= SERVER PLUGIN DETECTION =================
 function getServerPlugins(client, guildId) {
     if (!guildId) return null;
     const settings = client.getServerSettings?.(guildId) || {};
-    return {
-        ECONOMY: settings.economy_enabled !== false,
-        GAMING: settings.gaming_enabled !== false,
-        AI: settings.ai_enabled !== false,
-        PROFILE: settings.profile_enabled !== false,
-        MODERATION: settings.moderation_enabled !== false,
-        FUN: true, UTILITY: true, SYSTEM: true, OWNER: false, GENERAL: true,
-    };
+    return { ECONOMY: settings.economy_enabled !== false, GAMING: settings.gaming_enabled !== false, AI: settings.ai_enabled !== false, PROFILE: settings.profile_enabled !== false, MODERATION: settings.moderation_enabled !== false, FUN: true, UTILITY: true, SYSTEM: true, OWNER: false, GENERAL: true };
 }
 
 function getCategoryStats(client) {
@@ -128,10 +65,7 @@ function getCategoryStats(client) {
 }
 
 function getTopCategories(stats, limit = 3) {
-    return Object.entries(stats)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, limit)
-        .map(([cat, count]) => ({ cat, count }));
+    return Object.entries(stats).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([cat, count]) => ({ cat, count }));
 }
 
 const FR_CAT_FALLBACK = { ADMIN: "Commandes d'administration du serveur", CONFIG: 'Configuration et paramètres du serveur', MUSIC: 'Lecture de musique et files d\'attente', SOCIAL: 'Commandes sociales et communautaires' };
@@ -142,165 +76,117 @@ function getCategoryDescription(cat, t, lang) {
     return lang === 'fr' ? `Commandes pour le module ${cat}` : `Commands for the ${cat} module`;
 }
 
-// 🛡️ POLICE-STYLE CATEGORY EMBED
-function createCategoryEmbed(client, category, prefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, guildId, page = 0) {
+function createCategoryView(client, category, prefix, lang, t, guildName, version, guildId, page = 0) {
     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
-
     const plugins = getServerPlugins(client, guildId);
+    
+    const c = new ContainerBuilder().setAccentColor(parseInt(getIntelColor().replace('#', ''), 16));
+
     if (plugins && category.toUpperCase() !== 'SYSTEM' && plugins[category.toUpperCase()] === false) {
-        lastCategoryPages = 1;
-        return new EmbedBuilder()
-            .setColor('#e94560')
-            .setAuthor({ name: `${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} MODULE`, iconURL: client.user.displayAvatarURL() })
-            .setTitle(t.moduleLocked)
-            .setDescription(
-                `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\n**${t.moduleDisabledTitle}**\n${t.moduleDisabledDesc}\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
-            )
-            .setFooter({ text: `${guildName} • v${version} • UNCLASSIFIED`, iconURL: guildIcon })
-            .setTimestamp();
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} MODULE`));
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t.moduleDisabledTitle}**\n${t.moduleDisabledDesc}`));
+        return { view: { components: [c], flags: MessageFlags.IsComponentsV2 }, totalPages: 1 };
     }
 
-    const intelColor = getIntelColor();
     const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
     const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
 
     const rendered = sortedCmds.map(cmd => {
-      try {
-        const aliasesText = cmd.aliases?.length ? ` \`(${cmd.aliases.slice(0, 3).join(', ')})\`` : '';
-        const examples = Array.isArray(cmd.examples) && cmd.examples.length ? `\n> 📝 ${lang === 'fr' ? 'Ex' : 'Ex'}: \`${cmd.examples.map(ex => formatExample(ex, prefix, cmd.name, cmd.aliases)).join('`, `')}\`` : '';
-        const hasSlash = !!(cmd.data || cmd.execute);
-        const slashBadge = hasSlash ? ' `[/]`' : '';
-        // Get subcommands from slash data
-        let subcommandText = '';
-        if (cmd.data?.options) {
-            try {
-                const subs = cmd.data.options.filter(o => o.toJSON?.()?.type === 1);
-                if (subs.length > 0) {
-                    const subList = subs.slice(0, 5).map(s => {
-                        const sub = s.toJSON?.() || {};
-                        return `\`/${cmd.name} ${sub.name}\``;
-                    }).join(' · ');
-                    const more = subs.length > 5 ? ` +${subs.length - 5}` : '';
-                    subcommandText = `\n> 🔹 ${subList}${more}`;
-                }
-            } catch(e) {}
+        try {
+            const aliasesText = cmd.aliases?.length ? ` \`(${cmd.aliases.slice(0, 3).join(', ')})\`` : '';
+            let examples = '';
+            if (Array.isArray(cmd.examples) && cmd.examples.length) {
+                const exList = cmd.examples.map(ex => formatExample(ex, prefix, cmd.name, cmd.aliases)).map(ex => '`' + ex + '`').join(', ');
+                examples = `\n> 📝 Ex: ${exList}`;
+            }
+            const hasSlash = !!(cmd.data || cmd.execute);
+            const slashBadge = hasSlash ? ' `[/]`' : '';
+            let subcommandText = '';
+            if (cmd.data?.options) {
+                try {
+                    const subs = cmd.data.options.filter(o => o.toJSON?.()?.type === 1);
+                    if (subs.length > 0) {
+                        const subList = subs.slice(0, 5).map(s => `\`/${cmd.name} ${(s.toJSON?.() || {}).name}\``).join(' · ');
+                        const more = subs.length > 5 ? ` +${subs.length - 5}` : '';
+                        subcommandText = `\n> 🔹 ${subList}${more}`;
+                    }
+                } catch(e) {}
+            }
+            return `\`▸ ${prefix}${cmd.name}\`${slashBadge}${aliasesText}\n> ${cmd.description || t.noDescription}${subcommandText}${examples}`;
+        } catch (e) {
+            return `\`▸ ${prefix}${cmd.name}\`\n> ⚠️`;
         }
-        return `\`▸ ${prefix}${cmd.name}\`${slashBadge}${aliasesText}\n> ${cmd.description || t.noDescription}${subcommandText}${examples}`;
-      } catch (e) {
-        console.error('[HELP ERROR] Render failed for cmd ' + cmd.name + ':', e.message);
-        return `\`\u25b8 ${prefix}${cmd.name}\`\n> \u26a0\ufe0f`;
-      }
     });
-    // \u{1F4C6} Chunk to respect Discord's 4096-char embed description limit
+
     const pageChunks = [];
     let curChunk = [], curLen = 0;
     for (const r of rendered) {
-        if (curLen + r.length + 2 > 3900 && curChunk.length) { pageChunks.push(curChunk); curChunk = []; curLen = 0; }
+        if (curLen + r.length + 2 > 3500 && curChunk.length) { pageChunks.push(curChunk); curChunk = []; curLen = 0; }
         curChunk.push(r); curLen += r.length + 2;
     }
     if (curChunk.length || pageChunks.length === 0) pageChunks.push(curChunk);
     const totalPages = pageChunks.length;
     const safePage = Math.min(Math.max(0, page), totalPages - 1);
-    lastCategoryPages = totalPages;
     const commandList = pageChunks[safePage].join('\n\n');
+    const pageLabel = totalPages > 1 ? ` — ${safePage + 1}/${totalPages}` : '';
 
-    const pageLabel = totalPages > 1 ? ` \u2014 ${safePage + 1}/${totalPages}` : '';
-    const catEmbed = new EmbedBuilder()
-        .setColor(intelColor)
-        .setAuthor({ name: `${categoryEmoji} ${category.toUpperCase()} ${t.module}${pageLabel}`, iconURL: client.user.displayAvatarURL() })
-        .setTitle(`\`[ ${t.modulesTitle} ]\``)
-        .setDescription(commandList || t.noCommands);
-    if (safePage === totalPages - 1) catEmbed.addFields({ 
-            name: `\` ${t.moduleStatsTitle} \``, 
-            value: `\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\n\`STATUS: ONLINE\`\`\`\``, 
-            inline: false 
-        });
-    catEmbed
-        .setFooter({ 
-            text: `${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${version} • UNCLASSIFIED`,
-            iconURL: guildIcon
-        })
-        .setTimestamp();
-    return catEmbed;
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${categoryEmoji} ${category.toUpperCase()} ${t.module}${pageLabel}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(commandList || t.noCommands));
+    
+    if (safePage === totalPages - 1) {
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t.moduleStatsTitle}**\n\`\`\`yaml\n${t.totalCommands}: ${cmds.size}\n${t.aliasesRegistered}: ${cmds.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\nSTATUS: ONLINE\`\`\``));
+    }
+    
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName} • ${t.useHelpForDetails.replace('{prefix}', prefix)} • ${cmds.size} ${t.commandsAvailable} • v${version} • UNCLASSIFIED`));
+
+    return { view: { components: [c], flags: MessageFlags.IsComponentsV2 }, totalPages };
 }
 
-// ================= MAIN EXPORT =================
 module.exports = {
-    name: 'help',
-    aliases: ['h', 'menu', 'docs', 'aide', 'commandes', 'commands'],
+    name: 'help', aliases: ['h', 'menu', 'docs', 'aide', 'commandes', 'commands'],
     description: 'Browse all ARCHON CG-223 commands, modules and subcommands.',
-    category: 'SYSTEM',
-    cooldown: 3000,
+    category: 'SYSTEM', cooldown: 3000,
 
-    data: new SlashCommandBuilder()
-        .setName('help')
-        .setDescription('Browse all ARCHON CG-223 commands and modules')
-        .addStringOption(option =>
-            option.setName('query')
-                .setDescription('Command or category to view')
-                .setRequired(false)
-                .setAutocomplete(true)
-        ),
+    data: new SlashCommandBuilder().setName('help').setDescription('Browse all ARCHON CG-223 commands and modules')
+        .addStringOption(option => option.setName('query').setDescription('Command or category to view').setRequired(false).setAutocomplete(true)),
 
     async autocomplete(interaction) {
         const focusedValue = interaction.options.getFocused();
-        const choices = [...interaction.client.commands.keys()].filter(cmd => 
-            cmd.startsWith(focusedValue.toLowerCase())
-        ).slice(0, 25);
+        const choices = [...interaction.client.commands.keys()].filter(cmd => cmd.startsWith(focusedValue.toLowerCase())).slice(0, 25);
         await interaction.respond(choices.map(choice => ({ name: choice, value: choice })));
     },
 
     run: async (client, message, args, database, serverSettings, usedCommand) => {
         const guildId = message.guild?.id ?? 'DM';
-        let lang = 'en';
-        if (client.detectLanguage && usedCommand) {
-
-        } else if (usedCommand) {
-            const cmd = usedCommand.toLowerCase();
-            if (cmd === 'aide' || cmd === 'commandes') lang = 'fr';
-            else if (cmd === 'help' || cmd === 'commands') lang = 'en';
-        }
-
+        const lang = pickLang(client, guildId, message);
         const t = loadT(lang);
         const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const version = client.version || '3.1.0';
         const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
-        const uptimeSec = process.uptime();
-        const days = Math.floor(uptimeSec / 86400);
-        const hours = Math.floor((uptimeSec % 86400) / 3600);
-        const minutes = Math.floor((uptimeSec % 3600) / 60);
         const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
         const totalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size) || 0;
 
-        let uptimeString = '';
-        if (days > 0) uptimeString += `${days}${lang === 'fr' ? 'j' : 'd'} `;
-        if (hours > 0) uptimeString += `${hours}${lang === 'fr' ? 'h' : 'h'} `;
-        if (minutes > 0) uptimeString += `${minutes}${lang === 'fr' ? 'm' : 'm'} `;
-        if (days === 0 && hours === 0 && minutes === 0) uptimeString += `${Math.floor(uptimeSec)}s`;
-        else if (uptimeSec % 60 > 0 && days === 0 && hours === 0) uptimeString += `${Math.floor(uptimeSec % 60)}s`;
-        uptimeString = uptimeString.trim() || '0s';
-
-        // ================= SUB-COMMAND HANDLING =================
         if (args[0]) {
             const searchTerm = args[0].toUpperCase();
             const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))];
 
             if (categories.includes(searchTerm)) {
-                const embed = createCategoryEmbed(client, searchTerm, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, 0);
-                const catPages = lastCategoryPages;
-                const catReply = await message.reply({ embeds: [embed], components: catPages > 1 ? [buildPagerRow(searchTerm, 0, catPages, lang, t)] : [] }).catch(() => null);
-                if (catReply && catPages > 1) {
+                const { view, totalPages } = createCategoryView(client, searchTerm, effectivePrefix, lang, t, guildName, version, message.guild?.id, 0);
+                const catReply = await message.reply({ ...view, components: [...view.components, ...(totalPages > 1 ? [buildPagerRow(searchTerm, 0, totalPages, lang, t)] : [])] }).catch(() => null);
+                if (catReply && totalPages > 1) {
                     const catCol = catReply.createMessageComponentCollector({ time: 300000 });
                     catCol.on('collect', async (bi) => {
                         if (bi.user.id !== message.author.id) return bi.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
                         if (bi.isButton() && bi.customId.startsWith('help_pg:')) {
                             await bi.deferUpdate().catch(() => {});
-                            const [, pgCat, pgIdx] = bi.customId.split(':');
-                            const newIdx = Math.max(0, Math.min(catPages - 1, parseInt(pgIdx, 10) || 0));
-                            const pgEmbed = createCategoryEmbed(client, pgCat, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, newIdx);
-                            await bi.editReply({ embeds: [pgEmbed], components: [buildPagerRow(pgCat, newIdx, catPages, lang, t)] }).catch(() => {});
+                            const [, pgCat, pgIdx, pgTotal] = bi.customId.split(':');
+                            const newIdx = Math.max(0, Math.min(parseInt(pgTotal) - 1, parseInt(pgIdx) || 0));
+                            const { view: pgView } = createCategoryView(client, pgCat, effectivePrefix, lang, t, guildName, version, message.guild?.id, newIdx);
+                            await bi.editReply({ ...pgView, components: [...pgView.components, buildPagerRow(pgCat, newIdx, parseInt(pgTotal), lang, t)] }).catch(() => {});
                         }
                     });
                 }
@@ -313,357 +199,154 @@ module.exports = {
             if (cmd) {
                 const category = cmd.category || 'GENERAL';
                 const categoryEmoji = emojiMap[category.toUpperCase()] || '📁';
-
-                const detailEmbed = new EmbedBuilder()
-                    .setColor(getIntelColor())
-                    .setAuthor({ name: `${categoryEmoji} ${t.commandExtract}`, iconURL: client.user.displayAvatarURL() })
-                    .setTitle(`\`[ ${t.module}: ${cmd.name.toUpperCase()} ]\``)
-                    .setDescription(`\`\`\`yaml\n${cmd.description || t.noDescription}\`\`\``)
-                    .addFields(
-                        { name: `\` 📂 ${t.category} \``, value: `\`${category}\` ${getCategoryDescription(category, t, lang) ? `• ${getCategoryDescription(category, t, lang)}` : ''}`, inline: false },
-                        { name: `\` 🔧 ${t.usage} \``, value: `\`${effectivePrefix}${cmd.name} ${cmd.usage || ''}\``.trim(), inline: true },
-                        { name: `\` 🔀 ${t.aliases} \``, value: cmd.aliases?.length ? `\`${cmd.aliases.join(', ')}\`` : `\`${t.none}\``, inline: true }
-                    );
-
+                const c = new ContainerBuilder().setAccentColor(parseInt(getIntelColor().replace('#', ''), 16));
+                
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${categoryEmoji} ${t.commandExtract}\n\`[ ${t.module}: ${cmd.name.toUpperCase()} ]\``));
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\`\`\`yaml\n${cmd.description || t.noDescription}\`\`\``));
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                
+                let body = `**📂 ${t.category}** · \`${category}\` • ${getCategoryDescription(category, t, lang)}\n`;
+                body += `**🔧 ${t.usage}** · \`${effectivePrefix}${cmd.name} ${cmd.usage || ''}\`\n`;
+                body += `**🔀 ${t.aliases}** · ${cmd.aliases?.length ? `\`${cmd.aliases.join(', ')}\`` : `\`${t.none}\``}\n`;
                 if (cmd.examples?.length) {
-    detailEmbed.addFields({
-        name: `\` 🎯 ${t.examples} \``,
-        value: `\`${cmd.examples.map(ex => formatExample(ex, effectivePrefix, cmd.name, cmd.aliases)).join('`\n`')}\``,
-        inline: false
-    });
-}
-
-                if (cmd.cooldown) {
-                    detailEmbed.addFields({ 
-                        name: `\` ⏱️ ${t.cooldown} \``, 
-                        value: `\`${cmd.cooldown/1000} ${t.seconds}\``, 
-                        inline: true 
-                    });
+                    const exList = cmd.examples.map(ex => formatExample(ex, effectivePrefix, cmd.name, cmd.aliases)).map(ex => '`' + ex + '`').join(', ');
+                    body += `**🎯 ${t.examples}** · ${exList}\n`;
                 }
-
-                detailEmbed
-                    .setFooter({ 
-                        text: `${guildName} • ${t.bamakoNode} • ${client.commands.size} ${t.modulesOnline} • v${version} • UNCLASSIFIED`,
-                        iconURL: guildIcon
-                    })
-                    .setTimestamp();
-
-                return message.reply({ embeds: [detailEmbed] }).catch(() => {});
+                if (cmd.cooldown) {
+                    body += `**⏱️ ${t.cooldown}** · \`${cmd.cooldown/1000} ${t.seconds}\`\n`;
+                }
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName} • ${t.bamakoNode} • ${client.commands.size} ${t.modulesOnline} • v${version} • UNCLASSIFIED`));
+                
+                return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
             }
 
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#e94560')
-                .setAuthor({ name: t.signalLost, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`\`[ ${t.commandNotFound} ]\``)
-                .setDescription(i18n.t('help.notFoundDesc', lang, { arg: args[0], prefix: effectivePrefix }))
-                .setFooter({ text: `${guildName} • ${t.checkSpelling} • UNCLASSIFIED`, iconURL: guildIcon })
-                .setTimestamp();
-            return message.reply({ embeds: [errorEmbed] }).catch(() => {});
+            const cErr = new ContainerBuilder().setAccentColor(0xe94560);
+            cErr.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t.signalLost}\n\`[ ${t.commandNotFound} ]\``));
+            cErr.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            cErr.addTextDisplayComponents(new TextDisplayBuilder().setContent(i18n.t('help.notFoundDesc', lang, { arg: args[0], prefix: effectivePrefix })));
+            cErr.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName} • ${t.checkSpelling} • UNCLASSIFIED`));
+            return message.reply({ components: [cErr], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
         }
 
-        // ================= MAIN DIRECTORY =================
         const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))].sort();
         const categoryStats = getCategoryStats(client);
         const topCategories = getTopCategories(categoryStats);
-
         const totalCommands = client.commands.size;
         const totalAliases = client.aliases?.size || 0;
-        const categoriesCount = categories.length;
+        
+        const topCategoriesDisplay = topCategories.map((c, i) => `${['🥇', '🥈', '🥉'][i]} **${c.cat}**: \`${c.count}\` ${t.commands.toLowerCase()}`).join('\n');
+        
+        const uptimeSec = process.uptime();
+        let uptimeString = `${Math.floor(uptimeSec / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m`;
 
-        const topCategoriesDisplay = topCategories.map((c, i) => 
-            `${['🥇', '🥈', '🥉'][i]} **${c.cat}**: \`${c.count}\` ${t.commands.toLowerCase()}`
-        ).join('\n');
+        const cMain = new ContainerBuilder().setAccentColor(parseInt(getIntelColor().replace('#', ''), 16));
+        cMain.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🦅 ${t.directoryTitle}`));
+        cMain.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        cMain.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\`\`\`yaml\n${t.systemStatus}: 🟢 ${t.online}\n${t.node}: BAMAKO-223\n${t.core}: OpenRouter + Brave Search\n${t.uptime}: ${uptimeString}\n${t.version}: v${version}\`\`\``));
+        cMain.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t.moduleStats}**\n\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categories.length}\n${t.agents}: ${totalMembers.toLocaleString()}\n${t.guilds}: ${totalGuilds}\`\`\``));
+        cMain.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t.topCategories}**\n${topCategoriesDisplay || t.noData}`));
+        cMain.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t.quickAccess}**\n\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``));
+        cMain.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        cMain.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow} • UNCLASSIFIED`));
 
-        const mainEmbed = new EmbedBuilder()
-            .setColor(getIntelColor())
-            .setAuthor({ name: t.directoryTitle, iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) })
-            .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
-            .setDescription(
-                `\`\`\`yaml\n` +
-                `${t.systemStatus}: 🟢 ${t.online}\n` +
-                `${t.node}: BAMAKO-223\n` +
-                `${t.core}: OpenRouter + Brave Search\n` +
-                `${t.uptime}: ${uptimeString}\n` +
-                `${t.version}: v${version}\`\`\``
-            )
-            .addFields(
-                { name: `\` ${t.moduleStats} \``, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${totalMembers.toLocaleString()}\n${t.guilds}: ${totalGuilds}\`\`\``, inline: true },
-                { name: `\` ${t.topCategories} \``, value: topCategoriesDisplay || t.noData, inline: true },
-                { name: `\` ${t.quickAccess} \``, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
-                { name: `\` ${t.aiAssistant} \``, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
-                { name: `${EMOJIS.website} Dashboard`, value: '[bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)', inline: true },
-                { name: `\` ${t.tip} \``, value: getRandomTip(t, effectivePrefix), inline: true }
-            )
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow} • UNCLASSIFIED`, iconURL: guildIcon })
-            .setTimestamp();
-
-        const menu = new StringSelectMenuBuilder()
-            .setCustomId('help_select')
-            .setPlaceholder(t.selectPlaceholder)
+        const menu = new StringSelectMenuBuilder().setCustomId('help_select').setPlaceholder(t.selectPlaceholder)
             .addOptions(categories.map(cat => ({
-                label: cat.toUpperCase().substring(0, 100),
-                value: cat,
-                description: getCategoryDescription(cat, t, lang).substring(0, 100),
-                emoji: emojiMap[cat.toUpperCase()] || '📁'
+                label: cat.substring(0, 100), value: cat, description: getCategoryDescription(cat, t, lang).substring(0, 100), emoji: emojiMap[cat] || '📁'
             })));
 
         const row1 = new ActionRowBuilder().addComponents(menu);
-        const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
-        );
+        const row2 = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true));
 
-        const response = await message.reply({
-            embeds: [mainEmbed],
-            components: [row1, row2]
-        }).catch(() => null);
-
+        const response = await message.reply({ components: [cMain, row1, row2], flags: MessageFlags.IsComponentsV2 }).catch(() => null);
         if (!response) return;
 
         const collector = response.createMessageComponentCollector({ time: 300000 });
 
         collector.on('collect', async (i) => {
-            // 🔒 SECURITY CHECK FIRST
-            if (i.user.id !== message.author.id) {
-                return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
-            }
-
+            if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
             try {
                 if (i.customId === 'help_back') {
-                    // ✅ SAFE DEFER + EDIT
-                    if (!i.deferred && !i.replied) {
-                        await i.deferUpdate().catch(() => {});
-                    }
-
-                    const freshUptimeSec = process.uptime();
-                    const freshDays = Math.floor(freshUptimeSec / 86400);
-                    const freshHours = Math.floor((freshUptimeSec % 86400) / 3600);
-                    const freshMinutes = Math.floor((freshUptimeSec % 3600) / 60);
-                    const freshTotalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) || 0;
-                    const freshTotalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size) || 0;
-
-                    let freshUptimeString = '';
-                    if (freshDays > 0) freshUptimeString += `${freshDays}${lang === 'fr' ? 'j' : 'd'} `;
-                    if (freshHours > 0) freshUptimeString += `${freshHours}${lang === 'fr' ? 'h' : 'h'} `;
-                    if (freshMinutes > 0) freshUptimeString += `${freshMinutes}${lang === 'fr' ? 'm' : 'm'} `;
-                    if (freshDays === 0 && freshHours === 0 && freshMinutes === 0) freshUptimeString += `${Math.floor(freshUptimeSec)}s`;
-                    else if (freshUptimeSec % 60 > 0 && freshDays === 0 && freshHours === 0) freshUptimeString += `${Math.floor(freshUptimeSec % 60)}s`;
-                    freshUptimeString = freshUptimeString.trim() || '0s';
-
-                    const freshMainEmbed = new EmbedBuilder()
-                        .setColor(getIntelColor())
-                        .setAuthor({ name: t.directoryTitle, iconURL: client.user.displayAvatarURL({ dynamic: true, size: 1024 }) })
-                        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
-                        .setDescription(
-                            `\`\`\`yaml\n` +
-                            `${t.systemStatus}: 🟢 ${t.online}\n` +
-                            `${t.node}: BAMAKO-223\n` +
-                            `${t.core}: OpenRouter + Brave Search\n` +
-                            `${t.uptime}: ${freshUptimeString}\n` +
-                            `${t.version}: v${version}\`\`\``
-                        )
-                        .addFields(
-                            { name: `\` ${t.moduleStats} \``, value: `\`\`\`yaml\n${t.commands}: ${totalCommands}\n${t.aliasesStat}: ${totalAliases}\n${t.categories}: ${categoriesCount}\n${t.agents}: ${freshTotalMembers.toLocaleString()}\n${t.guilds}: ${freshTotalGuilds}\`\`\``, inline: true },
-                            { name: `\` ${t.topCategories} \``, value: topCategoriesDisplay || t.noData, inline: true },
-                            { name: `\` ${t.quickAccess} \``, value: `\`\`\`yaml\n${effectivePrefix}game menu\n${effectivePrefix}daily\n${effectivePrefix}rank\n${effectivePrefix}shop\`\`\``, inline: false },
-                            { name: `\` ${t.aiAssistant} \``, value: `\`\`\`yaml\n${t.aiDesc.replace('{prefix}', effectivePrefix)}\`\`\``, inline: true },
-                            { name: `\` ${t.tip} \``, value: getRandomTip(t, effectivePrefix), inline: true }
-                        )
-                        .setFooter({ text: `${guildName} • ${t.footer} • v${version} • ${t.selectModuleBelow} • UNCLASSIFIED`, iconURL: guildIcon })
-                        .setTimestamp();
-
-                    const disabledRow2 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
-                    );
-
-                    await i.editReply({ content: null, embeds: [freshMainEmbed], components: [row1, disabledRow2] }).catch(() => {});
+                    await i.deferUpdate().catch(() => {});
+                    await i.editReply({ components: [cMain, row1, row2], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
                     return;
                 }
-
                 if (i.isButton() && i.customId.startsWith('help_pg:')) {
-                    if (!i.deferred && !i.replied) {
-                        await i.deferUpdate().catch(() => {});
-                    }
-                    const [, pgCat, pgIdx] = i.customId.split(':');
-                    const newIdx = Math.max(0, (parseInt(pgIdx, 10) || 0));
-                    const pgEmbed = createCategoryEmbed(client, pgCat, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, newIdx);
-                    const pgRow2 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false)
-                    );
-                    await i.editReply({ content: null, embeds: [pgEmbed], components: [row1, pgRow2, ...(lastCategoryPages > 1 ? [buildPagerRow(pgCat, newIdx, lastCategoryPages, lang, t)] : [])] }).catch(() => {});
+                    await i.deferUpdate().catch(() => {});
+                    const [, pgCat, pgIdx, pgTotal] = i.customId.split(':');
+                    const newIdx = Math.max(0, Math.min(parseInt(pgTotal) - 1, parseInt(pgIdx) || 0));
+                    const { view } = createCategoryView(client, pgCat, effectivePrefix, lang, t, guildName, version, message.guild?.id, newIdx);
+                    const pgRow2 = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false));
+                    await i.editReply({ ...view, components: [...view.components, row1, pgRow2, buildPagerRow(pgCat, newIdx, parseInt(pgTotal), lang, t)] }).catch(() => {});
                     return;
                 }
-
                 if (i.isStringSelectMenu() && i.customId === 'help_select') {
-                    // ✅ SAFE DEFER + EDIT
-                    if (!i.deferred && !i.replied) {
-                        await i.deferUpdate().catch(() => {});
-                    }
-
+                    await i.deferUpdate().catch(() => {});
                     const category = i.values[0];
-                    const categoryEmbed = createCategoryEmbed(client, category, effectivePrefix, lang, t, emojiMap, colorMap, guildName, guildIcon, version, message.guild?.id, 0);
-
-                    const updatedRow2 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false)
-                    );
-
-                    await i.editReply({ content: null, embeds: [categoryEmbed], components: [row1, updatedRow2, ...(lastCategoryPages > 1 ? [buildPagerRow(category, 0, lastCategoryPages, lang, t)] : [])] }).catch((err) => {
-                        console.error(`${red}[HELP ERROR]${reset} Failed to edit:`, err.message);
-                    });
+                    const { view, totalPages } = createCategoryView(client, category, effectivePrefix, lang, t, guildName, version, message.guild?.id, 0);
+                    const updatedRow2 = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('help_back').setLabel(t.backToMain).setStyle(ButtonStyle.Secondary).setDisabled(false));
+                    await i.editReply({ ...view, components: [...view.components, row1, updatedRow2, ...(totalPages > 1 ? [buildPagerRow(category, 0, totalPages, lang, t)] : [])] }).catch(() => {});
                     return;
                 }
             } catch (err) {
-                console.error(`${red}[HELP ERROR]${reset} Interaction failed:`, err.message);
-                if (err.errors) for (const e of err.errors) console.error('  └─', e?.message || e);
-                else console.error(err.stack);
-                try {
-                    if (!i.replied && !i.deferred) {
-                        await i.reply({ 
-                            content: lang === 'fr' ? '❌ Une erreur est survenue. Veuillez réessayer.' : '❌ An error occurred. Please try again.',
-                            flags: 64
-                        }).catch(() => {});
-                    }
-                } catch (e) {}
+                console.error('[HELP ERROR]', err);
             }
         });
 
         collector.on('end', async () => {
-            try {
-                const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
-                const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
-                const disabledButton = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('help_back').setLabel(t.mainMenu).setStyle(ButtonStyle.Secondary).setDisabled(true)
-                );
-                await response.edit({ components: [disabledRow, disabledButton] }).catch(() => {});
-            } catch (err) {}
+            const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
+            await response.edit({ components: [cMain, new ActionRowBuilder().addComponents(disabledMenu), row2] }).catch(() => {});
         });
     },
 
-    // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const query = interaction.options.getString('query');
         const args = query ? [query] : [];
 
-        // 🔥 DM FALLBACK
         if (!interaction.guild) {
-            const lang = require('../lib/i18n').slashLang(interaction);
+            const lang = pickLang(client, 'DM', interaction);
             const t = loadT(lang);
-
-            const dmEmbed = new EmbedBuilder()
-                .setColor(getIntelColor())
-                .setAuthor({ 
-                    name: lang === 'fr' ? '📡 TRANSMISSION NEURALE DIRECTE' : '📡 DIRECT NEURAL TRANSMISSION', 
-                    iconURL: client.user.displayAvatarURL() 
-                })
-                .setTitle(lang === 'fr' ? '🦅 ARCHON CG-223 // MODE DM' : '🦅 ARCHON CG-223 // DM MODE')
-                .setDescription(
-                    lang === 'fr' 
-                        ? `*Connexion neurale directe établie.*\n\n**Commandes disponibles en DM :**\n\n` +
-                          `⚙️ **/help** - Ce menu d'aide\n` +
-                          `📊 **/stats** - Statistiques du système\n` +
-                          `📖 **/about** - Informations sur l'Architecte\n` +
-                          `🎮 **/wrg** - Jeu de devinettes\n` +
-                          `🔍 **/whois** - Scanner un agent\n\n` +
-                          `🌐 **Commandes serveur uniquement :**\n` +
-                          `*Les commandes d'économie, de modération et de profil nécessitent d'être dans un serveur.*\n\n` +
-                          `✨ *Utilisez le menu déroulant ci-dessous pour explorer les commandes serveur !*`
-                        : `*Direct neural connection established.*\n\n**Available in DMs:**\n\n` +
-                          `${EMOJIS.shield} **/help** — This help menu\n` +
-                          `${EMOJIS.charts} **/stats** — System statistics\n` +
-                          `${EMOJIS.eagle} **/about** — Architect information\n` +
-                          `${EMOJIS.gamer} **/wrg** — Word guessing game\n` +
-                          `${EMOJIS.dashboard} **/whois** — Scan an agent\n\n` +
-                          `🌐 **Server-Only Commands:**\n` +
-                          `*Economy, moderation, and profile commands require a server.*\n\n` +
-                          `✨ *Use the dropdown below to explore server commands!*`
-                )
-                .addFields(
-                    { name: `${EMOJIS.website} Dashboard`, value: '[bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)', inline: true }
-                )
-                .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
-                .setFooter({ 
-                    text: lang === 'fr' ? 'NŒUD BAMAKO-223 • TRANSMISSION SÉCURISÉE • UNCLASSIFIED' : 'BAMAKO-223 NODE • SECURE TRANSMISSION • UNCLASSIFIED',
-                    iconURL: client.user.displayAvatarURL()
-                })
-                .setTimestamp();
+            const cDm = new ContainerBuilder().setAccentColor(0x00fbff);
+            cDm.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📡 ${lang === 'fr' ? 'TRANSMISSION NEURALE DIRECTE' : 'DIRECT NEURAL TRANSMISSION'}`));
+            cDm.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            cDm.addTextDisplayComponents(new TextDisplayBuilder().setContent(lang === 'fr' ? `*Connexion neurale directe établie.*\n\n**Commandes disponibles en DM :**\n\n⚙️ **/help** - Ce menu d'aide\n📊 **/stats** - Statistiques du système\n📖 **/about** - Informations sur l'Architecte\n🎮 **/wrg** - Jeu de devinettes\n🔍 **/whois** - Scanner un agent\n\n🌐 **Commandes serveur uniquement :**\n*Les commandes d'économie, de modération et de profil nécessitent d'être dans un serveur.*` : `*Direct neural connection established.*\n\n**Available in DMs:**\n\n🛡️ **/help** — This help menu\n📊 **/stats** — System statistics\n🦅 **/about** — Architect information\n🎮 **/wrg** — Word guessing game\n📊 **/whois** — Scan an agent\n\n🌐 **Server-Only Commands:**\n*Economy, moderation, and profile commands require a server.*`));
+            cDm.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**🌐 Dashboard** · [bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)`));
+            cDm.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${lang === 'fr' ? 'NŒUD BAMAKO-223 • TRANSMISSION SÉCURISÉE • UNCLASSIFIED' : 'BAMAKO-223 NODE • SECURE TRANSMISSION • UNCLASSIFIED'}`));
 
             const categories = [...new Set(client.commands.map(cmd => (cmd.category || 'GENERAL').toUpperCase()))].sort();
             const categoryOptions = categories.slice(0, 25).map(cat => ({
-                label: cat.toUpperCase().substring(0, 100),
-                value: cat,
-                description: `${client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === cat).size} ${lang === 'fr' ? 'commande(s)' : 'command(s)'}`,
-                emoji: emojiMap[cat] || '📁'
+                label: cat.substring(0, 100), value: cat, description: `${client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === cat).size} ${lang === 'fr' ? 'commande(s)' : 'command(s)'}`, emoji: emojiMap[cat] || '📁'
             }));
 
-            const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('help_dm_category')
-                .setPlaceholder(lang === 'fr' ? '📋 Explorer les commandes serveur...' : '📋 Explore server commands...')
-                .addOptions(categoryOptions);
-
+            const selectMenu = new StringSelectMenuBuilder().setCustomId('help_dm_category').setPlaceholder(lang === 'fr' ? '📋 Explorer les commandes serveur...' : '📋 Explore server commands...').addOptions(categoryOptions);
             const row = new ActionRowBuilder().addComponents(selectMenu);
 
-            const reply = await interaction.reply({ 
-                embeds: [dmEmbed], 
-                components: [row],
-                flags: 64
-            }).catch(() => {});
-
+            const reply = await interaction.reply({ components: [cDm, row], flags: 64 }).catch(() => {});
             if (!reply) return;
 
             const collector = reply.createMessageComponentCollector({ time: 120000 });
-
             collector.on('collect', async (i) => {
-                if (i.user.id !== interaction.user.id) {
-                    return i.reply({ 
-                        content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', 
-                        flags: 64
-                    }).catch(() => {});
-                }
-
+                if (i.user.id !== interaction.user.id) return i.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', flags: 64 }).catch(() => {});
                 if (i.customId === 'help_dm_category') {
                     await i.deferUpdate().catch(() => {});
-
                     const category = i.values[0];
                     const cmds = client.commands.filter(c => (c.category || 'GENERAL').toUpperCase() === category.toUpperCase());
                     const sortedCmds = [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name));
-
-                    const categoryEmbed = new EmbedBuilder()
-                        .setColor(getIntelColor())
-                        .setAuthor({ 
-                            name: `${emojiMap[category.toUpperCase()] || '📁'} ${category.toUpperCase()} ${lang === 'fr' ? 'Commandes' : 'Commands'}`, 
-                            iconURL: client.user.displayAvatarURL() 
-                        })
-                        .setDescription(
-                            sortedCmds.map(cmd => {
-                                const aliasesStr = cmd.aliases?.length ? ` \`(${cmd.aliases.slice(0, 3).join(', ')})\`` : '';
-                                return `\`▸ /${cmd.name}\`${aliasesStr}\n> ${cmd.description || (lang === 'fr' ? 'Aucune description' : 'No description')}`;
-                            }).join('\n\n') || (lang === 'fr' ? 'Aucune commande trouvée.' : 'No commands found.')
-                        )
-                        .setFooter({ 
-                            text: lang === 'fr' ? '🌐 Ces commandes nécessitent un serveur • UNCLASSIFIED' : '🌐 These commands require a server • UNCLASSIFIED',
-                            iconURL: client.user.displayAvatarURL()
-                        })
-                        .setTimestamp();
-
-                    await i.editReply({ embeds: [categoryEmbed], components: [] }).catch(() => {});
+                    const cCat = new ContainerBuilder().setAccentColor(0x00fbff);
+                    cCat.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${emojiMap[category.toUpperCase()] || '📁'} ${category} ${lang === 'fr' ? 'Commandes' : 'Commands'}`));
+                    cCat.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                    cCat.addTextDisplayComponents(new TextDisplayBuilder().setContent(sortedCmds.map(cmd => `\`▸ /${cmd.name}\`${cmd.aliases?.length ? ` \`(${cmd.aliases.slice(0, 3).join(', ')})\`` : ''}\n> ${cmd.description || (lang === 'fr' ? 'Aucune description' : 'No description')}`).join('\n\n') || (lang === 'fr' ? 'Aucune commande trouvée.' : 'No commands found.')));
+                    cCat.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# 🌐 ${lang === 'fr' ? 'Ces commandes nécessitent un serveur' : 'These commands require a server'} • UNCLASSIFIED`));
+                    await i.editReply({ components: [cCat], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
                 }
             });
-
             return;
         }
 
-        // ===== SERVER EXECUTION =====
         await interaction.deferReply({ flags: 64 });
-
-        const fakeMessage = {
-            author: interaction.user,
-            guild: interaction.guild,
-            channel: interaction.channel,
-            reply: async (options) => interaction.editReply(options),
-            react: () => Promise.resolve()
-        };
-
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-
+        const fakeMessage = { author: interaction.user, guild: interaction.guild, channel: interaction.channel, reply: async (options) => interaction.editReply(options), react: () => Promise.resolve() };
         await module.exports.run(client, fakeMessage, args, null, serverSettings, 'help');
     }
 };
