@@ -140,3 +140,4 @@ emoji_migration.diff.md
 # One-shot registration scripts
 force-register-livestream.js
 register-livestream.js
+config/emojis.js
