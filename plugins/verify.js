@@ -417,7 +417,7 @@ module.exports = {
         let dmChannel = null;
         try {
             dmChannel = await member.createDM();
-            dmMsg = await dmChannel.send({ embeds: [captchaEmbed], files: [attachment], components: pl ? [pl.row] : [] });
+            dmMsg = await dmChannel.send({ embeds: [captchaEmbed], files: [attachment] }); // Clean, no button
         } catch {
             const sysCh = pl ? null : member.guild.systemChannel;
             if (sysCh) {
@@ -621,18 +621,35 @@ module.exports = {
             const attempts = (row.attempts || 0) + 1;
             if (attempts >= 3) {
                 db.prepare('DELETE FROM verify_pending WHERE guild_id = ? AND user_id = ?').run(gid, message.author.id);
-                await message.channel.send({ content: vt(lang, 'tooManyTitle') }).catch(() => {});
                 
                 const member = await guild.members.fetch(message.author.id).catch(() => null);
                 const settings = db.prepare('SELECT verify_kick_days, verify_role_id FROM server_settings WHERE guild_id = ?').get(gid);
-                if (member && settings?.verify_kick_days > 0) {
-                    const hasRole = settings.verify_role_id && member.roles.cache.has(settings.verify_role_id);
-                    if (!hasRole) {
-                        await member.kick('Failed captcha verification').catch(() => {});
-                        await logVerify(guild, db, 0xff3311, vt(lang, 'logKickedFail'), member.id, '3 wrong attempts', lang);
-                        const p = pending.get(`${member.id}:${gid}`);
-                        if (p) { if(p.timer) clearTimeout(p.timer); p.collector?.stop('kicked'); pending.delete(`${member.id}:${gid}`); }
+                const kickOn = (settings?.verify_kick_days || 0) > 0;
+                
+                if (kickOn) {
+                    // They are getting kicked. Send the Rejoin button.
+                    const invRow = await storedInviteRow(db, guild, lang);
+                    await message.channel.send({ 
+                        embeds: [new EmbedBuilder().setColor(0xff3311).setTitle(vt(lang, 'tooManyTitle')).setDescription(vt(lang, 'kickDm', { server: guild.name })).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
+                        components: invRow ? [invRow] : []
+                    }).catch(() => {});
+                    
+                    if (member) {
+                        const hasRole = settings.verify_role_id && member.roles.cache.has(settings.verify_role_id);
+                        if (!hasRole) {
+                            await member.kick('Failed captcha verification').catch(() => {});
+                            await logVerify(guild, db, 0xff3311, vt(lang, 'logKickedFail'), member.id, '3 wrong attempts', lang);
+                            const p = pending.get(`${member.id}:${gid}`);
+                            if (p) { if(p.timer) clearTimeout(p.timer); p.collector?.stop('kicked'); pending.delete(`${member.id}:${gid}`); }
+                        }
                     }
+                } else {
+                    // Kick is off. Send the Panel button so they can try in the server.
+                    const pl = await panelLink(guild, db, lang);
+                    await message.channel.send({ 
+                        embeds: [new EmbedBuilder().setColor(0xff3311).setTitle(vt(lang, 'tooManyTitle')).setDescription(vt(lang, 'failPanelDm', { server: guild.name })).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
+                        components: pl ? [pl.row] : []
+                    }).catch(() => {});
                 }
             } else {
                 db.prepare('UPDATE verify_pending SET attempts = ? WHERE guild_id = ? AND user_id = ?').run(attempts, gid, message.author.id);

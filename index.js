@@ -627,6 +627,12 @@ for (const [tableName, createSQL] of Object.entries(requiredTables)) {
 
 // ================= AUTO-REPLY MESSAGE LISTENER =================
 client.on('messageCreate', async (message) => {
+    if (message.channel.isDMBased() && !message.author.bot) {
+        try {
+            const verifyPlugin = require('./plugins/verify.js');
+            if (verifyPlugin.handleDM && await verifyPlugin.handleDM(message, client, db)) return;
+        } catch (e) {}
+    }
 
         // ── Ticket activity reset ──
         const ticketMod = client.commands.get('ticket');

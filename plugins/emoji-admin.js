@@ -62,7 +62,8 @@ function analyse(registry, appMap) {
 // ── Apply : écrit le fichier ──
 function applySync(registry, appMap) {
     const lines = [];
-    let remapped = 0, added = 0;
+    const remapList = [];
+    const addList = [];
     const today = new Date().toISOString().slice(0, 10);
 
     // Bloc manuel (ordre original préservé)
@@ -71,20 +72,58 @@ function applySync(registry, appMap) {
         if (!m) { lines.push(`    ${key}: ${JSON.stringify(val)},`); continue; }
         const [, name, oldId] = m;
         const app = appMap.get(name.toLowerCase());
-        if (!app) { lines.push(`    ${key}: ${JSON.stringify(val)},   // ⚠️ orphelin`); continue; }
-        if (app.id !== oldId) remapped++;
+        
+        if (!app) { 
+            lines.push(`    ${key}: ${JSON.stringify(val)},   // ⚠️ orphelin`); 
+            continue; 
+        }
+        
+        if (app.id !== oldId) {
+            remapList.push({ key, newId: app.id });
+        }
+        
         const prefix = app.animated ? 'a' : '';
         lines.push(`    ${key}: '<${prefix}:${name}:${app.id}>',`);
     }
 
     // Bloc auto (nouveaux app emojis pas dans registry)
     const knownNames = new Set(Object.values(registry).map(v => (String(v).match(/<a?:(\w+):/)?.[1] || '').toLowerCase()).filter(Boolean));
-    const autoLines = [];
+    const existingKeys = new Set(Object.keys(registry));
+
+    function getCategory(name) {
+        const n = name.toLowerCase();
+        if (/^(error|warning|check|success|loading|offline|online|globe|notification|clock|alarm|lock|trash_can|settings|shield|hint|timeout|minus|info|premium|discord|website|vote|dashboard|myprofile|speed|flash|home_1|mountain_1|__|redcrown)$/.test(n)) return 'SYSTEM & UI';
+        if (/^(cashmoney|coins|coins_5|invest|investors|level|xp|charts|progress|trophy|trophy_01|crown|streak|streaks2|milestones|claim|moneybag|bamako_1)$/.test(n)) return 'ECONOMY & LEVELING';
+        if (/^(gameController|gameSaved|duelist|quizmaster|gamer|gameTicTacToe|gameBlackjack|gameRoulette|gameTrivia|gameSlots|gameCodm|gameCodmFrontline|gameValorant|gameCs2|gameLol|gameFortnite|gameFortniteCustom|gameApex|gameApexCustom|dart|roulette|hubWheel|hubSparkle)$/.test(n)) return 'GAMING & GAMBLING';
+        if (/^(banAlert|mod_sign|mute|ticket|staff|role|verified|MUTE_3)$/.test(n)) return 'MODERATION & STAFF';
+        if (/^(welcome|goodbye|party|party_2|wave|ducky_hey|cake|rules|star|clapping|aoLiGei|slowly|purpleDot|afk|sleep|away|moon|zzz|help|cat|diff|shapes|humurous|coffee|micro|club_battle|digging|bamako|eagle|general|ai_assistant)$/.test(n)) return 'SOCIAL & FUN';
+        if (/^(music|spotify|youtube|livestream|soundcloud|mc_|tiktok_logo)$/.test(n)) return 'MEDIA & MUSIC';
+        return 'UNCATEGORIZED';
+    }
+
+    const autoGrouped = {};
     for (const [name, meta] of appMap) {
-        if (knownNames.has(name)) continue;
+        const safeKeyName = safeKey(meta.name);
+        if (knownNames.has(name.toLowerCase()) || existingKeys.has(safeKeyName)) continue;
+
         const prefix = meta.animated ? 'a' : '';
-        autoLines.push(`    ${safeKey(meta.name)}: '<${prefix}:${meta.name}:${meta.id}>',   // [auto ${today}]`);
-        added++;
+        const line = `    ${safeKeyName}: '<${prefix}:${meta.name}:${meta.id}>',   // [auto ${today}]`;
+        
+        const cat = getCategory(safeKeyName);
+        if (!autoGrouped[cat]) autoGrouped[cat] = [];
+        autoGrouped[cat].push(line);
+        
+        addList.push({ name: meta.name, id: meta.id, animated: meta.animated });
+    }
+
+    let autoBlock = '';
+    if (addList.length > 0) {
+        autoBlock += '\n';
+        for (const [cat, arr] of Object.entries(autoGrouped)) {
+            if (arr.length > 0) {
+                autoBlock += `    // ═══ ${cat} ═══\n` + arr.join('\n') + '\n\n';
+            }
+        }
     }
 
     const header = `/**
@@ -97,14 +136,15 @@ function applySync(registry, appMap) {
 
 module.exports = {
 ${lines.join('\n')}
-${autoLines.length ? '\n    // ═══ AUTO-IMPORTÉS ═══\n' + autoLines.join('\n') + '\n' : ''}};
+${autoBlock}};
 `;
     fs.writeFileSync(REGISTRY_PATH, header);
-    return { remapped, added };
+    
+    return { remap: remapList, add: addList };
 }
 
 // ── Card builders ──
-function checkCard(t, { remap, add, missing }, total, appTotal) {
+function checkCard(t, { remap, add, missing }, total, appTotal, cmdId) {
     const items = [];
     items.push({ text: `## 📊 ${t('title')}` });
     items.push({ text: t('summary', { reg: total, app: appTotal }) });
@@ -129,7 +169,9 @@ function checkCard(t, { remap, add, missing }, total, appTotal) {
     }
 
     items.push({ rule: true });
-    items.push({ text: `-# ${t('hint')}` });
+    const cmdId = interaction.client.application.commands.cache.find(c => c.name === 'emojis')?.id;
+        const syncPill = cmdId ? `</emojis sync:${cmdId}>` : '`/emojis sync`';
+        items.push({ text: `-# Run ${syncPill} to apply.` });
     return items;
 }
 
@@ -166,7 +208,8 @@ module.exports = {
             const total = Object.keys(registry).length;
 
             if (sub === 'check') {
-                const items = checkCard(t, result, total, appMap.size);
+                const cmdId = interaction.client.application.commands.cache.find(c => c.name === 'emojis')?.id;
+                const items = checkCard(t, result, total, appMap.size, cmdId);
                 return interaction.editReply({ ...card(0xFFD700, items), allowedMentions: { parse: [] } });
             }
 
@@ -178,13 +221,22 @@ module.exports = {
                 ]), allowedMentions: { parse: [] } });
             }
 
-            const { remapped, added } = applySync(registry, appMap);
+            const { remap, add } = applySync(registry, appMap);
             const items = [];
             items.push({ text: `## ✅ ${t('syncDone')}` });
             items.push({ rule: true });
-            items.push({ text: `🔧 ${t('remapped')} : ${remapped}\n➕ ${t('added')} : ${added}` });
+            items.push({ text: `🔧 **Remapped:** \`${remap.length}\`` });
+            items.push({ text: `➕ **Added:** \`${add.length}\`` });
+            
+            if (add.length > 0) {
+                items.push({ rule: true });
+                items.push({ text: `➕ **New Emojis Discovered**` });
+                items.push({ text: add.slice(0, 10).map(a => `> \`${a.name}\` → \`<${a.animated ? 'a' : ''}:${a.name}:${a.id}>\``).join('\n') });
+                if (add.length > 10) items.push({ text: `-# …and ${add.length - 10} more` });
+            }
+            
             items.push({ rule: true });
-            items.push({ text: `-# ${t('restartHint')}` });
+            items.push({ text: `♻️ **Action:** Run \`pm2 restart\` to load the new IDs into memory.` });
             return interaction.editReply({ ...card(0x2ECC71, items), allowedMentions: { parse: [] } });
         } catch (e) {
             console.error('[EMOJIS]', e);
