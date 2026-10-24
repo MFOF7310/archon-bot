@@ -1,4 +1,6 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+const { pickLang } = require('../lib/pick-lang');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
 
 // Translations: lang/{en,fr,bm,zh,ar}/inventory.json
@@ -73,154 +75,40 @@ async function handleShop(message, client, db, lang, prefix, guildId, guildName,
     if (!userData) userData = { credits: 0 };
 
     const items = client.shopItems || [];
-    const embed = new EmbedBuilder()
-        .setColor('#2ecc71')
-        .setAuthor({ name: `${t('inventory.heroTitle', lang)}`, iconURL: client.user.displayAvatarURL() })
-        .setTitle(`${t('inventory.heroSubtitle', lang)}`)
-        .setDescription(`\`\`\`yaml\n💰 ${t('inventory.subtitle', lang)} ${(userData.credits || 0).toLocaleString()} 🪙\n${t('inventory.marketLabel', lang)} ${trend.emoji} ${trend.name}\n\`\`\``)
-        .setFooter({ text: `${t('inventory.footer', lang)} • ${guildName} • v${version}`, iconURL: guildIcon })
-        .setTimestamp();
-
-    // Build shop items field
-    const itemText = items.slice(0, 6).map(item => {
-        const itemT = item[lang] || item.en;
-        return `${item.emoji} **${itemT.name}** — ${item.price.toLocaleString()} 🪙\n> ${itemT.desc}`;
-    }).join('\n\n');
-
-    embed.addFields({ name: t('inventory.availableItems', lang), value: itemText || t('inventory.noItemsAvailable', lang), inline: false });
-
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('inventory.refresh', lang)).setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
-        new ButtonBuilder().setCustomId('shop_inv').setLabel(t('inventory.myInventory', lang)).setStyle(ButtonStyle.Primary).setEmoji('🎒')
-    );
-
-    const sent = await message.reply({ embeds: [embed], components: [row] }).catch(() => null);
-    if (!sent) return;
-
-    const collector = sent.createMessageComponentCollector({ filter: (i) => i.user.id === userId, time: 60000 });
-    collector.on('collect', async (i) => {
-        await i.deferUpdate().catch(() => {});
-        if (i.customId === 'shop_refresh') return handleShop(message, client, db, lang, prefix, guildId, guildName, guildIcon, version);
-        if (i.customId === 'shop_inv') return handleInventory(message, client, db, lang, prefix, guildId, guildName, guildIcon, version);
-    });
-}
-
-// ================= HANDLE BUY =================
-async function handleBuy(message, args, client, db, serverSettings, lang, prefix, guildId, guildName, guildIcon, version) {
-    const itemId = args[0];
-    if (!itemId) return message.reply(`❌ ${t('inventory.usage', lang)}`).catch(() => {});
-
-    const item = client.shopItems ? client.shopItems.find(i => i.id === itemId) : null;
-    if (!item) return message.reply(t('inventory.itemNotFound', lang)).catch(() => {});
-
-    const userId = message.author.id;
-    const itemT = item[lang] || item.en;
-
-    // PER-SERVER: Composite key lookup
-    let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
-    if (!userData) {
-        // PER-SERVER: INSERT includes guild_id
-        db.prepare("INSERT INTO users (id, guild_id, username, xp, level, credits, streak_days, last_daily, total_dailies, highest_streak) VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0, 0)").run(userId, guildId, message.author.username);
-        userData = { credits: 0 };
-    }
-
-    if ((userData.credits || 0) < item.price) {
-        return message.reply(t('inventory.insufficientCredits', lang, { cost: item.price.toLocaleString(), bal: (userData.credits || 0).toLocaleString() })).catch(() => {});
-    }
-
-    const newCredits = (userData.credits || 0) - item.price;
-
-    // PER-SERVER: UPDATE includes guild_id
-    db.prepare("UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?").run(newCredits, userId, guildId);
-    if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...userData, credits: newCredits });
-    // PER-SERVER: Cache delete uses composite key
-    if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
-
-    // Log purchase
-    try { db.prepare("INSERT INTO purchases (user_id, item_id, item_name, price, timestamp) VALUES (?, ?, ?, ?, ?)").run(userId, item.id, itemT.name, item.price, Date.now()); } catch (e) {}
-
-    // Handle item effects
-    if (item.effect) {
-        if (item.effect.xp) {
-            const newXP = (userData.xp || 0) + item.effect.xp;
-            db.prepare("UPDATE users SET xp = ? WHERE id = ? AND guild_id = ?").run(newXP, userId, guildId);
-        }
-        if (item.effect.credits) {
-            const postBonusCredits = newCredits + item.effect.credits;
-            db.prepare("UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?").run(postBonusCredits, userId, guildId);
-        }
-    }
-
-    const embed = new EmbedBuilder()
-        .setColor('#2ecc71')
-        .setAuthor({ name: `✅ ${t('inventory.itemBought', lang)}`, iconURL: message.author.displayAvatarURL() })
-        .setDescription(t('inventory.successDesc', lang, { emoji: item.emoji, name: itemT.name, desc: itemT.desc }))
-        .addFields(
-            { name: '💰 ' + t('inventory.costLabel', lang), value: `${item.price.toLocaleString()} 🪙`, inline: true },
-            { name: '💰 ' + t('inventory.newBalanceLabel', lang), value: `${newCredits.toLocaleString()} 🪙`, inline: true }
-        )
-        .setFooter({ text: `${t('inventory.footer', lang)} • ${guildName} • v${version}`, iconURL: guildIcon })
-        .setTimestamp();
-
-    await message.reply({ embeds: [embed] }).catch(() => {});
-
-    // Assign shop roles if applicable
-    if (message.guild) {
-        try {
-            const settings = serverSettings || client.getServerSettings(message.guild.id);
-            if (item.type === 'role' && item.roleId) {
-                const member = await message.guild.members.fetch(userId).catch(() => null);
-                if (member) {
-                    const role = message.guild.roles.cache.get(item.roleId);
-                    if (role && !member.roles.cache.has(item.roleId)) {
-                        await member.roles.add(role, `Purchased: ${itemT.name}`).catch(() => {});
-                    }
-                }
-            }
-        } catch (e) {}
-    }
-}
-
-// ================= HANDLE INVENTORY =================
-async function handleInventory(message, client, db, lang, prefix, guildId, guildName, guildIcon, version) {
-    const userId = message.author.id;
-
-    // PER-SERVER: Composite key lookup
-    let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
-    if (!userData) userData = { credits: 0 };
-
-    const credits = userData.credits || 0;
-    const embed = new EmbedBuilder()
-        .setColor('#9b59b6')
-        .setAuthor({ name: `🎒 ${t('inventory.yourInventory', lang)}`, iconURL: message.author.displayAvatarURL() })
-        .setDescription(`**${t('inventory.yourCredits', lang)}:** ${credits.toLocaleString()} 🪙\n\n*${t('inventory.verifyBalance', lang)}*`)
-        .setFooter({ text: `${t('inventory.footer', lang)} • ${guildName} • v${version}`, iconURL: guildIcon })
-        .setTimestamp();
-
-    // Display purchased items from DB
+    const container = new ContainerBuilder().setAccentColor(0x9b59b6);
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('inventory', client) || '🎒'} ${t('inventory.yourInventory', lang)}`));
+    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('inventory.yourCredits', lang)}:** \`${credits.toLocaleString()}\` 🪙`));
+    
+    let itemList = '';
     try {
         const purchases = db.prepare("SELECT item_name, price, timestamp FROM purchases WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10").all(userId);
         if (purchases && purchases.length > 0) {
-            const itemsList = purchases.map(p => `• **${p.item_name}** — ${p.price.toLocaleString()} 🪙`).join('\n');
-            embed.addFields({ name: '🛒 ' + t('inventory.purchasedItems', lang), value: itemsList, inline: false });
+            itemList = purchases.map(p => `• **${p.item_name}** — ${p.price.toLocaleString()} 🪙`).join('\n');
         } else {
-            embed.addFields({ name: '🛒 ' + t('inventory.itemsLabel', lang), value: t('inventory.noItemsPurchased', lang), inline: false });
+            itemList = t('inventory.noItemsPurchased', lang);
         }
     } catch (e) {
-        embed.addFields({ name: '🛒 ' + t('inventory.itemsLabel', lang), value: t('inventory.noItemsPurchased', lang), inline: false });
+        itemList = t('inventory.noItemsPurchased', lang);
     }
+    
+    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('inventory.purchasedItems', lang)}**\n${itemList}`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.footer', lang)} • ${guildName} • v${version}`));
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('inv_shop').setLabel(t('inventory.viewStore', lang)).setStyle(ButtonStyle.Primary).setEmoji('🛒'),
-        new ButtonBuilder().setCustomId('inv_refresh').setLabel(t('inventory.refresh', lang)).setStyle(ButtonStyle.Secondary).setEmoji('🔄')
+        new ButtonBuilder().setCustomId('inv_shop').setLabel(t('inventory.viewStore', lang)).setStyle(ButtonStyle.Primary).setEmoji(resolveEmoji('shop', client) || '🛒'),
+        new ButtonBuilder().setCustomId('inv_refresh').setLabel(t('inventory.refresh', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('refresh', client) || '🔄')
     );
+    container.addActionRowComponents(row);
 
-    const sent = await message.reply({ embeds: [embed], components: [row] }).catch(() => null);
+    const sent = await message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(() => null);
     if (!sent) return;
 
     const collector = sent.createMessageComponentCollector({ filter: (i) => i.user.id === userId, time: 60000 });
     collector.on('collect', async (i) => {
-        await i.deferUpdate().catch(() => {});
+        if (i.user.id !== userId) return;
+        try { await i.deferUpdate(); } catch (e) { return; }
         if (i.customId === 'inv_shop') return handleShop(message, client, db, lang, prefix, guildId, guildName, guildIcon, version);
         if (i.customId === 'inv_refresh') return handleInventory(message, client, db, lang, prefix, guildId, guildName, guildIcon, version);
     });

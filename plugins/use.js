@@ -1,4 +1,6 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+const { pickLang } = require('../lib/pick-lang');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
 
 // ================= UNIFIED LEVEL CALCULATION =================
@@ -231,7 +233,8 @@ module.exports = {
         });
 
         collector.on('collect', async (i) => {
-            await i.deferUpdate().catch(() => {});
+            if (i.user.id !== userId) return;
+            try { await i.deferUpdate(); } catch (e) { return; }
 
             if (i.customId.startsWith('use_select_')) {
                 const selectedItemId = i.values[0];
@@ -649,19 +652,15 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
     // ═══════════════════════════════════════════════════════
     // ARCHON CLASSIFIED RESULT EMBED
     // ═══════════════════════════════════════════════════════
-    const resultEmbed = new EmbedBuilder()
-        .setColor(newRank.color)
-        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
-        .setTitle(`✨ ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!`)
-        .setDescription(`\`\`\`yaml\n${effectMessage}\n\`\`\``)
-        .addFields(
-            { name: t('use.neuralStats', lang), value: `\`\`\`ansi\n\u001b[1;36mXP:\u001b[0m  ${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\n\u001b[1;33m${t('use.creditsField', lang)}\u001b[0m  ${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\n\`\`\``, inline: false },
-            { name: t('use.levelField', lang), value: `\`\`\`ansi\n\u001b[1;35m${oldLevel} → ${newLevel}\u001b[0m\n\`\`\``, inline: true },
-            { name: t('use.rankField', lang), value: `\`\`\`ansi\n\u001b[1;33m${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)}\u001b[0m\n\u001b[1;32m↓\u001b[0m\n\u001b[1;33m${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: true },
-            { name: t('use.stockField', lang), value: `\`\`\`ansi\n\u001b[1;36m${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)}\u001b[0m\n\`\`\``, inline: true }
-        )
-        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}`, iconURL: interaction.guild?.iconURL() })
-        .setTimestamp();
+    const container = new ContainerBuilder().setAccentColor(parseInt(newRank.color.replace('#', ''), 16));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('success', client) || '✨'} ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!`));
+    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(effectMessage));
+    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.neuralStats', lang)}**\nXP: \`${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\`\n${t('use.creditsField', lang)} \`${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\``));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.levelField', lang)}** \`${oldLevel} → ${newLevel}\`\n**${t('use.rankField', lang)}** ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('use.stockField', lang)} ${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)}`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}`));
 
     if (newLevel > oldLevel) {
         resultEmbed.addFields({ name: t('use.ascensionTitle', lang), value: `\`\`\`ansi\n\u001b[1;32m  ${t('use.ascensionLine', lang, { level: newLevel, rank: (newRank.title[lang] || newRank.title.en) })}\u001b[0m\n\`\`\``, inline: false });
@@ -670,7 +669,7 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
         resultEmbed.addFields({ name: t('use.rankElevationTitle', lang), value: `\`\`\`ansi\n\u001b[1;33m  ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: false });
     }
 
-    await interaction.editReply({ content: '', embeds: [resultEmbed], components: [] }).catch(err => {
+    await interaction.editReply({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(err => {
         console.error('[USE-SLASH] Failed to edit reply:', err);
     });
 
@@ -806,7 +805,7 @@ async function processItemUse(client, message, db, userId, itemId, itemsMap, lan
         resultEmbed.addFields({ name: t('use.rankElevationTitle', lang), value: `\`\`\`ansi\n\u001b[1;33m  ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: false });
     }
 
-    await message.reply({ embeds: [resultEmbed] }).catch(() => {});
+    await message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
 
     console.log(`[USE] ${message.author.tag} used ${itemId} | ${rewardAmount} ${rewardType} | Remaining: ${newQuantity}`);
 }

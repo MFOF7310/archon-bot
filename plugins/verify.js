@@ -3,7 +3,7 @@
 // Per-server toggle, off by default, zero spam
 // ═══════════════════════════════════════════════════════
 const { 
-    SlashCommandBuilder, EmbedBuilder, 
+    SlashCommandBuilder, EmbedBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, 
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
     PermissionsBitField, AttachmentBuilder,
     ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle
@@ -13,9 +13,11 @@ const crypto = require('crypto');
 const { generateCaptcha, randomCode } = require('./captcha.js');
 const EMOJIS = require('../config/emojis');
 const mentions = require('../lib/mentions');
+const { pickLang } = require('../lib/pick-lang');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const i18nV = require('../lib/i18n');
-const VL = (db, gid) => { try { const l = db.prepare('SELECT language FROM server_settings WHERE guild_id = ?').get(gid)?.language; return ['en','fr','bm','zh','ar'].includes(l) ? l : 'en'; } catch { return 'en'; } };
-const vt = (db, gid, k, v) => i18nV.t('verify.' + k, VL(db, gid), v);
+// vt now accepts the resolved language directly
+const vt = (lang, k, v) => i18nV.t('verify.' + k, lang, v);
 let _inviteCol;
 function inviteCol(db) {
     if (_inviteCol !== undefined) return _inviteCol;
@@ -25,7 +27,7 @@ function inviteCol(db) {
     } catch { _inviteCol = null; }
     return _inviteCol;
 }
-async function storedInviteRow(db, guild) {
+async function storedInviteRow(db, guild, lang) {
     try {
         const col = inviteCol(db);
         let url = null;
@@ -64,7 +66,7 @@ async function storedInviteRow(db, guild) {
 
         if (!url) return null;
         return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
-            .setLabel(vt(db, guild.id, 'rejoinBtn')).setURL(url));
+            .setLabel(vt(lang, 'rejoinBtn')).setURL(url));
     } catch { return null; }
 }
 const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
@@ -102,6 +104,7 @@ function armResumedKick(client, db, gid, uid, waitMs) {
     pending.set(key, { timer, resumed: true });   // the normal cleanup paths (verified, left) clear it like any other timer
 }
 async function kickIfStillUnverified(client, db, gid, uid) {
+    const lang = pickLang(client, gid, null, uid) || 'en';
     const key = `${uid}:${gid}`;
     forgetDeadline(db, gid, uid);
     const pk = pending.get(key); if (!pk) return;                     // verified, left or replaced in the meantime
@@ -115,16 +118,16 @@ async function kickIfStillUnverified(client, db, gid, uid) {
     try {
         const dmCh = await m.createDM().catch(() => null);
         if (dmCh) {
-            const invRow = await storedInviteRow(db, guild);
+            const invRow = await storedInviteRow(db, guild, lang);
             await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
-                .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
-                .setDescription(vt(db, gid, 'kickDm', { server: guild.name }))
-                .setFooter({ text: vt(db, gid, 'bamakoFooter') })],
+                .setTitle(`${EMOJIS.warning} ${vt(lang, 'tooManyTitle')}`)
+                .setDescription(vt(lang, 'kickDm', { server: guild.name }))
+                .setFooter({ text: vt(lang, 'bamakoFooter') })],
                 components: invRow ? [invRow] : [] }).catch(() => {});
         }
     } catch {}
     await m.kick('Failed to verify in time').catch(() => {});
-    logVerify(guild, db, 0xff8800, vt(db, gid, 'logKickedTimeout'), uid, `${s.verify_kick_days} min`);
+    logVerify(guild, db, 0xff8800, vt(lang, 'logKickedTimeout'), uid, `${s.verify_kick_days} min`);
 }
 const PANEL_TTL = 5 * 60 * 1000, PANEL_COOLDOWN = 30 * 1000;
 
@@ -145,7 +148,7 @@ function modlogCol(db) {
 }
 
 let _evReady = false;
-async function logVerify(guild, db, color, title, userId, detail = '') {
+async function logVerify(guild, db, color, title, userId, detail = '', lang = 'en') {
     try {
         try {
             if (!_evReady) {
@@ -156,15 +159,31 @@ async function logVerify(guild, db, color, title, userId, detail = '') {
             const kind = title.startsWith('✅') ? 'passed' : title.startsWith('👢') ? 'kicked' : title.startsWith('❌') ? 'failed' : 'spam';
             db.prepare('INSERT INTO verify_events VALUES (?, ?, ?, ?)').run(guild.id, String(userId), kind, Math.floor(Date.now() / 1000));
         } catch (e) { console.error('[VERIFY] event store:', e.message); }
-        const ch = require('../lib/modlog.js').resolveModLog(guild, db);
+        
+        // Direct fetch to bypass cache issues
+        let ch = null;
+        const row = db.prepare('SELECT mod_log_channel FROM server_settings WHERE guild_id = ?').get(guild.id);
+        if (row && row.mod_log_channel) {
+            ch = guild.channels.cache.get(String(row.mod_log_channel)) || await guild.channels.fetch(row.mod_log_channel).catch(() => null);
+        }
+        if (!ch) {
+            const envId = process.env.MOD_LOG_CHANNEL_ID;
+            if (envId) ch = guild.channels.cache.get(envId) || await guild.channels.fetch(envId).catch(() => null);
+        }
+        
         if (!ch) return;
-        await ch.send({
-            embeds: [new EmbedBuilder().setColor(color).setTitle(title)
-                .setDescription(`<@${userId}> \`${userId}\`${detail ? `\n${detail}` : ''}`)
-                .setFooter({ text: 'ARCHON CG-223 • Verification' }).setTimestamp()],
-            allowedMentions: { parse: [] }
-        });
-    } catch (e) { console.error(`[VERIFY] modlog guild=${guild.id}:`, e.message); }
+        
+        const embed = new EmbedBuilder()
+            .setColor(color)
+            .setTitle(title)
+            .setDescription(`<@${userId}> \`${userId}\`${detail ? `\n${detail}` : ''}`)
+            .setFooter({ text: vt(lang, 'logFooter') })
+            .setTimestamp();
+
+        await ch.send({ embeds: [embed], allowedMentions: { parse: [] } });
+    } catch (e) { 
+        console.error(`[VERIFY] modlog guild=${guild.id}:`, e.message); 
+    }
 }
 
 function prunePanel(now) {
@@ -183,7 +202,7 @@ function panelLink(guild, db) {
         return {
             id: ch.id,
             row: new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
-                .setLabel(`Open #${ch.name}`.slice(0, 80)).setURL(`https://discord.com/channels/${guild.id}/${ch.id}`))
+                .setLabel(vt(lang, 'rejoinBtn')).setURL(`https://discord.com/channels/${guild.id}/${ch.id}`))
         };
     } catch { return null; }
 }
@@ -231,6 +250,7 @@ module.exports = {
 
     execute: async (interaction, client) => {
         const db = client.db;
+        const lang = pickLang(client, interaction.guildId, interaction) || 'en';
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild))
             return interaction.reply({ content: vt(db, interaction.guild?.id, 'needManageGuild'), flags: 64 });
 
@@ -249,24 +269,24 @@ module.exports = {
             if (!isPremium(db, gid)) {
                 return interaction.reply({ embeds: [new EmbedBuilder()
                     .setColor(0xffd700)
-                    .setTitle(`⭐ ${vt(db, gid, 'premiumTitle')}`)
-                    .setDescription(vt(db, gid, 'premiumDesc'))
-                    .addFields({ name: vt(db, gid, 'premiumHowTo'), value: vt(db, gid, 'premiumHowToValue') })
-                    .setFooter({ text: vt(db, gid, 'bamakoFooter') })
+                    .setTitle(`⭐ ${vt(lang, 'premiumTitle')}`)
+                    .setDescription(vt(lang, 'premiumDesc'))
+                    .addFields({ name: vt(lang, 'premiumHowTo'), value: vt(lang, 'premiumHowToValue') })
+                    .setFooter({ text: vt(lang, 'bamakoFooter') })
                 ], flags: 64 });
             }
             db.prepare(`UPDATE server_settings SET verify_enabled = 1 WHERE guild_id = ?`).run(gid);
             const settings = db.prepare('SELECT verify_role_id, verify_kick_days FROM server_settings WHERE guild_id = ?').get(gid);
-            const role = settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : vt(db, gid, 'setroleHint');
+            const role = settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : vt(lang, 'setroleHint');
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00cc44)
-                    .setTitle(`${EMOJIS.verified} ${vt(db, gid, 'enableTitle')}`)
+                    .setTitle(`${EMOJIS.verified} ${vt(lang, 'enableTitle')}`)
                     .addFields(
-                        { name: vt(db, gid, 'verifiedRoleLabel'), value: role, inline: true },
-                        { name: vt(db, gid, 'autokickLabel'), value: settings?.verify_kick_days ? vt(db, gid, 'autokickMin', { mins: settings.verify_kick_days }) : vt(db, gid, 'disabled'), inline: true }
+                        { name: vt(lang, 'verifiedRoleLabel'), value: role, inline: true },
+                        { name: vt(lang, 'autokickLabel'), value: settings?.verify_kick_days ? vt(lang, 'autokickMin', { mins: settings.verify_kick_days }) : vt(lang, 'disabled'), inline: true }
                     )
-                    .setFooter({ text: vt(db, gid, 'enableFooter') })],
+                    .setFooter({ text: vt(lang, 'enableFooter') })],
                 flags: 64
             });
         }
@@ -276,7 +296,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0xff3311)
-                    .setDescription(`⚠️ ${vt(db, gid, 'disableDesc')}`)],
+                    .setDescription(`⚠️ ${vt(lang, 'disableDesc')}`)],
                 flags: 64
             });
         }
@@ -284,14 +304,14 @@ module.exports = {
         if (sub === 'setrole') {
             const role = interaction.options.getRole('role');
             const gErr = validateVerifyRole(interaction.guild, interaction.guild.roles.cache.get(role.id), interaction.member);
-            if (gErr) return interaction.reply({ content: vt(db, gid, 'roleGuardError', { role: String(role), reason: GUARD_MSG[gErr] }), flags: 64 });
+            if (gErr) return interaction.reply({ content: vt(lang, 'roleGuardError', { role: String(role), reason: GUARD_MSG[gErr] }), flags: 64 });
             const cur = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
-            if (cur?.verify_unverified_role_id === role.id) return interaction.reply({ content: vt(db, gid, 'roleDiffError'), flags: 64 });
+            if (cur?.verify_unverified_role_id === role.id) return interaction.reply({ content: vt(lang, 'roleDiffError'), flags: 64 });
             db.prepare(`UPDATE server_settings SET verify_role_id = ? WHERE guild_id = ?`).run(role.id, gid);
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00aaff)
-                    .setDescription(vt(db, gid, 'roleSetDesc', { role: String(role) }))],
+                    .setDescription(vt(lang, 'roleSetDesc', { role: String(role) }))],
                 flags: 64
             });
         }
@@ -303,8 +323,8 @@ module.exports = {
                 embeds: [new EmbedBuilder()
                     .setColor(0x00aaff)
                     .setDescription(mins === 0 
-                        ? `${EMOJIS.check} ${vt(db, gid, 'setkickDisabled')}`
-                        : `⚠️ ${vt(db, gid, 'setkickEnabled', { mins })}`)],
+                        ? `${EMOJIS.check} ${vt(lang, 'setkickDisabled')}`
+                        : `⚠️ ${vt(lang, 'setkickEnabled', { mins })}`)],
                 flags: 64
             });
         }
@@ -312,9 +332,9 @@ module.exports = {
         if (sub === 'setunverified') {
             const role = interaction.options.getRole('role');
             const gErr = validateVerifyRole(interaction.guild, interaction.guild.roles.cache.get(role.id), interaction.member);
-            if (gErr) return interaction.reply({ content: vt(db, gid, 'roleGuardError', { role: String(role), reason: GUARD_MSG[gErr] }), flags: 64 });
+            if (gErr) return interaction.reply({ content: vt(lang, 'roleGuardError', { role: String(role), reason: GUARD_MSG[gErr] }), flags: 64 });
             const cur = db.prepare('SELECT verify_role_id FROM server_settings WHERE guild_id = ?').get(gid);
-            if (cur?.verify_role_id === role.id) return interaction.reply({ content: vt(db, gid, 'roleDiffError'), flags: 64 });
+            if (cur?.verify_role_id === role.id) return interaction.reply({ content: vt(lang, 'roleDiffError'), flags: 64 });
             db.prepare(`UPDATE server_settings SET verify_unverified_role_id = ? WHERE guild_id = ?`).run(role.id, gid);
 
             await interaction.deferReply({ flags: 64 });
@@ -322,14 +342,14 @@ module.exports = {
             // Friendly waiting message while the channels are locked one by one
             ensureCols(db);
             const total = interaction.guild.channels.cache.filter(c => !c.isThread?.() && c.type !== 4).size;
-            await interaction.editReply({ content: vt(db, gid, 'lockingChannels', { server: interaction.guild.name, count: total, role: String(role) }) }).catch(() => {});
+            await interaction.editReply({ content: vt(lang, 'lockingChannels', { server: interaction.guild.name, count: total, role: String(role) }) }).catch(() => {});
 
             const r = await applyUnverifiedLock(interaction.guild, role, db);
             return interaction.editReply({
                 content: '',
                 embeds: [new EmbedBuilder()
                     .setColor(r.failed ? 0xf1c40f : 0x00cc44)
-                    .setTitle(vt(db, gid, 'configuredTitle'))
+                    .setTitle(vt(lang, 'configuredTitle'))
                     .setDescription(lockSummary(r, `${role}`))
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
             });
@@ -337,12 +357,12 @@ module.exports = {
 
         if (sub === 'panel') {
             const { isPremium } = require('./premium.js');
-            if (!isPremium(db, gid)) return interaction.reply({ content: vt(db, gid, 'premiumLapsed', { premiumCmd: premiumMention }), flags: 64 });
+            if (!isPremium(db, gid)) return interaction.reply({ content: vt(lang, 'premiumLapsed', { premiumCmd: premiumMention }), flags: 64 });
             const guild = interaction.guild;
             const ch = interaction.options.getChannel('channel');
             const canPostChk = require('../lib/canPost').diagnose(guild, ch, guild.members.me);
             if (!canPostChk.ok)
-                return interaction.reply({ content: vt(db, gid, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: require('../lib/canPost').localize(canPostChk.missing || [], VL(db, gid)).join(', '), bot: guild.members.me.roles.botRole?.name || guild.members.me.displayName, cmd: mentions(client, 'verify', 'panel') }), flags: 64 });
+                return interaction.reply({ content: vt(lang, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: require('../lib/canPost').localize(canPostChk.missing || [], VL(db, gid)).join(', '), bot: guild.members.me.roles.botRole?.name || guild.members.me.displayName, cmd: mentions(client, 'verify', 'panel') }), flags: 64 });
 
             ensureCols(db);
             db.prepare('UPDATE server_settings SET verify_panel_channel_id = ? WHERE guild_id = ?').run(ch.id, gid);
@@ -351,17 +371,24 @@ module.exports = {
             const uRole = s2?.verify_unverified_role_id ? guild.roles.cache.get(s2.verify_unverified_role_id) : null;
             if (uRole) applyUnverifiedLock(guild, uRole, db).catch(() => {}); // background: with a panel, the system channel closes too
 
-            await ch.send({
-                embeds: [new EmbedBuilder()
-                    .setColor(0x00aaff)
-                    .setTitle(vt(db, gid, 'panelTitle'))
-                    .setDescription(vt(db, gid, 'panelDesc'))
-                    .setFooter({ text: vt(db, gid, 'bamakoFooter') })],
-                components: [new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(db, gid, 'panelBtn')).setStyle(ButtonStyle.Success).setEmoji(EMOJIS.shield))]
-            });
+            const vContainer = new ContainerBuilder().setAccentColor(0x00aaff);
+            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('shield', client) || '🛡️'} ${vt(lang, 'v2_panel_title')}`));
+            vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_intro')));
+            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_how')));
+            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_warn')));
+            vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${vt(lang, 'bamakoFooter')}`));
+            vContainer.addActionRowComponents(new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('vpanel:start')
+                    .setLabel(vt(lang, 'v2_panel_btn'))
+                    .setStyle(ButtonStyle.Success)
+                    .setEmoji(resolveEmoji('lock', client) || '🛡️')
+            ));
+            await ch.send({ components: [vContainer], flags: MessageFlags.IsComponentsV2 });
             return interaction.reply({
-                content: vt(db, gid, 'panelPosted', { ch: String(ch) }) + (uRole ? ' ' + vt(db, gid, 'panelCanSee', { role: String(uRole) }) : vt(db, gid, 'panelNoRole')),
+                content: vt(lang, 'panelPosted', { ch: String(ch) }) + (uRole ? ' ' + vt(lang, 'panelCanSee', { role: String(uRole) }) : vt(lang, 'panelNoRole')),
                 flags: 64
             });
         }
@@ -377,7 +404,7 @@ module.exports = {
             const unverifiedRole = settings?.verify_unverified_role_id ? `<@&${settings.verify_unverified_role_id}>` : '`Not configured`';
             const autokick = settings?.verify_kick_days ? `${settings.verify_kick_days} minutes` : 'Disabled';
 
-            const v = (k, x) => vt(db, gid, k, x);
+            const v = (k, x) => vt(lang, k, x);
             const cmdId = interaction.commandId;
             const desc = [
                 `### ${enabled ? `${EMOJIS.online} ${v('gateActive')}` : paused ? `${EMOJIS.offline} ${v('gatePaused')}` : `${EMOJIS.offline} ${v('gateInactive')}`}`,
@@ -397,7 +424,7 @@ module.exports = {
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(enabled ? 0x00cc44 : 0x888888)
-                    .setTitle(vt(db, gid, 'gateTitle'))
+                    .setTitle(vt(lang, 'gateTitle'))
                     .setDescription(desc)
                     .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                 flags: 64
@@ -408,6 +435,7 @@ module.exports = {
     // Called from guildMemberAdd
     onMemberJoin: async (member, client, db) => {
         const gid = member.guild.id;
+        const lang = pickLang(client, gid, null, member.id) || 'en';
         const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
         if (!settings?.verify_enabled) return; // Off by default
         const { isPremium } = require('./premium.js');
@@ -450,7 +478,7 @@ module.exports = {
         }
         if (hits.length > JOIN_LIMIT) {
             console.warn(`[VERIFY] join-spam guild=${gid} user=${member.id} (${hits.length} joins/10min) — captcha skipped`);
-            if (hits.length === JOIN_LIMIT + 1) logVerify(member.guild, db, 0xff8800, vt(db, gid, 'logSpam'), member.id, `${hits.length} joins in 10 min`);
+            if (hits.length === JOIN_LIMIT + 1) logVerify(member.guild, db, 0xff8800, vt(lang, 'logSpam'), member.id, `${hits.length} joins in 10 min`);
             return;
         }
         // Generate captcha
@@ -459,19 +487,19 @@ module.exports = {
         const attachment = new AttachmentBuilder(imgBuf, { name: 'verify.png' });
 
         // Store code in pending
-        const pl = panelLink(member.guild, db);
+        const pl = await panelLink(member.guild, db, lang);
         const plNoKick = (settings.verify_kick_days || 0) > 0 ? null : pl;
         const captchaEmbed = new EmbedBuilder()
             .setColor(0x00aaff)
-            .setTitle(vt(db, gid, 'dmTitle', { server: member.guild.name }))
+            .setTitle(vt(lang, 'dmTitle', { server: member.guild.name }))
             .setDescription(
-                vt(db, gid, 'dmInstructions') +
-                `⚠️ ${vt(db, gid, 'dmCaseNote')} • **${vt(db, gid, 'dmAttempts')}** • ${vt(db, gid, 'dmExpires', { mins: (settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10 })}\n\n` +
-                (pl ? `*${vt(db, gid, 'dmTroublePanel')}*` : `*${vt(db, gid, 'dmTroubleRejoin')}*`)
+                vt(lang, 'dmInstructions') +
+                `⚠️ ${vt(lang, 'dmCaseNote')} • **${vt(lang, 'dmAttempts')}** • ${vt(lang, 'dmExpires', { mins: (settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10 })}\n\n` +
+                (pl ? `*${vt(lang, 'dmTroublePanel')}*` : `*${vt(lang, 'dmTroubleRejoin')}*`)
             )
             .setImage('attachment://verify.png')
             .setThumbnail(member.guild.iconURL({ dynamic: true }))
-            .setFooter({ text: `ARCHON CG-223 • ${member.guild.name} • ${vt(db, gid, 'dmFooter')}` })
+            .setFooter({ text: `ARCHON CG-223 • ${member.guild.name} • ${vt(lang, 'dmFooter')}` })
             .setTimestamp();
 
         let dmMsg = null;
@@ -485,7 +513,7 @@ module.exports = {
             if (sysCh) {
                 try {
                     dmMsg = await sysCh.send({
-                        content: `${member} please verify!`,
+                        content: vt(lang, 'sysChanPing', { user: member }),
                         embeds: [captchaEmbed],
                         files: [attachment]
                     });
@@ -517,7 +545,7 @@ module.exports = {
                 if (!/^[A-Z0-9]{6}$/.test(guess)) {
                     if (Date.now() - lastHint > 60000) {
                         lastHint = Date.now();
-                        dmChannel.send({ content: vt(db, gid, 'dmHint') }).catch(() => {});
+                        dmChannel.send({ content: vt(lang, 'dmHint') }).catch(() => {});
                     }
                     return;
                 }
@@ -532,13 +560,13 @@ module.exports = {
                     if (unverifiedRole) await member.roles.remove(unverifiedRole).catch(() => {});
                     // Add verified role
                     if (verifyRole) await member.roles.add(verifyRole).catch(() => {});
-                    logVerify(member.guild, db, 0x00cc44, vt(db, gid, 'logPassedDm'), member.id);
+                    await await logVerify(member.guild, db, 0x00cc44, vt(lang, 'logPassedDm'), member.id, '', lang);
                     require('../lib/joinrole.js').applyJoinRole(member, db);
 
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x00cc44)
-                        .setTitle(`${EMOJIS.verified} ${vt(db, gid, 'verifiedDmTitle')}`)
-                        .setDescription(vt(db, gid, 'welcomeDm', { server: member.guild.name }))
+                        .setTitle(`${EMOJIS.verified} ${vt(lang, 'verifiedDmTitle')}`)
+                        .setDescription(vt(lang, 'welcomeDm', { server: member.guild.name }))
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ]}).catch(() => {});
                 } else {
@@ -551,14 +579,14 @@ module.exports = {
                         const kickOn = (settings.verify_kick_days || 0) > 0;
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff3311)
-                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
+                            .setTitle(`${EMOJIS.warning} ${vt(lang, 'tooManyTitle')}`)
                             .setDescription(kickOn
-                                ? vt(db, gid, 'kickDm', { server: member.guild.name })
-                                : (pl ? vt(db, gid, 'failPanelDm', { server: member.guild.name }) : vt(db, gid, 'failRejoinDm', { server: member.guild.name })))
+                                ? vt(lang, 'kickDm', { server: member.guild.name })
+                                : (pl ? vt(lang, 'failPanelDm', { server: member.guild.name }) : vt(lang, 'failRejoinDm', { server: member.guild.name })))
                             .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                         ], components: await (async () => { if (kickOn) { const r = await storedInviteRow(db, member.guild); return r ? [r] : []; } return pl ? [pl.row] : []; })() }).catch(() => {});
                         if (kickOn) await member.kick('Failed captcha verification').catch(() => {});
-                        logVerify(member.guild, db, 0xff3311, kickOn ? vt(db, gid, 'logKickedFail') : vt(db, gid, 'logFailed'), member.id, '3 wrong attempts');
+                        await await logVerify(member.guild, db, 0xff3311, kickOn ? vt(lang, 'logKickedFail') : vt(lang, 'logFailed'), member.id, '3 wrong attempts', lang);
                     } else {
                         // Wrong — send new captcha
                         const newCode = randomCode(6);
@@ -569,10 +597,10 @@ module.exports = {
 
                         await dmChannel.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff8800)
-                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'attemptWrongTitle', { n: attempts, max: maxAttempts })}`)
-                            .setDescription(vt(db, gid, 'attemptWrongDesc', { remaining: maxAttempts - attempts }))
+                            .setTitle(`${EMOJIS.warning} ${vt(lang, 'attemptWrongTitle', { n: attempts, max: maxAttempts })}`)
+                            .setDescription(vt(lang, 'attemptWrongDesc', { remaining: maxAttempts - attempts }))
                             .setImage('attachment://verify.png')
-                            .setFooter({ text: vt(db, gid, 'dmRetryFooter') })
+                            .setFooter({ text: vt(lang, 'dmRetryFooter') })
                         ], files: [newAttach]}).catch(() => {});
 
                         // Update code reference
@@ -587,7 +615,7 @@ module.exports = {
                     if (!pending.get(key)?.timer) pending.delete(key);
                     await dmChannel.send({ embeds: [new EmbedBuilder()
                         .setColor(0x888888)
-                        .setDescription(`⚠️ ${plNoKick ? vt(db, gid, 'expiredPanel') : vt(db, gid, 'expiredRejoin')}`)
+                        .setDescription(`⚠️ ${plNoKick ? vt(lang, 'expiredPanel') : vt(lang, 'expiredRejoin')}`)
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                     ], components: plNoKick ? [plNoKick.row] : [] }).catch(() => {});
                     // Kicking is handled by the auto-kick timer only
@@ -610,16 +638,16 @@ module.exports = {
                 try {
                     const dmCh = await freshMember.createDM().catch(() => null);
                     if (dmCh) {
-                        const invRow = await storedInviteRow(db, member.guild);
+                        const invRow = await storedInviteRow(db, member.guild, lang);
                         await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
-                            .setTitle(`${EMOJIS.warning} ${vt(db, gid, 'tooManyTitle')}`)
-                            .setDescription(vt(db, gid, 'kickDm', { server: member.guild.name }))
-                            .setFooter({ text: vt(db, gid, 'bamakoFooter') })],
+                            .setTitle(`${EMOJIS.warning} ${vt(lang, 'tooManyTitle')}`)
+                            .setDescription(vt(lang, 'kickDm', { server: member.guild.name }))
+                            .setFooter({ text: vt(lang, 'bamakoFooter') })],
                             components: invRow ? [invRow] : [] }).catch(() => {});
                     }
                 } catch {}
                 await freshMember.kick('Failed to verify in time').catch(() => {});
-                logVerify(member.guild, db, 0xff8800, vt(db, gid, 'logKickedTimeout'), member.id, `${kickMins} min`);
+                logVerify(member.guild, db, 0xff8800, vt(lang, 'logKickedTimeout'), member.id, `${kickMins} min`);
             }
         }, kickMins * 60000) : null;
 
@@ -631,6 +659,7 @@ module.exports = {
     // Called from InteractionCreate for customId 'vpanel:*'
     onPanelInteraction: async (interaction, client, db) => {
         const guild = interaction.guild;
+        const lang = pickLang(client, guild.id, interaction) || 'en';
         if (!guild) return;
         const [, action, nonce] = interaction.customId.split(':');
         const gid = guild.id, uid = interaction.user.id, key = `${uid}:${gid}`;
@@ -639,23 +668,23 @@ module.exports = {
 
         const { isPremium } = require('./premium.js');
         const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
-        if (!settings?.verify_enabled || !isPremium(db, gid)) return eph(vt(db, gid, 'notActive'));
+        if (!settings?.verify_enabled || !isPremium(db, gid)) return eph(vt(lang, 'notActive'));
 
         const vRole = settings.verify_role_id ? guild.roles.cache.get(settings.verify_role_id) : null;
         const uRole = settings.verify_unverified_role_id ? guild.roles.cache.get(settings.verify_unverified_role_id) : null;
-        if (!vRole && !uRole) return eph(vt(db, gid, 'notConfigured'));
+        if (!vRole && !uRole) return eph(vt(lang, 'notConfigured'));
         for (const r of [vRole, uRole]) {
             const err = r && validateVerifyRole(guild, r, null);
             if (err) {
                 console.warn(`[VERIFY] panel unsafe role guild=${gid} role=${r.id}: ${err}`);
-                return eph(vt(db, gid, 'misconfigured'));
+                return eph(vt(lang, 'misconfigured'));
             }
         }
 
         const member = await guild.members.fetch(uid).catch(() => null);
-        if (!member) return eph(vt(db, gid, 'memberNotFound'));
+        if (!member) return eph(vt(lang, 'memberNotFound'));
         const done = vRole ? member.roles.cache.has(vRole.id) : !member.roles.cache.has(uRole.id);
-        if (done) return eph(vt(db, gid, 'alreadyVerified'));
+        if (done) return eph(vt(lang, 'alreadyVerified'));
 
         const challenge = (attempts, note) => {
             const code = randomCode(6);
@@ -666,19 +695,19 @@ module.exports = {
                 content: note || undefined,
                 embeds: [new EmbedBuilder()
                     .setColor(0x00aaff)
-                    .setTitle(vt(db, gid, 'enterCodeTitle'))
-                    .setDescription(vt(db, gid, 'enterCodeDesc', { n: attempts + 1 }))
+                    .setTitle(vt(lang, 'enterCodeTitle'))
+                    .setDescription(vt(lang, 'enterCodeDesc', { n: attempts + 1 }))
                     .setImage('attachment://verify.png')],
                 files: [new AttachmentBuilder(generateCaptcha(code), { name: 'verify.png' })],
                 components: [new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId(`vpanel:enter:${n}`).setLabel(vt(db, gid, 'enterCodeBtn')).setStyle(ButtonStyle.Primary))],
+                    new ButtonBuilder().setCustomId(`vpanel:enter:${n}`).setLabel(vt(lang, 'enterCodeBtn')).setStyle(ButtonStyle.Primary))],
                 flags: 64
             };
         };
 
         if (action === 'start') {
             const wait = PANEL_COOLDOWN - (now - (panelCooldown.get(key) || 0));
-            if (wait > 0) return eph(vt(db, gid, 'cooldown', { secs: Math.ceil(wait / 1000) }));
+            if (wait > 0) return eph(vt(lang, 'cooldown', { secs: Math.ceil(wait / 1000) }));
             panelCooldown.set(key, now);
             return interaction.reply(challenge(0));
         }
@@ -686,16 +715,16 @@ module.exports = {
         const sess = panelSessions.get(key);
         if (!sess || sess.expires < now) {
             panelSessions.delete(key);
-            return eph(vt(db, gid, 'codeExpired'));
+            return eph(vt(lang, 'codeExpired'));
         }
-        if (sess.nonce !== nonce) return eph(vt(db, gid, 'codeOutdated'));
+        if (sess.nonce !== nonce) return eph(vt(lang, 'codeOutdated'));
 
         if (action === 'enter') {
             return interaction.showModal(new ModalBuilder()
                 .setCustomId(`vpanel:modal:${nonce}`)
-                .setTitle(vt(db, gid, 'modalTitle'))
+                .setTitle(vt(lang, 'modalTitle'))
                 .addComponents(new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('code').setLabel(vt(db, gid, 'modalLabel'))
+                    new TextInputBuilder().setCustomId('code').setLabel(vt(lang, 'modalLabel'))
                         .setStyle(TextInputStyle.Short).setMinLength(6).setMaxLength(6).setRequired(true))));
         }
 
@@ -708,18 +737,18 @@ module.exports = {
                 forgetDeadline(db, gid, uid);
                 if (uRole) await member.roles.remove(uRole).catch(() => {});
                 if (vRole) await member.roles.add(vRole).catch(() => {});
-                logVerify(guild, db, 0x00cc44, vt(db, gid, 'logPassedPanel'), uid);
+                await await logVerify(guild, db, 0x00cc44, vt(lang, 'logPassedPanel'), uid, '', lang);
                 await require('../lib/joinrole.js').applyJoinRole(member, db);
-                return eph(vt(db, gid, 'verifiedPanel', { server: guild.name }));
+                return eph(vt(lang, 'verifiedPanel', { server: guild.name }));
             }
             const attempts = sess.attempts + 1;
             if (attempts >= 3) {
                 panelSessions.delete(key);
                 panelCooldown.set(key, now);
-                logVerify(guild, db, 0xff3311, vt(db, gid, 'logFailedPanel'), uid, '3 wrong attempts');
-                return eph(vt(db, gid, 'tooManyPanel'));
+                await logVerify(guild, db, 0xff3311, vt(lang, 'logFailedPanel'), uid, '3 wrong attempts', lang);
+                return eph(vt(lang, 'tooManyPanel'));
             }
-            return interaction.reply(challenge(attempts, vt(db, gid, 'incorrectNote')));
+            return interaction.reply(challenge(attempts, vt(lang, 'incorrectNote')));
         }
     },
 
@@ -736,8 +765,9 @@ module.exports = {
 
     // SECURITY: legacy button granted roles without captcha — disabled
     onVerifyButton: async (interaction) => {
+        const lang = pickLang(interaction.client, interaction.guild?.id, interaction) || 'en';
         return interaction.reply({
-            content: (() => { const pl = interaction.guild && panelLink(interaction.guild, interaction.client.db); return pl ? vt(interaction.client.db, interaction.guild.id, 'legacyBtnPanel', { channel: pl.id }) : vt(interaction.client.db, interaction.guild.id, 'legacyBtnRejoin'); })(),
+            content: (() => { const pl = interaction.guild && panelLink(interaction.guild, interaction.client.db); return pl ? vt(lang, 'legacyBtnPanel', { channel: pl.id }) : vt(lang, 'legacyBtnRejoin'); })(),
             flags: 64
         }).catch(() => {});
     }

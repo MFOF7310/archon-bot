@@ -1,12 +1,7 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { t } = require('../lib/i18n');
-
-// ================= UNIFIED LEVEL CALCULATION =================
-function calculateLevel(xp) { 
-    return Math.floor(0.1 * Math.sqrt(xp)) + 1; 
-}
-
-// Translations: lang/{en,fr,bm,zh,ar}/shop.json
+const { pickLang } = require('../lib/pick-lang');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 
 module.exports = {
     name: 'shop',
@@ -15,274 +10,166 @@ module.exports = {
     category: 'ECONOMY',
     usage: '.shop',
     cooldown: 3000,
-    examples: ['.shop'],
 
-// ================= SLASH COMMAND DATA =================
-data: new SlashCommandBuilder()
-    .setName('shop')
-    .setDescription('💎 Spend your Archon Credits on exclusive upgrades'),
+    data: new SlashCommandBuilder()
+        .setName('shop')
+        .setDescription('💎 Spend your Archon Credits on exclusive upgrades'),
 
-run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        
-        
-        const version = client.version || '1.7.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        const prefix = serverSettings?.prefix || '.';
-        
-        const userId = message.author.id;
-        const userName = message.author.username;
-        const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
-        
-        const now = Math.floor(Date.now() / 1000);
-        db.prepare(`UPDATE user_inventory SET active = 0 WHERE expires_at IS NOT NULL AND expires_at > 0 AND expires_at < ? AND active = 1`).run(now);
-        
-        // 🔥 FORCE WAL SYNC before reading
-        try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
-        if (client.userDataCache) client.userDataCache.delete(`${userId}:${message.guild?.id || "DM"}`);
-        
-        let userData = db.prepare(`SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?`).get(userId, message.guild?.id || "DM");
-        
-        if (!userData) {
-            db.prepare(`INSERT INTO users (id, guild_id, username, xp, level, credits, streak_days, last_daily, total_dailies, highest_streak) VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0, 0)`).run(userId, message.guild?.id || "DM", userName);
-            userData = { credits: 0, xp: 0, level: 1 };
-        }
-        
-        const balance = userData.credits || 0;
-        const userLevel = userData.level || calculateLevel(userData.xp || 0);
+    // ================= SHARED UI BUILDER =================
+    buildView: (client, userData, ownedItems, lang, guildName, version) => {
         const shopItems = client.shopItems || [];
+        const balance = userData.credits || 0;
+        const level = userData.level || 1;
         
-        const inventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
-        const ownedItems = new Set(inventory.map(i => i.item_id));
-        
-        const getCurrentState = () => {
-    try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
-    if (client.userDataCache) client.userDataCache.delete(`${userId}:${message.guild?.id || "DM"}`);
-    const currentData = db.prepare(`SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?`).get(userId, message.guild?.id || "DM");
-    const currentInventory = db.prepare(`SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1`).all(userId);
-    return {
-        balance: currentData?.credits || 0,
-        level: currentData?.level || calculateLevel(currentData?.xp || 0),
-        streakProtections: currentData?.streak_protections || 0,
-        owned: new Set(currentInventory.map(inv => inv.item_id))
-    };
-};
-        
-        const shopEmbed = new EmbedBuilder()
-            .setColor('#f1c40f')
-            .setAuthor({ name: t('shop.authorShop', lang), iconURL: client.user.displayAvatarURL() })
-            .setTitle(t('shop.title', lang))
-            .setDescription(`${t('shop.desc', lang)}\n\n💰 **${t('shop.balance', lang)}:** \`${balance.toLocaleString()}\` ${t('shop.creditsLabel', lang)}\n📊 **${t('shop.level', lang)}:** \`${userLevel}\`\n🛡️ **${t('shop.streakProtections', lang)}:** \`${userData.streak_protections || 0}\``)
-            .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setFooter({ text: `${guildName} • ${t('shop.footer', lang)} • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
-        
-        const createMenuOptions = (ownedSet, currentLevel) => {
-            return shopItems.map(item => {
-                const itemName = item[lang]?.name || item.en?.name || item.name || item.id;
-                const itemDesc = item[lang]?.desc || item.en?.desc || item.desc || '';
-                let description = `${item.price.toLocaleString()} ${t('shop.creditsLabel', lang)} - ${itemDesc}`;
-                if (ownedSet.has(item.id)) description = `✅ ${t('shop.owned', lang)} - ${description}`;
-                if (item.requirement?.level && currentLevel < item.requirement.level) description = `🔒 ${t('shop.locked', lang)} ${item.requirement.level} - ${description}`;
-                return {
-                    label: `${item.emoji || '📦'} ${itemName}`.substring(0, 100),
-                    description: description.substring(0, 100),
-                    value: item.id
-                };
-            });
-        };
-        
-        console.log('[SHOP DEBUG] Building menu with', shopItems.length, 'items');
-        const menuOptions = createMenuOptions(ownedItems, userLevel);
-        console.log('[SHOP DEBUG] Menu options built:', menuOptions.length);
-        const menu = new StringSelectMenuBuilder().setCustomId('shop_select').setPlaceholder(t('shop.placeholder', lang)).addOptions(menuOptions);
+        const createOptions = (ownedSet, currentLevel) => shopItems.map(item => {
+            const itemName = item[lang]?.name || item.en?.name || item.name || item.id;
+            const itemDesc = item[lang]?.desc || item.en?.desc || item.desc || '';
+            let description = `${item.price.toLocaleString()} ${t('shop.creditsLabel', lang)} - ${itemDesc}`;
+            if (ownedSet.has(item.id)) description = `✅ ${t('shop.owned', lang)} - ${description}`;
+            if (item.requirement?.level && currentLevel < item.requirement.level) description = `🔒 ${t('shop.locked', lang)} ${item.requirement.level} - ${description}`;
+            return {
+                label: `${item.emoji || '📦'} ${itemName}`.substring(0, 100),
+                description: description.substring(0, 100),
+                value: item.id
+            };
+        });
+
+        const menu = new StringSelectMenuBuilder()
+            .setCustomId('shop_select')
+            .setPlaceholder(t('shop.placeholder', lang))
+            .addOptions(createOptions(ownedItems, level));
+
         const row = new ActionRowBuilder().addComponents(menu);
         const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji('📦'),
-            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji('🔄')
+            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('inventory', client) || '🎒'),
+            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji(resolveEmoji('refresh', client) || '🔄')
         );
-        
-        const reply = await message.reply({ embeds: [shopEmbed], components: [row, buttonRow] }).catch(() => {});
+
+        const container = new ContainerBuilder().setAccentColor(0xf1c40f);
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('shop', client) || '🛒'} ${t('shop.title', lang)}`));
+        container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('shop.desc', lang)));
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`💰 **${t('shop.balance', lang)}:** \`${balance.toLocaleString()}\` ${t('shop.creditsLabel', lang)}\n📊 **${t('shop.level', lang)}:** \`${level}\`\n🛡️ **${t('shop.streakProtections', lang)}:** \`${userData.streak_protections || 0}\``));
+        container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        container.addActionRowComponents(row);
+        container.addActionRowComponents(buttonRow);
+
+        return { view: { components: [container], flags: MessageFlags.IsComponentsV2 }, menu, buttonRow };
+    },
+
+    // ================= PREFIX COMMAND =================
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
+        const guildId = message.guild?.id || 'DM';
+        const lang = pickLang(client, guildId, message);
+        const version = client.version || '1.7.0';
+        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const userId = message.author.id;
+        const userName = message.author.username;
+
+        let userData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+        if (!userData) {
+            db.prepare('INSERT INTO users (id, guild_id, username, xp, level, credits, streak_days, last_daily, total_dailies, highest_streak) VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0, 0)').run(userId, guildId, userName);
+            userData = { credits: 0, xp: 0, level: 1, streak_protections: 0 };
+        }
+
+        const inventory = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
+        const ownedItems = new Set(inventory.map(i => i.item_id));
+
+        const { view, menu, buttonRow } = module.exports.buildView(client, userData, ownedItems, lang, guildName, version);
+        const reply = await message.reply(view).catch(() => null);
         if (!reply) return;
 
-const collector = reply.createMessageComponentCollector({ time: 180000 });
+        const collector = reply.createMessageComponentCollector({ time: 180000 });
 
-collector.on('collect', async (i) => {
-            if (i.user.id !== message.author.id) return i.reply({ content: t('shop.accessDenied', lang), flags: 64 }).catch(() => {});
-            
-            if (!i.deferred && !i.replied) {
-                try { await i.deferUpdate(); } catch (e) {}
-            }
-            
+        collector.on('collect', async (i) => {
+            if (i.user.id !== userId) return i.reply({ content: t('shop.accessDenied', lang), flags: 64 }).catch(() => {});
+            try { await i.deferUpdate(); } catch (e) { return; }
+
             if (i.customId === 'shop_inventory') {
                 collector.stop();
-                await i.editReply({ content: t('shop.loadingInventory', lang), embeds: [], components: [] }).catch(() => {});
-                setTimeout(() => i.deleteReply().catch(() => {}), 500);
                 const invCmd = client.commands.get('inventory');
                 if (invCmd) return await invCmd.run(client, message, [], db, serverSettings, 'inventory');
                 return;
             }
-            
+
             if (i.customId === 'shop_refresh') {
-                const { balance: currentBalance, level: currentLevel, owned: currentOwned } = getCurrentState();
-                const refreshedEmbed = new EmbedBuilder()
-                    .setColor('#f1c40f')
-                    .setAuthor({ name: t('shop.authorShop', lang), iconURL: client.user.displayAvatarURL() })
-                    .setTitle(t('shop.title', lang))
-                    .setDescription(`${t('shop.desc', lang)}\n\n💰 **${t('shop.balance', lang)}:** \`${currentBalance.toLocaleString()}\` ${t('shop.creditsLabel', lang)}\n📊 **${t('shop.level', lang)}:** \`${currentLevel}\``)
-                    .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setFooter({ text: `${guildName} • ${t('shop.footer', lang)} • v${version}`, iconURL: guildIcon })
-                    .setTimestamp();
-                const refreshedMenu = new StringSelectMenuBuilder().setCustomId('shop_select').setPlaceholder(t('shop.placeholder', lang)).addOptions(createMenuOptions(currentOwned, currentLevel));
-                const refreshedRow = new ActionRowBuilder().addComponents(refreshedMenu);
-                await i.editReply({ content: null, embeds: [refreshedEmbed], components: [refreshedRow, buttonRow] }).catch(() => {});
-                return;
+                const freshData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const freshInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
+                const freshOwned = new Set(freshInv.map(x => x.item_id));
+                const freshView = module.exports.buildView(client, freshData, freshOwned, lang, guildName, version);
+                return await i.editReply(freshView.view).catch(() => {});
             }
-            
-            if (i.isStringSelectMenu() && i.customId === 'shop_select') {
+
+            if (i.customId === 'shop_select') {
                 const selectedId = i.values[0];
-                const selectedItem = shopItems.find(item => item.id === selectedId);
-                if (!selectedItem) return i.followUp({ content: t('shop.itemNotFound', lang), flags: 64 }).catch(() => {});
+                const selectedItem = (client.shopItems || []).find(item => item.id === selectedId);
+                if (!selectedItem) return;
+
+                const fd = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const curBal = fd?.credits || 0;
+                const curLvl = fd?.level || 1;
+
+                if (selectedItem.requirement?.level && curLvl < selectedItem.requirement.level) {
+                    return i.followUp({ content: t('shop.levelRequirement', lang, { level: selectedItem.requirement.level, current: curLvl }), flags: 64 }).catch(() => {});
+                }
+                if (curBal < selectedItem.price) {
+                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
+                }
+
+                const bonusXP = selectedItem.effect?.xp || 0;
+                const bonusCredits = selectedItem.effect?.credits || 0;
+                const newCredits = curBal - selectedItem.price + bonusCredits;
+                const newXP = (fd?.xp || 0) + bonusXP;
+                const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
+
+                db.prepare('UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ? AND guild_id = ?').run(newCredits, newXP, newLevel, userId, guildId);
+                if (selectedItem.effect?.streak_protection) {
+                    db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
+                }
+
+                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ?').get(userId, selectedId);
+                if (ex) {
+                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_id = ?').run(userId, selectedId);
+                } else {
+                    db.prepare('INSERT INTO user_inventory (user_id, item_id, quantity, active) VALUES (?, ?, 1, 1)').run(userId, selectedId);
+                }
+                if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
+
+                const itemName = selectedItem[lang]?.name || selectedItem.en.name;
+                const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
+                successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()} 🪙\`\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()} 🪙\`\n` : '') + (selectedItem.effect?.streak_protection ? `**🛡️ ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**✨ ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()} 🪙\``));
                 
-                const { balance: freshCredits, level: currentLevel, owned: currentOwned } = getCurrentState();
-                if (currentOwned.has(selectedItem.id) && selectedItem.type !== 'consumable' && selectedItem.type !== 'boost') {
-                    return i.followUp({ content: t('shop.alreadyOwned', lang), flags: 64 }).catch(() => {});
-                }
-                if (selectedItem.requirement?.level && currentLevel < selectedItem.requirement.level) {
-                    return i.followUp({ content: t('shop.levelRequirement', lang, { level: selectedItem.requirement.level, current: currentLevel }), flags: 64 }).catch(() => {});
-                }
-                if (freshCredits < selectedItem.price) {
-                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: freshCredits.toLocaleString() }), flags: 64 }).catch(() => {});
-                }
-                
-                try {
-                    const currentUserData = db.prepare(`SELECT credits, xp FROM users WHERE id = ? AND guild_id = ?`).get(userId, message.guild?.id || "DM");
-                    const oldBalance = currentUserData?.credits || 0;
-                    const oldXP = currentUserData?.xp || 0;
-                    
-                    const bonusXP = selectedItem.effect?.xp || 0;
-const bonusCredits = selectedItem.effect?.credits || 0;
+                await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
 
-const newCredits = oldBalance - selectedItem.price + bonusCredits;
-const newXP = oldXP + bonusXP;
-const newLevel = calculateLevel(newXP);
-
-if (selectedItem.effect?.streak_protection) {
-    // Streak Shield: add protection instead of XP/Credits
-    db.prepare(`UPDATE users SET credits = ?, streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?`).run(newCredits, userId, message.guild?.id || "DM");
-} else {
-    db.prepare(`UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ? AND guild_id = ?`).run(newCredits, newXP, newLevel, userId, message.guild?.id || "DM");
-}
-                    
-                    // 🔥 FORCE WAL SYNC + CACHE INVALIDATION
-                    try { db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run(); } catch (e) {}
-                    if (client.userDataCache) client.userDataCache.delete(`${userId}:${message.guild?.id || "DM"}`);
-                    if (client.queueUserUpdate) {
-                        client.queueUserUpdate(userId, message.guild?.id || "DM", { credits: newCredits, xp: newXP, level: newLevel, username: userName, guild_id: message.guild?.id || "DM" });
-                    }
-                    
-                    const expiresAt = selectedItem.duration ? Math.floor(Date.now() / 1000) + (selectedItem.duration * 86400) : null;
-                    
-                    if (selectedItem.type === 'consumable') {
-                        db.prepare(`INSERT INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at, active) VALUES (?, ?, 1, strftime('%s', 'now'), ?, 1) ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + 1, purchased_at = strftime('%s', 'now')`).run(userId, selectedItem.id, expiresAt);
-                    } else {
-                        db.prepare(`INSERT OR REPLACE INTO user_inventory (user_id, item_id, quantity, purchased_at, expires_at, active) VALUES (?, ?, 1, strftime('%s', 'now'), ?, 1)`).run(userId, selectedItem.id, expiresAt);
-                    }
-                    
-                    if (selectedItem.type === 'role' && selectedItem.roleId && message.guild) {
-                        try { const member = await message.guild.members.fetch(userId); await member.roles.add(selectedItem.roleId); } catch (err) {}
-                    }
-                    
-                    const itemName = selectedItem[lang]?.name || selectedItem.en.name;
-                    
-                    const successEmbed = new EmbedBuilder()
-                        .setColor('#2ecc71')
-                        .setAuthor({ name: t('shop.purchaseComplete', lang), iconURL: avatarURL })
-                        .setTitle(`${selectedItem.emoji} ${itemName}`)
-                        .setDescription(
-                            `\`\`\`yaml\n` +
-                            `${t('shop.itemPurchased', lang)}: ${itemName}\n` +
-                            `${t('shop.pricePaid', lang)}: -${selectedItem.price.toLocaleString()} 🪙\n` +
-                            (bonusCredits > 0 ? `${t('shop.bonusReceived', lang)}: +${bonusCredits.toLocaleString()} 🪙\n` : '') +
-                   (selectedItem.effect?.streak_protection ? t('shop.streakProtectionLine', lang) + '\n' : '') +
-                            (bonusXP > 0 ? t('shop.xpBonusLine', lang, { amount: bonusXP }) + '\n' : '') +
-                            `${t('shop.previousBalance', lang)}: ${oldBalance.toLocaleString()} 🪙\n` +
-                            `${t('shop.newBalance', lang)}: ${newCredits.toLocaleString()} 🪙\n` +
-                            `\`\`\`\n\n` +
-                            `💡 **${t('shop.verifyWith', lang)} \`${prefix}bal\` or \`${prefix}credits\`**\n` +
-                            `*${t('shop.checkBalance', lang, { prefix: prefix })}*`
-                        )
-                        .setFooter({ text: `${guildName} • ${t('shop.footer', lang)} • v${version}`, iconURL: guildIcon })
-                        .setTimestamp();
-                    
-                    await i.followUp({ embeds: [successEmbed], flags: 64 }).catch(() => {});
-
-                    // 📢 Send purchase notification to configured shop channel
-                    try {
-                        const sSettings = client.getServerSettings ? client.getServerSettings(message.guild?.id) : {};
-                        const shopChanId = sSettings?.shopChannel;
-                        if (shopChanId && message.guild) {
-                            const shopChannel = message.guild.channels.cache.get(shopChanId);
-                            if (shopChannel) {
-                                const notifEmbed = new EmbedBuilder()
-                                    .setColor('#2ecc71')
-                                    .setAuthor({ name: t('shop.notifAuthor', lang), iconURL: message.author.displayAvatarURL() })
-                                    .setDescription(
-                                        t('shop.notifPurchased', lang, { user: message.author.tag, item: itemName, emoji: selectedItem.emoji }) + '\n' +
-                                        t('shop.notifPrice', lang, { price: selectedItem.price.toLocaleString() }) + '\n' +
-                                        t('shop.notifNewBalance', lang, { balance: newCredits.toLocaleString() })
-                                    )
-                                    .setFooter({ text: `${guildName} • ARCHON CG-223`, iconURL: guildIcon })
-                                    .setTimestamp();
-                                await shopChannel.send({ embeds: [notifEmbed] }).catch(() => {});
-                            }
-                        }
-                    } catch (e) {}
-                    
-                    const { balance: finalBalance, level: finalLevel, owned: finalOwned } = getCurrentState();
-                    const finalEmbed = new EmbedBuilder()
-                        .setColor('#f1c40f')
-                        .setAuthor({ name: t('shop.authorShop', lang), iconURL: client.user.displayAvatarURL() })
-                        .setTitle(t('shop.title', lang))
-                        .setDescription(`${t('shop.desc', lang)}\n\n💰 **${t('shop.balance', lang)}:** \`${finalBalance.toLocaleString()}\` ${t('shop.creditsLabel', lang)}\n📊 **${t('shop.level', lang)}:** \`${finalLevel}\``)
-                        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                        .setFooter({ text: `${guildName} • ${t('shop.footer', lang)} • v${version}`, iconURL: guildIcon })
-                        .setTimestamp();
-                    const finalMenu = new StringSelectMenuBuilder().setCustomId('shop_select').setPlaceholder(t('shop.placeholder', lang)).addOptions(createMenuOptions(finalOwned, finalLevel));
-                    const finalRow = new ActionRowBuilder().addComponents(finalMenu);
-                    await reply.edit({ embeds: [finalEmbed], components: [finalRow, buttonRow] }).catch(() => {});
-                    
-                } catch (err) {
-                    console.error('[SHOP] Purchase error:', err);
-                    await i.followUp({ content: t('shop.purchaseError', lang), flags: 64 }).catch(() => {});
-                }
+                const finalData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const finalInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
+                const finalOwned = new Set(finalInv.map(x => x.item_id));
+                const finalView = module.exports.buildView(client, finalData, finalOwned, lang, guildName, version);
+                await i.editReply(finalView.view).catch(() => {});
             }
         });
-        
-                collector.on('end', async () => {
-            const disabledMenu = new StringSelectMenuBuilder(menu.data).setDisabled(true);
-            const disabledRow = new ActionRowBuilder().addComponents(disabledMenu);
-            const disabledButtons = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setDisabled(true).setEmoji('📦'),
-                new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setDisabled(true).setEmoji('🔄')
-            );
-            await reply.edit({ components: [disabledRow, disabledButtons] }).catch(() => {});
+
+        collector.on('end', async () => {
+            try { 
+                menu.setDisabled(true);
+                buttonRow.components.forEach(b => b.setDisabled(true));
+                await reply.edit({ components: [new ContainerBuilder().addActionRowComponents(new ActionRowBuilder().addComponents(menu)).addActionRowComponents(buttonRow)], flags: MessageFlags.IsComponentsV2 }).catch(() => {}); 
+            } catch (e) {}
         });
     },
 
-    // ================= SLASH COMMAND EXECUTION =================
+    // ================= SLASH COMMAND =================
     execute: async (interaction, client) => {
         await interaction.deferReply();
-        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-        const db = client.db;
-        const lang = serverSettings?.language && serverSettings.language !== 'auto' ? serverSettings.language : ({ fr: 'fr', zh: 'zh', ar: 'ar', bm: 'bm' }[(interaction.locale || '').slice(0, 2).toLowerCase()] || 'en');
+        const guildId = interaction.guild?.id || 'DM';
+        const lang = pickLang(client, guildId, interaction);
         const version = client.version || '1.7.0';
         const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
         const userId = interaction.user.id;
         const userName = interaction.user.username;
-        const guildId = interaction.guild?.id || 'DM';
+        const db = client.db;
 
         let userData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
         if (!userData) {
@@ -290,87 +177,94 @@ if (selectedItem.effect?.streak_protection) {
             userData = { credits: 0, xp: 0, level: 1, streak_protections: 0 };
         }
 
-        const balance = userData.credits || 0;
-        const userLevel = userData.level || 1;
-        const shopItems = client.shopItems || [];
         const inventory = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
         const ownedItems = new Set(inventory.map(i => i.item_id));
 
-        const shopEmbed = new EmbedBuilder()
-            .setColor('#f1c40f')
-            .setAuthor({ name: t('shop.authorShop', lang), iconURL: client.user.displayAvatarURL() })
-            .setTitle(t('shop.title', lang))
-            .setDescription(t('shop.desc', lang) + '\n\n💰 **' + t('shop.balance', lang) + ':** `' + balance.toLocaleString() + '` ' + t('shop.creditsLabel', lang) + '\n📊 **' + t('shop.level', lang) + ':** `' + userLevel + '`')
-            .setFooter({ text: guildName + ' • ' + t('shop.footer', lang) + ' • v' + version, iconURL: guildIcon })
-            .setTimestamp();
+        const { view, menu, buttonRow } = module.exports.buildView(client, userData, ownedItems, lang, guildName, version);
+        const reply = await interaction.editReply(view).catch(() => null);
+        if (!reply) return;
 
-        const buildOptions = (ownedSet, lvl) => shopItems.map(item => {
-            const name = item[lang]?.name || item.en?.name || item.name || item.id;
-            const desc = item[lang]?.desc || item.en?.desc || item.desc || '';
-            let label = (item.emoji || '📦') + ' ' + name;
-            let description = item.price?.toLocaleString() + ' ' + t('shop.creditsLabel', lang) + ' - ' + desc;
-            if (ownedSet.has(item.id)) description = t('shop.ownedShort', lang) + ' - ' + description;
-            if (item.requirement?.level && lvl < item.requirement.level) description = t('shop.lockedShort', lang, { level: item.requirement.level }) + ' - ' + description;
-            return { label: label.substring(0, 100), description: description.substring(0, 100), value: item.id };
-        });
-
-        const menu = new StringSelectMenuBuilder().setCustomId('shop_s').setPlaceholder(t('shop.placeholder', lang)).addOptions(buildOptions(ownedItems, userLevel));
-        const row = new ActionRowBuilder().addComponents(menu);
-        const btnRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('shop_inv_s').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji('📦'),
-            new ButtonBuilder().setCustomId('shop_ref_s').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji('🔄')
-        );
-
-        const reply = await interaction.editReply({ embeds: [shopEmbed], components: [row, btnRow] });
         const collector = reply.createMessageComponentCollector({ time: 180000 });
 
         collector.on('collect', async (i) => {
             if (i.user.id !== userId) return i.reply({ content: t('shop.accessDenied', lang), flags: 64 }).catch(() => {});
-            try { await i.deferUpdate(); } catch (e) {}
+            try { await i.deferUpdate(); } catch (e) { return; }
 
-            if (i.customId === 'shop_ref_s') {
-                const fd = db.prepare('SELECT credits, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
-                const fi = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
-                const fo = new Set(fi.map(x => x.item_id));
-                const refreshedEmbed = new EmbedBuilder().setColor('#f1c40f')
-                    .setAuthor({ name: t('shop.authorShop', lang), iconURL: client.user.displayAvatarURL() })
-                    .setTitle(t('shop.title', lang))
-                    .setDescription(t('shop.desc', lang) + '\n\n💰 **' + t('shop.balance', lang) + ':** `' + (fd?.credits || 0).toLocaleString() + '` ' + t('shop.creditsLabel', lang))
-                    .setFooter({ text: guildName + ' • ' + t('shop.footer', lang), iconURL: guildIcon }).setTimestamp();
-                const rm = new StringSelectMenuBuilder().setCustomId('shop_s').setPlaceholder(t('shop.placeholder', lang)).addOptions(buildOptions(fo, fd?.level || 1));
-                await i.editReply({ embeds: [refreshedEmbed], components: [new ActionRowBuilder().addComponents(rm), btnRow] }).catch(() => {});
+            if (i.customId === 'shop_inventory') {
+                collector.stop();
+                const invCmd = client.commands.get('inventory');
+                if (invCmd) {
+                    const fakeMsg = { author: interaction.user, guild: interaction.guild, channel: interaction.channel, reply: async (o) => i.followUp(o) };
+                    return await invCmd.run(client, fakeMsg, [], db, client.getServerSettings(guildId), 'inventory');
+                }
+                return;
             }
 
-            if (i.customId === 'shop_s') {
-                const selId = i.values[0];
-                const selItem = shopItems.find(x => x.id === selId);
-                if (!selItem) return;
-                const fd = db.prepare('SELECT credits, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+            if (i.customId === 'shop_refresh') {
+                const freshData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const freshInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
+                const freshOwned = new Set(freshInv.map(x => x.item_id));
+                const freshView = module.exports.buildView(client, freshData, freshOwned, lang, guildName, version);
+                return await i.editReply(freshView.view).catch(() => {});
+            }
+
+            if (i.customId === 'shop_select') {
+                const selectedId = i.values[0];
+                const selectedItem = (client.shopItems || []).find(item => item.id === selectedId);
+                if (!selectedItem) return;
+
+                const fd = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
                 const curBal = fd?.credits || 0;
                 const curLvl = fd?.level || 1;
-                if (selItem.requirement?.level && curLvl < selItem.requirement.level) {
-                    return i.followUp({ content: t('shop.requiresLevel', lang, { level: selItem.requirement.level }), flags: 64 }).catch(() => {});
+
+                if (selectedItem.requirement?.level && curLvl < selectedItem.requirement.level) {
+                    return i.followUp({ content: t('shop.levelRequirement', lang, { level: selectedItem.requirement.level, current: curLvl }), flags: 64 }).catch(() => {});
                 }
-                if (curBal < selItem.price) {
-                    return i.followUp({ content: t('shop.insufficientShort', lang, { price: selItem.price?.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
+                if (curBal < selectedItem.price) {
+                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
                 }
-                const newBal = curBal - selItem.price;
-                db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(newBal, userId, guildId);
-                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ?').get(userId, selId);
+
+                const bonusXP = selectedItem.effect?.xp || 0;
+                const bonusCredits = selectedItem.effect?.credits || 0;
+                const newCredits = curBal - selectedItem.price + bonusCredits;
+                const newXP = (fd?.xp || 0) + bonusXP;
+                const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
+
+                db.prepare('UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ? AND guild_id = ?').run(newCredits, newXP, newLevel, userId, guildId);
+                if (selectedItem.effect?.streak_protection) {
+                    db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
+                }
+
+                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ?').get(userId, selectedId);
                 if (ex) {
-                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_id = ?').run(userId, selId);
+                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_id = ?').run(userId, selectedId);
                 } else {
-                    db.prepare('INSERT INTO user_inventory (user_id, item_id, quantity, active) VALUES (?, ?, 1, 1)').run(userId, selId);
+                    db.prepare('INSERT INTO user_inventory (user_id, item_id, quantity, active) VALUES (?, ?, 1, 1)').run(userId, selectedId);
                 }
                 if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
-                const itemName = selItem[lang]?.name || selItem.en?.name || selItem.name;
-                const itemPerk = selItem[lang]?.perk || selItem.en?.perk || '';
-                await i.followUp({ content: t('shop.purchaseSuccessful', lang) + '\n' + t('shop.acquiredLine', lang, { emoji: selItem.emoji, name: itemName }) + '\n' + t('shop.newBalanceLine', lang, { balance: newBal.toLocaleString(), credits: t('shop.creditsLabel', lang) }) + '\n⚡ ' + itemPerk, flags: 64 }).catch(() => {});
+
+                const itemName = selectedItem[lang]?.name || selectedItem.en.name;
+                const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
+                successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()} 🪙\`\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()} 🪙\`\n` : '') + (selectedItem.effect?.streak_protection ? `**🛡️ ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**✨ ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()} 🪙\``));
+                
+                await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
+
+                const finalData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const finalInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
+                const finalOwned = new Set(finalInv.map(x => x.item_id));
+                const finalView = module.exports.buildView(client, finalData, finalOwned, lang, guildName, version);
+                await i.editReply(finalView.view).catch(() => {});
             }
         });
 
         collector.on('end', async () => {
-            try { await interaction.editReply({ components: [] }).catch(() => {}); } catch (e) {}
+            try { 
+                menu.setDisabled(true);
+                buttonRow.components.forEach(b => b.setDisabled(true));
+                await interaction.editReply({ components: [new ContainerBuilder().addActionRowComponents(new ActionRowBuilder().addComponents(menu)).addActionRowComponents(buttonRow)], flags: MessageFlags.IsComponentsV2 }).catch(() => {}); 
+            } catch (e) {}
         });
     }
 };
