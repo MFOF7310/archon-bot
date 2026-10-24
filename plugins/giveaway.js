@@ -1,26 +1,6 @@
 const { resolveEmoji } = require('../lib/emoji-resolver');
-
 const i18n = require('../lib/i18n');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SectionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize, ChannelSelectMenuBuilder, ChannelType } = require('discord.js');
-
-// ═══════════════════════════════════════════════════════
-// ARCHON CLASSIFIED GIVEAWAY PROTOCOL v2.0
-// ═══════════════════════════════════════════════════════
-const ARCHON = {
-    green: 0x2ecc71, red: 0xe74c3c, gold: 0xf1c40f,
-    purple: 0x9b59b6, cyan: 0x00f0ff, orange: 0xe67e22,
-    neural: 0x00ff88, steel: 0x708090,
-};
-
-// ═══════════════════════════════════════════════════════
-// TRANSLATIONS
-// ═══════════════════════════════════════════════════════
-
-
-// ═══════════════════════════════════════════════════════
-// ACTIVE GIVEAWAYS MAP
-// ═══════════════════════════════════════════════════════
-const activeGiveaways = new Map();
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SectionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize, ChannelSelectMenuBuilder, ChannelType, ThumbnailBuilder } = require('discord.js');
 
 // ═══════════════════════════════════════════════════════
 // UTILS
@@ -34,14 +14,14 @@ function parseDuration(str) {
     return n * mult[unit];
 }
 
-function progressBar(entries, max = 50, len = 16) {
-    const fill = max > 0 ? Math.min(len, Math.round((entries / max) * len)) : 0;
-    return '▓'.repeat(fill) + '░'.repeat(len - fill);
-}
-
-function winChance(entries, winners) {
-    if (entries === 0) return 'N/A';
-    return `${Math.min(100, ((winners / entries) * 100).toFixed(1))}%`;
+function selectWinners(entries, count) {
+    if (entries.length === 0) return [];
+    const pool = [...entries];
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, Math.min(count, pool.length));
 }
 
 function getLang(client, guildId) {
@@ -52,128 +32,244 @@ function getLang(client, guildId) {
 }
 
 // ═══════════════════════════════════════════════════════
-// BUILD GIVEAWAY EMBED
+// DATABASE SETUP & SWEEPER
 // ═══════════════════════════════════════════════════════
-function buildEmbed(gw, client) {
-    const t = (k, v) => i18n.t('giveaway.' + k, gw.lang || 'en', v);
-    const entries = gw.entries.length;
-    const isActive = gw.status === 'active';
-    const bar = progressBar(entries, Math.max(entries + 10, 50));
-    const chance = winChance(entries, gw.winners);
-    const each = Math.floor(gw.amount / gw.winners);
-    const statusLine = isActive ? t('active') : t('ended');
-
-    const embed = new EmbedBuilder()
-        .setColor(isActive ? ARCHON.cyan : ARCHON.steel)
-        .setAuthor({
-            name: `🦅 ARCHON ENGINE • ${t('title')}`,
-            iconURL: gw.hostIcon || client.user.displayAvatarURL()
-        })
-        .setDescription(
-            `## 🎁 ${gw.prize}\n` +
-            `${statusLine} • Hosted by **${gw.hostName}**\n\n` +
-            `\`\`\`ansi\n` +
-            `\u001b[1;36m${bar}\u001b[0m \u001b[1;33m${entries} agents\u001b[0m\n` +
-            `\`\`\``
-        )
-        .addFields(
-            { name: `⏰ ${t('timeLeft')}`, value: `<t:${Math.floor(gw.endTimestamp / 1000)}:R>`, inline: true },
-            { name: `🏆 ${t('winners')}`, value: `\`${gw.winners}\``, inline: true },
-            { name: `🎲 ${t('winChance')}`, value: `\`${chance}\``, inline: true },
-            { name: `💰 ${t('eachWins')}`, value: `\`${each.toLocaleString()} 🪙\``, inline: true },
-            { name: `💎 ${t('pool')}`, value: `\`${gw.amount.toLocaleString()} 🪙\``, inline: true },
-            { name: `👥 ${t('entries')}`, value: `\`${entries}\``, inline: true },
+function ensureTables(db) {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS giveaways (
+            id TEXT PRIMARY KEY,
+            guild_id TEXT,
+            channel_id TEXT,
+            message_id TEXT,
+            host_id TEXT,
+            prize TEXT,
+            amount INTEGER,
+            winners INTEGER,
+            end_timestamp INTEGER,
+            status TEXT,
+            min_level INTEGER DEFAULT 0,
+            min_credits INTEGER DEFAULT 0,
+            booster_bonus INTEGER DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS giveaway_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            giveaway_id TEXT,
+            user_id TEXT
+        );
+        CREATE TABLE IF NOT EXISTS giveaway_winners (
+            giveaway_id TEXT,
+            user_id TEXT,
+            PRIMARY KEY (giveaway_id, user_id)
+        );
+    `);
+}
 
-    // Requirements
-    const reqs = [];
-    if (gw.minLevel > 0) reqs.push(`📊 Level ${gw.minLevel}+`);
-    if (gw.minCredits > 0) reqs.push(`🪙 ${gw.minCredits.toLocaleString()} credits`);
-    if (gw.boosterBonus) reqs.push(`⚡ Boosters get 2x entries`);
-    if (reqs.length > 0) {
-        embed.addFields({ name: `🔒 ${t('requirements')}`, value: reqs.join('\n'), inline: false });
-    }
+let sweeperInterval = null;
+let isListening = false;
 
-    // Winners
-    if (!isActive && gw.winnersList?.length > 0) {
-        embed.addFields({
-            name: `🏆 ${t('winners_announced')}`,
-            value: gw.winnersList.map(w => `<@${w}> +${each.toLocaleString()} 🪙`).join('\n'),
-            inline: false
+function init(client, db) {
+    if (sweeperInterval) return;
+    ensureTables(db);
+    
+    // Sweeper to end giveaways on time, even after restarts
+    sweeperInterval = setInterval(async () => {
+        try {
+            const now = Date.now();
+            const active = db.prepare('SELECT * FROM giveaways WHERE status = ? AND end_timestamp <= ?').all('active', now);
+            for (const row of active) {
+                await endGiveawayDb(row.id, client, db);
+            }
+        } catch (e) {
+            console.error('[GIVEAWAY SWEEPER ERROR]', e);
+        }
+    }, 15000);
+
+    // Global button listener for public messages
+    if (!isListening) {
+        isListening = true;
+        client.on('interactionCreate', async (interaction) => {
+            if (!interaction.isButton()) return;
+            if (!interaction.customId.startsWith('gw_enter_')) return;
+            
+            try {
+                const id = interaction.customId.replace('gw_enter_', '');
+                const gw = db.prepare('SELECT * FROM giveaways WHERE id = ?').get(id);
+                if (!gw || gw.status !== 'active') {
+                    return interaction.reply({ content: '❌ This giveaway has ended.', flags: 64 });
+                }
+
+                const userEntries = db.prepare('SELECT id FROM giveaway_entries WHERE giveaway_id = ? AND user_id = ?').all(id, interaction.user.id);
+                
+                if (gw.host_id === interaction.user.id) {
+                    return interaction.reply({ content: '❌ You cannot enter your own giveaway.', flags: 64 });
+                }
+                if (userEntries.length > 0) {
+                    return interaction.reply({ content: '❌ You are already in this giveaway.', flags: 64 });
+                }
+
+                const user = db.prepare('SELECT level, credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, gw.guild_id);
+                if (gw.min_level > 0 && (!user || user.level < gw.min_level)) {
+                    return interaction.reply({ content: `❌ You need level ${gw.min_level}+ to enter.`, flags: 64 });
+                }
+                if (gw.min_credits > 0 && (!user || user.credits < gw.min_credits)) {
+                    return interaction.reply({ content: `❌ You need ${gw.min_credits.toLocaleString()} credits to enter.`, flags: 64 });
+                }
+
+                // Add entry
+                db.prepare('INSERT INTO giveaway_entries (giveaway_id, user_id) VALUES (?, ?)').run(id, interaction.user.id);
+                
+                const isBooster = interaction.member?.premiumSince != null;
+                if (gw.booster_bonus === 1 && isBooster) {
+                    db.prepare('INSERT INTO giveaway_entries (giveaway_id, user_id) VALUES (?, ?)').run(id, interaction.user.id);
+                }
+
+                const newEntriesCount = db.prepare('SELECT COUNT(*) as c FROM giveaway_entries WHERE giveaway_id = ?').get(id).c;
+                
+                // Update message
+                const channel = await client.channels.fetch(gw.channel_id).catch(() => null);
+                const msg = await channel?.messages.fetch(gw.message_id).catch(() => null);
+                if (msg) {
+                    const hostUser = await client.users.fetch(gw.host_id).catch(() => null);
+                    const gwObj = {
+                        id: gw.id,
+                        guildId: gw.guild_id,
+                        channelId: gw.channel_id,
+                        messageId: gw.message_id,
+                        hostId: gw.host_id,
+                        hostName: hostUser ? hostUser.username : 'Host',
+                        prize: gw.prize,
+                        amount: gw.amount,
+                        winners: gw.winners,
+                        minLevel: gw.min_level,
+                        minCredits: gw.min_credits,
+                        boosterBonus: gw.booster_bonus === 1,
+                        status: 'active',
+                        endTimestamp: gw.end_timestamp,
+                        entries: new Array(newEntriesCount).fill(null),
+                        lang: getLang(client, gw.guild_id)
+                    };
+                    const card = buildGiveawayCard(gwObj, client);
+                    await msg.edit(card).catch(() => {});
+                }
+
+                await interaction.reply({ content: `✅ You're in. Good luck!`, flags: 64 });
+            } catch (e) {
+                console.error('[GIVEAWAY BUTTON]', e);
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ content: '⚠️ Error.', flags: 64 }).catch(() => {});
+                }
+            }
         });
-        embed.setColor(ARCHON.gold);
     }
-
-    embed.setFooter({ text: t('footer') }).setTimestamp();
-    return embed;
 }
 
 // ═══════════════════════════════════════════════════════
-// BUILD BUTTONS
+// BUILD GIVEAWAY CARD (PUBLIC)
 // ═══════════════════════════════════════════════════════
-function buildButtons(gw) {
+function buildGiveawayCard(gw, client) {
     const t = (k, v) => i18n.t('giveaway.' + k, gw.lang || 'en', v);
+    const entries = gw.entries ? gw.entries.length : 0;
     const isActive = gw.status === 'active';
-    const row = new ActionRowBuilder();
+    const each = gw.winners > 0 ? Math.floor(gw.amount / gw.winners) : 0;
+    
+    const title = gw.amount > 0 ? t('mockLiveDrop', { amount: gw.amount.toLocaleString() }) : gw.prize;
+    const c = new ContainerBuilder().setAccentColor(isActive ? 0x00f0ff : 0xf1c40f);
 
-    if (isActive) {
-        row.addComponents(
-            new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t('enter')).setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`gw_leave_${gw.id}`).setLabel(t('withdraw')).setStyle(ButtonStyle.Secondary),
-        );
-    } else {
-        row.addComponents(
-            new ButtonBuilder().setCustomId(`gw_reroll_${gw.id}`).setLabel(t('reroll')).setStyle(ButtonStyle.Primary),
-        );
-    }
-
-    row.addComponents(
-        new ButtonBuilder().setCustomId(`gw_end_${gw.id}`).setLabel(t('terminate')).setStyle(ButtonStyle.Danger),
+    // Header & Host
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${title}${!isActive ? ' `' + t('mockEnded') + '`' : ''}`));
+    
+    const hostUser = client.users.cache.get(gw.hostId);
+    const hostAvatar = hostUser ? hostUser.displayAvatarURL({ extension: 'png', size: 64 }) : client.user.displayAvatarURL();
+    
+    c.addSectionComponents(
+        new SectionBuilder()
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`👤 ${t('mockHostedBy', { host: gw.hostName })}`))
+            .setThumbnailAccessory(new ThumbnailBuilder().setURL(hostAvatar))
     );
 
-    return row;
-}
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-// ═══════════════════════════════════════════════════════
-// SELECT WINNERS
-// ═══════════════════════════════════════════════════════
-function selectWinners(entries, count) {
-    if (entries.length === 0) return [];
-    const pool = [...entries].sort(() => Math.random() - 0.5);
-    return [...new Set(pool)].slice(0, Math.min(count, pool.length));
-}
-
-// ═══════════════════════════════════════════════════════
-// CREDIT WINNERS
-// ═══════════════════════════════════════════════════════
-async function creditWinners(client, db, winners, amount, guildId) {
-    const each = Math.floor(amount / winners.length);
-    for (const uid of winners) {
-        try {
-            const existing = db.prepare('SELECT id FROM users WHERE id = ? AND guild_id = ?').get(uid, guildId);
-            if (!existing) {
-                db.prepare('INSERT INTO users (id, guild_id, username, xp, level, credits) VALUES (?, ?, ?, 0, 1, ?)').run(uid, guildId, 'Agent', each);
-            } else {
-                db.prepare('UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?').run(each, uid, guildId);
-            }
-        } catch(e) {}
+    if (isActive) {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`⏰ ${t('mockEndsIn', { time: `<t:${Math.floor(gw.endTimestamp / 1000)}:R>` })}`));
+        if (gw.amount > 0) {
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🏆 ${t('mockWinnersEach', { winners: gw.winners, each: each.toLocaleString() })}`));
+        } else {
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🏆 ${gw.winners} winners`));
+        }
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`👥 ${t('mockPeopleEntered', { count: entries })}`));
+        
+        let reqText = '';
+        if (gw.minLevel > 0) reqText += `Needs level ${gw.minLevel}+. `;
+        if (gw.boosterBonus) reqText += `Boosters get double entries.`;
+        if (reqText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🔒 ${reqText.trim()}`));
+        
+        c.addActionRowComponents(new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t('mockEnterBtn')).setStyle(ButtonStyle.Primary)
+        ));
+    } else {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Winners**`));
+        let winText = '';
+        for (const uid of gw.winnersList) {
+            const user = client.users.cache.get(uid);
+            const name = user ? user.username : 'Unknown';
+            winText += `**${name.charAt(0).toUpperCase()}** ${name} ${gw.amount > 0 ? `+${each.toLocaleString()} credits` : ''}\n`;
+        }
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(winText || 'No valid entries.'));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('mockEntriesHosted', { count: entries, host: gw.hostName })}`));
+        
+        // NO BUTTONS on ended cards, as requested in the mockup.
     }
+
+    return { components: [c], flags: MessageFlags.IsComponentsV2 };
 }
 
 // ═══════════════════════════════════════════════════════
-// END GIVEAWAY
+// END / REROLL LOGIC
 // ═══════════════════════════════════════════════════════
-async function endGiveaway(gw, client, db) {
-    if (gw.status !== 'active') return;
-    gw.status = 'ended';
-    clearTimeout(gw.timer);
+async function endGiveawayDb(id, client, db) {
+    const gwRow = db.prepare('SELECT * FROM giveaways WHERE id = ?').get(id);
+    if (!gwRow || gwRow.status !== 'active') return;
 
-    const t = (k, v) => i18n.t('giveaway.' + k, gw.lang || 'en', v);
-    const winners = selectWinners(gw.entries, gw.winners);
-    gw.winnersList = winners;
+    db.prepare('UPDATE giveaways SET status = ? WHERE id = ?').run('ended', id);
+    
+    const entries = db.prepare('SELECT user_id FROM giveaway_entries WHERE giveaway_id = ?').all(id).map(e => e.user_id);
+    const winners = selectWinners(entries, gwRow.winners);
+    
+    for (const w of winners) {
+        db.prepare('INSERT OR IGNORE INTO giveaway_winners (giveaway_id, user_id) VALUES (?, ?)').run(id, w);
+    }
 
-    if (winners.length > 0) {
-        await creditWinners(client, db, winners, gw.amount, gw.guildId);
+    const hostUser = await client.users.fetch(gwRow.host_id).catch(() => null);
+    const gw = {
+        id: gwRow.id,
+        guildId: gwRow.guild_id,
+        channelId: gwRow.channel_id,
+        messageId: gwRow.message_id,
+        hostId: gwRow.host_id,
+        hostName: hostUser ? hostUser.username : 'Host',
+        prize: gwRow.prize,
+        amount: gwRow.amount,
+        winners: gwRow.winners,
+        minLevel: gwRow.min_level,
+        minCredits: gwRow.min_credits,
+        boosterBonus: gwRow.booster_bonus === 1,
+        status: 'ended',
+        endTimestamp: gwRow.end_timestamp,
+        lang: getLang(client, gwRow.guild_id),
+        entries: entries,
+        winnersList: winners
+    };
+
+    if (winners.length > 0 && gw.amount > 0) {
+        const each = Math.floor(gw.amount / winners.length);
+        for (const uid of winners) {
+            const existing = db.prepare('SELECT id FROM users WHERE id = ? AND guild_id = ?').get(uid, gw.guildId);
+            if (!existing) {
+                db.prepare('INSERT INTO users (id, guild_id, username, xp, level, credits) VALUES (?, ?, ?, 0, 1, ?)').run(uid, gw.guildId, 'Agent', each);
+            } else {
+                db.prepare('UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?').run(each, uid, gw.guildId);
+            }
+        }
     }
 
     try {
@@ -182,57 +278,93 @@ async function endGiveaway(gw, client, db) {
         const msg = await channel.messages.fetch(gw.messageId).catch(() => null);
         if (!msg) return;
 
-        const embed = buildEmbed(gw, client);
-        await msg.edit({ embeds: [embed], components: [buildButtons(gw)] }).catch(() => {});
+        const card = buildGiveawayCard(gw, client);
+        await msg.edit(card).catch(() => {});
 
-        const each = Math.floor(gw.amount / gw.winners);
         if (winners.length > 0) {
-            const announce = new EmbedBuilder()
-                .setColor(ARCHON.gold)
-                .setAuthor({ name: '🦅 ARCHON ENGINE • GIVEAWAY RESULTS', iconURL: client.user.displayAvatarURL() })
-                .setDescription(
-                    `## 🎊 ${gw.prize}\n\n` +
-                    `**${winners.length} winner${winners.length > 1 ? 's' : ''} selected!**\n\n` +
-                    winners.map(w => `🏆 <@${w}> — +**${each.toLocaleString()} 🪙**`).join('\n')
-                )
-                .addFields(
-                    { name: '👥 Total Entries', value: `\`${gw.entries.length}\``, inline: true },
-                    { name: '💎 Prize Pool', value: `\`${gw.amount.toLocaleString()} 🪙\``, inline: true },
-                    { name: '🎲 Host', value: `**${gw.hostName}**`, inline: true },
-                )
-                .setFooter({ text: t('footer') })
-                .setTimestamp();
-
+            const each = Math.floor(gw.amount / gw.winners);
             const mention = winners.map(w => `<@${w}>`).join(' ');
+            const announce = new EmbedBuilder()
+                .setColor(0xf1c40f)
+                .setTitle('🎊 Giveaway Results')
+                .setDescription(`**${gw.amount > 0 ? gw.amount.toLocaleString() + ' credits drop' : gw.prize}**\n\n` +
+                    winners.map(w => `🏆 <@${w}>${gw.amount > 0 ? ` — +${each.toLocaleString()} 🪙` : ''}`).join('\n'))
+                .setFooter({ text: `Hosted by ${gw.hostName}` });
             await channel.send({ content: `${mention} 🎊`, embeds: [announce] }).catch(() => {});
 
-            // DM winners
             for (const uid of winners) {
-                try {
-                    const user = await client.users.fetch(uid).catch(() => null);
-                    if (!user) continue;
-                    const dm = new EmbedBuilder()
-                        .setColor(ARCHON.gold)
-                        .setTitle('🎊 You won a giveaway!')
-                        .setDescription(
-                            `**Prize:** ${gw.prize}\n` +
-                            `**Amount:** +${each.toLocaleString()} 🪙\n` +
-                            `**Server:** ${gw.guildName}\n\n` +
-                            `Credits have been added to your account!`
-                        )
-                        .setFooter({ text: t('footer') })
-                        .setTimestamp();
-                    await user.send({ embeds: [dm] }).catch(() => {});
-                } catch(e) {}
+                const user = await client.users.fetch(uid).catch(() => null);
+                if (!user) continue;
+                const guildName = client.guilds.cache.get(gw.guildId)?.name || 'Unknown';
+                const dm = new EmbedBuilder()
+                    .setColor(0xf1c40f)
+                    .setTitle('🎊 You won a giveaway!')
+                    .setDescription(
+                        `**Prize:** ${gw.amount > 0 ? gw.amount.toLocaleString() + ' credits' : gw.prize}\n` +
+                        `**Server:** ${guildName}\n\n` +
+                        (gw.amount > 0 ? `Credits have been added to your account!` : `You won the custom prize! Contact the host to claim it.`)
+                    );
+                await user.send({ embeds: [dm] }).catch(() => {});
             }
         } else {
-            await channel.send({ content: t('noEntries') }).catch(() => {});
+            await channel.send({ content: 'No one entered the giveaway.' }).catch(() => {});
         }
-    } catch(e) {
-        console.error('[GIVEAWAY] End error:', e.message);
+    } catch (e) {
+        console.error('[GIVEAWAY END ERROR]', e);
+    }
+}
+
+async function rerollGiveaway(id, client, db) {
+    const gwRow = db.prepare('SELECT * FROM giveaways WHERE id = ?').get(id);
+    if (!gwRow || gwRow.status !== 'ended' || gwRow.amount > 0) return null;
+
+    db.prepare('DELETE FROM giveaway_winners WHERE giveaway_id = ?').run(id);
+    
+    const entries = db.prepare('SELECT user_id FROM giveaway_entries WHERE giveaway_id = ?').all(id).map(e => e.user_id);
+    const winners = selectWinners(entries, gwRow.winners);
+    
+    for (const w of winners) {
+        db.prepare('INSERT OR IGNORE INTO giveaway_winners (giveaway_id, user_id) VALUES (?, ?)').run(id, w);
     }
 
-    activeGiveaways.delete(gw.id);
+    const channel = await client.channels.fetch(gwRow.channel_id).catch(() => null);
+    if (!channel) return null;
+    const msg = await channel.messages.fetch(gwRow.message_id).catch(() => null);
+    if (!msg) return null;
+
+    const hostUser = await client.users.fetch(gwRow.host_id).catch(() => null);
+    const gw = { ...gwRow, entries, winnersList: winners, status: 'ended', endTimestamp: gwRow.end_timestamp, hostName: hostUser ? hostUser.username : 'Host', lang: getLang(client, gwRow.guild_id) };
+
+    const card = buildGiveawayCard(gw, client);
+    await msg.edit(card).catch(() => {});
+
+    const mention = winners.map(w => `<@${w}>`).join(' ');
+    await channel.send({ content: `🔄 **Reroll!** New winners: ${mention || 'None'}` }).catch(() => {});
+
+    return winners;
+}
+
+async function startGiveaway({ client, db, hostId, hostName, guildId, channel, amount, prizeName, winners, duration, minLevel, minCredits, boosterBonus }) {
+    const id = `${guildId}_${Date.now()}`;
+    const endTimestamp = Date.now() + duration;
+    const lang = getLang(client, guildId);
+    
+    db.prepare(`INSERT INTO giveaways (id, guild_id, channel_id, host_id, prize, amount, winners, end_timestamp, status, min_level, min_credits, booster_bonus) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        id, guildId, channel.id, hostId, prizeName || 'Credits Drop', amount, winners, endTimestamp, 'active', minLevel, minCredits, boosterBonus ? 1 : 0
+    );
+
+    const gwObj = {
+        id, guildId, channelId: channel.id, hostId, hostName,
+        prize: prizeName || 'Credits Drop', amount, winners, minLevel, minCredits,
+        boosterBonus, endTimestamp, lang, status: 'active', entries: []
+    };
+
+    const card = buildGiveawayCard(gwObj, client);
+    const msg = await channel.send(card).catch(() => null);
+    if (!msg) return;
+
+    db.prepare('UPDATE giveaways SET message_id = ? WHERE id = ?').run(msg.id, id);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -244,16 +376,33 @@ module.exports = {
     description: '🎁 ARCHON Classified Giveaway Protocol',
     category: 'ECONOMY',
     cooldown: 5000,
+    init: init,
 
     data: new SlashCommandBuilder()
         .setName('giveaway')
         .setDescription('🎁 Manage giveaways')
+        .addSubcommand(sub => sub.setName('start').setDescription('Open the live dashboard to create a giveaway'))
         .addSubcommand(sub => sub
-            .setName('start')
-            .setDescription('Open the live dashboard to create a giveaway')),
+            .setName('end')
+            .setDescription('End a giveaway early')
+            .addStringOption(opt => opt.setName('message_id').setDescription('The message ID of the giveaway').setRequired(false))
+        )
+        .addSubcommand(sub => sub
+            .setName('reroll')
+            .setDescription('Reroll winners for an ended custom prize giveaway')
+            .addStringOption(opt => opt.setName('message_id').setDescription('The message ID of the giveaway').setRequired(true))
+        )
+        .addSubcommand(sub => sub
+            .setName('cancel')
+            .setDescription('Cancel a running giveaway and refund the host')
+            .addStringOption(opt => opt.setName('message_id').setDescription('The message ID of the giveaway').setRequired(false))
+        ),
 
-    run: async (client, message, args, db) => {
-    const guildId = message.guild?.id ?? 'DM';
+    run: async (client, message, args, dbArg) => {
+        const db = dbArg || client.db;
+        init(client, db);
+        
+        const guildId = message.guild?.id ?? 'DM';
         if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
             return message.reply('❌ You need Manage Server permission.').catch(() => {});
         }
@@ -268,424 +417,379 @@ module.exports = {
         if (isNaN(amount) || amount < 100) return message.reply('❌ Invalid amount (min 100).').catch(() => {});
         if (isNaN(winners) || winners < 1 || winners > 20) return message.reply('❌ Winners must be 1-20.').catch(() => {});
 
-        await startGiveaway({ message, client, db, duration, amount, winners, prize, minLevel: 0, minCredits: 0, boosterBonus: false });
+        const user = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(message.author.id, guildId);
+        if (!user || user.credits < amount) {
+            return message.reply(`❌ You do not have enough credits to host this giveaway. You have ${user?.credits?.toLocaleString() || 0}, need ${amount.toLocaleString()}.`).catch(() => {});
+        }
+        
+        db.prepare('UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?').run(amount, message.author.id, guildId);
+
+        await startGiveaway({
+            client, db,
+            hostId: message.author.id, hostName: message.author.username,
+            guildId, channel: message.channel,
+            amount, prizeName: prize, winners, duration,
+            minLevel: 0, minCredits: 0, boosterBonus: false
+        });
     },
 
-    execute: async (interaction, client, db) => {
+    execute: async (interaction, client, dbArg) => {
+        const db = dbArg || client.db;
+        init(client, db);
+
+        const sub = interaction.options.getSubcommand();
+        const guildId = interaction.guildId;
+
         if (!interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
             return interaction.reply({ content: '❌ You need Manage Server permission.', flags: 64 });
         }
-        
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
 
-        const guild = interaction.guild;
-        const lang = getLang(client, guild.id);
-        const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
-
-        const session = {
-            prize: null,
-            durationStr: null,
-            durationMs: null,
-            winners: 1,
-            channelId: interaction.channel.id
-        };
-
-        
-        
-
-        const buildDashboard = () => {
-            const c = new ContainerBuilder().setAccentColor(0xf1c40f);
-            
-            // Custom Emoji Resolvers
-            const emPrize = resolveEmoji('trophy', interaction) || '🎁';
-            const emDur = resolveEmoji('clock', interaction) || '⏱️';
-            const emWin = resolveEmoji('crown', interaction) || '🏅';
-            const emChan = resolveEmoji('general', interaction) || '👤';
-            const emSetup = resolveEmoji('settings', interaction) || '⚙️';
-            const emMax = resolveEmoji('charts', interaction) || '#️⃣';
-            const emReroll = resolveEmoji('gameRoulette', interaction) || '🔄';
-            const emLaunch = resolveEmoji('check', interaction) || '🚀';
-
-            // 1. Clean Summary Line
-            const sum = `> **${session.prize ? emPrize + ' Prize: ' + session.prize : '❌ Prize: Not set'}** | ` +
-                        `**${session.durationStr ? emDur + ' Duration: ' + session.durationStr : '❌ Duration: Not set'}** | ` +
-                        `**${emWin} Winners: ${session.winners}** | ` +
-                        `**${emChan} <#${session.channelId}>**`;
-            
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(sum));
-            
-            // 2. The Setup Bar
-            const setupRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('gw_setup_bar')
-                    .setLabel('Setup')
-                    .setEmoji(emSetup)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true)
-            );
-            c.addActionRowComponents(setupRow);
-
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-
-            // 3. Settings List
-            c.addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**${emPrize} Prize**\n${session.prize ? session.prize : 'Not set, required to launch.'}`
-                    ))
-                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_prize').setLabel(session.prize ? 'Edit' : 'Set Prize').setStyle(session.prize ? ButtonStyle.Secondary : ButtonStyle.Primary))
-            );
-            
-            c.addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**${emDur} Duration**\n${session.durationStr ? session.durationStr : 'Not set, required to launch.'}`
-                    ))
-                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel(session.durationStr ? 'Edit' : 'Set Duration').setStyle(session.durationStr ? ButtonStyle.Secondary : ButtonStyle.Primary))
-            );
-            
-            c.addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**${emWin} Winners: ${session.winners}**\nHow many people win.`
-                    ))
-                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel('Edit').setStyle(ButtonStyle.Secondary))
-            );
-
-            c.addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**${emMax} Max entries per user: 1**\nLimit how many times each user can enter.`
-                    ))
-                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_max').setLabel('Edit').setStyle(ButtonStyle.Secondary).setDisabled(true))
-            );
-
-            c.addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                        `**${emReroll} Re-roll attempts: 3**\nAuto re-roll if no valid winner is found.`
-                    ))
-                    .setButtonAccessory(new ButtonBuilder().setCustomId('gw_reroll').setLabel('Edit').setStyle(ButtonStyle.Secondary).setDisabled(true))
-            );
-
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-            
-            // 4. Host Channel
-            c.addActionRowComponents(
-                new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('gw_set_channel')
-                        .setLabel('Host channel (default: current channel)')
-                        .setStyle(ButtonStyle.Secondary)
-                )
-            );
-
-            // 5. Launch & Cancel Row
-            const isReady = session.prize && session.durationMs;
-            const row2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('gw_launch')
-                    .setLabel('Launch Giveaway')
-                    .setEmoji(emLaunch)
-                    .setStyle(isReady ? ButtonStyle.Success : ButtonStyle.Secondary)
-                    .setDisabled(!isReady),
-                new ButtonBuilder()
-                    .setCustomId('gw_cancel')
-                    .setLabel('Cancel')
-                    .setStyle(ButtonStyle.Danger)
-            );
-            
-            c.addActionRowComponents(row2);
-            return { components: [c], flags: MessageFlags.IsComponentsV2 };
-        };
-
-        await interaction.editReply(buildDashboard());
-        const msg = await interaction.fetchReply();
-
-        const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
-
-        collector.on('collect', async (i) => {
-            if (i.user.id !== interaction.user.id) {
-                return i.reply({ content: 'Not your setup.', flags: 64 }).catch(() => {});
+        if (sub === 'end') {
+            const msgId = interaction.options.getString('message_id');
+            let gw;
+            if (msgId) {
+                gw = db.prepare('SELECT * FROM giveaways WHERE message_id = ? AND guild_id = ?').get(msgId, guildId);
+            } else {
+                gw = db.prepare('SELECT * FROM giveaways WHERE guild_id = ? AND status = ? ORDER BY end_timestamp ASC LIMIT 1').get(guildId, 'active');
             }
 
-            try {
-                if (i.customId === 'gw_cancel') {
-                    collector.stop();
-                    return await i.update({ content: t('dashExpired'), components: [], flags: MessageFlags.IsComponentsV2 });
+            if (!gw) return interaction.reply({ content: '❌ No active giveaway found.', flags: 64 });
+            if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+                return interaction.reply({ content: '❌ Only the host or moderators can end this.', flags: 64 });
+            }
+
+            await interaction.deferReply({ flags: 64 });
+            await endGiveawayDb(gw.id, client, db);
+            await interaction.editReply({ content: '✅ Giveaway ended.' });
+        }
+        else if (sub === 'reroll') {
+            const msgId = interaction.options.getString('message_id');
+            const gw = db.prepare('SELECT * FROM giveaways WHERE message_id = ? AND guild_id = ?').get(msgId, guildId);
+            if (!gw || gw.status !== 'ended') {
+                return interaction.reply({ content: '❌ Ended giveaway not found.', flags: 64 });
+            }
+            if (gw.amount > 0) {
+                return interaction.reply({ content: '❌ Reroll is only available for custom prizes.', flags: 64 });
+            }
+            if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+                return interaction.reply({ content: '❌ Only the host or moderators can reroll.', flags: 64 });
+            }
+
+            await interaction.deferReply({ flags: 64 });
+            const newWinners = await rerollGiveaway(gw.id, client, db);
+            if (newWinners) {
+                await interaction.editReply({ content: '✅ Rerolled successfully!' });
+            } else {
+                await interaction.editReply({ content: '❌ Failed to reroll.' });
+            }
+        }
+        else if (sub === 'cancel') {
+            const msgId = interaction.options.getString('message_id');
+            let gw;
+            if (msgId) {
+                gw = db.prepare('SELECT * FROM giveaways WHERE message_id = ? AND guild_id = ?').get(msgId, guildId);
+            } else {
+                gw = db.prepare('SELECT * FROM giveaways WHERE guild_id = ? AND status = ? ORDER BY end_timestamp ASC LIMIT 1').get(guildId, 'active');
+            }
+
+            if (!gw) return interaction.reply({ content: '❌ No active giveaway found.', flags: 64 });
+            if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+                return interaction.reply({ content: '❌ Only the host or moderators can cancel this.', flags: 64 });
+            }
+
+            await interaction.deferReply({ flags: 64 });
+
+            if (gw.amount > 0) {
+                const user = db.prepare('SELECT id FROM users WHERE id = ? AND guild_id = ?').get(gw.host_id, gw.guild_id);
+                if (!user) {
+                    db.prepare('INSERT INTO users (id, guild_id, username, xp, level, credits) VALUES (?, ?, ?, 0, 1, ?)').run(gw.host_id, gw.guild_id, 'Agent', gw.amount);
+                } else {
+                    db.prepare('UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?').run(gw.amount, gw.host_id, gw.guild_id);
+                }
+            }
+
+            db.prepare('UPDATE giveaways SET status = ? WHERE id = ?').run('cancelled', gw.id);
+            
+            const channel = await client.channels.fetch(gw.channel_id).catch(() => null);
+            const msg = await channel?.messages.fetch(gw.message_id).catch(() => null);
+            if (msg) {
+                const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ❌ Giveaway Cancelled\nThis giveaway was cancelled by the host.`));
+                await msg.edit({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+            }
+
+            await interaction.editReply({ content: '✅ Giveaway cancelled and credits refunded.' });
+        }
+        else if (sub === 'start') {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+
+            const guild = interaction.guild;
+            const lang = getLang(client, guild.id);
+            const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
+
+            const session = {
+                prizeType: 'credits',
+                amount: 50000,
+                prizeName: '',
+                durationStr: '2h',
+                durationMs: 2 * 60 * 60 * 1000,
+                winners: 3,
+                channelId: interaction.channel.id,
+                minLevel: 0,
+                minCredits: 0,
+                boosterBonus: false
+            };
+
+            const buildDashboard = () => {
+                const c = new ContainerBuilder().setAccentColor(0xf1c40f);
+
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('mockSetupTitle')}`));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${t('mockSetupDesc')}`));
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+                // Prize Type
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockPrizeType')}**`));
+                c.addActionRowComponents(new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('gw_type_credits').setLabel(t('mockCredits')).setStyle(session.prizeType === 'credits' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+                    new ButtonBuilder().setCustomId('gw_type_custom').setLabel(t('mockCustom')).setStyle(session.prizeType === 'custom' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                ));
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+                // Amount / Prize Name
+                if (session.prizeType === 'credits') {
+                    const each = session.winners > 0 ? Math.floor(session.amount / session.winners) : 0;
+                    c.addSectionComponents(
+                        new SectionBuilder()
+                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockAmount')}**\n${session.amount.toLocaleString()} credits, ${each.toLocaleString()} each`))
+                            .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_amount').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                    );
+                } else {
+                    c.addSectionComponents(
+                        new SectionBuilder()
+                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockCustom')}**\n${session.prizeName || 'Not set'}`))
+                            .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_custom_name').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                    );
+                }
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+                // Duration
+                c.addSectionComponents(
+                    new SectionBuilder()
+                        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockDuration')}**\n${session.durationStr}`))
+                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                );
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+                // Winners
+                c.addSectionComponents(
+                    new SectionBuilder()
+                        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockWinners')}**\n${session.winners}`))
+                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                );
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+                // Channel
+                c.addSectionComponents(
+                    new SectionBuilder()
+                        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockChannel')}**\n<#${session.channelId}>`))
+                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_channel').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                );
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+                // Requirements
+                let reqText = '';
+                if (session.minLevel > 0) reqText += `Level ${session.minLevel}+, `;
+                if (session.boosterBonus) reqText += `boosters get double entries`;
+                if (session.minLevel === 0 && !session.boosterBonus) reqText += `None`;
+                
+                c.addSectionComponents(
+                    new SectionBuilder()
+                        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockReqs')}**\n${reqText.trim()}`))
+                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_reqs').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                );
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+                // Disclaimer & Launch
+                if (session.prizeType === 'credits') {
+                     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('mockDisclaimer', { amount: session.amount.toLocaleString() })));
+                }
+                
+                const rowLaunch = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('gw_launch').setLabel('Launch giveaway').setStyle(ButtonStyle.Success),
+                    new ButtonBuilder().setCustomId('gw_cancel_setup').setLabel('Cancel').setStyle(ButtonStyle.Secondary)
+                );
+                c.addActionRowComponents(rowLaunch);
+
+                return { components: [c], flags: MessageFlags.IsComponentsV2 };
+            };
+
+            await interaction.editReply(buildDashboard());
+            const msg = await interaction.fetchReply();
+
+            const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
+
+            collector.on('collect', async (i) => {
+                if (i.user.id !== interaction.user.id) {
+                    return i.reply({ content: 'Not your setup.', flags: 64 }).catch(() => {});
                 }
 
-                if (i.customId === 'gw_set_channel') {
-                    const channelSelect = new ChannelSelectMenuBuilder()
-                        .setCustomId('gw_channel_select')
-                        .setPlaceholder(t('dashChannel') || 'Select a channel')
-                        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
-                    
-                    await i.reply({ components: [new ActionRowBuilder().addComponents(channelSelect)], flags: 64 });
-                    
-                    // Wait for the user's selection on this specific reply
-                    const res = await i.channel.awaitMessageComponent({ 
-                        filter: x => x.user.id === interaction.user.id && x.customId === 'gw_channel_select', 
-                        time: 60000 
-                    }).catch(() => null);
-
-                    if (res) {
-                        session.channelId = res.values[0];
-                        await res.update({ content: '✅ Channel updated!', components: [] });
-                        await msg.edit(buildDashboard());
-                    }
-                    return;
-                }
-
-                if (i.customId === 'gw_set_prize') {
-                    const modal = new ModalBuilder().setCustomId('modal_prize').setTitle(t('dashModalPrizeTitle'))
-                        .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalPrizeLabel')).setPlaceholder(t('dashModalPrizePlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
-                    await i.showModal(modal);
-                    const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
-                    if (res) { 
-                        session.prize = res.fields.getTextInputValue('val'); 
-                        await res.update(buildDashboard()); 
-                    }
-                    return;
-                }
-
-                if (i.customId === 'gw_set_dur') {
-                    const modal = new ModalBuilder().setCustomId('modal_dur').setTitle(t('dashModalDurTitle'))
-                        .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalDurLabel')).setPlaceholder(t('dashModalDurPlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
-                    await i.showModal(modal);
-                    const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
-                    if (res) {
-                        const val = res.fields.getTextInputValue('val');
-                        const ms = parseDuration(val);
-                        if (!ms) { await res.reply({ content: t('dashInvalidDur'), flags: 64 }); return; }
-                        session.durationStr = val;
-                        session.durationMs = ms;
-                        await res.update(buildDashboard());
-                    }
-                    return;
-                }
-
-                if (i.customId === 'gw_set_win') {
-                    const modal = new ModalBuilder().setCustomId('modal_win').setTitle(t('dashModalWinTitle'))
-                        .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('dashModalWinLabel')).setPlaceholder(t('dashModalWinPlaceholder')).setStyle(TextInputStyle.Short).setRequired(true)));
-                    await i.showModal(modal);
-                    const res = await i.awaitModalSubmit({ time: 60000 }).catch(() => null);
-                    if (res) {
-                        const val = parseInt(res.fields.getTextInputValue('val').trim());
-                        if (isNaN(val) || val < 1 || val > 50) { await res.reply({ content: t('dashInvalidWin'), flags: 64 }); return; }
-                        session.winners = val;
-                        await res.update(buildDashboard());
-                    }
-                    return;
-                }
-
-                if (i.customId === 'gw_launch') {
-                    if (!session.prize || !session.durationMs) {
-                        return await i.reply({ content: '❌ Please set both a Prize and a Duration before launching.', flags: 64 });
+                try {
+                    if (i.customId === 'gw_cancel_setup') {
+                        collector.stop();
+                        const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(t('dashExpired') || 'Setup cancelled.'));
+                        return await i.update({ components: [c], flags: MessageFlags.IsComponentsV2 });
                     }
 
-                    const targetChannel = guild.channels.cache.get(session.channelId);
-                    if (!targetChannel) {
-                        return await i.reply({ content: '❌ The selected channel no longer exists.', flags: 64 });
+                    if (i.customId === 'gw_type_credits') {
+                        session.prizeType = 'credits';
+                        return await i.update(buildDashboard());
+                    }
+                    if (i.customId === 'gw_type_custom') {
+                        session.prizeType = 'custom';
+                        return await i.update(buildDashboard());
                     }
 
-                    const canPostLib = require('../lib/canPost');
-                    const canPostCheck = canPostLib.diagnose(guild, targetChannel, guild.members.me);
-                    
-                    if (!canPostCheck.ok) {
-                        const missingPerms = canPostLib.localize(canPostCheck.missing || [], lang).map(p => `\`${p}\``).join(', ');
-                        
-                        let title = '🚧 Oops, Discord is blocking me!';
-                        let desc = `I tried to prepare the giveaway in <#${targetChannel.id}>, but I don't have the right permissions.\n\n**What I'm missing:**\n${missingPerms}\n\n`;
-                        
-                        if (canPostCheck.reason === 'role_block') {
-                            desc += `**How to fix it:**\nThe role **${canPostCheck.role}** is blocking me in that channel. You can either allow the permissions for that role, or simply pick a different channel for the drop!`;
-                        } else {
-                            desc += `**How to fix it:**\nGo to Server Settings → Roles → **Archon** and enable these permissions, or pick a different channel.`;
+                    if (i.customId === 'gw_set_channel') {
+                        const channelSelect = new ChannelSelectMenuBuilder()
+                            .setCustomId('gw_channel_select')
+                            .setPlaceholder('Select a channel')
+                            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+
+                        await i.reply({ components: [new ActionRowBuilder().addComponents(channelSelect)], flags: 64 });
+
+                        const res = await i.channel.awaitMessageComponent({
+                            filter: x => x.user.id === interaction.user.id && x.customId === 'gw_channel_select',
+                            time: 60000
+                        }).catch(() => null);
+
+                        if (res) {
+                            session.channelId = res.values[0];
+                            await res.update({ content: '✅ Channel updated!', components: [] });
+                            await msg.edit(buildDashboard());
                         }
+                        return;
+                    }
 
-                        if (lang === 'fr') {
-                            title = '🚧 Oups, Discord me bloque !';
-                            desc = `J'ai essayé de préparer le giveaway dans <#${targetChannel.id}>, mais je n'ai pas les bonnes permissions.\n\n**Ce qui me manque :**\n${missingPerms}\n\n`;
-                            if (canPostCheck.reason === 'role_block') {
-                                desc += `**Comment réparer :**\nLe rôle **${canPostCheck.role}** me bloque dans ce salon. Tu peux soit autoriser les permissions pour ce rôle, soit simplement choisir un autre salon pour le drop !`;
-                            } else {
-                                desc += `**Comment réparer :**\nVa dans Paramètres du serveur → Rôles → **Archon** et active ces permissions, ou choisis un autre salon.`;
+                    if (i.customId === 'gw_set_amount') {
+                        const modal = new ModalBuilder().setCustomId('modal_amount').setTitle('Set Amount')
+                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel('Amount').setPlaceholder('e.g. 50000').setStyle(TextInputStyle.Short).setRequired(true)));
+                        await i.showModal(modal);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        if (res) {
+                            const val = parseInt(res.fields.getTextInputValue('val'));
+                            if (isNaN(val) || val < 100) { await res.reply({ content: '❌ Invalid amount (min 100).', flags: 64 }); return; }
+                            session.amount = val;
+                            await res.update(buildDashboard());
+                        }
+                        return;
+                    }
+                    
+                    if (i.customId === 'gw_set_custom_name') {
+                        const modal = new ModalBuilder().setCustomId('modal_name').setTitle('Set Prize Name')
+                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel('Prize Name').setStyle(TextInputStyle.Short).setRequired(true)));
+                        await i.showModal(modal);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        if (res) {
+                            session.prizeName = res.fields.getTextInputValue('val');
+                            await res.update(buildDashboard());
+                        }
+                        return;
+                    }
+
+                    if (i.customId === 'gw_set_dur') {
+                        const modal = new ModalBuilder().setCustomId('modal_dur').setTitle('Set Duration')
+                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel('Duration').setPlaceholder('e.g. 2h, 30m, 1d').setStyle(TextInputStyle.Short).setRequired(true)));
+                        await i.showModal(modal);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        if (res) {
+                            const val = res.fields.getTextInputValue('val');
+                            const ms = parseDuration(val);
+                            if (!ms) { await res.reply({ content: '❌ Invalid duration. Use 10s, 5m, 2h, 1d.', flags: 64 }); return; }
+                            session.durationStr = val;
+                            session.durationMs = ms;
+                            await res.update(buildDashboard());
+                        }
+                        return;
+                    }
+
+                    if (i.customId === 'gw_set_win') {
+                        const modal = new ModalBuilder().setCustomId('modal_win').setTitle('Set Winners')
+                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel('Number of Winners').setStyle(TextInputStyle.Short).setRequired(true)));
+                        await i.showModal(modal);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        if (res) {
+                            const val = parseInt(res.fields.getTextInputValue('val'));
+                            if (isNaN(val) || val < 1 || val > 20) { await res.reply({ content: '❌ Winners must be 1-20.', flags: 64 }); return; }
+                            session.winners = val;
+                            await res.update(buildDashboard());
+                        }
+                        return;
+                    }
+                    
+                    if (i.customId === 'gw_set_reqs') {
+                        const modal = new ModalBuilder().setCustomId('modal_reqs').setTitle('Set Requirements')
+                            .addComponents(
+                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('level').setLabel('Minimum Level (0 for none)').setValue(String(session.minLevel)).setStyle(TextInputStyle.Short).setRequired(true)),
+                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('booster').setLabel('Boosters get 2x entries? (yes/no)').setValue(session.boosterBonus ? 'yes' : 'no').setStyle(TextInputStyle.Short).setRequired(true))
+                            );
+                        await i.showModal(modal);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        if (res) {
+                            const lvl = parseInt(res.fields.getTextInputValue('level'));
+                            if (!isNaN(lvl) && lvl >= 0) session.minLevel = lvl;
+                            const bst = res.fields.getTextInputValue('booster').toLowerCase();
+                            session.boosterBonus = bst === 'yes' || bst === 'y' || bst === 'true';
+                            await res.update(buildDashboard());
+                        }
+                        return;
+                    }
+
+                    if (i.customId === 'gw_launch') {
+                        if (session.prizeType === 'credits') {
+                            const user = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, guild.id);
+                            if (!user || user.credits < session.amount) {
+                                return await i.reply({ content: `❌ You don't have enough credits. You have ${user?.credits?.toLocaleString() || 0}, need ${session.amount.toLocaleString()}.`, flags: 64 });
+                            }
+                        } else {
+                            if (!session.prizeName) {
+                                return await i.reply({ content: '❌ Please set a custom prize name.', flags: 64 });
                             }
                         }
 
-                        const errEmbed = new EmbedBuilder()
-                            .setColor(0xe74c3c)
-                            .setTitle(title)
-                            .setDescription(desc);
+                        const targetChannel = guild.channels.cache.get(session.channelId);
+                        if (!targetChannel) {
+                            return await i.reply({ content: '❌ The selected channel no longer exists.', flags: 64 });
+                        }
+                        
+                        await i.deferUpdate();
+                        collector.stop();
 
-                        return await i.reply({ embeds: [errEmbed], flags: 64 });
+                        if (session.prizeType === 'credits') {
+                            db.prepare('UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?').run(session.amount, interaction.user.id, guild.id);
+                        }
+
+                        await startGiveaway({
+                            client, db,
+                            hostId: interaction.user.id,
+                            hostName: interaction.user.username,
+                            guildId: guild.id,
+                            channel: targetChannel,
+                            amount: session.prizeType === 'credits' ? session.amount : 0,
+                            prizeName: session.prizeType === 'custom' ? session.prizeName : '',
+                            winners: session.winners,
+                            duration: session.durationMs,
+                            minLevel: session.minLevel,
+                            minCredits: session.minCredits,
+                            boosterBonus: session.boosterBonus
+                        });
+
+                        const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent('✅ Giveaway launched!'));
+                        await i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 });
                     }
-
-                    await i.deferUpdate();
-                    collector.stop();
-                    
-                    await startGiveaway({
-                        interaction, client, db,
-                        duration: session.durationMs,
-                        amount: 0,
-                        winners: session.winners,
-                        prize: session.prize,
-                        minLevel: 0,
-                        minCredits: 0,
-                        boosterBonus: false,
-                        targetChannelId: session.channelId
-                    });
-                    
-                    await i.editReply({ content: '✅ Giveaway launched!', components: [], flags: MessageFlags.IsComponentsV2 });
+                } catch (err) {
+                    console.error('[DASHBOARD ERROR]', err);
+                    if (!i.replied && !i.deferred) await i.reply({ content: '⚠️ Error.', flags: 64 }).catch(() => {});
                 }
-            } catch (err) {
-                console.error('[GIVEAWAY DASHBOARD ERROR]', err);
-                if (!i.replied && !i.deferred) await i.reply({ content: '⚠️ Error processing interaction.', flags: 64 }).catch(() => {});
-            }
-        });
+            });
+        }
     },
 };
-
-async function startGiveaway({ message, interaction, client, db, duration, amount, winners, prize, minLevel, minCredits, boosterBonus, targetChannelId }) {
-    const guild = message?.guild || interaction?.guild;
-    const channel = targetChannelId ? guild.channels.cache.get(targetChannelId) : (message?.channel || interaction?.channel);
-    const author = message?.author || interaction?.user;
-    const member = message?.member || interaction?.member;
-    const lang = getLang(client, guild.id);
-    const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
-
-    const id = `${guild.id}_${Date.now()}`;
-    const endTimestamp = Date.now() + duration;
-
-    const gw = {
-        id,
-        guildId: guild.id,
-        guildName: guild.name,
-        channelId: channel.id,
-        messageId: null,
-        hostId: author.id,
-        hostName: author.username,
-        hostIcon: author.displayAvatarURL(),
-        prize,
-        amount,
-        winners,
-        minLevel,
-        minCredits,
-        boosterBonus,
-        entries: [],
-        tickets: {},
-        winnersList: [],
-        status: 'active',
-        endTimestamp,
-        lang,
-        timer: null,
-    };
-
-    activeGiveaways.set(id, gw);
-
-    const embed = buildEmbed(gw, client);
-    const row = buildButtons(gw);
-
-    const msg = await channel.send({ embeds: [embed], components: [row] }).catch(() => null);
-    if (!msg) return;
-
-    gw.messageId = msg.id;
-
-    // Auto-end timer
-    gw.timer = setTimeout(() => endGiveaway(gw, client, db), duration);
-
-    // Button collector
-    const collector = msg.createMessageComponentCollector({ time: duration + 60000 });
-
-    collector.on('collect', async (i) => {
-        try {
-        const gwNow = activeGiveaways.get(id);
-        const userLang = getLang(client, guild.id);
-        const ut = (k, v) => i18n.t('giveaway.' + k, userLang, v);
-
-        if (i.customId === `gw_enter_${id}`) {
-            await i.deferReply({ flags: 64 }).catch(() => {});
-
-            if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: t('endedError') }).catch(() => {});
-            if (i.user.id === gwNow.hostId) return i.editReply({ content: ut('cantEnter') }).catch(() => {});
-            if (gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut('alreadyIn') }).catch(() => {});
-
-            // Check requirements
-            if (gwNow.minLevel > 0 || gwNow.minCredits > 0) {
-                const userData = db.prepare('SELECT level, credits FROM users WHERE id = ? AND guild_id = ?').get(i.user.id, guild.id);
-                if (gwNow.minLevel > 0 && (!userData || userData.level < gwNow.minLevel)) {
-                    return i.editReply({ content: ut('needLevel').replace('{level}', gwNow.minLevel) }).catch(() => {});
-                }
-                if (gwNow.minCredits > 0 && (!userData || userData.credits < gwNow.minCredits)) {
-                    return i.editReply({ content: ut('needCredits').replace('{credits}', gwNow.minCredits.toLocaleString()) }).catch(() => {});
-                }
-            }
-
-            // Booster bonus — add twice
-            const isBooster = i.member?.premiumSince != null;
-            gwNow.entries.push(i.user.id);
-            if (gwNow.boosterBonus && isBooster) gwNow.entries.push(i.user.id);
-
-            const ticket = Math.random().toString(36).substring(2, 8).toUpperCase();
-            gwNow.tickets[i.user.id] = ticket;
-
-            // Update embed
-            const newEmbed = buildEmbed(gwNow, client);
-            await msg.edit({ embeds: [newEmbed], components: [buildButtons(gwNow)] }).catch(() => {});
-
-            let reply = ut('enterOk').replace('{ticket}', ticket);
-            if (gwNow.boosterBonus && isBooster) reply += `\n${ut('boosterBonus')}`;
-            await i.editReply({ content: reply }).catch(() => {});
-
-        } else if (i.customId === `gw_leave_${id}`) {
-            await i.deferReply({ flags: 64 }).catch(() => {});
-            if (!gwNow || gwNow.status !== 'active') return i.editReply({ content: t('endedError') }).catch(() => {});
-            if (!gwNow.entries.includes(i.user.id)) return i.editReply({ content: ut('notIn') }).catch(() => {});
-
-            gwNow.entries = gwNow.entries.filter(e => e !== i.user.id);
-            delete gwNow.tickets[i.user.id];
-
-            const newEmbed = buildEmbed(gwNow, client);
-            await msg.edit({ embeds: [newEmbed], components: [buildButtons(gwNow)] }).catch(() => {});
-            await i.editReply({ content: ut('leaveOk') }).catch(() => {});
-
-        } else if (i.customId === `gw_reroll_${id}`) {
-            if (i.user.id !== gwNow?.hostId && !i.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                return i.reply({ content: '❌ Only the host or moderators can reroll.', flags: 64 }).catch(() => {});
-            }
-            await i.deferReply({ flags: 64 }).catch(() => {});
-            const newWinners = selectWinners(gwNow.entries, gwNow.winners);
-            gwNow.winnersList = newWinners;
-            if (newWinners.length > 0) await creditWinners(client, db, newWinners, gwNow.amount, guild.id);
-            const newEmbed = buildEmbed(gwNow, client);
-            await msg.edit({ embeds: [newEmbed], components: [buildButtons(gwNow)] }).catch(() => {});
-            const mention = newWinners.map(w => `<@${w}>`).join(' ');
-            await channel.send({ content: `🔄 **Reroll!** New winners: ${mention || 'None'}` }).catch(() => {});
-            await i.editReply({ content: ut('rerollOk') }).catch(() => {});
-
-        } else if (i.customId === `gw_end_${id}`) {
-            if (i.user.id !== gwNow?.hostId && !i.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                return i.reply({ content: '❌ Only the host or moderators can end this.', flags: 64 }).catch(() => {});
-            }
-            await i.deferReply({ flags: 64 }).catch(() => {});
-            if (gwNow?.status === 'active') {
-                await endGiveaway(gwNow, client, db);
-            } else {
-                // Delete
-                activeGiveaways.delete(id);
-                await msg.delete().catch(() => {});
-            }
-            await i.editReply({ content: ut('terminated') }).catch(() => {});
-        }
-    } catch (err) {
-            console.error('[GIVEAWAY BUTTON ERROR]', err.message);
-            await i.reply({ content: '⚠️ My neural link glitched while processing that click. Try again.', flags: 64 }).catch(() => {});
-        }
-    });
-
-    collector.on('end', () => {
-        const gwNow = activeGiveaways.get(id);
-        if (gwNow?.status === 'active') endGiveaway(gwNow, client, db);
-    });
-}
