@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { card } = require('../lib/games/v2');
 const i18n = require('../lib/i18n');
+const cmdSlash = require('../lib/cmd').slash;
 
 const APP_ID = process.env.DISCORD_APP_ID || process.env.CLIENT_ID || process.env.APPLICATION_ID || null;
 const REGISTRY_PATH = path.join(__dirname, '..', 'config', 'emojis.js');
@@ -144,7 +145,7 @@ ${autoBlock}};
 }
 
 // ── Card builders ──
-function checkCard(t, { remap, add, missing }, total, appTotal, cmdId) {
+function checkCard(t, { remap, add, missing }, total, appTotal, client) {
     const items = [];
     items.push({ text: `## 📊 ${t('title')}` });
     items.push({ text: t('summary', { reg: total, app: appTotal }) });
@@ -169,9 +170,8 @@ function checkCard(t, { remap, add, missing }, total, appTotal, cmdId) {
     }
 
     items.push({ rule: true });
-    const cmdId = interaction.client.application.commands.cache.find(c => c.name === 'emojis')?.id;
-        const syncPill = cmdId ? `</emojis sync:${cmdId}>` : '`/emojis sync`';
-        items.push({ text: `-# Run ${syncPill} to apply.` });
+    const syncPill = cmdSlash(client, 'emojis sync') || '`/emojis sync`';
+    items.push({ text: `-# Run ${syncPill} to apply.` });
     return items;
 }
 
@@ -208,8 +208,7 @@ module.exports = {
             const total = Object.keys(registry).length;
 
             if (sub === 'check') {
-                const cmdId = interaction.client.application.commands.cache.find(c => c.name === 'emojis')?.id;
-                const items = checkCard(t, result, total, appMap.size, cmdId);
+                const items = checkCard(t, result, total, appMap.size, interaction.client);
                 return interaction.editReply({ ...card(0xFFD700, items), allowedMentions: { parse: [] } });
             }
 
