@@ -2507,7 +2507,7 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     let paramOrder;
     if (command.params && Array.isArray(command.params)) {
         paramOrder = command.params;
-    } else if (command.run.length > 0) {
+    } else if (command.run && command.run.length > 0) {
         const defaultParams = ['client', 'message', 'args', 'db', 'serverSettings', 'usedCommand', 'lang'];
         paramOrder = defaultParams.slice(0, command.run.length);
     } else {
@@ -2515,6 +2515,12 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     }
     
     const filteredArgs = paramOrder.map(param => argsMap[param]).filter(arg => arg !== undefined);
+    
+    if (!command.run) {
+        const reply = message?.reply || message?.editReply;
+        if (reply) await reply.call(message, { content: '❌ This command is slash-only. Please use the slash command instead.' }).catch(() => {});
+        return;
+    }
     const result = await command.run(...filteredArgs);
     // ── Guild activity + stats tracker ──
     try {
