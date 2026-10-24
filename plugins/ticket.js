@@ -1,202 +1,136 @@
 const {
     EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder,
-    ButtonStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder
+    ButtonStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder,
+    ModalBuilder, TextInputBuilder, TextInputStyle
 } = require('discord.js');
 const EMOJIS = require('../config/emojis');
-
-function getErrorEmoji(guild) {
-    if (!guild) return '❌';
-    // Look for emoji named 'error' in the guild cache
-    const found = guild.emojis.cache.find(e => e.name === 'error');
-    return found ? found.toString() : '❌';
-}
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const mentions = require('../lib/mentions');
 const { parseEmoji } = require('discord.js');
 const { t } = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
 
-// ================= ENV FALLBACK (owner server only) =================
+function getErrorEmoji(guild) {
+    if (!guild) return '❌';
+    const found = guild.emojis.cache.find(e => e.name === 'error');
+    return found ? found.toString() : '❌';
+}
+
 function effectiveSettings(ss, gid) {
     const isOwner = gid === process.env.GUILD_ID;
     const e = (s, k, ek) => { const v = s?.[k]; return v != null ? v : (isOwner ? (process.env[ek] || null) : null); };
     const en = (s, k, ek, fb) => { const v = s?.[k]; return v != null ? v : (isOwner ? (process.env[ek] ? parseInt(process.env[ek]) : fb) : fb); };
-    return { ...ss, ticketCategory: e(ss, 'ticketCategory', 'TICKET_CATEGORY_ID'), ticketStaffRole: e(ss, 'ticketStaffRole', 'TICKET_STAFF_ROLE_ID'), ticketTranscriptChannel: e(ss, 'ticketTranscriptChannel', 'TICKET_TRANSCRIPT_CHANNEL_ID'), ticketLogChannel: e(ss, 'ticketLogChannel', 'TICKET_LOG_CHANNEL_ID'), ticketAutoCloseHours: en(ss, 'ticketAutoCloseHours', 'TICKET_AUTO_CLOSE_HOURS', 24), ticketLimitPerUser: en(ss, 'ticketLimitPerUser', 'TICKET_LIMIT_PER_USER', 1) };
+    return { ...ss, ticketCategory: e(ss, 'ticketCategory', 'TICKET_CATEGORY_ID'), ticketStaffRole: e(ss, 'ticketStaffRole', 'TICKET_STAFF_ROLE_ID'), ticketTranscriptChannel: e(ss, 'ticketTranscriptChannel', 'TICKET_TRANSCRIPT_CHANNEL_ID'), ticketLogChannel: e(ss, 'ticketLogChannel', 'TICKET_LOG_CHANNEL_ID'), ticketAutoCloseHours: en(ss, 'ticketAutoCloseHours', 'TICKET_AUTO_CLOSE_HOURS', 0), ticketLimitPerUser: en(ss, 'ticketLimitPerUser', 'TICKET_LIMIT_PER_USER', 1) };
 }
 
-// ================= DB =================
 function setupTicketDB(db) {
     try {
-        db.prepare(`CREATE TABLE IF NOT EXISTS tickets (channel_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, creator_id TEXT NOT NULL, creator_tag TEXT, created_at INTEGER, claimed_by TEXT, category TEXT, category_value TEXT, ticket_number INTEGER, participants TEXT, status TEXT DEFAULT 'open', priority TEXT DEFAULT 'normal', closed_at INTEGER, closed_by TEXT, transcript TEXT)`).run();
-        // Add missing columns safely
+        db.prepare(`CREATE TABLE IF NOT EXISTS tickets (channel_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, creator_id TEXT NOT NULL, creator_tag TEXT, created_at INTEGER, claimed_by TEXT, category TEXT, category_value TEXT, ticket_number INTEGER, participants TEXT, status TEXT DEFAULT 'open', priority TEXT DEFAULT 'normal', closed_at INTEGER, closed_by TEXT, transcript TEXT, issue_desc TEXT)`).run();
         const ticketCols = db.prepare("PRAGMA table_info(tickets)").all().map(c => c.name);
-        const newCols = { status: "TEXT DEFAULT 'open'", priority: "TEXT DEFAULT 'normal'", closed_at: "INTEGER", closed_by: "TEXT", transcript: "TEXT" };
+        const newCols = { status: "TEXT DEFAULT 'open'", priority: "TEXT DEFAULT 'normal'", closed_at: "INTEGER", closed_by: "TEXT", transcript: "TEXT", issue_desc: "TEXT" };
         for (const [col, type] of Object.entries(newCols)) {
             if (!ticketCols.includes(col)) {
                 try { db.prepare('ALTER TABLE tickets ADD COLUMN ' + col + ' ' + type).run(); } catch(e) {}
             }
         }
-        db.prepare(`ALTER TABLE tickets ADD COLUMN status TEXT DEFAULT 'open'`).prepare = undefined;
-        ['status','priority','closed_at','closed_by','transcript'].forEach(col => { try { db.prepare(`ALTER TABLE tickets ADD COLUMN ${col} TEXT`).run(); } catch(e) { /* column exists */ } });
+        ['status','priority','closed_at','closed_by','transcript','issue_desc'].forEach(col => { try { db.prepare(`ALTER TABLE tickets ADD COLUMN ${col} TEXT`).run(); } catch(e) {} });
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_tg ON tickets(guild_id)`).run();
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_tc ON tickets(creator_id)`).run();
-        db.prepare(`CREATE TABLE IF NOT EXISTS ticket_ratings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guild_id TEXT NOT NULL,
-            ticket_id TEXT,
-            staff_id TEXT,
-            rater_id TEXT NOT NULL,
-            stars INTEGER NOT NULL,
-            comment TEXT,
-            created_at INTEGER DEFAULT (strftime('%s', 'now'))
-        )`).run();
-        db.prepare(`CREATE INDEX IF NOT EXISTS idx_tr_guild ON ticket_ratings(guild_id)`).run();
-        db.prepare(`CREATE INDEX IF NOT EXISTS idx_tr_staff ON ticket_ratings(staff_id)`).run();
-        db.prepare(`CREATE TABLE IF NOT EXISTS ticket_ratings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guild_id TEXT NOT NULL,
-            ticket_id TEXT,
-            staff_id TEXT,
-            rater_id TEXT NOT NULL,
-            stars INTEGER NOT NULL,
-            comment TEXT,
-            created_at INTEGER DEFAULT (strftime('%s', 'now'))
-        )`).run();
+        db.prepare(`CREATE TABLE IF NOT EXISTS ticket_ratings (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, ticket_id TEXT, staff_id TEXT, rater_id TEXT NOT NULL, stars INTEGER NOT NULL, comment TEXT, created_at INTEGER DEFAULT (strftime('%s', 'now')))`).run();
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_tr_guild ON ticket_ratings(guild_id)`).run();
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_tr_staff ON ticket_ratings(staff_id)`).run();
     } catch(e) { if (!e.message.includes('duplicate column')) console.error('[TDB] setup:', e.message); }
 }
-function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets (channel_id, guild_id, creator_id, creator_tag, created_at, claimed_by, category, category_value, ticket_number, participants, status, priority, closed_at, closed_by, transcript) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy||null, t.category||null, t.categoryValue||null, t.number||0, JSON.stringify(t.participants||[t.creatorId]), t.status||'open', t.priority||'normal', t.closedAt||null, t.closedBy||null, t.transcript||null); } catch(e) { console.error('[TDB] save:', e.message); } }
-function loadTicket(db, cid) { try { const r = db.prepare(`SELECT * FROM tickets WHERE channel_id=?`).get(cid); if(!r) return null; return { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]') }; } catch(e) { return null; } }
-function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph})`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]') })); const sk = db.prepare(`SELECT COUNT(*) as c FROM tickets WHERE guild_id NOT IN (${ph})`).get(...gids); if(sk?.c) { db.prepare(`DELETE FROM tickets WHERE guild_id NOT IN (${ph})`).run(...gids); console.log(`[TDB] cleaned ${sk.c} orphans`); } if(rows.length) console.log(`[TDB] restored ${rows.length} tickets`); if (rows.length) setTimeout(() => rearmTimers(db, client), 60000); } catch(e) {} }
 
-// Re-arm auto-close after a restart: in-memory timers are lost on every boot
+function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets (channel_id, guild_id, creator_id, creator_tag, created_at, claimed_by, category, category_value, ticket_number, participants, status, priority, closed_at, closed_by, transcript, issue_desc) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy||null, t.category||null, t.categoryValue||null, t.number||0, JSON.stringify(t.participants||[t.creatorId]), t.status||'open', t.priority||'normal', t.closedAt||null, t.closedBy||null, t.transcript||null, t.issueDesc||null); } catch(e) { console.error('[TDB] save:', e.message); } }
+function loadTicket(db, cid) { try { const r = db.prepare(`SELECT * FROM tickets WHERE channel_id=?`).get(cid); if(!r) return null; return { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc }; } catch(e) { return null; } }
+function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph})`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc })); if (rows.length) setTimeout(() => rearmTimers(db, client), 60000); } catch(e) {} }
+
 async function rearmTimers(db, client) {
-    let armed = 0, closing = 0;
     for (const [cid, tk] of active) {
         try {
             const guild = client.guilds.cache.get(tk.guildId);
             if (!guild) continue;
             const ch = await client.channels.fetch(cid).catch(() => null);
             if (!ch) { active.delete(cid); try { db.prepare('DELETE FROM tickets WHERE channel_id=?').run(cid); } catch {} continue; }
-
             const s = effectiveSettings(client.getServerSettings?.(tk.guildId) || {}, tk.guildId);
-            const h = s?.ticketAutoCloseHours || 24;
+            const hRaw = s?.ticketAutoCloseHours;
+            const h = (hRaw !== undefined && hRaw !== null && hRaw !== '') ? Number(hRaw) : 0;
             if (h <= 0) continue;
-
-            // Last activity: newest message in the channel, else ticket creation
-            // Bot messages (the close warning included) are not activity, or every restart pushes the deadline back
             const recent = await ch.messages.fetch({ limit: 50 }).catch(() => null);
             const human = recent?.find(m => !m.author.bot);
-            const lastAt = human?.createdTimestamp || (tk.createdAt ? tk.createdAt * 1000 : Date.now());
+            const lastAt = human?.createdTimestamp || Number(tk.createdAt) || Date.now();
             const idleMs = Date.now() - lastAt;
-
             if (idleMs >= h * 3600000) {
-                // Already overdue — stagger closes so a restart doesn't dump them all at once
-                closing++;
-                setTimeout(() => resetACTimerAt(cid, client, s, 60000), closing * 30000);
+                setTimeout(() => resetACTimerAt(cid, client, s, 60000), 30000);
             } else {
-                armed++;
                 resetACTimerAt(cid, client, s, h * 3600000 - idleMs);
             }
-        } catch (e) { console.error('[TDB] rearm:', e.message); }
+        } catch (e) {}
     }
-    if (armed || closing) console.log(`[TDB] auto-close re-armed: ${armed} pending, ${closing} overdue`);
 }
 function delTicket(db, cid) { try { db.prepare(`DELETE FROM tickets WHERE channel_id=?`).run(cid); } catch(e) {} }
 
-// ================= STATE =================
 const counters = new Map();
 const active = new Map();
 const timers = new Map();
 
-// ================= CATEGORIES (3 ESSENTIAL ONLY) =================
 const CATS = [
     { emoji:'❓', label:'Support', value:'support', desc:'General help & questions' },
     { emoji:'🛡️', label:'Report', value:'report', desc:'Report users or appeal' },
     { emoji:'💰', label:'Billing', value:'billing', desc:'Payments & shop issues' },
 ];
 
-// ================= HELPERS =================
 const getCats = (s) => s?.ticketCategoriesConfig?.length ? s.ticketCategoriesConfig : CATS;
 const isStaff = (m, s) => m && (m.permissions?.has(PermissionFlagsBits.Administrator) || m.permissions?.has(PermissionFlagsBits.ManageMessages) || (s?.ticketStaffRole && m.roles?.cache?.has(s.ticketStaffRole)));
 const countUserTix = (gid, uid) => { let c=0; for(const[,t]of active)if(t.guildId===gid&&t.creatorId===uid)c++; return c; };
 
-function resetACTimerAt(cid, client, s, remainingMs) {
-    return resetACTimer(cid, client, s, remainingMs);
-}
+function resetACTimerAt(cid, client, s, remainingMs) { return resetACTimer(cid, client, s, remainingMs); }
 
 function resetACTimer(cid, client, s, remainingMs) {
-    const lang = ['en','fr','bm','zh','ar'].includes(s?.language) ? s.language : 'en';
-    // Clear existing timers
+    const lang = pickLang(client, s?.guildId, null) || 'en';
     const existing = timers.get(cid);
-    if (existing) {
-        if (existing.warn) clearTimeout(existing.warn);
-        if (existing.close) clearTimeout(existing.close);
-        timers.delete(cid);
-    }
-    const h = s?.ticketAutoCloseHours || 24;
+    if (existing) { if (existing.warn) clearTimeout(existing.warn); if (existing.close) clearTimeout(existing.close); timers.delete(cid); }
+    
+    const hRaw = s?.ticketAutoCloseHours;
+    const h = (hRaw !== undefined && hRaw !== null && hRaw !== '') ? Number(hRaw) : 0;
     if (h <= 0) return;
 
-    const ms = (typeof remainingMs === 'number' && remainingMs > 0) ? remainingMs : h * 3600000;
-    const warnMs = ms - 3600000; // 1 hour warning before close
+    let ms = (typeof remainingMs === 'number' && remainingMs > 0) ? remainingMs : h * 3600000;
+    if (ms > 2147483647) ms = 2147483647;
+    if (ms < 60000) ms = 60000;
 
+    const warnMs = ms - 3600000;
     const timersForCid = {};
 
-    // Warning timer (only if auto-close > 1 hour)
     if (warnMs > 0) {
         timersForCid.warn = setTimeout(async () => {
             try {
                 const ch = await client.channels.fetch(cid).catch(() => null);
-                if (ch && active.has(cid)) {
-                    await ch.send({ embeds: [new EmbedBuilder().setColor('#f39c12').setDescription(t('ticket.acWarn', lang))] }).catch(() => {});
-                }
+                if (ch && active.has(cid)) await ch.send({ embeds: [new EmbedBuilder().setColor('#f39c12').setDescription(t('ticket.acWarn', lang) || '⏰ This ticket will auto-close in 1 hour.')] }).catch(() => {});
             } catch (e) {}
         }, warnMs);
     }
 
-    // Close timer — saves transcript, logs to channel, THEN deletes
     timersForCid.close = setTimeout(async () => {
         try {
             const ch = await client.channels.fetch(cid).catch(() => null);
             const tk = active.get(cid);
             if (!tk) { timers.delete(cid); return; }
-
-            // Save transcript before deleting
             const txResult = await saveTx(ch, tk, null, client, s);
-            if (txResult === true) {
-                // already sent to log channel
-            } else if (txResult && txResult.buffer) {
-                // fallback: send to log channel if not already done
-                const tcid = s?.ticketTranscriptChannel;
-                if (tcid) {
-                    const tc = await client.channels.fetch(tcid).catch(() => null);
-                    if (tc) {
-                        await tc.send({ files: [{ attachment: txResult.buffer, name: txResult.filename }] }).catch(() => {});
-                    }
-                }
-            }
-
-            // Notify ticket channel
-            if (ch) {
-                await ch.send({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(t('ticket.acDone', lang))] }).catch(() => {});
-            }
-
-            // Clean up
+            if (ch) await ch.send({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(t('ticket.acDone', lang) || '🔒 Ticket auto-closed.')] }).catch(() => {});
             active.delete(cid);
             if (client.db) delTicket(client.db, cid);
             timers.delete(cid);
-
-            // Delete channel after brief delay
             setTimeout(() => ch?.delete('Auto-closed').catch(() => {}), 5000);
-        } catch (e) {
-            timers.delete(cid);
-        }
+        } catch (e) { timers.delete(cid); }
     }, ms);
 
     timers.set(cid, timersForCid);
 }
 
 async function saveTx(ch, tk, closer, client, s) {
-    const lang = ['en','fr','bm','zh','ar'].includes(s?.language) ? s.language : 'en';
+    const lang = pickLang(client, s?.guildId, null) || 'en';
     try {
         const msgs = await ch.messages.fetch({limit:100}).catch(()=>new Map());
         const lines=[]; lines.push(`= TICKET LOG =`,`#${tk.number||'?'} | ${tk.category||'?'}`,`By: ${tk.creatorTag||'?'} | ${new Date(tk.createdAt).toISOString()}`,`Claimed: ${tk.claimedBy?`<@${tk.claimedBy}>`:'No'} | Closed: ${closer?`<@${closer}>`:'?'}`,`${'='.repeat(40)}`);
@@ -220,75 +154,87 @@ async function createCh(g, uid, uname, cat, s, client) {
     return g.channels.create(opts);
 }
 
-// ================= UI BUILDERS =================
-function panelEmbed(s, gn, lang='en') {
-    const cats=getCats(s);
-    const catLines = cats.map(c => `${c.emoji} **${c.label}** — *${c.desc}*`).join('\n');
-    return new EmbedBuilder()
-        .setColor(0x00f0ff)
-        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('ticket.panel_title', lang)}` })
-        .setTitle(`🎫 ${t('ticket.panel_title', lang)}`)
-        .setDescription(
-            `**SERVER** : ${gn}\n` +
-            `**STATUS** : ${t('ticket.panel_status', lang)}\n` +
-            `**PROTOCOL** : ${t('ticket.panel_protocol', lang)}\n\n` +
-            catLines + '\n\n' +
-            `> ${t('ticket.panel_desc', lang)}`
-        )
-        .addFields(
-            { name: `📋 ${t('ticket.panel_avail', lang)}`, value: `\`${cats.length}\``, inline: true },
-            { name: `⏰ ${t('ticket.panel_ac', lang)}`, value: `\`${s?.ticketAutoCloseHours || 24}h\``, inline: true },
-            { name: `🔒 ${t('ticket.panel_private', lang)}`, value: `\`${t('ticket.panel_private_val', lang)}\``, inline: true }
-        )
-        .setFooter({ text: 'BAMAKO_223 🇲🇱 • ARCHON' })
-        .setTimestamp();
+function panelCard(s, gn, lang='en', actionRow = null) {
+    const cats = getCats(s) || [];
+    const catLines = cats.map(c => `> ${c.emoji || '🎫'} **${c.label || 'Support'}** — *${c.desc || 'Open a ticket'}*`).join('\n');
+    const _v2 = require('../lib/games/v2');
+    const items = [
+        { text: `## 🎫 ${t('ticket.panel_title', lang)}` },
+        { text: `**SERVER** · ${gn}\n**STATUS** · ${t('ticket.panel_status', lang)}\n**PROTOCOL** · ${t('ticket.panel_protocol', lang)}` },
+        { rule: true },
+        { text: t('ticket.panel_how_it_works', lang) },
+        { rule: true },
+        { text: `${t('ticket.panel_available', lang)}\n${catLines}` },
+        { text: t('ticket.panel_response_time', lang) }
+    ];
+    if (actionRow) items.push({ row: actionRow });
+    return _v2.card(0x00f0ff, items);
 }
+
 function panelMenu(s) {
     const sel=new StringSelectMenuBuilder().setCustomId('ticket_category_select').setPlaceholder('Select category...');
     getCats(s).forEach(c=>sel.addOptions({label:`${c.emoji} ${c.label}`,description:c.desc.substring(0,100),value:c.value,emoji:c.emoji}));
     return sel;
 }
-async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null) {
-    const cl=typeof cat==='object'?`${cat.emoji} ${cat.label}`:'🎫 Support';
-    const e=new EmbedBuilder()
-        .setColor(isPremium ? 0xf1c40f : 0x00f0ff)
-        .setAuthor({name:`🦅 ARCHON SUPPORT • TICKET #${n}`,iconURL:u.displayAvatarURL()})
-        .setDescription(
-            `**${t('ticket.welcome_you', lang)}** : ${u.username}\n` +
-            `**${t('ticket.welcome_cat', lang)}** : ${cl}\n` +
-            `**${t('ticket.welcome_prio', lang)}** : ${isPremium ? `✨ ${t('ticket.welcome_premium', lang)}` : t('ticket.welcome_standard', lang)}\n` +
-            `**${t('ticket.welcome_status', lang)}** : 🟢 ${t('ticket.welcome_open', lang)}\n\n` +
-            `${t('ticket.wDesc', lang, {user: u.id, cat: cl})}`
-        )
-        .addFields(
-            {name:'👤 You',value:`<@${u.id}>`,inline:true},
-            {name:'⏰ Started',value:`<t:${Math.floor(Date.now()/1000)}:R>`,inline:true},
-            {name:'📁 Topic',value:cl,inline:true}
-        )
-        .setFooter({text:'BAMAKO_223 🇲🇱 • Here for you, always 💙'})
-        .setTimestamp();
-    const r=new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t('ticket.claim', lang)).setStyle(ButtonStyle.Primary).setEmoji(parseEmoji(EMOJIS.claim)),
-        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t('ticket.close', lang)).setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.lock)),
-        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t('ticket.transcript', lang)).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.ticket))
+
+async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null, issueDesc=null) {
+    const catObj = typeof cat === 'object' ? cat : { emoji: '🎫', label: 'Support' };
+    const cl = `${catObj.emoji} ${catObj.label}`;
+    const _v2 = require('../lib/games/v2');
+    
+    const r = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t('ticket.claim', lang)).setStyle(ButtonStyle.Primary).setEmoji(resolveEmoji('claim', ch.client) || '✋'),
+        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t('ticket.close', lang)).setStyle(ButtonStyle.Danger).setEmoji(resolveEmoji('lock', ch.client) || '🔒'),
+        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t('ticket.transcript', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('ticket', ch.client) || '📄')
     );
+    
     const staffPing = s?.ticketStaffRole ? `<@&${s.ticketStaffRole}>` : '';
-    await ch.send({content:`${t('ticket.staff_ping_msg', lang, {user: `<@${u.id}>`})}\n\n${staffPing}`,embeds:[e],components:[r]}).catch(err => console.error('[TICKET] welcomeMsg send failed:', err.message));
+    
+    const view = _v2.card(isPremium ? 0xf1c40f : 0x00f0ff, [
+        { text: `## ${catObj.emoji || '🎫'} Ticket #${n}` },
+        { text: t('ticket.welcome_msg', lang, { user: `<@${u.id}>` }) || `Welcome <@${u.id}>!` },
+        { rule: true },
+        { text: t('ticket.welcome_info', lang, { cat: cl, time: `<t:${Math.floor(Date.now() / 1000)}:R>` }) || `**Category** · ${cl}` },
+        { rule: true },
+        ...(issueDesc ? [{ text: t('ticket.welcome_inquiry', lang, { desc: issueDesc }) || `**Initial Inquiry**\n> *"${issueDesc}"*` }, { rule: true }] : []),
+        { text: `-# ${t('ticket.wDesc', lang, {user: u.id, cat: cl}).replace(`<@${u.id}>`, '').trim() || 'Our team has been notified.'}` },
+        { row: r }
+    ]);
+    
+    await ch.send({ content: `${staffPing}`, ...view }).catch(err => console.error('[TICKET] welcomeMsg send failed:', err.message));
 }
-function cfgEmbed(s, g, c, lang='en') {
-    const io=g.id===process.env.GUILD_ID;
-    const fch=(id,ek)=>id?`<#${id}>`:(io&&process.env[ek]?`<#${process.env[ek]}> 🔹 env`:`*${t('ticket.cfgNS', lang)}*`);
-    const fr=(id,ek)=>id?`<@&${id}>`:(io&&process.env[ek]?`<@&${process.env[ek]}> 🔹 env`:`*${t('ticket.cfgNS', lang)}*`);
-    const ac=s?.ticketAutoCloseHours??24, lm=s?.ticketLimitPerUser??1;
-    return new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t('ticket.cfgTitle', lang)}`,iconURL:g.iconURL({dynamic:true})||c.user.displayAvatarURL()}).setThumbnail(g.iconURL({dynamic:true,size:256})).addFields({name:t('ticket.cfgCat', lang),value:fch(s?.ticketCategory,'TICKET_CATEGORY_ID'),inline:true},{name:t('ticket.cfgStaff', lang),value:fr(s?.ticketStaffRole,'TICKET_STAFF_ROLE_ID'),inline:true},{name:t('ticket.cfgTx', lang),value:fch(s?.ticketTranscriptChannel,'TICKET_TRANSCRIPT_CHANNEL_ID'),inline:true},{name:t('ticket.cfgLog', lang),value:fch(s?.ticketLogChannel,'TICKET_LOG_CHANNEL_ID'),inline:true},{name:t('ticket.cfgAC', lang),value:ac===0?`${getErrorEmoji(g)} ${t('ticket.cfgOff', lang)}`:`\`${ac}h\``,inline:true},{name:t('ticket.cfgLim', lang),value:`\`${lm}\` / user`,inline:true}).setFooter({text:`${t('ticket.cfgFoot', lang)} • ${g.name}`,iconURL:c.user.displayAvatarURL()}).setTimestamp();
+
+function cfgCard(s, g, c, lang='en') {
+    const _v2 = require('../lib/games/v2');
+    const io = g.id === process.env.GUILD_ID;
+    const fch = (id, ek) => id ? `<#${id}>` : (io && process.env[ek] ? `<#${process.env[ek]}> 🔹 env` : `*${t('ticket.cfgNS', lang) || 'Not Set'}*`);
+    const fr = (id, ek) => id ? `<@&${id}>` : (io && process.env[ek] ? `<@&${process.env[ek]}> 🔹 env` : `*${t('ticket.cfgNS', lang) || 'Not Set'}*`);
+    
+    const acRaw = s?.ticketAutoCloseHours;
+    const ac = (acRaw !== undefined && acRaw !== null && acRaw !== '') ? Number(acRaw) : 0;
+    const lmRaw = s?.ticketLimitPerUser;
+    const lm = (lmRaw !== undefined && lmRaw !== null && lmRaw !== '') ? Number(lmRaw) : 1;
+
+    const body = `**${t('ticket.cfgCat', lang) || 'Category'}** · ${fch(s?.ticketCategory, 'TICKET_CATEGORY_ID')}\n` +
+                 `**${t('ticket.cfgStaff', lang) || 'Staff Role'}** · ${fr(s?.ticketStaffRole, 'TICKET_STAFF_ROLE_ID')}\n` +
+                 `**${t('ticket.cfgTx', lang) || 'Log Channel'}** · ${fch(s?.ticketTranscriptChannel, 'TICKET_TRANSCRIPT_CHANNEL_ID')}\n` +
+                 `**${t('ticket.cfgLog', lang) || 'Extra Log'}** · ${fch(s?.ticketLogChannel, 'TICKET_LOG_CHANNEL_ID')}\n` +
+                 `**${t('ticket.cfgAC', lang) || 'Auto-Close'}** · ${ac <= 0 || isNaN(ac) ? `❌ ${t('ticket.cfgOff', lang) || 'Off'}` : `\`${ac}h\``}\n` +
+                 `**${t('ticket.cfgLim', lang) || 'Limit'}** · \`${lm}\` / user`;
+
+    return _v2.card(0x00fbff, [
+        { text: `## 🦅 ${t('ticket.cfgTitle', lang) || 'TICKET CONFIG'}` },
+        { rule: true },
+        { text: body },
+        { rule: true },
+        { text: `-# ${t('ticket.cfgFoot', lang) || 'ARCHON CG-223'} • ${g.name || 'Server'}` }
+    ]);
 }
+
 async function saveSetting(client, gid, key, val, lang='en') { try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t('ticket.setOK', lang, {setting: key, value: val})};} return{ok:false,err:`${getErrorEmoji(g)} DB error.`};}catch(e){return{ok:false,err:`${getErrorEmoji(g)} DB error.`};} }
 
-// ================= MODULE =================
-
-// Reset auto-close timer when there's activity in a ticket channel
 function onMessageActivity(message, client, s) {
-    if (message.author?.bot) return; // only humans count as activity
+    if (message.author?.bot) return;
     const cid = message.channel.id;
     if (!active.has(cid)) return;
     resetACTimer(cid, client, s);
@@ -313,44 +259,60 @@ module.exports = {
         addSubcommand(s=>s.setName('stats').setDescription('📊 Ticket system analytics')).
         addSubcommand(s=>s.setName('myrating').setDescription('⭐ Your rating history')),
 
-    // ================= PREFIX =================
     run: async(client,msg,args,db,ss)=>{
-    const guildId = msg.guild?.id ?? 'DM';
-        const lang = client.detectLanguage ? (client.detectLanguage('ticket', msg.guild?.id) || 'en') : 'en', sub=args[0]?.toLowerCase(), g=msg.guild, p=ss?.prefix||'.';
+        const lang = pickLang(client, msg.guild?.id, msg), sub=args[0]?.toLowerCase(), g=msg.guild, p=ss?.prefix||'.';
         if(!g)return msg.reply(t('ticket.servers_only', lang)).catch(()=>{});
         const adm=msg.member.permissions.has(PermissionFlagsBits.Administrator);
         const needAdm=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel','config','setup'].includes(sub);
         if(needAdm&&!adm)return msg.reply(t('ticket.needAdmin', lang, { error: getErrorEmoji(g) })).catch(()=>{});
         const es=effectiveSettings(ss,g.id);
 
-        // Config setters
         if(sub==='setcategory'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} ${mentions(client, 'channels', 'set')} type:Ticket category`).catch(()=>{});const c=g.channels.cache.get(id);if(!c||c.type!==ChannelType.GuildCategory)return msg.reply(t('ticket.badCh', lang)).catch(()=>{});const r=await saveSetting(client,g.id,'ticketCategory',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setstaffrole'){const id=args[1]?.replace(/[<@&>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} ${mentions(client, 'roles', 'set')} type:Staff/Ticket Role <id>`).catch(()=>{});const r=g.roles.cache.get(id);if(!r)return msg.reply(t('ticket.badRole', lang)).catch(()=>{});const rs=await saveSetting(client,g.id,'ticketStaffRole',id,lang);return msg.reply(rs.ok?rs.msg:rs.err).catch(()=>{});}
         if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} ${mentions(client, 'channels', 'set')} type:Ticket Logs <id>`).catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t('ticket.badCh', lang)).catch(()=>{});const r=await saveSetting(client,g.id,'ticketTranscriptChannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setautoclose'){const h=parseInt(args[1]);if(isNaN(h)||h<0||h>168)return msg.reply(t('ticket.badNum', lang)).catch(()=>{});const r=await saveSetting(client,g.id,'ticketAutoCloseHours',String(h),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setlimit'){const l=parseInt(args[1]);if(isNaN(l)||l<1||l>10)return msg.reply(t('ticket.badNum', lang)).catch(()=>{});const r=await saveSetting(client,g.id,'ticketLimitPerUser',String(l),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
-        if(sub==='config'){const e=cfgEmbed(es,g,client,lang);return msg.reply({embeds:[e]}).catch(()=>{});}
+        if(sub==='config'){const e=cfgCard(es,g,client,lang);return msg.reply(e).catch(()=>{});}
 
         if(!es?.ticketCategory&&sub!=='setup')return msg.reply(t('ticket.notSet', lang)).catch(()=>{});
 
-        if(sub==='setup'){const setupUsage = [
-            `${mentions(client, 'channels', 'set')} — ${t('ticket.cmd_channels', lang)}`,
-            `${mentions(client, 'roles', 'set')} — ${t('ticket.cmd_roles', lang)}`,
-            `${mentions(client, 'ticket', 'setautoclose')} — ${t('ticket.cmd_autoclose', lang)}`,
-            `${mentions(client, 'ticket', 'setlimit')} — ${t('ticket.cmd_limit', lang)}`,
-            `${mentions(client, 'ticket', 'config')} — ${t('ticket.cmd_config', lang)}`
-        ].join('\n\n');const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t('ticket.sTitle', lang)}`,iconURL:client.user.displayAvatarURL()}).setDescription(t('ticket.sDesc', lang)+'\n\n'+setupUsage).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();return msg.reply({embeds:[e]}).catch(()=>{});}
-        if(sub==='panel'){const e=panelEmbed(es,g.name,lang),m=panelMenu(es),r=new ActionRowBuilder().addComponents(m);const s=await msg.channel.send({embeds:[e],components:[r]}).catch(()=>null);if(s){await msg.react(`${EMOJIS.check}`).catch(()=>{});try{db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(g.id);db.prepare(`UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?`).run(msg.channel.id,msg.channel.name||String(msg.channel.id),g.id);}catch(e){}}return;}
+        if(sub==='setup'){
+            let setupUsage = '';
+            try {
+                setupUsage = [
+                    mentions(client, 'channels', 'set') + ' — ' + (t('ticket.cmd_channels', lang) || 'Set category & log channel'),
+                    mentions(client, 'roles', 'set') + ' — ' + (t('ticket.cmd_roles', lang) || 'Set staff role'),
+                    mentions(client, 'ticket', 'setautoclose') + ' — ' + (t('ticket.cmd_autoclose', lang) || 'Auto-close hours'),
+                    mentions(client, 'ticket', 'setlimit') + ' — ' + (t('ticket.cmd_limit', lang) || 'Max tickets per user'),
+                    mentions(client, 'ticket', 'config') + ' — ' + (t('ticket.cmd_config', lang) || 'View config')
+                ].join('\n\n');
+            } catch(e) { setupUsage = 'Use `/ticket config` to view settings.'; }
+            const _v2 = require('../lib/games/v2');
+            const setupCard = _v2.card(0x00fbff, [
+                { text: '## 🦅 ' + (t('ticket.sTitle', lang) || 'Ticket System') },
+                { text: t('ticket.sDesc', lang) || 'Configure your ticket system.' },
+                { rule: true },
+                { text: setupUsage },
+                { rule: true },
+                { text: '-# 🦅 ARCHON CG-223 • ' + (g.name || 'Server') }
+            ]);
+            return msg.reply(setupCard).catch(()=>{});
+        }
+        if(sub==='panel'){const e=panelCard(es,g.name,lang),m=panelMenu(es),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);const s=await msg.channel.send(e).catch(()=>null);if(s){await msg.react(`${EMOJIS.check}`).catch(()=>{});try{db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(g.id);db.prepare(`UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?`).run(msg.channel.id,msg.channel.name||String(msg.channel.id),g.id);}catch(e){}}return;}
         if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply(t('ticket.not_a_ticket', lang)).catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t('ticket.noPerm', lang)).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t('ticket.closing', lang)).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
 
-        // Help
-        const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t('ticket.pTitle', lang)}`,iconURL:client.user.displayAvatarURL()}).setDescription(`**🎫 Commands**\n\n${t('ticket.helpCmds', lang, {prefix: p})}\n\nUsers create tickets via the panel.`).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();
-        msg.reply({embeds:[e]}).catch(()=>{});
+        const _v2 = require('../lib/games/v2');
+        const helpCard = _v2.card(0x00fbff, [
+            { text: '## 🦅 ' + (t('ticket.pTitle', lang) || 'Ticket Commands') },
+            { text: '**🎫 Commands**\n\n' + (t('ticket.helpCmds', lang, {prefix: p}) || 'Use /ticket panel to get started.') + '\n\nUsers create tickets via the panel.' },
+            { rule: true },
+            { text: '-# 🦅 ARCHON CG-223 • ' + (g.name || 'Server') }
+        ]);
+        msg.reply(helpCard).catch(()=>{});
     },
 
-    // ================= SLASH =================
     execute: async(ix,client)=>{
-        const lang = client.detectLanguage ? (client.detectLanguage('ticket', ix.guildId, ix) || 'en') : 'en', sc=ix.options.getSubcommand(), g=ix.guild,u=ix.user,db=client.db,ss=effectiveSettings(client.getServerSettings?.(g?.id)||{},g?.id);
+        const lang = pickLang(client, ix.guildId, ix), sc=ix.options.getSubcommand(), g=ix.guild,u=ix.user,db=client.db,ss=effectiveSettings(client.getServerSettings?.(g?.id)||{},g?.id);
         if(!g)return ix.reply({content:t('ticket.servers_only', lang),flags:1<<6});
         const adm=ix.member.permissions?.has(PermissionFlagsBits.Administrator);
         const need=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel','config','setup'].includes(sc);
@@ -361,30 +323,51 @@ module.exports = {
         if(sc==='settranscript'){const c=ix.options.getChannel('channel');if(!c)return ix.reply({content:t('ticket.badCh', lang),flags:1<<6});const r=await saveSetting(client,g.id,'ticketTranscriptChannel',c.id,lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
         if(sc==='setautoclose'){const h=ix.options.getInteger('hours');const r=await saveSetting(client,g.id,'ticketAutoCloseHours',String(h),lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
         if(sc==='setlimit'){const l=ix.options.getInteger('limit');const r=await saveSetting(client,g.id,'ticketLimitPerUser',String(l),lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
-        if(sc==='config'){const e=cfgEmbed(ss,g,client,lang);return ix.reply({embeds:[e],flags:1<<6});}
+        if(sc==='config'){const e=cfgCard(ss,g,client,lang);return ix.reply({...e, flags:1<<6 | 32768});}
         if(!ss?.ticketCategory&&sc!=='setup')return ix.reply({content:t('ticket.notSet', lang),flags:1<<6});
 
-        if(sc==='setup'){const setupUsage = [
-            `${mentions(client, 'channels', 'set')} — ${t('ticket.cmd_channels', lang)}`,
-            `${mentions(client, 'roles', 'set')} — ${t('ticket.cmd_roles', lang)}`,
-            `${mentions(client, 'ticket', 'setautoclose')} — ${t('ticket.cmd_autoclose', lang)}`,
-            `${mentions(client, 'ticket', 'setlimit')} — ${t('ticket.cmd_limit', lang)}`,
-            `${mentions(client, 'ticket', 'config')} — ${t('ticket.cmd_config', lang)}`
-        ].join('\n\n');const e=new EmbedBuilder().setColor('#00fbff').setAuthor({name:`🦅 ${t('ticket.sTitle', lang)}`,iconURL:client.user.displayAvatarURL()}).setDescription(t('ticket.sDesc', lang)+'\n\n'+setupUsage).setFooter({text:`🦅 ARCHON CG-223 • ${g.name}`,iconURL:client.user.displayAvatarURL()}).setTimestamp();return ix.reply({embeds:[e],flags:1<<6});}
-        if(sc==='panel'){const _cp=require('../lib/canPost'),_me=g.members.me,_d=_cp.diagnose(g,ix.channel,_me);if(!_d.ok)return ix.reply({content:t('ticket.'+_d.key,lang,{ch:String(ix.channel),role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName,cmd: mentions(ix.client, ix.commandName, 'panel')}),flags:1<<6}).catch(()=>{});const e=panelEmbed(ss,g.name,lang),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);await ix.reply({content:t('ticket.posting', lang),flags:1<<6});const s=await ix.channel.send({embeds:[e],components:[r]}).catch(err=>{console.error('[TICKET] panel send failed:',err.message);return null;});if(s){await ix.editReply({content:t('ticket.posted', lang)}).catch(()=>{});try{db.prepare(`UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?`).run(ix.channel.id,ix.channel.name||String(ix.channel.id),g.id);}catch(e){}}else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});return;}
+        if(sc==='setup'){
+            let setupUsage = '';
+            try {
+                setupUsage = [
+                    mentions(client, 'channels', 'set') + ' — ' + (t('ticket.cmd_channels', lang) || 'Set category & log channel'),
+                    mentions(client, 'roles', 'set') + ' — ' + (t('ticket.cmd_roles', lang) || 'Set staff role'),
+                    mentions(client, 'ticket', 'setautoclose') + ' — ' + (t('ticket.cmd_autoclose', lang) || 'Auto-close hours'),
+                    mentions(client, 'ticket', 'setlimit') + ' — ' + (t('ticket.cmd_limit', lang) || 'Max tickets per user'),
+                    mentions(client, 'ticket', 'config') + ' — ' + (t('ticket.cmd_config', lang) || 'View config')
+                ].join('\n\n');
+            } catch(e) { setupUsage = 'Use `/ticket config` to view settings.'; }
+            const _v2 = require('../lib/games/v2');
+            const setupCard = _v2.card(0x00fbff, [
+                { text: '## 🦅 ' + (t('ticket.sTitle', lang) || 'Ticket System') },
+                { text: t('ticket.sDesc', lang) || 'Configure your ticket system.' },
+                { rule: true },
+                { text: setupUsage },
+                { rule: true },
+                { text: '-# 🦅 ARCHON CG-223 • ' + (g.name || 'Server') }
+            ]);
+            return ix.reply({ ...setupCard, flags: 1 << 6 | 32768 });
+        }
+        if(sc==='panel'){const _cp=require('../lib/canPost'),_me=g.members.me,_d=_cp.diagnose(g,ix.channel,_me);if(!_d.ok)return ix.reply({content:t('ticket.'+_d.key,lang,{ch:String(ix.channel),role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName,cmd: mentions(ix.client, ix.commandName, 'panel')}),flags:1<<6}).catch(()=>{});const e=panelCard(ss,g.name,lang),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);await ix.reply({content:t('ticket.posting', lang),flags:1<<6});const s=await ix.channel.send(e).catch(err=>{console.error('[TICKET] panel send failed:',err.message);return null;});if(s){await ix.editReply({content:t('ticket.posted', lang)}).catch(()=>{});try{db.prepare('UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?').run(ix.channel.id,ix.channel.name||String(ix.channel.id),g.id);}catch(e){}}else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});return;}
         if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:t('ticket.not_a_ticket', lang),flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t('ticket.closing', lang)}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
         if(sc==='leaderboard'){
             await ix.deferReply({flags:1<<6});
             try {
                 const rows = db.prepare('SELECT staff_id, AVG(stars) as avg, COUNT(*) as total FROM ticket_ratings WHERE guild_id = ? GROUP BY staff_id ORDER BY avg DESC, total DESC LIMIT 10').all(g.id);
-                if(!rows.length) return ix.editReply({content:t('ticket.no_ratings', lang)});
+                if(!rows.length) return ix.editReply({content:t('ticket.no_ratings', lang) || 'No ratings found.'});
                 const desc = rows.map((r,i) => {
                     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'•';
                     const stars = '⭐'.repeat(Math.round(r.avg));
-                    return `${medal} <@${r.staff_id}> — ${stars} \`${r.avg.toFixed(1)}\` (${r.total} reviews)`;
+                    return medal + ' <@' + r.staff_id + '> — ' + stars + ' `' + r.avg.toFixed(1) + '` (' + r.total + ' reviews)';
                 }).join('\n');
-                const embed = new EmbedBuilder().setColor(0xffd700).setAuthor({ name: `🦅 ARCHON ENGINE • ${t('ticket.lb_title', lang)}` }).setDescription(`**${t('ticket.lb_top', lang)}**\n\n` + desc).setFooter({text:t('ticket.lb_footer', lang)});
-                return ix.editReply({embeds:[embed]});
+                const _v2 = require('../lib/games/v2');
+                const lbCard = _v2.card(0xffd700, [
+                    { text: '## 🦅 ' + (t('ticket.lb_title', lang) || 'Staff Leaderboard') },
+                    { text: '**' + (t('ticket.lb_top', lang) || 'Top Staff by Rating') + '**\n\n' + desc },
+                    { rule: true },
+                    { text: '-# ' + (t('ticket.lb_footer', lang) || 'Based on user ratings') }
+                ]);
+                return ix.editReply({ ...lbCard, flags: 1 << 6 | 32768 });
             }catch(e){return ix.editReply({content:t('ticket.lb_error', lang, { error: getErrorEmoji(g) })});}
         }
         if(sc==='stats'){
@@ -394,64 +377,92 @@ module.exports = {
                 const open = db.prepare('SELECT COUNT(*) as c FROM tickets WHERE guild_id = ? AND status = ?').get(g.id, 'open')?.c || 0;
                 const rated = db.prepare('SELECT COUNT(*) as c FROM ticket_ratings WHERE guild_id = ?').get(g.id)?.c || 0;
                 const avg = db.prepare('SELECT AVG(stars) as a FROM ticket_ratings WHERE guild_id = ?').get(g.id)?.a || 0;
-                const embed = new EmbedBuilder().setColor(0x00f0ff).setTitle('📊 Ticket Analytics')
-                    .addFields(
-                        {name:'🎫 Total Tickets',value:`\`${total}\``,inline:true},
-                        {name:'📊 Rated',value:`\`${rated}\``,inline:true},
-                        {name:'⭐ Avg Rating',value:`\`${avg.toFixed(1)}\``,inline:true},
-                        {name:'🟢 Open',value:`\`${open}\``,inline:true}
-                    ).setFooter({text:t('ticket.stats_footer', lang)});
-                return ix.editReply({embeds:[embed]});
-            }catch(e){return ix.editReply({content:t('ticket.stats_error', lang)});}
+                const _v2 = require('../lib/games/v2');
+                const statsCard = _v2.card(0x00f0ff, [
+                    { text: '## 📊 Ticket Analytics' },
+                    { rule: true },
+                    { text: '**🎫 Total Tickets** · `' + total + '`\n**📊 Rated** · `' + rated + '`\n**⭐ Avg Rating** · `' + avg.toFixed(1) + '`\n**🟢 Open** · `' + open + '`' },
+                    { rule: true },
+                    { text: '-# ' + (t('ticket.stats_footer', lang) || 'Ticket System Analytics') }
+                ]);
+                return ix.editReply({ ...statsCard, flags: 1 << 6 | 32768 });
+            }catch(e){return ix.editReply({content:t('ticket.stats_error', lang) || 'Failed to load stats.'});}
         }
         if(sc==='myrating'){
             await ix.deferReply({flags:1<<6});
             try {
                 const rows = db.prepare('SELECT stars, comment, created_at FROM ticket_ratings WHERE rater_id = ? ORDER BY created_at DESC LIMIT 10').all(u.id);
-                if(!rows.length) return ix.editReply({content:t('ticket.no_my_ratings', lang)});
+                if(!rows.length) return ix.editReply({content:t('ticket.no_my_ratings', lang) || 'No ratings yet.'});
                 const desc = rows.map(r => {
                     const stars = '⭐'.repeat(r.stars);
-                    const note = r.comment ? `\n> *"${r.comment.substring(0,60)}${r.comment.length>60?'...':''}"*` : '';
-                    return `${stars}${note}`;
+                    const note = r.comment ? '\n> *"' + r.comment.substring(0,60) + (r.comment.length>60?'...':'') + '"*' : '';
+                    return stars + note;
                 }).join('\n\n');
-                const embed = new EmbedBuilder().setColor(0x9b59b6).setTitle('⭐ Your Rating History').setDescription(desc).setFooter({text:t('ticket.rating_footer', lang)});
-                return ix.editReply({embeds:[embed]});
-            }catch(e){return ix.editReply({content:t('ticket.ratings_error', lang)});}
+                const _v2 = require('../lib/games/v2');
+                const ratingCard = _v2.card(0x9b59b6, [
+                    { text: '## ⭐ Your Rating History' },
+                    { rule: true },
+                    { text: desc },
+                    { rule: true },
+                    { text: '-# ' + (t('ticket.rating_footer', lang) || 'Thank you for your feedback!') }
+                ]);
+                return ix.editReply({ ...ratingCard, flags: 1 << 6 | 32768 });
+            }catch(e){return ix.editReply({content:t('ticket.ratings_error', lang) || 'Failed to load ratings.'});}
         }
-
     },
 
-    // ================= COMPONENT HANDLER =================
     handleComponent: async(ix,client)=>{
-        const lang=ix.locale?.startsWith('fr')?'fr':'en', db=client.db, ss=effectiveSettings(client.getServerSettings?.(ix.guild?.id)||{},ix.guild?.id);
+        const lang = pickLang(client, ix.guildId, ix), db=client.db, ss=effectiveSettings(client.getServerSettings?.(ix.guild?.id)||{},ix.guild?.id);
 
-        // SELECT MENU - CREATE TICKET (CRITICAL: uses 'ticket_category_select' to match index.js router!)
         if(ix.isStringSelectMenu()&&ix.customId==='ticket_category_select'){
             const g=ix.guild,u=ix.user,cv=ix.values[0],cats=getCats(ss),cat=cats.find(c=>c.value===cv)||cats[0];
-            await ix.deferReply({flags:1<<6});
             const lim=ss?.ticketLimitPerUser||1;
-            if(countUserTix(g.id,u.id)>=lim)return ix.editReply({content:t('ticket.maxT', lang, {limit: lim})}).catch(()=>{});
-            if(!ss?.ticketCategory)return ix.editReply({content:t('ticket.notSet', lang)}).catch(()=>{});
-            try{
-                const tc=await createCh(g,u.id,u.username,cat,ss,client);
-                const n=counters.get(g.id)||1;
-                const td={creatorId:u.id,creatorTag:u.tag,createdAt:Date.now(),claimedBy:null,category:`${cat.emoji} ${cat.label}`,categoryValue:cat.value,guildId:g.id,number:n,participants:[u.id]};
-                active.set(tc.id,td); saveTicket(db,tc.id,td);
-                await welcomeMsg(tc,u,cat,n,lang,false,ss);
-                resetACTimer(tc.id,client,ss);
-                const e=new EmbedBuilder().setColor('#2ecc71').setDescription(`${t('ticket.made', lang)}\n👉 <#${tc.id}>`).setTimestamp();
-                await ix.editReply({embeds:[e]}).catch(()=>{});
-            }catch(err){
-                const _cp=require('../lib/canPost'),_me=g.members.me;
-                const _cat=ss?.ticketCategory?g.channels.cache.get(ss.ticketCategory):null;
-                const _tgt=_cat||g;
-                const _d=_cat?_cp.diagnose(g,_cat,_me,[['Manage Channels', PermissionFlagsBits.ManageChannels], ['Manage Roles', PermissionFlagsBits.ManageRoles]]):null;
-                if(_d&&!_d.ok){
-                    await ix.editReply({content:t('ticket.'+_d.key.replace('cantPost','cantCreate'),lang,{ch:_cat?String(_cat):'this category',role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName})}).catch(()=>{});
-                }else{
-                    console.error('[TIX]',err.message);
-                    await ix.editReply({content:t('ticket.createErr',lang)}).catch(()=>{});
-                }
+            if(countUserTix(g.id,u.id)>=lim)return ix.reply({content:t('ticket.maxT', lang, {limit: lim}), flags: 64}).catch(()=>{});
+            if(!ss?.ticketCategory)return ix.reply({content:t('ticket.notSet', lang), flags: 64}).catch(()=>{});
+            
+            const modal = new ModalBuilder()
+                .setCustomId(`ticket_modal_create_${cat.value}`)
+                .setTitle((t('ticket.intake_title', lang, { cat: cat.label }) || `New Ticket: ${cat.label}`).substring(0, 45))
+                .addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('issue_desc')
+                            .setLabel(t('ticket.intake_label', lang) || 'What do you need help with?')
+                            .setStyle(TextInputStyle.Paragraph)
+                            .setPlaceholder(t('ticket.intake_placeholder', lang) || 'Provide as much detail as possible...')
+                            .setRequired(true)
+                            .setMaxLength(1000)
+                    )
+                );
+            return await ix.showModal(modal).catch((e) => console.error('[TIX MODAL]', e));
+        }
+
+        if (ix.isModalSubmit() && ix.customId.startsWith('ticket_modal_create_')) {
+            const catValue = ix.customId.replace('ticket_modal_create_', '');
+            const cats = getCats(ss);
+            const cat = cats.find(c => c.value === catValue) || cats[0];
+            const issueDesc = ix.fields.getTextInputValue('issue_desc');
+            const g = ix.guild, u = ix.user;
+
+            await ix.deferReply({ flags: 64 });
+
+            try {
+                const tc = await createCh(g, u.id, u.username, cat, ss, client);
+                const n = counters.get(g.id) || 1;
+                const td = { creatorId: u.id, creatorTag: u.tag, createdAt: Date.now(), claimedBy: null, category: `${cat.emoji} ${cat.label}`, categoryValue: cat.value, guildId: g.id, number: n, participants: [u.id], issueDesc };
+                active.set(tc.id, td); saveTicket(db, tc.id, td);
+                await welcomeMsg(tc, u, cat, n, lang, false, ss, issueDesc);
+                resetACTimer(tc.id, client, ss);
+                
+                const _v2 = require('../lib/games/v2');
+                const e = _v2.card(0x2ecc71, [
+                    { text: t('ticket.modal_created_title', lang) || '✅ **All set!**' },
+                    { text: t('ticket.modal_created_desc', lang, { channel: `<#${tc.id}>` }) || `Your private support channel is ready: <#${tc.id}>.` }
+                ]);
+                await ix.editReply(e).catch(()=>{});
+            } catch(err) {
+                console.error('[TIX MODAL]', err.message);
+                await ix.editReply({ content: t('ticket.createErr', lang) || 'Failed to create ticket.' }).catch(()=>{});
             }
             return true;
         }
@@ -462,13 +473,10 @@ module.exports = {
         if(tk&&ix.guildId!==tk.guildId)return ix.reply({content:t('ticket.wrong_server', lang),flags:1<<6}).catch(()=>{});
         const isC=uid===crid, isS=isStaff(ix.member,ss);
 
-        // CLAIM
         if(act==='claim'){if(!isS)return ix.reply({content:t('ticket.staffOnlyClaim', lang),flags:1<<6}).catch(()=>{});if(tk?.claimedBy)return ix.reply({content:t('ticket.already', lang),flags:1<<6}).catch(()=>{});tk.claimedBy=uid;if(db)saveTicket(db,cid,tk);try{const msgs=await ix.channel.messages.fetch({limit:10});const wm=msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));if(wm&&wm.embeds[0]){const ne=EmbedBuilder.from(wm.embeds[0]).spliceFields(3,1,{name:t('ticket.st', lang),value:`${t('ticket.claimed2', lang)}\n${t('ticket.claimed', lang)}: <@${uid}>`,inline:true});await wm.edit({embeds:[ne]}).catch(()=>{});}}catch(e){}await ix.channel.send(t('ticket.claimed_msg', lang, {user: uid}));await ix.reply({content:t('ticket.claimed_generic', lang),flags:1<<6}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
 
-        // CLOSE (confirm)
         if(act==='close'){if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t('ticket.closeQ', lang)).setDescription(t('ticket.closeD', lang));const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.check)),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.error)));await ix.reply({embeds:[e],components:[r],flags:1<<6}).catch(()=>{});return true;}
 
-        // CONFIRM CLOSE
         if(act==='confirmclose'){
             const cl=p[4]||uid;
             await ix.update({content:t('ticket.closing', lang),embeds:[],components:[]}).catch(()=>{});
@@ -480,19 +488,10 @@ module.exports = {
             const ex=timers.get(cid);
             if(ex){clearTimeout(ex);timers.delete(cid);}
             
-            // Send rating request to ticket creator
             try {
                 const creator = await client.users.fetch(tk?.creatorId || crid).catch(()=>null);
                 if (creator && creator.id !== cl) {
-                    const ratingEmbed = new EmbedBuilder()
-                        .setColor(0x00f0ff)
-                        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('ticket.panel_title', lang)}` })
-                        .setDescription(
-                            `**${t('ticket.rating_closed', lang)}**\n\n` +
-                            `${t('ticket.rating_how', lang)}\n` +
-                            `*${t('ticket.rating_server', lang)} ${ix.guild?.name}*`
-                        )
-                        .setFooter({ text: `BAMAKO_223 🇲🇱 • ${t('ticket.rating_footer', lang)}` });
+                    const _v2 = require('../lib/games/v2');
                     const ratingRow = new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId(`ticket_rate_1_${ix.guild?.id}`).setLabel('⭐').setStyle(ButtonStyle.Secondary),
                         new ButtonBuilder().setCustomId(`ticket_rate_2_${ix.guild?.id}`).setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
@@ -500,7 +499,13 @@ module.exports = {
                         new ButtonBuilder().setCustomId(`ticket_rate_4_${ix.guild?.id}`).setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
                         new ButtonBuilder().setCustomId(`ticket_rate_5_${ix.guild?.id}`).setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success),
                     );
-                    await creator.send({ embeds: [ratingEmbed], components: [ratingRow] }).catch(()=>{});
+                    const ratingCard = _v2.card(0x00f0ff, [
+                        { text: `## ⭐ ${t('ticket.rating_closed', lang)}` },
+                        { text: `${t('ticket.rating_how', lang)}\n*${t('ticket.rating_server', lang)} ${ix.guild?.name}*` },
+                        { rule: true },
+                        { row: ratingRow }
+                    ]);
+                    await creator.send(ratingCard).catch(()=>{});
                 }
             } catch(e) {}
             
@@ -508,13 +513,10 @@ module.exports = {
             return true;
         }
 
-        // CANCEL CLOSE
         if(act==='cancelclose'){await ix.deleteReply().catch(()=>{});return true;}
 
-        // TRANSCRIPT
         if(act==='transcript'){if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});await ix.deferReply({flags:1<<6});const ch=ix.channel;if(!tk)return ix.editReply({content:t('ticket.data_not_found', lang)}).catch(()=>{});const r=await saveTx(ch,tk,null,client,ss);if(r===true)await ix.editReply({content:t('ticket.txSaved', lang)}).catch(()=>{});else if(r&&r.buffer)await ix.editReply({content:t('ticket.txSaved', lang),files:[{attachment:r.buffer,name:r.filename}]}).catch(()=>{});else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
 
-        // RATING
         if(act==='rate'){
             const stars = parseInt(p[2]) || 0;
             const gid = p[3];
@@ -524,7 +526,6 @@ module.exports = {
                     .setDescription(t('ticket.rating_thanks', lang, {stars: starEmoji}))],
                 components: [] 
             }).catch(()=>{});
-            // Log rating
             try {
                 const ss2 = client.getServerSettings?.(gid) || {};
                 const txCh = ss2?.ticketTranscriptChannel;
@@ -543,5 +544,5 @@ module.exports = {
         return false;
     },
 
-    setupTicketDB,loadAllTicketsFromDB,onMessageActivity
+    setupTicketDB, loadAllTicketsFromDB, onMessageActivity
 };
