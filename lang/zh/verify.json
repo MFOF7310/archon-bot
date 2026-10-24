@@ -18,7 +18,7 @@
   "verifiedDmTitle": "一切就绪！🎉",
   "welcomeDm": "欢迎来到 **{server}** 🎉 你已正式通过验证！\n\n开始聊天，交些朋友，玩得开心。如果你需要任何帮助，团队随时为你服务！",
   "dmTitle": "👋 嗨，欢迎来到 {server}！",
-  "dmInstructions": "很高兴你能来！要解锁服务器，请在此私信中**输入下方图片中显示的代码**。\n\n",
+  "dmInstructions": "很高兴你能来！要解锁服务器，请在此私信中**输入下方图片中显示的代码**。",
   "dmCaseNote": "不区分大小写",
   "dmAttempts": "3 次尝试",
   "dmExpires": "{mins} 分钟后过期",

@@ -1,120 +1,70 @@
 // ═══════════════════════════════════════════════════════
-// ARCHON CG-223 — VERIFICATION GATE v1.0
-// Per-server toggle, off by default, zero spam
+// ARCHON CG-223 — VERIFICATION GATE v2.1 (V2 UI + Persistent)
 // ═══════════════════════════════════════════════════════
 const { 
-    SlashCommandBuilder, EmbedBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, 
+    SlashCommandBuilder, EmbedBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags,
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
     PermissionsBitField, AttachmentBuilder,
     ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle
 } = require('discord.js');
-const { applyUnverifiedLock, lockSummary } = require('../lib/verify-guard.js');
+const { applyUnverifiedLock, lockSummary, validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard.js');
 const crypto = require('crypto');
 const { generateCaptcha, randomCode } = require('./captcha.js');
 const EMOJIS = require('../config/emojis');
 const mentions = require('../lib/mentions');
-const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
+const { pickLang } = require('../lib/pick-lang');
 const i18nV = require('../lib/i18n');
-// vt now accepts the resolved language directly
-const vt = (lang, k, v) => i18nV.t('verify.' + k, lang, v);
-let _inviteCol;
-function inviteCol(db) {
-    if (_inviteCol !== undefined) return _inviteCol;
-    try {
-        const cols = db.prepare('PRAGMA table_info(server_settings)').all().map(r => r.name);
-        _inviteCol = cols.find(n => /invit/i.test(n)) || null;
-    } catch { _inviteCol = null; }
-    return _inviteCol;
-}
-async function storedInviteRow(db, guild, lang) {
-    try {
-        const col = inviteCol(db);
-        let url = null;
-        
-        // 1. Chercher dans la DB
-        if (col) {
-            const raw = db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v;
-            if (raw) {
-                const m = String(raw).match(/https?:\/\/[^\s)\]]+/i);
-                if (m) url = m[0];
-            }
-        }
-        
-        // 2. Fallback : générer un lien à la volée
-        if (!url) {
-            const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
-            
-            // Check if we can create an invite
-            if (me && me.permissions.has('CreateInstantInvite')) {
-                const channel = guild.systemChannel || guild.channels.cache.find(c => c.type === 0 && c.permissionsFor(me)?.has('CreateInstantInvite'));
-                if (channel) {
-                    const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: 'Verification rejoin' }).catch(() => null);
-                    if (invite) url = invite.url;
-                } else {
-                    console.warn(`[VERIFY] Cannot create invite for guild ${guild.id}: no channel found where bot has CreateInstantInvite.`);
-                }
-            } else {
-                console.warn(`[VERIFY] Cannot create invite for guild ${guild.id}: bot lacks CreateInstantInvite permission.`);
-            }
-        }
 
-        // 3. Ultimate fallback: Vanity URL (requires the bot to have MANAGE_GUILD to read it)
-        if (!url && guild.vanityURLCode) {
-            url = `https://discord.gg/${guild.vanityURLCode}`;
-        }
+const vt = (lang, k, v) => i18nV.t('verify.' + k, lang || 'en', v);
 
-        if (!url) return null;
-        return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
-            .setLabel(vt(lang, 'rejoinBtn')).setURL(url));
-    } catch { return null; }
-}
-const { validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard');
-
-const pending = new Map(); // userId:guildId => { timer, dmMsg, code, collector }
-const joinHits = new Map(); // userId:guildId => [timestamps]
+const pending = new Map(); 
+const joinHits = new Map(); 
 const JOIN_LIMIT = 3, JOIN_WINDOW = 10 * 60 * 1000;
-const panelSessions = new Map(); // userId:guildId => { code, attempts, expires, nonce }
-const panelCooldown = new Map(); // userId:guildId => ts
+const panelSessions = new Map(); 
+const panelCooldown = new Map(); 
 
-// ── Auto-kick deadlines survive restarts ─────────────────────────────────────────────────────────────────────────
-// A pending kick used to live only in a setTimeout, so every restart (every deploy) silently cancelled it and the member stayed unverified forever.
-// The deadline is now ALSO stored in the database (table verify_pending), removed when the member verifies, leaves or is handled, and re-armed at
-// startup by resumeKickTimers(). A deadline that passed while the bot was down gets a short grace period instead of an immediate kick:
-// nobody can verify while the bot is offline. Every database call is wrapped: a failure here can never break verification itself.
+// ── Auto-kick deadlines (DB Persistent) ──
 const RESUME_GRACE_MS = 10 * 60 * 1000;
 let _vdb = null, _deadlineTable = false;
+
 function _deadlines(db) {
     if (!db) return false;
-    if (!_deadlineTable) { db.prepare('CREATE TABLE IF NOT EXISTS verify_pending (guild_id TEXT NOT NULL, user_id TEXT NOT NULL, kick_at INTEGER NOT NULL, PRIMARY KEY (guild_id, user_id))').run(); _deadlineTable = true; }
+    if (!_deadlineTable) { 
+        db.prepare('CREATE TABLE IF NOT EXISTS verify_pending (guild_id TEXT NOT NULL, user_id TEXT NOT NULL, kick_at INTEGER NOT NULL, code TEXT, attempts INTEGER DEFAULT 0, PRIMARY KEY (guild_id, user_id))').run(); 
+        _deadlineTable = true; 
+    }
     return true;
 }
-function saveDeadline(db, gid, uid, kickAt) {
-    try { if (_deadlines(db)) db.prepare('INSERT OR REPLACE INTO verify_pending (guild_id, user_id, kick_at) VALUES (?, ?, ?)').run(String(gid), String(uid), kickAt); }
-    catch (e) { console.error('[VERIFY] could not save a kick deadline:', e.message); }
+function saveDeadline(db, gid, uid, kickAt, code) {
+    try { if (_deadlines(db)) db.prepare('INSERT OR REPLACE INTO verify_pending (guild_id, user_id, kick_at, code, attempts) VALUES (?, ?, ?, ?, 0)').run(String(gid), String(uid), kickAt, code); }
+    catch (e) { console.error('[VERIFY] saveDeadline:', e.message); }
 }
 function forgetDeadline(db, gid, uid) {
     try { if (_deadlines(db)) db.prepare('DELETE FROM verify_pending WHERE guild_id = ? AND user_id = ?').run(String(gid), String(uid)); }
-    catch (e) { console.error('[VERIFY] could not remove a kick deadline:', e.message); }
+    catch (e) { console.error('[VERIFY] forgetDeadline:', e.message); }
 }
+
 function armResumedKick(client, db, gid, uid, waitMs) {
     const key = `${uid}:${gid}`;
     const old = pending.get(key); if (old?.timer) clearTimeout(old.timer);
     const timer = setTimeout(() => kickIfStillUnverified(client, db, gid, uid).catch((e) => console.error('[VERIFY] resumed kick failed:', e.message)), waitMs);
-    pending.set(key, { timer, resumed: true });   // the normal cleanup paths (verified, left) clear it like any other timer
+    pending.set(key, { timer, resumed: true });
 }
+
 async function kickIfStillUnverified(client, db, gid, uid) {
-    const lang = pickLang(client, gid, null, uid) || 'en';
     const key = `${uid}:${gid}`;
     forgetDeadline(db, gid, uid);
-    const pk = pending.get(key); if (!pk) return;                     // verified, left or replaced in the meantime
+    const pk = pending.get(key); if (!pk) return; 
     pk.collector?.stop('kicked'); pending.delete(key);
     const guild = client.guilds.cache.get(gid); if (!guild) return;
     const s = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days FROM server_settings WHERE guild_id = ?').get(gid);
-    if (!s || !s.verify_enabled || !(s.verify_kick_days > 0)) return; // verification was switched off in the meantime
+    if (!s || !s.verify_enabled || !(s.verify_kick_days > 0)) return;
     const m = await guild.members.fetch(uid).catch(() => null); if (!m) return;
     const role = s.verify_role_id ? guild.roles.cache.get(s.verify_role_id) : null;
-    if (role && m.roles.cache.has(role.id)) return;                   // verified
+    if (role && m.roles.cache.has(role.id)) return;
+    
+    const lang = pickLang(client, gid, null, uid) || 'en';
     try {
         const dmCh = await m.createDM().catch(() => null);
         if (dmCh) {
@@ -127,24 +77,15 @@ async function kickIfStillUnverified(client, db, gid, uid) {
         }
     } catch {}
     await m.kick('Failed to verify in time').catch(() => {});
-    logVerify(guild, db, 0xff8800, vt(lang, 'logKickedTimeout'), uid, `${s.verify_kick_days} min`);
+    await logVerify(guild, db, 0xff8800, vt(lang, 'logKickedTimeout'), uid, `${s.verify_kick_days} min`, lang);
 }
-const PANEL_TTL = 5 * 60 * 1000, PANEL_COOLDOWN = 30 * 1000;
 
+const PANEL_TTL = 5 * 60 * 1000, PANEL_COOLDOWN = 30 * 1000;
 let _colsReady = false;
 function ensureCols(db) {
     if (_colsReady) return;
     try { db.prepare('ALTER TABLE server_settings ADD COLUMN verify_panel_channel_id TEXT').run(); } catch {}
     _colsReady = true;
-}
-
-let _modlogCol;
-function modlogCol(db) {
-    if (_modlogCol !== undefined) return _modlogCol;
-    const cols = db.prepare('PRAGMA table_info(server_settings)').all().map(r => r.name);
-    _modlogCol = cols.find(n => /mod.?log/i.test(n) && /chan/i.test(n)) || cols.find(n => /mod.?log/i.test(n)) || null;
-    console.log(`[VERIFY] mod-log column: ${_modlogCol || 'NONE — verify logs disabled'}`);
-    return _modlogCol;
 }
 
 let _evReady = false;
@@ -160,7 +101,6 @@ async function logVerify(guild, db, color, title, userId, detail = '', lang = 'e
             db.prepare('INSERT INTO verify_events VALUES (?, ?, ?, ?)').run(guild.id, String(userId), kind, Math.floor(Date.now() / 1000));
         } catch (e) { console.error('[VERIFY] event store:', e.message); }
         
-        // Direct fetch to bypass cache issues
         let ch = null;
         const row = db.prepare('SELECT mod_log_channel FROM server_settings WHERE guild_id = ?').get(guild.id);
         if (row && row.mod_log_channel) {
@@ -170,20 +110,17 @@ async function logVerify(guild, db, color, title, userId, detail = '', lang = 'e
             const envId = process.env.MOD_LOG_CHANNEL_ID;
             if (envId) ch = guild.channels.cache.get(envId) || await guild.channels.fetch(envId).catch(() => null);
         }
-        
         if (!ch) return;
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle(title)
             .setDescription(`<@${userId}> \`${userId}\`${detail ? `\n${detail}` : ''}`)
-            .setFooter({ text: vt(lang, 'logFooter') })
+            .setFooter({ text: vt(lang, 'logFooter') || 'ARCHON CG-223 • Verification' })
             .setTimestamp();
 
         await ch.send({ embeds: [embed], allowedMentions: { parse: [] } });
-    } catch (e) { 
-        console.error(`[VERIFY] modlog guild=${guild.id}:`, e.message); 
-    }
+    } catch (e) { console.error(`[VERIFY] modlog guild=${guild.id}:`, e.message); }
 }
 
 function prunePanel(now) {
@@ -192,32 +129,61 @@ function prunePanel(now) {
     for (const [k, t] of panelCooldown) if (now - t > PANEL_COOLDOWN) panelCooldown.delete(k);
 }
 
-// Link button to the server's verification panel: members get a fresh code there
-// (private popup, works with closed DMs) instead of leaving and rejoining.
-function panelLink(guild, db) {
+async function panelLink(guild, db, lang) {
     try {
         const id = db.prepare('SELECT verify_panel_channel_id AS p FROM server_settings WHERE guild_id = ?').get(guild.id)?.p;
-        const ch = id && guild.channels.cache.get(id);
+        if (!id) return null;
+        let ch = guild.channels.cache.get(id);
+        if (!ch) ch = await guild.channels.fetch(id).catch(() => null);
         if (!ch) return null;
         return {
             id: ch.id,
             row: new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
-                .setLabel(vt(lang, 'rejoinBtn')).setURL(`https://discord.com/channels/${guild.id}/${ch.id}`))
+                .setLabel(vt(lang, 'inviteBtn', { channel: ch.name }).slice(0, 80))
+                .setURL(`https://discord.com/channels/${guild.id}/${ch.id}`))
         };
     } catch { return null; }
 }
 
+async function storedInviteRow(db, guild, lang) {
+    try {
+        const cols = db.prepare('PRAGMA table_info(server_settings)').all().map(r => r.name);
+        const col = cols.find(n => /invit/i.test(n));
+        let url = null;
+        if (col) {
+            const raw = db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v;
+            if (raw) {
+                const m = String(raw).match(/https?:\/\/[^\s)\]]+/i);
+                if (m) url = m[0];
+            }
+        }
+        if (!url) {
+            const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
+            if (me && me.permissions.has('CreateInstantInvite')) {
+                const channel = guild.systemChannel || guild.channels.cache.find(c => c.type === 0 && c.permissionsFor(me)?.has('CreateInstantInvite'));
+                if (channel) {
+                    const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: 'Verification rejoin' }).catch(() => null);
+                    if (invite) url = invite.url;
+                }
+            }
+        }
+        if (!url && guild.vanityURLCode) url = `https://discord.gg/${guild.vanityURLCode}`;
+        if (!url) return null;
+        return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
+            .setLabel(vt(lang, 'rejoinBtn') || 'Rejoin Server').setURL(url));
+    } catch { return null; }
+}
+
 module.exports = {
-    // Called once from ClientReady: re-arms the auto-kick deadlines that were running when the bot stopped
     resumeKickTimers: async (client, db) => {
         _vdb = db;
         let rows;
         try { _deadlines(db); rows = db.prepare('SELECT guild_id, user_id, kick_at FROM verify_pending').all(); }
-        catch (e) { console.error('[VERIFY] could not read the kick deadlines:', e.message); return; }
+        catch (e) { console.error('[VERIFY] read deadlines:', e.message); return; }
         const now = Date.now();
         let rearmed = 0, graced = 0, dropped = 0;
         for (const r of rows) {
-            if (!client.guilds.cache.get(r.guild_id)) { forgetDeadline(db, r.guild_id, r.user_id); dropped++; continue; }   // the bot left that server
+            if (!client.guilds.cache.get(r.guild_id)) { forgetDeadline(db, r.guild_id, r.user_id); dropped++; continue; }
             let wait = r.kick_at - now;
             if (wait <= 0) {
                 wait = RESUME_GRACE_MS; graced++;
@@ -225,7 +191,7 @@ module.exports = {
             } else rearmed++;
             armResumedKick(client, db, r.guild_id, r.user_id, wait);
         }
-        console.log(`[VERIFY] resumed ${rows.length} kick deadline(s): ${rearmed} re-armed, ${graced} overdue (given ${RESUME_GRACE_MS / 60000} min), ${dropped} dropped`);
+        console.log(`[VERIFY] resumed ${rows.length} kick deadline(s): ${rearmed} re-armed, ${graced} overdue, ${dropped} dropped`);
     },
     name: 'verify',
     description: 'Verification gate system',
@@ -237,68 +203,50 @@ module.exports = {
         .setDescription('⚙️ Verification gate settings')
         .addSubcommand(s => s.setName('enable').setDescription('✅ Enable verification gate'))
         .addSubcommand(s => s.setName('disable').setDescription('❌ Disable verification gate'))
-        .addSubcommand(s => s.setName('setrole').setDescription('🎭 Set the verified role')
-            .addRoleOption(o => o.setName('role').setDescription('Role to assign after verification').setRequired(true)))
-        .addSubcommand(s => s.setName('setkick').setDescription('⏰ Auto-kick unverified after X minutes (0 = never)')
-            .addIntegerOption(o => o.setName('minutes').setDescription('Minutes before kick (0 to disable)').setRequired(true).setMinValue(0).setMaxValue(60)))
+        .addSubcommand(s => s.setName('setrole').setDescription('🎭 Set the verified role').addRoleOption(o => o.setName('role').setDescription('Role to assign after verification').setRequired(true)))
+        .addSubcommand(s => s.setName('setkick').setDescription('⏰ Auto-kick unverified after X minutes (0 = never)').addIntegerOption(o => o.setName('minutes').setDescription('Minutes').setRequired(true).setMinValue(0).setMaxValue(60)))
         .addSubcommand(s => s.setName('status').setDescription('📊 View current verification settings'))
-        .addSubcommand(s => s.setName('setunverified').setDescription('🔒 Set role given to new members before verifying')
-            .addRoleOption(o => o.setName('role').setDescription('Role that blocks channel access until verified').setRequired(true)))
-        .addSubcommand(s => s.setName('panel').setDescription('🛡️ Post the verification panel')
-            .addChannelOption(o => o.setName('channel').setDescription('Channel unverified members can see')
-                .addChannelTypes(ChannelType.GuildText).setRequired(true))),
+        .addSubcommand(s => s.setName('setunverified').setDescription('🔒 Set role given to new members before verifying').addRoleOption(o => o.setName('role').setDescription('Role that blocks channel access').setRequired(true)))
+        .addSubcommand(s => s.setName('panel').setDescription('🛡️ Post the verification panel').addChannelOption(o => o.setName('channel').setDescription('Channel unverified members can see').addChannelTypes(ChannelType.GuildText).setRequired(true))),
 
     execute: async (interaction, client) => {
         const db = client.db;
-        const lang = pickLang(client, interaction.guildId, interaction) || 'en';
+        const gid = interaction.guild.id;
+        const lang = pickLang(client, gid, interaction) || 'en';
+        
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild))
-            return interaction.reply({ content: vt(db, interaction.guild?.id, 'needManageGuild'), flags: 64 });
+            return interaction.reply({ content: vt(lang, 'needManageGuild'), flags: 64 });
 
         const sub = interaction.options.getSubcommand();
-        const gid = interaction.guild.id;
-        
-        // Fetch premium command ID for clickable mentions in errors
         const premiumCmdId = client.application.commands.cache.find(c => c.name === 'premium')?.id;
         const premiumMention = premiumCmdId ? `</premium status:${premiumCmdId}>` : '`/premium status`';
 
-        // Ensure row exists
         db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
 
         if (sub === 'enable') {
             const { isPremium } = require('./premium.js');
             if (!isPremium(db, gid)) {
                 return interaction.reply({ embeds: [new EmbedBuilder()
-                    .setColor(0xffd700)
-                    .setTitle(`⭐ ${vt(lang, 'premiumTitle')}`)
-                    .setDescription(vt(lang, 'premiumDesc'))
-                    .addFields({ name: vt(lang, 'premiumHowTo'), value: vt(lang, 'premiumHowToValue') })
-                    .setFooter({ text: vt(lang, 'bamakoFooter') })
+                    .setColor(0xffd700).setTitle(`⭐ ${vt(lang, 'premiumTitle')}`).setDescription(vt(lang, 'premiumDesc'))
+                    .addFields({ name: vt(lang, 'premiumHowTo'), value: vt(lang, 'premiumHowToValue') }).setFooter({ text: vt(lang, 'bamakoFooter') })
                 ], flags: 64 });
             }
             db.prepare(`UPDATE server_settings SET verify_enabled = 1 WHERE guild_id = ?`).run(gid);
             const settings = db.prepare('SELECT verify_role_id, verify_kick_days FROM server_settings WHERE guild_id = ?').get(gid);
             const role = settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : vt(lang, 'setroleHint');
             return interaction.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor(0x00cc44)
-                    .setTitle(`${EMOJIS.verified} ${vt(lang, 'enableTitle')}`)
+                embeds: [new EmbedBuilder().setColor(0x00cc44).setTitle(`${EMOJIS.verified} ${vt(lang, 'enableTitle')}`)
                     .addFields(
                         { name: vt(lang, 'verifiedRoleLabel'), value: role, inline: true },
                         { name: vt(lang, 'autokickLabel'), value: settings?.verify_kick_days ? vt(lang, 'autokickMin', { mins: settings.verify_kick_days }) : vt(lang, 'disabled'), inline: true }
-                    )
-                    .setFooter({ text: vt(lang, 'enableFooter') })],
+                    ).setFooter({ text: vt(lang, 'enableFooter') })],
                 flags: 64
             });
         }
 
         if (sub === 'disable') {
             db.prepare(`UPDATE server_settings SET verify_enabled = 0 WHERE guild_id = ?`).run(gid);
-            return interaction.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor(0xff3311)
-                    .setDescription(`⚠️ ${vt(lang, 'disableDesc')}`)],
-                flags: 64
-            });
+            return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xff3311).setDescription(`⚠️ ${vt(lang, 'disableDesc')}`)], flags: 64 });
         }
 
         if (sub === 'setrole') {
@@ -308,23 +256,14 @@ module.exports = {
             const cur = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
             if (cur?.verify_unverified_role_id === role.id) return interaction.reply({ content: vt(lang, 'roleDiffError'), flags: 64 });
             db.prepare(`UPDATE server_settings SET verify_role_id = ? WHERE guild_id = ?`).run(role.id, gid);
-            return interaction.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor(0x00aaff)
-                    .setDescription(vt(lang, 'roleSetDesc', { role: String(role) }))],
-                flags: 64
-            });
+            return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00aaff).setDescription(vt(lang, 'roleSetDesc', { role: String(role) }))], flags: 64 });
         }
 
         if (sub === 'setkick') {
             const mins = interaction.options.getInteger('minutes');
             db.prepare(`UPDATE server_settings SET verify_kick_days = ? WHERE guild_id = ?`).run(mins, gid);
             return interaction.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor(0x00aaff)
-                    .setDescription(mins === 0 
-                        ? `${EMOJIS.check} ${vt(lang, 'setkickDisabled')}`
-                        : `⚠️ ${vt(lang, 'setkickEnabled', { mins })}`)],
+                embeds: [new EmbedBuilder().setColor(0x00aaff).setDescription(mins === 0 ? `${EMOJIS.check} ${vt(lang, 'setkickDisabled')}` : `⚠️ ${vt(lang, 'setkickEnabled', { mins })}`)],
                 flags: 64
             });
         }
@@ -338,20 +277,14 @@ module.exports = {
             db.prepare(`UPDATE server_settings SET verify_unverified_role_id = ? WHERE guild_id = ?`).run(role.id, gid);
 
             await interaction.deferReply({ flags: 64 });
-
-            // Friendly waiting message while the channels are locked one by one
             ensureCols(db);
             const total = interaction.guild.channels.cache.filter(c => !c.isThread?.() && c.type !== 4).size;
             await interaction.editReply({ content: vt(lang, 'lockingChannels', { server: interaction.guild.name, count: total, role: String(role) }) }).catch(() => {});
 
             const r = await applyUnverifiedLock(interaction.guild, role, db);
             return interaction.editReply({
-                content: '',
-                embeds: [new EmbedBuilder()
-                    .setColor(r.failed ? 0xf1c40f : 0x00cc44)
-                    .setTitle(vt(lang, 'configuredTitle'))
-                    .setDescription(lockSummary(r, `${role}`))
-                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
+                content: '', embeds: [new EmbedBuilder().setColor(r.failed ? 0xf1c40f : 0x00cc44)
+                    .setTitle(vt(lang, 'configuredTitle')).setDescription(lockSummary(r, `${role}`)).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
             });
         }
 
@@ -362,14 +295,14 @@ module.exports = {
             const ch = interaction.options.getChannel('channel');
             const canPostChk = require('../lib/canPost').diagnose(guild, ch, guild.members.me);
             if (!canPostChk.ok)
-                return interaction.reply({ content: vt(lang, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: require('../lib/canPost').localize(canPostChk.missing || [], VL(db, gid)).join(', '), bot: guild.members.me.roles.botRole?.name || guild.members.me.displayName, cmd: mentions(client, 'verify', 'panel') }), flags: 64 });
+                return interaction.reply({ content: vt(lang, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: require('../lib/canPost').localize(canPostChk.missing || [], lang).join(', '), bot: guild.members.me.roles.botRole?.name || guild.members.me.displayName, cmd: mentions(client, 'verify', 'panel') }), flags: 64 });
 
             ensureCols(db);
             db.prepare('UPDATE server_settings SET verify_panel_channel_id = ? WHERE guild_id = ?').run(ch.id, gid);
 
             const s2 = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
             const uRole = s2?.verify_unverified_role_id ? guild.roles.cache.get(s2.verify_unverified_role_id) : null;
-            if (uRole) applyUnverifiedLock(guild, uRole, db).catch(() => {}); // background: with a panel, the system channel closes too
+            if (uRole) applyUnverifiedLock(guild, uRole, db).catch(() => {});
 
             const vContainer = new ContainerBuilder().setAccentColor(0x00aaff);
             vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('shield', client) || '🛡️'} ${vt(lang, 'v2_panel_title')}`));
@@ -380,13 +313,10 @@ module.exports = {
             vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
             vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${vt(lang, 'bamakoFooter')}`));
             vContainer.addActionRowComponents(new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('vpanel:start')
-                    .setLabel(vt(lang, 'v2_panel_btn'))
-                    .setStyle(ButtonStyle.Success)
-                    .setEmoji(resolveEmoji('lock', client) || '🛡️')
+                new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(lang, 'v2_panel_btn')).setStyle(ButtonStyle.Success).setEmoji(resolveEmoji('lock', client) || '🛡️')
             ));
             await ch.send({ components: [vContainer], flags: MessageFlags.IsComponentsV2 });
+            
             return interaction.reply({
                 content: vt(lang, 'panelPosted', { ch: String(ch) }) + (uRole ? ' ' + vt(lang, 'panelCanSee', { role: String(uRole) }) : vt(lang, 'panelNoRole')),
                 flags: 64
@@ -404,42 +334,33 @@ module.exports = {
             const unverifiedRole = settings?.verify_unverified_role_id ? `<@&${settings.verify_unverified_role_id}>` : '`Not configured`';
             const autokick = settings?.verify_kick_days ? `${settings.verify_kick_days} minutes` : 'Disabled';
 
-            const v = (k, x) => vt(lang, k, x);
             const cmdId = interaction.commandId;
             const desc = [
-                `### ${enabled ? `${EMOJIS.online} ${v('gateActive')}` : paused ? `${EMOJIS.offline} ${v('gatePaused')}` : `${EMOJIS.offline} ${v('gateInactive')}`}`,
-                `> ${enabled ? v('gateActiveDesc') : paused ? v('gatePausedDesc') : v('gateInactiveDesc')}`,
-                ``,
-                `### ${EMOJIS.shield} ${v('configuration')}`,
-                `**${v('verifiedRoleLabel')}** — ${verifiedRole}`,
-                `**${v('unverifiedRoleLabel')}** — ${unverifiedRole}`,
-                `**${v('autokickLabel')}** — ${autokick}`,
-                ``,
-                `### ${EMOJIS.shield} ${v('quickSetup')}`,
-                v('qsSetrole', { id: cmdId }),
-                v('qsSetunverified', { id: cmdId }),
-                v('qsSetkick', { id: cmdId }),
+                `### ${enabled ? `${EMOJIS.online} ${vt(lang, 'gateActive')}` : paused ? `${EMOJIS.offline} ${vt(lang, 'gatePaused')}` : `${EMOJIS.offline} ${vt(lang, 'gateInactive')}`}`,
+                `> ${enabled ? vt(lang, 'gateActiveDesc') : paused ? vt(lang, 'gatePausedDesc') : vt(lang, 'gateInactiveDesc')}`,
+                ``, `### ${EMOJIS.shield} ${vt(lang, 'configuration')}`,
+                `**${vt(lang, 'verifiedRoleLabel')}** — ${verifiedRole}`,
+                `**${vt(lang, 'unverifiedRoleLabel')}** — ${unverifiedRole}`,
+                `**${vt(lang, 'autokickLabel')}** — ${autokick}`,
+                ``, `### ${EMOJIS.shield} ${vt(lang, 'quickSetup')}`,
+                vt(lang, 'qsSetrole', { id: cmdId }), vt(lang, 'qsSetunverified', { id: cmdId }), vt(lang, 'qsSetkick', { id: cmdId }),
             ].join('\n');
 
             return interaction.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor(enabled ? 0x00cc44 : 0x888888)
-                    .setTitle(vt(lang, 'gateTitle'))
-                    .setDescription(desc)
-                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
+                embeds: [new EmbedBuilder().setColor(enabled ? 0x00cc44 : 0x888888).setTitle(vt(lang, 'gateTitle')).setDescription(desc).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                 flags: 64
             });
         }
     },
 
-    // Called from guildMemberAdd
     onMemberJoin: async (member, client, db) => {
         const gid = member.guild.id;
         const lang = pickLang(client, gid, null, member.id) || 'en';
+        
         const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_kick_days, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
-        if (!settings?.verify_enabled) return; // Off by default
+        if (!settings?.verify_enabled) return;
         const { isPremium } = require('./premium.js');
-        if (!isPremium(db, gid)) return; // premium lapsed → gate off
+        if (!isPremium(db, gid)) return;
 
         const oldKey = `${member.id}:${gid}`;
         const old = pending.get(oldKey);
@@ -449,25 +370,16 @@ module.exports = {
             pending.delete(oldKey);
         }
 
-        const verifyRole = settings.verify_role_id 
-            ? member.guild.roles.cache.get(settings.verify_role_id)
-            : null;
+        const verifyRole = settings.verify_role_id ? member.guild.roles.cache.get(settings.verify_role_id) : null;
+        const unverifiedRole = settings.verify_unverified_role_id ? member.guild.roles.cache.get(settings.verify_unverified_role_id) : null;
 
-
-        const unverifiedRole = settings.verify_unverified_role_id
-            ? member.guild.roles.cache.get(settings.verify_unverified_role_id)
-            : null;
-
-        // Runtime guard — refuse unsafe roles already stored in DB
         for (const r of [verifyRole, unverifiedRole]) {
             const err = r && validateVerifyRole(member.guild, r, null);
             if (err) { console.warn(`[VERIFY] ${gid} unsafe role ${r.id}: ${err} — gate skipped`); return; }
         }
 
-        // Auto-assign unverified role immediately
         if (unverifiedRole) await member.roles.add(unverifiedRole).catch(() => {});
 
-        // Join-spam limit — role stays applied, no new captcha
         const hitKey = `${member.id}:${gid}`;
         const now = Date.now();
         const hits = (joinHits.get(hitKey) || []).filter(t => now - t < JOIN_WINDOW);
@@ -477,23 +389,22 @@ module.exports = {
             for (const [k, arr] of joinHits) if (now - arr[arr.length - 1] > JOIN_WINDOW) joinHits.delete(k);
         }
         if (hits.length > JOIN_LIMIT) {
-            console.warn(`[VERIFY] join-spam guild=${gid} user=${member.id} (${hits.length} joins/10min) — captcha skipped`);
-            if (hits.length === JOIN_LIMIT + 1) logVerify(member.guild, db, 0xff8800, vt(lang, 'logSpam'), member.id, `${hits.length} joins in 10 min`);
+            if (hits.length === JOIN_LIMIT + 1) logVerify(member.guild, db, 0xff8800, vt(lang, 'logSpam'), member.id, `${hits.length} joins in 10 min`, lang);
             return;
         }
-        // Generate captcha
+
         const code = randomCode(6);
         const imgBuf = generateCaptcha(code);
         const attachment = new AttachmentBuilder(imgBuf, { name: 'verify.png' });
 
-        // Store code in pending
         const pl = await panelLink(member.guild, db, lang);
         const plNoKick = (settings.verify_kick_days || 0) > 0 ? null : pl;
+        
         const captchaEmbed = new EmbedBuilder()
             .setColor(0x00aaff)
-            .setTitle(vt(lang, 'dmTitle', { server: member.guild.name }))
+            .setTitle(vt(lang, 'dmTitle', { server: member.guild.name }).replace('👋 ', '').replace('👋', ''))
             .setDescription(
-                vt(lang, 'dmInstructions') +
+                `${resolveEmoji('ducky_hey', client) || '👋'} ` + vt(lang, 'dmInstructions') +
                 `⚠️ ${vt(lang, 'dmCaseNote')} • **${vt(lang, 'dmAttempts')}** • ${vt(lang, 'dmExpires', { mins: (settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10 })}\n\n` +
                 (pl ? `*${vt(lang, 'dmTroublePanel')}*` : `*${vt(lang, 'dmTroubleRejoin')}*`)
             )
@@ -508,127 +419,22 @@ module.exports = {
             dmChannel = await member.createDM();
             dmMsg = await dmChannel.send({ embeds: [captchaEmbed], files: [attachment], components: pl ? [pl.row] : [] });
         } catch {
-            // DMs closed — try system channel
-            const sysCh = pl ? null : member.guild.systemChannel; // with a panel, the system channel is locked for them: they verify in the panel
+            const sysCh = pl ? null : member.guild.systemChannel;
             if (sysCh) {
                 try {
-                    dmMsg = await sysCh.send({
-                        content: vt(lang, 'sysChanPing', { user: member }),
-                        embeds: [captchaEmbed],
-                        files: [attachment]
-                    });
+                    dmMsg = await sysCh.send({ content: vt(lang, 'sysChanPing', { user: member }), embeds: [captchaEmbed], files: [attachment] });
                     dmChannel = sysCh;
                 } catch {}
             }
         }
 
-        if (!dmChannel) console.warn(`[VERIFY] no delivery path guild=${gid} user=${member.id} (DMs closed, no system channel)`);
-
-        // Store captcha code
         const key = `${member.id}:${gid}`;
-        let attempts = 0;
-        const maxAttempts = 3;
-        let lastHint = 0; // throttles the "not a code" reply
-        const expireMs = ((settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10) * 60 * 1000;
-        const codeRef = { current: code }; // mutable ref so retries work
-
-        let collector = null;
-        // Listen for reply in DM
-        if (dmChannel) {
-            const filter = m => m.author.id === member.id && !m.author.bot;
-            collector = dmChannel.createMessageCollector({ filter, time: expireMs });
-
-            collector.on('collect', async m => {
-                if (!dmChannel.isDMBased?.()) m.delete().catch(() => {});
-                const guess = m.content.replace(/\s+/g, '').toUpperCase();
-                // Chat ("hi", a question) is not an attempt: only 6 letters/digits count
-                if (!/^[A-Z0-9]{6}$/.test(guess)) {
-                    if (Date.now() - lastHint > 60000) {
-                        lastHint = Date.now();
-                        dmChannel.send({ content: vt(lang, 'dmHint') }).catch(() => {});
-                    }
-                    return;
-                }
-                if (guess === codeRef.current) {
-                    // ✅ Correct!
-                    collector.stop('verified');
-                    const pv = pending.get(key);
-                    if (pv?.timer) clearTimeout(pv.timer);
-                    pending.delete(key);
-
-                    // Remove unverified role
-                    if (unverifiedRole) await member.roles.remove(unverifiedRole).catch(() => {});
-                    // Add verified role
-                    if (verifyRole) await member.roles.add(verifyRole).catch(() => {});
-                    await await logVerify(member.guild, db, 0x00cc44, vt(lang, 'logPassedDm'), member.id, '', lang);
-                    require('../lib/joinrole.js').applyJoinRole(member, db);
-
-                    await dmChannel.send({ embeds: [new EmbedBuilder()
-                        .setColor(0x00cc44)
-                        .setTitle(`${EMOJIS.verified} ${vt(lang, 'verifiedDmTitle')}`)
-                        .setDescription(vt(lang, 'welcomeDm', { server: member.guild.name }))
-                        .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-                    ]}).catch(() => {});
-                } else {
-                    attempts++;
-                    if (attempts >= maxAttempts) {
-                        collector.stop('failed');
-                        const pf = pending.get(key);
-                        if (pf?.timer) clearTimeout(pf.timer);
-                        pending.delete(key);
-                        const kickOn = (settings.verify_kick_days || 0) > 0;
-                        await dmChannel.send({ embeds: [new EmbedBuilder()
-                            .setColor(0xff3311)
-                            .setTitle(`${EMOJIS.warning} ${vt(lang, 'tooManyTitle')}`)
-                            .setDescription(kickOn
-                                ? vt(lang, 'kickDm', { server: member.guild.name })
-                                : (pl ? vt(lang, 'failPanelDm', { server: member.guild.name }) : vt(lang, 'failRejoinDm', { server: member.guild.name })))
-                            .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-                        ], components: await (async () => { if (kickOn) { const r = await storedInviteRow(db, member.guild); return r ? [r] : []; } return pl ? [pl.row] : []; })() }).catch(() => {});
-                        if (kickOn) await member.kick('Failed captcha verification').catch(() => {});
-                        await await logVerify(member.guild, db, 0xff3311, kickOn ? vt(lang, 'logKickedFail') : vt(lang, 'logFailed'), member.id, '3 wrong attempts', lang);
-                    } else {
-                        // Wrong — send new captcha
-                        const newCode = randomCode(6);
-                        const newBuf = generateCaptcha(newCode);
-                        const newAttach = new AttachmentBuilder(newBuf, { name: 'verify.png' });
-                        // Update codeRef so collector validates new code
-                        codeRef.current = newCode;
-
-                        await dmChannel.send({ embeds: [new EmbedBuilder()
-                            .setColor(0xff8800)
-                            .setTitle(`${EMOJIS.warning} ${vt(lang, 'attemptWrongTitle', { n: attempts, max: maxAttempts })}`)
-                            .setDescription(vt(lang, 'attemptWrongDesc', { remaining: maxAttempts - attempts }))
-                            .setImage('attachment://verify.png')
-                            .setFooter({ text: vt(lang, 'dmRetryFooter') })
-                        ], files: [newAttach]}).catch(() => {});
-
-                        // Update code reference
-                        if (pending.has(key)) pending.get(key).code = newCode;
-                    }
-                }
-            });
-
-            collector.on('end', async (_, reason) => {
-                if (reason === 'time') {
-                    // Keep entry if the kick timer still needs it
-                    if (!pending.get(key)?.timer) pending.delete(key);
-                    await dmChannel.send({ embeds: [new EmbedBuilder()
-                        .setColor(0x888888)
-                        .setDescription(`⚠️ ${plNoKick ? vt(lang, 'expiredPanel') : vt(lang, 'expiredRejoin')}`)
-                        .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-                    ], components: plNoKick ? [plNoKick.row] : [] }).catch(() => {});
-                    // Kicking is handled by the auto-kick timer only
-                }
-            });
-        }
-
-        // Auto-kick timer
         const kickMins = settings.verify_kick_days || 0;
+        
         const timer = kickMins > 0 ? setTimeout(async () => {
             forgetDeadline(db, gid, member.id);
             const pk = pending.get(key);
-            if (!pk) return; // verified, failed or replaced
+            if (!pk) return;
             pk.collector?.stop('kicked');
             pending.delete(key);
             const freshMember = await member.guild.members.fetch(member.id).catch(() => null);
@@ -647,24 +453,23 @@ module.exports = {
                     }
                 } catch {}
                 await freshMember.kick('Failed to verify in time').catch(() => {});
-                logVerify(member.guild, db, 0xff8800, vt(lang, 'logKickedTimeout'), member.id, `${kickMins} min`);
+                await logVerify(member.guild, db, 0xff8800, vt(lang, 'logKickedTimeout'), member.id, `${kickMins} min`, lang);
             }
         }, kickMins * 60000) : null;
 
-        pending.set(key, { timer, dmMsg, code, collector });
+        pending.set(key, { timer, dmMsg, code, collector: null });
         _vdb = db;
-        if (timer) saveDeadline(db, member.guild.id, member.id, Date.now() + kickMins * 60000);
+        if (timer) saveDeadline(db, gid, member.id, Date.now() + kickMins * 60000, code);
     },
 
-    // Called from InteractionCreate for customId 'vpanel:*'
     onPanelInteraction: async (interaction, client, db) => {
         const guild = interaction.guild;
-        const lang = pickLang(client, guild.id, interaction) || 'en';
         if (!guild) return;
         const [, action, nonce] = interaction.customId.split(':');
         const gid = guild.id, uid = interaction.user.id, key = `${uid}:${gid}`;
         const now = Date.now();
         const eph = (content) => interaction.reply({ content, flags: 64 });
+        const lang = pickLang(client, gid, interaction) || 'en';
 
         const { isPremium } = require('./premium.js');
         const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
@@ -673,12 +478,10 @@ module.exports = {
         const vRole = settings.verify_role_id ? guild.roles.cache.get(settings.verify_role_id) : null;
         const uRole = settings.verify_unverified_role_id ? guild.roles.cache.get(settings.verify_unverified_role_id) : null;
         if (!vRole && !uRole) return eph(vt(lang, 'notConfigured'));
+        
         for (const r of [vRole, uRole]) {
             const err = r && validateVerifyRole(guild, r, null);
-            if (err) {
-                console.warn(`[VERIFY] panel unsafe role guild=${gid} role=${r.id}: ${err}`);
-                return eph(vt(lang, 'misconfigured'));
-            }
+            if (err) return eph(vt(lang, 'misconfigured'));
         }
 
         const member = await guild.members.fetch(uid).catch(() => null);
@@ -737,7 +540,7 @@ module.exports = {
                 forgetDeadline(db, gid, uid);
                 if (uRole) await member.roles.remove(uRole).catch(() => {});
                 if (vRole) await member.roles.add(vRole).catch(() => {});
-                await await logVerify(guild, db, 0x00cc44, vt(lang, 'logPassedPanel'), uid, '', lang);
+                await logVerify(guild, db, 0x00cc44, vt(lang, 'logPassedPanel'), uid, '', lang);
                 await require('../lib/joinrole.js').applyJoinRole(member, db);
                 return eph(vt(lang, 'verifiedPanel', { server: guild.name }));
             }
@@ -752,7 +555,6 @@ module.exports = {
         }
     },
 
-    // Called from guildMemberRemove — frees timer + collector
     onMemberLeave: (member) => {
         const key = `${member.id}:${member.guild.id}`;
         forgetDeadline(_vdb, member.guild.id, member.id);
@@ -763,12 +565,80 @@ module.exports = {
         pending.delete(key);
     },
 
-    // SECURITY: legacy button granted roles without captcha — disabled
     onVerifyButton: async (interaction) => {
         const lang = pickLang(interaction.client, interaction.guild?.id, interaction) || 'en';
+        const pl = interaction.guild && await panelLink(interaction.guild, interaction.client.db, lang);
         return interaction.reply({
-            content: (() => { const pl = interaction.guild && panelLink(interaction.guild, interaction.client.db); return pl ? vt(lang, 'legacyBtnPanel', { channel: pl.id }) : vt(lang, 'legacyBtnRejoin'); })(),
+            content: pl ? vt(lang, 'legacyBtnPanel', { channel: pl.id }) : vt(lang, 'legacyBtnRejoin'),
             flags: 64
         }).catch(() => {});
+    },
+
+    handleDM: async (message, client, db) => {
+        if (message.author.bot || !message.channel.isDMBased()) return false;
+        
+        const pendingRows = db.prepare('SELECT guild_id, code, attempts FROM verify_pending WHERE user_id = ?').all(message.author.id);
+        if (!pendingRows.length) return false;
+
+        const row = pendingRows[0];
+        const gid = row.guild_id;
+        const guild = client.guilds.cache.get(gid);
+        if (!guild) return false;
+
+        const lang = pickLang(client, gid, null, message.author.id) || 'en';
+        const guess = message.content.replace(/\s+/g, '').toUpperCase();
+
+        if (!/^[A-Z0-9]{6}$/.test(guess)) {
+            await message.channel.send({ content: vt(lang, 'dmHint') }).catch(() => {});
+            return true;
+        }
+
+        if (guess === row.code) {
+            const settings = db.prepare('SELECT verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
+            const vRole = settings?.verify_role_id ? guild.roles.cache.get(settings.verify_role_id) : null;
+            const uRole = settings?.verify_unverified_role_id ? guild.roles.cache.get(settings.verify_unverified_role_id) : null;
+            const member = await guild.members.fetch(message.author.id).catch(() => null);
+            if (!member) return true;
+
+            await message.channel.send({ embeds: [new EmbedBuilder()
+                .setColor(0x00cc44)
+                .setTitle(`${EMOJIS.verified} ${vt(lang, 'verifiedDmTitle')}`)
+                .setDescription(vt(lang, 'welcomeDm', { server: guild.name }))
+                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+            ]}).catch(() => {});
+
+            (async () => {
+                if (uRole) await member.roles.remove(uRole).catch(() => {});
+                if (vRole) await member.roles.add(vRole).catch(() => {});
+                await logVerify(guild, db, 0x00cc44, vt(lang, 'logPassedDm'), member.id, '', lang);
+                require('../lib/joinrole.js').applyJoinRole(member, db);
+                forgetDeadline(db, gid, member.id);
+                const p = pending.get(`${member.id}:${gid}`);
+                if (p) { if(p.timer) clearTimeout(p.timer); p.collector?.stop('verified'); pending.delete(`${member.id}:${gid}`); }
+            })();
+            return true;
+        } else {
+            const attempts = (row.attempts || 0) + 1;
+            if (attempts >= 3) {
+                db.prepare('DELETE FROM verify_pending WHERE guild_id = ? AND user_id = ?').run(gid, message.author.id);
+                await message.channel.send({ content: vt(lang, 'tooManyTitle') }).catch(() => {});
+                
+                const member = await guild.members.fetch(message.author.id).catch(() => null);
+                const settings = db.prepare('SELECT verify_kick_days, verify_role_id FROM server_settings WHERE guild_id = ?').get(gid);
+                if (member && settings?.verify_kick_days > 0) {
+                    const hasRole = settings.verify_role_id && member.roles.cache.has(settings.verify_role_id);
+                    if (!hasRole) {
+                        await member.kick('Failed captcha verification').catch(() => {});
+                        await logVerify(guild, db, 0xff3311, vt(lang, 'logKickedFail'), member.id, '3 wrong attempts', lang);
+                        const p = pending.get(`${member.id}:${gid}`);
+                        if (p) { if(p.timer) clearTimeout(p.timer); p.collector?.stop('kicked'); pending.delete(`${member.id}:${gid}`); }
+                    }
+                }
+            } else {
+                db.prepare('UPDATE verify_pending SET attempts = ? WHERE guild_id = ? AND user_id = ?').run(attempts, gid, message.author.id);
+                await message.channel.send({ content: vt(lang, 'attemptWrongTitle', { n: attempts, max: 3 }) }).catch(() => {});
+            }
+            return true;
+        }
     }
 };
