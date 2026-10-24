@@ -1,6 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
 const cmdSlash = require('../lib/cmd').slash;
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const { card: v2card } = require('../lib/games/v2');
 const ui = require('../lib/games/ui');
 
@@ -417,7 +418,7 @@ async function takeAction(message, violations, client, db) {
     try {
         const guildOwner = await message.guild.fetchOwner().catch(() => null);
         const appealContact = guildOwner ? `<@${guildOwner.id}>` : _t('strikeContactFallback');
-        const actionEmoji = outcome === 'ban' ? require('../config/emojis').banAlert : outcome === 'timeout' ? require('../config/emojis').lock : require('../config/emojis').warning;
+        const actionEmoji = outcome === 'ban' ? (resolveEmoji('banAlert', client) || '🔨') : outcome === 'timeout' ? (resolveEmoji('lock', client) || '⏳') : (resolveEmoji('warning', client) || '⚠️');
         const strikeNext = _next(displayWc);
         const _v2 = require('../lib/games/v2');
         const _E  = require('../config/emojis');
@@ -443,7 +444,7 @@ async function takeAction(message, violations, client, db) {
             new ButtonBuilder()
                 .setCustomId(`automod_appeal_${uid}_${gid}`)
                 .setLabel(_t('strikeBtnAppeal'))
-                .setEmoji({ id: '1534872816099528725', name: 'mod_abuse_bean_sign' })
+                .setEmoji('⚖️')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setLabel(_t('strikeBtnRules'))
@@ -461,7 +462,7 @@ async function takeAction(message, violations, client, db) {
         const _card = _v2.card(
             _accent,
             [
-                { text: `*${_E.eagle || '🦅'} ARCHON CG-223 · Enforcement*` },
+                { text: `*${resolveEmoji('eagle', client) || '🦅'} ARCHON CG-223 · Enforcement*` },
                 { text: `## ${actionEmoji} ${_titleText}` },
                 { rule: true },
                 { text: _body },
@@ -481,7 +482,7 @@ async function takeAction(message, violations, client, db) {
         const notif = await message.channel.send({
             embeds: [new EmbedBuilder()
                 .setColor(actionColor)
-                .setDescription(_t('strikeNotice', { emoji: require('../config/emojis').shield, user: message.author.username, rule: ruleName(violations[0], _t) }))]
+                .setDescription(_t('strikeNotice', { emoji: resolveEmoji('shield', client) || '🛡️', user: message.author.username, rule: ruleName(violations[0], _t) }))]
         }).catch(() => {});
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
@@ -501,8 +502,8 @@ async function takeAction(message, violations, client, db) {
             if (whyNot) _extra.push(`**${_t('strikeLabelWhy')}** · ${whyNot}`);
 
             const _logItems = [
-                { text: `*${_E.eagle || '🦅'} ARCHON CG-223 · Enforcement Log*` },
-                { text: `## ${_E.mod_sign || '⚖️'} ${actionText}` },
+                { text: `*${resolveEmoji('eagle', client) || '🦅'} ARCHON CG-223 · Enforcement Log*` },
+                { text: `## ${resolveEmoji('mod_sign', client) || '⚖️'} ${actionText}` },
                 { rule: true },
                 { text: _t('strikeLogDesc', { emoji: '', action: '', member: `${message.author}`, uid, rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t), channel: `<#${message.channel.id}>` }).replace(/^\s*[\n\r]+/, '').trim() },
             ];
@@ -518,22 +519,19 @@ async function takeAction(message, violations, client, db) {
     try {
         const owner = await message.guild.fetchOwner().catch(() => null);
         if (owner && !owner.user.bot) {
-            const privateEmbed = new EmbedBuilder()
-                .setColor(actionColor)
-                .setAuthor({ name: _t('strikeOwnerAuthor'), iconURL: client.user.displayAvatarURL() })
-                .setTitle(actionText)
-                .setDescription(_t('strikeOwnerDesc', { server: message.guild.name }))
-                .addFields(
-                    { name: _t('strikeLabelMember'), value: `${message.author} \`${uid}\``, inline: false },
-                    { name: _t('strikeLabelRule'), value: ruleName(violations[0], _t), inline: true },
-                    { name: _t('strikeLabelChannel'), value: `<#${message.channel.id}>`, inline: true },
-                    { name: _t('strikeLabelStrike'), value: `${displayWc}/4`, inline: true },
-                    { name: _t('strikeLabelMessage'), value: `\`\`\`${message.content.substring(0, 1800) || _t('strikeAttachment')}\`\`\``, inline: false },
-                    ...(whyNot ? [{ name: _t('strikeLabelWhy'), value: whyNot, inline: false }] : [])
-                )
-                .setFooter({ text: _t('strikeOwnerFooter') })
-                .setTimestamp();
-            await owner.send({ embeds: [privateEmbed] }).catch(() => {});
+            const _v2 = require('../lib/games/v2');
+            const _accent = typeof actionColor === 'string' && actionColor.startsWith('#') ? parseInt(actionColor.slice(1), 16) : (typeof actionColor === 'number' ? actionColor : 0x2F3136);
+            const _dmItems = [
+                { text: `*${_t('strikeOwnerAuthor')}*` },
+                { text: `## ${actionText}` },
+                { text: _t('strikeOwnerDesc', { server: message.guild.name }) },
+                { rule: true },
+                { text: `**${_t('strikeLabelMember')}** · ${message.author} (\`${uid}\`)\n**${_t('strikeLabelRule')}** · ${ruleName(violations[0], _t)}\n**${_t('strikeLabelChannel')}** · <#${message.channel.id}>\n**${_t('strikeLabelStrike')}** · ${displayWc}/4` },
+                { text: `**${_t('strikeLabelMessage')}**\n\`\`\`${message.content.substring(0, 1800) || _t('strikeAttachment')}\`\`\`` }
+            ];
+            if (whyNot) _dmItems.push({ text: `**${_t('strikeLabelWhy')}** · ${whyNot}` });
+            _dmItems.push({ text: `-# ${_t('strikeOwnerFooter')}` });
+            await owner.send(_v2.card(_accent, _dmItems)).catch(() => {});
         }
     } catch (e) {}
 
@@ -795,27 +793,19 @@ async function handleAppeal(message, client) {
             }).catch(() => {});
         }
 
-        const embed = new EmbedBuilder()
-            .setColor(C.YELLOW)
-            .setTitle(_t0('appeal_listTitle'))
-            .setDescription(_t0('appeal_listDesc'));
-
+        const _v2 = require('../lib/games/v2');
+        const items = [
+            { text: `## 🛡️ ${_t0('appeal_listTitle')}` },
+            { text: _t0('appeal_listDesc') },
+            { rule: true }
+        ];
         for (const a of appeals.slice(0, 5)) {
             const owner = await a.guild.fetchOwner().catch(() => null);
-            embed.addFields({
-                name: a.guild.name,
-                value: `Strikes: ${a.warns}/4\nContact: ${owner ? `<@${owner.id}>` : 'Server admin'}`,
-                inline: true
-            });
+            items.push({ text: `**${a.guild.name}**\nStrikes: ${a.warns}/4 · Contact: ${owner ? `<@${owner.id}>` : 'Server admin'}` });
         }
-
-        embed.addFields({
-            name: _t0('appeal_listFieldName'),
-            value: _t0('appeal_listFieldValue'),
-            inline: false
-        });
-
-        return message.reply({ embeds: [embed] }).catch(() => {});
+        items.push({ rule: true });
+        items.push({ text: `**${_t0('appeal_listFieldName')}**\n${_t0('appeal_listFieldValue')}` });
+        return message.reply(_v2.card(C.YELLOW, items)).catch(() => {});
     }
 
     if (lower.startsWith('appeal ')) {
@@ -1629,30 +1619,20 @@ module.exports = {
                     flags: 1 << 6
                 });
             }
-            const e = new EmbedBuilder()
-                .setColor(C.BLURPLE)
-                .setTitle(_T('admin_appealsHeader', { n: pending.length }))
-                .setFooter({ text: _T('admin_appealsFooterSlash') })
-                .setTimestamp();
-
+            const _v2 = require('../lib/games/v2');
+            const items = [
+                { text: `## ⚖️ ${_T('admin_appealsHeader', { n: pending.length })}` },
+                { rule: true }
+            ];
             for (const a of pending.slice(0, 10)) {
-                const timeAgo = a.lastViolationTime
-                    ? `<t:${Math.floor(a.lastViolationTime / 1000)}:R>`
-                    : null;
+                const timeAgo = a.lastViolationTime ? `<t:${Math.floor(a.lastViolationTime / 1000)}:R>` : null;
                 const fieldKey = timeAgo ? 'admin_appealsFieldValue' : 'admin_appealsFieldValueNoTime';
-                const vars = {
-                    reason: a.reason?.substring(0, 100) || '—',
-                    delivery: a.deliveryMethod || '—',
-                    id: a.id,
-                };
+                const vars = { reason: a.reason?.substring(0, 100) || '—', delivery: a.deliveryMethod || '—', id: a.id };
                 if (timeAgo) vars.when = timeAgo;
-                e.addFields({
-                    name: `${a.userTag} — ${a.violationType || '—'}`,
-                    value: _T(fieldKey, vars),
-                    inline: false
-                });
+                items.push({ text: `**${a.userTag}** — ${a.violationType || '—'}\n${_T(fieldKey, vars)}` });
             }
-            return ix.reply({ embeds: [e], flags: 1 << 6 });
+            items.push({ rule: true }, { text: `-# ${_T('admin_appealsFooterSlash')}` });
+            return ix.reply({ ..._v2.card(C.BLURPLE, items), flags: 1 << 6 });
         }
 
         if (sc === 'status') {
@@ -1861,51 +1841,20 @@ module.exports = {
                         .setFooter({ text: 'ARCHON CG-223' })]
                 });
             }
-            const e = new EmbedBuilder()
-                .setColor(C.BLURPLE)
-                .setTitle(_T('admin_appealsHeader', { n: pending.length }))
-                .setFooter({ text: _T('admin_appealsFooterPrefix') })
-                .setTimestamp();
+            const _v2 = require('../lib/games/v2');
+            const items = [
+                { text: `## ⚖️ ${_T('admin_appealsHeader', { n: pending.length })}` },
+                { rule: true }
+            ];
             for (const a of pending.slice(0, 10)) {
-                e.addFields({
-                    name: `${a.userTag} — ${a.violationType || '—'}`,
-                    value: _T('admin_appealsFieldValueNoTime', {
-                        reason: a.reason?.substring(0, 100) || '—',
-                        delivery: a.deliveryMethod || '—',
-                        id: a.id,
-                    }),
-                    inline: false
-                });
+                items.push({ text: `**${a.userTag}** — ${a.violationType || '—'}\n${_T('admin_appealsFieldValueNoTime', { reason: a.reason?.substring(0, 100) || '—', delivery: a.deliveryMethod || '—', id: a.id })}` });
             }
-            return msg.reply({ embeds: [e] });
+            items.push({ rule: true }, { text: `-# ${_T('admin_appealsFooterPrefix')}` });
+            return msg.reply(_v2.card(C.BLURPLE, items));
         }
 
         if (action === 'status') {
-            const logId = resolveSetting(settings, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
-            const wl = settings?.autoModWhitelist;
-            const domainList = parseDomainWhitelist(settings?.autoModDomains);
-            const rawChannels = settings?.automodChannels || settings?.automod_channels || '';
-            const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : 'All channels';
-            const pendingCount = formatPendingAppeals(msg.guild.id).length;
-            const _LS = require('../lib/botPerms').langOf({ guild: msg.guild, client });
-            const _TS = (k, v) => require('../lib/i18n').t('automod.' + k, _LS, v);
-            const e = new EmbedBuilder()
-                .setColor(settings?.autoModEnabled ? C.GREEN : C.RED)
-                .setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() })
-                .setTitle(_TS('admin_statusTitle'))
-                .setDescription(_TS('admin_statusHint', { cmd: cmdSlash(client, 'automod domains', { guild: msg.guild }) }))
-                .addFields(
-                    { name: _TS('admin_statusLabelStatus'), value: settings?.autoModEnabled ? _TS('admin_statusEnabled') : _TS('admin_statusDisabled'), inline: true },
-                    { name: _TS('admin_statusLabelSensitivity'), value: (settings?.autoModSensitivity || 'medium').toUpperCase(), inline: true },
-                    { name: _TS('admin_statusLabelLog'), value: logId ? `<#${logId}>` : _TS('admin_statusNotConfigured'), inline: true },
-                    { name: _TS('admin_statusLabelExempt'), value: wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : _TS('admin_statusNone'), inline: false },
-                    { name: _TS('admin_statusLabelLinkPolicy'), value: _TS('admin_statusLinkPolicyValue', { n: domainList.length }), inline: true },
-                    { name: _TS('admin_statusLabelChannels'), value: channelList === 'All channels' ? _TS('admin_statusAllChannels') : channelList, inline: false },
-                    { name: _TS('admin_statusLabelAppeals'), value: pendingCount > 0 ? _TS('admin_statusAppealsValue', { n: pendingCount, cmd: cmdSlash(client, 'automod appeals', { guild: msg.guild }) }) : _TS('admin_statusAppealsNone'), inline: false }
-                )
-                .setFooter({ text: _TS('admin_statusFooter', { cmd: cmdSlash(client, 'automod domains', { guild: msg.guild }) }) })
-                .setTimestamp();
-            return msg.reply({ embeds: [e] });
+            return msg.reply(buildStatusCard(client, msg.guild, settings));
         }
         if (action === 'enable' || action === 'on') {
             const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
