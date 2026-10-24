@@ -20,13 +20,19 @@
   "bonusAdded": "Bonus added",
   "levelUp": "🎉 LEVEL UP!",
   "reachedLevel": "You reached level",
-  "noAccount": "❌ No data found — use `/claim` to get started!",
+  "noAccount": "You don't have a profile yet! Say hi in the chat or use a command to get started.",
   "readyToClaim": "Ready to claim!",
-  "onCooldown": "On cooldown",
-  "useClaim": "Use `/claim`",
+  "onCooldown": "Already claimed!",
+  "useClaim": "Use `/claim` to grab your reward.",
   "totalDailies": "Total Dailies",
   "lastDaily": "Last Daily",
   "highestStreak": "Highest Streak",
   "streakProtections": "Streak Protections",
-  "never": "Never"
+  "never": "Never",
+  "welcome_msg": "Hey {user}! 👋 A member of our team will be with you shortly. Feel free to drop any extra details or screenshots below.",
+  "statusActiveDesc": "Lydia is awake and listening in {channel}! 🧠",
+  "statusStandbyDesc": "Lydia is currently resting. 💤",
+  "memory_empty": "Your memory vault is empty. Tell me something to remember!",
+  "memory_empty_hint": "How to save a memory:",
+  "memory_example": "Just say: \"Remember my favorite color is blue\""
 }
