@@ -1,5 +1,6 @@
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const i18n = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SectionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize, ChannelSelectMenuBuilder, ChannelType, ThumbnailBuilder } = require('discord.js');
 
 // ═══════════════════════════════════════════════════════
@@ -24,12 +25,7 @@ function selectWinners(entries, count) {
     return pool.slice(0, Math.min(count, pool.length));
 }
 
-function getLang(client, guildId) {
-    try {
-        const ss = client.settings?.get(guildId);
-        return ss?.language === 'fr' ? 'fr' : 'en';
-    } catch { return 'en'; }
-}
+// getLang removed in favor of pickLang
 
 // ═══════════════════════════════════════════════════════
 // DATABASE SETUP & SWEEPER
@@ -94,25 +90,28 @@ function init(client, db) {
             try {
                 const id = interaction.customId.replace('gw_enter_', '');
                 const gw = db.prepare('SELECT * FROM giveaways WHERE id = ?').get(id);
+                const lang = pickLang(client, gw?.guild_id || interaction.guildId, interaction);
+                const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
+
                 if (!gw || gw.status !== 'active') {
-                    return interaction.reply({ content: '❌ This giveaway has ended.', flags: 64 });
+                    return interaction.reply({ content: t('endedError'), flags: 64 });
                 }
 
                 const userEntries = db.prepare('SELECT id FROM giveaway_entries WHERE giveaway_id = ? AND user_id = ?').all(id, interaction.user.id);
                 
                 if (gw.host_id === interaction.user.id) {
-                    return interaction.reply({ content: '❌ You cannot enter your own giveaway.', flags: 64 });
+                    return interaction.reply({ content: t('cantEnter'), flags: 64 });
                 }
                 if (userEntries.length > 0) {
-                    return interaction.reply({ content: '❌ You are already in this giveaway.', flags: 64 });
+                    return interaction.reply({ content: t('alreadyIn'), flags: 64 });
                 }
 
                 const user = db.prepare('SELECT level, credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, gw.guild_id);
                 if (gw.min_level > 0 && (!user || user.level < gw.min_level)) {
-                    return interaction.reply({ content: `❌ You need level ${gw.min_level}+ to enter.`, flags: 64 });
+                    return interaction.reply({ content: t('needLevel').replace('{level}', gw.min_level), flags: 64 });
                 }
                 if (gw.min_credits > 0 && (!user || user.credits < gw.min_credits)) {
-                    return interaction.reply({ content: `❌ You need ${gw.min_credits.toLocaleString()} credits to enter.`, flags: 64 });
+                    return interaction.reply({ content: t('needCredits').replace('{credits}', gw.min_credits.toLocaleString()), flags: 64 });
                 }
 
                 // Add entry
@@ -152,7 +151,7 @@ function init(client, db) {
                     await msg.edit(card).catch(() => {});
                 }
 
-                await interaction.reply({ content: `✅ You're in. Good luck!`, flags: 64 });
+                await interaction.reply({ content: t('enterOk'), flags: 64 });
             } catch (e) {
                 console.error('[GIVEAWAY BUTTON]', e);
                 if (!interaction.replied && !interaction.deferred) {
@@ -167,7 +166,8 @@ function init(client, db) {
 // BUILD GIVEAWAY CARD (PUBLIC)
 // ═══════════════════════════════════════════════════════
 function buildGiveawayCard(gw, client) {
-    const t = (k, v) => i18n.t('giveaway.' + k, gw.lang || 'en', v);
+    const lang = pickLang(client, gw.guildId, null);
+    const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
     const entries = gw.entries ? gw.entries.length : 0;
     const isActive = gw.status === 'active';
     const each = gw.winners > 0 ? Math.floor(gw.amount / gw.winners) : 0;
@@ -239,6 +239,7 @@ async function endGiveawayDb(id, client, db) {
         db.prepare('INSERT OR IGNORE INTO giveaway_winners (giveaway_id, user_id) VALUES (?, ?)').run(id, w);
     }
 
+    const lang = pickLang(client, gwRow.guild_id, null);
     const hostUser = await client.users.fetch(gwRow.host_id).catch(() => null);
     const gw = {
         id: gwRow.id,
@@ -255,7 +256,7 @@ async function endGiveawayDb(id, client, db) {
         boosterBonus: gwRow.booster_bonus === 1,
         status: 'ended',
         endTimestamp: gwRow.end_timestamp,
-        lang: getLang(client, gwRow.guild_id),
+        lang: lang,
         entries: entries,
         winnersList: winners
     };
@@ -332,8 +333,10 @@ async function rerollGiveaway(id, client, db) {
     const msg = await channel.messages.fetch(gwRow.message_id).catch(() => null);
     if (!msg) return null;
 
+    const lang = pickLang(client, gwRow.guild_id, null);
+    
     const hostUser = await client.users.fetch(gwRow.host_id).catch(() => null);
-    const gw = { ...gwRow, entries, winnersList: winners, status: 'ended', endTimestamp: gwRow.end_timestamp, hostName: hostUser ? hostUser.username : 'Host', lang: getLang(client, gwRow.guild_id) };
+    const gw = { ...gwRow, entries, winnersList: winners, status: 'ended', endTimestamp: gwRow.end_timestamp, hostName: hostUser ? hostUser.username : 'Host', lang: lang };
 
     const card = buildGiveawayCard(gw, client);
     await msg.edit(card).catch(() => {});
@@ -347,7 +350,7 @@ async function rerollGiveaway(id, client, db) {
 async function startGiveaway({ client, db, hostId, hostName, guildId, channel, amount, prizeName, winners, duration, minLevel, minCredits, boosterBonus }) {
     const id = `${guildId}_${Date.now()}`;
     const endTimestamp = Date.now() + duration;
-    const lang = getLang(client, guildId);
+    const lang = pickLang(client, guildId, null);
     
     db.prepare(`INSERT INTO giveaways (id, guild_id, channel_id, host_id, prize, amount, winners, end_timestamp, status, min_level, min_credits, booster_bonus) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
@@ -523,7 +526,7 @@ module.exports = {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
 
             const guild = interaction.guild;
-            const lang = getLang(client, guild.id);
+            const lang = pickLang(client, guild.id, interaction);
             const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
 
             const session = {
