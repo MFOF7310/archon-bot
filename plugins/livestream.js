@@ -129,7 +129,7 @@ async function resolveHandle(handle) {
 }
 
 // ─── Live check via yt-dlp ───
-const COOKIE_FILE = require('path').join(__dirname, '..', 'config', 'youtube_cookies.txt');
+const COOKIE_FILE = require('path').join(__dirname, '..', 'assets', 'cookies.txt');
 
 // ── Erreur log throttle : 1 msg par chaîne toutes les 30 min ──
 const _errThrottle = new Map();
