@@ -1,15 +1,15 @@
 {
-  "current": "I ka kan: **{name}**.",
-  "none": "I ma kan foyi sugandi. ARCHON bɛ tugu sɛrivɛri kan de kɔ, walima i bɛ siginniden min sɛbɛn.",
+  "current": "I ka kan sugandilen: **{name}**.",
+  "none": "I ma kan foyi sugandi. ARCHON bɛ tugu sɛrivɛri kan de kɔ, walima i bɛ siginniden minnu sɛbɛn.",
+  "howTo": "Sugandili kɛ nin `{prefix}mylang <code>` : {list}. `{prefix}mylang auto` walasa ka segin mɔdi otomatiki man.",
   "saved": "**{name}** ye i ka kan sugandilen ye. ARCHON bɛna i jaabi a la ni sɛrivɛriw minnu bilalen bɛ otomatiki la.",
-  "serverKeeps": "Nin sɛrivɛri in ka kan sugandilen do kaban nin /setlang ye. O hokumu la a bɛ to o cogoya in kan.",
-  "reset": "A ɲɛna. ARCHON bɛna segin ka taa i ka kan sugandilen ma otomatikeman.",
-  "invalid": "Hakɛto ne tɛ nin kan in dɔn. Kelen sugandi: {list} kɔnɔ ta la.",
-  "error": "Hakɛto nma sen ka nin mara. seginnin kɛ a kan waati wɛrɛ kɔnɔ.",
-  "title": "I kan",
-  "hintWithCmd": "Kɛ {cmd} ni kode ye — en · fr · ar · bm · zh · auto",
-  "serverAuto": "Nin serveur bɛ Auto.",
-  "serverKeepsShort": "Nin serveur bɛ {name} kɛ.",
-  "serverLocked": "⚠️ Sɛrvɛri in sɔgɔlen do **{lang}** kan na admin fɛ. N bɛna i jaɲɛ ta mara, nka n ka kan ka {lang} fɔ yan. Ni b'a fɛ ka i ka kan sugandi, I bɛ kuma ɲɔgɔnya kɛ Admin fɛ ka bila Auto la, walasa i bɛ sen ka i ka sugandi len la baara! I ni ce.",
-  "howTo": "Choose one with `.mylang <code>`: {list}. Use `.mylang auto` to go back to automatic."
+  "serverKeeps": "Nin sɛrivɛri ye a ka kan sugandilen do kaban nin /setlang ye. O hokumu la a bɛ to o cogoya in kan.",
+  "reset": "A ɲɛnabɔra. ARCHON bɛna sugandili kɛ i ka kan sugandilen na otomatiki la.",
+  "invalid": "Hakɛto ne tɛ nin kan in dɔn. Sugandili kɛ ninun cɛ la: {list}.",
+  "error": "Hakɛto n'ma sen ka nin mara. seginnin kɛ a kan waati wɛrɛ kɔnɔ.",
+  "title": "I ka kan",
+  "hintWithCmd": "N'i bɛ fɛ ka yɛlɛma don i ka kan na, i bɛ {cmd} taa ka faara nin kɔdi ninun dɔ kan: en · fr · ar · bm · zh · auto",
+  "serverAuto": "Nin serveur bɛ Otomatiki la.",
+  "serverKeepsShort": "Nin serveur bɛ ka baara kɛ ni {name} ye.",
+  "serverLocked": "⚠️ Sɛrvɛri in sɔgɔlen do **{lang}** kan na admin fɛ. N bɛna i jaɲɛ ta mara. Nka, n ka kan ka {lang} fɔ yan. N'i b'a fɛ i ka kan sugandilen la baara, i jija ka kuma admin dɔ fɛ a ka ɲɛ i ma ka bila otomatiki la."
 }
