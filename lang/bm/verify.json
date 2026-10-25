@@ -96,6 +96,6 @@
   "logFooter": "ARCHON CG-223 • Verification",
   "v2_panel_title": "Welcome to the Verification Zone",
   "v2_panel_intro": "To keep our community safe and spam-free, we just need to make sure you're human.",
-  "v2_panel_how": "**How it works:**\n1️⃣ Click the button below.\n2️⃣ Check your Direct Messages (DMs).\n3️⃣ Enter the secure code you receive.",
-  "v2_panel_warn": "⚠️ **Important:** You have 3 attempts. If you fail, a short cooldown is applied."
+  "v2_panel_how": "**A bɛ kɛ cogo di:**\n{check} Butɔn in taa duguma.\n{check} I ka bataki dogolenw lajɛ (DMs).\n{check} Kɔdi lakananen min ciri ma, i bɛ a don yen.",
+  "v2_panel_warn": "{warn} **Important:** Sifilɛli 3 de b'i bolo n'teri. N'i ye jɛli kɛ, cooldown surunman dɔ bɛ apilike."
 }

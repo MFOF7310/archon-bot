@@ -322,11 +322,14 @@ module.exports = {
             if (uRole) applyUnverifiedLock(guild, uRole, db).catch(() => {});
 
             const vContainer = new ContainerBuilder().setAccentColor(0x00aaff);
+            const checkEm = resolveEmoji('small_check', client) || '✅';
+            const warnEm = resolveEmoji('warning', client) || '⚠️';
+            
             vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('shield', client) || '🛡️'} ${vt(lang, 'v2_panel_title')}`));
             vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
             vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_intro')));
-            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_how')));
-            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_warn')));
+            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_how', { check: checkEm })));
+            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_warn', { warn: warnEm })));
             vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
             vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${vt(lang, 'bamakoFooter')}`));
             vContainer.addActionRowComponents(new ActionRowBuilder().addComponents(
