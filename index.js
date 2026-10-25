@@ -7304,6 +7304,8 @@ function rotateStatus() {
 
 // Set About Me (bot profile description) — runs once on ready
 client.once('clientReady', async () => {
+    // Auto-clean orphaned music panels on boot
+    try { require('./plugins/music.js').autoCleanOldPanels(client); } catch(e) { console.error('[MUSIC CLEAN]', e.message); }
     try {
         const _servers = client.guilds.cache.size;
         const _users = client.guilds.cache.reduce((t, g) => t + g.memberCount, 0);

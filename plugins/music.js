@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const L = (q) => { const s = q?._client?.getServerSettings?.(q?.guild?.id) || {}; return (s.language && s.language !== 'auto') ? s.language : 'en'; };
 const tx = (k, lang, vars) => require('../lib/i18n').t(k, lang, vars);
 
@@ -51,6 +52,34 @@ const { createWriteStream, unlinkSync } = require('fs');
 const https = require('https');
 const http = require('http');
 const execAsync = promisify(exec);
+
+
+async function autoCleanOldPanels(client) {
+    // Wait 10 seconds after boot to let channels cache load
+    setTimeout(async () => {
+        for (const guild of client.guilds.cache.values()) {
+            // Find text channels with recent messages
+            for (const channel of guild.channels.cache.values()) {
+                if (channel.type !== 0) continue; // Only text channels
+                try {
+                    const msgs = await channel.messages.fetch({ limit: 20 }).catch(() => null);
+                    if (!msgs) continue;
+                    for (const m of msgs.values()) {
+                        if (m.author.id !== client.user.id) continue;
+                        // If it's a V2 container and mentions "ARCHON MUSIC" or has music buttons
+                        if (m.flags?.has(MessageFlags.IsComponentsV2)) {
+                            const raw = JSON.stringify(m.components);
+                            if (raw.includes('mc_pause') || raw.includes('mc_skip')) {
+                                await m.delete().catch(() => {});
+                                console.log(`[MUSIC CLEANUP] Deleted orphaned music panel in #${channel.name}`);
+                            }
+                        }
+                    }
+                } catch(e) {}
+            }
+        }
+    }, 10000);
+}
 
 // ═══════════════════════════════════════════════════════
 // QUEUE MANAGER
@@ -129,7 +158,9 @@ function cleanTemp(track) {
 function destroyQueue(guildId) {
     const q = queues.get(guildId);
     if (q) {
-        q.destroyed = true; // guard: any pending playNext/Idle callbacks abort
+        q.destroyed = true;
+        if (q.updateInterval) { clearInterval(q.updateInterval); q.updateInterval = null; }
+        if (q.inactivityTimer) { clearTimeout(q.inactivityTimer); q.inactivityTimer = null; } // guard: any pending playNext/Idle callbacks abort
         if (q.updateInterval) clearInterval(q.updateInterval);
         if (q._panelCollector) { try { q._panelCollector.stop('destroy'); } catch(e) {} q._panelCollector = null; }
         clearInactivityTimer(q);
@@ -303,25 +334,25 @@ function buildPanelRows(q) {
 
     // Row 1 — Core (4 buttons max — no wrapping on mobile CV2)
     const rowTransport = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_pause').setLabel(t(isPaused ? 'music.btn_resume' : 'music.btn_pause', L(q))).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : parseEmoji(EMOJIS.mc_pause)),
-        new ButtonBuilder().setCustomId('mc_skip').setLabel(t('music.btn_skip', L(q))).setStyle(ButtonStyle.Primary).setEmoji(parseEmoji(EMOJIS.mc_skip)),
-        new ButtonBuilder().setCustomId('mc_stop').setLabel(t('music.btn_stop', L(q))).setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.mc_stop)),
-        new ButtonBuilder().setCustomId('mc_autoplay').setLabel(t('music.btn_autoplay', L(q))).setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_autoplay)),
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(t(isPaused ? 'music.btn_resume' : 'music.btn_pause', L(q))).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : resolveEmoji('mc_pause', q._client) || '⏸️'),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel(t('music.btn_skip', L(q))).setStyle(ButtonStyle.Primary).setEmoji(resolveEmoji('mc_skip', q._client) || '⏭️'),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel(t('music.btn_stop', L(q))).setStyle(ButtonStyle.Danger).setEmoji(resolveEmoji('mc_stop', q._client) || '⏹️'),
+        new ButtonBuilder().setCustomId('mc_autoplay').setLabel(t('music.btn_autoplay', L(q))).setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(resolveEmoji('mc_autoplay', q._client) || '🔄'),
     );
 
     // Row 2 — Extras (with labels)
     const rowSession = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_voldown').setLabel(t('music.btn_voldown', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_volume_down)).setDisabled(q.volume <= 0),
-        new ButtonBuilder().setCustomId('mc_prev').setLabel(t('music.btn_previous', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_previous)).setDisabled(!hasPrev),
-        new ButtonBuilder().setCustomId('mc_loop').setLabel(t(q.loop ? 'music.btn_loop_on' : 'music.btn_loop', L(q))).setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_loop)),
-        new ButtonBuilder().setCustomId('mc_volup').setLabel(t('music.btn_volup', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_volume_up)).setDisabled(q.volume >= 100),
+        new ButtonBuilder().setCustomId('mc_voldown').setLabel(t('music.btn_voldown', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('mc_volume_down', q._client) || '🔉').setDisabled(q.volume <= 0),
+        new ButtonBuilder().setCustomId('mc_prev').setLabel(t('music.btn_previous', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('mc_previous', q._client) || '⏮️').setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(t(q.loop ? 'music.btn_loop_on' : 'music.btn_loop', L(q))).setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(resolveEmoji('mc_loop', q._client) || '🔁'),
+        new ButtonBuilder().setCustomId('mc_volup').setLabel(t('music.btn_volup', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('mc_volume_up', q._client) || '🔊').setDisabled(q.volume >= 100),
     );
 
     // Row 3 — Taste + Queue
     const rowTaste = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_like').setLabel(t('music.btn_love', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_love_this)),
-        new ButtonBuilder().setCustomId('mc_dislike').setLabel(t('music.btn_dislike', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_not_for_me)),
-        new ButtonBuilder().setCustomId('mc_queue').setLabel(t('music.btn_queue', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.mc_queue)),
+        new ButtonBuilder().setCustomId('mc_like').setLabel(t('music.btn_love', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('mc_love_this', q._client) || '❤️'),
+        new ButtonBuilder().setCustomId('mc_dislike').setLabel(t('music.btn_dislike', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('mc_not_for_me', q._client) || '👎'),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel(t('music.btn_queue', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('mc_queue', q._client) || '📋'),
     );
 
     return [rowTransport, rowSession, rowTaste];
@@ -367,7 +398,7 @@ function buildPanelContainer(q, client) {
 
     const header = new SectionBuilder()
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(isPaused ? '## ' + tx('music.paused_title', lang) : '## ' + tx('music.now_playing', lang)),
+            new TextDisplayBuilder().setContent((isPaused ? '## ⏸️ ' : `## ${resolveEmoji('music', q._client) || '🎵'} `) + (isPaused ? tx('music.paused_title', lang) : tx('music.now_playing', lang))),
             new TextDisplayBuilder().setContent(
                 `${displayTitle}\n` +
                 `[Open on ${t.spotifyUrl ? 'Spotify' : 'YouTube'}](${sourceUrl})\n\n` +
@@ -513,6 +544,7 @@ function attachCollector(q, msg) {
 }
 
 async function sendPanel(q) {
+    if (q.destroyed) return; // Prevent zombie panels on stop
     const client = q._client;
 
     // ── Stop old collector so it doesn't eat clicks meant for the new panel ──
@@ -552,7 +584,14 @@ async function sendPanel(q) {
 
 async function updatePersistentPanel(q, opts = {}) {
     const client = q._client;
-    if (!client || !q.currentTrack || !q.textChannel) return;
+    if (!client || !q.currentTrack || !q.textChannel || q.destroyed) return;
+    
+    // Rate-limit protection: If an update is currently running, queue it for later
+    if (q._isUpdatingPanel && !opts.resend) {
+        q._pendingPanelUpdate = true;
+        return;
+    }
+    q._isUpdatingPanel = true;
 
     const container = buildPanelContainer(q, client);
 
@@ -591,6 +630,12 @@ async function updatePersistentPanel(q, opts = {}) {
         }
     } catch(e) {
         console.error('[MUSIC PANEL] Update error:', e.message);
+    } finally {
+        q._isUpdatingPanel = false;
+        if (q._pendingPanelUpdate) {
+            q._pendingPanelUpdate = false;
+            setTimeout(() => updatePersistentPanel(q).catch(() => {}), 500);
+        }
     }
 }
 
@@ -761,7 +806,7 @@ async function prefetchNext(q) {
         const cookiesFlag = require('fs').existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
         const tmpBase = require('path').join(require('os').tmpdir(), `archon_pre_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
         const proxyFlag1 = process.env.WEBSHARE_PROXY ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies` : `--cookies "${cookiesPath}"`;
-        await execAsync(`yt-dlp --no-playlist ${proxyFlag1} -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 300000 });
+        await execAsync(`yt-dlp --no-playlist ${proxyFlag1} -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${safe}"`, { timeout: 45000 });
         const tmpFile = `${tmpBase}.opus`;
         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
             if (!track.tempFile) {
@@ -1004,7 +1049,7 @@ async function playNext(q) {
 
                         const tmpBase = require('path').join(require('os').tmpdir(), `archon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
                         const proxyFlag2 = process.env.WEBSHARE_PROXY ? `--proxy "${process.env.WEBSHARE_PROXY}" --extractor-args "youtube:player_client=android,web" --no-cookies` : `--cookies "${cookiesPath}"`;
-                        await execAsync(`yt-dlp --no-playlist ${proxyFlag2} -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 300000 });
+                        await execAsync(`yt-dlp --no-playlist ${proxyFlag2} -x --audio-format opus --audio-quality 128K -o "${tmpBase}.%(ext)s" "ytsearch1:${attemptQuery}"`, { timeout: 45000 });
                         const tmpFile = `${tmpBase}.opus`;
                         if (require('fs').existsSync(tmpFile) && require('fs').statSync(tmpFile).size > 10000) {
                             // ── Defense 2: real duration from the file (format + stream fallback) ──
@@ -1047,7 +1092,7 @@ async function playNext(q) {
                 }
             }
 
-            if (!stream && !resource) throw new Error('Could not find audio stream');
+            if (!stream && !resource) throw new Error(t('music.failed_to_find', lang) || 'Could not find audio stream for this track.');
             if (!resource) {
                 resource = createFilteredResource(stream.stream, q);
             }
@@ -1349,7 +1394,7 @@ module.exports = {
     cooldown: 2000,
 
     // Export utilities for other plugins
-    getQueue, createQueue, destroyQueue, buildNowPlayingEmbed,
+    getQueue, createQueue, destroyQueue, buildNowPlayingEmbed, autoCleanOldPanels,
     buildControls, buildQueueEmbed, updatePersistentPanel,
     ARCHON, progressBar, formatTime,
 

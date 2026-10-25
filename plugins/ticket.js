@@ -154,12 +154,13 @@ async function createCh(g, uid, uname, cat, s, client) {
     return g.channels.create(opts);
 }
 
-function panelCard(s, gn, lang='en', actionRow = null) {
+function panelCard(s, gn, lang='en', actionRow = null, client = null) {
     const cats = getCats(s) || [];
     const catLines = cats.map(c => `> ${c.emoji || '🎫'} **${c.label || 'Support'}** — *${c.desc || 'Open a ticket'}*`).join('\n');
     const _v2 = require('../lib/games/v2');
+    const ticketEmoji = resolveEmoji('ticket', client) || '🎫';
     const items = [
-        { text: `## 🎫 ${t('ticket.panel_title', lang)}` },
+        { text: `## ${ticketEmoji} ${t('ticket.panel_title', lang)}` },
         { text: `**SERVER** · ${gn}\n**STATUS** · ${t('ticket.panel_status', lang)}\n**PROTOCOL** · ${t('ticket.panel_protocol', lang)}` },
         { rule: true },
         { text: t('ticket.panel_how_it_works', lang) },
@@ -298,7 +299,7 @@ module.exports = {
             ]);
             return msg.reply(setupCard).catch(()=>{});
         }
-        if(sub==='panel'){const e=panelCard(es,g.name,lang),m=panelMenu(es),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);const s=await msg.channel.send(e).catch(()=>null);if(s){await msg.react(`${EMOJIS.check}`).catch(()=>{});try{db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(g.id);db.prepare(`UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?`).run(msg.channel.id,msg.channel.name||String(msg.channel.id),g.id);}catch(e){}}return;}
+        if(sub==='panel'){const e=panelCard(es,g.name,lang,null,client),m=panelMenu(es),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);const s=await msg.channel.send(e).catch(()=>null);if(s){await msg.react(`${EMOJIS.check}`).catch(()=>{});try{db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(g.id);db.prepare(`UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?`).run(msg.channel.id,msg.channel.name||String(msg.channel.id),g.id);}catch(e){}}return;}
         if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply(t('ticket.not_a_ticket', lang)).catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t('ticket.noPerm', lang)).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t('ticket.closing', lang)).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
 
         const _v2 = require('../lib/games/v2');
@@ -348,7 +349,7 @@ module.exports = {
             ]);
             return ix.reply({ ...setupCard, flags: 1 << 6 | 32768 });
         }
-        if(sc==='panel'){const _cp=require('../lib/canPost'),_me=g.members.me,_d=_cp.diagnose(g,ix.channel,_me);if(!_d.ok)return ix.reply({content:t('ticket.'+_d.key,lang,{ch:String(ix.channel),role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName,cmd: mentions(ix.client, ix.commandName, 'panel')}),flags:1<<6}).catch(()=>{});const e=panelCard(ss,g.name,lang),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);await ix.reply({content:t('ticket.posting', lang),flags:1<<6});const s=await ix.channel.send(e).catch(err=>{console.error('[TICKET] panel send failed:',err.message);return null;});if(s){await ix.editReply({content:t('ticket.posted', lang)}).catch(()=>{});try{db.prepare('UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?').run(ix.channel.id,ix.channel.name||String(ix.channel.id),g.id);}catch(e){}}else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});return;}
+        if(sc==='panel'){const _cp=require('../lib/canPost'),_me=g.members.me,_d=_cp.diagnose(g,ix.channel,_me);if(!_d.ok)return ix.reply({content:t('ticket.'+_d.key,lang,{ch:String(ix.channel),role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName,cmd: mentions(ix.client, ix.commandName, 'panel')}),flags:1<<6}).catch(()=>{});const e=panelCard(ss,g.name,lang,null,client),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);await ix.reply({content:t('ticket.posting', lang),flags:1<<6});const s=await ix.channel.send(e).catch(err=>{console.error('[TICKET] panel send failed:',err.message);return null;});if(s){await ix.editReply({content:t('ticket.posted', lang)}).catch(()=>{});try{db.prepare('UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?').run(ix.channel.id,ix.channel.name||String(ix.channel.id),g.id);}catch(e){}}else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});return;}
         if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:t('ticket.not_a_ticket', lang),flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t('ticket.closing', lang)}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
         if(sc==='leaderboard'){
             await ix.deferReply({flags:1<<6});
@@ -473,9 +474,33 @@ module.exports = {
         if(tk&&ix.guildId!==tk.guildId)return ix.reply({content:t('ticket.wrong_server', lang),flags:1<<6}).catch(()=>{});
         const isC=uid===crid, isS=isStaff(ix.member,ss);
 
-        if(act==='claim'){if(!isS)return ix.reply({content:t('ticket.staffOnlyClaim', lang),flags:1<<6}).catch(()=>{});if(tk?.claimedBy)return ix.reply({content:t('ticket.already', lang),flags:1<<6}).catch(()=>{});tk.claimedBy=uid;if(db)saveTicket(db,cid,tk);try{const msgs=await ix.channel.messages.fetch({limit:10});const wm=msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));if(wm&&wm.embeds[0]){const ne=EmbedBuilder.from(wm.embeds[0]).spliceFields(3,1,{name:t('ticket.st', lang),value:`${t('ticket.claimed2', lang)}\n${t('ticket.claimed', lang)}: <@${uid}>`,inline:true});await wm.edit({embeds:[ne]}).catch(()=>{});}}catch(e){}await ix.channel.send(t('ticket.claimed_msg', lang, {user: uid}));await ix.reply({content:t('ticket.claimed_generic', lang),flags:1<<6}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
+        if(act==='claim'){
+            if(!isS)return ix.reply({content:t('ticket.staffOnlyClaim', lang),flags:1<<6}).catch(()=>{});
+            if(tk?.claimedBy)return ix.reply({content:t('ticket.already', lang),flags:1<<6}).catch(()=>{});
+            await ix.deferReply({flags:1<<6}).catch(()=>{});
+            tk.claimedBy=uid; if(db)saveTicket(db,cid,tk);
+            try{
+                const msgs=await ix.channel.messages.fetch({limit:10});
+                const wm=msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));
+                if(wm&&wm.embeds[0]){
+                    const ne=EmbedBuilder.from(wm.embeds[0]).spliceFields(3,1,{name:t('ticket.st', lang),value:`${t('ticket.claimed2', lang)}\n${t('ticket.claimed', lang)}: <@${uid}>`,inline:true});
+                    await wm.edit({embeds:[ne]}).catch(()=>{});
+                }
+            }catch(e){}
+            await ix.channel.send(t('ticket.claimed_msg', lang, {user: uid}));
+            await ix.editReply({content:t('ticket.claimed_generic', lang)}).catch(()=>{});
+            resetACTimer(cid,client,ss);
+            return true;
+        }
 
-        if(act==='close'){if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t('ticket.closeQ', lang)).setDescription(t('ticket.closeD', lang));const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.check)),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.error)));await ix.reply({embeds:[e],components:[r],flags:1<<6}).catch(()=>{});return true;}
+        if(act==='close'){
+            if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});
+            await ix.deferReply({flags:1<<6}).catch(()=>{});
+            const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t('ticket.closeQ', lang)).setDescription(t('ticket.closeD', lang));
+            const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.check)),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.error)));
+            await ix.editReply({embeds:[e],components:[r]}).catch(()=>{});
+            return true;
+        }
 
         if(act==='confirmclose'){
             const cl=p[4]||uid;
