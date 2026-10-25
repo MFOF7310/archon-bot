@@ -133,7 +133,7 @@ async function deliverDailyReminder(client, reminder, database) {
         _items.push({ text: t('desc', { guild: guildName }) });
         _items.push({ rule: true });
         _items.push({ text: `**${t('howLabel')}**\n${t('howValue', { guild: guildName })}` });
-        _items.push({ text: t('body') });
+        _items.push({ text: t('body').replace('{fire}', resolveEmoji('streaks_2', client) || '🔥') });
         _items.push({ rule: true });
         _items.push({ text: `-# ${guildName} • ARCHON CG-223 • BAMAKO_223` });
         return v2.card(0x00fbff, _items);
@@ -342,7 +342,7 @@ module.exports = {
                             .setURL(`https://bamako-steel-dev.xyz/user/${message.author.id}?guild=${message.guild?.id || ""}`)
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Link)
-                            .setEmoji(parseEmoji(EMOJIS.dashboard))
+                            .setEmoji(resolveEmoji('dashboard', interaction || message) || '🌐')
                     );
                 
                 const cooldownReply = await message.reply({ embeds: [cooldownEmbed], components: [row] });
@@ -473,7 +473,7 @@ module.exports = {
             ];
             if (_hasStreakBonus) {
                 _claimItems.push({ rule: true });
-                _claimItems.push({ text: `${EMOJIS.streak || '🔥'} ${t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits)}` });
+                _claimItems.push({ text: `${resolveEmoji('streaks_2', client) || '🔥'} ${t.streakInfo.replace('{streak}', streak).replace('{xp}', streakBonusXP).replace('{credits}', streakBonusCredits)}` });
             }
             _claimItems.push({ rule: true });
             _claimItems.push({ text: `-# ${guildName} • v${version}` });
@@ -482,12 +482,12 @@ module.exports = {
                     .setURL(`https://bamako-steel-dev.xyz/user/${message.author.id}?guild=${message.guild?.id || ""}`)
                     .setLabel(t.viewDashboard)
                     .setStyle(ButtonStyle.Link)
-                    .setEmoji(parseEmoji(EMOJIS.dashboard)),
+                    .setEmoji(resolveEmoji('dashboard', interaction || message) || '🌐'),
                 new ButtonBuilder()
                     .setCustomId('claim_view_profile')
                     .setLabel(t.myProfile)
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji(parseEmoji(EMOJIS.myprofile))
+                    .setEmoji(resolveEmoji('myprofile', interaction || message) || '👤')
             ) });
             const successReply = await message.reply(v2.card(0x00fbff, _claimItems));
 
@@ -528,6 +528,7 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user.id);
+const { resolveEmoji } = require('../lib/emoji-resolver');
         try {
             // PER-SERVER: Extract guildId for composite key lookups
             const guildId = interaction.guild?.id || 'DM';
@@ -592,7 +593,7 @@ module.exports = {
                             .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}?guild=${interaction.guild?.id || ""}`)
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Link)
-                            .setEmoji(parseEmoji(EMOJIS.dashboard))
+                            .setEmoji(resolveEmoji('dashboard', interaction || message) || '🌐')
                     );
                 
                 await interaction.reply({ embeds: [cooldownEmbed], components: [row], flags: 64 });
@@ -728,12 +729,12 @@ module.exports = {
                     .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}?guild=${interaction.guild?.id || ""}`)
                     .setLabel(t.viewDashboard)
                     .setStyle(ButtonStyle.Link)
-                    .setEmoji(parseEmoji(EMOJIS.dashboard)),
+                    .setEmoji(resolveEmoji('dashboard', interaction || message) || '🌐'),
                 new ButtonBuilder()
                     .setCustomId('claim_slash_view_profile')
                     .setLabel(t.myProfile)
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji(parseEmoji(EMOJIS.myprofile))
+                    .setEmoji(resolveEmoji('myprofile', interaction || message) || '👤')
             ) });
             await interaction.reply(v2.card(0x00fbff, _claimItems));
             

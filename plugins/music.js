@@ -12,12 +12,6 @@ const L = (q) => { const s = q?._client?.getServerSettings?.(q?.guild?.id) || {}
 const tx = (k, lang, vars) => require('../lib/i18n').t(k, lang, vars);
 
 // Parse emoji string to Discord button-compatible object
-function parseEmoji(emojiStr) {
-    if (!emojiStr) return '🎵';
-    const match = emojiStr.match(/<(a?):([^:]+):(\d+)>/);
-    if (!match) return emojiStr; // plain unicode
-    return { animated: match[1] === 'a', name: match[2], id: match[3] };
-}
 const {
     joinVoiceChannel, createAudioPlayer, createAudioResource,
     AudioPlayerStatus, VoiceConnectionStatus, entersState,

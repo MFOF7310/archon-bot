@@ -167,12 +167,12 @@ module.exports = {
                 .setCustomId(`afk_remind_${message.author.id}`)
                 .setLabel(t.remindButton)
                 .setStyle(ButtonStyle.Primary)
-                .setEmoji(parseEmoji(EMOJIS.sleep)),
+                .setEmoji(resolveEmoji('sleep', message) || '💤'),
             new ButtonBuilder()
                 .setCustomId(`afk_extend_${message.author.id}`)
                 .setLabel(t.extendButton)
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji(parseEmoji(EMOJIS.moon))
+                .setEmoji(resolveEmoji('moon', message) || '🌙')
         );
         
         const reply = await message.reply({ embeds: [embed], components: [buttonRow] });
@@ -228,6 +228,7 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction);
+const { resolveEmoji } = require('../lib/emoji-resolver');
         // Check if AFK system is enabled for this server
         const afkServerSettings = client.getServerSettings?.(interaction.guild?.id);
         if (afkServerSettings?.afk_enabled === 0 || afkServerSettings?.afkEnabled === false) {

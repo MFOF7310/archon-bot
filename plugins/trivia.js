@@ -108,10 +108,10 @@ function menuScreen(s, o = {}) {
   ];
   if (!o.closed) {
     const catMenu = new StringSelectMenuBuilder().setCustomId('trivia_cat').setPlaceholder(Q('pickCategory')).addOptions(
-      Object.entries(CATEGORIES).map(([key, c]) => ({ label: Q(`categories.${key}`).slice(0, 100), value: key, emoji: ui.parseEmoji(c.emoji), default: key === s.cat })));
+      Object.entries(CATEGORIES).map(([key, c]) => ({ label: Q(`categories.${key}`).slice(0, 100), value: key, emoji: c.emoji, default: key === s.cat })));
     const diffMenu = new StringSelectMenuBuilder().setCustomId('trivia_diff').setPlaceholder(Q('pickDifficulty')).addOptions(
       Object.entries(DIFFICULTIES).map(([key, x]) => ({
-        label: Q(`difficulties.${key}`), value: key, emoji: ui.parseEmoji(x.emoji), default: key === s.diff,
+        label: Q(`difficulties.${key}`), value: key, emoji: x.emoji, default: key === s.diff,
         description: Q('difficultyInfo', { questions: x.questions, seconds: x.seconds }).slice(0, 100) })));
     items.push({ rule: true }, { row: ui.row(catMenu) }, { row: ui.row(diffMenu) },
       { row: ui.row(ui.button('trivia_start', Q('btnStart'), em('triviaStart'), ui.ButtonStyle.Success), ui.button('trivia_cancel', Q('btnCancel'), em('triviaCancel'))) });

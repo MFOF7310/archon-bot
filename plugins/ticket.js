@@ -6,7 +6,6 @@ const {
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const mentions = require('../lib/mentions');
-const { parseEmoji } = require('discord.js');
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 
@@ -497,7 +496,7 @@ module.exports = {
             if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});
             await ix.deferReply({flags:1<<6}).catch(()=>{});
             const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t('ticket.closeQ', lang)).setDescription(t('ticket.closeD', lang));
-            const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji(parseEmoji(EMOJIS.check)),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji(parseEmoji(EMOJIS.error)));
+            const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji(resolveEmoji('small_check', client) || '✅'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('small_cross', client) || '❌'));
             await ix.editReply({embeds:[e],components:[r]}).catch(()=>{});
             return true;
         }

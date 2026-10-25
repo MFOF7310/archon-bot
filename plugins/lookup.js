@@ -93,7 +93,7 @@ async function buildLookupEmbed(client, db, target, guildId, scope) {
                 '\u001b[1;33m── ECONOMY (this server) ──\u001b[0m\n' +
                 `\u001b[1;36m▸ LEVEL    \u001b[0m${userData.level} (${userData.xp?.toLocaleString()} XP)\n` +
                 `\u001b[1;36m▸ CREDITS  \u001b[0m${userData.credits?.toLocaleString()} 🪙\n` +
-                `\u001b[1;36m▸ STREAK   \u001b[0m${userData.streak_days} days 🔥\n` +
+                `\u001b[1;36m▸ STREAK   \u001b[0m${userData.streak_days} days ${resolveEmoji('streaks_2', client) || '🔥'}\n` +
                 `\u001b[1;36m▸ DAILIES  \u001b[0m${userData.total_dailies} total\n` +
                 '```'
             );

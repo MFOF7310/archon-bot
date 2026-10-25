@@ -308,8 +308,8 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
         { rule: true },
         { text: tttFooter() },
         { row: new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ttt_accept').setLabel(t('game.accept', lang)).setStyle(ButtonStyle.Success).setEmoji(ui.parseEmoji(EMOJIS.check)),
-            new ButtonBuilder().setCustomId('ttt_decline').setLabel(t('game.decline', lang)).setStyle(ButtonStyle.Danger).setEmoji(ui.parseEmoji(EMOJIS.error)),
+            new ButtonBuilder().setCustomId('ttt_accept').setLabel(t('game.accept', lang)).setStyle(ButtonStyle.Success).setEmoji(resolveEmoji('check', interaction || message) || '✅'),
+            new ButtonBuilder().setCustomId('ttt_decline').setLabel(t('game.decline', lang)).setStyle(ButtonStyle.Danger).setEmoji(resolveEmoji('error', interaction || message) || '❌'),
         ) },
     ]);
     challengeCard.allowedMentions = { users: [opponent.id] };
@@ -489,8 +489,8 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     // v9: blackjack on CV2
     const bjFooter = () => `-# ${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'NEURAL NODE'} • v${ctx.client.version || '2.0.0'}`;
     const bjRow = () => new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji(ui.parseEmoji(EMOJIS.gameBlackjack)),
-        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji(ui.parseEmoji(EMOJIS.stop))
+        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji(resolveEmoji('gameBlackjack', interaction || message) || '🃏'),
+        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('stop', interaction || message) || '⏹️')
     );
     const bjCard = ({ reveal = false, withButtons = true } = {}) => v2.card(0x9b59b6, [
         { text: `## ${EMOJIS.gameBlackjack} ${t('game.blackjack', lang)}` },

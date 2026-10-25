@@ -2,7 +2,7 @@
   "author": "ARCHON CG-223 • DAILY CYCLE",
   "title": "Daily Reward Ready!",
   "desc": "Psst — your daily reward on {guild} is ready. Come get it before the day resets! ✨",
-  "body": "The cycle won't wait, and your streak is counting on you 🔥",
+  "body": "The cycle won't wait, and your streak is counting on you {fire}",
   "howLabel": "How to claim",
   "howValue": "Use `/claim` or `.claim` in any channel of {guild}."
 }
