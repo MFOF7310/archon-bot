@@ -201,6 +201,7 @@ module.exports = {
         let rearmed = 0, graced = 0, dropped = 0;
         for (const r of rows) {
             if (!client.guilds.cache.get(r.guild_id)) { forgetDeadline(db, r.guild_id, r.user_id); dropped++; continue; }
+            if (r.kick_at === 0) { rearmed++; continue; } // No kick timer set
             let wait = r.kick_at - now;
             if (wait <= 0) {
                 wait = RESUME_GRACE_MS; graced++;
@@ -479,7 +480,7 @@ module.exports = {
 
         pending.set(key, { timer, dmMsg, code, collector: null });
         _vdb = db;
-        if (timer) saveDeadline(db, gid, member.id, Date.now() + kickMins * 60000, code);
+        saveDeadline(db, gid, member.id, kickMins > 0 ? Date.now() + kickMins * 60000 : 0, code);
     },
 
     onPanelInteraction: async (interaction, client, db) => {

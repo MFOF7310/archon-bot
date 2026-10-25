@@ -631,7 +631,7 @@ client.on('messageCreate', async (message) => {
         try {
             const verifyPlugin = require('./plugins/verify.js');
             if (verifyPlugin.handleDM && await verifyPlugin.handleDM(message, client, db)) return;
-        } catch (e) {}
+        } catch (e) { console.error('[VERIFY DM CRASH]', e); }
     }
 
         // ── Ticket activity reset ──

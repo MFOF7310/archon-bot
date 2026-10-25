@@ -164,7 +164,7 @@ module.exports = {
         }
     },
 
-    execute: async (client, interaction) => {
+    execute: async (interaction, client) => {
         try {
             const lang = typeof client.detectLanguage === 'function' ? client.detectLanguage('leaderboard', interaction.guildId, interaction) : 'en';
             const { orderCol, tKey } = getSortType((interaction.options.getString('type') || 'xp').toLowerCase(), lang);
