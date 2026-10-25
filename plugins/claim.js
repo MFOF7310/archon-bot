@@ -1,4 +1,5 @@
 const { ns } = require('../lib/lang');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const v2 = require('../lib/games/v2');
 const { t: it } = require('../lib/i18n');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
