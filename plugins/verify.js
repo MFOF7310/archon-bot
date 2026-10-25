@@ -147,28 +147,45 @@ async function panelLink(guild, db, lang) {
 
 async function storedInviteRow(db, guild, lang) {
     try {
-        const cols = db.prepare('PRAGMA table_info(server_settings)').all().map(r => r.name);
-        const col = cols.find(n => /invit/i.test(n));
         let url = null;
-        if (col) {
-            const raw = db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v;
-            if (raw) {
-                const m = String(raw).match(/https?:\/\/[^\s)\]]+/i);
-                if (m) url = m[0];
+        
+        // 1. Check DB for a saved invite first
+        const row = db.prepare('SELECT server_invite FROM server_settings WHERE guild_id = ?').get(guild.id);
+        if (row && row.server_invite) {
+            url = row.server_invite;
+            // 2. Smart validation: Is the link still alive?
+            const check = await guild.client.fetchInvite(url).catch(() => null);
+            if (!check) {
+                console.log(`[VERIFY] Stored invite for ${guild.name} was revoked. Generating a new one...`);
+                url = null; // Dead link, needs renewal
             }
         }
+
+        // 3. Create new if missing or dead
         if (!url) {
             const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
             if (me && me.permissions.has('CreateInstantInvite')) {
                 const channel = guild.systemChannel || guild.channels.cache.find(c => c.type === 0 && c.permissionsFor(me)?.has('CreateInstantInvite'));
                 if (channel) {
-                    const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: 'Verification rejoin' }).catch(() => null);
-                    if (invite) url = invite.url;
+                    // unique: false prevents Discord from spamming the Invites tab with new links
+                    const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: false, reason: 'Verification rejoin' }).catch(() => null);
+                    if (invite) {
+                        url = invite.url;
+                        // 4. Save back to DB for next time!
+                        try { 
+                            db.prepare('UPDATE server_settings SET server_invite = ? WHERE guild_id = ?').run(url, guild.id); 
+                            console.log(`[VERIFY] Saved permanent invite for ${guild.name}`);
+                        } catch(e) {}
+                    }
                 }
             }
         }
+
+        // 5. Vanity URL fallback
         if (!url && guild.vanityURLCode) url = `https://discord.gg/${guild.vanityURLCode}`;
+        
         if (!url) return null;
+        
         return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
             .setLabel(vt(lang, 'rejoinBtn') || 'Rejoin Server').setURL(url));
     } catch { return null; }
