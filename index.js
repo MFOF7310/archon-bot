@@ -5523,6 +5523,7 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 // ═══════════════════════════════════════════════════════════════════
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const apiApp = express();
 
@@ -5553,6 +5554,27 @@ apiApp.use(cors({
 }));
 
 // Capture raw body for webhook signature verification
+// 🛡️ GLOBAL API RATE LIMIT — Protects the bot from internal spam/DDoS
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests from this IP, please try again later.' }
+});
+
+// Stricter limit for webhooks to prevent webhook spam
+const webhookLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 20, // Max 20 webhooks per minute
+    message: { error: 'Too many webhook requests.' }
+});
+
+// Apply the limiter to all API routes
+apiApp.use('/api/', apiLimiter);
+// Apply stricter limiter to webhooks
+apiApp.use('/api/webhooks/', webhookLimiter);
+
 apiApp.use(express.json({
     verify: (req, res, buf) => {
         req.rawBody = buf.toString('utf8');
