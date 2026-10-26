@@ -1958,7 +1958,6 @@ async function flushUserUpdates(retryCount = 0, retryId = null) {
     }
     
     const updates = Array.from(client.pendingUserUpdates.entries());
-    client.pendingUserUpdates.clear();
     
     try {
         if (WRITE_STRATEGY.USE_TRANSACTIONS) {
@@ -2014,6 +2013,10 @@ async function flushUserUpdates(retryCount = 0, retryId = null) {
         client.lastBatchWrite = Date.now();
         client._activeFlush = null;
         
+        // ✅ SAFE ROLLBACK: Only remove from memory AFTER the database confirms the write
+        for (const [compositeKey] of updates) {
+            client.pendingUserUpdates.delete(compositeKey);
+        }
         console.log(`${green}[DB BATCH]${reset} Flushed ${updates.length} user updates (per-server partitioned)`);
         
     } catch (err) {
