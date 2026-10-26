@@ -28,11 +28,27 @@ let TRENDS = {
 // ================= SELF-HEALING PROTOCOL =================
 process.on('unhandledRejection', (reason, promise) => {
     console.error('\x1b[31m[ANTI-CRASH]\x1b[0m Unhandled Rejection:', reason);
+    if (!global._isShuttingDown) {
+        global._isShuttingDown = true;
+        console.log('\x1b[33m[ANTI-CRASH]\x1b[0m Triggering graceful shutdown to prevent data corruption...');
+        setTimeout(() => {
+            if (typeof gracefulShutdown === 'function') gracefulShutdown('UNHANDLED REJECTION');
+            else process.exit(1);
+        }, 1000);
+    }
 });
 
 process.on('uncaughtException', (err, origin) => {
     console.error('\x1b[31m[ANTI-CRASH]\x1b[0m Uncaught Exception:', err.message);
     console.error(err.stack);
+    if (!global._isShuttingDown) {
+        global._isShuttingDown = true;
+        console.log('\x1b[33m[ANTI-CRASH]\x1b[0m Triggering graceful shutdown to prevent data corruption...');
+        setTimeout(() => {
+            if (typeof gracefulShutdown === 'function') gracefulShutdown('FATAL CRASH');
+            else process.exit(1);
+        }, 1000);
+    }
 });
 
 // ================= TERMINAL COLORS =================
