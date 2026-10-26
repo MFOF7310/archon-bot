@@ -1,0 +1,15 @@
+{
+  "joining": "المشاركون ({n})",
+  "cant_make_it": "غير قادر على الحضور ({n})",
+  "nobody_yet": "لا أحد بعد",
+  "upcoming_scrims": "المباريات القادمة",
+  "scrim_cancelled": "تم إلغاء المباراة",
+  "starting_soon": "المباراة ستبدأ قريباً",
+  "cancelled_desc": "تم إلغاء **{title}** (<t:{time}:F>).",
+  "starting_desc": "**{title}** ستبدأ <t:{time}:R>.\\nتم تأكيد {count} لاعب.",
+  "you_are_in": "لقد انضممت.",
+  "marked_unavailable": "تم وضع علامة غير متاح.",
+  "response_removed": "تمت إزالة ردك.",
+  "btn_joining": "انضمام",
+  "btn_cant_make_it": "غير متاح"
+}

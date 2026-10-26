@@ -1,0 +1,15 @@
+{
+  "joining": "Joining ({n})",
+  "cant_make_it": "Can't make it ({n})",
+  "nobody_yet": "Nobody yet",
+  "upcoming_scrims": "Upcoming scrims",
+  "scrim_cancelled": "Scrim cancelled",
+  "starting_soon": "Scrim starting soon",
+  "cancelled_desc": "**{title}** (<t:{time}:F>) has been cancelled.",
+  "starting_desc": "**{title}** starts <t:{time}:R>.\\n{count} player(s) confirmed.",
+  "you_are_in": "You're in.",
+  "marked_unavailable": "Marked as unavailable.",
+  "response_removed": "Removed your response.",
+  "btn_joining": "Joining",
+  "btn_cant_make_it": "Can't make it"
+}

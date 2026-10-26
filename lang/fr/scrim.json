@@ -1,0 +1,15 @@
+{
+  "joining": "Participants ({n})",
+  "cant_make_it": "Absents ({n})",
+  "nobody_yet": "Personne pour l'instant",
+  "upcoming_scrims": "Scrims à venir",
+  "scrim_cancelled": "Scrim annulé",
+  "starting_soon": "Le scrim commence bientôt",
+  "cancelled_desc": "**{title}** (<t:{time}:F>) a été annulé.",
+  "starting_desc": "**{title}** commence <t:{time}:R>.\\n{count} joueur(s) confirmé(s).",
+  "you_are_in": "C'est noté, tu participes !",
+  "marked_unavailable": "Marqué comme indisponible.",
+  "response_removed": "Ta réponse a été retirée.",
+  "btn_joining": "Participer",
+  "btn_cant_make_it": "Indisponible"
+}

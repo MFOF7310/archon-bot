@@ -1,0 +1,15 @@
+{
+  "joining": "Maa don ta kɛnɛ kɔnɔ ({n})",
+  "cant_make_it": "Maa minnu tɛ yan ({n})",
+  "nobody_yet": "Mɔgɔ si tɛ yan fɔlɔ",
+  "upcoming_scrims": "Scrims nataw",
+  "scrim_cancelled": "Scrim bɔrama",
+  "starting_soon": "Scrim bɛna daminɛ sɔni",
+  "cancelled_desc": "**{title}** (<t:{time}:F>) bɔrama pewu.",
+  "starting_desc": "**{title}** bɛ daminɛ <t:{time}:R> kɔnɔ.\\n{count} tulokɛlaw taara kaban.",
+  "you_are_in": "N'ma ɲina i kɔ, i taa len do.",
+  "marked_unavailable": "O cogoya ma ɲɛ dɛɛ, k'i sen bɔ a la!",
+  "response_removed": "I ka jaabi tigɛ la ka bɔ a la.",
+  "btn_joining": "Don a la",
+  "btn_cant_make_it": "N'ma sen ka waati sɔrɔ!"
+}

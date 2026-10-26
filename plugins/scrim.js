@@ -1,29 +1,28 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, MessageFlags, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+const { resolveEmoji } = require('../lib/emoji-resolver');
+const { pickLang } = require('../lib/pick-lang');
+const i18n = require('../lib/i18n');
+
+const T = (key, lang, vars) => i18n.t('scrim.' + key, lang, vars) || key;
 
 // ================= HELPERS =================
-
 function getTimezone(db, guildId) {
     try {
         const row = db.prepare('SELECT timezone FROM server_settings WHERE guild_id = ?').get(guildId);
         const tz = row?.timezone || 'UTC';
-        new Intl.DateTimeFormat('en-US', { timeZone: tz }); // throws on an invalid zone
+        new Intl.DateTimeFormat('en-US', { timeZone: tz });
         return tz;
     } catch { return 'UTC'; }
 }
 
-// Parse "YYYY-MM-DD HH:MM" in the given IANA zone into a unix timestamp.
-// Uses Intl to find the zone's offset at that moment — no external deps.
 function toUnix(dateStr, timeStr, tz) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
     const t = /^(\d{1,2}):(\d{2})$/.exec(timeStr.trim());
     if (!m || !t) return null;
-
     const [, y, mo, d] = m.map(Number);
     const [, hh, mm] = t.map(Number);
     if (hh > 23 || mm > 59) return null;
-
-    // Treat the wall-clock time as UTC first, then correct by the zone offset.
     let guess = Date.UTC(y, mo - 1, d, hh, mm, 0);
     for (let i = 0; i < 2; i++) {
         const parts = new Intl.DateTimeFormat('en-US', {
@@ -45,51 +44,62 @@ function getSignups(db, scrimId) {
     };
 }
 
-function buildScrimEmbed(scrim, signups, guild) {
+// ================= V2 CARD BUILDER =================
+function buildScrimCard(scrim, signups, guild, client, disabled = false, lang = 'en') {
     const { yes, no } = signups;
-    const isClosed = scrim.status === 'cancelled';
+    const isClosed = scrim.status === 'cancelled' || disabled;
+    const accent = isClosed ? 0x95a5a6 : 0x2ecc71;
 
-    const list = ids => ids.length
-        ? ids.map(id => `<@${id}>`).join('\n')
-        : '*Nobody yet*';
+    const list = ids => ids.length ? ids.map(id => `<@${id}>`).join('\n') : `*${T('nobody_yet', lang)}*`;
+    const c = new ContainerBuilder().setAccentColor(accent);
 
-    const embed = new EmbedBuilder()
-        .setColor(isClosed ? '#95a5a6' : '#2ecc71')
-        .setAuthor({ name: `${guild?.name || 'Scrim'} • Scrim`, iconURL: guild?.iconURL() || undefined })
-        .setTitle(`${EMOJIS.gamer} ${scrim.title || 'Scrim'}${isClosed ? ' — CANCELLED' : ''}`)
-        .setDescription(
-            `${EMOJIS.clock} <t:${scrim.scheduled_at}:F>\n` +
-            `*<t:${scrim.scheduled_at}:R>*` +
-            (scrim.note ? `\n\n${scrim.note}` : '')
-        )
-        .addFields(
-            { name: `✅ Joining — ${yes.length}`, value: list(yes).slice(0, 1024), inline: true },
-            { name: `❌ Can't make it — ${no.length}`, value: list(no).slice(0, 1024), inline: true },
-        )
-        .setFooter({ text: `Scrim #${scrim.id} • ARCHON CG-223` })
-        .setTimestamp();
+    // Header
+    const gamerEm = resolveEmoji('gamer', guild) || '🎮';
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        `## ${gamerEm} ${scrim.title || 'Scrim'}${scrim.status === 'cancelled' ? ' — **CANCELLED**' : ''}`
+    ));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-    return embed;
+    // Time + Note
+    const clockEm = resolveEmoji('clock', guild) || '⏰';
+    let body = `${clockEm} <t:${scrim.scheduled_at}:F>\n*<t:${scrim.scheduled_at}:R>*`;
+    const noteEm = resolveEmoji('note', guild) || '📝';
+    if (scrim.note) body += `\n\n> ${noteEm} ${scrim.note}`;
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
+
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+
+    // Signups with small emojis and subtext
+    const checkEm = resolveEmoji('small_check', guild) || '✅';
+    const crossEm = resolveEmoji('small_cross', guild) || '❌';
+    
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${checkEm} ${T('joining', lang, { n: yes.length })}\n${list(yes).slice(0, 900)}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${crossEm} ${T('cant_make_it', lang, { n: no.length })}\n${list(no).slice(0, 900)}`));
+
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Scrim #${scrim.id} • ARCHON CG-223`));
+
+    if (client) {
+        c.addActionRowComponents(new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`scrim_yes_${scrim.id}`)
+                .setLabel(T('btn_joining', lang))
+                .setStyle(ButtonStyle.Success)
+                .setEmoji(checkEm)
+                .setDisabled(disabled || scrim.status !== 'open'),
+            new ButtonBuilder()
+                .setCustomId(`scrim_no_${scrim.id}`)
+                .setLabel(T('btn_cant_make_it', lang))
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji(crossEm)
+                .setDisabled(disabled || scrim.status !== 'open')
+        ));
+    }
+
+    return { components: [c], flags: MessageFlags.IsComponentsV2 };
 }
 
-function buildScrimRow(scrimId, disabled = false) {
-    return new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId(`scrim_yes_${scrimId}`)
-            .setLabel('Joining')
-            .setStyle(ButtonStyle.Success)
-            .setEmoji(EMOJIS.check)
-            .setDisabled(disabled),
-        new ButtonBuilder()
-            .setCustomId(`scrim_no_${scrimId}`)
-            .setLabel("Can't make it")
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji(EMOJIS.error)
-            .setDisabled(disabled),
-    );
-}
-
-// Re-render the scrim message after a signup change.
+// ================= REFRESH =================
 async function refreshScrimMessage(client, scrim) {
     if (!scrim.message_id) return;
     try {
@@ -97,18 +107,13 @@ async function refreshScrimMessage(client, scrim) {
         if (!ch) return;
         const msg = await ch.messages.fetch(scrim.message_id).catch(() => null);
         if (!msg) return;
-        const guild = ch.guild;
+        const lang = pickLang(client, ch.guildId, null);
         const signups = getSignups(client.db, scrim.id);
-        await msg.edit({
-            embeds: [buildScrimEmbed(scrim, signups, guild)],
-            components: [buildScrimRow(scrim.id, scrim.status !== 'open')],
-        }).catch(() => {});
+        await msg.edit(buildScrimCard(scrim, signups, ch.guild, client, scrim.status !== 'open', lang)).catch(() => {});
     } catch (_) {}
 }
 
 // ================= REMINDER LOOP =================
-// Called once from index.js. Checks every minute for scrims starting in <= 15min.
-
 function startScrimReminders(client) {
     setInterval(async () => {
         const db = client.db;
@@ -117,9 +122,7 @@ function startScrimReminders(client) {
         let due;
         try {
             due = db.prepare(
-                `SELECT * FROM scrims
-                 WHERE status = 'open' AND reminded = 0
-                   AND scheduled_at > ? AND scheduled_at <= ?`
+                `SELECT * FROM scrims WHERE status = 'open' AND reminded = 0 AND scheduled_at > ? AND scheduled_at <= ?`
             ).all(now, now + 900);
         } catch { return; }
 
@@ -128,28 +131,21 @@ function startScrimReminders(client) {
                 const { yes } = getSignups(db, scrim.id);
                 const ch = await client.channels.fetch(scrim.channel_id).catch(() => null);
                 if (ch && yes.length) {
-                    await ch.send({
-                        content: yes.map(id => `<@${id}>`).join(' '),
-                        embeds: [new EmbedBuilder()
-                            .setColor('#f39c12')
-                            .setTitle(`${EMOJIS.alarm} Scrim starting soon`)
-                            .setDescription(
-                                `**${scrim.title || 'Scrim'}** starts <t:${scrim.scheduled_at}:R>.\n` +
-                                `${yes.length} player${yes.length === 1 ? '' : 's'} confirmed.`
-                            )
-                            .setFooter({ text: `Scrim #${scrim.id} • ARCHON CG-223` })
-                        ],
-                    }).catch(() => {});
+                    const lang = pickLang(client, ch.guildId, null);
+                    const alarmEm = resolveEmoji('alarm', ch.guild) || '⏰';
+                    const rc = new ContainerBuilder().setAccentColor(0xf39c12);
+                    rc.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${alarmEm} ${T('starting_soon', lang)}`));
+                    rc.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                    rc.addTextDisplayComponents(new TextDisplayBuilder().setContent(T('starting_desc', lang, { title: scrim.title || 'Scrim', time: scrim.scheduled_at, count: yes.length })));
+                    rc.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Scrim #${scrim.id} • ARCHON CG-223`));
+                    await ch.send({ content: yes.map(id => `<@${id}>`).join(' '), components: [rc], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
                 }
                 db.prepare('UPDATE scrims SET reminded = 1 WHERE id = ?').run(scrim.id);
             } catch (_) {}
         }
 
-        // Mark past scrims as done and lock their buttons.
         try {
-            const ended = db.prepare(
-                `SELECT * FROM scrims WHERE status = 'open' AND scheduled_at < ?`
-            ).all(now - 3600);
+            const ended = db.prepare(`SELECT * FROM scrims WHERE status = 'open' AND scheduled_at < ?`).all(now - 3600);
             for (const scrim of ended) {
                 db.prepare("UPDATE scrims SET status = 'done' WHERE id = ?").run(scrim.id);
                 await refreshScrimMessage(client, { ...scrim, status: 'done' });
@@ -159,36 +155,30 @@ function startScrimReminders(client) {
 }
 
 // ================= BUTTON HANDLER =================
-
 async function handleScrimButton(interaction, client) {
     const db = client.db;
     const m = /^scrim_(yes|no)_(\d+)$/.exec(interaction.customId);
     if (!m) return;
     const [, choice, idStr] = m;
     const scrimId = Number(idStr);
+    const lang = pickLang(client, interaction.guildId, interaction.user.id);
 
     const scrim = db.prepare('SELECT * FROM scrims WHERE id = ?').get(scrimId);
-    if (!scrim) {
-        return interaction.reply({ content: 'This scrim no longer exists.', flags: MessageFlags.Ephemeral }).catch(() => {});
-    }
-    if (scrim.status !== 'open') {
-        return interaction.reply({ content: 'This scrim is closed.', flags: MessageFlags.Ephemeral }).catch(() => {});
-    }
+    if (!scrim) return interaction.reply({ content: 'This scrim no longer exists.', flags: MessageFlags.Ephemeral }).catch(() => {});
+    if (scrim.status !== 'open') return interaction.reply({ content: 'This scrim is closed.', flags: MessageFlags.Ephemeral }).catch(() => {});
 
     const uid = interaction.user.id;
     const existing = db.prepare('SELECT status FROM scrim_signups WHERE scrim_id = ? AND user_id = ?').get(scrimId, uid);
-
     let note;
     if (existing?.status === choice) {
         db.prepare('DELETE FROM scrim_signups WHERE scrim_id = ? AND user_id = ?').run(scrimId, uid);
-        note = 'Removed your response.';
+        note = T('response_removed', lang);
     } else {
         db.prepare(
-            `INSERT INTO scrim_signups (scrim_id, user_id, status, signed_at)
-             VALUES (?, ?, ?, strftime('%s','now'))
+            `INSERT INTO scrim_signups (scrim_id, user_id, status, signed_at) VALUES (?, ?, ?, strftime('%s','now'))
              ON CONFLICT(scrim_id, user_id) DO UPDATE SET status = excluded.status, signed_at = excluded.signed_at`
         ).run(scrimId, uid, choice);
-        note = choice === 'yes' ? "You're in." : 'Marked as unavailable.';
+        note = choice === 'yes' ? T('you_are_in', lang) : T('marked_unavailable', lang);
     }
 
     await interaction.deferUpdate().catch(() => {});
@@ -197,7 +187,6 @@ async function handleScrimButton(interaction, client) {
 }
 
 // ================= COMMAND =================
-
 module.exports = {
     name: 'scrim',
     aliases: ['scrims'],
@@ -226,12 +215,8 @@ module.exports = {
             const out = [];
             for (let i = 0; i < 7; i++) {
                 const d = new Date(Date.now() + i * 86400000);
-                const iso = new Intl.DateTimeFormat('en-CA', {
-                    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit'
-                }).format(d);
-                const label = i === 0 ? 'Today'
-                    : i === 1 ? 'Tomorrow'
-                    : new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(d);
+                const iso = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+                const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(d);
                 out.push({ name: `${iso} (${label})`, value: iso });
             }
             const filtered = typed ? out.filter(o => o.value.includes(typed)) : out;
@@ -241,16 +226,11 @@ module.exports = {
         if (focused.name === 'time') {
             const slots = [];
             for (let h = 0; h < 24; h++) {
-                for (const m of ['00', '30']) {
-                    slots.push(`${String(h).padStart(2, '0')}:${m}`);
-                }
+                for (const m of ['00', '30']) slots.push(`${String(h).padStart(2, '0')}:${m}`);
             }
             let picks;
             if (!typed) {
-                // Next slots from the guild's current local time.
-                const nowLocal = new Intl.DateTimeFormat('en-GB', {
-                    timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false
-                }).format(new Date());
+                const nowLocal = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
                 const idx = slots.findIndex(s => s > nowLocal);
                 const start = idx === -1 ? 0 : idx;
                 picks = slots.slice(start, start + 12);
@@ -259,104 +239,73 @@ module.exports = {
                 const digits = typed.replace(/[^0-9]/g, '');
                 picks = slots.filter(s => s.replace(':', '').startsWith(digits) || s.startsWith(typed));
             }
-            return interaction.respond(
-                picks.slice(0, 25).map(s => ({ name: s, value: s }))
-            ).catch(() => {});
+            return interaction.respond(picks.slice(0, 25).map(s => ({ name: s, value: s }))).catch(() => {});
         }
 
         return interaction.respond([]).catch(() => {});
     },
 
     execute: async (interaction, client) => {
-        if (!interaction.guild) {
-            return interaction.reply({ content: 'Server only.', flags: MessageFlags.Ephemeral });
-        }
+        if (!interaction.guild) return interaction.reply({ content: 'Server only.', flags: MessageFlags.Ephemeral });
         const db = client.db;
         const gid = interaction.guild.id;
         const sub = interaction.options.getSubcommand();
-        const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator)
-            || interaction.member.permissions.has(PermissionFlagsBits.ManageGuild);
+        const lang = pickLang(client, gid, interaction.user.id);
+        const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator) || interaction.member.permissions.has(PermissionFlagsBits.ManageGuild);
 
-        // ---- CREATE ----
+        // CREATE
         if (sub === 'create') {
-            if (!isAdmin) {
-                return interaction.reply({ content: 'Only admins can schedule scrims.', flags: MessageFlags.Ephemeral });
-            }
-
+            if (!isAdmin) return interaction.reply({ content: 'Only admins can schedule scrims.', flags: MessageFlags.Ephemeral });
             const tz = getTimezone(db, gid);
-            const at = toUnix(
-                interaction.options.getString('date'),
-                interaction.options.getString('time'),
-                tz
-            );
-            if (!at) {
-                return interaction.reply({
-                    content: 'Could not read that date or time. Use `YYYY-MM-DD` and `HH:MM`, for example `2026-09-24` and `20:30`.',
-                    flags: MessageFlags.Ephemeral,
-                });
-            }
-            if (at <= Math.floor(Date.now() / 1000)) {
-                return interaction.reply({ content: 'That time is already in the past.', flags: MessageFlags.Ephemeral });
-            }
+            const at = toUnix(interaction.options.getString('date'), interaction.options.getString('time'), tz);
+            if (!at) return interaction.reply({ content: 'Could not read that date/time. Use `YYYY-MM-DD` and `HH:MM`.', flags: MessageFlags.Ephemeral });
+            if (at <= Math.floor(Date.now() / 1000)) return interaction.reply({ content: 'That time is in the past.', flags: MessageFlags.Ephemeral });
 
             await interaction.deferReply();
-
-            const info = db.prepare(
-                `INSERT INTO scrims (guild_id, channel_id, created_by, title, note, scheduled_at)
-                 VALUES (?, ?, ?, ?, ?, ?)`
-            ).run(
+            const info = db.prepare(`INSERT INTO scrims (guild_id, channel_id, created_by, title, note, scheduled_at) VALUES (?, ?, ?, ?, ?, ?)`).run(
                 gid, interaction.channelId, interaction.user.id,
                 interaction.options.getString('title') || 'Scrim',
                 interaction.options.getString('note') || null,
                 at
             );
-            const scrimId = info.lastInsertRowid;
-            const scrim = db.prepare('SELECT * FROM scrims WHERE id = ?').get(scrimId);
-
-            const msg = await interaction.editReply({
-                embeds: [buildScrimEmbed(scrim, { yes: [], no: [] }, interaction.guild)],
-                components: [buildScrimRow(scrimId)],
-            });
-            db.prepare('UPDATE scrims SET message_id = ? WHERE id = ?').run(msg.id, scrimId);
+            const scrim = db.prepare('SELECT * FROM scrims WHERE id = ?').get(info.lastInsertRowid);
+            const card = buildScrimCard(scrim, { yes: [], no: [] }, interaction.guild, client, false, lang);
+            const msg = await interaction.editReply(card);
+            db.prepare('UPDATE scrims SET message_id = ? WHERE id = ?').run(msg.id, scrim.id);
             return;
         }
 
-        // ---- LIST ----
+        // LIST
         if (sub === 'list') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             const now = Math.floor(Date.now() / 1000);
-            const rows = db.prepare(
-                `SELECT * FROM scrims WHERE guild_id = ? AND status = 'open' AND scheduled_at > ?
-                 ORDER BY scheduled_at ASC LIMIT 10`
-            ).all(gid, now);
-
-            if (!rows.length) {
-                return interaction.editReply({ content: 'No scrims scheduled.' });
+            const rows = db.prepare(`SELECT * FROM scrims WHERE guild_id = ? AND status = 'open' AND scheduled_at > ? ORDER BY scheduled_at ASC LIMIT 10`).all(gid, now);
+            if (!rows.length) return interaction.editReply({ content: 'No scrims scheduled.' });
+            try {
+                const lines = rows.map(s => {
+                    const { yes } = getSignups(db, s.id);
+                    const jumpLink = s.message_id ? `[Jump ➔](https://discord.com/channels/${gid}/${s.channel_id}/${s.message_id})` : '';
+                    return `> **#${s.id}** — ${s.title || 'Scrim'} ${jumpLink}\n> <t:${s.scheduled_at}:F> · <t:${s.scheduled_at}:R> · ${yes.length} joining`;
+                });
+                const gamerEm = resolveEmoji('gamer', interaction.guild) || '🎮';
+                const lc = new ContainerBuilder().setAccentColor(0x3498db);
+                lc.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${gamerEm} ${T('upcoming_scrims', lang)}`));
+                lc.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                lc.addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n\n')));
+                lc.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223`));
+                return await interaction.editReply({ components: [lc], flags: MessageFlags.IsComponentsV2 });
+            } catch (err) {
+                console.error('[SCRIM LIST ERROR]', err);
+                return interaction.editReply({ content: '⚠️ Failed to load scrims. Please try again later.' });
             }
-            const lines = rows.map(s => {
-                const { yes } = getSignups(db, s.id);
-                return `**#${s.id}** — ${s.title || 'Scrim'}\n<t:${s.scheduled_at}:F> · <t:${s.scheduled_at}:R> · ${yes.length} joining`;
-            });
-            return interaction.editReply({
-                embeds: [new EmbedBuilder()
-                    .setColor('#3498db')
-                    .setTitle(`${EMOJIS.gamer} Upcoming scrims`)
-                    .setDescription(lines.join('\n\n'))
-                    .setFooter({ text: 'ARCHON CG-223' })
-                ],
-            });
         }
 
-        // ---- CANCEL ----
+        // CANCEL
         if (sub === 'cancel') {
-            if (!isAdmin) {
-                return interaction.reply({ content: 'Only admins can cancel scrims.', flags: MessageFlags.Ephemeral });
-            }
+            if (!isAdmin) return interaction.reply({ content: 'Only admins can cancel scrims.', flags: MessageFlags.Ephemeral });
             const id = interaction.options.getInteger('id');
             const scrim = db.prepare('SELECT * FROM scrims WHERE id = ? AND guild_id = ?').get(id, gid);
-            if (!scrim) {
-                return interaction.reply({ content: `No scrim #${id} on this server.`, flags: MessageFlags.Ephemeral });
-            }
+            if (!scrim) return interaction.reply({ content: `No scrim #${id} on this server.`, flags: MessageFlags.Ephemeral });
             db.prepare("UPDATE scrims SET status = 'cancelled' WHERE id = ?").run(id);
             await refreshScrimMessage(client, { ...scrim, status: 'cancelled' });
 
@@ -364,22 +313,18 @@ module.exports = {
             if (yes.length) {
                 const ch = await client.channels.fetch(scrim.channel_id).catch(() => null);
                 if (ch) {
-                    await ch.send({
-                        content: yes.map(u => `<@${u}>`).join(' '),
-                        embeds: [new EmbedBuilder()
-                            .setColor('#e74c3c')
-                            .setTitle(`⚠️ Scrim cancelled`)
-                            .setDescription(`**${scrim.title || 'Scrim'}** (<t:${scrim.scheduled_at}:F>) has been cancelled.`)
-                        ],
-                    }).catch(() => {});
+                    const warnEm = resolveEmoji('warning', ch.guild) || '⚠️';
+                    const xc = new ContainerBuilder().setAccentColor(0xe74c3c);
+                    xc.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${warnEm} ${T('scrim_cancelled', lang)}`));
+                    xc.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                    xc.addTextDisplayComponents(new TextDisplayBuilder().setContent(T('cancelled_desc', lang, { title: scrim.title || 'Scrim', time: scrim.scheduled_at })));
+                    await ch.send({ content: yes.map(u => `<@${u}>`).join(' '), components: [xc], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
                 }
             }
             return interaction.reply({ content: `Scrim #${id} cancelled.`, flags: MessageFlags.Ephemeral });
         }
     },
 
-    // Exported for index.js
     handleScrimButton,
     startScrimReminders,
 };
-

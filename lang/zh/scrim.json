@@ -1,0 +1,15 @@
+{
+  "joining": "参与 ({n})",
+  "cant_make_it": "无法参与 ({n})",
+  "nobody_yet": "还没有人",
+  "upcoming_scrims": "即将到来的训练赛",
+  "scrim_cancelled": "训练赛已取消",
+  "starting_soon": "训练赛即将开始",
+  "cancelled_desc": "**{title}** (<t:{time}:F>) 已取消。",
+  "starting_desc": "**{title}** 将在 <t:{time}:R> 开始。\\n已确认 {count} 名玩家。",
+  "you_are_in": "你已加入。",
+  "marked_unavailable": "已标记为无法参与。",
+  "response_removed": "已移除你的回复。",
+  "btn_joining": "参与",
+  "btn_cant_make_it": "无法参与"
+}
