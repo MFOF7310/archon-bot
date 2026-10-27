@@ -88,12 +88,16 @@ function getDuelRank(elo) {
 }
 const rankIndex = (rank) => DUEL_RANKS.indexOf(rank);
 
+// Fortified (Titan's Fortress): incoming damage is multiplied by this. 0.6 = 40% less damage.
+const FORTIFY_DAMAGE_MULT = 0.6;
+
 function calcDamage(attacker, defender, isCrit = false, isSpecial = false) {
-    let base = attacker.class.dmg;
-    let armor = defender.armorBuff ? defender.class.armor * 0.4 : defender.class.armor;
+    const base = attacker.class.dmg;
+    const armor = defender.class.armor;
     let dmg = Math.max(1, Math.floor(base * (1 - (armor / 100))));
     if (isCrit) dmg = Math.floor(dmg * 1.8);
     if (isSpecial) dmg = Math.floor(dmg * 1.5);
+    if (defender.armorBuff) dmg = Math.max(1, Math.floor(dmg * FORTIFY_DAMAGE_MULT));
     return dmg;
 }
 
@@ -360,7 +364,7 @@ async function runBattle(msg, client, db, duel, escrow, tr, notes) {
         player.energy = Math.min(100, player.energy + 15);
         if (player.cooldown > 0) player.cooldown--;
         if (player.armorBuff > 0) { player.armorBuff--; if (player.armorBuff === 0) player.armorBuff = false; }
-        if (player.dodgeNext) player.dodgeNext = false;
+        // player.dodgeNext is NOT cleared here: the smoke screen must last until an attack actually misses.
     };
 
     try {
@@ -393,6 +397,7 @@ async function runBattle(msg, client, db, duel, escrow, tr, notes) {
             const abil = tr('d2_sp_' + current.class.special);
 
             if (action === 'duel_attack') {
+                if (opponent.dodgeNext) opponent.dodgeNext = false; // spent on this attack
                 if (isDodged) {
                     log = tr('d2_logDodge', { foe });
                 } else {
