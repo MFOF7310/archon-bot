@@ -323,7 +323,7 @@ async function start(env, input) {
 // ================= THE COMMAND =================
 module.exports = {
     name: 'setgame',
-    aliases: ['sg', 'spec', 'combat', 'jeu', 'specialisation', 'gameprofile'],
+    aliases: ['sg', 'spec', 'jeu', 'specialisation', 'gameprofile'],
     description: 'Set your game profile: game, mode and rank.',
     category: 'GAMING',
     cooldown: 3000,
