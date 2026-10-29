@@ -55,8 +55,62 @@ module.exports = {
             console.log('[TIKTOK] TikWM result:', info ? 'got data' : 'null', info?.url?.substring(0,50));
             if (!info && platform === 'Douyin') info = await douyinFallback(url);
             if (!info) info = await neuralGridFallback(url);
-            console.log('[TIKTOK] Final info:', info?.url?.substring(0,50));
-            if (!info?.url) throw new Error('All methods failed');
+            console.log('[TIKTOK] Final info:', info?.url?.substring(0,50) || 'slideshow');
+            if (!info?.url && (!info?.images || info.images.length === 0)) throw new Error('All methods failed');
+
+            // ── SLIDESHOW HANDLER ──
+            if (info.images && info.images.length > 0) {
+                const slideCaption = (info.title ? `🖼️ ${escapeHTML(info.title.substring(0, 150))}\n` : '') +
+                    (info.uploader ? `👤 @${escapeHTML(info.uploader)}` : '') +
+                    `\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+
+                const statusMsg = await ctx.bridge.sendTo(ctx.chatId, `⏳ <b>Downloading ${info.images.length} images...</b>`, { parse_mode: 'HTML' });
+                const statusId = statusMsg?.data?.message_id;
+                const updateStatus = async (text) => {
+                    if (statusId) await ctx.bridge.editMessage(ctx.chatId, statusId, text, { parse_mode: 'HTML' }).catch(() => {});
+                };
+
+                try {
+                    let sentCount = 0;
+                    for (let i = 0; i < info.images.length; i++) {
+                        await updateStatus(`📤 <b>Sending image ${i + 1}/${info.images.length}...</b>`);
+                        try {
+                            const imgBuf = await downloadBuffer(info.images[i]);
+                            await ctx.bridge.sendPhoto(ctx.chatId, imgBuf, { 
+                                caption: i === 0 ? slideCaption : undefined, 
+                                parse_mode: 'HTML' 
+                            });
+                            sentCount++;
+                        } catch (e) {
+                            console.error('[TIKTOK] Image error:', e.message);
+                        }
+                    }
+
+                    if (info.musicUrl) {
+                        await updateStatus(`🎵 <b>Sending original sound...</b>`);
+                        try {
+                            const audioBuf = await downloadBuffer(info.musicUrl);
+                            await ctx.bridge.sendAudioBuffer(ctx.chatId, audioBuf, { 
+                                title: info.musicTitle, 
+                                performer: info.uploader || 'TikTok' 
+                            });
+                        } catch (e) {
+                            console.error('[TIKTOK] Audio error:', e.message);
+                        }
+                    }
+
+                    if (statusId) await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
+                    deleteProc();
+                    if (sentCount > 0) return; // Stop here, slideshow is done!
+                } catch (err) {
+                    console.error('[TIKTOK] Slideshow error:', err.message);
+                    if (statusId) await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
+                    deleteProc();
+                    await ctx.replyHTML(`❌ Couldn't deliver the slideshow.`);
+                    return;
+                }
+            }
+            // ── END SLIDESHOW HANDLER ──
 
             const caption = (info.title ? `🎬 ${escapeHTML(info.title.substring(0, 120))}\n` : '') +
                 (info.uploader ? `👤 @${escapeHTML(info.uploader)}` : '') +
@@ -242,7 +296,15 @@ async function fetchTikWM(url) {
     try {
         const data = await requestJSON(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=2`);
         if (data?.code === 0 && data.data) {
-            return { url: data.data.hdplay || data.data.play, title: data.data.title, uploader: data.data.author?.nickname, duration: data.data.duration };
+            return { 
+                url: data.data.hdplay || data.data.play, 
+                images: data.data.images || [],
+                musicUrl: data.data.music_info?.play,
+                musicTitle: data.data.music_info?.title || 'Original Sound',
+                title: data.data.title, 
+                uploader: data.data.author?.nickname, 
+                duration: data.data.duration 
+            };
         }
     } catch { /* silent */ }
     return null;
