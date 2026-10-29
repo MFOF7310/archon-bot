@@ -16,6 +16,7 @@ const em = (k, fb) => EMOJIS[k] || fb || '';
 function emBtn(name, fallback, client) {
     const found = client?.emojis?.cache?.find(e => e.name === name);
     if (found) return `<${found.animated ? 'a' : ''}:${found.name}:${found.id}>`;
+    if (EMOJIS[name]) return EMOJIS[name];
     if (fallback) {
         console.warn(`[LIVESTREAM] Server emoji "${name}" not found — using fallback "${fallback}". Add it in Server Settings → Emoji to restore the custom icon.`);
     }

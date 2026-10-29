@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
+const mention = require('../lib/mentions');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const L = (q) => { const s = q?._client?.getServerSettings?.(q?.guild?.id) || {}; return (s.language && s.language !== 'auto') ? s.language : 'en'; };
 const tx = (k, lang, vars) => require('../lib/i18n').t(k, lang, vars);
@@ -95,7 +96,7 @@ function resetInactivityTimer(q) {
             await qNow.textChannel?.send({ embeds: [new EmbedBuilder()
                 .setColor(0xFEE75C)
                 .setAuthor({ name: '💤 Auto-Disconnect' })
-                .setDescription(t('music.inactivity_disconnect', lang))
+                .setDescription(t('music.inactivity_disconnect', lang, { cmd_play: mention(global.client, 'music', 'play') }))
             ] });
         } catch(e) {}
         destroyQueue(q.guild.id);
@@ -487,7 +488,7 @@ function attachCollector(q, msg) {
                 await qNow.persistentMsg.delete().catch(() => {});
                 qNow.persistentMsg = null; qNow.panelMsgId = null;
                 const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                    .setDescription(t('music.stopped', lang));
+                    .setDescription(t('music.stopped', lang, { cmd_play: mention(global.client, 'music', 'play') }));
                 await qNow.textChannel?.send({ embeds: [stoppedEmbed] }).catch(() => {});
             }
             destroyQueue(q.guild.id);
@@ -516,7 +517,7 @@ function attachCollector(q, msg) {
             }
             mine.unshift({ title: trk.title.replace(/^🎵\s*/, ''), query: trk.query || trk.title, folder: '❤️ Liked Songs', likedAt: Date.now() });
             saveLikes(all);
-            await i.followUp({ content: t('music.like_saved', lang, { title: trk.title.substring(0, 50), count: mine.length }), flags: 64 }).catch(() => {});
+            await i.followUp({ content: t('music.like_saved', lang, { title: trk.title.substring(0, 50), count: mine.length, cmd_library: mention(global.client, 'music', 'library') }), flags: 64 }).catch(() => {});
         } else if (i.customId === 'mc_dislike') {
             const trk = qNow.currentTrack;
             if (!trk) return i.followUp({ content: t('music.nothing_playing_dislike', lang), flags: 64 }).catch(() => {});
@@ -1116,7 +1117,7 @@ async function playNext(q) {
             q._consecutiveErrors = 0;
             const giveUpEmbed = new EmbedBuilder().setColor(ARCHON.red)
                 .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
-                .setDescription(t('music.too_many_errors', lang));
+                .setDescription(t('music.too_many_errors', lang, { cmd_play: mention(global.client, 'music', 'play') }));
             await q.textChannel?.send({ embeds: [giveUpEmbed] }).catch(() => {});
             q.autoplay = false;
             return;
@@ -1279,7 +1280,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         if (q2) q2.libraryIndex = libIdx;
     }
     if (q.tracks.length >= 50) {
-        await replyFn({ content: t('music.queue_full', lang) });
+        await replyFn({ content: t('music.queue_full', lang, { cmd_skip: mention(global.client, 'music', 'skip'), cmd_stop: mention(global.client, 'music', 'stop') }) });
         return;
     }
     q.tracks.push(track);
@@ -1427,7 +1428,7 @@ module.exports = {
     run: async (client, message, args, db, serverSettings, usedCommand) => {
         const lang = serverSettings?.language && serverSettings.language !== 'auto' ? serverSettings.language : 'en';
         const query = args.join(' ');
-        if (!query) return message.reply(t('music.no_query', lang)).catch(() => {});
+        if (!query) return message.reply(t('music.no_query', lang, { cmd_library: mention(global.client, 'music', 'library') })).catch(() => {});
         const vc = message.member?.voice?.channel;
         if (!vc) return message.reply(t('music.join_voice', lang)).catch(() => {});
         await handlePlay(
@@ -1618,7 +1619,7 @@ module.exports = {
         // Commands that need active queue
         const q = getQueue(guildId);
         if (!q && !['play','file','library'].includes(sub)) {
-            return interaction.editReply({ content: t('music.not_playing', lang) });
+            return interaction.editReply({ content: t('music.not_playing', lang, { cmd_play: mention(global.client, 'music', 'play') }) });
         }
 
         // ── FILTER ── 🎚️
@@ -1659,12 +1660,12 @@ module.exports = {
                 await q.persistentMsg.delete().catch(() => {});
                 q.persistentMsg = null; q.panelMsgId = null;
                 const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                    .setDescription(t('music.stopped', lang));
+                    .setDescription(t('music.stopped', lang, { cmd_play: mention(global.client, 'music', 'play') }));
                 await q.textChannel?.send({ embeds: [stoppedEmbed] }).catch(() => {});
             }
             destroyQueue(guildId);
             const embed = new EmbedBuilder().setColor(ARCHON.red)
-                .setDescription(t('music.stopped', lang));
+                .setDescription(t('music.stopped', lang, { cmd_play: mention(global.client, 'music', 'play') }));
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -1675,7 +1676,7 @@ module.exports = {
 
         // ── NOW PLAYING ── (CV2 card, same style as the live panel)
         if (sub === 'nowplaying') {
-            if (!q.currentTrack) return interaction.editReply({ content: t('music.not_playing', lang) });
+            if (!q.currentTrack) return interaction.editReply({ content: t('music.not_playing', lang, { cmd_play: mention(global.client, 'music', 'play') }) });
             const reply = await interaction.editReply({
                 components: [buildPanelContainer(q, client)],
                 flags: MessageFlags.IsComponentsV2,
@@ -1687,7 +1688,7 @@ module.exports = {
                 col.on('collect', async (i) => {
                     if (!i.member?.voice?.channel) return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
                     const qNow = getQueue(guildId);
-                    if (!qNow) return i.reply({ content: t('music.no_active_queue', lang), flags: 64 }).catch(() => {});
+                    if (!qNow) return i.reply({ content: t('music.no_active_queue', lang, { cmd_play: mention(global.client, 'music', 'play') }), flags: 64 }).catch(() => {});
                     await i.deferUpdate().catch(() => {});
                     if (i.customId === 'mc_pause') {
                         if (qNow.player.state.status === AudioPlayerStatus.Paused) { qNow.player.unpause(); qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now()); qNow.pausedAt = null; }
@@ -1828,7 +1829,7 @@ module.exports = {
                     embed.setTitle('📚 Music Library')
                         .setDescription(`**${lib.length} curated tracks** across ${folders.length} folders.\nSelect a folder below to browse and queue.\n\n${overview}`)
                         .addFields({ name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0, 60)}` : '⏹️ Nothing', inline: false })
-                        .setFooter({ text: 'BAMAKO_223 🇲🇱 • Pick a folder • /music library search:<term> to search' });
+                        .setFooter({ text: `BAMAKO_223 🇲🇱 • Pick a folder • ${mention(global.client, 'music', 'library')} search:<term> to search` });
                 } else {
                     // Folder view — paginated tracks
                     const tracks = resolveTracks();
