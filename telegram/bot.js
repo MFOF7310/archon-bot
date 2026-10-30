@@ -677,6 +677,8 @@ function buildContext(update, bridge, client) {
         sendAudio: (a, o={}) => bridge.sendAudio(chatId, a, o),
         sendVideoBuffer: (buf, o={}) => bridge.sendVideoBuffer(chatId, buf, o),
         sendAudioBuffer: (buf, o={}) => bridge.sendAudioBuffer(chatId, buf, o),
+        sendPhotoBuffer: (buf, o={}) => bridge.sendPhotoBuffer(chatId, buf, o),
+        sendMediaGroup: (media, o={}) => bridge.sendMediaGroup(chatId, media, o),
         sendDoc: (d, o={}) => bridge.sendDocument(chatId, d, o),
     };
 

@@ -51,7 +51,8 @@
     "sharp": "^0.35.4",
     "sodium-native": "^5.1.0",
     "telegraf": "^4.16.3",
-    "tweetnacl": "^1.0.3"
+    "tweetnacl": "^1.0.3",
+    "ultra-igdl": "^1.0.3"
   },
   "overrides": {
     "tar": "^7.5.22",

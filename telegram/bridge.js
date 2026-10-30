@@ -219,6 +219,68 @@ class TelegramBridge {
         });
     }
 
+    async sendMediaGroup(chatId, media, options = {}) {
+        if (!this.token) return { success: false };
+        return new Promise((resolve) => {
+            const body = JSON.stringify({ chat_id: chatId, media });
+            const req = https.request(
+                `https://api.telegram.org/bot${this.token}/sendMediaGroup`,
+                { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 20000 },
+                (res) => {
+                    let data = '';
+                    res.on('data', c => data += c);
+                    res.on('end', () => {
+                        try {
+                            const json = JSON.parse(data);
+                            resolve({ success: json.ok, data: json.result, error: json.description });
+                        } catch { resolve({ success: false }); }
+                    });
+                }
+            );
+            req.on('error', () => resolve({ success: false }));
+            req.write(body);
+            req.end();
+        });
+    }
+
+    async sendPhotoBuffer(chatId, buffer, options = {}) {
+        if (!this.token) return { success: false };
+        return new Promise((resolve) => {
+            const boundary = '----ARCHON' + Date.now();
+            const caption = options.caption || '';
+
+            let body = '';
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+            if (caption) {
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`;
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="parse_mode"\r\n\r\nHTML\r\n`;
+            }
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="photo"; filename="photo.jpg"\r\n`;
+            body += `Content-Type: image/jpeg\r\n\r\n`;
+
+            const bodyStart = Buffer.from(body, 'utf8');
+            const bodyEnd = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
+            const totalBody = Buffer.concat([bodyStart, buffer, bodyEnd]);
+
+            const req = require('https').request(
+                `https://api.telegram.org/bot${this.token}/sendPhoto`,
+                { method: 'POST', headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': totalBody.length }, timeout: 120000 },
+                (res) => {
+                    let data = '';
+                    res.on('data', c => data += c);
+                    res.on('end', () => { try { const j = JSON.parse(data); resolve({ success: j.ok, data: j.result, error: j.description }); } catch { resolve({ success: false }); } });
+                }
+            );
+            req.on('error', () => resolve({ success: false }));
+            req.write(totalBody);
+            req.end();
+        });
+    }
+
     async sendAudioBuffer(chatId, buffer, options = {}) {
         if (!this.token) return { success: false };
         return new Promise((resolve) => {

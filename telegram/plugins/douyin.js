@@ -71,21 +71,26 @@ module.exports = {
                 };
 
                 try {
-                    let sentCount = 0;
-                    for (let i = 0; i < info.images.length; i++) {
-                        await updateStatus(`📤 <b>Sending image ${i + 1}/${info.images.length}...</b>`);
-                        try {
-                            const imgBuf = await downloadBuffer(info.images[i]);
-                            await ctx.bridge.sendPhoto(ctx.chatId, imgBuf, { 
-                                caption: i === 0 ? slideCaption : undefined, 
-                                parse_mode: 'HTML' 
-                            });
-                            sentCount++;
-                        } catch (e) {
-                            console.error('[TIKTOK] Image error:', e.message);
+                    // Build the media group array
+                    const mediaGroup = info.images.map((imgUrl, index) => {
+                        const item = { type: 'photo', media: imgUrl };
+                        if (index === 0) {
+                            item.caption = slideCaption;
+                            item.parse_mode = 'HTML';
                         }
+                        return item;
+                    });
+
+                    await updateStatus(`📤 <b>Sending album (${info.images.length} images)...</b>`);
+                    const res = await ctx.bridge.sendMediaGroup(ctx.chatId, mediaGroup);
+                    
+                    if (!res.success) {
+                        console.error('[TIKTOK] MediaGroup failed:', res.error);
+                        // Fallback: send first image as a single photo if album fails
+                        await ctx.bridge.sendPhoto(ctx.chatId, info.images[0], { caption: slideCaption, parse_mode: 'HTML' });
                     }
 
+                    // Send the audio after the album
                     if (info.musicUrl) {
                         await updateStatus(`🎵 <b>Sending original sound...</b>`);
                         try {
@@ -101,7 +106,7 @@ module.exports = {
 
                     if (statusId) await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
                     deleteProc();
-                    if (sentCount > 0) return; // Stop here, slideshow is done!
+                    return; // Stop here, slideshow is done!
                 } catch (err) {
                     console.error('[TIKTOK] Slideshow error:', err.message);
                     if (statusId) await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});

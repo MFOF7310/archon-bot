@@ -5,9 +5,9 @@ const path = require('path');
 
 function dlInstagramMeta(url) {
     return new Promise((res, rej) => {
-        const cmd = 'yt-dlp --no-playlist ' + COOKIES + ' --dump-json "' + url + '"';
-        exec(cmd, { timeout: 30000 }, (err, stdout) => {
-            if (err || !stdout) return res(null);
+        const cmd = 'yt-dlp ' + COOKIES + ' --ignore-errors --dump-single-json "' + url + '"';
+        exec(cmd, { timeout: 30000, maxBuffer: 1024 * 1024 * 10 }, (err, stdout) => {
+            if (!stdout) return res(null);
             try { res(JSON.parse(stdout.trim())); } catch { res(null); }
         });
     });
@@ -98,7 +98,7 @@ module.exports = {
     usage: '/ig <url>',
 
     handler: async (ctx) => {
-        const url = ctx.args[0];
+        let url = ctx.args[0];
         if (!url || !url.includes('instagram'))
             return ctx.replyHTML(
                 '📸 <b>Instagram Downloader</b>\n\n' +
@@ -106,6 +106,10 @@ module.exports = {
                 '<code>/ig https://instagram.com/reel/...</code>\n\n' +
                 '<i>⚠️ Only public posts can be downloaded.</i>'
             );
+
+        // Clean URL: remove query parameters like ?img_index=... that trigger Instagram's bot detection
+        url = url.split('?')[0];
+        if (!url.endsWith('/')) url += '/';
 
         await ctx.action('upload_video');
         const proc = await ctx.bridge.sendTo(ctx.chatId, '⏳ <b>Fetching Instagram content...</b>', { parse_mode: 'HTML' });
@@ -119,12 +123,74 @@ module.exports = {
 
         try {
             await edit('📸 <i>Downloading... hang tight!</i>');
-            const [meta, filePath] = await Promise.all([
-                dlInstagramMetaRetry(url),
-                dlInstagramRetry(url)
-            ]);
 
-            fs.renameSync(filePath, rawPath);
+        // 1. Try ultra-igdl for carousels/images
+        try {
+            const { ultraigdl } = require('ultra-igdl');
+            const cookiePath = '/opt/youtube_cookies.txt';
+            if (fs.existsSync(cookiePath)) {
+                const cookieLines = fs.readFileSync(cookiePath, 'utf8').split(String.fromCharCode(10)).filter(line => line.includes('.instagram.com'));
+                console.log('[INSTAGRAM] Found IG cookies:', cookieLines.length);
+                
+                const parsedCookies = cookieLines.map(line => { 
+                    const parts = line.split('\t'); 
+                    return (parts[5] && parts[6]) ? `${parts[5]}=${parts[6]}` : ''; 
+                }).filter(Boolean);
+                
+                const cookieString = parsedCookies.join('; ');
+                console.log('[INSTAGRAM] Parsed cookie names:', parsedCookies.map(c => c.split('=')[0]).join(', '));
+                
+                if (cookieString) {
+                    console.log('[INSTAGRAM] Trying ultra-igdl...');
+                    const ig = new ultraigdl({ 
+                        cookies: cookieString,
+                        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    });
+                    // Nettoyage final de l'URL : on garde juste le code du post (ex: /p/XXXXX)
+                    const cleanUrl = url.match(/(https:\/\/www\.instagram\.com\/(p|reel)\/[a-zA-Z0-9_-]+)/)?.[1] || url;
+                    console.log('[INSTAGRAM] ultra-igdl sending URL:', cleanUrl);
+                    
+                    const result = await ig.download(cleanUrl);
+                    console.log('[INSTAGRAM] ultra-igdl raw:', JSON.stringify(result).substring(0, 100));
+                    console.log('[INSTAGRAM] ultra-igdl result:', result.code, result.media ? result.media.length : 0);
+                    
+                    if (result.code === 200 && result.media && result.media.length > 0) {
+                        const isVideo = result.media.some(m => m.type === 'video');
+                        if (!isVideo || result.media.length > 1) {
+                            await edit(`📤 <b>Sending album (${result.media.length} items)...</b>`);
+                            const caption = '📸 <b>Instagram</b>' + String.fromCharCode(10) + '👤 @' + (result.username || 'user') + String.fromCharCode(10, 10) + '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
+                            // Telegram accepts max 10 items per album. We chunk the media.
+                    const mediaList = result.media.map(m => m.type === 'video' ? { type: 'video', media: m.url } : { type: 'photo', media: m.url });
+                    const chunks = [];
+                    for (let i = 0; i < mediaList.length; i += 10) {
+                        chunks.push(mediaList.slice(i, i + 10));
+                    }
+                    
+                    for (let i = 0; i < chunks.length; i++) {
+                        const group = chunks[i];
+                        if (i === 0) {
+                            // Add caption to the first image of the first group only
+                            group[0].caption = caption;
+                            group[0].parse_mode = 'HTML';
+                        }
+                        await ctx.bridge.sendMediaGroup(ctx.chatId, group);
+                    }
+                            await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
+                            return; // Done!
+                        }
+                    }
+                } else {
+                    console.log('[INSTAGRAM] Cookie string is empty after parsing');
+                }
+            }
+        } catch (e) {
+            console.log('[INSTAGRAM] ultra-igdl failed, falling back to yt-dlp:', e.message);
+        }
+
+        // 2. If not handled by ultra-igdl (or if it's a single video), use yt-dlp
+        const meta = await dlInstagramMetaRetry(url);
+        const filePath = await dlInstagramRetry(url);
+        fs.renameSync(filePath, rawPath);
             if (normalizeAudio(rawPath, normPath)) {
                 fs.unlinkSync(rawPath);
                 fs.renameSync(normPath, rawPath);
