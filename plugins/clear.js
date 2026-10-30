@@ -46,8 +46,12 @@ module.exports = {
         
         // ================= PERMISSION CHECK =================
         const isArchitect = message.author.id === process.env.OWNER_ID;
-        const hasPerms = message.member.permissions.has(PermissionFlagsBits.ManageMessages);
-        
+        const hasPerms = message.member?.permissions.has(PermissionFlagsBits.ManageMessages);
+        const botCanManage = message.guild?.members?.me?.permissions.has(PermissionFlagsBits.ManageMessages);
+
+        if (!botCanManage) {
+            return message.reply({ content: "❌ I need the **Manage Messages** permission to purge messages.", flags: 64 });
+        }
         if (!isArchitect && !hasPerms) {
             const t = loadT(pickLang(client, message.guild?.id, null, message.author.id));
             return message.reply({ content: t.accessDenied, flags: 64 });
@@ -92,13 +96,29 @@ module.exports = {
         const lang = pickLang(interaction.client, interaction.guildId, interaction, interaction.user?.id);
         const t = loadT(lang);
         
+        const isArchitect = interaction.user.id === process.env.OWNER_ID;
+        const hasPerms = interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages);
+        const botCanManage = interaction.guild?.members?.me?.permissions.has(PermissionFlagsBits.ManageMessages);
+
+        if (!botCanManage) {
+            return interaction.editReply({ content: "❌ I need the **Manage Messages** permission to purge messages." });
+        }
+        if (!isArchitect && !hasPerms) {
+            return interaction.editReply({ content: t.accessDenied });
+        }
+
         try {
-            await performPurge(interaction.channel, interaction.user, amount, targetUser, t, interaction.client, interaction.guild);
-            
-            await interaction.editReply({ 
-                content: `✅ **${amount}** messages purged successfully.${targetUser ? ` Target: **${targetUser.tag}**` : ''}\n📝 Reason: ${reason}`,
-                flags: 64 
-            });
+            const deletedCount = await performPurge(interaction.channel, interaction.user, amount, targetUser, t, interaction.client, interaction.guild);
+
+            if (deletedCount > 0) {
+                await interaction.editReply({
+                    content: `✅ **${deletedCount}** messages purged successfully.${targetUser ? ` Target: **${targetUser.tag}**` : ''}
+📝 Reason: ${reason}`,
+                    flags: 64
+                });
+            } else {
+                await interaction.editReply({ content: "⚠️ No valid messages found to delete (they might be older than 14 days or pinned).", flags: 64 });
+            }
         } catch (err) {
             console.error('Slash clear error:', err.message);
             await interaction.editReply({ 
@@ -139,7 +159,7 @@ async function performPurge(channel, moderator, amount, targetUser, t, client, g
                 ]
             });
             setTimeout(() => noFound.delete().catch(() => null), 5000);
-            return;
+            return 0;
         }
 
         // Bulk delete
@@ -185,5 +205,6 @@ async function performPurge(channel, moderator, amount, targetUser, t, client, g
         
         const errorMsg = await channel.send({ embeds: [errorEmbed] });
         setTimeout(() => errorMsg.delete().catch(() => null), 5000);
+        return 0;
     }
 }
