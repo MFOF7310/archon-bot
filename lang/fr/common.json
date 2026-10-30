@@ -24,7 +24,7 @@
     "music": "Musique",
     "tickets": "Tickets",
     "moderation": "Modération",
-    "ai": "IA / Lydia",
+    "ai": "IA / Archon",
     "codm": "CODM"
   },
   "globalError": "⚠️ **Oups ! Ma connexion neuronale a vacillé.**\n> Je n'ai pas pu exécuter cette commande. Réessaie dans un instant.",
@@ -32,7 +32,7 @@
   "pushKeyExpired": "🔐 **Clé Push Expirée.** Utilisez `/authorize` sur Telegram pour un nouveau jeton.",
   "tokenProtection": "⏳ **Protection du Jeton :** Attendez {waitTime}s",
   "commandDisabled": "🔒 Cette commande est désactivée sur ce serveur.",
-  "lydiaFailed": "❌ Échec de l'exécution de la commande Lydia.",
+  "lydiaFailed": "❌ Échec de l'exécution de la commande Archon.",
   "genericError": "⚠️ **Oups ! Ma connexion neuronale a vacillé.**\n> Une erreur est survenue. Réessaie dans un instant.",
   "commandNotFound": "❌ Commande introuvable.",
   "commandExecuted": "✅ Commande exécutée.",

@@ -97,7 +97,7 @@ const embed = new EmbedBuilder()
     .setColor('#e74c3c')
     .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
     .setTitle(t.desc)
-    .setDescription(i18n.t('refresh.preview', lang, { xp: xpUsers, credits: creditUsers, total: totalUsers }) + '\n' + healthPreview)
+    .setDescription(i18n.t('refresh.preview', typeof lang !== 'undefined' ? lang : 'en', { xp: xpUsers, credits: creditUsers, total: totalUsers }) + '\n' + healthPreview)
             .setFooter({ text: 'ARCHON CG-223 • Neural Override System' })
             .setTimestamp();
 
@@ -248,7 +248,7 @@ if (type === 'light' && client.getDatabaseHealth) {
     const health = client.getDatabaseHealth();
     description = `🫧 **Light Log Purge Complete!**\n\`\`\`yaml\nDB Size: ${health.size}\nFragmentation: ${health.fragmentation} ${health.fragmentationStatus || ''}\nWasted: ${health.wastedMB || 'N/A'}\n\`\`\``;
 } else {
-    description = i18n.t('refresh.success', lang, { type: type.toUpperCase(), count: result.changes, ts: new Date().toISOString() });
+    description = i18n.t('refresh.success', typeof lang !== 'undefined' ? lang : 'en', { type: type.toUpperCase(), count: result.changes, ts: new Date().toISOString() });
 }
 
 const successEmbed = new EmbedBuilder()

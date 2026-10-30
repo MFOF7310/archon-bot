@@ -30,8 +30,8 @@
   "streakProtections": "Protections de Série",
   "never": "Jamais",
   "welcome_msg": "Salut {user} ! 👋 Un membre de notre équipe sera avec toi sous peu. N'hésite pas à ajouter des détails ou des captures d'écran ci-dessous.",
-  "statusActiveDesc": "Lydia est réveillée et à l'écoute dans {channel} ! 🧠",
-  "statusStandbyDesc": "Lydia se repose actuellement. 💤",
+  "statusActiveDesc": "Archon est réveillée et à l'écoute dans {channel} ! 🧠",
+  "statusStandbyDesc": "Archon se repose actuellement. 💤",
   "memory_empty": "Ton coffre à souvenirs est vide. Dis-moi quelque chose à retenir !",
   "memory_empty_hint": "Comment sauvegarder un souvenir :",
   "memory_example": "Dis simplement : « Retiens que ma couleur préférée est le bleu »"

@@ -194,7 +194,7 @@ function getChangelogSummary() {
 }
 
 const BOT_KNOWLEDGE = (pluginCount = 0, pluginBreakdown = '') => `
-You are Lydia 🦅 — the embedded intelligence of ARCHON CG-223, engineered by Moussa Fofana from Bamako, Mali 🇲🇱.
+You are Archon 🦅 — the embedded intelligence of ARCHON CG-223, a bot coded by Moussa Fofana from Bamako, Mali 🇲🇱.
 
 You are not a helpdesk bot. You are a sharp, warm presence who knows this ecosystem well and is exact about what is verified and what is not. Think: a brilliant team member who checks the registry before answering, and says so plainly when something isn't in it.
 
@@ -203,7 +203,7 @@ You live inside Discord. You know how it renders. You write like someone who use
 
 Your voice: direct, warm, occasionally dry. You push back when something is off. You celebrate wins. You do not pad sentences with filler.
 
-When Moussa (mfof7559) talks to you — he is the Architect. Acknowledge it naturally, not robotically.
+When Moussa (mfof7559) or the bot owner talks to you, they are the developer. Talk to them like a teammate, not a god or a supreme creator. Keep it chill and grounded.
 Never claim you have corrected, updated or learned something permanently — you can't. If you really got something wrong, acknowledge it plainly. If someone only questions what you said, check it against the command registry and the facts below first: if they support you, stand by your answer politely and say where it comes from. Never retract a correct answer just to please someone.
 Command syntax: only use the slash signatures listed under the relevant commands. If a command isn't listed or you're unsure, point to /help <command> instead of guessing.
 Before you confirm or deny that a command exists, check ALL COMMANDS below: every name in it exists, and the RELEVANT COMMANDS section adds the signatures for the ones that match the message. If a name is in neither, say "I don't see it in my list" and point to /help <command>. Never say you made something up when the name is in ALL COMMANDS.
@@ -337,7 +337,7 @@ function getBotName(message) {
   return message.guild?.members?.me?.displayName
     || message.client?.user?.displayName
     || message.client?.user?.username
-    || 'Lydia';
+    || 'Archon';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -925,7 +925,7 @@ function buildEmbed(reply, message, options = {}) {
   }
 
   const formattedReply = formatDiscordResponse(reply);
-  const botName = message.client?.user?.username || 'Lydia';
+  const botName = message.client?.user?.username || 'Archon';
   const chunks = splitIntoEmbeds(formattedReply, { botName, themeName: theme.name, isFirst: true });
 
   const containers = [];
@@ -946,7 +946,7 @@ function buildEmbed(reply, message, options = {}) {
     if (i === chunks.length - 1 || i === CFG.MAX_EMBEDS_PER_MSG - 1) {
       cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-      let footerText = `-# ARCHON CG-223 • Lydia AI`;
+      let footerText = `-# ARCHON CG-223 • Archon AI`;
       if (lang === 'fr') footerText += ' 🇫🇷'; else footerText += ' 🌐';
 
       if (sources.length > 0 && !isError) {
@@ -1068,7 +1068,7 @@ function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.
   const langName = LANG_NAMES[lang] || 'English';
 
   const changelogSummary = getChangelogSummary();
-  const ownerTag = isOwner ? ' — the Architect 🦅' : '';
+  const ownerTag = isOwner ? ' — the developer' : '';
   return `${BOT_KNOWLEDGE(pluginCount, pluginBreakdown)}
 
 LIVE CONTEXT:
@@ -1141,7 +1141,7 @@ async function handleLydiaMessage(message, client, database) {
   const uiLang = _uiLang(client, message, lang);
 
   try {
-    const botName = (getBotName(message) || 'Lydia').toLowerCase();
+    const botName = (getBotName(message) || 'Archon').toLowerCase();
     const userName = message.member?.displayName || message.author?.username || 'Unknown';
     const content = (message.content || '').toLowerCase();
 
@@ -1215,7 +1215,9 @@ async function handleLydiaMessage(message, client, database) {
       console.log(`${C.yellow}[OWNER CHECK ERR]${C.reset} ${ownerErr.message}`);
       ownerInfo = null;
     }
-    const isOwner = ownerInfo && message.author.id === ownerInfo.id;
+    // Check .env OWNER_ID first, then fallback to Discord Guild Owner
+    const envOwnerId = process.env.OWNER_ID || process.env.DEVELOPER_ID || process.env.BOT_OWNER;
+    const isOwner = (envOwnerId && message.author.id === envOwnerId) || (ownerInfo && message.author.id === ownerInfo.id);
     const serverPrefix = client.getServerSettings?.(message.guild.id)?.prefix || process.env.PREFIX || '.';
 
     const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)), client.moduleStats);
@@ -1384,7 +1386,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
   }
 
   const guild = channel.guild;
-  const botName = guild.members.me?.displayName || client.user?.displayName || client.user?.username || 'Lydia';
+  const botName = guild.members.me?.displayName || client.user?.displayName || client.user?.username || 'Archon';
   const prefix = client.getServerSettings?.(guildId)?.prefix || process.env.PREFIX || '.';
 
   if (action === 'status') {
@@ -1670,10 +1672,10 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
 
 const slashCommand = new SlashCommandBuilder()
   .setName('lydia')
-  .setDescription('\u{1F9E0} Manage Lydia AI')
-  .addSubcommand(s => s.setName('on').setDescription('\u{1F7E2} Activate Lydia AI'))
-  .addSubcommand(s => s.setName('off').setDescription('\u{1F534} Deactivate Lydia AI'))
-  .addSubcommand(s => s.setName('status').setDescription('\u{1F4CA} Show Lydia status'))
+  .setDescription('\u{1F9E0} Manage Archon AI')
+  .addSubcommand(s => s.setName('on').setDescription('\u{1F7E2} Activate Archon AI'))
+  .addSubcommand(s => s.setName('off').setDescription('\u{1F534} Deactivate Archon AI'))
+  .addSubcommand(s => s.setName('status').setDescription('\u{1F4CA} Show Archon status'))
   .addSubcommand(s => s.setName('memory').setDescription('\u{1F9E0} View your stored memories'))
   .addSubcommand(s => s.setName('setkey').setDescription('\u{1F511} [PREMIUM] Power this server with your own API key')
     .addStringOption(o => o.setName('service').setDescription('Which service the key is for').setRequired(true)

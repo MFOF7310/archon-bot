@@ -1,8 +1,8 @@
 {
   "desc": "🧠 Friendly AI assistant — multilingual, remembers facts, web-enabled",
-  "sub_on": "🟢 Activate Lydia AI",
-  "sub_off": "🔴 Deactivate Lydia AI",
-  "sub_status": "📊 Show Lydia status",
+  "sub_on": "🟢 Activate Archon AI",
+  "sub_off": "🔴 Deactivate Archon AI",
+  "sub_status": "📊 Show Archon status",
   "sub_memory": "🧠 View your stored memories",
   "sub_setkey": "🔑 [PREMIUM] Power this server with your own API key",
   "sub_delkey": "🗑️ Remove this server's custom keys",

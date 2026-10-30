@@ -30,8 +30,8 @@
   "streakProtections": "Streak Protections",
   "never": "Never",
   "welcome_msg": "Hey {user}! 👋 A member of our team will be with you shortly. Feel free to drop any extra details or screenshots below.",
-  "statusActiveDesc": "Lydia is awake and listening in {channel}! 🧠",
-  "statusStandbyDesc": "Lydia is currently resting. 💤",
+  "statusActiveDesc": "Archon is awake and listening in {channel}! 🧠",
+  "statusStandbyDesc": "Archon is currently resting. 💤",
   "memory_empty": "Your memory vault is empty. Tell me something to remember!",
   "memory_empty_hint": "How to save a memory:",
   "memory_example": "Just say: \"Remember my favorite color is blue\""

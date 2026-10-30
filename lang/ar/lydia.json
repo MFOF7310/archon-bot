@@ -43,7 +43,7 @@
   "badgeActive": "نشطة",
   "badgeStandby": "خاملة",
   "statusActiveDesc": "مرحبًا! أنا مستيقظة تمامًا وأستمع في {channel}. أرسل رسالة في أي وقت! 🧠",
-  "statusActiveBody": "**طرق الدردشة:**\n> أشر إلي: `@Lydia`\n> البادئة: `{prefix}ai [رسالة]`\n> فقط قل اسمي: `Lydia [رسالة]`",
+  "statusActiveBody": "**طرق الدردشة:**\n> أشر إلي: `@Archon`\n> البادئة: `{prefix}ai [رسالة]`\n> فقط قل اسمي: `Archon [رسالة]`",
   "statusStandbyDesc": "أنا آخذ قيلولة سريعة الآن. 💤 استخدم الأمر أدناه لإيقاظي!",
   "statusStandbyBody": "**كيف توقظني:**\n> `{prefix}lydia on` أو `/lydia on`",
   "onAuthor": "مراقبة النظام • متصلة",

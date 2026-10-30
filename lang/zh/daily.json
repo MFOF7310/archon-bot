@@ -30,8 +30,8 @@
   "streakProtections": "Streak Protections",
   "never": "Never",
   "welcome_msg": "你好 {user}！👋 我们的团队成员很快就会为你服务。请随时在下方添加任何额外细节或截图。",
-  "statusActiveDesc": "Lydia 已经苏醒，正在 {channel} 中倾听！🧠",
-  "statusStandbyDesc": "Lydia 正在休息。💤",
+  "statusActiveDesc": "Archon 已经苏醒，正在 {channel} 中倾听！🧠",
+  "statusStandbyDesc": "Archon 正在休息。💤",
   "memory_empty": "你的记忆库是空的。告诉我一些要记住的事情吧！",
   "memory_empty_hint": "如何保存记忆：",
   "memory_example": "直接说：“记住我最喜欢的颜色是蓝色”"

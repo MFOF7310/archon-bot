@@ -25,7 +25,7 @@
   "guilds": "خوادم",
   "quickAccess": "🎮 وصول سريع",
   "aiAssistant": "🤖 المساعد الذكي",
-  "aiDesc": "اذكر @Lydia أو استخدم {prefix}ask\nالبحث في الويب المباشر مفعّل",
+  "aiDesc": "اذكر @Archon أو استخدم {prefix}ask\nالبحث في الويب المباشر مفعّل",
   "selectPlaceholder": "🔍 اختر وحدة نظام لفك تشفيرها...",
   "viewAll": "عرض جميع أوامر وفئات {category}",
   "mainMenu": "🏠 القائمة الرئيسية",
