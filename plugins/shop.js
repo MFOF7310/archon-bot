@@ -2,6 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
+const em = (k, fb) => resolveEmoji(k, client) || fb;
 
 module.exports = {
     name: 'shop',
@@ -22,16 +23,28 @@ module.exports = {
         const level = userData.level || 1;
         
         const createOptions = (ownedSet, currentLevel) => shopItems.map(item => {
-            const itemName = item[lang]?.name || item.en?.name || item.name || item.id;
-            const itemDesc = item[lang]?.desc || item.en?.desc || item.desc || '';
+            // Resolve name/desc if they are translation keys (e.g., "shop.items.starter_pack.name")
+            let rawName = item[lang]?.name || item.en?.name || item.name || item.id;
+            let rawDesc = item[lang]?.desc || item.en?.desc || item.desc || '';
+            
+            const itemName = rawName.includes('.') ? t(rawName, lang) : rawName;
+            const itemDesc = rawDesc.includes('.') ? t(rawDesc, lang) : rawDesc;
+
             let description = `${item.price.toLocaleString()} ${t('shop.creditsLabel', lang)} - ${itemDesc}`;
+            // Use Unicode emojis for descriptions (custom emojis are not supported here)
             if (ownedSet.has(item.id)) description = `✅ ${t('shop.owned', lang)} - ${description}`;
             if (item.requirement?.level && currentLevel < item.requirement.level) description = `🔒 ${t('shop.locked', lang)} ${item.requirement.level} - ${description}`;
-            return {
-                label: `${item.emoji || '📦'} ${itemName}`.substring(0, 100),
+
+            const opt = {
+                label: `${itemName}`.substring(0, 100),
                 description: description.substring(0, 100),
                 value: item.id
             };
+            
+            // Set the emoji on the option itself if the item has one
+            if (item.emoji) opt.emoji = item.emoji;
+            
+            return opt;
         });
 
         const menu = new StringSelectMenuBuilder()
@@ -41,15 +54,15 @@ module.exports = {
 
         const row = new ActionRowBuilder().addComponents(menu);
         const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('inventory', client) || '🎒'),
-            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji(resolveEmoji('refresh', client) || '🔄')
+            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(em('inventory', '🎒')),
+            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji(em('refresh', '🔄'))
         );
 
         const container = new ContainerBuilder().setAccentColor(0xf1c40f);
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('shop', client) || '🛒'} ${t('shop.title', lang)}`));
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('shop', '🛒')} ${t('shop.title', lang)}`));
         container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('shop.desc', lang)));
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`💰 **${t('shop.balance', lang)}:** \`${balance.toLocaleString()}\` ${t('shop.creditsLabel', lang)}\n📊 **${t('shop.level', lang)}:** \`${level}\`\n🛡️ **${t('shop.streakProtections', lang)}:** \`${userData.streak_protections || 0}\``));
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${em('coins', '💰')} **${t('shop.balance', lang)}:** \`${balance.toLocaleString()}\` ${t('shop.creditsLabel', lang)}\n${em('XP', '📊')} **${t('shop.level', lang)}:** \`${level}\`\n${em('shield', '🛡️')} **${t('shop.streakProtections', lang)}:** \`${userData.streak_protections || 0}\``));
         container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         container.addActionRowComponents(row);
         container.addActionRowComponents(buttonRow);
@@ -137,9 +150,9 @@ module.exports = {
 
                 const itemName = selectedItem[lang]?.name || selectedItem.en.name;
                 const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
                 successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()} 🪙\`\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()} 🪙\`\n` : '') + (selectedItem.effect?.streak_protection ? `**🛡️ ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**✨ ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()} 🪙\``));
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()} ${em('coins', '🪙')}\`\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()} ${em('coins', '🪙')}\`\n` : '') + (selectedItem.effect?.streak_protection ? `**${em('shield', '🛡️')} ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**${em('XP', '✨')} ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()} ${em('coins', '🪙')}\``));
                 
                 await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
 
@@ -245,9 +258,9 @@ module.exports = {
 
                 const itemName = selectedItem[lang]?.name || selectedItem.en.name;
                 const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
                 successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()} 🪙\`\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()} 🪙\`\n` : '') + (selectedItem.effect?.streak_protection ? `**🛡️ ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**✨ ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()} 🪙\``));
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()} ${em('coins', '🪙')}\`\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()} ${em('coins', '🪙')}\`\n` : '') + (selectedItem.effect?.streak_protection ? `**${em('shield', '🛡️')} ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**${em('XP', '✨')} ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()} ${em('coins', '🪙')}\``));
                 
                 await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
 
