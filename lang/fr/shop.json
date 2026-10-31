@@ -18,5 +18,12 @@
   "streakProtectionLine": "Bouclier de série ajouté à ton inventaire",
   "xpBonusLine": "Bonus d'XP instantané : +{amount}",
   "newBalance": "Nouveau solde",
-  "creditsLabel": "crédits"
+  "creditsLabel": "crédits",
+  "items": {
+    "daily_streak_shield": {
+      "name": "Bouclier de série",
+      "desc": "Protège ta série quotidienne si tu rates un jour.",
+      "perk": "Protège 1 jour manqué"
+    }
+  }
 }

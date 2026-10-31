@@ -72,22 +72,33 @@ module.exports = {
 
                 try {
                     // Build the media group array
-                    const mediaGroup = info.images.map((imgUrl, index) => {
-                        const item = { type: 'photo', media: imgUrl };
-                        if (index === 0) {
-                            item.caption = slideCaption;
-                            item.parse_mode = 'HTML';
-                        }
-                        return item;
-                    });
-
-                    await updateStatus(`📤 <b>Sending album (${info.images.length} images)...</b>`);
-                    const res = await ctx.bridge.sendMediaGroup(ctx.chatId, mediaGroup);
+                    const mediaList = info.images.map(imgUrl => ({ type: 'photo', media: imgUrl }));
                     
-                    if (!res.success) {
-                        console.error('[TIKTOK] MediaGroup failed:', res.error);
-                        // Fallback: send first image as a single photo if album fails
-                        await ctx.bridge.sendPhoto(ctx.chatId, info.images[0], { caption: slideCaption, parse_mode: 'HTML' });
+                    // Telegram accepts max 10 items per album. Chunk them.
+                    const chunks = [];
+                    for (let i = 0; i < mediaList.length; i += 10) {
+                        chunks.push(mediaList.slice(i, i + 10));
+                    }
+
+                    for (let i = 0; i < chunks.length; i++) {
+                        const group = chunks[i];
+                        if (i === 0) {
+                            // Add caption to the first image of the first group only
+                            group[0].caption = slideCaption;
+                            group[0].parse_mode = 'HTML';
+                        }
+                        
+                        await updateStatus(`📤 <b>Sending album (${group.length} images)...</b>`);
+                        const res = await ctx.bridge.sendMediaGroup(ctx.chatId, group);
+
+                        if (!res.success) {
+                            console.error('[TIKTOK] MediaGroup failed:', res.error);
+                            // Fallback: send first image as a single photo if the group fails
+                            await ctx.bridge.sendPhoto(ctx.chatId, group[0].media, { 
+                                caption: i === 0 ? slideCaption : undefined, 
+                                parse_mode: 'HTML' 
+                            });
+                        }
                     }
 
                     // Send the audio after the album

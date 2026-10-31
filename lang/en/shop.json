@@ -18,5 +18,12 @@
   "streakProtectionLine": "Streak shield added to your inventory",
   "xpBonusLine": "Instant XP bonus: +{amount}",
   "newBalance": "New balance",
-  "creditsLabel": "credits"
+  "creditsLabel": "credits",
+  "items": {
+    "daily_streak_shield": {
+      "name": "Daily Streak Shield",
+      "desc": "Protects your daily streak from breaking if you miss a day.",
+      "perk": "Protects 1 missed day"
+    }
+  }
 }

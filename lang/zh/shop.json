@@ -18,5 +18,12 @@
   "streakProtectionLine": "连续签到护盾已添加到你的背包",
   "xpBonusLine": "即时经验奖励：+{amount}",
   "newBalance": "新余额",
-  "creditsLabel": "积分"
+  "creditsLabel": "积分",
+  "items": {
+    "daily_streak_shield": {
+      "name": "连续签到护盾",
+      "desc": "如果你错过了一天，可以保护你的连续签到不中断。",
+      "perk": "保护 1 天"
+    }
+  }
 }

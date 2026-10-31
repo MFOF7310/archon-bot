@@ -18,5 +18,12 @@
   "streakProtectionLine": "تمت إضافة درع التتابع إلى حقيبتك",
   "xpBonusLine": "مكافأة خبرة فورية: +{amount}",
   "newBalance": "الرصيد الجديد",
-  "creditsLabel": "نقاط"
+  "creditsLabel": "نقاط",
+  "items": {
+    "daily_streak_shield": {
+      "name": "درع التتابع اليومي",
+      "desc": "يحمي سلسلة أيامك المتتالية إذا فوّت يومًا.",
+      "perk": "يحمي يومًا واحدًا"
+    }
+  }
 }

@@ -18,5 +18,12 @@
   "streakProtectionLine": "Tangalan farala i ka fɛnw kan",
   "xpBonusLine": "XP nafa: +{amount}",
   "newBalance": "Wari kura",
-  "creditsLabel": "wari"
+  "creditsLabel": "wari",
+  "items": {
+    "daily_streak_shield": {
+      "name": "Ladilikan Tangali",
+      "desc": "A b'i ladilikan tanga ni i ma tila don doni kelen.",
+      "perk": "A b'i tanga doni kelen"
+    }
+  }
 }
