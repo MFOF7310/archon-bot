@@ -1,0 +1,6 @@
+{
+  "already_removed": "🤷‍♂️ The **{label}** channel isn't set up, so there's nothing to remove.",
+  "removed_title": "Channel Removed",
+  "removed_desc": "The **{label}** channel has been cleared.",
+  "removed_footer": "Use /channels set to configure a new one."
+}

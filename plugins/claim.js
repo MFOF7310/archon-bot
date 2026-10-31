@@ -291,7 +291,7 @@ module.exports = {
             
             // Channel restriction
             if (serverSettings?.dailyChannel && message.channel.id !== serverSettings.dailyChannel) {
-                return message.reply({ content: t.channelRestricted.replace('{channel}', serverSettings.dailyChannel) });
+                return message.reply({ content: t.channelRestricted.replace('{channel}', `<#${serverSettings.dailyChannel}>`) });
             }
             
             const userId = message.author.id;
@@ -544,7 +544,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
             
             // Channel restriction
             if (serverSettings?.dailyChannel && interaction.channel.id !== serverSettings.dailyChannel) {
-                return interaction.reply({ content: t.channelRestricted.replace('{channel}', serverSettings.dailyChannel), flags: 64 });
+                return interaction.reply({ content: t.channelRestricted.replace('{channel}', `<#${serverSettings.dailyChannel}>`), flags: 64 });
             }
             
             const userId = interaction.user.id;

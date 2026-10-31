@@ -34,5 +34,6 @@
   "statusStandbyDesc": "Archon 正在休息。💤",
   "memory_empty": "你的记忆库是空的。告诉我一些要记住的事情吧！",
   "memory_empty_hint": "如何保存记忆：",
-  "memory_example": "直接说：“记住我最喜欢的颜色是蓝色”"
+  "memory_example": "直接说：“记住我最喜欢的颜色是蓝色”",
+  "channelRestricted": "🤷‍♂️ 这里不行哦！你只能在 {channel} 领取每日奖励。"
 }

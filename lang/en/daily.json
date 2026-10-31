@@ -34,5 +34,6 @@
   "statusStandbyDesc": "Archon is currently resting. 💤",
   "memory_empty": "Your memory vault is empty. Tell me something to remember!",
   "memory_empty_hint": "How to save a memory:",
-  "memory_example": "Just say: \"Remember my favorite color is blue\""
+  "memory_example": "Just say: \"Remember my favorite color is blue\"",
+  "channelRestricted": "🤷‍♂️ Not here, agent! You can only claim your daily rewards in {channel}."
 }

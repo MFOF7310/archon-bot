@@ -1,0 +1,6 @@
+{
+  "already_removed": "🤷‍♂️ Le salon **{label}** n'est pas configuré, il n'y a rien à supprimer.",
+  "removed_title": "Salon supprimé",
+  "removed_desc": "Le salon **{label}** a été retiré de la configuration.",
+  "removed_footer": "Utilise /channels set pour en configurer un nouveau."
+}

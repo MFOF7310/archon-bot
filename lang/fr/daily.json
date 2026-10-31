@@ -34,5 +34,6 @@
   "statusStandbyDesc": "Archon se repose actuellement. 💤",
   "memory_empty": "Ton coffre à souvenirs est vide. Dis-moi quelque chose à retenir !",
   "memory_empty_hint": "Comment sauvegarder un souvenir :",
-  "memory_example": "Dis simplement : « Retiens que ma couleur préférée est le bleu »"
+  "memory_example": "Dis simplement : « Retiens que ma couleur préférée est le bleu »",
+  "channelRestricted": "🤷‍♂️ Pas ici, agent ! Tu peux récupérer ta récompense quotidienne dans {channel}."
 }

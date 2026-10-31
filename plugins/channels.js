@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
+const { t } = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
 
 const CHANNEL_DEFS = {
     general:   { col: 'generalChannel',            dbcol: 'general_channel',            env: 'GENERAL_CHANNEL_ID',            emoji: '🏠', label: 'General Channel' },
@@ -155,13 +157,20 @@ module.exports = {
             const def = CHANNEL_DEFS[type];
             if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown channel type.`, flags: 64 });
 
+            const lang = pickLang(client, guildId, interaction);
+            const currentId = settings[def.col] || settings[def.dbcol];
+
+            if (!currentId) {
+                return interaction.reply({ content: t('channels.already_removed', lang, { label: def.label }), flags: 64 });
+            }
+
             client.updateServerSetting?.(guildId, def.dbcol, null);
             client.settings?.delete(guildId);
 
             const embed = new EmbedBuilder()
                 .setColor(0xe74c3c)
-                .setDescription(`\`\`\`ansi\n\u001b[1;31m▸ CHANNEL REMOVED\u001b[0m\n\u001b[0;37m${def.emoji} ${def.label} cleared\u001b[0m\n\`\`\``)
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • ${guild.name}` });
+                .setDescription(`${resolveEmoji('small_check', interaction) || '✅'} **${t('channels.removed_title', lang)}**\n\n${def.emoji} ${t('channels.removed_desc', lang, { label: def.label })}`)
+                .setFooter({ text: `BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}` });
             return interaction.reply({ embeds: [embed], flags: 64 });
         }
     },
@@ -214,6 +223,27 @@ module.exports = {
             const _bot2 = _me2.roles.botRole?.name || _me2.displayName;
             const _tail = _d2.ok ? '' : `\n\n⚠️ ${_d2.reason === 'private' ? `This channel is private — I'm not on its list.` : `**${_d2.role || 'A role'}** is blocking **${_d2.missing.join(', ')}** here.`}\nTo fix it: Edit Channel → Permissions → add **${_bot2}** and allow **${_d2.missing.join(', ')}**.`;
             return message.reply(`${resolveEmoji('check', message.guild)} **${def.label}** set to <#${channelId}>${_tail}`).catch(() => {});
+        }
+
+        if (sub === 'remove') {
+            const type = args[1]?.toLowerCase();
+            const def = CHANNEL_DEFS[type];
+            const lang = pickLang(client, guildId, message);
+            if (!def) return message.reply(`${resolveEmoji('error', message.guild)} Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
+
+            const currentId = settings[def.col] || settings[def.dbcol];
+            if (!currentId) {
+                return message.reply(t('channels.already_removed', lang, { label: def.label })).catch(() => {});
+            }
+
+            client.updateServerSetting?.(guildId, def.dbcol, null);
+            client.settings?.delete(guildId);
+
+            const embed = new EmbedBuilder()
+                .setColor(0xe74c3c)
+                .setDescription(`${resolveEmoji('small_check', message.guild) || '✅'} **${t('channels.removed_title', lang)}**\n\n${def.emoji} ${t('channels.removed_desc', lang, { label: def.label })}`)
+                .setFooter({ text: `BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}` });
+            return message.reply({ embeds: [embed] }).catch(() => {});
         }
     }
 };

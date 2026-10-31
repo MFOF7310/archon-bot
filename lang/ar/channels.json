@@ -1,0 +1,6 @@
+{
+  "already_removed": "🤷‍♂️ قناة **{label}** غير مهيأة، لا يوجد شيء لحذفه.",
+  "removed_title": "تمت إزالة القناة",
+  "removed_desc": "تم مسح قناة **{label}**.",
+  "removed_footer": "استخدم /channels set لتهيئة قناة جديدة."
+}

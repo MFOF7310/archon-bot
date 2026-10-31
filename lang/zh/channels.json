@@ -1,0 +1,6 @@
+{
+  "already_removed": "🤷‍♂️ **{label}** 频道尚未设置，无需删除。",
+  "removed_title": "频道已移除",
+  "removed_desc": "**{label}** 频道已被清除。",
+  "removed_footer": "使用 /channels set 配置新频道。"
+}
