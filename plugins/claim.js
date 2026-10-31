@@ -343,7 +343,7 @@ module.exports = {
                             .setURL(`https://bamako-steel-dev.xyz/user/${message.author.id}?guild=${message.guild?.id || ""}`)
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Link)
-                            .setEmoji(resolveEmoji('dashboard', interaction || message) || '🌐')
+                            .setEmoji(resolveEmoji('dashboard', message) || '🌐')
                     );
                 
                 const cooldownReply = await message.reply({ embeds: [cooldownEmbed], components: [row] });
@@ -483,12 +483,12 @@ module.exports = {
                     .setURL(`https://bamako-steel-dev.xyz/user/${message.author.id}?guild=${message.guild?.id || ""}`)
                     .setLabel(t.viewDashboard)
                     .setStyle(ButtonStyle.Link)
-                    .setEmoji(resolveEmoji('dashboard', interaction || message) || '🌐'),
+                    .setEmoji(resolveEmoji('dashboard', message) || '🌐'),
                 new ButtonBuilder()
                     .setCustomId('claim_view_profile')
                     .setLabel(t.myProfile)
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji(resolveEmoji('myprofile', interaction || message) || '👤')
+                    .setEmoji(resolveEmoji('myprofile', message) || '👤')
             ) });
             const successReply = await message.reply(v2.card(0x00fbff, _claimItems));
 
@@ -594,7 +594,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
                             .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}?guild=${interaction.guild?.id || ""}`)
                             .setLabel(t.viewDashboard)
                             .setStyle(ButtonStyle.Link)
-                            .setEmoji(resolveEmoji('dashboard', interaction || message) || '🌐')
+                            .setEmoji(resolveEmoji('dashboard', interaction) || '🌐')
                     );
                 
                 await interaction.reply({ embeds: [cooldownEmbed], components: [row], flags: 64 });
@@ -730,12 +730,12 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
                     .setURL(`https://bamako-steel-dev.xyz/user/${interaction.user.id}?guild=${interaction.guild?.id || ""}`)
                     .setLabel(t.viewDashboard)
                     .setStyle(ButtonStyle.Link)
-                    .setEmoji(resolveEmoji('dashboard', interaction || message) || '🌐'),
+                    .setEmoji(resolveEmoji('dashboard', interaction) || '🌐'),
                 new ButtonBuilder()
                     .setCustomId('claim_slash_view_profile')
                     .setLabel(t.myProfile)
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji(resolveEmoji('myprofile', interaction || message) || '👤')
+                    .setEmoji(resolveEmoji('myprofile', interaction) || '👤')
             ) });
             await interaction.reply(v2.card(0x00fbff, _claimItems));
             
