@@ -24,6 +24,76 @@
       "name": "连续签到护盾",
       "desc": "如果你错过了一天，可以保护你的连续签到不中断。",
       "perk": "保护 1 天"
+    },
+    "starter_pack": {
+      "name": "新手礼包",
+      "desc": "助你起步的增益。",
+      "perk": "初始增益"
+    },
+    "xp_boost_small": {
+      "name": "小型经验加成",
+      "desc": "立即获得少量经验值。",
+      "perk": "+500 经验"
+    },
+    "xp_boost_large": {
+      "name": "大型经验加成",
+      "desc": "立即获得大量经验值。",
+      "perk": "+2500 经验"
+    },
+    "credit_boost_small": {
+      "name": "小型积分加成",
+      "desc": "立即获得少量积分。",
+      "perk": "+1000 积分"
+    },
+    "credit_boost_large": {
+      "name": "大型积分加成",
+      "desc": "立即获得大量积分。",
+      "perk": "+5000 积分"
+    },
+    "vip_role": {
+      "name": "VIP 身份组",
+      "desc": "服务器专属 VIP 身份组。",
+      "perk": "VIP 状态"
+    },
+    "verified_role": {
+      "name": "认证身份组",
+      "desc": "在服务器上获得认证身份组。",
+      "perk": "认证状态"
+    },
+    "badge_eagle": {
+      "name": "雄鹰徽章",
+      "desc": "在你的个人资料上展示雄鹰徽章。",
+      "perk": "个人资料徽章"
+    },
+    "badge_neural": {
+      "name": "神经徽章",
+      "desc": "在你的个人资料上展示神经徽章。",
+      "perk": "个人资料徽章"
+    },
+    "badge_architect": {
+      "name": "建筑师徽章",
+      "desc": "在你的个人资料上展示建筑师徽章。",
+      "perk": "个人资料徽章"
+    },
+    "badge_steel": {
+      "name": "钢铁徽章",
+      "desc": "在你的个人资料上展示钢铁徽章。",
+      "perk": "个人资料徽章"
+    },
+    "badge_bamako": {
+      "name": "巴马科徽章",
+      "desc": "在你的个人资料上展示巴马科徽章。",
+      "perk": "个人资料徽章"
+    },
+    "badge_pioneer": {
+      "name": "先锋徽章",
+      "desc": "在你的个人资料上展示先锋徽章。",
+      "perk": "个人资料徽章"
+    },
+    "mystery_box_bronze": {
+      "name": "青铜神秘盒",
+      "desc": "包含随机奖励。",
+      "perk": "随机战利品"
     }
   }
 }

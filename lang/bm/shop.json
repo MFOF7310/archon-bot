@@ -24,6 +24,76 @@
       "name": "Ladilikan Tangali",
       "desc": "A b'i ladilikan tanga ni i ma tila don doni kelen.",
       "perk": "A b'i tanga doni kelen"
+    },
+    "starter_pack": {
+      "name": "Starter Pack",
+      "desc": "A boost to get you started.",
+      "perk": "Initial boost"
+    },
+    "xp_boost_small": {
+      "name": "Small XP Boost",
+      "desc": "Instantly gain a small amount of XP.",
+      "perk": "+500 XP"
+    },
+    "xp_boost_large": {
+      "name": "Large XP Boost",
+      "desc": "Instantly gain a large amount of XP.",
+      "perk": "+2500 XP"
+    },
+    "credit_boost_small": {
+      "name": "Small Credit Boost",
+      "desc": "Instantly gain a small amount of credits.",
+      "perk": "+1000 Credits"
+    },
+    "credit_boost_large": {
+      "name": "Large Credit Boost",
+      "desc": "Instantly gain a large amount of credits.",
+      "perk": "+5000 Credits"
+    },
+    "vip_role": {
+      "name": "VIP Role",
+      "desc": "Exclusive VIP role on the server.",
+      "perk": "VIP Status"
+    },
+    "verified_role": {
+      "name": "Verified Role",
+      "desc": "Get the verified role on the server.",
+      "perk": "Verified Status"
+    },
+    "badge_eagle": {
+      "name": "Eagle Badge",
+      "desc": "Show off your Eagle badge on your profile.",
+      "perk": "Profile Badge"
+    },
+    "badge_neural": {
+      "name": "Neural Badge",
+      "desc": "Show off your Neural badge on your profile.",
+      "perk": "Profile Badge"
+    },
+    "badge_architect": {
+      "name": "Architect Badge",
+      "desc": "Show off your Architect badge on your profile.",
+      "perk": "Profile Badge"
+    },
+    "badge_steel": {
+      "name": "Steel Badge",
+      "desc": "Show off your Steel badge on your profile.",
+      "perk": "Profile Badge"
+    },
+    "badge_bamako": {
+      "name": "Bamako Badge",
+      "desc": "Show off your Bamako badge on your profile.",
+      "perk": "Profile Badge"
+    },
+    "badge_pioneer": {
+      "name": "Pioneer Badge",
+      "desc": "Show off your Pioneer badge on your profile.",
+      "perk": "Profile Badge"
+    },
+    "mystery_box_bronze": {
+      "name": "Bronze Mystery Box",
+      "desc": "Contains a random reward.",
+      "perk": "Random loot"
     }
   }
 }

@@ -24,6 +24,76 @@
       "name": "Bouclier de série",
       "desc": "Protège ta série quotidienne si tu rates un jour.",
       "perk": "Protège 1 jour manqué"
+    },
+    "starter_pack": {
+      "name": "Pack de démarrage",
+      "desc": "Un boost pour bien commencer.",
+      "perk": "Boost initial"
+    },
+    "xp_boost_small": {
+      "name": "Petit boost d'XP",
+      "desc": "Gagne instantanément un peu d'XP.",
+      "perk": "+500 XP"
+    },
+    "xp_boost_large": {
+      "name": "Grand boost d'XP",
+      "desc": "Gagne instantanément beaucoup d'XP.",
+      "perk": "+2500 XP"
+    },
+    "credit_boost_small": {
+      "name": "Petit boost de crédits",
+      "desc": "Gagne instantanément un peu de crédits.",
+      "perk": "+1000 Crédits"
+    },
+    "credit_boost_large": {
+      "name": "Grand boost de crédits",
+      "desc": "Gagne instantanément beaucoup de crédits.",
+      "perk": "+5000 Crédits"
+    },
+    "vip_role": {
+      "name": "Rôle VIP",
+      "desc": "Rôle VIP exclusif sur le serveur.",
+      "perk": "Statut VIP"
+    },
+    "verified_role": {
+      "name": "Rôle Vérifié",
+      "desc": "Obtiens le rôle vérifié sur le serveur.",
+      "perk": "Statut Vérifié"
+    },
+    "badge_eagle": {
+      "name": "Badge Aigle",
+      "desc": "Affiche ton badge Aigle sur ton profil.",
+      "perk": "Badge de profil"
+    },
+    "badge_neural": {
+      "name": "Badge Neural",
+      "desc": "Affiche ton badge Neural sur ton profil.",
+      "perk": "Badge de profil"
+    },
+    "badge_architect": {
+      "name": "Badge Architecte",
+      "desc": "Affiche ton badge Architecte sur ton profil.",
+      "perk": "Badge de profil"
+    },
+    "badge_steel": {
+      "name": "Badge Acier",
+      "desc": "Affiche ton badge Acier sur ton profil.",
+      "perk": "Badge de profil"
+    },
+    "badge_bamako": {
+      "name": "Badge Bamako",
+      "desc": "Affiche ton badge Bamako sur ton profil.",
+      "perk": "Badge de profil"
+    },
+    "badge_pioneer": {
+      "name": "Badge Pionnier",
+      "desc": "Affiche ton badge Pionnier sur ton profil.",
+      "perk": "Badge de profil"
+    },
+    "mystery_box_bronze": {
+      "name": "Boîte Mystère Bronze",
+      "desc": "Contient une récompense aléatoire.",
+      "perk": "Butin aléatoire"
     }
   }
 }
