@@ -1,0 +1,15 @@
+{
+  "title": "服务器身份组配置",
+  "core": "核心身份组",
+  "economy": "经济身份组",
+  "daily": "每日里程碑",
+  "not_set": "未设置",
+  "set_success": "身份组配置成功！",
+  "remove_success": "身份组配置已移除。",
+  "already_removed": "此身份组未配置，无需删除。",
+  "unknown_type": "未知的身份组类型。",
+  "invalid_role": "找不到身份组。",
+  "usage_set": "用法：`.roles set <类型> @身份组`",
+  "usage_remove": "用法：`.roles remove <类型>`",
+  "admin_only": "需要管理员权限。"
+}

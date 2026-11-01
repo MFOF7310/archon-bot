@@ -1,0 +1,15 @@
+{
+  "title": "Sɛrvɛri Jɔyɔrɔw Labɛn",
+  "core": "Jɔyɔrɔ Kunfɔlɔw",
+  "economy": "Wari Jɔyɔrɔw",
+  "daily": "Doni O Doni Taw",
+  "not_set": "Ma labɛn",
+  "set_success": "Jɔyɔrɔ labɛnna!",
+  "remove_success": "Jɔyɔrɔ labɛn bɔra.",
+  "already_removed": "Nin jɔyɔrɔ ma labɛn, fɛn tɛ yen ka bɔ.",
+  "unknown_type": "Jɔyɔrɔ sugu in tɛ dɔn.",
+  "invalid_role": "Jɔyɔrɔ ma sɔrɔ.",
+  "usage_set": "Baara: `.roles set <sugu> @jɔyɔrɔ`",
+  "usage_remove": "Baara: `.roles remove <sugu>`",
+  "admin_only": "Admin yamaruya de ka kan."
+}

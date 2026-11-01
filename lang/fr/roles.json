@@ -1,0 +1,15 @@
+{
+  "title": "Configuration des Rôles",
+  "core": "Rôles Principaux",
+  "economy": "Rôles Économiques",
+  "daily": "Paliers Quotidiens",
+  "not_set": "Non configuré",
+  "set_success": "Rôle configuré avec succès !",
+  "remove_success": "Configuration du rôle supprimée.",
+  "already_removed": "Ce rôle n'est pas configuré, il n'y a rien à supprimer.",
+  "unknown_type": "Type de rôle inconnu.",
+  "invalid_role": "Rôle introuvable.",
+  "usage_set": "Utilisation : `.roles set <type> @role`",
+  "usage_remove": "Utilisation : `.roles remove <type>`",
+  "admin_only": "Permission Administrateur requise."
+}

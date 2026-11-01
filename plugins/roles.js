@@ -1,6 +1,11 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const EMOJIS = require('../config/emojis');
+const { t } = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
+const v2 = require('../lib/games/v2');
+const mention = require('../lib/mentions');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
 
 const ROLE_DEFS = {
     member:           { col: 'memberRole',         env: 'MEMBER_ROLE',              emoji: () => EMOJIS.member, label: 'Member Role' },
@@ -88,142 +93,159 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const guild = interaction.guild;
         const guildId = guild.id;
+        const lang = pickLang(client, guildId, interaction);
         const isOwnerGuild = guildId === process.env.GUILD_ID;
+
+        // Force fresh settings
+        client.settings?.delete(guildId);
         const settings = client.getServerSettings?.(guildId) || {};
 
         const roleMention = (id, envKey) => {
             if (id) return `<@&${id}>`;
             if (isOwnerGuild && envKey && process.env[envKey]) return `<@&${process.env[envKey]}> 🔹 .env`;
-            return '`Not set`';
+            return `\`${t('roles.not_set', lang)}\``;
         };
 
-        // ── VIEW ──
         if (sub === 'view') {
-            // Force fresh settings — bypass stale cache
-            client.settings?.delete(guildId);
-            const freshSettings = client.getServerSettings?.(guildId) || {};
-            const embed = new EmbedBuilder()
-                .setColor(0x9b59b6)
-                .setAuthor({ name: '🦅 ARCHON ENGINE • ROLE CONFIG', iconURL: client.user.displayAvatarURL() })
-                .setTitle(`🎭 ${guild.name} — Roles`)
-                .setDescription((() => {
-                    const r = (key) => {
-                        const def = ROLE_DEFS[key];
-                        const id = freshSettings[def.col];
-                        const val = id ? `<@&${id}>` : (isOwnerGuild && process.env[def.env] ? `<@&${process.env[def.env]}> 🔹 .env` : '`Not set`');
-                        const emoji = typeof def.emoji === 'function' ? def.emoji() : def.emoji;
-                        return `${emoji} **${def.label}** — ${val}`;
-                    };
-                    return [
-                        `${EMOJIS.role} __Core Roles__`,
-                        r('member'),
-                        r('mute'),
-                        r('autorole'),
-                        r('staff'),
-                        '',
-                        `${EMOJIS.charts} __Economy Roles__`,
-                        r('investor'),
-                        r('gamer'),
-                        r('quizmaster'),
-                        r('duelist'),
-                        '',
-                        `🌱 __Daily Milestones__`,
-                        r('dailyinitiate'),
-                        r('dailywarrior'),
-                        r('dailychampion'),
-                        r('dailylegend'),
-                    ].join('\n');
-                })())
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /roles set to configure` })
-                .setTimestamp();
-            return interaction.reply({ embeds: [embed], flags: 64 });
+            const buildSection = (title, keys) => {
+                const lines = keys.map(k => {
+                    const def = ROLE_DEFS[k];
+                    const emoji = typeof def.emoji === 'function' ? resolveEmoji(k, interaction) || def.emoji() : def.emoji;
+                    return `${emoji} **${def.label}** — ${roleMention(settings[def.col], def.env)}`;
+                });
+                return `**${title}**\n${lines.join('\n')}`;
+            };
+
+            const c = new ContainerBuilder().setAccentColor(0x9b59b6);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🎭 ${t('roles.title', lang)}\n${guild.name}`));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.core', lang), ['member', 'mute', 'autorole', 'staff'])));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.economy', lang), ['investor', 'gamer', 'quizmaster', 'duelist'])));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.daily', lang), ['dailyinitiate', 'dailywarrior', 'dailychampion', 'dailylegend'])));
+            const setCmd = mention(client, 'roles', 'set');
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${setCmd}`));
+
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
-        // ── SET ──
         if (sub === 'set') {
             const type = interaction.options.getString('type');
             const role = interaction.options.getRole('role');
             const def = ROLE_DEFS[type];
-            if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown role type.`, flags: 64 });
+            if (!def) return interaction.reply({ content: t('roles.unknown_type', lang), flags: 64 });
+            
             if (type === 'autorole') {
                 const err = require('../lib/verify-guard').validateVerifyRole(guild, guild.roles.cache.get(role.id), interaction.member);
-                if (err) return interaction.reply({ content: `⛔ Can't use ${role} as auto-role: ${require('../lib/verify-guard').GUARD_MSG[err]}`, flags: 64 });
+                if (err) return interaction.reply({ content: `⛔ ${require('../lib/verify-guard').GUARD_MSG[err]}`, flags: 64 });
             }
 
             client.updateServerSetting?.(guildId, def.col, role.id);
             client.settings?.delete(guildId);
 
-            const embed = new EmbedBuilder()
-                .setColor(0x2ecc71)
-                .setDescription(
-                    `\`\`\`ansi\n\u001b[1;32m▸ ROLE UPDATED\u001b[0m\n` +
-                    `\u001b[1;36m${def.emoji} ${def.label}\u001b[0m → <@&${role.id}>\n\`\`\``
-                )
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • ${guild.name}` });
-            return interaction.reply({ embeds: [embed], flags: 64 });
+            const c = new ContainerBuilder().setAccentColor(0x2ecc71);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('roles.set_success', lang)}\n${def.emoji} **${def.label}** → <@&${role.id}>`));
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
-        // ── REMOVE ──
         if (sub === 'remove') {
             const type = interaction.options.getString('type');
             const def = ROLE_DEFS[type];
-            if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown role type.`, flags: 64 });
+            if (!def) return interaction.reply({ content: t('roles.unknown_type', lang), flags: 64 });
+
+            if (!settings[def.col]) {
+                return interaction.reply({ content: t('roles.already_removed', lang), flags: 64 });
+            }
 
             client.updateServerSetting?.(guildId, def.col, null);
             client.settings?.delete(guildId);
 
-            const embed = new EmbedBuilder()
-                .setColor(0xe74c3c)
-                .setDescription(`\`\`\`ansi\n\u001b[1;31m▸ ROLE REMOVED\u001b[0m\n\u001b[0;37m${def.emoji} ${def.label} cleared\u001b[0m\n\`\`\``)
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • ${guild.name}` });
-            return interaction.reply({ embeds: [embed], flags: 64 });
+            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🗑️ ${t('roles.remove_success', lang)}\n${def.emoji} **${def.label}**`));
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
     },
 
     run: async (client, message, args, db, ss) => {
         if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply(`${resolveEmoji('error', message)} Administrator permission required.`).catch(() => {});
+            return message.reply(t('roles.admin_only', pickLang(client, message.guild.id, message))).catch(() => {});
         }
         const sub = args[0]?.toLowerCase();
         const guildId = message.guild.id;
+        const lang = pickLang(client, guildId, message);
         const isOwnerGuild = guildId === process.env.GUILD_ID;
+        
+        client.settings?.delete(guildId);
         const settings = client.getServerSettings?.(guildId) || {};
 
+        const roleMention = (id, envKey) => {
+            if (id) return `<@&${id}>`;
+            if (isOwnerGuild && envKey && process.env[envKey]) return `<@&${process.env[envKey]}> 🔹 .env`;
+            return `\`${t('roles.not_set', lang)}\``;
+        };
+
         if (sub === 'view' || !sub) {
-            const roleMention = (id, envKey) => {
-                if (id) return `<@&${id}>`;
-                if (isOwnerGuild && envKey && process.env[envKey]) return `<@&${process.env[envKey]}> 🔹 .env`;
-                return '`Not set`';
+            const buildSection = (title, keys) => {
+                const lines = keys.map(k => {
+                    const def = ROLE_DEFS[k];
+                    const emoji = typeof def.emoji === 'function' ? resolveEmoji(k, message) || def.emoji() : def.emoji;
+                    return `${emoji} **${def.label}** — ${roleMention(settings[def.col], def.env)}`;
+                });
+                return `**${title}**\n${lines.join('\n')}`;
             };
-            const embed = new EmbedBuilder()
-                .setColor(0x9b59b6)
-                .setAuthor({ name: '🦅 ARCHON ENGINE • ROLE CONFIG', iconURL: client.user.displayAvatarURL() })
-                .setTitle(`🎭 ${message.guild.name} — Roles`)
-                .setDescription(
-                    Object.entries(ROLE_DEFS).map(([key, def]) =>
-                        `${def.emoji} **${def.label}** — ${roleMention(settings[def.col], def.env)}`
-                    ).join('\n')
-                )
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • Use .roles set <type> @role` })
-                .setTimestamp();
-            return message.reply({ embeds: [embed] }).catch(() => {});
+
+            const c = new ContainerBuilder().setAccentColor(0x9b59b6);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🎭 ${t('roles.title', lang)}\n${message.guild.name}`));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.core', lang), ['member', 'mute', 'autorole', 'staff'])));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.economy', lang), ['investor', 'gamer', 'quizmaster', 'duelist'])));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.daily', lang), ['dailyinitiate', 'dailywarrior', 'dailychampion', 'dailylegend'])));
+            const setCmd = mention(client, 'roles', 'set');
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${setCmd}`));
+
+            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
         }
 
         if (sub === 'set') {
             const type = args[1]?.toLowerCase();
             const roleId = args[2]?.replace(/[<@&>]/g, '');
             const def = ROLE_DEFS[type];
-            if (!def) return message.reply(`${resolveEmoji('error', message)} Unknown type. Use: ${Object.keys(ROLE_DEFS).join(', ')}`).catch(() => {});
-            if (!roleId) return message.reply(`${resolveEmoji('error', message)} Usage: \`.roles set ${type} @role\``).catch(() => {});
+            if (!def) return message.reply(t('roles.unknown_type', lang)).catch(() => {});
+            if (!roleId) return message.reply(t('roles.usage_set', lang)).catch(() => {});
             const role = message.guild.roles.cache.get(roleId);
-            if (!role) return message.reply(`${resolveEmoji('error', message)} Role not found.`).catch(() => {});
+            if (!role) return message.reply(t('roles.invalid_role', lang)).catch(() => {});
+
             if (type === 'autorole') {
                 const err = require('../lib/verify-guard').validateVerifyRole(message.guild, role, message.member);
-                if (err) return message.reply(`⛔ Can't use that role as auto-role: ${require('../lib/verify-guard').GUARD_MSG[err]}`).catch(() => {});
+                if (err) return message.reply(`⛔ ${require('../lib/verify-guard').GUARD_MSG[err]}`).catch(() => {});
             }
+
             client.updateServerSetting?.(guildId, def.col, roleId);
             client.settings?.delete(guildId);
-            return message.reply(`${resolveEmoji('check', message)} **${def.label}** set to <@&${roleId}>`).catch(() => {});
+
+            const c = new ContainerBuilder().setAccentColor(0x2ecc71);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('roles.set_success', lang)}\n${def.emoji} **${def.label}** → <@&${roleId}>`));
+            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+        }
+
+        if (sub === 'remove') {
+            const type = args[1]?.toLowerCase();
+            const def = ROLE_DEFS[type];
+            if (!def) return message.reply(t('roles.unknown_type', lang)).catch(() => {});
+
+            if (!settings[def.col]) {
+                return message.reply(t('roles.already_removed', lang)).catch(() => {});
+            }
+
+            client.updateServerSetting?.(guildId, def.col, null);
+            client.settings?.delete(guildId);
+
+            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🗑️ ${t('roles.remove_success', lang)}\n${def.emoji} **${def.label}**`));
+            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
         }
     }
 };

@@ -1,0 +1,15 @@
+{
+  "title": "Server Roles Configuration",
+  "core": "Core Roles",
+  "economy": "Economy Roles",
+  "daily": "Daily Milestones",
+  "not_set": "Not set",
+  "set_success": "Role configured successfully!",
+  "remove_success": "Role configuration removed.",
+  "already_removed": "This role isn't configured, there is nothing to remove.",
+  "unknown_type": "Unknown role type.",
+  "invalid_role": "Role not found.",
+  "usage_set": "Usage: `.roles set <type> @role`",
+  "usage_remove": "Usage: `.roles remove <type>`",
+  "admin_only": "Administrator permission required."
+}

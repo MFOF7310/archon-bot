@@ -1805,12 +1805,10 @@ async function assignRole(guild, userId, roleName, roleColor, source, detail = '
         if (!member) return { ok: false, why: 'member_not_found' };
 
         let role = guild.roles.cache.find(r => r.name === roleName);
+        
+        // On ne crée plus le rôle de force. Si l'admin ne l'a pas configuré, on s'arrête là.
         if (!role) {
-            role = await guild.roles.create({
-                name: roleName,
-                colors: [roleColor || '#95a5a6'],
-                reason: `[${source}] ${detail}`
-            });
+            return { ok: false, why: 'role_not_found' };
         }
 
         const alreadyLogged = db.prepare(
