@@ -1,6 +1,21 @@
 {
-  "already_removed": "🤷‍♂️ The **{label}** channel isn't set up, so there's nothing to remove.",
+  "title": "Server Channels Configuration",
+  "core": "Core Channels",
+  "moderation": "Logs & Moderation",
+  "economy": "Economy & Events",
+  "not_set": "Not set",
+  "unknown_type": "Unknown channel type.",
+  "invalid_channel": "Channel not found.",
+  "set_success": "Channel configured successfully!",
+  "set_warning": "Channel saved, but I might lack permissions:",
+  "private_warn": "This channel is private — I'm not on its list.",
+  "role_block": "**{role}** is blocking **{missing}** here.",
+  "fix_warn": "To fix it: Edit Channel → Permissions → add **{bot}** and allow **{missing}**.",
+  "can_post": "I can post in this channel.",
   "removed_title": "Channel Removed",
   "removed_desc": "The **{label}** channel has been cleared.",
-  "removed_footer": "Use /channels set to configure a new one."
+  "removed_footer": "Use the set command to configure a new one.",
+  "already_removed": "This channel isn't configured, there is nothing to remove.",
+  "usage_set": "Usage: `.channels set <type> #channel`",
+  "admin_only": "Administrator permission required."
 }

@@ -1,6 +1,21 @@
 {
-  "already_removed": "🤷‍♂️ Le salon **{label}** n'est pas configuré, il n'y a rien à supprimer.",
+  "title": "Configuration des Salons",
+  "core": "Salons Principaux",
+  "moderation": "Logs & Modération",
+  "economy": "Économie & Événements",
+  "not_set": "Non configuré",
+  "unknown_type": "Type de salon inconnu.",
+  "invalid_channel": "Salon introuvable.",
+  "set_success": "Salon configuré avec succès !",
+  "set_warning": "Salon enregistré, mais il me manque peut-être des permissions :",
+  "private_warn": "Ce salon est privé — je ne suis pas sur sa liste.",
+  "role_block": "**{role}** bloque **{missing}** ici.",
+  "fix_warn": "Pour réparer : Modifier le Salon → Permissions → ajouter **{bot}** et autoriser **{missing}**.",
+  "can_post": "Je peux poster dans ce salon.",
   "removed_title": "Salon supprimé",
-  "removed_desc": "Le salon **{label}** a été retiré de la configuration.",
-  "removed_footer": "Utilise /channels set pour en configurer un nouveau."
+  "removed_desc": "Le salon **{label}** a été retiré.",
+  "removed_footer": "Utilise la commande set pour en configurer un nouveau.",
+  "already_removed": "Ce salon n'est pas configuré, il n'y a rien à supprimer.",
+  "usage_set": "Utilisation : `.channels set <type> #salon`",
+  "admin_only": "Permission Administrateur requise."
 }

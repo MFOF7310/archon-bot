@@ -1,5 +1,10 @@
 const EMOJIS = require('../config/emojis');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 const mentions = require('../lib/mentions');
+const { t } = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
+const v2 = require('../lib/games/v2');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
 const { 
     EmbedBuilder, 
     PermissionFlagsBits, 
@@ -23,11 +28,9 @@ module.exports = {
 // ================= SLASH COMMAND DATA =================
 data: new SlashCommandBuilder()
 .setName('serversettings')
-.setDescription('🛠️ Configure the bot for your server')
+.setDescription('Configure the bot for your server')
 .setDefaultMemberPermissions(Number(PermissionFlagsBits.Administrator))
-.setDescriptionLocalizations({
-    fr: '🛠️ Configurer le bot pour votre serveur'
-})
+
 .addSubcommand(sub => sub
     .setName('view')
     .setDescription('📊 View current server configuration')
@@ -50,7 +53,7 @@ data: new SlashCommandBuilder()
 )
 .addSubcommand(sub => sub
     .setName('set')
-    .setDescription('⚙️ Change a server setting')
+    .setDescription(`${resolveEmoji('bluetools', null) || '⚙️'} Change a server setting`)
     .setDescriptionLocalizations({ fr: '⚙️ Modifier un paramètre du serveur' })
     .addStringOption(opt => opt
         .setName('setting')
@@ -203,7 +206,7 @@ async execute(interaction, client) {
         if (currentCategory === 'all') currentCategory = 'configured';
 
         const buildMsg = (cat) => {
-            const embed = this.buildSettingsEmbed(settings, interaction.guild, client, lang, cat);
+            const viewPayload = this.buildSettingsEmbed(settings, interaction.guild, client, lang, cat);
             // Boutons : recherche dynamique avec chaîne de fallback
             const findEmoji = (names) => {
                 for (const n of names) {
@@ -213,8 +216,8 @@ async execute(interaction, client) {
                 return null;
             };
 
-            const checkEmoji = findEmoji(['green_verified', 'verified', 'success', 'check']) || '✅';
-            const crossEmoji = findEmoji(['warning', 'alert', 'error', 'cross']) || '⚠️';
+            const checkEmoji = EMOJIS.screaminggreen || '✅';
+            const crossEmoji = EMOJIS.red_color || '⚠️';
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
@@ -230,7 +233,7 @@ async execute(interaction, client) {
                     .setStyle(cat === 'unconfigured' ? ButtonStyle.Danger : ButtonStyle.Secondary)
                     .setDisabled(cat === 'unconfigured')
             );
-            return { embeds: [embed], components: [row], flags: 1 << 6 };
+            return { ...viewPayload, components: [...viewPayload.components, row], flags: MessageFlags.IsComponentsV2 | 64 };
         };
 
         const msg = await interaction.reply({ ...buildMsg(currentCategory), withResponse: true });
@@ -248,102 +251,105 @@ async execute(interaction, client) {
 
     // ================= VIEW SETTINGS (PREFIX) =================
     async viewSettingsPrefix(message, client, settings, lang) {
-        const embed = this.buildSettingsEmbed(settings, message.guild, client, lang, 'all');
-        await message.reply({ embeds: [embed] });
+        const cat = (message.content.includes(' configured') || message.content.includes(' unconfigured')) 
+            ? message.content.split(' ').pop() 
+            : 'all';
+        const viewPayload = this.buildSettingsEmbed(settings, message.guild, client, lang, cat);
+        await message.reply(viewPayload);
     },
 
     // ================= BUILD SETTINGS EMBED =================
-    buildSettingsEmbed(settings, guild, client, lang, category) {
-        const translations = {
-            fr: { title: 'Configuration du serveur', general: 'Général', prefix: 'Préfixe', welcome: 'Bienvenue', welcomeChannel: 'Salon de Bienvenue', welcomeMessage: 'Message de Bienvenue', goodbyeChannel: 'Salon d\'Au Revoir', goodbyeMessage: 'Message d\'Au Revoir', leveling: 'Niveaux', xpMultiplier: 'Multiplicateur XP', levelChannel: 'Salon des Niveaux', economy: 'Économie', marketEnabled: 'Marché Activé', features: 'Fonctionnalités', afkEnabled: 'Système AFK', aiEnabled: 'Lydia AI', moderation: 'Modération', logChannel: 'Salon de Logs', muteRole: 'Rôle Muet', modLogChannel: 'Salon Logs Modération', roles: 'Rôles', memberRole: 'Rôle Membre', autoRole: 'Rôle Automatique', channels: 'Salons', rulesChannel: 'Salon Règles', generalChannel: 'Salon Général', dailyChannel: 'Salon Quotidien', shopChannel: 'Salon Boutique', enabled: '✅ Activé', disabled: '❌ Désactivé', notSet: '⚠️ Non défini', footer: 'ARCHON CG-223 • Configuration par serveur', tip: `💡 Utilisez ${mentions(client, 'serversettings', 'set')} pour modifier` },
-            en: { title: 'Server Configuration', general: 'General', prefix: 'Prefix', welcome: 'Welcome', welcomeChannel: 'Welcome Channel', welcomeMessage: 'Welcome Message', goodbyeChannel: 'Goodbye Channel', goodbyeMessage: 'Goodbye Message', leveling: 'Leveling', xpMultiplier: 'XP Multiplier', levelChannel: 'Level-Up Channel', economy: 'Economy', marketEnabled: 'Market Enabled', features: 'Features', afkEnabled: 'AFK System', aiEnabled: 'Lydia AI', moderation: 'Moderation', logChannel: 'Log Channel', muteRole: 'Mute Role', modLogChannel: 'Mod Log Channel', roles: 'Roles', memberRole: 'Member Role', autoRole: 'Auto Role', channels: 'Channels', rulesChannel: 'Rules Channel', generalChannel: 'General Channel', dailyChannel: 'Daily Channel', shopChannel: 'Shop Channel', enabled: '✅ Enabled', disabled: '❌ Disabled', notSet: '⚠️ Not set', footer: 'ARCHON CG-223 • Per-Server Configuration', tip: `💡 Use ${mentions(client, 'serversettings', 'set')} to modify` },
-            bm: { title: 'Configuration du serveur', general: 'Général', prefix: 'Préfixe', welcome: 'Aw bisimila', welcomeChannel: 'Aw bisimila salon', welcomeMessage: 'Aw bisimila message', goodbyeChannel: 'Aw kanbɛ salon', goodbyeMessage: 'Aw kanbɛ message', leveling: 'Niveau yɛlɛnni', xpMultiplier: 'XP Multiplicateur', levelChannel: 'Niveau salon', economy: 'Maara', marketEnabled: 'Marché dayɛlɛ len', features: 'Fonctionnalités', afkEnabled: 'AFK système', aiEnabled: 'Lydia AI', moderation: 'Modération', logChannel: 'Log salon', muteRole: 'Mute rôle', modLogChannel: 'Mod log salon', roles: 'Rôles', memberRole: 'Membre rôle', autoRole: 'Auto rôle', channels: 'Salons', rulesChannel: 'Règles salon', generalChannel: 'Général salon', dailyChannel: 'Quotidien salon', shopChannel: 'Boutique salon', enabled: '✅ Dayɛlɛ len', disabled: '❌ Datugulen', notSet: '⚠️ A ma réglé', footer: 'ARCHON CG-223 • Configuration du serveur', tip: `💡 I bɛ ${mentions(client, 'serversettings', 'set')} ta, ka yɛlɛma do a la` },
-            ar: { title: 'إعدادات السيرفر', general: 'عام', prefix: 'البادئة', welcome: 'الترحيب', welcomeChannel: 'قناة الترحيب', welcomeMessage: 'رسالة الترحيب', goodbyeChannel: 'قناة الوداع', goodbyeMessage: 'رسالة الوداع', leveling: 'المستويات', xpMultiplier: 'مضاعف XP', levelChannel: 'قناة الترقية', economy: 'الاقتصاد', marketEnabled: 'السوق مفعّل', features: 'الميزات', afkEnabled: 'نظام AFK', aiEnabled: 'Lydia AI', moderation: 'الإدارة', logChannel: 'قناة السجلات', muteRole: 'رتبة الكتم', modLogChannel: 'قناة سجلات الإدارة', roles: 'الرتب', memberRole: 'رتبة العضو', autoRole: 'رتبة تلقائية', channels: 'القنوات', rulesChannel: 'قناة القواعد', generalChannel: 'القناة العامة', dailyChannel: 'القناة اليومية', shopChannel: 'قناة المتجر', enabled: '✅ مفعّل', disabled: '❌ معطّل', notSet: '⚠️ غير محدد', footer: 'ARCHON CG-223 • إعدادات السيرفر', tip: `💡 استخدم ${mentions(client, 'serversettings', 'set')} للتعديل` },
-            zh: { title: '服务器配置', general: '通用', prefix: '前缀', welcome: '欢迎', welcomeChannel: '欢迎频道', welcomeMessage: '欢迎消息', goodbyeChannel: '告别频道', goodbyeMessage: '告别消息', leveling: '等级系统', xpMultiplier: 'XP 倍率', levelChannel: '升级频道', economy: '经济', marketEnabled: '市场已启用', features: '功能', afkEnabled: 'AFK 系统', aiEnabled: 'Lydia AI', moderation: '管理', logChannel: '日志频道', muteRole: '禁言身份组', modLogChannel: '管理日志频道', roles: '身份组', memberRole: '成员身份组', autoRole: '自动身份组', channels: '频道', rulesChannel: '规则频道', generalChannel: '通用频道', dailyChannel: '每日频道', shopChannel: '商店频道', enabled: '✅ 已启用', disabled: '❌ 已禁用', notSet: '⚠️ 未设置', footer: 'ARCHON CG-223 • 服务器配置', tip: `💡 使用 ${mentions(client, 'serversettings', 'set')} 进行修改` }
-        };
-        const t = translations[lang] || translations['en'];
-
-        const embed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setAuthor({ name: t.title, iconURL: guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL() });
-
+    buildSettingsEmbed(settings, guild, client, lang, category = 'all') {
+        const tr = (k) => t('serversettings.' + k, lang);
+        
         const isArchitectServer = guild.id === process.env.GUILD_ID;
-        const channelMention = (id, envKey) => { if (id) return `<#${id}>`; if (isArchitectServer && envKey && process.env[envKey]) return `<#${process.env[envKey]}> 🔹 .env`; return t.notSet; };
-        const roleMention = (id, envKey) => { if (id) return `<@&${id}>`; if (isArchitectServer && envKey && process.env[envKey]) return `<@&${process.env[envKey]}> 🔹 .env`; return t.notSet; };
-        const boolStr = (val) => val ? t.enabled : t.disabled;
-
+        const chM = (id, env) => id ? `<#${id}>` : (isArchitectServer && process.env[env] ? `<#${process.env[env]}> 🔹 .env` : `\`${tr('not_set')}\``);
+        const roleM = (id, env) => id ? `<@&${id}>` : (isArchitectServer && process.env[env] ? `<@&${process.env[env]}> 🔹 .env` : `\`${tr('not_set')}\``);
+        const bS = (val) => val ? `${EMOJIS.screaminggreen || '✅'} ${tr('enabled')}` : `${EMOJIS.red_color || '❌'} ${tr('disabled')}`;
+        
         const em = (k, fb) => EMOJIS[k] || fb;
-        const isSet = (val) => val && !/Not set|Non défini|A ma réglé|⚠️/.test(String(val));
 
-        const buildField = (emoji, title, lines, inline = true) => {
-            const validLines = lines.filter(l => {
-                if (category === 'configured') return l.set;
-                if (category === 'unconfigured') return !l.set;
-                return true;
+        // Définition de toutes les sections avec leur statut "isSet"
+        const sections = [
+            {
+                emoji: em('ownerroleicon', '👑'),
+                title: tr('cat_general'),
+                lines: [
+                    { text: `**${tr('prefix')}** — \`${settings.prefix || '.'}\``, isSet: true }
+                ]
+            },
+            {
+                emoji: em('partnericon', '👋'),
+                title: tr('cat_welcome'),
+                lines: [
+                    { text: `**${tr('welcome_channel')}** — ${chM(settings.welcomeChannel, 'WELCOME_CHANNEL_ID')}`, isSet: !!settings.welcomeChannel },
+                    { text: `**${tr('welcome_msg')}** — ${settings.welcomeMessage ? tr('custom') : tr('default')}`, isSet: !!settings.welcomeMessage },
+                    { text: `**${tr('goodbye_channel')}** — ${chM(settings.goodbyeChannel, 'GOODBYE_CHANNEL_ID')}`, isSet: !!settings.goodbyeChannel },
+                    { text: `**${tr('goodbye_msg')}** — ${settings.goodbyeMessage ? tr('custom') : tr('default')}`, isSet: !!settings.goodbyeMessage }
+                ]
+            },
+            {
+                emoji: em('yellowcrown', '💰'),
+                title: tr('cat_leveling'),
+                lines: [
+                    { text: `**${tr('level_channel')}** — ${chM(settings.levelChannel, 'LEVEL_CHANNEL_ID')}`, isSet: !!settings.levelChannel },
+                    { text: `**${tr('xp_mult')}** — \`${settings.xpMultiplier || 1.0}x\``, isSet: settings.xpMultiplier != null },
+                    { text: `**${tr('market')}** — ${bS(settings.marketEnabled)}`, isSet: settings.marketEnabled == 1 },
+                    { text: `**${tr('market_channel')}** — ${chM(settings.marketChannel, 'MARKET_CHANNEL_ID')}`, isSet: !!settings.marketChannel },
+                    { text: `**${tr('shop_channel')}** — ${chM(settings.shopChannel, 'SHOP_CHANNEL_ID')}`, isSet: !!settings.shopChannel }
+                ]
+            },
+            {
+                emoji: em('developericon', '🛡️'),
+                title: `${tr('cat_features')} & ${tr('cat_moderation')}`,
+                lines: [
+                    { text: `**${tr('afk')}** — ${bS(settings.afkEnabled)}`, isSet: settings.afkEnabled == 1 },
+                    { text: `**${tr('ai')}** — ${bS(settings.aiEnabled)}`, isSet: settings.aiEnabled == 1 },
+                    { text: `**${tr('log_channel')}** — ${chM(settings.logChannel, 'LOG_CHANNEL_ID')}`, isSet: !!settings.logChannel },
+                    { text: `**${tr('modlog_channel')}** — ${chM(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID')}`, isSet: !!settings.modLogChannel },
+                    { text: `**${tr('mute_role')}** — ${roleM(settings.muteRoleId, 'MUTE_ROLE_ID')}`, isSet: !!settings.muteRoleId }
+                ]
+            },
+            {
+                emoji: em('boostericon', '🎭'),
+                title: tr('cat_roles'),
+                lines: [
+                    { text: `**${tr('member_role')}** — ${roleM(settings.memberRole, 'MEMBER_ROLE')}`, isSet: !!settings.memberRole },
+                    { text: `**${tr('auto_role')}** — ${roleM(settings.autoRoleId, 'AUTO_ROLE_ID')}`, isSet: !!settings.autoRoleId }
+                ]
+            }
+        ];
+
+        // Filtrage des lignes selon la catégorie
+        const filteredSections = sections.map(sec => {
+            const validLines = sec.lines.filter(l => {
+                if (category === 'configured') return l.isSet;
+                if (category === 'unconfigured') return !l.isSet;
+                return true; // all
             });
-            if (!validLines.length) return null;
-            return {
-                name: `${emoji || ''} ${title}`.trim(),
-                value: validLines.map(l => l.text).join('\n'),
-                inline: inline
-            };
-        };
+            return { ...sec, lines: validLines };
+        }).filter(sec => sec.lines.length > 0);
 
-        const S = {
-            prefix: settings.prefix || '.',
-            xp: settings.xpMultiplier || 1.0,
-            levelChan: channelMention(settings.levelChannel, 'LEVEL_CHANNEL_ID'),
-            welcomeChan: channelMention(settings.welcomeChannel, 'WELCOME_CHANNEL_ID'),
-            welcomeMsg: settings.welcomeMessage ? '✅ Custom' : '📋 Default',
-            goodbyeChan: channelMention(settings.goodbyeChannel, 'GOODBYE_CHANNEL_ID'),
-            goodbyeMsg: settings.goodbyeMessage ? '✅ Custom' : '📋 Default',
-            market: boolStr(settings.marketEnabled),
-            marketChan: channelMention(settings.marketChannel, 'MARKET_CHANNEL_ID'),
-            shop: channelMention(settings.shopChannel, 'SHOP_CHANNEL_ID'),
-            afk: boolStr(settings.afkEnabled),
-            ai: boolStr(settings.aiEnabled),
-            log: channelMention(settings.logChannel, 'LOG_CHANNEL_ID'),
-            modLog: channelMention(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID'),
-            mute: roleMention(settings.muteRoleId, 'MUTE_ROLE_ID'),
-            member: roleMention(settings.memberRole, 'MEMBER_ROLE'),
-            autoRole: roleMention(settings.autoRoleId, 'AUTO_ROLE_ID'),
-            rules: channelMention(settings.rulesChannel, 'RULES_CHANNEL_ID'),
-            general: channelMention(settings.generalChannel, 'GENERAL_CHANNEL_ID'),
-            daily: channelMention(settings.dailyChannel, 'DAILY_CHANNEL_ID'),
-            investor: roleMention(settings.investorRoleId, 'INVESTOR_ROLE_ID'),
-            gamer: roleMention(settings.gamerRoleId, 'GAMER_ROLE_ID'),
-            quiz: roleMention(settings.quizMasterRoleId, 'QUIZ_MASTER_ROLE_ID'),
-            duelist: roleMention(settings.duelistRoleId, 'DUELIST_ROLE_ID'),
-            dInit: roleMention(settings.dailyInitiateRoleId, 'DAILY_INITIATE_ROLE_ID'),
-            dWar: roleMention(settings.dailyWarriorRoleId, 'DAILY_WARRIOR_ROLE_ID'),
-            dChamp: roleMention(settings.dailyChampionRoleId, 'DAILY_CHAMPION_ROLE_ID'),
-            dLeg: roleMention(settings.dailyLegendRoleId, 'DAILY_LEGEND_ROLE_ID'),
-        };
+        // Construction du conteneur V2
+        const c = new ContainerBuilder().setAccentColor(0x2ecc71);
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('discordserver', '⚙️')} ${tr('title')}\n${guild.name}`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${tr('desc')}`));
 
-        const fields = [
-            buildField(em('general', '👑'), t.general, [ { text: `**Prefix:** \`${S.prefix}\``, set: true } ]),
-            buildField(em('xp', '✨'), t.leveling, [ { text: `**XP Multiplier:** \`${S.xp}x\``, set: true }, { text: `**Level-Up:** ${S.levelChan}`, set: isSet(S.levelChan) } ]),
-            buildField(em('welcome', '🎉'), t.welcome, [ { text: `**Channel:** ${S.welcomeChan}`, set: isSet(S.welcomeChan) }, { text: `**Message:** ${S.welcomeMsg}`, set: true } ]),
-            buildField(em('goodbye', '🎬'), 'Goodbye', [ { text: `**Channel:** ${S.goodbyeChan}`, set: isSet(S.goodbyeChan) }, { text: `**Message:** ${S.goodbyeMsg}`, set: true } ]),
-            buildField(em('coins', '💰'), t.economy, [ { text: `**Market:** ${S.market}`, set: true }, { text: `**Market Channel:** ${S.marketChan}`, set: isSet(S.marketChan) }, { text: `**Shop:** ${S.shop}`, set: isSet(S.shop) } ]),
-            buildField(em('ai_assistant', '🧠'), t.features, [ { text: `**AFK:** ${S.afk}`, set: true }, { text: `**Lydia AI:** ${S.ai}`, set: true } ]),
-            buildField(em('shield', '🛡️'), t.moderation, [ { text: `**Log:** ${S.log}`, set: isSet(S.log) }, { text: `**Mod Log:** ${S.modLog}`, set: isSet(S.modLog) }, { text: `**Mute Role:** ${S.mute}`, set: isSet(S.mute) } ]),
-            buildField(em('member', '👤'), t.roles, [ { text: `**Member:** ${S.member}`, set: isSet(S.member) }, { text: `**Auto Role:** ${S.autoRole}`, set: isSet(S.autoRole) } ]),
-            buildField(em('general', '💬'), t.channels, [ { text: `**Rules:** ${S.rules}`, set: isSet(S.rules) }, { text: `**General:** ${S.general}`, set: isSet(S.general) }, { text: `**Daily:** ${S.daily}`, set: isSet(S.daily) } ], false),
-            buildField(em('investors', '🏦'), `${t.economy} ${t.roles}`, [ { text: `**Investor:** ${S.investor}`, set: isSet(S.investor) }, { text: `**Gamer:** ${S.gamer}`, set: isSet(S.gamer) }, { text: `**Quiz Master:** ${S.quiz}`, set: isSet(S.quiz) }, { text: `**Duelist:** ${S.duelist}`, set: isSet(S.duelist) } ]),
-            buildField('🌱', `Daily ${t.roles}`, [ { text: `**Initiate (3d):** ${S.dInit}`, set: isSet(S.dInit) }, { text: `**Warrior (7d):** ${S.dWar}`, set: isSet(S.dWar) }, { text: `**Champion (30d):** ${S.dChamp}`, set: isSet(S.dChamp) }, { text: `**Legend (100d):** ${S.dLeg}`, set: isSet(S.dLeg) } ])
-        ].filter(Boolean);
-
-        const tip = `-# ${t.tip}`;
-        if (fields.length) {
-            embed.addFields(fields);
-            embed.setDescription(`\n${tip}`); // Espacement renforcé avec le \n
+        if (filteredSections.length === 0) {
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*${tr('no_settings')}*`));
         } else {
-            embed.setDescription(`\n-# ${category === 'configured' ? 'No settings configured yet.' : 'All settings are configured!'}\n\n${tip}`);
+            filteredSections.forEach((sec, index) => {
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${sec.emoji} ${sec.title}**\n${sec.lines.map(l => l.text).join('\n')}`));
+            });
         }
 
-        embed.setFooter({ text: `${guild.name} • ${t.footer} • v${client.version}`, iconURL: client.user.displayAvatarURL() }).setTimestamp();
-        return embed;
+        const setCmd = mentions(client, 'serversettings', 'set');
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${tr('footer')} : ${setCmd}`));
+
+        return { components: [c], flags: MessageFlags.IsComponentsV2 };
     },
 
     async setSetting(interaction, client, settings, lang) {
@@ -550,9 +556,9 @@ async execute(interaction, client) {
             const displayValue = processedValue === null 
                 ? (lang === 'fr' ? '📋 Défaut Système' : '📋 System Default')
                 : (processedValue === '1' && def.type === 'bool') 
-                    ? (lang === 'fr' ? '✅ Activé (Défaut)' : '✅ Enabled (Default)')
+                    ? (lang === 'fr' ? `${EMOJIS.screaminggreen || '✅'} Activé` : `${EMOJIS.screaminggreen || '✅'} Enabled`)
                     : (processedValue === '0' && def.type === 'bool')
-                        ? (lang === 'fr' ? '❌ Désactivé' : '❌ Disabled')
+                        ? (lang === 'fr' ? `${EMOJIS.red_color || '❌'} Désactivé` : `${EMOJIS.red_color || '❌'} Disabled`)
                         : processedValue;
 
             return {

@@ -1,6 +1,21 @@
 {
-  "already_removed": "🤷‍♂️ **{label}** salɔn ma labɛn dɛɛ, jɔsi ta fosi tɛ yen.",
-  "removed_title": "Salɔn jɔsira",
-  "removed_desc": "**{label}** salɔn jɔsira ka bɔ labɛn taw la.",
-  "removed_footer": "Baara kɛ nin /channels set ye walasa i ka labɛn kura wɛrɛ sigi."
+  "title": "Sɛrvɛri Salow Labɛn",
+  "core": "Salo Kunfɔlɔw",
+  "moderation": "Sɛbɛnw & Jɔyɔrɔw",
+  "economy": "Wari & Kɛlaw",
+  "not_set": "Ma labɛn",
+  "unknown_type": "Salɔn sugu in tɛ dɔn.",
+  "invalid_channel": "Salɔn ma sɔrɔ.",
+  "set_success": "Salɔn labɛnna!",
+  "set_warning": "Salɔn marala, nka n tɛ se ka baara kɛ yen:",
+  "private_warn": "Nin salɔn dogolen don — n tɛ a lisiti la.",
+  "role_block": "**{role}** bɛ **{missing}** bɔ yan.",
+  "fix_warn": "Ka a ɲɛ: Salɔn Yɛlɛma → Yamaruyaw → **{bot}** fara a kan ka **{missing}** bɔ.",
+  "can_post": "N bɛ se ka sɛbɛn kɛ nin salo in na.",
+  "removed_title": "Salo bɔra",
+  "removed_desc": "**{label}** salo bɔra.",
+  "removed_footer": "Baara set walisa i ka dɔ kura labɛn.",
+  "already_removed": "Nin salo ma labɛn, fɛn tɛ yen ka bɔ.",
+  "usage_set": "Baara: `.channels set <sugu> #salo`",
+  "admin_only": "Admin yamaruya de ka kan."
 }

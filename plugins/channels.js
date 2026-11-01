@@ -3,19 +3,24 @@ const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
+const v2 = require('../lib/games/v2');
+const mention = require('../lib/mentions');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
+
+const getEmoji = (key, fallback) => resolveEmoji(key, null) || fallback;
 
 const CHANNEL_DEFS = {
-    general:   { col: 'generalChannel',            dbcol: 'general_channel',            env: 'GENERAL_CHANNEL_ID',            emoji: '🏠', label: 'General Channel' },
-    welcome:   { col: 'welcomeChannel',            dbcol: 'welcome_channel',            env: 'WELCOME_CHANNEL_ID',            emoji: '👋', label: 'Welcome Channel' },
-    goodbye:   { col: 'goodbyeChannel',            dbcol: 'goodbye_channel',            env: 'GOODBYE_CHANNEL_ID',            emoji: '🚪', label: 'Goodbye Channel' },
-    log:       { col: 'logChannel',                dbcol: 'log_channel',                env: 'LOG_CHANNEL_ID',                emoji: '📋', label: 'Log Channel' },
-    modlog:    { col: 'modLogChannel',             dbcol: 'mod_log_channel',            env: 'MOD_LOG_CHANNEL_ID',            emoji: '🔨', label: 'Mod Log Channel' },
-    daily:     { col: 'dailyChannel',              dbcol: 'daily_channel',              env: 'DAILY_CHANNEL_ID',              emoji: '🎁', label: 'Daily Channel' },
-    shop:      { col: 'shopChannel',               dbcol: 'shop_channel',               env: 'SHOP_CHANNEL_ID',               emoji: '🛒', label: 'Shop Channel' },
-    rules:     { col: 'rulesChannel',              dbcol: 'rules_channel',              env: 'RULES_CHANNEL_ID',              emoji: '📜', label: 'Rules Channel' },
-    ticket:    { col: 'ticketTranscriptChannel',   dbcol: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: '🎫', label: 'Ticket Logs Channel' },
-    levelup:   { col: 'levelupChannel',            dbcol: 'levelup_channel',            env: 'LEVELUP_CHANNEL_ID',            emoji: '📊', label: 'Level-Up Channel' },
-    updates:   { col: 'updatesChannel',            dbcol: 'updates_channel',            env: 'UPDATES_CHANNEL_ID',            emoji: '🔔', label: 'Bot Updates Channel' },
+    general:   { col: 'generalChannel',            dbcol: 'general_channel',            env: 'GENERAL_CHANNEL_ID',            emoji: 'partnericon', label: 'General Channel' },
+    welcome:   { col: 'welcomeChannel',            dbcol: 'welcome_channel',            env: 'WELCOME_CHANNEL_ID',            emoji: 'partnericon', label: 'Welcome Channel' },
+    goodbye:   { col: 'goodbyeChannel',            dbcol: 'goodbye_channel',            env: 'GOODBYE_CHANNEL_ID',            emoji: 'red_color', label: 'Goodbye Channel' },
+    log:       { col: 'logChannel',                dbcol: 'log_channel',                env: 'LOG_CHANNEL_ID',                emoji: 'bluetools', label: 'Log Channel' },
+    modlog:    { col: 'modLogChannel',             dbcol: 'mod_log_channel',            env: 'MOD_LOG_CHANNEL_ID',            emoji: 'developericon', label: 'Mod Log Channel' },
+    daily:     { col: 'dailyChannel',              dbcol: 'daily_channel',              env: 'DAILY_CHANNEL_ID',              emoji: 'yellowcrown', label: 'Daily Channel' },
+    shop:      { col: 'shopChannel',               dbcol: 'shop_channel',               env: 'SHOP_CHANNEL_ID',               emoji: 'boostericon', label: 'Shop Channel' },
+    rules:     { col: 'rulesChannel',              dbcol: 'rules_channel',              env: 'RULES_CHANNEL_ID',              emoji: 'rules_icon', label: 'Rules Channel' },
+    ticket:    { col: 'ticketTranscriptChannel',   dbcol: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: 'ownerroleicon', label: 'Ticket Logs Channel' },
+    levelup:   { col: 'levelupChannel',            dbcol: 'levelup_channel',            env: 'LEVELUP_CHANNEL_ID',            emoji: 'greencrown', label: 'Level-Up Channel' },
+    updates:   { col: 'updatesChannel',            dbcol: 'updates_channel',            env: 'UPDATES_CHANNEL_ID',            emoji: 'boostericon', label: 'Bot Updates Channel' },
 };
 
 module.exports = {
@@ -90,160 +95,175 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const guild = interaction.guild;
         const guildId = guild.id;
+        const lang = pickLang(client, guildId, interaction);
         const isOwnerGuild = guildId === process.env.GUILD_ID;
         const settings = client.getServerSettings?.(guildId) || {};
 
         const chMention = (id, envKey) => {
             if (id) return `<#${id}>`;
             if (isOwnerGuild && envKey && process.env[envKey]) return `<#${process.env[envKey]}> 🔹 .env`;
-            return '`Not set`';
+            return `\`${t('channels.not_set', lang)}\``;
         };
 
-        // ── VIEW ──
         if (sub === 'view') {
-            // Force fresh settings — bypass cache
             client.settings?.delete(guildId);
-            const freshSettings = client.getServerSettings?.(guildId) || {};
-            const embed = new EmbedBuilder()
-                .setColor(0x00f0ff)
-                .setAuthor({ name: '🦅 ARCHON ENGINE • CHANNEL CONFIG', iconURL: client.user.displayAvatarURL() })
-                .setTitle(`📡 ${guild.name} — Channels`)
-                .setDescription(
-                    Object.entries(CHANNEL_DEFS).map(([key, def]) => {
-                        const id = freshSettings[def.col] || freshSettings[def.dbcol];
-                        const val = id ? `<#${id}>` : (isOwnerGuild && process.env[def.env] ? `<#${process.env[def.env]}> 🔹 .env` : '\`Not set\`');
-                        return `${def.emoji} **${def.label}** — ${val}`;
-                    }).join('\n')
-                )
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • Use /channels set to configure` })
-                .setTimestamp();
-            return interaction.reply({ embeds: [embed], flags: 64 });
+            const fresh = client.getServerSettings?.(guildId) || {};
+            
+            const buildSection = (title, keys) => {
+                const lines = keys.map(k => {
+                    const def = CHANNEL_DEFS[k];
+                    return `${getEmoji(def.emoji, '📌')} **${def.label}** — ${chMention(fresh[def.col] || fresh[def.dbcol], def.env)}`;
+                });
+                return `**${title}**\n${lines.join('\n')}`;
+            };
+
+            const c = new ContainerBuilder().setAccentColor(0x00f0ff);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📡 ${t('channels.title', lang)}\n${guild.name}`));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.core', lang), ['general', 'welcome', 'goodbye', 'rules'])));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.moderation', lang), ['log', 'modlog', 'ticket'])));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.economy', lang), ['daily', 'shop', 'levelup', 'updates'])));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${mention(client, 'channels', 'set')}`));
+
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
-        // ── SET ──
         if (sub === 'set') {
             const type = interaction.options.getString('type');
             const channel = interaction.options.getChannel('channel');
             const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown channel type.`, flags: 64 });
+            if (!def) return interaction.reply({ content: t('channels.unknown_type', lang), flags: 64 });
 
-            const ok = client.updateServerSetting?.(guildId, def.dbcol, channel.id);
+            client.updateServerSetting?.(guildId, def.dbcol, channel.id);
             client.settings?.delete(guildId);
 
             const _cp = require('../lib/canPost');
             const _need = _cp.neededFor(type);
-            const _d = _cp.diagnose(interaction.guild, channel, interaction.guild.members.me, _need);
-            const _me = interaction.guild.members.me;
-            const _bot = _me.roles.botRole?.name || _me.displayName;
-            const _statusLine = _d.ok
-                ? `${resolveEmoji('check', interaction)} I can post in this channel.`
-                : `⚠️ ${_d.reason === 'private' ? `This channel is private — I'm not on its list.` : `**${_d.role || 'A role'}** is blocking **${_d.missing.join(', ')}** here.`}\n\nTo fix it: Edit Channel → Permissions → add **${_bot}** and allow **${_d.missing.join(', ')}**.`;
+            const _d = _cp.diagnose(guild, channel, guild.members.me, _need);
+            const _bot = guild.members.me.roles.botRole?.name || guild.members.me.displayName;
 
-            const embed = new EmbedBuilder()
-                .setColor(_d.ok ? 0x2ecc71 : 0xf1c40f)
-                .setDescription(
-                    `\`\`\`ansi\n\u001b[1;32m▸ CHANNEL UPDATED\u001b[0m\n` +
-                    `\u001b[1;36m${def.emoji} ${def.label}\u001b[0m → <#${channel.id}>\n\`\`\`
-` +
-                    `${_statusLine}`
-                )
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • ${guild.name}` });
-            return interaction.reply({ embeds: [embed], flags: 64 });
+            const c = new ContainerBuilder().setAccentColor(_d.ok ? 0x2ecc71 : 0xf1c40f);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('screaminggreen', interaction) || '✅'} ${t('channels.set_success', lang)}\n${getEmoji(def.emoji, '📌')} **${def.label}** → <#${channel.id}>`));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            
+            if (_d.ok) {
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${resolveEmoji('screaminggreen', interaction) || '🟢'} ${t('channels.can_post', lang)}`));
+            } else {
+                const reason = _d.reason === 'private' ? t('channels.private_warn', lang) : t('channels.role_block', lang, { role: _d.role || 'A role', missing: _d.missing.join(', ') });
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`⚠️ **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));
+            }
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${guild.name}`));
+            
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
-        // ── REMOVE ──
         if (sub === 'remove') {
             const type = interaction.options.getString('type');
             const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: `${resolveEmoji('error', interaction)} Unknown channel type.`, flags: 64 });
+            if (!def) return interaction.reply({ content: t('channels.unknown_type', lang), flags: 64 });
 
-            const lang = pickLang(client, guildId, interaction);
             const currentId = settings[def.col] || settings[def.dbcol];
-
-            if (!currentId) {
-                return interaction.reply({ content: t('channels.already_removed', lang, { label: def.label }), flags: 64 });
-            }
+            if (!currentId) return interaction.reply({ content: t('channels.already_removed', lang, { label: def.label }), flags: 64 });
 
             client.updateServerSetting?.(guildId, def.dbcol, null);
             client.settings?.delete(guildId);
 
-            const embed = new EmbedBuilder()
-                .setColor(0xe74c3c)
-                .setDescription(`${resolveEmoji('small_check', interaction) || '✅'} **${t('channels.removed_title', lang)}**\n\n${def.emoji} ${t('channels.removed_desc', lang, { label: def.label })}`)
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}` });
-            return interaction.reply({ embeds: [embed], flags: 64 });
+            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('red_color', interaction) || '✅'} ${t('channels.removed_title', lang)}\n${getEmoji(def.emoji, '📌')} ${t('channels.removed_desc', lang, { label: def.label })}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}`));
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
     },
 
     run: async (client, message, args, db, ss) => {
+        const lang = pickLang(client, message.guild.id, message);
         if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply(`${resolveEmoji('error', message)} Administrator permission required.`).catch(() => {});
+            return message.reply(t('channels.admin_only', lang)).catch(() => {});
         }
         const sub = args[0]?.toLowerCase();
         const guildId = message.guild.id;
         const isOwnerGuild = guildId === process.env.GUILD_ID;
         const settings = client.getServerSettings?.(guildId) || {};
 
+        const chMention = (id, envKey) => {
+            if (id) return `<#${id}>`;
+            if (isOwnerGuild && envKey && process.env[envKey]) return `<#${process.env[envKey]}> 🔹 .env`;
+            return `\`${t('channels.not_set', lang)}\``;
+        };
+
         if (sub === 'view' || !sub) {
-            // Force fresh settings — bypass cache
             client.settings?.delete(guildId);
-            const freshSettings = client.getServerSettings?.(guildId) || {};
-            const chMention = (id, envKey) => {
-                if (id) return `<#${id}>`;
-                if (isOwnerGuild && envKey && process.env[envKey]) return `<#${process.env[envKey]}> 🔹 .env`;
-                return '`Not set`';
+            const fresh = client.getServerSettings?.(guildId) || {};
+            
+            const buildSection = (title, keys) => {
+                const lines = keys.map(k => {
+                    const def = CHANNEL_DEFS[k];
+                    return `${getEmoji(def.emoji, '📌')} **${def.label}** — ${chMention(fresh[def.col] || fresh[def.dbcol], def.env)}`;
+                });
+                return `**${title}**\n${lines.join('\n')}`;
             };
-            const embed = new EmbedBuilder()
-                .setColor(0x00f0ff)
-                .setAuthor({ name: '🦅 ARCHON ENGINE • CHANNEL CONFIG', iconURL: client.user.displayAvatarURL() })
-                .setTitle(`📡 ${message.guild.name} — Channels`)
-                .setDescription(
-                    Object.entries(CHANNEL_DEFS).map(([key, def]) =>
-                        `${def.emoji} **${def.label}** — ${chMention(freshSettings[def.col], def.env)}`
-                    ).join('\n')
-                )
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • Use .channels set <type> #channel` })
-                .setTimestamp();
-            return message.reply({ embeds: [embed] }).catch(() => {});
+
+            const c = new ContainerBuilder().setAccentColor(0x00f0ff);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📡 ${t('channels.title', lang)}\n${message.guild.name}`));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.core', lang), ['general', 'welcome', 'goodbye', 'rules'])));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.moderation', lang), ['log', 'modlog', 'ticket'])));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.economy', lang), ['daily', 'shop', 'levelup', 'updates'])));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${mention(client, 'channels', 'set')}`));
+
+            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
         }
 
         if (sub === 'set') {
             const type = args[1]?.toLowerCase();
             const channelId = args[2]?.replace(/[<#>]/g, '');
             const def = CHANNEL_DEFS[type];
-            if (!def) return message.reply(`${resolveEmoji('error', message.guild)} Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
-            if (!channelId) return message.reply(`${resolveEmoji('error', message.guild)} Usage: \`.channels set ${type} #channel\``).catch(() => {});
+            if (!def) return message.reply(t('channels.unknown_type', lang)).catch(() => {});
+            if (!channelId) return message.reply(t('channels.usage_set', lang)).catch(() => {});
             const ch = message.guild.channels.cache.get(channelId);
-            if (!ch) return message.reply(`${resolveEmoji('error', message)} Channel not found.`).catch(() => {});
+            if (!ch) return message.reply(t('channels.invalid_channel', lang)).catch(() => {});
+
             client.updateServerSetting?.(guildId, def.dbcol, channelId);
             client.settings?.delete(guildId);
-            const _cp2 = require('../lib/canPost');
-            const _d2 = _cp2.diagnose(message.guild, ch, message.guild.members.me, _cp2.neededFor(type));
-            const _me2 = message.guild.members.me;
-            const _bot2 = _me2.roles.botRole?.name || _me2.displayName;
-            const _tail = _d2.ok ? '' : `\n\n⚠️ ${_d2.reason === 'private' ? `This channel is private — I'm not on its list.` : `**${_d2.role || 'A role'}** is blocking **${_d2.missing.join(', ')}** here.`}\nTo fix it: Edit Channel → Permissions → add **${_bot2}** and allow **${_d2.missing.join(', ')}**.`;
-            return message.reply(`${resolveEmoji('check', message.guild)} **${def.label}** set to <#${channelId}>${_tail}`).catch(() => {});
+
+            const _cp = require('../lib/canPost');
+            const _d = _cp.diagnose(message.guild, ch, message.guild.members.me, _cp.neededFor(type));
+            const _bot = message.guild.members.me.roles.botRole?.name || message.guild.members.me.displayName;
+
+            const c = new ContainerBuilder().setAccentColor(_d.ok ? 0x2ecc71 : 0xf1c40f);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('screaminggreen', message) || '✅'} ${t('channels.set_success', lang)}\n${getEmoji(def.emoji, '📌')} **${def.label}** → <#${channelId}>`));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+            
+            if (_d.ok) {
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${resolveEmoji('screaminggreen', interaction) || '🟢'} ${t('channels.can_post', lang)}`));
+            } else {
+                const reason = _d.reason === 'private' ? t('channels.private_warn', lang) : t('channels.role_block', lang, { role: _d.role || 'A role', missing: _d.missing.join(', ') });
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`⚠️ **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));
+            }
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${message.guild.name}`));
+            
+            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
         }
 
         if (sub === 'remove') {
             const type = args[1]?.toLowerCase();
             const def = CHANNEL_DEFS[type];
-            const lang = pickLang(client, guildId, message);
-            if (!def) return message.reply(`${resolveEmoji('error', message.guild)} Unknown type. Use: ${Object.keys(CHANNEL_DEFS).join(', ')}`).catch(() => {});
+            if (!def) return message.reply(t('channels.unknown_type', lang)).catch(() => {});
 
             const currentId = settings[def.col] || settings[def.dbcol];
-            if (!currentId) {
-                return message.reply(t('channels.already_removed', lang, { label: def.label })).catch(() => {});
-            }
+            if (!currentId) return message.reply(t('channels.already_removed', lang, { label: def.label })).catch(() => {});
 
             client.updateServerSetting?.(guildId, def.dbcol, null);
             client.settings?.delete(guildId);
 
-            const embed = new EmbedBuilder()
-                .setColor(0xe74c3c)
-                .setDescription(`${resolveEmoji('small_check', message.guild) || '✅'} **${t('channels.removed_title', lang)}**\n\n${def.emoji} ${t('channels.removed_desc', lang, { label: def.label })}`)
-                .setFooter({ text: `BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}` });
-            return message.reply({ embeds: [embed] }).catch(() => {});
+            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('red_color', message) || '✅'} ${t('channels.removed_title', lang)}\n${getEmoji(def.emoji, '📌')} ${t('channels.removed_desc', lang, { label: def.label })}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}`));
+            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
         }
     }
 };

@@ -1,6 +1,21 @@
 {
-  "already_removed": "🤷‍♂️ **{label}** 频道尚未设置，无需删除。",
+  "title": "服务器频道配置",
+  "core": "核心频道",
+  "moderation": "日志与审核",
+  "economy": "经济与活动",
+  "not_set": "未设置",
+  "unknown_type": "未知的频道类型。",
+  "invalid_channel": "找不到频道。",
+  "set_success": "频道配置成功！",
+  "set_warning": "频道已保存，但我可能缺少权限：",
+  "private_warn": "此频道是私有的——我不在名单中。",
+  "role_block": "**{role}** 在这里阻止了 **{missing}**。",
+  "fix_warn": "修复方法：编辑频道 → 权限 → 添加 **{bot}** 并允许 **{missing}**。",
+  "can_post": "我可以在此频道发帖。",
   "removed_title": "频道已移除",
   "removed_desc": "**{label}** 频道已被清除。",
-  "removed_footer": "使用 /channels set 配置新频道。"
+  "removed_footer": "使用 set 命令配置新频道。",
+  "already_removed": "此频道未配置，无需删除。",
+  "usage_set": "用法：`.channels set <类型> #频道`",
+  "admin_only": "需要管理员权限。"
 }
