@@ -5,8 +5,10 @@ const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
 
 // Fallback Unicode si l'app emoji est mort — jamais de :texte: brut
-function emFallback(key, fb) {
-    return EMOJIS[key] || fb;
+function em(key, fb, client) {
+    const found = client?.emojis?.cache?.find(e => e.name === key);
+    if (found) return `<${found.animated ? 'a' : ''}:${found.name}:${found.id}>`;
+    return fb || '';
 }
 const axios = require('axios');
 
@@ -94,8 +96,8 @@ function isGuildOwner(message) {
 
 function buildOwnerErrorEmbed(client, guild, lang = 'en') {
     const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🛡️ ACCÈS RESTREINT`));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`Seul le **propriétaire du serveur** peut gérer les notifications TikTok.`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🛡️ ${t('tiktok.owner_only_title', lang)}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.owner_only_desc', lang)));
     return c;
 }
 
@@ -429,9 +431,9 @@ function buildResult(user, stats, latestVideo, isLive, liveRoomInfo, username, l
  * and invitation-style messaging
  */
 function buildLiveEmbed(data, guild, client, lang = 'en', pingText = null) {
-    const tt = emFallback('tiktok_logo', '📱');
-    const liveEm = emFallback('livestream', '🔴');
-    const userEm = emFallback('myprofile', '👤');
+    const tt = em('tiktok_logo', '📱', client);
+    const liveEm = em('livestream', '🔴', client);
+    const userEm = em('myprofile', '👤', client);
     const c = new ContainerBuilder().setAccentColor(0xFF0050);
     if (pingText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(pingText));
     
@@ -461,8 +463,8 @@ function buildLiveEmbed(data, guild, client, lang = 'en', pingText = null) {
 function buildVideoEmbed(data, guild, client, lang = 'en', pingText = null) {
     const video = data.latestVideo;
     if (!video) return null;
-    const liveEm = emFallback('livestream', '🔴');
-    const videoEm = emFallback('youtube', '🎬'); // on peut utiliser youtube en fallback visuel
+    const liveEm = em('livestream', '🔴', client);
+    const videoEm = em('youtube', '🎬', client); // on peut utiliser youtube en fallback visuel
     const c = new ContainerBuilder().setAccentColor(0x00F2FE);
     
     if (video.cover) {
@@ -653,7 +655,7 @@ async function processUserForGuild(client, db, track, data) {
 
 // ================= COMMANDS =================
 function buildListEmbed(tracks, guild, client, lang = 'en') {
-    const tt = emFallback('tiktok_logo', '📱');
+    const tt = em('tiktok_logo', '📱', client);
     const c = new ContainerBuilder().setAccentColor(0xFF0050);
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${tt} ${t('tiktok.trackedAccounts', lang)}`));
     
@@ -664,7 +666,7 @@ function buildListEmbed(tracks, guild, client, lang = 'en') {
     
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     tracks.forEach((track, i) => {
-        const liveEm = track.is_live === 1 ? emFallback('online', '🟢') : emFallback('offline', '🔴');
+        const liveEm = track.is_live === 1 ? em('online', '🟢', client) : em('offline', '🔴', client);
         const status = track.is_live === 1 ? t('tiktok.liveStatus', lang).replace('🔴 ', '') : t('tiktok.offlineStatus', lang).replace('⚫ ', '');
         const forceTag = track.force_mode === 1 ? ' ⚠️' : '';
         const lastVideo = track.last_video_id ? `🎬 \`...${track.last_video_id.slice(-6)}\`` : t('tiktok.noVideoYet', lang);
@@ -718,9 +720,9 @@ module.exports = {
         // ─── CHECK (manual debug) ───
         if (action === 'check' || action === 'debug') {
             const username = args[1]?.replace(/^@/, '').trim();
-            if (!username) return message.reply('❌ **Usage:** `.tiktok check <username>`');
+            if (!username) return message.reply(t('tiktok.check_usage', lang));
 
-            const statusMsg = await message.reply(`🔍 Testing all fetch layers for **${username}**...`);
+            const statusMsg = await message.reply(t('tiktok.check_testing', lang, { username }));
 
             const results = [];
 
@@ -772,12 +774,12 @@ if (action === 'test' || action === 'simulate') {
         return message.reply({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] });
     }
     const username = args[1]?.replace(/^@/, '').trim();
-    if (!username) return message.reply('❌ **Usage:** `.tiktok test <username>`');
+    if (!username) return message.reply(t('tiktok.test_usage', lang));
 
     const track = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username);
     if (!track) return message.reply(`❌ **${username}** is not being tracked. Run \`.tiktok set ${username} #channel --force\` first.`);
 
-    const statusMsg = await message.reply(`🔍 Fetching real layout data for **${username}**...`);
+    const statusMsg = await message.reply(t('tiktok.test_fetching', lang, { username }));
     
     let realData = await fetchTikTokUser(username);
     
@@ -820,7 +822,7 @@ if (action === 'test' || action === 'simulate') {
             const forceMode = args.includes('--force') || args.includes('-f');
 
             if (!username || !channelMention) {
-                return message.reply('❌ **Usage:** `' + prefix + 'tiktok set <username> <#channel>`\n*Ex: `' + prefix + 'tiktok set charlidamelio #social-media`*');
+                return message.reply(t('tiktok.set_usage', lang, { prefix }));
             }
 
             const channelRaw = channelMention.replace(/[<#>]/g, '').trim();
@@ -844,6 +846,11 @@ if (action === 'test' || action === 'simulate') {
                 return statusMsg.edit(t('tiktok.notFound', lang).replace('{username}', username).replace('{prefix}', prefix).replace('{channel}', channelMention));
             }
 
+            const existing = db.prepare('SELECT target_channel_id FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username.toLowerCase());
+            if (existing && existing.target_channel_id === channelId) {
+                return statusMsg.edit({ content: t('tiktok.already_tracked', lang, { username, channel: channelId }), embeds: [], components: [] });
+            }
+
             const lastVideoId = testData?.latestVideo?.id ? String(testData.latestVideo.id) : null;
             db.prepare(`
                 INSERT INTO tiktok_notifications (guild_id, tiktok_username, target_channel_id, last_video_id, is_live, force_mode)
@@ -855,7 +862,9 @@ if (action === 'test' || action === 'simulate') {
             `).run(guildId, username.toLowerCase(), channelId, lastVideoId, testData?.isLive ? 1 : 0, forceMode ? 1 : 0);
 
             const c = new ContainerBuilder().setAccentColor(forceMode ? 0xf39c12 : 0x2ecc71);
-            const header = `## ${forceMode ? '⚠️ ' : '✅ '}${testData?.nickname || '@' + username}`;
+            const checkEmoji = EMOJIS.small_check || '✅';
+            const warnEmoji = EMOJIS.warning || '⚠️';
+            const header = `## ${forceMode ? warnEmoji : checkEmoji} ${testData?.nickname || '@' + username}`;
             const desc = forceMode
                 ? t('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
                 : t('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId);
@@ -876,14 +885,14 @@ if (action === 'test' || action === 'simulate') {
         // ─── REMOVE ───
         if (action === 'remove' || action === 'delete') {
             const username = args[1]?.replace(/^@/, '').trim();
-            if (!username) return message.reply('❌ **Usage:** `.tiktok remove <username>`');
+            if (!username) return message.reply(t('tiktok.remove_usage', lang));
 
             const result = db.prepare('DELETE FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').run(guildId, username);
             if (result.changes === 0) return message.reply(`❌ **${username}** not tracked.`);
 
             const embed = new EmbedBuilder().setColor('#e74c3c')
                 .setAuthor({ name: '📱 Tracking Removed', iconURL: guildIcon })
-                .setDescription('**@' + username + '** — ' + ({ bm: 'A bɔra.', fr: 'Suivi supprimé.', ar: 'تمت الإزالة.', zh: '已取消追踪。', en: 'Removed.' }[lang] || 'Removed.'))
+                .setDescription(t('tiktok.removed', lang))
                 .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
             return message.reply({ embeds: [embed] });
         }
@@ -982,12 +991,17 @@ if (action === 'test' || action === 'simulate') {
             const username = interaction.options.getString('username').replace(/^@/, '').trim();
             const forceMode = interaction.options.getBoolean('force') || false;
             const channelOption = interaction.options.getChannel('channel');
-            if (!channelOption) return interaction.editReply('❌ Channel not found.');
+            if (!channelOption) return interaction.editReply(t('tiktok.channel_not_found', lang));
             const channelId = channelOption.id;
 
             const testData = await fetchTikTokUser(username);
             if (!testData && !forceMode) {
                 return interaction.editReply(t('tiktok.notFoundForce', lang).replace('{username}', username));
+            }
+
+            const existing = db.prepare('SELECT target_channel_id FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username.toLowerCase());
+            if (existing && existing.target_channel_id === channelOption.id) {
+                return interaction.editReply(t('tiktok.already_tracked', lang, { username, channel: channelOption.id }));
             }
 
             const lastVideoId = testData?.latestVideo?.id ? String(testData.latestVideo.id) : null;
@@ -1004,7 +1018,9 @@ if (action === 'test' || action === 'simulate') {
             const desc = forceMode
                 ? t('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
                 : t('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId);
-            const header = `## ${forceMode ? '⚠️ ' : '✅ '}${testData?.nickname || '@' + username}`;
+            const checkEmoji = EMOJIS.small_check || '✅';
+            const warnEmoji = EMOJIS.warning || '⚠️';
+            const header = `## ${forceMode ? warnEmoji : checkEmoji} ${testData?.nickname || '@' + username}`;
             
             if (testData?.avatar) {
                 c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(header + '\n' + desc)).setThumbnailAccessory(new ThumbnailBuilder().setURL(testData.avatar)));
@@ -1018,11 +1034,11 @@ if (action === 'test' || action === 'simulate') {
             try {
                 return await interaction.editReply(embed);
             } catch (err) {
-                console.error('[TIKTOK SET] editReply error:', err.message, '| channel.id:', channel?.id, '| channel.type:', channel?.type);
+                console.error('[TIKTOK SET] editReply error:', err.message, '| channel.id:', channelOption.id);
                 const ttEmbed = new EmbedBuilder()
                 .setColor(0x2ecc71)
                 .setAuthor({ name: '📱 TikTok Tracking', iconURL: client.user.displayAvatarURL() })
-                .setDescription(`C'est noté ! Je garde un œil sur **@${username}**.\nLes alertes arriveront dans <#${channel.id}>.`)
+                .setDescription(`t('tiktok.tracked_success', lang, { username, channelId: channelOption.id })`)
                 .setFooter({ text: 'ARCHON CG-223 • TikTok Engine' }).setTimestamp();
             return await interaction.editReply({ embeds: [ttEmbed] });
             }
@@ -1031,9 +1047,9 @@ if (action === 'test' || action === 'simulate') {
         if (subcommand === 'remove') {
             const username = interaction.options.getString('username').replace(/^@/, '').trim();
             const result = db.prepare('DELETE FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').run(guildId, username);
-            if (result.changes === 0) return interaction.reply({ content: `❌ **${username}** not tracked.`, flags: 1 << 6 });
+            if (result.changes === 0) return interaction.reply({ content: t('tiktok.test_not_tracked', lang, { username }), flags: 1 << 6 });
             const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🗑️ **${username}** a été retiré du suivi.`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.removed_success', lang, { username })));
             return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
         }
     },

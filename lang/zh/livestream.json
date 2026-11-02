@@ -24,5 +24,11 @@
   },
   "prefix_server_only": "此命令只在服务器中可用，不支持私信。",
   "prefix_channel_not_found": "❌ 找不到该频道。检查一下提及。",
-  "prefix_resolving": "🔍 正在解析频道..."
+  "prefix_resolving": "🔍 正在解析频道...",
+  "already_tracked": "你已经在 <#{channel}> 中追踪了 **{handle}**。无需更改！",
+  "tracking_title": "正在追踪 {handle}",
+  "tracking_success": "通知将发送到 <#{channel}>。",
+  "tracking_priority": "每 **2 分钟** 检查一次。",
+  "live_now": "正在直播",
+  "latest_video": "最新视频"
 }

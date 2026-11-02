@@ -25,5 +25,19 @@
   "btnWatchLive": "Regarder en direct",
   "btnProfile": "Profil TikTok",
   "testWarning": "Ceci est une simulation pour vérifier le design. Le streamer n'est pas en direct.",
-  "isLiveTitle": "{user} est en LIVE"
+  "isLiveTitle": "{user} est en LIVE",
+  "owner_only_title": "ACCÈS RESTREINT",
+  "owner_only_desc": "Seul le **propriétaire du serveur** peut gérer les notifications TikTok.",
+  "check_usage": "❌ **Utilisation :** `.tiktok check <nom_d_utilisateur>`",
+  "check_testing": "🔍 Test de toutes les couches pour **{username}**...",
+  "test_usage": "❌ **Utilisation :** `.tiktok test <nom_d_utilisateur>`",
+  "test_not_tracked": "❌ **{username}** n'est pas suivi. Lance d'abord `.tiktok set {username} #salon --force`.",
+  "test_fetching": "🔍 Récupération des données pour **{username}**...",
+  "set_usage": "❌ **Utilisation :** `{prefix}tiktok set <nom_d_utilisateur> <#salon>`\n*Ex : `{prefix}tiktok set charlidamelio #social-media`*",
+  "remove_usage": "❌ **Utilisation :** `.tiktok remove <nom_d_utilisateur>`",
+  "removed": "Supprimé.",
+  "channel_not_found": "❌ Salon introuvable.",
+  "tracked_success": "C'est noté ! Je garde un œil sur **@{username}**. Les alertes arriveront dans <#{channelId}>.",
+  "removed_success": "🗑️ **@{username}** a été retiré du suivi.",
+  "already_tracked": "Tu suis déjà **@{username}** dans <#{channel}>. Rien à changer !"
 }

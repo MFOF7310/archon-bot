@@ -1,4 +1,10 @@
 {
   "cmd_not_tracked_hint": "🤔 **{handle}** traque len tɛ. A don a la nin {mention} ye.",
-  "cmd_send_failed": ""
+  "cmd_send_failed": "",
+  "already_tracked": "I bɛ **{handle}** suivi la kaban <#{channel}> kɔnɔ. Fɛn tɛ yen ka yɛlɛma!",
+  "tracking_title": "{handle} suivi",
+  "tracking_success": "Notifikasiw bɛna ta <#{channel}>.",
+  "tracking_priority": "A bɛ lajɛ **miniti 2** bɛɛ.",
+  "live_now": "Live sisan",
+  "latest_video": "Video kura"
 }

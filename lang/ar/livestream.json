@@ -24,5 +24,11 @@
   },
   "prefix_server_only": "هذا الأمر يشتغل في السيرفرات فقط، مو بالخاص.",
   "prefix_channel_not_found": "❌ ما لقيت هالقناة. تحقق من الإشارة.",
-  "prefix_resolving": "🔍 جاري البحث عن القناة..."
+  "prefix_resolving": "🔍 جاري البحث عن القناة...",
+  "already_tracked": "أنت تتبع بالفعل **{handle}** في <#{channel}>. لا يوجد شيء لتغييره!",
+  "tracking_title": "تتبع {handle}",
+  "tracking_success": "ستصل التنبيهات في <#{channel}>.",
+  "tracking_priority": "يتم التحقق كل **دقيقتين**.",
+  "live_now": "مباشر الآن",
+  "latest_video": "أحدث فيديو"
 }

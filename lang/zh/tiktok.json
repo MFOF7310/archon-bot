@@ -25,5 +25,19 @@
   "btnWatchLive": "观看直播",
   "btnProfile": "TikTok 主页",
   "testWarning": "这是用于测试排版的模拟界面，主播目前并未直播。",
-  "isLiveTitle": "{user} 正在直播"
+  "isLiveTitle": "{user} 正在直播",
+  "owner_only_title": "访问受限",
+  "owner_only_desc": "只有 **服务器所有者** 才能管理 TikTok 通知。",
+  "check_usage": "❌ **用法：** `.tiktok check <用户名>`",
+  "check_testing": "🔍 正在测试 **{username}** 的所有获取层级...",
+  "test_usage": "❌ **用法：** `.tiktok test <用户名>`",
+  "test_not_tracked": "❌ **{username}** 未被追踪。请先运行 `.tiktok set {username} #频道 --force`。",
+  "test_fetching": "🔍 正在获取 **{username}** 的数据...",
+  "set_usage": "❌ **用法：** `{prefix}tiktok set <用户名> <#频道>`\n*例如：`{prefix}tiktok set charlidamelio #social-media`*",
+  "remove_usage": "❌ **用法：** `.tiktok remove <用户名>`",
+  "removed": "已移除。",
+  "channel_not_found": "❌ 找不到频道。",
+  "tracked_success": "收到！我会关注 **@{username}**。通知将发送到 <#{channelId}>。",
+  "removed_success": "🗑️ **@{username}** 已从追踪中移除。",
+  "already_tracked": "你已经在 <#{channel}> 中追踪了 **@{username}**。无需更改！"
 }

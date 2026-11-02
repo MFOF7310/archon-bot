@@ -24,5 +24,11 @@
   },
   "prefix_server_only": "Cette commande marche seulement sur un serveur, pas en DM.",
   "prefix_channel_not_found": "❌ Je trouve pas ce salon. Vérifie la mention.",
-  "prefix_resolving": "🔍 Je cherche la chaîne..."
+  "prefix_resolving": "🔍 Je cherche la chaîne...",
+  "already_tracked": "Tu suis déjà **{handle}** dans <#{channel}>. Rien à changer !",
+  "tracking_title": "Suivi de {handle}",
+  "tracking_success": "Les alertes seront envoyées dans <#{channel}>.",
+  "tracking_priority": "Vérifié toutes les **2 minutes**.",
+  "live_now": "En direct",
+  "latest_video": "Dernière vidéo"
 }

@@ -24,5 +24,11 @@
   },
   "prefix_server_only": "This command works on a server only, not in DMs.",
   "prefix_channel_not_found": "❌ Can't find that channel. Check the mention.",
-  "prefix_resolving": "🔍 Resolving channel..."
+  "prefix_resolving": "🔍 Resolving channel...",
+  "already_tracked": "You are already tracking **{handle}** in <#{channel}>. Nothing to change!",
+  "tracking_title": "Tracking {handle}",
+  "tracking_success": "Alerts will post in <#{channel}>.",
+  "tracking_priority": "Polled every **2 minutes**.",
+  "live_now": "Live now",
+  "latest_video": "Latest video"
 }

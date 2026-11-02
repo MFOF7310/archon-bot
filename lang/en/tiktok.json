@@ -25,5 +25,19 @@
   "btnWatchLive": "Watch Live",
   "btnProfile": "TikTok Profile",
   "testWarning": "This is a layout simulation. The streamer is not live.",
-  "isLiveTitle": "{user} is LIVE"
+  "isLiveTitle": "{user} is LIVE",
+  "owner_only_title": "RESTRICTED ACCESS",
+  "owner_only_desc": "Only the **server owner** can manage TikTok notifications.",
+  "check_usage": "❌ **Usage:** `.tiktok check <username>`",
+  "check_testing": "🔍 Testing all fetch layers for **{username}**...",
+  "test_usage": "❌ **Usage:** `.tiktok test <username>`",
+  "test_not_tracked": "❌ **{username}** is not being tracked. Run `.tiktok set {username} #channel --force` first.",
+  "test_fetching": "🔍 Fetching real layout data for **{username}**...",
+  "set_usage": "❌ **Usage:** `{prefix}tiktok set <username> <#channel>`\n*Ex: `{prefix}tiktok set charlidamelio #social-media`*",
+  "remove_usage": "❌ **Usage:** `.tiktok remove <username>`",
+  "removed": "Removed.",
+  "channel_not_found": "❌ Channel not found.",
+  "tracked_success": "Got it! I'm keeping an eye on **@{username}**. Alerts will arrive in <#{channelId}>.",
+  "removed_success": "🗑️ **@{username}** has been removed from tracking.",
+  "already_tracked": "You are already tracking **@{username}** in <#{channel}>. Nothing to change!"
 }

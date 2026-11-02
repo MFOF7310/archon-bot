@@ -25,5 +25,19 @@
   "btnWatchLive": "مشاهدة مباشرة",
   "btnProfile": "ملف TikTok",
   "testWarning": "هذه محاكاة للتصميم. البث المباشر غير نشط حالياً.",
-  "isLiveTitle": "{user} يبث الآن"
+  "isLiveTitle": "{user} يبث الآن",
+  "owner_only_title": "وصول مقيد",
+  "owner_only_desc": "فقط **مالك الخادم** يمكنه إدارة إشعارات TikTok.",
+  "check_usage": "❌ **الاستخدام:** `.tiktok check <اسم_المستخدم>`",
+  "check_testing": "🔍 اختبار جميع طبقات الجلب لـ **{username}**...",
+  "test_usage": "❌ **الاستخدام:** `.tiktok test <اسم_المستخدم>`",
+  "test_not_tracked": "❌ **{username}** غير متتبع. قم بتشغيل `.tiktok set {username} #channel --force` أولاً.",
+  "test_fetching": "🔍 جلب بيانات **{username}**...",
+  "set_usage": "❌ **الاستخدام:** `{prefix}tiktok set <اسم_المستخدم> <#القناة>`\n*مثال: `{prefix}tiktok set charlidamelio #social-media`*",
+  "remove_usage": "❌ **الاستخدام:** `.tiktok remove <اسم_المستخدم>`",
+  "removed": "تمت الإزالة.",
+  "channel_not_found": "❌ لم يتم العثور على القناة.",
+  "tracked_success": "تم! سأراقب **@{username}**. ستصل التنبيهات في <#{channelId}>.",
+  "removed_success": "🗑️ تمت إزالة **@{username}** من التتبع.",
+  "already_tracked": "أنت تتبع بالفعل **@{username}** في <#{channel}>. لا يوجد شيء لتغييره!"
 }

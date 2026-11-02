@@ -9,14 +9,17 @@ const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacing
 const { t } = require('../lib/i18n');
 const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
-const em = (k, fb) => EMOJIS[k] || fb || '';
+const em = (k, fb, client) => {
+    const found = client?.emojis?.cache?.find(e => e.name === k);
+    if (found) return `<${found.animated ? 'a' : ''}:${found.name}:${found.id}>`;
+    return fb || ''; // On utilise le fallback Unicode si l'emoji n'est pas dans le cache
+};
 
 // Buttons reject app emojis (COMPONENT_INVALID_EMOJI) — they only accept guild emojis.
 // Look up by name across all guilds the bot is in, fall back to Unicode if missing.
 function emBtn(name, fallback, client) {
     const found = client?.emojis?.cache?.find(e => e.name === name);
     if (found) return `<${found.animated ? 'a' : ''}:${found.name}:${found.id}>`;
-    if (EMOJIS[name]) return EMOJIS[name];
     if (fallback) {
         console.warn(`[LIVESTREAM] Server emoji "${name}" not found — using fallback "${fallback}". Add it in Server Settings → Emoji to restore the custom icon.`);
     }
@@ -231,7 +234,7 @@ function buildLiveEmbed(channelId, live, handle, client, pingText) {
     const tag = handle ? '@' + handle : channelId;
     const title = live.title || 'Live stream';
     const watchUrl = live.url || (handle ? `https://youtube.com/@${handle}/live` : `https://youtube.com/channel/${channelId}/live`);
-    const liveEm = em('livestream', '🔴');
+    const liveEm = em('livestream', '🔴', client);
     const header = isPreview ? `## 🧪 Test preview · ${tag}` : `## ${liveEm} ${tag} is live right now`;
     const body = isPreview
         ? `**${title}**\nThis is a layout preview, not a real alert. ${tag} isn't currently streaming.`
@@ -255,7 +258,7 @@ function buildVideoEmbed(upload, handle, client) {
     const tag = handle ? '@' + handle : (upload.author || 'the channel');
     const c = new ContainerBuilder().setAccentColor(0xFF0000);
     if (upload.thumbnail) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(upload.thumbnail)));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '✨')} New video from ${tag}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '✨', client)} New video from ${tag}`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${tag} just posted something new.`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
@@ -392,7 +395,7 @@ async function runCycle(client, db, priorityOnly) {
 // ─── List ───
 function buildListEmbed(tracks, guild, client) {
     const c = new ContainerBuilder().setAccentColor(0xFF0000);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '📺')} Tracked YouTube channels · ${guild.name}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '📺', client)} Tracked YouTube channels · ${guild.name}`));
     if (!tracks.length) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`Nothing tracked yet. Add a channel with ${mentions(client, 'livestream', 'set')}.`));
@@ -403,7 +406,7 @@ function buildListEmbed(tracks, guild, client) {
         const live = t.is_live === 1;
         const prio = t.priority === 1 ? ' ⚡' : '';
         const tag = t.youtube_handle ? '@' + t.youtube_handle : t.youtube_channel_id;
-        const status = live ? `${em('online', '🔴')} Live` : `${em('offline', '⚫')} Offline`;
+        const status = live ? `${em('online', '🔴', client)} Live` : `${em('offline', '⚫', client)} Offline`;
         const last = t.last_video_id ? `🎬 \`…${t.last_video_id.slice(-6)}\`` : 'No video yet';
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. ${tag}**${prio}  ·  ${status}\n↳ <#${t.target_channel_id}>  ·  ${last}`));
         if (i < tracks.length - 1) c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
@@ -464,6 +467,14 @@ module.exports = {
             if (!channelId) return statusMsg.edit(resolveErrMsg(client, message.guild.id, _resolveReason, input));
 
             const handle = input.replace(/^@/, '').trim();
+
+            const existing = db.prepare('SELECT target_channel_id, priority FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
+            if (existing && existing.target_channel_id === channel.id && existing.priority === (priority ? 1 : 0)) {
+                return statusMsg.edit(t('livestream.already_tracked', livLang(client, guildId, message), { handle: '@' + handle, channel: channel.id }));
+            }
+
+            
+
             const live = await fetchLiveStatus(channelId, handle);
             const up = await fetchLatestUpload(channelId);
 
@@ -475,10 +486,19 @@ module.exports = {
                     last_video_id = COALESCE(youtube_notifications.last_video_id, excluded.last_video_id),
                     priority = excluded.priority`).run(guildId, channelId, handle, channel.id, up?.id || null, live.isLive ? 1 : 0, priority ? 1 : 0);
 
+            const _L3 = livLang(client, guildId, message);
+            const _desc = t('livestream.tracking_success', _L3, { channel: channel.id })
+                + (priority ? `
+⚡ ${t('livestream.tracking_priority', _L3)}` : '')
+                + `
+🔴 ${t('livestream.live_now', _L3)}: **${live.isLive ? 'YES' : 'No'}**`
+                + (up ? `
+🎬 ${t('livestream.latest_video', _L3)}: [${up.title}](${up.url})` : '');
+
             const embed = new EmbedBuilder().setColor(priority ? '#f39c12' : '#FF0000')
-                .setAuthor({ name: '📺 Tracking ' + (priority ? '(priority)' : ''), iconURL: client.user.displayAvatarURL() })
+                .setAuthor({ name: '📺 ' + t('livestream.tracking_title', _L3, { handle }), iconURL: client.user.displayAvatarURL() })
                 .setTitle('@' + handle)
-                .setDescription(`Alerts will post in <#${channel.id}>.${priority ? '\n⚡ Polled every **2 minutes**.' : ''}\n🔴 Live now: **${live.isLive ? 'YES' : 'No'}**${up ? `\n🎬 Latest: [${up.title}](${up.url})` : ''}`)
+                .setDescription(_desc)
                 .setFooter({ text: 'ARCHON CG-223 • YouTube Engine' }).setTimestamp();
             return statusMsg.edit({ content: null, embeds: [embed] });
         }
@@ -558,6 +578,9 @@ module.exports = {
             const { id: channelId, reason: _resolveReason } = await resolveHandle(input);
             if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
             const handle = input.replace(/^@/, '').trim();
+            
+            
+
             const live = await fetchLiveStatus(channelId, handle);
             const up = await fetchLatestUpload(channelId);
             db.prepare(`INSERT INTO youtube_notifications (guild_id, youtube_channel_id, youtube_handle, target_channel_id, last_video_id, is_live, priority)
@@ -570,8 +593,9 @@ module.exports = {
             const _L2 = livLang(interaction.client, interaction.guildId, interaction);
             const _lsEmbed = new EmbedBuilder()
                 .setColor(priority ? 0xf39c12 : 0x2ecc71)
-                .setAuthor({ name: '📺 YouTube Tracking', iconURL: client.user.displayAvatarURL() })
-                .setDescription(t('livestream.cmd_tracking', _L2, { handle, channel: `<#${target.id}>`, priority: priority ? t('livestream.cmd_tracking_priority', _L2) : '' }))
+                .setAuthor({ name: '📺 ' + t('livestream.tracking_title', _L2, { handle }), iconURL: client.user.displayAvatarURL() })
+                .setTitle('@' + handle)
+                .setDescription(t('livestream.tracking_success', _L2, { channel: target.id }) + (priority ? '\n⚡ ' + t('livestream.tracking_priority', _L2) : '') + `\n🔴 ${t('livestream.live_now', _L2)}: **${live.isLive ? 'YES' : 'No'}**` + (up ? `\n🎬 ${t('livestream.latest_video', _L2)}: [${up.title}](${up.url})` : ''))
                 .setFooter({ text: 'ARCHON CG-223 • YouTube Engine' }).setTimestamp();
             return interaction.editReply({ embeds: [_lsEmbed] });
         }

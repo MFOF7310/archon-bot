@@ -21,5 +21,19 @@
   "btnWatchLive": "Live",
   "btnProfile": "Profil",
   "testWarning": "Nin ye test dɔrɔn de ye. A tɛ live la fɔlɔ.",
-  "isLiveTitle": "{user} bɛ live la"
+  "isLiveTitle": "{user} bɛ live la",
+  "owner_only_title": "NTERI, YAMARUYA T'I BOLO",
+  "owner_only_desc": "Sɛrvɛri tigiya dɔrɔn de bɛ se ka TikTok notifikasiw mara.",
+  "check_usage": "❌ **Baara:** `.tiktok check <username>`",
+  "check_testing": "🔍 N bɛ **{username}** testing kɛ...",
+  "test_usage": "❌ **Baara:** `.tiktok test <username>`",
+  "test_not_tracked": "❌ **{username}** tɛ suivi la. Baara `.tiktok set {username} #channel --force` fɔlɔ.",
+  "test_fetching": "🔍 N bɛ **{username}** ka data ta...",
+  "set_usage": "❌ **Baara:** `{prefix}tiktok set <username> <#channel>`",
+  "remove_usage": "❌ **Baara:** `.tiktok remove <username>`",
+  "removed": "A bɔra.",
+  "channel_not_found": "❌ Salon ma sɔrɔ.",
+  "tracked_success": "A dɔnna! N bɛna **@{username}** kɔ. Notifikasiw bɛna ta <#{channelId}>.",
+  "removed_success": "🗑️ **@{username}** bɔra suivi la.",
+  "already_tracked": "I bɛ **@{username}** suivi la kaban <#{channel}> kɔnɔ. Fɛn tɛ yen ka yɛlɛma!"
 }
