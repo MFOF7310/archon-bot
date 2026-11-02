@@ -1,22 +1,4 @@
 {
-  "admin_only": "Admins only — grab a server admin if you need this.",
-  "owner_only": "Bot owner only.",
-  "server_only": "This one only works inside a server.",
-  "no_dm": "That command isn't available in DMs.",
-  "error_generic": "Something went wrong — try again in a moment.",
-  "cancel": "Cancel",
-  "confirm": "Confirm",
-  "cancelled": "Cancelled.",
-  "back": "Back",
-  "next": "Next",
-  "previous": "Previous",
-  "cooldown": "Cooldown",
-  "yes": "Yes",
-  "no": "No",
-  "done": "Done!",
-  "loading": "One sec...",
-  "premium_feature": "Premium Feature",
-  "page": "{page} / {total}",
   "moduleDisabled": "**{module}** fɔnkisiyɔnw ma dayɛlɛ nin sɛrivɛri in kan. Administrateur kelen bɛ se k'u dayɛlɛ [dashboard](https://bamako-steel-dev.xyz) san fɛ.",
   "modules": {
     "economy": "Marali",
@@ -24,8 +6,7 @@
     "music": "Dɔnkili",
     "tickets": "Tikɛw",
     "moderation": "Lakana sinsinli",
-    "ai": "IA / Archon",
-    "codm": "CODM"
+    "ai": "IA / Archon"
   },
   "globalError": "⚠️ **Hakɛto! N ka nɛrali bɔlɔlɔ juru ɲagami na.**\n> N ma se ka nin kɔmandi in la baara sisan. Lajɛli kura kɛ a la waati wɛrɛ kɔnɔ.",
   "accessDenied": "🚫 **Sɔgɔsɔgɔnin:** Neural sɛbɛn man nɔgɔ.",

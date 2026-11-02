@@ -9,6 +9,7 @@ const memberLang = require('../lib/member-lang');
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const ui = require('../lib/games/ui');
+const EMOJIS = require('../config/emojis');
 const v2 = require('../lib/games/v2');
 const cmdSlash = require('../lib/cmd').slash;
 
@@ -28,27 +29,41 @@ const hasTexts = (lang) => lang === 'en' || lang === 'fr' || fs.existsSync(path.
 
 function buildCard(client, userId, guildId, interaction) {
     const serverLang = (() => { try { return (guildId && client.getServerSettings?.(guildId)?.language) || 'auto'; } catch { return 'auto'; } })();
-    const mine = memberLang.get(userId);
+    const mine = memberLang.get(userId);                                      
     const lang = mine || pickLang(client, guildId, interaction, userId);
     const L = (k, v) => t('mylang.' + k, lang, v);
 
-    const cmd = cmdSlash(client, 'mylang', { guild: null });
-    const current = mine
-        ? L('current', { name: `${FLAGS[mine]} ${NAMES[mine]}` }) || `Current: **${NAMES[mine]}**`
-        : L('none') || `You haven't chosen yet. ARCHON follows the server, then your Discord locale.`;
-    const how = L('hintWithCmd', { cmd }) || `Use ${cmd} with a code — en · fr · ar · bm · zh · auto`;
+    // Résolution des emojis custom
+    const globeEmoji = EMOJIS.globe || '🌐';
+    const checkEmoji = EMOJIS.small_check || EMOJIS.check || '✅';
+    const warnEmoji = EMOJIS.warning || '⚠️';
     
+    // Drapeau dynamique pour la langue de l'utilisateur
+    const userFlag = mine ? (EMOJIS[`flag_${mine}`] || FLAGS[mine]) : '';
+    const userName = mine ? `${userFlag} ${NAMES[mine]}` : '';
+
+    const cmd = cmdSlash(client, 'mylang', { guild: null });
+    
+    const current = mine
+        ? L('current', { name: userName }) || `Your language is set to: **${userName}**`
+        : L('none') || `You haven't chosen a language. ARCHON follows the server, or the words you type.`;
+        
+    const how = L('hintWithCmd', { cmd }) || `Use ${cmd} with a code — en · fr · ar · bm · zh · auto`;
+
     // Dynamic, humanly-toned server status
     let server = '';
     if (serverLang !== 'auto') {
-        server = L('serverLocked', { lang: NAMES[serverLang] || serverLang }) || `⚠️ This server is locked to **${NAMES[serverLang]}** by an admin. I will save your preference, but I must speak ${NAMES[serverLang]} here. If you want to use your own language, ask an admin to set the server to Auto.`;
+        // Drapeau dynamique pour le serveur
+        const serverFlag = EMOJIS[`flag_${serverLang}`] || FLAGS[serverLang] || '';
+        const serverName = `${serverFlag} ${NAMES[serverLang] || serverLang}`;
+        server = L('serverLocked', { lang: serverName }) || `${warnEmoji} This server is locked to **${serverName}** by an admin. I will save your preference, but I must speak ${serverName} here. If you want to use your own language, ask an admin to set the server to Auto.`;
     } else {
-        server = L('serverAuto') || '✅ This server is set to **Auto**. I will follow your personal choice below!';
+        server = L('serverAuto') || `${checkEmoji} This server is set to **Auto**. I will follow your personal choice below!`;
     }
 
     return v2.card(0x00fbff, [
         { text: `*ARCHON CG-223 · Language*` },
-        { text: `## 🌐 ${L('title') || 'Your language'}` },
+        { text: `## ${globeEmoji} ${L('title') || 'Your language'}` },
         { rule: true },
         { text: current },
         { rule: true },
@@ -84,7 +99,7 @@ module.exports = {
 
     data: new SlashCommandBuilder()
         .setName('mylang')
-        .setDescription('🌐 Choose the language ARCHON answers you in')
+        .setDescription('Choose the language ARCHON answers you in')
         .addStringOption(o => o
             .setName('language')
             .setDescription('Your language (leave empty to see your current one)')

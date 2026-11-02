@@ -1,15 +1,8 @@
 {
-  "current": "Ta langue : **{name}**.",
-  "none": "Tu n'as pas choisi de langue. ARCHON suit le serveur, ou les mots que tu écris.",
-  "howTo": "Choisis-en une avec `.mylang <code>` : {list}. Utilise `.mylang auto` pour revenir au mode automatique.",
-  "saved": "Ta langue est maintenant **{name}**. ARCHON te répondra dans cette langue sur les serveurs réglés sur Auto.",
-  "serverKeeps": "Ce serveur a choisi sa propre langue avec /setlang, il la garde donc ici.",
-  "reset": "C'est fait. ARCHON choisira de nouveau ta langue automatiquement.",
-  "invalid": "Je ne connais pas cette langue. Choisis parmi : {list}.",
-  "error": "Je n'ai pas pu enregistrer ça pour le moment. Réessaie dans un instant.",
   "title": "Ta langue",
+  "current": "Ta langue est configurée sur : **{name}**",
+  "none": "Tu n'as pas choisi de langue. ARCHON suit le serveur, ou les mots que tu écris.",
   "hintWithCmd": "Utilise {cmd} avec un code — en · fr · ar · bm · zh · auto",
-  "serverAuto": "Ce serveur est en Auto.",
-  "serverKeepsShort": "Ce serveur utilise {name}.",
-  "serverLocked": "⚠️ Ce serveur est verrouillé en **{lang}** par un administrateur. J'enregistre ta préférence, mais je dois parler {lang} ici. Si tu veux utiliser ta langue, demande à un admin de passer le serveur en Auto."
+  "serverLocked": "Ce serveur est verrouillé en **{lang}** par un administrateur. J'enregistre ta préférence, mais je dois parler {lang} ici. Si tu veux utiliser ta langue, demande à un admin de passer le serveur en Auto.",
+  "serverAuto": "Ce serveur est configuré sur **Auto**. Je suivrai ton choix personnel ci-dessous !"
 }

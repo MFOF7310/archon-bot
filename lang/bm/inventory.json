@@ -14,7 +14,6 @@
   "verifyBalance": "I ka cédits lajɛ ni {prefix}bal walima {prefix}credits ye",
   "viewStore": "SUUGU LAJƐ",
   "sellSuccess": "✅ **ARTICLE FEERE LENW!**",
-  "successDesc": "*{emoji} **{name}** — {desc}*",
   "costLabel": "Coût",
   "newBalanceLabel": "Solde Kura",
   "purchasedItems": "Article Minnu Sanna",

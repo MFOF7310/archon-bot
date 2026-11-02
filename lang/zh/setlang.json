@@ -1,16 +1,16 @@
 {
-  "guildOnly": "这个命令只能在服务器内使用。",
-  "need": "你需要“管理服务器”权限才能更改语言。",
   "title": "服务器语言",
   "current": "当前语言：{value}",
-  "available": "你可以选择：",
-  "usage": "可以这样用：`{prefix}setlang fr`",
-  "unknown": "我不认识 **{code}**，不过这些是我支持的语言。",
-  "invalid": "我不认识这种语言，请从列表里选一个。",
-  "updated": "语言已更新",
-  "footer": "ARCHON CG-223 · 语言设置",
-  "confirm": "服务器语言现在是 **{native}**。\n\n从现在起，我说的话都会以 **{native}** 显示。",
-  "autoConfirm": "服务器语言现在设为 **Auto**。我会跟随你的服务器在 Discord 里的语言，如果不行，就用你输入命令时的语言。",
-  "autoNow": "目前的结果是 **{language}**。",
-  "saveFailed": "现在没法保存，请稍后再试。"
+  "available": "可用语言：",
+  "usage": "用法：{prefix}setlang <代码>",
+  "success": "服务器语言已更新为 **{native}**。",
+  "autoSuccess": "语言已设置为 **自动检测**。我将适应你的服务器。",
+  "autoNow": "目前，这代表 **{language}**。",
+  "already_set": "服务器语言已设置为 **{native}**。无需更改！",
+  "unknown": "我不认识这种语言：`{code}`。",
+  "guildOnly": "此命令只能在服务器内使用。",
+  "need": "你需要 **管理服务器** 权限才能更改语言。",
+  "saveFailed": "我无法保存新语言。请稍后再试。",
+  "invalid": "我不认识这种语言。请从下面的列表中选择。",
+  "footer": "使用以下命令进行修改"
 }

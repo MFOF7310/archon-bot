@@ -1,9 +1,5 @@
 {
   "title": "",
-  "name": "Name",
-  "id": "ID",
-  "animated": "Animated",
-  "guild": "Origin",
   "url": "",
   "unicode": "",
   "type": "",
@@ -11,21 +7,9 @@
   "standardEmoji": "",
   "raw": "",
   "footer": "",
-  "noEmoji": "😅 Drop me an emoji to inspect, chief!",
-  "notFound": "🤔 Can't find that one. Copied it right?",
-  "sizeNote": "🖼️ View full size",
-  "created": "Created",
   "managed": "",
   "requireColons": "",
   "available": "",
   "rolesAllowed": "",
-  "everyone": "",
-  "unknown": "Unknown",
-  "typeGuild": "Server emoji",
-  "typeApp": "Archon app emoji",
-  "typeExternal": "Foreign server emoji",
-  "typeUnicode": "Standard emoji",
-  "identifiers": "Identifiers",
-  "originLabel": "Origin",
-  "requestedBy": "Requested by"
+  "everyone": ""
 }

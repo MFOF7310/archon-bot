@@ -10,7 +10,5 @@
   "footer": "ARCHON CG-223 • Neural Purge System",
   "packetsRemoved": "packets removed",
   "fromNode": "from node",
-  "targetUser": "Target User",
-  "amount": "Amount",
-  "reason": "Reason"
+  "targetUser": "Target User"
 }
