@@ -407,8 +407,7 @@ function toggleButton(kind, row, lang) {
     return new ButtonBuilder()
         .setCustomId(`ls_toggle:${kind}:${row.youtube_channel_id}`)
         .setLabel(t(`livestream.btn_${kind}_${on ? 'on' : 'off'}`, lang))
-        .setStyle(on ? ButtonStyle.Success : ButtonStyle.Secondary)
-        .setEmoji(kind === 'live' ? (EMOJIS.ic_live || '🔴') : (EMOJIS.ic_video || '🎬'));
+        .setStyle(on ? ButtonStyle.Success : ButtonStyle.Secondary);
 }
 
 function alertsLine(db, guildId, channelId, lang) {
