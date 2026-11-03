@@ -20,5 +20,6 @@
   "not_yours": "Ce rappel n'est pas à toi.",
   "cancelled": "Rappel annulé.",
   "already_done": "Ce rappel a déjà été envoyé ou annulé.",
-  "usage": "**Créer un rappel :** `{p}remind 1h Pause` ou `{p}remind 2h30m Scrim avec l'équipe`\n**Voir les tiens :** `{p}remind list`\nDélais de `1m` à `30d`."
+  "usage": "**Créer un rappel :** `{p}remind 1h Pause` ou `{p}remind 2h30m Scrim avec l'équipe`\n**Voir les tiens :** `{p}remind list`\nDélais de `1m` à `30d`.",
+  "set_done": "Rappel envoyé {when} : **{text}**"
 }

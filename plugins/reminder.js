@@ -39,7 +39,8 @@ function setupReminderDB(db) {
         )`).run();
         // Older tables were created by different code: add whatever column is missing
         const have = new Set(db.prepare('PRAGMA table_info(reminders)').all().map(c => c.name));
-        const want = { user_tag: 'TEXT', guild_id: 'TEXT', status: "TEXT DEFAULT 'pending'", delivered: 'INTEGER DEFAULT 0', created_at: 'INTEGER DEFAULT 0' };
+        // set_msg = "channelId:messageId" of the "Reminder set" card, so it can be updated once the reminder is sent
+        const want = { user_tag: 'TEXT', guild_id: 'TEXT', status: "TEXT DEFAULT 'pending'", delivered: 'INTEGER DEFAULT 0', created_at: 'INTEGER DEFAULT 0', set_msg: 'TEXT' };
         for (const [col, type] of Object.entries(want)) {
             if (!have.has(col)) db.prepare(`ALTER TABLE reminders ADD COLUMN ${col} ${type}`).run();
         }
@@ -97,6 +98,21 @@ function listCard(client, lang, db, userId) {
 
 const errorCard = (text) => v2.card(0xe74c3c, [{ text }]);
 
+function remember(db, id, msg) {
+    try { db.prepare('UPDATE reminders SET set_msg = ? WHERE id = ?').run(`${msg.channelId}:${msg.id}`, id); } catch (e) { /* the card just won't be updated */ }
+}
+
+// After delivery: the "Reminder set" card becomes a short "sent" note, without the Cancel button
+async function closeSetCard(client, r, _) {
+    if (!r.set_msg) return;
+    const [channelId, messageId] = r.set_msg.split(':');
+    const ch = await client.channels.fetch(channelId).catch(() => null);
+    const msg = ch?.messages ? await ch.messages.fetch(messageId).catch(() => null) : null;
+    if (!msg) return;
+    const short = r.message.length > 120 ? r.message.slice(0, 117) + '…' : r.message;
+    await msg.edit(v2.card(0x95a5a6, [{ text: `${em('clock', '⏰')} ${_('set_done', { when: `<t:${now()}:R>`, text: short })}` }])).catch(() => {});
+}
+
 // Shared by slash and prefix. Returns a card; `ephemeral` tells the caller to hide it.
 function setReminder(client, db, lang, ctx, durationText, text) {
     const _ = tr(lang);
@@ -109,7 +125,7 @@ function setReminder(client, db, lang, ctx, durationText, text) {
 
     const executeAt = Math.floor((Date.now() + ms) / 1000);
     const id = create(db, { ...ctx, text, executeAt });
-    return { card: setCard(lang, text, executeAt, id, !!ctx.guildId), ephemeral: false };
+    return { card: setCard(lang, text, executeAt, id, !!ctx.guildId), ephemeral: false, id };
 }
 
 // ─── Delivery (called every 30 s) ───
@@ -129,6 +145,7 @@ async function tick(client, db) {
             const claimed = db.prepare(`UPDATE reminders SET status = 'sending' WHERE id = ? AND status = 'pending'`).run(r.id).changes === 1;
             if (!claimed) continue;
             await deliver(client, r).catch(e => console.error('[REMINDER] deliver:', e.message));
+            await closeSetCard(client, r, tr(langFor(client, r.guild_id))).catch(() => {});
             db.prepare(`UPDATE reminders SET status = 'sent', delivered = 1 WHERE id = ?`).run(r.id);
         }
         db.prepare(`DELETE FROM reminders WHERE status IN ('sent', 'cancelled') AND execute_at < ?`).run(now() - 7 * 86400);
@@ -220,7 +237,8 @@ module.exports = {
         const res = setReminder(client, db, L, {
             userId: message.author.id, userTag: message.author.tag, guildId: message.guild?.id, channelId: message.channel.id,
         }, args.slice(0, Math.max(1, i)).join(' '), args.slice(Math.max(1, i)).join(' '));
-        return message.reply(res.card).catch(() => {});
+        const sent = await message.reply(res.card).catch(() => null);
+        if (sent && res.id) remember(db, res.id, sent);
     },
 
     execute: async (interaction, client) => {
@@ -233,7 +251,10 @@ module.exports = {
         const res = setReminder(client, db, lang, {
             userId: interaction.user.id, userTag: interaction.user.tag, guildId: interaction.guildId, channelId: interaction.channelId,
         }, interaction.options.getString('in'), interaction.options.getString('about'));
-        return interaction.reply(res.ephemeral ? { ...res.card, flags: res.card.flags | 64 } : res.card).catch(() => {});
+        if (res.ephemeral) return interaction.reply({ ...res.card, flags: res.card.flags | 64 }).catch(() => {});
+        await interaction.reply(res.card).catch(() => {});
+        const sent = await interaction.fetchReply().catch(() => null);
+        if (sent && res.id) remember(db, res.id, sent);
     },
 
     // index.js calls these at start-up and every 30 s

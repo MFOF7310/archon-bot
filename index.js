@@ -4514,6 +4514,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('remind:')) {
         return require('./plugins/reminder').handleButton(interaction, client).catch(e => console.error('[REMINDER] button:', e.message));
     }
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('help:')) {
+        return require('./plugins/help').handleComponent(interaction, client).catch(e => console.error('[HELP] component:', e.message));
+    }
     if (interaction.isButton() && interaction.customId.startsWith('ls_toggle:')) {
         return require('./plugins/livestream').handleToggle(interaction, client).catch(e => console.error('[LIVESTREAM] toggle:', e.message));
     }

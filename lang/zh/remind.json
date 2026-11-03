@@ -20,5 +20,6 @@
   "not_yours": "这不是你的提醒。",
   "cancelled": "提醒已取消。",
   "already_done": "这个提醒已经发送或取消了。",
-  "usage": "**设置提醒：**`{p}remind 1h 休息一下` 或 `{p}remind 2h30m 和队伍练习`\n**查看提醒：**`{p}remind list`\n时间范围 `1m` 到 `30d`。"
+  "usage": "**设置提醒：**`{p}remind 1h 休息一下` 或 `{p}remind 2h30m 和队伍练习`\n**查看提醒：**`{p}remind list`\n时间范围 `1m` 到 `30d`。",
+  "set_done": "提醒已于{when}发送：**{text}**"
 }

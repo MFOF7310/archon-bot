@@ -20,5 +20,6 @@
   "not_yours": "That reminder isn't yours.",
   "cancelled": "Reminder cancelled.",
   "already_done": "That reminder was already sent or cancelled.",
-  "usage": "**Set a reminder:** `{p}remind 1h Take a break` or `{p}remind 2h30m Scrim with the team`\n**See yours:** `{p}remind list`\nTimes from `1m` to `30d`."
+  "usage": "**Set a reminder:** `{p}remind 1h Take a break` or `{p}remind 2h30m Scrim with the team`\n**See yours:** `{p}remind list`\nTimes from `1m` to `30d`.",
+  "set_done": "Reminder sent {when}: **{text}**"
 }
