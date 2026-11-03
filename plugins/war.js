@@ -6,8 +6,6 @@ const mention = require('../lib/mentions');
 
 const RESULT_ICON  = { win: '🟢', loss: '🔴', draw: '🟡' };
 const RESULT_LABEL = { win: 'Win', loss: 'Loss', draw: 'Draw' };
-const SWORD = `<:doublesword:1567162772251344978>`;
-
 function isAdmin(member) {
     return member.permissions.has(PermissionFlagsBits.Administrator)
         || member.permissions.has(PermissionFlagsBits.ManageGuild);
@@ -57,7 +55,7 @@ module.exports = {
     usage: '/war record | /war stats | /war history | /war delete',
     cooldown: 3000,
 
-    data: new SlashCommandBuilder().setName('war').setDescription(`${SWORD} Clan war tracker`)
+    data: new SlashCommandBuilder().setName('war').setDescription(`${EMOJIS.duel_sword} Clan war tracker`)
         .addSubcommand(s => s.setName('record').setDescription('Record a match result (admin)')
             .addStringOption(o => o.setName('opponent').setDescription('Clan you played').setRequired(true))
             .addStringOption(o => o.setName('result').setDescription('How it went').setRequired(true)
@@ -206,7 +204,7 @@ module.exports = {
                 embeds: [new EmbedBuilder()
                     .setColor('#3498db')
                     .setAuthor({ name: `${interaction.guild.name} • Clan War`, iconURL: interaction.guild.iconURL() || undefined })
-                    .setTitle(`${SWORD} Match history${opp ? ` — ${opp}` : ''}`)
+                    .setTitle(`${EMOJIS.duel_sword} Match history${opp ? ` — ${opp}` : ''}`)
                     .setDescription(rows.map(x => `\`#${x.id}\` ${matchLine(x)}`).join('\n'))
                     .setFooter({ text: tr(lang, 'history_footer', { w, l, n: rows.length }) })
                 ],
@@ -252,7 +250,7 @@ module.exports = {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#3498db')
-                    .setTitle(`${SWORD} vs ${arg}`)
+                    .setTitle(`${EMOJIS.duel_sword} vs ${arg}`)
                     .setDescription(rows.map(x => `\`#${x.id}\` ${matchLine(x)}`).join('\n'))
                     .setFooter({ text: tr(lang, 'history_footer', { w, l, n: rows.length }) })
                 ],
