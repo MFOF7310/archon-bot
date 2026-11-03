@@ -1,312 +1,245 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-const EMOJIS = require('../config/emojis');
+'use strict';
+// /remind set · list: reminders as V2 cards, texts in lang/<locale>/remind.json.
+// ONE delivery engine: tick() runs every 30 s from index.js (startReminderHeartbeat) and sends every due reminder once,
+// for this plugin and for Lydia's "[REMIND: …]" reminders. No setTimeout, so nothing is lost or doubled on restart.
+// Each due row is claimed with status 'pending' → 'sending' before it is sent, then marked 'sent'.
+const { SlashCommandBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { t, slashLang, LANGS } = require('../lib/i18n');
+const v2 = require('../lib/games/v2');
+const ui = require('../lib/games/ui');
+const E = require('../config/emojis');
+const mention = require('../lib/mentions');
 
-const T = {
-    en: {
-        title: () => `⏰ Reminder`,
-        set: (msg, time, ts) => `✅ Got it! I'll remind you about **${msg}** in **${time}** — that's <t:${ts}:F> 🦅`,
-        remindYou: () => `🔔 Hey, you asked me to remind you!`,
-        at: 'at',
-        footer: 'ARCHON CG-223 • BAMAKO_223 🇲🇱',
-        usage: (p) => `${EMOJIS.clock} **Reminder Usage**\n\n\`${p}remind 1h Take a break\`\n\`${p}remind 30m Call mom\`\n\`${p}remind 2h30m Meeting\``,
-        invalid: () => `⚠️ Invalid time format — use \`30m\`, \`1h\`, \`2h30m\` or \`1d\``,
-        dmBlocked: () => `⚠️ Couldn't slide into your DMs — make sure they're open! Dropping it here instead.`,
-        dmFailed: () => `⚠️ Reminder delivery hiccup — here it is anyway:`,
-    },
-    fr: {
-        title: () => `⏰ Rappel`,
-        set: (msg, time, ts) => `✅ Noté ! Je te rappellerai **${msg}** dans **${time}** — soit <t:${ts}:F> 🦅`,
-        remindYou: () => `🔔 Hey, tu m'avais demandé de te rappeler ça !`,
-        at: 'à',
-        footer: 'ARCHON CG-223 • BAMAKO_223 🇲🇱',
-        usage: (p) => `${EMOJIS.clock} **Utilisation**\n\n\`${p}remind 1h Pause café\`\n\`${p}remind 30m Appeler maman\`\n\`${p}remind 2h30m Réunion\``,
-        invalid: () => `⚠️ Format invalide — utilise \`30m\`, \`1h\`, \`2h30m\` ou \`1d\``,
-        dmBlocked: () => `⚠️ Impossible de t'envoyer un MP — vérifie que tes MP sont ouverts ! Je te rappelle ici.`,
-        dmFailed: () => `⚠️ Problème de livraison — voilà ton rappel quand même :`,
-    }
-};
+const MIN_MS = 60 * 1000;
+const MAX_MS = 30 * 86400 * 1000;
+const MAX_PENDING = 25;   // per person
+const MAX_TEXT = 500;
+const LIST_SHOWN = 10;
 
+const em = (k, fb = '') => E[k] || fb;
+const tr = (lang) => (k, vars) => t('remind.' + k, lang, vars || {});
+const now = () => Math.floor(Date.now() / 1000);
+
+// "1h30m", "2d", "45m", "1d 2h" → milliseconds (null when nothing valid is found)
 function parseTime(input) {
-    let totalMs = 0;
-    const days = input.match(/(\d+)d/i); if (days) totalMs += parseInt(days[1]) * 86400000;
-    const hours = input.match(/(\d+)h/i); if (hours) totalMs += parseInt(hours[1]) * 3600000;
-    const mins = input.match(/(\d+)m/i); if (mins) totalMs += parseInt(mins[1]) * 60000;
-    return totalMs > 0 ? totalMs : null;
+    const s = String(input || '').toLowerCase();
+    let ms = 0;
+    const d = s.match(/(\d+)\s*d/); if (d) ms += +d[1] * 86400000;
+    const h = s.match(/(\d+)\s*h/); if (h) ms += +h[1] * 3600000;
+    const m = s.match(/(\d+)\s*m/); if (m) ms += +m[1] * 60000;
+    return ms > 0 ? ms : null;
 }
 
-function formatTime(ms) {
-    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
-    if (d > 0) return `${d}d ${h}h ${m}m`; if (h > 0) return `${h}h ${m}m`; return `${m}m`;
-}
-
-// ================= DB SETUP =================
-function setupReminderDB(database) {
+// ─── Database ───
+function setupReminderDB(db) {
     try {
-        database.prepare(`
-            CREATE TABLE IF NOT EXISTS reminders (
-                id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                user_tag TEXT,
-                guild_id TEXT,
-                channel_id TEXT NOT NULL,
-                message TEXT NOT NULL,
-                execute_at INTEGER NOT NULL,
-                created_at INTEGER DEFAULT (strftime('%s', 'now')),
-                delivered INTEGER DEFAULT 0
-            )
-        `).run();
-        database.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id)`).run();
-        database.prepare(`CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at)`).run();
+        db.prepare(`CREATE TABLE IF NOT EXISTS reminders (
+            id TEXT PRIMARY KEY, user_id TEXT NOT NULL, channel_id TEXT NOT NULL, message TEXT NOT NULL,
+            execute_at INTEGER NOT NULL, status TEXT DEFAULT 'pending', delivered INTEGER DEFAULT 0, created_at INTEGER DEFAULT 0
+        )`).run();
+        // Older tables were created by different code: add whatever column is missing
+        const have = new Set(db.prepare('PRAGMA table_info(reminders)').all().map(c => c.name));
+        const want = { user_tag: 'TEXT', guild_id: 'TEXT', status: "TEXT DEFAULT 'pending'", delivered: 'INTEGER DEFAULT 0', created_at: 'INTEGER DEFAULT 0' };
+        for (const [col, type] of Object.entries(want)) {
+            if (!have.has(col)) db.prepare(`ALTER TABLE reminders ADD COLUMN ${col} ${type}`).run();
+        }
+        // Rows already delivered by the old timers must not be sent again
+        db.prepare(`UPDATE reminders SET status = 'sent' WHERE delivered = 1 AND status = 'pending'`).run();
+        // A row stuck in 'sending' (bot stopped mid-send) goes back in the queue
+        db.prepare(`UPDATE reminders SET status = 'pending' WHERE status = 'sending'`).run();
+        db.prepare('CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at)').run();
+        db.prepare('CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id)').run();
     } catch (e) {
         console.error('[REMINDER DB] Setup failed:', e.message);
     }
 }
 
-function saveReminderToDB(database, reminder) {
+const pendingOf = (db, userId) => db.prepare(
+    `SELECT id, message, execute_at FROM reminders WHERE user_id = ? AND status = 'pending' ORDER BY execute_at ASC`,
+).all(userId);
+
+function create(db, { userId, userTag, guildId, channelId, text, executeAt }) {
+    const id = `rem_${userId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    db.prepare(`INSERT INTO reminders (id, user_id, user_tag, guild_id, channel_id, message, execute_at, status, delivered, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)`).run(id, userId, userTag || null, guildId || null, channelId, text, executeAt, now());
+    return id;
+}
+
+// ─── Cards ───
+// customId remind:cancel:<id>[:list]: ":list" means the button sits in the list card, so the list is shown again after cancelling
+const cancelBtn = (_, id, inList) => new ButtonBuilder().setCustomId(`remind:cancel:${id}${inList ? ':list' : ''}`).setLabel(_('btn_cancel')).setStyle(ButtonStyle.Secondary);
+
+function setCard(lang, text, executeAt, id, dmNote) {
+    const _ = tr(lang);
+    return v2.card(0x5865f2, [
+        { section: [
+            `## ${em('clock', '⏰')} ${_('set_title')}\n${_('set_body', { text, when: `<t:${executeAt}:R>`, at: `<t:${executeAt}:f>` })}`,
+            cancelBtn(_, id),
+        ] },
+        { text: `-# ${_(dmNote ? 'set_dm' : 'set_here')}` },
+    ]);
+}
+
+function listCard(client, lang, db, userId) {
+    const _ = tr(lang);
+    const rows = pendingOf(db, userId);
+    if (!rows.length) {
+        return v2.card(0x95a5a6, [{ text: `## ${em('clock', '⏰')} ${_('list_title')}\n${_('list_empty', { cmd: mention(client, 'remind', 'set') })}` }]);
+    }
+    const items = [{ text: `## ${em('clock', '⏰')} ${_('list_title')}\n${_('list_count', { count: rows.length })}` }, { rule: true }];
+    for (const r of rows.slice(0, LIST_SHOWN)) {
+        const short = r.message.length > 120 ? r.message.slice(0, 117) + '…' : r.message;
+        items.push({ section: [`**${short}**\n-# <t:${r.execute_at}:R> · <t:${r.execute_at}:f>`, cancelBtn(_, r.id, true)] });
+    }
+    if (rows.length > LIST_SHOWN) items.push({ text: `-# ${_('list_more', { count: rows.length - LIST_SHOWN })}` });
+    return v2.card(0x5865f2, items);
+}
+
+const errorCard = (text) => v2.card(0xe74c3c, [{ text }]);
+
+// Shared by slash and prefix. Returns a card; `ephemeral` tells the caller to hide it.
+function setReminder(client, db, lang, ctx, durationText, text) {
+    const _ = tr(lang);
+    const ms = parseTime(durationText);
+    if (!ms) return { card: errorCard(_('bad_time')), ephemeral: true };
+    if (ms < MIN_MS || ms > MAX_MS) return { card: errorCard(_('out_of_range')), ephemeral: true };
+    text = String(text || '').trim().slice(0, MAX_TEXT);
+    if (!text) return { card: errorCard(_('no_text')), ephemeral: true };
+    if (pendingOf(db, ctx.userId).length >= MAX_PENDING) return { card: errorCard(_('too_many', { max: MAX_PENDING })), ephemeral: true };
+
+    const executeAt = Math.floor((Date.now() + ms) / 1000);
+    const id = create(db, { ...ctx, text, executeAt });
+    return { card: setCard(lang, text, executeAt, id, !!ctx.guildId), ephemeral: false };
+}
+
+// ─── Delivery (called every 30 s) ───
+function langFor(client, guildId) {
+    const l = guildId ? client.getServerSettings?.(guildId)?.language : null;
+    return LANGS.includes(l) ? l : 'en';
+}
+
+let ticking = false;
+async function tick(client, db) {
+    if (ticking || !client.isReady?.()) return;
+    ticking = true;
     try {
-        database.prepare(`
-            INSERT INTO reminders (id, user_id, user_tag, guild_id, channel_id, message, execute_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(reminder.id, reminder.userId, reminder.userTag, reminder.guildId, reminder.channelId, reminder.message, reminder.executeAt);
+        const due = db.prepare(`SELECT * FROM reminders WHERE status = 'pending' AND execute_at <= ? ORDER BY execute_at LIMIT 50`).all(now());
+        for (const r of due) {
+            // Claim the row first: if two loops ever run, only one gets it
+            const claimed = db.prepare(`UPDATE reminders SET status = 'sending' WHERE id = ? AND status = 'pending'`).run(r.id).changes === 1;
+            if (!claimed) continue;
+            await deliver(client, r).catch(e => console.error('[REMINDER] deliver:', e.message));
+            db.prepare(`UPDATE reminders SET status = 'sent', delivered = 1 WHERE id = ?`).run(r.id);
+        }
+        db.prepare(`DELETE FROM reminders WHERE status IN ('sent', 'cancelled') AND execute_at < ?`).run(now() - 7 * 86400);
     } catch (e) {
-        console.error('[REMINDER DB] Save failed:', e.message);
+        console.error('[REMINDER] tick:', e.message);
+    } finally {
+        ticking = false;
     }
 }
 
-function markReminderDelivered(database, id) {
-    try {
-        database.prepare(`UPDATE reminders SET delivered = 1 WHERE id = ?`).run(id);
-    } catch (e) {}
+async function deliver(client, r) {
+    const _ = tr(langFor(client, r.guild_id));
+    const late = now() - r.execute_at > 120;
+    const lines = [`## ${em('clock', '🔔')} ${_('due_title')}`, `**${r.message}**`];
+    const setAt = r.created_at > 0 ? `<t:${r.created_at}:R>` : null;
+    const where = r.guild_id ? `<#${r.channel_id}>` : null;
+    if (setAt && where) lines.push(`-# ${_('due_meta', { when: setAt, where })}`);
+    else if (setAt) lines.push(`-# ${_('due_meta_dm', { when: setAt })}`);
+    if (late) lines.push(`-# ${_('due_late')}`);
+
+    // 1. Direct message
+    const user = await client.users.fetch(r.user_id).catch(() => null);
+    if (user) {
+        const ok = await user.send(v2.card(0xf1c40f, [{ text: lines.join('\n') }])).then(() => true).catch(() => false);
+        if (ok) return;
+    }
+    // 2. DMs closed: ping in the channel where it was set
+    const ch = await client.channels.fetch(r.channel_id).catch(() => null);
+    if (!ch?.isTextBased?.()) return;
+    const card = v2.card(0xf1c40f, [{ text: `<@${r.user_id}>\n` + lines.join('\n') + `\n-# ${_('due_fallback')}` }]);
+    card.allowedMentions = { users: [r.user_id] };
+    await ch.send(card).catch(e => console.error('[REMINDER] channel send:', e.message));
 }
 
-function deleteReminderFromDB(database, id) {
-    try {
-        database.prepare(`DELETE FROM reminders WHERE id = ?`).run(id);
-    } catch (e) {}
+// ─── Cancel button (routed from index.js: customId "remind:cancel:<id>") ───
+async function handleButton(interaction, client) {
+    const db = client.db;
+    const lang = slashLang(interaction);
+    const _ = tr(lang);
+    const [, , id, from] = interaction.customId.split(':');
+    const row = db.prepare('SELECT user_id, status FROM reminders WHERE id = ?').get(id);
+    if (!row || row.user_id !== interaction.user.id) {
+        const card = errorCard(_('not_yours'));
+        return interaction.reply({ ...card, flags: card.flags | 64 }).catch(() => {});
+    }
+    if (row.status === 'pending') db.prepare(`UPDATE reminders SET status = 'cancelled' WHERE id = ?`).run(id);
+    const card = from === 'list'
+        ? listCard(client, lang, db, interaction.user.id)
+        : v2.card(0x95a5a6, [{ text: `${em('clock', '⏰')} ${_(row.status === 'pending' ? 'cancelled' : 'already_done')}` }]);
+    return interaction.update(card).catch(e => console.error('[REMINDER] cancel:', e.message));
 }
 
-function loadPendingReminders(database) {
-    try {
-        const now = Math.floor(Date.now() / 1000);
-        return database.prepare(`SELECT * FROM reminders WHERE delivered = 0 AND execute_at > ?`).all(now);
-    } catch (e) {
-        console.error('[REMINDER DB] Load failed:', e.message);
-        return [];
-    }
-}
+const data = new SlashCommandBuilder()
+    .setName('remind')
+    .setDescription('Set a reminder or see the ones you have')
+    .setDescriptionLocalizations({ fr: 'Crée un rappel ou vois les tiens', 'zh-CN': '设置提醒或查看你的提醒' })
+    .addSubcommand(s => s.setName('set').setDescription('Get a reminder after a delay')
+        .setDescriptionLocalizations({ fr: 'Reçois un rappel après un délai', 'zh-CN': '在一段时间后提醒你' })
+        .addStringOption(o => o.setName('in').setDescription('When: 30m, 2h, 1h30m, 3d (up to 30 days)').setRequired(true)
+            .setDescriptionLocalizations({ fr: 'Quand : 30m, 2h, 1h30m, 3d (jusqu’à 30 jours)', 'zh-CN': '多久后：30m、2h、1h30m、3d（最多 30 天）' }))
+        .addStringOption(o => o.setName('about').setDescription('What to remind you about').setRequired(true).setMaxLength(MAX_TEXT)
+            .setDescriptionLocalizations({ fr: 'De quoi te rappeler', 'zh-CN': '提醒你什么' })))
+    .addSubcommand(s => s.setName('list').setDescription('See and cancel your reminders')
+        .setDescriptionLocalizations({ fr: 'Vois et annule tes rappels', 'zh-CN': '查看和取消你的提醒' }));
 
-// ================= DELIVERY ENGINE =================
-// Tries DM first, falls back to channel mention
-async function deliverReminder(client, reminder, database) {
-    const lang = reminder.lang || 'en';
-    const t = T[lang];
-    const isDM = !reminder.guildId; // DM = no guild
-
-    const embed = new EmbedBuilder()
-        .setColor('#f1c40f')
-        .setAuthor({ name: t.remindYou(), iconURL: client.user?.displayAvatarURL() })
-        .setDescription(`**${reminder.message}**`)
-        .setFooter({ text: t.footer })
-        .setTimestamp();
-
-    // Strategy 1: Try DM
-    let dmSent = false;
-    try {
-        const user = await client.users.fetch(reminder.userId).catch(() => null);
-        if (user) {
-            await user.send({ embeds: [embed] });
-            dmSent = true;
-            console.log(`[REMINDER] ✅ DM delivered to ${reminder.userTag || reminder.userId}`);
-        }
-    } catch (dmErr) {
-        console.log(`[REMINDER] ❌ DM failed for ${reminder.userTag || reminder.userId}: ${dmErr.message}`);
-    }
-
-    // Strategy 2: Fallback to channel mention (if not already a DM channel)
-    if (!dmSent && reminder.channelId && !isDM) {
-        try {
-            const channel = await client.channels.fetch(reminder.channelId).catch(() => null);
-            if (channel && channel.send) {
-                const fallbackEmbed = EmbedBuilder.from(embed)
-                    .setDescription(`<@${reminder.userId}> **${reminder.message}**`)
-                    .setFooter({ text: `${t.footer} • DM fallback` });
-                await channel.send({ content: `<@${reminder.userId}>`, embeds: [fallbackEmbed] });
-                console.log(`[REMINDER] 📢 Channel fallback sent for ${reminder.userTag || reminder.userId} in #${channel.name}`);
-                dmSent = true; // Mark as delivered since we fell back
-            }
-        } catch (chErr) {
-            console.log(`[REMINDER] ❌ Channel fallback failed: ${chErr.message}`);
-        }
-    }
-
-    // Mark as delivered in DB
-    if (database) {
-        markReminderDelivered(database, reminder.id);
-        // Clean up delivered reminders older than 7 days
-        try {
-            const weekAgo = Math.floor(Date.now() / 1000) - 604800;
-            database.prepare(`DELETE FROM reminders WHERE delivered = 1 AND execute_at < ?`).run(weekAgo);
-        } catch (e) {}
-    }
-
-    return dmSent;
-}
-
-// ================= REHYDRATION (survives restarts) =================
-async function rehydrateReminders(client, database) {
-    const pending = loadPendingReminders(database);
-    if (pending.length === 0) return;
-
-    console.log(`[REMINDER] Rehydrating ${pending.length} pending reminders...`);
-
-    for (const row of pending) {
-        const executeAtMs = row.execute_at * 1000;
-        const msUntil = executeAtMs - Date.now();
-
-        if (msUntil <= 0) {
-            // Overdue — deliver immediately
-            console.log(`[REMINDER] Delivering overdue reminder for ${row.user_tag || row.user_id}`);
-            await deliverReminder(client, {
-                id: row.id,
-                userId: row.user_id,
-                userTag: row.user_tag,
-                guildId: row.guild_id,
-                channelId: row.channel_id,
-                message: row.message,
-                lang: 'en'
-            }, database);
-        } else {
-            // Re-arm the timeout
-            setTimeout(async () => {
-                await deliverReminder(client, {
-                    id: row.id,
-                    userId: row.user_id,
-                    userTag: row.user_tag,
-                    guildId: row.guild_id,
-                    channelId: row.channel_id,
-                    message: row.message,
-                    lang: 'en'
-                }, database);
-            }, msUntil);
-        }
-    }
-}
-
-// ================= MODULE =================
 module.exports = {
     name: 'remind',
-    aliases: ['reminder', 'remindme', 'r'],
-    description: '🔔 Set DM reminders — never forget anything. Survives bot restarts with fallback to channel.',
+    aliases: ['reminder', 'remindme', 'rappel', 'reminders'],
+    description: 'Set a reminder or see the ones you have',
     category: 'UTILITY',
     cooldown: 2000,
-    usage: '.remind <time> <message>',
-    examples: ['.remind 1h Take a break', '.remind 30m Meeting', '/remind duration:2h message:Deadline'],
+    usage: '.remind <time> <text> · .remind list',
+    examples: ['.remind 1h Take a break', '.remind 2h30m Scrim with the team', '.remind list'],
+    data,
 
-    data: new SlashCommandBuilder()
-        .setName('remind')
-        .setDescription('🔔 Set a reminder')
-        .addStringOption(o => o.setName('duration').setDescription('Time: 30m, 1h, 2h30m, 1d').setRequired(true))
-        .addStringOption(o => o.setName('message').setDescription('What to remind you about').setRequired(true)),
-
-    run: async (client, message, args, db, ss, used) => {
-    const guildId = message.guild?.id ?? 'DM';
-
-        const t = T[lang];
-        if (args.length < 2) return message.reply(`❌ ${t.usage}`).catch(() => {});
-        const durationMs = parseTime(args[0]);
-        if (!durationMs) return message.reply(t.invalid).catch(() => {});
-        const remindText = args.slice(1).join(' ');
-        const when = Date.now() + durationMs;
-        const executeAt = Math.floor(when / 1000);
-        const reminderId = `rem_${message.author.id}_${Date.now()}`;
-
-        // Setup DB if first time
-        if (db) setupReminderDB(db);
-
-        // Save to DB for restart survival
-        if (db) {
-            saveReminderToDB(db, {
-                id: reminderId,
-                userId: message.author.id,
-                userTag: message.author.tag,
-                guildId: message.guild?.id || null,
-                channelId: message.channel.id,
-                message: remindText,
-                executeAt: executeAt,
-                lang
-            });
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        const L = LANGS.includes(lang) ? lang : 'en';
+        db = db || client.db;
+        if (['list', 'liste', 'all'].includes(String(args[0] || '').toLowerCase()) || usedCommand === 'reminders') {
+            return message.reply(listCard(client, L, db, message.author.id)).catch(() => {});
         }
-
-        const embed = new EmbedBuilder()
-            .setColor('#00fbff')
-            .setAuthor({ name: t.title(), iconURL: client.user?.displayAvatarURL() })
-            .setDescription(t.set(remindText, formatTime(durationMs), executeAt))
-            .setFooter({ text: t.footer })
-            .setTimestamp();
-        message.reply({ embeds: [embed] }).catch(() => {});
-
-        // Set timeout with delivery engine (DM + fallback)
-        setTimeout(async () => {
-            await deliverReminder(client, {
-                id: reminderId,
-                userId: message.author.id,
-                userTag: message.author.tag,
-                guildId: message.guild?.id || null,
-                channelId: message.channel.id,
-                message: remindText,
-                lang
-            }, db);
-        }, durationMs);
+        if (args.length < 2) {
+            const p = serverSettings?.prefix || process.env.PREFIX || '.';
+            return message.reply(v2.card(0x5865f2, [{ text: tr(L)('usage', { p }) }])).catch(() => {});
+        }
+        // The time can be split ("1h 30m"): take every leading word that looks like a duration
+        let i = 0;
+        while (i < args.length - 1 && /^\d+\s*[dhm]$|^(\d+[dhm])+$/i.test(args[i])) i++;
+        const res = setReminder(client, db, L, {
+            userId: message.author.id, userTag: message.author.tag, guildId: message.guild?.id, channelId: message.channel.id,
+        }, args.slice(0, Math.max(1, i)).join(' '), args.slice(Math.max(1, i)).join(' '));
+        return message.reply(res.card).catch(() => {});
     },
 
     execute: async (interaction, client) => {
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang];
-        const durationMs = parseTime(interaction.options.getString('duration'));
-        if (!durationMs) return interaction.reply({ content: t.invalid, flags: 64 });
-        const remindText = interaction.options.getString('message');
-        const when = Date.now() + durationMs;
-        const executeAt = Math.floor(when / 1000);
-        const reminderId = `rem_${interaction.user.id}_${Date.now()}`;
+        const lang = slashLang(interaction);
         const db = client.db;
-
-        if (db) setupReminderDB(db);
-        if (db) {
-            saveReminderToDB(db, {
-                id: reminderId,
-                userId: interaction.user.id,
-                userTag: interaction.user.tag,
-                guildId: interaction.guild?.id || null,
-                channelId: interaction.channel.id,
-                message: remindText,
-                executeAt: executeAt,
-                lang
-            });
+        if (interaction.options.getSubcommand() === 'list') {
+            const card = listCard(client, lang, db, interaction.user.id);
+            return interaction.reply({ ...card, flags: card.flags | 64 }).catch(() => {});
         }
-
-        await interaction.deferReply();
-        const embed = new EmbedBuilder()
-            .setColor('#00fbff')
-            .setAuthor({ name: t.title(), iconURL: client.user?.displayAvatarURL() })
-            .setDescription(t.set(remindText, formatTime(durationMs), executeAt))
-            .setFooter({ text: t.footer })
-            .setTimestamp();
-        await interaction.editReply({ embeds: [embed] });
-
-        setTimeout(async () => {
-            await deliverReminder(client, {
-                id: reminderId,
-                userId: interaction.user.id,
-                userTag: interaction.user.tag,
-                guildId: interaction.guild?.id || null,
-                channelId: interaction.channel.id,
-                message: remindText,
-                lang
-            }, db);
-        }, durationMs);
+        const res = setReminder(client, db, lang, {
+            userId: interaction.user.id, userTag: interaction.user.tag, guildId: interaction.guildId, channelId: interaction.channelId,
+        }, interaction.options.getString('in'), interaction.options.getString('about'));
+        return interaction.reply(res.ephemeral ? { ...res.card, flags: res.card.flags | 64 } : res.card).catch(() => {});
     },
 
-    // DB exports for index.js initialization
+    // index.js calls these at start-up and every 30 s
     setupReminderDB,
-    rehydrateReminders,
+    rehydrateReminders: () => {},   // kept so the old start-up call still works; tick() covers overdue reminders
+    tick,
+    handleButton,
+    _internal: { parseTime },
 };

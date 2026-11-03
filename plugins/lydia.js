@@ -602,32 +602,7 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
         VALUES (?, ?, ?, ?, ?, ?, ?, 0)
       `).run(id, userId, null, null, channelId, msg.trim(), executeAt);
 
-      setTimeout(async () => {
-        try {
-          const user = await client.users.fetch(userId).catch(() => null);
-          if (user) {
-            await user.send({
-              embeds: [new EmbedBuilder()
-                .setColor('#f1c40f')
-                .setAuthor({ name: '\u{1F514} Reminder', iconURL: client.user?.displayAvatarURL() })
-                .setDescription(`**${msg.trim()}**`)
-                .setFooter({ text: 'Architect CG-223 \u2022 Reminder' })
-                .setTimestamp()
-              ]
-            }).catch(() => {});
-          }
-          const ch = await client.channels.fetch(channelId).catch(() => null);
-          if (ch?.isTextBased?.()) {
-            await ch.send({
-              content: `\u{1F514} <@${userId}> **Reminder:** ${msg.trim()}`,
-              allowedMentions: { users: [userId] }
-            }).catch(() => {});
-          }
-          database.prepare(`UPDATE reminders SET delivered = 1 WHERE id = ?`).run(id);
-        } catch (e) {
-          console.log(`${C.yellow}[REMIND FAIL]${C.reset} ${e.message}`);
-        }
-      }, ms);
+      // Delivered by plugins/reminder.js tick() (every 30 s)
 
       console.log(`${C.green}[REMIND]${C.reset} Scheduled "${msg.trim()}" for ${userId} in ${amount}${unit}`);
     } catch (e) {
@@ -1628,7 +1603,7 @@ function setupLydia(client, database) {
     const active = database.prepare('SELECT channel_id FROM lydia_agents WHERE is_active = 1').all();
     for (const ch of active) client.lydiaChannels[ch.channel_id] = true;
 
-    rehydrateReminders(client, database);
+    // Reminders are delivered by plugins/reminder.js tick() (every 30 s)
 
     setInterval(() => pruneOldConversations(database), 86400000);
 

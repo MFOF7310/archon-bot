@@ -2102,25 +2102,9 @@ function startBatchWriteInterval() {
 function startReminderHeartbeat() {
     if (client.reminderHeartbeatInterval) clearInterval(client.reminderHeartbeatInterval);
     
-    client.reminderHeartbeatInterval = setInterval(async () => {
-        const now = Math.floor(Date.now() / 1000);
-        const dueReminders = db.prepare(`SELECT id, user_id, channel_id, message FROM reminders WHERE execute_at <= ? AND status = 'pending'`).all(now);
-        
-        for (const r of dueReminders) {
-            try {
-                const channel = await client.channels.fetch(r.channel_id).catch(() => null);
-                if (channel) {
-                    await channel.send(` **REMINDER** <@${r.user_id}> : ${r.message}`);
-                    console.log(`${green}[REMINDER]${reset} Sent to ${r.user_id}`);
-                }
-                db.prepare(`UPDATE reminders SET status = 'sent' WHERE id = ?`).run(r.id);
-            } catch (err) {
-                console.error(`${red}[REMINDER ERROR]${reset}`, err.message);
-            }
-        }
-        
-        const weekAgo = now - (7 * 86400);
-        db.prepare(`DELETE FROM reminders WHERE execute_at < ? AND status != 'pending'`).run(weekAgo);
+    // One delivery engine for every reminder (/remind and Lydia): plugins/reminder.js tick()
+    client.reminderHeartbeatInterval = setInterval(() => {
+        require('./plugins/reminder.js').tick(client, db).catch(e => console.error('[REMINDER] tick:', e.message));
     }, 30000);
     
     console.log(`${green}[REMINDER]${reset} Heartbeat started (30s interval)`);
@@ -4526,6 +4510,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // ── VERIFY BUTTON ──
     if (interaction.isButton() && interaction.customId.startsWith('bot:')) {
         return require('./plugins/bot').handleButton(interaction, client).catch(e => console.error('[BOT] button:', e.message));
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('remind:')) {
+        return require('./plugins/reminder').handleButton(interaction, client).catch(e => console.error('[REMINDER] button:', e.message));
     }
     if (interaction.isButton() && interaction.customId.startsWith('ls_toggle:')) {
         return require('./plugins/livestream').handleToggle(interaction, client).catch(e => console.error('[LIVESTREAM] toggle:', e.message));
