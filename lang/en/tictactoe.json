@@ -3,7 +3,7 @@
   "cant_challenge_self": "You can't challenge yourself.",
   "cant_challenge_bot": "Bots don't play tic-tac-toe.",
   "already_playing": "That player is already in a match. Wait for them to finish.",
-  "insufficient_credits": "You need **50 🪙** to enter. Claim your daily with `/daily` and come back.",
+  "insufficient_credits": "You need **50 🪙** to enter. Claim your daily with {daily} and come back.",
   "opponent_insufficient_credits": "**{name}** doesn't have enough credits (50 🪙 required).",
   "challenge_title": "Tic-tac-toe challenge",
   "challenge_desc": "**{challenger}** challenged **{opponent}** — do you accept?",
@@ -32,5 +32,12 @@
   "rank_2": "Field agent",
   "rank_3": "Cyber specialist",
   "rank_4": "BKO commander",
-  "rank_5": "System architect"
+  "rank_5": "System architect",
+  "ends": "Ends {time}",
+  "you_are_playing": "Finish your current match first.",
+  "accept": "Accept",
+  "decline": "Decline",
+  "not_for_you": "This match isn't yours.",
+  "declined": "{name} declined the challenge. No credits were taken.",
+  "expired": "No answer, so the challenge expired. No credits were taken."
 }

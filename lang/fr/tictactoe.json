@@ -3,7 +3,7 @@
   "cant_challenge_self": "Tu ne peux pas te défier toi-même.",
   "cant_challenge_bot": "Les bots ne jouent pas au morpion.",
   "already_playing": "Ce joueur est déjà en match. Attends qu'il termine.",
-  "insufficient_credits": "Il te faut **50 🪙** pour entrer. Utilise `/daily` et reviens.",
+  "insufficient_credits": "Il te faut **50 🪙** pour entrer. Utilise {daily} et reviens.",
   "opponent_insufficient_credits": "**{name}** n'a pas assez de crédits (50 🪙 requis).",
   "challenge_title": "Défi morpion",
   "challenge_desc": "**{challenger}** défie **{opponent}** — tu acceptes ?",
@@ -32,5 +32,12 @@
   "rank_2": "Agent de terrain",
   "rank_3": "Spécialiste cyber",
   "rank_4": "Commandant BKO",
-  "rank_5": "Architecte système"
+  "rank_5": "Architecte système",
+  "ends": "Fin {time}",
+  "you_are_playing": "Termine d'abord ton match en cours.",
+  "accept": "Accepter",
+  "decline": "Refuser",
+  "not_for_you": "Ce match n'est pas le tien.",
+  "declined": "{name} a refusé le défi. Aucun crédit n'a été pris.",
+  "expired": "Pas de réponse, le défi a expiré. Aucun crédit n'a été pris."
 }

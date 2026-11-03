@@ -3,7 +3,7 @@
   "cant_challenge_self": "ما تقدر تتحدى نفسك.",
   "cant_challenge_bot": "البوتات ما تلعب إكس-أو.",
   "already_playing": "هاللاعب في مباراة — انتظر ينتهي.",
-  "insufficient_credits": "تحتاج **50 🪙** للدخول. خذ مكافأتك اليومية بـ `/daily` ورجع.",
+  "insufficient_credits": "تحتاج **50 🪙** للدخول. خذ مكافأتك اليومية بـ {daily} ورجع.",
   "opponent_insufficient_credits": "**{name}** ما عنده رصيد كافي (50 🪙 مطلوب).",
   "challenge_title": "تحدي إكس-أو",
   "challenge_desc": "**{challenger}** تحدى **{opponent}** — بتقبل؟",
@@ -32,5 +32,12 @@
   "rank_2": "عميل ميداني",
   "rank_3": "متخصص سيبراني",
   "rank_4": "قائد BKO",
-  "rank_5": "مهندس الأنظمة"
+  "rank_5": "مهندس الأنظمة",
+  "ends": "ينتهي {time}",
+  "you_are_playing": "خلّص مباراتك الحالية أول.",
+  "accept": "قبول",
+  "decline": "رفض",
+  "not_for_you": "هذي المباراة مو لك.",
+  "declined": "{name} رفض التحدي. ما انخصم أي رصيد.",
+  "expired": "ما في رد، انتهى التحدي. ما انخصم أي رصيد."
 }

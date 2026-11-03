@@ -3,7 +3,7 @@
   "cant_challenge_self": "不能挑战自己。",
   "cant_challenge_bot": "机器人不玩井字棋。",
   "already_playing": "对方正在对局中，等TA打完。",
-  "insufficient_credits": "进场需要 **50 🪙**。先去 `/daily` 领奖励再来。",
+  "insufficient_credits": "进场需要 **50 🪙**。先用 {daily} 领奖励再来。",
   "opponent_insufficient_credits": "**{name}** 积分不够（需要 50 🪙）。",
   "challenge_title": "井字棋挑战",
   "challenge_desc": "**{challenger}** 挑战 **{opponent}** — 敢接吗？",
@@ -32,5 +32,12 @@
   "rank_2": "野战特工",
   "rank_3": "网络专家",
   "rank_4": "BKO指挥官",
-  "rank_5": "系统架构师"
+  "rank_5": "系统架构师",
+  "ends": "{time}结束",
+  "you_are_playing": "先打完你当前的对局。",
+  "accept": "接受",
+  "decline": "拒绝",
+  "not_for_you": "这不是你的对局。",
+  "declined": "{name} 拒绝了挑战。没有扣除积分。",
+  "expired": "没有回应，挑战已过期。没有扣除积分。"
 }

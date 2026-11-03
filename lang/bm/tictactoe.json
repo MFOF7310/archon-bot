@@ -3,7 +3,7 @@
   "cant_challenge_self": "I tɛ se ka i yɛrɛ sɔgɔ.",
   "cant_challenge_bot": "Bot tɛ ttt kɛ.",
   "already_playing": "Nin mɔgɔ bɛ kɛlɛ kɔnɔ sisan. I ka makɔnɔ.",
-  "insufficient_credits": "I ka kan ka **50 🪙** sɔrɔ. I ka `/daily` kɛ k'a sɔrɔ.",
+  "insufficient_credits": "I ka kan ka **50 🪙** sɔrɔ. I ka {daily} kɛ k'a sɔrɔ.",
   "opponent_insufficient_credits": "**{name}** ka wari tɛ dɔgɔ (50 🪙 dɔrɔn).",
   "challenge_title": "Ttt kɛlɛ",
   "challenge_desc": "**{challenger}** bɛ **{opponent}** sɔgɔ — i bɛ sɔn wa?",
@@ -32,5 +32,12 @@
   "rank_2": "Cɛkɔrɔ agent",
   "rank_3": "Cyber dɔnbali",
   "rank_4": "BKO kuntigi",
-  "rank_5": "Sistema jɔyɔrɔ"
+  "rank_5": "Sistema jɔyɔrɔ",
+  "ends": "A bɛ ban {time}",
+  "you_are_playing": "I ka i ka kɛlɛ ban fɔlɔ.",
+  "accept": "Sɔn",
+  "decline": "Ban",
+  "not_for_you": "Nin kɛlɛ tɛ i ta ye.",
+  "declined": "{name} banna kɛlɛ la. Wari si ma ta.",
+  "expired": "Jaabi si ma na, kɛlɛ banna. Wari si ma ta."
 }
