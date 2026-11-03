@@ -30,5 +30,13 @@
   "tracking_success": "Alerts will post in <#{channel}>.",
   "tracking_priority": "Polled every **2 minutes**.",
   "live_now": "Live now",
-  "latest_video": "Latest video"
+  "latest_video": "Latest video",
+  "btn_live_on": "Live alerts: on",
+  "btn_live_off": "Live alerts: off",
+  "btn_up_on": "Uploads: on",
+  "btn_up_off": "Uploads: off",
+  "toggle_admin_only": "Only server admins can change alerts.",
+  "toggle_gone": "That channel isn't tracked anymore.",
+  "list_more": "+{count} more channels. Manage them with {mention}.",
+  "list_hint": "Tap a button to switch alerts · admins only"
 }

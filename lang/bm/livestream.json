@@ -6,5 +6,13 @@
   "tracking_success": "Notifikasiw bɛna ta <#{channel}>.",
   "tracking_priority": "A bɛ lajɛ **miniti 2** bɛɛ.",
   "live_now": "Live sisan",
-  "latest_video": "Video kura"
+  "latest_video": "Video kura",
+  "btn_live_on": "Live alerts: on",
+  "btn_live_off": "Live alerts: off",
+  "btn_up_on": "Uploads: on",
+  "btn_up_off": "Uploads: off",
+  "toggle_admin_only": "Only server admins can change alerts.",
+  "toggle_gone": "That channel isn't tracked anymore.",
+  "list_more": "+{count} more channels. Manage them with {mention}.",
+  "list_hint": "Tap a button to switch alerts · admins only"
 }

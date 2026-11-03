@@ -4524,6 +4524,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
 
     // ── VERIFY BUTTON ──
+    if (interaction.isButton() && interaction.customId.startsWith('ls_toggle:')) {
+        return require('./plugins/livestream').handleToggle(interaction, client).catch(e => console.error('[LIVESTREAM] toggle:', e.message));
+    }
     if (interaction.isButton() && interaction.customId === 'meta_reroll') {
         try {
             const metaPlugin = require('./plugins/meta.js');

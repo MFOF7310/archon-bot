@@ -15,7 +15,7 @@ const em = (k, fb, client) => {
     return fb || ''; // On utilise le fallback Unicode si l'emoji n'est pas dans le cache
 };
 
-// Buttons reject app emojis (COMPONENT_INVALID_EMOJI) — they only accept guild emojis.
+// App emojis work on buttons too (tested Nov 2026). This helper only looks up server emojis by name.
 // Look up by name across all guilds the bot is in, fall back to Unicode if missing.
 function emBtn(name, fallback, client) {
     const found = client?.emojis?.cache?.find(e => e.name === name);
@@ -45,6 +45,7 @@ let isPolling = false;
 
 const lastNotificationTime = new Map();
 const offlineCounters = new Map();
+const liveVideoIds = new Map(); // channel ID -> video ID of the stream last seen live
 const REQUIRED_OFFLINE_CHECKS = 2;
 
 function initDatabase(db) {
@@ -65,6 +66,8 @@ function initDatabase(db) {
     `);
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN priority INTEGER DEFAULT 0`); } catch {}
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN youtube_handle TEXT DEFAULT NULL`); } catch {}
+    try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN notify_live INTEGER DEFAULT 1`); } catch {}
+    try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN notify_uploads INTEGER DEFAULT 1`); } catch {}
     try { db.exec(`CREATE INDEX IF NOT EXISTS idx_youtube_guild ON youtube_notifications(guild_id)`); } catch {}
     try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN priority INTEGER DEFAULT 0`); } catch {}
 }
@@ -161,7 +164,7 @@ async function fetchLiveStatus(channelId, handle) {
         const { stdout, stderr } = await execFileAsync('yt-dlp', [
             '--skip-download', '--no-warnings', '--no-playlist',
             '--cookies', COOKIE_FILE,
-            '--print', 'is_live', '--print', 'title', '--print', 'thumbnail',
+            '--print', 'is_live', '--print', 'title', '--print', 'thumbnail', '--print', 'id',
             watchUrl,
         ], { timeout: YTDLP_TIMEOUT_MS });
         const lines = String(stdout).trim().split('\n');
@@ -171,6 +174,7 @@ async function fetchLiveStatus(channelId, handle) {
                 isLive: true,
                 title: (lines[1] || 'Live stream').trim(),
                 thumbnail: (lines[2] || '').trim() || null,
+                videoId: (lines[3] || '').trim() || null,
                 url: cleanHandle ? `https://youtube.com/@${cleanHandle}/live` : `https://youtube.com/channel/${channelId}/live`,
             };
         }
@@ -201,7 +205,7 @@ async function fetchLiveFallback(channelId) {
         ], { timeout: YTDLP_TIMEOUT_MS });
         const status = String(stdout).trim();
         if (status === 'is_live') {
-            return { isLive: true, title: up.title, thumbnail: up.thumbnail, url: up.url };
+            return { isLive: true, title: up.title, thumbnail: up.thumbnail, url: up.url, videoId: up.id };
         }
         return { isLive: false };
     } catch {
@@ -247,8 +251,8 @@ function buildLiveEmbed(channelId, live, handle, client, pingText) {
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     const navRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji(emBtn('livestream', '🔴', client)),
-        new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji(emBtn('youtube', '📺', client))
+        new ButtonBuilder().setLabel('Watch Live').setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji(EMOJIS.livestream || '🔴'),
+        new ButtonBuilder().setLabel('Channel').setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji(EMOJIS.ic_youtube || '📺')
     );
     c.addActionRowComponents(navRow);
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: ['everyone'] } } };
@@ -258,12 +262,12 @@ function buildVideoEmbed(upload, handle, client) {
     const tag = handle ? '@' + handle : (upload.author || 'the channel');
     const c = new ContainerBuilder().setAccentColor(0xFF0000);
     if (upload.thumbnail) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(upload.thumbnail)));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '✨', client)} New video from ${tag}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${EMOJIS.ic_youtube || '✨'} New video from ${tag}`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${tag} just posted something new.`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(emBtn('youtube', '🎬', client))
+        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(EMOJIS.ic_video || '🎬')
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }
@@ -358,7 +362,9 @@ async function runCycle(client, db, priorityOnly) {
             const live = await fetchLiveStatus(chId, handle);
             if (live.isLive) {
                 offlineCounters.delete(chId);
+                if (live.videoId) liveVideoIds.set(chId, live.videoId);
                 for (const t of tracks) {
+                    if (t.is_live !== 1 && t.notify_live === 0) { db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId); continue; }
                     if (t.is_live !== 1 && canNotifyLive(chId)) {
                         const sent = await sendNotification(client, db, t.guild_id, chId, handle, live, 'live');
                         if (sent.ok) db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId);
@@ -378,7 +384,7 @@ async function runCycle(client, db, priorityOnly) {
                 const up = await fetchLatestUpload(chId);
                 if (up) {
                     for (const t of tracks) {
-                        if (t.last_video_id && t.last_video_id !== up.id) {
+                        if (t.last_video_id && t.last_video_id !== up.id && t.notify_uploads !== 0 && up.id !== liveVideoIds.get(chId)) {
                             const sent = await sendNotification(client, db, t.guild_id, chId, handle, up, 'video'); console.log(`[YOUTUBE] new video ${up.id} on ${handle || chId} -> ${t.guild_id}: ${sent.ok ? 'sent' : 'failed (' + sent.reason + ')'}`);
                         }
                         db.prepare('UPDATE youtube_notifications SET last_video_id = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(up.id, t.guild_id, chId);
@@ -394,27 +400,61 @@ async function runCycle(client, db, priorityOnly) {
 }
 
 // ─── List ───
-function buildListEmbed(tracks, guild, client) {
+const MAX_TOGGLE_ROWS = 8; // a V2 card holds 40 components; 8 channels with two buttons each fit
+
+function toggleButton(kind, row, lang) {
+    const on = (kind === 'live' ? row.notify_live : row.notify_uploads) !== 0;
+    return new ButtonBuilder()
+        .setCustomId(`ls_toggle:${kind}:${row.youtube_channel_id}`)
+        .setLabel(t(`livestream.btn_${kind}_${on ? 'on' : 'off'}`, lang))
+        .setStyle(on ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji(kind === 'live' ? (EMOJIS.ic_live || '🔴') : (EMOJIS.ic_video || '🎬'));
+}
+
+function alertsLine(db, guildId, channelId, lang) {
+    const r = db.prepare('SELECT notify_live, notify_uploads FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId) || {};
+    const live = t(`livestream.btn_live_${r.notify_live === 0 ? 'off' : 'on'}`, lang);
+    const ups  = t(`livestream.btn_up_${r.notify_uploads === 0 ? 'off' : 'on'}`, lang);
+    return `${EMOJIS.ic_live || '🔴'} ${live}  ·  ${EMOJIS.ic_video || '🎬'} ${ups}`;
+}
+
+function buildListEmbed(tracks, guild, client, lang = 'en') {
     const c = new ContainerBuilder().setAccentColor(0xFF0000);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('youtube', '📺', client)} Tracked YouTube channels · ${guild.name}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${EMOJIS.ic_youtube || '📺'} Tracked YouTube channels · ${guild.name}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     if (!tracks.length) {
-        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`Nothing tracked yet. Add a channel with ${mentions(client, 'livestream', 'set')}.`));
         return c;
     }
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    tracks.forEach((t, i) => {
-        const live = t.is_live === 1;
-        const prio = t.priority === 1 ? ' ⚡' : '';
-        const tag = t.youtube_handle ? '@' + t.youtube_handle : t.youtube_channel_id;
-        const status = live ? `${em('online', '🔴', client)} Live` : `${em('offline', '⚫', client)} Offline`;
-        const last = t.last_video_id ? `🎬 \`…${t.last_video_id.slice(-6)}\`` : 'No video yet';
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. ${tag}**${prio}  ·  ${status}\n↳ <#${t.target_channel_id}>  ·  ${last}`));
-        if (i < tracks.length - 1) c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    tracks.slice(0, MAX_TOGGLE_ROWS).forEach((row, i) => {
+        const prio = row.priority === 1 ? ' ⚡' : '';
+        const tag = row.youtube_handle ? '@' + row.youtube_handle : row.youtube_channel_id;
+        const status = row.is_live === 1 ? `${em('online', '🔴', client)} Live` : `${em('offline', '⚫', client)} Offline`;
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. ${tag}**${prio}  ·  ${status}\n↳ <#${row.target_channel_id}>`));
+        c.addActionRowComponents(new ActionRowBuilder().addComponents(toggleButton('live', row, lang), toggleButton('up', row, lang)));
     });
+    const more = tracks.length - MAX_TOGGLE_ROWS;
+    if (more > 0) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('livestream.list_more', lang, { count: more, mention: mentions(client, 'livestream', 'set') })));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent('-# ARCHON CG-223 · YouTube Engine'));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('livestream.list_hint', lang)} · ARCHON CG-223`));
     return c;
+}
+
+// Switch a channel's live or upload alerts from the list card (owner and admins only)
+async function handleToggle(interaction, client) {
+    const db = client.db;
+    const lang = livLang(client, interaction.guildId, interaction);
+    const isAdmin = interaction.user.id === interaction.guild?.ownerId || interaction.member?.permissions?.has('Administrator');
+    if (!isAdmin) return interaction.reply({ content: t('livestream.toggle_admin_only', lang), flags: 64 });
+
+    const [, kind, channelId] = interaction.customId.split(':');
+    const col = kind === 'live' ? 'notify_live' : 'notify_uploads';
+    const row = db.prepare(`SELECT ${col} AS v FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?`).get(interaction.guildId, channelId);
+    if (!row) return interaction.reply({ content: t('livestream.toggle_gone', lang), flags: 64 });
+
+    db.prepare(`UPDATE youtube_notifications SET ${col} = ? WHERE guild_id = ? AND youtube_channel_id = ?`).run(row.v === 0 ? 1 : 0, interaction.guildId, channelId);
+    const rows = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ?').all(interaction.guildId);
+    return interaction.update({ components: [buildListEmbed(rows, interaction.guild, client, lang)], flags: MessageFlags.IsComponentsV2 });
 }
 
 module.exports = {
@@ -431,7 +471,9 @@ module.exports = {
         .addSubcommand(s => s.setName('set').setDescription('Track a YouTube channel')
             .addStringOption(o => o.setName('channel').setDescription('Handle (@name) or UC... channel ID').setRequired(true))
             .addChannelOption(o => o.setName('target').setDescription('Where to post alerts').setRequired(true).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-            .addBooleanOption(o => o.setName('priority').setDescription('Poll every 2 min instead of 5').setRequired(false)))
+            .addBooleanOption(o => o.setName('priority').setDescription('Poll every 2 min instead of 5').setRequired(false))
+            .addBooleanOption(o => o.setName('live').setDescription('Post when the channel goes live (on by default)').setRequired(false))
+            .addBooleanOption(o => o.setName('uploads').setDescription('Post new videos (on by default)').setRequired(false)))
         .addSubcommand(s => s.setName('remove').setDescription('Stop tracking')
             .addStringOption(o => o.setName('channel').setDescription('Handle or ID').setRequired(true).setAutocomplete(true)))
         .addSubcommand(s => s.setName('list').setDescription('Show tracked channels'))
@@ -448,7 +490,7 @@ module.exports = {
 
         if (action === 'list') {
             const rows = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ?').all(guildId);
-            return message.reply({ components: [buildListEmbed(rows, message.guild, client)], flags: MessageFlags.IsComponentsV2 });
+            return message.reply({ components: [buildListEmbed(rows, message.guild, client, livLang(client, guildId, message))], flags: MessageFlags.IsComponentsV2 });
         }
 
         if (!isGuildOwner(message)) return message.reply({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] });
@@ -566,7 +608,7 @@ module.exports = {
 
         if (sub === 'list') {
             const rows = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ?').all(guildId);
-            return interaction.reply({ components: [buildListEmbed(rows, interaction.guild, client)], flags: MessageFlags.IsComponentsV2 });
+            return interaction.reply({ components: [buildListEmbed(rows, interaction.guild, client, lang)], flags: MessageFlags.IsComponentsV2 });
         }
         const isOwner = interaction.user.id === interaction.guild.ownerId || interaction.member?.permissions.has('Administrator');
         if (!isOwner) return interaction.reply({ embeds: [buildOwnerErrorEmbed(client, interaction.guild, lang)], flags: 1 << 6 });
@@ -591,6 +633,10 @@ module.exports = {
                     youtube_handle = excluded.youtube_handle,
                     last_video_id = COALESCE(youtube_notifications.last_video_id, excluded.last_video_id),
                     priority = excluded.priority`).run(guildId, channelId, handle, target.id, up?.id || null, live.isLive ? 1 : 0, priority ? 1 : 0);
+            const liveOpt = interaction.options.getBoolean('live');
+            const upOpt = interaction.options.getBoolean('uploads');
+            if (liveOpt !== null) db.prepare('UPDATE youtube_notifications SET notify_live = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(liveOpt ? 1 : 0, guildId, channelId);
+            if (upOpt !== null) db.prepare('UPDATE youtube_notifications SET notify_uploads = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(upOpt ? 1 : 0, guildId, channelId);
             const _L2 = livLang(interaction.client, interaction.guildId, interaction);
             const _lsEmbed = new EmbedBuilder()
                 .setColor(priority ? 0xf39c12 : 0x2ecc71)
@@ -598,6 +644,7 @@ module.exports = {
                 .setTitle('@' + handle)
                 .setDescription(t('livestream.tracking_success', _L2, { channel: target.id }) + (priority ? '\n⚡ ' + t('livestream.tracking_priority', _L2) : '') + `\n🔴 ${t('livestream.live_now', _L2)}: **${live.isLive ? 'YES' : 'No'}**` + (up ? `\n🎬 ${t('livestream.latest_video', _L2)}: [${up.title}](${up.url})` : ''))
                 .setFooter({ text: 'ARCHON CG-223 • YouTube Engine' }).setTimestamp();
+            _lsEmbed.setDescription(_lsEmbed.data.description + '\n' + alertsLine(db, guildId, channelId, _L2));
             return interaction.editReply({ embeds: [_lsEmbed] });
         }
 
@@ -639,5 +686,5 @@ module.exports = {
         }
     },
 
-    startPolling, stopPolling, fetchLiveStatus, fetchLiveFallback, fetchLatestUpload, resolveHandle,
+    handleToggle, startPolling, stopPolling, fetchLiveStatus, fetchLiveFallback, fetchLatestUpload, resolveHandle,
 };

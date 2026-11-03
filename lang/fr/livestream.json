@@ -30,5 +30,13 @@
   "tracking_success": "Les alertes seront envoyées dans <#{channel}>.",
   "tracking_priority": "Vérifié toutes les **2 minutes**.",
   "live_now": "En direct",
-  "latest_video": "Dernière vidéo"
+  "latest_video": "Dernière vidéo",
+  "btn_live_on": "Alertes live : activées",
+  "btn_live_off": "Alertes live : désactivées",
+  "btn_up_on": "Vidéos : activées",
+  "btn_up_off": "Vidéos : désactivées",
+  "toggle_admin_only": "Seuls les admins du serveur peuvent modifier les alertes.",
+  "toggle_gone": "Cette chaîne n'est plus suivie.",
+  "list_more": "+{count} autres chaînes. Gère-les avec {mention}.",
+  "list_hint": "Touche un bouton pour changer les alertes · admins uniquement"
 }

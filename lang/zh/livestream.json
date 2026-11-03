@@ -30,5 +30,13 @@
   "tracking_success": "通知将发送到 <#{channel}>。",
   "tracking_priority": "每 **2 分钟** 检查一次。",
   "live_now": "正在直播",
-  "latest_video": "最新视频"
+  "latest_video": "最新视频",
+  "btn_live_on": "直播提醒：开",
+  "btn_live_off": "直播提醒：关",
+  "btn_up_on": "新视频：开",
+  "btn_up_off": "新视频：关",
+  "toggle_admin_only": "只有服务器管理员可以修改提醒。",
+  "toggle_gone": "这个频道已不再追踪。",
+  "list_more": "还有 {count} 个频道。用 {mention} 管理。",
+  "list_hint": "点按钮切换提醒 · 仅限管理员"
 }
