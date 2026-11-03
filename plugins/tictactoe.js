@@ -58,10 +58,10 @@ function gameEmbed(challenger, opponent, turn, cLevel, oLevel, cRank, oRank, lan
         .setAuthor({ name: t(lang, 'entry_label'), iconURL: client.user.displayAvatarURL() })
         .setTitle(`${EMOJIS.duel_sword} ${challenger.username}  vs  ${opponent.username}`)
         .addFields(
-            { name: `❌ ${challenger.username}`, value: `${cRank.emoji} ${rankName(cRank)} · Lv.${cLevel}`, inline: true },
-            { name: `⭕ ${opponent.username}`,   value: `${oRank.emoji} ${rankName(oRank)} · Lv.${oLevel}`, inline: true },
+            { name: `${EMOJIS.small_cross} ${challenger.username}`, value: `${cRank.emoji} ${rankName(cRank)} · Lv.${cLevel}`, inline: true },
+            { name: `${EMOJIS.small_check} ${opponent.username}`,   value: `${oRank.emoji} ${rankName(oRank)} · Lv.${oLevel}`, inline: true },
         )
-        .setDescription(t(lang, 'turn_label', { mark: turn === challenger.id ? '❌' : '⭕', name: turn === challenger.id ? challenger.username : opponent.username }))
+        .setDescription(t(lang, 'turn_label', { mark: turn === challenger.id ? EMOJIS.small_cross : EMOJIS.small_check, name: turn === challenger.id ? challenger.username : opponent.username }))
         .setFooter({ text: `${t(lang, 'winner_takes')} · ${t(lang, 'time_left')}` })
         .setTimestamp();
 }
