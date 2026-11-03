@@ -224,7 +224,7 @@ async function fetchLatestUpload(channelId) {
         const thumb = (first.match(/<media:thumbnail url="([^"]+)"/) || [])[1];
         if (!id) return null;
         return { id, title: title || 'Untitled', published, author: author || channelId, thumbnail: thumb, url: `https://youtube.com/watch?v=${id}` };
-    } catch { return null; }
+    } catch (e) { console.log(`[YOUTUBE] feed error for ${channelId}: ${e.response?.status || e.code || e.message}`); return null; }
 }
 
 // ─── Embeds ───
