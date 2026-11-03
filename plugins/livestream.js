@@ -342,7 +342,6 @@ async function runCycle(client, db, priorityOnly) {
         const rows = priorityOnly
             ? db.prepare('SELECT * FROM youtube_notifications WHERE priority = 1').all()
             : db.prepare('SELECT * FROM youtube_notifications').all();
-        if (!priorityOnly) console.log(`[YOUTUBE] normal cycle · ${rows.length} tracked`);
         if (!rows.length) return;
 
         const byChannel = new Map();
@@ -352,7 +351,8 @@ async function runCycle(client, db, priorityOnly) {
             byChannel.get(k).push(r);
         }
 
-        for (const [chId, tracks] of byChannel) {
+        for (const [, tracks] of byChannel) {
+            const chId = tracks[0].youtube_channel_id; // YouTube IDs are case-sensitive
             const handle = tracks[0]?.youtube_handle || null;
 
             const live = await fetchLiveStatus(chId, handle);
@@ -375,7 +375,7 @@ async function runCycle(client, db, priorityOnly) {
 
             // Uploads — only check on normal cycle (RSS is cheap)
             if (!priorityOnly) {
-                const up = await fetchLatestUpload(chId); if (!up) console.log(`[YOUTUBE] feed unreadable for ${handle || chId}`);
+                const up = await fetchLatestUpload(chId);
                 if (up) {
                     for (const t of tracks) {
                         if (t.last_video_id && t.last_video_id !== up.id) {
