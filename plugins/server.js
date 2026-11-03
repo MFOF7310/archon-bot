@@ -1,209 +1,140 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+'use strict';
+// /server: info, icon and banner in one slash command (V2 cards, texts in lang/<locale>/server.json).
+// Replaces servericon.js and serverbanner.js. The old prefix names (.si, .icon, .sbanner…) still work.
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, MediaGalleryBuilder, MediaGalleryItemBuilder } = require('discord.js');
+const { t, slashLang, LANGS } = require('../lib/i18n');
+const v2 = require('../lib/games/v2');
+const ui = require('../lib/games/ui');
+const E = require('../config/emojis');
 
-// ================= BILINGUAL TRANSLATIONS =================
-const i18n = require('../lib/i18n');
-const I18N_KEYS = ["scanning", "author", "commander", "established", "sectorId", "populationMetrics", "total", "voice", "active", "roles", "networkGrid", "tier", "node", "uptime", "stable", "boostSync", "securityProtocols", "verification", "integrity", "synchronized", "anniversaryTitle", "anniversaryAlert", "anniversaryProtocol", "anniversaryDesc", "maxLevel", "channels", "text", "category", "emojis", "stickers", "footer"];
-function loadT(lang) {
-    const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`server.${k}`, lang);
-    return o;
+// Prefix words for each subcommand
+const SUB_ALIASES = {
+    info: ['server', 'si', 'serveur', 'guild', 'sector', 'info', 'infos', 'serverinfo'],
+    icon: ['servericon', 'icon', 'icone', 'serveuricon', 'guildicon'],
+    banner: ['serverbanner', 'sbanner', 'banniereserveur', 'guildbanner'],
+};
+const BOOST_NEXT = { 0: 2, 1: 7, 2: 14 }; // boosts needed for the next level
+
+const em = (k, fb = '') => E[k] || fb;
+const tr = (lang) => (k, vars) => t('server.' + k, lang, vars || {});
+const n = (x) => Number(x || 0).toLocaleString();
+
+function linkBtn(label, url) {
+    return new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url);
 }
 
-// ================= HELPER FUNCTIONS =================
-function getVerificationLevel(level) {
-    const levels = {
-        0: 'NONE',
-        1: 'LOW',
-        2: 'MEDIUM',
-        3: 'HIGH',
-        4: 'VERY_HIGH'
-    };
-    return levels[level] || 'UNKNOWN';
+// ─── Info ───
+function infoCard(client, lang, guild) {
+    const _ = tr(lang);
+    const icon = guild.iconURL({ size: 256 }) || client.user.displayAvatarURL({ size: 256 });
+    const created = Math.floor(guild.createdTimestamp / 1000);
+    const now = new Date(), born = new Date(guild.createdTimestamp);
+    const years = now.getFullYear() - born.getFullYear();
+    const birthday = years > 0 && now.getMonth() === born.getMonth() && now.getDate() === born.getDate();
+
+    const ch = guild.channels.cache;
+    const text = ch.filter(c => c.type === ChannelType.GuildText || c.type === ChannelType.GuildAnnouncement || c.type === ChannelType.GuildForum).size;
+    const voice = ch.filter(c => c.type === ChannelType.GuildVoice || c.type === ChannelType.GuildStageVoice).size;
+    const cats = ch.filter(c => c.type === ChannelType.GuildCategory).size;
+    const inVoice = guild.voiceStates?.cache.filter(v => v.channelId).size || 0;
+
+    const boosts = guild.premiumSubscriptionCount || 0;
+    const level = guild.premiumTier || 0;
+    const next = BOOST_NEXT[level];
+    const boostLine = next
+        ? `\`${ui.progressBar(Math.min(boosts, next), next, 10)}\` ${_('boost_line', { boosts, next, level: level + 1 })}`
+        : _('boost_max', { boosts });
+
+    const items = [
+        { thumbnail: [
+            `## ${em('ic_info', 'ℹ️')} ${guild.name}\n${_('owner_line', { owner: `<@${guild.ownerId}>`, created: `<t:${created}:D>` })}`,
+            icon,
+        ] },
+    ];
+    if (birthday) items.push({ text: `${em('yellowcrown', '🎉')} ${_('birthday', { years })}` });
+    items.push(
+        { rule: true },
+        { text: [
+            `**${_('members')}** · ${n(guild.memberCount)}  ·  **${_('in_voice')}** · ${n(inVoice)}`,
+            `**${_('channels')}** · ${_('channels_line', { text: n(text), voice: n(voice), cats: n(cats) })}`,
+            `**${_('roles')}** · ${n(guild.roles.cache.size - 1)}  ·  **${_('emojis')}** · ${n(guild.emojis.cache.size)}  ·  **${_('stickers')}** · ${n(guild.stickers.cache.size)}`,
+            `**${_('verification')}** · ${_('verif_' + (guild.verificationLevel || 0))}`,
+        ].join('\n') },
+        { rule: true },
+        { text: `**${_('boosts')}**\n${boostLine}` },
+    );
+
+    const links = [];
+    if (guild.iconURL()) links.push(linkBtn(_('btn_icon'), guild.iconURL({ size: 1024 })));
+    if (guild.bannerURL()) links.push(linkBtn(_('btn_banner'), guild.bannerURL({ size: 1024 })));
+    if (links.length) items.push({ row: new ActionRowBuilder().addComponents(...links) });
+    items.push({ text: `-# ${_('id_line', { id: guild.id })} · ARCHON CG-223` });
+    return v2.card(birthday ? 0xf1c40f : 0x5865f2, items);
 }
 
-function createBoostBar(current, target, t) {
-    if (target === 'MAX') return `◈ \u001b[1;35m${t.maxLevel}\u001b[0m ◈`;
-    const filled = Math.min(Math.round((10 * current) / target), 10);
-    return '▰'.repeat(filled) + '▱'.repeat(10 - filled) + ` ${current}/${target}`;
+// ─── Icon / banner: the picture itself, with download links ───
+function imageCard(client, lang, guild, kind) {
+    const _ = tr(lang);
+    const get = kind === 'icon' ? (o) => guild.iconURL(o) : (o) => guild.bannerURL(o);
+    if (!get()) return v2.card(0x95a5a6, [{ text: _(kind === 'icon' ? 'no_icon' : 'no_banner') }]);
+
+    const animated = /\/a_/.test(get() || '');
+    const formats = ['png', 'jpg', 'webp'].concat(animated ? ['gif'] : []);
+    const card = v2.card(kind === 'icon' ? 0x2ecc71 : 0x9b59b6, [
+        { text: `## ${_(kind === 'icon' ? 'icon_title' : 'banner_title', { name: guild.name })}` },
+    ]);
+    card.components[0].addMediaGalleryComponents(new MediaGalleryBuilder().addItems(
+        new MediaGalleryItemBuilder().setURL(get({ size: 1024, extension: animated ? 'gif' : 'png' })),
+    ));
+    card.components[0].addActionRowComponents(new ActionRowBuilder().addComponents(
+        ...formats.map(f => linkBtn(f.toUpperCase(), get({ size: 4096, extension: f }))),
+    ));
+    return card;
 }
+
+function build(sub, client, lang, guild) {
+    if (!guild) return v2.card(0x95a5a6, [{ text: tr(lang)('server_only') }]);
+    if (sub === 'icon' || sub === 'banner') return imageCard(client, lang, guild, sub);
+    return infoCard(client, lang, guild);
+}
+
+const data = new SlashCommandBuilder()
+    .setName('server')
+    .setDescription('Info about this server, its icon and its banner')
+    .setDescriptionLocalizations({ fr: 'Infos sur ce serveur, son icône et sa bannière', 'zh-CN': '本服务器的信息、图标和横幅' })
+    .addSubcommand(s => s.setName('info').setDescription('Members, channels, boosts and more')
+        .setDescriptionLocalizations({ fr: 'Membres, salons, boosts et plus', 'zh-CN': '成员、频道、加成等' }))
+    .addSubcommand(s => s.setName('icon').setDescription('Show the server icon in full size')
+        .setDescriptionLocalizations({ fr: 'Affiche l’icône du serveur en grand', 'zh-CN': '显示服务器图标大图' }))
+    .addSubcommand(s => s.setName('banner').setDescription('Show the server banner in full size')
+        .setDescriptionLocalizations({ fr: 'Affiche la bannière du serveur en grand', 'zh-CN': '显示服务器横幅大图' }));
 
 module.exports = {
     name: 'server',
-    aliases: ['si', 'sector', 'guild', 'serveur', 'info', 'infos'],
-    description: '📊 Execute a deep-scan of the current Sector intelligence and age.',
-    category: 'SYSTEM',
-    cooldown: 5000,
-    usage: '.server',
-    examples: ['.server', '.serveur', '.sector'],
+    aliases: Object.values(SUB_ALIASES).flat().filter(a => a !== 'server'),
+    description: 'Info about this server, its icon and its banner',
+    category: 'UTILITY',
+    cooldown: 3000,
+    usage: '.server [info|icon|banner]',
+    examples: ['.server', '.icon', '.sbanner'],
+    data,
 
-// ================= SLASH COMMAND DATA =================
-data: new SlashCommandBuilder()
-    .setName('server')
-    .setDescription('📊 Execute a deep-scan of the current Sector intelligence / Analyser le secteur actuel'),
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        const L = LANGS.includes(lang) ? lang : 'en';
+        const used = String(usedCommand || '').toLowerCase();
+        const first = String(args[0] || '').toLowerCase();
+        const sub = (['icon', 'banner'].includes(first) && first)
+            || Object.keys(SUB_ALIASES).find(k => SUB_ALIASES[k].includes(used))
+            || 'info';
+        return message.reply(build(sub, client, L, message.guild)).catch(e => console.error('[SERVER]', sub, e.message));
+    },
 
-// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
-run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-    const guildId = message.guild?.id ?? 'DM';
-        
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
-        lang = (client.detectLanguage ? client.detectLanguage('server', guildId) : 'en') || 'en';
-        
-        
-        const t = loadT(lang);
-        const version = client.version || '1.6.0';
-        const { guild } = message;
-        const icon = guild.iconURL({ dynamic: true, size: 512 }) || client.user.displayAvatarURL();
+    execute: async (interaction, client) => {
+        const sub = interaction.options.getSubcommand(false) || 'info';
+        const card = build(sub, client, slashLang(interaction), interaction.guild);
+        if (!interaction.guild) card.flags |= 64;
+        return interaction.reply(card).catch(e => console.error('[SERVER]', sub, e.message));
+    },
 
-        // ================= TEMPORAL ANNIVERSARY LOGIC =================
-        const now = new Date();
-        const created = new Date(guild.createdTimestamp);
-        const isAnniversary = now.getMonth() === created.getMonth() && now.getDate() === created.getDate();
-        const sectorAge = now.getFullYear() - created.getFullYear();
-
-        // ================= TELEMETRY CALCULATIONS =================
-        const boostCount = guild.premiumSubscriptionCount || 0;
-        const boostTier = guild.premiumTier;
-        const voiceAgents = guild.members.cache.filter(m => m.voice.channel).size;
-        const textChannels = guild.channels.cache.filter(c => c.type === 0).size;
-        const voiceChannels = guild.channels.cache.filter(c => c.type === 2).size;
-        const categories = guild.channels.cache.filter(c => c.type === 4).size;
-        const emojiCount = guild.emojis.cache.size;
-        const stickerCount = guild.stickers.cache.size;
-        
-        const tierRequirements = { 0: 2, 1: 7, 2: 14, 3: 'MAX' };
-        const nextReq = tierRequirements[boostTier];
-        const boostBar = createBoostBar(boostCount, nextReq, t);
-
-        // ================= DYNAMIC THEMING =================
-        const systemColor = isAnniversary ? '#f1c40f' : '#00fbff';
-        const systemTitle = isAnniversary 
-            ? i18n.t('server.anniversaryTitle', lang, { years: sectorAge })
-            : `─ ARCHITECT GUILD TELEMETRY ─`;
-
-        // ================= MAIN EMBED =================
-        const serverEmbed = new EmbedBuilder()
-            .setColor(systemColor)
-            .setAuthor({ name: i18n.t('server.author', lang, { name: guild.name.toUpperCase() }), iconURL: icon })
-            .setTitle(systemTitle)
-            .setThumbnail(icon)
-            .setDescription(
-                `\`\`\`yaml\n` +
-                `${t.commander}: ${guild.members.cache.get(guild.ownerId)?.user.username || 'Unknown'}\n` +
-                `${t.established}: ${new Date(guild.createdTimestamp).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US')}\n` +
-                `${t.sectorId}: ${guild.id}\n` +
-                `\`\`\``
-            )
-            .addFields(
-                { 
-                    name: t.populationMetrics, 
-                    value: `\`\`\`yaml\n` +
-                           `${t.total}: ${guild.memberCount.toLocaleString()}\n` +
-                           `${t.voice}: ${voiceAgents} ${t.active}\n` +
-                           `${t.roles}: ${guild.roles.cache.size}\n` +
-                           `${t.channels}: ${textChannels + voiceChannels}\`\`\``, 
-                    inline: true 
-                },
-                { 
-                    name: t.networkGrid, 
-                    value: `\`\`\`yaml\n` +
-                           `${t.tier}: LEVEL_${boostTier}\n` +
-                           `${t.node}: BAMAKO-223\n` +
-                           `${t.uptime}: ${t.stable}\n` +
-                           `Core: Groq LPU™ 70B\`\`\``, 
-                    inline: true 
-                }
-            )
-            .addFields({
-                name: `📁 ${t.channels}`,
-                value: `\`\`\`yaml\n${t.text}: ${textChannels}\n${t.voice}: ${voiceChannels}\n${t.category}: ${categories}\`\`\``,
-                inline: true
-            });
-
-        // ================= ANNIVERSARY FIELD =================
-        if (isAnniversary) {
-            serverEmbed.addFields({ 
-                name: t.anniversaryProtocol, 
-                value: `\`\`\`fix\n${t.anniversaryDesc}\`\`\``,
-                inline: false
-            });
-        }
-
-        // ================= BOOST & SECURITY =================
-        serverEmbed.addFields(
-            { 
-                name: t.boostSync, 
-                value: `\`\`\`ansi\n\u001b[1;35m${boostBar}\u001b[0m\`\`\``, 
-                inline: false 
-            },
-            { 
-                name: t.securityProtocols, 
-                value: `\`\`\`yaml\n${t.verification}: ${getVerificationLevel(guild.verificationLevel)}\n${t.integrity}: ${t.synchronized}\`\`\``, 
-                inline: false 
-            }
-        );
-
-        // ================= EMOJI & STICKER STATS =================
-        if (emojiCount > 0 || stickerCount > 0) {
-            serverEmbed.addFields({
-                name: '🎨 MEDIA ASSETS',
-                value: `\`\`\`yaml\n${t.emojis}: ${emojiCount}\n${t.stickers}: ${stickerCount}\`\`\``,
-                inline: false
-            });
-        }
-
-        serverEmbed
-            .setFooter({ 
-                text: `${guild.name.toUpperCase()} • ${t.footer} • v${version}`, 
-                iconURL: icon 
-            })
-            .setTimestamp();
-
-    // ================= SEND RESPONSE =================
-    const content = isAnniversary 
-        ? i18n.t('server.anniversaryAlert', lang, { years: sectorAge })
-        : t.scanning;
-
-    await message.reply({ 
-        content: content,
-        embeds: [serverEmbed] 
-    }).catch(() => {});
-    
-    console.log(`[SERVER] ${message.author.tag} scanned ${guild.name} | Lang: ${lang}`);
-},  // ← THIS COMMA IS CRITICAL!
-
-// ================= SLASH COMMAND EXECUTION =================
-execute: async (interaction, client) => {
-        
-        // DM Fallback
-        if (!interaction.guild) {
-            const lang = require('../lib/i18n').slashLang(interaction);
-            const t = loadT(lang);
-            return interaction.reply({ 
-                content: lang === 'fr' 
-                    ? '❌ Cette commande ne peut être utilisée que dans un serveur.' 
-                    : '❌ This command can only be used in a server.', 
-                flags: 64 
-            });
-        }
-        
-        await interaction.deferReply();
-        
-        const lang = require('../lib/i18n').slashLang(interaction);
-        const usedCommand = lang === 'fr' ? 'serveur' : 'server';
-        
-        const fakeMessage = {
-            author: interaction.user,
-            guild: interaction.guild,
-            channel: interaction.channel,
-            reply: async (options) => interaction.editReply(options),
-            react: () => Promise.resolve()
-        };
-        
-        const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-        
-                await module.exports.run(client, fakeMessage, [], null, serverSettings, usedCommand);
-        
-        console.log(`[SERVER] ${interaction.user.tag} scanned ${interaction.guild.name} | Lang: ${lang}`);
-    }
-
+    _internal: { SUB_ALIASES },
 };
