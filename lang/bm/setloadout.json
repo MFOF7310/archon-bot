@@ -1,0 +1,16 @@
+{
+  "server_only": "❌ Nin kuma bɛ baara kɛ server kɔnɔ dɔrɔn.",
+  "no_permission": "❌ I ka kan ka **Manage Server** fɛɛn sɔrɔ k'a kɛ.",
+  "unknown_weapon": "❌ **{weapon}** tɛ fɛn jɔlenw cɛ. I ka dɔ sugandi olu cɛ: `{list}`",
+  "not_image": "❌ Nin fɛn tɛ jaa ye. I ka PNG wala JPG ci.",
+  "no_image_prefix": "📎 I ka jaa bɔ ni kuma ye kelen, misali `.setloadout AK117` ni jaa.",
+  "no_image_slash": "📎 I ka jaa fara **image** kan, k'an sin i ka kuma.",
+  "saved": "✅ **{weapon}** bɛ i ka jaa kɛ sisan. Mɔgɔw bɛna a ye armory kɔnɔ.",
+  "removed": "🗑️ **{weapon}** jaa bɔra. Mɔgɔw bɛna ɲɛfɔli ye fɔɔ mɔgɔ wɛrɛ bɛ kura ci.",
+  "failed": "⚠️ N ma se ka jaa madon. I ka a lajɛ kɔfɛ.",
+  "list_title": "📋 **Nin server ka loadout jaaw**",
+  "list_empty": "Fɛn jaa si tɛ yen fɔlɔ. I ka `.setloadout <fɛn>` ci ni jaa ye k'a fara.\nFɛn minnu bɛ se ka sɛbɛn: `{list}`",
+  "list_item_set": "✅ **{weapon}**",
+  "list_missing": "**Tɛ sɛbɛn fɔlɔ**",
+  "list_item_missing": "⬜ {weapon}"
+}
