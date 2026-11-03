@@ -341,7 +341,7 @@ async function runCycle(client, db, priorityOnly) {
     try {
         const rows = priorityOnly
             ? db.prepare('SELECT * FROM youtube_notifications WHERE priority = 1').all()
-            : db.prepare('SELECT * FROM youtube_notifications WHERE priority = 0').all();
+            : db.prepare('SELECT * FROM youtube_notifications').all();
         if (!rows.length) return;
 
         const byChannel = new Map();
