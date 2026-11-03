@@ -4514,6 +4514,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('remind:')) {
         return require('./plugins/reminder').handleButton(interaction, client).catch(e => console.error('[REMINDER] button:', e.message));
     }
+    if ((interaction.isButton() || interaction.isAnySelectMenu()) && interaction.customId.startsWith('roles:')) {
+        return require('./plugins/roles').handleComponent(interaction, client).catch(e => {
+            console.error(`[ROLES] component guild=${interaction.guildId}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
+        });
+    }
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('help:')) {
         return require('./plugins/help').handleComponent(interaction, client).catch(e => console.error('[HELP] component:', e.message));
     }
@@ -6799,6 +6805,76 @@ apiApp.post('/api/general/:guildId', requireAdmin, async (req, res) => {
     }
 });
 
+// ── ROLE SETTINGS API (dashboard) ── same rules as /roles (lib/role-rules.js)
+async function rolesActor(guildId, userId) {
+    const a = await verifyActor(guildId, userId);
+    if (a.error) return a;
+    if (!require('./lib/role-rules').canManage(a.member)) return { code: 403, error: 'forbidden_roles' };
+    return a;
+}
+
+apiApp.get('/api/roles-config/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await rolesActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const RR = require('./lib/role-rules');
+        const g = a.guild, saved = RR.readSlots(client.db, g.id);
+        const owner = g.id === process.env.GUILD_ID;
+        const slots = RR.SLOTS.map(s => {
+            const id = saved[s.key];
+            const envId = !id && owner && process.env[s.env] && g.roles.cache.has(process.env[s.env]) ? process.env[s.env] : null;
+            const role = id ? g.roles.cache.get(id) : null;
+            const err = id ? RR.checkRole(g, role, s.profile, null) : null;
+            return { key: s.key, group: s.group, profile: s.profile, roleId: id, envRoleId: envId, problem: err ? err.code : null, perms: err?.perms || [] };
+        });
+        const me = g.members.me;
+        const roles = [...g.roles.cache.values()]
+            .filter(r => r.id !== g.id && !r.managed)
+            .sort((x, y) => y.position - x.position)
+            .slice(0, 250)
+            .map(r => {
+                const grant = RR.checkRole(g, r, 'grant', a.member);
+                const staff = RR.checkRole(g, r, 'staff', a.member);
+                return { id: r.id, name: r.name, color: r.hexColor, grant: grant ? grant.code : null, staff: staff ? staff.code : null, perms: grant?.perms || [] };
+            });
+        res.json({ slots, roles, botRole: me ? me.roles.highest.name : null });
+    } catch (e) {
+        console.error(`[ROLES-API] get guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
+apiApp.post('/api/roles-config/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const { userId, changes } = req.body || {};
+        if (!changes || typeof changes !== 'object' || Array.isArray(changes) || !Object.keys(changes).length)
+            return res.status(400).json({ error: 'changes_required' });
+        const RR = require('./lib/role-rules');
+        const unknown = Object.keys(changes).filter(k => !RR.BY_KEY[k]);
+        if (unknown.length) return res.status(400).json({ error: 'unknown_fields', fields: unknown });
+        for (const v of Object.values(changes))
+            if (v !== null && !/^\d{17,20}$/.test(String(v))) return res.status(400).json({ error: 'role_invalid' });
+        const a = await rolesActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db;
+        if (client.rateLimit(`roles-api:${g.id}`, 10, 60000)) return res.status(429).json({ error: 'slow_down' });
+
+        const current = RR.readSlots(db, g.id);
+        const v = RR.validateChanges(g, current, changes, a.member);
+        if (!v.ok) return res.status(400).json({ error: 'role_rejected', slot: v.slot, code: v.err.code, perms: v.err.perms || [] });
+        const done = RR.writeSlots(client, db, g.id, current, v.next);
+        if (done.length) {
+            console.log(`[ROLES-API] update guild=${g.id} by=${a.member.id} ${JSON.stringify(done)}`);
+            const lang = require('./lib/pick-lang').pickLang(client, g.id, null, a.member.id) || 'en';
+            await RR.logChanges(g, db, done, a.member.id, 'dashboard', lang);
+        }
+        res.json({ success: true, changed: done.map(c => c.key) });
+    } catch (e) {
+        console.error(`[ROLES-API] post guild=${req.params.guildId}:`, e.stack || e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
 // ── COMMAND TOGGLES ──
 const LOCKED_COMMANDS = new Set(['help', 'verify', 'serversettings', 'settings', 'premium', 'dashboard', 'channels', 'roles']);
 const _toggleCache = new Map();
@@ -6908,7 +6984,8 @@ apiApp.get('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
         const isCatChan = c => c && c.type === 4;
         const channels = [...g.channels.cache.values()].filter(isTextChan).sort((x,y) => x.rawPosition - y.rawPosition).map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
         const categories = [...g.channels.cache.values()].filter(isCatChan).sort((x,y) => x.rawPosition - y.rawPosition).map(c => ({ id: c.id, name: c.name }));
-        const roles = [...g.roles.cache.values()].filter(r => r.id !== gid && !r.managed).sort((x,y) => y.position - x.position).map(r => { const reason = _vg.validateVerifyRole(g, r, a.member); return { id: r.id, name: r.name, eligible: !reason, reason: reason ? _vg.GUARD_MSG[reason] : null }; });
+        const _RR = require('./lib/role-rules');
+        const roles = [...g.roles.cache.values()].filter(r => r.id !== gid && !r.managed).sort((x,y) => y.position - x.position).map(r => { const err = _RR.checkRole(g, r, 'staff', a.member); return { id: r.id, name: r.name, eligible: !err, reason: err ? _RR.reasonText(err, 'en') : null }; });
         res.json({
             premium: !!isPremium(db, gid),
             settings: {
@@ -6973,7 +7050,7 @@ apiApp.post('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
                 if (!Number.isInteger(v) || v < 1 || v > 10) return res.status(400).json({ error: 'limit_1_to_10' });
                 updates['ticket_limit_per_user'] = v;
             } else if (k === 'ticketStaffRole') {
-                if (v !== null) { if (!/^\d{17,20}$/.test(String(v))) return res.status(400).json({ error: 'staffRole_invalid' }); const reason = _vg.validateVerifyRole(g, g.roles.cache.get(String(v)), a.member); if (reason) return res.status(400).json({ error: 'staffRole_rejected', reason: _vg.GUARD_MSG[reason] }); }
+                if (v !== null) { if (!/^\d{17,20}$/.test(String(v))) return res.status(400).json({ error: 'staffRole_invalid' }); const _RR = require('./lib/role-rules'); const err = _RR.checkRole(g, g.roles.cache.get(String(v)), 'staff', a.member); if (err) return res.status(400).json({ error: 'staffRole_rejected', reason: _RR.reasonText(err, 'en') }); }
                 updates['ticket_staff_role'] = v === null ? null : String(v);
             } else if (k === 'ticketCategory') {
                 if (v !== null) { if (!/^\d{17,20}$/.test(String(v))) return res.status(400).json({ error: 'category_invalid' }); if (!isCatChan(g.channels.cache.get(String(v)))) return res.status(400).json({ error: 'must_be_category_channel' }); }

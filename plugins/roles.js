@@ -1,251 +1,203 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { resolveEmoji } = require('../lib/emoji-resolver');
-const EMOJIS = require('../config/emojis');
+// /roles — the role settings ARCHON uses (member, mute, auto role, ticket staff, rewards).
+// One interactive panel: pick a setting, pick a role with Discord's own role picker, done.
+// Every change goes through lib/role-rules.js, the same checks the dashboard uses, and is written to the mod-log.
+const {
+    SlashCommandBuilder, PermissionFlagsBits, MessageFlags,
+    ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize,
+    ActionRowBuilder, StringSelectMenuBuilder, RoleSelectMenuBuilder, ButtonBuilder, ButtonStyle,
+} = require('discord.js');
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
-const v2 = require('../lib/games/v2');
-const mention = require('../lib/mentions');
-const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
+const R = require('../lib/role-rules');
 
-const ROLE_DEFS = {
-    member:           { col: 'memberRole',         env: 'MEMBER_ROLE',              emoji: () => EMOJIS.member, label: 'Member Role' },
-    mute:             { col: 'muteRoleId',          env: 'MUTE_ROLE_ID',             emoji: () => EMOJIS.mute, label: 'Mute Role' },
-    autorole:         { col: 'joinRoleId',          env: 'AUTO_ROLE_ID',             emoji: '🤖', label: 'Auto Role' },
-    staff:            { col: 'ticketStaffRole',     env: 'TICKET_STAFF_ROLE_ID',     emoji: () => EMOJIS.shield, label: 'Staff/Ticket Role' },
-    investor:         { col: 'investorRoleId',      env: 'INVESTOR_ROLE_ID',         emoji: () => EMOJIS.investors, label: 'Investor Role' },
-    gamer:            { col: 'gamerRoleId',         env: 'GAMER_ROLE_ID',            emoji: () => EMOJIS.gamer, label: 'Gamer Role' },
-    quizmaster:       { col: 'quizMasterRoleId',    env: 'QUIZ_MASTER_ROLE_ID',      emoji: () => EMOJIS.quizmaster, label: 'Quiz Master Role' },
-    duelist:          { col: 'duelistRoleId',       env: 'DUELIST_ROLE_ID',          emoji: () => EMOJIS.duelist, label: 'Duelist Role' },
-    dailyinitiate:    { col: 'dailyInitiateRoleId', env: 'DAILY_INITIATE_ROLE_ID',   emoji: '🌱', label: 'Daily Initiate (3d)' },
-    dailywarrior:     { col: 'dailyWarriorRoleId',  env: 'DAILY_WARRIOR_ROLE_ID',    emoji: '🔥', label: 'Daily Warrior (7d)' },
-    dailychampion:    { col: 'dailyChampionRoleId', env: 'DAILY_CHAMPION_ROLE_ID',   emoji: '⚔️', label: 'Daily Champion (30d)' },
-    dailylegend:      { col: 'dailyLegendRoleId',   env: 'DAILY_LEGEND_ROLE_ID',     emoji: '💎', label: 'Daily Legend (100d)' },
-};
+const ACCENT = 0x2b9bb0;
+const V2 = MessageFlags.IsComponentsV2;
+const cut = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s));
+const label = (key, lang) => t(`roles.labels.${key}`, lang);
+
+// How a slot reads in the overview: the role, or "Not set", plus a short warning when the saved role can't be used
+function slotLine(guild, slot, saved, lang) {
+    let value = saved[slot.key];
+    let fromEnv = false;
+    if (!value && guild.id === process.env.GUILD_ID && process.env[slot.env]) { value = process.env[slot.env]; fromEnv = true; }
+    if (!value) return `**${label(slot.key, lang)}** · ${t('roles.not_set', lang)}`;
+    const role = guild.roles.cache.get(value);
+    if (!role) return `**${label(slot.key, lang)}** · \`${t('roles.status_missing', lang)}\``;
+    const err = R.checkRole(guild, role, slot.profile, null);
+    const env = fromEnv ? ` (${t('roles.from_env', lang)})` : '';
+    const warn = err ? `\n-# ${t('roles.status_unsafe_line', lang, { reason: R.reasonText(err, lang) })}` : '';
+    return `**${label(slot.key, lang)}** · <@&${role.id}>${env}${warn}`;
+}
+
+function mainView(guild, db, lang, ownerId, notice) {
+    const saved = R.readSlots(db, guild.id);
+    const c = new ContainerBuilder().setAccentColor(ACCENT);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('roles.title', lang)}\n${t('roles.intro', lang)}`));
+    if (notice) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${notice}`));
+    for (const g of R.GROUPS) {
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        const lines = R.SLOTS.filter(s => s.group === g).map(s => slotLine(guild, s, saved, lang));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${t(`roles.${g}`, lang)}\n${lines.join('\n')}`));
+    }
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+            .setCustomId(`roles:menu:${ownerId}`)
+            .setPlaceholder(cut(t('roles.pick_placeholder', lang), 150))
+            .addOptions(R.SLOTS.map(s => ({
+                label: cut(label(s.key, lang), 100),
+                description: cut(t(`roles.hints.${s.key}`, lang), 100),
+                value: s.key,
+            })))
+    ));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('roles.footer', lang)}`));
+    return { components: [c] };
+}
+
+function editView(guild, db, lang, ownerId, key, problem) {
+    const slot = R.BY_KEY[key];
+    const current = R.readSlots(db, guild.id)[key];
+    const role = current ? guild.roles.cache.get(current) : null;
+    const c = new ContainerBuilder().setAccentColor(problem ? 0xc0392b : ACCENT);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        `## ${label(key, lang)}\n${t(`roles.hints.${key}`, lang)}\n-# ${t(`roles.rules_${slot.profile}`, lang)}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        t('roles.current', lang, { role: role ? `<@&${role.id}>` : (current ? `\`${t('roles.status_missing', lang)}\`` : t('roles.not_set', lang)) })));
+    if (problem) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${problem}`));
+    const picker = new RoleSelectMenuBuilder()
+        .setCustomId(`roles:pick:${key}:${ownerId}`)
+        .setPlaceholder(t('roles.role_placeholder', lang))
+        .setMinValues(1).setMaxValues(1);
+    if (role) picker.setDefaultRoles(role.id);
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(picker));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`roles:back:${ownerId}`).setLabel(t('roles.btn_back', lang)).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`roles:clear:${key}:${ownerId}`).setLabel(t('roles.btn_clear', lang)).setStyle(ButtonStyle.Danger).setDisabled(!current),
+    ));
+    return { components: [c] };
+}
+
+// Apply one change with the shared rules. Returns { notice } on success or { problem } when refused.
+async function applyOne(client, guild, actor, key, roleId, lang, via) {
+    const db = client.db;
+    const current = R.readSlots(db, guild.id);
+    const v = R.validateChanges(guild, current, { [key]: roleId }, actor);
+    if (!v.ok) return { problem: t('roles.rejected', lang, { label: label(v.slot, lang), reason: R.reasonText(v.err, lang) }) };
+    const changes = R.writeSlots(client, db, guild.id, current, v.next);
+    if (!changes.length) return { notice: t('roles.unchanged', lang) };
+    console.log(`[ROLES] guild=${guild.id} by=${actor.id} via=${via} ${JSON.stringify(changes)}`);
+    await R.logChanges(guild, db, changes, actor.id, via, lang);
+    return { notice: roleId ? t('roles.saved', lang, { label: label(key, lang), role: `<@&${roleId}>` }) : t('roles.cleared', lang, { label: label(key, lang) }) };
+}
+
+// Prefix and slash share one entry point for set/remove
+function slotFromType(type) {
+    const k = String(type || '').toLowerCase().replace(/[^a-z]/g, '');
+    const legacy = { muterole: 'mute', staffrole: 'staff', ticketstaff: 'staff', auto: 'autorole', joinrole: 'autorole' };
+    return R.BY_KEY[k] ? k : legacy[k] || null;
+}
+
+const typeChoices = (o) => o.setName('type').setDescription('Which role setting').setRequired(true)
+    .addChoices(...R.SLOTS.map(s => ({ name: t(`roles.labels.${s.key}`, 'en'), value: s.key })));
 
 module.exports = {
     name: 'roles',
     aliases: ['role', 'setrole', 'roleconfig'],
-    description: '🎭 View and set server role configuration',
+    description: 'View and change the roles ARCHON uses',
     category: 'ADMIN',
     cooldown: 3000,
 
     data: new SlashCommandBuilder()
         .setName('roles')
-        .setDescription('🎭 View and configure server roles')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addSubcommand(s => s
-            .setName('view')
-            .setDescription('👁️ View all configured roles')
-        )
-        .addSubcommand(s => s
-            .setName('set')
-            .setDescription('⚙️ Set a role')
-            .addStringOption(o => o
-                .setName('type')
-                .setDescription('Which role to set')
-                .setRequired(true)
-                .addChoices(
-                    { name: '👤 Member Role', value: 'member' },
-                    { name: '🔇 Mute Role', value: 'mute' },
-                    { name: '🤖 Auto Role', value: 'autorole' },
-                    { name: '🛡️ Staff/Ticket Role', value: 'staff' },
-                    { name: '📈 Investor Role', value: 'investor' },
-                    { name: '🎮 Gamer Role', value: 'gamer' },
-                    { name: '🧠 Quiz Master Role', value: 'quizmaster' },
-                    { name: '⚔️ Duelist Role', value: 'duelist' },
-                    { name: '🌱 Daily Initiate (3d)', value: 'dailyinitiate' },
-                    { name: '🔥 Daily Warrior (7d)', value: 'dailywarrior' },
-                    { name: '⚔️ Daily Champion (30d)', value: 'dailychampion' },
-                    { name: '💎 Daily Legend (100d)', value: 'dailylegend' },
-                )
-            )
-            .addRoleOption(o => o
-                .setName('role')
-                .setDescription('The role to set')
-                .setRequired(true)
-            )
-        )
-        .addSubcommand(s => s
-            .setName('remove')
-            .setDescription('🗑️ Remove a role setting')
-            .addStringOption(o => o
-                .setName('type')
-                .setDescription('Which role to remove')
-                .setRequired(true)
-                .addChoices(
-                    { name: '👤 Member Role', value: 'member' },
-                    { name: '🔇 Mute Role', value: 'mute' },
-                    { name: '🤖 Auto Role', value: 'autorole' },
-                    { name: '🛡️ Staff/Ticket Role', value: 'staff' },
-                    { name: '📈 Investor Role', value: 'investor' },
-                    { name: '🎮 Gamer Role', value: 'gamer' },
-                    { name: '🧠 Quiz Master Role', value: 'quizmaster' },
-                    { name: '⚔️ Duelist Role', value: 'duelist' },
-                    { name: '🌱 Daily Initiate (3d)', value: 'dailyinitiate' },
-                    { name: '🔥 Daily Warrior (7d)', value: 'dailywarrior' },
-                    { name: '⚔️ Daily Champion (30d)', value: 'dailychampion' },
-                    { name: '💎 Daily Legend (100d)', value: 'dailylegend' },
-                )
-            )
-        ),
+        .setDescription('View and change the roles ARCHON uses')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild | PermissionFlagsBits.ManageRoles)
+        .setDMPermission(false)
+        .addSubcommand(s => s.setName('view').setDescription('Open the role settings panel'))
+        .addSubcommand(s => s.setName('set').setDescription('Set a role setting')
+            .addStringOption(typeChoices)
+            .addRoleOption(o => o.setName('role').setDescription('The role to use').setRequired(true)))
+        .addSubcommand(s => s.setName('remove').setDescription('Clear a role setting')
+            .addStringOption(typeChoices)),
 
     execute: async (interaction, client) => {
-        const sub = interaction.options.getSubcommand();
         const guild = interaction.guild;
-        const guildId = guild.id;
-        const lang = pickLang(client, guildId, interaction);
-        const isOwnerGuild = guildId === process.env.GUILD_ID;
+        const lang = pickLang(client, guild.id, interaction);
+        const member = await guild.members.fetch(interaction.user.id).catch(() => null);
+        if (!R.canManage(member)) return interaction.reply({ content: t('roles.need_perms', lang), flags: MessageFlags.Ephemeral });
 
-        // Force fresh settings
-        client.settings?.delete(guildId);
-        const settings = client.getServerSettings?.(guildId) || {};
-
-        const roleMention = (id, envKey) => {
-            if (id) return `<@&${id}>`;
-            if (isOwnerGuild && envKey && process.env[envKey]) return `<@&${process.env[envKey]}> 🔹 .env`;
-            return `\`${t('roles.not_set', lang)}\``;
-        };
-
+        const sub = interaction.options.getSubcommand();
         if (sub === 'view') {
-            const buildSection = (title, keys) => {
-                const lines = keys.map(k => {
-                    const def = ROLE_DEFS[k];
-                    const emoji = typeof def.emoji === 'function' ? resolveEmoji(k, interaction) || def.emoji() : def.emoji;
-                    return `${emoji} **${def.label}** — ${roleMention(settings[def.col], def.env)}`;
-                });
-                return `**${title}**\n${lines.join('\n')}`;
-            };
-
-            const c = new ContainerBuilder().setAccentColor(0x9b59b6);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🎭 ${t('roles.title', lang)}\n${guild.name}`));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.core', lang), ['member', 'mute', 'autorole', 'staff'])));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.economy', lang), ['investor', 'gamer', 'quizmaster', 'duelist'])));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.daily', lang), ['dailyinitiate', 'dailywarrior', 'dailychampion', 'dailylegend'])));
-            const setCmd = mention(client, 'roles', 'set');
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${setCmd}`));
-
-            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
+            return interaction.reply({ ...mainView(guild, client.db, lang, interaction.user.id), flags: V2 | MessageFlags.Ephemeral });
         }
-
-        if (sub === 'set') {
-            const type = interaction.options.getString('type');
-            const role = interaction.options.getRole('role');
-            const def = ROLE_DEFS[type];
-            if (!def) return interaction.reply({ content: t('roles.unknown_type', lang), flags: 64 });
-            
-            if (type === 'autorole') {
-                const err = require('../lib/verify-guard').validateVerifyRole(guild, guild.roles.cache.get(role.id), interaction.member);
-                if (err) return interaction.reply({ content: `⛔ ${require('../lib/verify-guard').GUARD_MSG[err]}`, flags: 64 });
-            }
-
-            client.updateServerSetting?.(guildId, def.col, role.id);
-            client.settings?.delete(guildId);
-
-            const c = new ContainerBuilder().setAccentColor(0x2ecc71);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('roles.set_success', lang)}\n${def.emoji} **${def.label}** → <@&${role.id}>`));
-            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
-        }
-
-        if (sub === 'remove') {
-            const type = interaction.options.getString('type');
-            const def = ROLE_DEFS[type];
-            if (!def) return interaction.reply({ content: t('roles.unknown_type', lang), flags: 64 });
-
-            if (!settings[def.col]) {
-                return interaction.reply({ content: t('roles.already_removed', lang), flags: 64 });
-            }
-
-            client.updateServerSetting?.(guildId, def.col, null);
-            client.settings?.delete(guildId);
-
-            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🗑️ ${t('roles.remove_success', lang)}\n${def.emoji} **${def.label}**`));
-            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
-        }
+        const key = slotFromType(interaction.options.getString('type'));
+        if (!key) return interaction.reply({ content: t('roles.unknown_type', lang), flags: MessageFlags.Ephemeral });
+        if (sub === 'remove' && !R.readSlots(client.db, guild.id)[key])
+            return interaction.reply({ content: t('roles.already_removed', lang), flags: MessageFlags.Ephemeral });
+        const roleId = sub === 'set' ? interaction.options.getRole('role').id : null;
+        const r = await applyOne(client, guild, member, key, roleId, lang, 'discord');
+        return interaction.reply({ ...mainView(guild, client.db, lang, interaction.user.id, r.notice || r.problem), flags: V2 | MessageFlags.Ephemeral });
     },
 
-    run: async (client, message, args, db, ss) => {
-        if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply(t('roles.admin_only', pickLang(client, message.guild.id, message))).catch(() => {});
-        }
-        const sub = args[0]?.toLowerCase();
-        const guildId = message.guild.id;
-        const lang = pickLang(client, guildId, message);
-        const isOwnerGuild = guildId === process.env.GUILD_ID;
-        
-        client.settings?.delete(guildId);
-        const settings = client.getServerSettings?.(guildId) || {};
+    run: async (client, message, args) => {
+        const guild = message.guild;
+        if (!guild) return;
+        const lang = pickLang(client, guild.id, message);
+        if (!R.canManage(message.member)) return message.reply(t('roles.need_perms', lang)).catch(() => {});
+        const sub = (args[0] || 'view').toLowerCase();
 
-        const roleMention = (id, envKey) => {
-            if (id) return `<@&${id}>`;
-            if (isOwnerGuild && envKey && process.env[envKey]) return `<@&${process.env[envKey]}> 🔹 .env`;
-            return `\`${t('roles.not_set', lang)}\``;
-        };
+        if (sub === 'view') return message.reply({ ...mainView(guild, client.db, lang, message.author.id), flags: V2, allowedMentions: { parse: [] } }).catch(() => {});
 
-        if (sub === 'view' || !sub) {
-            const buildSection = (title, keys) => {
-                const lines = keys.map(k => {
-                    const def = ROLE_DEFS[k];
-                    const emoji = typeof def.emoji === 'function' ? resolveEmoji(k, message) || def.emoji() : def.emoji;
-                    return `${emoji} **${def.label}** — ${roleMention(settings[def.col], def.env)}`;
-                });
-                return `**${title}**\n${lines.join('\n')}`;
-            };
-
-            const c = new ContainerBuilder().setAccentColor(0x9b59b6);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🎭 ${t('roles.title', lang)}\n${message.guild.name}`));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.core', lang), ['member', 'mute', 'autorole', 'staff'])));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.economy', lang), ['investor', 'gamer', 'quizmaster', 'duelist'])));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('roles.daily', lang), ['dailyinitiate', 'dailywarrior', 'dailychampion', 'dailylegend'])));
-            const setCmd = mention(client, 'roles', 'set');
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${setCmd}`));
-
-            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-        }
-
-        if (sub === 'set') {
-            const type = args[1]?.toLowerCase();
-            const roleId = args[2]?.replace(/[<@&>]/g, '');
-            const def = ROLE_DEFS[type];
-            if (!def) return message.reply(t('roles.unknown_type', lang)).catch(() => {});
-            if (!roleId) return message.reply(t('roles.usage_set', lang)).catch(() => {});
-            const role = message.guild.roles.cache.get(roleId);
-            if (!role) return message.reply(t('roles.invalid_role', lang)).catch(() => {});
-
-            if (type === 'autorole') {
-                const err = require('../lib/verify-guard').validateVerifyRole(message.guild, role, message.member);
-                if (err) return message.reply(`⛔ ${require('../lib/verify-guard').GUARD_MSG[err]}`).catch(() => {});
-            }
-
-            client.updateServerSetting?.(guildId, def.col, roleId);
-            client.settings?.delete(guildId);
-
-            const c = new ContainerBuilder().setAccentColor(0x2ecc71);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('roles.set_success', lang)}\n${def.emoji} **${def.label}** → <@&${roleId}>`));
-            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-        }
-
-        if (sub === 'remove') {
-            const type = args[1]?.toLowerCase();
-            const def = ROLE_DEFS[type];
-            if (!def) return message.reply(t('roles.unknown_type', lang)).catch(() => {});
-
-            if (!settings[def.col]) {
+        if (sub === 'set' || sub === 'remove') {
+            const key = slotFromType(args[1]);
+            if (!key) return message.reply(t('roles.unknown_type', lang)).catch(() => {});
+            let roleId = null;
+            if (sub === 'set') {
+                roleId = String(args[2] || '').replace(/[<@&>]/g, '');
+                if (!roleId) return message.reply(t('roles.usage_set', lang)).catch(() => {});
+                if (!guild.roles.cache.has(roleId)) return message.reply(t('roles.invalid_role', lang)).catch(() => {});
+            } else if (!R.readSlots(client.db, guild.id)[key]) {
                 return message.reply(t('roles.already_removed', lang)).catch(() => {});
             }
-
-            client.updateServerSetting?.(guildId, def.col, null);
-            client.settings?.delete(guildId);
-
-            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🗑️ ${t('roles.remove_success', lang)}\n${def.emoji} **${def.label}**`));
-            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+            const r = await applyOne(client, guild, message.member, key, roleId, lang, 'discord');
+            return message.reply({ ...mainView(guild, client.db, lang, message.author.id, r.notice || r.problem), flags: V2, allowedMentions: { parse: [] } }).catch(() => {});
         }
-    }
+        return message.reply(t('roles.usage_set', lang)).catch(() => {});
+    },
+
+    // Buttons and menus of the panel. The opener's id travels in every customId: nobody else can drive it.
+    handleComponent: async (interaction, client) => {
+        const guild = interaction.guild;
+        if (!guild) return;
+        const lang = pickLang(client, guild.id, interaction);
+        const parts = interaction.customId.split(':');
+        const action = parts[1];
+        const ownerId = parts[parts.length - 1];
+        const deny = (key) => interaction.reply({ content: t(key, lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+
+        if (!/^\d{17,20}$/.test(ownerId)) return deny('roles.expired');
+        if (interaction.user.id !== ownerId) return deny('roles.not_yours');
+        // Permissions are checked again on every click: they may have changed since the panel opened
+        const member = await guild.members.fetch(interaction.user.id).catch(() => null);
+        if (!R.canManage(member)) return deny('roles.need_perms');
+
+        const update = (view) => interaction.update({ ...view, flags: V2, allowedMentions: { parse: [] } });
+
+        if (action === 'menu') {
+            const key = interaction.values?.[0];
+            if (!R.BY_KEY[key]) return deny('roles.expired');
+            return update(editView(guild, client.db, lang, ownerId, key));
+        }
+        if (action === 'back') return update(mainView(guild, client.db, lang, ownerId));
+
+        const key = parts[2];
+        if (!R.BY_KEY[key]) return deny('roles.expired');
+        if (action === 'pick' || action === 'clear') {
+            const roleId = action === 'pick' ? interaction.values?.[0] : null;
+            if (action === 'pick' && !roleId) return update(editView(guild, client.db, lang, ownerId, key));
+            const r = await applyOne(client, guild, member, key, roleId, lang, 'discord');
+            if (r.problem) return update(editView(guild, client.db, lang, ownerId, key, r.problem));
+            return update(mainView(guild, client.db, lang, ownerId, r.notice));
+        }
+        return deny('roles.expired');
+    },
 };
