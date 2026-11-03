@@ -191,7 +191,63 @@ async function storedInviteRow(db, guild, lang) {
     } catch { return null; }
 }
 
+// ── Shared by /verify panel and the dashboard ──
+// Posts the verification panel, then (only if the post worked) remembers the channel and
+// closes the other channels to the unverified role. Throws if Discord refuses the message.
+async function postVerifyPanel(client, db, guild, ch, lang) {
+    const vContainer = new ContainerBuilder().setAccentColor(0x00aaff);
+    const checkEm = resolveEmoji('small_check', client) || '✅';
+    const warnEm = resolveEmoji('warning', client) || '⚠️';
+
+    vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('shield', client) || '🛡️'} ${vt(lang, 'v2_panel_title')}`));
+    vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_intro')));
+    vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_how', { check: checkEm })));
+    vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_warn', { warn: warnEm })));
+    vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${vt(lang, 'bamakoFooter')}`));
+    vContainer.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(lang, 'v2_panel_btn')).setStyle(ButtonStyle.Success).setEmoji(resolveEmoji('lock', client) || '🛡️')
+    ));
+    await ch.send({ components: [vContainer], flags: MessageFlags.IsComponentsV2 });
+
+    ensureCols(db);
+    db.prepare('UPDATE server_settings SET verify_panel_channel_id = ? WHERE guild_id = ?').run(ch.id, guild.id);
+    const s2 = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(guild.id);
+    const uRole = s2?.verify_unverified_role_id ? guild.roles.cache.get(s2.verify_unverified_role_id) : null;
+    if (uRole) applyUnverifiedLock(guild, uRole, db).catch(() => {});
+    return { uRole };
+}
+
+// A moderator lets a member through by hand (dashboard). Same end state as passing the captcha.
+async function approveMember(client, db, guild, member, actorId) {
+    const s = db.prepare('SELECT verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(guild.id) || {};
+    const vRole = s.verify_role_id ? guild.roles.cache.get(s.verify_role_id) : null;
+    const uRole = s.verify_unverified_role_id ? guild.roles.cache.get(s.verify_unverified_role_id) : null;
+    if (!vRole && !uRole) return { error: 'not_configured' };
+    for (const r of [vRole, uRole]) if (r && validateVerifyRole(guild, r, null)) return { error: 'misconfigured' };
+    if (vRole && member.roles.cache.has(vRole.id)) return { error: 'already_verified' };
+    if (!vRole && !member.roles.cache.has(uRole.id)) return { error: 'already_verified' };
+
+    if (uRole) await member.roles.remove(uRole, `Verified by dashboard (${actorId})`);
+    if (vRole) await member.roles.add(vRole, `Verified by dashboard (${actorId})`);
+
+    forgetDeadline(db, guild.id, member.id);
+    const key = `${member.id}:${guild.id}`;
+    const p = pending.get(key);
+    if (p) { if (p.timer) clearTimeout(p.timer); p.collector?.stop('verified'); pending.delete(key); }
+    panelSessions.delete(key);
+
+    const lang = pickLang(client, guild.id, null, member.id) || 'en';
+    await logVerify(guild, db, 0x00cc44, vt(lang, 'logPassedPanel'), member.id, `manual · <@${actorId}>`, lang);
+    try { await require('../lib/joinrole.js').applyJoinRole(member, db); } catch {}
+    return { ok: true };
+}
+
+
 module.exports = {
+    postVerifyPanel,
+    approveMember,
     resumeKickTimers: async (client, db) => {
         _vdb = db;
         let rows;
@@ -315,32 +371,13 @@ module.exports = {
             if (!canPostChk.ok)
                 return interaction.reply({ content: vt(lang, canPostChk.key, { ch: String(ch), role: canPostChk.role || '', perms: require('../lib/canPost').localize(canPostChk.missing || [], lang).join(', '), bot: guild.members.me.roles.botRole?.name || guild.members.me.displayName, cmd: mentions(client, 'verify', 'panel') }), flags: 64 });
 
-            ensureCols(db);
-            db.prepare('UPDATE server_settings SET verify_panel_channel_id = ? WHERE guild_id = ?').run(ch.id, gid);
+            await interaction.deferReply({ flags: 64 });
+            let uRole;
+            try { ({ uRole } = await postVerifyPanel(client, db, guild, ch, lang)); }
+            catch (e) { console.error('[VERIFY] panel post failed:', e.message); return interaction.editReply({ content: vt(lang, 'cantPost', { ch: String(ch) }) }).catch(() => {}); }
 
-            const s2 = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
-            const uRole = s2?.verify_unverified_role_id ? guild.roles.cache.get(s2.verify_unverified_role_id) : null;
-            if (uRole) applyUnverifiedLock(guild, uRole, db).catch(() => {});
-
-            const vContainer = new ContainerBuilder().setAccentColor(0x00aaff);
-            const checkEm = resolveEmoji('small_check', client) || '✅';
-            const warnEm = resolveEmoji('warning', client) || '⚠️';
-            
-            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('shield', client) || '🛡️'} ${vt(lang, 'v2_panel_title')}`));
-            vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_intro')));
-            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_how', { check: checkEm })));
-            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(vt(lang, 'v2_panel_warn', { warn: warnEm })));
-            vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-            vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${vt(lang, 'bamakoFooter')}`));
-            vContainer.addActionRowComponents(new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(lang, 'v2_panel_btn')).setStyle(ButtonStyle.Success).setEmoji(resolveEmoji('lock', client) || '🛡️')
-            ));
-            await ch.send({ components: [vContainer], flags: MessageFlags.IsComponentsV2 });
-            
-            return interaction.reply({
-                content: vt(lang, 'panelPosted', { ch: String(ch) }) + (uRole ? ' ' + vt(lang, 'panelCanSee', { role: String(uRole) }) : vt(lang, 'panelNoRole')),
-                flags: 64
+            return interaction.editReply({
+                content: vt(lang, 'panelPosted', { ch: String(ch) }) + (uRole ? ' ' + vt(lang, 'panelCanSee', { role: String(uRole) }) : vt(lang, 'panelNoRole'))
             });
         }
 

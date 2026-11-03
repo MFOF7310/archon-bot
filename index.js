@@ -6382,11 +6382,30 @@ apiApp.get('/api/verify/:guildId', requireAdmin, async (req, res) => {
             });
         const panelId = row.verify_panel_channel_id || null;
         const hasPanelChannel = !!(panelId && (a.guild.channels.cache.has(panelId) || await a.guild.channels.fetch(panelId).catch(() => null)));
+        // Text channels the bot can post in, for the panel picker
+        const me = a.guild.members.me;
+        const channels = [...a.guild.channels.cache.values()]
+            .filter(c => c.type === 0 || c.type === 5)
+            .sort((x, y) => x.rawPosition - y.rawPosition)
+            .slice(0, 200)
+            .map(c => ({ id: c.id, name: c.name, canPost: !!(me && require('./lib/canPost').diagnose(a.guild, c, me).ok) }));
+        // Read-only numbers from the event log (nothing is deleted here)
+        const stats = { passed: 0, failed: 0, kicked: 0, spam: 0 }, last24h = { passed: 0, failed: 0, kicked: 0, spam: 0 };
+        let pendingCount = 0;
+        try {
+            const nowS = Math.floor(Date.now() / 1000);
+            for (const r of db.prepare('SELECT kind, COUNT(*) AS n FROM verify_events WHERE guild_id = ? AND ts >= ? GROUP BY kind').all(gid, nowS - 7 * 86400))
+                if (r.kind in stats) stats[r.kind] = r.n;
+            for (const r of db.prepare('SELECT kind, COUNT(*) AS n FROM verify_events WHERE guild_id = ? AND ts >= ? GROUP BY kind').all(gid, nowS - 86400))
+                if (r.kind in last24h) last24h[r.kind] = r.n;
+        } catch {} // table is created on the first verify event
+        try { pendingCount = db.prepare('SELECT COUNT(*) AS n FROM verify_pending WHERE guild_id = ?').get(gid).n; } catch {}
         res.json({
             guildId: gid,
             premium: !!isPremium(db, gid),
             panelChannelId: panelId,
             hasPanelChannel,
+            channels, stats, last24h, pendingCount,
             settings: {
                 enabled: !!row.verify_enabled,
                 verifiedRoleId: row.verify_role_id || null,
@@ -6488,6 +6507,92 @@ apiApp.post('/api/verify/:guildId', requireAdmin, async (req, res) => {
         if (e && e.code && e.error) return res.status(e.code).json({ error: e.error, reason: e.reason });
         console.error(`[VERIFY-API] post guild=${req.params.guildId}:`, e.stack || e.message);
         res.status(500).json({ error: 'internal' });
+    }
+});
+
+// Members who got the captcha and have not passed yet. The captcha code is never sent.
+apiApp.get('/api/verify/:guildId/pending', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const db = client.db, gid = a.guild.id;
+        let rows = [], total = 0;
+        try {
+            total = db.prepare('SELECT COUNT(*) AS n FROM verify_pending WHERE guild_id = ?').get(gid).n;
+            rows = db.prepare('SELECT user_id, kick_at, attempts FROM verify_pending WHERE guild_id = ? ORDER BY kick_at = 0, kick_at LIMIT 25').all(gid);
+        } catch {} // table is created with the first captcha
+        const members = [];
+        for (const r of rows) {
+            const m = a.guild.members.cache.get(r.user_id) || await a.guild.members.fetch(r.user_id).catch(() => null);
+            if (!m) continue; // left the server; the leave handler cleans the row
+            members.push({
+                id: m.id, name: m.displayName, avatar: m.user.displayAvatarURL({ size: 64, extension: 'png' }),
+                kickAt: r.kick_at > 0 ? r.kick_at : null, attempts: Number(r.attempts) || 0,
+                joinedAt: m.joinedTimestamp || null
+            });
+        }
+        res.json({ total, members });
+    } catch (e) {
+        console.error(`[VERIFY-API] pending guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
+// Post (or move) the verification panel from the dashboard: same checks as /verify panel
+apiApp.post('/api/verify/:guildId/panel', requireAdmin, async (req, res) => {
+    try {
+        const { userId, channelId } = req.body || {};
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const db = client.db, gid = a.guild.id;
+        const { isPremium } = require('./plugins/premium.js');
+        if (!isPremium(db, gid)) return res.status(402).json({ error: 'premium_required' });
+        if (!/^\d{17,20}$/.test(String(channelId || ''))) return res.status(400).json({ error: 'channel_invalid' });
+        const ch = a.guild.channels.cache.get(String(channelId));
+        if (!ch || !(ch.type === 0 || ch.type === 5)) return res.status(400).json({ error: 'channel_not_text' });
+        if (client.rateLimit(`vpanel-api:${gid}`, 3, 60000)) return res.status(429).json({ error: 'slow_down' });
+        const d = require('./lib/canPost').diagnose(a.guild, ch, a.guild.members.me);
+        if (!d.ok) return res.status(400).json({ error: 'cannot_post', reason: d.reason, missing: d.missing || [], role: d.role || null });
+
+        db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(gid);
+        const lang = require('./lib/pick-lang').pickLang(client, gid, null, null) || 'en';
+        const { uRole } = await require('./plugins/verify.js').postVerifyPanel(client, db, a.guild, ch, lang);
+        client.settings?.delete?.(gid);
+        client.invalidateGuildCache?.(gid);
+        console.log(`[VERIFY-API] panel guild=${gid} channel=${ch.id} by=${a.member.id}`);
+        res.json({ success: true, channelId: ch.id, channelName: ch.name, locked: !!uRole });
+    } catch (e) {
+        console.error(`[VERIFY-API] panel guild=${req.params.guildId}:`, e.stack || e.message);
+        res.status(500).json({ error: 'panel_failed' });
+    }
+});
+
+// Let one pending member through by hand
+apiApp.post('/api/verify/:guildId/approve', requireAdmin, async (req, res) => {
+    try {
+        const { userId, memberId } = req.body || {};
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const db = client.db, gid = a.guild.id;
+        const { isPremium } = require('./plugins/premium.js');
+        if (!isPremium(db, gid)) return res.status(402).json({ error: 'premium_required' });
+        if (!/^\d{17,20}$/.test(String(memberId || ''))) return res.status(400).json({ error: 'member_invalid' });
+        if (client.rateLimit(`vapprove-api:${gid}`, 20, 60000)) return res.status(429).json({ error: 'slow_down' });
+        const m = await a.guild.members.fetch(String(memberId)).catch(() => null);
+        if (!m || m.user.bot) return res.status(404).json({ error: 'member_not_found' });
+        // Only people the gate is holding: waiting on a captcha, or carrying the unverified role
+        const s = db.prepare('SELECT verify_enabled, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid) || {};
+        if (!s.verify_enabled) return res.status(400).json({ error: 'gate_off' });
+        let held = !!(s.verify_unverified_role_id && m.roles.cache.has(s.verify_unverified_role_id));
+        if (!held) { try { held = !!db.prepare('SELECT 1 FROM verify_pending WHERE guild_id = ? AND user_id = ?').get(gid, m.id); } catch {} }
+        if (!held) return res.status(400).json({ error: 'not_pending' });
+        const r = await require('./plugins/verify.js').approveMember(client, db, a.guild, m, a.member.id);
+        if (r.error) return res.status(400).json({ error: r.error });
+        console.log(`[VERIFY-API] approve guild=${gid} member=${m.id} by=${a.member.id}`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error(`[VERIFY-API] approve guild=${req.params.guildId}:`, e.stack || e.message);
+        res.status(500).json({ error: 'approve_failed' });
     }
 });
 
