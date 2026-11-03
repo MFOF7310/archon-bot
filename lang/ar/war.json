@@ -1,0 +1,20 @@
+{
+  "server_only": "هذا الأمر يعمل داخل السيرفر فقط.",
+  "no_permission": "فقط المشرفون يمكنهم فعل ذلك.",
+  "no_matches": "لا توجد مباريات مسجّلة بعد. أضف واحدة بـ `/war record`.",
+  "no_matches_vs": "لا توجد مباريات مسجّلة ضد **{opponent}**.",
+  "match_recorded_score": "**النتيجة:** {score}\n",
+  "match_recorded_mode": "**الوضع:** {mode}\n",
+  "record_field": "📊 السجل",
+  "most_played_field": "🎯 الأكثر مواجهةً",
+  "recent_field": "🕐 الأخيرة",
+  "history_footer": "{w}ف {l}خ في آخر {n}",
+  "stats_footer": "/war history للسجل الكامل",
+  "match_footer": "مباراة #{id} • سجّلها {user}",
+  "total_footer": "{n} مباراة مسجّلة",
+  "total_footer_plural": "{n} مباريات مسجّلة",
+  "delete_done": "تم حذف المباراة #{id} ({result} ضد {opponent}).",
+  "delete_not_found": "لا توجد مباراة #{id} في هذا السيرفر.",
+  "streak": "{icon} {n} {result} متتالية",
+  "win_rate": "**{w}ف – {l}خ{draws}** في {n} مباراة\nنسبة الفوز **{rate}%**"
+}

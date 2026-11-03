@@ -1,0 +1,20 @@
+{
+  "server_only": "Nin kuma bɛ baara kɛ server kɔnɔ dɔrɔn.",
+  "no_permission": "Admin dɔrɔn bɛ se ka o kɛ.",
+  "no_matches": "Kɛlɛ si tɛ sɛbɛnni yen fɔlɔ. I ka dɔ fara `/war record` la.",
+  "no_matches_vs": "Kɛlɛ si tɛ **{opponent}** kɔrɔ.",
+  "match_recorded_score": "**Jaabi:** {score}\n",
+  "match_recorded_mode": "**Cogo:** {mode}\n",
+  "record_field": "📊 Sɛbɛnni",
+  "most_played_field": "🎯 Cɛkɔrɔ kɔrɔ",
+  "recent_field": "🕐 Kɔrɔ",
+  "history_footer": "{w}W {l}L kɛlɛ {n} kɔnɔ",
+  "stats_footer": "/war history ka jɔlen ye",
+  "match_footer": "Kɛlɛ #{id} • {user} ye a sɛbɛn",
+  "total_footer": "{n} kɛlɛ sɛbɛnna",
+  "total_footer_plural": "{n} kɛlɛw sɛbɛnna",
+  "delete_done": "Kɛlɛ #{id} ({result} ni {opponent} ye) bɔra.",
+  "delete_not_found": "Kɛlɛ #{id} tɛ nin server la.",
+  "streak": "{icon} {n} {result} kelen kelen",
+  "win_rate": "**{w}W – {l}L{draws}** kɛlɛ {n} kɔnɔ\nWin rate **{rate}%**"
+}

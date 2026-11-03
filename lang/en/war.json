@@ -1,0 +1,20 @@
+{
+  "server_only": "This command only works inside a server.",
+  "no_permission": "Only admins can do that.",
+  "no_matches": "No matches recorded yet. Add one with `/war record`.",
+  "no_matches_vs": "No matches recorded against **{opponent}**.",
+  "match_recorded_score": "**Score:** {score}\n",
+  "match_recorded_mode": "**Mode:** {mode}\n",
+  "record_field": "📊 Record",
+  "most_played_field": "🎯 Most played",
+  "recent_field": "🕐 Recent",
+  "history_footer": "{w}W {l}L in the last {n}",
+  "stats_footer": "/war history for the full log",
+  "match_footer": "Match #{id} • recorded by {user}",
+  "total_footer": "{n} match recorded",
+  "total_footer_plural": "{n} matches recorded",
+  "delete_done": "Match #{id} ({result} vs {opponent}) removed.",
+  "delete_not_found": "No match #{id} on this server.",
+  "streak": "{icon} {n} {result} streak",
+  "win_rate": "**{w}W – {l}L{draws}** across {n} match{plural}\n**{rate}%** win rate"
+}

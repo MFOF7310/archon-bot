@@ -1,0 +1,20 @@
+{
+  "server_only": "Cette commande fonctionne uniquement dans un serveur.",
+  "no_permission": "Seuls les admins peuvent faire ça.",
+  "no_matches": "Aucun match enregistré. Ajoutes-en un avec `/war record`.",
+  "no_matches_vs": "Aucun match enregistré contre **{opponent}**.",
+  "match_recorded_score": "**Score :** {score}\n",
+  "match_recorded_mode": "**Mode :** {mode}\n",
+  "record_field": "📊 Bilan",
+  "most_played_field": "🎯 Adversaires fréquents",
+  "recent_field": "🕐 Récents",
+  "history_footer": "{w}V {l}D sur les {n} derniers",
+  "stats_footer": "/war history pour le journal complet",
+  "match_footer": "Match #{id} • enregistré par {user}",
+  "total_footer": "{n} match enregistré",
+  "total_footer_plural": "{n} matchs enregistrés",
+  "delete_done": "Match #{id} ({result} contre {opponent}) supprimé.",
+  "delete_not_found": "Aucun match #{id} sur ce serveur.",
+  "streak": "{icon} {n} {result} de suite",
+  "win_rate": "**{w}V – {l}D{draws}** sur {n} match{plural}\n**{rate}%** de victoires"
+}

@@ -1,0 +1,20 @@
+{
+  "server_only": "这个命令只能在服务器里使用。",
+  "no_permission": "只有管理员才能执行此操作。",
+  "no_matches": "还没有记录任何比赛。用 `/war record` 添加一场。",
+  "no_matches_vs": "没有与 **{opponent}** 的比赛记录。",
+  "match_recorded_score": "**比分：** {score}\n",
+  "match_recorded_mode": "**模式：** {mode}\n",
+  "record_field": "📊 战绩",
+  "most_played_field": "🎯 最常对阵",
+  "recent_field": "🕐 最近",
+  "history_footer": "最近 {n} 场：{w}胜 {l}负",
+  "stats_footer": "用 /war history 查看完整记录",
+  "match_footer": "比赛 #{id} • 由 {user} 记录",
+  "total_footer": "已记录 {n} 场比赛",
+  "total_footer_plural": "已记录 {n} 场比赛",
+  "delete_done": "比赛 #{id}（{result} vs {opponent}）已删除。",
+  "delete_not_found": "本服务器没有比赛 #{id}。",
+  "streak": "{icon} 连续 {n} 场{result}",
+  "win_rate": "**{w}胜 – {l}负{draws}**，共 {n} 场\n胜率 **{rate}%**"
+}
