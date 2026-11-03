@@ -208,11 +208,9 @@ module.exports = {
                     .setAuthor({ name: t(lang, 'arena'), iconURL: client.user.displayAvatarURL() })
                     .setTitle(`${EMOJIS.trophy} ${t(lang, 'win_title', { winner: winner.username })}`)
                     .addFields(
-                        { name: t(lang, 'prize'),       value: `+${winnerReward} 🪙`,                                           inline: true },
-                        { name: t(lang, 'xp_gain'),     value: '+100 XP',                                                        inline: true },
-                        { name: t(lang, 'consolation', { loser: loser.username }), value: '+25 XP', inline: true },
-                        { name: t(lang, 'win_rate'),    value: `${winRate}%`,                                                     inline: true },
-                        { name: t(lang, 'rank'),        value: `${newWinnerRank.emoji} ${t(lang, newWinnerRank.key)} · Lv.${newWinnerLevel}`, inline: true },
+                        { name: t(lang, 'prize'),    value: `+${winnerReward} 🪙 · +100 XP` },
+                        { name: t(lang, 'consolation', { loser: loser.username }), value: '+25 XP' },
+                        { name: t(lang, 'win_rate'),  value: `${winRate}% · ${newWinnerRank.emoji} ${t(lang, newWinnerRank.key)} · Lv.${newWinnerLevel}` },
                     )
                     .setTimestamp();
 
