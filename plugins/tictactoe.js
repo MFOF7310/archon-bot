@@ -1,535 +1,261 @@
+// plugins/tictactoe.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const EMOJIS = require('../config/emojis');
+const i18n   = require('../lib/i18n');
 
-// ================= UNIFIED LEVEL CALCULATION =================
-function calculateLevel(xp) {
-    return Math.floor(0.1 * Math.sqrt(xp)) + 1;
-}
+function calculateLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp)) + 1; }
 
-// ================= AGENT RANKS =================
 const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
-    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
-    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
-    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
+    { minLevel: 1,  maxLevel: 5,        key: 'rank_1', color: '#2ecc71', emoji: '🌱' },
+    { minLevel: 6,  maxLevel: 15,       key: 'rank_2', color: '#3498db', emoji: '🔹' },
+    { minLevel: 16, maxLevel: 30,       key: 'rank_3', color: '#9b59b6', emoji: '💠' },
+    { minLevel: 31, maxLevel: 50,       key: 'rank_4', color: '#e67e22', emoji: '⚜️' },
+    { minLevel: 51, maxLevel: Infinity, key: 'rank_5', color: '#e74c3c', emoji: '👑' },
 ];
-
 function getRank(level) {
     return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
 }
 
-function createProgressBar(percentage, length = 12) {
-    const filled = Math.round((percentage / 100) * length);
-    const empty = length - filled;
-    return '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty));
+function t(lang, key, vars) { return i18n.t(`tictactoe.${key}`, lang, vars); }
+
+const activeGames = new Map();
+
+function buildBoard(board, active) {
+    const rows = [];
+    for (let i = 0; i < 3; i++) {
+        const row = new ActionRowBuilder();
+        for (let j = 0; j < 3; j++) {
+            const idx = i * 3 + j;
+            let style = ButtonStyle.Secondary;
+            let label = '▫️';
+            if (board[idx] === 'X') { style = ButtonStyle.Danger;  label = '❌'; }
+            if (board[idx] === 'O') { style = ButtonStyle.Primary; label = '⭕'; }
+            row.addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`ttt_${idx}`)
+                    .setLabel(label)
+                    .setStyle(style)
+                    .setDisabled(!!board[idx] || !active)
+            );
+        }
+        rows.push(row);
+    }
+    return rows;
 }
 
-// ================= BILINGUAL TRANSLATIONS =================
-const tttTranslations = {
-    en: {
-        title: '⚔️ NEURAL TIC-TAC-TOE',
-        vs: 'vs',
-        turn: '🎮 Current Turn',
-        win: '🏆 Victory is yours!',
-        loss: '💔 Better luck next time!',
-        tie: '🤝 Too evenly matched!',
-        tieDesc: 'Neither of you cracked — credits returned, rematch awaits.',
-        winDesc: (winner) => `**${winner}** outplayed the competition — well done! 🔥`,
-        lossDesc: (loser) => `**${loser}** fought hard — come back stronger! 💪`,
-        challenge: (challenger, opponent) => `⚔️ **${challenger}** just stepped into the arena and called out **${opponent}** — do you accept? 👀`,
-        invalidTarget: '👀 Mention someone to challenge — you can\'t play alone! (e.g. `.ttt @friend`)',
-        alreadyPlaying: '⏳ That player is already in a match — wait for them to finish!',
-        notYourTurn: '🚫 It is not your turn!',
-        gameTimeout: '⏰ Match timed out — took too long! Credits refunded to both players.',
-        reward: '💰 Reward',
-        xpGain: '📈 XP Gain',
-        creditsGain: '💎 Credits',
-        winnerStats: '🏆 Winner Stats',
-        gamesPlayed: 'Games Played',
-        winRate: 'Win Rate',
-        footer: 'Neural Arena • Challenge your friends!',
-        betInfo: '💰 **Entry Fee:** 50 🪙 | **Winner Takes:** 100 🪙',
-        insufficientCredits: '💸 You need **50 🪙** to enter the arena — claim your daily with `.daily` and come back!',
-        opponentInsufficientCredits: (name) => `❌ **${name}** does not have enough credits (50 🪙 required)!`,
-        levelUp: '🎉 AGENT PROMOTION!',
-        levelUpDesc: (username, level, rank) => `**${username}** reached **Level ${level}**!\n${rank.emoji} **${rank.title.en}**`,
-        waiting: 'Waiting for players...',
-        gameActive: 'Game in progress',
-        refund: '💰 Refund',
-        refundDesc: 'Entry fee returned to both players.',
-        playerStats: '📊 PLAYER STATS',
-        credits: 'Credits',
-        level: 'Level',
-        clickToPlay: 'Your move — choose wisely! 🧠',
-        cellTaken: '🚫 That spot is taken — pick another!'
-    },
-    fr: {
-        title: '⚔️ TIC-TAC-TOE NEURAL',
-        vs: 'contre',
-        turn: '🎮 Tour Actuel',
-        win: '🏆 La victoire est à toi !',
-        loss: '💔 Pas de chance cette fois !',
-        tie: '🤝 Trop équilibrés !',
-        tieDesc: 'Ni l\'un ni l\'autre n\'a craqué — crédits remboursés, revanche en vue !',
-        winDesc: (winner) => `**${winner}** a dominé la partie — bravo ! 🔥`,
-        lossDesc: (loser) => `**${loser}** a bien combattu — reviens plus fort ! 💪`,
-        challenge: (challenger, opponent) => `⚔️ **${challenger}** entre dans l\'arène et défie **${opponent}** — tu acceptes ? 👀`,
-        invalidTarget: '👀 Mentionne quelqu\'un à défier — tu ne peux pas jouer seul ! (ex: `.ttt @ami`)',
-        alreadyPlaying: '⏳ Ce joueur est déjà en match — attends qu\'il termine !',
-        notYourTurn: '🚫 Ce n\'est pas votre tour!',
-        gameTimeout: '⏰ Match expiré — trop lent ! Crédits remboursés aux deux joueurs.',
-        reward: '💰 Récompense',
-        xpGain: '📈 Gain XP',
-        creditsGain: '💎 Crédits',
-        winnerStats: '🏆 Stats du Vainqueur',
-        gamesPlayed: 'Parties Jouées',
-        winRate: 'Taux de Victoire',
-        footer: 'Arène Neurale • Défiez vos amis!',
-        betInfo: '💰 **Frais d\'entrée:** 50 🪙 | **Le Gagnant Remporte:** 100 🪙',
-        insufficientCredits: '💸 Il te faut **50 🪙** pour entrer dans l\'arène — utilise `.daily` et reviens !',
-        opponentInsufficientCredits: (name) => `❌ **${name}** n\'a pas assez de crédits (50 🪙 requis)!`,
-        levelUp: '🎉 PROMOTION D\'AGENT!',
-        levelUpDesc: (username, level, rank) => `**${username}** a atteint le **Niveau ${level}**!\n${rank.emoji} **${rank.title.fr}**`,
-        waiting: 'En attente des joueurs...',
-        gameActive: 'Partie en cours',
-        refund: '💰 Remboursement',
-        refundDesc: 'Frais d\'entrée retournés aux deux joueurs.',
-        playerStats: '📊 STATS DES JOUEURS',
-        credits: 'Crédits',
-        level: 'Niveau',
-        clickToPlay: 'À toi de jouer — choisis bien ! 🧠',
-        cellTaken: '🚫 Cette case est prise — choisis-en une autre !'
-    },
-    zh: {
-        title: '⚔️ 神经井字棋', vs: '对战', turn: '🎮 当前回合',
-        win: '🏆 胜利属于你！', loss: '💔 下次运气会更好！', tie: '🤝 势均力敌！',
-        tieDesc: '谁也没 cracking — 积分已退还，不服再来！',
-        winDesc: (winner) => `**${winner}** 技高一筹 — 漂亮！🔥`,
-        lossDesc: (loser) => `**${loser}** 打得顽强 — 下次更强！💪`,
-        challenge: (challenger, opponent) => `⚔️ **${challenger}** 踏入竞技场，点名挑战 **${opponent}** — 敢接吗？👀`,
-        invalidTarget: '👀 @ 你要挑战的人 — 一个人玩不了哦！(如 `.ttt @好友`)',
-        alreadyPlaying: '⏳ 对方正在对局中 — 等TA打完！',
-        notYourTurn: '🚫 还没轮到你！',
-        gameTimeout: '⏰ 对局超时 — 太久啦！积分已退还给双方。',
-        reward: '💰 奖励', xpGain: '📈 经验', creditsGain: '💎 积分',
-        winnerStats: '🏆 胜者数据', gamesPlayed: '对局数', winRate: '胜率',
-        footer: '神经竞技场 · 叫上朋友来战！',
-        betInfo: '💰 **入场费：** 50 🪙 | **胜者赢得：** 100 🪙',
-        insufficientCredits: '💸 进场需要 **50 🪙** — 先去 `.daily` 领奖励再来！',
-        opponentInsufficientCredits: (name) => `❌ **${name}** 积分不够（需要 50 🪙）！`,
-        levelUp: '🎉 特工晋升！',
-        levelUpDesc: (username, level, rank) => `**${username}** 升到了 **${level} 级**！
-${rank.emoji} **${rank.title.zh || rank.title.en}**`,
-        waiting: '等待玩家加入...', gameActive: '对局进行中',
-        refund: '💰 退款', refundDesc: '入场费已退还给双方。',
-        playerStats: '📊 玩家数据', credits: '积分', level: '等级',
-        clickToPlay: '该你了 — 想清楚再落子！🧠',
-        cellTaken: '🚫 这个格子被占了 — 换一个！'
-    },
-    ar: {
-        title: '⚔️ إكس-أو العصبي', vs: 'ضد', turn: '🎮 الدور الحالي',
-        win: '🏆 الفوز لك!', loss: '💔 حظ أوفر المرة الجاية!', tie: '🤝 تعادل!',
-        tieDesc: 'ولا واحد فيكم انكسر — الرصيد رجع، والثأر قريب!',
-        winDesc: (winner) => `**${winner}** تفوّق بالمهارة — أحسنت! 🔥`,
-        lossDesc: (loser) => `**${loser}** قاتل بشرف — ارجع أقوى! 💪`,
-        challenge: (challenger, opponent) => `⚔️ **${challenger}** دخل الساحة ونادى **${opponent}** — بتقبل؟ 👀`,
-        invalidTarget: '👀 اذكر من تتحداه — ما تقدر تلعب لحالك! (مثال: `.ttt @صديق`)',
-        alreadyPlaying: '⏳ هاللاعب في مباراة — انتظر ينتهي!',
-        notYourTurn: '🚫 مو دورك!',
-        gameTimeout: '⏰ انتهت المباراة — بطيء زيادة! رجعنا الرصيد للطرفين.',
-        reward: '💰 المكافأة', xpGain: '📈 خبرة', creditsGain: '💎 رصيد',
-        winnerStats: '🏆 إحصائيات الفائز', gamesPlayed: 'المباريات', winRate: 'نسبة الفوز',
-        footer: 'الساحة العصبية · تحدَّ أصدقاءك!',
-        betInfo: '💰 **رسوم الدخول:** 50 🪙 | **الفائز يأخذ:** 100 🪙',
-        insufficientCredits: '💸 تحتاج **50 🪙** للدخول — خذ مكافأتك اليومية بـ `.daily` ورجع!',
-        opponentInsufficientCredits: (name) => `❌ **${name}** ما عنده رصيد كافي (50 🪙 مطلوب)!`,
-        levelUp: '🎉 ترقية وكيل!',
-        levelUpDesc: (username, level, rank) => `**${username}** وصل للمستوى **${level}**!
-${rank.emoji} **${rank.title.ar || rank.title.en}**`,
-        waiting: 'في انتظار اللاعبين...', gameActive: 'المباراة جارية',
-        refund: '💰 استرجاع', refundDesc: 'رجعنا رسوم الدخول للطرفين.',
-        playerStats: '📊 إحصائيات اللاعبين', credits: 'الرصيد', level: 'المستوى',
-        clickToPlay: 'دورك — اختار بذكاء! 🧠',
-        cellTaken: '🚫 هالخانة محجوزة — اختار غيرها!'
+function checkWinner(board) {
+    const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    for (const [a,b,c] of wins) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
     }
-};
+    return board.includes(null) ? null : 'tie';
+}
 
-// ================= ACTIVE GAMES TRACKING =================
-const activeGames = new Map();
+function gameEmbed(challenger, opponent, turn, cLevel, oLevel, cRank, oRank, lang, client, guildName) {
+    const rankName = (rank) => t(lang, rank.key);
+    return new EmbedBuilder()
+        .setColor('#9b59b6')
+        .setAuthor({ name: t(lang, 'entry_label'), iconURL: client.user.displayAvatarURL() })
+        .setTitle(`${EMOJIS.duel_sword} ${challenger.username}  vs  ${opponent.username}`)
+        .addFields(
+            { name: `❌ ${challenger.username}`, value: `${cRank.emoji} ${rankName(cRank)} · Lv.${cLevel}`, inline: true },
+            { name: `⭕ ${opponent.username}`,   value: `${oRank.emoji} ${rankName(oRank)} · Lv.${oLevel}`, inline: true },
+        )
+        .setDescription(t(lang, 'turn_label', { mark: turn === challenger.id ? '❌' : '⭕', name: turn === challenger.id ? challenger.username : opponent.username }))
+        .setFooter({ text: `${t(lang, 'winner_takes')} · ${t(lang, 'time_left')}` })
+        .setTimestamp();
+}
 
 module.exports = {
     name: 'ttt',
     aliases: ['tictactoe', 'morpion', 'oxo', 'tic'],
-    description: '⚔️ Challenge a friend to a game of Tic-Tac-Toe with rewards!',
+    description: '⚔️ Challenge a friend to tic-tac-toe with credits on the line.',
     category: 'GAMING',
     usage: '.ttt @user',
     cooldown: 5000,
     examples: ['.ttt @friend'],
 
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-    const guildId = message.guild?.id ?? 'DM';
-        
-        lang = client.detectLanguage ? client.detectLanguage('tictactoe', guildId) : 'en';
-        
-        const t = tttTranslations[lang] || tttTranslations['en'];
-        const version = client.version || '1.6.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        
-        const entryFee = 50;
+    run: async (client, message, args, db) => {
+        const guildId = message.guild?.id ?? 'DM';
+        const lang = client.detectLanguage ? client.detectLanguage('tictactoe', guildId) : 'en';
+
+        const entryFee    = 50;
         const winnerReward = 100;
-        
-        const challenger = message.author;
-        const opponent = message.mentions.users.first();
-        
-        // ================= VALIDATION =================
-        if (!opponent || opponent.bot || opponent.id === challenger.id) {
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#ED4245')
-                .setDescription(t.invalidTarget)
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            return message.reply({ embeds: [errorEmbed] }).catch(() => {});
+        const challenger  = message.author;
+        const opponent    = message.mentions.users.first();
+
+        // ── Guards ──
+        if (!opponent || opponent.id === challenger.id || opponent.bot) {
+            return message.reply(
+                opponent?.id === challenger.id ? t(lang, 'cant_challenge_self')
+                : opponent?.bot               ? t(lang, 'cant_challenge_bot')
+                :                               t(lang, 'invalid_target')
+            ).catch(() => {});
         }
-        
-        const gameKey = `${challenger.id}_${opponent.id}`;
+
+        const gameKey    = `${challenger.id}_${opponent.id}`;
         const reverseKey = `${opponent.id}_${challenger.id}`;
-        
         if (activeGames.has(gameKey) || activeGames.has(reverseKey)) {
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#ED4245')
-                .setDescription(t.alreadyPlaying)
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            return message.reply({ embeds: [errorEmbed] }).catch(() => {});
+            return message.reply(t(lang, 'already_playing')).catch(() => {});
         }
-        
-        // 🔥 RAM-FIRST CREDIT CHECK
-        const challengerData = client.getUserData 
-            ? client.getUserData(challenger.id, guildId)
-            : db.prepare("SELECT credits FROM users WHERE id = ? AND guild_id = ?").get(challenger.id, guildId);
-        
-        const opponentData = client.getUserData 
-            ? client.getUserData(opponent.id, guildId)
-            : db.prepare("SELECT credits FROM users WHERE id = ? AND guild_id = ?").get(opponent.id, guildId);
-        
-        if (!challengerData || (challengerData.credits || 0) < entryFee) {
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#ED4245')
-                .setDescription(t.insufficientCredits)
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            return message.reply({ embeds: [errorEmbed] }).catch(() => {});
-        }
-        
-        if (!opponentData || (opponentData.credits || 0) < entryFee) {
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#ED4245')
-                .setDescription(t.opponentInsufficientCredits(opponent.username))
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            return message.reply({ embeds: [errorEmbed] }).catch(() => {});
-        }
-        
-        // 🔥 DEDUCT ENTRY FEES USING BATCH SYSTEM
+
+        const cData = client.getUserData ? client.getUserData(challenger.id, guildId) : db.prepare('SELECT * FROM users WHERE id=? AND guild_id=?').get(challenger.id, guildId);
+        const oData = client.getUserData ? client.getUserData(opponent.id,  guildId) : db.prepare('SELECT * FROM users WHERE id=? AND guild_id=?').get(opponent.id,  guildId);
+
+        if (!cData || (cData.credits || 0) < entryFee) return message.reply(t(lang, 'insufficient_credits')).catch(() => {});
+        if (!oData || (oData.credits  || 0) < entryFee) return message.reply(t(lang, 'opponent_insufficient_credits', { name: opponent.username })).catch(() => {});
+
+        // ── Deduct fees ──
         if (client.queueUserUpdate) {
-            client.queueUserUpdate(challenger.id, guildId, {
-                ...challengerData,
-                credits: (challengerData.credits || 0) - entryFee,
-                username: challenger.username
-            });
-            client.queueUserUpdate(opponent.id, guildId, {
-                ...opponentData,
-                credits: (opponentData.credits || 0) - entryFee,
-                username: opponent.username
-            });
-            console.log(`[TTT] Batch queued: Fees deducted from ${challenger.tag} and ${opponent.tag}`);
+            client.queueUserUpdate(challenger.id, guildId, { ...cData, credits: (cData.credits||0) - entryFee, username: challenger.username });
+            client.queueUserUpdate(opponent.id,   guildId, { ...oData, credits: (oData.credits ||0) - entryFee, username: opponent.username  });
         } else {
-            db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?`).run(entryFee, challenger.id, guildId);
-            db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?`).run(entryFee, opponent.id, guildId);
+            db.prepare('UPDATE users SET credits=credits-? WHERE id=? AND guild_id=?').run(entryFee, challenger.id, guildId);
+            db.prepare('UPDATE users SET credits=credits-? WHERE id=? AND guild_id=?').run(entryFee, opponent.id,  guildId);
         }
-        
-        // ================= GAME STATE =================
-        let board = Array(9).fill(null);
-        let turn = challenger.id;
+
+        // ── Game state ──
+        let board      = Array(9).fill(null);
+        let turn       = challenger.id;
         let gameActive = true;
         activeGames.set(gameKey, { board, turn, gameActive, challenger, opponent, startTime: Date.now() });
-        
-        const challengerLevel = calculateLevel(challengerData?.xp || 0);
-        const opponentLevel = calculateLevel(opponentData?.xp || 0);
-        const challengerRank = getRank(challengerLevel);
-        const opponentRank = getRank(opponentLevel);
-        const challengerCredits = (challengerData?.credits || 0) - entryFee;
-        const opponentCredits = (opponentData?.credits || 0) - entryFee;
-        
-        // ================= BOARD CREATION =================
-        const createBoard = (gameActive) => {
-            const rows = [];
-            for (let i = 0; i < 3; i++) {
-                const row = new ActionRowBuilder();
-                for (let j = 0; j < 3; j++) {
-                    const index = i * 3 + j;
-                    let buttonStyle = ButtonStyle.Secondary;
-                    let label = '▫️';
-                    
-                    if (board[index] === 'X') {
-                        buttonStyle = ButtonStyle.Danger;
-                        label = '❌';
-                    } else if (board[index] === 'O') {
-                        buttonStyle = ButtonStyle.Primary;
-                        label = '⭕';
-                    }
-                    
-                    row.addComponents(
-                        new ButtonBuilder()
-                            .setCustomId(`ttt_${index}`)
-                            .setLabel(label)
-                            .setStyle(buttonStyle)
-                            .setDisabled(!!board[index] || !gameActive)
-                    );
-                }
-                rows.push(row);
-            }
-            return rows;
-        };
-        
-        // ================= WIN CHECKER =================
-        const checkWinner = () => {
-            const wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]];
-            for (const [a, b, c] of wins) {
-                if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
-            }
-            return board.includes(null) ? null : 'tie';
-        };
-        
-        // ================= GAME EMBED =================
-        const gameEmbed = new EmbedBuilder()
-            .setColor('#9b59b6')
-            .setAuthor({ name: '⚔️ NEURAL TIC-TAC-TOE', iconURL: client.user.displayAvatarURL() })
-            .setDescription(
-                '```ansi\n' +
-                '\u001b[1;35m\u25b8 MATCH    \u001b[0m' + challenger.username + ' vs ' + opponent.username + '\n' +
-                '\u001b[1;35m\u25b8 ENTRY    \u001b[0m50 🪙 each · Winner takes 100 🪙\n' +
-                '\u001b[1;33m\u25b8 TURN     \u001b[0m\u001b[1;37m❌ ' + challenger.username + '\u001b[0m goes first\n' +
-                '```'
-            )
-            .addFields(
-                { name: '❌ ' + challenger.username, value: challengerRank.emoji + ' ' + challengerRank.title[lang] + ' · Lv.' + challengerLevel, inline: true },
-                { name: '⭕ ' + opponent.username, value: opponentRank.emoji + ' ' + opponentRank.title[lang] + ' · Lv.' + opponentLevel, inline: true }
-            )
-            .setFooter({ text: `${guildName} · NEURAL ARENA · BAMAKO_223 🇲🇱` })
-            .setTimestamp();
-        
+
+        const cLevel = calculateLevel(cData?.xp || 0);
+        const oLevel = calculateLevel(oData?.xp  || 0);
+        const cRank  = getRank(cLevel);
+        const oRank  = getRank(oLevel);
+        const guildName = message.guild?.name || 'ARCHON';
+
         const msg = await message.reply({
-            embeds: [gameEmbed],
-            components: createBoard(true)
+            embeds: [gameEmbed(challenger, opponent, turn, cLevel, oLevel, cRank, oRank, lang, client, guildName)],
+            components: buildBoard(board, true),
         }).catch(() => {});
-        
-        if (!msg) {
-            activeGames.delete(gameKey);
-            return;
-        }
-        
-        // ================= 🔥 COLLECTOR CORRIGÉ =================
-        const collector = msg.createMessageComponentCollector({ 
-            componentType: ComponentType.Button, 
-            time: 120000
-        });
-        
+        if (!msg) { activeGames.delete(gameKey); return; }
+
+        const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
+
         collector.on('collect', async (i) => {
             if (!gameActive) return;
-            
-            if (i.user.id !== turn) {
-                return i.reply({ content: t.notYourTurn, flags: 64 }).catch(() => {});
-            }
-            
-            const index = parseInt(i.customId.split('_')[1]);
-            if (board[index]) {
-                return i.reply({ content: t.cellTaken, flags: 64 }).catch(() => {});
-            }
-            
-            // 🛡️ LA LIGNE CRITIQUE
+            if (i.user.id !== turn) return i.reply({ content: t(lang, 'not_your_turn'), flags: 64 }).catch(() => {});
+            const idx = parseInt(i.customId.split('_')[1]);
+            if (board[idx])   return i.reply({ content: t(lang, 'cell_taken'),    flags: 64 }).catch(() => {});
+
             await i.deferUpdate().catch(() => {});
-            
-            // Make move
-            board[index] = turn === challenger.id ? 'X' : 'O';
-            
-            const result = checkWinner();
-            
+            board[idx] = turn === challenger.id ? 'X' : 'O';
+            const result = checkWinner(board);
+
             if (result) {
                 gameActive = false;
                 activeGames.delete(gameKey);
                 collector.stop();
-                
-                let winner = null, loser = null, winnerId = null, loserId = null;
-                
-                if (result === 'X') {
-                    winner = challenger; loser = opponent;
-                    winnerId = challenger.id; loserId = opponent.id;
-                } else if (result === 'O') {
-                    winner = opponent; loser = challenger;
-                    winnerId = opponent.id; loserId = challenger.id;
-                }
-                
-                let resultEmbed = new EmbedBuilder()
-                    .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-                    .setTimestamp();
-                
+
+                // ── Tie ──
                 if (result === 'tie') {
                     if (client.queueUserUpdate) {
-                        const cData = client.getUserData(challenger.id, guildId) || challengerData;
-                        const oData = client.getUserData(opponent.id, guildId) || opponentData;
-                        client.queueUserUpdate(challenger.id, guildId, { ...cData, credits: (cData.credits || 0) + entryFee });
-                        client.queueUserUpdate(opponent.id, guildId, { ...oData, credits: (oData.credits || 0) + entryFee });
+                        client.queueUserUpdate(challenger.id, guildId, { ...(client.getUserData(challenger.id, guildId)||cData), credits: ((client.getUserData(challenger.id,guildId)||cData).credits||0)+entryFee });
+                        client.queueUserUpdate(opponent.id,   guildId, { ...(client.getUserData(opponent.id,  guildId)||oData), credits: ((client.getUserData(opponent.id,  guildId)||oData).credits||0)+entryFee });
                     } else {
-                        db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(entryFee, challenger.id, guildId);
-                        db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(entryFee, opponent.id, guildId);
+                        db.prepare('UPDATE users SET credits=credits+? WHERE id=? AND guild_id=?').run(entryFee, challenger.id, guildId);
+                        db.prepare('UPDATE users SET credits=credits+? WHERE id=? AND guild_id=?').run(entryFee, opponent.id,  guildId);
                     }
-                    
-                    resultEmbed
+                    const tieEmbed = new EmbedBuilder()
                         .setColor('#FEE75C')
-                        .setAuthor({ name: '🤝 TACTICAL STALEMATE', iconURL: client.user.displayAvatarURL() })
-                        .setDescription(
-                            '```ansi\n' +
-                            '\u001b[1;33m\u25b8 RESULT   \u001b[0mDRAW — No winner\n' +
-                            '\u001b[1;33m\u25b8 REFUND   \u001b[0m50 🪙 returned to each player\n' +
-                            '\u001b[0;37m\u25b8 TIP      \u001b[0mChallenge again to settle the score!\n' +
-                            '```'
-                        );
-                    } else {
-                    const winnerData = client.getUserData(winnerId, guildId) || (winnerId === challenger.id ? challengerData : opponentData);
-                    const loserData = client.getUserData(loserId, guildId) || (loserId === challenger.id ? challengerData : opponentData);
-                    
-                    if (client.queueUserUpdate) {
-                        client.queueUserUpdate(winnerId, guildId, {
-                            ...winnerData,
-                            credits: (winnerData.credits || 0) + winnerReward,
-                            xp: (winnerData.xp || 0) + 100,
-                            games_played: (winnerData.games_played || 0) + 1,
-                            games_won: (winnerData.games_won || 0) + 1,
-                            username: winner.username
-                        });
-                        client.queueUserUpdate(loserId, guildId, {
-                            ...loserData,
-                            xp: (loserData.xp || 0) + 25,
-                            games_played: (loserData.games_played || 0) + 1,
-                            username: loser.username
-                        });
-                    } else {
-                        db.prepare(`UPDATE users SET credits = credits + ?, xp = xp + 100, games_played = games_played + 1, games_won = games_won + 1 WHERE id = ? AND guild_id = ?`).run(winnerReward, winnerId, guildId);
-                        db.prepare(`UPDATE users SET xp = xp + 25, games_played = games_played + 1 WHERE id = ? AND guild_id = ?`).run(loserId, guildId);
-                    }
-                    
-                    const newWinnerLevel = calculateLevel((winnerData?.xp || 0) + 100);
-                    const newWinnerRank = getRank(newWinnerLevel);
-                    const winRate = ((winnerData?.games_won || 0) + 1) / ((winnerData?.games_played || 0) + 1) * 100;
-// ================= ASSIGN DUELIST ROLE =================
-if (message.guild) {
-    try {
-        const settings = client.getServerSettings ? client.getServerSettings(message.guild.id) : null;
-        const duelistRoleId = settings?.duelistRoleId || process.env.DUELIST_ROLE_ID;
-        if (duelistRoleId) {
-            const member = await message.guild.members.fetch(winnerId).catch(() => null);
-            if (member) {
-                const role = message.guild.roles.cache.get(duelistRoleId);
-                if (role && !member.roles.cache.has(duelistRoleId)) {
-                    await member.roles.add(role, '⚔️ Neural Arena duelist').catch(() => {});
+                        .setAuthor({ name: t(lang, 'arena'), iconURL: client.user.displayAvatarURL() })
+                        .setTitle(`🤝 ${t(lang, 'draw_title')}`)
+                        .setDescription(t(lang, 'draw_desc'))
+                        .addFields({ name: EMOJIS.duel_heart, value: t(lang, 'credits_returned'), inline: false })
+                        .setTimestamp();
+                    return i.editReply({ content: `🤝 <@${challenger.id}> <@${opponent.id}>`, embeds: [tieEmbed], components: buildBoard(board, false) }).catch(() => {});
                 }
-            }
-        }
-    } catch (e) {}
-}
-                    resultEmbed
-                        .setColor('#57F287')
-                        .setAuthor({ name: '🏆 NEURAL ARENA — VICTORY!', iconURL: client.user.displayAvatarURL() })
-                        .setDescription(
-                            '```ansi\n' +
-                            '\u001b[1;32m\u25b8 WINNER   \u001b[0m\u001b[1;37m' + winner.username + '\u001b[0m\n' +
-                            '\u001b[1;32m\u25b8 PRIZE    \u001b[0m+100 🪙 · +100 XP\n' +
-                            '\u001b[1;31m\u25b8 LOSER    \u001b[0m' + loser.username + ' · +25 XP consolation\n' +
-                            '\u001b[1;32m\u25b8 NEW RANK \u001b[0m' + newWinnerRank.emoji + ' ' + newWinnerRank.title[lang] + ' · Lv.' + newWinnerLevel + '\n' +
-                            '\u001b[0;37m\u25b8 WIN RATE \u001b[0m' + winRate.toFixed(1) + '%\n' +
-                            '```'
-                        );
-                }
-                
-                const finalRows = [];
-                for (let i = 0; i < 3; i++) {
-                    const row = new ActionRowBuilder();
-                    for (let j = 0; j < 3; j++) {
-                        const idx = i * 3 + j;
-                        let label = '▫️', style = ButtonStyle.Secondary;
-                        if (board[idx] === 'X') { label = '❌'; style = ButtonStyle.Danger; }
-                        else if (board[idx] === 'O') { label = '⭕'; style = ButtonStyle.Primary; }
-                        row.addComponents(new ButtonBuilder().setCustomId(`ttt_${idx}`).setLabel(label).setStyle(style).setDisabled(true));
-                    }
-                    finalRows.push(row);
-                }
-                
-                const pingContent = result === 'tie'
-                    ? `🤝 It's a draw, <@${challenger.id}> & <@${opponent.id}>!`
-                    : `🏆 <@${winnerId}> wins!`;
-                return i.editReply({ content: pingContent, embeds: [resultEmbed], components: finalRows }).catch(() => {});
-            }
-            
-            // Switch turn
-            turn = turn === challenger.id ? opponent.id : challenger.id;
-            
-            const updatedChallenger = client.getUserData(challenger.id, guildId) || challengerData;
-            const updatedOpponent = client.getUserData(opponent.id, guildId) || opponentData;
-            
-            const updatedEmbed = new EmbedBuilder()
-                .setColor('#9b59b6')
-                .setAuthor({ name: '⚔️ NEURAL TIC-TAC-TOE', iconURL: client.user.displayAvatarURL() })
-                .setDescription(
-                    '```ansi\n' +
-                    '\u001b[1;35m\u25b8 MATCH    \u001b[0m' + challenger.username + ' vs ' + opponent.username + '\n' +
-                    '\u001b[1;33m\u25b8 TURN     \u001b[0m\u001b[1;37m' + (turn === challenger.id ? '❌ ' + challenger.username : '⭕ ' + opponent.username) + '\u001b[0m\n' +
-                    '\u001b[0;37m\u25b8 PRIZE    \u001b[0m100 🪙 winner takes all\n' +
-                    '```'
-                )
-                .addFields(
-                    { name: '❌ ' + challenger.username, value: challengerRank.emoji + ' Lv.' + challengerLevel, inline: true },
-                    { name: '⭕ ' + opponent.username, value: opponentRank.emoji + ' Lv.' + opponentLevel, inline: true }
-                )
-                .setFooter({ text: `${guildName} · NEURAL ARENA · BAMAKO_223 🇲🇱` })
-                .setTimestamp();
-            
-            await i.editReply({ embeds: [updatedEmbed], components: createBoard(true) }).catch(() => {});
-        });
-        
-        collector.on('end', async (collected, reason) => {
-            if (gameActive && reason === 'time') {
-                gameActive = false;
-                activeGames.delete(gameKey);
-                
+
+                // ── Win ──
+                const winnerId = result === 'X' ? challenger.id : opponent.id;
+                const loserId  = result === 'X' ? opponent.id   : challenger.id;
+                const winner   = result === 'X' ? challenger     : opponent;
+                const loser    = result === 'X' ? opponent       : challenger;
+
+                const winnerData = client.getUserData ? (client.getUserData(winnerId, guildId) || (winnerId===challenger.id?cData:oData)) : db.prepare('SELECT * FROM users WHERE id=? AND guild_id=?').get(winnerId, guildId);
+                const loserData  = client.getUserData ? (client.getUserData(loserId,  guildId) || (loserId ===challenger.id?cData:oData)) : db.prepare('SELECT * FROM users WHERE id=? AND guild_id=?').get(loserId,  guildId);
+
+                const newWinnerXp    = (winnerData?.xp || 0) + 100;
+                const newWinnerLevel = calculateLevel(newWinnerXp);
+                const newWinnerRank  = getRank(newWinnerLevel);
+                const winRate        = (((winnerData?.games_won||0)+1) / ((winnerData?.games_played||0)+1) * 100).toFixed(1);
+
                 if (client.queueUserUpdate) {
-                    const cData = client.getUserData(challenger.id, guildId) || challengerData;
-                    const oData = client.getUserData(opponent.id, guildId) || opponentData;
-                    client.queueUserUpdate(challenger.id, guildId, { ...cData, credits: (cData.credits || 0) + entryFee });
-                    client.queueUserUpdate(opponent.id, guildId, { ...oData, credits: (oData.credits || 0) + entryFee });
+                    client.queueUserUpdate(winnerId, guildId, { ...winnerData, credits: (winnerData.credits||0)+winnerReward, xp: newWinnerXp, games_played: (winnerData.games_played||0)+1, games_won: (winnerData.games_won||0)+1, username: winner.username });
+                    client.queueUserUpdate(loserId,  guildId, { ...loserData,  xp: (loserData.xp||0)+25, games_played: (loserData.games_played||0)+1, username: loser.username });
                 } else {
-                    db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(entryFee, challenger.id, guildId);
-                    db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(entryFee, opponent.id, guildId);
+                    db.prepare('UPDATE users SET credits=credits+?,xp=xp+100,games_played=games_played+1,games_won=games_won+1 WHERE id=? AND guild_id=?').run(winnerReward, winnerId, guildId);
+                    db.prepare('UPDATE users SET xp=xp+25,games_played=games_played+1 WHERE id=? AND guild_id=?').run(loserId, guildId);
                 }
-                
-                const timeoutEmbed = new EmbedBuilder()
-                    .setColor('#ED4245')
-                    .setAuthor({ name: '⏰ NEURAL ARENA — TIMEOUT', iconURL: client.user.displayAvatarURL() })
-                    .setDescription(
-                        '```ansi\n' +
-                        '\u001b[1;31m\u25b8 RESULT   \u001b[0mGame expired — no winner\n' +
-                        '\u001b[1;31m\u25b8 REFUND   \u001b[0m50 🪙 returned to each player\n' +
-                        '\u001b[0;37m\u25b8 TIP      \u001b[0mRespond faster next time!\n' +
-                        '```'
+
+                // Duelist role
+                if (message.guild) {
+                    try {
+                        const settings = client.getServerSettings ? client.getServerSettings(message.guild.id) : null;
+                        const roleId   = settings?.duelistRoleId || process.env.DUELIST_ROLE_ID;
+                        if (roleId) {
+                            const member = await message.guild.members.fetch(winnerId).catch(() => null);
+                            const role   = member && message.guild.roles.cache.get(roleId);
+                            if (role && !member.roles.cache.has(roleId)) await member.roles.add(role, 'Neural arena winner').catch(() => {});
+                        }
+                    } catch (_) {}
+                }
+
+                const winEmbed = new EmbedBuilder()
+                    .setColor('#57F287')
+                    .setAuthor({ name: t(lang, 'arena'), iconURL: client.user.displayAvatarURL() })
+                    .setTitle(`${EMOJIS.trophy} ${t(lang, 'win_title', { winner: winner.username })}`)
+                    .addFields(
+                        { name: t(lang, 'prize'),       value: `+${winnerReward} 🪙`,                                           inline: true },
+                        { name: t(lang, 'xp_gain'),     value: '+100 XP',                                                        inline: true },
+                        { name: t(lang, 'consolation', { loser: loser.username }), value: '+25 XP', inline: true },
+                        { name: t(lang, 'win_rate'),    value: `${winRate}%`,                                                     inline: true },
+                        { name: t(lang, 'rank'),        value: `${newWinnerRank.emoji} ${t(lang, newWinnerRank.key)} · Lv.${newWinnerLevel}`, inline: true },
                     )
-                    .setFooter({ text: `${guildName} · NEURAL ARENA · BAMAKO_223 🇲🇱` })
                     .setTimestamp();
-                
-                await msg.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => {});
+
+                // Level-up notice
+                const oldLevel = calculateLevel(winnerData?.xp || 0);
+                if (newWinnerLevel > oldLevel) {
+                    winEmbed.setFooter({ text: `${t(lang, 'levelup_title')} — ${t(lang, 'levelup_desc', { username: winner.username, level: newWinnerLevel, emoji: newWinnerRank.emoji, rank: t(lang, newWinnerRank.key) })}` });
+                }
+
+                return i.editReply({ content: `🏆 <@${winnerId}>`, embeds: [winEmbed], components: buildBoard(board, false) }).catch(() => {});
             }
+
+            // ── Next turn ──
+            turn = turn === challenger.id ? opponent.id : challenger.id;
+            await i.editReply({
+                embeds: [gameEmbed(challenger, opponent, turn, cLevel, oLevel, cRank, oRank, lang, client, guildName)],
+                components: buildBoard(board, true),
+            }).catch(() => {});
         });
-        
-        console.log(`[TTT] ${challenger.tag} vs ${opponent.tag} started | Lang: ${lang}`);
-    }
+
+        collector.on('end', async (_, reason) => {
+            if (!gameActive || reason !== 'time') return;
+            gameActive = false;
+            activeGames.delete(gameKey);
+
+            if (client.queueUserUpdate) {
+                client.queueUserUpdate(challenger.id, guildId, { ...(client.getUserData(challenger.id,guildId)||cData), credits: ((client.getUserData(challenger.id,guildId)||cData).credits||0)+entryFee });
+                client.queueUserUpdate(opponent.id,   guildId, { ...(client.getUserData(opponent.id,  guildId)||oData), credits: ((client.getUserData(opponent.id,  guildId)||oData).credits||0)+entryFee });
+            } else {
+                db.prepare('UPDATE users SET credits=credits+? WHERE id=? AND guild_id=?').run(entryFee, challenger.id, guildId);
+                db.prepare('UPDATE users SET credits=credits+? WHERE id=? AND guild_id=?').run(entryFee, opponent.id,  guildId);
+            }
+
+            const timeoutEmbed = new EmbedBuilder()
+                .setColor('#ED4245')
+                .setAuthor({ name: t(lang, 'arena'), iconURL: client.user.displayAvatarURL() })
+                .setTitle(`${EMOJIS.duel_wait} ${t(lang, 'timeout_title')}`)
+                .setDescription(t(lang, 'timeout'))
+                .setTimestamp();
+
+            await msg.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => {});
+        });
+
+        console.log(`[TTT] ${challenger.tag} vs ${opponent.tag} | lang: ${lang}`);
+    },
 };
