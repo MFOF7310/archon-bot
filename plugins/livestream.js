@@ -263,15 +263,15 @@ function buildVideoEmbed(upload, handle, client, lang = 'en') {
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }
 
-function canNotifyLive(channelId) {
-    const last = lastNotificationTime.get(channelId);
+function canNotifyLive(guildId, channelId) {
+    const last = lastNotificationTime.get(`${guildId}:${channelId}`);
     if (!last) return true;
     return (Date.now() - last) >= NOTIFICATION_COOLDOWN_MINUTES * 60 * 1000;
 }
 
 async function sendNotification(client, db, guildId, channelId, handle, payload, type) {
     try {
-        if (type === 'live' && !canNotifyLive(channelId)) return { ok: false, reason: 'cooldown' };
+        if (type === 'live' && !canNotifyLive(guildId, channelId)) return { ok: false, reason: 'cooldown' };
         const track = db.prepare('SELECT target_channel_id FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
         if (!track) return { ok: false, reason: 'not_tracked' };
         const guild = client.guilds.cache.get(guildId);
@@ -288,7 +288,7 @@ async function sendNotification(client, db, guildId, channelId, handle, payload,
         else if (type === 'video') card = buildVideoEmbed(payload, handle, client, lang);
         else card = buildLiveEmbed(channelId, payload, handle, client, lang);
         await channel.send({ ...card._v2 });
-        if (type === 'live') lastNotificationTime.set(channelId, Date.now());
+        if (type === 'live') lastNotificationTime.set(`${guildId}:${channelId}`, Date.now());
         return { ok: true };
     } catch (e) {
         const msg = String(e?.message || e);
@@ -351,7 +351,7 @@ async function runCycle(client, db, priorityOnly) {
                 if (live.videoId) liveVideoIds.set(chId, live.videoId);
                 for (const t of tracks) {
                     if (t.is_live !== 1 && t.notify_live === 0) { db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId); continue; }
-                    if (t.is_live !== 1 && canNotifyLive(chId)) {
+                    if (t.is_live !== 1 && canNotifyLive(t.guild_id, chId)) {
                         const sent = await sendNotification(client, db, t.guild_id, chId, handle, live, 'live');
                         if (sent.ok) db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId);
                     }
@@ -361,7 +361,7 @@ async function runCycle(client, db, priorityOnly) {
                 offlineCounters.set(chId, off);
                 if (off >= REQUIRED_OFFLINE_CHECKS) {
                     db.prepare('UPDATE youtube_notifications SET is_live = 0 WHERE youtube_channel_id = ?').run(chId);
-                    lastNotificationTime.delete(chId);
+                    for (const t of tracks) lastNotificationTime.delete(`${t.guild_id}:${chId}`);
                 }
             }
 
