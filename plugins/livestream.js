@@ -398,8 +398,8 @@ function toggleButton(kind, row, lang, view = '') {
 
 function statusText(row, client, lang) {
     return row.is_live === 1
-        ? `${em('online', '🔴', client)} ${t('livestream.status_live', lang)}`
-        : `${em('offline', '⚫', client)} ${t('livestream.status_offline', lang)}`;
+        ? `${EMOJIS.online || '🔴'} ${t('livestream.status_live', lang)}`
+        : `${EMOJIS.offline || '⚫'} ${t('livestream.status_offline', lang)}`;
 }
 
 function buildListEmbed(tracks, guild, client, lang = 'en') {

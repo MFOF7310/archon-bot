@@ -4,6 +4,7 @@ const cmdSlash = require('../lib/cmd').slash;
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { card: v2card } = require('../lib/games/v2');
 const ui = require('../lib/games/ui');
+const EMOJIS = require('../config/emojis');
 
 // ================= THRESHOLDS =================
 const SPAM_THRESHOLD = 3;
@@ -159,6 +160,82 @@ function isElevated(member) {
 // ═══════════════════════════════════════════════════════
 // RAID DETECTION ENGINE
 // ═══════════════════════════════════════════════════════
+// ─── Domain list, channel list and raid card (shared by /automod and .automod) ───
+function domainsAction(guildId, action, domain, settings, client, t) {
+    const cur = settings?.autoModDomains || '';
+    const list = parseDomainWhitelist(cur);
+    if (!action || action === 'list') {
+        const custom = list.length ? list.map(d => '`' + d + '`').join(', ') : t('dom_noneCustom');
+        const defaults = [...DEFAULT_DOMAIN_WHITELIST].filter(d => !d.startsWith('www.')).slice(0, 14).join(', ');
+        return v2card(C.BLURPLE, [
+            { text: `## ${EMOJIS.ic_settings || '🔗'} ${t('dom_title')}` },
+            { rule: true },
+            { text: `**${t('dom_custom')}**\n${custom}` },
+            { text: `**${t('dom_defaults')}**\n-# ${defaults}…` },
+        ]);
+    }
+    if (action === 'add') {
+        if (!domain) return t('dom_needDomain');
+        if (list.includes(domain)) return t('dom_already', { domain });
+        client.updateServerSetting(guildId, 'automoddomains', cur ? `${cur},${domain}` : domain); client.settings.delete(guildId);
+        return t('dom_added', { domain });
+    }
+    if (action === 'remove') {
+        if (!domain) return t('dom_needDomain');
+        if (!list.includes(domain)) return t('dom_notListed', { domain });
+        client.updateServerSetting(guildId, 'automoddomains', list.filter(d => d !== domain).join(',') || null); client.settings.delete(guildId);
+        return t('dom_removed', { domain });
+    }
+    if (action === 'reset') {
+        client.updateServerSetting(guildId, 'automoddomains', null); client.settings.delete(guildId);
+        return t('dom_reset');
+    }
+    return t('dom_usage');
+}
+
+function channelsAction(guildId, action, ch, settings, client, t) {
+    const raw = settings?.automodChannels || settings?.automod_channels || '';
+    const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
+    if (!action || action === 'list') {
+        const where = list.length ? list.map(c => `<#${c}>`).join(' ') : t('chan_all');
+        return v2card(C.BLURPLE, [
+            { text: `## ${EMOJIS.ic_channel || '#️⃣'} ${t('chan_title')}` },
+            { rule: true },
+            { text: t('chan_activeIn', { channels: where }) },
+        ]);
+    }
+    if (action === 'add') {
+        if (!ch) return t('chan_needChannel');
+        if (list.includes(ch.id)) return t('chan_already', { channel: `<#${ch.id}>` });
+        client.updateServerSetting(guildId, 'automodchannels', raw ? `${raw},${ch.id}` : ch.id); client.settings.delete(guildId);
+        return t('chan_added', { channel: `<#${ch.id}>` });
+    }
+    if (action === 'remove') {
+        if (!ch) return t('chan_needChannel');
+        if (!list.includes(ch.id)) return t('chan_notListed', { channel: `<#${ch.id}>` });
+        client.updateServerSetting(guildId, 'automodchannels', list.filter(c => c !== ch.id).join(',') || null); client.settings.delete(guildId);
+        return t('chan_removed', { channel: `<#${ch.id}>` });
+    }
+    if (action === 'clear') {
+        client.updateServerSetting(guildId, 'automodchannels', null); client.settings.delete(guildId);
+        return t('chan_cleared');
+    }
+    return t('chan_usage');
+}
+
+function raidCard(db, gid, t) {
+    const s = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid) || {};
+    const on = !!s.raid_enabled;
+    const age = s.raid_min_age_days
+        ? t('raid_minAgeOn', { age: t(Number(s.raid_min_age_days) === 1 ? 'daysOne' : 'daysMany', { n: s.raid_min_age_days }) })
+        : t('raid_minAgeOff');
+    return v2card(on ? C.GREEN : C.GREY, [
+        { text: `## ${EMOJIS.ic_role || '🛡️'} ${t('raid_title')}\n${on ? (EMOJIS.ic_on || '🟢') : (EMOJIS.ic_off || '⚪')} ${t(on ? 'raid_isOn' : 'raid_isOff')}` },
+        { rule: true },
+        { text: `${t('raid_trigger', { n: s.raid_threshold || 5, s: s.raid_window || 30 })}\n${age}` },
+    ]);
+}
+
 const raidJoinLog = new Map(); // guildId => [timestamps]
 const raidActive = new Map();  // guildId => true/false
 
@@ -205,7 +282,7 @@ async function resumeRaids(client, db) {
             owner.send({ embeds: [new EmbedBuilder().setColor(0x00cc44)
                 .setTitle(require('../lib/i18n').t('automod.raidClearedTitle', L, { server: guild.name }))
                 .setDescription(require('../lib/i18n').t('automod.raidClearedDesc', L))
-                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })] }).catch(() => {});
+                .setFooter({ text: 'ARCHON CG-223' })] }).catch(() => {});
         };
         setTimeout(check, 5 * 60000);
     }
@@ -273,7 +350,7 @@ async function handleRaidDetection(member, client, db) {
                         .setColor(0x00cc44)
                         .setTitle(require('../lib/i18n').t('automod.raidClearedTitle', require('../lib/botPerms').langOf({ guild: member.guild, client }), { server: member.guild.name }))
                         .setDescription(require('../lib/i18n').t('automod.raidClearedDesc', require('../lib/botPerms').langOf({ guild: member.guild, client })))
-                        .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
+                        .setFooter({ text: 'ARCHON CG-223' })
                     ]}).catch(() => {});
                 }
             } else {
@@ -298,7 +375,7 @@ async function handleRaidDetection(member, client, db) {
                     .setColor(0xff8800)
                     .setTitle(_kt('raidKickTitle', { server: member.guild.name }))
                                 .setDescription(_kt('raidKickDesc', { server: member.guild.name, days: _kd(minAgeDays), age: _kd(accountAge.toFixed(1)), left: _kd(Math.max(1, Math.ceil(minAgeDays - accountAge))) }))
-                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
+                    .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         } catch {}
     }
@@ -861,6 +938,7 @@ async function handleAppeal(message, client) {
             }).catch(() => {});
         }
 
+        const _tA = (k, v) => require('../lib/i18n').t('automod.' + k, _tGuild(targetGuild), v);
         const cdKey = `${message.author.id}:${targetGuild.id}`;
         const lastAppeal = appealCooldowns.get(cdKey);
         const now = Date.now();
@@ -874,8 +952,8 @@ async function handleAppeal(message, client) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.DARK)
-                    .setTitle('🚫 Appeals Banned')
-                    .setDescription(`You are banned from appealing on **${targetGuild.name}** for **${remainingDays} more day${remainingDays !== 1 ? 's' : ''}** due to a previous frivolous appeal.`)
+                    .setTitle(_tA('appeal_bannedTitle'))
+                    .setDescription(_tA('appeal_bannedDesc', { server: targetGuild.name, days: _tA(remainingDays === 1 ? 'daysOne' : 'daysMany', { n: remainingDays }) }))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -886,8 +964,8 @@ async function handleAppeal(message, client) {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor(C.YELLOW)
-                    .setTitle('Appeal Cooldown Active')
-                    .setDescription(`You have already submitted an appeal for **${targetGuild.name}** recently.\nYou can submit one appeal per server every 24 hours.\n\nTry again in **${remainingHrs} hour${remainingHrs !== 1 ? 's' : ''}**.`)
+                    .setTitle(_tA('appeal_cooldownTitle'))
+                    .setDescription(_tA('appeal_cooldownDesc', { server: targetGuild.name, hours: _tA(remainingHrs === 1 ? 'hoursOne' : 'hoursMany', { n: remainingHrs }) }))
                     .setFooter({ text: 'ARCHON CG-223' })]
             }).catch(() => {});
         }
@@ -905,15 +983,15 @@ async function handleAppeal(message, client) {
 
             const appealId = `AP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel('✅ Approve').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel('❌ Reject').setStyle(ButtonStyle.Danger),
-                new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel('🔨 Ban Appeals').setStyle(ButtonStyle.Secondary)
+                new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_tA('appeal_btnApprove')).setEmoji(EMOJIS.ic_on || '✅').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_tA('appeal_btnReject')).setEmoji(EMOJIS.ic_off || '❌').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_tA('appeal_btnBan')).setEmoji(EMOJIS.ic_warn || '🔨').setStyle(ButtonStyle.Secondary)
             );
 
             const _tS = (k, v) => require('../lib/i18n').t('automod.' + k, _tGuild(targetGuild), v);
             const tribunalEmbed = new EmbedBuilder()
                 .setColor(C.BLURPLE)
-                .setAuthor({ name: 'AutoMod Appeal Tribunal', iconURL: message.author.displayAvatarURL() })
+                .setAuthor({ name: _tS('appeal_tribunalAuthor'), iconURL: message.author.displayAvatarURL() })
                 .setTitle(_tS('appeal_tribunalTitle'))
                 .setDescription(_tS('appeal_tribunalFrom', {
                     user: message.author.tag,
@@ -1197,9 +1275,9 @@ async function handleAppealButton(interaction, client) {
 
     // Rebuild the same three buttons, all disabled
     const lockedRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel('✅ Approve').setStyle(ButtonStyle.Success).setDisabled(true),
-        new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel('❌ Reject').setStyle(ButtonStyle.Danger).setDisabled(true),
-        new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel('🔨 Ban Appeals').setStyle(ButtonStyle.Secondary).setDisabled(true)
+        new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_T('appeal_btnApprove')).setEmoji(EMOJIS.ic_on || '✅').setStyle(ButtonStyle.Success).setDisabled(true),
+        new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_T('appeal_btnReject')).setEmoji(EMOJIS.ic_off || '❌').setStyle(ButtonStyle.Danger).setDisabled(true),
+        new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_T('appeal_btnBan')).setEmoji(EMOJIS.ic_warn || '🔨').setStyle(ButtonStyle.Secondary).setDisabled(true)
     );
 
     await interaction.editReply({ embeds: [decided], components: [lockedRow] })
@@ -1363,6 +1441,9 @@ function buildRaidCard(client, guild, db) {
 }
 
 async function handleAdminButton(interaction, client) {
+    if (!interaction.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return interaction.reply({ content: '🔒 **Admin only.** You do not have permission to use these buttons.', flags: 64 });
+    }
     const id = interaction.customId;
     const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ChannelSelectMenuBuilder, ChannelType } = require('discord.js');
     const _T = (k, v) => _adminT(client, interaction.guild, k, v);
@@ -1433,6 +1514,9 @@ async function handleAdminButton(interaction, client) {
 }
 
 async function handleAdminModal(interaction, client) {
+    if (!interaction.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return interaction.reply({ content: '🔒 **Admin only.** You do not have permission to submit this modal.', flags: 64 });
+    }
     const id = interaction.customId;
     const _T = (k, v) => _adminT(client, interaction.guild, k, v);
     const raw = (k) => String(interaction.fields.getTextInputValue(k) || '').trim();
@@ -1473,6 +1557,9 @@ async function handleAdminModal(interaction, client) {
 }
 
 async function handleAdminSelect(interaction, client) {
+    if (!interaction.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return interaction.reply({ content: '🔒 **Admin only.** You do not have permission to use this menu.', flags: 64 });
+    }
     const id = interaction.customId;
     const _T = (k, v) => _adminT(client, interaction.guild, k, v);
     const picked = interaction.values?.[0];
@@ -1513,6 +1600,9 @@ async function handleAdminSelect(interaction, client) {
 //  STATUS BUTTONS — Manage domains / View appeals
 // ═══════════════════════════════════════════════════════
 async function handleStatusButton(interaction, client) {
+    if (!interaction.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return interaction.reply({ content: '🔒 **Admin only.** You do not have permission to use this menu.', flags: 64 });
+    }
     const id = interaction.customId;
     const STATUS_IDS = ['automod_status_domains', 'automod_status_channels', 'automod_status_log', 'automod_status_raid', 'automod_status_appeals', 'automod_status_back'];
     if (!STATUS_IDS.includes(id)) return false;
@@ -1598,7 +1688,7 @@ module.exports = {
 
     execute: async (ix, client) => {
         const adm = ix.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!adm) return ix.reply({ content: '🔒 Admin only.', flags: 1 << 6 });
+        if (!adm) return ix.reply({ content: require('../lib/i18n').t('automod.admin_only', require('../lib/botPerms').langOf({ guild: ix.guild, client })), flags: 1 << 6 });
         const sc = ix.options.getSubcommand();
         const ss = client.getServerSettings(ix.guild.id);
         const _LA = require('../lib/botPerms').langOf({ guild: ix.guild, client });
@@ -1679,75 +1769,12 @@ module.exports = {
             }
         }
         if (sc === 'domains') {
-            const action = ix.options.getString('action');
-            const domain = ix.options.getString('domain')?.toLowerCase().trim();
-            const cur = ss?.autoModDomains || '';
-            const list = parseDomainWhitelist(cur);
-
-            if (action === 'list') {
-                const customList = list.length > 0 ? list.join(', ') : 'None (using defaults only)';
-                const e = new EmbedBuilder()
-                    .setColor(C.BLURPLE)
-                    .setAuthor({ name: 'AutoMod — Domain Whitelist', iconURL: client.user.displayAvatarURL() })
-                    .addFields(
-                        { name: 'Default Allowed', value: [...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ') + '...', inline: false },
-                        { name: 'Custom Added', value: customList, inline: false }
-                    )
-                    .setFooter({ text: 'ARCHON CG-223' });
-                return ix.reply({ embeds: [e], flags: 1 << 6 });
-            }
-            if (action === 'add') {
-                if (!domain) return ix.reply({ content: '❌ Provide a domain. Example: example.com', flags: 1 << 6 });
-                if (list.includes(domain)) return ix.reply({ content: '⚠️ `' + domain + '` is already allowed.', flags: 1 << 6 });
-                const nw = cur ? `${cur},${domain}` : domain;
-                client.updateServerSetting(ix.guild.id, 'automoddomains', nw); client.settings.delete(ix.guild.id);
-                return ix.reply({ content: '✅ Added `' + domain + '` to allowed domains.', flags: 1 << 6 });
-            }
-            if (action === 'remove') {
-                if (!domain) return ix.reply({ content: '❌ Provide a domain to remove.', flags: 1 << 6 });
-                if (!list.includes(domain)) return ix.reply({ content: '⚠️ `' + domain + '` is not in the custom list.', flags: 1 << 6 });
-                const nw = list.filter(d => d !== domain).join(',');
-                client.updateServerSetting(ix.guild.id, 'automoddomains', nw || null); client.settings.delete(ix.guild.id);
-                return ix.reply({ content: '✅ Removed `' + domain + '` from allowed domains.', flags: 1 << 6 });
-            }
-            if (action === 'reset') {
-                client.updateServerSetting(ix.guild.id, 'automoddomains', null); client.settings.delete(ix.guild.id);
-                return ix.reply({ content: `✅ Custom domains cleared. Using defaults only.`, flags: 1 << 6 });
-            }
+            const out = domainsAction(ix.guild.id, ix.options.getString('action'), ix.options.getString('domain')?.toLowerCase().trim(), ss, client, _TA);
+            return ix.reply(typeof out === 'string' ? { content: out, flags: 64 } : { ...out, flags: out.flags | 64 });
         }
         if (sc === 'channels') {
-            const action = ix.options.getString('action');
-            const ch = ix.options.getChannel('channel');
-            const rawCur = ss?.automodChannels || ss?.automod_channels || '';
-            const list = rawCur ? rawCur.split(',').map(c => c.trim()).filter(Boolean) : [];
-
-            if (action === 'list') {
-                const channelList = list.length > 0 ? list.map(c => `<#${c}>`).join(' ') : 'All channels (no restrictions)';
-                const e = new EmbedBuilder()
-                    .setColor(C.BLURPLE)
-                    .setAuthor({ name: 'AutoMod — Channel Restrictions', iconURL: client.user.displayAvatarURL() })
-                    .setDescription(`AutoMod is active in: ${channelList}`)
-                    .setFooter({ text: 'ARCHON CG-223' });
-                return ix.reply({ embeds: [e], flags: 1 << 6 });
-            }
-            if (action === 'add') {
-                if (!ch) return ix.reply({ content: '❌ Mention a channel.', flags: 1 << 6 });
-                if (list.includes(ch.id)) return ix.reply({ content: '⚠️ Already restricted.', flags: 1 << 6 });
-                const nw = rawCur ? `${rawCur},${ch.id}` : ch.id;
-                client.updateServerSetting(ix.guild.id, 'automodchannels', nw); client.settings.delete(ix.guild.id);
-                return ix.reply({ content: `✅ AutoMod now active in <#${ch.id}>`, flags: 1 << 6 });
-            }
-            if (action === 'remove') {
-                if (!ch) return ix.reply({ content: '❌ Mention a channel.', flags: 1 << 6 });
-                if (!list.includes(ch.id)) return ix.reply({ content: '⚠️ Not in list.', flags: 1 << 6 });
-                const nw = list.filter(c => c !== ch.id).join(',');
-                client.updateServerSetting(ix.guild.id, 'automodchannels', nw || null); client.settings.delete(ix.guild.id);
-                return ix.reply({ content: `✅ Removed <#${ch.id}> from restrictions.`, flags: 1 << 6 });
-            }
-            if (action === 'clear') {
-                client.updateServerSetting(ix.guild.id, 'automodchannels', null); client.settings.delete(ix.guild.id);
-                return ix.reply({ content: `✅ Channel restrictions cleared. AutoMod active in all channels.`, flags: 1 << 6 });
-            }
+            const out = channelsAction(ix.guild.id, ix.options.getString('action'), ix.options.getChannel('channel'), ss, client, _TA);
+            return ix.reply(typeof out === 'string' ? { content: out, flags: 64 } : { ...out, flags: out.flags | 64 });
         }
         if (sc === 'log') {
             const ch = ix.options.getChannel('channel');
@@ -1763,65 +1790,24 @@ module.exports = {
             const db = client.db;
             const { isPremium } = require('./premium.js');
             if (!isPremium(db, gid) && action !== 'status') {
-                return ix.reply({ embeds: [new EmbedBuilder()
-                    .setColor(0xffd700)
-                    .setTitle('⭐ Premium Feature')
-                    .setDescription('Raid detection requires **ARCHON Premium**!\n\nGet it for just **$3.40/month** — protect your server from coordinated attacks.')
-                    .addFields({ name: '🔑 Activate', value: `Use ${mentions(client, 'premium', 'status')} to upgrade!` })
-                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-                ], flags: 64 });
+                return ix.reply({ content: _TA('raid_premiumOnly', { cmd: cmdSlash(client, 'premium status', { guild: ix.guild }) }), flags: 64 });
             }
             db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
-
-            if (action === 'enable') {
-                db.prepare(`UPDATE server_settings SET raid_enabled = 1 WHERE guild_id = ?`).run(gid);
-                const s = db.prepare('SELECT raid_threshold, raid_window, raid_action, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid);
-                return ix.reply({ embeds: [new EmbedBuilder()
-                    .setColor(0x00cc44)
-                    .setTitle('🛡️ Raid Detection — ENABLED')
-                    .addFields(
-                        { name: '⚡ Trigger', value: `${s?.raid_threshold || 5} joins in ${s?.raid_window || 30}s`, inline: true },
-                        { name: '🎯 Action', value: s?.raid_action || 'alert', inline: true },
-                        { name: '👶 Min Age', value: s?.raid_min_age_days ? `${s.raid_min_age_days} days` : 'Disabled', inline: true }
-                    )
-                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })], flags: 1 << 6 });
-            }
-
-            if (action === 'disable') {
-                db.prepare(`UPDATE server_settings SET raid_enabled = 0 WHERE guild_id = ?`).run(gid);
-                return ix.reply({ content: '❌ Raid detection disabled.', flags: 1 << 6 });
-            }
-
-            if (action === 'status') {
-                const s = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_action, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid);
-                return ix.reply({ embeds: [new EmbedBuilder()
-                    .setColor(s?.raid_enabled ? 0x00cc44 : 0x888888)
-                    .setTitle('🛡️ Raid Detection Status')
-                    .addFields(
-                        { name: '🔘 Status', value: s?.raid_enabled ? '🟢 Active' : '🔴 Disabled', inline: true },
-                        { name: '⚡ Trigger', value: `${s?.raid_threshold || 5} joins / ${s?.raid_window || 30}s`, inline: true },
-                        { name: '👶 Min Age', value: s?.raid_min_age_days ? `${s.raid_min_age_days} days` : 'Disabled', inline: true }
-                    )
-                    .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })], flags: 1 << 6 });
-            }
-
+            if (action === 'enable') db.prepare(`UPDATE server_settings SET raid_enabled = 1 WHERE guild_id = ?`).run(gid);
+            if (action === 'disable') db.prepare(`UPDATE server_settings SET raid_enabled = 0 WHERE guild_id = ?`).run(gid);
             if (action === 'threshold') {
-                if (!value) return ix.reply({ content: '❌ Provide a value (e.g. 5)', flags: 1 << 6 });
+                if (!value) return ix.reply({ content: _TA('raid_needValue'), flags: 64 });
                 db.prepare(`UPDATE server_settings SET raid_threshold = ? WHERE guild_id = ?`).run(value, gid);
-                return ix.reply({ content: `✅ Raid triggers at **${value} joins** in window.`, flags: 1 << 6 });
             }
-
-            if (action === 'minage') {
-                const days = value || 0;
-                db.prepare(`UPDATE server_settings SET raid_min_age_days = ? WHERE guild_id = ?`).run(days, gid);
-                return ix.reply({ content: days === 0 ? '✅ Min account age disabled.' : `✅ Accounts newer than **${days} days** will be flagged during raids.`, flags: 1 << 6 });
-            }
+            if (action === 'minage') db.prepare(`UPDATE server_settings SET raid_min_age_days = ? WHERE guild_id = ?`).run(value || 0, gid);
+            const card = raidCard(db, gid, _TA);
+            return ix.reply({ ...card, flags: card.flags | 64 });
         }
     },
 
     run: async (client, msg, args, db, ss) => {
         const adm = msg.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!adm) return msg.reply('🔒 Admin only.');
+        if (!adm) return msg.reply(require('../lib/i18n').t('automod.admin_only', require('../lib/botPerms').langOf({ guild: msg.guild, client })));
         const action = args[0]?.toLowerCase() || 'status';
         const settings = client.getServerSettings(msg.guild.id);
         const _LP = require('../lib/botPerms').langOf({ guild: msg.guild, client });
@@ -1861,11 +1847,11 @@ module.exports = {
             if (cur?.automod_enabled === 1) return msg.reply(_TP('admin_enableAlready'));
             const me = msg.guild.members.me;
             const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter(p => !me.permissions.has(PermissionsBitField.Flags[p]));
-            if (missing.length) return msg.reply(`🛡️ Missing: ${missing.join(', ')}`);
+            if (missing.length) return msg.reply(_TP('admin_enableMissing', { list: missing.map(p => '`' + p + '`').join(', ') }));
             client.db.prepare("UPDATE server_settings SET automod_enabled = 1 WHERE guild_id = ?").run(msg.guild.id);
             client.settings.delete(msg.guild.id);
             const synced = await syncRules(msg.guild, 'create', settings);
-            return msg.reply(`✅ Enabled.${synced ? ' 🛡️ Shield active! Non-mods can only post trusted domains. Use .automod domains to customize.' : ''}`);
+            return msg.reply(_TP('admin_enableOk', { cmd: cmdSlash(client, 'automod domains', { guild: msg.guild }) }));
         }
         if (action === 'disable' || action === 'off') {
             const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
@@ -1873,104 +1859,36 @@ module.exports = {
             await syncRules(msg.guild, 'delete');
             client.db.prepare("UPDATE server_settings SET automod_enabled = 0 WHERE guild_id = ?").run(msg.guild.id);
             client.settings.delete(msg.guild.id);
-            return msg.reply('✅ Disabled.');
+            return msg.reply(_TP('admin_disableOk', { cmd: cmdSlash(client, 'automod domains', { guild: msg.guild }) }));
         }
         if (action === 'sensitivity') {
             const lv = args[1]?.toLowerCase();
-            if (!['low', 'medium', 'high'].includes(lv)) return msg.reply('❌ Usage: .automod sensitivity <low|medium|high>');
+            if (!['low', 'medium', 'high'].includes(lv)) return msg.reply(_TP('sens_usage'));
             client.updateServerSetting(msg.guild.id, 'automodsensitivity', lv); client.settings.delete(msg.guild.id);
-            return msg.reply(`✅ Sensitivity → **${lv.toUpperCase()}**`);
+            return msg.reply('✅ ' + _TP('admin_sensitivitySet', { level: lv.toUpperCase() }));
         }
         if (action === 'whitelist') {
             const role = msg.mentions.roles.first();
             const cur = settings?.autoModWhitelist;
             if (role) {
-                if (cur?.split(',').includes(role.id)) return msg.reply('⚠️ Already whitelisted.');
+                if (cur?.split(',').includes(role.id)) return msg.reply(_TP('admin_whitelistAlready'));
                 const nw = cur ? `${cur},${role.id}` : role.id;
                 client.updateServerSetting(msg.guild.id, 'automodwhitelist', nw); client.settings.delete(msg.guild.id);
                 if (settings?.autoModEnabled) { await syncRules(msg.guild, 'delete'); await syncRules(msg.guild, 'create', { ...settings, autoModWhitelist: nw }); }
-                return msg.reply(`✅ Whitelisted **${role.name}**`);
+                return msg.reply('✅ ' + _TP('admin_whitelistAdded', { role: role.name }));
             } else {
-                if (!cur) return msg.reply('⚠️ Empty.');
+                if (!cur) return msg.reply(_TP('admin_whitelistEmpty'));
                 client.updateServerSetting(msg.guild.id, 'automodwhitelist', null); client.settings.delete(msg.guild.id);
                 if (settings?.autoModEnabled) { await syncRules(msg.guild, 'delete'); await syncRules(msg.guild, 'create', { ...settings, autoModWhitelist: null }); }
-                return msg.reply('✅ Cleared.');
+                return msg.reply('✅ ' + _TP('admin_whitelistCleared'));
             }
         }
         if (action === 'domains') {
-            const sub = args[1]?.toLowerCase();
-            const cur = settings?.autoModDomains || '';
-            const list = parseDomainWhitelist(cur);
-
-            if (!sub || sub === 'list') {
-                const customList = list.length > 0 ? list.join(', ') : 'None (using defaults only)';
-                const e = new EmbedBuilder()
-                    .setColor(C.BLURPLE)
-                    .setAuthor({ name: 'AutoMod — Domain Whitelist', iconURL: client.user.displayAvatarURL() })
-                    .addFields(
-                        { name: 'Default Allowed', value: [...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ') + '...', inline: false },
-                        { name: 'Custom Added', value: customList, inline: false }
-                    )
-                    .setFooter({ text: 'ARCHON CG-223' });
-                return msg.reply({ embeds: [e] });
-            }
-            if (sub === 'add') {
-                const domain = args[2]?.toLowerCase().trim();
-                if (!domain) return msg.reply('❌ Usage: .automod domains add <domain> (e.g., example.com)');
-                if (list.includes(domain)) return msg.reply('⚠️ `' + domain + '` is already allowed.');
-                const nw = cur ? `${cur},${domain}` : domain;
-                client.updateServerSetting(msg.guild.id, 'automoddomains', nw); client.settings.delete(msg.guild.id);
-                return msg.reply('✅ Added `' + domain + '` to allowed domains.');
-            }
-            if (sub === 'remove') {
-                const domain = args[2]?.toLowerCase().trim();
-                if (!domain) return msg.reply('❌ Usage: .automod domains remove <domain>');
-                if (!list.includes(domain)) return msg.reply('⚠️ `' + domain + '` is not in the custom list.');
-                const nw = list.filter(d => d !== domain).join(',');
-                client.updateServerSetting(msg.guild.id, 'automoddomains', nw || null); client.settings.delete(msg.guild.id);
-                return msg.reply('✅ Removed `' + domain + '` from allowed domains.');
-            }
-            if (sub === 'reset') {
-                client.updateServerSetting(msg.guild.id, 'automoddomains', null); client.settings.delete(msg.guild.id);
-                return msg.reply(`✅ Custom domains cleared. Using defaults only.`);
-            }
-            return msg.reply('❓ Usage: .automod domains [list|add|remove|reset]');
+            return msg.reply(domainsAction(msg.guild.id, args[1]?.toLowerCase(), args[2]?.toLowerCase().trim(), settings, client, _TP));
         }
         if (action === 'channels') {
-            const sub = args[1]?.toLowerCase();
-            const rawCur = settings?.automodChannels || settings?.automod_channels || '';
-            const list = rawCur ? rawCur.split(',').map(c => c.trim()).filter(Boolean) : [];
-
-            if (!sub || sub === 'list') {
-                const channelList = list.length > 0 ? list.map(c => `<#${c}>`).join(' ') : 'All channels (no restrictions)';
-                const e = new EmbedBuilder()
-                    .setColor(C.BLURPLE)
-                    .setAuthor({ name: 'AutoMod — Channel Restrictions', iconURL: client.user.displayAvatarURL() })
-                    .setDescription(`AutoMod is active in: ${channelList}`)
-                    .setFooter({ text: 'ARCHON CG-223' });
-                return msg.reply({ embeds: [e] });
-            }
-            if (sub === 'add') {
-                const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[2]);
-                if (!ch) return msg.reply('❌ Mention a channel.');
-                if (list.includes(ch.id)) return msg.reply('⚠️ Already restricted.');
-                const nw = rawCur ? `${rawCur},${ch.id}` : ch.id;
-                client.updateServerSetting(msg.guild.id, 'automodchannels', nw); client.settings.delete(msg.guild.id);
-                return msg.reply(`✅ AutoMod now active in ${ch}`);
-            }
-            if (sub === 'remove') {
-                const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[2]);
-                if (!ch) return msg.reply('❌ Mention a channel.');
-                if (!list.includes(ch.id)) return msg.reply('⚠️ Not in list.');
-                const nw = list.filter(c => c !== ch.id).join(',');
-                client.updateServerSetting(msg.guild.id, 'automodchannels', nw || null); client.settings.delete(msg.guild.id);
-                return msg.reply(`✅ Removed ${ch} from restrictions.`);
-            }
-            if (sub === 'clear') {
-                client.updateServerSetting(msg.guild.id, 'automodchannels', null); client.settings.delete(msg.guild.id);
-                return msg.reply(`✅ Channel restrictions cleared. AutoMod active in all channels.`);
-            }
-            return msg.reply('❓ Usage: .automod channels [list|add|remove|clear]');
+            const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[2]);
+            return msg.reply(channelsAction(msg.guild.id, args[1]?.toLowerCase(), ch, settings, client, _TP));
         }
         if (action === 'log') {
             const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[1]);
@@ -1978,7 +1896,7 @@ module.exports = {
             client.updateServerSetting(msg.guild.id, 'automodlog', ch.id); client.settings.delete(msg.guild.id);
             return msg.reply(require('../lib/botPerms').channelText(msg.guild, ch, msg));
         }
-        return msg.reply('❓ Usage: .automod [status|enable|disable|sensitivity|whitelist|domains|channels|log|appeals]');
+        return msg.reply(_TP('usage'));
     },
 
     async handleMessage(message, client, db) {
