@@ -1,0 +1,16 @@
+{
+  "server_only": "❌ 这个命令只能在服务器里使用。",
+  "no_permission": "❌ 你需要 **管理服务器** 权限才能修改配装图片。",
+  "unknown_weapon": "❌ **{weapon}** 不在武器列表中。请从这些里选一个：`{list}`",
+  "not_image": "❌ 这个文件不是图片。请发送 PNG 或 JPG 截图。",
+  "no_image_prefix": "📎 请把截图附在同一条消息里，例如发送 `.setloadout AK117` 并附上图片。",
+  "no_image_slash": "📎 请在 **image** 选项里添加截图，然后重新运行命令。",
+  "saved": "✅ **{weapon}** 现在使用你的截图了。成员下次打开军械库时就能看到。",
+  "removed": "🗑️ 已删除 **{weapon}** 的图片。在有人添加新图片之前，成员会看到设置提示。",
+  "failed": "⚠️ 无法保存这张图片，请稍后再试。",
+  "list_title": "📋 **本服务器的配装图片**",
+  "list_empty": "还没有设置任何武器图片。发送 `.setloadout <武器>` 并附上截图即可添加。\n可设置的武器：`{list}`",
+  "list_item_set": "✅ **{weapon}**",
+  "list_missing": "**尚未设置**",
+  "list_item_missing": "⬜ {weapon}"
+}

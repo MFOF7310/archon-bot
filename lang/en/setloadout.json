@@ -1,0 +1,16 @@
+{
+  "server_only": "❌ This command only works inside a server.",
+  "no_permission": "❌ You need the **Manage Server** permission to change loadout images.",
+  "unknown_weapon": "❌ **{weapon}** isn't on the weapon list. Pick one of these: `{list}`",
+  "not_image": "❌ That file isn't an image. Send a PNG or JPG screenshot.",
+  "no_image_prefix": "📎 Attach the screenshot to the same message, for example `.setloadout AK117` with the image added.",
+  "no_image_slash": "📎 Add your screenshot in the **image** option, then run the command again.",
+  "saved": "✅ **{weapon}** now uses your screenshot. Members will see it next time they open the armory.",
+  "removed": "🗑️ Removed the **{weapon}** image. Members will see the setup prompt until someone adds a new one.",
+  "failed": "⚠️ I couldn't save that image. Please try again in a moment.",
+  "list_title": "📋 **Loadout images on this server**",
+  "list_empty": "No weapon images yet. Send `.setloadout <WEAPON>` with a screenshot attached to add one.\nWeapons you can set: `{list}`",
+  "list_item_set": "✅ **{weapon}**",
+  "list_missing": "**Not set yet**",
+  "list_item_missing": "⬜ {weapon}"
+}

@@ -1,0 +1,16 @@
+{
+  "server_only": "❌ Cette commande fonctionne uniquement dans un serveur.",
+  "no_permission": "❌ Il te faut la permission **Gérer le serveur** pour modifier les images de loadout.",
+  "unknown_weapon": "❌ **{weapon}** ne fait pas partie de la liste des armes. Choisis parmi : `{list}`",
+  "not_image": "❌ Ce fichier n'est pas une image. Envoie une capture en PNG ou JPG.",
+  "no_image_prefix": "📎 Joins la capture au même message, par exemple `.setloadout AK117` avec l'image ajoutée.",
+  "no_image_slash": "📎 Ajoute ta capture dans l'option **image**, puis relance la commande.",
+  "saved": "✅ **{weapon}** utilise maintenant ta capture. Les membres la verront la prochaine fois qu'ils ouvriront l'armurerie.",
+  "removed": "🗑️ Image de **{weapon}** supprimée. Les membres verront l'invite de configuration jusqu'à ce que quelqu'un en ajoute une nouvelle.",
+  "failed": "⚠️ Je n'ai pas pu enregistrer cette image. Réessaie dans un instant.",
+  "list_title": "📋 **Images de loadout sur ce serveur**",
+  "list_empty": "Aucune image d'arme pour l'instant. Envoie `.setloadout <ARME>` avec une capture jointe pour en ajouter une.\nArmes disponibles : `{list}`",
+  "list_item_set": "✅ **{weapon}**",
+  "list_missing": "**Pas encore définies**",
+  "list_item_missing": "⬜ {weapon}"
+}

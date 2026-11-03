@@ -1,33 +1,20 @@
+// plugins/setloadout.js
+// Per-server weapon images for the loadout armory. All text lives in lang/<locale>/setloadout.json.
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const path = require('path');
 const fs = require('fs');
+const i18n = require('../lib/i18n');
 
 const LOADOUT_IMG_DIR = path.join(__dirname, '../assets/loadouts');
 if (!fs.existsSync(LOADOUT_IMG_DIR)) fs.mkdirSync(LOADOUT_IMG_DIR, { recursive: true });
 
 const WEAPON_KEYS = ['AK117','FFAR1','DLQ','KRM','TUNDRA','BP50','KN44','HS0405','RYTEC','HDR','BY15'];
+const WEAPON_LIST = WEAPON_KEYS.join(', ');
 
-const RESPONSES = {
-    saved: (w) => [
-        `✅ Image for **${w}** saved — it'll show up next time someone browses the armory.`,
-        `🔫 **${w}** image locked in. Your server's loadout is looking sharp.`,
-        `💾 Done! **${w}** now has a custom screenshot on this server.`,
-    ],
-    removed: (w) => [
-        `🗑️ Image for **${w}** removed. Members will see a setup prompt instead.`,
-        `✅ **${w}** image cleared from this server.`,
-    ],
-    noAttachment: [
-        '📎 Attach a screenshot with this command — `.setloadout AK117` + image.',
-        '🖼️ No image found. Send the command with a screenshot attached.',
-    ],
-    notFound: (w) => `❌ **${w}** isn\'t a recognized weapon. Available: \`${WEAPON_KEYS.join(', ')}\``,
-    noPermission: '❌ You need **Manage Server** or **Administrator** permission to set loadout images.',
-    failed: '⚠️ Something went wrong saving that image. Try again.',
-    listTitle: '📋 **Loadout Images — This Server**\n',
-};
-
-function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+// Prefix uses the server language (same as meta.js); slash uses slashLang, which also honours .mylang
+const translator = (lang) => (k, v) => i18n.t(`setloadout.${k}`, lang, v);
+const prefixLang = (client, guildId) =>
+    client.detectLanguage ? client.detectLanguage('setloadout', guildId) : 'en';
 
 async function downloadToFile(url, dest) {
     const res = await fetch(url, {
@@ -55,7 +42,25 @@ function clearOldImage(db, guildId, weaponKey) {
     try {
         const row = db.prepare('SELECT image_path FROM loadout_images WHERE guild_id = ? AND weapon_key = ?').get(guildId, weaponKey);
         if (row?.image_path && fs.existsSync(row.image_path)) fs.unlinkSync(row.image_path);
-    } catch(e) {}
+    } catch (e) {}
+}
+
+function imagePathFor(guildId, weapon) {
+    const dir = path.join(LOADOUT_IMG_DIR, guildId);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return path.join(dir, `${weapon}.jpg`);
+}
+
+function listText(db, guildId, tr) {
+    const rows = db.prepare('SELECT weapon_key FROM loadout_images WHERE guild_id = ? ORDER BY weapon_key').all(guildId);
+    if (!rows.length) return `${tr('list_title')}\n\n${tr('list_empty', { list: WEAPON_LIST })}`;
+    const setKeys = rows.map(r => r.weapon_key);
+    const parts = [tr('list_title'), setKeys.map(w => tr('list_item_set', { weapon: w })).join('\n')];
+    const missing = WEAPON_KEYS.filter(k => !setKeys.includes(k));
+    if (missing.length) {
+        parts.push(`${tr('list_missing')}\n${missing.map(w => tr('list_item_missing', { weapon: w })).join('\n')}`);
+    }
+    return parts.join('\n\n');
 }
 
 module.exports = {
@@ -68,7 +73,7 @@ module.exports = {
 
     data: new SlashCommandBuilder()
         .setName('setloadout')
-        .setDescription('🔫 Set a custom weapon image for this server\'s loadout armory')
+        .setDescription("🔫 Set a custom weapon image for this server's loadout armory")
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addStringOption(o => o
             .setName('weapon')
@@ -89,69 +94,58 @@ module.exports = {
         ),
 
     run: async (client, message, args, db) => {
+        let tr = translator('en');
         try {
             const guildId = message.guild?.id;
-            if (!guildId) return message.reply('❌ Server only.').catch(() => {});
+            if (!guildId) return message.reply(tr('server_only')).catch(() => {});
+            tr = translator(prefixLang(client, guildId));
 
-            // Permission check
             const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.ManageGuild)
                 || message.member?.permissions?.has(PermissionFlagsBits.Administrator);
-            if (!isAdmin) return message.reply(RESPONSES.noPermission).catch(() => {});
+            if (!isAdmin) return message.reply(tr('no_permission')).catch(() => {});
 
-            const sub = args[0]?.toUpperCase();
+            const weapon = args[0]?.toUpperCase();
             const action = args[1]?.toLowerCase();
 
-            // List all set images
-            if (sub === 'LIST' || !sub) {
-                const rows = db.prepare('SELECT weapon_key, updated_at FROM loadout_images WHERE guild_id = ? ORDER BY weapon_key').all(guildId);
-                if (!rows.length) {
-                    return message.reply(
-                        `${RESPONSES.listTitle}No weapon images set yet.\n\nUse \`.setloadout <WEAPON>\` + attach a screenshot to add one.\nAvailable weapons: \`${WEAPON_KEYS.join(', ')}\``
-                    ).catch(() => {});
-                }
-                const set = rows.map(r => `✅ **${r.weapon_key}**`).join('\n');
-                const missing = WEAPON_KEYS.filter(k => !rows.some(r => r.weapon_key === k)).map(k => `⬜ ${k}`).join('\n');
-                return message.reply(`${RESPONSES.listTitle}\n${set}\n\n**Not set:**\n${missing}`).catch(() => {});
+            if (!weapon || weapon === 'LIST') {
+                return message.reply(listText(db, guildId, tr)).catch(() => {});
+            }
+            if (!WEAPON_KEYS.includes(weapon)) {
+                return message.reply(tr('unknown_weapon', { weapon, list: WEAPON_LIST })).catch(() => {});
             }
 
-            // Validate weapon
-            if (!WEAPON_KEYS.includes(sub)) return message.reply(RESPONSES.notFound(sub)).catch(() => {});
-
-            // Remove
             if (action === 'remove') {
-                clearOldImage(db, guildId, sub);
-                removeImageFromDB(db, guildId, sub);
-                return message.reply(pick(RESPONSES.removed(sub))).catch(() => {});
+                clearOldImage(db, guildId, weapon);
+                removeImageFromDB(db, guildId, weapon);
+                return message.reply(tr('removed', { weapon })).catch(() => {});
             }
 
-            // Save new image
             const attachment = message.attachments?.first();
-            if (!attachment) return message.reply(pick(RESPONSES.noAttachment)).catch(() => {});
-
-            const ct = attachment.contentType || '';
-            if (!ct.startsWith('image/')) return message.reply('❌ That file doesn\'t look like an image.').catch(() => {});
+            if (!attachment) return message.reply(tr('no_image_prefix')).catch(() => {});
+            if (!(attachment.contentType || '').startsWith('image/')) {
+                return message.reply(tr('not_image')).catch(() => {});
+            }
 
             await message.react('⏳').catch(() => {});
-            clearOldImage(db, guildId, sub);
-
-            const guildDir = path.join(LOADOUT_IMG_DIR, guildId);
-            if (!fs.existsSync(guildDir)) fs.mkdirSync(guildDir, { recursive: true });
-            const dest = path.join(guildDir, `${sub}.jpg`);
-
+            clearOldImage(db, guildId, weapon);
+            const dest = imagePathFor(guildId, weapon);
             await downloadToFile(attachment.url, dest);
-            saveImageToDB(db, guildId, sub, dest);
-            await message.reply(pick(RESPONSES.saved(sub))).catch(() => {});
-
-        } catch(err) {
+            saveImageToDB(db, guildId, weapon, dest);
+            return message.reply(tr('saved', { weapon })).catch(() => {});
+        } catch (err) {
             console.error('[SETLOADOUT]', err);
-            message.reply(RESPONSES.failed).catch(() => {});
+            message.reply(tr('failed')).catch(() => {});
         }
     },
 
     execute: async (interaction, client) => {
+        let tr = translator('en');
         try {
+            tr = translator(i18n.slashLang(interaction));
             const guildId = interaction.guild?.id;
-            const db = client.db;
+            if (!guildId) return interaction.reply({ content: tr('server_only'), flags: 64 });
+
+            const db = client?.db || interaction.client.db;
             const weapon = interaction.options.getString('weapon');
             const attachment = interaction.options.getAttachment('image');
             const action = interaction.options.getString('action');
@@ -161,30 +155,22 @@ module.exports = {
             if (action === 'remove') {
                 clearOldImage(db, guildId, weapon);
                 removeImageFromDB(db, guildId, weapon);
-                return interaction.editReply(pick(RESPONSES.removed(weapon)));
+                return interaction.editReply(tr('removed', { weapon }));
             }
-
-            if (!attachment) {
-                return interaction.editReply(
-                    `${pick(RESPONSES.noAttachment)}\n\nTo set via slash command, use the \`image\` option to attach your screenshot.`
-                );
-            }
-
-            const ct = attachment.contentType || '';
-            if (!ct.startsWith('image/')) return interaction.editReply('❌ That file doesn\'t look like an image.');
+            if (!attachment) return interaction.editReply(tr('no_image_slash'));
+            if (!(attachment.contentType || '').startsWith('image/')) return interaction.editReply(tr('not_image'));
 
             clearOldImage(db, guildId, weapon);
-            const guildDir = path.join(LOADOUT_IMG_DIR, guildId);
-            if (!fs.existsSync(guildDir)) fs.mkdirSync(guildDir, { recursive: true });
-            const dest = path.join(guildDir, `${weapon}.jpg`);
-
+            const dest = imagePathFor(guildId, weapon);
             await downloadToFile(attachment.url, dest);
             saveImageToDB(db, guildId, weapon, dest);
-            return interaction.editReply(pick(RESPONSES.saved(weapon)));
-
-        } catch(err) {
+            return interaction.editReply(tr('saved', { weapon }));
+        } catch (err) {
             console.error('[SETLOADOUT SLASH]', err);
-            interaction.editReply(RESPONSES.failed).catch(() => {});
+            const reply = interaction.deferred || interaction.replied
+                ? interaction.editReply(tr('failed'))
+                : interaction.reply({ content: tr('failed'), flags: 64 });
+            reply.catch(() => {});
         }
     }
 };
