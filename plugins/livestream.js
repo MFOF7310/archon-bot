@@ -234,7 +234,7 @@ function buildLiveEmbed(channelId, live, handle, client, pingText) {
     const tag = handle ? '@' + handle : channelId;
     const title = live.title || 'Live stream';
     const watchUrl = live.url || (handle ? `https://youtube.com/@${handle}/live` : `https://youtube.com/channel/${channelId}/live`);
-    const liveEm = em('livestream', '🔴', client);
+    const liveEm = EMOJIS.livestream || '🔴';
     const header = isPreview ? `## 🧪 Test preview · ${tag}` : `## ${liveEm} ${tag} is live right now`;
     const body = isPreview
         ? `**${title}**\nThis is a layout preview, not a real alert. ${tag} isn't currently streaming.`
