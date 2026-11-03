@@ -342,6 +342,7 @@ async function runCycle(client, db, priorityOnly) {
         const rows = priorityOnly
             ? db.prepare('SELECT * FROM youtube_notifications WHERE priority = 1').all()
             : db.prepare('SELECT * FROM youtube_notifications').all();
+        if (!priorityOnly) console.log(`[YOUTUBE] normal cycle · ${rows.length} tracked`);
         if (!rows.length) return;
 
         const byChannel = new Map();
@@ -374,11 +375,11 @@ async function runCycle(client, db, priorityOnly) {
 
             // Uploads — only check on normal cycle (RSS is cheap)
             if (!priorityOnly) {
-                const up = await fetchLatestUpload(chId);
+                const up = await fetchLatestUpload(chId); if (!up) console.log(`[YOUTUBE] feed unreadable for ${handle || chId}`);
                 if (up) {
                     for (const t of tracks) {
                         if (t.last_video_id && t.last_video_id !== up.id) {
-                            await sendNotification(client, db, t.guild_id, chId, handle, up, 'video');
+                            const sent = await sendNotification(client, db, t.guild_id, chId, handle, up, 'video'); console.log(`[YOUTUBE] new video ${up.id} on ${handle || chId} -> ${t.guild_id}: ${sent.ok ? 'sent' : 'failed (' + sent.reason + ')'}`);
                         }
                         db.prepare('UPDATE youtube_notifications SET last_video_id = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(up.id, t.guild_id, chId);
                     }
