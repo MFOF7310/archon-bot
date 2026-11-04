@@ -5011,65 +5011,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
-// ================= MUSIC PANEL BUTTONS (Kazagumo/Lavalink) =================
-    if (interaction.isButton() && ['mc_prev','mc_pause','mc_skip','mc_stop','mc_loop','mc_queue'].includes(interaction.customId)) {
-        try {
-            const { getMeta, buildQueueEmbed, updatePersistentPanel, ARCHON } = require('./plugins/music.js');
-            const { EmbedBuilder } = require('discord.js');
-
-            if (!interaction.member?.voice?.channel) {
-                return interaction.reply({ content: `${require('./config/emojis').warning} Join a voice channel first, then try again.`, flags: 64 }).catch(() => {});
-            }
-
-            await interaction.deferUpdate().catch(() => {});
-
-            const kz = client.kazagumo;
-            if (!kz) return;
-            const player = kz.players.get(interaction.guild.id);
-            if (!player) return;
-            const meta = getMeta(interaction.guild.id);
-
-            switch (interaction.customId) {
-                case 'mc_prev': {
-                    await interaction.followUp({ content: '⏮️ Previous track not supported in Lavalink mode yet.', flags: 64 }).catch(() => {});
-                    break;
-                }
-                case 'mc_pause': {
-                    player.paused ? await player.pause(false) : await player.pause(true);
-                    await updatePersistentPanel(player, client).catch(() => {});
-                    break;
-                }
-                case 'mc_skip': {
-                    await player.skip();
-                    break;
-                }
-                case 'mc_stop': {
-                    if (meta.persistentMsg) {
-                        const stoppedEmbed = new EmbedBuilder().setColor(0xff3333)
-                            .setDescription('```ansi\n\u001b[1;31m▸ STOPPED\u001b[0m\n```');
-                        await meta.persistentMsg.edit({ embeds: [stoppedEmbed], components: [] }).catch(() => {});
-                        meta.persistentMsg = null;
-                    }
-                    await player.destroy();
-                    break;
-                }
-                case 'mc_loop': {
-                    const modes = ['none', 'track', 'queue'];
-                    const next = modes[(modes.indexOf(player.loop) + 1) % modes.length];
-                    player.setLoop(next);
-                    await updatePersistentPanel(player, client).catch(() => {});
-                    break;
-                }
-                case 'mc_queue': {
-                    const qEmbed = buildQueueEmbed(player, client);
-                    await interaction.followUp({ embeds: [qEmbed], flags: 64 }).catch(() => {});
-                    break;
-                }
-            }
-        } catch(err) {
-            console.error('[MUSIC BUTTON GLOBAL]', err.message);
-        }
-        return;
+// ================= MUSIC PANEL BUTTONS =================
+// Every music button (live panel or a /music nowplaying copy) is handled once, in plugins/music.js.
+// The old handler here was for a previous music engine (Lavalink) and answered these clicks first, so they often did nothing.
+    if (interaction.isButton() && interaction.customId.startsWith('mc_')) {
+        return require('./plugins/music.js').handlePanelButton(interaction, client)
+            .catch(e => console.error('[MUSIC BUTTON]', e.message));
     }
 
 // ================= TICKET SYSTEM COMPONENTS (Select Menu + Buttons + Modals) =================

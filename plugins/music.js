@@ -49,30 +49,65 @@ const http = require('http');
 const execAsync = promisify(exec);
 
 
+// Where each server's live panel is, so a restart can remove it with one call instead of reading every channel
+let _panelTableReady = false;
+function panelStore(db) {
+    if (!db) return null;
+    if (_panelTableReady) return db;
+    try {
+        db.prepare('CREATE TABLE IF NOT EXISTS music_panels (guild_id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, message_id TEXT NOT NULL)').run();
+        _panelTableReady = true;
+        return db;
+    } catch (e) { return null; }
+}
+function rememberPanel(client, msg) {
+    const db = panelStore(client?.db);
+    if (!db || !msg?.guildId) return;
+    try { db.prepare('INSERT OR REPLACE INTO music_panels (guild_id, channel_id, message_id) VALUES (?, ?, ?)').run(msg.guildId, msg.channelId, msg.id); } catch (e) {}
+}
+function forgetPanel(client, guildId) {
+    const db = panelStore(client?.db);
+    if (!db) return;
+    try { db.prepare('DELETE FROM music_panels WHERE guild_id = ?').run(guildId); } catch (e) {}
+}
+// Only the bot's own music panels: other cards (games, /meta, tickets) are never touched
+function isMusicPanel(m) {
+    if (!m?.flags?.has?.(MessageFlags.IsComponentsV2)) return false;
+    const raw = JSON.stringify(m.components || []);
+    return raw.includes('mc_pause') || raw.includes('mc_skip');
+}
+
 async function autoCleanOldPanels(client) {
     // Wait 10 seconds after boot to let channels cache load
     setTimeout(async () => {
-        for (const guild of client.guilds.cache.values()) {
-            // Find text channels with recent messages
-            for (const channel of guild.channels.cache.values()) {
-                if (channel.type !== 0) continue; // Only text channels
-                try {
-                    const msgs = await channel.messages.fetch({ limit: 20 }).catch(() => null);
-                    if (!msgs) continue;
-                    for (const m of msgs.values()) {
-                        if (m.author.id !== client.user.id) continue;
-                        // If it's a V2 container and mentions "ARCHON MUSIC" or has music buttons
-                        if (m.flags?.has(MessageFlags.IsComponentsV2)) {
-                            const raw = JSON.stringify(m.components);
-                            if (raw.includes('mc_pause') || raw.includes('mc_skip')) {
-                                await m.delete().catch(() => {});
-                                console.log(`[MUSIC CLEANUP] Deleted orphaned music panel in #${channel.name}`);
-                            }
+        const db = client.db;
+        let firstRun = false;
+        try { firstRun = !db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'music_panels'").get(); } catch (e) {}
+        if (!panelStore(db)) return;
+        if (firstRun) {
+            // Once, the first time: panels posted before their place was remembered (reads the last messages of each channel)
+            for (const guild of client.guilds.cache.values()) {
+                for (const channel of guild.channels.cache.values()) {
+                    if (channel.type !== 0) continue;
+                    try {
+                        const msgs = await channel.messages.fetch({ limit: 20 }).catch(() => null);
+                        if (!msgs) continue;
+                        for (const m of msgs.values()) {
+                            if (m.author.id === client.user.id && isMusicPanel(m)) await m.delete().catch(() => {});
                         }
-                    }
-                } catch(e) {}
+                    } catch (e) {}
+                }
             }
+            return;
         }
+        let rows = [];
+        try { rows = db.prepare('SELECT guild_id, channel_id, message_id FROM music_panels').all(); } catch (e) {}
+        for (const r of rows) {
+            const ch = client.channels.cache.get(r.channel_id);
+            if (ch?.messages) await ch.messages.delete(r.message_id).catch(() => {});
+        }
+        try { db.prepare('DELETE FROM music_panels').run(); } catch (e) {}
+        if (rows.length) console.log(`[MUSIC CLEANUP] Removed ${rows.length} panel(s) left before the restart`);
     }, 10000);
 }
 
@@ -396,7 +431,7 @@ function buildPanelContainer(q, client) {
             new TextDisplayBuilder().setContent((isPaused ? '## ⏸️ ' : `## ${resolveEmoji('music', q._client) || '🎵'} `) + (isPaused ? tx('music.paused_title', lang) : tx('music.now_playing', lang))),
             new TextDisplayBuilder().setContent(
                 `${displayTitle}\n` +
-                `[Open on ${t.spotifyUrl ? 'Spotify' : 'YouTube'}](${sourceUrl})\n\n` +
+                `[${tx('music.open_on', lang, { site: t.spotifyUrl ? 'Spotify' : 'YouTube' })}](${sourceUrl})\n\n` +
                 `• ${tx('music.added_by', lang)} ${requester}\n` +
                 `• 🔊 ${q.voiceChannel?.name?.substring(0, 22) || tx('music.voice_label', lang)}`
             )
@@ -416,7 +451,7 @@ function buildPanelContainer(q, client) {
 
     const filterIcon = FILTER_EMOJI[q.audioFilter] || '🎵';
     const footer = new TextDisplayBuilder().setContent(
-        `-# BAMAKO_223 🇲🇱 • Auto: ${q.autoplay ? 'On' : 'Off'} • ${q.silentPanel ? '🔕' : '🔔'} • ${filterIcon} ${q.audioFilter || 'Normal'}`
+        `-# BAMAKO_223 🇲🇱 • Autoplay ${q.autoplay ? tx('music.on_short', lang) : tx('music.off_short', lang)} • ${q.silentPanel ? '🔕' : '🔔'} • ${filterIcon} ${q.audioFilter || 'Normal'}`
     );
 
     return new ContainerBuilder()
@@ -430,123 +465,151 @@ function buildPanelContainer(q, client) {
         .addTextDisplayComponents(footer);
 }
 
-function attachCollector(q, msg) {
-    const client = q._client;
-    // Stop any previous collector to prevent duplicate handlers
-    if (q._panelCollector) {
-        try { q._panelCollector.stop('new-panel'); } catch(e) {}
-        q._panelCollector = null;
+// ═══════════════════════════════════════════════════════
+// PANEL BUTTONS — one handler, answered in a single call
+// Every button on a panel (the live one, or a /music nowplaying copy) arrives here from index.js.
+// Pause, loop, autoplay and volume redraw the panel as the answer itself, so the click shows at once. Before,
+// each click waited for an extra "Paused" message and then a separate edit, and old code in index.js for a
+// previous music engine answered six of these buttons first, so many clicks did nothing at all.
+// ═══════════════════════════════════════════════════════
+const V2 = MessageFlags.IsComponentsV2;
+const NO_PINGS = { parse: [] };
+const cmdPlay = () => mention(global.client, 'music', 'play');
+
+function noticeCard(color, title, line) {
+    const c = new ContainerBuilder().setAccentColor(color)
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${title}${line ? `\n-# ${line}` : ''}`));
+    return { components: [c], flags: V2, allowedMentions: NO_PINGS };
+}
+const stoppedCard = (lang, userId) => noticeCard(0xED4245, tx('music.stopped_title', lang), tx('music.stopped_by', lang, { user: `<@${userId}>`, cmd_play: cmdPlay() }));
+const closedCard = (lang) => noticeCard(0x4E5058, tx('music.session_over', lang), tx('music.session_over_hint', lang, { cmd_play: cmdPlay() }));
+
+function buildQueueCard(q, lang) {
+    const clean = (x) => String(x || '').replace(/^🎵\s*/, '');
+    const now = q.currentTrack;
+    const next = q.tracks.slice(0, 10).map((tr, n) => `\`${String(n + 1).padStart(2, ' ')}\` ${clean(tr.title).substring(0, 60)}${tr.duration ? ` · ${formatTime(tr.duration)}` : ''}`);
+    const more = q.tracks.length > 10 ? `\n-# ${tx('music.queue_more', lang, { n: q.tracks.length - 10 })}` : '';
+    const c = new ContainerBuilder().setAccentColor(0x5865F2)
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${tx('music.queue_title', lang)}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.now_playing', lang)}**\n${now ? clean(now.title).substring(0, 80) : '—'}`))
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.up_next', lang, { n: q.tracks.length })}**\n${next.join('\n') || tx('music.queue_empty', lang)}${more}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${tx('music.stats_line', lang, { n: q.tracks.length, vol: q.volume, loop: q.loop ? tx('music.on_short', lang) : tx('music.off_short', lang) })}`));
+    return { components: [c], flags: V2, allowedMentions: NO_PINGS };
+}
+
+async function handlePanelButton(i, client) {
+    const lang = require('../lib/pick-lang').pickLang(client, i.guildId, i, i.user?.id);
+    const q = getQueue(i.guildId);
+
+    // Nothing playing any more (stopped, or the bot restarted): close this panel so nobody keeps pressing it
+    if (!q || q.destroyed || !q.currentTrack) {
+        return i.update(closedCard(lang)).catch(() => i.reply({ content: t('music.no_active_queue', lang, { cmd_play: cmdPlay() }), flags: 64 }).catch(() => {}));
     }
-    // Collector lives until the panel is manually deleted (no timeout)
-    const collector = msg.createMessageComponentCollector({ time: 0 });
-    q._panelCollector = collector;
-    collector.on('collect', async (i) => {
-        const _ssC = client?.getServerSettings?.(q.guild?.id) || {};
-        const lang = _ssC.language && _ssC.language !== 'auto' ? _ssC.language : 'en';
-        // ── ZOMBIE GUARD: if this click is on an old panel, tell user to scroll down ──
-        if (i.message.id !== q.panelMsgId) {
-            return i.reply({ content: t('music.outdated_panel', lang), flags: 64 }).catch(() => {});
+    const isMain = i.message?.id === q.panelMsgId;
+    const isCopy = !!(i.message?.interactionMetadata || i.message?.interaction);
+    // A panel from an earlier track that was not removed: point to the live one and remove this one
+    if (!isMain && !isCopy) {
+        await i.reply({ content: t('music.outdated_panel', lang), flags: 64 }).catch(() => {});
+        return i.message?.delete?.().catch(() => {});
+    }
+    const vc = i.member?.voice?.channel;
+    if (!vc) return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
+    const botVc = i.guild?.members?.me?.voice?.channelId || q.voiceChannel?.id;
+    if (botVc && vc.id !== botVc) return i.reply({ content: t('music.same_voice', lang, { channel: `<#${botVc}>` }), flags: 64 }).catch(() => {});
+
+    const redraw = async () => {
+        await i.update({ components: [buildPanelContainer(q, client)], flags: V2, allowedMentions: NO_PINGS })
+            .catch((e) => console.error('[MUSIC PANEL] click:', e.message));
+        if (isMain) { if (q._isUpdatingPanel) q._pendingPanelUpdate = true; } // a timed refresh already on its way gets one more pass
+        else updatePersistentPanel(q).catch(() => {});                       // a copy: keep the live panel in step
+    };
+    const clean = (x) => String(x || '').replace(/^🎵\s*/, '');
+
+    switch (i.customId) {
+        case 'mc_pause': {
+            if (q.player.state.status === AudioPlayerStatus.Paused) {
+                q.player.unpause();
+                q.totalPaused += Date.now() - (q.pausedAt || Date.now());
+                q.pausedAt = null;
+            } else {
+                q.player.pause();
+                q.pausedAt = Date.now();
+            }
+            return redraw();
         }
-        if (!i.member?.voice?.channel) return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
-        let deferred = true;
-        await i.deferUpdate().catch(() => { deferred = false; });
-        const qNow = getQueue(q.guild.id);
-        if (!qNow) return;
-        if (!deferred && i.customId === 'mc_queue') {
-            await qNow.textChannel?.send({ embeds: [buildQueueEmbed(qNow, client)] }).catch(() => {});
+        case 'mc_loop':
+            q.loop = !q.loop; // the Idle handler replays the track; nothing to add to the queue here
+            return redraw();
+        case 'mc_autoplay':
+            q.autoplay = !q.autoplay;
+            return redraw();
+        case 'mc_voldown':
+        case 'mc_volup': {
+            q.volume = Math.max(0, Math.min(100, (q.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
+            try { q.player?.state?.resource?.volume?.setVolume(q.volume / 100); } catch (e) {}
+            return redraw();
+        }
+        case 'mc_queue':
+            return i.reply({ ...buildQueueCard(q, lang), flags: V2 | MessageFlags.Ephemeral }).catch(() => {});
+        case 'mc_skip':
+            await i.deferUpdate().catch(() => {});
+            q.player.stop(); // Idle → the next track posts a fresh panel
+            return;
+        case 'mc_prev': {
+            if (!q.trackHistory?.length) return i.reply({ content: t('music.prev_nothing', lang), flags: 64 }).catch(() => {});
+            await i.deferUpdate().catch(() => {});
+            const prev = q.trackHistory.shift();
+            if (q.currentTrack) q.tracks.unshift({ ...q.currentTrack });
+            q.tracks.unshift(prev);
+            q.player.stop(); // Idle → playNext
             return;
         }
-        if (!deferred) return;
-
-        if (i.customId === 'mc_prev') {
-            if (!qNow.trackHistory || qNow.trackHistory.length === 0) {
-                await i.followUp({ content: t('music.prev_nothing', lang), flags: 64 }).catch(() => {});
-                return;
-            }
-            const prev = qNow.trackHistory.shift();
-            if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
-            qNow.tracks.unshift(prev);
-            await i.followUp({ content: t('music.going_back', lang, { emoji: EMOJIS.mc_autoplay, title: prev.title?.substring(0,50) }), flags: 64 }).catch(() => {});
-            qNow.player.stop(); // Triggers Idle → playNext
-        } else if (i.customId === 'mc_pause') {
-            if (qNow.player.state.status === AudioPlayerStatus.Paused) {
-                qNow.player.unpause();
-                qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now());
-                qNow.pausedAt = null;
-                await i.followUp({ content: t('music.resumed', lang, { emoji: EMOJIS.check }), flags: 64 }).catch(() => {});
-            } else {
-                qNow.player.pause();
-                qNow.pausedAt = Date.now();
-                await i.followUp({ content: t('music.paused', lang, { emoji: EMOJIS.mc_pause }), flags: 64 }).catch(() => {});
-            }
-            updatePersistentPanel(qNow).catch(() => {});
-        } else if (i.customId === 'mc_skip') {
-            await i.followUp({ content: t('music.skipped', lang, { emoji: EMOJIS.mc_skip, title: (qNow.currentTrack?.title || 'track').replace(/^🎵\s*/, '').substring(0,50) }), flags: 64 }).catch(() => {});
-            qNow.player.stop();
-        } else if (i.customId === 'mc_stop') {
-            if (qNow.persistentMsg) {
-                await qNow.persistentMsg.delete().catch(() => {});
-                qNow.persistentMsg = null; qNow.panelMsgId = null;
-                const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                    .setDescription(t('music.stopped', lang, { cmd_play: mention(global.client, 'music', 'play') }));
-                await qNow.textChannel?.send({ embeds: [stoppedEmbed] }).catch(() => {});
-            }
-            destroyQueue(q.guild.id);
-        } else if (i.customId === 'mc_voldown' || i.customId === 'mc_volup') {
-            qNow.volume = Math.max(0, Math.min(100, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
-            try { qNow.player?.state?.resource?.volume?.setVolume(qNow.volume / 100); } catch(e) {}
-            await i.followUp({ content: t('music.volume_set', lang, { emoji: i.customId === 'mc_volup' ? EMOJIS.mc_volume_up : EMOJIS.mc_volume_down, vol: qNow.volume }), flags: 64 }).catch(() => {});
-            updatePersistentPanel(qNow).catch(() => {});
-        } else if (i.customId === 'mc_loop') {
-            qNow.loop = !qNow.loop;
-            // NOTE: do NOT unshift here — AudioPlayerStatus.Idle handler does it
-            await i.followUp({ content: t(qNow.loop ? 'music.loop_on' : 'music.loop_off', lang, { emoji: EMOJIS.mc_loop }), flags: 64 }).catch(() => {});
-            updatePersistentPanel(qNow).catch(() => {});
-        } else if (i.customId === 'mc_autoplay') {
-            qNow.autoplay = !qNow.autoplay;
-            await i.followUp({ content: t(qNow.autoplay ? 'music.autoplay_on' : 'music.autoplay_off', lang, { emoji: EMOJIS.mc_autoplay }), flags: 64 }).catch(() => {});
-            updatePersistentPanel(qNow).catch(() => {});
-        } else if (i.customId === 'mc_like') {
-            const trk = qNow.currentTrack;
-            if (!trk) return i.followUp({ content: t('music.nothing_playing_like', lang), flags: 64 }).catch(() => {});
+        case 'mc_stop': {
+            const card = stoppedCard(lang, i.user.id);
+            await i.update(card).catch(() => i.deferUpdate().catch(() => {}));
+            // Pressed on a copy: the live panel becomes the same "stopped" card
+            if (!isMain && q.persistentMsg) q.persistentMsg.edit(card).catch(() => {});
+            q.persistentMsg = null; q.panelMsgId = null;
+            forgetPanel(client, i.guildId);
+            destroyQueue(i.guildId);
+            return;
+        }
+        case 'mc_like': {
+            const trk = q.currentTrack;
             const all = loadLikes();
             const mine = all[i.user.id] = all[i.user.id] || [];
             const key = (trk.query || trk.title).toLowerCase();
             if (mine.some(x => (x.query || x.title).toLowerCase() === key)) {
-                return i.followUp({ content: t('music.like_already_saved', lang, { title: trk.title.substring(0, 50) }), flags: 64 }).catch(() => {});
+                return i.reply({ content: t('music.like_already_saved', lang, { title: clean(trk.title).substring(0, 50) }), flags: 64 }).catch(() => {});
             }
-            mine.unshift({ title: trk.title.replace(/^🎵\s*/, ''), query: trk.query || trk.title, folder: '❤️ Liked Songs', likedAt: Date.now() });
+            mine.unshift({ title: clean(trk.title), query: trk.query || trk.title, folder: '❤️ Liked Songs', likedAt: Date.now() });
             saveLikes(all);
-            await i.followUp({ content: t('music.like_saved', lang, { title: trk.title.substring(0, 50), count: mine.length, cmd_library: mention(global.client, 'music', 'library') }), flags: 64 }).catch(() => {});
-        } else if (i.customId === 'mc_dislike') {
-            const trk = qNow.currentTrack;
-            if (!trk) return i.followUp({ content: t('music.nothing_playing_dislike', lang), flags: 64 }).catch(() => {});
-            const artist = (trk.artist && trk.artist !== 'Unknown') ? trk.artist : trk.title.replace(/^🎵\s*/, '');
+            return i.reply({ content: t('music.like_saved', lang, { title: clean(trk.title).substring(0, 50), count: mine.length, cmd_library: mention(global.client, 'music', 'library') }), flags: 64 }).catch(() => {});
+        }
+        case 'mc_dislike': {
+            const trk = q.currentTrack;
+            const artist = (trk.artist && trk.artist !== 'Unknown') ? trk.artist : clean(trk.title);
             const all = loadDislikes();
-            const list = all[qNow.guild.id] = all[qNow.guild.id] || [];
+            const list = all[q.guild.id] = all[q.guild.id] || [];
             const key = artist.toLowerCase();
             if (!list.some(x => x.key === key)) {
                 list.unshift({ key, label: artist.substring(0, 60), at: Date.now() });
                 if (list.length > 50) list.pop();
                 saveDislikes(all);
             }
-            await i.followUp({ content: t('music.dislike_noted', lang, { emoji: EMOJIS.mc_not_for_me, title: trk.title.replace(/^🎵\s*/, '').substring(0, 50), artist: artist.substring(0, 40), emoji2: EMOJIS.mc_skip }), flags: 64 }).catch(() => {});
-            qNow.player.stop(); // Triggers Idle → playNext
-        } else if (i.customId === 'mc_queue') {
-            await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
+            await i.reply({ content: t('music.dislike_noted', lang, { emoji: EMOJIS.mc_not_for_me, title: clean(trk.title).substring(0, 50), artist: artist.substring(0, 40), emoji2: EMOJIS.mc_skip }), flags: 64 }).catch(() => {});
+            q.player.stop(); // Idle → playNext
+            return;
         }
-    });
+        default:
+            return i.deferUpdate().catch(() => {});
+    }
 }
 
 async function sendPanel(q) {
     if (q.destroyed) return; // Prevent zombie panels on stop
     const client = q._client;
-
-    // ── Stop old collector so it doesn't eat clicks meant for the new panel ──
-    if (q._panelCollector) {
-        try { q._panelCollector.stop('relocate'); } catch(e) {}
-        q._panelCollector = null;
-    }
 
     // ── Kill old panel by ID (direct API, no fetch needed) ──
     if (q.panelMsgId) {
@@ -554,26 +617,27 @@ async function sendPanel(q) {
         q.panelMsgId = null; q.persistentMsg = null;
     }
 
-    // ── Sweep only CV2 panels (not regular embeds/stop messages) ──
-    try {
-        const recent = await q.textChannel.messages.fetch({ limit: 20 });
-        for (const [, m] of recent) {
-            if (m.author.id !== client.user.id) continue;
-            // Only delete CV2 container messages (flags bit 32768)
-            const isCV2Panel = m.flags?.has(MessageFlags.IsComponentsV2);
-            if (isCV2Panel) await m.delete().catch(() => {});
-        }
-    } catch(e) {}
+    // ── First panel of the session: clear music panels left in the channel (music panels only, never other cards) ──
+    if (!q._panelSwept) {
+        q._panelSwept = true;
+        try {
+            const recent = await q.textChannel.messages.fetch({ limit: 20 });
+            for (const [, m] of recent) {
+                if (m.author.id === client.user.id && isMusicPanel(m)) await m.delete().catch(() => {});
+            }
+        } catch(e) {}
+    }
 
-    const flags = MessageFlags.IsComponentsV2 | (q.silentPanel ? MessageFlags.SuppressNotifications : 0);
+    const flags = V2 | (q.silentPanel ? MessageFlags.SuppressNotifications : 0);
     const msg = await q.textChannel.send({
         components: [buildPanelContainer(q, client)],
         flags,
+        allowedMentions: NO_PINGS,
     }).catch(() => null);
     if (msg) {
         q.persistentMsg = msg;
         q.panelMsgId = msg.id;
-        attachCollector(q, msg);
+        rememberPanel(client, msg);
     }
 }
 
@@ -1331,7 +1395,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         const menu = new StringSelectMenuBuilder()
             .setCustomId(`ms_suggest_${Date.now()}`)
             .setPlaceholder(t('music.suggest_placeholder', lang))
-            .addOptions(suggestions.map(s => ({ label: s.title.replace(/^🎵s*/, '').substring(0,100), value: s.query.substring(0,100), emoji: '🎵' })));
+            .addOptions(suggestions.map(s => ({ label: s.title.replace(/^🎵\s*/, '').substring(0,100), value: s.query.substring(0,100), emoji: '🎵' })));
         components.push(new ActionRowBuilder().addComponents(menu));
     }
 
@@ -1359,7 +1423,8 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
     if (suggestions.length > 0 && msg) {
         const collector = msg.createMessageComponentCollector({ time: 30000 });
         collector.on('collect', async (i) => {
-            if (i.user.id !== (i.message.interaction?.user?.id || i.user.id)) return;
+            const owner = i.message.interactionMetadata?.user?.id || i.message.interaction?.user?.id;
+            if (owner && i.user.id !== owner) return i.reply({ content: t('music.suggest_not_yours', lang), flags: 64 }).catch(() => {});
             await i.deferUpdate().catch(() => {});
             const qNow = getQueue(guildId);
             if (qNow) {
@@ -1390,7 +1455,7 @@ module.exports = {
 
     // Export utilities for other plugins
     getQueue, createQueue, destroyQueue, buildNowPlayingEmbed, autoCleanOldPanels,
-    buildControls, buildQueueEmbed, updatePersistentPanel,
+    buildControls, buildQueueEmbed, buildQueueCard, updatePersistentPanel, handlePanelButton,
     ARCHON, progressBar, formatTime,
 
     data: new SlashCommandBuilder()
@@ -1538,7 +1603,9 @@ module.exports = {
         }
 
         const isLibrary = sub === 'library';
-        await interaction.deferReply(isLibrary ? { flags: 1 << 6 } : {});
+        // Controls answer only the person who used them: the panel already shows the new state to everyone
+        const quiet = isLibrary || ['pause', 'skip', 'stop', 'loop', 'autoplay', 'silent', 'volume', 'filter'].includes(sub);
+        await interaction.deferReply(quiet ? { flags: 1 << 6 } : {});
 
         // ── PLAY ──
         if (sub === 'play') {
@@ -1628,9 +1695,7 @@ module.exports = {
             const qNow = getQueue(guildId);
             if (qNow) { qNow.audioFilter = effect === 'off' ? '' : effect; await updatePersistentPanel(qNow).catch(() => {}); }
             const names = {bassboost: t('music.filter_bassboost', lang), nightcore: t('music.filter_nightcore', lang), vaporwave: t('music.filter_vaporwave', lang), normalize: t('music.filter_normalize', lang), '': t('music.filter_off', lang)};
-            const embed = new EmbedBuilder().setColor(ARCHON.purple)
-                .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ FILTER\u001b[0m ${names[effect === 'off' ? '' : effect] || '❌ Off'}\n\`\`\``);
-            return interaction.editReply({embeds: [embed]});
+            return interaction.editReply({ content: `🎚️ ${names[effect === 'off' ? '' : effect] || t('music.filter_off', lang)}` });
         }
 
         // ── PAUSE ──
@@ -1640,38 +1705,28 @@ module.exports = {
             if (isPaused) { q.totalPaused += Date.now() - (q.pausedAt || Date.now()); q.pausedAt = null; }
             else q.pausedAt = Date.now();
             await updatePersistentPanel(q).catch(() => {});
-            const embed = new EmbedBuilder().setColor(isPaused ? ARCHON.green : ARCHON.gold)
-                .setDescription(`\`\`\`ansi\n[1;${isPaused?'32':'33'}m▸ ${t(isPaused?'music.resumed_label':'music.paused_label', lang)}\u001b[0m\n\`\`\``);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ content: t(isPaused ? 'music.resumed' : 'music.paused', lang, { emoji: isPaused ? '▶️' : '⏸️' }) });
         }
 
         // ── SKIP ──
         if (sub === 'skip') {
-            const title = q.currentTrack?.title || 'Unknown';
+            const title = String(q.currentTrack?.title || '').replace(/^🎵\s*/, '').substring(0, 60) || '—';
             q.player.stop();
-            const embed = new EmbedBuilder().setColor(ARCHON.cyan)
-                .setDescription(`\`\`\`ansi\n\u001b[1;36m▸ ${t('music.skipped_label', lang)}\u001b[0m\n\u001b[0;37m${title.substring(0,60)}\u001b[0m\n\`\`\``);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ content: t('music.skipped', lang, { emoji: '⏭️', title }) });
         }
 
-        // ── STOP ──
+        // ── STOP ── the live panel becomes a short "stopped" card
         if (sub === 'stop') {
-            if (q.persistentMsg) {
-                await q.persistentMsg.delete().catch(() => {});
-                q.persistentMsg = null; q.panelMsgId = null;
-                const stoppedEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                    .setDescription(t('music.stopped', lang, { cmd_play: mention(global.client, 'music', 'play') }));
-                await q.textChannel?.send({ embeds: [stoppedEmbed] }).catch(() => {});
-            }
+            if (q.persistentMsg) await q.persistentMsg.edit(stoppedCard(lang, interaction.user.id)).catch(() => {});
+            q.persistentMsg = null; q.panelMsgId = null;
+            forgetPanel(client, guildId);
             destroyQueue(guildId);
-            const embed = new EmbedBuilder().setColor(ARCHON.red)
-                .setDescription(t('music.stopped', lang, { cmd_play: mention(global.client, 'music', 'play') }));
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ content: t('music.stopped', lang, { cmd_play: cmdPlay() }) });
         }
 
         // ── QUEUE ──
         if (sub === 'queue') {
-            return interaction.editReply({ embeds: [buildQueueEmbed(q, client)] });
+            return interaction.editReply(buildQueueCard(q, lang));
         }
 
         // ── NOW PLAYING ── (CV2 card, same style as the live panel)
@@ -1681,40 +1736,7 @@ module.exports = {
                 components: [buildPanelContainer(q, client)],
                 flags: MessageFlags.IsComponentsV2,
             });
-            // Buttons on this reply stay live for 5 min; the main panel remains the persistent one
-            try {
-                const msg = await interaction.fetchReply();
-                const col = msg.createMessageComponentCollector({ time: 300000 });
-                col.on('collect', async (i) => {
-                    if (!i.member?.voice?.channel) return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
-                    const qNow = getQueue(guildId);
-                    if (!qNow) return i.reply({ content: t('music.no_active_queue', lang, { cmd_play: mention(global.client, 'music', 'play') }), flags: 64 }).catch(() => {});
-                    await i.deferUpdate().catch(() => {});
-                    if (i.customId === 'mc_pause') {
-                        if (qNow.player.state.status === AudioPlayerStatus.Paused) { qNow.player.unpause(); qNow.totalPaused += Date.now() - (qNow.pausedAt || Date.now()); qNow.pausedAt = null; }
-                        else { qNow.player.pause(); qNow.pausedAt = Date.now(); }
-                    } else if (i.customId === 'mc_skip') { qNow.player.stop(); }
-                    else if (i.customId === 'mc_stop') { destroyQueue(guildId); }
-                    else if (i.customId === 'mc_loop') { qNow.loop = !qNow.loop; }
-                    else if (i.customId === 'mc_autoplay') { qNow.autoplay = !qNow.autoplay; }
-                    else if (i.customId === 'mc_voldown' || i.customId === 'mc_volup') {
-                        qNow.volume = Math.max(0, Math.min(100, (qNow.volume ?? 80) + (i.customId === 'mc_volup' ? 10 : -10)));
-                        try { qNow.player?.state?.resource?.volume?.setVolume(qNow.volume / 100); } catch(e) {}
-                    } else if (i.customId === 'mc_queue') {
-                        await i.followUp({ embeds: [buildQueueEmbed(qNow, client)], flags: 64 }).catch(() => {});
-                    } else if (i.customId === 'mc_prev') {
-                        if (qNow.trackHistory?.length) {
-                            const prev = qNow.trackHistory.shift();
-                            if (qNow.currentTrack) qNow.tracks.unshift({...qNow.currentTrack});
-                            qNow.tracks.unshift(prev);
-                            qNow.player.stop();
-                        }
-                    } else if (i.customId === 'mc_like' || i.customId === 'mc_dislike') {
-                        await i.followUp({ content: t('music.use_main_panel', lang), flags: 64 }).catch(() => {});
-                    }
-                    await updatePersistentPanel(qNow).catch(() => {});
-                });
-            } catch(e) {}
+            // Its buttons work like the live panel's (handled in handlePanelButton), and keep the live panel in step
             return;
         }
 
@@ -1724,29 +1746,21 @@ module.exports = {
             q.volume = vol;
             try { q.player?.state?.resource?.volume?.setVolume(vol/100); } catch(e) {}
             await updatePersistentPanel(q).catch(() => {});
-            const bar = '█'.repeat(Math.round(vol/10)) + '░'.repeat(10-Math.round(vol/10));
-            const embed = new EmbedBuilder().setColor(ARCHON.purple)
-                .setDescription(`\`\`\`ansi\n\u001b[1;35m▸ VOLUME\u001b[0m \u001b[1;36m${bar}\u001b[0m \u001b[1;33m${vol}%\u001b[0m\n\`\`\``);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ content: t('music.volume_set', lang, { emoji: vol === 0 ? '🔇' : '🔊', vol }) });
         }
 
-        // ── LOOP ──
+        // ── LOOP ── (the Idle handler replays the track: adding it to the queue here played it twice)
         if (sub === 'loop') {
             q.loop = !q.loop;
-            if (q.loop && q.currentTrack) q.tracks.unshift({...q.currentTrack});
             await updatePersistentPanel(q).catch(() => {});
-            const embed = new EmbedBuilder().setColor(q.loop ? ARCHON.green : ARCHON.orange)
-                .setDescription(`\`\`\`ansi\n[1;${q.loop?'32':'33'}m▸ ${t(q.loop?'music.loop_enabled':'music.loop_disabled', lang)}\u001b[0m\n\`\`\``);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ content: t(q.loop ? 'music.loop_on' : 'music.loop_off', lang, { emoji: '🔁' }) });
         }
 
         // ── AUTOPLAY ──
         if (sub === 'autoplay') {
             q.autoplay = !q.autoplay;
             await updatePersistentPanel(q).catch(() => {});
-            const embed = new EmbedBuilder().setColor(q.autoplay ? ARCHON.green : ARCHON.orange)
-                .setDescription(`\`\`\`ansi\n[1;${q.autoplay?'32':'33'}m▸ ${t(q.autoplay?'music.autoplay_enabled':'music.autoplay_disabled', lang)}\u001b[0m\n\`\`\``);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ content: t(q.autoplay ? 'music.autoplay_on' : 'music.autoplay_off', lang, { emoji: '🔄' }) });
         }
 
         // ── SILENT ── 🔕 toggle @silent panel notifications
@@ -1758,9 +1772,7 @@ module.exports = {
                 try { await oldMsg.delete().catch(() => {}); } catch(e) {}
                 await updatePersistentPanel(q, { resend: true });
             }
-            const embed = new EmbedBuilder().setColor(q.silentPanel ? ARCHON.gold : ARCHON.green)
-                .setDescription(`\`\`\`ansi\n[1;${q.silentPanel?'33':'32'}m${t(q.silentPanel ? 'music.silent_on' : 'music.silent_off', lang)}\u001b[0m\n\`\`\``);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ content: t(q.silentPanel ? 'music.silent_on' : 'music.silent_off', lang) });
         }
 
         // ── LIBRARY ──
