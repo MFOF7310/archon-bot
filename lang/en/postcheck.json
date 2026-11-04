@@ -18,5 +18,24 @@
   "whyTimeout": "**{bot}** is timed out on this server, so it can't send anything.",
   "fixTimeout": "To fix it: right-click **{bot}** in the member list and remove its timeout.",
   "whyRefused": "Discord refused the message even though my usual permissions look fine.",
-  "fixRefused": "To fix it:\n1. Open the channel's settings → Permissions\n2. Check that **{bot}** is allowed **View Channel**, **Send Messages**, **Embed Links** and **Attach Files**\n3. Run this check again"
+  "fixRefused": "To fix it:\n1. Open the channel's settings → Permissions\n2. Check that **{bot}** is allowed **View Channel**, **Send Messages**, **Embed Links** and **Attach Files**\n3. Run this check again",
+  "alertTitle": "⚠️ Couldn't post: {feature}",
+  "alertWhere": "{channel} · {count} failed attempts since {since}",
+  "alertWhereOne": "{channel} · {since}",
+  "alertNoChannel": "no channel",
+  "alertFooterLog": "Only people who can see this channel get this alert, at most once a day for this feature. Check again with {cmd}.",
+  "alertFooterDm": "You get this because you own **{guild}** and I couldn't post in its log channel. At most once a day for this feature. Check again with {cmd} on the server.",
+  "features": {
+    "welcome": "welcome card",
+    "goodbye": "goodbye card",
+    "levelup": "level-up message",
+    "levelup-milestone": "level milestone card",
+    "modlog": "moderation log",
+    "automod-log": "AutoMod log",
+    "automod-appeals": "AutoMod appeal",
+    "birthday": "birthday message",
+    "youtube": "YouTube alert",
+    "tiktok": "TikTok alert",
+    "other": "a message"
+  }
 }

@@ -643,6 +643,12 @@ for (const [tableName, createSQL] of Object.entries(requiredTables)) {
     }
 }
 
+// ================= REPLIES THAT STILL ARRIVE =================
+// Before every other listener: where ARCHON may not read the history, message.reply falls back to a plain message (lib/replyGuard).
+client.prependListener('messageCreate', (message) => {
+    if (message?.guild && !message.author?.bot) require('./lib/replyGuard').guard(message);
+});
+
 // ================= AUTO-REPLY MESSAGE LISTENER =================
 client.on('messageCreate', async (message) => {
     if (message.channel.isDMBased() && !message.author.bot) {

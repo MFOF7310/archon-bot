@@ -18,5 +18,24 @@
   "whyTimeout": "**{bot}** est exclu temporairement de ce serveur : il ne peut rien envoyer.",
   "fixTimeout": "Pour corriger : clic droit sur **{bot}** dans la liste des membres, puis retire son exclusion temporaire.",
   "whyRefused": "Discord a refusé le message alors que mes permissions habituelles semblent bonnes.",
-  "fixRefused": "Pour corriger :\n1. Ouvre les paramètres du salon → Permissions\n2. Vérifie que **{bot}** a **Voir le salon**, **Envoyer des messages**, **Intégrer des liens** et **Joindre des fichiers**\n3. Relance cette vérification"
+  "fixRefused": "Pour corriger :\n1. Ouvre les paramètres du salon → Permissions\n2. Vérifie que **{bot}** a **Voir le salon**, **Envoyer des messages**, **Intégrer des liens** et **Joindre des fichiers**\n3. Relance cette vérification",
+  "alertTitle": "⚠️ Échec d'envoi : {feature}",
+  "alertWhere": "{channel} · {count} échecs depuis le {since}",
+  "alertWhereOne": "{channel} · {since}",
+  "alertNoChannel": "aucun salon",
+  "alertFooterLog": "Seuls ceux qui voient ce salon reçoivent cette alerte, au plus une fois par jour pour cette fonction. Revérifie avec {cmd}.",
+  "alertFooterDm": "Tu reçois ce message parce que tu possèdes **{guild}** et que je ne peux pas écrire dans son salon de logs. Au plus une fois par jour pour cette fonction. Revérifie avec {cmd} sur le serveur.",
+  "features": {
+    "welcome": "carte de bienvenue",
+    "goodbye": "carte d'au revoir",
+    "levelup": "message de montée de niveau",
+    "levelup-milestone": "carte de palier de niveau",
+    "modlog": "journal de modération",
+    "automod-log": "journal AutoMod",
+    "automod-appeals": "appel AutoMod",
+    "birthday": "message d'anniversaire",
+    "youtube": "alerte YouTube",
+    "tiktok": "alerte TikTok",
+    "other": "un message"
+  }
 }

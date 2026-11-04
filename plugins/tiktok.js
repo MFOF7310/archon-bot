@@ -509,10 +509,12 @@ async function sendNotification(client, db, guildId, username, data, type) {
         if (!guild) return false;
 
         const channel = guild.channels.cache.get(tracking.target_channel_id);
-        if (!channel) return false;
-
-        const botMember = guild.members.me;
-        if (!require('../lib/canPost').log(guild, channel, botMember, 'tiktok').ok) return false;
+        if (!channel) {
+            require('../lib/postProblems').failed(guild, 'tiktok', tracking.target_channel_id, { ok: false, reason: 'gone', missing: [] });
+            return false;
+        }
+        const { safeSend, canSend } = require('../lib/safeSend');
+        if (!canSend('tiktok', channel, require('../lib/canPost').neededFor('tiktok'))) return false;
 
         // ─── GESTION DES EMBEDS SELON LE TYPE ───
         let card;
@@ -533,13 +535,13 @@ async function sendNotification(client, db, guildId, username, data, type) {
         if (!card) return false;
 
         if (card._v2) {
-            await channel.send(card._v2);
+            await safeSend('tiktok', channel, card._v2, { throwOnError: true });
         } else {
-            await channel.send({
+            await safeSend('tiktok', channel, {
                 content: contentMessage,
                 embeds: [card.embed],
                 components: card.row ? [card.row] : []
-            });
+            }, { throwOnError: true });
         }
 
         if (type === 'live') {

@@ -398,13 +398,9 @@ async function checkAndAnnounceBirthdays(client) {
                 
                 const ss = client.getServerSettings?.(guildId) || {};
                 const configuredChannelId = ss.birthday_channel || ss.level_channel || ss.daily_channel;
-                let channel = configuredChannelId ? guild.channels.cache.get(configuredChannelId) : null;
-                if (channel && !require('../lib/canPost').log(guild, channel, guild.members.me, 'birthday').ok) channel = null;
-                if (!channel) channel = guild.systemChannel;
-                if (!channel) channel = guild.channels.cache.find(c =>
-                    c.type === 0 && c.permissionsFor(guild.members.me)?.has('SendMessages')
-                );
-                if (!channel) continue;
+                // The channel the admins chose; without one, the server's system channel. Never a channel nobody chose.
+                const channel = configuredChannelId ? guild.channels.cache.get(configuredChannelId) : guild.systemChannel;
+                if (!channel && !configuredChannelId) continue;
                 
                 const lang = guild.preferredLocale === 'fr' ? 'fr' : 'en';
                 const strings = t[lang];
@@ -467,17 +463,17 @@ async function checkAndAnnounceBirthdays(client) {
                         .setEmoji('🎉')
                         .setStyle(ButtonStyle.Success),
                     new ButtonBuilder()
-                        .setCustomId(`bday_celebrate_${userId}`)
+                        .setCustomId(`bday_gift_${userId}`)
                         .setLabel('Send Virtual Gift')
                         .setEmoji('🎁')
                         .setStyle(ButtonStyle.Primary)
                 );
                 
-                await channel.send({ 
+                await require('../lib/safeSend').safeSend('birthday', channel, {
                     content: `${require('../config/emojis').party_2} ${require('../config/emojis').cake} — ${member}'s special day! Let's celebrate!`,
                     embeds: [embed],
                     components: [row]
-                }).catch(() => {});
+                }, { guild, channelId: configuredChannelId, quiet: !configuredChannelId });
                 
                 console.log(`[BIRTHDAY] 🎂 Announced birthday for ${member.user.tag} (Age: ${age || 'unknown'})`);
                 break;

@@ -27,12 +27,9 @@ const { t } = require('../lib/i18n');
 const Style = require('./welcome-style.js');
 
 // Card sends upload a file — the check must mirror the send (View/Send/Embed + Attach Files)
-const _CARD_NEEDED = [
-    ['View Channel', PermissionFlagsBits.ViewChannel],
-    ['Send Messages', PermissionFlagsBits.SendMessages],
-    ['Embed Links', PermissionFlagsBits.EmbedLinks],
-    ['Attach Files', PermissionFlagsBits.AttachFiles],
-];
+// What the welcome/goodbye card needs (a Components V2 message with an image): the same rule as .postcheck and the dashboard.
+const _CARD_NEEDED = require('../lib/canPost').neededFor('welcome');
+const { safeSend, canSend } = require('../lib/safeSend');
 
 // ================= JOIN-DATE PERSISTENCE =================
 // guildMemberRemove carries no join date: members not in cache (e.g. bot
@@ -105,8 +102,7 @@ async function handleWelcome(member, client, db) {
     if (!cfg.welcomeEnabled || !cfg.welcomeChannel) return;
 
     const ch = member.guild.channels.cache.get(cfg.welcomeChannel);
-    if (!ch) return;
-    if (!require('../lib/canPost').log(member.guild, ch, member.guild.members.me, 'welcome', _CARD_NEEDED).ok) return;
+    if (!canSend('welcome', ch, _CARD_NEEDED, { guild: member.guild, channelId: cfg.welcomeChannel })) return;
 
     const count = member.guild.memberCount;
     const lang = (ssRaw.language && ssRaw.language !== 'auto') ? ssRaw.language : (client.detectLanguage ? client.detectLanguage('welcome', member.guild.id) : 'en');
@@ -225,11 +221,11 @@ async function handleWelcome(member, client, db) {
         _container.addActionRowComponents(...rows);
     }
 
-    await ch.send({
+    await safeSend('welcome', ch, {
         components: [_container],
         files: [attachment],
         flags: MessageFlags.IsComponentsV2,
-    }).catch(err => console.error('[WELCOME] Send failed:', err.message));
+    });
 }
 
 // ================= CORE SEND: GOODBYE =================
@@ -242,8 +238,7 @@ async function handleGoodbye(member, client, db) {
     if (!cfg.goodbyeEnabled || !cfg.goodbyeChannel) return;
 
     const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
-    if (!ch) return;
-    if (!require('../lib/canPost').log(member.guild, ch, member.guild.members.me, 'goodbye', _CARD_NEEDED).ok) return;
+    if (!canSend('goodbye', ch, _CARD_NEEDED, { guild: member.guild, channelId: cfg.goodbyeChannel })) return;
 
     ensureJoinTable(db);
     await backfillJoins(db, member.guild);
@@ -285,11 +280,11 @@ async function handleGoodbye(member, client, db) {
             )
         );
 
-    await ch.send({
+    await safeSend('goodbye', ch, {
         components: [_gbContainer],
         files: [attachment],
         flags: MessageFlags.IsComponentsV2,
-    }).catch(err => console.error('[GOODBYE] Send failed:', err.message));
+    });
 }
 
 // ================= MODULE =================

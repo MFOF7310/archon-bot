@@ -277,9 +277,15 @@ async function sendNotification(client, db, guildId, channelId, handle, payload,
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return { ok: false, reason: 'guild_missing' };
         const channel = guild.channels.cache.get(track.target_channel_id);
-        if (!channel) return { ok: false, reason: 'channel_gone' };
-        const botMember = guild.members.me;
-        if (!require('../lib/canPost').log(guild, channel, botMember, 'youtube').ok) return { ok: false, reason: 'no_permission' };
+        if (!channel) {
+            require('../lib/postProblems').failed(guild, 'youtube', track.target_channel_id, { ok: false, reason: 'gone', missing: [] });
+            return { ok: false, reason: 'channel_gone' };
+        }
+        const _pre = require('../lib/canPost').diagnose(guild, channel, guild.members.me, require('../lib/canPost').neededFor('youtube'));
+        if (!_pre.ok) {
+            require('../lib/postProblems').failed(guild, 'youtube', channel.id, _pre);
+            return { ok: false, reason: 'no_permission' };
+        }
 
         const lang = livLang(client, guildId);
         const name = handle ? '@' + handle : channelId;
@@ -287,7 +293,7 @@ async function sendNotification(client, db, guildId, channelId, handle, payload,
         if (type === 'live') card = buildLiveEmbed(channelId, payload, handle, client, lang, t('livestream.card_live_ping', lang, { icon: EMOJIS.ic_live || '🔴', name }));
         else if (type === 'video') card = buildVideoEmbed(payload, handle, client, lang);
         else card = buildLiveEmbed(channelId, payload, handle, client, lang);
-        await channel.send({ ...card._v2 });
+        await require('../lib/safeSend').safeSend('youtube', channel, { ...card._v2 }, { throwOnError: true });
         if (type === 'live') lastNotificationTime.set(`${guildId}:${channelId}`, Date.now());
         return { ok: true };
     } catch (e) {
