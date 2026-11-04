@@ -10,9 +10,11 @@ module.exports = {
     description: '🎨 Buy a custom color role with credits — express yourself!',
     category: 'ECONOMY', cooldown: 10000, usage: '.customrole <color> <name>', examples: ['.customrole #FF5733 MyRole', '.customrole red VIP', '/customrole color:#3498db name:Elite'],
     data: new SlashCommandBuilder().setName('customrole').setDescription('🎨 Buy a custom color role').addStringOption(o => o.setName('color').setDescription('Color hex or name (red, blue, green...)').setRequired(true)).addStringOption(o => o.setName('name').setDescription('Role name').setRequired(true)),
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
-        const t = T[lang], guild = message.guild, user = message.author;
+        const t = T[lang] || T.en, guild = message.guild, user = message.author;
         if (!guild) return message.reply('❌ Server only.').catch(() => {});
         if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) return message.reply(t.noPermission).catch(() => {});
 
@@ -60,7 +62,7 @@ module.exports = {
     },
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang], guild = interaction.guild;
+        const t = T[lang] || T.en, guild = interaction.guild;
         if (!guild) return interaction.reply({ content: '❌ Server only.', flags: 64 });
         if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ content: t.noPermission, flags: 64 });
 

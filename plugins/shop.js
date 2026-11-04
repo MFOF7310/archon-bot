@@ -2,7 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
-const em = (k, fb) => resolveEmoji(k, client) || fb;
+const em = (k, fb) => resolveEmoji(k, global.client) || fb;
 
 module.exports = {
     name: 'shop',
@@ -54,8 +54,8 @@ module.exports = {
 
         const row = new ActionRowBuilder().addComponents(menu);
         const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(em('inventory', '🎒')),
-            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji(em('refresh', '🔄'))
+            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji('🎒'),
+            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji('🔄')
         );
 
         const container = new ContainerBuilder().setAccentColor(0xf1c40f);

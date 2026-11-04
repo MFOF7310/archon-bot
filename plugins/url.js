@@ -176,9 +176,11 @@ module.exports = {
             .setDescription('URL to preview')
             .setRequired(true)),
 
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
-        const t = T[lang];
+        const t = T[lang] || T.en;
         const targetUrl = args[0];
 
         if (!targetUrl || !targetUrl.match(/^https?:\/\//)) {
@@ -230,7 +232,7 @@ module.exports = {
 
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang];
+        const t = T[lang] || T.en;
         const targetUrl = interaction.options.getString('link');
 
         if (!targetUrl || !targetUrl.match(/^https?:\/\//)) {

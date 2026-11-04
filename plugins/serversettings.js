@@ -96,6 +96,7 @@ data: new SlashCommandBuilder()
 
 // ================= SLASH COMMAND EXECUTION =================
 async execute(interaction, client) {
+    const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
     const isOwner = interaction.user.id === interaction.guild.ownerId;
     const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
     
@@ -111,7 +112,6 @@ async execute(interaction, client) {
     }
     
     const subcommand = interaction.options.getSubcommand();
-    const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
     const guildId = interaction.guild.id;
     const settings = client.getServerSettings(guildId);
 
@@ -124,7 +124,8 @@ async execute(interaction, client) {
 },
 
     // ================= PREFIX COMMAND EXECUTION =================
-    async run(client, message, args, db, serverSettings) {
+    async run(client, message, args, db, serverSettings, _used, lang) {
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
         const isOwner = message.author.id === message.guild.ownerId;
         const isAdmin = message.member.permissions.has('Administrator');
 
@@ -272,14 +273,14 @@ async execute(interaction, client) {
         // Définition de toutes les sections avec leur statut "isSet"
         const sections = [
             {
-                emoji: em('ownerroleicon', '👑'),
+                emoji: '👑',
                 title: tr('cat_general'),
                 lines: [
                     { text: `**${tr('prefix')}** — \`${settings.prefix || '.'}\``, isSet: true }
                 ]
             },
             {
-                emoji: em('partnericon', '👋'),
+                emoji: '👋',
                 title: tr('cat_welcome'),
                 lines: [
                     { text: `**${tr('welcome_channel')}** — ${chM(settings.welcomeChannel, 'WELCOME_CHANNEL_ID')}`, isSet: !!settings.welcomeChannel },
@@ -289,7 +290,7 @@ async execute(interaction, client) {
                 ]
             },
             {
-                emoji: em('yellowcrown', '💰'),
+                emoji: '💰',
                 title: tr('cat_leveling'),
                 lines: [
                     { text: `**${tr('level_channel')}** — ${chM(settings.levelChannel, 'LEVEL_CHANNEL_ID')}`, isSet: !!settings.levelChannel },
@@ -300,7 +301,7 @@ async execute(interaction, client) {
                 ]
             },
             {
-                emoji: em('developericon', '🛡️'),
+                emoji: '🛡️',
                 title: `${tr('cat_features')} & ${tr('cat_moderation')}`,
                 lines: [
                     { text: `**${tr('afk')}** — ${bS(settings.afkEnabled)}`, isSet: settings.afkEnabled == 1 },
@@ -311,7 +312,7 @@ async execute(interaction, client) {
                 ]
             },
             {
-                emoji: em('boostericon', '🎭'),
+                emoji: '🎭',
                 title: tr('cat_roles'),
                 lines: [
                     { text: `**${tr('member_role')}** — ${roleM(settings.memberRole, 'MEMBER_ROLE')}`, isSet: !!settings.memberRole },

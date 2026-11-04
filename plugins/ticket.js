@@ -219,9 +219,9 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null, iss
     const _v2 = require('../lib/games/v2');
     
     const r = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t('ticket.claim', lang)).setStyle(ButtonStyle.Primary).setEmoji(resolveEmoji('claim', ch.client) || '✋'),
-        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t('ticket.close', lang)).setStyle(ButtonStyle.Danger).setEmoji(resolveEmoji('lock', ch.client) || '🔒'),
-        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t('ticket.transcript', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('ticket', ch.client) || '📄')
+        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t('ticket.claim', lang)).setStyle(ButtonStyle.Primary).setEmoji('✋'),
+        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t('ticket.close', lang)).setStyle(ButtonStyle.Danger).setEmoji('🔒'),
+        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t('ticket.transcript', lang)).setStyle(ButtonStyle.Secondary).setEmoji('📄')
     );
     
     const staffPing = s?.ticketStaffRole ? `<@&${s.ticketStaffRole}>` : '';
@@ -267,7 +267,7 @@ function cfgCard(s, g, c, lang='en') {
     ]);
 }
 
-async function saveSetting(client, gid, key, val, lang='en') { try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t('ticket.setOK', lang, {setting: key, value: val})};} return{ok:false,err:`${getErrorEmoji(g)} DB error.`};}catch(e){return{ok:false,err:`${getErrorEmoji(g)} DB error.`};} }
+async function saveSetting(client, gid, key, val, lang='en') { try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t('ticket.setOK', lang, {setting: key, value: val})};} const g=client.guilds?.cache?.get(gid);return{ok:false,err:`${getErrorEmoji(g)} DB error.`};}catch(e){return{ok:false,err:`${getErrorEmoji(client.guilds?.cache?.get(gid))} DB error.`};} }
 
 function onMessageActivity(message, client, s) {
     if (message.author?.bot) return;
@@ -533,7 +533,7 @@ module.exports = {
             if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});
             await ix.deferReply({flags:1<<6}).catch(()=>{});
             const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t('ticket.closeQ', lang)).setDescription(t('ticket.closeD', lang));
-            const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji(resolveEmoji('small_check', client) || '✅'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('small_cross', client) || '❌'));
+            const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji('✅'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji('❌'));
             await ix.editReply({embeds:[e],components:[r]}).catch(()=>{});
             return true;
         }

@@ -308,8 +308,8 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
         { rule: true },
         { text: tttFooter() },
         { row: new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ttt_accept').setLabel(t('game.accept', lang)).setStyle(ButtonStyle.Success).setEmoji(resolveEmoji('check', interaction || message) || '✅'),
-            new ButtonBuilder().setCustomId('ttt_decline').setLabel(t('game.decline', lang)).setStyle(ButtonStyle.Danger).setEmoji(resolveEmoji('error', interaction || message) || '❌'),
+            new ButtonBuilder().setCustomId('ttt_accept').setLabel(t('game.accept', lang)).setStyle(ButtonStyle.Success).setEmoji('✅'),
+            new ButtonBuilder().setCustomId('ttt_decline').setLabel(t('game.decline', lang)).setStyle(ButtonStyle.Danger).setEmoji('❌'),
         ) },
     ]);
     challengeCard.allowedMentions = { users: [opponent.id] };
@@ -489,8 +489,8 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     // v9: blackjack on CV2
     const bjFooter = () => `-# ${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • v${ctx.client.version || '2.0.0'}`;
     const bjRow = () => new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji(resolveEmoji('gameBlackjack', interaction || message) || '🃏'),
-        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('stop', interaction || message) || '⏹️')
+        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji('🃏'),
+        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji('⏹️')
     );
     const bjCard = ({ reveal = false, withButtons = true } = {}) => v2.card(0x9b59b6, [
         { text: `## ${EMOJIS.gameBlackjack} ${t('game.blackjack', lang)}` },
@@ -699,7 +699,9 @@ async function executeSlashCommand(interaction, client) {
 }
 
 // ================= PREFIX FALLBACK =================
-async function run(client, message, args, db, serverSettings, usedCommand) {
+async function run(client, message, args, db, serverSettings, usedCommand, lang) {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
     const guildId = message.guild?.id || 'DM';
     const userId = message.author.id;

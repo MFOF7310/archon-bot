@@ -340,7 +340,9 @@ module.exports = {
 
     // Prefix: .build  -> your own builds
     //         .build <weapon> -> clan builds for that weapon
-    run: async (client, message, args) => {
+    run: async (client, message, args, _db, _ss, _used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         const tr = (k, v) => i18n.t(`build.${k}`, lang, v);
         if (!message.guild) return message.reply(tr('guildOnly')).catch(() => {});

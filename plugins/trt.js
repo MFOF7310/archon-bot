@@ -17,9 +17,11 @@ module.exports = {
     description: '🌐 Translate text between 12 languages instantly.',
     category: 'UTILITY', cooldown: 3000, usage: '.translate <text> [from] [to]', examples: ['.translate hello fr', '.translate bonjour en fr'],
     data: new SlashCommandBuilder().setName('translate').setDescription('🌐 Translate text').addStringOption(o => o.setName('text').setDescription('Text to translate').setRequired(true)).addStringOption(o => o.setName('from').setDescription('Source language (default: auto)').setRequired(false).addChoices({name:'Auto',value:'auto'},{name:'English',value:'en'},{name:'French',value:'fr'},{name:'Spanish',value:'es'},{name:'German',value:'de'},{name:'Japanese',value:'ja'})).addStringOption(o => o.setName('to').setDescription('Target language (default: English)').setRequired(false).addChoices({name:'English',value:'en'},{name:'French',value:'fr'},{name:'Spanish',value:'es'},{name:'German',value:'de'},{name:'Japanese',value:'ja'},{name:'Russian',value:'ru'},{name:'Korean',value:'ko'},{name:'Chinese',value:'zh'})),
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
-        const t = T[lang];
+        const t = T[lang] || T.en;
         if (args.length < 1) return message.reply('❌ Usage: `.translate hello fr` or `.translate bonjour en fr`').catch(() => {});
         let from = 'auto', to = 'en', text = '';
         const last = args[args.length - 1]?.toLowerCase();
@@ -57,7 +59,7 @@ module.exports = {
     },
     execute: async (interaction) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang];
+        const t = T[lang] || T.en;
         const text = interaction.options.getString('text');
         const from = interaction.options.getString('from') || 'auto';
         const to = interaction.options.getString('to') || 'en';

@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 
 module.exports = {
     name: 'lookup',

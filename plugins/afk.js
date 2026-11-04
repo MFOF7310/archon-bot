@@ -1,5 +1,6 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, parseEmoji } = require('discord.js');
 const EMOJIS = require('../config/emojis');
+const { resolveEmoji } = require('../lib/emoji-resolver');
 
 // ================= 🔥 STOCKAGE AFK (RAM) - DÉFINI EN HAUT =================
 const afkUsers = new Map(); // userId -> { reason, timestamp, username, avatar, originalNickname }
@@ -167,12 +168,12 @@ module.exports = {
                 .setCustomId(`afk_remind_${message.author.id}`)
                 .setLabel(t.remindButton)
                 .setStyle(ButtonStyle.Primary)
-                .setEmoji(resolveEmoji('sleep', message) || '💤'),
+                .setEmoji('💤'),
             new ButtonBuilder()
                 .setCustomId(`afk_extend_${message.author.id}`)
                 .setLabel(t.extendButton)
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji(resolveEmoji('moon', message) || '🌙')
+                .setEmoji('🌙')
         );
         
         const reply = await message.reply({ embeds: [embed], components: [buttonRow] });
@@ -228,7 +229,6 @@ module.exports = {
     // ================= SLASH COMMAND EXECUTION =================
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction);
-const { resolveEmoji } = require('../lib/emoji-resolver');
         // Check if AFK system is enabled for this server
         const afkServerSettings = client.getServerSettings?.(interaction.guild?.id);
         if (afkServerSettings?.afk_enabled === 0 || afkServerSettings?.afkEnabled === false) {

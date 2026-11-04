@@ -5,8 +5,8 @@
   "noItems": "❌ 库存为空",
   "noItemsDesc": "你没有可用的道具。前往商店获取消耗品、加成或徽章。",
   "shopHint": "🛒 获取道具",
-  "useSuccess": "✅ 激活完成",
-  "used": "已激活",
+  "useSuccess": "✅ 道具已使用",
+  "used": "已使用",
   "xpGain": "💪 XP 加成\n+{amount} XP",
   "creditGain": "🪙 积分已到账\n+{amount} 积分",
   "mysteryReward": "🎁 神秘宝箱\n奖励：+{amount} {type}",
@@ -48,9 +48,9 @@
   "creditsField": "积分:",
   "levelField": "🎯 等级",
   "rankField": "🏅 段位",
-  "stockField": "📦 库存",
+  "stockField": "📦 剩余：",
   "depleted": "已耗尽",
   "ascensionTitle": "🎉 升级",
   "ascensionLine": "等级 {level} — {rank}",
-  "rankElevationTitle": "🏅 段位提升"
+  "rankElevationTitle": "🏅 新段位"
 }

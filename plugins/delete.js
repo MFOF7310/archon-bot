@@ -317,7 +317,7 @@ async function deleteSingleMessage(channel, moderator, targetMsg, t, lang, clien
 
 function showHelp(message, lang) {
     const t = loadT(lang);
-    const version = message.client.version || PLUGIN_VERSION || '3.0.5';
+    const version = message.client.version || '3.0.5';
 
     const helpEmbed = new EmbedBuilder()
         .setColor(Colors.DarkRed)

@@ -39,5 +39,6 @@
   "channel_not_found": "❌ Salon introuvable.",
   "tracked_success": "C'est noté ! Je garde un œil sur **@{username}**. Les alertes arriveront dans <#{channelId}>.",
   "removed_success": "🗑️ **@{username}** a été retiré du suivi.",
-  "already_tracked": "Tu suis déjà **@{username}** dans <#{channel}>. Rien à changer !"
+  "already_tracked": "Tu suis déjà **@{username}** dans <#{channel}>. Rien à changer !",
+  "notFoundForce": "❌ Je ne trouve pas **@{username}** sur TikTok. Vérifie le nom, ou utilise l'option `force` pour l'ajouter quand même."
 }

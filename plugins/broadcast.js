@@ -251,7 +251,9 @@ module.exports = {
 
 // ================= SLASH COMMAND DATA =================
 
-    run: async (client, message, args, database, serverSettings, usedCommand) => {
+    run: async (client, message, args, database, serverSettings, usedCommand, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
     const guildId = message.guild?.id ?? 'DM';
 
         // ================= PERMISSION CHECK =================

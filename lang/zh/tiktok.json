@@ -39,5 +39,6 @@
   "channel_not_found": "❌ 找不到频道。",
   "tracked_success": "收到！我会关注 **@{username}**。通知将发送到 <#{channelId}>。",
   "removed_success": "🗑️ **@{username}** 已从追踪中移除。",
-  "already_tracked": "你已经在 <#{channel}> 中追踪了 **@{username}**。无需更改！"
+  "already_tracked": "你已经在 <#{channel}> 中追踪了 **@{username}**。无需更改！",
+  "notFoundForce": "❌ 在 TikTok 上找不到 **@{username}**。请检查名称，或使用 `force` 选项强制添加。"
 }

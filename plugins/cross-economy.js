@@ -663,7 +663,9 @@ module.exports = {
             .addIntegerOption(o => o.setName('amount').setDescription('Amount to send').setRequired(true).setMinValue(1))),
 
     // ================= PREFIX =================
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
     const guildId = message.guild?.id ?? 'DM';
         setupDB(db);
         

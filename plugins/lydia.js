@@ -461,13 +461,13 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
   }
 
   // Premium servers may bring their own OpenRouter key — else global .env
-  const guildKey = guildId ? getGuildKey(client?.db || null, guildId, 'openrouter') : null;
+  const guildKey = guildId ? getGuildKey(global.client?.db || null, guildId, 'openrouter') : null;
 
   // Premium servers get Claude Sonnet directly
-  const isPremiumGuild = guildId ? isPremium(client?.db || null, guildId) : false;
+  const isPremiumGuild = guildId ? isPremium(global.client?.db || null, guildId) : false;
 
   if (isPremiumGuild) {
-    const guildModel = getGuildModel(client?.db || null, guildId);
+    const guildModel = getGuildModel(global.client?.db || null, guildId);
     if (guildModel && guildModel !== 'auto') {
       const chosenModel = MODEL_POOL.find(m => m.id === guildModel);
       if (chosenModel) {

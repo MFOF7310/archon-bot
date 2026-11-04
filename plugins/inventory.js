@@ -9,150 +9,153 @@ function getMarketState(guildId) { try { const mm = require('./market-manager');
 function getTrend() { try { const mm = require('./market-manager'); const ms = mm.getMarketState(); return mm.TRENDS[ms.trend] || mm.TRENDS.STEADY; } catch (e) { return { emoji: '📊', name: 'Steady', color: '#f1c40f', multiplier: [0.98, 1.08] }; } }
 
 module.exports = {
-    name: 'shop', aliases: ['store', 'boutique', 'catalog', 'catalogue', 'marketplace', 'buy', 'purchase', 'acheter', 'inventory', 'inv', 'inventaire'],
-    description: '🛒 Browse the shop, buy items and manage your inventory.', category: 'ECONOMY', usage: '.shop | .buy <item-id> | .inventory',
-    examples: ['.shop', '.buy starter_pack', '.inventory', '.inv sell starter_pack'], cooldown: 3000,
+    // Its own name: it used to be called "shop" like plugins/shop.js, so whichever file loaded last took the
+    // command, and .buy / .inventory pointed at functions that did not exist
+    name: 'inventory', aliases: ['inv', 'inventaire', 'buy', 'purchase', 'acheter', 'sell', 'vendre'],
+    description: '🎒 Your items, and buying or selling one by its id.', category: 'ECONOMY', usage: '.inventory | .buy <item-id> | .sell <item-id>',
+    examples: ['.inventory', '.buy starter_pack', '.sell starter_pack'], cooldown: 3000,
 
-    data: new SlashCommandBuilder().setName('inventory').setDescription('🛒 Bamako Shop')
-        .addSubcommand(sub => sub.setName('browse').setDescription('Browse the shop'))
+    data: new SlashCommandBuilder().setName('inventory').setDescription('🎒 Your items')
+        .addSubcommand(sub => sub.setName('browse').setDescription('Open the shop'))
         .addSubcommand(sub => sub.setName('buy').setDescription('Buy an item').addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true)))
         .addSubcommand(sub => sub.setName('inventory').setDescription('View your inventory'))
         .addSubcommand(sub => sub.setName('sell').setDescription('Sell an item').addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true))),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        const prefix = serverSettings?.prefix || '.';
-        const userId = message.author.id;
-        const guild = message.guild;
-        const guildName = guild?.name?.toUpperCase() || 'ARCHON CG-223';
-        const guildIcon = guild?.iconURL() || client.user.displayAvatarURL();
-        const version = client.version || '2.0.0';
-
-        // PER-SERVER: Extract guildId for composite key lookups
-        const guildId = guild?.id || 'DM';
-
-        const buyCmds = ['buy', 'purchase', 'acheter'];
-        const invCmds = ['inventory', 'inv', 'inventaire'];
-        const sellCmds = ['sell', 'vendre'];
+        if (!lang) lang = pickLang(client, message.guild?.id, message, message.author?.id);
+        const guildId = message.guild?.id || 'DM';
+        const guildName = message.guild?.name || 'ARCHON CG-223';
         const cmd = usedCommand?.toLowerCase() || '';
-
-        if (buyCmds.includes(cmd)) return handleBuy(message, args, client, db, serverSettings, lang, prefix, guildId, guildName, guildIcon, version);
-        if (invCmds.includes(cmd)) return handleInventory(message, client, db, lang, prefix, guildId, guildName, guildIcon, version);
-        if (sellCmds.includes(cmd)) return handleSell(message, args, client, db, lang, prefix, guildId, guildName, guildIcon, version);
-        return handleShop(message, client, db, lang, prefix, guildId, guildName, guildIcon, version);
+        if (['buy', 'purchase', 'acheter'].includes(cmd)) return handleBuy(message, args, client, db, lang, guildId);
+        if (['sell', 'vendre'].includes(cmd)) return handleSell(message, args, client, db, lang, guildId, guildName);
+        return handleInventory(message, client, db, lang, guildId, guildName);
     },
 
     execute: async (interaction, client) => {
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guild?.id || 'DM';
-        const ss = client.getServerSettings?.(guildId)
-            || client.settings?.get(guildId)
-            || {};
-        const lang = ss.language || 'en';
-        const prefix = ss.prefix || '.';
-        const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
-        const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
-        const version = client.version || '2.0.0';
-        const serverSettings = interaction.guild ? client.getServerSettings?.(interaction.guild.id) || {} : {};
-
+        const lang = pickLang(client, interaction.guildId, interaction, interaction.user?.id);
+        const guildName = interaction.guild?.name || 'ARCHON CG-223';
+        if (sub === 'browse') {
+            const shop = client.commands?.get('shop');
+            if (shop?.execute) return shop.execute(interaction, client);
+        }
         const fakeMsg = { author: interaction.user, guild: interaction.guild, channel: interaction.channel,
-            reply: async (opts) => interaction.reply({ ...opts }).catch(() => null) };
-
-        if (sub === 'buy') return handleBuy(fakeMsg, [interaction.options.getString('item')], client, client.db, serverSettings, lang, prefix, guildId, guildName, guildIcon, version);
-        if (sub === 'inventory') return handleInventory(fakeMsg, client, client.db, lang, prefix, guildId, guildName, guildIcon, version);
-        if (sub === 'sell') return handleSell(fakeMsg, [interaction.options.getString('item')], client, client.db, lang, prefix, guildId, guildName, guildIcon, version);
-        return handleShop(fakeMsg, client, client.db, lang, prefix, guildId, guildName, guildIcon, version);
+            reply: async (opts) => interaction.reply(typeof opts === 'string' ? { content: opts } : { ...opts }).then(() => interaction.fetchReply()).catch(() => null) };
+        if (sub === 'buy') return handleBuy(fakeMsg, [interaction.options.getString('item')], client, client.db, lang, guildId);
+        if (sub === 'sell') return handleSell(fakeMsg, [interaction.options.getString('item')], client, client.db, lang, guildId, guildName);
+        return handleInventory(fakeMsg, client, client.db, lang, guildId, guildName);
     }
 };
 
-// ================= HANDLE SHOP =================
-async function handleShop(message, client, db, lang, prefix, guildId, guildName, guildIcon, version) {
-    const trend = getTrend();
-    const userId = message.author.id;
+// ================= INVENTORY =================
+// What the person really owns (the user_inventory table the shop and /use work with; it used to read an old
+// "purchases" table, so items bought in the shop never showed here)
+function inventoryView(client, db, userId, lang, guildId, guildName) {
+    const userData = (client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)) || { credits: 0 };
+    const catalog = client.shopItems || [];
+    let rows = [];
+    try { rows = db.prepare('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND active = 1 AND quantity > 0 ORDER BY item_id').all(userId); } catch (e) {}
+    const list = rows.map((r) => {
+        const it = catalog.find((x) => x.id === r.item_id);
+        const name = it ? (it[lang]?.name || it.en?.name || r.item_id) : r.item_id;
+        return `• ${it?.emoji || '📦'} **${name}** ×${r.quantity} · \`${r.item_id}\``;
+    }).join('\n') || t('inventory.noItemsPurchased', lang);
 
-    // PER-SERVER: Composite key lookup
-    let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
-    if (!userData) userData = { credits: 0 };
-
-    const items = client.shopItems || [];
     const container = new ContainerBuilder().setAccentColor(0x9b59b6);
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('inventory', client) || '🎒'} ${t('inventory.yourInventory', lang)}`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🎒 ${t('inventory.yourInventory', lang)}\n**${t('inventory.yourCredits', lang)} :** \`${(userData.credits || 0).toLocaleString()}\` 🪙`));
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('inventory.yourCredits', lang)}:** \`${credits.toLocaleString()}\` 🪙`));
-    
-    let itemList = '';
-    try {
-        const purchases = db.prepare("SELECT item_name, price, timestamp FROM purchases WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10").all(userId);
-        if (purchases && purchases.length > 0) {
-            itemList = purchases.map(p => `• **${p.item_name}** — ${p.price.toLocaleString()} 🪙`).join('\n');
-        } else {
-            itemList = t('inventory.noItemsPurchased', lang);
-        }
-    } catch (e) {
-        itemList = t('inventory.noItemsPurchased', lang);
-    }
-    
-    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('inventory.purchasedItems', lang)}**\n${itemList}`));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.footer', lang)} • ${guildName} • v${version}`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('inventory.purchasedItems', lang)}**\n${list}`));
+    container.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('inv_shop').setLabel(t('inventory.viewStore', lang)).setStyle(ButtonStyle.Primary).setEmoji('🛒'),
+        new ButtonBuilder().setCustomId('inv_refresh').setLabel(t('inventory.refresh', lang)).setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
+    ));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.footer', lang)} • ${guildName}`));
+    return { components: [container], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
+}
 
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('inv_shop').setLabel(t('inventory.viewStore', lang)).setStyle(ButtonStyle.Primary).setEmoji(resolveEmoji('shop', client) || '🛒'),
-        new ButtonBuilder().setCustomId('inv_refresh').setLabel(t('inventory.refresh', lang)).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('refresh', client) || '🔄')
-    );
-    container.addActionRowComponents(row);
-
-    const sent = await message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(() => null);
-    if (!sent) return;
-
-    const collector = sent.createMessageComponentCollector({ filter: (i) => i.user.id === userId, time: 60000 });
+async function handleInventory(message, client, db, lang, guildId, guildName) {
+    const userId = message.author.id;
+    const sent = await message.reply(inventoryView(client, db, userId, lang, guildId, guildName)).catch(() => null);
+    if (!sent?.createMessageComponentCollector) return;
+    const collector = sent.createMessageComponentCollector({ time: 120000 });
     collector.on('collect', async (i) => {
-        if (i.user.id !== userId) return;
-        try { await i.deferUpdate(); } catch (e) { return; }
-        if (i.customId === 'inv_shop') return handleShop(message, client, db, lang, prefix, guildId, guildName, guildIcon, version);
-        if (i.customId === 'inv_refresh') return handleInventory(message, client, db, lang, prefix, guildId, guildName, guildIcon, version);
+        if (i.user.id !== userId) return i.reply({ content: t('inventory.notYours', lang), flags: 64 }).catch(() => {});
+        if (i.customId === 'inv_refresh') return i.update(inventoryView(client, db, userId, lang, guildId, guildName)).catch(() => {});
+        if (i.customId === 'inv_shop') {
+            const shop = client.commands?.get('shop');
+            await i.deferUpdate().catch(() => {});
+            if (shop?.run) return shop.run(client, message, [], db, client.getServerSettings?.(guildId) || {}, 'shop');
+        }
+    });
+    collector.on('end', () => {
+        const view = inventoryView(client, db, userId, lang, guildId, guildName);
+        // Buttons are only live for two minutes: take them away instead of leaving dead ones
+        try { view.components[0].components = view.components[0].components.filter((x) => x.data?.type !== 1); } catch (e) {}
+        sent.edit(view).catch(() => {});
     });
 }
 
-// ================= HANDLE SELL =================
-async function handleSell(message, args, client, db, lang, prefix, guildId, guildName, guildIcon, version) {
+// ================= BUY (.buy <item-id>) — the same purchase as the shop menu =================
+async function handleBuy(message, args, client, db, lang, guildId) {
     const userId = message.author.id;
-    const itemId = args[0];
-    if (!itemId) return message.reply(`❌ ${t('inventory.usage', lang)}`).catch(() => {});
-
-    // Find item
-    const item = client.shopItems ? client.shopItems.find(i => i.id === itemId) : null;
+    const itemId = String(args[0] || '').trim().toLowerCase();
+    if (!itemId) return message.reply(t('inventory.usage', lang)).catch(() => {});
+    const item = (client.shopItems || []).find((x) => x.id === itemId);
     if (!item) return message.reply(t('inventory.itemNotFound', lang)).catch(() => {});
 
-    // Check ownership in purchases
-    try {
-        const owned = db.prepare("SELECT COUNT(*) as count FROM purchases WHERE user_id = ? AND item_id = ?").get(userId, itemId);
-        if (!owned || owned.count === 0) return message.reply(t('inventory.notOwnedSell', lang)).catch(() => {});
-    } catch (e) {}
+    const fd = db.prepare('SELECT credits, xp, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+    const bal = fd?.credits || 0;
+    const lvl = fd?.level || 1;
+    if (item.requirement?.level && lvl < item.requirement.level) {
+        return message.reply(t('shop.levelRequirement', lang, { level: item.requirement.level, current: lvl })).catch(() => {});
+    }
+    if (bal < item.price) {
+        return message.reply(t('shop.insufficientFunds', lang, { price: item.price.toLocaleString(), balance: bal.toLocaleString() })).catch(() => {});
+    }
+    const newCredits = bal - item.price + (item.effect?.credits || 0);
+    const newXP = (fd?.xp || 0) + (item.effect?.xp || 0);
+    const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
+    db.prepare('UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ? AND guild_id = ?').run(newCredits, newXP, newLevel, userId, guildId);
+    if (item.effect?.streak_protection) {
+        db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
+    }
+    const owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ?').get(userId, itemId);
+    if (owned) db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND item_id = ?').run(userId, itemId);
+    else db.prepare('INSERT INTO user_inventory (user_id, item_id, quantity, active) VALUES (?, ?, 1, 1)').run(userId, itemId);
+    if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
 
-    // PER-SERVER: Composite key lookup
-    let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
-    if (!userData) userData = { credits: 0 };
+    const name = item[lang]?.name || item.en?.name || itemId;
+    const c = new ContainerBuilder().setAccentColor(0x2ecc71)
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('shop.purchaseComplete', lang)}\n**${item.emoji || '🛒'} ${name}** · ${item.price.toLocaleString()} 🪙`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang)} : ${newCredits.toLocaleString()} 🪙`));
+    return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
+}
 
+// ================= SELL (.sell <item-id>) — half the price back =================
+async function handleSell(message, args, client, db, lang, guildId, guildName) {
+    const userId = message.author.id;
+    const itemId = String(args[0] || '').trim().toLowerCase();
+    if (!itemId) return message.reply(t('inventory.usage', lang)).catch(() => {});
+    const item = (client.shopItems || []).find((x) => x.id === itemId);
+    if (!item) return message.reply(t('inventory.itemNotFound', lang)).catch(() => {});
+
+    let owned = null;
+    try { owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ? AND active = 1').get(userId, itemId); } catch (e) {}
+    if (!owned || owned.quantity <= 0) return message.reply(t('inventory.notOwnedSell', lang)).catch(() => {});
+
+    const userData = (client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)) || { credits: 0 };
     const sellPrice = Math.floor(item.price * 0.5);
     const newCredits = (userData.credits || 0) + sellPrice;
-
-    // PER-SERVER: UPDATE includes guild_id
-    db.prepare("UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?").run(newCredits, userId, guildId);
+    db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(newCredits, userId, guildId);
     if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...userData, credits: newCredits });
     if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
+    if (owned.quantity > 1) db.prepare('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?').run(userId, itemId);
+    else db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND item_id = ?').run(userId, itemId);
 
-    // Remove from purchases
-    try { db.prepare("DELETE FROM purchases WHERE user_id = ? AND item_id = ? LIMIT 1").run(userId, itemId); } catch (e) {}
-
-    const itemT = item[lang] || item.en;
-    const embed = new EmbedBuilder()
-        .setColor('#e67e22')
-        .setAuthor({ name: `💸 ${t('inventory.sellSuccess', lang)}`, iconURL: message.author.displayAvatarURL() })
-        .setDescription(`**${item.emoji} ${itemT.name}** — ${t('inventory.soldFor', lang, { price: sellPrice.toLocaleString() })}`)
-        .addFields({ name: '💰 ' + t('inventory.newBalanceLabel', lang), value: `${newCredits.toLocaleString()} 🪙`, inline: true })
-        .setFooter({ text: `${t('inventory.footer', lang)} • ${guildName} • v${version}`, iconURL: guildIcon })
-        .setTimestamp();
-
-    await message.reply({ embeds: [embed] }).catch(() => {});
+    const name = item[lang]?.name || item.en?.name || itemId;
+    const c = new ContainerBuilder().setAccentColor(0xe67e22)
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('inventory.sellSuccess', lang)}\n**${item.emoji || '📦'} ${name}** · ${t('inventory.soldFor', lang, { price: sellPrice.toLocaleString() })}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang)} : ${newCredits.toLocaleString()} 🪙 · ${guildName}`));
+    return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
 }

@@ -768,7 +768,7 @@ async function handleBuiltin(ctx, cmdName, bridge) {
             const ramU = Math.round(mem.rss/1024/1024);
             let health = 'EXCELLENT', bar = healthBar(Math.max(0, 500-ping), 500);
             if (ping > 300) health = 'POOR'; else if (ping > 200) health = 'FAIR'; else if (ping > 100) health = 'GOOD';
-            await ctx.replyHTML(`📊 <b>STATISTICS</b>\n━━━━━━━━━━━━━━━━━━━━\n\nUptime · ${formatUptime(process.uptime())}\nRAM    · ${ramUMB}\nPing   · ${ping}ms\nTG Cmds· ${bridge.commands.size}\nLydia  · ${bridge.lydiaActiveChats.size} chats\n\nHealth · ${bar} ${health}\n\n<i>${bot_version}</i>`);
+            await ctx.replyHTML(`📊 <b>STATISTICS</b>\n━━━━━━━━━━━━━━━━━━━━\n\nUptime · ${formatUptime(process.uptime())}\nRAM    · ${ramU} MB\nPing   · ${ping}ms\nTG Cmds· ${bridge.commands.size}\nLydia  · ${bridge.lydiaActiveChats.size} chats\n\nHealth · ${bar} ${health}\n\n<i>${bot_version}</i>`);
             return true;
         }
 

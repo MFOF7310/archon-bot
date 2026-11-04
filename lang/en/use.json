@@ -5,8 +5,8 @@
   "noItems": "❌ INVENTORY EMPTY",
   "noItemsDesc": "You have no usable items. Visit the shop to get consumables, boosts or badges.",
   "shopHint": "🛒 ACQUIRE ITEMS",
-  "useSuccess": "✅ ACTIVATION COMPLETE",
-  "used": "ACTIVATED",
+  "useSuccess": "✅ Item used",
+  "used": "used",
   "xpGain": "💪 XP boost\n+{amount} XP",
   "creditGain": "🪙 Credits added\n+{amount} credits",
   "mysteryReward": "🎁 Mystery box\nReward: +{amount} {type}",
@@ -46,11 +46,11 @@
   "streakProtectionMsg": "🛡️ **Streak protection on!**\nYour streak is safe for 1 missed day.",
   "neuralStats": "📊 Stats",
   "creditsField": "Credits:",
-  "levelField": "🎯 LEVEL",
-  "rankField": "🏅 RANK",
-  "stockField": "📦 STOCK",
+  "levelField": "🎯 Level",
+  "rankField": "🏅 Rank",
+  "stockField": "📦 Left:",
   "depleted": "DEPLETED",
   "ascensionTitle": "🎉 Level up",
   "ascensionLine": "Level {level} — {rank}",
-  "rankElevationTitle": "🏅 RANK ELEVATION"
+  "rankElevationTitle": "🏅 New rank"
 }

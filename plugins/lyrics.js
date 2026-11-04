@@ -141,13 +141,13 @@ function buildPaginationRow(page, total) {
         new ButtonBuilder()
             .setCustomId('lyrics_prev')
             .setLabel('Back')
-            .setEmoji(resolveEmoji('mc_previous', interaction || message) || '⏮️')
+            .setEmoji('⏮️')
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(page === 0),
         new ButtonBuilder()
             .setCustomId('lyrics_next')
             .setLabel('Next')
-            .setEmoji(resolveEmoji('mc_skip', interaction || message) || '⏭️')
+            .setEmoji('⏭️')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page === total - 1),
     );

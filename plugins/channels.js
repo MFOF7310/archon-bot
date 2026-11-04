@@ -239,7 +239,7 @@ module.exports = {
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
             
             if (_d.ok) {
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${resolveEmoji('screaminggreen', interaction) || '🟢'} ${t('channels.can_post', lang)}`));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${resolveEmoji('screaminggreen', message) || '🟢'} ${t('channels.can_post', lang)}`));
             } else {
                 const reason = _d.reason === 'private' ? t('channels.private_warn', lang) : t('channels.role_block', lang, { role: _d.role || 'A role', missing: _d.missing.join(', ') });
                 c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`⚠️ **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));

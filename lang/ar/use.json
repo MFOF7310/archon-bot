@@ -5,8 +5,8 @@
   "noItems": "❌ المخزون فارغ",
   "noItemsDesc": "ليس لديك عناصر قابلة للاستخدام. زر المتجر للحصول على مستهلكات أو تعزيزات أو شارات.",
   "shopHint": "🛒 احصل على عناصر",
-  "useSuccess": "✅ اكتمل التفعيل",
-  "used": "مُفعَّل",
+  "useSuccess": "✅ تم استخدام العنصر",
+  "used": "مستخدم",
   "xpGain": "💪 دفعة XP\n+{amount} XP",
   "creditGain": "🪙 تمت إضافة الرصيد\n+{amount} نقطة",
   "mysteryReward": "🎁 صندوق الغموض\nالمكافأة: +{amount} {type}",
@@ -48,9 +48,9 @@
   "creditsField": "النقاط:",
   "levelField": "🎯 المستوى",
   "rankField": "🏅 الرتبة",
-  "stockField": "📦 المخزون",
+  "stockField": "📦 المتبقي:",
   "depleted": "نفد",
   "ascensionTitle": "🎉 ارتقاء في المستوى",
   "ascensionLine": "المستوى {level} — {rank}",
-  "rankElevationTitle": "🏅 ترقية الرتبة"
+  "rankElevationTitle": "🏅 رتبة جديدة"
 }

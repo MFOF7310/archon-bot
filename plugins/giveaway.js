@@ -145,7 +145,7 @@ function init(client, db) {
                         status: 'active',
                         endTimestamp: gw.end_timestamp,
                         entries: new Array(newEntriesCount).fill(null),
-                        lang: getLang(client, gw.guild_id)
+                        lang: pickLang(client, gw.guild_id)
                     };
                     const card = buildGiveawayCard(gwObj, client);
                     await msg.edit(card).catch(() => {});

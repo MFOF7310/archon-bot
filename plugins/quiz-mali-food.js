@@ -126,7 +126,9 @@ module.exports = {
         .setName('quiz-mali-food')
         .setDescription('Test your knowledge of Malian cuisine!'),
 
-    run: async (client, message, args) => {
+    run: async (client, message, args, _db, _ss, _used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         await startQuiz(client, message, lang, false);
     },

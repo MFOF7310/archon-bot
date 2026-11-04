@@ -255,12 +255,12 @@ function buildButtons(meme, t, userId, isSlash = false) {
             .setCustomId(`meme_${suffix}_${userId}`)
             .setLabel(t.another)
             .setStyle(ButtonStyle.Primary)
-            .setEmoji({ id: '1535783619170406460', name: 'LOOP' }),
+            .setEmoji('🔁'),
         new ButtonBuilder()
             .setURL(`https://reddit.com${meme.permalink}`)
             .setLabel(t.source)
             .setStyle(ButtonStyle.Link)
-            .setEmoji({ id: '1539643330978123776', name: 'reddit' })
+            .setEmoji('🔗')
     );
 }
 
@@ -279,7 +279,9 @@ module.exports = {
         .setDescription('😂 Get a fresh SFW meme from Reddit'),
 
     // ================= PREFIX =================
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         const t = T[lang] || T.en;
         const uid = message.author.id;

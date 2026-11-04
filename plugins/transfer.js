@@ -197,12 +197,12 @@ module.exports = {
                 .setCustomId(`transfer_confirm_${userId}_${Date.now()}`)
                 .setLabel(t('confirmBtn'))
                 .setStyle(ButtonStyle.Success)
-                .setEmoji(resolveEmoji('check', interaction) || '✅'),
+                .setEmoji('✅'),
             new ButtonBuilder()
                 .setCustomId(`transfer_cancel_${userId}_${Date.now()}`)
                 .setLabel(t('cancelBtn'))
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji(resolveEmoji('error', interaction) || '❌')
+                .setEmoji('❌')
         );
 
         const confirmMsg = await message.reply({ embeds: [confirmEmbed], components: [confirmRow] }).catch(() => {});
@@ -286,12 +286,12 @@ module.exports = {
                     .setCustomId(`transfer_balance_${userId}`)
                     .setLabel(t('checkBalance'))
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji(resolveEmoji('coins', interaction) || '💰'),
+                    .setEmoji('💰'),
                 new ButtonBuilder()
                     .setCustomId(`transfer_history_${userId}`)
                     .setLabel(t('viewHistory'))
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji(resolveEmoji('charts', interaction) || '📋')
+                    .setEmoji('📋')
             );
 
             await i.editReply({ embeds: [receiptEmbed], components: [buttonRow] }).catch(() => {});
@@ -528,12 +528,12 @@ module.exports = {
                 .setCustomId(`transfer_confirm_${userId}_${Date.now()}`)
                 .setLabel(t('confirmBtn'))
                 .setStyle(ButtonStyle.Success)
-                .setEmoji(resolveEmoji('check', interaction) || '✅'),
+                .setEmoji('✅'),
             new ButtonBuilder()
                 .setCustomId(`transfer_cancel_${userId}_${Date.now()}`)
                 .setLabel(t('cancelBtn'))
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji(resolveEmoji('error', interaction) || '❌')
+                .setEmoji('❌')
         );
 
         await interaction.editReply({ embeds: [confirmEmbed], components: [confirmRow] });
@@ -605,12 +605,12 @@ module.exports = {
                     .setCustomId(`transfer_balance_${userId}`)
                     .setLabel(t('checkBalance'))
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji(resolveEmoji('coins', interaction) || '💰'),
+                    .setEmoji('💰'),
                 new ButtonBuilder()
                     .setCustomId(`transfer_history_${userId}`)
                     .setLabel(t('viewHistory'))
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji(resolveEmoji('charts', interaction) || '📋')
+                    .setEmoji('📋')
             );
 
             await i.editReply({ embeds: [receiptEmbed], components: [buttonRow] }).catch(() => {});

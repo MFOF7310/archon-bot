@@ -68,8 +68,8 @@ async function fetchDogPrimary() {
     const breed = dog.breeds?.[0];
     return {
         url: dog.url,
-        width: dog.width,
-        height: dog.height,
+        imgWidth: dog.width,
+        imgHeight: dog.height,
         breed: breed?.name || null,
         origin: breed?.origin || null,
         temperament: breed?.temperament || null,
@@ -91,7 +91,7 @@ async function fetchDogFallback1() {
     const breed = breedMatch ? breedMatch[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : null;
     return {
         url: data.message,
-        width: null, height: null,
+        imgWidth: null, imgHeight: null,
         breed, origin: null, temperament: null, lifespan: null, weight: null, height: null,
         breedGroup: null, description: null,
         source: 'Dog CEO'
@@ -104,7 +104,7 @@ async function fetchDogFallback2() {
     if (!data.url) throw new Error('Random.dog failed');
     return {
         url: data.url,
-        width: null, height: null,
+        imgWidth: null, imgHeight: null,
         breed: null, origin: null, temperament: null, lifespan: null, weight: null, height: null,
         breedGroup: null, description: null,
         source: 'Random.dog'
@@ -150,8 +150,8 @@ function buildDogEmbed(dog, client, t, user) {
     }
 
     // Resolution info
-    if (dog.width && dog.height) {
-        embed.addFields({ name: t.highRes, value: `${dog.width}×${dog.height}px`, inline: true });
+    if (dog.imgWidth && dog.imgHeight) {
+        embed.addFields({ name: t.highRes, value: `${dog.imgWidth}×${dog.imgHeight}px`, inline: true });
     }
 
     return embed;
@@ -185,7 +185,9 @@ module.exports = {
     examples: ['.dog', '/dog'],
 
 
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         const t = T[lang] || T.en;
         const uid = message.author.id;

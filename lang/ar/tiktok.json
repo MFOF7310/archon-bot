@@ -39,5 +39,6 @@
   "channel_not_found": "❌ لم يتم العثور على القناة.",
   "tracked_success": "تم! سأراقب **@{username}**. ستصل التنبيهات في <#{channelId}>.",
   "removed_success": "🗑️ تمت إزالة **@{username}** من التتبع.",
-  "already_tracked": "أنت تتبع بالفعل **@{username}** في <#{channel}>. لا يوجد شيء لتغييره!"
+  "already_tracked": "أنت تتبع بالفعل **@{username}** في <#{channel}>. لا يوجد شيء لتغييره!",
+  "notFoundForce": "❌ لم أجد **@{username}** على TikTok. تحقق من الاسم، أو استخدم خيار `force` لإضافته على أي حال."
 }

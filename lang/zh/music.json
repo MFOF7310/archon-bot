@@ -111,5 +111,6 @@
   "queue_more": "队列中还有 {n} 首",
   "same_voice": "🎧 加入 {channel} 才能控制音乐。",
   "suggest_not_yours": "这些推荐只对添加这首歌的人有效。",
-  "open_on": "在 {site} 打开"
+  "open_on": "在 {site} 打开",
+  "failed_to_find": "找不到这首歌可播放的版本。"
 }

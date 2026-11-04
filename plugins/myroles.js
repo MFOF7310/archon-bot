@@ -44,7 +44,8 @@ module.exports = {
     },
     
     // ⚡ PREFIX COMMAND EXECUTION
-    async run(client, message, args, db) {
+    async run(client, message, args, db, _ss, _used, lang) {
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         // Resolve target
         const target = message.mentions.members.first() || message.member;

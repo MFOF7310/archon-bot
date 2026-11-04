@@ -201,7 +201,9 @@ module.exports = {
     examples: ['.cat', '/cat'],
 
 
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         const t = T[lang] || T.en;
         const uid = message.author.id;

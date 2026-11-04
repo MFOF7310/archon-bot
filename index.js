@@ -5171,7 +5171,7 @@ safeOn(Events.GuildCreate, async (guild) => {
             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${startTitle}\n${startText}`))
             .addActionRowComponents(
                 new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setLabel(fr ? 'Serveur Support' : 'Support Server').setStyle(ButtonStyle.Link).setURL('https://discord.gg/NFSMFJajp9'),
+                    new ButtonBuilder().setLabel(lang === 'fr' ? 'Serveur Support' : 'Support Server').setStyle(ButtonStyle.Link).setURL('https://discord.gg/NFSMFJajp9'),
                     new ButtonBuilder().setLabel('Dashboard').setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/dashboard')
                 )
             );

@@ -14,9 +14,11 @@ module.exports = {
     description: '📊 Check your level progress with XP bar and rank.',
     category: 'UTILITY', cooldown: 3000, usage: '.level [@user]', examples: ['.level', '.level @user', '/level user:@user'],
     data: new SlashCommandBuilder().setName('level').setDescription('📊 Check level progress').addUserOption(o => o.setName('user').setDescription('User to check (default: you)').setRequired(false)),
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
-        const t = T[lang], guild = message.guild, guildId = guild?.id || 'DM';
+        const t = T[lang] || T.en, guild = message.guild, guildId = guild?.id || 'DM';
         const target = message.mentions.users.first() || message.author;
         let userData = client.getUserData ? client.getUserData(target.id, guildId) : null;
         if (!userData && db) userData = db.prepare("SELECT xp, level, credits, total_messages FROM users WHERE id = ? AND guild_id = ?").get(target.id, guildId);
@@ -43,7 +45,7 @@ module.exports = {
     },
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang], guildId = interaction.guild?.id || 'DM';
+        const t = T[lang] || T.en, guildId = interaction.guild?.id || 'DM';
         const target = interaction.options.getUser('user') || interaction.user;
         await interaction.deferReply();
         let userData = client.getUserData ? client.getUserData(target.id, guildId) : null;

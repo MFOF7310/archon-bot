@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const i18n = require('../lib/i18n');
 
 module.exports = {
     name: 'poll',

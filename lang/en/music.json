@@ -111,5 +111,6 @@
   "queue_more": "+{n} more in the queue",
   "same_voice": "🎧 Join {channel} to control the music.",
   "suggest_not_yours": "These suggestions are for the person who added the song.",
-  "open_on": "Open on {site}"
+  "open_on": "Open on {site}",
+  "failed_to_find": "Couldn't find a playable version of this track."
 }

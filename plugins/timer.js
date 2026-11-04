@@ -28,9 +28,11 @@ module.exports = {
     description: '⏱️ Set timers with labels — study, break, pomodoro, cooking, anything.',
     category: 'UTILITY', cooldown: 2000, usage: '.timer <time> [label]', examples: ['.timer 5m Break', '.timer 25m Pomodoro', '/timer duration:30s label:Coffee'],
     data: new SlashCommandBuilder().setName('timer').setDescription('⏱️ Set a timer').addStringOption(o => o.setName('duration').setDescription('Duration: 30s, 5m, 1h, 2h30m').setRequired(true)).addStringOption(o => o.setName('label').setDescription('What is this timer for?').setRequired(false)),
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
-        const t = T[lang];
+        const t = T[lang] || T.en;
         if (args.length < 1) return message.reply(`❌ ${t.usage}`).catch(() => {});
         const durationMs = parseTime(args[0]);
         if (!durationMs) return message.reply(t.invalidTime).catch(() => {});
@@ -79,7 +81,7 @@ module.exports = {
     },
     execute: async (interaction) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang];
+        const t = T[lang] || T.en;
         const durationMs = parseTime(interaction.options.getString('duration'));
         if (!durationMs) return interaction.reply({ content: t.invalidTime, flags: 64 });
         const label = interaction.options.getString('label') || 'Timer';

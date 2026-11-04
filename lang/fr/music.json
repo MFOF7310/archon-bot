@@ -111,5 +111,6 @@
   "queue_more": "+{n} autres dans la file d'attente",
   "same_voice": "🎧 Rejoins {channel} pour contrôler la musique.",
   "suggest_not_yours": "Ces suggestions sont pour la personne qui a ajouté le morceau.",
-  "open_on": "Ouvrir sur {site}"
+  "open_on": "Ouvrir sur {site}",
+  "failed_to_find": "Impossible de trouver une version lisible de ce morceau."
 }

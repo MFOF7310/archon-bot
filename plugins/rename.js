@@ -23,7 +23,7 @@ module.exports = {
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         
         // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
-        lang = client.detectLanguage ? client.detectLanguage('rename', guildId) : 'en';
+        lang = client.detectLanguage ? client.detectLanguage('rename', message.guild?.id) : 'en';
         
         const t = loadT(lang);
         const version = client.version || '1.6.0';

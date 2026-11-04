@@ -5,8 +5,8 @@
   "noItems": "❌ INVENTAIRE VIDE",
   "noItemsDesc": "Tu n'as aucun objet utilisable. Passe à la boutique pour des consommables, des boosts ou des badges.",
   "shopHint": "🛒 ACQUÉRIR DES ARTICLES",
-  "useSuccess": "✅ ACTIVATION TERMINÉE",
-  "used": "ACTIVÉ",
+  "useSuccess": "✅ Objet utilisé",
+  "used": "utilisé",
   "xpGain": "💪 Bonus d'XP\n+{amount} XP",
   "creditGain": "🪙 Crédits ajoutés\n+{amount} crédits",
   "mysteryReward": "🎁 Boîte mystère\nRécompense : +{amount} {type}",
@@ -46,11 +46,11 @@
   "streakProtectionMsg": "🛡️ **Protection de série activée !**\nTa série est protégée pour 1 jour manqué.",
   "neuralStats": "📊 Stats",
   "creditsField": "Crédits :",
-  "levelField": "🎯 NIVEAU",
-  "rankField": "🏅 RANG",
-  "stockField": "📦 STOCK",
+  "levelField": "🎯 Niveau",
+  "rankField": "🏅 Rang",
+  "stockField": "📦 Restant :",
   "depleted": "ÉPUISÉ",
   "ascensionTitle": "🎉 Niveau supérieur",
   "ascensionLine": "Niveau {level} — {rank}",
-  "rankElevationTitle": "🏅 ÉLÉVATION DE RANG"
+  "rankElevationTitle": "🏅 Nouveau rang"
 }

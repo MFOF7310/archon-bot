@@ -233,7 +233,8 @@ module.exports = {
         });
 
         collector.on('collect', async (i) => {
-            if (i.user.id !== userId) return;
+            // Someone else's menu: say so (it used to stay silent, and Discord showed "This interaction failed")
+            if (i.user.id !== userId) return i.reply({ content: t('use.accessDenied', lang), flags: 64 }).catch(() => {});
             try { await i.deferUpdate(); } catch (e) { return; }
 
             if (i.customId.startsWith('use_select_')) {
@@ -652,22 +653,7 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
     // ═══════════════════════════════════════════════════════
     // ARCHON CLASSIFIED RESULT EMBED
     // ═══════════════════════════════════════════════════════
-    const container = new ContainerBuilder().setAccentColor(parseInt(newRank.color.replace('#', ''), 16));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('success', client) || '✨'} ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!`));
-    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(effectMessage));
-    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.neuralStats', lang)}**\nXP: \`${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\`\n${t('use.creditsField', lang)} \`${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\``));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.levelField', lang)}** \`${oldLevel} → ${newLevel}\`\n**${t('use.rankField', lang)}** ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}`));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('use.stockField', lang)} ${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)}`));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}`));
-
-    if (newLevel > oldLevel) {
-        resultEmbed.addFields({ name: t('use.ascensionTitle', lang), value: `\`\`\`ansi\n\u001b[1;32m  ${t('use.ascensionLine', lang, { level: newLevel, rank: (newRank.title[lang] || newRank.title.en) })}\u001b[0m\n\`\`\``, inline: false });
-    }
-    if ((oldRank.title[lang] || oldRank.title.en) !== (newRank.title[lang] || newRank.title.en)) {
-        resultEmbed.addFields({ name: t('use.rankElevationTitle', lang), value: `\`\`\`ansi\n\u001b[1;33m  ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: false });
-    }
+    const container = useResultCard(client, lang, { item, effectMessage, userData, newXP, newCredits, oldLevel, newLevel, oldRank, newRank, newQuantity, guildName, version });
 
     await interaction.editReply({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(err => {
         console.error('[USE-SLASH] Failed to edit reply:', err);
@@ -679,6 +665,24 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
 // ═══════════════════════════════════════════════════════
 // CORE ITEM PROCESSING FUNCTION (PREFIX)
 // ═══════════════════════════════════════════════════════
+// The result of using an item: one card for the slash and the prefix command. The prefix version built an embed
+// and then sent a card that did not exist, so every .use failed; a level-up broke the slash version the same way.
+function useResultCard(client, lang, v) {
+    const { item, effectMessage, userData, newXP, newCredits, oldLevel, newLevel, oldRank, newRank, newQuantity, guildName, version } = v;
+    const rk = (r) => `${r.emoji} ${(r.title[lang] || r.title.en)}`;
+    const container = new ContainerBuilder().setAccentColor(parseInt(String(newRank.color).replace('#', ''), 16));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('success', client) || '✨'} ${item[lang]?.name || item.en?.name || item.name} · ${t('use.used', lang)}`));
+    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(effectMessage));
+    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.neuralStats', lang)}**\nXP: \`${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\`\n${t('use.creditsField', lang)} \`${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\``));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.levelField', lang)}** \`${oldLevel} → ${newLevel}\`\n**${t('use.rankField', lang)}** ${rk(oldRank)}${rk(oldRank) !== rk(newRank) ? ` → ${rk(newRank)}` : ''}`));
+    if (newLevel > oldLevel) container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.ascensionTitle', lang)}** · ${t('use.ascensionLine', lang, { level: newLevel, rank: (newRank.title[lang] || newRank.title.en) })}`));
+    if (rk(oldRank) !== rk(newRank)) container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.rankElevationTitle', lang)}** · ${rk(oldRank)} → ${rk(newRank)}`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('use.stockField', lang)} ${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)} · ${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)}`));
+    return container;
+}
+
 async function processItemUse(client, message, db, userId, itemId, itemsMap, lang, guildName, version, guildId, isSlash) {
     const item = itemsMap.get(itemId);
     if (!item) {
@@ -784,26 +788,7 @@ async function processItemUse(client, message, db, userId, itemId, itemsMap, lan
     // ═══════════════════════════════════════════════════════
     // ARCHON CLASSIFIED RESULT EMBED
     // ═══════════════════════════════════════════════════════
-    const resultEmbed = new EmbedBuilder()
-        .setColor(newRank.color)
-        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
-        .setTitle(`✨ ${item[lang]?.name || item.en?.name || item.name} ${t('use.used', lang)}!`)
-        .setDescription(`\`\`\`yaml\n${effectMessage}\n\`\`\``)
-        .addFields(
-            { name: t('use.neuralStats', lang), value: `\`\`\`ansi\n\u001b[1;36mXP:\u001b[0m  ${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\n\u001b[1;33m${t('use.creditsField', lang)}\u001b[0m  ${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\n\`\`\``, inline: false },
-            { name: t('use.levelField', lang), value: `\`\`\`ansi\n\u001b[1;35m${oldLevel} → ${newLevel}\u001b[0m\n\`\`\``, inline: true },
-            { name: t('use.rankField', lang), value: `\`\`\`ansi\n\u001b[1;33m${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)}\u001b[0m\n\u001b[1;32m↓\u001b[0m\n\u001b[1;33m${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: true },
-            { name: t('use.stockField', lang), value: `\`\`\`ansi\n\u001b[1;36m${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)}\u001b[0m\n\`\`\``, inline: true }
-        )
-        .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}`, iconURL: message.guild?.iconURL() })
-        .setTimestamp();
-
-    if (newLevel > oldLevel) {
-        resultEmbed.addFields({ name: t('use.ascensionTitle', lang), value: `\`\`\`ansi\n\u001b[1;32m  ${t('use.ascensionLine', lang, { level: newLevel, rank: (newRank.title[lang] || newRank.title.en) })}\u001b[0m\n\`\`\``, inline: false });
-    }
-    if ((oldRank.title[lang] || oldRank.title.en) !== (newRank.title[lang] || newRank.title.en)) {
-        resultEmbed.addFields({ name: t('use.rankElevationTitle', lang), value: `\`\`\`ansi\n\u001b[1;33m  ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: false });
-    }
+    const container = useResultCard(client, lang, { item, effectMessage, userData, newXP, newCredits, oldLevel, newLevel, oldRank, newRank, newQuantity, guildName, version });
 
     await message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
 

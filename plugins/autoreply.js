@@ -2,6 +2,7 @@ const {
     SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
     ButtonBuilder, ButtonStyle
 } = require('discord.js');
+const mentions = require('../lib/mentions');
 
 const COLORS = {
     cyan: 0x00f0ff, green: 0x00ff88, red: 0xff3333,

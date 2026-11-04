@@ -32,9 +32,11 @@ module.exports = {
     description: '🧮 Safe calculator with scientific functions and history.',
     category: 'UTILITY', cooldown: 2000, usage: '.calc <expression>', examples: ['.calc 2+2', '.calc sin(45)', '.calc sqrt(144)'],
     data: new SlashCommandBuilder().setName('calc').setDescription('🧮 Calculator').addStringOption(o => o.setName('expression').setDescription('Math expression').setRequired(true)),
-    run: async (client, message, args, db, ss, used) => {
+    run: async (client, message, args, db, ss, used, lang) => {
+        // The language was used here without being defined, so this command always failed ("lang is not defined")
+        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
-        const t = T[lang], expr = args.join(' ');
+        const t = T[lang] || T.en, expr = args.join(' ');
         if (!expr) return message.reply(`❌ ${t.usage}`).catch(() => {});
         try {
             const result = safeCalc(expr);
@@ -52,7 +54,7 @@ module.exports = {
     },
     execute: async (interaction) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang], expr = interaction.options.getString('expression');
+        const t = T[lang] || T.en, expr = interaction.options.getString('expression');
         await interaction.deferReply();
         try {
             const result = safeCalc(expr);
