@@ -879,6 +879,8 @@ if (action === 'test' || action === 'simulate') {
             if (!forceMode && testData?.stats?.followers) {
                 c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString())));
             }
+            const _warn = require('../lib/postProblems').setupWarning(message.guild, message.guild.channels.cache.get(channelId), 'tiktok', lang);
+            if (_warn) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(_warn));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName} • ARCHON CG-223 • TikTok Engine`));
             
             return statusMsg.edit({ content: null, components: [c], flags: MessageFlags.IsComponentsV2 });
@@ -1032,6 +1034,8 @@ if (action === 'test' || action === 'simulate') {
             if (!forceMode && testData?.stats?.followers) {
                 c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString())));
             }
+            const _warn = require('../lib/postProblems').setupWarning(interaction.guild, channelOption, 'tiktok', lang);
+            if (_warn) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(_warn));
             const embed = { components: [c], flags: MessageFlags.IsComponentsV2 };
             try {
                 return await interaction.editReply(embed);
@@ -1040,7 +1044,7 @@ if (action === 'test' || action === 'simulate') {
                 const ttEmbed = new EmbedBuilder()
                 .setColor(0x2ecc71)
                 .setAuthor({ name: '📱 TikTok Tracking', iconURL: client.user.displayAvatarURL() })
-                .setDescription(`t('tiktok.tracked_success', lang, { username, channelId: channelOption.id })`)
+                .setDescription(t('tiktok.tracked_success', lang, { username, channelId: channelOption.id }))
                 .setFooter({ text: 'ARCHON CG-223 • TikTok Engine' }).setTimestamp();
             return await interaction.editReply({ embeds: [ttEmbed] });
             }

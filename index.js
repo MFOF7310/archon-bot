@@ -4227,6 +4227,11 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         }
         return;
     }
+    // ── "Couldn't post" alerts (lib/postProblems): Check again · Mute — they also work from the owner's DMs ──
+    if (interaction.isButton?.() && interaction.customId?.startsWith('pp:')) {
+        return require('./lib/postProblems').handleButton(interaction, client)
+            .catch((e) => console.error('[POST PROBLEMS] button:', e.message));
+    }
     // SLASH COMMAND EXECUTION
     // Autocomplete handler
     if (interaction.isAutocomplete()) {

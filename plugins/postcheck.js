@@ -1,54 +1,169 @@
 // ═══ ARCHON CG-223 — POSTCHECK ═══
-// "Can I post in this channel, and what should I change if not?" The texts live in lang/<locale>/postcheck.json.
-const { EmbedBuilder, SlashCommandBuilder, ChannelType } = require('discord.js');
+// "Can I post here, and what should change if not?"
+//   /postcheck [channel]   one channel: the permissions ARCHON uses there, what each one is for, and what blocks the missing ones
+//   /postcheck all:True    every channel ARCHON uses on this server, the dashboard's health card in Discord (Manage Server only)
+//   .postcheck [#channel]  ·  .postcheck all
+// Same rules as the dashboard and the "couldn't post" alerts (lib/canPost, lib/health-route, lib/postProblems).
+// Texts: lang/<locale>/postcheck.json (English and French written; the other languages fall back to English).
+const { SlashCommandBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const cp = require('../lib/canPost');
 const i18n = require('../lib/i18n');
+const { card } = require('../lib/games/v2');
 
 const T = (key, lang, vars) => i18n.t(`postcheck.${key}`, lang, vars);
+const GREEN = 0x2ECC71, AMBER = 0xF0B232, RED = 0xE74C3C;
+const ALL_WORDS = /^(all|tout|tous|everything)$/i;
+const when = () => `<t:${Math.floor(Date.now() / 1000)}:R>`;
+const botName = (me) => me?.roles?.botRole?.name || me?.displayName || 'ARCHON';
 
-function buildReply(d, target, me, lang) {
-    const bot = me.roles.botRole?.name || me.displayName;
-    const footer = { text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' };
-    if (d.ok) {
-        return { embeds: [new EmbedBuilder().setColor(0x2ecc71)
-            .setTitle(T('okTitle', lang, { channel: target }))
-            .setDescription(T('okDesc', lang))
-            .setFooter(footer)] };
+// The permissions ARCHON uses in a channel, and what each one is for.
+const LIST = [['view', 'useCore'], ['send', 'useCore'], ['embed', 'useEmbeds'], ['files', 'useFiles'], ['history', 'useReplies'], ['emojis', 'useEmojis']];
+
+function oneChannel(guild, channel, lang, hint) {
+    const me = guild.members.me;
+    const target = channel ? String(channel) : T('alertNoChannel', lang);
+    const vars = (d) => ({ channel: target, bot: botName(me), perms: cp.localize(d.missing || [], lang).join(', '), role: d.role || T('someRole', lang) });
+    const explain = (d) => `${T(cp.keyFor('why', d.reason), lang, vars(d))}\n\n${T(cp.keyFor('fix', d.reason), lang, vars(d))}`;
+    const head = (title) => ({ text: `### ${title}\n-# ${T('checkedAt', lang, { when: when() })}` });
+    const foot = { text: `-# ${hint}` };
+
+    const perms = channel && typeof channel.permissionsFor === 'function' ? channel.permissionsFor(me) : null;
+    const thread = !!channel?.isThread?.();
+    const lines = [], missing = [];
+    if (perms) {
+        for (const [key, use] of LIST) {
+            const p = key === 'send' && thread ? cp.PERMS.sendThreads : cp.PERMS[key];
+            const has = !!perms.has(p[1]);
+            if (!has) missing.push(p);
+            lines.push(`${has ? '✅' : '❌'} **${cp.localize([p[0]], lang)[0]}** · ${T(use, lang)}`);
+        }
     }
-    const vars = { channel: target, bot, perms: cp.localize(d.missing || [], lang).join(', '), role: d.role || T('someRole', lang) };
-    const why = T(cp.keyFor('why', d.reason), lang, vars);   // whyPrivate / whyRoleBlock / whyMissingPerm
-    const fix = T(cp.keyFor('fix', d.reason), lang, vars);   // fixPrivate / fixRoleBlock / fixMissingPerm
-    return { embeds: [new EmbedBuilder().setColor(0xf1c40f)
-        .setTitle(T('noTitle', lang, vars))
-        .setDescription(`${why}\n\n${fix}`)
-        .setFooter(footer)] };
+    const list = lines.length ? [{ rule: true }, { text: lines.join('\n') }] : [];
+
+    // first: can ARCHON post here at all?
+    const core = cp.diagnose(guild, channel, me, [cp.PERMS.view, cp.PERMS.send]);
+    if (!core.ok) return card(RED, [head(`⛔ ${T('noTitle', lang, { channel: target })}`), ...list, { rule: true }, { text: explain(core) }, foot]);
+    if (!missing.length) return card(GREEN, [head(T('okTitle', lang, { channel: target })), ...list, { text: `-# ${T('okDesc', lang)}` }, foot]);
+    // it posts, but some things will not work here: name what blocks them
+    const d = cp.diagnose(guild, channel, me, missing);
+    return card(AMBER, [head(T('limitTitle', lang, { channel: target })), ...list, ...(d.ok ? [] : [{ rule: true }, { text: explain(d) }]), foot]);
 }
+
+function shortWhy(c, lang, bot) {
+    const perms = cp.localize(c.missing || [], lang).join(', ');
+    if (c.status === 'missing') return T('short.gone', lang);
+    if (c.status === 'not_text') return T('short.wrong_type', lang);
+    const key = 'short.' + (c.reason || 'refused');
+    const s = T(key, lang, { role: c.role || T('someRole', lang), perms, bot });
+    return s === 'postcheck.' + key ? T('short.refused', lang) : s;
+}
+
+function label(setting, lang) {
+    const key = 'settings.' + setting;
+    const s = T(key, lang);
+    return s === 'postcheck.' + key ? setting : s;
+}
+
+function allChannels(guild, db, lang, hint) {
+    const health = require('../lib/health-route');
+    let row = {};
+    try { row = db?.prepare?.('SELECT * FROM server_settings WHERE guild_id = ?').get(guild.id) || {}; } catch { row = {}; }
+    const h = health.build(guild, row, lang, db);
+    const bot = botName(guild.members.me);
+    const at = (id) => (id ? `<#${id}>` : T('alertNoChannel', lang));
+
+    const chLines = h.channels.map((c) => {
+        const name = `**${label(c.setting, lang)}**${c.detail ? ` (${c.detail})` : ''} · ${at(c.channelId)}`;
+        if (c.status !== 'ok') return `❌ ${name} — ${shortWhy(c, lang, bot)}`;
+        if (c.soft?.length) return `⚠️ ${name} — ${T('short.soft', lang, { perms: cp.localize(c.soft, lang).join(', ') })}`;
+        return `✅ ${name}`;
+    });
+    const permLines = h.permissions.map((p) => `${p.ok ? '✅' : '❌'} **${p.name}** · ${T('neededFor', lang, { feature: T('features.' + p.feature, lang) })}`);
+    const roleLines = h.roles.map((r) => {
+        const name = `**${label(r.setting, lang)}**${r.roleName ? ` · @${r.roleName}` : ''}`;
+        if (r.status === 'ok') return `✅ ${name}`;
+        return `❌ ${name} — ${r.status === 'above' ? T('roleAbove', lang) : T('roleMissing', lang)}`;
+    });
+    const failLines = (h.failures || []).map((f) => `❌ **${f.label}** · ${at(f.channelId)} · ${T('failureLine', lang, { count: f.count, when: `<t:${Math.floor(f.lastAt / 1000)}:R>` })}`);
+
+    const problems = h.summary.problems;
+    const warnings = h.summary.warnings || 0;
+    const sub = problems === 1 ? T('allProblemOne', lang, { when: when() })
+        : problems > 1 ? T('allProblemMany', lang, { count: problems, when: when() })
+        : (warnings || failLines.length) ? T('allWarnOnly', lang, { when: when() })
+        : T('allOk', lang, { when: when() });
+    const color = problems ? RED : (warnings || failLines.length) ? AMBER : GREEN;
+    const section = (title, lines) => (lines.length ? [{ rule: true }, { text: `${T(title, lang)}\n${lines.join('\n')}` }] : []);
+
+    const { dashboardUrl } = require('../lib/postProblems');
+    const link = new ActionRowBuilder().addComponents(new ButtonBuilder().setURL(dashboardUrl(guild.id)).setLabel(T('alertBtnDashboard', lang)).setEmoji('🌐').setStyle(ButtonStyle.Link));
+    return card(color, [
+        { text: `### ${T('allTitle', lang, { guild: guild.name })}\n-# ${sub}` },
+        ...(chLines.length ? section('secChannels', chLines) : [{ rule: true }, { text: T('noChannels', lang) }]),
+        ...section('secPerms', permLines),
+        ...section('secRoles', roleLines),
+        ...section('secFailures', failLines),
+        { rule: true },
+        { text: `-# ${hint}` },
+        { row: link },
+    ]);
+}
+
+const isAdmin = (perms) => !!perms?.has?.(PermissionFlagsBits.ManageGuild);
 
 module.exports = {
     name: 'postcheck',
     aliases: ['checkperms', 'canipost', 'accesscheck'],
-    description: '🔍 Check whether I can post in a channel, and what to change if not',
+    description: '🔍 Check whether I can post in a channel, or in every channel I use here',
     category: 'UTILITY',
     cooldown: 3000,
-    usage: '.postcheck [#channel]',
-    examples: ['.postcheck', '.postcheck #welcome', '.checkperms #staff'],
+    usage: '.postcheck [#channel] | .postcheck all',
+    examples: ['.postcheck', '.postcheck #welcome', '.postcheck all'],
 
     data: new SlashCommandBuilder()
         .setName('postcheck')
-        .setDescription('🔍 Check whether I can post in a channel')
+        .setDescription('🔍 Check whether I can post in a channel, or in every channel I use here')
         .addChannelOption(o => o.setName('channel').setDescription('Channel to check (default: this one)').setRequired(false)
-            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)),
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildVoice, ChannelType.PublicThread,
+                ChannelType.PrivateThread, ChannelType.AnnouncementThread ?? 10, ChannelType.GuildForum))
+        .addBooleanOption(o => o.setName('all').setDescription('Check every channel I use on this server (admins)').setRequired(false)),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        const target = message.mentions.channels.first() || message.channel;
-        const d = cp.diagnose(message.guild, target, message.guild.members.me);
-        return message.reply(buildReply(d, target.toString(), message.guild.members.me, lang)).catch(() => {});
+        lang = lang || require('../lib/pick-lang').pickLang(client, message.guild?.id, message, message.author?.id);
+        if (!message.guild) return;
+        const prefix = serverSettings?.prefix || '.';
+        try {
+            if (ALL_WORDS.test(String(args?.[0] || ''))) {
+                if (!isAdmin(message.member?.permissions) && message.author.id !== message.guild.ownerId) return message.reply(T('adminsOnlyAll', lang)).catch(() => {});
+                return message.reply(allChannels(message.guild, db || client.db, lang, T('oneHintPrefix', lang, { prefix }))).catch(() => {});
+            }
+            const target = message.mentions.channels.first() || message.channel;
+            return message.reply(oneChannel(message.guild, target, lang, T('allHintPrefix', lang, { prefix }))).catch(() => {});
+        } catch (e) {
+            console.error('[POSTCHECK]', e.message);
+            return message.reply(T('alertUnavailable', lang)).catch(() => {});
+        }
     },
 
     execute: async (interaction, client) => {
         const lang = i18n.slashLang(interaction);
-        const target = interaction.options.getChannel('channel') || interaction.channel;
-        const d = cp.diagnose(interaction.guild, target, interaction.guild.members.me);
-        return interaction.reply({ ...buildReply(d, target.toString(), interaction.guild.members.me, lang), flags: 64 });
-    }
+        if (!interaction.guild) return interaction.reply({ content: T('alertUnavailable', lang), flags: 64 }).catch(() => {});
+        const ephemeral = (payload) => ({ ...payload, flags: payload.flags | 64 });
+        try {
+            if (interaction.options.getBoolean('all')) {
+                if (!isAdmin(interaction.memberPermissions) && interaction.user.id !== interaction.guild.ownerId) {
+                    return interaction.reply({ content: T('adminsOnlyAll', lang), flags: 64 });
+                }
+                return interaction.reply(ephemeral(allChannels(interaction.guild, client.db, lang, T('oneHintSlash', lang))));
+            }
+            const target = interaction.options.getChannel('channel') || interaction.channel;
+            return interaction.reply(ephemeral(oneChannel(interaction.guild, target, lang, T('allHintSlash', lang))));
+        } catch (e) {
+            console.error('[POSTCHECK]', e.message);
+            if (!interaction.replied) return interaction.reply({ content: T('alertUnavailable', lang), flags: 64 }).catch(() => {});
+        }
+    },
+
+    _oneChannel: oneChannel,
+    _allChannels: allChannels,
 };

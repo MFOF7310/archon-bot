@@ -540,7 +540,10 @@ module.exports = {
             const _L3 = livLang(client, guildId, message);
             const _row = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
             await statusMsg.delete().catch(() => {});
-            return message.reply({ components: [buildSetCard(_row, client, _L3)], flags: MessageFlags.IsComponentsV2 });
+            const _setCard = buildSetCard(_row, client, _L3);
+            const _warn = require('../lib/postProblems').setupWarning(message.guild, channel, 'youtube', _L3);
+            if (_warn) _setCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(_warn));
+            return message.reply({ components: [_setCard], flags: MessageFlags.IsComponentsV2 });
         }
 
         if (action === 'remove') {
@@ -636,7 +639,10 @@ module.exports = {
             if (upOpt !== null) db.prepare('UPDATE youtube_notifications SET notify_uploads = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(upOpt ? 1 : 0, guildId, channelId);
             const _L2 = livLang(interaction.client, interaction.guildId, interaction);
             const _row = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
-            return interaction.editReply({ components: [buildSetCard(_row, client, _L2)], flags: MessageFlags.IsComponentsV2 });
+            const _setCard = buildSetCard(_row, client, _L2);
+            const _warn = require('../lib/postProblems').setupWarning(interaction.guild, target, 'youtube', _L2);
+            if (_warn) _setCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(_warn));
+            return interaction.editReply({ components: [_setCard], flags: MessageFlags.IsComponentsV2 });
         }
 
         if (sub === 'remove') {
