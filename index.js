@@ -1700,6 +1700,21 @@ function rateLimit(key, maxEvents = 5, windowMs = 10000) {
 
 client.rateLimit = rateLimit;
 
+// Same counter as rateLimit(), but says how long to wait: 0 when the action may go ahead (and is counted),
+// otherwise the seconds until the oldest counted action leaves the window. The dashboard shows that as a countdown.
+function rateWait(key, maxEvents, windowMs) {
+    const now = Date.now();
+    const recent = (eventRateLimits.get(key) || []).filter((time) => now - time < windowMs);
+    if (recent.length >= maxEvents) {
+        eventRateLimits.set(key, recent);
+        return Math.max(1, Math.ceil((recent[0] + windowMs - now) / 1000));
+    }
+    recent.push(now);
+    eventRateLimits.set(key, recent);
+    return 0;
+}
+client.rateWait = rateWait;
+
 // ================= PER-SERVER USER DATA ACCESS LAYER =================
 // All user data operations are now scoped to a specific guild.
 // The composite key (id, guild_id) ensures complete data isolation.
@@ -5595,12 +5610,20 @@ apiApp.use(cors({
 }));
 
 // Capture raw body for webhook signature verification
-// 🛡️ GLOBAL API RATE LIMIT — Protects the bot from internal spam/DDoS
+// 🛡️ GLOBAL API RATE LIMIT — for anything that is not this machine.
+// Every dashboard request reaches the bot from 127.0.0.1, so counting by IP put ALL dashboard users in one
+// bucket of 100 requests per 15 minutes: a few people browsing emptied it and every page failed ("Too many
+// requests"). The dashboard already limits each visitor by their real IP; calls from this machine are not counted here.
+const isLocalCaller = (req) => {
+    const a = String(req.socket?.remoteAddress || '');
+    return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+};
 const apiLimiter = expressRateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per 15 minutes
+    max: 100, // Limit each outside IP to 100 requests per 15 minutes
     standardHeaders: true,
     legacyHeaders: false,
+    skip: isLocalCaller,
     message: { error: 'Too many requests from this IP, please try again later.' }
 });
 
@@ -6675,7 +6698,7 @@ apiApp.post('/api/verify/:guildId/panel', requireAdmin, async (req, res) => {
         if (!/^\d{17,20}$/.test(String(channelId || ''))) return res.status(400).json({ error: 'channel_invalid' });
         const ch = a.guild.channels.cache.get(String(channelId));
         if (!ch || !(ch.type === 0 || ch.type === 5)) return res.status(400).json({ error: 'channel_not_text' });
-        if (client.rateLimit(`vpanel-api:${gid}`, 3, 60000)) return res.status(429).json({ error: 'slow_down' });
+        { const _wait = client.rateWait(`vpanel-api:${gid}`, 3, 60000); if (_wait) return res.set('Retry-After', String(_wait)).status(429).json({ error: 'slow_down', retryAfter: _wait }); }
         const d = require('./lib/canPost').diagnose(a.guild, ch, a.guild.members.me);
         if (!d.ok) return res.status(400).json({ error: 'cannot_post', reason: d.reason, missing: d.missing || [], role: d.role || null });
 
@@ -6702,7 +6725,7 @@ apiApp.post('/api/verify/:guildId/approve', requireAdmin, async (req, res) => {
         const { isPremium } = require('./plugins/premium.js');
         if (!isPremium(db, gid)) return res.status(402).json({ error: 'premium_required' });
         if (!/^\d{17,20}$/.test(String(memberId || ''))) return res.status(400).json({ error: 'member_invalid' });
-        if (client.rateLimit(`vapprove-api:${gid}`, 20, 60000)) return res.status(429).json({ error: 'slow_down' });
+        { const _wait = client.rateWait(`vapprove-api:${gid}`, 20, 60000); if (_wait) return res.set('Retry-After', String(_wait)).status(429).json({ error: 'slow_down', retryAfter: _wait }); }
         const m = await a.guild.members.fetch(String(memberId)).catch(() => null);
         if (!m || m.user.bot) return res.status(404).json({ error: 'member_not_found' });
         // Only people the gate is holding: waiting on a captcha, or carrying the unverified role
@@ -6976,7 +6999,7 @@ apiApp.post('/api/roles-config/:guildId', requireAdmin, async (req, res) => {
         const a = await rolesActor(req.params.guildId, userId);
         if (a.error) return res.status(a.code).json({ error: a.error });
         const g = a.guild, db = client.db;
-        if (client.rateLimit(`roles-api:${g.id}`, 10, 60000)) return res.status(429).json({ error: 'slow_down' });
+        { const _wait = client.rateWait(`roles-api:${g.id}`, 10, 60000); if (_wait) return res.set('Retry-After', String(_wait)).status(429).json({ error: 'slow_down', retryAfter: _wait }); }
 
         const current = RR.readSlots(db, g.id);
         const v = RR.validateChanges(g, current, changes, a.member);
