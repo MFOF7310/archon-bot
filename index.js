@@ -4582,17 +4582,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('ls_toggle:')) {
         return require('./plugins/livestream').handleToggle(interaction, client).catch(e => console.error('[LIVESTREAM] toggle:', e.message));
     }
-    if (interaction.isButton() && interaction.customId === 'meta_reroll') {
-        try {
-            const metaPlugin = require('./plugins/meta.js');
-            const embed = metaPlugin.randomPick(interaction.guild, require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id));
-            if (embed) {
-                await interaction.update({ embeds: [embed], components: [metaPlugin.rerollRow(require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id))] }).catch(() => {});
-            }
-        } catch (e) {
-            console.error('[META]', e.message);
-        }
-        return;
+    // /meta card: class filter, weapon picker, random pick, back to the list (and the old cards' "reroll" button)
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && (interaction.customId.startsWith('meta:') || interaction.customId === 'meta_reroll')) {
+        return require('./plugins/meta.js').handleComponent(interaction, client).catch(e => console.error('[META] component:', e.message));
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('scrim_')) {

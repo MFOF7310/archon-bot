@@ -17,5 +17,17 @@
   "weaponFooter": "ميتا {season} • أركون CG-223",
   "noMatch": "ما لقيت **{q}** بقائمة الميتا.\nجرب هذي: {names}",
   "noneYet": "لا شيء بعد",
-  "reroll": "🔄 جرّب غيرها"
+  "reroll": "🔄 جرّب غيرها",
+  "updated": "آخر تحديث: {updated}",
+  "tierName": "الفئة {tier}",
+  "filterPlaceholder": "تصفية حسب الصنف",
+  "filterAll": "كل الأصناف",
+  "weaponsCount": "{n} أسلحة في الميتا",
+  "openPlaceholder": "افتح سلاحًا",
+  "randomBtn": "اختيار عشوائي",
+  "anotherBtn": "سلاح آخر",
+  "backBtn": "العودة إلى القائمة",
+  "listHint": "استخدم `/meta weapon` لعرض أي سلاح في اللعبة.",
+  "notInMeta": "خارج الميتا الحالية",
+  "weaponUsage": "الاستخدام: `.weapon <الاسم>`، مثلًا `.weapon ak117`"
 }
