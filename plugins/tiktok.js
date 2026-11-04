@@ -879,7 +879,7 @@ if (action === 'test' || action === 'simulate') {
             if (!forceMode && testData?.stats?.followers) {
                 c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString())));
             }
-            const _warn = require('../lib/postProblems').setupWarning(message.guild, message.guild.channels.cache.get(channelId), 'tiktok', lang);
+            const _warn = require('../lib/postProblems').setupWarning(message.guild, message.guild.channels.cache.get(channelId), 'tiktok', lang, message);
             if (_warn) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(_warn));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName} • ARCHON CG-223 • TikTok Engine`));
             
@@ -1034,7 +1034,7 @@ if (action === 'test' || action === 'simulate') {
             if (!forceMode && testData?.stats?.followers) {
                 c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.followers', lang).replace('{count}', Number(testData.stats.followers).toLocaleString())));
             }
-            const _warn = require('../lib/postProblems').setupWarning(interaction.guild, channelOption, 'tiktok', lang);
+            const _warn = require('../lib/postProblems').setupWarning(interaction.guild, channelOption, 'tiktok', lang, interaction);
             if (_warn) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(_warn));
             const embed = { components: [c], flags: MessageFlags.IsComponentsV2 };
             try {

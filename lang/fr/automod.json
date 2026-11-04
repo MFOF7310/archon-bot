@@ -52,7 +52,7 @@
   "strikeWhyAdmin": "Je n'ai pas pu exclure temporairement **{who}** : Discord ne permet pas d'exclure temporairement un membre qui a la permission Administrateur.",
   "strikeWhyOwner": "Je n'ai pas pu agir sur **{who}** : cette personne est propriétaire du serveur, et Discord ne permet à personne d'agir sur le propriétaire.",
   "strikeWhyRole": "Je n'ai pas pu {verb} **{who}** : son rôle le plus haut, **{role}**, est au-dessus du mien.\nPour corriger : Paramètres du serveur → Rôles → fais glisser **{bot}** au-dessus de **{role}**.",
-  "strikeWhyUnknown": "Je n'ai pas pu {verb} **{who}**, et je n'ai pas su dire pourquoi. La commande **postcheck** et Paramètres du serveur → Rôles sont les meilleurs endroits pour chercher.",
+  "strikeWhyUnknown": "Je n'ai pas pu {verb} **{who}**, et je n'ai pas su dire pourquoi. La commande {cmd} et Paramètres du serveur → Rôles sont les meilleurs endroits pour chercher.",
   "rule_message_spam": "spam de messages",
   "rule_caps_flood": "abus de majuscules",
   "rule_emoji_flood": "abus d'émojis",

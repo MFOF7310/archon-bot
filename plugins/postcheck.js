@@ -9,6 +9,8 @@ const { SlashCommandBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder,
 const cp = require('../lib/canPost');
 const i18n = require('../lib/i18n');
 const { card } = require('../lib/games/v2');
+const { icon } = require('../lib/icons');
+const { slash } = require('../lib/cmd');
 
 const T = (key, lang, vars) => i18n.t(`postcheck.${key}`, lang, vars);
 const GREEN = 0x2ECC71, AMBER = 0xF0B232, RED = 0xE74C3C;
@@ -19,7 +21,8 @@ const botName = (me) => me?.roles?.botRole?.name || me?.displayName || 'ARCHON';
 // The permissions ARCHON uses in a channel, and what each one is for.
 const LIST = [['view', 'useCore'], ['send', 'useCore'], ['embed', 'useEmbeds'], ['files', 'useFiles'], ['history', 'useReplies'], ['emojis', 'useEmojis']];
 
-function oneChannel(guild, channel, lang, hint) {
+// where: the message or interaction the card is shown in (ARCHON's own icons only where it may use them)
+function oneChannel(guild, channel, lang, hint, where) {
     const me = guild.members.me;
     const target = channel ? String(channel) : T('alertNoChannel', lang);
     const vars = (d) => ({ channel: target, bot: botName(me), perms: cp.localize(d.missing || [], lang).join(', '), role: d.role || T('someRole', lang) });
@@ -35,18 +38,18 @@ function oneChannel(guild, channel, lang, hint) {
             const p = key === 'send' && thread ? cp.PERMS.sendThreads : cp.PERMS[key];
             const has = !!perms.has(p[1]);
             if (!has) missing.push(p);
-            lines.push(`${has ? '✅' : '❌'} **${cp.localize([p[0]], lang)[0]}** · ${T(use, lang)}`);
+            lines.push(`${icon(has ? 'ok' : 'no', where)} **${cp.localize([p[0]], lang)[0]}** · ${T(use, lang)}`);
         }
     }
     const list = lines.length ? [{ rule: true }, { text: lines.join('\n') }] : [];
 
     // first: can ARCHON post here at all?
     const core = cp.diagnose(guild, channel, me, [cp.PERMS.view, cp.PERMS.send]);
-    if (!core.ok) return card(RED, [head(`⛔ ${T('noTitle', lang, { channel: target })}`), ...list, { rule: true }, { text: explain(core) }, foot]);
-    if (!missing.length) return card(GREEN, [head(T('okTitle', lang, { channel: target })), ...list, { text: `-# ${T('okDesc', lang)}` }, foot]);
+    if (!core.ok) return card(RED, [head(`${icon('no', where)} ${T('noTitle', lang, { channel: target })}`), ...list, { rule: true }, { text: explain(core) }, foot]);
+    if (!missing.length) return card(GREEN, [head(`${icon('ok', where)} ${T('okTitle', lang, { channel: target })}`), ...list, { text: `-# ${T('okDesc', lang)}` }, foot]);
     // it posts, but some things will not work here: name what blocks them
     const d = cp.diagnose(guild, channel, me, missing);
-    return card(AMBER, [head(T('limitTitle', lang, { channel: target })), ...list, ...(d.ok ? [] : [{ rule: true }, { text: explain(d) }]), foot]);
+    return card(AMBER, [head(`${icon('warn', where)} ${T('limitTitle', lang, { channel: target })}`), ...list, ...(d.ok ? [] : [{ rule: true }, { text: explain(d) }]), foot]);
 }
 
 function shortWhy(c, lang, bot) {
@@ -64,7 +67,7 @@ function label(setting, lang) {
     return s === 'postcheck.' + key ? setting : s;
 }
 
-function allChannels(guild, db, lang, hint) {
+function allChannels(guild, db, lang, hint, where) {
     const health = require('../lib/health-route');
     let row = {};
     try { row = db?.prepare?.('SELECT * FROM server_settings WHERE guild_id = ?').get(guild.id) || {}; } catch { row = {}; }
@@ -74,17 +77,17 @@ function allChannels(guild, db, lang, hint) {
 
     const chLines = h.channels.map((c) => {
         const name = `**${label(c.setting, lang)}**${c.detail ? ` (${c.detail})` : ''} · ${at(c.channelId)}`;
-        if (c.status !== 'ok') return `❌ ${name} — ${shortWhy(c, lang, bot)}`;
-        if (c.soft?.length) return `⚠️ ${name} — ${T('short.soft', lang, { perms: cp.localize(c.soft, lang).join(', ') })}`;
-        return `✅ ${name}`;
+        if (c.status !== 'ok') return `${icon('no', where)} ${name} — ${shortWhy(c, lang, bot)}`;
+        if (c.soft?.length) return `${icon('warn', where)} ${name} — ${T('short.soft', lang, { perms: cp.localize(c.soft, lang).join(', ') })}`;
+        return `${icon('ok', where)} ${name}`;
     });
-    const permLines = h.permissions.map((p) => `${p.ok ? '✅' : '❌'} **${p.name}** · ${T('neededFor', lang, { feature: T('features.' + p.feature, lang) })}`);
+    const permLines = h.permissions.map((p) => `${icon(p.ok ? 'ok' : 'no', where)} **${p.name}** · ${T('neededFor', lang, { feature: T('features.' + p.feature, lang) })}`);
     const roleLines = h.roles.map((r) => {
         const name = `**${label(r.setting, lang)}**${r.roleName ? ` · @${r.roleName}` : ''}`;
-        if (r.status === 'ok') return `✅ ${name}`;
-        return `❌ ${name} — ${r.status === 'above' ? T('roleAbove', lang) : T('roleMissing', lang)}`;
+        if (r.status === 'ok') return `${icon('ok', where)} ${name}`;
+        return `${icon('no', where)} ${name} — ${r.status === 'above' ? T('roleAbove', lang) : T('roleMissing', lang)}`;
     });
-    const failLines = (h.failures || []).map((f) => `❌ **${f.label}** · ${at(f.channelId)} · ${T('failureLine', lang, { count: f.count, when: `<t:${Math.floor(f.lastAt / 1000)}:R>` })}`);
+    const failLines = (h.failures || []).map((f) => `${icon('no', where)} **${f.label}** · ${at(f.channelId)} · ${T('failureLine', lang, { count: f.count, when: `<t:${Math.floor(f.lastAt / 1000)}:R>` })}`);
 
     const problems = h.summary.problems;
     const warnings = h.summary.warnings || 0;
@@ -135,10 +138,10 @@ module.exports = {
         try {
             if (ALL_WORDS.test(String(args?.[0] || ''))) {
                 if (!isAdmin(message.member?.permissions) && message.author.id !== message.guild.ownerId) return message.reply(T('adminsOnlyAll', lang)).catch(() => {});
-                return message.reply(allChannels(message.guild, db || client.db, lang, T('oneHintPrefix', lang, { prefix }))).catch(() => {});
+                return message.reply(allChannels(message.guild, db || client.db, lang, T('oneHintPrefix', lang, { prefix, cmd: slash(client, 'postcheck', { guild: message.guild }) }), message)).catch(() => {});
             }
             const target = message.mentions.channels.first() || message.channel;
-            return message.reply(oneChannel(message.guild, target, lang, T('allHintPrefix', lang, { prefix }))).catch(() => {});
+            return message.reply(oneChannel(message.guild, target, lang, T('allHintPrefix', lang, { prefix, cmd: slash(client, 'postcheck', { guild: message.guild }) }), message)).catch(() => {});
         } catch (e) {
             console.error('[POSTCHECK]', e.message);
             return message.reply(T('alertUnavailable', lang)).catch(() => {});
@@ -154,10 +157,10 @@ module.exports = {
                 if (!isAdmin(interaction.memberPermissions) && interaction.user.id !== interaction.guild.ownerId) {
                     return interaction.reply({ content: T('adminsOnlyAll', lang), flags: 64 });
                 }
-                return interaction.reply(ephemeral(allChannels(interaction.guild, client.db, lang, T('oneHintSlash', lang))));
+                return interaction.reply(ephemeral(allChannels(interaction.guild, client.db, lang, T('oneHintSlash', lang, { cmd: slash(client, 'postcheck', { guild: interaction.guild }) }), interaction)));
             }
             const target = interaction.options.getChannel('channel') || interaction.channel;
-            return interaction.reply(ephemeral(oneChannel(interaction.guild, target, lang, T('allHintSlash', lang))));
+            return interaction.reply(ephemeral(oneChannel(interaction.guild, target, lang, T('allHintSlash', lang, { cmd: slash(client, 'postcheck', { guild: interaction.guild }) }), interaction)));
         } catch (e) {
             console.error('[POSTCHECK]', e.message);
             if (!interaction.replied) return interaction.reply({ content: T('alertUnavailable', lang), flags: 64 }).catch(() => {});

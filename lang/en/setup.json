@@ -38,7 +38,7 @@
     "log": "Log channel"
   },
   "attention": "Needs your attention",
-  "postcheckHint": "Run /postcheck in that channel for the exact steps.",
+  "postcheckHint": "Run {cmd} in that channel for the exact steps.",
   "next": "You can change any of this later with /serversettings, and add more channels with /channels set.",
   "prefixLine": "Your prefix is `{prefix}`, so commands also work as `{prefix}help`.",
   "cancelled": "Setup cancelled. Nothing else was changed.",

@@ -52,7 +52,7 @@
   "strikeWhyAdmin": "I couldn't time out **{who}**: Discord doesn't allow timing out members who have the Administrator permission.",
   "strikeWhyOwner": "I couldn't act on **{who}**: they own the server, and Discord doesn't let anyone act on the owner.",
   "strikeWhyRole": "I couldn't {verb} **{who}**: their highest role, **{role}**, sits above mine.\nTo fix it: Server Settings → Roles → drag **{bot}** above **{role}**.",
-  "strikeWhyUnknown": "I couldn't {verb} **{who}**, and I couldn't tell why. The **postcheck** command and Server Settings → Roles are the best places to look.",
+  "strikeWhyUnknown": "I couldn't {verb} **{who}**, and I couldn't tell why. The {cmd} command and Server Settings → Roles are the best places to look.",
   "rule_message_spam": "message spam",
   "rule_caps_flood": "caps flood",
   "rule_emoji_flood": "emoji flood",

@@ -38,7 +38,7 @@
     "log": "日志频道"
   },
   "attention": "需要你注意",
-  "postcheckHint": "在该频道中运行 /postcheck 查看具体步骤。",
+  "postcheckHint": "在该频道中运行 {cmd} 查看具体步骤。",
   "next": "你之后可以随时用 /serversettings 修改这些设置，并用 /channels set 添加更多频道。",
   "prefixLine": "你的前缀是 `{prefix}`，所以命令也可以写成 `{prefix}help`。",
   "cancelled": "设置已取消，其他内容没有改动。",

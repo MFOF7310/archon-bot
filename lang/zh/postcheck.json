@@ -1,5 +1,5 @@
 {
-  "okTitle": "✅ 我可以在 {channel} 发送消息",
+  "okTitle": "我可以在 {channel} 发送消息",
   "okDesc": "我在那里需要的权限都已就位。",
   "noTitle": "我还不能在 {channel} 发送消息",
   "whyPrivate": "我看不到这个频道。",

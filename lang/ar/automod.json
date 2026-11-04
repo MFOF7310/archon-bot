@@ -52,7 +52,7 @@
   "strikeWhyAdmin": "لم أستطع إيقاف **{who}** مؤقتًا: لا يتيح Discord إيقاف الأعضاء مؤقتًا ممن لديهم إذن Administrator.",
   "strikeWhyOwner": "لم أستطع التصرف تجاه **{who}**: هذا الشخص يملك الخادم، ولا يسمح Discord لأحد بالتصرف تجاه المالك.",
   "strikeWhyRole": "لم أستطع {verb} **{who}**: رتبته الأعلى، **{role}**، فوق رتبتي.\nلإصلاحه: Server Settings → Roles → اسحب **{bot}** فوق **{role}**.",
-  "strikeWhyUnknown": "لم أستطع {verb} **{who}**، ولم أعرف السبب. أمر **postcheck** و Server Settings → Roles هما أفضل مكان للبحث.",
+  "strikeWhyUnknown": "لم أستطع {verb} **{who}**، ولم أعرف السبب. أمر {cmd} و Server Settings → Roles هما أفضل مكان للبحث.",
   "rule_message_spam": "سبام رسائل",
   "rule_caps_flood": "إفراط في الأحرف الكبيرة",
   "rule_emoji_flood": "إفراط في الإيموجي",

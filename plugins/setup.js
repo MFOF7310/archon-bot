@@ -107,7 +107,7 @@ function channelWarning(lang, guild, step, id) {
     const d = canPost.diagnose(guild, ch, me, canPost.neededFor(step.needsPost));
     if (d.ok) return null;
     const vars = { channel: `<#${id}>`, bot: me.roles?.botRole?.name || me.displayName, perms: canPost.localize(d.missing || [], lang).join(', '), role: d.role || '' };
-    return `**<#${id}>**\n${i18n.t('postcheck.' + canPost.keyFor('why', d.reason), lang, vars)}\n${T(lang, 'postcheckHint')}`;
+    return `**<#${id}>**\n${i18n.t('postcheck.' + canPost.keyFor('why', d.reason), lang, vars)}\n${T(lang, 'postcheckHint', { cmd: require('../lib/cmd').slash(guild.client, 'postcheck', { guild }) })}`;
 }
 
 module.exports = {
