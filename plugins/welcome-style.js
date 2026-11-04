@@ -589,7 +589,7 @@ function getWelcomeButtons(cfg, member) {
     // Rules button — use configured channel if set, else fallback to system channel
     const rulesId = cfg.rulesChannel || null;
     buttons.push({
-        label: t('welcome.btn_rules', lang), emoji: EMOJIS.rules, style: 'Link',
+        label: t('welcome.btn_rules', lang), emoji: '📜', style: 'Link',
         url: `https://discord.com/channels/${guildId}/${rulesId || fallbackId}`,
         customId: null
     });
@@ -597,13 +597,13 @@ function getWelcomeButtons(cfg, member) {
     // General button — use configured channel if set, else fallback to system channel
     const generalId = cfg.generalChannel || null;
     buttons.push({
-        label: t('welcome.btn_general', lang), emoji: EMOJIS.general, style: 'Link',
+        label: t('welcome.btn_general', lang), emoji: '💬', style: 'Link',
         url: `https://discord.com/channels/${guildId}/${generalId || fallbackId}`,
         customId: null
     });
 
-    buttons.push({ label: t('welcome.btn_ai', lang), emoji: EMOJIS.ai_assistant, style: 'Primary', url: null, customId: 'welcome_help' });
-    buttons.push({ label: t('welcome.btn_profile', lang), emoji: EMOJIS.myprofile, style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
+    buttons.push({ label: t('welcome.btn_ai', lang), emoji: '🤖', style: 'Primary', url: null, customId: 'welcome_help' });
+    buttons.push({ label: t('welcome.btn_profile', lang), emoji: '👤', style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
 
     return buttons;
 }

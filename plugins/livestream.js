@@ -243,8 +243,8 @@ function buildLiveEmbed(channelId, live, handle, client, lang = 'en', pingText =
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${title}**\n${body}`));
     c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t('livestream.btn_watch_live', lang)).setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji(EMOJIS.livestream || '🔴'),
-        new ButtonBuilder().setLabel(t('livestream.btn_channel', lang)).setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji(EMOJIS.ic_youtube || '📺')
+        new ButtonBuilder().setLabel(t('livestream.btn_watch_live', lang)).setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji('🔴'),
+        new ButtonBuilder().setLabel(t('livestream.btn_channel', lang)).setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji('📺')
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: ['everyone'] } } };
 }
@@ -258,7 +258,7 @@ function buildVideoEmbed(upload, handle, client, lang = 'en') {
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${t('livestream.card_video_body', lang, { name })}`));
     c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t('livestream.btn_watch_video', lang)).setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(EMOJIS.ic_video || '🎬')
+        new ButtonBuilder().setLabel(t('livestream.btn_watch_video', lang)).setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji('🎬')
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }

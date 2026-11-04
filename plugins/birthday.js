@@ -464,12 +464,12 @@ async function checkAndAnnounceBirthdays(client) {
                     new ButtonBuilder()
                         .setCustomId(`bday_celebrate_${userId}`)
                         .setLabel('Wish Happy Birthday')
-                        .setEmoji({ id: '1539977057432240128', name: 'celebration' })
+                        .setEmoji('🎉')
                         .setStyle(ButtonStyle.Success),
                     new ButtonBuilder()
                         .setCustomId(`bday_celebrate_${userId}`)
                         .setLabel('Send Virtual Gift')
-                        .setEmoji({ id: '1539977940962377859', name: 'argift' })
+                        .setEmoji('🎁')
                         .setStyle(ButtonStyle.Primary)
                 );
                 

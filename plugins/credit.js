@@ -187,8 +187,8 @@ let userData = db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").g
 
     // Button row
     const actionRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('credit_lb').setLabel(t('leaderboardBtn')).setStyle(ButtonStyle.Secondary).setEmoji(resolveEmoji('trophy', message) || '🏆'),
-        new ButtonBuilder().setCustomId('credit_pay').setLabel(t('transferBtn')).setStyle(ButtonStyle.Primary).setEmoji(resolveEmoji('cashmoney', message) || '💸'),
+        new ButtonBuilder().setCustomId('credit_lb').setLabel(t('leaderboardBtn')).setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
+        new ButtonBuilder().setCustomId('credit_pay').setLabel(t('transferBtn')).setStyle(ButtonStyle.Primary).setEmoji('💸'),
         new ButtonBuilder().setCustomId('credit_shop').setLabel(t('shopBtn')).setStyle(ButtonStyle.Success).setEmoji('🛒')
     );
 

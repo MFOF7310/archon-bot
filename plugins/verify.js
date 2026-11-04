@@ -207,7 +207,7 @@ async function postVerifyPanel(client, db, guild, ch, lang) {
     vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${vt(lang, 'bamakoFooter')}`));
     vContainer.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(lang, 'v2_panel_btn')).setStyle(ButtonStyle.Success).setEmoji(resolveEmoji('lock', client) || '🛡️')
+        new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(lang, 'v2_panel_btn')).setStyle(ButtonStyle.Success).setEmoji('🛡️')
     ));
     await ch.send({ components: [vContainer], flags: MessageFlags.IsComponentsV2 });
 

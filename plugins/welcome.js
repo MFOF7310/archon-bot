@@ -162,7 +162,7 @@ async function handleWelcome(member, client, db) {
         return d;
     });
     if (!buttonDefs.some((d) => d.customId === 'welcome_help')) {
-        buttonDefs.push({ label: t('welcome.btn_help', lang), emoji: EMOJIS.hubInfo, style: 'Primary', customId: 'welcome_help' });
+        buttonDefs.push({ label: t('welcome.btn_help', lang), emoji: 'ℹ️', style: 'Primary', customId: 'welcome_help' });
     }
     const rows = [];
     let currentRow = new ActionRowBuilder();

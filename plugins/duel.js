@@ -169,9 +169,10 @@ const td = (content) => new TextDisplayBuilder().setContent(String(content));
 const divider = () => new SeparatorBuilder().setDivider(true);
 const v2 = (container, extra = {}) => ({ components: [container], flags: MessageFlags.IsComponentsV2, ...extra });
 
+const BUTTON_ICONS = { small_check: '✅', small_cross: '❌', duel_sword: '⚔️', shield: '🛡️', duel_heal: '💚', duel_bolt: '⚡' };
 function button(id, label, style, emojiKey) {
     const b = new ButtonBuilder().setCustomId(id).setLabel(label).setStyle(style);
-    const e = toEmoji(ico(emojiKey));
+    const e = emojiKey ? toEmoji(BUTTON_ICONS[emojiKey] || '') : undefined;
     if (e) b.setEmoji(e);
     return b;
 }

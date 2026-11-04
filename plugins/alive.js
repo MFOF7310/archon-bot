@@ -106,7 +106,7 @@ function buildCard(client, t, ctx) {
     ];
 
     const row = new (require('discord.js').ActionRowBuilder)().addComponents(
-        new (require('discord.js').ButtonBuilder)().setCustomId('alive_refresh').setLabel(t.refresh || 'Refresh').setStyle(3).setEmoji(ui.emObj('loading', '🔄')),
+        new (require('discord.js').ButtonBuilder)().setCustomId('alive_refresh').setLabel(t.refresh || 'Refresh').setStyle(3).setEmoji('🔄'),
         new (require('discord.js').ButtonBuilder)().setCustomId('alive_help').setLabel(t.help || 'Help').setStyle(1).setEmoji('❓'),
     );
     items.push({ row });

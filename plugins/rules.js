@@ -77,7 +77,7 @@ function acceptRow(gid, lang) {
         new ButtonBuilder()
             .setCustomId(`rules_accept_${gid}`)
             .setLabel(L('btnAccept') || 'Accept')
-            .setEmoji(ui.emObj('verified', '✅'))
+            .setEmoji('✅')
             .setStyle(ButtonStyle.Success)
     );
 }

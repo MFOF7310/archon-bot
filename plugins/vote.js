@@ -245,7 +245,7 @@ function buildPortalRow(client, status, t, isSlash = false) {
     const suffix = isSlash ? '_slash' : '';
 
     if (status.canVote) {
-        row.addComponents(new ButtonBuilder().setLabel(t.voteBtn).setStyle(ButtonStyle.Link).setURL(link).setEmoji(EMOJIS.vote || '⭐'));
+        row.addComponents(new ButtonBuilder().setLabel(t.voteBtn).setStyle(ButtonStyle.Link).setURL(link).setEmoji('⭐'));
     } else if (status.isFirstTime) {
         row.addComponents(new ButtonBuilder().setLabel(t.firstVoteBtn).setStyle(ButtonStyle.Link).setURL(link).setEmoji('🌟'));
     } else {

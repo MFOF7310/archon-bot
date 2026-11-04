@@ -262,7 +262,7 @@ function buildDMEmbed(client, user, result, stats, t, lang) {
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel(t.voteAgain).setStyle(ButtonStyle.Link)
             .setURL(`https://top.gg/bot/${client.user.id}/vote`)
-            .setEmoji(EMOJIS.vote || '🗳️')
+            .setEmoji('🗳️')
     );
 
     return { embed, components: [row], nextVote: nextTs };
