@@ -8,5 +8,15 @@
   "fixPrivate": "To fix it:\n1. Open the channel's settings → Permissions\n2. Add the **{bot}** role\n3. Allow **{perms}**\n4. Run this check again",
   "fixRoleBlock": "To fix it:\n1. Open the channel's settings → Permissions\n2. Find **{bot}** (or add it) and allow **{perms}**\n3. Run this check again",
   "fixMissingPerm": "To fix it:\n1. Open Server Settings → Roles\n2. Open **{bot}** and turn on **{perms}**\n3. Run this check again",
-  "someRole": "a role"
+  "someRole": "a role",
+  "whyGone": "This channel no longer exists.",
+  "fixGone": "To fix it: pick another channel for this feature, in the dashboard or with the command that set it.",
+  "whyWrongType": "{channel} is a forum, a media channel or a category: I can't post messages there.",
+  "fixWrongType": "To fix it: pick a text channel instead.",
+  "whyThreadLocked": "This thread is locked, so only moderators can post in it.",
+  "fixThreadLocked": "To fix it: unlock the thread, give the **{bot}** role **{perms}**, or pick another channel.",
+  "whyTimeout": "**{bot}** is timed out on this server, so it can't send anything.",
+  "fixTimeout": "To fix it: right-click **{bot}** in the member list and remove its timeout.",
+  "whyRefused": "Discord refused the message even though my usual permissions look fine.",
+  "fixRefused": "To fix it:\n1. Open the channel's settings → Permissions\n2. Check that **{bot}** is allowed **View Channel**, **Send Messages**, **Embed Links** and **Attach Files**\n3. Run this check again"
 }

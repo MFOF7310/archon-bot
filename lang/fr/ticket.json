@@ -133,5 +133,9 @@
   "panel_how_it_works": "**Comment ça marche :**\n1. Sélectionnez une catégorie ci-dessous.\n2. Un salon privé est créé instantanément.\n3. Fournissez des captures d'écran ou des détails pour que notre équipe puisse vous aider plus rapidement.\n4. Un agent de support sera avec vous sous peu.",
   "panel_response_time": "-# ⏱️ **Temps de réponse :** Notre équipe répond généralement en moins de **2 heures**.",
   "panel_available": "**Catégories Disponibles**",
-  "panel_placeholder": "Choisis une catégorie…"
+  "panel_placeholder": "Choisis une catégorie…",
+  "cantPostGone": "⛔ Je ne trouve plus {ch}. Choisis un autre salon.",
+  "cantPostWrongType": "⛔ Je ne peux pas publier le panneau de tickets dans {ch} : c'est un forum, un salon multimédia ou une catégorie. Choisis un salon textuel.",
+  "cantPostThreadLocked": "⛔ {ch} est un fil verrouillé. Déverrouille-le ou donne **{perms}** à **{bot}**.",
+  "cantPostTimeout": "⛔ Je suis exclu temporairement de ce serveur, je ne peux rien publier. Clic droit sur **{bot}** dans la liste des membres, retire son exclusion temporaire, puis réessaie."
 }

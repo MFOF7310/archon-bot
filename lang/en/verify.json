@@ -99,5 +99,9 @@
   "v2_panel_posted": "✅ Verification panel published in {ch}.",
   "inviteBtn": "Open #{channel}",
   "sysChanPing": "{user}, please verify!",
-  "logFooter": "ARCHON CG-223 • Verification"
+  "logFooter": "ARCHON CG-223 • Verification",
+  "cantPostGone": "⛔ I can't find {ch} anymore. Pick another channel.",
+  "cantPostWrongType": "⛔ I can't post the verification panel in {ch}: it's a forum, a media channel or a category. Pick a text channel.",
+  "cantPostThreadLocked": "⛔ {ch} is a locked thread. Unlock it or give **{bot}** **{perms}**.",
+  "cantPostTimeout": "⛔ I'm timed out on this server, so I can't post anything. Right-click **{bot}** in the member list, remove its timeout, then try again."
 }

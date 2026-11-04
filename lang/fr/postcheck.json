@@ -8,5 +8,15 @@
   "fixPrivate": "Pour corriger :\n1. Ouvre les paramètres du salon → Permissions\n2. Ajoute le rôle **{bot}**\n3. Autorise **{perms}**\n4. Relance cette vérification",
   "fixRoleBlock": "Pour corriger :\n1. Ouvre les paramètres du salon → Permissions\n2. Trouve **{bot}** (ou ajoute-le) et autorise **{perms}**\n3. Relance cette vérification",
   "fixMissingPerm": "Pour corriger :\n1. Ouvre Paramètres du serveur → Rôles\n2. Ouvre **{bot}** et active **{perms}**\n3. Relance cette vérification",
-  "someRole": "un rôle"
+  "someRole": "un rôle",
+  "whyGone": "Ce salon n'existe plus.",
+  "fixGone": "Pour corriger : choisis un autre salon pour cette fonction, dans le dashboard ou avec la commande qui l'avait réglé.",
+  "whyWrongType": "{channel} est un forum, un salon multimédia ou une catégorie : je ne peux pas y écrire de messages.",
+  "fixWrongType": "Pour corriger : choisis plutôt un salon textuel.",
+  "whyThreadLocked": "Ce fil est verrouillé : seuls les modérateurs peuvent y écrire.",
+  "fixThreadLocked": "Pour corriger : déverrouille le fil, donne **{perms}** au rôle **{bot}**, ou choisis un autre salon.",
+  "whyTimeout": "**{bot}** est exclu temporairement de ce serveur : il ne peut rien envoyer.",
+  "fixTimeout": "Pour corriger : clic droit sur **{bot}** dans la liste des membres, puis retire son exclusion temporaire.",
+  "whyRefused": "Discord a refusé le message alors que mes permissions habituelles semblent bonnes.",
+  "fixRefused": "Pour corriger :\n1. Ouvre les paramètres du salon → Permissions\n2. Vérifie que **{bot}** a **Voir le salon**, **Envoyer des messages**, **Intégrer des liens** et **Joindre des fichiers**\n3. Relance cette vérification"
 }

@@ -99,5 +99,9 @@
   "v2_panel_posted": "✅ Panneau de vérification publié dans {ch}.",
   "inviteBtn": "Ouvrir #{channel}",
   "sysChanPing": "{user}, merci de te vérifier !",
-  "logFooter": "ARCHON CG-223 • Vérification"
+  "logFooter": "ARCHON CG-223 • Vérification",
+  "cantPostGone": "⛔ Je ne trouve plus {ch}. Choisis un autre salon.",
+  "cantPostWrongType": "⛔ Je ne peux pas publier le panneau de vérification dans {ch} : c'est un forum, un salon multimédia ou une catégorie. Choisis un salon textuel.",
+  "cantPostThreadLocked": "⛔ {ch} est un fil verrouillé. Déverrouille-le ou donne **{perms}** à **{bot}**.",
+  "cantPostTimeout": "⛔ Je suis exclu temporairement de ce serveur, je ne peux rien publier. Clic droit sur **{bot}** dans la liste des membres, retire son exclusion temporaire, puis réessaie."
 }

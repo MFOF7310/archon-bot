@@ -11,5 +11,13 @@
   "hierarchyBan": "Je ne peux pas bannir **{target}** : son rôle le plus haut, **{role}**, est au-dessus du mien.\nPour corriger : Paramètres du serveur → Rôles → fais glisser **{bot}** au-dessus de **{role}**, puis réessaie.",
   "hierarchyKick": "Je ne peux pas expulser **{target}** : son rôle le plus haut, **{role}**, est au-dessus du mien.\nPour corriger : Paramètres du serveur → Rôles → fais glisser **{bot}** au-dessus de **{role}**, puis réessaie.",
   "hierarchyOwner": "Je ne peux pas faire ça au propriétaire du serveur. Discord ne permet à personne d'agir sur le propriétaire.",
-  "hierarchySelf": "Je ne peux pas faire ça sur moi-même."
+  "hierarchySelf": "Je ne peux pas faire ça sur moi-même.",
+  "botNoPermsGone": "Je ne trouve plus ce salon.",
+  "botNoPermsWrongType": "Je ne peux pas écrire de messages dans ce type de salon. Utilise la commande dans un salon textuel.",
+  "botNoPermsThreadLocked": "Ce fil est verrouillé, je ne peux pas répondre ici.\nPour corriger : déverrouille le fil ou donne **{perms}** au rôle **{bot}**, puis réessaie.",
+  "botNoPermsTimeout": "Je suis exclu temporairement de ce serveur, je ne peux rien faire pour l'instant.\nPour corriger : clic droit sur **{bot}** dans la liste des membres, retire son exclusion temporaire, puis réessaie.",
+  "logSetGone": "Salon des logs AutoMod défini sur {channel}, **mais je ne trouve pas ce salon.** Choisis-en un autre.",
+  "logSetWrongType": "Salon des logs AutoMod défini sur {channel}, **mais je ne peux pas y écrire de messages :** c'est un forum, un salon multimédia ou une catégorie. Choisis plutôt un salon textuel.",
+  "logSetThreadLocked": "Salon des logs AutoMod défini sur {channel}, **mais ce fil est verrouillé.** Déverrouille-le ou donne **{perms}** au rôle **{bot}**.",
+  "logSetTimeout": "Salon des logs AutoMod défini sur {channel}, **mais je suis exclu temporairement de ce serveur** : je ne peux rien y envoyer. Retire d'abord mon exclusion."
 }

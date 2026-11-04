@@ -11,5 +11,13 @@
   "hierarchyBan": "I can't ban **{target}**: their highest role, **{role}**, sits above mine.\nTo fix it: Server Settings → Roles → drag **{bot}** above **{role}**, then try again.",
   "hierarchyKick": "I can't kick **{target}**: their highest role, **{role}**, sits above mine.\nTo fix it: Server Settings → Roles → drag **{bot}** above **{role}**, then try again.",
   "hierarchyOwner": "I can't do that to the server owner. Discord doesn't let anyone act on the owner.",
-  "hierarchySelf": "I can't do that to myself."
+  "hierarchySelf": "I can't do that to myself.",
+  "botNoPermsGone": "I can't find this channel anymore.",
+  "botNoPermsWrongType": "I can't post messages in this kind of channel. Use the command in a text channel.",
+  "botNoPermsThreadLocked": "This thread is locked, so I can't answer here.\nTo fix it: unlock the thread or give the **{bot}** role **{perms}**, then try again.",
+  "botNoPermsTimeout": "I'm timed out on this server, so I can't act yet.\nTo fix it: right-click **{bot}** in the member list, remove its timeout, then try again.",
+  "logSetGone": "AutoMod log set to {channel}, **but I can't find that channel.** Pick another one.",
+  "logSetWrongType": "AutoMod log set to {channel}, **but I can't post messages there:** it's a forum, a media channel or a category. Pick a text channel instead.",
+  "logSetThreadLocked": "AutoMod log set to {channel}, **but that thread is locked.** Unlock it or give the **{bot}** role **{perms}**.",
+  "logSetTimeout": "AutoMod log set to {channel}, **but I'm timed out on this server**, so I can't post anything. Remove my timeout first."
 }
