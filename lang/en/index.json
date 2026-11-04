@@ -36,5 +36,6 @@
   "afk_just_now": "just now",
   "afk_ping_desc": "{afk} **{user} is AFK** ({time})\n**Reason:** {reason}",
   "afk_return_desc": "{away} **{user} is back!** Welcome back 👋\nAway for {minutes} min",
-  "footer": "ARCHON CG-223"
+  "footer": "ARCHON CG-223",
+  "need_perms": "You need the {perms} permission to use this command."
 }

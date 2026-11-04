@@ -357,7 +357,7 @@ async execute(interaction, client) {
         const rawValue = interaction.options.getString('value');
         
         const result = await this.processSetSetting(
-            interaction.guild, client, setting, rawValue, lang
+            interaction.guild, client, setting, rawValue, lang, interaction.member
         );
 
         if (result.success) {
@@ -377,7 +377,7 @@ async execute(interaction, client) {
     // ================= SET SETTING (PREFIX) =================
     async setSettingPrefix(message, client, settings, setting, rawValue, lang) {
         const result = await this.processSetSetting(
-            message.guild, client, setting, rawValue, lang
+            message.guild, client, setting, rawValue, lang, message.member
         );
 
         if (result.success) {
@@ -395,7 +395,7 @@ async execute(interaction, client) {
     },
 
     // ================= PROCESS SET SETTING (CORE LOGIC) =================
-    async processSetSetting(guild, client, setting, rawValue, lang) {
+    async processSetSetting(guild, client, setting, rawValue, lang, actor = null) {
         const t = {
             fr: {
                 success: '✅ Paramètre mis à jour',
@@ -487,18 +487,19 @@ async execute(interaction, client) {
             }
             case 'role': {
                 const roleId = rawValue.replace(/[<@&>]/g, '').trim();
-                const role = guild.roles.cache.get(roleId);
-                if (!role) {
-                    try {
-                        const fetched = await guild.roles.fetch(roleId).catch(() => null);
-                        if (!fetched) return { success: false, error: t.invalidRole };
-                        processedValue = roleId;
-                    } catch {
-                        return { success: false, error: t.invalidRole };
-                    }
-                } else {
-                    processedValue = roleId;
+                const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(() => null);
+                if (!role) return { success: false, error: t.invalidRole };
+                // Same rules as /roles and the dashboard: ARCHON only hands out safe roles, and the mute role stays separate
+                const RR = require('../lib/role-rules');
+                const isMute = def.col === 'muterole';
+                let err = RR.checkRole(guild, role, isMute ? 'mute' : 'grant', actor);
+                if (!err) {
+                    const saved = RR.readSlots(client.db, guild.id);
+                    const clash = isMute ? RR.SLOTS.some(sl => sl.key !== 'mute' && saved[sl.key] === role.id) : saved.mute === role.id;
+                    if (clash) err = { code: 'mute_conflict' };
                 }
+                if (err) return { success: false, error: require('../lib/i18n').t('roles.rejected', lang, { label: def.name, reason: RR.reasonText(err, lang) }) };
+                processedValue = role.id;
                 break;
             }
             case 'bool': {

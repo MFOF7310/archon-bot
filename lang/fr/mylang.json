@@ -3,6 +3,13 @@
   "current": "Ta langue est configurée sur : **{name}**",
   "none": "Tu n'as pas choisi de langue. ARCHON suit le serveur, ou les mots que tu écris.",
   "hintWithCmd": "Utilise {cmd} avec un code — en · fr · ar · bm · zh · auto",
-  "serverLocked": "Ce serveur est verrouillé en **{lang}** par un administrateur. J'enregistre ta préférence, mais je dois parler {lang} ici. Si tu veux utiliser ta langue, demande à un admin de passer le serveur en Auto.",
-  "serverAuto": "Ce serveur est configuré sur **Auto**. Je suivrai ton choix personnel ci-dessous !"
+  "serverLocked": "Un admin a réglé ce serveur en **{lang}** : ici, je parle {lang}. Ton choix s'applique sur les serveurs en Auto et en message privé.",
+  "serverAuto": "Ce serveur est en **Auto** : ton choix s'applique ici.",
+  "header": "Langue",
+  "unknown": "Je ne connais pas `{word}`. Choisis parmi : en · fr · ar · bm · zh · auto",
+  "saveFailed": "Je n'ai pas pu enregistrer ta langue. Réessaie dans un instant.",
+  "serverAutoNone": "Ce serveur est en **Auto** : je suis la langue du serveur, ou la tienne dès que tu en choisis une.",
+  "serverSame": "Ce serveur est aussi en **{lang}**.",
+  "dm": "En message privé, ton choix s'applique toujours.",
+  "dmNone": "En message privé, je suis la langue de ton application Discord tant que tu n'en choisis pas."
 }

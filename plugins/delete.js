@@ -124,7 +124,7 @@ async function logDeletion(guild, moderator, targetMsg, type, count = 1, client)
 
 module.exports = {
     name: 'dlt',
-    aliases: ['delete', 'remove', 'erase', 'supprimer', 'effacer'],
+    aliases: ['delete', 'remove', 'erase', 'supprimer'],
     description: '🗑️ Delete messages by amount, user, or message ID.',
     category: 'MODERATION',
     cooldown: 3000,

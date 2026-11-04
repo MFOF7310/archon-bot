@@ -13,7 +13,7 @@ function loadT(lang) {
 
 module.exports = {
     name: 'refresh',
-    aliases: ['wipe', 'reset', 'purge', 'nuclear', 'effacer'],
+    aliases: ['wipe', 'reset', 'nuclear'], // 'purge' and 'effacer' belong to /clear: typing .purge must never open a database wipe
     description: '☢️ ARCHITECT ONLY: Selective or full database purge',
     category: 'OWNER',
     cooldown: 30000,
