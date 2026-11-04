@@ -1,210 +1,89 @@
-const { pickLang } = require('../lib/pick-lang');
-const { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
+// /clear — delete recent messages in a channel, optionally only one member's.
+// Fixes: the slash version always said "nothing deleted"; with a member picked it deleted fewer than asked;
+// the bot's permission was checked server-wide instead of in the channel; the bot owner could purge any server.
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const M = require('../lib/mod-core');
 
-// ================= BILINGUAL TRANSLATIONS =================
-const i18n = require('../lib/i18n');
-const I18N_KEYS = ["title", "sanitizing", "complete", "accessDenied", "invalidAmount", "purgedMessages", "noMessages", "error", "footer", "packetsRemoved", "fromNode", "targetUser", "amount", "reason"];
-// Clés dans lang/<locale>/clear.json ; '' retombe sur EN dans t().
-function loadT(lang) {
-    const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`clear.${k}`, lang);
-    return o;
+const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000 - 60 * 1000; // a minute of margin: Discord refuses bulk delete past 14 days
+
+async function purge(client, channel, actor, amount, targetUser, reason, lang, ctx, skipId) {
+    const guild = channel.guild;
+    if (!M.hasPerm(actor, PermissionFlagsBits.ManageMessages)) return { error: M.T('no_perm', lang, { perm: 'Manage Messages' }) };
+    if (!Number.isInteger(amount) || amount < 1 || amount > 100) return { error: M.T('clear_bad_amount', lang) };
+
+    // Read up to 100 recent messages, then keep the ones that can go
+    const fetched = await channel.messages.fetch({ limit: 100 });
+    const cutoff = Date.now() - FOURTEEN_DAYS;
+    const picked = [...fetched.values()]
+        .filter((m) => m.id !== skipId && !m.pinned && m.createdTimestamp > cutoff && (!targetUser || m.author.id === targetUser.id))
+        .slice(0, amount);
+    if (!picked.length) return { error: M.T('clear_none', lang) };
+
+    const deleted = await channel.bulkDelete(picked.map((m) => m.id), true);
+    const count = deleted.size;
+    const caseId = M.record(client.db, { guildId: guild.id, userId: targetUser?.id || channel.id, moderatorId: actor.id, action: 'purge', reason: `${count} messages in #${channel.name}: ${reason}` });
+    const lines = [
+        [M.T('l_channel', lang), `<#${channel.id}>`],
+        targetUser ? [M.T('l_from', lang), M.who(targetUser)] : null,
+        [M.T('l_moderator', lang), `<@${actor.id}>`],
+        [M.T('l_reason', lang), M.safe(reason)],
+    ];
+    const make = () => M.card({ look: 'clear', title: M.T('clear_done', lang, { count }), lines, footer: M.footerFor(caseId, lang), ctx });
+    await M.toModLog(guild, client.db, make());
+    console.log(`[CLEAR] guild=${guild.id} channel=${channel.id} by=${actor.id} deleted=${count}`);
+    return { card: make(), count };
 }
 
 module.exports = {
     name: 'clear',
-    aliases: ['purge', 'clean', 'nettoyer', 'effacer', 'delete'],
-    description: '🧹 Bulk delete messages in the current channel.',
+    aliases: ['purge', 'clean', 'nettoyer', 'effacer'],
+    description: 'Delete recent messages in this channel',
     category: 'MODERATION',
     cooldown: 5000,
-    usage: '.clear [amount] [@user]',
-    examples: ['.clear 10', '.clear 50 @user', '.clear all'],
-    
-    // ================= SLASH COMMAND BUILDER =================
+    userPermissions: ['ManageMessages'],
+    usage: '.clear 20 [@member]',
+
     data: new SlashCommandBuilder()
         .setName('clear')
-        .setDescription('Bulk delete messages in the current channel')
+        .setDescription('Delete recent messages in this channel')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-        .addIntegerOption(option =>
-            option.setName('amount')
-                .setDescription('Number of messages to delete (1-100)')
-                .setRequired(true)
-                .setMinValue(1)
-                .setMaxValue(100))
-        .addUserOption(option =>
-            option.setName('target')
-                .setDescription('Only delete messages from this user (optional)')
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('reason')
-                .setDescription('Reason for the purge')
-                .setRequired(false)),
+        .addIntegerOption(o => o.setName('amount').setDescription('How many (1 to 100)').setRequired(true).setMinValue(1).setMaxValue(100))
+        .addUserOption(o => o.setName('target').setDescription('Only this member\'s messages'))
+        .addStringOption(o => o.setName('reason').setDescription('Why').setMaxLength(400)),
 
-    // ================= PREFIX COMMAND =================
-    run: async (client, message, args, database, serverSettings, usedCommand) => {
-        const lang = pickLang(client, message.guild?.id, null, message.author.id);
-        
-        // ================= PERMISSION CHECK =================
-        const isArchitect = message.author.id === process.env.OWNER_ID;
-        const hasPerms = message.member?.permissions.has(PermissionFlagsBits.ManageMessages);
-        const botCanManage = message.guild?.members?.me?.permissions.has(PermissionFlagsBits.ManageMessages);
-
-        if (!botCanManage) {
-            return message.reply({ content: "❌ I need the **Manage Messages** permission to purge messages.", flags: 64 });
-        }
-        if (!isArchitect && !hasPerms) {
-            const t = loadT(pickLang(client, message.guild?.id, null, message.author.id));
-            return message.reply({ content: t.accessDenied, flags: 64 });
-        }
-
-        // ================= LANGUAGE SETUP =================
-
-        const t = loadT(lang);
-
-        // Delete command message immediately
-        await message.delete().catch(() => null);
-
-        // Parse arguments
-        const targetUser = message.mentions.users.first();
-        const amountArg = targetUser ? args[1] : args[0];
-        const maxAmount = 100;
-        
-        let amount;
-        if (amountArg?.toLowerCase() === 'all') {
-            amount = maxAmount;
-        } else {
-            amount = parseInt(amountArg);
-            if (isNaN(amount) || amount < 1) amount = 10;
-            if (amount > maxAmount) {
-                const errorMsg = await message.channel.send(i18n.t('clear.invalidAmount', lang, { max: maxAmount }));
-                setTimeout(() => errorMsg.delete().catch(() => null), 4000);
-                return;
-            }
-        }
-
-        await performPurge(message.channel, message.author, amount, targetUser, t, client, message.guild);
-    },
-    
-    // ================= SLASH COMMAND =================
-    execute: async (interaction) => {
+    execute: async (interaction, client) => {
+        const lang = M.langFor(client, interaction);
         await interaction.deferReply({ flags: 64 });
-        
-        const amount = interaction.options.getInteger('amount');
-        const targetUser = interaction.options.getUser('target');
-        const reason = interaction.options.getString('reason') || 'No reason provided';
-        
-        const lang = pickLang(interaction.client, interaction.guildId, interaction, interaction.user?.id);
-        const t = loadT(lang);
-        
-        const isArchitect = interaction.user.id === process.env.OWNER_ID;
-        const hasPerms = interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages);
-        const botCanManage = interaction.guild?.members?.me?.permissions.has(PermissionFlagsBits.ManageMessages);
-
-        if (!botCanManage) {
-            return interaction.editReply({ content: "❌ I need the **Manage Messages** permission to purge messages." });
-        }
-        if (!isArchitect && !hasPerms) {
-            return interaction.editReply({ content: t.accessDenied });
-        }
-
+        const actor = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
         try {
-            const deletedCount = await performPurge(interaction.channel, interaction.user, amount, targetUser, t, interaction.client, interaction.guild);
-
-            if (deletedCount > 0) {
-                await interaction.editReply({
-                    content: `✅ **${deletedCount}** messages purged successfully.${targetUser ? ` Target: **${targetUser.tag}**` : ''}
-📝 Reason: ${reason}`,
-                    flags: 64
-                });
-            } else {
-                await interaction.editReply({ content: "⚠️ No valid messages found to delete (they might be older than 14 days or pinned).", flags: 64 });
-            }
-        } catch (err) {
-            console.error('Slash clear error:', err.message);
-            await interaction.editReply({ 
-                content: t.error,
-                flags: 64 
-            });
+            const r = await purge(client, interaction.channel, actor, interaction.options.getInteger('amount'), interaction.options.getUser('target'),
+                M.cleanReason(interaction.options.getString('reason'), lang), lang, interaction, null);
+            if (r.error) return interaction.editReply({ components: [M.card({ look: 'error', title: M.T('refused', lang), lines: [[null, r.error]], ctx: interaction })], flags: M.V2, allowedMentions: { parse: [] } });
+            return interaction.editReply({ components: [r.card], flags: M.V2, allowedMentions: { parse: [] } });
+        } catch (e) {
+            console.error('[CLEAR]', e.message);
+            const text = require('../lib/botPerms').explainError(e, interaction, 'clear', lang) || M.T('clear_none', lang);
+            return interaction.editReply({ components: [M.card({ look: 'error', title: M.T('refused', lang), lines: [[null, text]], ctx: interaction })], flags: M.V2, allowedMentions: { parse: [] } });
         }
-    }
+    },
+
+    run: async (client, message, args) => {
+        if (!message.guild) return;
+        const lang = M.langFor(client, message);
+        const mention = String(args.find((a) => /^<@!?\d+>$/.test(a)) || '').replace(/[<@!>]/g, '');
+        const target = mention ? await client.users.fetch(mention).catch(() => null) : null;
+        const num = args.find((a) => /^\d+$/.test(a));
+        const amount = String(args[0] || '').toLowerCase() === 'all' ? 100 : Number(num);
+        if (!amount) return message.reply({ content: M.T('usage_clear', lang), allowedMentions: { parse: [] } }).catch(() => {});
+        try {
+            const r = await purge(client, message.channel, message.member, amount, target, M.T('noReason', lang), lang, message, message.id);
+            await message.delete().catch(() => {});
+            const sent = await message.channel.send({ components: [r.error ? M.card({ look: 'error', title: M.T('refused', lang), lines: [[null, r.error]], ctx: message }) : r.card], flags: M.V2, allowedMentions: { parse: [] } }).catch(() => null);
+            if (sent) setTimeout(() => Promise.resolve(sent.delete?.()).catch(() => {}), 6000);
+        } catch (e) {
+            console.error('[CLEAR]', e.message);
+            const text = require('../lib/botPerms').explainError(e, message, 'clear', lang);
+            if (text) message.reply({ content: text, allowedMentions: { parse: [] } }).catch(() => {});
+        }
+    },
 };
-
-// ================= SHARED PURGE FUNCTION =================
-async function performPurge(channel, moderator, amount, targetUser, t, client, guild) {
-    const version = client.version || '1.5.0';
-    const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
-    const guildIcon = guild?.iconURL() || client.user.displayAvatarURL();
-    
-    try {
-        // Fetch messages
-        const fetched = await channel.messages.fetch({ limit: amount });
-        
-        // Filter messages
-        const messagesToDelete = fetched.filter(m => {
-            const notPinned = !m.pinned;
-            const recent = (Date.now() - m.createdTimestamp) < 1209600000; // 14 days
-            const matchesTarget = targetUser ? m.author.id === targetUser.id : true;
-            return notPinned && recent && matchesTarget;
-        });
-
-        if (messagesToDelete.size === 0) {
-            const noFound = await channel.send({ 
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor('#FEE75C')
-                        .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-                        .setDescription(t.noMessages)
-                        .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-                        .setTimestamp()
-                ]
-            });
-            setTimeout(() => noFound.delete().catch(() => null), 5000);
-            return 0;
-        }
-
-        // Bulk delete
-        const deleted = await channel.bulkDelete(messagesToDelete, true);
-        
-        // Create success embed
-        const successEmbed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setAuthor({ name: `${t.title} • ${t.complete}`, iconURL: client.user.displayAvatarURL() })
-            .setTitle(`🧹 ${t.sanitizing}`)
-            .setDescription(
-                targetUser 
-                    ? `**${deleted.size}** ${t.packetsRemoved} ${t.fromNode} **${targetUser.username}**.\n` +
-                      `\`\`\`yaml\n${t.targetUser}: ${targetUser.tag}\n${t.amount}: ${deleted.size} messages\n\`\`\``
-                    : `**${deleted.size}** ${t.packetsRemoved} ${t.fromNode}.\n` +
-                      `\`\`\`yaml\n${t.amount}: ${deleted.size} messages\n\`\`\``
-            )
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-            .setTimestamp()
-            .addFields({
-                name: '🛡️ Moderator',
-                value: `${moderator.tag}`,
-                inline: true
-            });
-        
-        const reply = await channel.send({ embeds: [successEmbed] });
-        
-        // Auto-delete confirmation after 5 seconds
-        setTimeout(() => reply.delete().catch(() => null), 5000);
-        
-        // Log the action
-        console.log(`[CLEAR] ${moderator.tag} purged ${deleted.size} messages in #${channel.name} | Target: ${targetUser?.tag || 'All'}`);
-        
-    } catch (err) {
-        console.error("[CLEAR] Purge Error:", err);
-        
-        const errorEmbed = new EmbedBuilder()
-            .setColor('#ED4245')
-            .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-            .setDescription(t.error)
-            .setFooter({ text: `${guildName} • ${t.footer} • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
-        
-        const errorMsg = await channel.send({ embeds: [errorEmbed] });
-        setTimeout(() => errorMsg.delete().catch(() => null), 5000);
-        return 0;
-    }
-}

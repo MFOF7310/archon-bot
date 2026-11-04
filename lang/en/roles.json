@@ -53,7 +53,7 @@
   },
   "hints": {
     "member": "Saved for reference. No ARCHON feature gives it yet.",
-    "mute": "Given to members while they are muted.",
+    "mute": "Kept for servers that use one. /mute now uses Discord's own timeout instead.",
     "autorole": "Given to every new member when they join.",
     "staff": "Can see and answer support tickets.",
     "investor": "Given when a member starts an investment.",

@@ -1,223 +1,115 @@
-const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField } = require('discord.js');
+// /mute — Discord's own timeout: kept by Discord through restarts, up to 28 days, no role to set up.
+// (The old version gave a role and removed it with a timer that was lost whenever the bot restarted.)
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const M = require('../lib/mod-core');
+
+const MIN = 60 * 1000;
+const MAX = 28 * 24 * 60 * 60 * 1000;
+
+async function doMute(client, guild, actor, member, ms, reason, lang, ctx) {
+    if (!M.hasPerm(actor, PermissionFlagsBits.ModerateMembers)) return { error: M.T('no_perm', lang, { perm: 'Timeout Members' }) };
+    if (!member) return { error: M.T('not_member', lang) };
+    if (!ms || ms < MIN || ms > MAX) return { error: M.T('mute_bad_duration', lang) };
+    const code = M.checkTarget(guild, actor, member.id, member, 'mute');
+    if (code) return { error: M.targetText(code, lang, guild, member, 'mute', ctx) };
+    if (member.permissions?.has(PermissionFlagsBits.Administrator)) return { error: M.T('mute_admin', lang) };
+    const until = member.communicationDisabledUntilTimestamp;
+    if (until && until > Date.now()) return { error: M.T('already_muted', lang, { until: `<t:${Math.floor(until / 1000)}:f>` }) };
+
+    try {
+        await member.timeout(ms, M.auditReason(reason, actor));
+    } catch (e) {
+        console.error(`[MUTE] guild=${guild.id} user=${member.id}:`, e.message);
+        return { error: require('../lib/botPerms').explainError(e, ctx, 'mute', lang) || M.T('above_bot', lang) };
+    }
+    const end = Math.floor((Date.now() + ms) / 1000);
+    const caseId = M.record(client.db, { guildId: guild.id, userId: member.id, moderatorId: actor.id, action: 'mute', reason: `${reason} (${M.formatDuration(ms, 'en')})` });
+    const sent = await M.dm(member.user, M.card({ look: 'mute', title: M.T('mute_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_until', lang), `<t:${end}:f>`], [M.T('l_reason', lang), M.safe(reason)]], ctx }));
+    const lines = [
+        [M.T('l_member', lang), M.who(member.user)],
+        [M.T('l_moderator', lang), `<@${actor.id}>`],
+        [M.T('l_duration', lang), `${M.formatDuration(ms, lang)} · <t:${end}:R>`],
+        [M.T('l_reason', lang), M.safe(reason)],
+        [M.T('l_dm', lang), M.T(sent ? 'dm_yes' : 'dm_no', lang)],
+    ];
+    const make = () => M.card({ look: 'mute', title: M.T('mute_done', lang), lines, avatar: M.avatarOf(member.user), footer: M.footerFor(caseId, lang), ctx });
+    await M.toModLog(guild, client.db, make());
+    console.log(`[MUTE] guild=${guild.id} by=${actor.id} user=${member.id} ms=${ms} case=${caseId}`);
+    return { card: make() };
+}
+
+async function doUnmute(client, guild, actor, member, reason, lang, ctx) {
+    if (!M.hasPerm(actor, PermissionFlagsBits.ModerateMembers)) return { error: M.T('no_perm', lang, { perm: 'Timeout Members' }) };
+    if (!member) return { error: M.T('not_member', lang) };
+    const until = member.communicationDisabledUntilTimestamp;
+    if (!until || until <= Date.now()) return { error: M.T('not_muted', lang) };
+    const code = M.checkTarget(guild, actor, member.id, member, 'mute');
+    if (code) return { error: M.targetText(code, lang, guild, member, 'mute', ctx) };
+    try {
+        await member.timeout(null, M.auditReason(reason, actor));
+    } catch (e) {
+        return { error: require('../lib/botPerms').explainError(e, ctx, 'mute', lang) || M.T('above_bot', lang) };
+    }
+    const caseId = M.record(client.db, { guildId: guild.id, userId: member.id, moderatorId: actor.id, action: 'unmute', reason });
+    const lines = [[M.T('l_member', lang), M.who(member.user)], [M.T('l_moderator', lang), `<@${actor.id}>`], [M.T('l_reason', lang), M.safe(reason)]];
+    const make = () => M.card({ look: 'unmute', title: M.T('unmute_done', lang), lines, avatar: M.avatarOf(member.user), footer: M.footerFor(caseId, lang), ctx });
+    await M.toModLog(guild, client.db, make());
+    return { card: make() };
+}
 
 module.exports = {
     name: 'mute',
-    aliases: ['silence', 'shut', 'unmute', 'unsilence', 'demute'],
-    description: '🔇 Mute/Unmute a member with auto-unmute support',
+    aliases: ['silence', 'shut', 'timeout', 'unmute', 'unsilence', 'demute'],
+    description: 'Time out a member, or lift a timeout',
     category: 'MODERATION',
-    usage: '.mute @user [time] [reason] | .unmute @user',
+    usage: '.mute @member 10m [reason] | .unmute @member',
     cooldown: 3000,
+    userPermissions: ['ModerateMembers'],
+    doMute,
 
     data: new SlashCommandBuilder()
         .setName('mute')
-        .setDescription('🔇 Mute or unmute a member')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.ModerateMembers)
-        .addSubcommand(sub => sub
-            .setName('add')
-            .setDescription('Mute a member')
-            .addUserOption(opt => opt.setName('target').setDescription('Member to mute').setRequired(true))
-            .addStringOption(opt => opt.setName('duration').setDescription('Duration (1m, 1h, 1d) — default: 1 hour').setRequired(false))
-            .addStringOption(opt => opt.setName('reason').setDescription('Reason').setRequired(false))
-        )
-        .addSubcommand(sub => sub
-            .setName('remove')
-            .setDescription('Unmute a member')
-            .addUserOption(opt => opt.setName('target').setDescription('Member to unmute').setRequired(true))
-        ),
+        .setDescription('Time out a member, or lift a timeout')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+        .addSubcommand(s => s.setName('add').setDescription('Time out a member')
+            .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true))
+            .addStringOption(o => o.setName('duration').setDescription('How long: 10m, 2h, 3d… (default 1 hour, at most 28 days)').setMaxLength(12))
+            .addStringOption(o => o.setName('reason').setDescription('Why').setMaxLength(400)))
+        .addSubcommand(s => s.setName('remove').setDescription('Lift a timeout')
+            .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true))
+            .addStringOption(o => o.setName('reason').setDescription('Why').setMaxLength(400))),
 
-    // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        const cmd = usedCommand?.toLowerCase() || 'mute';
-        const isUnmute = ['unmute', 'unsilence', 'demute'].includes(cmd);
-
-        const settings = client.getServerSettings(message.guild.id);
-        const muteRoleId = settings.muteRoleId || process.env.MUTE_ROLE_ID;
-
-        if (!muteRoleId) {
-            return message.reply(lang === 'fr'
-                ? '❌ Rôle muet non configuré. Utilisez `//roles set type:Mute Role @role`'
-                : '❌ Mute role not configured. Use `/roles set type:Mute Role @role`');
-        }
-
-        const target = message.mentions.members.first();
-        if (!target) {
-            return message.reply(lang === 'fr'
-                ? '❌ Mentionnez un membre.'
-                : '❌ Mention a member.');
-        }
-
-        // ================= UNMUTE =================
-        if (isUnmute) {
-            try {
-                if (!target.roles.cache.has(muteRoleId)) {
-                    return message.reply(lang === 'fr'
-                        ? `❌ **${target.user.username}** n'est pas muet.`
-                        : `❌ **${target.user.username}** is not muted.`);
-                }
-                await target.roles.remove(muteRoleId);
-
-                const embed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setAuthor({ name: '🔊 MEMBER UNMUTED', iconURL: target.user.displayAvatarURL() })
-                    .setDescription(lang === 'fr'
-                        ? `**${target.user.username}** a été démuté.`
-                        : `**${target.user.username}** has been unmuted.`)
-                    .setFooter({ text: message.guild.name })
-                    .setTimestamp();
-
-                return message.reply({ embeds: [embed] });
-            } catch (e) {
-                return message.reply(lang === 'fr' ? '❌ Échec du démutage.' : '❌ Failed to unmute.');
-            }
-        }
-
-        // ================= MUTE =================
-        if (target.roles.cache.has(muteRoleId)) {
-            return message.reply(lang === 'fr'
-                ? `❌ **${target.user.username}** est déjà muet.`
-                : `❌ **${target.user.username}** is already muted.`);
-        }
-
-        const timeStr = args[1] || '1h';
-        const reason = args.slice(2).join(' ') || (lang === 'fr' ? 'Aucune raison' : 'No reason');
-        const ms = parseTime(timeStr);
-
-        if (ms === null) {
-            return message.reply(lang === 'fr'
-                ? '❌ Format de durée invalide. Exemples: `1m`, `2h`, `1d`'
-                : '❌ Invalid duration format. Examples: `1m`, `2h`, `1d`');
-        }
-
-        try {
-            await target.roles.add(muteRoleId, reason);
-
-            const embed = new EmbedBuilder()
-                .setColor('#e67e22')
-                .setAuthor({ name: '🔇 MEMBER MUTED', iconURL: target.user.displayAvatarURL() })
-                .setDescription(lang === 'fr'
-                    ? `**${target.user.username}** a été réduit au silence.\n⏱️ **Durée:** ${timeStr}\n📝 **Raison:** ${reason}`
-                    : `**${target.user.username}** has been muted.\n⏱️ **Duration:** ${timeStr}\n📝 **Reason:** ${reason}`)
-                .setFooter({ text: `${message.guild.name} • Auto-unmute at ${new Date(Date.now() + ms).toLocaleTimeString()}` })
-                .setTimestamp();
-
-            await message.reply({ embeds: [embed] });
-
-            // Auto-unmute
-            setTimeout(async () => {
-                try {
-                    if (target.roles.cache.has(muteRoleId)) {
-                        await target.roles.remove(muteRoleId, 'Auto-unmute');
-                        const unmuteEmbed = new EmbedBuilder()
-                            .setColor('#2ecc71')
-                            .setDescription(lang === 'fr'
-                                ? `🔊 **${target.user.username}** a été démuté automatiquement.`
-                                : `🔊 **${target.user.username}** has been automatically unmuted.`);
-                        await message.channel.send({ embeds: [unmuteEmbed] }).catch(() => {});
-                    }
-                } catch (e) {}
-            }, ms);
-
-            console.log(`[MUTE] ${message.author.tag} muted ${target.user.tag} for ${timeStr} | Reason: ${reason}`);
-
-        } catch (e) {
-            return message.reply(lang === 'fr' ? '❌ Échec du mute.' : '❌ Failed to mute.');
-        }
+    execute: async (interaction, client) => {
+        const guild = interaction.guild;
+        const lang = M.langFor(client, interaction);
+        const actor = await guild.members.fetch(interaction.user.id).catch(() => null);
+        const user = interaction.options.getUser('target');
+        const member = await guild.members.fetch(user.id).catch(() => null);
+        const reason = M.cleanReason(interaction.options.getString('reason'), lang);
+        const r = interaction.options.getSubcommand() === 'remove'
+            ? await doUnmute(client, guild, actor, member, reason, lang, interaction)
+            : await doMute(client, guild, actor, member, M.parseDuration(interaction.options.getString('duration') || '1h'), reason, lang, interaction);
+        if (r.error) return M.fail(interaction, r.error, lang);
+        return M.respond(interaction, { components: [r.card] });
     },
 
-    // ================= SLASH COMMAND =================
-    execute: async (interaction, client) => {
-        const subcommand = interaction.options.getSubcommand();
-        const target = interaction.options.getMember('target');
-        const settings = client.getServerSettings(interaction.guild.id);
-        const muteRoleId = settings.muteRoleId || process.env.MUTE_ROLE_ID;
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-
-        if (!muteRoleId) {
-            return interaction.reply({
-                content: lang === 'fr'
-                    ? '❌ Rôle muet non configuré.'
-                    : '❌ Mute role not configured.',
-                flags: 64
-            });
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
+        const guild = message.guild;
+        if (!guild) return;
+        const lang = M.langFor(client, message);
+        const unmute = ['unmute', 'unsilence', 'demute'].includes(String(usedCommand || '').toLowerCase());
+        const id = String(args[0] || '').replace(/[<@!>]/g, '');
+        if (!M.SNOWFLAKE.test(id)) return message.reply({ content: M.T('usage_mute', lang), allowedMentions: { parse: [] } }).catch(() => {});
+        const member = await guild.members.fetch(id).catch(() => null);
+        let r;
+        if (unmute) {
+            r = await doUnmute(client, guild, message.member, member, M.cleanReason(args.slice(1).join(' '), lang), lang, message);
+        } else {
+            // ".mute @x 2h reason" or ".mute @x reason" (1 hour)
+            const ms = M.parseDuration(args[1]);
+            r = await doMute(client, guild, message.member, member, ms || 3600000, M.cleanReason(args.slice(ms ? 2 : 1).join(' '), lang), lang, message);
         }
-
-        // ================= UNMUTE =================
-        if (subcommand === 'remove') {
-            try {
-                if (!target.roles.cache.has(muteRoleId)) {
-                    return interaction.reply({
-                        content: lang === 'fr'
-                            ? `❌ **${target.user.username}** n'est pas muet.`
-                            : `❌ **${target.user.username}** is not muted.`,
-                        flags: 64
-                    });
-                }
-                await target.roles.remove(muteRoleId);
-                return interaction.reply({
-                    content: lang === 'fr'
-                        ? `🔊 **${target.user.username}** démuté.`
-                        : `🔊 **${target.user.username}** unmuted.`,
-                    flags: 64
-                });
-            } catch (e) {
-                return interaction.reply({ content: '❌ Failed to unmute.', flags: 64 });
-            }
-        }
-
-        // ================= MUTE =================
-        if (target.roles.cache.has(muteRoleId)) {
-            return interaction.reply({
-                content: lang === 'fr'
-                    ? `❌ **${target.user.username}** est déjà muet.`
-                    : `❌ **${target.user.username}** is already muted.`,
-                flags: 64
-            });
-        }
-
-        const timeStr = interaction.options.getString('duration') || '1h';
-        const reason = interaction.options.getString('reason') || 'No reason';
-        const ms = parseTime(timeStr);
-
-        if (ms === null) {
-            return interaction.reply({
-                content: '❌ Invalid duration. Use: 1m, 1h, 1d',
-                flags: 64
-            });
-        }
-
-        try {
-            await target.roles.add(muteRoleId, reason);
-
-            setTimeout(async () => {
-                try {
-                    if (target.roles.cache.has(muteRoleId)) {
-                        await target.roles.remove(muteRoleId, 'Auto-unmute');
-                    }
-                } catch (e) {}
-            }, ms);
-
-            return interaction.reply({
-                content: lang === 'fr'
-                    ? `🔇 **${target.user.username}** muet pour ${timeStr}. Raison: ${reason}`
-                    : `🔇 **${target.user.username}** muted for ${timeStr}. Reason: ${reason}`,
-                flags: 64
-            });
-        } catch (e) {
-            return interaction.reply({ content: '❌ Failed to mute.', flags: 64 });
-        }
-    }
+        if (r.error) return M.fail(message, r.error, lang);
+        return M.respond(message, { components: [r.card] });
+    },
 };
-
-// ================= TIME PARSER =================
-function parseTime(str) {
-    const match = str.match(/^(\d+)(m|h|d)$/);
-    if (!match) return null;
-    const num = parseInt(match[1]);
-    switch (match[2]) {
-        case 'm': return num * 60 * 1000;
-        case 'h': return num * 60 * 60 * 1000;
-        case 'd': return num * 24 * 60 * 60 * 1000;
-        default: return null;
-    }
-}

@@ -111,7 +111,6 @@ module.exports = {
         .setName('roles')
         .setDescription('View and change the roles ARCHON uses')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild | PermissionFlagsBits.ManageRoles)
-        .setDMPermission(false)
         .addSubcommand(s => s.setName('view').setDescription('Open the role settings panel'))
         .addSubcommand(s => s.setName('set').setDescription('Set a role setting')
             .addStringOption(typeChoices)

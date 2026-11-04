@@ -1,594 +1,250 @@
-const { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+// /ban — ban (with a confirmation), unban, and the invite unbanned members get to come back.
+// Shared rules live in lib/mod-core.js: role order, clean reasons, case record, mod-log card.
+const crypto = require('crypto');
+const {
+    SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags,
+} = require('discord.js');
+const M = require('../lib/mod-core');
 
-// ================= OWNER SERVER FALLBACK INVITE =================
 const OWNER_GUILD_INVITE = 'https://discord.gg/NFSMFJajp9';
+const INVITE_PATTERN = /^(https?:\/\/)?(discord\.gg\/|discordapp\.com\/invite\/|discord\.com\/invite\/)[a-zA-Z0-9_-]{2,32}$/i;
+const DELETE_CHOICES = { none: 0, '1h': 3600, '24h': 86400, '7d': 604800 };
 
-// ================= BILINGUAL TRANSLATIONS =================
-const i18n = require('../lib/i18n');
-const I18N_KEYS = ["banTitle","banEntity","banAuthorizedBy","banReason","banDuration","banPermanent","banCaseId","banFooter","banSuccess","banFailed","confirmBanTitle","confirmBanDesc","confirmBanReason","confirmBanWarning","confirmBanButton","unbanTitle","unbanEntity","unbanAuthorizedBy","unbanReason","unbanPreviousBan","unbanCaseId","unbanFooter","unbanSuccess","unbanFailed","confirmUnbanTitle","confirmUnbanDesc","confirmUnbanReason","confirmUnbanWarning","confirmUnbanButton","inviteTitle","inviteSetSuccess","inviteSetFailed","inviteGetTitle","inviteGetCustom","inviteGetDefault","inviteGetNone","inviteInvalid","inviteUsage","noPermission","noTarget","selfBan","notBannable","notBanned","cancelButton","actionCancelled","dmBanTitle","dmBanDesc","dmBanReason","dmBanAppeal","dmUnbanTitle","dmUnbanDesc","dmUnbanReason","dmUnbanWelcome","dmUnbanFallback","rejoinButton","modLog","actionBan","actionUnban","actionInvite","userId","bannedBy","unbannedBy","originalReason","slashBanDesc","slashUnbanDesc","slashSetinviteDesc","slashGetinviteDesc","slashUserDesc","slashUserIdDesc","slashReasonDesc","slashInviteDesc","slashActionDesc"];
-// Clés dans lang/<locale>/ban.json ; '' retombe sur EN dans t().
-function loadT(lang) {
-    const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`ban.${k}`, lang);
-    return o;
+// Confirmations waiting for a click (2 minutes). Lost on restart: the button then says "expired".
+const pending = new Map();
+const PENDING_TTL = 2 * 60 * 1000;
+function remember(data) {
+    const now = Date.now();
+    for (const [k, v] of pending) if (v.expires < now) pending.delete(k);
+    const nonce = crypto.randomBytes(5).toString('hex');
+    pending.set(nonce, { ...data, expires: now + PENDING_TTL });
+    return nonce;
 }
 
-// ================= DYNAMIC VERSION READER =================
-function getBotVersion(client) {
-    if (client.version) return client.version;
-    try {
-        const fs = require('fs');
-        const path = require('path');
-        const versionPath = path.join(__dirname, '..', 'version.txt');
-        if (fs.existsSync(versionPath)) return fs.readFileSync(versionPath, 'utf8').trim();
-    } catch (err) {}
-    return '3.2.0';
-}
-
-// ================= GENERATE CASE ID =================
-function generateCaseId(action) {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 6);
-    return `${action}-${timestamp}-${random}`.toUpperCase();
-}
-
-// ================= FETCH BAN INFO =================
-async function getBanInfo(guild, userId) {
-    try { return await guild.bans.fetch(userId); } catch { return null; }
-}
-
-// ================= INVITE MANAGEMENT =================
-const INVITE_PATTERN = /^(https?:\/\/)?(discord\.gg\/|discordapp\.com\/invite\/|discord\.com\/invite\/)[a-zA-Z0-9_-]+$/i;
-
-function validateInviteLink(link) {
-    return INVITE_PATTERN.test(link);
-}
-
-function getServerInvite(db, client, guildId) {
-    // 1. Check database for server-specific invite
-    try {
-        const row = db.prepare('SELECT server_invite FROM server_settings WHERE guild_id = ?').get(guildId);
-        if (row?.server_invite) return { invite: row.server_invite, source: 'custom' };
-    } catch (e) {}
-    // 2. Check if this IS the owner guild
-    if (guildId === process.env.GUILD_ID) return { invite: OWNER_GUILD_INVITE, source: 'owner' };
-    // 3. Fallback to owner server invite
-    return { invite: OWNER_GUILD_INVITE, source: 'fallback' };
-}
-
-function setServerInvite(db, client, guildId, inviteLink) {
-    try {
-        db.prepare('UPDATE server_settings SET server_invite = ?, updated_at = strftime(\'%s\', \'now\') WHERE guild_id = ?').run(inviteLink, guildId);
-        client.settings?.delete(guildId);
-        return true;
-    } catch (e) {
-        console.error('[INVITE SET]', e.message);
-        return false;
-    }
-}
-
-// ================= CREATE MIGRATION FOR server_invite COLUMN =================
+let inviteColumn = false;
 function ensureInviteColumn(db) {
+    if (inviteColumn) return;
     try {
-        const columns = db.prepare("PRAGMA table_info(server_settings)").all().map(c => c.name);
-        if (!columns.includes('server_invite')) {
-            db.prepare("ALTER TABLE server_settings ADD COLUMN server_invite TEXT").run();
-            console.log('[BAN MIGRATION] Added server_invite column to server_settings');
-        }
-    } catch (e) {
-        console.error('[BAN MIGRATION]', e.message);
-    }
+        const cols = db.prepare('PRAGMA table_info(server_settings)').all().map(c => c.name);
+        if (!cols.includes('server_invite')) db.prepare('ALTER TABLE server_settings ADD COLUMN server_invite TEXT').run();
+        inviteColumn = true;
+    } catch (e) { console.error('[BAN] invite column:', e.message); }
 }
-
-// ================= SEND DM (with rejoin button for unban) =================
-async function sendDM(user, guild, reason, action, lang, inviteData) {
-    const t = loadT(lang);
-    const isBan = action === 'BAN';
-
+// Only this server's own invite (or the owner's server invite on the owner's server): never another server's link
+function rejoinInvite(db, guildId) {
     try {
-        const dmEmbed = new EmbedBuilder()
-            .setColor(isBan ? '#ff4757' : '#2ecc71')
-            .setTitle(isBan ? t.dmBanTitle : t.dmUnbanTitle)
-            .setDescription((isBan ? t.dmBanDesc : t.dmUnbanDesc).replace('{guild}', guild.name))
-            .addFields(
-                { name: isBan ? t.dmBanReason : t.dmUnbanReason, value: reason, inline: false }
-            )
-            .setFooter({ text: `ARCHON CG-223 • ${guild.name}`, iconURL: guild.iconURL() || undefined })
-            .setTimestamp();
-
-        if (isBan) {
-            dmEmbed.addFields({ name: '\u200B', value: t.dmBanAppeal, inline: false });
-        } else {
-            // Unban: Add welcome back message + rejoin button
-            const hasInvite = inviteData?.invite;
-            dmEmbed.addFields({
-                name: '\u200B',
-                value: hasInvite ? t.dmUnbanWelcome : t.dmUnbanFallback,
-                inline: false
-            });
-
-            // Build components with rejoin button
-            const components = [];
-            if (hasInvite) {
-                const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setLabel(t.rejoinButton)
-                        .setStyle(ButtonStyle.Link)
-                        .setURL(inviteData.invite)
-                        .setEmoji('🔗')
-                );
-                components.push(row);
-            }
-
-            await user.send({ embeds: [dmEmbed], components }).catch(() => {});
-            return true;
-        }
-
-        await user.send({ embeds: [dmEmbed] }).catch(() => {});
-        return true;
-    } catch (err) {
-        console.log(`[${action} DM] Could not DM ${user.tag}: ${err.message}`);
-        return false;
-    }
+        ensureInviteColumn(db);
+        const row = db.prepare('SELECT server_invite FROM server_settings WHERE guild_id = ?').get(guildId);
+        if (row?.server_invite && INVITE_PATTERN.test(row.server_invite)) return row.server_invite;
+    } catch { /* no invite */ }
+    return guildId === process.env.GUILD_ID ? OWNER_GUILD_INVITE : null;
 }
 
-// ================= LOG TO MOD CHANNEL =================
-async function logToModChannel(guild, embed, client) {
+const confirmRow = (nonce, actorId, lang) => new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`modban:go:${nonce}:${actorId}`).setLabel(M.T('btn_ban', lang)).setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`modban:no:${nonce}:${actorId}`).setLabel(M.T('btn_cancel', lang)).setStyle(ButtonStyle.Secondary),
+);
+
+// Every check before asking for confirmation. Returns null when the ban may go ahead, else the text to show.
+async function precheck(guild, actor, user, lang, ctx) {
+    if (!M.hasPerm(actor, PermissionFlagsBits.BanMembers)) return M.T('no_perm', lang, { perm: 'Ban Members' });
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    const code = M.checkTarget(guild, actor, user.id, member, 'ban');
+    if (code) return M.targetText(code, lang, guild, member, 'ban', ctx);
+    if (await guild.bans.fetch(user.id).catch(() => null)) return M.T('already_banned', lang);
+    return null;
+}
+
+async function doBan(client, guild, actor, user, reason, deleteSeconds, lang, ctx) {
+    const db = client.db;
+    const caseId = M.record(db, { guildId: guild.id, userId: user.id, moderatorId: actor.id, action: 'ban', reason });
+    // The message has to go out before the ban: afterwards ARCHON shares no server with them
+    const sent = await M.dm(user, M.card({ look: 'ban', title: M.T('ban_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)]], ctx }));
+    await guild.members.ban(user.id, { reason: M.auditReason(reason, actor), deleteMessageSeconds: deleteSeconds });
+    const lines = [
+        [M.T('l_member', lang), M.who(user)],
+        [M.T('l_moderator', lang), `<@${actor.id}>`],
+        [M.T('l_reason', lang), M.safe(reason)],
+        deleteSeconds ? [M.T('l_deleted', lang), M.T({ 3600: 'del_1h', 86400: 'del_24h', 604800: 'del_7d' }[deleteSeconds], lang)] : null,
+        [M.T('l_dm', lang), M.T(sent ? 'dm_yes' : 'dm_no', lang)],
+    ];
+    const result = () => M.card({ look: 'ban', title: M.T('ban_done', lang), lines, avatar: M.avatarOf(user), footer: M.footerFor(caseId, lang), ctx });
+    await M.toModLog(guild, db, result());
+    console.log(`[BAN] guild=${guild.id} by=${actor.id} user=${user.id} case=${caseId}`);
+    return result();
+}
+
+async function doUnban(client, guild, actor, userId, reason, lang, ctx) {
+    const db = client.db;
+    if (!M.hasPerm(actor, PermissionFlagsBits.BanMembers)) return { error: M.T('no_perm', lang, { perm: 'Ban Members' }) };
+    const ban = await guild.bans.fetch(userId).catch(() => null);
+    if (!ban) return { error: M.T('not_banned', lang) };
+    await guild.members.unban(userId, M.auditReason(reason, actor));
+    const caseId = M.record(db, { guildId: guild.id, userId, moderatorId: actor.id, action: 'unban', reason });
+    const user = ban.user;
+    const invite = rejoinInvite(db, guild.id);
+    const dmCard = M.card({ look: 'unban', title: M.T('unban_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)], invite ? [null, M.T('unban_dm_rejoin', lang)] : null], ctx });
+    let sent = false;
     try {
-        const settings = client.getServerSettings ? client.getServerSettings(guild.id) : null;
-        const logChannelId = settings?.logChannel || process.env.MOD_LOG_CHANNEL;
-        if (logChannelId) {
-            const logChannel = guild.channels.cache.get(logChannelId);
-            if (logChannel) await logChannel.send({ embeds: [embed] });
-        }
-    } catch (err) {
-        console.error('[MOD LOG]', err.message);
-    }
+        await user.send({ components: invite ? [dmCard, new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(invite.startsWith('http') ? invite : `https://${invite}`).setLabel(M.T('btn_rejoin', lang)))] : [dmCard], flags: M.V2, allowedMentions: { parse: [] } });
+        sent = true;
+    } catch { /* DMs closed or no shared server */ }
+    const lines = [
+        [M.T('l_member', lang), M.who(user)],
+        [M.T('l_moderator', lang), `<@${actor.id}>`],
+        [M.T('l_reason', lang), M.safe(reason)],
+        [M.T('l_dm', lang), M.T(sent ? 'dm_yes' : 'dm_no', lang)],
+    ];
+    const make = () => M.card({ look: 'unban', title: M.T('unban_done', lang), lines, avatar: M.avatarOf(user), footer: M.footerFor(caseId, lang), ctx });
+    await M.toModLog(guild, db, make());
+    console.log(`[UNBAN] guild=${guild.id} by=${actor.id} user=${userId} case=${caseId}`);
+    return { card: make() };
 }
 
-// ================= HANDLE INVITE SET/GET (shared) =================
-async function handleSetInvite(interaction, client, db, lang, isSlash) {
-    const t = loadT(lang);
-    const guildId = interaction.guild?.id;
-    if (!guildId) return;
-
-    let inviteLink;
-    if (isSlash) {
-        inviteLink = interaction.options.getString('invite');
-    } else {
-        // Prefix: .ban setinvite <link>
-        const args = interaction.content?.slice(client.prefix?.length || 1).trim().split(/ +/) || [];
-        inviteLink = args.slice(2).join(' ');
-    }
-
-    if (!inviteLink) {
-        const reply = { content: t.inviteUsage, flags: isSlash ? 1 << 6 : 0 };
-        return isSlash ? interaction.reply(reply) : interaction.reply(reply).catch(() => {});
-    }
-
-    // Validate format
-    if (!validateInviteLink(inviteLink)) {
-        const reply = { content: t.inviteInvalid, flags: isSlash ? 1 << 6 : 0 };
-        return isSlash ? interaction.reply(reply) : interaction.reply(reply).catch(() => {});
-    }
-
-    // Ensure https:// prefix
-    if (!inviteLink.startsWith('http')) inviteLink = 'https://' + inviteLink;
-
-    const success = setServerInvite(db, client, guildId, inviteLink);
-    if (success) {
-        const embed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setTitle(t.inviteTitle)
-            .setDescription(t.inviteSetSuccess)
-            .addFields({ name: '🔗 Link', value: inviteLink, inline: false })
-            .setFooter({ text: `ARCHON CG-223 • ${interaction.guild?.name || ''}` })
-            .setTimestamp();
-        return isSlash ? interaction.reply({ embeds: [embed] }) : interaction.reply({ embeds: [embed] }).catch(() => {});
-    } else {
-        const reply = { content: t.inviteSetFailed, flags: isSlash ? 1 << 6 : 0 };
-        return isSlash ? interaction.reply(reply) : interaction.reply(reply).catch(() => {});
-    }
+function inviteView(db, guild, lang, ctx) {
+    const invite = rejoinInvite(db, guild.id);
+    const own = invite && invite !== OWNER_GUILD_INVITE ? invite : (guild.id === process.env.GUILD_ID ? invite : null);
+    return M.card({ look: 'info', title: M.T('invite_title', lang), lines: [[null, own ? M.T('invite_custom', lang, { invite: own }) : M.T('invite_none', lang)]], ctx });
+}
+function saveInvite(client, guild, link, lang) {
+    let invite = String(link || '').trim();
+    if (!INVITE_PATTERN.test(invite)) return { error: M.T('invite_invalid', lang) };
+    if (!invite.startsWith('http')) invite = `https://${invite}`;
+    ensureInviteColumn(client.db);
+    client.db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(guild.id);
+    client.db.prepare('UPDATE server_settings SET server_invite = ? WHERE guild_id = ?').run(invite, guild.id);
+    client.settings?.delete?.(guild.id);
+    return { invite };
 }
 
-async function handleGetInvite(interaction, client, db, lang, isSlash) {
-    const t = loadT(lang);
-    const guildId = interaction.guild?.id;
-    if (!guildId) return;
-
-    const inviteData = getServerInvite(db, client, guildId);
-    const embed = new EmbedBuilder()
-        .setColor('#3498db')
-        .setTitle(t.inviteGetTitle)
-        .setFooter({ text: `ARCHON CG-223 • ${interaction.guild?.name || ''}` })
-        .setTimestamp();
-
-    if (inviteData.source === 'custom') {
-        embed.setDescription(t.inviteGetCustom.replace('{invite}', inviteData.invite))
-            .addFields({ name: 'Status', value: '✅ Custom per-server invite active', inline: false });
-    } else if (inviteData.source === 'owner') {
-        embed.setDescription(t.inviteGetOwner.replace('{invite}', inviteData.invite))
-            .addFields({ name: 'Status', value: '🏠 Owner guild invite (this server)', inline: false });
-    } else {
-        embed.setDescription(t.inviteGetDefault.replace('{invite}', inviteData.invite))
-            .addFields({ name: 'Status', value: '⚠️ Using fallback (owner server). Set a custom invite with `/ban setinvite`', inline: false });
-    }
-
-    return isSlash ? interaction.reply({ embeds: [embed] }) : interaction.reply({ embeds: [embed] }).catch(() => {});
-}
-
-// ================= MODULE EXPORTS =================
 module.exports = {
     name: 'ban',
     aliases: ['banish', 'permaban', 'hammer', 'bannir', 'unban', 'pardon', 'debannir', 'setinvite', 'getinvite'],
-    description: '🔨 Ban or unban members. Manage server rejoin invites.',
+    description: 'Ban or unban members, and set the invite unbanned members get',
     category: 'MODERATION',
-    usage: '.ban @user [reason] | .unban <id> [reason] | .ban setinvite <link> | .ban getinvite',
-    examples: ['.ban @user Spam', '.unban 123456789 Was a mistake', '.ban setinvite discord.gg/abc123'],
+    usage: '.ban @member [reason] | .unban <user id> [reason] | .ban setinvite <link> | .ban getinvite',
     cooldown: 5000,
+    userPermissions: ['BanMembers'],
 
-    // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('ban')
-        .setDescription('🔨 Ban or unban members from the server')
+        .setDescription('Ban or unban members')
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
-        .addSubcommand(sub => sub
-            .setName('ban')
-            .setDescription('Permanently ban a member from the server')
-            .addUserOption(opt => opt.setName('user').setDescription('The member to ban').setRequired(true))
-            .addStringOption(opt => opt.setName('reason').setDescription('Reason for the ban').setRequired(false))
-        )
-        .addSubcommand(sub => sub
-            .setName('unban')
-            .setDescription('Unban a previously banned member')
-            .addStringOption(opt => opt.setName('user_id').setDescription('The User ID of the banned member').setRequired(true))
-            .addStringOption(opt => opt.setName('reason').setDescription('Reason for the unban').setRequired(false))
-        )
-        .addSubcommand(sub => sub
-            .setName('setinvite')
-            .setDescription('Set the permanent server invite link for unbanned users')
-            .addStringOption(opt => opt.setName('invite').setDescription('Discord invite link (discord.gg/xxxx)').setRequired(true))
-        )
-        .addSubcommand(sub => sub
-            .setName('getinvite')
-            .setDescription('View the current server invite configuration')
-        ),
+        .addSubcommand(s => s.setName('ban').setDescription('Ban a member (asks for confirmation)')
+            .addUserOption(o => o.setName('user').setDescription('Who to ban (they don\'t need to be in the server)').setRequired(true))
+            .addStringOption(o => o.setName('reason').setDescription('Why (shown to them and in the audit log)').setMaxLength(400))
+            .addStringOption(o => o.setName('delete_messages').setDescription('Also delete their recent messages')
+                .addChoices({ name: 'None', value: 'none' }, { name: 'Last hour', value: '1h' }, { name: 'Last 24 hours', value: '24h' }, { name: 'Last 7 days', value: '7d' })))
+        .addSubcommand(s => s.setName('unban').setDescription('Unban someone')
+            .addStringOption(o => o.setName('user_id').setDescription('Their user ID').setRequired(true).setMinLength(17).setMaxLength(20))
+            .addStringOption(o => o.setName('reason').setDescription('Why').setMaxLength(400)))
+        .addSubcommand(s => s.setName('setinvite').setDescription('Set the invite unbanned members get to come back')
+            .addStringOption(o => o.setName('invite').setDescription('A discord.gg invite link').setRequired(true)))
+        .addSubcommand(s => s.setName('getinvite').setDescription('See the invite unbanned members get')),
 
-    // ================= PREFIX COMMAND HANDLER =================
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        // Ensure DB column exists
-        ensureInviteColumn(db);
+    execute: async (interaction, client) => {
+        const guild = interaction.guild;
+        const lang = M.langFor(client, interaction);
+        const actor = await guild.members.fetch(interaction.user.id).catch(() => null);
+        const sub = interaction.options.getSubcommand();
 
-        
-        const t = loadT(lang);
-        const version = getBotVersion(client);
-        const action = usedCommand?.toLowerCase();
+        if (sub === 'getinvite') return M.respond(interaction, { components: [inviteView(client.db, guild, lang, interaction)] }, { ephemeral: true });
+        if (!M.hasPerm(actor, PermissionFlagsBits.BanMembers)) return M.fail(interaction, M.T('no_perm', lang, { perm: 'Ban Members' }), lang);
 
-        // Handle invite management subcommands
-        if (action === 'setinvite') {
-            return handleSetInvite(message, client, db, lang, false);
-        }
-        if (action === 'getinvite') {
-            return handleGetInvite(message, client, db, lang, false);
+        if (sub === 'setinvite') {
+            const r = saveInvite(client, guild, interaction.options.getString('invite'), lang);
+            if (r.error) return M.fail(interaction, r.error, lang);
+            return M.respond(interaction, { components: [M.card({ look: 'info', title: M.T('invite_title', lang), lines: [[null, M.T('invite_set', lang, { invite: r.invite })]], ctx: interaction })] }, { ephemeral: true });
         }
 
-        const isUnban = action === 'unban' || action === 'pardon' || action === 'debannir';
-
-        // Permission check
-        let hasPermission = message.member.permissions.has(PermissionFlagsBits.BanMembers);
-        if (!hasPermission && serverSettings?.staffRoles?.moderator) {
-            const staffRoles = serverSettings.staffRoles.moderator.split(',').map(r => r.trim());
-            hasPermission = message.member.roles.cache.some(role => staffRoles.includes(role.id));
+        if (sub === 'unban') {
+            const id = String(interaction.options.getString('user_id') || '').replace(/[<@!>]/g, '');
+            if (!M.SNOWFLAKE.test(id)) return M.fail(interaction, M.T('not_banned', lang), lang);
+            await interaction.deferReply();
+            const r = await doUnban(client, guild, actor, id, M.cleanReason(interaction.options.getString('reason'), lang), lang, interaction);
+            if (r.error) return interaction.editReply({ content: r.error, allowedMentions: { parse: [] } });
+            return interaction.editReply({ components: [r.card], flags: M.V2, allowedMentions: { parse: [] } });
         }
-        if (!hasPermission) return message.reply({ content: t.noPermission }).catch(() => {});
 
-        if (isUnban) {
-            // ================= PREFIX UNBAN =================
-            let rawUserId = args[0];
-            if (!rawUserId) return message.reply({ content: t.noTarget }).catch(() => {});
-            let userId = rawUserId.replace(/[<@!>]/g, '');
-            const reason = args.slice(1).join(' ') || 'Pardoned by moderator.';
-            if (!userId || !/^\d+$/.test(userId)) return message.reply({ content: t.noTarget }).catch(() => {});
-
-            const banInfo = await getBanInfo(message.guild, userId);
-            if (!banInfo) return message.reply({ content: t.notBanned }).catch(() => {});
-
-            let user;
-            try { user = await client.users.fetch(userId); } catch { user = { tag: `Unknown (${userId})`, id: userId }; }
-
-            const caseId = generateCaseId('UNBAN');
-            const confirmRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`unban_confirm_${userId}_${caseId}`).setLabel(t.confirmUnbanButton).setStyle(ButtonStyle.Success).setEmoji('✅'),
-                new ButtonBuilder().setCustomId(`unban_cancel_${userId}`).setLabel(t.cancelButton).setStyle(ButtonStyle.Secondary).setEmoji('❌')
-            );
-
-            const confirmEmbed = new EmbedBuilder()
-                .setColor('#f1c40f')
-                .setTitle(t.confirmUnbanTitle)
-                .setDescription(t.confirmUnbanDesc.replace('{user}', user.tag))
-                .addFields(
-                    { name: t.unbanReason, value: `*${reason}*`, inline: false },
-                    { name: t.unbanPreviousBan, value: `*${banInfo.reason || 'No reason provided'}*`, inline: false },
-                    { name: t.unbanCaseId, value: `\`${caseId}\``, inline: true }
-                )
-                .setFooter({ text: t.confirmUnbanWarning })
-                .setTimestamp();
-
-            const confirmMsg = await message.reply({ embeds: [confirmEmbed], components: [confirmRow] }).catch(() => null);
-            if (!confirmMsg) return;
-
-            const collector = confirmMsg.createMessageComponentCollector({ time: 30000, filter: i => i.user.id === message.author.id });
-            collector.on('collect', async (i) => {
-                if (i.customId.startsWith('unban_confirm')) {
-                    await i.deferUpdate();
-                    try {
-                        const inviteData = getServerInvite(db, client, message.guild.id);
-                        await sendDM(user, message.guild, reason, 'UNBAN', lang, inviteData);
-                        await message.guild.members.unban(userId, `${reason} (Unbanned by: ${message.author.tag} | Case: ${caseId})`);
-
-                        const unbanEmbed = new EmbedBuilder()
-                            .setColor('#2ecc71')
-                            .setTitle(t.unbanTitle)
-                            .setThumbnail(user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true, size: 256 }) : null)
-                            .addFields(
-                                { name: t.unbanEntity, value: `${user.tag}\n(\`${userId}\`)`, inline: true },
-                                { name: t.unbanAuthorizedBy, value: `${message.author.tag}\n(\`${message.author.id}\`)`, inline: true },
-                                { name: t.unbanReason, value: `*${reason}*`, inline: false },
-                                { name: t.unbanPreviousBan, value: `*${banInfo.reason || 'No reason provided'}*`, inline: false },
-                                { name: t.unbanCaseId, value: `\`${caseId}\``, inline: true },
-                                { name: '🔗 Rejoin', value: inviteData.invite || OWNER_GUILD_INVITE, inline: true }
-                            )
-                            .setFooter({ text: `${message.guild.name} • ${t.unbanFooter} • v${version}`, iconURL: message.guild.iconURL() })
-                            .setTimestamp();
-
-                        await confirmMsg.edit({ embeds: [unbanEmbed], components: [] });
-                        await logToModChannel(message.guild, unbanEmbed, client);
-                        console.log(`[UNBAN] ${message.author.tag} unbanned ${user.tag} (${userId}) | Case: ${caseId} | Invite: ${inviteData.source}`);
-                    } catch (error) {
-                        console.error('Unban Error:', error);
-                        await i.followUp({ content: t.unbanFailed, flags: 64 });
-                    }
-                } else if (i.customId.startsWith('unban_cancel')) {
-                    await i.deferUpdate();
-                    await confirmMsg.edit({ content: t.actionCancelled, embeds: [], components: [] });
-                }
-                collector.stop();
-            });
-        } else {
-            // ================= PREFIX BAN =================
-            let rawTargetId = args[0];
-            let target = message.mentions.members.first();
-            if (!target && rawTargetId) {
-                const cleanId = rawTargetId.replace(/[<@!>]/g, '');
-                target = message.guild.members.cache.get(cleanId);
-            }
-            const reason = args.slice(1).join(' ') || 'Breach of conduct.';
-
-            if (!target) return message.reply({ content: t.noTarget }).catch(() => {});
-            if (target.id === message.author.id) return message.reply({ content: t.selfBan }).catch(() => {});
-            if (!target.bannable) return message.reply({ content: require('../lib/botPerms').hierarchyText?.(message.guild, target, 'ban', t.notBannable, message) ?? t.notBannable }).catch(() => {});
-
-            const caseId = generateCaseId('BAN');
-            const confirmRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`ban_confirm_${target.id}_${caseId}`).setLabel(t.confirmBanButton).setStyle(ButtonStyle.Danger).setEmoji('✅'),
-                new ButtonBuilder().setCustomId(`ban_cancel_${target.id}`).setLabel(t.cancelButton).setStyle(ButtonStyle.Secondary).setEmoji('❌')
-            );
-
-            const confirmEmbed = new EmbedBuilder()
-                .setColor('#ff4757')
-                .setTitle(t.confirmBanTitle)
-                .setDescription(t.confirmBanDesc.replace('{user}', target.user.tag))
-                .addFields(
-                    { name: t.banReason, value: `*${reason}*`, inline: false },
-                    { name: t.banCaseId, value: `\`${caseId}\``, inline: true },
-                    { name: t.banDuration, value: t.banPermanent, inline: true }
-                )
-                .setFooter({ text: t.confirmBanWarning })
-                .setTimestamp();
-
-            const confirmMsg = await message.reply({ embeds: [confirmEmbed], components: [confirmRow] }).catch(() => null);
-            if (!confirmMsg) return;
-
-            const collector = confirmMsg.createMessageComponentCollector({ time: 30000, filter: i => i.user.id === message.author.id });
-            collector.on('collect', async (i) => {
-                if (i.customId.startsWith('ban_confirm')) {
-                    await i.deferUpdate();
-                    try {
-                        await sendDM(target.user, message.guild, reason, 'BAN', lang);
-                        await target.ban({ reason: `${reason} (Banned by: ${message.author.tag} | Case: ${caseId})` });
-
-                        const banEmbed = new EmbedBuilder()
-                            .setColor('#ff4757')
-                            .setTitle(t.banTitle)
-                            .setThumbnail(target.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                            .addFields(
-                                { name: t.banEntity, value: `${target.user.tag}\n(\`${target.id}\`)`, inline: true },
-                                { name: t.banAuthorizedBy, value: `${message.author.tag}\n(\`${message.author.id}\`)`, inline: true },
-                                { name: t.banReason, value: `*${reason}*`, inline: false },
-                                { name: t.banCaseId, value: `\`${caseId}\``, inline: true },
-                                { name: t.banDuration, value: t.banPermanent, inline: true }
-                            )
-                            .setFooter({ text: `${message.guild.name} • ${t.banFooter} • v${version}`, iconURL: message.guild.iconURL() })
-                            .setTimestamp();
-
-                        await confirmMsg.edit({ embeds: [banEmbed], components: [] });
-                        await logToModChannel(message.guild, banEmbed, client);
-                        console.log(`[BAN] ${message.author.tag} banned ${target.user.tag} | Case: ${caseId}`);
-                    } catch (error) {
-                        console.error('Ban Error:', error);
-                        await i.followUp({ content: t.banFailed, flags: 64 });
-                    }
-                } else if (i.customId.startsWith('ban_cancel')) {
-                    await i.deferUpdate();
-                    await confirmMsg.edit({ content: t.actionCancelled, embeds: [], components: [] });
-                }
-                collector.stop();
-            });
-        }
+        // ban: check everything, then ask
+        const user = interaction.options.getUser('user');
+        const problem = await precheck(guild, actor, user, lang, interaction);
+        if (problem) return M.fail(interaction, problem, lang);
+        const reason = M.cleanReason(interaction.options.getString('reason'), lang);
+        const deleteSeconds = DELETE_CHOICES[interaction.options.getString('delete_messages') || 'none'] || 0;
+        const nonce = remember({ guildId: guild.id, actorId: actor.id, userId: user.id, reason, deleteSeconds, lang, channelId: interaction.channelId, ephemeral: true });
+        const ask = M.card({ look: 'ban', title: M.T('ban_confirm_title', lang, { user: M.safe(user.username) }), lines: [[null, M.T('ban_confirm_text', lang)], [M.T('l_reason', lang), M.safe(reason)]], avatar: M.avatarOf(user), ctx: interaction });
+        return interaction.reply({ components: [ask, confirmRow(nonce, actor.id, lang)], flags: M.V2 | MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
     },
 
-    // ================= SLASH COMMAND HANDLER =================
-    execute: async (interaction, client) => {
-        // Ensure DB column exists
-        if (client.db) ensureInviteColumn(client.db);
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
+        const guild = message.guild;
+        if (!guild) return;
+        const lang = M.langFor(client, message);
+        const actor = message.member;
+        const used = String(usedCommand || 'ban').toLowerCase();
+        const first = String(args[0] || '').toLowerCase();
 
-        let subcommand = null;
-        try { subcommand = interaction.options.getSubcommand(); } catch {
-            return interaction.reply({ content: '❌ Use `/ban ban`, `/ban unban`, `/ban setinvite`, or `/ban getinvite`.', flags: 64 });
+        if (used === 'getinvite' || first === 'getinvite') return M.respond(message, { components: [inviteView(client.db, guild, lang, message)] });
+        if (!M.hasPerm(actor, PermissionFlagsBits.BanMembers)) return M.fail(message, M.T('no_perm', lang, { perm: 'Ban Members' }), lang);
+        if (used === 'setinvite' || first === 'setinvite') {
+            const r = saveInvite(client, guild, used === 'setinvite' ? args[0] : args[1], lang);
+            if (r.error) return M.fail(message, r.error, lang);
+            return M.respond(message, { components: [M.card({ look: 'info', title: M.T('invite_title', lang), lines: [[null, M.T('invite_set', lang, { invite: r.invite })]], ctx: message })] });
         }
 
-        const lang = require('../lib/i18n').slashLang(interaction);
-        const t = loadT(lang);
-        const version = getBotVersion(client);
+        const id = String(args[0] || '').replace(/[<@!>]/g, '');
+        if (!M.SNOWFLAKE.test(id)) return message.reply({ content: M.T('usage_ban', lang), allowedMentions: { parse: [] } }).catch(() => {});
+        const reason = M.cleanReason(args.slice(1).join(' '), lang);
 
-        // Handle invite subcommands
-        if (subcommand === 'setinvite') {
-            return handleSetInvite(interaction, client, client.db, lang, true);
-        }
-        if (subcommand === 'getinvite') {
-            return handleGetInvite(interaction, client, client.db, lang, true);
+        if (['unban', 'pardon', 'debannir'].includes(used)) {
+            const r = await doUnban(client, guild, actor, id, reason, lang, message);
+            if (r.error) return M.fail(message, r.error, lang);
+            return M.respond(message, { components: [r.card] });
         }
 
-        if (subcommand === 'ban') {
-            // ================= SLASH BAN =================
-            const targetUser = interaction.options.getUser('user');
-            const reason = interaction.options.getString('reason') || 'Breach of conduct.';
-            const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+        const user = await client.users.fetch(id).catch(() => null);
+        if (!user) return M.fail(message, M.T('not_member', lang), lang);
+        const problem = await precheck(guild, actor, user, lang, message);
+        if (problem) return M.fail(message, problem, lang);
+        const nonce = remember({ guildId: guild.id, actorId: actor.id, userId: user.id, reason, deleteSeconds: 0, lang, channelId: message.channelId, ephemeral: false });
+        const ask = M.card({ look: 'ban', title: M.T('ban_confirm_title', lang, { user: M.safe(user.username) }), lines: [[null, M.T('ban_confirm_text', lang)], [M.T('l_reason', lang), M.safe(reason)]], avatar: M.avatarOf(user), ctx: message });
+        return message.reply({ components: [ask, confirmRow(nonce, actor.id, lang)], flags: M.V2, allowedMentions: { parse: [] } }).catch(() => {});
+    },
 
-            if (!targetMember) return interaction.reply({ content: t.noTarget, flags: 64 });
-            if (targetMember.id === interaction.user.id) return interaction.reply({ content: t.selfBan, flags: 64 });
-            if (!targetMember.bannable) return interaction.reply({ content: require('../lib/botPerms').hierarchyText?.(interaction.guild, targetMember, 'ban', t.notBannable, interaction) ?? t.notBannable, flags: 64 });
-
-            const caseId = generateCaseId('BAN');
-            const confirmEmbed = new EmbedBuilder()
-                .setColor('#ff4757')
-                .setTitle(t.confirmBanTitle)
-                .setDescription(t.confirmBanDesc.replace('{user}', targetUser.tag))
-                .addFields(
-                    { name: t.banReason, value: `*${reason}*`, inline: false },
-                    { name: t.banCaseId, value: `\`${caseId}\``, inline: true },
-                    { name: t.banDuration, value: t.banPermanent, inline: true }
-                )
-                .setFooter({ text: t.confirmBanWarning })
-                .setTimestamp();
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`ban_confirm_${targetUser.id}_${caseId}`).setLabel(t.confirmBanButton).setStyle(ButtonStyle.Danger).setEmoji('✅'),
-                new ButtonBuilder().setCustomId(`ban_cancel_${targetUser.id}`).setLabel(t.cancelButton).setStyle(ButtonStyle.Secondary).setEmoji('❌')
-            );
-
-            await interaction.reply({ embeds: [confirmEmbed], components: [row] });
-
-            const collector = interaction.channel.createMessageComponentCollector({
-                filter: i => i.user.id === interaction.user.id && i.customId.startsWith('ban_'),
-                time: 30000, max: 1
-            });
-
-            collector.on('collect', async (i) => {
-                if (i.customId.startsWith('ban_confirm')) {
-                    await i.deferUpdate();
-                    try {
-                        await sendDM(targetUser, interaction.guild, reason, 'BAN', lang);
-                        await targetMember.ban({ reason: `${reason} (Banned by: ${interaction.user.tag} | Case: ${caseId})` });
-
-                        const banEmbed = new EmbedBuilder()
-                            .setColor('#ff4757')
-                            .setTitle(t.banTitle)
-                            .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
-                            .addFields(
-                                { name: t.banEntity, value: `${targetUser.tag}\n(\`${targetUser.id}\`)`, inline: true },
-                                { name: t.banAuthorizedBy, value: `${interaction.user.tag}\n(\`${interaction.user.id}\`)`, inline: true },
-                                { name: t.banReason, value: `*${reason}*`, inline: false },
-                                { name: t.banCaseId, value: `\`${caseId}\``, inline: true },
-                                { name: t.banDuration, value: t.banPermanent, inline: true }
-                            )
-                            .setFooter({ text: `${interaction.guild.name} • ${t.banFooter} • v${version}`, iconURL: interaction.guild.iconURL() })
-                            .setTimestamp();
-
-                        await interaction.editReply({ embeds: [banEmbed], components: [] });
-                        await logToModChannel(interaction.guild, banEmbed, client);
-                    } catch { await i.followUp({ content: t.banFailed, flags: 64 }); }
-                } else {
-                    await i.deferUpdate();
-                    await interaction.editReply({ content: t.actionCancelled, embeds: [], components: [] });
-                }
-            });
-
-        } else if (subcommand === 'unban') {
-            // ================= SLASH UNBAN =================
-            const userId = interaction.options.getString('user_id');
-            const reason = interaction.options.getString('reason') || 'Pardoned by moderator.';
-
-            if (!/^\d+$/.test(userId)) return interaction.reply({ content: t.noTarget, flags: 64 });
-
-            const banInfo = await getBanInfo(interaction.guild, userId);
-            if (!banInfo) return interaction.reply({ content: t.notBanned, flags: 64 });
-
-            let user;
-            try { user = await client.users.fetch(userId); } catch { user = { tag: `Unknown (${userId})`, id: userId }; }
-
-            const caseId = generateCaseId('UNBAN');
-            const confirmEmbed = new EmbedBuilder()
-                .setColor('#f1c40f')
-                .setTitle(t.confirmUnbanTitle)
-                .setDescription(t.confirmUnbanDesc.replace('{user}', user.tag))
-                .addFields(
-                    { name: t.unbanReason, value: `*${reason}*`, inline: false },
-                    { name: t.unbanPreviousBan, value: `*${banInfo.reason || 'No reason provided'}*`, inline: false },
-                    { name: t.unbanCaseId, value: `\`${caseId}\``, inline: true }
-                )
-                .setFooter({ text: t.confirmUnbanWarning })
-                .setTimestamp();
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`unban_confirm_${userId}_${caseId}`).setLabel(t.confirmUnbanButton).setStyle(ButtonStyle.Success).setEmoji('✅'),
-                new ButtonBuilder().setCustomId(`unban_cancel_${userId}`).setLabel(t.cancelButton).setStyle(ButtonStyle.Secondary).setEmoji('❌')
-            );
-
-            await interaction.reply({ embeds: [confirmEmbed], components: [row] });
-
-            const collector = interaction.channel.createMessageComponentCollector({
-                filter: i => i.user.id === interaction.user.id && i.customId.startsWith('unban_'),
-                time: 30000, max: 1
-            });
-
-            collector.on('collect', async (i) => {
-                if (i.customId.startsWith('unban_confirm')) {
-                    await i.deferUpdate();
-                    try {
-                        // GET SERVER-SPECIFIC INVITE FOR REJOIN BUTTON
-                        const inviteData = getServerInvite(client.db, client, interaction.guild.id);
-                        await sendDM(user, interaction.guild, reason, 'UNBAN', lang, inviteData);
-                        await interaction.guild.members.unban(userId, `${reason} (Unbanned by: ${interaction.user.tag} | Case: ${caseId})`);
-
-                        const unbanEmbed = new EmbedBuilder()
-                            .setColor('#2ecc71')
-                            .setTitle(t.unbanTitle)
-                            .setThumbnail(user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true, size: 256 }) : null)
-                            .addFields(
-                                { name: t.unbanEntity, value: `${user.tag}\n(\`${userId}\`)`, inline: true },
-                                { name: t.unbanAuthorizedBy, value: `${interaction.user.tag}\n(\`${interaction.user.id}\`)`, inline: true },
-                                { name: t.unbanReason, value: `*${reason}*`, inline: false },
-                                { name: t.unbanPreviousBan, value: `*${banInfo.reason || 'No reason provided'}*`, inline: false },
-                                { name: t.unbanCaseId, value: `\`${caseId}\``, inline: true },
-                                { name: '🔗 Rejoin', value: inviteData.invite || OWNER_GUILD_INVITE, inline: true }
-                            )
-                            .setFooter({ text: `${interaction.guild.name} • ${t.unbanFooter} • v${version}`, iconURL: interaction.guild.iconURL() })
-                            .setTimestamp();
-
-                        await interaction.editReply({ embeds: [unbanEmbed], components: [] });
-                        await logToModChannel(interaction.guild, unbanEmbed, client);
-                        console.log(`[UNBAN] ${interaction.user.tag} unbanned ${user.tag} | Case: ${caseId} | Invite: ${inviteData.source}`);
-                    } catch (error) {
-                        console.error('Unban Error:', error);
-                        await i.followUp({ content: t.unbanFailed, flags: 64 });
-                    }
-                } else {
-                    await i.deferUpdate();
-                    await interaction.editReply({ content: t.actionCancelled, embeds: [], components: [] });
-                }
-            });
+    // The two confirmation buttons. The moderator's id is in the button; the ban details stay on the bot.
+    handleComponent: async (interaction, client) => {
+        const [, action, nonce, actorId] = interaction.customId.split(':');
+        const guild = interaction.guild;
+        const lang = M.langFor(client, interaction);
+        const deny = (key) => interaction.reply({ content: M.T(key, lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+        if (!guild) return;
+        if (interaction.user.id !== actorId) return deny('not_yours');
+        const p = pending.get(nonce);
+        if (!p || p.expires < Date.now() || p.guildId !== guild.id || p.actorId !== actorId) {
+            pending.delete(nonce);
+            return interaction.update({ components: [M.card({ look: 'info', title: M.T('expired', lang), ctx: interaction })], flags: M.V2 }).catch(() => deny('expired'));
         }
-    }
+        pending.delete(nonce);
+        if (action === 'no') return interaction.update({ components: [M.card({ look: 'info', title: M.T('cancelled', p.lang), ctx: interaction })], flags: M.V2 });
+
+        // Checked again: roles or permissions may have changed while the question was open
+        const actor = await guild.members.fetch(actorId).catch(() => null);
+        const user = await client.users.fetch(p.userId).catch(() => null);
+        const problem = !actor || !user ? M.T('expired', p.lang) : await precheck(guild, actor, user, p.lang, interaction);
+        if (problem) return interaction.update({ components: [M.card({ look: 'error', title: M.T('refused', p.lang), lines: [[null, problem]], ctx: interaction })], flags: M.V2, allowedMentions: { parse: [] } });
+
+        await interaction.deferUpdate();
+        try {
+            const result = await doBan(client, guild, actor, user, p.reason, p.deleteSeconds, p.lang, interaction);
+            await interaction.editReply({ components: [result], flags: M.V2, allowedMentions: { parse: [] } });
+            // The confirmation was private: let the channel see the outcome too
+            if (p.ephemeral) await interaction.channel?.send({ components: [result], flags: M.V2, allowedMentions: { parse: [] } }).catch(() => {});
+        } catch (e) {
+            console.error(`[BAN] guild=${guild.id} user=${p.userId}:`, e.message);
+            const text = require('../lib/botPerms').explainError(e, interaction, 'ban', p.lang) || M.T('above_bot', p.lang);
+            await interaction.editReply({ components: [M.card({ look: 'error', title: M.T('refused', p.lang), lines: [[null, text]], ctx: interaction })], flags: M.V2, allowedMentions: { parse: [] } }).catch(() => {});
+        }
+    },
 };
 

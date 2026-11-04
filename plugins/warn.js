@@ -1,468 +1,201 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionsBitField, SlashCommandBuilder } = require('discord.js');
-const EMOJIS = require('../config/emojis');
-const { resolveEmoji } = require('../lib/emoji-resolver');
+// /warn — warnings, their history, and the automatic action when a member reaches the server's limit
+// ("Max warnings" in the dashboard; it was saved but never applied before).
+const crypto = require('crypto');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const M = require('../lib/mod-core');
 
-// ================= BILINGUAL TRANSLATIONS =================
-const i18n = require('../lib/i18n');
-const I18N_KEYS = ["warnTitle", "warnedBy", "reason", "warningCount", "warningId", "dmTitle", "dmDescription", "warnSuccess", "cannotWarnSelf", "cannotWarnBot", "cannotWarnHigher", "noReason", "warningsTitle", "noWarnings", "totalWarnings", "activeWarnings", "expiredWarnings", "issuedBy", "issuedAt", "expires", "expired", "active", "never", "clearTitle", "clearSuccess", "confirmClear", "confirm", "cancel", "removeSuccess", "removeNotFound", "modlogsTitle", "noModlogs", "type", "moderator", "date", "actions", "accessDenied", "noPermission", "footer", "page", "of", "delete", "logChannel", "loggedTo"];
-function loadT(lang) {
-    const o = {};
-    for (const k of I18N_KEYS) o[k] = i18n.t(`warn.${k}`, lang);
-    return o;
+const WARN_DAYS = 30;
+const now = () => Math.floor(Date.now() / 1000);
+const newId = () => `W-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+function activeCount(db, guildId, userId) {
+    return db.prepare('SELECT COUNT(*) AS n FROM warnings WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?)').get(guildId, userId, now()).n;
 }
 
-// ================= HELPER FUNCTIONS =================
-function generateWarningId() {
-    return `WARN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-}
-
-function logModAction(db, guildId, userId, moderatorId, action, reason = null, warningId = null) {
+function limits(db, guildId) {
     try {
-        db.prepare(`
-            INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, warning_id, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, strftime('%s', 'now'))
-        `).run(guildId, userId, moderatorId, action, reason, warningId);
-        return true;
-    } catch (err) {
-        console.error('[MODLOG] Error:', err);
-        return false;
-    }
+        const row = db.prepare('SELECT max_warnings, warning_action FROM server_settings WHERE guild_id = ?').get(guildId) || {};
+        const max = Number(row.max_warnings) || 3;
+        const action = ['mute', 'kick', 'ban', 'none'].includes(String(row.warning_action)) ? String(row.warning_action) : 'mute';
+        return { max: Math.max(1, Math.min(10, max)), action };
+    } catch { return { max: 3, action: 'mute' }; }
 }
 
-function getUserWarnings(db, guildId, userId) {
-    const now = Math.floor(Date.now() / 1000);
-    return db.prepare(`SELECT * FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC`).all(guildId, userId);
-}
-
-function createWarningsEmbed(user, warnings, page, totalPages, lang, client, guild, version) {
-    const t = loadT(lang);
-    const pageSize = 5;
-    const start = page * pageSize;
-    const pageWarnings = warnings.slice(start, start + pageSize);
-    const now = Math.floor(Date.now() / 1000);
-    
-    const activeCount = warnings.filter(w => !w.expires_at || w.expires_at > now).length;
-    const expiredCount = warnings.length - activeCount;
-    
-    let description = '';
-    if (pageWarnings.length === 0) {
-        description = lang === 'fr' ? '*Aucun avertissement.*' : '*No warnings.*';
-    } else {
-        for (const w of pageWarnings) {
-            const isExpired = w.expires_at && w.expires_at < now;
-            description += `\`\`\`yaml\n⚠️ ${w.id}\n${t.reason}: ${w.reason || t.noReason}\n${t.issuedBy}: ${w.moderator_id}\n${t.issuedAt}: ${new Date(w.created_at * 1000).toLocaleDateString()}\n${isExpired ? t.expired : t.active}\`\`\`\n`;
+// The automatic action at the limit. Returns a line for the card, or null.
+async function autoAction(client, guild, member, count, lang, ctx) {
+    const { max, action } = limits(client.db, guild.id);
+    if (action === 'none' || count < max || !member) return null;
+    const me = guild.members.me;
+    const label = M.T(`action_${action}`, lang);
+    const reason = M.auditReason(`${count} warnings`, me.user);
+    try {
+        if (action === 'mute') {
+            if (!member.moderatable || member.permissions?.has(PermissionFlagsBits.Administrator)) throw Object.assign(new Error('not moderatable'), { why: 'role' });
+            await member.timeout(60 * 60 * 1000, reason);
+        } else if (action === 'kick') {
+            if (!member.kickable) throw Object.assign(new Error('not kickable'), { why: 'role' });
+            await member.kick(reason);
+        } else {
+            if (!member.bannable) throw Object.assign(new Error('not bannable'), { why: 'role' });
+            await guild.members.ban(member.id, { reason });
         }
+        M.record(client.db, { guildId: guild.id, userId: member.id, moderatorId: me.id, action: action === 'mute' ? 'mute' : action, reason: `Automatic: ${count} warnings` });
+        return M.T('warn_auto', lang, { count, action: label });
+    } catch (e) {
+        const why = e.why === 'role' ? M.T('target_above_bot', lang) : (require('../lib/botPerms').explainError(e, ctx, action === 'mute' ? 'mute' : action, lang) || e.message);
+        return M.T('warn_auto_failed', lang, { count, action: label, why });
     }
-    
-    return new EmbedBuilder()
-        .setColor(activeCount > 0 ? '#e74c3c' : '#95a5a6')
-        .setAuthor({ name: i18n.t('warn.warningsTitle', lang, { user: user.username }), iconURL: user.displayAvatarURL() })
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-        .setDescription(description)
-        .addFields(
-            { name: t.totalWarnings, value: `\`${warnings.length}\``, inline: true },
-            { name: t.activeWarnings, value: `\`${activeCount}\``, inline: true },
-            { name: t.expiredWarnings, value: `\`${expiredCount}\``, inline: true }
-        )
-        .setFooter({ text: `${guild.name} • ${t.footer} • ${t.page} ${page + 1}/${totalPages} • v${version}`, iconURL: guild.iconURL() || client.user.displayAvatarURL() })
-        .setTimestamp();
 }
 
-function createModlogsEmbed(user, logs, page, totalPages, lang, client, guild, version) {
-    const t = loadT(lang);
-    const pageSize = 5;
-    const start = page * pageSize;
-    const pageLogs = logs.slice(start, start + pageSize);
-    
-    let description = '';
-    if (pageLogs.length === 0) {
-        description = lang === 'fr' ? '*Aucun historique.*' : '*No history.*';
-    } else {
-        for (const log of pageLogs) {
-            const emoji = { warn: '⚠️', clear: '🧹', remove: '🗑️', mute: '🔇', kick: '👢', ban: '🔨', unban: '🔓' }[log.action] || '📋';
-            description += `\`\`\`yaml\n${emoji} ${t.actions[log.action] || log.action}\n${t.moderator}: ${log.moderator_id}\n${log.reason ? t.reason + ': ' + log.reason + '\n' : ''}${t.date}: ${new Date(log.timestamp * 1000).toLocaleDateString()}\`\`\`\n`;
-        }
-    }
-    
-    return new EmbedBuilder()
-        .setColor('#3498db')
-        .setAuthor({ name: i18n.t('warn.modlogsTitle', lang, { user: user.username }), iconURL: user.displayAvatarURL() })
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-        .setDescription(description)
-        .addFields({ name: t.totalWarnings, value: `\`${logs.length}\``, inline: true })
-        .setFooter({ text: `${guild.name} • ${t.footer} • ${t.page} ${page + 1}/${totalPages} • v${version}`, iconURL: guild.iconURL() || client.user.displayAvatarURL() })
-        .setTimestamp();
+async function addWarning(client, guild, actor, user, reason, lang, ctx) {
+    const db = client.db;
+    M.ensureTables(db);
+    if (!M.hasPerm(actor, PermissionFlagsBits.ModerateMembers)) return { error: M.T('no_perm', lang, { perm: 'Timeout Members' }) };
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    const code = M.checkTarget(guild, actor, user.id, member, 'warn') || (user.bot ? 'bot' : null);
+    if (code) return { error: M.targetText(code, lang, guild, member, 'warn', ctx) };
+
+    const id = newId();
+    db.prepare('INSERT INTO warnings (id, guild_id, user_id, moderator_id, reason, created_at, expires_at, active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)')
+        .run(id, guild.id, user.id, actor.id, reason, now(), now() + WARN_DAYS * 86400);
+    const caseId = M.record(db, { guildId: guild.id, userId: user.id, moderatorId: actor.id, action: 'warn', reason, warningId: id });
+    const count = activeCount(db, guild.id, user.id);
+    const { max } = limits(db, guild.id);
+    const sent = await M.dm(user, M.card({ look: 'warn', title: M.T('warn_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)], [M.T('l_warnings', lang), `${count} / ${max}`]], ctx }));
+    const auto = await autoAction(client, guild, member, count, lang, ctx);
+    const lines = [
+        [M.T('l_member', lang), M.who(user)],
+        [M.T('l_moderator', lang), `<@${actor.id}>`],
+        [M.T('l_reason', lang), M.safe(reason)],
+        [M.T('l_warnings', lang), `${count} / ${max}`],
+        [M.T('l_id', lang), `\`${id}\``],
+        [M.T('l_dm', lang), M.T(sent ? 'dm_yes' : 'dm_no', lang)],
+        auto ? [null, `> ${auto}`] : null,
+    ];
+    const make = () => M.card({ look: 'warn', title: M.T('warn_done', lang), lines, avatar: M.avatarOf(user), footer: M.footerFor(caseId, lang), ctx });
+    await M.toModLog(guild, db, make());
+    return { card: make() };
 }
 
-// ================= MAIN COMMAND =================
+function listView(db, guild, user, lang, ctx) {
+    M.ensureTables(db);
+    const rows = db.prepare('SELECT id, reason, created_at, expires_at, active FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC').all(guild.id, user.id);
+    if (!rows.length) return M.card({ look: 'info', title: M.T('warn_list_title', lang, { user: M.safe(user.username) }), lines: [[null, M.T('warn_list_none', lang, { user: M.safe(user.username) })]], avatar: M.avatarOf(user), ctx });
+    const t = now();
+    const state = (w) => (!w.active ? 'state_removed' : w.expires_at && w.expires_at <= t ? 'state_expired' : 'state_active');
+    const lines = rows.slice(0, 10).map((w) => [null, `\`${w.id}\` · ${M.safe(String(w.reason || '').slice(0, 120))} · <t:${w.created_at}:d> · ${M.T(state(w), lang)}`]);
+    if (rows.length > 10) lines.push([null, `-# ${M.T('warn_list_more', lang, { n: rows.length - 10 })}`]);
+    const active = rows.filter((w) => state(w) === 'state_active').length;
+    return M.card({ look: active ? 'warn' : 'info', title: M.T('warn_list_title', lang, { user: M.safe(user.username) }), lines: [[M.T('l_warnings', lang), String(active)], ...lines], avatar: M.avatarOf(user), ctx });
+}
+
+function historyView(db, guild, user, lang, ctx) {
+    M.ensureTables(db);
+    const rows = db.prepare('SELECT id, action, reason, moderator_id, timestamp FROM moderation_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT 10').all(guild.id, user.id);
+    if (!rows.length) return M.card({ look: 'info', title: M.T('modlogs_title', lang, { user: M.safe(user.username) }), lines: [[null, M.T('modlogs_none', lang, { user: M.safe(user.username) })]], avatar: M.avatarOf(user), ctx });
+    const name = (a) => { const k = `act_${a}`; const v = M.T(k, lang); return v === `mod.${k}` ? a : v; };
+    const lines = rows.map((r) => [null, `**${name(r.action)}** · <t:${r.timestamp}:d> · <@${r.moderator_id}>${r.reason ? ` · ${M.safe(String(r.reason).slice(0, 100))}` : ''} · #${r.id}`]);
+    return M.card({ look: 'info', title: M.T('modlogs_title', lang, { user: M.safe(user.username) }), lines, avatar: M.avatarOf(user), ctx });
+}
+
+function clearWarnings(client, guild, actor, user, lang) {
+    const db = client.db;
+    M.ensureTables(db);
+    if (!M.hasPerm(actor, PermissionFlagsBits.ModerateMembers)) return { error: M.T('no_perm', lang, { perm: 'Timeout Members' }) };
+    const n = db.prepare('UPDATE warnings SET active = 0 WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?)').run(guild.id, user.id, now()).changes;
+    if (!n) return { error: M.T('warn_none_active', lang, { user: M.safe(user.username) }) };
+    M.record(db, { guildId: guild.id, userId: user.id, moderatorId: actor.id, action: 'clear', reason: `${n} warnings` });
+    return { text: M.T('warn_cleared', lang, { count: n, user: M.safe(user.username) }) };
+}
+
+function removeWarning(client, guild, actor, id, lang) {
+    const db = client.db;
+    M.ensureTables(db);
+    if (!M.hasPerm(actor, PermissionFlagsBits.ModerateMembers)) return { error: M.T('no_perm', lang, { perm: 'Timeout Members' }) };
+    const clean = String(id || '').trim().toUpperCase().slice(0, 40);
+    const w = db.prepare('SELECT user_id FROM warnings WHERE id = ? AND guild_id = ? AND active = 1').get(clean, guild.id);
+    if (!w) return { error: M.T('warn_not_found', lang) };
+    db.prepare('UPDATE warnings SET active = 0 WHERE id = ? AND guild_id = ?').run(clean, guild.id);
+    M.record(db, { guildId: guild.id, userId: w.user_id, moderatorId: actor.id, action: 'remove', reason: clean, warningId: clean });
+    return { text: M.T('warn_removed', lang, { id: clean }) };
+}
+
 module.exports = {
     name: 'warn',
     aliases: ['w', 'warning', 'warnings', 'modlogs', 'clearwarn', 'removewarn', 'avertir', 'avertissement', 'historique'],
-    description: '🛡️ Neural Moderation System - Manage warnings and view history.',
+    description: 'Warn members and see their moderation history',
     category: 'MODERATION',
     cooldown: 3000,
     userPermissions: ['ModerateMembers'],
-    usage: '.warn [@user] [reason] | .warnings [@user] | .clearwarn [@user] | .modlogs [@user]',
+    usage: '.warn @member [reason] | .warnings @member | .clearwarn @member | .removewarn <id> | .modlogs @member',
 
-data: new SlashCommandBuilder()
-    .setName('warn')
-    .setDescription('🛡️ Neural Moderation System / Système de Modération Neurale')
-    .addSubcommand(sub => sub
-        .setName('add')
-        .setDescription('Warn a user / Avertir un utilisateur')
-        .addUserOption(opt => opt.setName('target').setDescription('User to warn').setRequired(true))
-        .addStringOption(opt => opt.setName('reason').setDescription('Reason').setRequired(false)))
-    .addSubcommand(sub => sub
-        .setName('list')
-        .setDescription('View warnings / Voir les avertissements')
-        .addUserOption(opt => opt.setName('target').setDescription('User to check').setRequired(false)))
-    .addSubcommand(sub => sub
-        .setName('clear')
-        .setDescription('Clear all warnings / Effacer tous les avertissements')
-        .addUserOption(opt => opt.setName('target').setDescription('User to clear').setRequired(true)))
-    .addSubcommand(sub => sub
-        .setName('remove')
-        .setDescription('Remove a specific warning / Supprimer un avertissement')
-        .addStringOption(opt => opt.setName('id').setDescription('Warning ID').setRequired(true)))
-    .addSubcommand(sub => sub
-        .setName('modlogs')
-        .setDescription('View moderation history / Voir l\'historique')
-        .addUserOption(opt => opt.setName('target').setDescription('User to check').setRequired(false))),
-
-run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        const OK = ['en', 'fr', 'bm', 'zh', 'ar'];
-        lang = OK.includes(serverSettings?.language) ? serverSettings.language : (OK.includes(lang) ? lang : 'en');
-        const t = loadT(lang);
-        const version = client.version || '1.6.0';
-        const guildId = message.guild.id;
-        const guildName = message.guild.name;
-        const guildIcon = message.guild.iconURL() || client.user.displayAvatarURL();
-        
-        // ================= ENSURE TABLES =================
-        try {
-            db.prepare(`CREATE TABLE IF NOT EXISTS warnings (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER DEFAULT (strftime('%s', 'now')), expires_at INTEGER, active BOOLEAN DEFAULT 1)`).run();
-            db.prepare(`CREATE TABLE IF NOT EXISTS moderation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, warning_id TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`).run();
-            db.prepare(`CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id)`).run();
-            db.prepare(`CREATE INDEX IF NOT EXISTS idx_modlogs_guild_user ON moderation_logs(guild_id, user_id)`).run();
-        } catch (err) {
-            console.error('[WARN] Table error:', err);
-            return message.reply({ content: `${resolveEmoji('error', message.guild || interaction.guild)} Something went wrong — try again in a moment.`, flags: 64 }).catch(() => {});
-        }
-        
-        const subCommand = args[0]?.toLowerCase();
-        
-        // ================= VIEW WARNINGS =================
-        if (!subCommand || subCommand === 'warnings' || subCommand === 'list' || subCommand === 'avertissements') {
-            const target = message.mentions.users.first() || message.author;
-            if (target.bot) return message.reply({ content: t.cannotWarnBot, flags: 64 }).catch(() => {});
-            
-            const warnings = getUserWarnings(db, guildId, target.id);
-            
-            if (warnings.length === 0) {
-                const embed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setAuthor({ name: i18n.t('warn.warningsTitle', lang, { user: target.username }), iconURL: target.displayAvatarURL() })
-                    .setDescription(i18n.t('warn.noWarnings', lang, { user: target.username }))
-                    .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                return message.reply({ embeds: [embed] }).catch(() => {});
-            }
-            
-            const pageSize = 5;
-            const totalPages = Math.ceil(warnings.length / pageSize);
-            let currentPage = 0;
-            
-            const embed = createWarningsEmbed(target, warnings, currentPage, totalPages, lang, client, message.guild, version);
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('warn_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(true),
-                new ButtonBuilder().setCustomId('warn_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(totalPages <= 1)
-            );
-            
-            const reply = await message.reply({ embeds: [embed], components: totalPages > 1 ? [row] : [] }).catch(() => {});
-            if (!reply || totalPages <= 1) return;
-            
-            // ================= 🔥 COLLECTOR CORRIGÉ =================
-            const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-            collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
-                
-                // 🛡️ LA LIGNE CRITIQUE
-                await i.deferUpdate().catch(() => {});
-                
-                if (i.customId === 'warn_prev') currentPage--;
-                if (i.customId === 'warn_next') currentPage++;
-                
-                const newEmbed = createWarningsEmbed(target, warnings, currentPage, totalPages, lang, client, message.guild, version);
-                const newRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('warn_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
-                    new ButtonBuilder().setCustomId('warn_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages - 1)
-                );
-                await i.editReply({ embeds: [newEmbed], components: [newRow] }).catch(() => {});
-            });
-            return;
-        }
-        
-        // ================= CLEAR WARNINGS =================
-        if (subCommand === 'clear' || subCommand === 'clearwarn' || subCommand === 'effacer') {
-            const target = message.mentions.users.first();
-            if (!target) return message.reply({ content: lang === 'fr' ? '👤 Mentionnez un utilisateur à modérer.' : '👤 Mention a user to moderate.', flags: 64 }).catch(() => {});
-            
-            const warnings = getUserWarnings(db, guildId, target.id);
-            const now = Math.floor(Date.now() / 1000);
-            const activeWarnings = warnings.filter(w => !w.expires_at || w.expires_at > now);
-            
-            if (activeWarnings.length === 0) {
-                return message.reply({ content: i18n.t('warn.noWarnings', lang, { user: target.username }), flags: 64 }).catch(() => {});
-            }
-            
-            const confirmRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('clear_confirm').setLabel(t.confirm).setStyle(ButtonStyle.Danger).setEmoji('✅'),
-                new ButtonBuilder().setCustomId('clear_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Secondary).setEmoji('❌')
-            );
-            
-            const embed = new EmbedBuilder()
-                .setColor('#FEE75C')
-                .setTitle(t.clearTitle)
-                .setDescription(`${t.confirmClear}\n\n**${target.username}**: \`${activeWarnings.length}\` ${lang === 'fr' ? 'avertissement(s)' : 'warning(s)'}`)
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-            
-            const reply = await message.reply({ embeds: [embed], components: [confirmRow] }).catch(() => {});
-            if (!reply) return;
-            
-            const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
-            collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
-                
-                // 🛡️ LA LIGNE CRITIQUE
-                await i.deferUpdate().catch(() => {});
-                
-                if (i.customId === 'clear_confirm') {
-                    db.prepare(`UPDATE warnings SET active = 0 WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?)`).run(guildId, target.id, now);
-                    logModAction(db, guildId, target.id, message.author.id, 'clear', `Cleared ${activeWarnings.length} warnings`);
-                    
-                    const successEmbed = new EmbedBuilder().setColor('#2ecc71').setDescription(i18n.t('warn.clearSuccess', lang, { user: target.username, count: activeWarnings.length })).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                    await i.editReply({ embeds: [successEmbed], components: [] }).catch(() => {});
-                } else {
-                    const cancelEmbed = new EmbedBuilder().setColor('#ED4245').setDescription(`❌ ${lang === 'fr' ? 'Annulé' : 'Cancelled'}`).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                    await i.editReply({ embeds: [cancelEmbed], components: [] }).catch(() => {});
-                }
-            });
-            return;
-        }
-        
-        // ================= REMOVE WARNING =================
-        if (subCommand === 'remove' || subCommand === 'removewarn' || subCommand === 'supprimer') {
-            const warningId = args[1];
-            if (!warningId) return message.reply({ content: lang === 'fr' ? '🔍 Fournissez l\'ID de l\'avertissement.' : '🔍 Provide the warning ID to remove.', flags: 64 }).catch(() => {});
-            
-            const warning = db.prepare(`SELECT * FROM warnings WHERE id = ? AND guild_id = ?`).get(warningId, guildId);
-            if (!warning) return message.reply({ content: t.removeNotFound, flags: 64 }).catch(() => {});
-            
-            db.prepare(`UPDATE warnings SET active = 0 WHERE id = ?`).run(warningId);
-            logModAction(db, guildId, warning.user_id, message.author.id, 'remove', `Removed ${warningId}`, warningId);
-            
-            const embed = new EmbedBuilder().setColor('#2ecc71').setDescription(i18n.t('warn.removeSuccess', lang, { id: warningId })).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-            return message.reply({ embeds: [embed] }).catch(() => {});
-        }
-        
-        // ================= VIEW MODLOGS =================
-        if (subCommand === 'modlogs' || subCommand === 'history' || subCommand === 'historique') {
-            const target = message.mentions.users.first() || message.author;
-            
-            const logs = db.prepare(`SELECT * FROM moderation_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT 50`).all(guildId, target.id);
-            
-            if (logs.length === 0) {
-                const embed = new EmbedBuilder().setColor('#95a5a6').setAuthor({ name: i18n.t('warn.modlogsTitle', lang, { user: target.username }), iconURL: target.displayAvatarURL() }).setDescription(i18n.t('warn.noModlogs', lang, { user: target.username })).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                return message.reply({ embeds: [embed] }).catch(() => {});
-            }
-            
-            const pageSize = 5;
-            const totalPages = Math.ceil(logs.length / pageSize);
-            let currentPage = 0;
-            
-            const embed = createModlogsEmbed(target, logs, currentPage, totalPages, lang, client, message.guild, version);
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('log_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(true),
-                new ButtonBuilder().setCustomId('log_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(totalPages <= 1)
-            );
-            
-            const reply = await message.reply({ embeds: [embed], components: totalPages > 1 ? [row] : [] }).catch(() => {});
-            if (!reply || totalPages <= 1) return;
-            
-            const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-            collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
-                
-                // 🛡️ LA LIGNE CRITIQUE
-                await i.deferUpdate().catch(() => {});
-                
-                if (i.customId === 'log_prev') currentPage--;
-                if (i.customId === 'log_next') currentPage++;
-                
-                const newEmbed = createModlogsEmbed(target, logs, currentPage, totalPages, lang, client, message.guild, version);
-                const newRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('log_prev').setEmoji('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
-                    new ButtonBuilder().setCustomId('log_next').setEmoji('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages - 1)
-                );
-                await i.editReply({ embeds: [newEmbed], components: [newRow] }).catch(() => {});
-            });
-            return;
-        }
-        
-        // ================= ISSUE WARNING =================
-        const target = message.mentions.users.first();
-        if (!target) {
-            return message.reply({ 
-                content: lang === 'fr' ? '❌ Mentionnez un utilisateur.\nUsage: `.warn @user [raison]`' : '❌ Mention a user.\nUsage: `.warn @user [reason]`', 
-                flags: 64 
-            }).catch(() => {});
-        }
-        
-        if (target.id === message.author.id) return message.reply({ content: t.cannotWarnSelf, flags: 64 }).catch(() => {});
-        if (target.bot) return message.reply({ content: t.cannotWarnBot, flags: 64 }).catch(() => {});
-        
-        const targetMember = message.guild.members.cache.get(target.id);
-        if (targetMember && message.member.roles.highest.position <= targetMember.roles.highest.position) {
-            return message.reply({ content: t.cannotWarnHigher, flags: 64 }).catch(() => {});
-        }
-        
-        const reason = args.slice(1).join(' ') || t.noReason;
-        const warningId = generateWarningId();
-        const expiresAt = Math.floor(Date.now() / 1000) + (30 * 86400);
-        
-        db.prepare(`INSERT INTO warnings (id, guild_id, user_id, moderator_id, reason, expires_at, active) VALUES (?, ?, ?, ?, ?, ?, 1)`).run(warningId, guildId, target.id, message.author.id, reason, expiresAt);
-        logModAction(db, guildId, target.id, message.author.id, 'warn', reason, warningId);
-        
-        const warningCount = db.prepare(`SELECT COUNT(*) as count FROM warnings WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > strftime('%s', 'now'))`).get(guildId, target.id).count;
-        
-        // DM
-        try {
-            const dmEmbed = new EmbedBuilder().setColor('#e74c3c').setAuthor({ name: t.dmTitle, iconURL: message.guild.iconURL() }).setDescription(i18n.t('warn.dmDescription', lang, { guild: message.guild.name, reason })).addFields({ name: t.warningId, value: `\`${warningId}\``, inline: true }, { name: t.warningCount, value: `\`${warningCount}\``, inline: true }).setFooter({ text: t.footer }).setTimestamp();
-            await target.send({ embeds: [dmEmbed] }).catch(() => {});
-        } catch (err) {}
-        
-        // Log channel
-        if (serverSettings?.logChannel) {
-            const logChannel = message.guild.channels.cache.get(serverSettings.logChannel);
-            if (logChannel) {
-                const logEmbed = new EmbedBuilder().setColor('#e74c3c').setAuthor({ name: t.warnTitle, iconURL: target.displayAvatarURL() }).addFields({ name: '👤 User', value: `${target.tag} (<@${target.id}>)`, inline: true }, { name: '🛡️ Moderator', value: message.author.tag, inline: true }, { name: '📋 ID', value: `\`${warningId}\``, inline: true }, { name: '📝 Reason', value: reason, inline: false }, { name: '📊 Total', value: `\`${warningCount}\``, inline: true }).setFooter({ text: t.footer }).setTimestamp();
-                await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
-            }
-        }
-        
-        const successEmbed = new EmbedBuilder().setColor('#FEE75C').setAuthor({ name: t.warnTitle, iconURL: target.displayAvatarURL() }).setDescription(i18n.t('warn.warnSuccess', lang, { user: target.username, count: warningCount })).addFields({ name: t.warningId, value: `\`${warningId}\``, inline: true }, { name: t.reason, value: reason, inline: true }).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon }).setTimestamp();
-                return message.reply({ embeds: [successEmbed] }).catch(() => {});
-    },
+    data: new SlashCommandBuilder()
+        .setName('warn')
+        .setDescription('Warn members and see their moderation history')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+        .addSubcommand(s => s.setName('add').setDescription('Warn a member')
+            .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true))
+            .addStringOption(o => o.setName('reason').setDescription('Why').setMaxLength(400)))
+        .addSubcommand(s => s.setName('list').setDescription('See a member\'s warnings')
+            .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true)))
+        .addSubcommand(s => s.setName('clear').setDescription('Clear a member\'s active warnings')
+            .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true)))
+        .addSubcommand(s => s.setName('remove').setDescription('Remove one warning by its ID')
+            .addStringOption(o => o.setName('id').setDescription('Warning ID, like W-1A2B3C').setRequired(true).setMaxLength(40)))
+        .addSubcommand(s => s.setName('modlogs').setDescription('See a member\'s moderation history')
+            .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true))),
 
     execute: async (interaction, client) => {
-        const db = client.db;
-        const subcommand = interaction.options.getSubcommand();
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr', 'bm', 'zh', 'ar']);
-        const t = loadT(lang);
-        const version = client.version || '1.6.0';
-        const guildId = interaction.guild.id;
-        const guildName = interaction.guild.name;
-        const guildIcon = interaction.guild.iconURL() || client.user.displayAvatarURL();
-        
-        // Ensure tables
-        try {
-            db.prepare(`CREATE TABLE IF NOT EXISTS warnings (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER DEFAULT (strftime('%s', 'now')), expires_at INTEGER, active BOOLEAN DEFAULT 1)`).run();
-            db.prepare(`CREATE TABLE IF NOT EXISTS moderation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, warning_id TEXT, timestamp INTEGER DEFAULT (strftime('%s', 'now')))`).run();
-        } catch (err) {
-            return interaction.reply({ content: `${resolveEmoji('error', message.guild || interaction.guild)} Something went wrong — try again in a moment.`, flags: 64 });
+        const guild = interaction.guild;
+        const lang = M.langFor(client, interaction);
+        const actor = await guild.members.fetch(interaction.user.id).catch(() => null);
+        if (!M.hasPerm(actor, PermissionFlagsBits.ModerateMembers)) return M.fail(interaction, M.T('no_perm', lang, { perm: 'Timeout Members' }), lang);
+        const sub = interaction.options.getSubcommand();
+        const user = interaction.options.getUser('target');
+
+        if (sub === 'list') return M.respond(interaction, { components: [listView(client.db, guild, user, lang, interaction)] }, { ephemeral: true });
+        if (sub === 'modlogs') return M.respond(interaction, { components: [historyView(client.db, guild, user, lang, interaction)] }, { ephemeral: true });
+        if (sub === 'clear' || sub === 'remove') {
+            const r = sub === 'clear' ? clearWarnings(client, guild, actor, user, lang) : removeWarning(client, guild, actor, interaction.options.getString('id'), lang);
+            if (r.error) return M.fail(interaction, r.error, lang);
+            return M.respond(interaction, { components: [M.card({ look: 'info', title: r.text, ctx: interaction })] }, { ephemeral: true });
         }
-        
-        await interaction.deferReply().catch(() => {});
-        
-        // ================= ADD WARNING =================
-        if (subcommand === 'add') {
-            const target = interaction.options.getUser('target');
-            const reason = interaction.options.getString('reason') || t.noReason;
-            
-            if (target.id === interaction.user.id) return interaction.editReply({ content: t.cannotWarnSelf });
-            if (target.bot) return interaction.editReply({ content: t.cannotWarnBot });
-            
-            const targetMember = interaction.guild.members.cache.get(target.id);
-            if (targetMember && interaction.member.roles.highest.position <= targetMember.roles.highest.position) {
-                return interaction.editReply({ content: t.cannotWarnHigher });
-            }
-            
-            const warningId = generateWarningId();
-            const expiresAt = Math.floor(Date.now() / 1000) + (30 * 86400);
-            
-            db.prepare(`INSERT INTO warnings (id, guild_id, user_id, moderator_id, reason, expires_at, active) VALUES (?, ?, ?, ?, ?, ?, 1)`).run(warningId, guildId, target.id, interaction.user.id, reason, expiresAt);
-            logModAction(db, guildId, target.id, interaction.user.id, 'warn', reason, warningId);
-            
-            const warningCount = db.prepare(`SELECT COUNT(*) as count FROM warnings WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > strftime('%s', 'now'))`).get(guildId, target.id).count;
-            
-            // DM
-            try {
-                const dmEmbed = new EmbedBuilder().setColor('#e74c3c').setAuthor({ name: t.dmTitle, iconURL: interaction.guild.iconURL() }).setDescription(i18n.t('warn.dmDescription', lang, { guild: interaction.guild.name, reason })).addFields({ name: t.warningId, value: `\`${warningId}\``, inline: true }, { name: t.warningCount, value: `\`${warningCount}\``, inline: true }).setFooter({ text: t.footer }).setTimestamp();
-                await target.send({ embeds: [dmEmbed] }).catch(() => {});
-            } catch (err) {}
-            
-            const successEmbed = new EmbedBuilder().setColor('#FEE75C').setAuthor({ name: t.warnTitle, iconURL: target.displayAvatarURL() }).setDescription(i18n.t('warn.warnSuccess', lang, { user: target.username, count: warningCount })).addFields({ name: t.warningId, value: `\`${warningId}\``, inline: true }, { name: t.reason, value: reason, inline: true }).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon }).setTimestamp();
-            return interaction.editReply({ embeds: [successEmbed] });
+        await interaction.deferReply();
+        const r = await addWarning(client, guild, actor, user, M.cleanReason(interaction.options.getString('reason'), lang), lang, interaction);
+        if (r.error) {
+            await interaction.deleteReply().catch(() => {});
+            return interaction.followUp({ components: [M.card({ look: 'error', title: M.T('refused', lang), lines: [[null, r.error]], ctx: interaction })], flags: M.V2 | 64, allowedMentions: { parse: [] } });
         }
-        
-        // ================= LIST WARNINGS =================
-        if (subcommand === 'list') {
-            const target = interaction.options.getUser('target') || interaction.user;
-            const warnings = getUserWarnings(db, guildId, target.id);
-            
-            if (warnings.length === 0) {
-                const embed = new EmbedBuilder().setColor('#2ecc71').setAuthor({ name: i18n.t('warn.warningsTitle', lang, { user: target.username }), iconURL: target.displayAvatarURL() }).setDescription(i18n.t('warn.noWarnings', lang, { user: target.username })).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                return interaction.editReply({ embeds: [embed] });
-            }
-            
-            const embed = createWarningsEmbed(target, warnings, 0, 1, lang, client, interaction.guild, version);
-            return interaction.editReply({ embeds: [embed] });
+        return interaction.editReply({ components: [r.card], flags: M.V2, allowedMentions: { parse: [] } });
+    },
+
+    run: async (client, message, args, db, serverSettings, usedCommand) => {
+        const guild = message.guild;
+        if (!guild) return;
+        const lang = M.langFor(client, message);
+        if (!M.hasPerm(message.member, PermissionFlagsBits.ModerateMembers)) return M.fail(message, M.T('no_perm', lang, { perm: 'Timeout Members' }), lang);
+        let used = String(usedCommand || 'warn').toLowerCase();
+        // ".warn list @x" style also works
+        const first = String(args[0] || '').toLowerCase();
+        if (['list', 'warnings', 'clear', 'remove', 'modlogs', 'history', 'historique'].includes(first)) { used = { list: 'warnings', clear: 'clearwarn', remove: 'removewarn', history: 'modlogs', historique: 'modlogs' }[first] || first; args = args.slice(1); }
+        const userFrom = async (raw) => { const id = String(raw || '').replace(/[<@!>]/g, ''); return M.SNOWFLAKE.test(id) ? client.users.fetch(id).catch(() => null) : null; };
+
+        if (used === 'removewarn') {
+            const r = removeWarning(client, guild, message.member, args[0], lang);
+            if (r.error) return M.fail(message, r.error, lang);
+            return M.respond(message, { components: [M.card({ look: 'info', title: r.text, ctx: message })] });
         }
-        
-        // ================= CLEAR WARNINGS =================
-        if (subcommand === 'clear') {
-            const target = interaction.options.getUser('target');
-            const warnings = getUserWarnings(db, guildId, target.id);
-            const now = Math.floor(Date.now() / 1000);
-            const activeWarnings = warnings.filter(w => !w.expires_at || w.expires_at > now);
-            
-            if (activeWarnings.length === 0) {
-                return interaction.editReply({ content: i18n.t('warn.noWarnings', lang, { user: target.username }) });
-            }
-            
-            db.prepare(`UPDATE warnings SET active = 0 WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?)`).run(guildId, target.id, now);
-            logModAction(db, guildId, target.id, interaction.user.id, 'clear', `Cleared ${activeWarnings.length} warnings`);
-            
-            const embed = new EmbedBuilder().setColor('#2ecc71').setDescription(i18n.t('warn.clearSuccess', lang, { user: target.username, count: activeWarnings.length })).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-            return interaction.editReply({ embeds: [embed] });
+        const user = await userFrom(args[0]);
+        if (!user) return message.reply({ content: M.T('usage_warn', lang), allowedMentions: { parse: [] } }).catch(() => {});
+        if (used === 'warnings' || used === 'avertissement') return M.respond(message, { components: [listView(client.db, guild, user, lang, message)] });
+        if (used === 'modlogs' || used === 'historique') return M.respond(message, { components: [historyView(client.db, guild, user, lang, message)] });
+        if (used === 'clearwarn') {
+            const r = clearWarnings(client, guild, message.member, user, lang);
+            if (r.error) return M.fail(message, r.error, lang);
+            return M.respond(message, { components: [M.card({ look: 'info', title: r.text, ctx: message })] });
         }
-        
-        // ================= REMOVE WARNING =================
-        if (subcommand === 'remove') {
-            const warningId = interaction.options.getString('id');
-            
-            const warning = db.prepare(`SELECT * FROM warnings WHERE id = ? AND guild_id = ?`).get(warningId, guildId);
-            if (!warning) return interaction.editReply({ content: t.removeNotFound });
-            
-            db.prepare(`UPDATE warnings SET active = 0 WHERE id = ?`).run(warningId);
-            logModAction(db, guildId, warning.user_id, interaction.user.id, 'remove', `Removed ${warningId}`, warningId);
-            
-            const embed = new EmbedBuilder().setColor('#2ecc71').setDescription(i18n.t('warn.removeSuccess', lang, { id: warningId })).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-            return interaction.editReply({ embeds: [embed] });
-        }
-        
-        // ================= MODLOGS =================
-        if (subcommand === 'modlogs') {
-            const target = interaction.options.getUser('target') || interaction.user;
-            
-            const logs = db.prepare(`SELECT * FROM moderation_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT 50`).all(guildId, target.id);
-            
-            if (logs.length === 0) {
-                const embed = new EmbedBuilder().setColor('#95a5a6').setAuthor({ name: i18n.t('warn.modlogsTitle', lang, { user: target.username }), iconURL: target.displayAvatarURL() }).setDescription(i18n.t('warn.noModlogs', lang, { user: target.username })).setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                return interaction.editReply({ embeds: [embed] });
-            }
-            
-            const embed = createModlogsEmbed(target, logs, 0, 1, lang, client, interaction.guild, version);
-            return interaction.editReply({ embeds: [embed] });
-        }
-    }
+        const r = await addWarning(client, guild, message.member, user, M.cleanReason(args.slice(1).join(' '), lang), lang, message);
+        if (r.error) return M.fail(message, r.error, lang);
+        return M.respond(message, { components: [r.card] });
+    },
 };

@@ -1489,6 +1489,8 @@ client.cooldowns = new Map();
 function checkCooldown(userId, commandName, cooldownMs = 3000) {
     const key = `${userId}:${commandName}`;
     const now = Date.now();
+    // The map used to grow forever: forget entries older than 10 minutes once it gets big
+    if (client.cooldowns.size > 5000) for (const [k, ts] of client.cooldowns) if (now - ts > 600000) client.cooldowns.delete(k);
     const lastUsed = client.cooldowns.get(key);
 
     if (lastUsed && (now - lastUsed) < cooldownMs) {
@@ -1501,6 +1503,20 @@ function checkCooldown(userId, commandName, cooldownMs = 3000) {
 }
 
 client.checkCooldown = checkCooldown;
+
+// The permissions a command asks of the member: its slash default (setDefaultMemberPermissions) and its userPermissions list
+function requiredMemberPerms(command) {
+    if (!command || command.ownerOnly || String(command.category || '').toUpperCase() === 'OWNER') return null;
+    let bits = 0n;
+    try {
+        const d = command.data?.default_member_permissions ?? (typeof command.data?.toJSON === 'function' ? command.data.toJSON().default_member_permissions : null);
+        if (d !== null && d !== undefined && d !== '') bits |= BigInt(d);
+    } catch (_) { /* no slash data */ }
+    for (const name of Array.isArray(command.userPermissions) ? command.userPermissions : []) {
+        if (PermissionsBitField.Flags[name] !== undefined) bits |= PermissionsBitField.Flags[name];
+    }
+    return bits ? bits : null;
+}
 
 // ================= TIERED COOLDOWN SYSTEM (FIX #11) =================
 const COMMAND_COOLDOWN_TIERS = {
@@ -2338,7 +2354,12 @@ client.loadPlugins = async () => {
                     catch (e) { console.error('[PLUGIN INIT]', file, e.message); }
                 }
                 if (command.aliases && Array.isArray(command.aliases)) {
-                    command.aliases.forEach(a => client.aliases.set(a, command.name));
+                    command.aliases.forEach(a => {
+                        // Two commands sharing a shortcut: the later one wins, as it always did, but now it is said in the log
+                        const owner = client.aliases.get(a);
+                        if (owner && owner !== command.name) console.warn(`[ALIAS] "${a}" was ${owner}, now ${command.name}`);
+                        client.aliases.set(a, command.name);
+                    });
                 }
                 
                 const category = command.category || 'GENERAL';
@@ -3287,12 +3308,19 @@ buildAliasLanguageMap();
     let slashSkipped = 0;
     let slashRegistered = 0;
 
+    // Server-only commands are not offered in DMs at all (Discord hides them there), instead of failing once picked
+    const GUILD_ONLY_CATS = new Set(['MODERATION', 'ADMIN', 'ECONOMY', 'PROFILE', 'GAMING', 'MUSIC']);
+    const serverOnly = (command, json) => command.guildOnly === true || GUILD_ONLY_CATS.has(String(command.category || '').toUpperCase()) || !!json.default_member_permissions;
+    let serverOnlyCount = 0;
+
     client.commands.forEach(command => {
         if (!command.data) return;
         
         try {
             if (typeof command.data.toJSON === 'function') {
-                commands.push(command.data.toJSON());
+                const json = command.data.toJSON();
+                if (serverOnly(command, json) && !json.contexts) { json.contexts = [0]; delete json.dm_permission; serverOnlyCount++; }
+                commands.push(json);
                 slashRegistered++;
             } else if (typeof command.data === 'object' && command.data !== null && command.data.name) {
                 commands.push(command.data);
@@ -3316,7 +3344,7 @@ buildAliasLanguageMap();
         }
     } catch(e) { console.log(`${yellow}[SLASH WARN]${reset} lydia inject: ${e.message}`); }
 
-    console.log(`${cyan}[SLASH]${reset} ${slashRegistered} commands prepared, ${slashSkipped} skipped`);
+    console.log(`${cyan}[SLASH]${reset} ${slashRegistered} commands prepared (${serverOnlyCount} server-only), ${slashSkipped} skipped`);
 
     const botToken = process.env.DISCORD_TOKEN;
     const clientId = process.env.CLIENT_ID;
@@ -4126,14 +4154,22 @@ if (message.content && message.content.length > 4000) {
     if (!client.userLastLang) client.userLastLang = new Map();
     client.userLastLang.set(message.author.id, commandLang);
 
-    const cooldownMs = getCommandCooldown(cmdName);
-const cooldownCheck = checkCooldown(message.author.id, cmdName, cooldownMs);
+    const cooldownMs = Number(command.cooldown) || getCommandCooldown(command.name);
+const cooldownCheck = checkCooldown(message.author.id, command.name, cooldownMs);
 if (cooldownCheck.blocked) {
     const lang = commandLang || 'en';
     const msg = t('index.cooldown', lang, { remaining: cooldownCheck.remaining });
     return message.reply(msg).catch(() => {});
 }
     
+    // The prefix version needs the same permissions as the slash version (".mute" and ".warn" used to work for anyone)
+    if (message.guild && message.author.id !== message.guild.ownerId) {
+        const need = requiredMemberPerms(command);
+        if (need && !message.member?.permissions?.has(need)) {
+            const missing = new PermissionsBitField(need).toArray().filter((p) => !message.member?.permissions?.has(PermissionsBitField.Flags[p]));
+            return message.reply({ content: t('index.need_perms', commandLang || 'en', { perms: missing.map((p) => p.replace(/([a-z])([A-Z])/g, '$1 $2')).join(', ') }), allowedMentions: { parse: [] } }).catch(() => {});
+        }
+    }
     // Bot permission check: say plainly what ARCHON is missing, instead of failing inside the command (fails open)
     { try { const _bp = require('./lib/botPerms'); const _g = _bp.guard(message, command.name || cmdName, commandLang || 'en'); if (_g) return _bp.say(message, _g.text); } catch (_e) { console.error('[botPerms]', _e.message); } }
     try {
@@ -4212,35 +4248,25 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             return interaction.reply({ content: require('./lib/i18n').t('commandDisabled', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
         }
 
+        // Server-only commands used in DMs (an old Discord client can still offer them): a plain answer, not a crash
         const restrictedCommands = ['profile', 'daily', 'shop', 'credits', 'balance', 'rank', 'leaderboard'];
-        const restrictedCategories = ['ECONOMY', 'MODERATION', 'PROFILE', 'GAMING'];
-        
-        if (restrictedCommands.includes(command.name) || restrictedCategories.includes(command.category)) {
-    if (!interaction.guild) {
-        // Get user's preferred language from locale or fallback
-        const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
-        
-        const title = t('index.restricted_title', lang);
-        const description = t('index.restricted_desc', lang);
-        
-        const actionRequired = t('index.restricted_action', lang, { command: command.name, botname: client.user.username });
-        
-        const suggestion = t('index.restricted_suggestion', lang);
-        
-        const fallbackEmbed = new EmbedBuilder()
-            .setColor('#f1c40f')
-            .setAuthor({ name: title, iconURL: client.user.displayAvatarURL() })
-            .setDescription(description)
-            .addFields(
-                { name: t('index.restricted_action_label', lang), value: actionRequired, inline: false },
-                { name: t('index.restricted_suggestion_label', lang), value: suggestion, inline: false }
-            )
-            .setFooter({ text: `BAMAKO-223 NODE • ${client.user.username} v${client.version}`, iconURL: interaction.user.displayAvatarURL() })
-            .setTimestamp();
+        const restrictedCategories = ['ECONOMY', 'MODERATION', 'PROFILE', 'GAMING', 'ADMIN', 'MUSIC'];
+        if (!interaction.guild && (restrictedCommands.includes(command.name) || restrictedCategories.includes(String(command.category || '').toUpperCase()) || command.data?.default_member_permissions)) {
+            const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
+            return interaction.reply({
+                content: `**${t('index.restricted_title', lang)}**\n${t('index.restricted_desc', lang)}\n${t('index.restricted_action', lang, { command: command.name, botname: client.user.username })}`,
+                flags: 1 << 6,
+            }).catch(() => {});
+        }
 
-        return interaction.reply({ embeds: [fallbackEmbed], flags: 1 << 6 });
-    }
-}
+        // Cooldowns now apply to slash commands too (before, only the prefix versions had them)
+        {
+            const cd = checkCooldown(interaction.user.id, command.name, Number(command.cooldown) || getCommandCooldown(command.name));
+            if (cd.blocked) {
+                const _cl = require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user.id);
+                return interaction.reply({ content: t('index.cooldown', _cl, { remaining: cd.remaining }), flags: 1 << 6 }).catch(() => {});
+            }
+        }
 
         try {
             console.log(`${cyan}[SLASH]${reset} Executing /${interaction.commandName} for ${interaction.user.tag}`);
@@ -4255,7 +4281,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                 const gs = interaction.guild ? getServerSettings(interaction.guild.id) : null;
                 const blocked = getBlockedModule(command.name, gs);
                 if (blocked) {
-                    const blockLang = interaction.locale?.slice(0, 2) || 'en';
+                    const blockLang = require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user.id) || 'en';
                     const blockedName = t('modules.' + blocked, blockLang);
                     return interaction.reply({
                         embeds: [new EmbedBuilder()
@@ -4513,6 +4539,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isButton() && interaction.customId.startsWith('remind:')) {
         return require('./plugins/reminder').handleButton(interaction, client).catch(e => console.error('[REMINDER] button:', e.message));
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('modban:')) {
+        return require('./plugins/ban').handleComponent(interaction, client).catch(e => {
+            console.error(`[BAN] confirm guild=${interaction.guildId}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
+        });
     }
     if ((interaction.isButton() || interaction.isAnySelectMenu()) && interaction.customId.startsWith('roles:')) {
         return require('./plugins/roles').handleComponent(interaction, client).catch(e => {
@@ -5799,6 +5831,83 @@ apiApp.post('/api/premium/generate', requireAdmin, (req, res) => {
     }
 });
 
+// ── PREMIUM ADMIN API (dashboard, owner only) ──
+// The dashboard server lets only the bot owner reach these; here the API key is required as for every admin route.
+const PREMIUM_CODE = /^[A-Z0-9][A-Z0-9-]{3,39}$/;
+apiApp.get('/api/admin/premium', requireAdmin, (req, res) => {
+    try {
+        const nowS = Math.floor(Date.now() / 1000);
+        let codes = [];
+        try {
+            codes = db.prepare('SELECT * FROM premium_codes ORDER BY rowid DESC LIMIT 200').all()
+                .map(r => ({ code: String(r.code), days: Number(r.days) || 0, used: !!r.used, usedBy: r.used_by ? String(r.used_by) : null, usedAt: r.used_at || null }));
+        } catch (e) { console.error('[PREMIUM-ADMIN] codes:', e.message); }
+        let servers = [];
+        try {
+            servers = db.prepare('SELECT * FROM premium LIMIT 500').all().map(r => {
+                const g = client.guilds.cache.get(String(r.guild_id));
+                const exp = r.expires_at === null || r.expires_at === undefined ? null : Number(r.expires_at);
+                return {
+                    guildId: String(r.guild_id), name: g?.name || null, icon: g ? g.iconURL({ size: 64 }) : null, inServer: !!g,
+                    members: g?.memberCount || null, expiresAt: exp, active: exp === null || exp > nowS,
+                    daysLeft: exp === null ? null : Math.max(0, Math.ceil((exp - nowS) / 86400)), plan: r.plan || null, via: r.payment_method || null,
+                };
+            }).sort((a, b) => {
+                // Active first, the ones running out soonest at the top, lifetime after them, expired ones last
+                if (a.active !== b.active) return a.active ? -1 : 1;
+                const ka = a.expiresAt === null ? Number.MAX_SAFE_INTEGER : a.expiresAt, kb = b.expiresAt === null ? Number.MAX_SAFE_INTEGER : b.expiresAt;
+                return a.active ? ka - kb : kb - ka;
+            });
+        } catch (e) { console.error('[PREMIUM-ADMIN] servers:', e.message); }
+        res.json({ now: nowS, codes, servers });
+    } catch (e) {
+        console.error('[PREMIUM-ADMIN] list:', e.message);
+        res.status(500).json({ error: 'internal' });
+    }
+});
+
+apiApp.post('/api/admin/premium/revoke', requireAdmin, (req, res) => {
+    try {
+        const code = String(req.body?.code || '').trim().toUpperCase();
+        if (!PREMIUM_CODE.test(code)) return res.status(400).json({ error: 'code_invalid' });
+        const n = db.prepare('DELETE FROM premium_codes WHERE code = ? AND used = 0').run(code).changes;
+        if (!n) return res.status(404).json({ error: 'code_not_found' });
+        console.log(`[PREMIUM-ADMIN] revoked code ${code.slice(0, 4)}…`);
+        res.json({ success: true });
+    } catch (e) { console.error('[PREMIUM-ADMIN] revoke:', e.message); res.status(500).json({ error: 'internal' }); }
+});
+
+apiApp.post('/api/admin/premium/grant', requireAdmin, (req, res) => {
+    try {
+        const guildId = String(req.body?.guildId || '');
+        const days = Number(req.body?.days);
+        if (!/^\d{17,20}$/.test(guildId)) return res.status(400).json({ error: 'guild_invalid' });
+        if (!Number.isInteger(days) || days < 0 || days > 3650) return res.status(400).json({ error: 'days_invalid' });
+        const nowS = Math.floor(Date.now() / 1000);
+        const cur = db.prepare('SELECT expires_at FROM premium WHERE guild_id = ?').get(guildId);
+        if (cur && cur.expires_at === null) return res.status(409).json({ error: 'already_lifetime' });
+        const base = cur && cur.expires_at > nowS ? cur.expires_at : nowS;   // an active plan is extended, not reset
+        const expiresAt = days === 0 ? null : base + days * 86400;
+        db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)')
+            .run(guildId, expiresAt, 'grant', 'owner', null, 'dashboard');
+        client.settings?.delete?.(guildId);
+        console.log(`[PREMIUM-ADMIN] granted guild=${guildId} days=${days} expires=${expiresAt ?? 'lifetime'}`);
+        res.json({ success: true, expiresAt });
+    } catch (e) { console.error('[PREMIUM-ADMIN] grant:', e.message); res.status(500).json({ error: 'internal' }); }
+});
+
+apiApp.post('/api/admin/premium/remove', requireAdmin, (req, res) => {
+    try {
+        const guildId = String(req.body?.guildId || '');
+        if (!/^\d{17,20}$/.test(guildId)) return res.status(400).json({ error: 'guild_invalid' });
+        const n = db.prepare('DELETE FROM premium WHERE guild_id = ?').run(guildId).changes;
+        if (!n) return res.status(404).json({ error: 'not_premium' });
+        client.settings?.delete?.(guildId);
+        console.log(`[PREMIUM-ADMIN] removed guild=${guildId}`);
+        res.json({ success: true });
+    } catch (e) { console.error('[PREMIUM-ADMIN] remove:', e.message); res.status(500).json({ error: 'internal' }); }
+});
+
 apiApp.get('/api/premium/info', (req, res) => {
     return res.json({
         omNumber: process.env.ORANGE_MONEY_NUMBER || '',
@@ -5862,6 +5971,7 @@ apiApp.get('/api/premium/checkout-url', async (req, res) => {
 // Usage report for the dashboard's Insights tab (loopback only, like the rest of this API)
 apiApp.get('/api/insights/:guildId', (req, res) => require('./lib/insights-route').handle(req, res, db, client));
 apiApp.get('/api/insights/:guildId/day/:date', (req, res) => require('./lib/insights-route').handleDay(req, res, db, client));
+apiApp.get('/api/insights/:guildId/live', (req, res) => require('./lib/insights-route').handleLive(req, res, db, client));
 // Server health (read by the dashboard: loopback only, Manage Server is checked there)
 apiApp.get('/api/health/:guildId', (req, res) => require('./lib/health-route').handle(req, res, db, client));
 

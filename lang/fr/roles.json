@@ -53,7 +53,7 @@
   },
   "hints": {
     "member": "Gardé pour référence. Aucune fonction d'ARCHON ne le donne encore.",
-    "mute": "Donné aux membres pendant qu'ils sont rendus muets.",
+    "mute": "Gardé pour les serveurs qui en utilisent un. /mute utilise désormais l'exclusion temporaire de Discord.",
     "autorole": "Donné à chaque nouveau membre à son arrivée.",
     "staff": "Peut voir les tickets de support et y répondre.",
     "investor": "Donné quand un membre lance un investissement.",
