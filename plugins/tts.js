@@ -39,7 +39,7 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const t = loadT(lang);
         const version = client.version || '1.6.0';
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
         let text = args.join(' ');

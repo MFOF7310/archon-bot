@@ -1,6 +1,6 @@
 {
-  "name": "التريفيا العصبية",
-  "title": "🧠 التريفيا العصبية",
+  "name": "الأسئلة",
+  "title": "🧠 الأسئلة",
   "menuTitle": "اختر فئة ومستوى",
   "menuPlayer": "**{name}** · {rank} · المستوى {level}",
   "difficultyInfo": "{questions} أسئلة · {seconds} ثانية لكل سؤال",

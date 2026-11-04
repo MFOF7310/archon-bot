@@ -18,12 +18,12 @@ module.exports = {
             en: { 
                 title: (user) => `🎨 ${user}'s Banner`, 
                 noBanner: '❌ This user does not have a banner.',
-                footer: 'ARCHON CG-223 • Neural Imaging'
+                footer: 'ARCHON CG-223 • Banner'
             },
             fr: { 
                 title: (user) => `🎨 Bannière de ${user}`, 
                 noBanner: '❌ Cet utilisateur n\'a pas de bannière.',
-                footer: 'ARCHON CG-223 • Imagerie Neurale'
+                footer: 'ARCHON CG-223 • Bannière'
             }
         }[lang] || { title: (u) => `${u}'s Banner`, noBanner: '❌ No banner.', footer: 'ARCHON CG-223' };
 

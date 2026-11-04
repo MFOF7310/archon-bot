@@ -11,7 +11,7 @@
   "serverCount": "已连接领域",
   "userCount": "已训练特工",
   "commandCount": "奥术咒语",
-  "ping": "神经延迟",
+  "ping": "延迟",
   "inviteSuccess": "✅ **召唤成功！**\n架构师 CG-223 已被召唤到你的领域。",
   "alreadyInServer": "⚠️ **已在场**\n架构师已驻留于该领域。",
   "error": "❌ **召唤失败**\n无法召唤架构师。",
@@ -19,5 +19,5 @@
   "supportServer": "加入议会",
   "website": "文档",
   "viewStats": "查看统计",
-  "surprise": "✨ *\"神经网络已察觉你的存在...\"* ✨"
+  "surprise": "✨ *感谢你们的陪伴！* ✨"
 }

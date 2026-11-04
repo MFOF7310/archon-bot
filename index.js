@@ -3531,7 +3531,7 @@ setInterval(async () => {
                 const guild = user.guild_id ? client.guilds.cache.get(user.guild_id) : null;
                 const settings = guild ? client.getServerSettings(user.guild_id) : null;
                 const prefix = settings?.prefix || '.';
-                const guildName = guild?.name || 'Neural Network';
+                const guildName = guild?.name || 'ARCHON CG-223';
                 const guildIcon = guild?.iconURL({ size: 128 }) || client.user.displayAvatarURL();
 
                 let marketMultiplier = 1.0, marketTrend = 'STEADY', trendEmoji = '📊';
@@ -3779,8 +3779,8 @@ setInterval(async () => {
             
             const bootEmbed = new EmbedBuilder()
                 .setColor(trend.color || '#2ecc71')
-                .setAuthor({ name: '🦅 ARCHON CG-223 // NEURAL ENGINE ONLINE', iconURL: client.user.displayAvatarURL() })
-                .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
+                .setAuthor({ name: '🦅 ARCHON CG-223 is online', iconURL: client.user.displayAvatarURL() })
+                .setTitle('⚡ Started')
                 .setDescription(
                     `\`\`\`ansi\n` +
                     `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
@@ -3804,7 +3804,7 @@ setInterval(async () => {
                     { name: '⚡ Slash Commands', value: `\`\`\`ansi\n\u001b[1;32m${commands.length} commands registered\u001b[0m\n\`\`\``, inline: true },
                     { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
                 )
-                .setFooter({ text: `🦅 ARCHON CG-223 • Neural Engine v${client.version} • bamako-steel-dev.xyz`, iconURL: client.user.displayAvatarURL() })
+                .setFooter({ text: `🦅 ARCHON CG-223 v${client.version} • bamako-steel-dev.xyz`, iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();
 
             await owner.send({ embeds: [bootEmbed] }).catch(() => {});
@@ -3999,7 +3999,7 @@ if (message.content && message.content.length > 4000) {
 
             const userLang = (['en','fr','bm','zh','ar'].includes(serverSettings?.language) ? serverSettings.language : null) || client.userLastLang?.get(message.author.id) || 'en';
             const isDM = !message.guild;
-            const guildName = isDM ? 'NEURAL NETWORK' : message.guild.name;
+            const guildName = isDM ? 'ARCHON CG-223' : message.guild.name;
             const guildIcon = isDM ? client.user.displayAvatarURL() : message.guild.iconURL();
 
             // ================= LEVEL BANNER SYSTEM (Milestone Images) =================
@@ -4022,11 +4022,11 @@ if (message.content && message.content.length > 4000) {
             // Determine tier name & color
             let levelTier, levelTierColor, tierEmoji;
             if (newLevel <= 5) {
-                levelTier = userLang === 'fr' ? 'Initié Neural' : 'Neural Initiate';
+                levelTier = userLang === 'fr' ? 'Initié' : 'Initiate';
                 levelTierColor = '#95a5a6';
                 tierEmoji = '🌱';
             } else if (newLevel <= 10) {
-                levelTier = userLang === 'fr' ? 'Chevalier Neural' : 'Neural Knight';
+                levelTier = userLang === 'fr' ? 'Chevalier' : 'Knight';
                 levelTierColor = '#9b59b6';
                 tierEmoji = '⚔️';
             } else if (newLevel <= 20) {
@@ -4804,7 +4804,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                 )
                 .setThumbnail(clicker.displayAvatarURL({ dynamic: true, size: 256 }))
                 .setFooter({ 
-                    text: `🏗️ Architect CG-223 • ${interaction.guild?.name || 'Neural Network'}` 
+                    text: `🏗️ Architect CG-223 • ${interaction.guild?.name || 'DM'}` 
                 })
                 .setTimestamp();
             
@@ -4996,15 +4996,15 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             await targetUser.send({
                 embeds: [new (require('discord.js').EmbedBuilder)()
                     .setColor('#00ff88')
-                    .setAuthor({ name: '📡 NEURAL TRANSMISSION — ARCHITECT REPLY', iconURL: client.user.displayAvatarURL() })
+                    .setAuthor({ name: '📡 Reply from the Architect', iconURL: client.user.displayAvatarURL() })
                     .setDescription(
                         '```ansi\n' +
                         '\u001b[1;32m\u25b8 FROM      \u001b[0mThe Architect\n' +
                         '\u001b[1;37m\u25b8 MESSAGE   \u001b[0m' + replyText + '\n' +
-                        '\u001b[0;37m\u25b8 TIP       \u001b[0mUse .contact to send a follow-up\n' +
+                        '\u001b[0;37m\u25b8 TIP       \u001b[0mUse .contact to answer\n' +
                         '```'
                     )
-                    .setFooter({ text: 'NEURAL CONTACT v2.0 · BAMAKO_223 🇲🇱' })
+                    .setFooter({ text: 'ARCHON CG-223 · Contact · BAMAKO_223 🇲🇱' })
                     .setTimestamp()
                 ]
             });
@@ -5026,7 +5026,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             const { EmbedBuilder } = require('discord.js');
 
             if (!interaction.member?.voice?.channel) {
-                return interaction.reply({ content: `${require('./config/emojis').warning} Neural link required — join a voice channel to initialize the music grid.`, flags: 64 }).catch(() => {});
+                return interaction.reply({ content: `${require('./config/emojis').warning} Join a voice channel first, then try again.`, flags: 64 }).catch(() => {});
             }
 
             await interaction.deferUpdate().catch(() => {});
@@ -5412,7 +5412,7 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
     const embed = new EmbedBuilder()
         .setColor(0x00fbff)
         .setImage(dataUrl)
-        .setFooter({ text: 'ARCHON CG-223 | Neural Grid' })
+        .setFooter({ text: 'ARCHON CG-223' })
         .setTimestamp();
 
     const ansi = Style.ansiWelcome(member, count);

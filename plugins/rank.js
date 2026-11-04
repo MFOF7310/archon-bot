@@ -19,7 +19,7 @@ const BG_PRESETS = [
 
 // ================= UNIFIED AGENT RANKS =================
 const AGENT_RANKS = [
-    { minLevel: 1,  maxLevel: 5,        title: "NEURAL RECRUIT",   color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 1,  maxLevel: 5,        title: "RECRUIT",   color: "#2ecc71", emoji: "🌱" },
     { minLevel: 6,  maxLevel: 15,       title: "FIELD AGENT",      color: "#3498db", emoji: "🔹" },
     { minLevel: 16, maxLevel: 30,       title: "CYBER SPECIALIST",  color: "#9b59b6", emoji: "💠" },
     { minLevel: 31, maxLevel: 50,       title: "BKO COMMANDER",    color: "#e67e22", emoji: "⚜️" },
@@ -291,7 +291,7 @@ async function buildRankCanvas(target, userData, rank, totalUsers, guildId, guil
 
     ctx.font = '10px DejaVuMono';
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillText('NEURAL TELEMETRY', RX, 44);
+    ctx.fillText('SERVER STATS', RX, 44);
 
     // Rank display — large
     ctx.font = 'bold 48px DejaVuMono';
@@ -334,7 +334,7 @@ async function buildRankCanvas(target, userData, rank, totalUsers, guildId, guil
         { label: 'STREAK',   value: `${streakDays}d` },
         { label: 'WIN RATE', value: `${winRate}%` },
         { label: 'W/L',      value: `${gamesWon}/${gamesLost}` },
-        { label: 'NEURAL',   value: `${neuralEfficiency}%` },
+        { label: 'ACTIVITY', value: `${neuralEfficiency}%` },
     ];
 
     stats.forEach((s, i) => {
@@ -381,7 +381,7 @@ async function buildRankCanvas(target, userData, rank, totalUsers, guildId, guil
     ctx.font = '10px DejaVuMono';
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
     ctx.textAlign = 'left';
-    ctx.fillText(`ARCHON CG-223 // ${guildName} // NEURAL GRID`, RX, H - 12);
+    ctx.fillText(`ARCHON CG-223 // ${guildName}`, RX, H - 12);
     ctx.textAlign = 'right';
     ctx.fillText(`v${version} • ${new Date().toISOString().slice(0, 10)}`, W - 20, H - 12);
 
@@ -391,14 +391,14 @@ async function buildRankCanvas(target, userData, rank, totalUsers, guildId, guil
 module.exports = {
     name: 'rank',
     aliases: ['level', 'xp', 'rang', 'niveau', 'dossier', 'agent', 'profil', 'profile'],
-    description: '📊 Display neural synchronization level and agent dossier.',
+    description: '📊 Show a rank card with level, XP and activity.',
     category: 'PROFILE',
     usage: '.rank [@user] | /rank',
     cooldown: 3000,
 
     data: new SlashCommandBuilder()
         .setName('rank')
-        .setDescription('📊 Display neural synchronization level and agent dossier')
+        .setDescription('📊 Show a rank card with level, XP and activity')
         .addUserOption(option =>
             option.setName('agent')
                 .setDescription('Agent to inspect (leave empty for your own dossier)')
@@ -409,7 +409,7 @@ module.exports = {
             const guildId = message.guild?.id || 'DM';
             const guild = message.guild;
             const version = client.version || '3.1.0';
-            const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildName = guild?.name?.toUpperCase() || 'ARCHON CG-223';
 
             const target = message.mentions.users.first() || message.author;
             const userId = target.id;

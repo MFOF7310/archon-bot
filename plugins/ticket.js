@@ -160,7 +160,7 @@ function panelCard(s, gn, lang='en', actionRow = null, client = null) {
     const ticketEmoji = resolveEmoji('ticket', client) || '🎫';
     const items = [
         { text: `## ${ticketEmoji} ${t('ticket.panel_title', lang)}` },
-        { text: `**SERVER** · ${gn}\n**STATUS** · ${t('ticket.panel_status', lang)}\n**PROTOCOL** · ${t('ticket.panel_protocol', lang)}` },
+        { text: `**${gn}** · ${t('ticket.panel_status', lang)}` },
         { rule: true },
         { text: t('ticket.panel_how_it_works', lang) },
         { rule: true },

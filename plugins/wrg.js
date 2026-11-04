@@ -13,7 +13,7 @@ function calculateLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp)) + 1; }
 
 // ── Rank titles ──
 const AGENT_RANKS = [
-    { minLevel: 1,  maxLevel: 5,        title: { fr: "RECRUE NEURALE",    en: "NEURAL RECRUIT"    }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 1,  maxLevel: 5,        title: { fr: "RECRUE",    en: "RECRUIT"    }, color: "#2ecc71", emoji: "🌱" },
     { minLevel: 6,  maxLevel: 15,       title: { fr: "AGENT DE TERRAIN",  en: "FIELD AGENT"       }, color: "#3498db", emoji: "🔹" },
     { minLevel: 16, maxLevel: 30,       title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST"  }, color: "#9b59b6", emoji: "💠" },
     { minLevel: 31, maxLevel: 50,       title: { fr: "COMMANDANT BKO",    en: "BKO COMMANDER"     }, color: "#e67e22", emoji: "⚜️" },
@@ -384,7 +384,7 @@ async function runGame(client, message, args, db, lang) {
         while (scrambled === targetWord && targetWord.length > 2) scrambled = shuffle(targetWord);
 
         const guildId = message.guild?.id || 'DM';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         const streakCount = getStreak(message.author.id, guildId);
 
@@ -545,7 +545,7 @@ async function runGame(client, message, args, db, lang) {
 module.exports = {
     name: 'wrg',
     aliases: ['wordguess','guess','scramble','devine','mot','word','wrd'],
-    description: '🎮 Neural Grid Word Combat — 5 tiers, speed bonus, streak multiplier!',
+    description: '🎮 Word battle: 5 tiers, speed bonus, streak multiplier!',
     category: 'GAMING',
     usage: '.wrg [rookie|agent|elite|commander|architect]',
     cooldown: 3000,
@@ -553,7 +553,7 @@ module.exports = {
 
     data: new SlashCommandBuilder()
         .setName('wrg')
-        .setDescription('🎮 Neural Grid Word Combat — 5 tiers, 9 categories, speed bonus!')
+        .setDescription('🎮 Word battle: 5 tiers, 9 categories, speed bonus!')
         .addStringOption(opt => opt
             .setName('tier')
             .setDescription('Combat tier / Niveau de combat')

@@ -7,7 +7,7 @@
   "entity": "👤 ENTITY",
   "moderator": "🛡️ MODERATOR",
   "log": "📝 REASON",
-  "reason": "Operational necessity.",
+  "reason": "No reason given.",
   "error": "❌ I couldn't kick them. Something went wrong on Discord's side, so please try again in a moment.",
   "dmTitle": "👢 YOU HAVE BEEN KICKED",
   "dmServer": "Server",

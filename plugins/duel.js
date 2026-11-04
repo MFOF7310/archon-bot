@@ -14,7 +14,7 @@ const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
 
 const C = { green: '\x1b[32m', red: '\x1b[31m', cyan: '\x1b[36m', reset: '\x1b[0m' };
-const FOOTER = 'ARCHON CG-223 • Neural Arena • BAMAKO_223 🇲🇱';
+const FOOTER = 'ARCHON CG-223 • Duel • BAMAKO_223 🇲🇱';
 const COLORS = { challenge: 0xe74c3c, classes: 0xf39c12, battle: 0x00d4ff, victory: 0xffd700, notice: 0x2c3e50 };
 
 // ================= CLASSES =================
@@ -542,7 +542,7 @@ async function startDuel(ctx, client, db, opponent, bet) {
 
 // ================= SLASH COMMAND =================
 const slashCommand = new SlashCommandBuilder()
-    .setName('duel').setDescription('⚔️ Neural Arena — Challenge another agent to combat')
+    .setName('duel').setDescription('⚔️ Duel: challenge another member to a fight')
     .addUserOption((o) => o.setName('opponent').setDescription('Agent to challenge').setRequired(true))
     .addIntegerOption((o) => o.setName('bet').setDescription('Bet amount').setRequired(false).setMinValue(10).setMaxValue(5000));
 
@@ -581,7 +581,7 @@ async function run(client, message, args, db, serverSettings, usedCommand) {
 module.exports = {
     name: 'duel',
     aliases: ['fight', 'arena', 'pvp', 'combat'],
-    description: '⚔️ Neural Arena — Class-based PvP combat with betting, ELO, and special abilities',
+    description: '⚔️ Duel: class-based PvP with bets, ELO and special abilities',
     category: 'GAMING',
     cooldown: 10000,
     usage: '/duel @user [bet]',

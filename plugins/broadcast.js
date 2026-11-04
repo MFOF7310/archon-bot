@@ -136,7 +136,7 @@ function createConfirmEmbed(settings, lang, client) {
     const embed = new EmbedBuilder()
         .setColor('#e74c3c')
         .setAuthor({ name: `${t.title} • ${t.confirmationRequired}`, iconURL: client.user.displayAvatarURL() })
-        .setTitle('📡 NEURAL TRANSMISSION PREVIEW')
+        .setTitle('📡 Broadcast preview')
         .setDescription(description)
         .setFooter({ text: `${t.footer} • v${version}` })  // ✅ DYNAMIC VERSION
         .setTimestamp();
@@ -372,7 +372,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                     const successEmbed = new EmbedBuilder()
                         .setColor('#2ecc71')
                         .setAuthor({ name: t.complete, iconURL: client.user.displayAvatarURL() })
-                        .setDescription(i18n.t('broadcast.success', lang, { a: result.success, b: result.fail, c: result.timeTaken }))
+                        .setDescription(i18n.t('broadcast.success', lang, { a: result.success, b: result.fail, c: result.timeTaken, rate: Math.round(100 * result.success / Math.max(1, result.success + result.fail)) }))
                         .setFooter({ text: `${t.footer} • v${client.version || '1.5.0'}` })
                         .setTimestamp();
                     
@@ -413,7 +413,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
                             const successEmbed = new EmbedBuilder()
                                 .setColor('#2ecc71')
                                 .setAuthor({ name: t.complete, iconURL: client.user.displayAvatarURL() })
-                                .setDescription(i18n.t('broadcast.success', lang, { a: result.success, b: result.fail, c: result.timeTaken }))
+                                .setDescription(i18n.t('broadcast.success', lang, { a: result.success, b: result.fail, c: result.timeTaken, rate: Math.round(100 * result.success / Math.max(1, result.success + result.fail)) }))
                                 .setFooter({ text: `${t.footer} • v${client.version || '1.5.0'}` })
                                 .setTimestamp();
                             
@@ -465,7 +465,7 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
             const errorEmbed = new EmbedBuilder()
                 .setColor('#ED4245')
                 .setDescription('❌ Broadcast commands can only be used in a server channel.')
-                .setFooter({ text: `Neural Core • v${client.version || '1.8.0'}` });
+                .setFooter({ text: `ARCHON CG-223 • v${client.version || '1.8.0'}` });
             return interaction.reply({ embeds: [errorEmbed], flags: 64 });
         }
         

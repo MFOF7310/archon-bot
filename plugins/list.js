@@ -94,7 +94,7 @@ function createMainEmbed(client, prefix, lang, t, version, guildName, guildIcon,
     const embed = new EmbedBuilder()
         .setColor('#00fbff')
         .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
-        .setTitle('═ NEURAL COMMAND REGISTRY ═')
+        .setTitle('Commands')
         .setDescription(
             `\`\`\`yaml\n` +
             `${t.totalCommands}: ${client.commands.size}\n` +
@@ -329,7 +329,7 @@ module.exports = {
             const t = loadT(lang);
             const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
             const version = client.version || '1.8.0';
-            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
             const userId = message.author.id;
             

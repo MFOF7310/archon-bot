@@ -349,14 +349,14 @@ async function grantQuizMaster(s) {
 module.exports = {
   name: 'trivia',
   aliases: ['quiz', 'culture', 'questions', 'trivial', 'quizz'],
-  description: '🧠 Neural Trivia: pick a category, answer fast, earn credits and XP.',
+  description: '🧠 Trivia: pick a category, answer fast, earn credits and XP.',
   category: 'GAMING',
   usage: '.trivia',
   cooldown: 3000,
 
   data: new SlashCommandBuilder()
     .setName('trivia')
-    .setDescription('🧠 Neural Trivia: pick a category, answer fast, earn credits and XP'),
+    .setDescription('🧠 Trivia: pick a category, answer fast, earn credits and XP'),
 
   run: async (client, message, args, db, serverSettings, usedCommand) => {
     const lang = FR_ALIASES.includes(usedCommand) ? 'fr' : ui.langFor(message, 'en');

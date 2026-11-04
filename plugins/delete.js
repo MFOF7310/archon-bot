@@ -50,7 +50,7 @@ async function checkDeletePermission(context, t, lang) {
         const permEmbed = new EmbedBuilder()
             .setColor(Colors.Red)
             .setAuthor({ name: t.accessDeniedTitle, iconURL: guild.iconURL({ size: 128 }) })
-            .setTitle('🔐 Neural Gate Closed')
+            .setTitle('🔐 Permission needed')
             .setDescription(
                 `\`\`\`ansi\n\u001b[1;31m${t.accessDeniedDesc}\u001b[0m\n\`\`\``
             )

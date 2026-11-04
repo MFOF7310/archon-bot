@@ -150,7 +150,7 @@ async function buildLookupEmbed(client, db, target, guildId, scope) {
 
     return new EmbedBuilder()
         .setColor('#00f0ff')
-        .setAuthor({ name: `🔍 NEURAL SCAN · ${target.username}`, iconURL: target.displayAvatarURL() })
+        .setAuthor({ name: `🔍 Lookup · ${target.username}`, iconURL: target.displayAvatarURL() })
         .setThumbnail(target.displayAvatarURL({ size: 128 }))
         .setDescription(lines.join('\n'))
         .setFooter({ text: `BAMAKO_223 🇲🇱 · OWNER ONLY · scope: ${scope}` })

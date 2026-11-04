@@ -96,7 +96,7 @@ module.exports = {
 
         const statusAnsi = canClaim ? '\u001b[1;32m' : '\u001b[1;31m';
         
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📅 NEURAL DAILY · @${user.username}`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📅 Daily reward · @${user.username}`));
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         
         const ansiBlock = '```ansi\n' +
@@ -109,7 +109,7 @@ module.exports = {
         
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(ansiBlock));
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Ready to claim?** Use ${cmdSlash(client, 'claim', { guild: context.guild })}\n-# ${guild?.name?.toUpperCase() || 'DM'} · NEURAL DAILY · BAMAKO_223 🇲🇱`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Ready to claim?** Use ${cmdSlash(client, 'claim', { guild: context.guild })}\n-# ${guild?.name?.toUpperCase() || 'DM'} · Daily reward · BAMAKO_223 🇲🇱`));
 
         await reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
     },
@@ -158,7 +158,7 @@ module.exports = {
             `📅 **Last claim:** ${lastDailyText}`;
         
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(ansiBlock));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guild?.name?.toUpperCase() || 'DM'} · NEURAL DAILY · BAMAKO_223 🇲🇱`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guild?.name?.toUpperCase() || 'DM'} · Daily reward · BAMAKO_223 🇲🇱`));
 
         await reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
     }

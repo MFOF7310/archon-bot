@@ -1,8 +1,8 @@
 {
-  "heroTitle": "🛒 BAMAKO 神经商店",
-  "heroSubtitle": "**巴马科首屈一指的神经商城**",
+  "heroTitle": "🛒 巴马科商店",
+  "heroSubtitle": "**巴马科商城**",
   "subtitle": "可用积分:",
-  "footer": "BAMAKO 神经商店",
+  "footer": "巴马科商店",
   "refresh": "刷新",
   "myInventory": "我的库存",
   "usage": "用法: ``.buy <item-id>``",

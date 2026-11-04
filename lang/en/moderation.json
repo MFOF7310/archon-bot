@@ -1,6 +1,6 @@
 {
   "shared": {
-    "gate_closed": "🔐 Neural Gate Closed",
+    "gate_closed": "🔐 Permission needed",
     "reason": "Reason",
     "action": "Action",
     "channel": "Channel"
@@ -127,7 +127,7 @@
     "opt_member_unmute": "Member to unmute"
   },
   "warn": {
-    "desc": "🛡️ Neural Moderation System",
+    "desc": "🛡️ Warn a member",
     "warn_desc": "Warn a user",
     "remove_desc": "Remove a specific warning",
     "view_desc": "View warnings",

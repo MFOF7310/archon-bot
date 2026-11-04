@@ -21,7 +21,7 @@ const ARCHON = {
 module.exports = {
     name: 'transfer',
     aliases: ['send', 'pay', 'envoyer', 'payer', 'virement'],
-    description: '💸 Transfer credits to another agent via the neural network.',
+    description: '💸 Send credits to another member.',
     category: 'ECONOMY',
     usage: '<@user|telegram_id> <amount>',
     cooldown: 5000,
@@ -30,7 +30,7 @@ module.exports = {
     // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('transfer')
-        .setDescription('💸 Transfer credits to another agent via the neural network')
+        .setDescription('💸 Send credits to another member')
         .addIntegerOption(opt => opt
             .setName('amount')
             .setDescription('Amount of credits to transfer / Montant de crédits à transférer')
@@ -52,7 +52,7 @@ module.exports = {
         
         const t = (k, v) => i18nT('transfer.' + k, lang, v);
         const version = client.version || '1.7.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         const prefix = serverSettings?.prefix || '.';
         const guildId = message.guild?.id || 'DM';
@@ -330,7 +330,7 @@ module.exports = {
             if (isTelegram && client.telegramBridge?.enabled) {
                 const telegramId = args[0];
                 client.telegramBridge.send(
-                    `🦅 *ARCHON NEURAL TRANSFER*\n\n` +
+                    `🦅 *ARCHON transfer*\n\n` +
                     `💰 *${t('telegramNotification')}*\n\n` +
                     `*${t('fromUser')}:* ${username} (Discord)\n` +
                     `*${t('amount')}:* ${amount.toLocaleString()} 🪙\n` +
@@ -401,7 +401,7 @@ module.exports = {
         const lang = typeof client.detectLanguage === 'function' ? client.detectLanguage('transfer', interaction.guildId, interaction) : 'en';
         const t = (k, v) => i18nT('transfer.' + k, lang, v);
         const guildId = interaction.guild?.id || 'DM';
-        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
         const version = client.version || '1.7.0';
         const prefix = client.getServerSettings ? (client.getServerSettings(guildId)?.prefix || '.') : '.';
@@ -643,7 +643,7 @@ module.exports = {
             // Telegram
             if (isTelegram && client.telegramBridge?.enabled) {
                 client.telegramBridge.send(
-                    `🦅 *ARCHON NEURAL TRANSFER*\n\n` +
+                    `🦅 *ARCHON transfer*\n\n` +
                     `💰 *${t('telegramNotification')}*\n\n` +
                     `*${t('fromUser')}:* ${username} (Discord)\n` +
                     `*${t('amount')}:* ${amount.toLocaleString()} 🪙\n` +

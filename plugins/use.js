@@ -10,7 +10,7 @@ function calculateLevel(xp) {
 
 // ================= AGENT RANKS =================
 const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE", en: "RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
     { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
     { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
     { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
@@ -102,7 +102,7 @@ module.exports = {
         const userId = message.author.id;
         const userName = message.author.username;
         const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const version = client.version || '1.7.0';
         const guildId = message.guild?.id || 'DM';
 
@@ -300,7 +300,7 @@ module.exports = {
                     `\u001b[0;37m  ${t('use.noItemsDesc', lang)}\u001b[0m\n` +
                     `\`\`\``
                 )
-                .setFooter({ text: `NEURAL NODE • ${t('use.footer', lang)} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
+                .setFooter({ text: `${t('use.footer', lang)} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
             return interaction.reply({ embeds: [noItemsEmbed], flags: 64 });
         }
 
@@ -354,7 +354,7 @@ module.exports = {
                 `\u001b[0;37m  ${t('use.consumeWarn', lang)}\u001b[0m\n` +
                 `\`\`\``
             )
-            .setFooter({ text: `NEURAL NODE • ${t('use.footer', lang)} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
+            .setFooter({ text: `${t('use.footer', lang)} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
 
         await interaction.reply({ embeds: [useEmbed], components: [actionRow], flags: 64 });
 
@@ -423,7 +423,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
                 `\u001b[0;37m  ${t('use.removeBadgeQ', lang)}\u001b[0m\n` +
                 `\`\`\``
             )
-            .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
+            .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -459,7 +459,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
                     .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
                     .setTitle(`✅ ${t('use.badgeRemoved', lang)}`)
                     .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('use.badgeRemovedDesc', lang)}\u001b[0m\n\`\`\``)
-                    .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
+                    .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
 
                 await i.editReply({ embeds: [removedEmbed], components: [] }).catch(() => {});
             } else {
@@ -486,7 +486,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
             `\u001b[0;37m  ${t('use.badgeEquippedDesc', lang)}\u001b[0m\n` +
             `\`\`\``
         )
-        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
+        .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -534,7 +534,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
                     `\u001b[0;37m  ${t('use.badgeEquippedDesc', lang)}\u001b[0m\n` +
                     `\`\`\``
                 )
-                .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}` });
+                .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
 
             await i.editReply({ embeds: [equippedEmbed], components: [] }).catch(() => {});
         } else {
@@ -660,7 +660,7 @@ async function processItemUseForSlash(client, interaction, db, userId, itemId, i
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.neuralStats', lang)}**\nXP: \`${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\`\n${t('use.creditsField', lang)} \`${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\``));
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.levelField', lang)}** \`${oldLevel} → ${newLevel}\`\n**${t('use.rankField', lang)}** ${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)} → ${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}`));
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('use.stockField', lang)} ${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)}`));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}`));
 
     if (newLevel > oldLevel) {
         resultEmbed.addFields({ name: t('use.ascensionTitle', lang), value: `\`\`\`ansi\n\u001b[1;32m  ${t('use.ascensionLine', lang, { level: newLevel, rank: (newRank.title[lang] || newRank.title.en) })}\u001b[0m\n\`\`\``, inline: false });
@@ -795,7 +795,7 @@ async function processItemUse(client, message, db, userId, itemId, itemsMap, lan
             { name: t('use.rankField', lang), value: `\`\`\`ansi\n\u001b[1;33m${oldRank.emoji} ${(oldRank.title[lang] || oldRank.title.en)}\u001b[0m\n\u001b[1;32m↓\u001b[0m\n\u001b[1;33m${newRank.emoji} ${(newRank.title[lang] || newRank.title.en)}\u001b[0m\n\`\`\``, inline: true },
             { name: t('use.stockField', lang), value: `\`\`\`ansi\n\u001b[1;36m${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)}\u001b[0m\n\`\`\``, inline: true }
         )
-        .setFooter({ text: `${guildName || 'NEURAL NODE'} • ${t('use.footer', lang)} • v${version}`, iconURL: message.guild?.iconURL() })
+        .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}`, iconURL: message.guild?.iconURL() })
         .setTimestamp();
 
     if (newLevel > oldLevel) {

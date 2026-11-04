@@ -27,7 +27,7 @@
   "noPermission": "❌ Only the bot owner can use this command.",
   "preparing": "🔍 **Getting everything ready…**\nChecking which servers can receive it.",
   "sending": "📡 **Transmitting...** ({a}/{b} nodes)",
-  "success": "✅ **Broadcast Complete!**\n\n📊 **Transmission Report:**\n🟢 Active Nodes: **{a}**\n🔴 Failed Nodes: **{b}**\n📈 Success Rate: **0%**\n⏱️ Time: **{c}ms**",
+  "success": "✅ **Broadcast sent**\n\n🟢 Delivered: **{a}**\n🔴 Failed: **{b}**\n📈 Success rate: **{rate}%**\n⏱️ Time: **{c} ms**",
   "footer": "ARCHON CG-223 • Broadcast",
   "mentionWarning": "⚠️ This will send **{a}** to all servers!",
   "noServers": "❌ No server can receive this right now.",

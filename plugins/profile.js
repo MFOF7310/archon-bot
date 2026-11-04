@@ -39,7 +39,7 @@ const AVATAR_SIZE = 130;
 const AVATAR_X = 40, AVATAR_Y = 40;
 
 const AGENT_RANKS = [
-    { minLevel: 1,  maxLevel: 5,        title: { fr: "RECRUE NEURALE",    en: "NEURAL RECRUIT"    }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 1,  maxLevel: 5,        title: { fr: "RECRUE",    en: "RECRUIT"    }, color: "#2ecc71", emoji: "🌱" },
     { minLevel: 6,  maxLevel: 15,       title: { fr: "AGENT DE TERRAIN",  en: "FIELD AGENT"       }, color: "#3498db", emoji: "🔹" },
     { minLevel: 16, maxLevel: 30,       title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST"  }, color: "#9b59b6", emoji: "💠" },
     { minLevel: 31, maxLevel: 50,       title: { fr: "COMMANDANT BKO",    en: "BKO COMMANDER"     }, color: "#e67e22", emoji: "⚜️" },
@@ -520,7 +520,7 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     // ── Footer ──
     ctx.font = '10px DejaVuMono';
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillText(`ARCHON CG-223  //  BAMAKO_223 🇲🇱  //  NEURAL GRID`, 30, H - 14);
+    ctx.fillText(`ARCHON CG-223  //  BAMAKO_223 🇲🇱`, 30, H - 14);
     ctx.textAlign = 'right';
     ctx.fillText(`${new Date().toISOString().slice(0,10)}`, W - 30, H - 14);
     ctx.textAlign = 'left';
@@ -534,7 +534,7 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
 module.exports = {
     name: 'profile',
     aliases: ['p', 'identifiant', 'userinfo', 'agent', 'profil'],
-    description: '📋 Complete Agent Dossier — classified neural statistics.',
+    description: '📋 A member profile with level, credits and stats.',
     category: 'PROFILE',
     usage: '.profile [@user]',
     cooldown: 3000,
@@ -542,7 +542,7 @@ module.exports = {
 
     data: new SlashCommandBuilder()
         .setName('profile')
-        .setDescription('📋 Display classified agent dossier with neural statistics')
+        .setDescription('📋 Show a member profile with level, credits and stats')
         .addUserOption(o => o.setName('agent').setDescription('Agent to inspect').setRequired(false)),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
@@ -562,7 +562,7 @@ module.exports = {
             await message.reply({ files: [attachment] }).catch(() => {});
         } catch(err) {
             console.error('[PROFILE]', err);
-            message.reply('⚠️ Neural link error. Contact the Architect.').catch(() => {});
+            message.reply("⚠️ Couldn't load the profile. Please try again in a moment.").catch(() => {});
         }
     },
 
@@ -583,7 +583,7 @@ module.exports = {
             await interaction.editReply({ files: [attachment] });
         } catch(err) {
             console.error('[PROFILE SLASH]', err);
-            interaction.editReply('⚠️ Neural link error.').catch(() => {});
+            interaction.editReply("⚠️ Couldn't load the profile. Please try again in a moment.").catch(() => {});
         }
     }
 };

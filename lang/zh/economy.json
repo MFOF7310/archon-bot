@@ -1,6 +1,6 @@
 {
   "credit": {
-    "desc": "💰 访问巴马科神经银行",
+    "desc": "💰 打开巴马科银行",
     "sub_balance": "查看余额",
     "sub_transfer": "转账积分",
     "sub_top": "查看顶级特工",
@@ -25,7 +25,7 @@
     "purchased": "**{user}** 入手了 **{item}** {emoji}，眼光不错！"
   },
   "inventory": {
-    "title": "🛒 巴马科神经商店",
+    "title": "🛒 巴马科商店",
     "sub_browse": "浏览商店",
     "sub_buy": "购买物品",
     "sub_sell": "出售物品",
@@ -46,8 +46,8 @@
     "no_investments": "{emoji} 还没有任何投资 — 让积分替你打工吧！"
   },
   "transfer": {
-    "desc": "💸 通过神经网络转账",
-    "header": "🦅 *ARCHON 神经转账*\n\n",
+    "desc": "💸 向其他成员转账积分",
+    "header": "🦅 *ARCHON 转账*\n\n",
     "opt_amount": "要转的积分金额",
     "opt_telegram_id": "对方的 Telegram ID",
     "opt_user": "要转给谁",
@@ -92,7 +92,7 @@
     "usage_transfer": "@ 一位用户：`.global transfer @user 1000`"
   },
   "claim": {
-    "desc": "⚡ 神经周期结束后领取每日奖励",
+    "desc": "⚡ 领取每日奖励",
     "stats_block": "**{user}**\n```yaml\n等级：{level}\n经验：{xp}\n积分：{credits}\n连击：{streak} 天\n```",
     "reminder_desc": "该去 {guild} 领每日奖励啦！别断了！"
   },
@@ -135,7 +135,7 @@
     "sub_stats": "你的投票统计",
     "title": "投票统计",
     "operative": "特工",
-    "greeting": "**特工 {user}，**\n\n",
+    "greeting": "**{user}，你好！**\n\n",
     "no_history": "❌ 还没有投票记录，去投一票吧！",
     "fixvotes_done": "❌ fixvotes 已在 {date} 运行过 — 不能重复，防止积分重复发放。",
     "raw_db": "🔍 原始数据库：credits={credits}",

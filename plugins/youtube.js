@@ -64,7 +64,7 @@ module.exports = {
             return message.reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#FF0000')
-                    .setDescription('🎬 **YouTube Neural Search**\n\n' +
+                    .setDescription('🎬 **YouTube search**\n\n' +
                         '└ `.yt <search>` - Search for videos\n' +
                         '└ `.yt info <url>` - Get video details\n\n' +
                         '**Examples:**\n' +
@@ -467,7 +467,7 @@ async function handleVideoInfo(context, input, isSlash) {
             inline: false
         })
         .setFooter({ 
-            text: 'ARCHON CG-223 • YouTube Neural Parser • Real-time Data',
+            text: 'ARCHON CG-223 • YouTube',
             iconURL: context.client?.user?.displayAvatarURL?.() || '' 
         })
         .setTimestamp();
@@ -503,7 +503,7 @@ async function handleYouTubeSearch(context, query, maxResults, isSlash) {
         })
         .setDescription(`Showing **${results.length}** result${results.length > 1 ? 's' : ''}`)
         .setFooter({ 
-            text: `ARCHON CG-223 • YouTube Neural Search • Cached for 5min`,
+            text: `ARCHON CG-223 • YouTube search`,
             iconURL: context.client?.user?.displayAvatarURL?.() || '' 
         })
         .setTimestamp();

@@ -1,6 +1,6 @@
 {
   "shared": {
-    "gate_closed": "🔐 神经之门已关闭",
+    "gate_closed": "🔐 需要权限",
     "reason": "原因",
     "action": "操作",
     "channel": "频道"
@@ -127,7 +127,7 @@
     "opt_member_unmute": "要解除禁言的成员"
   },
   "warn": {
-    "desc": "🛡️ 神经管理系统",
+    "desc": "🛡️ 警告成员",
     "warn_desc": "警告用户",
     "remove_desc": "移除特定警告",
     "view_desc": "查看警告",
@@ -159,7 +159,7 @@
   "pin": {
     "pinned": "已置顶！",
     "unpinned": "已取消置顶。",
-    "pinned_and_archived": "已置顶并归档到神经画廊！",
+    "pinned_and_archived": "已置顶并归档！",
     "pin_count": "置顶数量",
     "archived_count": "已归档",
     "cleanup_tip": "提示：频道置顶到 50 条时，旧的会自动归档。",

@@ -20,7 +20,7 @@ function calculateLevel(xp) {
 
 // ================= RANK TITLES =================
 const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE", en: "RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
     { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
     { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
     { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
@@ -265,7 +265,7 @@ async function rehydrateDailyReminders(client, database) {
 module.exports = {
     name: 'claim',
     aliases: ['reclamer', 'reclaim', 'collect', 'recolter', 'réclamer'],
-    description: '⚡ Claim your daily rewards when the neural cycle is complete.',
+    description: '⚡ Claim your daily rewards.',
     category: 'ECONOMY',
     usage: '.claim',
     cooldown: 3000,
@@ -273,7 +273,7 @@ module.exports = {
     // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('claim')
-        .setDescription('⚡ Claim your daily rewards when the neural cycle is complete'),
+        .setDescription('⚡ Claim your daily rewards'),
 
     // ================= TEXT COMMAND HANDLER =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
@@ -281,7 +281,7 @@ module.exports = {
             // PER-SERVER: Extract guildId for composite key lookups
             const guildId = message.guild?.id || 'DM';
             const prefix = serverSettings?.prefix || '.';
-            const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
             const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
             // Language detection
@@ -538,7 +538,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
             const t = ns('daily', lang);
             
             const version = client.version || '2.0.0';
-            const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+            const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
             const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
             const prefix = serverSettings?.prefix || '.';
             

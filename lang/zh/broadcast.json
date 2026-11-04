@@ -27,7 +27,7 @@
   "noPermission": "❌ 只有机器人所有者能用这个命令。",
   "preparing": "🔍 **准备中…**\n正在检查哪些服务器能收到。",
   "sending": "📡 **Transmitting...** ({a}/{b} nodes)",
-  "success": "✅ **Broadcast Complete!**\n\n📊 **Transmission Report:**\n🟢 Active Nodes: **{a}**\n🔴 Failed Nodes: **{b}**\n📈 Success Rate: **0%**\n⏱️ Time: **{c}ms**",
+  "success": "✅ **广播已发送**\n\n🟢 已送达：**{a}**\n🔴 失败：**{b}**\n📈 成功率：**{rate}%**\n⏱️ 用时：**{c} ms**",
   "footer": "ARCHON CG-223 • 全服通知",
   "mentionWarning": "⚠️ This will send **{a}** to all servers!",
   "noServers": "❌ 现在没有服务器能收到。",

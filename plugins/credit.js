@@ -10,7 +10,7 @@ function calculateLevel(xp) {
 
 // ================= AGENT RANKS =================
 const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE NEURALE", en: "NEURAL RECRUIT", zh: "神经新兵", ar: "مجند عصبي" }, color: "#2ecc71", emoji: "🌱" },
+    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE", en: "RECRUIT", zh: "新兵", ar: "مجنّد" }, color: "#2ecc71", emoji: "🌱" },
     { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT", zh: "外勤特工", ar: "وكيل ميداني" }, color: "#3498db", emoji: "🔹" },
     { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST", zh: "网络专家", ar: "مختص سيبراني" }, color: "#9b59b6", emoji: "💠" },
     { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER", zh: "BKO 指挥官", ar: "قائد BKO" }, color: "#e67e22", emoji: "⚜️" },
@@ -46,7 +46,7 @@ const fmt = (amt, emoji) => `${(amt || 0).toLocaleString()} ${emoji}`;
 module.exports = {
     name: 'credit',
     aliases: ['credits', 'bal', 'balance', 'crédits', 'solde', 'pay', 'transfer', 'donate', 'send'],
-    description: '💰 Access the Neural Bank of Bamako — check balances, transfer, and view leaderboards.',
+    description: '💰 Bank of Bamako: check balances, send credits and see the leaderboard.',
     category: 'ECONOMY',
     usage: '.bal [@user] | .pay @user <amount>',
     examples: ['.bal', '.bal @user', '.pay @user 500'],
@@ -55,7 +55,7 @@ module.exports = {
     // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('credit')
-        .setDescription('💰 Access the Neural Bank of Bamako')
+        .setDescription('💰 Open the Bank of Bamako')
         .addSubcommand(sub => sub.setName('balance').setDescription('Check balance').addUserOption(o => o.setName('user').setDescription('User to check').setRequired(false)))
         .addSubcommand(sub => sub.setName('pay').setDescription('Transfer credits').addUserOption(o => o.setName('recipient').setDescription('Recipient').setRequired(true)).addIntegerOption(o => o.setName('amount').setDescription('Amount').setRequired(true).setMinValue(1)))
         .addSubcommand(sub => sub.setName('leaderboard').setDescription('View top agents')),
@@ -70,7 +70,7 @@ module.exports = {
         // PER-SERVER: Extract guildId for composite key lookups
         const guildId = message.guild?.id || 'DM';
         const economySettings = getEconomySettings(guildId);
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         const version = client.version || '2.0.0';
 
@@ -93,7 +93,7 @@ module.exports = {
         const prefix = interaction.guild ? (client.getServerSettings?.(interaction.guild.id)?.prefix || '.') : '.';
         const guildId = interaction.guild?.id || 'DM';
         const economySettings = getEconomySettings(guildId);
-        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
         const version = client.version || '2.0.0';
         const serverSettings = interaction.guild ? client.getServerSettings?.(interaction.guild.id) || {} : {};

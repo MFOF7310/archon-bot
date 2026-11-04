@@ -24,8 +24,8 @@ module.exports = {
 
         const prepEmbed = new EmbedBuilder()
             .setColor('#f39c12')
-            .setAuthor({ name: '🦅 NEURAL ENGINE • MAINTENANCE MODE', iconURL: client.user.displayAvatarURL() })
-            .setTitle(isUpdate ? '📦 UPDATE & RESTART INITIATED' : '🔄 NEURAL RESET INITIATED')
+            .setAuthor({ name: '🦅 ARCHON CG-223 • Maintenance', iconURL: client.user.displayAvatarURL() })
+            .setTitle(isUpdate ? '📦 Updating and restarting' : '🔄 Restarting')
             .setDescription(
                 '```ansi\n' +
                 '\u001b[1;33m═══════════════════════════════\u001b[0m\n' +
@@ -43,7 +43,7 @@ module.exports = {
                     : '```yaml\n💾 Flushing database...\n🔄 Restarting engine...\n```',
                 inline: false
             })
-            .setFooter({ text: 'ARCHON CG-223 • Neural Engine • Maintenance Protocol' })
+            .setFooter({ text: 'ARCHON CG-223 • Maintenance' })
             .setTimestamp();
 
         const reply = await message.reply({ embeds: [prepEmbed] }).catch(() => {});
@@ -62,12 +62,12 @@ module.exports = {
         if (reply) {
             const finalEmbed = new EmbedBuilder()
                 .setColor('#e74c3c')
-                .setAuthor({ name: '🦅 NEURAL ENGINE • SHUTTING DOWN', iconURL: client.user.displayAvatarURL() })
+                .setAuthor({ name: '🦅 ARCHON CG-223 • Shutting down', iconURL: client.user.displayAvatarURL() })
                 .setDescription(
                     '```ansi\n' +
                     '\u001b[1;31m═══════════════════════════════\u001b[0m\n' +
                     '\u001b[1;33mAll systems saved.\u001b[0m\n' +
-                    '\u001b[1;33mResyncing neural links...\u001b[0m\n' +
+                    '\u001b[1;33mReconnecting...\u001b[0m\n' +
                     '\u001b[1;31m═══════════════════════════════\u001b[0m\n' +
                     '```'
                 )
@@ -113,8 +113,8 @@ module.exports = {
 
         const prepEmbed = new EmbedBuilder()
             .setColor('#f39c12')
-            .setAuthor({ name: '🦅 NEURAL ENGINE • MAINTENANCE MODE', iconURL: client.user.displayAvatarURL() })
-            .setTitle(isUpdate ? '📦 UPDATE & RESTART INITIATED' : '🔄 NEURAL RESET INITIATED')
+            .setAuthor({ name: '🦅 ARCHON CG-223 • Maintenance', iconURL: client.user.displayAvatarURL() })
+            .setTitle(isUpdate ? '📦 Updating and restarting' : '🔄 Restarting')
             .setDescription(
                 '```ansi\n' +
                 '\u001b[1;33m═══════════════════════════════\u001b[0m\n' +
@@ -124,7 +124,7 @@ module.exports = {
                 '\u001b[1;33m═══════════════════════════════\u001b[0m\n' +
                 '```'
             )
-            .setFooter({ text: 'ARCHON CG-223 • Neural Engine • Maintenance Protocol' })
+            .setFooter({ text: 'ARCHON CG-223 • Maintenance' })
             .setTimestamp();
 
         await interaction.editReply({ embeds: [prepEmbed] });
@@ -141,12 +141,12 @@ module.exports = {
         // Final message
         const finalEmbed = new EmbedBuilder()
             .setColor('#e74c3c')
-            .setAuthor({ name: '🦅 NEURAL ENGINE • SHUTTING DOWN', iconURL: client.user.displayAvatarURL() })
+            .setAuthor({ name: '🦅 ARCHON CG-223 • Shutting down', iconURL: client.user.displayAvatarURL() })
             .setDescription(
                 '```ansi\n' +
                 '\u001b[1;31m═══════════════════════════════\u001b[0m\n' +
                 '\u001b[1;33mAll systems saved.\u001b[0m\n' +
-                '\u001b[1;33mResyncing neural links...\u001b[0m\n' +
+                '\u001b[1;33mReconnecting...\u001b[0m\n' +
                 '\u001b[1;31m═══════════════════════════════\u001b[0m\n' +
                 '```'
             )

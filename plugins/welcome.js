@@ -297,7 +297,7 @@ module.exports = {
     name: 'welcome',
     category: 'SYSTEM',
     aliases: ['goodbye', 'leave', 'join', 'welcomecard'],
-    description: 'Neural-grid welcome/goodbye cards with warm greetings, character art, and real account age.',
+    description: 'Welcome and goodbye cards with warm greetings, character art and real account age.',
     usage: '.welcome config | .welcome test | .welcome message <text> | .welcome goodbyemsg <text>',
     cooldown: 1000,
 

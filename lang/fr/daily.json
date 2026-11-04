@@ -15,7 +15,7 @@
   "day": "jour",
   "verifyWith": "Vérifiez avec",
   "checkBalance": "Vérifiez votre solde avec `{prefix}bal` ou `{prefix}credits`",
-  "footer": "NEURAL DAILY • RÉCLAMEZ TOUTES LES 24H",
+  "footer": "Récompense quotidienne • Toutes les 24 h",
   "streakMilestone": "🔥 JALON DE SÉRIE !",
   "bonusAdded": "Bonus ajouté",
   "levelUp": "🎉 NIVEAU SUPÉRIEUR !",
@@ -35,5 +35,5 @@
   "memory_empty": "Ton coffre à souvenirs est vide. Dis-moi quelque chose à retenir !",
   "memory_empty_hint": "Comment sauvegarder un souvenir :",
   "memory_example": "Dis simplement : « Retiens que ma couleur préférée est le bleu »",
-  "channelRestricted": "🤷‍♂️ Pas ici, agent ! Tu peux récupérer ta récompense quotidienne dans {channel}."
+  "channelRestricted": "🤷‍♂️ Pas ici ! Tu peux récupérer ta récompense quotidienne dans {channel}."
 }

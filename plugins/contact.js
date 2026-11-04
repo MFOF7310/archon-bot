@@ -12,7 +12,7 @@ const PRIORITIES = {
 };
 
 const i18n = require('../lib/i18n');
-const I18N_KEYS = ["title", "selectPriority", "confirmTitle", "confirmDesc", "confirm", "cancel", "cancelled", "timeout", "processing", "delivered", "failed", "usage", "maxLength", "architectUnavailable", "replyReceived", "incomingTitle"];
+const I18N_KEYS = ["title", "selectPriority", "confirmTitle", "confirmDesc", "confirm", "cancel", "cancelled", "timeout", "processing", "delivered", "failed", "usage", "maxLength", "architectUnavailable", "replyReceived", "incomingTitle", "replyNotice"];
 function loadT(lang) {
     const o = {};
     for (const k of I18N_KEYS) o[k] = i18n.t(`contact.${k}`, lang);
@@ -97,7 +97,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
             '\u001b[1;33m\u25b8 ACTION    \u001b[0mSelect priority below\n' +
             '```'
         )
-        .setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0 \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` });
+        .setFooter({ text: `${guildName} \u00b7 Contact \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` });
 
     await reply({ embeds: [priorityEmbed], components: [priorityRow] });
     const replyMsg = isSlash ? await context.fetchReply() : await context.fetchReply();
@@ -105,7 +105,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
     const priorityCollector = replyMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
     priorityCollector.on('collect', async (i) => {
-        if (i.user.id !== user.id) return i.reply({ content: '\u274c Not your transmission.', flags: 64 });
+        if (i.user.id !== user.id) return i.reply({ content: '\u274c This is not your message.', flags: 64 });
 
         const priorityKey = i.customId.split('_')[1];
         const priority = PRIORITIES[priorityKey];
@@ -130,19 +130,19 @@ async function handleContact(client, context, feedback, lang, isSlash) {
                 '\u001b[0;37m\u25b8 CHANNEL   \u001b[0m' + (channel?.name || 'DM') + '\n' +
                 '```'
             )
-            .setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` });
+            .setFooter({ text: `${guildName} \u00b7 Contact` });
 
         await i.editReply({ embeds: [confirmEmbed], components: [confirmRow] });
 
         const confirmCollector = replyMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
         confirmCollector.on('collect', async (j) => {
-            if (j.user.id !== user.id) return j.reply({ content: '\u274c Not your transmission.', flags: 64 });
+            if (j.user.id !== user.id) return j.reply({ content: '\u274c This is not your message.', flags: 64 });
 
             if (j.customId === `cc_cancel_${user.id}`) {
                 confirmCollector.stop('cancelled');
                 await j.update({
-                    embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription('```ansi\n\u001b[1;31m\u25b8 ABORTED   \u001b[0mTransmission cancelled.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                    embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(`\u274c ${t.cancelled}`).setFooter({ text: `${guildName} \u00b7 Contact` })],
                     components: []
                 });
                 return;
@@ -154,7 +154,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
 
                 // Processing
                 await j.editReply({
-                    embeds: [new EmbedBuilder().setColor('#f1c40f').setDescription('```ansi\n\u001b[1;33m\u25b8 STATUS    \u001b[0mRouting transmission to Architect...\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                    embeds: [new EmbedBuilder().setColor('#f1c40f').setDescription(`\u23f3 ${t.processing}`).setFooter({ text: `${guildName} \u00b7 Contact` })],
                     components: []
                 });
 
@@ -175,7 +175,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
                             '\u001b[0;37m\u25b8 CREATED   \u001b[0m' + Math.floor((Date.now() - user.createdAt.getTime()) / (1000*60*60*24)) + ' days ago\n' +
                             '```'
                         )
-                        .setFooter({ text: `NEURAL CONTACT v2.0 \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
+                        .setFooter({ text: `Contact \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
                         .setTimestamp();
 
                     // ── Reply button (triggers DM reply flow) ──
@@ -192,15 +192,9 @@ async function handleContact(client, context, feedback, lang, isSlash) {
                     await j.editReply({
                         embeds: [new EmbedBuilder()
                             .setColor('#2ecc71')
-                            .setAuthor({ name: `\uD83D\uDEF0\uFE0F ${t.title} \u00b7 DELIVERED`, iconURL: user.displayAvatarURL() })
-                            .setDescription(
-                                '```ansi\n' +
-                                '\u001b[1;32m\u25b8 STATUS    \u001b[0mTransmission delivered to the Architect\n' +
-                                priority.ansi + '\u25b8 PRIORITY  \u001b[0m' + priority.emoji + ' ' + priority.label[lang] + '\n' +
-                                '\u001b[0;37m\u25b8 REPLY     \u001b[0mYou will be notified if the Architect replies\n' +
-                                '```'
-                            )
-                            .setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0 \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
+                            .setAuthor({ name: `\uD83D\uDEF0\uFE0F ${t.title}`, iconURL: user.displayAvatarURL() })
+                            .setDescription(`\u2705 **${t.delivered}**\n${priority.emoji} ${priority.label[lang] || priority.label.en}\n-# ${t.replyNotice}`)
+                            .setFooter({ text: `${guildName} \u00b7 Contact \u00b7 BAMAKO_223 \uD83C\uDDF2\uD83C\uDDF1` })
                         ],
                         components: []
                     });
@@ -210,7 +204,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
                 } catch (err) {
                     console.error('[CONTACT v2] Error:', err.message);
                     await j.editReply({
-                        embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription('```ansi\n\u001b[1;31m\u25b8 FAILED    \u001b[0mTransmission error. Try again later.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                        embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(`\u26a0\ufe0f ${t.failed}`).setFooter({ text: `${guildName} \u00b7 Contact` })],
                         components: []
                     });
                 }
@@ -220,7 +214,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
         confirmCollector.on('end', (_, reason) => {
             if (reason === 'time') {
                 replyMsg.edit({
-                    embeds: [new EmbedBuilder().setColor('#95a5a6').setDescription('```ansi\n\u001b[0;37m\u25b8 TIMEOUT   \u001b[0mTransmission window expired.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                    embeds: [new EmbedBuilder().setColor('#95a5a6').setDescription(`\u23f1\ufe0f ${t.timeout}`).setFooter({ text: `${guildName} \u00b7 Contact` })],
                     components: []
                 }).catch(() => {});
             }
@@ -230,7 +224,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
     priorityCollector.on('end', (_, reason) => {
         if (reason === 'time') {
             replyMsg.edit({
-                embeds: [new EmbedBuilder().setColor('#95a5a6').setDescription('```ansi\n\u001b[0;37m\u25b8 TIMEOUT   \u001b[0mPriority selection expired.\n```').setFooter({ text: `${guildName} \u00b7 NEURAL CONTACT v2.0` })],
+                embeds: [new EmbedBuilder().setColor('#95a5a6').setDescription(`\u23f1\ufe0f ${t.timeout}`).setFooter({ text: `${guildName} \u00b7 Contact` })],
                 components: []
             }).catch(() => {});
         }

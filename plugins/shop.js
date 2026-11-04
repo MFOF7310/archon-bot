@@ -75,7 +75,7 @@ module.exports = {
         const guildId = message.guild?.id || 'DM';
         const lang = pickLang(client, guildId, message);
         const version = client.version || '1.7.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const userId = message.author.id;
         const userName = message.author.username;
 
@@ -179,7 +179,7 @@ module.exports = {
         const guildId = interaction.guild?.id || 'DM';
         const lang = pickLang(client, guildId, interaction);
         const version = client.version || '1.7.0';
-        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const userId = interaction.user.id;
         const userName = interaction.user.username;
         const db = client.db;

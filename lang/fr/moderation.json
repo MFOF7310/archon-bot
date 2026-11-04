@@ -1,6 +1,6 @@
 {
   "shared": {
-    "gate_closed": "🔐 Le portail neural est fermé",
+    "gate_closed": "🔐 Permission requise",
     "reason": "Raison",
     "action": "Action",
     "channel": "Salon"
@@ -127,7 +127,7 @@
     "opt_member_unmute": "Membre à rétablir"
   },
   "warn": {
-    "desc": "🛡️ Système de modération neural",
+    "desc": "🛡️ Avertir un membre",
     "warn_desc": "Avertir un utilisateur",
     "remove_desc": "Retirer un avertissement",
     "view_desc": "Voir les avertissements",

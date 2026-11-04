@@ -6,54 +6,54 @@ const birthdays = new Map();
 // ================= MULTILINGUAL BRIEFING =================
 const t = {
     en: {
-        setTitle: '🎂 BIRTHDAY REGISTERED',
-        setSuccess: (date) => `✅ Your birthday has been classified: **${date}**`,
-        setError: '❌ Invalid date format. Syntax: `/birthday set day:15 month:6 year:2000`',
-        removeTitle: '🎂 BIRTHDAY CLEARED',
-        removeSuccess: '✅ Your birthday record has been purged from the database.',
-        removeError: '❌ No birthday record found for your identity.',
-        checkTitle: '🎂 BIRTHDAY INTELLIGENCE',
-        checkUser: (user, date) => `🎉 **${user}**'s birthday is classified as **${date}**`,
-        checkSelf: (date) => `🎂 Your birthday is classified as **${date}**`,
-        checkNone: '❌ No birthday record found.',
-        listTitle: '📅 UPCOMING BIRTHDAYS',
-        listEmpty: 'No birthdays detected in the next 90 days.',
-        listEntry: (user, date, days) => `• **${user}** — ${date} (T-${days}d)`,
-        todayEntry: (user, date) => `• **${user}** — ${date} 🎂 **TODAY**`,
-        announcementTitle: '🎉 BIRTHDAY ALERT — ALL UNITS',
-        announcementDesc: (user, age) => `All personnel wish **${user}** a happy birthday!\n${age ? 'They turn **' + age + '** today.' : ''}`,
+        setTitle: '🎂 Birthday saved',
+        setSuccess: (date) => `✅ Your birthday is saved: **${date}**`,
+        setError: '❌ Invalid date. Example: `/birthday set day:15 month:6 year:2000`',
+        removeTitle: '🎂 Birthday removed',
+        removeSuccess: '✅ Your birthday has been removed.',
+        removeError: '❌ You have no birthday saved.',
+        checkTitle: '🎂 Birthday',
+        checkUser: (user, date) => `🎉 **${user}**'s birthday is on **${date}**`,
+        checkSelf: (date) => `🎂 Your birthday is on **${date}**`,
+        checkNone: '❌ No birthday saved.',
+        listTitle: '📅 Upcoming birthdays',
+        listEmpty: 'No birthdays in the next 90 days.',
+        listEntry: (user, date, days) => `• **${user}** — ${date} (in ${days} d)`,
+        todayEntry: (user, date) => `• **${user}** — ${date} 🎂 **today**`,
+        announcementTitle: '🎉 Happy birthday!',
+        announcementDesc: (user, age) => `Everyone wishes **${user}** a happy birthday!\n${age ? 'They turn **' + age + '** today.' : ''}`,
         announcementFooter: '🎂 Drop a birthday wish in chat.',
         months: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
-        noPermission: '❌ Insufficient clearance to modify other user records.',
+        noPermission: "❌ You don't have permission to change someone else's birthday.",
         invalidDay: '❌ Day must be between 1 and 31.',
         invalidMonth: '❌ Month must be between 1 and 12.',
         invalidYear: '❌ Year must be between 1900 and 2020.',
-        invalidDate: '❌ That date does not exist in the Gregorian calendar.'
+        invalidDate: '❌ That date does not exist.'
     },
     fr: {
-        setTitle: '🎂 ANNIVERSAIRE ENREGISTRE',
-        setSuccess: (date) => `✅ Votre anniversaire a ete classifie : **${date}**`,
-        setError: '❌ Format de date invalide. Syntaxe : `/birthday set jour:15 mois:6 annee:2000`',
-        removeTitle: '🎂 ANNIVERSAIRE SUPPRIME',
-        removeSuccess: '✅ Votre dossier anniversaire a ete purge de la base de donnees.',
-        removeError: '❌ Aucun dossier anniversaire trouve pour votre identite.',
-        checkTitle: '🎂 RENSEIGNEMENTS ANNIVERSAIRE',
-        checkUser: (user, date) => `🎉 L'anniversaire de **${user}** est classifie le **${date}**`,
-        checkSelf: (date) => `🎂 Votre anniversaire est classifie le **${date}**`,
-        checkNone: '❌ Aucun dossier anniversaire trouve.',
-        listTitle: '📅 ANNIVERSAIRES A VENIR',
-        listEmpty: 'Aucun anniversaire detecte dans les 90 prochains jours.',
-        listEntry: (user, date, days) => `• **${user}** — ${date} (T-${days}j)`,
-        todayEntry: (user, date) => `• **${user}** — ${date} 🎂 **AUJOURD\'HUI**`,
-        announcementTitle: '🎉 ALERTE ANNIVERSAIRE — TOUTES LES UNITES',
-        announcementDesc: (user, age) => `Tout le personnel souhaite un joyeux anniversaire a **${user}** !\n${age ? 'Iel a **' + age + '** ans aujourd\'hui !' : ''}`,
-        announcementFooter: '🎂 Laissez un message d\'anniversaire !',
-        months: ['JAN', 'FEV', 'MAR', 'AVR', 'MAI', 'JUN', 'JUL', 'AOU', 'SEP', 'OCT', 'NOV', 'DEC'],
-        noPermission: '❌ Autorisation insuffisante pour modifier les dossiers d\'autres utilisateurs.',
-        invalidDay: '❌ Le jour doit etre entre 1 et 31.',
-        invalidMonth: '❌ Le mois doit etre entre 1 et 12.',
-        invalidYear: '❌ L\'annee doit etre entre 1900 et 2020.',
-        invalidDate: '❌ Cette date n\'existe pas dans le calendrier gregorien.'
+        setTitle: '🎂 Anniversaire enregistré',
+        setSuccess: (date) => `✅ Ton anniversaire est enregistré : **${date}**`,
+        setError: '❌ Date invalide. Exemple : `/birthday set jour:15 mois:6 annee:2000`',
+        removeTitle: '🎂 Anniversaire supprimé',
+        removeSuccess: '✅ Ton anniversaire a été supprimé.',
+        removeError: "❌ Tu n'as aucun anniversaire enregistré.",
+        checkTitle: '🎂 Anniversaire',
+        checkUser: (user, date) => `🎉 L'anniversaire de **${user}** est le **${date}**`,
+        checkSelf: (date) => `🎂 Ton anniversaire est le **${date}**`,
+        checkNone: '❌ Aucun anniversaire enregistré.',
+        listTitle: '📅 Anniversaires à venir',
+        listEmpty: 'Aucun anniversaire dans les 90 prochains jours.',
+        listEntry: (user, date, days) => `• **${user}** — ${date} (dans ${days} j)`,
+        todayEntry: (user, date) => `• **${user}** — ${date} 🎂 **aujourd'hui**`,
+        announcementTitle: '🎉 Joyeux anniversaire !',
+        announcementDesc: (user, age) => `Tout le monde souhaite un joyeux anniversaire à **${user}** !\n${age ? '**' + age + '** ans aujourd\'hui !' : ''}`,
+        announcementFooter: "🎂 Laisse-lui un petit mot dans le chat !",
+        months: ['JAN', 'FÉV', 'MAR', 'AVR', 'MAI', 'JUN', 'JUL', 'AOÛ', 'SEP', 'OCT', 'NOV', 'DÉC'],
+        noPermission: "❌ Tu n'as pas la permission de modifier l'anniversaire d'un autre membre.",
+        invalidDay: '❌ Le jour doit être entre 1 et 31.',
+        invalidMonth: '❌ Le mois doit être entre 1 et 12.',
+        invalidYear: "❌ L'année doit être entre 1900 et 2020.",
+        invalidDate: "❌ Cette date n'existe pas."
     }
 };
 
@@ -439,7 +439,7 @@ async function checkAndAnnounceBirthdays(client) {
                             name: '📊 BIRTHDAY DOSSIER', 
                             value: 
                                 '```yaml\n' +
-                                `🎂 Age Today      : ${age || 'CLASSIFIED'}\n` +
+                                `🎂 Age Today      : ${age || 'Hidden'}\n` +
                                 `📅 Born           : ${bday.day} ${strings.months[bday.month-1]} ${bday.year || '????'}\n` +
                                 `♈ Zodiac         : ${zodiac}\n` +
                                 `🌍 Timezone       : ${bday.timezone || 'UTC'}\n` +
@@ -750,7 +750,7 @@ module.exports = {
                 .setThumbnail(user.displayAvatarURL({ size: 256 }))
                 .addFields(
                     { name: '📅 ' + (lang === 'fr' ? 'Date de Naissance' : 'Birth Date'), value: `**${formatDate(bday.day, bday.month, bday.year, lang)}**`, inline: true },
-                    { name: '🎂 ' + (lang === 'fr' ? 'Age' : 'Age'), value: age ? `**${age}** ${lang === 'fr' ? 'ans' : 'years'}` : '*(Classified)*', inline: true },
+                    { name: '🎂 ' + (lang === 'fr' ? 'Age' : 'Age'), value: age ? `**${age}** ${lang === 'fr' ? 'ans' : 'years'}` : (lang === 'fr' ? '*(masqué)*' : '*(hidden)*'), inline: true },
                     { name: '🌍 Timezone', value: `**${bday.timezone || 'UTC'}**`, inline: true },
                     { name: countdownEmoji + ' ' + (daysUntil === 0 ? '🎉 TODAY!' : (lang === 'fr' ? 'Compte a Rebours' : 'Countdown')), value: `${countdownText}\n\`${progressBar}\` ${progressPercent}%`, inline: false }
                 )
