@@ -1,17 +1,14 @@
 // plugins/mylang.js
 // .mylang <en|fr|ar|bm|zh|auto>  and  /mylang [language] : choose the
-// language ARCHON answers YOU in, on every server set to Auto.
+// language ARCHON answers YOU in, on every server set to Auto and in DMs.
 // A language chosen with /setlang by the server always wins.
-const fs = require('fs');
-const path = require('path');
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const memberLang = require('../lib/member-lang');
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
-const ui = require('../lib/games/ui');
-const EMOJIS = require('../config/emojis');
 const v2 = require('../lib/games/v2');
 const cmdSlash = require('../lib/cmd').slash;
+const EMOJIS = (() => { try { return require('../config/emojis'); } catch { return {}; } })(); // the file is not in the repo: clones still load
 
 const NAMES = { en: 'English', fr: 'Français', ar: 'العربية', bm: 'Bamanankan', zh: '中文' };
 const FLAGS = { en: '🇬🇧', fr: '🇫🇷', ar: '🇸🇦', bm: '🇲🇱', zh: '🇨🇳' };
@@ -23,70 +20,51 @@ const WORDS = {
     zh: 'zh', chinese: 'zh', chinois: 'zh', '中文': 'zh',
 };
 const RESET = ['auto', 'reset', 'off', 'clear', 'default'];
-const ORDER = ['en', 'fr', 'ar', 'bm', 'zh'];
 
-const hasTexts = (lang) => lang === 'en' || lang === 'fr' || fs.existsSync(path.join(__dirname, '..', 'lang', lang, 'mylang.json'));
+const nameOf = (code) => `${EMOJIS[`flag_${code}`] || FLAGS[code] || ''} ${NAMES[code] || code}`.trim();
+// What the member typed, shown back safely: no markdown, no mentions, short
+const shown = (word) => String(word || '').replace(/[`*_~|\\<>@#]/g, '').slice(0, 24) || '?';
 
-function buildCard(client, userId, guildId, interaction) {
-    const serverLang = (() => { try { return (guildId && client.getServerSettings?.(guildId)?.language) || 'auto'; } catch { return 'auto'; } })();
-    const mine = memberLang.get(userId);                                      
-    const lang = mine || pickLang(client, guildId, interaction, userId);
-    const L = (k, v) => t('mylang.' + k, lang, v);
-
-    // Résolution des emojis custom
-    const globeEmoji = EMOJIS.globe || '🌐';
-    const checkEmoji = EMOJIS.small_check || EMOJIS.check || '✅';
-    const warnEmoji = EMOJIS.warning || '⚠️';
-    
-    // Drapeau dynamique pour la langue de l'utilisateur
-    const userFlag = mine ? (EMOJIS[`flag_${mine}`] || FLAGS[mine]) : '';
-    const userName = mine ? `${userFlag} ${NAMES[mine]}` : '';
-
-    const cmd = cmdSlash(client, 'mylang', { guild: null });
-    
-    const current = mine
-        ? L('current', { name: userName }) || `Your language is set to: **${userName}**`
-        : L('none') || `You haven't chosen a language. ARCHON follows the server, or the words you type.`;
-        
-    const how = L('hintWithCmd', { cmd }) || `Use ${cmd} with a code — en · fr · ar · bm · zh · auto`;
-
-    // Dynamic, humanly-toned server status
-    let server = '';
-    if (serverLang !== 'auto') {
-        // Drapeau dynamique pour le serveur
-        const serverFlag = EMOJIS[`flag_${serverLang}`] || FLAGS[serverLang] || '';
-        const serverName = `${serverFlag} ${NAMES[serverLang] || serverLang}`;
-        server = L('serverLocked', { lang: serverName }) || `${warnEmoji} This server is locked to **${serverName}** by an admin. I will save your preference, but I must speak ${serverName} here. If you want to use your own language, ask an admin to set the server to Auto.`;
-    } else {
-        server = L('serverAuto') || `${checkEmoji} This server is set to **Auto**. I will follow your personal choice below!`;
+// Saves what the member typed or picked. Returns 'set', 'reset', 'unknown', 'error', or null when nothing was asked.
+function apply(userId, word) {
+    if (!word) return null;
+    try {
+        if (RESET.includes(word)) { memberLang.reset(userId); return 'reset'; }
+        if (WORDS[word]) { memberLang.set(userId, WORDS[word]); return 'set'; }
+        return 'unknown';
+    } catch (e) {
+        console.error('[MYLANG] save failed:', e.message);
+        return 'error';
     }
-
-    return v2.card(0x00fbff, [
-        { text: `*ARCHON CG-223 · Language*` },
-        { text: `## ${globeEmoji} ${L('title') || 'Your language'}` },
-        { rule: true },
-        { text: current },
-        { rule: true },
-        { text: how },
-        { text: `-# ${server}` },
-    ]);
 }
 
+function buildCard(client, userId, guildId, ctx, outcome = null, word = '') {
+    const serverLang = (() => { try { return (guildId && client.getServerSettings?.(guildId)?.language) || 'auto'; } catch { return 'auto'; } })();
+    const mine = memberLang.get(userId);
+    const lang = mine || pickLang(client, guildId, ctx, userId);
+    const L = (k, v) => t('mylang.' + k, lang, v);
+    const cmd = cmdSlash(client, 'mylang', { guild: null });
 
-// ── Prefix handler ──
-async function runPrefix(client, message, args) {
-    const userId = message.author.id;
-    const guildId = message.guild?.id || null;
-    const word = String((args || [])[0] || '').trim().toLowerCase();
+    // Where the choice applies: in a DM there is no server, a server set with /setlang keeps its language
+    let where;
+    if (!guildId) where = mine ? L('dm') : L('dmNone');
+    else if (serverLang !== 'auto' && NAMES[serverLang]) where = serverLang === mine ? L('serverSame', { lang: nameOf(serverLang) }) : L('serverLocked', { lang: nameOf(serverLang) });
+    else where = mine ? L('serverAuto') : L('serverAutoNone');
 
-    // Word path (typed argument) — keep the old behavior for typed commands
-    if (word) {
-        if (RESET.includes(word)) memberLang.reset(userId);
-        else if (WORDS[word]) memberLang.set(userId, WORDS[word]);
-        // no word or unknown word → just show the card
-    }
-
-    const msg = await message.reply(buildCard(client, userId, guildId, null)).catch(() => null);
+    const items = [
+        { text: `*ARCHON CG-223 · ${L('header')}*` },
+        { text: `## ${EMOJIS.globe || '🌐'} ${L('title')}` },
+    ];
+    if (outcome === 'unknown') items.push({ text: L('unknown', { word: shown(word) }) });
+    if (outcome === 'error') items.push({ text: L('saveFailed') });
+    items.push(
+        { rule: true },
+        { text: mine ? L('current', { name: nameOf(mine) }) : L('none') },
+        { rule: true },
+        { text: L('hintWithCmd', { cmd }) },
+        { text: `-# ${where}` },
+    );
+    return v2.card(0x00fbff, items);
 }
 
 module.exports = {
@@ -114,21 +92,15 @@ module.exports = {
             )),
 
     async run(client, message, args) {
-        return runPrefix(client, message, args);
+        const word = String((args || [])[0] || '').trim().toLowerCase();
+        const outcome = apply(message.author.id, word);
+        await message.reply(buildCard(client, message.author.id, message.guild?.id || null, message, outcome, word)).catch(() => {});
     },
 
     async execute(interaction, client) {
-        const userId = interaction.user.id;
-        const guildId = interaction.guildId || null;
         const word = String(interaction.options?.getString('language') || '').trim().toLowerCase();
-
-        if (word) {
-            if (RESET.includes(word)) memberLang.reset(userId);
-            else if (WORDS[word]) memberLang.set(userId, WORDS[word]);
-        }
-
-        const card = buildCard(client, userId, guildId, interaction);
-        await interaction.reply({ ...card, flags: MessageFlags.IsComponentsV2 | 64 }).catch(() => {});
-        const msg = await interaction.fetchReply().catch(() => null);
+        const outcome = apply(interaction.user.id, word);
+        const card = buildCard(client, interaction.user.id, interaction.guildId || null, interaction, outcome, word);
+        await interaction.reply({ ...card, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral }).catch(() => {});
     },
 };

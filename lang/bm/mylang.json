@@ -4,5 +4,6 @@
   "none": "I ma kan sugandi n'teri. ARCHON bɛ tugu sɛrvɛri kan taalen de  kɔ, walima i ka sigininden sɛbɛn nen kɔ.",
   "hintWithCmd": "Baara kɛ nin {cmd} ye, nin kɔdi ninnu dɔ tugu a la — en · fr · ar · bm · zh · auto",
   "serverLocked": "Nin sɛrvɛri in sɔgɔlen do **{lang}** kan na admin fɛ. N bɛna i jaɲɛ ta mara, nka n ka kan ka {lang} fɔ yan. N'i b'a fɛ i ka kan sugandilen la baara, i jija ka kuma admin dɔ fɛ a ka ɲɛ i ma ka bila otomatiki la.",
-  "serverAuto": "Nin sɛrvɛri in bilalen do **Auto** kan na. N bɛna i yɛrɛ ka kan sugandi len kɔ!"
+  "serverAuto": "Nin sɛrvɛri in bilalen do **Auto** kan na. N bɛna i yɛrɛ ka kan sugandi len kɔ!",
+  "header": "Kan"
 }

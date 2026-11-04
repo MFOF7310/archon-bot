@@ -3,6 +3,13 @@
   "current": "Your language is set to: **{name}**",
   "none": "You haven't chosen a language. ARCHON follows the server, or the words you type.",
   "hintWithCmd": "Use {cmd} with a code — en · fr · ar · bm · zh · auto",
-  "serverLocked": "This server is locked to **{lang}** by an admin. I will save your preference, but I must speak {lang} here. If you want to use your own language, ask an admin to set the server to Auto.",
-  "serverAuto": "This server is set to **Auto**. I will follow your personal choice below!"
+  "serverLocked": "An admin set this server to **{lang}**, so I speak {lang} here. Your choice applies on Auto servers and in DMs.",
+  "serverAuto": "This server is on **Auto**, so your choice applies here.",
+  "header": "Language",
+  "unknown": "I don't know `{word}`. Choose one of: en · fr · ar · bm · zh · auto",
+  "saveFailed": "I couldn't save your language. Try again in a moment.",
+  "serverAutoNone": "This server is on **Auto**: I follow the server's language, or yours once you choose one.",
+  "serverSame": "This server uses **{lang}** too.",
+  "dm": "In DMs, your choice always applies.",
+  "dmNone": "In DMs, I follow your Discord app language until you choose one."
 }
