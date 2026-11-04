@@ -1,6 +1,6 @@
 {
   "credit": {
-    "desc": "💰 ادخل البنك العصبي في باماكو",
+    "desc": "💰 افتح بنك باماكو",
     "sub_balance": "شيك الرصيد",
     "sub_transfer": "حوّل رصيد",
     "sub_top": "عرض كبار الوكلاء",
@@ -25,7 +25,7 @@
     "purchased": "**{user}** اشترى **{item}** {emoji} — ذوق عالي!"
   },
   "inventory": {
-    "title": "🛒 المتجر العصبي في باماكو",
+    "title": "🛒 متجر باماكو",
     "sub_browse": "تصفح المتجر",
     "sub_buy": "اشتري عنصر",
     "sub_sell": "بِع عنصر",
@@ -46,8 +46,8 @@
     "no_investments": "{emoji} ما عندك استثمارات بعد — خل رصيدك يشتغل عنك!"
   },
   "transfer": {
-    "desc": "💸 حوّل عبر الشبكة العصبية",
-    "header": "🦅 *التحويل العصبي لأركون*\n\n",
+    "desc": "💸 أرسل رصيدًا إلى عضو آخر",
+    "header": "🦅 *تحويل ARCHON*\n\n",
     "opt_amount": "مبلغ التحويل",
     "opt_telegram_id": "معرف تيليغرام المستلم",
     "opt_user": "لمن تحوّل",
@@ -92,7 +92,7 @@
     "usage_transfer": "اذكر مستخدمًا: `.global transfer @user 1000`"
   },
   "claim": {
-    "desc": "⚡ استلم مكافآتك عند اكتمال الدورة العصبية",
+    "desc": "⚡ استلم مكافآتك اليومية",
     "stats_block": "**{user}**\n```yaml\nالمستوى: {level}\nالخبرة: {xp}\nالرصيد: {credits}\nالسلسلة: {streak} يومًا\n```",
     "reminder_desc": "وقت مكافأتك اليومية في {guild}! لا تنقطع!"
   },
@@ -135,7 +135,7 @@
     "sub_stats": "إحصائيات تصويتك",
     "title": "إحصائيات التصويت",
     "operative": "وكيل",
-    "greeting": "**وكيل {user}،**\n\n",
+    "greeting": "**مرحبًا {user}،**\n\n",
     "no_history": "❌ ما فيه سجل تصويت، روح صوّت!",
     "fixvotes_done": "❌ fixvotes اشتغل بتاريخ {date} — ما يتكرر عشان ما يتكرر الرصيد.",
     "raw_db": "🔍 قاعدة خام: credits={credits}",

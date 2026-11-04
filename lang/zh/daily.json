@@ -15,7 +15,7 @@
   "day": "day",
   "verifyWith": "Verify with",
   "checkBalance": "Check your balance anytime with `{prefix}bal` or `{prefix}credits`",
-  "footer": "NEURAL DAILY • CLAIM EVERY 24H",
+  "footer": "每日奖励 • 每 24 小时领取",
   "streakMilestone": "🔥 STREAK MILESTONE!",
   "bonusAdded": "Bonus added",
   "levelUp": "🎉 LEVEL UP!",

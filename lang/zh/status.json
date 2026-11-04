@@ -1,5 +1,5 @@
 {
-  "author": "ARCHON CG-223 | 神经超链接",
+  "author": "ARCHON CG-223 | 状态",
   "title": "─ 架构师系统诊断 ─",
   "node": "节点",
   "integrity": "完整性",
@@ -10,7 +10,7 @@
   "webSocket": "WebSocket",
   "active": "活跃",
   "online": "在线",
-  "neuralCore": "🧠 神经核心 (Groq LPU™)",
+  "neuralCore": "🧠 AI 引擎 (Groq LPU™)",
   "inference": "推理",
   "load": "负载",
   "agents": "特工",

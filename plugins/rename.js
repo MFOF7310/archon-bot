@@ -27,7 +27,7 @@ module.exports = {
         
         const t = loadT(lang);
         const version = client.version || '1.6.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         
         const newName = args.join(' ').trim();

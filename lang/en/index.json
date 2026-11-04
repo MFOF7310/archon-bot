@@ -16,7 +16,7 @@
   "guardian_shop": "{prefix}shop - Shop",
   "guardian_lydia": "{prefix}lydia [message] - Talk to AI",
   "profile_title": "👤 PROFILE • {username}",
-  "profile_stats_header": "### 📊 Neural Statistics",
+  "profile_stats_header": "### 📊 Statistics",
   "stat_level": "Level",
   "stat_progress": "Progress",
   "stat_credits": "Credits",

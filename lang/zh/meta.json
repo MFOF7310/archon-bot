@@ -17,5 +17,17 @@
   "weaponFooter": "{season} 版本强度 • ARCHON CG-223",
   "noMatch": "在版本强度列表里找不到 **{q}**。\n试试这些：{names}",
   "noneYet": "暂无",
-  "reroll": "🔄 换一批"
+  "reroll": "🔄 换一批",
+  "updated": "更新于 {updated}",
+  "tierName": "{tier} 级",
+  "filterPlaceholder": "按类别筛选",
+  "filterAll": "全部类别",
+  "weaponsCount": "版本强度中有 {n} 把",
+  "openPlaceholder": "查看武器",
+  "randomBtn": "随机挑选",
+  "anotherBtn": "换一把",
+  "backBtn": "返回列表",
+  "listHint": "使用 `/meta weapon` 查看游戏中的任意武器。",
+  "notInMeta": "不在当前版本强度中",
+  "weaponUsage": "用法：`.weapon <名称>`，例如 `.weapon ak117`"
 }

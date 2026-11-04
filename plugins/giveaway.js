@@ -376,7 +376,7 @@ async function startGiveaway({ client, db, hostId, hostName, guildId, channel, a
 module.exports = {
     name: 'giveaway',
     aliases: ['gw', 'giveway', 'concours'],
-    description: '🎁 ARCHON Classified Giveaway Protocol',
+    description: '🎁 Run a credits giveaway',
     category: 'ECONOMY',
     cooldown: 5000,
     init: init,
@@ -409,7 +409,7 @@ module.exports = {
         if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
             return message.reply('❌ You need Manage Server permission.').catch(() => {});
         }
-        const usage = '`.giveaway <time> <amount> <winners> <prize>`\nExample: `.giveaway 1h 50000 3 Neural Credits Drop`';
+        const usage = '`.giveaway <time> <amount> <winners> <prize>`\nExample: `.giveaway 1h 50000 3 Weekend drop`';
         if (args.length < 4) return message.reply(usage).catch(() => {});
 
         const duration = parseDuration(args[0]);

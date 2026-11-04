@@ -69,7 +69,7 @@
   "stats_line": "Queue Size: `{n}` · Volume: `{vol}%` · Loop: `{loop}`",
   "on_short": "On",
   "off_short": "Off",
-  "queue_title": "📋 NEURAL QUEUE",
+  "queue_title": "📋 Queue",
   "np_label": "NOW PLAYING",
   "up_next": "UP NEXT ({n})",
   "warming": "Warming up the decks...",

@@ -78,7 +78,7 @@ function buildCard(client, t, ctx) {
 
     const items = [
         { text: `*ARCHON CG-223 · System Status*` },
-        { text: `## ${em('eagle', '🦅')} ${t.title || 'Neural Engine Online'}` },
+        { text: `## ${em('eagle', '🦅')} ${t.title || 'Online'}` },
         { rule: true },
         { text:
             `${botStatus} **${t.botStatus || 'Status'}** · *${(client.presence?.status || 'online').toUpperCase()}*\n` +
@@ -152,7 +152,7 @@ module.exports = {
         const t = ns('alive', lang || 'en');
         const ctx = {
             rest: await measureRest(client),
-            guildName: message.guild?.name?.toUpperCase() || 'NEURAL NODE',
+            guildName: message.guild?.name?.toUpperCase() || 'ARCHON CG-223',
             version: client.version || '3.1.1',
             db,
         };
@@ -167,7 +167,7 @@ module.exports = {
         const t = ns('alive', lang);
         const ctx = {
             rest: await measureRest(client),
-            guildName: interaction.guild?.name?.toUpperCase() || 'NEURAL NODE',
+            guildName: interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223',
             version: client.version || '3.1.1',
             db: client.db,
         };

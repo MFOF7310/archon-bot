@@ -220,7 +220,7 @@ ARCHON CG-223 runs ${pluginCount} active plugins across Discord and Telegram.${p
 
 Economy 🪙 — daily claims, streak system (milestones: 3/7/30/100/365 days), streak shields, shop, transfers, cross-economy
 Market 📈 — Bamako Market: 4 states (Steady/Bull/Bear/Volatile), updates every 6h, invest and claim profits
-Leveling ⚡ — XP from messages, formula: floor(0.1 x sqrt(XP)) + 1, roles from Neural Initiate to Supreme Architect
+Leveling ⚡ — XP from messages, formula: floor(0.1 x sqrt(XP)) + 1, ranks from Initiate to Supreme Architect
 Moderation 🛡️ — automod, warn/mute/kick/ban, mention limits, join-velocity raid detection, appeal system
 Welcome 🎭 — cinematic canvas cards, tier assignment, auto-roles, stay-duration tracking
 Tickets 🎫 — button panels, categories, staff roles, transcripts, auto-close timers

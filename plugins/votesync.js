@@ -11,7 +11,7 @@ const EMOJIS = require('../config/emojis');
 const T = {
     en: {
         rewardAuthor: 'ARCHON CG-223 • TOP.GG VERIFIED',
-        dmTitle: ['🌟 NEURAL GRID SYNCHRONIZED 🌟', '⚡ COSMIC ENERGY RECEIVED ⚡', '🦅 THE ARCHITECT SALUTES YOU 🦅'],
+        dmTitle: ['🌟 Thanks for voting! 🌟', '⚡ COSMIC ENERGY RECEIVED ⚡', '🦅 THE ARCHITECT SALUTES YOU 🦅'],
         dear: 'Dear Agent,', thanks: 'Your vote has been received.', support: 'Thank you for your support! 🙌',
         reward: '💰 REWARD', streak: '🔥 STREAK', best: 'BEST', lifetime: '👑 LIFETIME',
         nextVote: '⏳ NEXT VOTE', rewardFmt: '\u001b[1;33m+{n} Credits\u001b[0m',
@@ -30,7 +30,7 @@ const T = {
     },
     fr: {
         rewardAuthor: 'ARCHON CG-223 • TOP.GG VÉRIFIÉ',
-        dmTitle: ['🌟 RÉSEAU NEURAL SYNCHRONISÉ 🌟', '⚡ ÉNERGIE COSMIQUE REÇUE ⚡', '🦅 L\'ARCHITECTE VOUS SALUE 🦅'],
+        dmTitle: ['🌟 Merci pour ton vote ! 🌟', '⚡ ÉNERGIE COSMIQUE REÇUE ⚡', '🦅 L\'ARCHITECTE VOUS SALUE 🦅'],
         dear: 'Cher Agent,', thanks: 'Votre vote a été reçu.', support: 'Merci pour votre soutien ! 🙌',
         reward: '💰 RÉCOMPENSE', streak: '🔥 SÉRIE', best: 'MEILLEURE', lifetime: '👑 TOTAL',
         nextVote: '⏳ PROCHAIN VOTE', rewardFmt: '\u001b[1;33m+{n} Crédits\u001b[0m',

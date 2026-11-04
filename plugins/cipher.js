@@ -322,7 +322,7 @@ function setupCipherDB(db) {
 // ───────────────────────────── command ─────────────────────────────
 const data = new SlashCommandBuilder()
   .setName('cipher')
-  .setDescription('🦅 Neural Cipher: decode scrambled words against the clock')
+  .setDescription('🦅 Cipher: unscramble words against the clock')
   .addSubcommand(sub => sub.setName('play').setDescription('🔐 Start a run')
     .addStringOption(opt => opt.setName('difficulty').setDescription('Pick your level').setRequired(true)
       .addChoices(
@@ -365,7 +365,7 @@ async function run(client, message, args, database, serverSettings) {
 module.exports = {
   name: 'cipher',
   aliases: ['neuralcipher', 'decrypt', 'codebreak'],
-  description: 'Neural Cipher: decode scrambled words against the clock and climb the leaderboard.',
+  description: 'Cipher: unscramble words against the clock and climb the leaderboard.',
   category: 'GAMING',
   cooldown: 10000,
   usage: '/cipher play <difficulty>',

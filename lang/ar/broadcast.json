@@ -27,7 +27,7 @@
   "noPermission": "❌ فقط مالك البوت يمكنه استخدام هذا الأمر.",
   "preparing": "🔍 **جارٍ التحضير…**\nأتحقق من السيرفرات التي يمكنها استلامها.",
   "sending": "📡 **Transmitting...** ({a}/{b} nodes)",
-  "success": "✅ **Broadcast Complete!**\n\n📊 **Transmission Report:**\n🟢 Active Nodes: **{a}**\n🔴 Failed Nodes: **{b}**\n📈 Success Rate: **0%**\n⏱️ Time: **{c}ms**",
+  "success": "✅ **تم إرسال البث**\n\n🟢 تم التوصيل: **{a}**\n🔴 فشل: **{b}**\n📈 نسبة النجاح: **{rate}%**\n⏱️ المدة: **{c} ms**",
   "footer": "ARCHON CG-223 • بث",
   "mentionWarning": "⚠️ This will send **{a}** to all servers!",
   "noServers": "❌ لا يوجد سيرفر يمكنه الاستلام الآن.",

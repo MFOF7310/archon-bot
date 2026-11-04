@@ -110,7 +110,7 @@ module.exports = {
                     `• <code>/leaderboard</code> — Top players\n` +
                     `• <code>/invest</code> — Invest in the Bamako Market\n\n` +
                     `🔥 <b>Streak Bonuses:</b> 7 days = +500 🪙 · 30 days = +2000 🪙\n` +
-                    `🏆 <b>5 Ranks:</b> Neural Recruit → System Architect`,
+                    `🏆 <b>5 Ranks:</b> Recruit → System Architect`,
                     { parse_mode: 'HTML', extra: { reply_markup: bb } }
                 );
                 return true;

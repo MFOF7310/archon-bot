@@ -27,7 +27,7 @@
   "noPermission": "❌ Seul le propriétaire du bot peut utiliser cette commande.",
   "preparing": "🔍 **Préparation…**\nJe vérifie quels serveurs peuvent le recevoir.",
   "sending": "📡 **Transmission en cours...** ({a}/{b} nœuds)",
-  "success": "✅ **Diffusion Terminée!**\n\n📊 **Rapport de Transmission:**\n🟢 Nœuds Actifs: **{a}**\n🔴 Nœuds Échoués: **{b}**\n📈 Taux de Réussite: **0%**\n⏱️ Temps: **{c}ms**",
+  "success": "✅ **Diffusion envoyée**\n\n🟢 Livrés : **{a}**\n🔴 Échecs : **{b}**\n📈 Taux de réussite : **{rate} %**\n⏱️ Durée : **{c} ms**",
   "footer": "ARCHON CG-223 • Diffusion",
   "mentionWarning": "⚠️ Ceci enverra **{a}** à tous les serveurs!",
   "noServers": "❌ Aucun serveur ne peut le recevoir pour l'instant.",

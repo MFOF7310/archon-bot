@@ -69,7 +69,7 @@
   "stats_line": "队列: `{n}` · 音量: `{vol}%` · 循环: `{loop}`",
   "on_short": "开",
   "off_short": "关",
-  "queue_title": "📋 神经队列",
+  "queue_title": "📋 播放队列",
   "np_label": "正在播放",
   "up_next": "接下来 ({n})",
   "warming": "正在预热舞台...",

@@ -1700,6 +1700,21 @@ function rateLimit(key, maxEvents = 5, windowMs = 10000) {
 
 client.rateLimit = rateLimit;
 
+// Same counter as rateLimit(), but says how long to wait: 0 when the action may go ahead (and is counted),
+// otherwise the seconds until the oldest counted action leaves the window. The dashboard shows that as a countdown.
+function rateWait(key, maxEvents, windowMs) {
+    const now = Date.now();
+    const recent = (eventRateLimits.get(key) || []).filter((time) => now - time < windowMs);
+    if (recent.length >= maxEvents) {
+        eventRateLimits.set(key, recent);
+        return Math.max(1, Math.ceil((recent[0] + windowMs - now) / 1000));
+    }
+    recent.push(now);
+    eventRateLimits.set(key, recent);
+    return 0;
+}
+client.rateWait = rateWait;
+
 // ================= PER-SERVER USER DATA ACCESS LAYER =================
 // All user data operations are now scoped to a specific guild.
 // The composite key (id, guild_id) ensures complete data isolation.
@@ -3516,7 +3531,7 @@ setInterval(async () => {
                 const guild = user.guild_id ? client.guilds.cache.get(user.guild_id) : null;
                 const settings = guild ? client.getServerSettings(user.guild_id) : null;
                 const prefix = settings?.prefix || '.';
-                const guildName = guild?.name || 'Neural Network';
+                const guildName = guild?.name || 'ARCHON CG-223';
                 const guildIcon = guild?.iconURL({ size: 128 }) || client.user.displayAvatarURL();
 
                 let marketMultiplier = 1.0, marketTrend = 'STEADY', trendEmoji = '📊';
@@ -3764,8 +3779,8 @@ setInterval(async () => {
             
             const bootEmbed = new EmbedBuilder()
                 .setColor(trend.color || '#2ecc71')
-                .setAuthor({ name: '🦅 ARCHON CG-223 // NEURAL ENGINE ONLINE', iconURL: client.user.displayAvatarURL() })
-                .setTitle('⚡ NEURAL ENGINE BOOT COMPLETE')
+                .setAuthor({ name: '🦅 ARCHON CG-223 is online', iconURL: client.user.displayAvatarURL() })
+                .setTitle('⚡ Started')
                 .setDescription(
                     `\`\`\`ansi\n` +
                     `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
@@ -3789,7 +3804,7 @@ setInterval(async () => {
                     { name: '⚡ Slash Commands', value: `\`\`\`ansi\n\u001b[1;32m${commands.length} commands registered\u001b[0m\n\`\`\``, inline: true },
                     { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
                 )
-                .setFooter({ text: `🦅 ARCHON CG-223 • Neural Engine v${client.version} • bamako-steel-dev.xyz`, iconURL: client.user.displayAvatarURL() })
+                .setFooter({ text: `🦅 ARCHON CG-223 v${client.version} • bamako-steel-dev.xyz`, iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();
 
             await owner.send({ embeds: [bootEmbed] }).catch(() => {});
@@ -3984,7 +3999,7 @@ if (message.content && message.content.length > 4000) {
 
             const userLang = (['en','fr','bm','zh','ar'].includes(serverSettings?.language) ? serverSettings.language : null) || client.userLastLang?.get(message.author.id) || 'en';
             const isDM = !message.guild;
-            const guildName = isDM ? 'NEURAL NETWORK' : message.guild.name;
+            const guildName = isDM ? 'ARCHON CG-223' : message.guild.name;
             const guildIcon = isDM ? client.user.displayAvatarURL() : message.guild.iconURL();
 
             // ================= LEVEL BANNER SYSTEM (Milestone Images) =================
@@ -4007,11 +4022,11 @@ if (message.content && message.content.length > 4000) {
             // Determine tier name & color
             let levelTier, levelTierColor, tierEmoji;
             if (newLevel <= 5) {
-                levelTier = userLang === 'fr' ? 'Initié Neural' : 'Neural Initiate';
+                levelTier = userLang === 'fr' ? 'Initié' : 'Initiate';
                 levelTierColor = '#95a5a6';
                 tierEmoji = '🌱';
             } else if (newLevel <= 10) {
-                levelTier = userLang === 'fr' ? 'Chevalier Neural' : 'Neural Knight';
+                levelTier = userLang === 'fr' ? 'Chevalier' : 'Knight';
                 levelTierColor = '#9b59b6';
                 tierEmoji = '⚔️';
             } else if (newLevel <= 20) {
@@ -4567,17 +4582,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('ls_toggle:')) {
         return require('./plugins/livestream').handleToggle(interaction, client).catch(e => console.error('[LIVESTREAM] toggle:', e.message));
     }
-    if (interaction.isButton() && interaction.customId === 'meta_reroll') {
-        try {
-            const metaPlugin = require('./plugins/meta.js');
-            const embed = metaPlugin.randomPick(interaction.guild, require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id));
-            if (embed) {
-                await interaction.update({ embeds: [embed], components: [metaPlugin.rerollRow(require('./lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user?.id))] }).catch(() => {});
-            }
-        } catch (e) {
-            console.error('[META]', e.message);
-        }
-        return;
+    // /meta card: class filter, weapon picker, random pick, back to the list (and the old cards' "reroll" button)
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && (interaction.customId.startsWith('meta:') || interaction.customId === 'meta_reroll')) {
+        return require('./plugins/meta.js').handleComponent(interaction, client).catch(e => console.error('[META] component:', e.message));
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('scrim_')) {
@@ -4789,7 +4796,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                 )
                 .setThumbnail(clicker.displayAvatarURL({ dynamic: true, size: 256 }))
                 .setFooter({ 
-                    text: `🏗️ Architect CG-223 • ${interaction.guild?.name || 'Neural Network'}` 
+                    text: `🏗️ Architect CG-223 • ${interaction.guild?.name || 'DM'}` 
                 })
                 .setTimestamp();
             
@@ -4981,15 +4988,15 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             await targetUser.send({
                 embeds: [new (require('discord.js').EmbedBuilder)()
                     .setColor('#00ff88')
-                    .setAuthor({ name: '📡 NEURAL TRANSMISSION — ARCHITECT REPLY', iconURL: client.user.displayAvatarURL() })
+                    .setAuthor({ name: '📡 Reply from the Architect', iconURL: client.user.displayAvatarURL() })
                     .setDescription(
                         '```ansi\n' +
                         '\u001b[1;32m\u25b8 FROM      \u001b[0mThe Architect\n' +
                         '\u001b[1;37m\u25b8 MESSAGE   \u001b[0m' + replyText + '\n' +
-                        '\u001b[0;37m\u25b8 TIP       \u001b[0mUse .contact to send a follow-up\n' +
+                        '\u001b[0;37m\u25b8 TIP       \u001b[0mUse .contact to answer\n' +
                         '```'
                     )
-                    .setFooter({ text: 'NEURAL CONTACT v2.0 · BAMAKO_223 🇲🇱' })
+                    .setFooter({ text: 'ARCHON CG-223 · Contact · BAMAKO_223 🇲🇱' })
                     .setTimestamp()
                 ]
             });
@@ -5011,7 +5018,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             const { EmbedBuilder } = require('discord.js');
 
             if (!interaction.member?.voice?.channel) {
-                return interaction.reply({ content: `${require('./config/emojis').warning} Neural link required — join a voice channel to initialize the music grid.`, flags: 64 }).catch(() => {});
+                return interaction.reply({ content: `${require('./config/emojis').warning} Join a voice channel first, then try again.`, flags: 64 }).catch(() => {});
             }
 
             await interaction.deferUpdate().catch(() => {});
@@ -5397,7 +5404,7 @@ async function fallbackWelcome(member, client, db, cfg, Style) {
     const embed = new EmbedBuilder()
         .setColor(0x00fbff)
         .setImage(dataUrl)
-        .setFooter({ text: 'ARCHON CG-223 | Neural Grid' })
+        .setFooter({ text: 'ARCHON CG-223' })
         .setTimestamp();
 
     const ansi = Style.ansiWelcome(member, count);
@@ -5595,12 +5602,20 @@ apiApp.use(cors({
 }));
 
 // Capture raw body for webhook signature verification
-// 🛡️ GLOBAL API RATE LIMIT — Protects the bot from internal spam/DDoS
+// 🛡️ GLOBAL API RATE LIMIT — for anything that is not this machine.
+// Every dashboard request reaches the bot from 127.0.0.1, so counting by IP put ALL dashboard users in one
+// bucket of 100 requests per 15 minutes: a few people browsing emptied it and every page failed ("Too many
+// requests"). The dashboard already limits each visitor by their real IP; calls from this machine are not counted here.
+const isLocalCaller = (req) => {
+    const a = String(req.socket?.remoteAddress || '');
+    return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+};
 const apiLimiter = expressRateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per 15 minutes
+    max: 100, // Limit each outside IP to 100 requests per 15 minutes
     standardHeaders: true,
     legacyHeaders: false,
+    skip: isLocalCaller,
     message: { error: 'Too many requests from this IP, please try again later.' }
 });
 
@@ -6675,7 +6690,7 @@ apiApp.post('/api/verify/:guildId/panel', requireAdmin, async (req, res) => {
         if (!/^\d{17,20}$/.test(String(channelId || ''))) return res.status(400).json({ error: 'channel_invalid' });
         const ch = a.guild.channels.cache.get(String(channelId));
         if (!ch || !(ch.type === 0 || ch.type === 5)) return res.status(400).json({ error: 'channel_not_text' });
-        if (client.rateLimit(`vpanel-api:${gid}`, 3, 60000)) return res.status(429).json({ error: 'slow_down' });
+        { const _wait = client.rateWait(`vpanel-api:${gid}`, 3, 60000); if (_wait) return res.set('Retry-After', String(_wait)).status(429).json({ error: 'slow_down', retryAfter: _wait }); }
         const d = require('./lib/canPost').diagnose(a.guild, ch, a.guild.members.me);
         if (!d.ok) return res.status(400).json({ error: 'cannot_post', reason: d.reason, missing: d.missing || [], role: d.role || null });
 
@@ -6702,7 +6717,7 @@ apiApp.post('/api/verify/:guildId/approve', requireAdmin, async (req, res) => {
         const { isPremium } = require('./plugins/premium.js');
         if (!isPremium(db, gid)) return res.status(402).json({ error: 'premium_required' });
         if (!/^\d{17,20}$/.test(String(memberId || ''))) return res.status(400).json({ error: 'member_invalid' });
-        if (client.rateLimit(`vapprove-api:${gid}`, 20, 60000)) return res.status(429).json({ error: 'slow_down' });
+        { const _wait = client.rateWait(`vapprove-api:${gid}`, 20, 60000); if (_wait) return res.set('Retry-After', String(_wait)).status(429).json({ error: 'slow_down', retryAfter: _wait }); }
         const m = await a.guild.members.fetch(String(memberId)).catch(() => null);
         if (!m || m.user.bot) return res.status(404).json({ error: 'member_not_found' });
         // Only people the gate is holding: waiting on a captcha, or carrying the unverified role
@@ -6976,7 +6991,7 @@ apiApp.post('/api/roles-config/:guildId', requireAdmin, async (req, res) => {
         const a = await rolesActor(req.params.guildId, userId);
         if (a.error) return res.status(a.code).json({ error: a.error });
         const g = a.guild, db = client.db;
-        if (client.rateLimit(`roles-api:${g.id}`, 10, 60000)) return res.status(429).json({ error: 'slow_down' });
+        { const _wait = client.rateWait(`roles-api:${g.id}`, 10, 60000); if (_wait) return res.set('Retry-After', String(_wait)).status(429).json({ error: 'slow_down', retryAfter: _wait }); }
 
         const current = RR.readSlots(db, g.id);
         const v = RR.validateChanges(g, current, changes, a.member);

@@ -711,7 +711,7 @@ module.exports = {
         const prefix = serverSettings?.prefix || '.';
         lang = client.detectLanguage ? client.detectLanguage('tiktok', message.guild?.id) : 'en';
         const guildId = message.guild?.id;
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
 
         initDatabase(db);

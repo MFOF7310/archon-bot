@@ -229,7 +229,7 @@ function buildNowPlayingEmbed(q, client) {
     return new EmbedBuilder()
         .setColor(ARCHON.cyan)
         .setAuthor({
-            name: '// CLASSIFIED // ARCHON MUSIC ENGINE //',
+            name: '🎵 ARCHON Music',
             iconURL: t.spotifyUrl
                 ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png'
                 : client.user.displayAvatarURL()
@@ -240,18 +240,18 @@ function buildNowPlayingEmbed(q, client) {
             `\u001b[1;36m▸ TRACK    \u001b[0m ${t.title.substring(0,50)}\n` +
             `\u001b[1;36m▸ ARTIST   \u001b[0m ${t.artist || 'Unknown'}\n` +
             `\u001b[1;36m▸ ALBUM    \u001b[0m ${t.album || 'Unknown'}\n` +
-            `\u001b[1;36m▸ SOURCE   \u001b[0m ${t.source || 'Neural Feed'}\n` +
+            `\u001b[1;36m▸ SOURCE   \u001b[0m ${t.source || 'Unknown'}\n` +
             `\u001b[1;36m▸ ADDED BY \u001b[0m ${t.requestedBy}\n` +
             `\`\`\``
         )
         .addFields(
-            { name: '📊 NEURAL STREAM', value: `\`\`\`ansi\n\u001b[1;32m${bar}\u001b[0m ${pct}%\n\u001b[0;37m${formatTime(elapsed)} / ${formatTime(t.duration)}\u001b[0m\n\`\`\``, inline: false },
+            { name: '📊 Progress', value: `\`\`\`ansi\n\u001b[1;32m${bar}\u001b[0m ${pct}%\n\u001b[0;37m${formatTime(elapsed)} / ${formatTime(t.duration)}\u001b[0m\n\`\`\``, inline: false },
             { name: '🎚️ VOLUME', value: `\`${q.volume}%\``, inline: true },
             { name: '📋 QUEUE', value: `\`${q.tracks.length} tracks\``, inline: true },
             { name: '🔁 LOOP', value: `\`${q.loop ? 'ON' : 'OFF'}\``, inline: true },
         )
         .setThumbnail(t.thumbnail || client.user.displayAvatarURL())
-        .setFooter({ text: `BAMAKO_223 🇲🇱 • NEURAL MUSIC GRID` })
+        .setFooter({ text: `BAMAKO_223 🇲🇱 • ARCHON Music` })
         .setTimestamp();
 }
 
@@ -275,7 +275,7 @@ function buildQueueEmbed(q, client) {
     ).join('\n') || '\u001b[0;37m  ' + t('music.queue_empty', lang) + '\u001b[0m';
     return new EmbedBuilder()
         .setColor(ARCHON.purple)
-        .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ name: '🎵 ARCHON Music', iconURL: client.user.displayAvatarURL() })
         .setTitle(t('music.queue_title', lang))
         .addFields(
             { name: t('music.np_label', lang), value: `\`\`\`ansi\n\u001b[1;32m▸ ${q.currentTrack?.title?.substring(0,50) || 'Nothing'}\u001b[0m\n\`\`\``, inline: false },
@@ -1116,7 +1116,7 @@ async function playNext(q) {
         if (q._consecutiveErrors >= 5) {
             q._consecutiveErrors = 0;
             const giveUpEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
+                .setAuthor({ name: '🎵 ARCHON Music', iconURL: q._client?.user?.displayAvatarURL() })
                 .setDescription(t('music.too_many_errors', lang, { cmd_play: mention(global.client, 'music', 'play') }));
             await q.textChannel?.send({ embeds: [giveUpEmbed] }).catch(() => {});
             q.autoplay = false;
@@ -1124,7 +1124,7 @@ async function playNext(q) {
         }
 
         const errEmbed = new EmbedBuilder().setColor(ARCHON.red)
-            .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC ENGINE //', iconURL: q._client?.user?.displayAvatarURL() })
+            .setAuthor({ name: '🎵 ARCHON Music', iconURL: q._client?.user?.displayAvatarURL() })
             .setDescription(t('music.track_error', lang, { count: q._consecutiveErrors }));
         if (q.persistentMsg) {
             await q.persistentMsg.delete().catch(() => {});
@@ -1794,7 +1794,7 @@ module.exports = {
             const renderLibrary = () => {
                 const embed = new EmbedBuilder()
                     .setColor(ARCHON.cyan)
-                    .setAuthor({ name: '// CLASSIFIED // ARCHON MUSIC LIBRARY //', iconURL: client.user.displayAvatarURL() })
+                    .setAuthor({ name: '🎵 ARCHON Music library', iconURL: client.user.displayAvatarURL() })
                     .setTimestamp();
                 const rows = [];
 

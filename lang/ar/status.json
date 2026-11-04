@@ -1,5 +1,5 @@
 {
-  "author": "أركون CG-223 | الوصلة العصبية",
+  "author": "ARCHON CG-223 | الحالة",
   "title": "─ تشخيصات نظام المهندس ─",
   "node": "العقدة",
   "integrity": "التكامل",
@@ -10,7 +10,7 @@
   "webSocket": "WebSocket",
   "active": "نشط",
   "online": "متصل",
-  "neuralCore": "🧠 النواة العصبية (Groq LPU™)",
+  "neuralCore": "🧠 محرك الذكاء الاصطناعي (Groq LPU™)",
   "inference": "الاستدلال",
   "load": "الحمل",
   "agents": "الوكلاء",

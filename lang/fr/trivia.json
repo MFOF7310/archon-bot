@@ -1,6 +1,6 @@
 {
-  "name": "Trivia Neural",
-  "title": "🧠 Trivia Neural",
+  "name": "Quiz",
+  "title": "🧠 Quiz",
   "menuTitle": "Choisis une catégorie et un niveau",
   "menuPlayer": "**{name}** · {rank} · niveau {level}",
   "difficultyInfo": "{questions} questions · {seconds} s chacune",

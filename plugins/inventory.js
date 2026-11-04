@@ -10,10 +10,10 @@ function getTrend() { try { const mm = require('./market-manager'); const ms = m
 
 module.exports = {
     name: 'shop', aliases: ['store', 'boutique', 'catalog', 'catalogue', 'marketplace', 'buy', 'purchase', 'acheter', 'inventory', 'inv', 'inventaire'],
-    description: '🛒 Browse the Neural Shop, buy items, and manage your inventory.', category: 'ECONOMY', usage: '.shop | .buy <item-id> | .inventory',
+    description: '🛒 Browse the shop, buy items and manage your inventory.', category: 'ECONOMY', usage: '.shop | .buy <item-id> | .inventory',
     examples: ['.shop', '.buy starter_pack', '.inventory', '.inv sell starter_pack'], cooldown: 3000,
 
-    data: new SlashCommandBuilder().setName('inventory').setDescription('🛒 Neural Shop Bamako')
+    data: new SlashCommandBuilder().setName('inventory').setDescription('🛒 Bamako Shop')
         .addSubcommand(sub => sub.setName('browse').setDescription('Browse the shop'))
         .addSubcommand(sub => sub.setName('buy').setDescription('Buy an item').addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true)))
         .addSubcommand(sub => sub.setName('inventory').setDescription('View your inventory'))
@@ -24,7 +24,7 @@ module.exports = {
         const prefix = serverSettings?.prefix || '.';
         const userId = message.author.id;
         const guild = message.guild;
-        const guildName = guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = guild?.iconURL() || client.user.displayAvatarURL();
         const version = client.version || '2.0.0';
 
@@ -50,7 +50,7 @@ module.exports = {
             || {};
         const lang = ss.language || 'en';
         const prefix = ss.prefix || '.';
-        const guildName = interaction.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = interaction.guild?.iconURL() || client.user.displayAvatarURL();
         const version = client.version || '2.0.0';
         const serverSettings = interaction.guild ? client.getServerSettings?.(interaction.guild.id) || {} : {};

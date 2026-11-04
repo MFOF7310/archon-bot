@@ -98,7 +98,7 @@ const embed = new EmbedBuilder()
     .setAuthor({ name: t.title, iconURL: client.user.displayAvatarURL() })
     .setTitle(t.desc)
     .setDescription(i18n.t('refresh.preview', typeof lang !== 'undefined' ? lang : 'en', { xp: xpUsers, credits: creditUsers, total: totalUsers }) + '\n' + healthPreview)
-            .setFooter({ text: 'ARCHON CG-223 • Neural Override System' })
+            .setFooter({ text: 'ARCHON CG-223 • Data reset' })
             .setTimestamp();
 
         const select = new StringSelectMenuBuilder()

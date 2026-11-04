@@ -6,7 +6,7 @@ const formatNumber = (n) => n?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') 
 function calcLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1; }
 
 const RANKS = [
-    { minLv: 1, title: '🌱 NEURAL RECRUIT' },
+    { minLv: 1, title: '🌱 RECRUIT' },
     { minLv: 6, title: '🔹 FIELD AGENT' },
     { minLv: 16, title: '💠 CYBER SPECIALIST' },
     { minLv: 31, title: '⚜️ BKO COMMANDER' },

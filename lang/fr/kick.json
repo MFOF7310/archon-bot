@@ -7,7 +7,7 @@
   "entity": "👤 ENTITÉ",
   "moderator": "🛡️ MODÉRATEUR",
   "log": "📝 RAISON",
-  "reason": "Nécessité opérationnelle.",
+  "reason": "Aucune raison donnée.",
   "error": "❌ Je n'ai pas pu expulser cette personne. Quelque chose s'est mal passé du côté de Discord, réessaie dans un instant.",
   "dmTitle": "👢 VOUS AVEZ ÉTÉ EXPULSÉ",
   "dmServer": "Serveur",

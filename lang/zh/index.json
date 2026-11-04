@@ -16,7 +16,7 @@
   "guardian_shop": "{prefix}shop - 商店",
   "guardian_lydia": "{prefix}lydia [消息] - 和 AI 聊天",
   "profile_title": "👤 资料 • {username}",
-  "profile_stats_header": "### 📊 神经统计",
+  "profile_stats_header": "### 📊 统计",
   "stat_level": "等级",
   "stat_progress": "进度",
   "stat_credits": "积分",

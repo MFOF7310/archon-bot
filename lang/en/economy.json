@@ -1,6 +1,6 @@
 {
   "credit": {
-    "desc": "💰 Access the Neural Bank of Bamako",
+    "desc": "💰 Open the Bank of Bamako",
     "sub_balance": "Check balance",
     "sub_transfer": "Transfer credits",
     "sub_top": "View top agents",
@@ -25,7 +25,7 @@
     "purchased": "**{user}** picked up **{item}** {emoji} — nice taste!"
   },
   "inventory": {
-    "title": "🛒 Neural Shop Bamako",
+    "title": "🛒 Bamako Shop",
     "sub_browse": "Browse the shop",
     "sub_buy": "Buy an item",
     "sub_sell": "Sell an item",
@@ -46,8 +46,8 @@
     "no_investments": "{emoji} No investments yet — put your credits to work!"
   },
   "transfer": {
-    "desc": "💸 Transfer credits to another agent via the neural network",
-    "header": "🦅 *ARCHON NEURAL TRANSFER*\n\n",
+    "desc": "💸 Send credits to another member",
+    "header": "🦅 *ARCHON transfer*\n\n",
     "opt_amount": "Amount of credits to transfer",
     "opt_telegram_id": "Telegram ID to send credits to",
     "opt_user": "User to send credits to",
@@ -92,7 +92,7 @@
     "usage_transfer": "Mention a user: `.global transfer @user 1000`"
   },
   "claim": {
-    "desc": "⚡ Claim your daily rewards when the neural cycle is complete",
+    "desc": "⚡ Claim your daily rewards",
     "stats_block": "**{user}**\n```yaml\nLevel: {level}\nXP: {xp}\nCredits: {credits}\nStreak: {streak} days\n```",
     "reminder_desc": "Time to claim your daily on {guild}!"
   },
@@ -135,7 +135,7 @@
     "sub_stats": "View your voting stats",
     "title": "Vote Stats",
     "operative": "Operative",
-    "greeting": "**Operative {user},**\n\n",
+    "greeting": "**Hi {user},**\n\n",
     "no_history": "❌ No vote history found.",
     "fixvotes_done": "❌ fixvotes already ran on {date} — can't run again, to protect against duplicate credits.",
     "raw_db": "🔍 RAW DB: credits={credits}",

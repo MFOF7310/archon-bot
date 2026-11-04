@@ -1,6 +1,6 @@
 {
-  "name": "神经问答",
-  "title": "🧠 神经问答",
+  "name": "问答",
+  "title": "🧠 问答",
   "menuTitle": "选择类别和难度",
   "menuPlayer": "**{name}** · {rank} · {level} 级",
   "difficultyInfo": "{questions} 道题 · 每题 {seconds} 秒",

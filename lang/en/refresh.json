@@ -1,10 +1,10 @@
 {
-  "title": "☢️ NEURAL SYSTEM OVERRIDE",
-  "desc": "Select a purge operation, Architect.",
+  "title": "☢️ Data reset",
+  "desc": "Choose what to reset.",
   "confirm": "⚠️ CONFIRM",
   "abort": "❌ ABORT",
   "security": "⛔ Master Node access restricted to the Architect.",
-  "aborted": "✅ Operation aborted. Database intact.",
+  "aborted": "✅ Cancelled. Nothing was deleted.",
   "timeout": "⏰ Authorization expired.",
   "backupSent": "📡 Backup sent to your DMs.",
   "success": "☢️ **{type}** complete!\n```yaml\nAffected: {count} records\nBackup: ✅ Saved\nTimestamp: {ts}\n```",

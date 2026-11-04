@@ -33,7 +33,7 @@ module.exports = {
         
         const t = loadT(lang);
         const version = client.version || '1.8.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'NEURAL NODE';
+        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
         const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
         const ping = Math.round(client.ws.ping);
         
@@ -298,7 +298,7 @@ module.exports = {
                 }
             )
             .setFooter({ 
-                text: `${interaction.guild?.name?.toUpperCase() || 'NEURAL NODE'} • ${t.footer} • v${version}`, 
+                text: `${interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • ${t.footer} • v${version}`, 
                 iconURL: interaction.guild?.iconURL() || client.user.displayAvatarURL() 
             })
             .setTimestamp();

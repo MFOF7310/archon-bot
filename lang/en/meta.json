@@ -17,5 +17,17 @@
   "weaponFooter": "{season} meta • ARCHON CG-223",
   "noMatch": "Couldn't find **{q}** in the meta list.\nTry these: {names}",
   "noneYet": "None yet",
-  "reroll": "🔄 Reroll"
+  "reroll": "🔄 Reroll",
+  "updated": "Updated {updated}",
+  "tierName": "{tier} tier",
+  "filterPlaceholder": "Filter by class",
+  "filterAll": "All classes",
+  "weaponsCount": "{n} weapons in the meta",
+  "openPlaceholder": "Open a weapon",
+  "randomBtn": "Random pick",
+  "anotherBtn": "Another one",
+  "backBtn": "Back to the list",
+  "listHint": "Use `/meta weapon` to look up any weapon in the game.",
+  "notInMeta": "not in the current meta",
+  "weaponUsage": "Usage: `.weapon <name>`, for example `.weapon ak117`"
 }

@@ -1,6 +1,6 @@
 {
   "credit": {
-    "desc": "💰 Accède à la Banque Neurale de Bamako",
+    "desc": "💰 Ouvre la Banque de Bamako",
     "sub_balance": "Voir ton solde",
     "sub_transfer": "Transférer des crédits",
     "sub_top": "Voir les meilleurs agents",
@@ -25,7 +25,7 @@
     "purchased": "**{user}** a dégainé **{item}** {emoji} — excellent choix !"
   },
   "inventory": {
-    "title": "🛒 Boutique Neurale Bamako",
+    "title": "🛒 Boutique de Bamako",
     "sub_browse": "Parcourir la boutique",
     "sub_buy": "Acheter un objet",
     "sub_sell": "Vendre un objet",
@@ -46,8 +46,8 @@
     "no_investments": "{emoji} Aucun investissement pour le moment — fais bosser tes crédits !"
   },
   "transfer": {
-    "desc": "💸 Transfère via le réseau neural",
-    "header": "🦅 *TRANSFERT NEURAL ARCHON*\n\n",
+    "desc": "💸 Envoie des crédits à un autre membre",
+    "header": "🦅 *Transfert ARCHON*\n\n",
     "opt_amount": "Combien de crédits",
     "opt_telegram_id": "ID Telegram du destinataire",
     "opt_user": "Utilisateur destinataire",
@@ -92,7 +92,7 @@
     "usage_transfer": "Mentionne un utilisateur : `.global transfer @user 1000`"
   },
   "claim": {
-    "desc": "⚡ Récupère tes récompenses à la fin du cycle neural",
+    "desc": "⚡ Récupère tes récompenses du jour",
     "stats_block": "**{user}**\n```yaml\nNiveau : {level}\nXP : {xp}\nCrédits : {credits}\nSérie : {streak} jours\n```",
     "reminder_desc": "Ton daily t'attend sur {guild} ! Ne casse pas ta série !"
   },
@@ -135,7 +135,7 @@
     "sub_stats": "Tes stats de vote",
     "title": "Stats de vote",
     "operative": "Agent",
-    "greeting": "**Agent {user},**\n\n",
+    "greeting": "**Salut {user},**\n\n",
     "no_history": "❌ Aucun historique — va voter !",
     "fixvotes_done": "❌ fixvotes déjà exécuté le {date} — impossible à relancer pour éviter les doublons.",
     "raw_db": "🔍 DB brute : credits={credits}",

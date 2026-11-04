@@ -1,6 +1,6 @@
 {
-  "name": "Neural Cipher",
-  "title": "🦅 Neural Cipher · {tier}",
+  "name": "Cipher",
+  "title": "🦅 Cipher · {tier}",
   "roundTitle": "Word {n} of {total} · {method}",
   "howTo": "Decode the word below. Tap **Answer** to type your guess. A wrong answer ends the run, but you keep what you've earned.",
   "hint": "Hint",

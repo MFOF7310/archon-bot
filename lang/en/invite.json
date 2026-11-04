@@ -11,7 +11,7 @@
   "serverCount": "Connected Realms",
   "userCount": "Agents Trained",
   "commandCount": "Arcane Spells",
-  "ping": "Neural Latency",
+  "ping": "Latency",
   "inviteSuccess": "✅ **Invocation Successful!**\nArchitect CG-223 has been summoned to your realm.",
   "alreadyInServer": "⚠️ **Already Present**\nThe Architect already resides in this realm.",
   "error": "❌ **Invocation Failed**\nCould not summon the Architect.",
@@ -19,5 +19,5 @@
   "supportServer": "Join the Council",
   "website": "Documentation",
   "viewStats": "View Stats",
-  "surprise": "✨ *\"The neural network acknowledges your presence...\"* ✨"
+  "surprise": "✨ *Thanks for having me around!* ✨"
 }

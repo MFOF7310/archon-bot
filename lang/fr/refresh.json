@@ -1,10 +1,10 @@
 {
-  "title": "☢️ OUTREPASSEMENT SYSTÈME NEURAL",
-  "desc": "Sélectionnez une opération, Architecte.",
+  "title": "☢️ Réinitialisation des données",
+  "desc": "Choisis ce qu'il faut réinitialiser.",
   "confirm": "⚠️ CONFIRMER",
   "abort": "❌ ANNULER",
   "security": "⛔ Accès restreint à l'Architecte.",
-  "aborted": "✅ Opération annulée. Base de données intacte.",
+  "aborted": "✅ Annulé. Rien n'a été supprimé.",
   "timeout": "⏰ Autorisation expirée.",
   "backupSent": "📡 Sauvegarde envoyée en MP.",
   "success": "☢️ **{type}** terminé!\n```yaml\nAffectés: {count} enregistrements\nSauvegarde: ✅ Sauvée\nHorodatage: {ts}\n```",

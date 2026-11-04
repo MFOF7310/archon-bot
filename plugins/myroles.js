@@ -191,7 +191,7 @@ async function buildRoleDossier(client, guild, member, lang, isSelf) {
         .setDescription(description + roleBlocks.join('\n') + statsBlock)
         .setThumbnail(member.displayAvatarURL({ dynamic: true, size: 256 }))
         .setFooter({ 
-            text: `${guild.name} • Neural Role Registry • [NODE_BKO]`, 
+            text: `${guild.name} • Roles`, 
             iconURL: client.user?.displayAvatarURL() || null
         })
         .setTimestamp();
@@ -217,6 +217,6 @@ function buildErrorEmbed(lang, type) {
         .setColor('#e74c3c')
         .setTitle(data.title)
         .setDescription(data.desc)
-        .setFooter({ text: 'BAMAKO_223 • Security Protocol' })
+        .setFooter({ text: 'BAMAKO_223' })
         .setTimestamp();
 }

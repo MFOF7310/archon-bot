@@ -11,7 +11,7 @@
   "serverCount": "Royaumes Connectés",
   "userCount": "Agents Formés",
   "commandCount": "Sorts Arcane",
-  "ping": "Latence Neurale",
+  "ping": "Latence",
   "inviteSuccess": "✅ **Invocation Réussie!**\nL'Architecte CG-223 a été invoqué dans votre royaume.",
   "alreadyInServer": "⚠️ **Déjà Présent**\nL'Architecte réside déjà dans ce royaume.",
   "error": "❌ **Invocation Échouée**\nImpossible d'invoquer l'Architecte.",
@@ -19,5 +19,5 @@
   "supportServer": "Rejoindre le Conseil",
   "website": "Documentation",
   "viewStats": "Voir les Stats",
-  "surprise": "✨ *\"Le réseau neuronal reconnaît votre présence...\"* ✨"
+  "surprise": "✨ *Merci de m'avoir parmi vous !* ✨"
 }

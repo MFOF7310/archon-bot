@@ -16,7 +16,7 @@
   "guardian_shop": "{prefix}shop - المتجر",
   "guardian_lydia": "{prefix}lydia [رسالة] - كلم الذكاء الاصطناعي",
   "profile_title": "👤 الملف • {username}",
-  "profile_stats_header": "### 📊 الإحصائيات العصبية",
+  "profile_stats_header": "### 📊 الإحصائيات",
   "stat_level": "المستوى",
   "stat_progress": "التقدم",
   "stat_credits": "الرصيد",

@@ -15,7 +15,7 @@
   "day": "day",
   "verifyWith": "Verify with",
   "checkBalance": "Check your balance anytime with `{prefix}bal` or `{prefix}credits`",
-  "footer": "NEURAL DAILY • CLAIM EVERY 24H",
+  "footer": "Daily reward • Claim every 24 h",
   "streakMilestone": "🔥 STREAK MILESTONE!",
   "bonusAdded": "Bonus added",
   "levelUp": "🎉 LEVEL UP!",
@@ -35,5 +35,5 @@
   "memory_empty": "Your memory vault is empty. Tell me something to remember!",
   "memory_empty_hint": "How to save a memory:",
   "memory_example": "Just say: \"Remember my favorite color is blue\"",
-  "channelRestricted": "🤷‍♂️ Not here, agent! You can only claim your daily rewards in {channel}."
+  "channelRestricted": "🤷‍♂️ Not here! You can only claim your daily rewards in {channel}."
 }

@@ -149,7 +149,7 @@ module.exports = {
             if (!message.guild) return message.reply(`${resolveEmoji('error', message)} Server only.`).catch(() => {});
 
             const { orderCol, tKey } = getSortType((args[0] || 'xp').toLowerCase(), lang);
-            const guildName = message.guild.name?.toUpperCase() || 'Neural Node';
+            const guildName = message.guild.name?.toUpperCase() || 'ARCHON CG-223';
 
             const data = await getLeaderboardData(db, message.guild.id, orderCol, message.author.id);
             
@@ -168,7 +168,7 @@ module.exports = {
         try {
             const lang = typeof client.detectLanguage === 'function' ? client.detectLanguage('leaderboard', interaction.guildId, interaction) : 'en';
             const { orderCol, tKey } = getSortType((interaction.options.getString('type') || 'xp').toLowerCase(), lang);
-            const guildName = interaction.guild?.name?.toUpperCase() || 'Neural Node';
+            const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
 
             const data = await getLeaderboardData(client.db, interaction.guild?.id, orderCol, interaction.user.id);
             

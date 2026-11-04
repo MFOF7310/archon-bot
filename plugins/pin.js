@@ -136,7 +136,7 @@ async function createArchiveChannel(guild) {
             name: '📌-neural-archives',
             type: 0,
             parent: archiveCategory.id,
-            topic: '📂 Neural Archive Gallery - Reply to any message with .pin to save it here!',
+            topic: '📂 Pin archive: reply to any message with .pin to save it here!',
             permissionOverwrites: [
                 {
                     id: guild.id,
@@ -157,7 +157,7 @@ async function createArchiveChannel(guild) {
 module.exports = {
     name: 'pin',
     aliases: ['fix', 'archive', 'save', 'unpin', 'pins', 'archives'],
-    description: '📌 Reply to a message with .pin to save it to the Neural Gallery.',
+    description: '📌 Reply to a message with .pin to save it to the pin archive.',
     category: 'UTILITY',
     usage: '.pin (reply to a message) or .unpin (reply to a pinned message)',
     examples: ['.pin', '.unpin', '.pins'],

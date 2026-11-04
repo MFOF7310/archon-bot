@@ -28,7 +28,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
                     `Hey! ${EMOJIS.wave}\n\n` +
                     `This command is reserved for the **System Architect** only.\n` +
                     `Need server help? Reach out to a moderator instead.\n\n` +
-                    `🦅 *ARCHON CG-223 — Neural Grid*`
+                    `🦅 *ARCHON CG-223*`
                 )],
             flags: 64
         });

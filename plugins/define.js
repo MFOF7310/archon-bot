@@ -171,7 +171,7 @@ function buildIntelligenceEmbed(entry, t, word, timestamp) {
             `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
         )
         .setFooter({
-            text: `${t.footer(word)}  |  ${t.classification}  |  Free Dictionary API`
+            text: `${t.footer(word)}  |  Free Dictionary API`
         })
         .setTimestamp(timestamp);
 
@@ -289,7 +289,7 @@ module.exports = {
                     .setColor(PALETTE.warning)
                     .setTitle('\`[ ERROR ]\`')
                     .setDescription(`\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\n**${t.operator}** — Provide a target lexical entry.\n> Usage: \`.define <word>\`\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``)
-                    .setFooter({ text: `ARCHON LEXICON  |  UNCLASSIFIED  |  Free Dictionary API` })
+                    .setFooter({ text: `ARCHON Lexicon  |  Free Dictionary API` })
                 ]
             }).catch(() => {});
         }
@@ -314,7 +314,7 @@ module.exports = {
                         t.notFound(word) +
                         `\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
                     )
-                    .setFooter({ text: `${t.footer(word)}  |  ${t.classification}  |  Free Dictionary API` })
+                    .setFooter({ text: `${t.footer(word)}  |  Free Dictionary API` })
                     .setTimestamp();
                 return msg?.edit({ embeds: [notFoundEmbed], content: null }).catch(() => {});
             }
@@ -341,7 +341,7 @@ module.exports = {
                     `\n\n\`[DEBUG]\`  ${e.message?.substring(0, 100) || 'Unknown'}\n` +
                     `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
                 )
-                .setFooter({ text: `${t.footer(word)}  |  ${t.classification}  |  Free Dictionary API` })
+                .setFooter({ text: `${t.footer(word)}  |  Free Dictionary API` })
                 .setTimestamp();
             msg?.edit({ content: null, embeds: [errorEmbed] }).catch(() => {});
         }
@@ -368,7 +368,7 @@ module.exports = {
                         t.notFound(word) +
                         `\n\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
                     )
-                    .setFooter({ text: `${t.footer(word)}  |  ${t.classification}  |  Free Dictionary API` })
+                    .setFooter({ text: `${t.footer(word)}  |  Free Dictionary API` })
                     .setTimestamp();
                 return interaction.editReply({ embeds: [notFoundEmbed] });
             }
@@ -394,7 +394,7 @@ module.exports = {
                     `\n\n\`[DEBUG]\`  ${e.message?.substring(0, 100) || 'Unknown'}\n` +
                     `\`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\``
                 )
-                .setFooter({ text: `${t.footer(word)}  |  ${t.classification}  |  Free Dictionary API` })
+                .setFooter({ text: `${t.footer(word)}  |  Free Dictionary API` })
                 .setTimestamp();
             interaction.editReply({ embeds: [errorEmbed] });
         }
