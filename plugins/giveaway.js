@@ -275,7 +275,12 @@ async function endGiveawayDb(id, client, db) {
 
     try {
         const channel = await client.channels.fetch(gw.channelId).catch(() => null);
-        if (!channel) return;
+        if (!channel) {
+            // the giveaway's channel was deleted: the winners still got their credits, the admins get told (lib/postProblems)
+            const _g = client.guilds.cache.get(gw.guildId);
+            if (_g) require('../lib/postProblems').failed(_g, 'giveaway', gw.channelId, { ok: false, reason: 'gone', missing: [] });
+            return;
+        }
         const msg = await channel.messages.fetch(gw.messageId).catch(() => null);
         if (!msg) return;
 
@@ -291,7 +296,7 @@ async function endGiveawayDb(id, client, db) {
                 .setDescription(`**${gw.amount > 0 ? gw.amount.toLocaleString() + ' credits drop' : gw.prize}**\n\n` +
                     winners.map(w => `🏆 <@${w}>${gw.amount > 0 ? ` — +${each.toLocaleString()} 🪙` : ''}`).join('\n'))
                 .setFooter({ text: `Hosted by ${gw.hostName}` });
-            await channel.send({ content: `${mention} 🎊`, embeds: [announce] }).catch(() => {});
+            await require('../lib/safeSend').safeSend('giveaway', channel, { content: `${mention} 🎊`, embeds: [announce] });
 
             for (const uid of winners) {
                 const user = await client.users.fetch(uid).catch(() => null);
@@ -308,7 +313,7 @@ async function endGiveawayDb(id, client, db) {
                 await user.send({ embeds: [dm] }).catch(() => {});
             }
         } else {
-            await channel.send({ content: 'No one entered the giveaway.' }).catch(() => {});
+            await require('../lib/safeSend').safeSend('giveaway', channel, { content: 'No one entered the giveaway.' });
         }
     } catch (e) {
         console.error('[GIVEAWAY END ERROR]', e);

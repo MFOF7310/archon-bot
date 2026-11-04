@@ -5956,6 +5956,13 @@ apiApp.get('/api/insights/:guildId/day/:date', (req, res) => require('./lib/insi
 apiApp.get('/api/insights/:guildId/live', (req, res) => require('./lib/insights-route').handleLive(req, res, db, client));
 // Server health (read by the dashboard: loopback only, Manage Server is checked there)
 apiApp.get('/api/health/:guildId', (req, res) => require('./lib/health-route').handle(req, res, db, client));
+// "Send a test" from the dashboard's health card: a silent message, deleted after 10 seconds (3 a minute per server)
+apiApp.post('/api/health/:guildId/test', requireAdmin, (req, res) => {
+    require('./lib/health-route').handleTest(req, res, db, client).catch((e) => {
+        console.error('[HEALTH] test failed:', e.message);
+        if (!res.headersSent) res.status(500).json({ error: 'test failed' });
+    });
+});
 
 apiApp.get('/api/premium/status', (req, res) => {
     try {
